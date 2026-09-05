@@ -14829,8 +14829,54 @@
    "subsystem": "governance",
    "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
    "acceptance": "Docs 10/17/19/24/32/56/83 carry the patch UX, cloud, durability, projection, conformance and done rules; doc 27 coverage map covers every patch section and D8 enforces it; copied-package tests pass; no product proof",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:dossier-gov-004-2026-09-05-final",
+    "artifact:evidence/dossier-gov-004/validation.json",
+    "artifact:evidence/dossier-gov-004/tests.log",
+    "revision:sha256:a6914e8017a318b9c3de28de5aabd553c3f6d2d7d676ebafcbf765067c2206d1",
+    "commit:f2b7250762e04f7ab68cf44530b2a3a9b1afd769"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-05T11:21:06Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Section-by-section coverage audit of both patches; read docs 10/17/19/24/32/56/83; baseline hashed at main"
+    },
+    {
+     "at": "2026-09-05T11:21:06Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "PRD/desktop/cloud/durability/tool-inventory/conformance/DoD integration; doc 27 section 28 coverage map; check D8"
+    },
+    {
+     "at": "2026-09-05T11:21:06Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Regenerated graph and both manifests through the real CLIs"
+    },
+    {
+     "at": "2026-09-05T11:21:06Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "check_dossier --manifest exit 0; 33 copied-package tests passed including the D8 test"
+    },
+    {
+     "at": "2026-09-05T11:21:06Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "Change commit on main; evidence bundle retained"
+    },
+    {
+     "at": "2026-09-05T11:21:06Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Dossier-only completion; no product status changed"
+    }
+   ],
+   "owner_agent": "claude-fable-5.1",
+   "status_changed_on": "2026-09-05T11:21:06Z"
   }
  ],
  "edges": [
@@ -29574,5 +29620,6 @@
    "to": "DR-GOV-2026-09-05-004",
    "type": "authorized_by"
   }
- ]
+ ],
+ "updated_on": "2026-09-05T11:21:06Z"
 }
