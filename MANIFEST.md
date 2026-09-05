@@ -158,8 +158,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/dossier-px-005/baseline.json` | retained evidence | 15853 | `584c79505481975c194fcf718edc5d97c9f532147c17d3e3aa074db043377e97` |
 | `evidence/dossier-px-005/tests.log` | retained evidence | 3140 | `1bf71c1c7a133f4f714fe41f18b4d153c3de9b68f53ee41867c0e0311fd5eefb` |
 | `evidence/dossier-px-005/validation.json` | retained evidence | 15961 | `8189e703354696361e179b539ea5bed5ed3f5d2b5e78ae3bf810823ad650bb24` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 39874 | `18855f41860c45d97a0b439cf50dc7843600ea1aab55e9be68e7325f7a09ade2` |
-| `graph/project-graph.json` | project driver graph with live status | 949762 | `b401f613b369bdf176187a042624045f38cb499b1f5427ca80493ebe0b09d23b` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 40127 | `7a43146706ddee55ce8901564b17ee509205a06ba65c96c6035b73992a511227` |
+| `graph/project-graph.json` | project driver graph with live status | 951402 | `4b3cf7462098d53046157bffb3565d7f7de135a38920698a9ad895439c6d8c6f` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 43742 | `adbe6b668eabffb309b3e05adafa762fd7e277b05833795e5ea6d97c8d10e0d2` |
 | `tools/build_manifest.py` | regenerates this manifest | 14792 | `8b162fc559327ea57f133ea269b165e37e2f3538e85166ca2d58cd6b02dd781b` |
 | `tools/check_dossier.py` | integrity gate | 16615 | `17490633d9f5e4c25322c197cbbe765b6e3573cec639c152cd7744c792995e9c` |

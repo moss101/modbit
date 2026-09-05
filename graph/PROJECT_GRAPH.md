@@ -370,7 +370,7 @@ flowchart LR
 - `DOC-PX-002`: COMPLETE; Product extension stage B: client surfaces and source-control integration; evidence: run:dossier-px-002-2026-09-05-final, artifact:evidence/dossier-px-002/validation.json, artifact:evidence/dossier-px-002/tests.log, revision:sha256:ce8d988063618190ba85aa89ee6ba232b99ffb6988a1d66abdaed62c015e7bd8, commit:d3a59027b71c9b4199dddb24155b873955e96d80
 - `DOC-PX-003`: COMPLETE; Product extension stage C: agent competence contracts and benchmarks; evidence: run:dossier-px-003-2026-09-05-final, artifact:evidence/dossier-px-003/validation.json, artifact:evidence/dossier-px-003/tests.log, revision:sha256:e33784d705285e73e40f6c0499cef1358c2b018bd36005739678748995dc1adb, commit:ffe242b997dc43592443d7637f16e759dc3af8b6
 - `DOC-PX-004`: COMPLETE; Product extension stage D: UX flows, onboarding and interaction budgets; evidence: run:dossier-px-004-2026-09-05-final, artifact:evidence/dossier-px-004/validation.json, artifact:evidence/dossier-px-004/tests.log, revision:sha256:afd47083a105c959760a5ec04dcd4a56b777e5ccdcc143ef29945b55a2e705cb, commit:46ffd21796431c2df4805b0fe168b66c375f66e7
-- `DOC-PX-005`: NOT_STARTED; Product extension stage E: language and platform support matrix; evidence: none
+- `DOC-PX-005`: COMPLETE; Product extension stage E: language and platform support matrix; evidence: run:dossier-px-005-2026-09-05-final, artifact:evidence/dossier-px-005/validation.json, artifact:evidence/dossier-px-005/tests.log, revision:sha256:786117af583dca78214f2ecd17b0ccd5d07880274969bbf1cbee6b107aada985, commit:df76087d60f80f8f6192ed359254e14b321db573
 
 ## Milestone tasks in execution order
 
