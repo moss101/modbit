@@ -6,9 +6,9 @@
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
-    "docs": 86,
-    "root_and_tooling": 41,
-    "docs_bytes": 928117
+    "docs": 87,
+    "root_and_tooling": 44,
+    "docs_bytes": 946880
   },
   "sections": [
     {
@@ -59,8 +59,8 @@
       "section": "authority",
       "section_title": "Authority and orientation",
       "title": "Modbit — AI-Agent Build Dossier V3.3 EPR v1.1",
-      "bytes": 15390,
-      "sha256": "d960794fc014feaff457a5ede307bcce0d0de0d1d79083f7e3927467410de8bf"
+      "bytes": 15553,
+      "sha256": "cb874c5c5ea8fd33b9fbe7058ac0ba5161c8a07eddb2495d83fceac126cfd6a3"
     },
     {
       "path": "docs/01_START_HERE_FOR_BUILD_AGENTS.md",
@@ -131,8 +131,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Product Requirements and UX Specification",
-      "bytes": 10106,
-      "sha256": "816f32b3cb307b9dcc7bc98cf9e62ec08fd121afa6cf7ef37ca7c693d4fa8575"
+      "bytes": 10754,
+      "sha256": "8d227d45b322e757fc372590fda8b4b11b61471f751099ea7635b7c04214a162"
     },
     {
       "path": "docs/11_SYSTEM_ARCHITECTURE.md",
@@ -329,8 +329,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Desktop Frontend Implementation",
-      "bytes": 5436,
-      "sha256": "937ea6789d2bed6ff8a176a9fb2afefb3063daba684e5b0b48fd6708f86f9dd4"
+      "bytes": 5827,
+      "sha256": "ac322efa1e408d2d7fb3655990d0a0828c269af317ac84d7fc459437123abaac"
     },
     {
       "path": "docs/33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md",
@@ -385,6 +385,15 @@
       "title": "Execution policy contracts and algorithms",
       "bytes": 24554,
       "sha256": "4cf67ccec6005ec83478e6677a265d1fc79ce1241e4d8abce566784c01c1e4d3"
+    },
+    {
+      "path": "docs/39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md",
+      "number": 39,
+      "section": "implementation",
+      "section_title": "Implementation specifications",
+      "title": "UX flows, onboarding and interaction budgets",
+      "bytes": 6832,
+      "sha256": "675100f531e76a11374f7b367f144214017ab12d7670daf9f21a30b131a6d562"
     },
     {
       "path": "docs/40_EVIDENCE_DERIVED_REQUIREMENT_LEDGER.md",
@@ -509,8 +518,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Performance, Context Economics, and Benchmark Plan",
-      "bytes": 6585,
-      "sha256": "6a3a3ac08d9e60b1fbf8cb2447fb54c8dddea9ab527dbe0f8331bc1f301bcaad"
+      "bytes": 6843,
+      "sha256": "cb132235360b0ac36e1f7e13dbaa672be9b6a4ab278b0d279e2c354df58a63aa"
     },
     {
       "path": "docs/54_FAULT_INJECTION_AND_RECOVERY_CATALOG.md",
@@ -590,8 +599,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Product extension requirements, tasks and qualifications",
-      "bytes": 42160,
-      "sha256": "72b4a9890b8ee108ea5aba101a657f1200d3950d45ae4c481b2b6cceeafd6a88"
+      "bytes": 50365,
+      "sha256": "311ee9ae68f0f35662c761234b9e6255b8f6b15eb0d12c58dc976e58ec570c6e"
     },
     {
       "path": "docs/63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
@@ -815,8 +824,8 @@
       "section": "governance",
       "section_title": "Agent process and governance",
       "title": "Dossier maintenance log",
-      "bytes": 30719,
-      "sha256": "85dfae57c66c3cf26ba3edcc2b6461097d3a8770bf3af98fa28abb500ca475b1"
+      "bytes": 32985,
+      "sha256": "d8e84a6b9eb0a87558941c473aa70e5281477bb851120a3bc9ed57e498ecf33f"
     },
     {
       "path": "docs/98_BUILD_MANIFEST.md",
@@ -990,19 +999,34 @@
       "sha256": "22588ecdf39ddd1166502cbc316f3b62a63767f3e817e20822a469c20f8724b8"
     },
     {
+      "path": "evidence/dossier-px-004/baseline.json",
+      "bytes": 15399,
+      "sha256": "54c87199a802af01c7bcdc7e17a95adbbad529c130f8c49e8bca5cf2176d6ee6"
+    },
+    {
+      "path": "evidence/dossier-px-004/tests.log",
+      "bytes": 3052,
+      "sha256": "c63c87f76002f1ae67ebba70ea53977f352cf7ec4edda57833f4afc325e50679"
+    },
+    {
+      "path": "evidence/dossier-px-004/validation.json",
+      "bytes": 15847,
+      "sha256": "019df047fb26509756b92d54cb3a82748d8f4fb5ed6f4958b2a511fd0d426e99"
+    },
+    {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 39059,
-      "sha256": "21660ad59ee1cbeac81f589e6c3eb2eb272a7f5fc8bc95c95c0fbb5da475d8b1"
+      "bytes": 39237,
+      "sha256": "c00357d27459fef17a28d7f0ce3eb5c202bd488b3437e3f1bb8f2e1ec7058023"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 901839,
-      "sha256": "516616d48e7434808243377f8d84897e6abd6ccda9e5204254de9aac3e5b324d"
+      "bytes": 920121,
+      "sha256": "4dd593531bbd751d791024b93a7270ff10a51f52f93cfd435dae997a5f661d18"
     },
     {
       "path": "tools/build_graph.py",
-      "bytes": 43490,
-      "sha256": "fee673a7b92340ec2b11fd9ed7043c0e4e77488b01252a97b1cb1c0f470010e1"
+      "bytes": 43614,
+      "sha256": "eed1405877e2512bcb13b1440fdcaf17f0f7c040a906fce4ebbfdfca9514f5f8"
     },
     {
       "path": "tools/build_manifest.py",
@@ -1031,8 +1055,8 @@
     },
     {
       "path": "tools/test_dossier.py",
-      "bytes": 25942,
-      "sha256": "8f770b7fbf83a404dac13f1543235d1a67fa3bb91db69eb07428e76d94668300"
+      "bytes": 26807,
+      "sha256": "e63c752fa1fc6b5c41fc78b247091b5781e07b1892a3834b34638943fac1105c"
     }
   ],
   "renames_v3_to_v3_1": {

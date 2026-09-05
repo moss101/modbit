@@ -131,13 +131,17 @@ A green “done” state is impossible without the configured verification gate 
 ### Restart/resume
 `App/Core restart → load Session/Event Store → restore protocol state → verify checkpoint epoch → reconnect terminal/browser/sandbox if alive or rehydrate from checkpoint → continue at exact control state`.
 
+## Flows, states, notifications and budgets
+
+Every screen above has empty, loading, populated, error, degraded and recovery states, a notification model that interrupts only for attention, completion and failure, a complete keyboard model and interaction budgets, all specified and measured in `39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md`.
+
 ## Accessibility
 
 Keyboard navigation for all fleet/review/approval actions; semantic labels on agent/tool states; no color-only status; diff and terminal views expose text alternatives; browser takeover state announced; reduced motion respected.
 
 ## Product acceptance
 
-The product is usable when a new user can clone/open a real repository, delegate a nontrivial change, observe real tool execution, survive restart, review a real diff and verification evidence, see why the result was accepted, escalated or independently reviewed and what it cost, and accept the result without entering an IDE.
+A new user reaches a first useful task, meaning `ReadyForReview` with a real diff, test run and receipts on a small repository, within five minutes of first launch at the median on reference hardware; this is measured by PX-E2E-022 (`39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md`). Beyond that, the product is usable when a new user can clone/open a real repository, delegate a nontrivial change, observe real tool execution, survive restart, review a real diff and verification evidence, see why the result was accepted, escalated or independently reviewed and what it cost, and accept the result without entering an IDE.
 
 ## Execution policy in the product
 

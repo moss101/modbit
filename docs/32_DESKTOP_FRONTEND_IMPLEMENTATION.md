@@ -89,6 +89,10 @@ Renderer hosts a local `WebContentsView` controlled by main, or a remote viewer 
 
 Every recoverable infrastructure error exposes: affected task, last durable state, retry/reconnect action and evidence ID. Generic toast-only handling is forbidden for task-affecting errors.
 
+## States, notifications and budgets
+
+Renderer modules implement the per-screen state matrix, notification coalescing and keyboard model of `39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md`; a screen without its degraded and recovery states is `DECLARED`, not `IMPLEMENTED`. Interaction budgets are asserted in packaged E2E from Playwright traces and Core event timestamps (PX-022..025).
+
 ## Frontend completion gate
 
 A screen is not complete until Playwright/Electron E2E drives the real app against real local Core and verifies state through process restart. Storybook/static mock screens may be used for visual development but never count toward feature completion.

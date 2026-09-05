@@ -51,7 +51,8 @@ GOV3_CHANGE = "DR-GOV-2026-09-05-003"
 GOV4_CHANGE = "DR-GOV-2026-09-05-004"
 PX_STAGES = [("DOC-PX-001", "DOC-GOV-004", "Product extension stage A: authority, PX ledger tooling, phased releases, governance tiering"),
              ("DOC-PX-002", "DOC-PX-001", "Product extension stage B: client surfaces and source-control integration"),
-             ("DOC-PX-003", "DOC-PX-002", "Product extension stage C: agent competence contracts and benchmarks")]
+             ("DOC-PX-003", "DOC-PX-002", "Product extension stage C: agent competence contracts and benchmarks"),
+             ("DOC-PX-004", "DOC-PX-003", "Product extension stage D: UX flows, onboarding and interaction budgets")]
 
 # Tasks named in docs/43's "V2 sequencing delta" but never enumerated as Mx.y rows.
 ADDED_TASKS = [
@@ -79,7 +80,7 @@ SUBSYSTEMS = [
     ("governance", "Architecture Governance & Product Scope", ["tools/architecture-lint", "tools/evidence-check", "docs/decisions"], ["02", "03", "81", "82"], "M0"),
     ("domain-events", "Domain Model, Event Store & Protocol State", ["crates/domain", "crates/protocol", "crates/event-store", "crates/protocol-state"], ["13", "30", "31"], "M1"),
     ("core-runtime", "Agent Runtime, Scheduler, WorkGraph/AgentGraph", ["crates/core-runtime"], ["14", "28"], "M1"),
-    ("desktop", "Desktop Surface & UI", ["apps/desktop", "apps/cli", "packages/ui", "packages/surface-protocol", "packages/ide-adapter-core", "packages/design-tokens"], ["10", "29", "32"], "M1"),
+    ("desktop", "Desktop Surface & UI", ["apps/desktop", "apps/cli", "packages/ui", "packages/surface-protocol", "packages/ide-adapter-core", "packages/design-tokens"], ["10", "29", "32", "39"], "M1"),
     ("model-gateway", "Execution Policy Router & Provider Gateway", ["crates/providers"], ["15", "27", "38"], "M2"),
     ("tool-runtime", "Tool Registry & Capability Kernel", ["crates/tools", "crates/policy"], ["16", "17"], "M2"),
     ("workspace-git", "Workspace Fabric, Change Engine & Git", ["crates/workspace", "crates/git"], ["20"], "M2"),

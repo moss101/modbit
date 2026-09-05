@@ -30,6 +30,10 @@ Columns: requirement, title, task, qualification, canonical owner, milestone, re
 | REQ-PX-019 | Self-review and completion contract | PX-019 | QUAL-PX-019 | verification | M2 | ALPHA | ADOPT | PX-018 |
 | REQ-PX-020 | Fixed M2 competence baseline on public and internal suites | PX-020 | QUAL-PX-020 | eval-bench | M3 | BETA | ADOPT | M2.9,PX-019,M3.9 |
 | REQ-PX-021 | Competence regression gate and targets after baseline | PX-021 | QUAL-PX-021 | eval-bench | M10 | RELEASE_ZERO | ADOPT | PX-020,M10.4 |
+| REQ-PX-022 | Onboarding to a first useful task within five minutes | PX-022 | QUAL-PX-022 | desktop | M2 | ALPHA | ADOPT | M1.4,M2.9 |
+| REQ-PX-023 | Screen flow and state completeness with notification model | PX-023 | QUAL-PX-023 | desktop | M6 | BETA | ADOPT | M6.6,PX-022 |
+| REQ-PX-024 | Keyboard model and accessibility conformance | PX-024 | QUAL-PX-024 | desktop | M6 | BETA | ADOPT | M6.6 |
+| REQ-PX-025 | Interaction budgets enforced in packaged E2E | PX-025 | QUAL-PX-025 | desktop | M10 | RELEASE_ZERO | ADOPT | M10.4,PX-023 |
 
 ## Qualifications
 
@@ -57,6 +61,10 @@ Columns: requirement, title, task, qualification, canonical owner, milestone, re
 | QUAL-PX-019 | REQ-PX-019 | verification | Real fixture: the SelfReview step lists plan coverage, executed verifications, receipts, scope and leftovers; unresolved findings block the completion proposal; the Acceptance Gate, not the agent, decides completion | A completion proposal without a SelfReview or with unresolved findings is rejected; agent text claiming done changes nothing |
 | QUAL-PX-020 | REQ-PX-020 | eval-bench | Both suites run under the frozen protocol on the real M2 product with the direct configuration; the immutable baseline bundle (digests, model metadata, per-task results, intervals) is recorded and referenced by digest | A baseline with gold-patch access, unpinned images or missing trial counts is rejected; no target may be recorded before this baseline exists |
 | QUAL-PX-021 | REQ-PX-021 | eval-bench | Targets set by Decision Record per metric and tier after the baseline; the release candidate competence gate fails on regression beyond approved thresholds with intervals, including cost-improving routing changes that regress competence | A target recorded without a baseline digest is rejected; a candidate that regresses first-pass success or repair-loop distribution cannot pass the gate regardless of routing savings |
+| QUAL-PX-022 | REQ-PX-022 | desktop | Playwright drives the packaged app on fresh profiles through provider setup, repository trust and a starter task on a small real repository with a live provider test model; median time to ReadyForReview with real evidence is within five minutes on reference hardware; p90 reported | Invalid key, network failure and untrusted repository each show the named cause and next action; a profile that skips provider setup cannot start a task; no step shows an outcome the Core has not persisted |
+| QUAL-PX-023 | REQ-PX-023 | desktop | Each screen's empty, loading, populated, error, degraded and recovery states are forced against a real Core (Core restart, provider down, stale bundle, offline, unknown outcome, quality floor infeasible, human continuation) and each names cause, next action and evidence; notifications fire only for attention, completion and failure and coalesce per task | A screen missing a required state fails the matrix; routine progress producing a notification fails; a recovery banner claiming progress not in Core events fails |
+| QUAL-PX-024 | REQ-PX-024 | desktop | Every screen traversed by keyboard only in the packaged app; global shortcuts, list navigation, review navigation and approval with confirmation work; accessibility suite passes; focus retained across state changes; live regions announce attention changes | Any control unreachable by keyboard, any color-only status, or lost focus on a Core event fails |
+| QUAL-PX-025 | REQ-PX-025 | desktop | Packaged E2E asserts every interaction budget in doc 39 on reference hardware with Playwright traces and Core event timestamps | A budget miss on a release-critical path fails the candidate; timings taken from screenshots rather than traces are rejected |
 
 ## Task cards
 
@@ -291,6 +299,55 @@ Columns: requirement, title, task, qualification, canonical owner, milestone, re
 - **Evidence:** build digest, Core revision, event cursor ranges, plan/RepairAttempt/SelfReview refs, run ids and artifact digests under the existing evidence rules.
 - **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
 
+<a id="px-022"></a>
+
+## PX-022 — Onboarding to a first useful task within five minutes
+
+- **Requirement:** REQ-PX-022; **related preserved requirements:** REQ-EV-0010.
+- **Owner / milestone / release:** desktop / M2 / ALPHA; **prerequisites:** M1.4, M2.9.
+- **Scope and acceptance:** Welcome, provider setup through the OS keychain with a live test call, explicit scoped repository trust with background indexing, starter-task gallery and free-text goal, first Review; median under five minutes to ReadyForReview with real evidence as defined in `39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md`.
+- **Production wiring:** renderer `app-shell/` and `settings/` modules; provider test call through Core; templates from the detected stack; no client-side state beyond acknowledgements.
+- **Real qualification:** QUAL-PX-022 / PX-E2E-022.
+- **Failure and negative proof:** as in QUAL-PX-022.
+- **Evidence:** build digest, Core and renderer revisions, Playwright traces, Core event timestamps, run ids and artifact digests under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+<a id="px-023"></a>
+
+## PX-023 — Screen flow and state completeness with notification model
+
+- **Requirement:** REQ-PX-023; **related preserved requirements:** REQ-EV-0010.
+- **Owner / milestone / release:** desktop / M6 / BETA; **prerequisites:** M6.6, PX-022.
+- **Scope and acceptance:** Empty, loading, populated, error, degraded and recovery states for every screen per the matrix in `39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md`; error copy names cause, next action and evidence; notifications only for attention, completion and failure, coalesced per task, deep-linked, OS delivery opt-in with quiet hours.
+- **Production wiring:** renderer state machines fed by Core events; OS notifications through Electron main; the same reasons exposed to CLI and IDE adapters.
+- **Real qualification:** QUAL-PX-023 / PX-E2E-023.
+- **Failure and negative proof:** as in QUAL-PX-023.
+- **Evidence:** build digest, Core and renderer revisions, Playwright traces, Core event timestamps, run ids and artifact digests under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+<a id="px-024"></a>
+
+## PX-024 — Keyboard model and accessibility conformance
+
+- **Requirement:** REQ-PX-024; **related preserved requirements:** REQ-EV-0010.
+- **Owner / milestone / release:** desktop / M6 / BETA; **prerequisites:** M6.6.
+- **Scope and acceptance:** Global, list and review shortcuts; approval with confirmation for irreversible effects; focus retention; live regions; no color-only status; accessibility suite in packaged E2E (`39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md`).
+- **Production wiring:** renderer focus management and shortcut registry; Playwright accessibility checks.
+- **Real qualification:** QUAL-PX-024 / PX-E2E-024.
+- **Failure and negative proof:** as in QUAL-PX-024.
+- **Evidence:** build digest, Core and renderer revisions, Playwright traces, Core event timestamps, run ids and artifact digests under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+<a id="px-025"></a>
+
+## PX-025 — Interaction budgets enforced in packaged E2E
+
+- **Requirement:** REQ-PX-025; **related preserved requirements:** REQ-EV-0010.
+- **Owner / milestone / release:** desktop / M10 / RELEASE_ZERO; **prerequisites:** M10.4, PX-023.
+- **Scope and acceptance:** Assert the interaction budgets table of `39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md` in packaged E2E from Playwright traces and Core event timestamps; misses fail release-critical candidates.
+- **Production wiring:** performance regression gates of M10.4 extended with UI budgets; results in the release evidence bundle.
+- **Real qualification:** QUAL-PX-025 / PX-E2E-025.
+- **Failure and negative proof:** as in QUAL-PX-025.
+- **Evidence:** build digest, Core and renderer revisions, Playwright traces, Core event timestamps, run ids and artifact digests under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
 ## Real-system scenarios
 
 ### PX-E2E-000 — Headless CLI task lifecycle
@@ -406,3 +463,27 @@ Columns: requirement, title, task, qualification, canonical owner, milestone, re
 **Setup:** baseline bundle and a candidate build with a seeded competence regression and a routing cost improvement.  
 **Action:** run the gate.  
 **Pass:** candidate fails the competence gate; a target recorded without a baseline digest is rejected.
+
+### PX-E2E-022 — Five-minute onboarding
+
+**Setup:** fresh OS user profile, packaged app, live provider test key, small real repository.  
+**Action:** Playwright completes welcome, provider setup, repository trust and a starter task.  
+**Pass:** median under five minutes to ReadyForReview with a real diff and test run; failure paths show cause and next action; no outcome shown before Core persisted it.
+
+### PX-E2E-023 — State matrix
+
+**Setup:** packaged app against a real Core with fault injection.  
+**Action:** force Core restart, provider outage, stale bundle, offline, unknown outcome, quality floor infeasible and human continuation on each screen.  
+**Pass:** every required state present with cause, next action and evidence; notifications only for attention, completion and failure.
+
+### PX-E2E-024 — Keyboard and accessibility
+
+**Setup:** packaged app.  
+**Action:** traverse every screen and action by keyboard; run the accessibility suite.  
+**Pass:** all controls reachable, focus retained across Core events, live regions announce attention, no color-only status.
+
+### PX-E2E-025 — Interaction budgets
+
+**Setup:** packaged app on reference hardware.  
+**Action:** measure each budgeted interaction from traces and Core timestamps.  
+**Pass:** all budgets met at p95; a seeded regression fails the candidate.

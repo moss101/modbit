@@ -92,6 +92,7 @@ Do **not** preload the whole dossier. `89_BUILD_AGENT_CONTEXT_LOADING_POLICY.md`
 - `36_BUILD_BUY_DEPENDENCY_AND_LICENSE_POLICY.md` — build/buy table, fork policy, license gate
 - `37_EXISTING_CODE_DONOR_AND_REUSE_POLICY.md` — donor classification, extraction gate, AI reuse warning
 - `38_EXECUTION_POLICY_CONTRACTS_AND_ALGORITHMS.md` — versioned contracts, bounded algorithms and recovery
+- `39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md` — five-minute onboarding, per-screen state matrix, notification model, keyboard model, interaction budgets
 
 ### 40–49 Requirements, tasks and traceability
 - `40_EVIDENCE_DERIVED_REQUIREMENT_LEDGER.md` — 291 `REQ-EV-*` rows (LOCKED completeness boundary)

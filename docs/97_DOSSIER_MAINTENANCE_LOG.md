@@ -342,3 +342,39 @@ Recorded in doc 07 for the whole extension; this entry adds only: **Test impact*
 | Changed | `MANIFEST.md`, `manifest.json`, `graph/PROJECT_GRAPH.md`, `graph/project-graph.json` |
 | Changed | `docs/00_MASTER_INDEX.md`, `docs/13_DOMAIN_MODEL_AND_STATE_MACHINES.md`, `docs/14_AGENT_RUNTIME_AND_ORCHESTRATION.md`, `docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md`, `docs/31_DATABASE_AND_STORAGE_SCHEMA.md`, `docs/53_PERFORMANCE_AND_BENCHMARK_PLAN.md`, `docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md`, `docs/97_DOSSIER_MAINTENANCE_LOG.md` |
 | Changed | `tools/build_graph.py`, `tools/test_dossier.py` |
+
+## DOC-PX-004 — Product extension stage D: UX flows, onboarding and interaction budgets
+
+### Identity and authority
+
+- Task: DOC-PX-004 (`dossier_task`); owner: governance; prerequisite: DOC-PX-003 COMPLETE; outside product roll-ups.
+- Decision Record: DR-PX-2026-09-05 item 7.
+- Scope: new doc 39; ledger rows REQ-PX-022..025 (all ADOPT; onboarding in Alpha, states and keyboard in Beta, budgets in Release Zero); acceptance criterion and flow pointer in doc 10; renderer state rules in doc 32; budget pointer in doc 53; desktop spec-doc link; one test; index entry.
+- Revision before change: `../evidence/dossier-px-004/baseline.json`.
+
+### Stage applicability
+
+| Stage | DOC-PX-004 execution |
+|---|---|
+| AUDITING | Read docs 10/32/53 for existing screens, accessibility sentence and budgets; no flows, onboarding, states or notification model existed |
+| IMPLEMENTING | Doc 39, ledger rows, docs 10/32/53 edits, pointers, test |
+| WIRED | Regenerated graph and manifests through the real CLIs |
+| REAL_TESTING | `check_dossier --manifest` and the copied-package suite |
+| E2E_PROVEN | Change commit on `main` pushed; evidence retained |
+| COMPLETE | One-step ladder with evidence; seal commit |
+| Product qualification | Non-applicable: no product source exists |
+
+### Status and handoff
+
+- **Interfaces:** ledger grows to twenty-six rows; Alpha adds PX-022; Beta adds PX-023/024; Release Zero adds PX-025.
+- **Evidence:** `../evidence/dossier-px-004/` bundle; change commit recorded as `commit:` evidence on DOC-PX-004.
+- **Next safe action:** stage E (DOC-PX-005): doc 76 language and platform support matrix.
+
+### Exact file inventory for this change
+
+| Action | Path |
+|---|---|
+| Added | `docs/39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md`; `evidence/dossier-px-004/baseline.json`, `tests.log`, `validation.json` |
+| Changed | `MANIFEST.md`, `manifest.json`, `graph/PROJECT_GRAPH.md`, `graph/project-graph.json` |
+| Changed | `docs/00_MASTER_INDEX.md`, `docs/10_PRODUCT_PRD_AND_UX.md`, `docs/32_DESKTOP_FRONTEND_IMPLEMENTATION.md`, `docs/53_PERFORMANCE_AND_BENCHMARK_PLAN.md`, `docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md`, `docs/97_DOSSIER_MAINTENANCE_LOG.md` |
+| Changed | `tools/build_graph.py`, `tools/test_dossier.py` |

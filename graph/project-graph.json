@@ -419,6 +419,14 @@
    "section": "implementation"
   },
   {
+   "id": "39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md",
+   "type": "doc",
+   "title": "UX flows, onboarding and interaction budgets",
+   "path": "docs/39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md",
+   "number": 39,
+   "section": "implementation"
+  },
+  {
    "id": "40_EVIDENCE_DERIVED_REQUIREMENT_LEDGER.md",
    "type": "doc",
    "title": "Evidence-Derived Requirement Ledger — Build Edition",
@@ -14743,6 +14751,58 @@
    "mandatory_behavior": "Targets set by Decision Record per metric and tier after the baseline; the release candidate competence gate fails on regression beyond approved thresholds with intervals, including cost-improving routing changes that regress competence"
   },
   {
+   "id": "REQ-PX-022",
+   "type": "requirement",
+   "title": "Onboarding to a first useful task within five minutes",
+   "disposition": "ADOPT",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": "PX-022",
+   "qual": "QUAL-PX-022",
+   "release": "ALPHA",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Playwright drives the packaged app on fresh profiles through provider setup, repository trust and a starter task on a small real repository with a live provider test model; median time to ReadyForReview with real evidence is within five minutes on reference hardware; p90 reported"
+  },
+  {
+   "id": "REQ-PX-023",
+   "type": "requirement",
+   "title": "Screen flow and state completeness with notification model",
+   "disposition": "ADOPT",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": "PX-023",
+   "qual": "QUAL-PX-023",
+   "release": "BETA",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Each screen's empty, loading, populated, error, degraded and recovery states are forced against a real Core (Core restart, provider down, stale bundle, offline, unknown outcome, quality floor infeasible, human continuation) and each names cause, next action and evidence; notifications fire only for attention, completion and failure and coalesce per task"
+  },
+  {
+   "id": "REQ-PX-024",
+   "type": "requirement",
+   "title": "Keyboard model and accessibility conformance",
+   "disposition": "ADOPT",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": "PX-024",
+   "qual": "QUAL-PX-024",
+   "release": "BETA",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Every screen traversed by keyboard only in the packaged app; global shortcuts, list navigation, review navigation and approval with confirmation work; accessibility suite passes; focus retained across state changes; live regions announce attention changes"
+  },
+  {
+   "id": "REQ-PX-025",
+   "type": "requirement",
+   "title": "Interaction budgets enforced in packaged E2E",
+   "disposition": "ADOPT",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": "PX-025",
+   "qual": "QUAL-PX-025",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Packaged E2E asserts every interaction budget in doc 39 on reference hardware with Playwright traces and Core event timestamps"
+  },
+  {
    "id": "PX-000",
    "type": "imp_task",
    "title": "Headless CLI thin client for the task lifecycle",
@@ -15216,6 +15276,105 @@
    "evidence": []
   },
   {
+   "id": "PX-022",
+   "type": "imp_task",
+   "title": "Onboarding to a first useful task within five minutes",
+   "requirement": "REQ-PX-022",
+   "qual": "QUAL-PX-022",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "milestone": "M2",
+   "release": "ALPHA",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "Playwright drives the packaged app on fresh profiles through provider setup, repository trust and a starter task on a small real repository with a live provider test model; median time to ReadyForReview with real evidence is within five minutes on reference hardware; p90 reported",
+   "prerequisites": [
+    "M1.4",
+    "M2.9"
+   ],
+   "related_requirements": [
+    "REQ-EV-0010"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-022",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-023",
+   "type": "imp_task",
+   "title": "Screen flow and state completeness with notification model",
+   "requirement": "REQ-PX-023",
+   "qual": "QUAL-PX-023",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "milestone": "M6",
+   "release": "BETA",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "Each screen's empty, loading, populated, error, degraded and recovery states are forced against a real Core (Core restart, provider down, stale bundle, offline, unknown outcome, quality floor infeasible, human continuation) and each names cause, next action and evidence; notifications fire only for attention, completion and failure and coalesce per task",
+   "prerequisites": [
+    "M6.6",
+    "PX-022"
+   ],
+   "related_requirements": [
+    "REQ-EV-0010"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-023",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-024",
+   "type": "imp_task",
+   "title": "Keyboard model and accessibility conformance",
+   "requirement": "REQ-PX-024",
+   "qual": "QUAL-PX-024",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "milestone": "M6",
+   "release": "BETA",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "Every screen traversed by keyboard only in the packaged app; global shortcuts, list navigation, review navigation and approval with confirmation work; accessibility suite passes; focus retained across state changes; live regions announce attention changes",
+   "prerequisites": [
+    "M6.6"
+   ],
+   "related_requirements": [
+    "REQ-EV-0010"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-024",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-025",
+   "type": "imp_task",
+   "title": "Interaction budgets enforced in packaged E2E",
+   "requirement": "REQ-PX-025",
+   "qual": "QUAL-PX-025",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "Packaged E2E asserts every interaction budget in doc 39 on reference hardware with Playwright traces and Core event timestamps",
+   "prerequisites": [
+    "M10.4",
+    "PX-023"
+   ],
+   "related_requirements": [
+    "REQ-EV-0010"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-025",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
    "id": "QUAL-PX-000",
    "type": "qual_test",
    "requirement": "REQ-PX-000",
@@ -15436,6 +15595,46 @@
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
   },
   {
+   "id": "QUAL-PX-022",
+   "type": "qual_test",
+   "requirement": "REQ-PX-022",
+   "owner_label": "desktop",
+   "title": "Playwright drives the packaged app on fresh profiles through provider setup, repository trust and a starter task on a small real repository with a live provider test model; median time to ReadyForReview with real evidence is within five minutes on reference hardware; p90 reported",
+   "failure_proof": "Invalid key, network failure and untrusted repository each show the named cause and next action; a profile that skips provider setup cannot start a task; no step shows an outcome the Core has not persisted",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-023",
+   "type": "qual_test",
+   "requirement": "REQ-PX-023",
+   "owner_label": "desktop",
+   "title": "Each screen's empty, loading, populated, error, degraded and recovery states are forced against a real Core (Core restart, provider down, stale bundle, offline, unknown outcome, quality floor infeasible, human continuation) and each names cause, next action and evidence; notifications fire only for attention, completion and failure and coalesce per task",
+   "failure_proof": "A screen missing a required state fails the matrix; routine progress producing a notification fails; a recovery banner claiming progress not in Core events fails",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-024",
+   "type": "qual_test",
+   "requirement": "REQ-PX-024",
+   "owner_label": "desktop",
+   "title": "Every screen traversed by keyboard only in the packaged app; global shortcuts, list navigation, review navigation and approval with confirmation work; accessibility suite passes; focus retained across state changes; live regions announce attention changes",
+   "failure_proof": "Any control unreachable by keyboard, any color-only status, or lost focus on a Core event fails",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-025",
+   "type": "qual_test",
+   "requirement": "REQ-PX-025",
+   "owner_label": "desktop",
+   "title": "Packaged E2E asserts every interaction budget in doc 39 on reference hardware with Playwright traces and Core event timestamps",
+   "failure_proof": "A budget miss on a release-critical path fails the candidate; timings taken from screenshots rather than traces are rejected",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
    "id": "PX-E2E-000",
    "type": "scenario",
    "kind": "px-e2e",
@@ -15566,6 +15765,34 @@
    "type": "scenario",
    "kind": "px-e2e",
    "title": "Regression gate",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-022",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Five-minute onboarding",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-023",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "State matrix",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-024",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Keyboard and accessibility",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-025",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Interaction budgets",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
   },
   {
@@ -16220,6 +16447,16 @@
    "status_changed_on": "2026-09-05T12:40:03Z"
   },
   {
+   "id": "DOC-PX-004",
+   "type": "dossier_task",
+   "title": "Product extension stage D: UX flows, onboarding and interaction budgets",
+   "subsystem": "governance",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
+   "acceptance": "Stage sealed on main with change and seal commits; full integrity gate passes; no product proof",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
    "id": "ALPHA",
    "type": "release",
    "title": "Local coding loop and recovery spine",
@@ -16427,6 +16664,11 @@
   },
   {
    "from": "38_EXECUTION_POLICY_CONTRACTS_AND_ALGORITHMS.md",
+   "to": "section:implementation",
+   "type": "in_section"
+  },
+  {
+   "from": "39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md",
    "to": "section:implementation",
    "type": "in_section"
   },
@@ -16853,6 +17095,11 @@
   {
    "from": "00_MASTER_INDEX.md",
    "to": "38_EXECUTION_POLICY_CONTRACTS_AND_ALGORITHMS.md",
+   "type": "references"
+  },
+  {
+   "from": "00_MASTER_INDEX.md",
+   "to": "39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md",
    "type": "references"
   },
   {
@@ -17312,6 +17559,11 @@
   },
   {
    "from": "10_PRODUCT_PRD_AND_UX.md",
+   "to": "39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md",
+   "type": "references"
+  },
+  {
+   "from": "10_PRODUCT_PRD_AND_UX.md",
    "to": "49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md",
    "type": "references"
   },
@@ -17671,6 +17923,11 @@
    "type": "references"
   },
   {
+   "from": "32_DESKTOP_FRONTEND_IMPLEMENTATION.md",
+   "to": "39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md",
+   "type": "references"
+  },
+  {
    "from": "33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md",
    "to": "38_EXECUTION_POLICY_CONTRACTS_AND_ALGORITHMS.md",
    "type": "references"
@@ -17688,6 +17945,26 @@
   {
    "from": "38_EXECUTION_POLICY_CONTRACTS_AND_ALGORITHMS.md",
    "to": "30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md",
+   "type": "references"
+  },
+  {
+   "from": "39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md",
+   "to": "07_PRODUCT_EXTENSION_DECISION_RECORD.md",
+   "type": "references"
+  },
+  {
+   "from": "39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md",
+   "to": "10_PRODUCT_PRD_AND_UX.md",
+   "type": "references"
+  },
+  {
+   "from": "39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md",
+   "to": "29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md",
+   "type": "references"
+  },
+  {
+   "from": "39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md",
+   "to": "53_PERFORMANCE_AND_BENCHMARK_PLAN.md",
    "type": "references"
   },
   {
@@ -17822,6 +18099,11 @@
   },
   {
    "from": "53_PERFORMANCE_AND_BENCHMARK_PLAN.md",
+   "to": "39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md",
+   "type": "references"
+  },
+  {
+   "from": "53_PERFORMANCE_AND_BENCHMARK_PLAN.md",
    "to": "63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
    "type": "references"
   },
@@ -17868,6 +18150,11 @@
   {
    "from": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
    "to": "30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md",
+   "type": "references"
+  },
+  {
+   "from": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "to": "39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md",
    "type": "references"
   },
   {
@@ -18618,6 +18905,11 @@
   {
    "from": "97_DOSSIER_MAINTENANCE_LOG.md",
    "to": "33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md",
    "type": "references"
   },
   {
@@ -19633,6 +19925,11 @@
   {
    "from": "desktop",
    "to": "32_DESKTOP_FRONTEND_IMPLEMENTATION.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "desktop",
+   "to": "39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md",
    "type": "specified_by"
   },
   {
@@ -31416,6 +31713,106 @@
    "type": "implemented_by"
   },
   {
+   "from": "REQ-PX-022",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-022",
+   "to": "QUAL-PX-022",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-022",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-022",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-022",
+   "to": "PX-022",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-023",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-023",
+   "to": "QUAL-PX-023",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-023",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-023",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-023",
+   "to": "PX-023",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-024",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-024",
+   "to": "QUAL-PX-024",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-024",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-024",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-024",
+   "to": "PX-024",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-025",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-025",
+   "to": "QUAL-PX-025",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-025",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-025",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-025",
+   "to": "PX-025",
+   "type": "implemented_by"
+  },
+  {
    "from": "PX-000",
    "to": "DR-PX-2026-09-05",
    "type": "authorized_by"
@@ -32356,6 +32753,201 @@
    "type": "proves"
   },
   {
+   "from": "PX-022",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-022",
+   "to": "desktop",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-022",
+   "to": "M2",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-022",
+   "to": "QUAL-PX-022",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-022",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-022",
+   "to": "M1.4",
+   "type": "after"
+  },
+  {
+   "from": "PX-022",
+   "to": "M2.9",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-022",
+   "to": "REQ-EV-0010",
+   "type": "extends"
+  },
+  {
+   "from": "PX-022",
+   "to": "PX-E2E-022",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-022",
+   "to": "M2",
+   "type": "proves"
+  },
+  {
+   "from": "PX-023",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-023",
+   "to": "desktop",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-023",
+   "to": "M6",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-023",
+   "to": "QUAL-PX-023",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-023",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-023",
+   "to": "M6.6",
+   "type": "after"
+  },
+  {
+   "from": "PX-023",
+   "to": "PX-022",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-023",
+   "to": "REQ-EV-0010",
+   "type": "extends"
+  },
+  {
+   "from": "PX-023",
+   "to": "PX-E2E-023",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-023",
+   "to": "M6",
+   "type": "proves"
+  },
+  {
+   "from": "PX-024",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-024",
+   "to": "desktop",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-024",
+   "to": "M6",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-024",
+   "to": "QUAL-PX-024",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-024",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-024",
+   "to": "M6.6",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-024",
+   "to": "REQ-EV-0010",
+   "type": "extends"
+  },
+  {
+   "from": "PX-024",
+   "to": "PX-E2E-024",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-024",
+   "to": "M6",
+   "type": "proves"
+  },
+  {
+   "from": "PX-025",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-025",
+   "to": "desktop",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-025",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-025",
+   "to": "QUAL-PX-025",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-025",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-025",
+   "to": "M10.4",
+   "type": "after"
+  },
+  {
+   "from": "PX-025",
+   "to": "PX-023",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-025",
+   "to": "REQ-EV-0010",
+   "type": "extends"
+  },
+  {
+   "from": "PX-025",
+   "to": "PX-E2E-025",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-025",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
    "from": "domain-events",
    "to": "38_EXECUTION_POLICY_CONTRACTS_AND_ALGORITHMS.md",
    "type": "specified_by"
@@ -32957,6 +33549,26 @@
   },
   {
    "from": "DOC-PX-003",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "DOC-PX-004",
+   "to": "DOC-PX-003",
+   "type": "after"
+  },
+  {
+   "from": "DOC-PX-004",
+   "to": "governance",
+   "type": "owned_by"
+  },
+  {
+   "from": "DOC-PX-004",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-PX-004",
    "to": "DR-PX-2026-09-05",
    "type": "authorized_by"
   },
@@ -33588,6 +34200,11 @@
   {
    "from": "ALPHA",
    "to": "PX-019",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "PX-022",
    "type": "includes"
   },
   {
@@ -35158,6 +35775,21 @@
   {
    "from": "BETA",
    "to": "PX-020",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "PX-022",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "PX-023",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "PX-024",
    "type": "includes"
   },
   {
@@ -37072,6 +37704,26 @@
   },
   {
    "from": "RELEASE_ZERO",
+   "to": "PX-022",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-023",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-024",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-025",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
    "to": "EPR-GATE-A",
    "type": "requires_gate"
   },
@@ -37105,6 +37757,5 @@
    "to": "EPR-GATE-G",
    "type": "requires_gate"
   }
- ],
- "updated_on": "2026-09-05T12:40:03Z"
+ ]
 }

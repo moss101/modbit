@@ -288,6 +288,7 @@ class DossierTests(unittest.TestCase):
         self.assertIn("DOC-GOV-004", self.run_tool("graph", "show", "DOC-PX-001"))
         self.assertIn("DOC-PX-001", self.run_tool("graph", "show", "DOC-PX-002"))
         self.assertIn("DOC-PX-002", self.run_tool("graph", "show", "DOC-PX-003"))
+        self.assertIn("DOC-PX-003", self.run_tool("graph", "show", "DOC-PX-004"))
         out = self.run_tool("graph", "show", "DOC-GOV-001")
         for required in ("DOC-EPR-002", "DR-GOV-2026-09-05", "96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md", "governance"):
             self.assertIn(required, out)
@@ -448,6 +449,18 @@ class DossierTests(unittest.TestCase):
         for tid in ("PX-014", "PX-016", "PX-017", "PX-018", "PX-019"):
             self.assertIn(tid, alpha)
         self.assertNotIn("PX-020", alpha)
+
+    def test_ux_flows_are_specified_and_measurable(self):
+        d39 = (self.root / "docs/39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md").read_text()
+        for needle in ("five minutes", "degraded", "recovery", "Notification model", "Keyboard model", "Interaction budgets"):
+            self.assertIn(needle, d39)
+        self.assertIn("five minutes", (self.root / "docs/10_PRODUCT_PRD_AND_UX.md").read_text())
+        out = self.run_tool("graph", "show", "PX-022")
+        for needle in ("M1.4", "M2.9", "QUAL-PX-022", "PX-E2E-022", "desktop"):
+            self.assertIn(needle, out)
+        alpha = {e["to"] for e in self.graph()["edges"] if e["type"] == "includes" and e["from"] == "ALPHA"}
+        self.assertIn("PX-022", alpha)
+        self.assertNotIn("PX-025", alpha)
 
 
 if __name__ == "__main__":

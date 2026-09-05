@@ -23,6 +23,8 @@ All numbers are **engineering targets**, not claimed results.
 | Core idle RSS | target < 250 MB excluding indexes/LSP/model assets |
 | Renderer idle RSS | target < 300 MB |
 
+Interaction-level budgets (cold start to interactive, command acknowledgement, review open, attention update, takeover, reconnect, onboarding to first useful task) are in `39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md` and are asserted in packaged E2E.
+
 ## Repository scale classes
 
 Benchmark at roughly:
