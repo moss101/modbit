@@ -366,7 +366,7 @@ flowchart LR
 - `DOC-GOV-002`: COMPLETE; Align implementation specs and execution profiles with EPR v1.1; evidence: run:dossier-gov-002-2026-09-05-final, artifact:evidence/dossier-gov-002/validation.json, artifact:evidence/dossier-gov-002/tests.log, revision:sha256:8e9f70a42a14d6592ac53f463385a61bcdc4f5563045b9f7a5499fc13051522d, commit:e39f3a477b5234c1ca519c692cbc0b8db880d71a
 - `DOC-GOV-003`: COMPLETE; Enforce release-gate attestation and one-step lifecycle transitions; evidence: run:dossier-gov-003-2026-09-05-final, artifact:evidence/dossier-gov-003/validation.json, artifact:evidence/dossier-gov-003/tests.log, revision:sha256:1072a96f9b3564a839a12ab40243fbced08e732458c5df62cabb0ab2c2ab253d, commit:d426b1be87768e28acb8c30eca0330daa0f674e9
 - `DOC-GOV-004`: COMPLETE; Integrate EPR patches into product, cloud, durability and acceptance docs; add coverage map; evidence: run:dossier-gov-004-2026-09-05-final, artifact:evidence/dossier-gov-004/validation.json, artifact:evidence/dossier-gov-004/tests.log, revision:sha256:a6914e8017a318b9c3de28de5aabd553c3f6d2d7d676ebafcbf765067c2206d1, commit:f2b7250762e04f7ab68cf44530b2a3a9b1afd769
-- `DOC-PX-001`: NOT_STARTED; Product extension stage A: authority, PX ledger tooling, phased releases, governance tiering; evidence: none
+- `DOC-PX-001`: COMPLETE; Product extension stage A: authority, PX ledger tooling, phased releases, governance tiering; evidence: run:dossier-px-001-2026-09-05-final, artifact:evidence/dossier-px-001/validation.json, artifact:evidence/dossier-px-001/tests.log, revision:sha256:05c2315e268ab955cf4e36ea06d265d6ca225143bddcdc87451ca3df6e8f0928, commit:5922b8a4d7f29548db3215849a47799fb7159804
 
 ## Milestone tasks in execution order
 
