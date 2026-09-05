@@ -368,7 +368,7 @@ flowchart LR
 - `DOC-GOV-004`: COMPLETE; Integrate EPR patches into product, cloud, durability and acceptance docs; add coverage map; evidence: run:dossier-gov-004-2026-09-05-final, artifact:evidence/dossier-gov-004/validation.json, artifact:evidence/dossier-gov-004/tests.log, revision:sha256:a6914e8017a318b9c3de28de5aabd553c3f6d2d7d676ebafcbf765067c2206d1, commit:f2b7250762e04f7ab68cf44530b2a3a9b1afd769
 - `DOC-PX-001`: COMPLETE; Product extension stage A: authority, PX ledger tooling, phased releases, governance tiering; evidence: run:dossier-px-001-2026-09-05-final, artifact:evidence/dossier-px-001/validation.json, artifact:evidence/dossier-px-001/tests.log, revision:sha256:05c2315e268ab955cf4e36ea06d265d6ca225143bddcdc87451ca3df6e8f0928, commit:5922b8a4d7f29548db3215849a47799fb7159804
 - `DOC-PX-002`: COMPLETE; Product extension stage B: client surfaces and source-control integration; evidence: run:dossier-px-002-2026-09-05-final, artifact:evidence/dossier-px-002/validation.json, artifact:evidence/dossier-px-002/tests.log, revision:sha256:ce8d988063618190ba85aa89ee6ba232b99ffb6988a1d66abdaed62c015e7bd8, commit:d3a59027b71c9b4199dddb24155b873955e96d80
-- `DOC-PX-003`: NOT_STARTED; Product extension stage C: agent competence contracts and benchmarks; evidence: none
+- `DOC-PX-003`: COMPLETE; Product extension stage C: agent competence contracts and benchmarks; evidence: run:dossier-px-003-2026-09-05-final, artifact:evidence/dossier-px-003/validation.json, artifact:evidence/dossier-px-003/tests.log, revision:sha256:e33784d705285e73e40f6c0499cef1358c2b018bd36005739678748995dc1adb, commit:ffe242b997dc43592443d7637f16e759dc3af8b6
 
 ## Milestone tasks in execution order
 
