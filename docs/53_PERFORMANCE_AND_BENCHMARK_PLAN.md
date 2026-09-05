@@ -69,6 +69,8 @@ Do not publish/claim until independently reproduced. Record index build time sep
 - median/p95 tokens, tool calls and wall time;
 - wrong-effect attempts blocked;
 - number of repair loops;
+- regression attribution, flaky-check rate, test-integrity violations and scope against the original plan (`64_VERIFICATION_EXECUTION_CONTRACTS.md`, `63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md`);
+- targeted test-selection precision and recall against the full suite on fixtures (PX-035);
 - completion evidence coverage;
 - restart/resume success.
 

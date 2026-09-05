@@ -20,7 +20,7 @@ Most turns see a small task-scoped direct surface. Procedural mode may expose `e
 | git.merge.prepare / commit | Git | reviewed merge transaction | Yes | Change Engine |
 | shell.exec | Terminal | structured argv/cwd/env execution | Maybe | Terminal Broker |
 | shell.attach / input / cancel | Terminal | durable PTY/process control | Maybe | Terminal Broker |
-| test.run | Verification | execute configured real tests | code execution | Verification Plane |
+| test.run | Verification | execute configured real tests and return a normalized `TestReport` with stable check identities, parser confidence and the raw OutputRef (`64_VERIFICATION_EXECUTION_CONTRACTS.md`) | code execution | Verification Plane |
 | diagnostics.pull | Verification | bounded diagnostics after settle/on demand | No | Diagnostics Adapter |
 | browser.navigate / snapshot | Browser | navigate/read semantic browser state | navigation may be protected | Browser Runtime |
 | browser.action | Browser | semantic click/fill/select/submit/etc. | Yes by effect | Browser Runtime |

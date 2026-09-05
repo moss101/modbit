@@ -64,7 +64,19 @@ Unique `(task_id, epoch)`.
 
 ### `repair_attempts`
 `attempt_id PK, run_id FK, turn_id, attempt_ordinal, failure_signature_hash, failure_signature_ref, hypothesis_hash, hypothesis_ref, evidence_refs_json, intended_fix_ref, change_ref, verification_result_ref, outcome, created_at`.
-Unique `(run_id, failure_signature_hash, hypothesis_hash)` makes an equivalent repeated hypothesis unrepresentable as a new attempt; the runtime escalates instead (`28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md`). Plans and self-reviews persist as WorkGraph state and `run_steps` rows with object refs.
+Unique `(run_id, failure_signature_hash, hypothesis_hash)` makes an equivalent repeated hypothesis unrepresentable as a new attempt; the runtime escalates instead (`28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md`). A `change_fingerprint` column with unique `(run_id, change_fingerprint)` makes an identical repeated change unrepresentable as a new attempt. Plans and self-reviews persist as WorkGraph state and `run_steps` rows with object refs.
+
+### `verification_runs`
+`verification_run_id PK, run_id FK, plan_ref, stage, candidate_revision, environment_digest, started_at, ended_at, status, report_ref`.
+`stage` is `BASELINE`, `TARGETED`, `COMPLETION` or `RERUN` (`64_VERIFICATION_EXECUTION_CONTRACTS.md`). Reports and raw runner output are content-addressed artifacts.
+
+### `check_results`
+`verification_run_id FK, check_id, kind, status, duration_ms, location_ref, error_class, message_fingerprint, output_ref`.
+Unique `(verification_run_id, check_id)`. Regression attribution joins BASELINE and COMPLETION rows of the same `run_id` on `check_id`.
+
+### `flaky_checks`
+`flaky_id PK, run_id FK, check_id, first_run_id, rerun_id, quarantined_at, scope_revision_range, expires_reason, resolved_at`.
+Only the Verification Engine's rerun protocol writes this table; there is no global skip list.
 
 ### `output_refs`
 `output_ref_id PK, object_hash, content_type, byte_length, checksum, preview_text, created_at, retention_class`.

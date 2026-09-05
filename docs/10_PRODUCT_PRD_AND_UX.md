@@ -111,6 +111,7 @@ Contains:
 - external effects and approvals;
 - the execution path actually taken (initial leg, escalation, independent review, human approval) with the acceptance verdict and the assurance level it had to meet;
 - reviewer findings and how each was resolved;
+- repair history, quarantined flaky checks, regression attribution against the pre-change baseline, scope expansions against the original plan and diff-invariant findings (`64_VERIFICATION_EXECUTION_CONTRACTS.md`);
 - complete cost and time by leg, including reviewer tool cost;
 - evidence chain;
 - merge/apply/export actions, and open or update a pull request as a protected effect with a receipt (`29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md`).

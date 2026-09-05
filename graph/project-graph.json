@@ -619,6 +619,14 @@
    "section": "verification"
   },
   {
+   "id": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
+   "type": "doc",
+   "title": "Verification execution contracts: baseline, targeting, result normalization, flake handling and diff invariants",
+   "path": "docs/64_VERIFICATION_EXECUTION_CONTRACTS.md",
+   "number": 64,
+   "section": "verification"
+  },
+  {
    "id": "70_CI_CD_RELEASE_AND_SUPPLY_CHAIN.md",
    "type": "doc",
    "title": "CI/CD, Release Engineering, and Supply Chain",
@@ -1105,7 +1113,7 @@
    "id": "M2.8",
    "type": "milestone_task",
    "title": "Verification engine build/test checks",
-   "acceptance": "",
+   "acceptance": "derived plan recorded before the first run; BASELINE, TARGETED and COMPLETION stages with regression attribution; normalized `TestReport`/`CheckResult` from real runners on the Alpha fixtures; flake rerun protocol; diff invariants DI-1..DI-9 (`64_VERIFICATION_EXECUTION_CONTRACTS.md`, PX-032..034/036/037).",
    "milestone": "M2",
    "order": 7,
    "source": "docs/43",
@@ -7222,10 +7230,11 @@
    "type": "imp_task",
    "title": "Failure output used for repair",
    "owner_label": "Agent Runtime",
+   "milestone_override": "DR-PX-2026-09-05-006: bounded failure evidence is a prerequisite of the M2 repair loop (PX-018, PX-033, PX-039); scheduled ahead of its owner label's default milestone",
    "requirement": "REQ-EV-0107",
    "disposition": "ADOPT",
    "subsystem": "core-runtime",
-   "milestone": "M6",
+   "milestone": "M2",
    "qual": "QUAL-EV-0107",
    "source": "docs/41",
    "status": "NOT_STARTED",
@@ -14473,6 +14482,13 @@
    "source": "docs/07_PRODUCT_EXTENSION_DECISION_RECORD.md"
   },
   {
+   "id": "DR-PX-2026-09-05-006",
+   "type": "change_record",
+   "title": "Approved competence hardening: verification execution mechanics, scope bounds, repair policy and agent harness contracts",
+   "status": "APPROVED",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md"
+  },
+  {
    "id": "REQ-PX-000",
    "type": "requirement",
    "title": "Headless CLI thin client for the task lifecycle",
@@ -14887,6 +14903,123 @@
    "release": "RELEASE_ZERO",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
    "mandatory_behavior": "macOS reaches RELEASE_GRADE by the packaged desktop E2E catalog and the applicable Release Zero subset; Windows and Linux stay CI_COMPATIBLE until their own packaged E2E passes and a Decision Record records promotion"
+  },
+  {
+   "id": "REQ-PX-032",
+   "type": "requirement",
+   "title": "Pre-change verification baseline and regression attribution",
+   "disposition": "ADOPT",
+   "subsystem": "verification",
+   "owner_label": "verification",
+   "imp": "PX-032",
+   "qual": "QUAL-PX-032",
+   "release": "ALPHA",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Real fixture with one pre-existing failing test and one test the task will break: a BASELINE run executes before the first write and records a VerificationBaseline; the pre-existing failure is labelled KNOWN_FAILING; at the COMPLETION run the newly broken test is attributed as a REGRESSION and blocks acceptance; a check the plan declared as an expected behavior change before the run is shown in Review as declared, not as a regression"
+  },
+  {
+   "id": "REQ-PX-033",
+   "type": "requirement",
+   "title": "Normalized test reports and failing-check identity",
+   "disposition": "ADOPT",
+   "subsystem": "verification",
+   "owner_label": "verification",
+   "imp": "PX-033",
+   "qual": "QUAL-PX-033",
+   "release": "ALPHA",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Real vitest, pytest and cargo runs on the Alpha fixtures produce TestReports with STRUCTURED parser confidence, stable check_ids, per-check status, location, error class and message fingerprint, and a raw OutputRef; the failure_signature of a seeded failure is identical across two runs at the same revision; the model receives failing CheckResults first with declared truncation and the raw log retained"
+  },
+  {
+   "id": "REQ-PX-034",
+   "type": "requirement",
+   "title": "Staged test targeting and mandatory completion run",
+   "disposition": "ADOPT",
+   "subsystem": "verification",
+   "owner_label": "verification",
+   "imp": "PX-034",
+   "qual": "QUAL-PX-034",
+   "release": "ALPHA",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Real fixture task: TARGETED runs execute failed-first, task-named and changed-file-mapped checks within budget and never support completion; the COMPLETION run executes the full configured suite plus every mandatory check at the final candidate revision before the Acceptance Gate; a ChangeTransaction after the COMPLETION run invalidates it and the completion proposal is refused until it reruns"
+  },
+  {
+   "id": "REQ-PX-035",
+   "type": "requirement",
+   "title": "Impact-based test selection from the evidence graph",
+   "disposition": "ADOPT",
+   "subsystem": "context-engine",
+   "owner_label": "context-engine",
+   "imp": "PX-035",
+   "qual": "QUAL-PX-035",
+   "release": "BETA",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "On the multi-package and ts-webapp fixtures the impact selector chooses tests from dependency, symbol-reference, test-link and Git co-change evidence; precision and recall against the full-suite ground truth are recorded with the retrieval benchmarks; until the task is COMPLETE the plan states that targeting is heuristic"
+  },
+  {
+   "id": "REQ-PX-036",
+   "type": "requirement",
+   "title": "Flaky-check detection, rerun protocol and quarantine",
+   "disposition": "ADOPT",
+   "subsystem": "verification",
+   "owner_label": "verification",
+   "imp": "PX-036",
+   "qual": "QUAL-PX-036",
+   "release": "ALPHA",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Fixture with a seeded flaky test: a failure triggers exactly one isolated rerun at the same revision and environment digest; the check is labelled FLAKY with both run references, excluded from failure_signature derivation, shown in Review and the SelfReview, and quarantined only for the task and revision range; a flaky mandatory check makes acceptance INCONCLUSIVE unless three consecutive isolated passes are obtained within budget; a check flaky at BASELINE is pre-quarantined"
+  },
+  {
+   "id": "REQ-PX-037",
+   "type": "requirement",
+   "title": "Diff invariants including test-integrity detection",
+   "disposition": "ADOPT",
+   "subsystem": "workspace-git",
+   "owner_label": "workspace-git",
+   "imp": "PX-037",
+   "qual": "QUAL-PX-037",
+   "release": "ALPHA",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Real worktree: the Change Engine evaluates DI-1..DI-9 when a ChangeTransaction is proposed and the Verification Engine evaluates the whole diff at COMPLETION; deleting, skipping, weakening or rewriting an acceptance-named test is rejected as a ToolCallPolicyDecision with a DiffInvariantViolated event; a hand-edited lockfile and a dependency-manifest change without a plan entry are rejected; debug leftovers and formatting churn beyond the threshold are flagged and block the SelfReview until resolved or justified"
+  },
+  {
+   "id": "REQ-PX-038",
+   "type": "requirement",
+   "title": "Scope policy with bounded expansion and mandatory questions",
+   "disposition": "ADOPT",
+   "subsystem": "core-runtime",
+   "owner_label": "core-runtime",
+   "imp": "PX-038",
+   "qual": "QUAL-PX-038",
+   "release": "ALPHA",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Real fixture task: the first PlanRecorded freezes the original write set; each PlanRevised carries a scope delta; Core counts out-of-plan files and revisions against the ScopePolicy bounds; beyond a bound or on an always_ask_paths match the next out-of-scope write is refused until a typed question offering continue, split or stop is answered, and a ScopeExpansionRecorded event carries the counters; in headless mode the policy default fails closed to Needs Attention; the doc 63 scope metric is computed against the original plan"
+  },
+  {
+   "id": "REQ-PX-039",
+   "type": "requirement",
+   "title": "Repair policy defaults, reproduction-first and no-progress detection",
+   "disposition": "ADOPT",
+   "subsystem": "core-runtime",
+   "owner_label": "core-runtime",
+   "imp": "PX-039",
+   "qual": "QUAL-PX-039",
+   "release": "ALPHA",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Seeded defect fixture: the first verification run reproduces the reported failure before any fix transaction; a fix proposed before reproduction is rejected while reproduction_required holds; an identical change_fingerprint is rejected and counted as an equivalent attempt; an oscillating change escalates; three consecutive turns with no new transaction, verification, retrieval, plan revision or question emit NoProgressDetected and escalate or move the task to Needs Attention; the Alpha defaults 2/6/1/true/3 are read from the versioned RepairPolicy, not hard-coded"
+  },
+  {
+   "id": "REQ-PX-040",
+   "type": "requirement",
+   "title": "Agent harness contracts",
+   "disposition": "ADOPT",
+   "subsystem": "core-runtime",
+   "owner_label": "core-runtime",
+   "imp": "PX-040",
+   "qual": "QUAL-PX-040",
+   "release": "ALPHA",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Real fixture task with a large-output command, a failing test, a missing runner and a headless CLI run: every tool result reaches the model within the inline ceiling with declared omitted ranges and a pageable OutputRef; failing CheckResults arrive first; the Context Pack carries harness_state with plan, open failure signatures, quarantines, scope counters, remaining budgets and candidate revision; the missing runner is recorded in the plan with a question or compensation; the headless question fails closed to Needs Attention after the configured wait; a completion proposal while a verification run is in flight or stale is refused; budget exhaustion emits HarnessBudgetExhausted and moves the task to Waiting or Needs Attention with partial evidence"
   },
   {
    "id": "PX-000",
@@ -15608,6 +15741,242 @@
    "evidence": []
   },
   {
+   "id": "PX-032",
+   "type": "imp_task",
+   "title": "Pre-change verification baseline and regression attribution",
+   "requirement": "REQ-PX-032",
+   "qual": "QUAL-PX-032",
+   "subsystem": "verification",
+   "owner_label": "verification",
+   "milestone": "M2",
+   "release": "ALPHA",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "Real fixture with one pre-existing failing test and one test the task will break: a BASELINE run executes before the first write and records a VerificationBaseline; the pre-existing failure is labelled KNOWN_FAILING; at the COMPLETION run the newly broken test is attributed as a REGRESSION and blocks acceptance; a check the plan declared as an expected behavior change before the run is shown in Review as declared, not as a regression",
+   "prerequisites": [
+    "M2.8",
+    "PX-017"
+   ],
+   "related_requirements": [
+    "REQ-EV-0018",
+    "REQ-EV-0068",
+    "REQ-EV-0070"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-032",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-033",
+   "type": "imp_task",
+   "title": "Normalized test reports and failing-check identity",
+   "requirement": "REQ-PX-033",
+   "qual": "QUAL-PX-033",
+   "subsystem": "verification",
+   "owner_label": "verification",
+   "milestone": "M2",
+   "release": "ALPHA",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "Real vitest, pytest and cargo runs on the Alpha fixtures produce TestReports with STRUCTURED parser confidence, stable check_ids, per-check status, location, error class and message fingerprint, and a raw OutputRef; the failure_signature of a seeded failure is identical across two runs at the same revision; the model receives failing CheckResults first with declared truncation and the raw log retained",
+   "prerequisites": [
+    "M2.8",
+    "IMP-EV-0107"
+   ],
+   "related_requirements": [
+    "REQ-EV-0017",
+    "REQ-EV-0068",
+    "REQ-EV-0107"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-033",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-034",
+   "type": "imp_task",
+   "title": "Staged test targeting and mandatory completion run",
+   "requirement": "REQ-PX-034",
+   "qual": "QUAL-PX-034",
+   "subsystem": "verification",
+   "owner_label": "verification",
+   "milestone": "M2",
+   "release": "ALPHA",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "Real fixture task: TARGETED runs execute failed-first, task-named and changed-file-mapped checks within budget and never support completion; the COMPLETION run executes the full configured suite plus every mandatory check at the final candidate revision before the Acceptance Gate; a ChangeTransaction after the COMPLETION run invalidates it and the completion proposal is refused until it reruns",
+   "prerequisites": [
+    "PX-032",
+    "PX-033"
+   ],
+   "related_requirements": [
+    "REQ-EV-0010",
+    "REQ-EV-0068"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-034",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-035",
+   "type": "imp_task",
+   "title": "Impact-based test selection from the evidence graph",
+   "requirement": "REQ-PX-035",
+   "qual": "QUAL-PX-035",
+   "subsystem": "context-engine",
+   "owner_label": "context-engine",
+   "milestone": "M3",
+   "release": "BETA",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "On the multi-package and ts-webapp fixtures the impact selector chooses tests from dependency, symbol-reference, test-link and Git co-change evidence; precision and recall against the full-suite ground truth are recorded with the retrieval benchmarks; until the task is COMPLETE the plan states that targeting is heuristic",
+   "prerequisites": [
+    "M3.6",
+    "PX-034"
+   ],
+   "related_requirements": [
+    "REQ-EV-0010"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-035",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-036",
+   "type": "imp_task",
+   "title": "Flaky-check detection, rerun protocol and quarantine",
+   "requirement": "REQ-PX-036",
+   "qual": "QUAL-PX-036",
+   "subsystem": "verification",
+   "owner_label": "verification",
+   "milestone": "M2",
+   "release": "ALPHA",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "Fixture with a seeded flaky test: a failure triggers exactly one isolated rerun at the same revision and environment digest; the check is labelled FLAKY with both run references, excluded from failure_signature derivation, shown in Review and the SelfReview, and quarantined only for the task and revision range; a flaky mandatory check makes acceptance INCONCLUSIVE unless three consecutive isolated passes are obtained within budget; a check flaky at BASELINE is pre-quarantined",
+   "prerequisites": [
+    "PX-033"
+   ],
+   "related_requirements": [
+    "REQ-EV-0010",
+    "REQ-EV-0068"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-036",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-037",
+   "type": "imp_task",
+   "title": "Diff invariants including test-integrity detection",
+   "requirement": "REQ-PX-037",
+   "qual": "QUAL-PX-037",
+   "subsystem": "workspace-git",
+   "owner_label": "workspace-git",
+   "milestone": "M2",
+   "release": "ALPHA",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "Real worktree: the Change Engine evaluates DI-1..DI-9 when a ChangeTransaction is proposed and the Verification Engine evaluates the whole diff at COMPLETION; deleting, skipping, weakening or rewriting an acceptance-named test is rejected as a ToolCallPolicyDecision with a DiffInvariantViolated event; a hand-edited lockfile and a dependency-manifest change without a plan entry are rejected; debug leftovers and formatting churn beyond the threshold are flagged and block the SelfReview until resolved or justified",
+   "prerequisites": [
+    "M2.1",
+    "M2.2",
+    "PX-016"
+   ],
+   "related_requirements": [
+    "REQ-EV-0010",
+    "REQ-EV-0071"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-037",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-038",
+   "type": "imp_task",
+   "title": "Scope policy with bounded expansion and mandatory questions",
+   "requirement": "REQ-PX-038",
+   "qual": "QUAL-PX-038",
+   "subsystem": "core-runtime",
+   "owner_label": "core-runtime",
+   "milestone": "M2",
+   "release": "ALPHA",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "Real fixture task: the first PlanRecorded freezes the original write set; each PlanRevised carries a scope delta; Core counts out-of-plan files and revisions against the ScopePolicy bounds; beyond a bound or on an always_ask_paths match the next out-of-scope write is refused until a typed question offering continue, split or stop is answered, and a ScopeExpansionRecorded event carries the counters; in headless mode the policy default fails closed to Needs Attention; the doc 63 scope metric is computed against the original plan",
+   "prerequisites": [
+    "PX-014",
+    "PX-016"
+   ],
+   "related_requirements": [
+    "REQ-EV-0010",
+    "REQ-EV-0144"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-038",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-039",
+   "type": "imp_task",
+   "title": "Repair policy defaults, reproduction-first and no-progress detection",
+   "requirement": "REQ-PX-039",
+   "qual": "QUAL-PX-039",
+   "subsystem": "core-runtime",
+   "owner_label": "core-runtime",
+   "milestone": "M2",
+   "release": "ALPHA",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "Seeded defect fixture: the first verification run reproduces the reported failure before any fix transaction; a fix proposed before reproduction is rejected while reproduction_required holds; an identical change_fingerprint is rejected and counted as an equivalent attempt; an oscillating change escalates; three consecutive turns with no new transaction, verification, retrieval, plan revision or question emit NoProgressDetected and escalate or move the task to Needs Attention; the Alpha defaults 2/6/1/true/3 are read from the versioned RepairPolicy, not hard-coded",
+   "prerequisites": [
+    "PX-018",
+    "PX-033"
+   ],
+   "related_requirements": [
+    "REQ-EV-0099",
+    "REQ-EV-0107"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-039",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-040",
+   "type": "imp_task",
+   "title": "Agent harness contracts",
+   "requirement": "REQ-PX-040",
+   "qual": "QUAL-PX-040",
+   "subsystem": "core-runtime",
+   "owner_label": "core-runtime",
+   "milestone": "M2",
+   "release": "ALPHA",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "Real fixture task with a large-output command, a failing test, a missing runner and a headless CLI run: every tool result reaches the model within the inline ceiling with declared omitted ranges and a pageable OutputRef; failing CheckResults arrive first; the Context Pack carries harness_state with plan, open failure signatures, quarantines, scope counters, remaining budgets and candidate revision; the missing runner is recorded in the plan with a question or compensation; the headless question fails closed to Needs Attention after the configured wait; a completion proposal while a verification run is in flight or stale is refused; budget exhaustion emits HarnessBudgetExhausted and moves the task to Waiting or Needs Attention with partial evidence",
+   "prerequisites": [
+    "M2.7",
+    "PX-039"
+   ],
+   "related_requirements": [
+    "REQ-EV-0017",
+    "REQ-EV-0099",
+    "REQ-EV-0107"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-040",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
    "id": "QUAL-PX-000",
    "type": "qual_test",
    "requirement": "REQ-PX-000",
@@ -15928,6 +16297,96 @@
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
   },
   {
+   "id": "QUAL-PX-032",
+   "type": "qual_test",
+   "requirement": "REQ-PX-032",
+   "owner_label": "verification",
+   "title": "Real fixture with one pre-existing failing test and one test the task will break: a BASELINE run executes before the first write and records a VerificationBaseline; the pre-existing failure is labelled KNOWN_FAILING; at the COMPLETION run the newly broken test is attributed as a REGRESSION and blocks acceptance; a check the plan declared as an expected behavior change before the run is shown in Review as declared, not as a regression",
+   "failure_proof": "A write before the BASELINE run is rejected; a pre-existing failure cannot be attributed to the agent; a REGRESSION with no prior plan declaration cannot be accepted; a declaration recorded after the run does not count",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-033",
+   "type": "qual_test",
+   "requirement": "REQ-PX-033",
+   "owner_label": "verification",
+   "title": "Real vitest, pytest and cargo runs on the Alpha fixtures produce TestReports with STRUCTURED parser confidence, stable check_ids, per-check status, location, error class and message fingerprint, and a raw OutputRef; the failure_signature of a seeded failure is identical across two runs at the same revision; the model receives failing CheckResults first with declared truncation and the raw log retained",
+   "failure_proof": "A configured command with no structured reporter yields HEURISTIC confidence and UNKNOWN for an ambiguous mandatory check, which is INDETERMINATE and never a pass; a signature derived from raw log text rather than CheckResults is rejected; a dropped raw log fails the suite",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-034",
+   "type": "qual_test",
+   "requirement": "REQ-PX-034",
+   "owner_label": "verification",
+   "title": "Real fixture task: TARGETED runs execute failed-first, task-named and changed-file-mapped checks within budget and never support completion; the COMPLETION run executes the full configured suite plus every mandatory check at the final candidate revision before the Acceptance Gate; a ChangeTransaction after the COMPLETION run invalidates it and the completion proposal is refused until it reruns",
+   "failure_proof": "A completion proposal with only TARGETED evidence is rejected; a narrowed completion_scope without the limitation recorded in the plan is rejected; a COMPLETION run at a stale revision is recorded and never used for acceptance",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-035",
+   "type": "qual_test",
+   "requirement": "REQ-PX-035",
+   "owner_label": "context-engine",
+   "title": "On the multi-package and ts-webapp fixtures the impact selector chooses tests from dependency, symbol-reference, test-link and Git co-change evidence; precision and recall against the full-suite ground truth are recorded with the retrieval benchmarks; until the task is COMPLETE the plan states that targeting is heuristic",
+   "failure_proof": "A selector that omits a test failing in the full suite for a changed symbol within the depth bound fails; a selection result without recorded precision and recall is rejected",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-036",
+   "type": "qual_test",
+   "requirement": "REQ-PX-036",
+   "owner_label": "verification",
+   "title": "Fixture with a seeded flaky test: a failure triggers exactly one isolated rerun at the same revision and environment digest; the check is labelled FLAKY with both run references, excluded from failure_signature derivation, shown in Review and the SelfReview, and quarantined only for the task and revision range; a flaky mandatory check makes acceptance INCONCLUSIVE unless three consecutive isolated passes are obtained within budget; a check flaky at BASELINE is pre-quarantined",
+   "failure_proof": "The agent cannot label, skip or quarantine a check; a test change that adds skip or retry markers is a DI-3 violation; a RepairAttempt whose only passing evidence is a FLAKY check is UNCHANGED, not RESOLVED; a quarantine that survives a change to the check's file or dependencies fails",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-037",
+   "type": "qual_test",
+   "requirement": "REQ-PX-037",
+   "owner_label": "workspace-git",
+   "title": "Real worktree: the Change Engine evaluates DI-1..DI-9 when a ChangeTransaction is proposed and the Verification Engine evaluates the whole diff at COMPLETION; deleting, skipping, weakening or rewriting an acceptance-named test is rejected as a ToolCallPolicyDecision with a DiffInvariantViolated event; a hand-edited lockfile and a dependency-manifest change without a plan entry are rejected; debug leftovers and formatting churn beyond the threshold are flagged and block the SelfReview until resolved or justified",
+   "failure_proof": "A DENY invariant cannot be downgraded by the agent or a prompt; an unclassifiable test-file change is flagged, never passed silently; an accepted result with a DI-3 violation in its diff fails the suite",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-038",
+   "type": "qual_test",
+   "requirement": "REQ-PX-038",
+   "owner_label": "core-runtime",
+   "title": "Real fixture task: the first PlanRecorded freezes the original write set; each PlanRevised carries a scope delta; Core counts out-of-plan files and revisions against the ScopePolicy bounds; beyond a bound or on an always_ask_paths match the next out-of-scope write is refused until a typed question offering continue, split or stop is answered, and a ScopeExpansionRecorded event carries the counters; in headless mode the policy default fails closed to Needs Attention; the doc 63 scope metric is computed against the original plan",
+   "failure_proof": "Silent scope widening is rejected; a PlanRevised without a scope delta and reason is rejected; a question auto-answered by the agent changes nothing; measuring scope against the last plan revision fails the suite",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-039",
+   "type": "qual_test",
+   "requirement": "REQ-PX-039",
+   "owner_label": "core-runtime",
+   "title": "Seeded defect fixture: the first verification run reproduces the reported failure before any fix transaction; a fix proposed before reproduction is rejected while reproduction_required holds; an identical change_fingerprint is rejected and counted as an equivalent attempt; an oscillating change escalates; three consecutive turns with no new transaction, verification, retrieval, plan revision or question emit NoProgressDetected and escalate or move the task to Needs Attention; the Alpha defaults 2/6/1/true/3 are read from the versioned RepairPolicy, not hard-coded",
+   "failure_proof": "A prompt cannot raise the bounds; an UNREPRODUCED failure cannot be silently treated as reproduced; a WORSENED attempt beyond max_worsened_before_escalation without escalation fails the suite",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-040",
+   "type": "qual_test",
+   "requirement": "REQ-PX-040",
+   "owner_label": "core-runtime",
+   "title": "Real fixture task with a large-output command, a failing test, a missing runner and a headless CLI run: every tool result reaches the model within the inline ceiling with declared omitted ranges and a pageable OutputRef; failing CheckResults arrive first; the Context Pack carries harness_state with plan, open failure signatures, quarantines, scope counters, remaining budgets and candidate revision; the missing runner is recorded in the plan with a question or compensation; the headless question fails closed to Needs Attention after the configured wait; a completion proposal while a verification run is in flight or stale is refused; budget exhaustion emits HarnessBudgetExhausted and moves the task to Waiting or Needs Attention with partial evidence",
+   "failure_proof": "Silent truncation of a tool result fails; a turn aborted by a command failure fails; a task blocked forever on a headless question fails; a completion accepted without the COMPLETION run at the final revision fails; a budget exhausted without an event or attention state fails",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
    "id": "PX-E2E-000",
    "type": "scenario",
    "kind": "px-e2e",
@@ -16128,6 +16587,69 @@
    "type": "scenario",
    "kind": "px-e2e",
    "title": "Platform promotion",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-032",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Baseline before write and regression attribution",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-033",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Normalized reports and stable failure signatures",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-034",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Targeted runs never complete; the completion run does",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-035",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Impact selection measured against ground truth",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-036",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Flaky test quarantined, never repaired, never gamed",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-037",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Diff invariants deny test tampering and flag leftovers",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-038",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Scope bounded by the original plan",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-039",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Reproduction first, no identical retries, no silent stall",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-040",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Harness contracts under output, failure, missing runner and headless conditions",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
   },
   {
@@ -16894,6 +17416,16 @@
    "status_changed_on": "2026-09-05T12:46:24Z"
   },
   {
+   "id": "DOC-PX-006",
+   "type": "dossier_task",
+   "title": "Product extension stage F: verification execution mechanics, scope bounds, repair policy and agent harness contracts",
+   "subsystem": "governance",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
+   "acceptance": "Stage sealed on main with change and seal commits; full integrity gate passes; no product proof",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
    "id": "ALPHA",
    "type": "release",
    "title": "Local coding loop and recovery spine",
@@ -17226,6 +17758,11 @@
   },
   {
    "from": "63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
+   "to": "section:verification",
+   "type": "in_section"
+  },
+  {
+   "from": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
    "to": "section:verification",
    "type": "in_section"
   },
@@ -17666,6 +18203,11 @@
   },
   {
    "from": "00_MASTER_INDEX.md",
+   "to": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
+   "type": "references"
+  },
+  {
+   "from": "00_MASTER_INDEX.md",
    "to": "70_CI_CD_RELEASE_AND_SUPPLY_CHAIN.md",
    "type": "references"
   },
@@ -18016,6 +18558,11 @@
   },
   {
    "from": "10_PRODUCT_PRD_AND_UX.md",
+   "to": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
+   "type": "references"
+  },
+  {
+   "from": "10_PRODUCT_PRD_AND_UX.md",
    "to": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
    "type": "references"
   },
@@ -18065,6 +18612,11 @@
    "type": "references"
   },
   {
+   "from": "13_DOMAIN_MODEL_AND_STATE_MACHINES.md",
+   "to": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
+   "type": "references"
+  },
+  {
    "from": "14_AGENT_RUNTIME_AND_ORCHESTRATION.md",
    "to": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
    "type": "references"
@@ -18076,7 +18628,22 @@
   },
   {
    "from": "14_AGENT_RUNTIME_AND_ORCHESTRATION.md",
+   "to": "33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md",
+   "type": "references"
+  },
+  {
+   "from": "14_AGENT_RUNTIME_AND_ORCHESTRATION.md",
    "to": "38_EXECUTION_POLICY_CONTRACTS_AND_ALGORITHMS.md",
+   "type": "references"
+  },
+  {
+   "from": "14_AGENT_RUNTIME_AND_ORCHESTRATION.md",
+   "to": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
+   "type": "references"
+  },
+  {
+   "from": "14_AGENT_RUNTIME_AND_ORCHESTRATION.md",
+   "to": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
    "type": "references"
   },
   {
@@ -18112,6 +18679,11 @@
   {
    "from": "17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md",
    "to": "29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md",
+   "type": "references"
+  },
+  {
+   "from": "17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md",
+   "to": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
    "type": "references"
   },
   {
@@ -18331,12 +18903,22 @@
   },
   {
    "from": "28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
+   "to": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
+   "type": "references"
+  },
+  {
+   "from": "28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
    "to": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
    "type": "references"
   },
   {
    "from": "28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
    "to": "83_DEFINITION_OF_DONE_AND_ACCEPTANCE.md",
+   "type": "references"
+  },
+  {
+   "from": "28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
    "type": "references"
   },
   {
@@ -18366,6 +18948,11 @@
   },
   {
    "from": "30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md",
+   "to": "14_AGENT_RUNTIME_AND_ORCHESTRATION.md",
+   "type": "references"
+  },
+  {
+   "from": "30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md",
    "to": "28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
    "type": "references"
   },
@@ -18385,8 +18972,18 @@
    "type": "references"
   },
   {
+   "from": "30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md",
+   "to": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
+   "type": "references"
+  },
+  {
    "from": "31_DATABASE_AND_STORAGE_SCHEMA.md",
    "to": "28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
+   "type": "references"
+  },
+  {
+   "from": "31_DATABASE_AND_STORAGE_SCHEMA.md",
+   "to": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
    "type": "references"
   },
   {
@@ -18397,6 +18994,11 @@
   {
    "from": "33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md",
    "to": "38_EXECUTION_POLICY_CONTRACTS_AND_ALGORITHMS.md",
+   "type": "references"
+  },
+  {
+   "from": "33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md",
+   "to": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
    "type": "references"
   },
   {
@@ -18476,6 +19078,11 @@
   },
   {
    "from": "43_IMPLEMENTATION_ROADMAP_AND_TASK_GRAPH.md",
+   "to": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
+   "type": "references"
+  },
+  {
+   "from": "43_IMPLEMENTATION_ROADMAP_AND_TASK_GRAPH.md",
    "to": "75_PHASED_RELEASE_PLAN_AND_READINESS.md",
    "type": "references"
   },
@@ -18531,6 +19138,11 @@
   },
   {
    "from": "50_TEST_STRATEGY_REAL_SYSTEM_GATES.md",
+   "to": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
+   "type": "references"
+  },
+  {
+   "from": "50_TEST_STRATEGY_REAL_SYSTEM_GATES.md",
    "to": "83_DEFINITION_OF_DONE_AND_ACCEPTANCE.md",
    "type": "references"
   },
@@ -18580,6 +19192,16 @@
    "type": "references"
   },
   {
+   "from": "53_PERFORMANCE_AND_BENCHMARK_PLAN.md",
+   "to": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
+   "type": "references"
+  },
+  {
+   "from": "56_TOOL_CAPABILITY_CONFORMANCE.md",
+   "to": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
+   "type": "references"
+  },
+  {
    "from": "56_TOOL_CAPABILITY_CONFORMANCE.md",
    "to": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
    "type": "references"
@@ -18597,6 +19219,11 @@
   {
    "from": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
    "to": "07_PRODUCT_EXTENSION_DECISION_RECORD.md",
+   "type": "references"
+  },
+  {
+   "from": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "to": "14_AGENT_RUNTIME_AND_ORCHESTRATION.md",
    "type": "references"
   },
   {
@@ -18646,6 +19273,11 @@
   },
   {
    "from": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "to": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
+   "type": "references"
+  },
+  {
+   "from": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
    "to": "75_PHASED_RELEASE_PLAN_AND_READINESS.md",
    "type": "references"
   },
@@ -18656,12 +19288,87 @@
   },
   {
    "from": "63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
+   "to": "49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md",
+   "type": "references"
+  },
+  {
+   "from": "63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
    "to": "50_TEST_STRATEGY_REAL_SYSTEM_GATES.md",
+   "type": "references"
+  },
+  {
+   "from": "63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
+   "to": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
+   "type": "references"
+  },
+  {
+   "from": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
+   "to": "14_AGENT_RUNTIME_AND_ORCHESTRATION.md",
+   "type": "references"
+  },
+  {
+   "from": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
+   "to": "17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md",
+   "type": "references"
+  },
+  {
+   "from": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
+   "to": "20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md",
+   "type": "references"
+  },
+  {
+   "from": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
+   "to": "28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
+   "type": "references"
+  },
+  {
+   "from": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
+   "to": "30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md",
+   "type": "references"
+  },
+  {
+   "from": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
+   "to": "31_DATABASE_AND_STORAGE_SCHEMA.md",
+   "type": "references"
+  },
+  {
+   "from": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
+   "to": "50_TEST_STRATEGY_REAL_SYSTEM_GATES.md",
+   "type": "references"
+  },
+  {
+   "from": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
+   "to": "56_TOOL_CAPABILITY_CONFORMANCE.md",
+   "type": "references"
+  },
+  {
+   "from": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "references"
+  },
+  {
+   "from": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
+   "to": "63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
+   "type": "references"
+  },
+  {
+   "from": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
+   "to": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
+   "type": "references"
+  },
+  {
+   "from": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
    "type": "references"
   },
   {
    "from": "70_CI_CD_RELEASE_AND_SUPPLY_CHAIN.md",
    "to": "51_E2E_ACCEPTANCE_TEST_CATALOG.md",
+   "type": "references"
+  },
+  {
+   "from": "72_RISK_REGISTER_AND_OPEN_DECISIONS.md",
+   "to": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
    "type": "references"
   },
   {
@@ -19497,6 +20204,11 @@
   {
    "from": "97_DOSSIER_MAINTENANCE_LOG.md",
    "to": "63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
    "type": "references"
   },
   {
@@ -20530,6 +21242,11 @@
    "type": "specified_by"
   },
   {
+   "from": "workspace-git",
+   "to": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
+   "type": "specified_by"
+  },
+  {
    "from": "terminal",
    "to": "M2",
    "type": "delivered_in"
@@ -20562,6 +21279,11 @@
   {
    "from": "verification",
    "to": "63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "verification",
+   "to": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
    "type": "specified_by"
   },
   {
@@ -26491,7 +27213,7 @@
   },
   {
    "from": "IMP-EV-0107",
-   "to": "M6",
+   "to": "M2",
    "type": "scheduled_in"
   },
   {
@@ -31740,6 +32462,16 @@
    "type": "specified_by"
   },
   {
+   "from": "DR-PX-2026-09-05-006",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DR-PX-2026-09-05-006",
+   "to": "DR-PX-2026-09-05",
+   "type": "refines"
+  },
+  {
    "from": "REQ-PX-000",
    "to": "desktop",
    "type": "owned_by_req"
@@ -32522,6 +33254,276 @@
   {
    "from": "REQ-PX-031",
    "to": "PX-031",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-032",
+   "to": "verification",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-032",
+   "to": "QUAL-PX-032",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-032",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-032",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-032",
+   "to": "DR-PX-2026-09-05-006",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-032",
+   "to": "PX-032",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-033",
+   "to": "verification",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-033",
+   "to": "QUAL-PX-033",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-033",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-033",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-033",
+   "to": "DR-PX-2026-09-05-006",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-033",
+   "to": "PX-033",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-034",
+   "to": "verification",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-034",
+   "to": "QUAL-PX-034",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-034",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-034",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-034",
+   "to": "DR-PX-2026-09-05-006",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-034",
+   "to": "PX-034",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-035",
+   "to": "context-engine",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-035",
+   "to": "QUAL-PX-035",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-035",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-035",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-035",
+   "to": "DR-PX-2026-09-05-006",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-035",
+   "to": "PX-035",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-036",
+   "to": "verification",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-036",
+   "to": "QUAL-PX-036",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-036",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-036",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-036",
+   "to": "DR-PX-2026-09-05-006",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-036",
+   "to": "PX-036",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-037",
+   "to": "workspace-git",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-037",
+   "to": "QUAL-PX-037",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-037",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-037",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-037",
+   "to": "DR-PX-2026-09-05-006",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-037",
+   "to": "PX-037",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-038",
+   "to": "core-runtime",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-038",
+   "to": "QUAL-PX-038",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-038",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-038",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-038",
+   "to": "DR-PX-2026-09-05-006",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-038",
+   "to": "PX-038",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-039",
+   "to": "core-runtime",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-039",
+   "to": "QUAL-PX-039",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-039",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-039",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-039",
+   "to": "DR-PX-2026-09-05-006",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-039",
+   "to": "PX-039",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-040",
+   "to": "core-runtime",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-040",
+   "to": "QUAL-PX-040",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-040",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-040",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-040",
+   "to": "DR-PX-2026-09-05-006",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-040",
+   "to": "PX-040",
    "type": "implemented_by"
   },
   {
@@ -33945,6 +34947,556 @@
    "type": "proves"
   },
   {
+   "from": "PX-032",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-032",
+   "to": "DR-PX-2026-09-05-006",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-032",
+   "to": "verification",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-032",
+   "to": "M2",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-032",
+   "to": "QUAL-PX-032",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-032",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-032",
+   "to": "M2.8",
+   "type": "after"
+  },
+  {
+   "from": "PX-032",
+   "to": "PX-017",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-032",
+   "to": "REQ-EV-0018",
+   "type": "extends"
+  },
+  {
+   "from": "REQ-PX-032",
+   "to": "REQ-EV-0068",
+   "type": "extends"
+  },
+  {
+   "from": "REQ-PX-032",
+   "to": "REQ-EV-0070",
+   "type": "extends"
+  },
+  {
+   "from": "PX-032",
+   "to": "PX-E2E-032",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-032",
+   "to": "M2",
+   "type": "proves"
+  },
+  {
+   "from": "PX-033",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-033",
+   "to": "DR-PX-2026-09-05-006",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-033",
+   "to": "verification",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-033",
+   "to": "M2",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-033",
+   "to": "QUAL-PX-033",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-033",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-033",
+   "to": "M2.8",
+   "type": "after"
+  },
+  {
+   "from": "PX-033",
+   "to": "IMP-EV-0107",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-033",
+   "to": "REQ-EV-0017",
+   "type": "extends"
+  },
+  {
+   "from": "REQ-PX-033",
+   "to": "REQ-EV-0068",
+   "type": "extends"
+  },
+  {
+   "from": "REQ-PX-033",
+   "to": "REQ-EV-0107",
+   "type": "extends"
+  },
+  {
+   "from": "PX-033",
+   "to": "PX-E2E-033",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-033",
+   "to": "M2",
+   "type": "proves"
+  },
+  {
+   "from": "PX-034",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-034",
+   "to": "DR-PX-2026-09-05-006",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-034",
+   "to": "verification",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-034",
+   "to": "M2",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-034",
+   "to": "QUAL-PX-034",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-034",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-034",
+   "to": "PX-032",
+   "type": "after"
+  },
+  {
+   "from": "PX-034",
+   "to": "PX-033",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-034",
+   "to": "REQ-EV-0010",
+   "type": "extends"
+  },
+  {
+   "from": "REQ-PX-034",
+   "to": "REQ-EV-0068",
+   "type": "extends"
+  },
+  {
+   "from": "PX-034",
+   "to": "PX-E2E-034",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-034",
+   "to": "M2",
+   "type": "proves"
+  },
+  {
+   "from": "PX-035",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-035",
+   "to": "DR-PX-2026-09-05-006",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-035",
+   "to": "context-engine",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-035",
+   "to": "M3",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-035",
+   "to": "QUAL-PX-035",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-035",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-035",
+   "to": "M3.6",
+   "type": "after"
+  },
+  {
+   "from": "PX-035",
+   "to": "PX-034",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-035",
+   "to": "REQ-EV-0010",
+   "type": "extends"
+  },
+  {
+   "from": "PX-035",
+   "to": "PX-E2E-035",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-035",
+   "to": "M3",
+   "type": "proves"
+  },
+  {
+   "from": "PX-036",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-036",
+   "to": "DR-PX-2026-09-05-006",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-036",
+   "to": "verification",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-036",
+   "to": "M2",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-036",
+   "to": "QUAL-PX-036",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-036",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-036",
+   "to": "PX-033",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-036",
+   "to": "REQ-EV-0010",
+   "type": "extends"
+  },
+  {
+   "from": "REQ-PX-036",
+   "to": "REQ-EV-0068",
+   "type": "extends"
+  },
+  {
+   "from": "PX-036",
+   "to": "PX-E2E-036",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-036",
+   "to": "M2",
+   "type": "proves"
+  },
+  {
+   "from": "PX-037",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-037",
+   "to": "DR-PX-2026-09-05-006",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-037",
+   "to": "workspace-git",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-037",
+   "to": "M2",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-037",
+   "to": "QUAL-PX-037",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-037",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-037",
+   "to": "M2.1",
+   "type": "after"
+  },
+  {
+   "from": "PX-037",
+   "to": "M2.2",
+   "type": "after"
+  },
+  {
+   "from": "PX-037",
+   "to": "PX-016",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-037",
+   "to": "REQ-EV-0010",
+   "type": "extends"
+  },
+  {
+   "from": "REQ-PX-037",
+   "to": "REQ-EV-0071",
+   "type": "extends"
+  },
+  {
+   "from": "PX-037",
+   "to": "PX-E2E-037",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-037",
+   "to": "M2",
+   "type": "proves"
+  },
+  {
+   "from": "PX-038",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-038",
+   "to": "DR-PX-2026-09-05-006",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-038",
+   "to": "core-runtime",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-038",
+   "to": "M2",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-038",
+   "to": "QUAL-PX-038",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-038",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-038",
+   "to": "PX-014",
+   "type": "after"
+  },
+  {
+   "from": "PX-038",
+   "to": "PX-016",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-038",
+   "to": "REQ-EV-0010",
+   "type": "extends"
+  },
+  {
+   "from": "REQ-PX-038",
+   "to": "REQ-EV-0144",
+   "type": "extends"
+  },
+  {
+   "from": "PX-038",
+   "to": "PX-E2E-038",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-038",
+   "to": "M2",
+   "type": "proves"
+  },
+  {
+   "from": "PX-039",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-039",
+   "to": "DR-PX-2026-09-05-006",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-039",
+   "to": "core-runtime",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-039",
+   "to": "M2",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-039",
+   "to": "QUAL-PX-039",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-039",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-039",
+   "to": "PX-018",
+   "type": "after"
+  },
+  {
+   "from": "PX-039",
+   "to": "PX-033",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-039",
+   "to": "REQ-EV-0099",
+   "type": "extends"
+  },
+  {
+   "from": "REQ-PX-039",
+   "to": "REQ-EV-0107",
+   "type": "extends"
+  },
+  {
+   "from": "PX-039",
+   "to": "PX-E2E-039",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-039",
+   "to": "M2",
+   "type": "proves"
+  },
+  {
+   "from": "PX-040",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-040",
+   "to": "DR-PX-2026-09-05-006",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-040",
+   "to": "core-runtime",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-040",
+   "to": "M2",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-040",
+   "to": "QUAL-PX-040",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-040",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-040",
+   "to": "M2.7",
+   "type": "after"
+  },
+  {
+   "from": "PX-040",
+   "to": "PX-039",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-040",
+   "to": "REQ-EV-0017",
+   "type": "extends"
+  },
+  {
+   "from": "REQ-PX-040",
+   "to": "REQ-EV-0099",
+   "type": "extends"
+  },
+  {
+   "from": "REQ-PX-040",
+   "to": "REQ-EV-0107",
+   "type": "extends"
+  },
+  {
+   "from": "PX-040",
+   "to": "PX-E2E-040",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-040",
+   "to": "M2",
+   "type": "proves"
+  },
+  {
    "from": "domain-events",
    "to": "38_EXECUTION_POLICY_CONTRACTS_AND_ALGORITHMS.md",
    "type": "specified_by"
@@ -34590,6 +36142,31 @@
    "type": "authorized_by"
   },
   {
+   "from": "DOC-PX-006",
+   "to": "DOC-PX-005",
+   "type": "after"
+  },
+  {
+   "from": "DOC-PX-006",
+   "to": "governance",
+   "type": "owned_by"
+  },
+  {
+   "from": "DOC-PX-006",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-PX-006",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "DOC-PX-006",
+   "to": "DR-PX-2026-09-05-006",
+   "type": "authorized_by"
+  },
+  {
    "from": "ALPHA",
    "to": "M0.1",
    "type": "includes"
@@ -34971,6 +36548,11 @@
   },
   {
    "from": "ALPHA",
+   "to": "IMP-EV-0107",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
    "to": "IMP-EV-0108",
    "type": "includes"
   },
@@ -35232,6 +36814,46 @@
   {
    "from": "ALPHA",
    "to": "PX-030",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "PX-032",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "PX-033",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "PX-034",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "PX-036",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "PX-037",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "PX-038",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "PX-039",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "PX-040",
    "type": "includes"
   },
   {
@@ -36842,6 +38464,51 @@
   {
    "from": "BETA",
    "to": "PX-030",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "PX-032",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "PX-033",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "PX-034",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "PX-035",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "PX-036",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "PX-037",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "PX-038",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "PX-039",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "PX-040",
    "type": "includes"
   },
   {
@@ -38806,6 +40473,51 @@
   },
   {
    "from": "RELEASE_ZERO",
+   "to": "PX-032",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-033",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-034",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-035",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-036",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-037",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-038",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-039",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-040",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
    "to": "EPR-GATE-A",
    "type": "requires_gate"
   },
@@ -38839,6 +40551,5 @@
    "to": "EPR-GATE-G",
    "type": "requires_gate"
   }
- ],
- "updated_on": "2026-09-05T12:46:24Z"
+ ]
 }

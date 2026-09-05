@@ -53,7 +53,16 @@ PX_STAGES = [("DOC-PX-001", "DOC-GOV-004", "Product extension stage A: authority
              ("DOC-PX-002", "DOC-PX-001", "Product extension stage B: client surfaces and source-control integration"),
              ("DOC-PX-003", "DOC-PX-002", "Product extension stage C: agent competence contracts and benchmarks"),
              ("DOC-PX-004", "DOC-PX-003", "Product extension stage D: UX flows, onboarding and interaction budgets"),
-             ("DOC-PX-005", "DOC-PX-004", "Product extension stage E: language and platform support matrix")]
+             ("DOC-PX-005", "DOC-PX-004", "Product extension stage E: language and platform support matrix"),
+             ("DOC-PX-006", "DOC-PX-005", "Product extension stage F: verification execution mechanics, scope bounds, repair policy and agent harness contracts")]
+# DR-PX-2026-09-05-006 (docs/97): competence hardening. PX rows from PX6_FIRST_ROW on are authorized by it as well as by DR-PX.
+PX6_CHANGE = "DR-PX-2026-09-05-006"
+PX6_FIRST_ROW = 32
+# IMP-EV milestones derive from OWNER_MAP; the entries below are the recorded exceptions, each justified by a Decision Record.
+# Docs 40/41/42 stay byte-identical; the override is stored on the node as `milestone_override` (docs/74).
+MILESTONE_OVERRIDES = {
+    "IMP-EV-0107": ("M2", "DR-PX-2026-09-05-006: bounded failure evidence is a prerequisite of the M2 repair loop (PX-018, PX-033, PX-039); scheduled ahead of its owner label's default milestone"),
+}
 
 # Tasks named in docs/43's "V2 sequencing delta" but never enumerated as Mx.y rows.
 ADDED_TASKS = [
@@ -84,9 +93,9 @@ SUBSYSTEMS = [
     ("desktop", "Desktop Surface & UI", ["apps/desktop", "apps/cli", "packages/ui", "packages/surface-protocol", "packages/ide-adapter-core", "packages/design-tokens"], ["10", "29", "32", "39"], "M1"),
     ("model-gateway", "Execution Policy Router & Provider Gateway", ["crates/providers"], ["15", "27", "38"], "M2"),
     ("tool-runtime", "Tool Registry & Capability Kernel", ["crates/tools", "crates/policy"], ["16", "17"], "M2"),
-    ("workspace-git", "Workspace Fabric, Change Engine & Git", ["crates/workspace", "crates/git"], ["20"], "M2"),
+    ("workspace-git", "Workspace Fabric, Change Engine & Git", ["crates/workspace", "crates/git"], ["20", "64"], "M2"),
     ("terminal", "Terminal Broker & Execution Router", ["crates/terminal", "services/modbit-execd"], ["21"], "M2"),
-    ("verification", "Verification Engine & Quality Gates", ["crates/verification", "tools/release-gate"], ["28", "50", "51", "63", "76", "83"], "M2"),
+    ("verification", "Verification Engine & Quality Gates", ["crates/verification", "tools/release-gate"], ["28", "50", "51", "63", "64", "76", "83"], "M2"),
     ("context-engine", "Context Engine, Retrieval & Diagnostics", ["crates/context", "crates/retrieval", "crates/diagnostics"], ["18", "28", "76"], "M3"),
     ("durability", "Compaction, Checkpoints & Recovery Spine", ["crates/compaction", "crates/checkpoint"], ["19"], "M4"),
     ("procedural-runtime", "Procedural Tool Runtime", ["crates/procedural-runtime"], ["16"], "M5"),
@@ -404,6 +413,8 @@ def build(previous=None):
             sys.exit("%s has no matching %s" % (iid, rid))
         sub, ms = OWNER_MAP[r["owner_label"]]
         n = dict(t)
+        if iid in MILESTONE_OVERRIDES:
+            ms, n["milestone_override"] = MILESTONE_OVERRIDES[iid]
         n.update({"requirement": rid, "disposition": r["disposition"], "subsystem": sub, "milestone": ms,
                   "qual": r["qual"], "source": "docs/41"})
         add(n)
@@ -506,6 +517,10 @@ def build(previous=None):
     add({"id": px.CHANGE, "type": "change_record", "title": "Approved product extension: additive PX ledger, phased releases, governance tiering",
          "status": "APPROVED", "source": "docs/" + px.DECISION_DOC})
     link(px.CHANGE, px.DECISION_DOC, "specified_by")
+    add({"id": PX6_CHANGE, "type": "change_record", "title": "Approved competence hardening: verification execution mechanics, scope bounds, repair policy and agent harness contracts",
+         "status": "APPROVED", "source": "docs/" + GOV_LOG_DOC})
+    link(PX6_CHANGE, GOV_LOG_DOC, "specified_by")
+    link(PX6_CHANGE, px.CHANGE, "refines")
     for n in preqs + ptasks + pquals + pscen:
         add(n)
     for r in preqs:
@@ -513,10 +528,14 @@ def build(previous=None):
         link(r["id"], r["qual"], "qualified_by")
         link(r["id"], px.LEDGER_DOC, "specified_by")
         link(r["id"], px.CHANGE, "authorized_by")
+        if int(r["id"][-3:]) >= PX6_FIRST_ROW:
+            link(r["id"], PX6_CHANGE, "authorized_by")
         if r["imp"]:
             link(r["id"], r["imp"], "implemented_by")
     for t in ptasks:
         link(t["id"], px.CHANGE, "authorized_by")
+        if int(t["id"][-3:]) >= PX6_FIRST_ROW:
+            link(t["id"], PX6_CHANGE, "authorized_by")
         link(t["id"], t["subsystem"], "owned_by")
         link(t["id"], t["milestone"], "scheduled_in")
         link(t["id"], t["qual"], "proven_by")
@@ -634,6 +653,8 @@ def build(previous=None):
         link(stage_id, "governance", "owned_by")
         link(stage_id, GOV_LOG_DOC, "specified_by")
         link(stage_id, px.CHANGE, "authorized_by")
+        if stage_id == "DOC-PX-006":
+            link(stage_id, PX6_CHANGE, "authorized_by")
 
     # releases: derived projections over work items (docs/75) ----------------
     ms_of, owner_of = {}, {}

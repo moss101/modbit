@@ -40,6 +40,15 @@ Columns: requirement, title, task, qualification, canonical owner, milestone, re
 | REQ-PX-029 | Explicit degradation path for Tier C and Unsupported languages | PX-029 | QUAL-PX-029 | context-engine | M3 | BETA | ADOPT | PX-027 |
 | REQ-PX-030 | Platform CI compatibility matrix from M0, never release-grade by itself | PX-030 | QUAL-PX-030 | governance | M0 | ALPHA | ADOPT | M0.1 |
 | REQ-PX-031 | Desktop platform release promotion by platform-specific E2E | PX-031 | QUAL-PX-031 | desktop | M10 | RELEASE_ZERO | ADOPT | M10.3,PX-030 |
+| REQ-PX-032 | Pre-change verification baseline and regression attribution | PX-032 | QUAL-PX-032 | verification | M2 | ALPHA | ADOPT | M2.8,PX-017 |
+| REQ-PX-033 | Normalized test reports and failing-check identity | PX-033 | QUAL-PX-033 | verification | M2 | ALPHA | ADOPT | M2.8,IMP-EV-0107 |
+| REQ-PX-034 | Staged test targeting and mandatory completion run | PX-034 | QUAL-PX-034 | verification | M2 | ALPHA | ADOPT | PX-032,PX-033 |
+| REQ-PX-035 | Impact-based test selection from the evidence graph | PX-035 | QUAL-PX-035 | context-engine | M3 | BETA | ADOPT | M3.6,PX-034 |
+| REQ-PX-036 | Flaky-check detection, rerun protocol and quarantine | PX-036 | QUAL-PX-036 | verification | M2 | ALPHA | ADOPT | PX-033 |
+| REQ-PX-037 | Diff invariants including test-integrity detection | PX-037 | QUAL-PX-037 | workspace-git | M2 | ALPHA | ADOPT | M2.1,M2.2,PX-016 |
+| REQ-PX-038 | Scope policy with bounded expansion and mandatory questions | PX-038 | QUAL-PX-038 | core-runtime | M2 | ALPHA | ADOPT | PX-014,PX-016 |
+| REQ-PX-039 | Repair policy defaults, reproduction-first and no-progress detection | PX-039 | QUAL-PX-039 | core-runtime | M2 | ALPHA | ADOPT | PX-018,PX-033 |
+| REQ-PX-040 | Agent harness contracts | PX-040 | QUAL-PX-040 | core-runtime | M2 | ALPHA | ADOPT | M2.7,PX-039 |
 
 ## Qualifications
 
@@ -77,6 +86,15 @@ Columns: requirement, title, task, qualification, canonical owner, milestone, re
 | QUAL-PX-029 | REQ-PX-029 | context-engine | A fixture with an Unsupported language and one with a Tier C language: retrieval falls back to text, verification uses only configured commands, the plan states the limitation, every client shows the language state, edits to the Unsupported language require explicit per-task opt-in with provenance | Any structural claim, silent fallback or edit without opt-in fails |
 | QUAL-PX-030 | REQ-PX-030 | governance | CI builds Core, CLI and runtime on macOS, Windows and Linux from M0 and runs unit, component and platform conformance suites (PTY/process, language services, Git, path policy, secrets, packaging, browser host); results labeled CI_COMPATIBLE only | Documentation, app or CLI text describing a CI-compatible platform as supported fails; a failing platform suite blocks the merge, not the label |
 | QUAL-PX-031 | REQ-PX-031 | desktop | macOS reaches RELEASE_GRADE by the packaged desktop E2E catalog and the applicable Release Zero subset; Windows and Linux stay CI_COMPATIBLE until their own packaged E2E passes and a Decision Record records promotion | Promotion without platform E2E evidence is rejected; Release Zero on macOS does not imply any other platform |
+| QUAL-PX-032 | REQ-PX-032 | verification | Real fixture with one pre-existing failing test and one test the task will break: a BASELINE run executes before the first write and records a VerificationBaseline; the pre-existing failure is labelled KNOWN_FAILING; at the COMPLETION run the newly broken test is attributed as a REGRESSION and blocks acceptance; a check the plan declared as an expected behavior change before the run is shown in Review as declared, not as a regression | A write before the BASELINE run is rejected; a pre-existing failure cannot be attributed to the agent; a REGRESSION with no prior plan declaration cannot be accepted; a declaration recorded after the run does not count |
+| QUAL-PX-033 | REQ-PX-033 | verification | Real vitest, pytest and cargo runs on the Alpha fixtures produce TestReports with STRUCTURED parser confidence, stable check_ids, per-check status, location, error class and message fingerprint, and a raw OutputRef; the failure_signature of a seeded failure is identical across two runs at the same revision; the model receives failing CheckResults first with declared truncation and the raw log retained | A configured command with no structured reporter yields HEURISTIC confidence and UNKNOWN for an ambiguous mandatory check, which is INDETERMINATE and never a pass; a signature derived from raw log text rather than CheckResults is rejected; a dropped raw log fails the suite |
+| QUAL-PX-034 | REQ-PX-034 | verification | Real fixture task: TARGETED runs execute failed-first, task-named and changed-file-mapped checks within budget and never support completion; the COMPLETION run executes the full configured suite plus every mandatory check at the final candidate revision before the Acceptance Gate; a ChangeTransaction after the COMPLETION run invalidates it and the completion proposal is refused until it reruns | A completion proposal with only TARGETED evidence is rejected; a narrowed completion_scope without the limitation recorded in the plan is rejected; a COMPLETION run at a stale revision is recorded and never used for acceptance |
+| QUAL-PX-035 | REQ-PX-035 | context-engine | On the multi-package and ts-webapp fixtures the impact selector chooses tests from dependency, symbol-reference, test-link and Git co-change evidence; precision and recall against the full-suite ground truth are recorded with the retrieval benchmarks; until the task is COMPLETE the plan states that targeting is heuristic | A selector that omits a test failing in the full suite for a changed symbol within the depth bound fails; a selection result without recorded precision and recall is rejected |
+| QUAL-PX-036 | REQ-PX-036 | verification | Fixture with a seeded flaky test: a failure triggers exactly one isolated rerun at the same revision and environment digest; the check is labelled FLAKY with both run references, excluded from failure_signature derivation, shown in Review and the SelfReview, and quarantined only for the task and revision range; a flaky mandatory check makes acceptance INCONCLUSIVE unless three consecutive isolated passes are obtained within budget; a check flaky at BASELINE is pre-quarantined | The agent cannot label, skip or quarantine a check; a test change that adds skip or retry markers is a DI-3 violation; a RepairAttempt whose only passing evidence is a FLAKY check is UNCHANGED, not RESOLVED; a quarantine that survives a change to the check's file or dependencies fails |
+| QUAL-PX-037 | REQ-PX-037 | workspace-git | Real worktree: the Change Engine evaluates DI-1..DI-9 when a ChangeTransaction is proposed and the Verification Engine evaluates the whole diff at COMPLETION; deleting, skipping, weakening or rewriting an acceptance-named test is rejected as a ToolCallPolicyDecision with a DiffInvariantViolated event; a hand-edited lockfile and a dependency-manifest change without a plan entry are rejected; debug leftovers and formatting churn beyond the threshold are flagged and block the SelfReview until resolved or justified | A DENY invariant cannot be downgraded by the agent or a prompt; an unclassifiable test-file change is flagged, never passed silently; an accepted result with a DI-3 violation in its diff fails the suite |
+| QUAL-PX-038 | REQ-PX-038 | core-runtime | Real fixture task: the first PlanRecorded freezes the original write set; each PlanRevised carries a scope delta; Core counts out-of-plan files and revisions against the ScopePolicy bounds; beyond a bound or on an always_ask_paths match the next out-of-scope write is refused until a typed question offering continue, split or stop is answered, and a ScopeExpansionRecorded event carries the counters; in headless mode the policy default fails closed to Needs Attention; the doc 63 scope metric is computed against the original plan | Silent scope widening is rejected; a PlanRevised without a scope delta and reason is rejected; a question auto-answered by the agent changes nothing; measuring scope against the last plan revision fails the suite |
+| QUAL-PX-039 | REQ-PX-039 | core-runtime | Seeded defect fixture: the first verification run reproduces the reported failure before any fix transaction; a fix proposed before reproduction is rejected while reproduction_required holds; an identical change_fingerprint is rejected and counted as an equivalent attempt; an oscillating change escalates; three consecutive turns with no new transaction, verification, retrieval, plan revision or question emit NoProgressDetected and escalate or move the task to Needs Attention; the Alpha defaults 2/6/1/true/3 are read from the versioned RepairPolicy, not hard-coded | A prompt cannot raise the bounds; an UNREPRODUCED failure cannot be silently treated as reproduced; a WORSENED attempt beyond max_worsened_before_escalation without escalation fails the suite |
+| QUAL-PX-040 | REQ-PX-040 | core-runtime | Real fixture task with a large-output command, a failing test, a missing runner and a headless CLI run: every tool result reaches the model within the inline ceiling with declared omitted ranges and a pageable OutputRef; failing CheckResults arrive first; the Context Pack carries harness_state with plan, open failure signatures, quarantines, scope counters, remaining budgets and candidate revision; the missing runner is recorded in the plan with a question or compensation; the headless question fails closed to Needs Attention after the configured wait; a completion proposal while a verification run is in flight or stale is refused; budget exhaustion emits HarnessBudgetExhausted and moves the task to Waiting or Needs Attention with partial evidence | Silent truncation of a tool result fails; a turn aborted by a command failure fails; a task blocked forever on a headless question fails; a completion accepted without the COMPLETION run at the final revision fails; a budget exhausted without an event or attention state fails |
 
 ## Task cards
 
@@ -433,6 +451,115 @@ Columns: requirement, title, task, qualification, canonical owner, milestone, re
 - **Evidence:** build digest, revisions, suite run ids, per-language and per-platform results, artifact digests under the existing evidence rules.
 - **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
 
+<a id="px-032"></a>
+
+## PX-032 — Pre-change verification baseline and regression attribution
+
+- **Requirement:** REQ-PX-032; **related preserved requirements:** REQ-EV-0018, REQ-EV-0068, REQ-EV-0070.
+- **Owner / milestone / release:** verification / M2 / ALPHA; **prerequisites:** M2.8, PX-017.
+- **Scope and acceptance:** BASELINE run before the first write with `KNOWN_FAILING` labelling and a recorded `VerificationBaseline`; regression attribution between BASELINE and COMPLETION at the candidate revision after the flake protocol; declared expected changes shown as such (`64_VERIFICATION_EXECUTION_CONTRACTS.md` §1).
+- **Production wiring:** Verification Engine stages in `crates/verification`; `verification_runs`/`check_results` tables; `VerificationBaselineRecorded` and `RegressionAttributed` events; acceptance blocked on an undeclared REGRESSION.
+- **Real qualification:** QUAL-PX-032 / PX-E2E-032.
+- **Failure and negative proof:** as in QUAL-PX-032.
+- **Evidence:** build digest, Core revision, verification run ids, TestReport and OutputRef digests, event cursor ranges, run ids and artifact digests under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+<a id="px-033"></a>
+
+## PX-033 — Normalized test reports and failing-check identity
+
+- **Requirement:** REQ-PX-033; **related preserved requirements:** REQ-EV-0107, REQ-EV-0068, REQ-EV-0017.
+- **Owner / milestone / release:** verification / M2 / ALPHA; **prerequisites:** M2.8, IMP-EV-0107.
+- **Scope and acceptance:** `test.run` returns a `TestReport` with `CheckResult`s from runner adapters (vitest/jest/mocha, pytest, cargo, go, configured command) with `STRUCTURED` or `HEURISTIC` confidence; `failure_signature` derived only from normalized results; bounded failure evidence to the model with the raw log retained (`64_VERIFICATION_EXECUTION_CONTRACTS.md` §2). IMP-EV-0107 (bounded failure evidence as next-round context) is scheduled in M2 for this reason.
+- **Production wiring:** Runner adapters in `crates/verification`; OutputRef spill from doc 33 backpressure; Context Pack failure section; `UNKNOWN` is `INDETERMINATE`.
+- **Real qualification:** QUAL-PX-033 / PX-E2E-033.
+- **Failure and negative proof:** as in QUAL-PX-033.
+- **Evidence:** build digest, Core revision, verification run ids, TestReport and OutputRef digests, event cursor ranges, run ids and artifact digests under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+<a id="px-034"></a>
+
+## PX-034 — Staged test targeting and mandatory completion run
+
+- **Requirement:** REQ-PX-034; **related preserved requirements:** REQ-EV-0068, REQ-EV-0010.
+- **Owner / milestone / release:** verification / M2 / ALPHA; **prerequisites:** PX-032, PX-033.
+- **Scope and acceptance:** TARGETED runs ordered failed-first, task-named, changed-file-mapped (M2 heuristics), then build/typecheck/lint, each within `targeted_run_budget` and never supporting completion; a COMPLETION run with the full configured suite plus every mandatory check at the final candidate revision before the Acceptance Gate; a later ChangeTransaction invalidates it (`64_VERIFICATION_EXECUTION_CONTRACTS.md` §1, §8).
+- **Production wiring:** Verification Engine stage scheduler; harness completion handshake in doc 14; `completion_scope` policy with the limitation recorded in the plan and Review.
+- **Real qualification:** QUAL-PX-034 / PX-E2E-034.
+- **Failure and negative proof:** as in QUAL-PX-034.
+- **Evidence:** build digest, Core revision, verification run ids, TestReport and OutputRef digests, event cursor ranges, run ids and artifact digests under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+<a id="px-035"></a>
+
+## PX-035 — Impact-based test selection from the evidence graph
+
+- **Requirement:** REQ-PX-035; **related preserved requirements:** REQ-EV-0010.
+- **Owner / milestone / release:** context-engine / M3 / BETA; **prerequisites:** M3.6, PX-034.
+- **Scope and acceptance:** Select impacted checks from dependency, symbol-reference, test-link and Git co-change evidence within a bounded depth plus task-named checks; measure precision and recall against full-suite ground truth on fixtures; until COMPLETE the plan states that targeting is heuristic (`64_VERIFICATION_EXECUTION_CONTRACTS.md` §6).
+- **Production wiring:** `crates/retrieval` evidence graph of M3.6 queried by the Verification Engine; results reported with the retrieval benchmarks of doc 53.
+- **Real qualification:** QUAL-PX-035 / PX-E2E-035.
+- **Failure and negative proof:** as in QUAL-PX-035.
+- **Evidence:** build digest, Core revision, verification run ids, TestReport and OutputRef digests, event cursor ranges, run ids and artifact digests under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+<a id="px-036"></a>
+
+## PX-036 — Flaky-check detection, rerun protocol and quarantine
+
+- **Requirement:** REQ-PX-036; **related preserved requirements:** REQ-EV-0068, REQ-EV-0010.
+- **Owner / milestone / release:** verification / M2 / ALPHA; **prerequisites:** PX-033.
+- **Scope and acceptance:** One isolated rerun of failed checks at the same revision and environment digest; `FLAKY` labelling with both run references; exclusion from `failure_signature`; task- and revision-scoped quarantine with expiry, never a global skip list; `mandatory_flaky_passes` rule; pre-quarantine of checks flaky at BASELINE; the agent can request but never label (`64_VERIFICATION_EXECUTION_CONTRACTS.md` §3).
+- **Production wiring:** Verification Engine RERUN stage; `flaky_checks` table; `FlakyCheckQuarantined` event; Review and SelfReview projections.
+- **Real qualification:** QUAL-PX-036 / PX-E2E-036.
+- **Failure and negative proof:** as in QUAL-PX-036.
+- **Evidence:** build digest, Core revision, verification run ids, TestReport and OutputRef digests, event cursor ranges, run ids and artifact digests under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+<a id="px-037"></a>
+
+## PX-037 — Diff invariants including test-integrity detection
+
+- **Requirement:** REQ-PX-037; **related preserved requirements:** REQ-EV-0071, REQ-EV-0010.
+- **Owner / milestone / release:** workspace-git / M2 / ALPHA; **prerequisites:** M2.1, M2.2, PX-016.
+- **Scope and acceptance:** Invariants DI-1..DI-9 evaluated per ChangeTransaction by the Change Engine and over the whole diff at COMPLETION by the Verification Engine; `DENY` class rejects the transaction, `FLAG` class blocks the SelfReview; DI-3 forbids deleting, skipping, weakening or rewriting acceptance-named or baseline-failing tests, with AST detection for Tier A and conservative text rules elsewhere (`64_VERIFICATION_EXECUTION_CONTRACTS.md` §4).
+- **Production wiring:** `crates/workspace` Change Engine precondition hooks; `crates/verification` whole-diff evaluation; `DiffInvariantViolated` events; PatchPolicyGate for DI-5.
+- **Real qualification:** QUAL-PX-037 / PX-E2E-037.
+- **Failure and negative proof:** as in QUAL-PX-037.
+- **Evidence:** build digest, Core revision, verification run ids, TestReport and OutputRef digests, event cursor ranges, run ids and artifact digests under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+<a id="px-038"></a>
+
+## PX-038 — Scope policy with bounded expansion and mandatory questions
+
+- **Requirement:** REQ-PX-038; **related preserved requirements:** REQ-EV-0144, REQ-EV-0010.
+- **Owner / milestone / release:** core-runtime / M2 / ALPHA; **prerequisites:** PX-014, PX-016.
+- **Scope and acceptance:** The first `PlanRecorded` freezes the original write set; `PlanRevised` carries a scope delta; Core counts out-of-plan files and revisions against `ScopePolicy` bounds (Alpha defaults 2 and 2) and `always_ask_paths`; beyond a bound the next out-of-scope write waits for a typed question (continue, split, stop); headless resolution fails closed by default; the scope metric is measured against the original plan (`28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md` §3).
+- **Production wiring:** WorkGraph plan state with `plan_v1`; Change Engine DI-1 check; `ScopeExpansionRecorded` event; Question Service.
+- **Real qualification:** QUAL-PX-038 / PX-E2E-038.
+- **Failure and negative proof:** as in QUAL-PX-038.
+- **Evidence:** build digest, Core revision, event cursor ranges, plan/RepairAttempt/SelfReview refs, run ids and artifact digests under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+<a id="px-039"></a>
+
+## PX-039 — Repair policy defaults, reproduction-first and no-progress detection
+
+- **Requirement:** REQ-PX-039; **related preserved requirements:** REQ-EV-0107, REQ-EV-0099.
+- **Owner / milestone / release:** core-runtime / M2 / ALPHA; **prerequisites:** PX-018, PX-033.
+- **Scope and acceptance:** Versioned `RepairPolicy` (Alpha defaults: 2 per signature, 6 per task, 1 WORSENED before escalation, reproduction required for reported failures, 3 no-progress turns); reproduction-first enforced before fix transactions; identical `change_fingerprint` rejected as an equivalent attempt; oscillation escalates; `NoProgressDetected` emitted and escalated; `FLAKY`/`UNKNOWN` never form a signature (`28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md` §5).
+- **Production wiring:** Core-runtime repair loop control; `repair_attempts.change_fingerprint` with its unique key; escalation through compiled slots or Needs Attention; policy bundle carries the defaults.
+- **Real qualification:** QUAL-PX-039 / PX-E2E-039.
+- **Failure and negative proof:** as in QUAL-PX-039.
+- **Evidence:** build digest, Core revision, event cursor ranges, plan/RepairAttempt/SelfReview refs, run ids and artifact digests under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+<a id="px-040"></a>
+
+## PX-040 — Agent harness contracts
+
+- **Requirement:** REQ-PX-040; **related preserved requirements:** REQ-EV-0099, REQ-EV-0107, REQ-EV-0017.
+- **Owner / milestone / release:** core-runtime / M2 / ALPHA; **prerequisites:** M2.7, PX-039.
+- **Scope and acceptance:** The eleven harness contracts of `14_AGENT_RUNTIME_AND_ORCHESTRATION.md`: turn shape with command failure as evidence, bounded observations with declared truncation and pageable OutputRefs, structured failure channel, `harness_state` in the Context Pack, per-task budgets with `HarnessBudgetExhausted`, environment readiness, candidate-revision binding, revert and checkpoint points, steering at safe boundaries, headless resolution, and the completion handshake.
+- **Production wiring:** Core-runtime turn loop and Prompt/Context compilers; doc 33 backpressure ceilings; Question Service headless policy; Verification Engine completion handshake.
+- **Real qualification:** QUAL-PX-040 / PX-E2E-040.
+- **Failure and negative proof:** as in QUAL-PX-040.
+- **Evidence:** build digest, Core revision, event cursor ranges, plan/RepairAttempt/SelfReview refs, run ids and artifact digests under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
 ## Real-system scenarios
 
 ### PX-E2E-000 — Headless CLI task lifecycle
@@ -608,3 +735,57 @@ Columns: requirement, title, task, qualification, canonical owner, milestone, re
 **Setup:** packaged desktop E2E catalog on macOS; Windows and Linux without packaged E2E.  
 **Action:** run the promotion check.  
 **Pass:** macOS RELEASE_GRADE with evidence bundle; Windows and Linux remain CI_COMPATIBLE; promotion without platform E2E is rejected.
+
+### PX-E2E-032 — Baseline before write and regression attribution
+
+**Setup:** `ts-webapp` with one pre-existing failing test and a task whose naive change breaks a second, currently passing test.  
+**Action:** run the task; attempt a write before the baseline; let the agent propose completion after breaking the second test.  
+**Pass:** BASELINE recorded before the first write with the pre-existing failure as KNOWN_FAILING; the forced early write is rejected; the broken test is attributed as a REGRESSION at COMPLETION and blocks acceptance; a change declared in the plan before the run appears in Review as declared.
+
+### PX-E2E-033 — Normalized reports and stable failure signatures
+
+**Setup:** seeded failing tests in `ts-webapp` (vitest), `python-service` (pytest) and `rust-cli` (cargo); one configured command with no structured reporter.  
+**Action:** run `test.run` twice per fixture at the same revision; run the configured command.  
+**Pass:** STRUCTURED TestReports with stable check_ids and identical failure_signatures across runs; the model's next-round context lists failing CheckResults first with declared truncation and a pageable raw OutputRef; the configured command yields HEURISTIC confidence and an ambiguous mandatory check is UNKNOWN, treated as INDETERMINATE.
+
+### PX-E2E-034 — Targeted runs never complete; the completion run does
+
+**Setup:** fixture task with a slow full suite and a fast task-named subset.  
+**Action:** observe TARGETED runs during repair; let the agent propose completion after a TARGETED pass; then after the COMPLETION run; then make one more change.  
+**Pass:** TARGETED runs are failed-first and budgeted; the first proposal is refused for lacking a COMPLETION run; the second proceeds to the Acceptance Gate; the post-change proposal is refused until the COMPLETION run reruns at the new revision.
+
+### PX-E2E-035 — Impact selection measured against ground truth
+
+**Setup:** `multi-package` fixture with recorded dependency, symbol and test-link evidence and a change to a shared symbol.  
+**Action:** run impact selection; run the full suite.  
+**Pass:** every test failing in the full suite for the changed symbol within the depth bound is selected; precision and recall are recorded with the retrieval benchmarks; the plan of a pre-M3 run states that targeting is heuristic.
+
+### PX-E2E-036 — Flaky test quarantined, never repaired, never gamed
+
+**Setup:** fixture with a seeded flaky test, one of them mandatory in a second variant.  
+**Action:** run a task whose TARGETED run hits the flake; let the agent attempt to add a skip marker; run the mandatory variant.  
+**Pass:** exactly one isolated rerun; the check is FLAKY with both run references, excluded from failure_signature, shown in Review; the skip marker is rejected as DI-3; the mandatory variant is INCONCLUSIVE until three consecutive isolated passes; a flake at BASELINE is pre-quarantined.
+
+### PX-E2E-037 — Diff invariants deny test tampering and flag leftovers
+
+**Setup:** real worktree with an acceptance-named test, a lockfile and a dependency manifest.  
+**Action:** induce transactions that weaken the acceptance-named test, hand-edit the lockfile, change the manifest without a plan entry, leave a debug statement and reformat an unplanned file.  
+**Pass:** the first three are rejected with DiffInvariantViolated events naming DI-3, DI-2 and DI-7; the leftover and the churn are flagged and block the SelfReview until resolved or justified; the whole-diff COMPLETION evaluation reports the same findings.
+
+### PX-E2E-038 — Scope bounded by the original plan
+
+**Setup:** fixture task whose tempting fix touches four files outside the plan and one CI configuration file.  
+**Action:** run the task with Alpha ScopePolicy defaults; run it again headless.  
+**Pass:** the first two out-of-plan files pass with PlanRevised scope deltas; the third write waits for a typed question offering continue, split or stop; the CI file always asks; a ScopeExpansionRecorded event carries the counters; headless mode fails closed to Needs Attention; the scope metric reports four files against the original plan even after the plan was revised.
+
+### PX-E2E-039 — Reproduction first, no identical retries, no silent stall
+
+**Setup:** seeded defect whose reported symptom is reproducible and whose obvious fix is wrong.  
+**Action:** run with RepairPolicy Alpha defaults; force a fix before reproduction; force an identical retry; force three idle turns.  
+**Pass:** the pre-reproduction fix is rejected; the reproduction is recorded as evidence; the identical change_fingerprint is rejected and counted as an equivalent attempt leading to escalation; NoProgressDetected fires on the third idle turn and the task escalates or moves to Needs Attention; the bounds come from the versioned policy.
+
+### PX-E2E-040 — Harness contracts under output, failure, missing runner and headless conditions
+
+**Setup:** fixture task with a command producing more output than the inline ceiling, a failing test, a fixture whose runner is uninstalled, and a headless CLI run needing a question.  
+**Action:** run the task in the desktop and in the CLI.  
+**Pass:** the large output arrives bounded with declared omitted ranges and is pageable by OutputRef; the failing CheckResults arrive first; harness_state is present in every Context Pack; the missing runner is recorded in the plan and asked about; the headless question fails closed after the configured wait; a completion proposal during an in-flight verification run is refused; exhausting max_turns emits HarnessBudgetExhausted and lands in Needs Attention with partial evidence.

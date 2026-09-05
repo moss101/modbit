@@ -290,6 +290,7 @@ class DossierTests(unittest.TestCase):
         self.assertIn("DOC-PX-002", self.run_tool("graph", "show", "DOC-PX-003"))
         self.assertIn("DOC-PX-003", self.run_tool("graph", "show", "DOC-PX-004"))
         self.assertIn("DOC-PX-004", self.run_tool("graph", "show", "DOC-PX-005"))
+        self.assertIn("DOC-PX-005", self.run_tool("graph", "show", "DOC-PX-006"))
         out = self.run_tool("graph", "show", "DOC-GOV-001")
         for required in ("DOC-EPR-002", "DR-GOV-2026-09-05", "96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md", "governance"):
             self.assertIn(required, out)
@@ -476,6 +477,34 @@ class DossierTests(unittest.TestCase):
         out = self.run_tool("graph", "show", "PX-030")
         for needle in ("M0.1", "governance", "QUAL-PX-030", "M0"):
             self.assertIn(needle, out)
+
+    def test_verification_execution_and_harness_contracts_are_wired(self):
+        d64 = (self.root / "docs/64_VERIFICATION_EXECUTION_CONTRACTS.md").read_text()
+        for needle in ("BASELINE", "COMPLETION", "TestReport", "failure_signature", "FLAKY", "DI-3", "REGRESSION", "KNOWN_FAILING"):
+            self.assertIn(needle, d64)
+        self.assertIn("Agent harness contracts", (self.root / "docs/14_AGENT_RUNTIME_AND_ORCHESTRATION.md").read_text())
+        d28 = (self.root / "docs/28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md").read_text()
+        for needle in ("RepairPolicy", "ScopePolicy", "original plan", "NoProgressDetected", "Reproduction first"):
+            self.assertIn(needle, d28)
+        self.assertIn("Two baselines", (self.root / "docs/63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md").read_text())
+        g = self.graph()
+        alpha = {e["to"] for e in g["edges"] if e["type"] == "includes" and e["from"] == "ALPHA"}
+        beta = {e["to"] for e in g["edges"] if e["type"] == "includes" and e["from"] == "BETA"}
+        for tid in ("PX-032", "PX-033", "PX-034", "PX-036", "PX-037", "PX-038", "PX-039", "PX-040", "IMP-EV-0107"):
+            self.assertIn(tid, alpha)
+        self.assertNotIn("PX-035", alpha)
+        self.assertIn("PX-035", beta)
+        scheduled = {(e["from"], e["to"]) for e in g["edges"] if e["type"] == "scheduled_in"}
+        self.assertIn(("IMP-EV-0107", "M2"), scheduled)
+        nodes = {n["id"]: n for n in g["nodes"]}
+        self.assertIn("DR-PX-2026-09-05-006", nodes["IMP-EV-0107"]["milestone_override"])
+        out = self.run_tool("graph", "show", "PX-033")
+        for needle in ("IMP-EV-0107", "M2.8", "QUAL-PX-033", "PX-E2E-033", "verification", "DR-PX-2026-09-05-006"):
+            self.assertIn(needle, out)
+        self.assertIn("DR-PX-2026-09-05", self.run_tool("graph", "show", "DR-PX-2026-09-05-006"))
+        # The override is load-bearing: without it the M2 repair loop (PX-033) would depend on an M6 task.
+        self.edit("tools/build_graph.py", '"IMP-EV-0107": ("M2",', '"IMP-EV-9107": ("M2",')
+        self.run_tool("build_graph", ok=False, contains="dependency cycle")
 
 
 if __name__ == "__main__":

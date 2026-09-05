@@ -39,6 +39,7 @@ Milestone proof: user creates durable task, kills/restarts app/Core, same task r
 **M2.6** Provider Gateway OpenAI + Anthropic streaming.  
 **M2.7** Basic Prompt Compiler and one-agent runtime.  
 **M2.8** Verification engine build/test checks.  
+Acceptance: derived plan recorded before the first run; BASELINE, TARGETED and COMPLETION stages with regression attribution; normalized `TestReport`/`CheckResult` from real runners on the Alpha fixtures; flake rerun protocol; diff invariants DI-1..DI-9 (`64_VERIFICATION_EXECUTION_CONTRACTS.md`, PX-032..034/036/037).  
 **M2.9** Trusted Code Review Surface.
 
 Milestone proof: E2E-001/002/003 with live model and actual test pass.

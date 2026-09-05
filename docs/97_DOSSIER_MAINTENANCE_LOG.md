@@ -415,3 +415,54 @@ Recorded in doc 07 for the whole extension; this entry adds only: **Test impact*
 | Changed | `MANIFEST.md`, `README.md`, `SKILLS.md`, `manifest.json`, `graph/PROJECT_GRAPH.md`, `graph/project-graph.json` |
 | Changed | `docs/00_MASTER_INDEX.md`, `docs/10_PRODUCT_PRD_AND_UX.md`, `docs/18_CONTEXT_RETRIEVAL_AND_ENGINEERING_KNOWLEDGE.md`, `docs/20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md`, `docs/28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md`, `docs/43_IMPLEMENTATION_ROADMAP_AND_TASK_GRAPH.md`, `docs/56_TOOL_CAPABILITY_CONFORMANCE.md`, `docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md`, `docs/72_RISK_REGISTER_AND_OPEN_DECISIONS.md`, `docs/75_PHASED_RELEASE_PLAN_AND_READINESS.md`, `docs/97_DOSSIER_MAINTENANCE_LOG.md` |
 | Changed | `tools/build_graph.py`, `tools/test_dossier.py` |
+
+## DOC-PX-006 — Product extension stage F: verification execution mechanics, scope bounds, repair policy and agent harness contracts
+
+### Identity and authority
+
+- Task: DOC-PX-006 (`dossier_task`); owner: governance; prerequisite: DOC-PX-005 COMPLETE; outside product roll-ups.
+- Decision Record: DR-PX-2026-09-05-006, approved for dossier adoption; it refines DR-PX-2026-09-05 item 6. On 2026-09-05 the user asked whether the repair loop, test-execution fidelity, scope discipline and context work were strong in the dossier, received the audit below, and answered "make it stronger over all, also make agent harness strong".
+- Scope: new doc 64; docs 28 (scope policy, repair policy, execution pointers), 14 (agent harness contracts), 63 (metric refinements, two-baseline rule, benchmark test-integrity rule); ledger rows REQ-PX-032..040 with cards, qualifications and PX-E2E scenarios (all ADOPT; eight in Alpha, one in Beta); pointer and schema edits in docs 10/13/17/30/31/33/43/50/53/56/72/74/98; index, README and SKILLS updates; `MILESTONE_OVERRIDES` in `../tools/build_graph.py` scheduling IMP-EV-0107 in M2, the DR-PX-2026-09-05-006 change record and the DOC-PX-006 node; one test. No base row, owner, ADR, EPR row or product status changes; docs 40/41/42 byte-identical.
+- Revision before change: `../evidence/dossier-px-006/baseline.json`.
+
+### Decision Record (change-control fields)
+
+| Field | Content |
+|---|---|
+| Trigger / evidence | Audit on 2026-09-05 of docs 28/62/63 against docs 14/33/50/56/70/72: "targeted tests" was required by QUAL-PX-017 but no document defined how tests are selected from changed files; "diff invariants" was named in docs 14/28/62 and defined nowhere; `failure_signature` needed a structured failing check but no contract turned runner output into one; no policy said what the Verification Engine does with a flaky target-repository test; scope discipline was self-authored (a plan revision could widen scope without a bound) and the doc 63 scope metric was ambiguous between the original and the last plan; repair bounds had no defaults; REQ-EV-0107 (bounded failure evidence for repair) was scheduled in M6 by its owner label although the M2 repair loop depends on it; PX-020 was titled an M2 baseline while sitting in M3 next to the M2 routing baseline EPR-000. |
+| Current behavior | A build agent could implement PX-017/018 to the letter and ship a loop that repairs flakes, cannot name failing checks stably, accepts collateral regressions, lets the agent pass by editing tests, and has no bound on scope or on idle turns. |
+| Replacement | Doc 64 defines VerificationRun stages (BASELINE/TARGETED/COMPLETION/RERUN), `TestReport`/`CheckResult` with parser confidence, `failure_signature` derivation, the flake rerun and quarantine protocol, diff invariants DI-1..DI-9 with DI-3 test integrity, regression attribution, M3 impact selection and Alpha defaults. Doc 28 adds ScopePolicy against the original plan with mandatory questions, RepairPolicy defaults, reproduction-first and no-progress detection, and the COMPLETION run before acceptance. Doc 14 adds eleven harness contracts. Doc 63 adds regression attribution, flake rate, test-integrity, no-progress and selection-quality metrics, measures scope against the original plan, scores benchmark trials with DI-3 violations as failed, and separates the M2 routing baseline from the M3 competence baseline. Docs 10/13/17/30/31/33/43/50/53/56/72 carry the projections, events, tables, tool contract, roadmap acceptance, fixtures, metrics, conformance suites and risk. |
+| Migration | Additive. New rows attach to M2/M3 and existing owners; IMP-EV-0107 moves from M6 to M2 through a documented builder override with docs 40/41/42 unchanged; no status changes. |
+| Compatibility | Graph schema 1.2; one change record (`refines` DR-PX-2026-09-05), one `dossier_task`, nine PX triplets with their scenarios, an `imp_task.milestone_override` field, doc 64 linked from the verification and workspace-git subsystems. D9 remains unpinned; check summary totals rise mechanically. |
+| Security impact | None on the product's authority model. DI-3, DI-5, DI-7 and DI-9 narrow what a change can do; the flake protocol removes an agent-writable skip path; headless questions fail closed. |
+| Test impact | One test added: doc 64/14/28 needles; PX-032..034/036..040 in Alpha and PX-035 in Beta only; IMP-EV-0107 scheduled in M2 and included in Alpha; PX-033 neighborhood; DOC-PX-006 follows DOC-PX-005; and a copied-package negative case proving the override is load-bearing (removing it makes the graph builder reject the M2→M6 dependency as a cycle). |
+| Rollback | Revert this stage's two commits on `main` or restore the inventory below from `baseline.json`; requires another Decision Record because governing text changes. |
+| Explicit user approval | Given in chat on 2026-09-05: "make it stronger over all, also make agent harness strong". |
+
+### Stage applicability
+
+| Stage | DOC-PX-006 execution |
+|---|---|
+| AUDITING | Coverage audit of repair loop, test execution, scope, context and harness text across docs 14/28/33/50/53/56/62/63/70/72 and the graph placement of IMP-EV-0107 and PX-020; baseline hashes |
+| IMPLEMENTING | Doc 64, docs 14/28/63 rewrites and additions, ledger rows, pointer and schema edits, builder override and change record, test |
+| WIRED | Regenerated graph and manifests through the real CLIs |
+| REAL_TESTING | `check_dossier --manifest` and the copied-package suite including the new test and its negative case |
+| E2E_PROVEN | Change commit on `main` pushed; evidence retained |
+| COMPLETE | One-step ladder with evidence; seal commit |
+| Product qualification | Non-applicable: no product source exists |
+
+### Status and handoff
+
+- **Interfaces:** ledger at forty-one rows (thirty-eight ADOPT tasks, three DEFERRED); Alpha adds PX-032/033/034/036/037/038/039/040 and IMP-EV-0107; Beta adds PX-035. Doc numbers now free: 08, 09, 65–69, 77–79.
+- **Evidence:** `../evidence/dossier-px-006/` bundle; change commit recorded as `commit:` evidence on DOC-PX-006.
+- **Remaining product work:** unchanged; every release NOT_READY; every work item NOT_STARTED; RepairPolicy, ScopePolicy, harness and verification defaults are Alpha configuration to be revisited after the PX-020 baseline, not targets.
+- **Next safe action:** `python3 tools/graph.py ready --release ALPHA` and take M0.1; inside M2, PX-032/033 follow M2.8 and IMP-EV-0107.
+
+### Exact file inventory for this change
+
+| Action | Path |
+|---|---|
+| Added | `docs/64_VERIFICATION_EXECUTION_CONTRACTS.md`; `evidence/dossier-px-006/baseline.json`, `tests.log`, `validation.json` |
+| Changed | `MANIFEST.md`, `README.md`, `SKILLS.md`, `manifest.json`, `graph/PROJECT_GRAPH.md`, `graph/project-graph.json` |
+| Changed | `docs/00_MASTER_INDEX.md`, `docs/10_PRODUCT_PRD_AND_UX.md`, `docs/13_DOMAIN_MODEL_AND_STATE_MACHINES.md`, `docs/14_AGENT_RUNTIME_AND_ORCHESTRATION.md`, `docs/17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md`, `docs/28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md`, `docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md`, `docs/31_DATABASE_AND_STORAGE_SCHEMA.md`, `docs/33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md`, `docs/43_IMPLEMENTATION_ROADMAP_AND_TASK_GRAPH.md`, `docs/50_TEST_STRATEGY_REAL_SYSTEM_GATES.md`, `docs/53_PERFORMANCE_AND_BENCHMARK_PLAN.md`, `docs/56_TOOL_CAPABILITY_CONFORMANCE.md`, `docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md`, `docs/63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md`, `docs/72_RISK_REGISTER_AND_OPEN_DECISIONS.md`, `docs/74_PACKAGE_INTEGRITY_AND_BUILD_COVERAGE.md`, `docs/97_DOSSIER_MAINTENANCE_LOG.md`, `docs/98_BUILD_MANIFEST.md` |
+| Changed | `tools/build_graph.py`, `tools/test_dossier.py` |

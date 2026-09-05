@@ -47,7 +47,7 @@ Maintain small but real Git repositories committed under `tests/fixtures/repos`:
 - `conflict-repo` for concurrent worktree conflicts;
 - `large-context-repo` generated once and checked by manifest for retrieval/perf.
 
-Fixtures contain no fake Modbit implementations; they are target software for agent tests.
+Fixtures contain no fake Modbit implementations; they are target software for agent tests. Each Alpha fixture (`ts-webapp`, `python-service`, `rust-cli`) additionally carries, documented in its own README: one intentionally flaky test, one seeded failure whose obvious fix is wrong, one acceptance-named test that a tempted agent could weaken, and one pre-existing failing test unrelated to any task, so that the flake protocol, the repair bounds, the test-integrity invariant and regression attribution of `64_VERIFICATION_EXECUTION_CONTRACTS.md` have real targets (PX-E2E-018, PX-E2E-032..037).
 
 ## Live model test control
 

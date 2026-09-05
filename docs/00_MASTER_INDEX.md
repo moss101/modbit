@@ -14,7 +14,7 @@ Governance maintenance (DOC-GOV-001, doc 96, 2026-09-05): evidence references on
 
 Later dossier-only maintenance is logged append-only in doc 97 (`97_DOSSIER_MAINTENANCE_LOG.md`). Its first entry, DOC-GOV-002, aligns docs 12/14/16/21/33/44/74 with EPR v1.1: component placement by crate and owner, the `review_isolated` execution profile and the reviewer tool projection. DOC-GOV-003 adds `gated_by` edges from M10 to gates A–G, derived gate states with `graph.py attest` and `gates`, the `GATED` roll-up and one-step lifecycle transitions (doc 93). DOC-GOV-004 carries both patches into the product-facing docs (10/17/19/24/32/56/83) and adds the source section coverage map in doc 27 §28, enforced by check D8.
 
-Product extension (DR-PX-2026-09-05, doc 07): an additive `REQ-PX` ledger in doc 62 with computed totals, phased releases in doc 75 whose readiness is derived from task-level state, and evidence tiers by behavioral risk in docs 83/93/50. Stages B–E added client surfaces and source control (doc 29), agent competence and benchmarks (docs 28/63), UX flows (doc 39) and the language and platform matrix (doc 76); the ledger in doc 62 carries every row with owner, milestone, release and disposition. Product implementation remains NOT_STARTED.
+Product extension (DR-PX-2026-09-05, doc 07): an additive `REQ-PX` ledger in doc 62 with computed totals, phased releases in doc 75 whose readiness is derived from task-level state, and evidence tiers by behavioral risk in docs 83/93/50. Stages B–E added client surfaces and source control (doc 29), agent competence and benchmarks (docs 28/63), UX flows (doc 39) and the language and platform matrix (doc 76); the ledger in doc 62 carries every row with owner, milestone, release and disposition. Stage F (DOC-PX-006, DR-PX-2026-09-05-006) added doc 64, the verification execution contracts (pre-change baseline, staged test targeting, normalized test reports, flake quarantine, diff invariants with test integrity), bounded scope policy and repair-policy defaults in doc 28, the agent harness contracts in doc 14 and rows REQ-PX-032..040. Product implementation remains NOT_STARTED.
 
 ## What changed in V3.1 (structure only, no requirement changes)
 
@@ -65,7 +65,7 @@ Do **not** preload the whole dossier. `89_BUILD_AGENT_CONTEXT_LOADING_POLICY.md`
 - `11_SYSTEM_ARCHITECTURE.md` — principles, deployment units, trust boundaries, data flow, failure containment
 - `12_REPOSITORY_AND_MODULE_LAYOUT.md` — monorepo layout, crates, dependency direction, ownership
 - `13_DOMAIN_MODEL_AND_STATE_MACHINES.md` — IDs, aggregates, state machines, event envelope, fencing
-- `14_AGENT_RUNTIME_AND_ORCHESTRATION.md` — WorkGraph/AgentGraph/StateGraph, admission, capacity, steering
+- `14_AGENT_RUNTIME_AND_ORCHESTRATION.md` — WorkGraph/AgentGraph/StateGraph, admission, capacity, steering, agent harness contracts (turn shape, bounded observations, failure channel, budgets, completion handshake)
 - `15_MODEL_ROUTER_AND_PROVIDER_GATEWAY.md` — provider contract, routing, failover, cache economics
 - `16_TOOL_CAPABILITY_AND_PROCEDURAL_RUNTIME.md` — registry, effect classes, projection, QuickJS isolate, MCP
 - `17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md` — normative tool families and owners
@@ -79,7 +79,7 @@ Do **not** preload the whole dossier. `89_BUILD_AGENT_CONTEXT_LOADING_POLICY.md`
 - `25_MULTIMODAL_MEDIA_AND_NOTEBOOK_RUNTIME.md` — MediaEnvelope, media reads, provider normalization
 - `26_SKILL_REGISTRY_AND_EVOLUTION.md` — skill registry and experiment-gated Skill Evolution Lab
 - `27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md` — adopted routing/workflow architecture and ownership
-- `28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md` — how the agent works: planning, retrieval-before-edit, change strategy, verification plan, bounded evidence-driven repair, self-review
+- `28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md` — how the agent works: planning, retrieval-before-edit, change strategy with bounded ScopePolicy, verification plan, bounded evidence-driven repair with RepairPolicy defaults, reproduction-first and no-progress detection, self-review
 - `29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md` — thin-client contract (CLI, IDE adapters), inline patch via ChangeTransaction, GitHub forge tools, PR/review/CI/issue integration, deferred collaboration
 
 ### 30–39 Implementation specifications
@@ -120,7 +120,8 @@ Do **not** preload the whole dossier. `89_BUILD_AGENT_CONTEXT_LOADING_POLICY.md`
 - `60_RELEASE_ZERO_EXPANDED_PROOF.md` — authoritative superset (E2E-025)
 - `61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md` — 20 QUAL-EPR, 40 real/fault scenarios, gates A–G
 - `62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md` — additive REQ-PX/PX/QUAL-PX ledger and PX-E2E scenarios (here because 40–49 is full; totals computed, not pinned)
-- `63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md` — public and internal competence suites, metrics, fixed M2 baseline before targets, regression gate
+- `63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md` — public and internal competence suites, metrics, two distinct baselines (routing at M2, competence at M3) before targets, regression gate
+- `64_VERIFICATION_EXECUTION_CONTRACTS.md` — how the verification plan executes: BASELINE/TARGETED/COMPLETION stages, normalized `TestReport`/`CheckResult`, `failure_signature` derivation, flake rerun and quarantine, diff invariants DI-1..DI-9, regression attribution, Alpha defaults
 
 ### 70–79 Delivery and operations
 - `70_CI_CD_RELEASE_AND_SUPPLY_CHAIN.md` — PR/nightly/RC pipelines, reproducibility, updates

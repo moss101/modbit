@@ -6,9 +6,9 @@
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
-    "docs": 88,
-    "root_and_tooling": 47,
-    "docs_bytes": 969023
+    "docs": 89,
+    "root_and_tooling": 50,
+    "docs_bytes": 1037117
   },
   "sections": [
     {
@@ -59,8 +59,8 @@
       "section": "authority",
       "section_title": "Authority and orientation",
       "title": "Modbit — AI-Agent Build Dossier V3.3 EPR v1.1",
-      "bytes": 15855,
-      "sha256": "741b79f5788d9abbfd331244c4d0737bb6c7ebe6ad1b029bcad14815fb3180e3"
+      "bytes": 16729,
+      "sha256": "cac817ca1fd014438bbeab9e5c43b543f143c7fb137d8cd00a4c59d4cfc6b6cf"
     },
     {
       "path": "docs/01_START_HERE_FOR_BUILD_AGENTS.md",
@@ -131,8 +131,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Product Requirements and UX Specification",
-      "bytes": 11101,
-      "sha256": "38dc62ccf11c5e92d2ef0e0e5e07a0e185d5dfba3a9a86c490eaff58b621d8dc"
+      "bytes": 11316,
+      "sha256": "ab27458161437b390eb75435877da8abade6fa7954603e0cb439022d24ebf4d9"
     },
     {
       "path": "docs/11_SYSTEM_ARCHITECTURE.md",
@@ -158,8 +158,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Canonical Domain Model and State Machines",
-      "bytes": 6653,
-      "sha256": "463d1e76cf1eaaec70a50bba0c2b948d50f89135cb4c166eb8e40621d024741f"
+      "bytes": 6829,
+      "sha256": "7c15fd3f525fe0f863ce28e00bb31d0eb8f0313babd53befd83148d18378f5c3"
     },
     {
       "path": "docs/14_AGENT_RUNTIME_AND_ORCHESTRATION.md",
@@ -167,8 +167,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Agent Runtime and Orchestration",
-      "bytes": 7826,
-      "sha256": "8e0bfe8f01e09d94c8498a0042528f7cdbf9d1f350043cff77627b66bfd769a8"
+      "bytes": 12027,
+      "sha256": "af5f478cd395862bea94af024ad20747e980ed0b7c012d55a027d76b185ed429"
     },
     {
       "path": "docs/15_MODEL_ROUTER_AND_PROVIDER_GATEWAY.md",
@@ -194,8 +194,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Canonical Tool and Capability Inventory",
-      "bytes": 5702,
-      "sha256": "91f3b05092f8f90242a60422ea0f620e2bcc078f83e49cc3210155ba07020c5e"
+      "bytes": 5852,
+      "sha256": "6e92b564da319488bdab3e4d17325799f5bda5e0c9e9fd0d316f0981c9b4bbe9"
     },
     {
       "path": "docs/18_CONTEXT_RETRIEVAL_AND_ENGINEERING_KNOWLEDGE.md",
@@ -293,8 +293,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Agent competence: planning, verification and repair",
-      "bytes": 7602,
-      "sha256": "6f64f72af16398c9b2ebd334693d96864651c68d5fb1bf0b9274b95c6d8c4892"
+      "bytes": 12521,
+      "sha256": "2dbf6183340ee6a0ba808eef2dd1eea147e41a75dc18e5a3ee77c5bfec117e57"
     },
     {
       "path": "docs/29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md",
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 9871,
-      "sha256": "232e49314bfb3c654e425c15e0cd5e68208323aadff4ed48f9b29fcf18ac8213"
+      "bytes": 10356,
+      "sha256": "b921e9340b85773b42433b169a6af7e8ed9b08b8557e44c871cdeea0fd1d4602"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -320,8 +320,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Database and Storage Schema",
-      "bytes": 9637,
-      "sha256": "4e6c0ecf0fb9a4a88d7d894401cfaa4b20ea611dfa8bf1f2bbb9bd11704f06f2"
+      "bytes": 10628,
+      "sha256": "538226aff8cf1eddd80fe70daedfe7d4873ef2601fb0ae3a973551810c19d0a8"
     },
     {
       "path": "docs/32_DESKTOP_FRONTEND_IMPLEMENTATION.md",
@@ -338,8 +338,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Core and Cloud Backend Implementation",
-      "bytes": 6465,
-      "sha256": "dc5ca338def3fb0c1d9750352c3ae49ea85874334d4a4e8b0493ac7359b9693d"
+      "bytes": 7476,
+      "sha256": "09beec690bb13005db61c0a2b3ff60594741f49023fc8510ceb4b3e29b199f46"
     },
     {
       "path": "docs/34_OBSERVABILITY_COST_AND_OPERATIONS_DATA.md",
@@ -428,8 +428,8 @@
       "section": "requirements",
       "section_title": "Requirements, tasks and traceability",
       "title": "Implementation Roadmap and Verifiable Task Graph",
-      "bytes": 10697,
-      "sha256": "b2d0b11512831d08f4c48d2efa5b49cf43ff943fb543096d5fc6d8a648292cc4"
+      "bytes": 11018,
+      "sha256": "051246e5acace3e6c7e35fb20d774bd1905bd0996517daadc9ec231fbe004c0e"
     },
     {
       "path": "docs/44_REQUIREMENTS_TRACEABILITY_MATRIX.md",
@@ -491,8 +491,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Test Strategy — Real-System Completion Gates",
-      "bytes": 5380,
-      "sha256": "15ce306959ad831318d55c9f0dd6325a19a65a3e8842256668cf89ec977e9967"
+      "bytes": 5886,
+      "sha256": "9c25cf0c759ffb1c3edbe90c42e83b294c49a6b31a7dd43b6206752e2c0f65ba"
     },
     {
       "path": "docs/51_E2E_ACCEPTANCE_TEST_CATALOG.md",
@@ -518,8 +518,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Performance, Context Economics, and Benchmark Plan",
-      "bytes": 6843,
-      "sha256": "cb132235360b0ac36e1f7e13dbaa672be9b6a4ab278b0d279e2c354df58a63aa"
+      "bytes": 7144,
+      "sha256": "a2fd331c6d0c824dcdb04b82766763f748ce44107884985122a12985c1d23d4b"
     },
     {
       "path": "docs/54_FAULT_INJECTION_AND_RECOVERY_CATALOG.md",
@@ -545,8 +545,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Tool Parity and Capability Conformance — Real Effect Tests",
-      "bytes": 3568,
-      "sha256": "c09341f0dca70001fcd929ede0ba6576849bb14f5391fad11330f211a88894b1"
+      "bytes": 4111,
+      "sha256": "8692fb01100e5c7368cfb73ed06b587e8690e7bc58b2c15c8b98a20f98bc86df"
     },
     {
       "path": "docs/57_SKILL_EVOLUTION_REAL_TESTS.md",
@@ -599,8 +599,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Product extension requirements, tasks and qualifications",
-      "bytes": 62007,
-      "sha256": "decab0a9209df0b6c28704123a0499a8a5895c7ac8f9d808e53eb4042af31f41"
+      "bytes": 88049,
+      "sha256": "fe1839dd911208e91d35105f9fa82bec12d8a77a29d955324ae898226990b8b5"
     },
     {
       "path": "docs/63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
@@ -608,8 +608,17 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Agent competence benchmarks and regression suites",
-      "bytes": 3942,
-      "sha256": "79a7fbb6439cdf4a0cc75bd71d5016c85947af607bf3ef16604c0bcc68dfec9f"
+      "bytes": 6006,
+      "sha256": "238ff74022c2a800de55badb2b7c67318b9746f90fcb717bdbd8e03fac0f516c"
+    },
+    {
+      "path": "docs/64_VERIFICATION_EXECUTION_CONTRACTS.md",
+      "number": 64,
+      "section": "verification",
+      "section_title": "Verification and testing",
+      "title": "Verification execution contracts: baseline, targeting, result normalization, flake handling and diff invariants",
+      "bytes": 16239,
+      "sha256": "2ebf3003e7f1059fe71db444eec5f1df677088d94bafa32e3c528df865768155"
     },
     {
       "path": "docs/70_CI_CD_RELEASE_AND_SUPPLY_CHAIN.md",
@@ -635,8 +644,8 @@
       "section": "delivery",
       "section_title": "Delivery and operations",
       "title": "Risk Register and Open Technical Decisions",
-      "bytes": 8581,
-      "sha256": "e3f524b9e16b848e655767f7a49e14715a2d2f00a48a55541958d756a3b7433e"
+      "bytes": 9116,
+      "sha256": "9e4f22e5d977b82b8d059a1a829e783a2dabbc1662569a3d581d0e2a6b4ba47e"
     },
     {
       "path": "docs/73_RELEASE_BLOCKERS_AND_STOP_THE_LINE_RULES.md",
@@ -653,8 +662,8 @@
       "section": "delivery",
       "section_title": "Delivery and operations",
       "title": "Package Integrity and Build Coverage",
-      "bytes": 3938,
-      "sha256": "7753011c640a56cdeed7f16f19dc1861fef81a51be8ac16c087f30d0326e4d42"
+      "bytes": 4468,
+      "sha256": "b4e7687347e9ea62ef38e1e7e1b4c82669b487c15e6e0ef8a8ab8d8331cd3698"
     },
     {
       "path": "docs/75_PHASED_RELEASE_PLAN_AND_READINESS.md",
@@ -833,8 +842,8 @@
       "section": "governance",
       "section_title": "Agent process and governance",
       "title": "Dossier maintenance log",
-      "bytes": 35971,
-      "sha256": "db88e661d9b91c36ae7eb6e34d8f5ba4424165765c04593ef726bddcd8542de9"
+      "bytes": 43736,
+      "sha256": "ae48c1832a920977def82d1ba4b7d492d4281c60a3723beaef613d3144c97073"
     },
     {
       "path": "docs/98_BUILD_MANIFEST.md",
@@ -842,8 +851,8 @@
       "section": "live-state",
       "section_title": "Live state",
       "title": "Build Manifest",
-      "bytes": 3523,
-      "sha256": "c318aa5ebd9253cb4ee2207a2a4dcae4d2b57f0d7d8f3ea7dfc30ef7656e5be5"
+      "bytes": 3749,
+      "sha256": "f5985229df1a88f96fb95c0f3f2f7e49e4f700c5011f1252f4ec522e247649a5"
     }
   ],
   "root_and_tooling": [
@@ -864,13 +873,13 @@
     },
     {
       "path": "README.md",
-      "bytes": 8897,
-      "sha256": "18e094a7dad9d5f17ae1e32544f643fd925114db379881bdfedb3c96de4abc9d"
+      "bytes": 9250,
+      "sha256": "e418d9a62a0dd8069c180b06aebece825ff3b215ab89ec78e89dc373461e5574"
     },
     {
       "path": "SKILLS.md",
-      "bytes": 17887,
-      "sha256": "0086b1d6a5388a449311fac4e39721066a1e243df772fa471d66d3ee8513a6e8"
+      "bytes": 18306,
+      "sha256": "d6a62b1df940c10e1e4dec05af6a8ce7c94b65018c9e24a6bd76f88a7978d27c"
     },
     {
       "path": "evidence/dossier-epr-v1.1/baseline.json",
@@ -1038,19 +1047,34 @@
       "sha256": "8189e703354696361e179b539ea5bed5ed3f5d2b5e78ae3bf810823ad650bb24"
     },
     {
+      "path": "evidence/dossier-px-006/baseline.json",
+      "bytes": 16080,
+      "sha256": "b0cd8948df0a7c91df18027fffb8d52ca28641144c8122818d23680733d17ac4"
+    },
+    {
+      "path": "evidence/dossier-px-006/tests.log",
+      "bytes": 3230,
+      "sha256": "e45b9fac1be0036aefd60fb9f67ce07c9dde430dfb82b5f7e616d503a6fcf731"
+    },
+    {
+      "path": "evidence/dossier-px-006/validation.json",
+      "bytes": 16174,
+      "sha256": "048c2969e4cd3424647d0e67c3937fe84a59584a22f7c34cfb51b348224736fa"
+    },
+    {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 40127,
-      "sha256": "7a43146706ddee55ce8901564b17ee509205a06ba65c96c6035b73992a511227"
+      "bytes": 40721,
+      "sha256": "efa102dfe710a159fd957ec2003fa717849e3b1b29ff7e979fa2ca7d2f1ec1d9"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 951402,
-      "sha256": "4b3cf7462098d53046157bffb3565d7f7de135a38920698a9ad895439c6d8c6f"
+      "bytes": 1005255,
+      "sha256": "5897f03895c7fa901e7a87a4575f86f08a16fd71c51f8f258673b4c5b54dafd6"
     },
     {
       "path": "tools/build_graph.py",
-      "bytes": 43742,
-      "sha256": "adbe6b668eabffb309b3e05adafa762fd7e277b05833795e5ea6d97c8d10e0d2"
+      "bytes": 45304,
+      "sha256": "473c9881a97b045102a3f7e71e651553d6997491bb94dc0bc2bc90ad23ce93de"
     },
     {
       "path": "tools/build_manifest.py",
@@ -1079,8 +1103,8 @@
     },
     {
       "path": "tools/test_dossier.py",
-      "bytes": 27653,
-      "sha256": "32f5671d453b90f58d1cadb4b6a6be707b387b4e0916a5bb029b7a5dc584f572"
+      "bytes": 29902,
+      "sha256": "563f757375137ea9d5476f313de1eadea8de885cab8ebd2bb72e223b46a439c5"
     }
   ],
   "renames_v3_to_v3_1": {

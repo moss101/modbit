@@ -27,7 +27,7 @@ One concrete execution attempt/continuation of a task. A task can have multiple 
 One model interaction cycle, including context compile, model stream and resulting tool/procedural activity.
 
 ### RunStep
-Typed atomic runtime step: `ContextCompile`, `ModelInvoke`, `ToolCall`, `ProcedureRun`, `ApprovalWait`, `Verification`, `Checkpoint`, `Handoff`, `UserQuestion`, and the competence steps `Plan`, `RepairAttempt` and `SelfReview` (`28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md`).
+Typed atomic runtime step: `ContextCompile`, `ModelInvoke`, `ToolCall`, `ProcedureRun`, `ApprovalWait`, `Verification`, `Checkpoint`, `Handoff`, `UserQuestion`, and the competence steps `Plan`, `RepairAttempt` and `SelfReview` (`28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md`). A `Verification` step carries its stage, `BASELINE`, `TARGETED`, `COMPLETION` or `RERUN`, and the candidate revision it ran against (`64_VERIFICATION_EXECUTION_CONTRACTS.md`).
 
 ### Agent node
 Logical reasoning actor bound to task/subtask, model policy, capabilities and workspace scope. It is not a process identity.

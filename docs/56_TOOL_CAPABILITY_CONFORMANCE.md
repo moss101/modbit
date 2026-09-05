@@ -18,7 +18,8 @@ A tool marked production cannot pass by returning a canned success value.
 | Change | real worktree | stage/apply/reject/ambiguous target/concurrent edit/rollback |
 | Git | real Git binary/repository | status/diff/log/blame/worktree/merge conflict |
 | Terminal | real OS process + PTY | argv/cwd/env/input/output/cancel/detach/replay/restart |
-| Test | real project test runner | pass/fail/timeout/artifact output and verifier attribution |
+| Test | real project test runner | pass/fail/timeout/artifact output and verifier attribution; normalized `TestReport`/`CheckResult` per adapter (vitest/jest/mocha, pytest, cargo, go) with `STRUCTURED` vs `HEURISTIC` confidence and `UNKNOWN` never counted as pass (`64_VERIFICATION_EXECUTION_CONTRACTS.md`) |
+| Verification execution | real fixture repositories with seeded flaky, acceptance-named and pre-existing failing tests | BASELINE/TARGETED/COMPLETION stages, `KNOWN_FAILING` labelling, isolated rerun and revision-scoped quarantine, regression attribution, diff invariants DI-1..DI-9 including DI-3 test integrity (PX-032..037) |
 | Diagnostics | real parser/LSP/compiler adapter where supported | baseline vs introduced diagnostic delta |
 | Context | real repository indices | L0/L1/L2/L3 selection, freshness, handles, provenance |
 | Browser | real Chromium | navigate/semantic snapshot/action/network/console/visual fallback/takeover |

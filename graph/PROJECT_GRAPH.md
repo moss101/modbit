@@ -10,46 +10,46 @@ One JSON file that answers *what exists, what depends on what, what proves what,
 | Node type | Count | Meaning |
 |---|---:|---|
 | `section` | 8 | numbering range of the dossier |
-| `doc` | 88 | one specification file in docs/ |
+| `doc` | 89 | one specification file in docs/ |
 | `milestone` | 11 | M0–M10 from docs/43; carries proof statement and dependency edges |
 | `milestone_task` | 78 | Mx.y row from docs/43 (plus five tasks the V2 sequencing delta named but did not enumerate); ordered inside its milestone; carries status |
 | `subsystem` | 23 | canonical single-owner boundary (docs/81); owns REQ rows and IMP tasks; delivered in a primary milestone |
-| `requirement` | 343 | REQ-EV from docs/40, additive REQ-EPR from docs/49 or additive REQ-PX from docs/62 |
-| `imp_task` | 314 | IMP-EV from docs/41, EPR from docs/49 or PX from docs/62; carries status and evidence |
-| `dossier_task` | 11 | governance package work outside product milestone roll-ups |
+| `requirement` | 352 | REQ-EV from docs/40, additive REQ-EPR from docs/49 or additive REQ-PX from docs/62 |
+| `imp_task` | 323 | IMP-EV from docs/41, EPR from docs/49 or PX from docs/62; carries status and evidence |
+| `dossier_task` | 12 | governance package work outside product milestone roll-ups |
 | `release_gate` | 7 | EPR promotion gate from docs/61; derived state OPEN/TASKS_COMPLETE/SATISFIED; carries attestation evidence, never a lifecycle status |
 | `source_patch` | 2 | immutable user-supplied patch provenance |
-| `change_record` | 7 | explicit approved dossier amendment |
-| `qual_test` | 343 | QUAL-EV from docs/42, QUAL-EPR from docs/61 or QUAL-PX from docs/62 |
+| `change_record` | 8 | explicit approved dossier amendment |
+| `qual_test` | 352 | QUAL-EV from docs/42, QUAL-EPR from docs/61 or QUAL-PX from docs/62 |
 | `release` | 3 | ALPHA / BETA / RELEASE_ZERO projection from docs/75; readiness derived from included work items and required gates, never stored |
-| `scenario` | 146 | E2E-nnn, WSK-E2E-nnn, MEDIA-E2E-nnn, EPR-E2E/FI-nnn or PX-E2E-nnn scenario, or FI-nn fault case |
+| `scenario` | 155 | E2E-nnn, WSK-E2E-nnn, MEDIA-E2E-nnn, EPR-E2E/FI-nnn or PX-E2E-nnn scenario, or FI-nn fault case |
 | `decision` | 56 | MOD-* or ADR-R-* decision from docs/02 with authority status |
 
 | Edge type | Count | Meaning |
 |---|---:|---|
-| `in_section` | 88 | doc → section |
-| `references` | 444 | doc → doc (explicit filename mention) |
+| `in_section` | 89 | doc → section |
+| `references` | 479 | doc → doc (explicit filename mention) |
 | `depends_on` | 18 | milestone → milestone it requires COMPLETE first |
 | `part_of` | 78 | milestone_task → milestone |
-| `after` | 169 | work item → required COMPLETE work item, including cross-milestone EPR dependencies |
+| `after` | 188 | work item → required COMPLETE work item, including cross-milestone EPR dependencies |
 | `delivered_in` | 22 | subsystem → primary milestone |
-| `specified_by` | 183 | subsystem → doc |
-| `owned_by_req` | 343 | requirement → subsystem |
-| `owned_by` | 325 | imp_task → subsystem |
-| `scheduled_in` | 314 | imp_task → milestone |
-| `implemented_by` | 314 | requirement → imp_task |
-| `qualified_by` | 343 | requirement → qual_test |
-| `proven_by` | 410 | imp_task → qual_test |
-| `proves` | 146 | scenario → milestone |
+| `specified_by` | 205 | subsystem → doc |
+| `owned_by_req` | 352 | requirement → subsystem |
+| `owned_by` | 335 | imp_task → subsystem |
+| `scheduled_in` | 323 | imp_task → milestone |
+| `implemented_by` | 323 | requirement → imp_task |
+| `qualified_by` | 352 | requirement → qual_test |
+| `proven_by` | 428 | imp_task → qual_test |
+| `proves` | 155 | scenario → milestone |
 | `constrains` | 63 | decision → subsystem |
 | `requires_task` | 27 | release gate → required implementation task |
-| `extends` | 67 | additive requirement → related preserved EV requirement |
-| `authorized_by` | 155 | adopted task/decision/requirement → approved change record |
+| `extends` | 87 | additive requirement → related preserved EV requirement |
+| `authorized_by` | 193 | adopted task/decision/requirement → approved change record |
 | `adopts` | 2 | change record → immutable source patch |
 | `supersedes` | 10 | new authority → prior authority, only within the recorded scope |
-| `refines` | 4 | v1.1 source/change → previous source/change; non-conflicting authority survives |
+| `refines` | 5 | v1.1 source/change → previous source/change; non-conflicting authority survives |
 | `gated_by` | 7 | milestone → release gate that must be SATISFIED before the milestone rolls up COMPLETE |
-| `includes` | 843 | release → product work item whose COMPLETE status the release requires |
+| `includes` | 870 | release → product work item whose COMPLETE status the release requires |
 | `requires_gate` | 7 | release → release gate that must be SATISFIED before the release is READY |
 
 ## Milestone dependency graph (live status)
@@ -58,11 +58,11 @@ One JSON file that answers *what exists, what depends on what, what proves what,
 flowchart LR
   M0["M0<br/>Repository and authority<br/>0/7 done"]
   M1["M1<br/>Durable local shell and Core<br/>0/31 done"]
-  M2["M2<br/>Real local engineering loop<br/>0/90 done"]
-  M3["M3<br/>Context intelligence<br/>0/59 done"]
+  M2["M2<br/>Real local engineering loop<br/>0/99 done"]
+  M3["M3<br/>Context intelligence<br/>0/60 done"]
   M4["M4<br/>Durable recovery spine<br/>0/14 done"]
   M5["M5<br/>Procedural runtime and skills<br/>0/40 done"]
-  M6["M6<br/>Subagents/fleet<br/>0/55 done"]
+  M6["M6<br/>Subagents/fleet<br/>0/54 done"]
   M7["M7<br/>Live browser<br/>0/26 done"]
   M8["M8<br/>Cloud isolated execution<br/>0/23 done"]
   M9["M9<br/>Engineering memory/effects/security hardening<br/>0/27 done"]
@@ -106,11 +106,11 @@ Critical path (reliability spine): **M0 → M1 → M2 → M4**. Do not start bro
 |---|---|---|---:|---:|---:|---:|---|---|
 | M0 Repository and authority | NOT_STARTED | yes | 4 | 3 | 0 | 0 | — | clean clone build + architecture lint |
 | M1 Durable local shell and Core | NOT_STARTED | no | 5 | 26 | 0 | 0 | M0 | user creates durable task, kills/restarts app/Core, same task recovers with no fake state. |
-| M2 Real local engineering loop | NOT_STARTED | no | 10 | 80 | 0 | 0 | M1 | E2E-001/002/003 with live model and actual test pass. |
-| M3 Context intelligence | NOT_STARTED | no | 9 | 50 | 0 | 0 | M2 | profile A/B/C benchmark plus retrieval-before-edit visible in task evidence. |
+| M2 Real local engineering loop | NOT_STARTED | no | 10 | 89 | 0 | 0 | M1 | E2E-001/002/003 with live model and actual test pass. |
+| M3 Context intelligence | NOT_STARTED | no | 9 | 51 | 0 | 0 | M2 | profile A/B/C benchmark plus retrieval-before-edit visible in task evidence. |
 | M4 Durable recovery spine | NOT_STARTED | no | 6 | 8 | 0 | 0 | M2 | E2E-004/005/006/007/008. |
 | M5 Procedural runtime and skills | NOT_STARTED | no | 7 | 33 | 0 | 0 | M2 | E2E-011/012; direct and procedural mode yield equivalent receipts/policy behavior. |
-| M6 Subagents/fleet | NOT_STARTED | no | 7 | 48 | 0 | 0 | M2, M4 | E2E-009/010 and user can supervise multiple tasks without raw-log polling. |
+| M6 Subagents/fleet | NOT_STARTED | no | 7 | 47 | 0 | 0 | M2, M4 | E2E-009/010 and user can supervise multiple tasks without raw-log polling. |
 | M7 Live browser | NOT_STARTED | no | 8 | 18 | 0 | 0 | M2 | E2E-013..016. |
 | M8 Cloud isolated execution | NOT_STARTED | no | 9 | 14 | 0 | 0 | M4, M7 | E2E-017/018/024. |
 | M9 Engineering memory/effects/security hardening | NOT_STARTED | no | 6 | 21 | 0 | 0 | M4, M5 | memory cannot be created from transcript without promotion; receipt chain verifies; threat tests pass. |
@@ -123,22 +123,22 @@ Each canonical subsystem is a single-owner boundary (`docs/81_ARCHITECTURE_GUARD
 ```mermaid
 flowchart TB
   subgraph M0["M0 — Repository and authority"]
-    governance["Architecture Governance & Product Scope<br/>14 tasks"]
+    governance["Architecture Governance & Product Scope<br/>15 tasks"]
   end
   subgraph M1["M1 — Durable local shell and Core"]
     domain_events["Domain Model, Event Store & Protocol State<br/>20 tasks"]
-    core_runtime["Agent Runtime, Scheduler, WorkGraph/AgentGraph<br/>49 tasks"]
+    core_runtime["Agent Runtime, Scheduler, WorkGraph/AgentGraph<br/>52 tasks"]
     desktop["Desktop Surface & UI<br/>20 tasks"]
   end
   subgraph M2["M2 — Real local engineering loop"]
     model_gateway["Execution Policy Router & Provider Gateway<br/>11 tasks"]
     tool_runtime["Tool Registry & Capability Kernel<br/>10 tasks"]
-    workspace_git["Workspace Fabric, Change Engine & Git<br/>19 tasks"]
+    workspace_git["Workspace Fabric, Change Engine & Git<br/>20 tasks"]
     terminal["Terminal Broker & Execution Router<br/>7 tasks"]
-    verification["Verification Engine & Quality Gates<br/>13 tasks"]
+    verification["Verification Engine & Quality Gates<br/>17 tasks"]
   end
   subgraph M3["M3 — Context intelligence"]
-    context_engine["Context Engine, Retrieval & Diagnostics<br/>44 tasks"]
+    context_engine["Context Engine, Retrieval & Diagnostics<br/>45 tasks"]
     eval_bench["Eval Harness & Benchmarks<br/>18 tasks"]
   end
   subgraph M4["M4 — Durable recovery spine"]
@@ -170,8 +170,8 @@ flowchart TB
 |---|---|---|---|---:|---:|---|
 | `automation` Automation / Scheduling (DEFERRED) | — | — | `02` | 2 | 0 | MOD-MOBILE-001, MOD-AUTO-001 |
 | `browser` Browser & Computer Runtime | M7 | `crates/browser` | `22` | 18 | 18 | MOD-BROWSE-001 |
-| `context-engine` Context Engine, Retrieval & Diagnostics | M3 | `crates/context`, `crates/retrieval`, `crates/diagnostics` | `18`, `28`, `76` | 47 | 44 | MOD-CTX-001, MOD-CTX-002, MOD-EMB-001, MOD-CTX-003 |
-| `core-runtime` Agent Runtime, Scheduler, WorkGraph/AgentGraph | M1 | `crates/core-runtime` | `14`, `28`, `38` | 52 | 49 | MOD-CORE-001, MOD-AGENT-001, MOD-ORCH-001, MOD-INPUT-001, ADR-R-042, ADR-R-043, ADR-R-047, ADR-R-048, ADR-R-049, ADR-R-053, ADR-R-054 |
+| `context-engine` Context Engine, Retrieval & Diagnostics | M3 | `crates/context`, `crates/retrieval`, `crates/diagnostics` | `18`, `28`, `76` | 48 | 45 | MOD-CTX-001, MOD-CTX-002, MOD-EMB-001, MOD-CTX-003 |
+| `core-runtime` Agent Runtime, Scheduler, WorkGraph/AgentGraph | M1 | `crates/core-runtime` | `14`, `28`, `38` | 55 | 52 | MOD-CORE-001, MOD-AGENT-001, MOD-ORCH-001, MOD-INPUT-001, ADR-R-042, ADR-R-043, ADR-R-047, ADR-R-048, ADR-R-049, ADR-R-053, ADR-R-054 |
 | `desktop` Desktop Surface & UI | M1 | `apps/desktop`, `apps/cli`, `packages/ui`, `packages/surface-protocol`, `packages/ide-adapter-core`, `packages/design-tokens` | `10`, `29`, `32`, `39` | 23 | 20 | MOD-SURF-001, MOD-SURF-002, MOD-UX-001, MOD-DESK-001 |
 | `domain-events` Domain Model, Event Store & Protocol State | M1 | `crates/domain`, `crates/protocol`, `crates/event-store`, `crates/protocol-state` | `13`, `30`, `31`, `38` | 24 | 20 | — |
 | `durability` Compaction, Checkpoints & Recovery Spine | M4 | `crates/compaction`, `crates/checkpoint` | `19` | 4 | 4 | MOD-STATE-001, MOD-STATE-002, MOD-STATE-003 |
@@ -179,7 +179,7 @@ flowchart TB
 | `eval-bench` Eval Harness & Benchmarks | M3 | `benchmarks/retrieval`, `benchmarks/context-economics`, `benchmarks/agent-engineering`, `benchmarks/latency` | `53`, `61`, `63`, `38` | 21 | 18 | MOD-JIT-001, ADR-R-044, ADR-R-051, ADR-R-056 |
 | `extensions-hooks` Hook Bus, Extension System & Importers | M9 | `crates/tools (hooks)`, `crates/skills (import)` | `25` | 8 | 7 | — |
 | `external-tools` MCP Hub, Integrations & Web Gateway | M9 | `crates/tools (external.*)`, `crates/tools (forge.*)` | `16`, `29` | 6 | 5 | — |
-| `governance` Architecture Governance & Product Scope | M0 | `tools/architecture-lint`, `tools/evidence-check`, `docs/decisions` | `02`, `03`, `76`, `81`, `82` | 9 | 14 | MOD-PROD-001, MOD-IDE-001, MOD-IDE-002, MOD-COV-001 |
+| `governance` Architecture Governance & Product Scope | M0 | `tools/architecture-lint`, `tools/evidence-check`, `docs/decisions` | `02`, `03`, `76`, `81`, `82` | 9 | 15 | MOD-PROD-001, MOD-IDE-001, MOD-IDE-002, MOD-COV-001 |
 | `media` Media Pipeline & Artifact Store | M5 | `crates/tools (media)`, `object store` | `25` | 5 | 5 | MOD-MEDIA-001, MOD-MEDIA-002, MOD-MM-001 |
 | `memory` Engineering Memory | M9 | `crates/memory` | `19` | 1 | 1 | — |
 | `model-gateway` Execution Policy Router & Provider Gateway | M2 | `crates/providers` | `15`, `27`, `38` | 11 | 11 | ADR-R-039, ADR-R-040, ADR-R-041, ADR-R-047, ADR-R-049, ADR-R-050 |
@@ -189,8 +189,8 @@ flowchart TB
 | `skills` Skill Registry, Compiler & Evolution Lab | M5 | `crates/skills`, `crates/prompt-compiler` | `26`, `38` | 21 | 21 | MOD-SKILL-001, MOD-SKILL-002 |
 | `terminal` Terminal Broker & Execution Router | M2 | `crates/terminal`, `services/modbit-execd` | `21` | 7 | 7 | MOD-EXEC-001, MOD-EXEC-002 |
 | `tool-runtime` Tool Registry & Capability Kernel | M2 | `crates/tools`, `crates/policy` | `16`, `17` | 10 | 10 | MOD-TOOL-001, MOD-TOOL-002, MOD-TOOL-003 |
-| `verification` Verification Engine & Quality Gates | M2 | `crates/verification`, `tools/release-gate` | `28`, `50`, `51`, `63`, `76`, `83`, `38`, `61` | 13 | 13 | MOD-VERIFY-001, ADR-R-052, ADR-R-056 |
-| `workspace-git` Workspace Fabric, Change Engine & Git | M2 | `crates/workspace`, `crates/git` | `20` | 19 | 19 | — |
+| `verification` Verification Engine & Quality Gates | M2 | `crates/verification`, `tools/release-gate` | `28`, `50`, `51`, `63`, `64`, `76`, `83`, `38`, `61` | 17 | 17 | MOD-VERIFY-001, ADR-R-052, ADR-R-056 |
+| `workspace-git` Workspace Fabric, Change Engine & Git | M2 | `crates/workspace`, `crates/git` | `20`, `64` | 20 | 20 | — |
 
 ## Requirement → task → test chain
 
@@ -211,7 +211,7 @@ flowchart LR
   ETASK -->|owned_by| SUB
 ```
 
-Disposition counts: ADAPT 63, ADOPT 238, ALREADY COVERED 11, DEFERRED 12, EXPERIMENT 13, REJECT 6.
+Disposition counts: ADAPT 63, ADOPT 247, ALREADY COVERED 11, DEFERRED 12, EXPERIMENT 13, REJECT 6.
 
 ## Execution policy development dependencies
 
@@ -322,9 +322,9 @@ Releases are projections over work items and gates (docs/75). Readiness is compu
 
 | Release | State | Included work items | Complete | Blocked | Required gates | Rule |
 |---|---|---:|---:|---:|---|---|
-| ALPHA: Local coding loop and recovery spine | NOT_READY | 129 | 0 | 0 | none | / ALPHA / Local coding loop and recovery spine / M0, M1, M2, M4 / M2.10 / EPR- / — / — / |
-| BETA: Intelligence, fleet and browser | NOT_READY | 322 | 0 | 0 | none | / BETA / Intelligence, fleet and browser / M0, M1, M2, M3, M4, M5, M6, M7 / — / — / — / — / |
-| RELEASE_ZERO: Full end-to-end proof | NOT_READY | 392 | 0 | 0 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
+| ALPHA: Local coding loop and recovery spine | NOT_READY | 138 | 0 | 0 | none | / ALPHA / Local coding loop and recovery spine / M0, M1, M2, M4 / M2.10 / EPR- / — / — / |
+| BETA: Intelligence, fleet and browser | NOT_READY | 331 | 0 | 0 | none | / BETA / Intelligence, fleet and browser / M0, M1, M2, M3, M4, M5, M6, M7 / — / — / — / — / |
+| RELEASE_ZERO: Full end-to-end proof | NOT_READY | 401 | 0 | 0 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
 
 ## Scoped v1.1 supersessions and source provenance
 
@@ -371,6 +371,7 @@ flowchart LR
 - `DOC-PX-003`: COMPLETE; Product extension stage C: agent competence contracts and benchmarks; evidence: run:dossier-px-003-2026-09-05-final, artifact:evidence/dossier-px-003/validation.json, artifact:evidence/dossier-px-003/tests.log, revision:sha256:e33784d705285e73e40f6c0499cef1358c2b018bd36005739678748995dc1adb, commit:ffe242b997dc43592443d7637f16e759dc3af8b6
 - `DOC-PX-004`: COMPLETE; Product extension stage D: UX flows, onboarding and interaction budgets; evidence: run:dossier-px-004-2026-09-05-final, artifact:evidence/dossier-px-004/validation.json, artifact:evidence/dossier-px-004/tests.log, revision:sha256:afd47083a105c959760a5ec04dcd4a56b777e5ccdcc143ef29945b55a2e705cb, commit:46ffd21796431c2df4805b0fe168b66c375f66e7
 - `DOC-PX-005`: COMPLETE; Product extension stage E: language and platform support matrix; evidence: run:dossier-px-005-2026-09-05-final, artifact:evidence/dossier-px-005/validation.json, artifact:evidence/dossier-px-005/tests.log, revision:sha256:786117af583dca78214f2ecd17b0ccd5d07880274969bbf1cbee6b107aada985, commit:df76087d60f80f8f6192ed359254e14b321db573
+- `DOC-PX-006`: NOT_STARTED; Product extension stage F: verification execution mechanics, scope bounds, repair policy and agent harness contracts; evidence: none
 
 ## Milestone tasks in execution order
 
@@ -404,7 +405,7 @@ flowchart LR
 | `M2.5` | NOT_STARTED | Capability Kernel + basic approval flow |  |
 | `M2.6` | NOT_STARTED | Provider Gateway OpenAI + Anthropic streaming |  |
 | `M2.7` | NOT_STARTED | Basic Prompt Compiler and one-agent runtime |  |
-| `M2.8` | NOT_STARTED | Verification engine build/test checks |  |
+| `M2.8` | NOT_STARTED | Verification engine build/test checks | derived plan recorded before the first run; BASELINE, TARGETED and COMPLETION stages with regression attribution; normalized `TestReport`/`CheckResult` from real runners on the Alpha fixtures; flake rerun protocol; diff invariants DI-1..DI-9 (`64_VERIFICATION_EXECUTION_CONTRACTS.md`, PX-032..034/036/037). |
 | `M2.9` | NOT_STARTED | Trusted Code Review Surface |  |
 | `M2.10` | NOT_STARTED | MediaEnvelope + Media Pipeline (before any multimodal provider/tool feature) | real PNG/JPEG/text-PDF read through fs.read with provenance, budgets and artifact digests |
 
@@ -513,8 +514,8 @@ flowchart LR
 |---|---|
 | M0 | PX-E2E-030 |
 | M1 | — |
-| M2 | E2E-001, E2E-002, E2E-003, E2E-019, E2E-020, E2E-021, E2E-022, EPR-E2E-000, EPR-E2E-001, EPR-E2E-002, EPR-E2E-003, EPR-E2E-004, EPR-E2E-005, EPR-E2E-014, EPR-E2E-015, EPR-E2E-016, EPR-FI-000, EPR-FI-001, EPR-FI-002, EPR-FI-003, EPR-FI-004, EPR-FI-005, EPR-FI-014, EPR-FI-015, EPR-FI-016, FI-11, FI-12, PX-E2E-000, PX-E2E-001, PX-E2E-014, PX-E2E-016, PX-E2E-017, PX-E2E-018, PX-E2E-019, PX-E2E-022, PX-E2E-026 |
-| M3 | FI-24, PX-E2E-015, PX-E2E-020, PX-E2E-027, PX-E2E-028, PX-E2E-029 |
+| M2 | E2E-001, E2E-002, E2E-003, E2E-019, E2E-020, E2E-021, E2E-022, EPR-E2E-000, EPR-E2E-001, EPR-E2E-002, EPR-E2E-003, EPR-E2E-004, EPR-E2E-005, EPR-E2E-014, EPR-E2E-015, EPR-E2E-016, EPR-FI-000, EPR-FI-001, EPR-FI-002, EPR-FI-003, EPR-FI-004, EPR-FI-005, EPR-FI-014, EPR-FI-015, EPR-FI-016, FI-11, FI-12, PX-E2E-000, PX-E2E-001, PX-E2E-014, PX-E2E-016, PX-E2E-017, PX-E2E-018, PX-E2E-019, PX-E2E-022, PX-E2E-026, PX-E2E-032, PX-E2E-033, PX-E2E-034, PX-E2E-036, PX-E2E-037, PX-E2E-038, PX-E2E-039, PX-E2E-040 |
+| M3 | FI-24, PX-E2E-015, PX-E2E-020, PX-E2E-027, PX-E2E-028, PX-E2E-029, PX-E2E-035 |
 | M4 | E2E-004, E2E-005, E2E-006, E2E-007, E2E-008, EPR-E2E-008, EPR-E2E-009, EPR-E2E-017, EPR-FI-008, EPR-FI-009, EPR-FI-017, FI-01, FI-02, FI-03, FI-04, FI-05, FI-06, FI-07, FI-08, FI-09, FI-10, FI-16, FI-19, FI-20, FI-21, FI-27, FI-28, FI-29 |
 | M5 | E2E-011, E2E-012, EPR-E2E-006, EPR-FI-006, MEDIA-E2E-001, MEDIA-E2E-002, MEDIA-E2E-003, MEDIA-E2E-004, MEDIA-E2E-005, MEDIA-E2E-006, MEDIA-E2E-007, MEDIA-E2E-008, MEDIA-E2E-009, MEDIA-E2E-010, MEDIA-E2E-011, MEDIA-E2E-012, WSK-E2E-001, WSK-E2E-002, WSK-E2E-003, WSK-E2E-004, WSK-E2E-005, WSK-E2E-006, WSK-E2E-007, WSK-E2E-008, WSK-E2E-009, WSK-E2E-010 |
 | M6 | E2E-009, E2E-010, EPR-E2E-007, EPR-E2E-018, EPR-FI-007, EPR-FI-018, FI-22, FI-23, PX-E2E-002, PX-E2E-004, PX-E2E-005, PX-E2E-006, PX-E2E-007, PX-E2E-010, PX-E2E-023, PX-E2E-024 |
@@ -531,7 +532,7 @@ flowchart LR
 | Architecture and subsystems | `10`, `11`, `12`, `13`, `14`, `15`, `16`, `17`, `18`, `19`, `20`, `21`, `22`, `23`, `24`, `25`, `26`, `27`, `28`, `29` |
 | Implementation specifications | `30`, `31`, `32`, `33`, `34`, `35`, `36`, `37`, `38`, `39` |
 | Requirements, tasks and traceability | `40`, `41`, `42`, `43`, `44`, `45`, `46`, `47`, `48`, `49` |
-| Verification and testing | `50`, `51`, `52`, `53`, `54`, `55`, `56`, `57`, `58`, `59`, `60`, `61`, `62`, `63` |
+| Verification and testing | `50`, `51`, `52`, `53`, `54`, `55`, `56`, `57`, `58`, `59`, `60`, `61`, `62`, `63`, `64` |
 | Delivery and operations | `70`, `71`, `72`, `73`, `74`, `75`, `76` |
 | Agent process and governance | `80`, `81`, `82`, `83`, `84`, `85`, `86`, `87`, `88`, `89`, `90`, `91`, `92`, `93`, `94`, `95`, `96`, `97` |
 | Live state | `98` |
