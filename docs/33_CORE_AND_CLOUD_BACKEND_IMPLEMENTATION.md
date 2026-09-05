@@ -19,7 +19,7 @@
 5. Start event/projection services.
 6. Reconcile unfinished sessions/protocol state.
 7. Start terminal broker client and diagnostics supervisors.
-8. Initialize provider registry and health probes.
+8. Initialize provider registry and health probes; verify the routing policy/registry bundle and pin the Outcome Statistics `stats_version` the compiler will read.
 9. Initialize repository index manager.
 10. Bind authenticated local IPC.
 11. Emit `CoreReady` only after recovery completes.
@@ -38,7 +38,7 @@ Each active session has one execution owner guarded by generation-fenced lease. 
 
 ## Verification engine
 
-Verification plan is materialized from task type, changed files, repository config and agent proposals. Deterministic steps include build/typecheck/lint/test/diagnostics/diff/security rules. Agent can propose extra checks but cannot delete mandatory policy checks.
+Verification plan is materialized from task type, changed files, repository config and agent proposals. Deterministic steps include build/typecheck/lint/test/diagnostics/diff/security rules. Agent can propose extra checks but cannot delete mandatory policy checks. The Acceptance Gate is part of this engine: it materializes `AcceptanceGateResult` (ACCEPT/REJECT/INCONCLUSIVE, required_assurance, missing_evidence) against the assurance demanded by the policy-owned `RealizedRisk`, independently of plan success, and never weakens policy minima (ADR-R-052, EPR-017).
 
 ## Cloud API implementation
 
@@ -67,8 +67,8 @@ Provider Gateway records request metadata before network dispatch and model usag
 
 All mutating commands and tool dispatches have stable IDs. Cloud API stores command result or accepted event pointer. Retried HTTP requests never create duplicate tasks/approvals/effects.
 
-## Plan compiler and bounded executor wiring
+## Conditional plan compiler and bounded transaction executor wiring
 
-During provider initialization verify last-known-good registry/policy signatures, freshness and schema compatibility; local Core can use a fresh cached bundle. Reconcile active plan/attempt/budget/epoch alongside ordinary unfinished protocol state before CoreReady. The model-gateway owner compiles plans; only Core's existing scheduler dispatches their bounded legs. Policy Kernel derives prior/realized risk, Context/Prompt/Skill compilers prepare each role, Verification Engine evaluates exact-revision checks, and Gateway owns provider secrets and per-attempt usage.
+During provider initialization verify last-known-good registry/policy bundle signatures, freshness and schema compatibility, and pin the Outcome Statistics `stats_version` the compiler will join; local Core can use a fresh cached bundle. Reconcile the active `ConditionalExecutionPlan`, its slot table, attempt, budget reservation and routing epoch alongside ordinary unfinished protocol state before `CoreReady`. The model-gateway owner compiles plans and applies the confidence-adjusted quality floor; Core's plan admission validates every continuation slot and its worst-case reservation before the first dispatch, and only Core's existing scheduler dispatches the initial leg and activates precompiled slots. The Policy Kernel supplies the `PolicyEnvelope` and derives factual `RealizedRisk` from the candidate revision; the Verification Engine materializes the independent `AcceptanceGateResult`; Context/Prompt/Skill compilers prepare each role; the Gateway owns provider secrets and per-attempt usage; observability records request, leg and gate outcomes separately so a successful escalation never credits a failed initial leg.
 
-Before each leg, revalidate current entitlements/lease/epoch and reserve finite remaining resources. Cancellation propagates to Gateway and normal tool cancellation domains, persists partial evidence/accounting and reconciles unknown effects. Recovery never retries an ambiguous protected effect merely because the floor leg failed. A stronger realized-risk obligation suspends acceptance until an eligible plan and verification can satisfy it. Algorithms and typed failures are normative in `38_EXECUTION_POLICY_CONTRACTS_AND_ALGORITHMS.md`.
+Before each leg, revalidate current entitlements/lease/epoch and reserve finite remaining resources. Cancellation propagates to the Gateway, to `review_isolated` processes and worktrees, and to normal tool cancellation domains; it persists partial evidence/accounting and reconciles unknown effects. Recovery never retries an ambiguous protected effect merely because the initial leg failed. A stronger realized-risk obligation suspends acceptance until an already-compiled slot and verification can satisfy it; a missing slot stops safely rather than synthesizing a branch. Algorithms and typed failures are normative in `38_EXECUTION_POLICY_CONTRACTS_AND_ALGORITHMS.md`.

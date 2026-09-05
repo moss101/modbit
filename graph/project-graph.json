@@ -743,6 +743,14 @@
    "section": "governance"
   },
   {
+   "id": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "doc",
+   "title": "Dossier maintenance log",
+   "path": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
+   "number": 97,
+   "section": "governance"
+  },
+  {
    "id": "98_BUILD_MANIFEST.md",
    "type": "doc",
    "title": "Build Manifest",
@@ -14696,6 +14704,23 @@
    ],
    "owner_agent": "claude-fable-5.1",
    "status_changed_on": "2026-09-05T09:56:08Z"
+  },
+  {
+   "id": "DR-GOV-2026-09-05-002",
+   "type": "change_record",
+   "title": "Approved alignment of implementation specifications with EPR v1.1",
+   "status": "APPROVED",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md"
+  },
+  {
+   "id": "DOC-GOV-002",
+   "type": "dossier_task",
+   "title": "Align implementation specs and execution profiles with EPR v1.1",
+   "subsystem": "governance",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
+   "acceptance": "Docs 12/14/16/21/33/44 carry v1.1 placement, review_isolated profile and reviewer projection with no superseded wording; copied-package tests pass; no product proof",
+   "status": "NOT_STARTED",
+   "evidence": []
   }
  ],
  "edges": [
@@ -15086,6 +15111,11 @@
   },
   {
    "from": "96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md",
+   "to": "section:governance",
+   "type": "in_section"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
    "to": "section:governance",
    "type": "in_section"
   },
@@ -15481,6 +15511,11 @@
   },
   {
    "from": "00_MASTER_INDEX.md",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "references"
+  },
+  {
+   "from": "00_MASTER_INDEX.md",
    "to": "98_BUILD_MANIFEST.md",
    "type": "references"
   },
@@ -15666,6 +15701,16 @@
   },
   {
    "from": "12_REPOSITORY_AND_MODULE_LAYOUT.md",
+   "to": "16_TOOL_CAPABILITY_AND_PROCEDURAL_RUNTIME.md",
+   "type": "references"
+  },
+  {
+   "from": "12_REPOSITORY_AND_MODULE_LAYOUT.md",
+   "to": "21_TERMINAL_EXECUTION_AND_SANDBOX.md",
+   "type": "references"
+  },
+  {
+   "from": "12_REPOSITORY_AND_MODULE_LAYOUT.md",
    "to": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
    "type": "references"
   },
@@ -15702,6 +15747,11 @@
   {
    "from": "16_TOOL_CAPABILITY_AND_PROCEDURAL_RUNTIME.md",
    "to": "17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md",
+   "type": "references"
+  },
+  {
+   "from": "16_TOOL_CAPABILITY_AND_PROCEDURAL_RUNTIME.md",
+   "to": "21_TERMINAL_EXECUTION_AND_SANDBOX.md",
    "type": "references"
   },
   {
@@ -16445,6 +16495,56 @@
    "type": "references"
   },
   {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "00_MASTER_INDEX.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "01_START_HERE_FOR_BUILD_AGENTS.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "12_REPOSITORY_AND_MODULE_LAYOUT.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "14_AGENT_RUNTIME_AND_ORCHESTRATION.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "16_TOOL_CAPABILITY_AND_PROCEDURAL_RUNTIME.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "21_TERMINAL_EXECUTION_AND_SANDBOX.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "44_REQUIREMENTS_TRACEABILITY_MATRIX.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "74_PACKAGE_INTEGRITY_AND_BUILD_COVERAGE.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "98_BUILD_MANIFEST.md",
+   "type": "references"
+  },
+  {
    "from": "98_BUILD_MANIFEST.md",
    "to": "86_TASK_CARD_TEMPLATE.md",
    "type": "references"
@@ -16462,6 +16562,11 @@
   {
    "from": "98_BUILD_MANIFEST.md",
    "to": "96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md",
+   "type": "references"
+  },
+  {
+   "from": "98_BUILD_MANIFEST.md",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
    "type": "references"
   },
   {
@@ -28988,7 +29093,36 @@
    "from": "DOC-GOV-001",
    "to": "DR-GOV-2026-09-05",
    "type": "authorized_by"
+  },
+  {
+   "from": "DR-GOV-2026-09-05-002",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DR-GOV-2026-09-05-002",
+   "to": "DR-EPR-2026-09-05-v1.1",
+   "type": "refines"
+  },
+  {
+   "from": "DOC-GOV-002",
+   "to": "DOC-GOV-001",
+   "type": "after"
+  },
+  {
+   "from": "DOC-GOV-002",
+   "to": "governance",
+   "type": "owned_by"
+  },
+  {
+   "from": "DOC-GOV-002",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-GOV-002",
+   "to": "DR-GOV-2026-09-05-002",
+   "type": "authorized_by"
   }
- ],
- "updated_on": "2026-09-05T09:56:08Z"
+ ]
 }

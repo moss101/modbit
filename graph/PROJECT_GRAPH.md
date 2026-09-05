@@ -10,31 +10,31 @@ One JSON file that answers *what exists, what depends on what, what proves what,
 | Node type | Count | Meaning |
 |---|---:|---|
 | `section` | 8 | numbering range of the dossier |
-| `doc` | 79 | one specification file in docs/ |
+| `doc` | 80 | one specification file in docs/ |
 | `milestone` | 11 | M0–M10 from docs/43; carries proof statement and dependency edges |
 | `milestone_task` | 78 | Mx.y row from docs/43 (plus five tasks the V2 sequencing delta named but did not enumerate); ordered inside its milestone; carries status |
 | `subsystem` | 23 | canonical single-owner boundary (docs/81); owns REQ rows and IMP tasks; delivered in a primary milestone |
 | `requirement` | 311 | REQ-EV from docs/40 or additive REQ-EPR from docs/49 |
 | `imp_task` | 285 | IMP-EV from docs/41 or EPR from docs/49; carries status and evidence |
-| `dossier_task` | 3 | governance package work outside product milestone roll-ups |
+| `dossier_task` | 4 | governance package work outside product milestone roll-ups |
 | `release_gate` | 7 | EPR promotion gate from docs/61; evidence criteria, not a completion claim |
 | `source_patch` | 2 | immutable user-supplied patch provenance |
-| `change_record` | 3 | explicit approved dossier amendment |
+| `change_record` | 4 | explicit approved dossier amendment |
 | `qual_test` | 311 | QUAL-EV from docs/42 or QUAL-EPR from docs/61 |
 | `scenario` | 117 | E2E-nnn, WSK-E2E-nnn, MEDIA-E2E-nnn release-gate scenario or FI-nn fault case |
 | `decision` | 56 | MOD-* or ADR-R-* decision from docs/02 with authority status |
 
 | Edge type | Count | Meaning |
 |---|---:|---|
-| `in_section` | 79 | doc → section |
-| `references` | 274 | doc → doc (explicit filename mention) |
+| `in_section` | 80 | doc → section |
+| `references` | 289 | doc → doc (explicit filename mention) |
 | `depends_on` | 18 | milestone → milestone it requires COMPLETE first |
 | `part_of` | 78 | milestone_task → milestone |
-| `after` | 109 | work item → required COMPLETE work item, including cross-milestone EPR dependencies |
+| `after` | 110 | work item → required COMPLETE work item, including cross-milestone EPR dependencies |
 | `delivered_in` | 22 | subsystem → primary milestone |
-| `specified_by` | 99 | subsystem → doc |
+| `specified_by` | 101 | subsystem → doc |
 | `owned_by_req` | 311 | requirement → subsystem |
-| `owned_by` | 288 | imp_task → subsystem |
+| `owned_by` | 289 | imp_task → subsystem |
 | `scheduled_in` | 285 | imp_task → milestone |
 | `implemented_by` | 285 | requirement → imp_task |
 | `qualified_by` | 311 | requirement → qual_test |
@@ -43,10 +43,10 @@ One JSON file that answers *what exists, what depends on what, what proves what,
 | `constrains` | 63 | decision → subsystem |
 | `requires_task` | 27 | release gate → required implementation task |
 | `extends` | 38 | additive requirement → related preserved EV requirement |
-| `authorized_by` | 86 | adopted task/decision/requirement → approved change record |
+| `authorized_by` | 87 | adopted task/decision/requirement → approved change record |
 | `adopts` | 2 | change record → immutable source patch |
 | `supersedes` | 10 | new authority → prior authority, only within the recorded scope |
-| `refines` | 2 | v1.1 source/change → previous source/change; non-conflicting authority survives |
+| `refines` | 3 | v1.1 source/change → previous source/change; non-conflicting authority survives |
 
 ## Milestone dependency graph (live status)
 
@@ -119,7 +119,7 @@ Each canonical subsystem is a single-owner boundary (`docs/81_ARCHITECTURE_GUARD
 ```mermaid
 flowchart TB
   subgraph M0["M0 — Repository and authority"]
-    governance["Architecture Governance & Product Scope<br/>5 tasks"]
+    governance["Architecture Governance & Product Scope<br/>6 tasks"]
   end
   subgraph M1["M1 — Durable local shell and Core"]
     domain_events["Domain Model, Event Store & Protocol State<br/>20 tasks"]
@@ -175,7 +175,7 @@ flowchart TB
 | `eval-bench` Eval Harness & Benchmarks | M3 | `benchmarks/retrieval`, `benchmarks/context-economics`, `benchmarks/agent-engineering`, `benchmarks/latency` | `53`, `61`, `38` | 19 | 16 | MOD-JIT-001, ADR-R-044, ADR-R-051, ADR-R-056 |
 | `extensions-hooks` Hook Bus, Extension System & Importers | M9 | `crates/tools (hooks)`, `crates/skills (import)` | `25` | 8 | 7 | — |
 | `external-tools` MCP Hub, Integrations & Web Gateway | M9 | `crates/tools (external.*)` | `16` | 5 | 4 | — |
-| `governance` Architecture Governance & Product Scope | M0 | `tools/architecture-lint`, `tools/evidence-check`, `docs/decisions` | `02`, `03`, `81`, `82` | 8 | 5 | MOD-PROD-001, MOD-IDE-001, MOD-IDE-002, MOD-COV-001 |
+| `governance` Architecture Governance & Product Scope | M0 | `tools/architecture-lint`, `tools/evidence-check`, `docs/decisions` | `02`, `03`, `81`, `82` | 8 | 6 | MOD-PROD-001, MOD-IDE-001, MOD-IDE-002, MOD-COV-001 |
 | `media` Media Pipeline & Artifact Store | M5 | `crates/tools (media)`, `object store` | `25` | 5 | 5 | MOD-MEDIA-001, MOD-MEDIA-002, MOD-MM-001 |
 | `memory` Engineering Memory | M9 | `crates/memory` | `19` | 1 | 1 | — |
 | `model-gateway` Execution Policy Router & Provider Gateway | M2 | `crates/providers` | `15`, `27`, `38` | 11 | 11 | ADR-R-039, ADR-R-040, ADR-R-041, ADR-R-047, ADR-R-049, ADR-R-050 |
@@ -347,6 +347,7 @@ flowchart LR
 - `DOC-EPR-001`: COMPLETE; Adopt execution policy patch into development dossier; evidence: run:dossier-epr-2026-09-05-final, artifact:evidence/dossier-epr/validation.json, artifact:evidence/dossier-epr/tests.log, revision:sha256:4eee4d2ed0a2e334ae4c903e0b7cbd872e4827d71b6b864257746806af363f51
 - `DOC-EPR-002`: COMPLETE; Integrate and reseal EPR v1.1 supersession; evidence: artifact:evidence/dossier-epr-v1.1/validation.json, artifact:evidence/dossier-epr-v1.1/tests.log, revision:sha256:c5c151160d074ab8e1d5d6280c14309ef8d58f8939be07cdea3297f2913aa3a4
 - `DOC-GOV-001`: COMPLETE; Reseal governing files, evidence grammar and decision statuses; evidence: run:dossier-gov-2026-09-05-final, artifact:evidence/dossier-gov/validation.json, artifact:evidence/dossier-gov/tests.log, revision:sha256:d5d9333148ba10f30634034f883c8c90af46ca1991e8a93799cc5d97859ded80
+- `DOC-GOV-002`: NOT_STARTED; Align implementation specs and execution profiles with EPR v1.1; evidence: none
 
 ## Milestone tasks in execution order
 
@@ -509,7 +510,7 @@ flowchart LR
 | Requirements, tasks and traceability | `40`, `41`, `42`, `43`, `44`, `45`, `46`, `47`, `48`, `49` |
 | Verification and testing | `50`, `51`, `52`, `53`, `54`, `55`, `56`, `57`, `58`, `59`, `60`, `61` |
 | Delivery and operations | `70`, `71`, `72`, `73`, `74` |
-| Agent process and governance | `80`, `81`, `82`, `83`, `84`, `85`, `86`, `87`, `88`, `89`, `90`, `91`, `92`, `93`, `94`, `95`, `96` |
+| Agent process and governance | `80`, `81`, `82`, `83`, `84`, `85`, `86`, `87`, `88`, `89`, `90`, `91`, `92`, `93`, `94`, `95`, `96`, `97` |
 | Live state | `98` |
 
 ## Query cookbook

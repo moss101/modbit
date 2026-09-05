@@ -1,6 +1,6 @@
 # Tool System, Capability Kernel, Procedural Runtime, and MCP
 
-> **Authority date:** 2026-09-03  
+> **Authority date:** 2026-09-05  
 > **Product:** Modbit — clean-slate implementation dossier  
 > **Status vocabulary:** **LOCKED**, **PROVISIONAL**, **EXPERIMENT**, **DEFERRED**, **REJECTED**  
 > **Source-of-truth rule:** latest explicit Modbit decision > locked decisions > current dossier > older project documents. Older Code-OSS/Modbit Lite material is historical only when it conflicts with this dossier.
@@ -32,6 +32,8 @@ Core namespaces include `fs`, `git`, `shell`, `search`, `diagnostics`, `test`, `
 ## Dynamic task-scoped projection
 
 Model never receives the entire registry. Prompt Compiler projects only tools authorized and likely useful for the active node, including capability explanation and effect class. Projection has a version/hash recorded in the Turn.
+
+Projection is per leg role of the active `ConditionalExecutionPlan`. An Isolated Non-Committing Reviewer leg (ADR-R-053, EPR-018) is projected only tools that are `READ_ONLY` on canonical state plus `REVERSIBLE_WRITE` and process execution scoped to its disposable review worktree under the `review_isolated` execution profile of `21_TERMINAL_EXECUTION_AND_SANDBOX.md`. `PROTECTED_WRITE`, `EXTERNAL_SIDE_EFFECT`, `SECRET_ACCESS`, `DESTRUCTIVE`, Git commit/push and deploy tools are excluded from the reviewer projection and are additionally denied by the Capability Kernel if requested, so the projection is a convenience and the kernel is the boundary. Reviewer context excludes the solver's hidden reasoning by default; reviewer tool cost and latency are part of plan pricing. Solver, reviser and escalation legs use the ordinary task-scoped projection.
 
 ## Procedural Tool Runtime
 

@@ -6,9 +6,9 @@
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
-    "docs": 79,
-    "root_and_tooling": 22,
-    "docs_bytes": 792216
+    "docs": 80,
+    "root_and_tooling": 24,
+    "docs_bytes": 806666
   },
   "sections": [
     {
@@ -59,8 +59,8 @@
       "section": "authority",
       "section_title": "Authority and orientation",
       "title": "Modbit — AI-Agent Build Dossier V3.3 EPR v1.1",
-      "bytes": 13021,
-      "sha256": "77df5fee38cb4a1a21e0e3916b10d5b7d9b82f4fb00eda9611c92bc16bca1d24"
+      "bytes": 13473,
+      "sha256": "f708b90d9a79c04ac52112b8a685c434af077b8919e41b255844d572f87b6e32"
     },
     {
       "path": "docs/01_START_HERE_FOR_BUILD_AGENTS.md",
@@ -68,8 +68,8 @@
       "section": "authority",
       "section_title": "Authority and orientation",
       "title": "Start Here for Build Agents",
-      "bytes": 3011,
-      "sha256": "a889a673f7f0268ecb4144c6a18fd32809997ece127b1321b6456497142a6d0e"
+      "bytes": 3036,
+      "sha256": "e5ad750bd3c5c0a219f135bf3878c91c6230d417a66fca664becef682eb78fc2"
     },
     {
       "path": "docs/02_AUTHORITY_AND_DECISIONS.md",
@@ -140,8 +140,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Clean Repository and Module Layout",
-      "bytes": 6052,
-      "sha256": "849f8433c2cbfc2a17188f5920c3da3b56f8ff8d5c6f4c81f9ce66cfd01e2265"
+      "bytes": 8598,
+      "sha256": "d3c1c9e0035ac6fd01989bc6b5905e48fdf9e55e527821e055f250a3da3647b6"
     },
     {
       "path": "docs/13_DOMAIN_MODEL_AND_STATE_MACHINES.md",
@@ -158,8 +158,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Agent Runtime and Orchestration",
-      "bytes": 7059,
-      "sha256": "969613927ebf69d3151f19c66096cc2d2c3e9e8c7f1698fa468569486f9fe6cc"
+      "bytes": 7151,
+      "sha256": "1e25e2f30e1006d10a8d9f88d43a1c186bb5e34bb146b89a1f29b8614656fb42"
     },
     {
       "path": "docs/15_MODEL_ROUTER_AND_PROVIDER_GATEWAY.md",
@@ -176,8 +176,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Tool System, Capability Kernel, Procedural Runtime, and MCP",
-      "bytes": 4550,
-      "sha256": "5e8b803190bdd39f246f99bd614bdd3f767b58aafd730a5ca9ed11fdf65499e2"
+      "bytes": 5407,
+      "sha256": "88f995ffc9687f2cc88f72e8f0a94c7aae602050db3dda997dc9d8bb9b052f3d"
     },
     {
       "path": "docs/17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md",
@@ -221,8 +221,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Terminal, Execution Router, and Sandbox Architecture",
-      "bytes": 3332,
-      "sha256": "b36b4bb9b3e8d837e2c62e048147acf9b236b74cc006e8fbfc2fc8d751f102ff"
+      "bytes": 4273,
+      "sha256": "993f563ecc713035e2ce4eb071c14fdd1cb3cd033ea0cc32a525ca542af2c64d"
     },
     {
       "path": "docs/22_BROWSER_AND_COMPUTER_USE.md",
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Core and Cloud Backend Implementation",
-      "bytes": 5331,
-      "sha256": "c7b72287a2361c60002bf7f8153c3c95ac2587043eb47a777439406cd68f926a"
+      "bytes": 6465,
+      "sha256": "dc5ca338def3fb0c1d9750352c3ae49ea85874334d4a4e8b0493ac7359b9693d"
     },
     {
       "path": "docs/34_OBSERVABILITY_COST_AND_OPERATIONS_DATA.md",
@@ -401,8 +401,8 @@
       "section": "requirements",
       "section_title": "Requirements, tasks and traceability",
       "title": "Requirements Traceability Matrix",
-      "bytes": 5453,
-      "sha256": "4c06a72d59e14984dff5ea9f544272e0ced596dd12165c5d84a3685b17a00145"
+      "bytes": 5473,
+      "sha256": "36bb27a4cbbc50b24bed92e76d3145c286ed2a27943a8ba9509238c42c25fb31"
     },
     {
       "path": "docs/45_REQUIREMENT_TO_TASK_TO_TEST_TRACEABILITY.md",
@@ -599,8 +599,8 @@
       "section": "delivery",
       "section_title": "Delivery and operations",
       "title": "Package Integrity and Build Coverage",
-      "bytes": 3206,
-      "sha256": "5f1c4edff8a455ef0158f25bc49577e0c64c65bc4b2ff3c1b86b5562f745c7ff"
+      "bytes": 3293,
+      "sha256": "66e61606ef25862a979f7fd0eebad55dd175beebe934d07461ea38a2dbc63b32"
     },
     {
       "path": "docs/80_ANTI_SUPERFICIAL_IMPLEMENTATION_STANDARD.md",
@@ -756,20 +756,29 @@
       "sha256": "af650309e48dd7fd60dd6d286c460ed7c3128a2201964078c7f50aea385bfb8c"
     },
     {
+      "path": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
+      "number": 97,
+      "section": "governance",
+      "section_title": "Agent process and governance",
+      "title": "Dossier maintenance log",
+      "bytes": 8219,
+      "sha256": "867b3cb1805b04e2a7f30e085249539394d48f98857b688ed7b42706f965baa5"
+    },
+    {
       "path": "docs/98_BUILD_MANIFEST.md",
       "number": 98,
       "section": "live-state",
       "section_title": "Live state",
       "title": "Build Manifest",
-      "bytes": 3097,
-      "sha256": "898c54ff30ec90dfa0a8a8071d161faeffc24db919d946546ee0f5ecd224b2fe"
+      "bytes": 3174,
+      "sha256": "58ab8a2b04ee9cc88cd26a1cffbafeb9416a887bc8ba5860032aa3013c274b2b"
     }
   ],
   "root_and_tooling": [
     {
       "path": "AGENTS.md",
-      "bytes": 8581,
-      "sha256": "a79d74881498cecd5ec4cab704b483682685825e19d6e7e7178f7cacbe1f46a9"
+      "bytes": 8658,
+      "sha256": "e1792c0b3902482136a473aea46fbdc8690045624cb059099114bcdbd61aefff"
     },
     {
       "path": "MODBIT-PATCH-EPR-v1.1-Supersession-and-Refinement.md",
@@ -783,13 +792,13 @@
     },
     {
       "path": "README.md",
-      "bytes": 7351,
-      "sha256": "8b9f3a00ffb254cd66b1ba412c466cf00f6d1b518df8cad39064d4692d8e92d2"
+      "bytes": 7483,
+      "sha256": "fa5362de28a879e2795dc5387c7ff485cda775028eb663ec65004718af73333c"
     },
     {
       "path": "SKILLS.md",
-      "bytes": 16163,
-      "sha256": "8f78c5088d70e14386975e1da5cdce0e651865e56c03c3759562c2a85b1bd1bb"
+      "bytes": 16480,
+      "sha256": "7c24b9fa187948a7307a6c548461006a193925f0c9047c8a9f54ae5efc5535e2"
     },
     {
       "path": "evidence/dossier-epr-v1.1/baseline.json",
@@ -822,6 +831,16 @@
       "sha256": "ee2d386295ecb31c3b359fdba301db35b9586fb63defba4b1027f71b084a3efe"
     },
     {
+      "path": "evidence/dossier-gov-002/baseline.json",
+      "bytes": 12442,
+      "sha256": "cfcc5c2fafd72b51c539c1dea7375f991f123c3ee4f4b80e70126a8de941501d"
+    },
+    {
+      "path": "evidence/dossier-gov-002/tests.log",
+      "bytes": 2384,
+      "sha256": "a26eed18096f69be8e2ea1ede09a1b08926a1e34074c2c1ca2ebff06bf7b86fe"
+    },
+    {
       "path": "evidence/dossier-gov/baseline.json",
       "bytes": 11772,
       "sha256": "f9c8db7cc997add9aaa708929bc14bde5a04a84147c87b73ed5a78be9a43b6f3"
@@ -838,18 +857,18 @@
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 34277,
-      "sha256": "a7a16940b82e1425e50fbbd78d175db00ec22e75ec25a4febfeff7dff6fbb5ec"
+      "bytes": 34394,
+      "sha256": "2e026b7dcda1aaf6b43d954c4d05b42fb30da321bde904f6216d5802f5ad56d7"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 722764,
-      "sha256": "e2af37ec6dcb7daaa45fde81bc7c7618f58fc65314faa27c49de04657c2d63ee"
+      "bytes": 726157,
+      "sha256": "32b4bd24a626c0421e8ae74620901a93160857e7d14d52a5285dc6ae674e554d"
     },
     {
       "path": "tools/build_graph.py",
-      "bytes": 35643,
-      "sha256": "16bdf41207d4c791e153a61d4ae1e74d1288a672335d7f51840980f1305cc733"
+      "bytes": 36619,
+      "sha256": "ba526f79a9a80ed6105466f7fbf8433a255b1a48ca52b704525268858b740954"
     },
     {
       "path": "tools/build_manifest.py",
@@ -873,8 +892,8 @@
     },
     {
       "path": "tools/test_dossier.py",
-      "bytes": 15345,
-      "sha256": "a944edcb4e8b4db512f948a9101c8a58ab01680c6ee83de28d27cc9cb24d6c1d"
+      "bytes": 16739,
+      "sha256": "c246d0add34510d7ce090a3f7c6bca0ac08b0e08ef9949237066f21db92d7936"
     }
   ],
   "renames_v3_to_v3_1": {

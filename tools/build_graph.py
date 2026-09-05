@@ -44,6 +44,8 @@ MILESTONE_DEPS = {
 CRITICAL_PATH = ["M0", "M1", "M2", "M4"]
 GOV_HANDOFF_DOC = "96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md"
 GOV_CHANGE = "DR-GOV-2026-09-05"
+GOV_LOG_DOC = "97_DOSSIER_MAINTENANCE_LOG.md"
+GOV2_CHANGE = "DR-GOV-2026-09-05-002"
 
 # Tasks named in docs/43's "V2 sequencing delta" but never enumerated as Mx.y rows.
 ADDED_TASKS = [
@@ -546,6 +548,17 @@ def build(previous=None):
     link("DOC-GOV-001", "governance", "owned_by")
     link("DOC-GOV-001", GOV_HANDOFF_DOC, "specified_by")
     link("DOC-GOV-001", GOV_CHANGE, "authorized_by")
+    add({"id": GOV2_CHANGE, "type": "change_record", "title": "Approved alignment of implementation specifications with EPR v1.1",
+         "status": "APPROVED", "source": "docs/" + GOV_LOG_DOC})
+    link(GOV2_CHANGE, GOV_LOG_DOC, "specified_by")
+    link(GOV2_CHANGE, epr.V11_CHANGE, "refines")
+    add({"id": "DOC-GOV-002", "type": "dossier_task", "title": "Align implementation specs and execution profiles with EPR v1.1",
+         "subsystem": "governance", "source": "docs/" + GOV_LOG_DOC,
+         "acceptance": "Docs 12/14/16/21/33/44 carry v1.1 placement, review_isolated profile and reviewer projection with no superseded wording; copied-package tests pass; no product proof"})
+    link("DOC-GOV-002", "DOC-GOV-001", "after")
+    link("DOC-GOV-002", "governance", "owned_by")
+    link("DOC-GOV-002", GOV_LOG_DOC, "specified_by")
+    link("DOC-GOV-002", GOV2_CHANGE, "authorized_by")
 
     # live state preservation ------------------------------------------------
     for n in nodes:

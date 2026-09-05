@@ -2,7 +2,7 @@
 
 ## Documentation package checks
 
-- all payload files are `.md`;
+- specification payload is Markdown; tooling is standard-library Python and JSON; evidence bundles are JSON and logs;
 - master manifests enumerate every file;
 - exactly 291 evidence-derived requirement rows are present;
 - every ADOPT/ADAPT row has an implementation task and qualification test;

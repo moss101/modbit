@@ -1,6 +1,6 @@
 # Terminal, Execution Router, and Sandbox Architecture
 
-> **Authority date:** 2026-09-03  
+> **Authority date:** 2026-09-05  
 > **Product:** Modbit — clean-slate implementation dossier  
 > **Status vocabulary:** **LOCKED**, **PROVISIONAL**, **EXPERIMENT**, **DEFERRED**, **REJECTED**  
 > **Source-of-truth rule:** latest explicit Modbit decision > locked decisions > current dossier > older project documents. Older Code-OSS/Modbit Lite material is historical only when it conflicts with this dossier.
@@ -10,6 +10,7 @@
 
 - `local_trusted` — runs against user-approved local workspace under host policy.
 - `cloud_isolated` — runs inside tenant-bound isolated MicroVM.
+- `review_isolated` — Isolated Non-Committing Reviewer profile (ADR-R-053, EPR-018). Processes run only inside a disposable review worktree: the canonical tracked tree is read-only, ephemeral writes are confined to that worktree, network and secret handles are denied by default, and Git commit/push, deploy and every external or persistent effect are refused. The process/tool budget is bounded and priced into the plan. The profile is realized by the same Execution Router on top of `local_trusted` or `cloud_isolated` isolation primitives and adds no broker or gateway; accept, cancel, timeout or crash kills its processes, revokes its handles and disposes the worktree. Trusted Core may export bounded evidence from the worktree through the existing artifact owner; the reviewer itself cannot persist anything.
 - Future profiles may be added through the same Execution Router; no tool changes required.
 
 ## Structured command contract
@@ -46,7 +47,7 @@ Shell-string convenience is parsed into an argv-aware request and clearly marked
 
 ## Durable `modbit-execd`
 
-A small broker owns local PTYs/processes and a bounded replay log. Core sends authenticated commands over local socket. UI can detach/reconnect without losing output. Core acknowledges output cursor; broker retains a sliding replay window and spills large output to OutputRef/object store. Broker is not authorized to create capabilities or decide policy.
+A small broker owns local PTYs/processes and a bounded replay log. Core sends authenticated commands over local socket. UI can detach/reconnect without losing output. Core acknowledges output cursor; broker retains a sliding replay window and spills large output to OutputRef/object store. Broker is not authorized to create capabilities or decide policy. Processes started under `review_isolated` carry their review worktree and plan/leg IDs so cleanup and accounting are exact.
 
 ## Command failure semantics
 

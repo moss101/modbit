@@ -277,6 +277,9 @@ class DossierTests(unittest.TestCase):
         nodes = {n["id"]: n for n in g["nodes"]}
         self.assertEqual(nodes["DOC-EPR-002"]["status"], "COMPLETE")
         self.assertEqual(nodes["MOD-SKILL-001"]["status"], "EXPERIMENT")
+        self.assertEqual(nodes["DOC-GOV-001"]["status"], "COMPLETE")
+        self.assertIn("DOC-GOV-001", self.run_tool("graph", "show", "DOC-GOV-002"))
+        self.assertIn("97_DOSSIER_MAINTENANCE_LOG.md", self.run_tool("graph", "show", "DR-GOV-2026-09-05-002"))
         out = self.run_tool("graph", "show", "DOC-GOV-001")
         for required in ("DOC-EPR-002", "DR-GOV-2026-09-05", "96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md", "governance"):
             self.assertIn(required, out)
@@ -284,6 +287,23 @@ class DossierTests(unittest.TestCase):
         for node in g["nodes"]:
             for ref in node.get("evidence") or []:
                 self.assertRegex(ref, r"^(run|test|commit|revision|build|env|artifact|event|effect|checkpoint):\S+$", node["id"])
+
+    def test_implementation_specs_carry_v11_placement(self):
+        required = {
+            "docs/12_REPOSITORY_AND_MODULE_LAYOUT.md": ("ConditionalExecutionPlan", "Outcome Statistics Store", "review_isolated", "EPR-018"),
+            "docs/16_TOOL_CAPABILITY_AND_PROCEDURAL_RUNTIME.md": ("Isolated Non-Committing Reviewer", "review_isolated"),
+            "docs/21_TERMINAL_EXECUTION_AND_SANDBOX.md": ("`review_isolated`", "ADR-R-053"),
+            "docs/33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md": ("AcceptanceGateResult", "RealizedRisk", "stats_version"),
+        }
+        for rel, needles in required.items():
+            body = (self.root / rel).read_text()
+            for needle in needles:
+                self.assertIn(needle, body, rel)
+        for rel in ("docs/12_REPOSITORY_AND_MODULE_LAYOUT.md", "docs/33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md",
+                    "docs/44_REQUIREMENTS_TRACEABILITY_MATRIX.md"):
+            body = (self.root / rel).read_text()
+            self.assertNotIn("prior/realized risk", body, rel)
+            self.assertNotIn("deterministic execution plan compiler", body, rel)
 
 
 if __name__ == "__main__":

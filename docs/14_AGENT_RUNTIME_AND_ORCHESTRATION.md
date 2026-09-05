@@ -19,7 +19,7 @@ All are projections coordinated by `core-runtime`; no second orchestration servi
 ## Main runtime loop
 
 1. Observe latest task/Run projection under the session kernel lease; evaluate ready WorkGraph nodes.
-2. Derive PolicyEnvelope from identity, repository, organization rules, permissions, budgets and prior risk.
+2. Derive PolicyEnvelope from identity, repository, organization rules, permissions, budgets and protected-surface/mandatory-review/human rules; the envelope carries no learned risk score (ADR-R-052).
 3. Build intrinsic RequestProfile; join Outcome Statistics and compile/validate cheapest confidence-feasible ConditionalExecutionPlan with all slots reserved before initial execution.
 4. Persist plan, routing epoch, active leg and budget reservation using existing event/protocol state.
 5. Compile context/prompt/skills/tools for the active solver, reviewer, reviser or escalation leg.

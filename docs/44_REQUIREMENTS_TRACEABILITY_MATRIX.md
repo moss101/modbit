@@ -44,7 +44,7 @@ Source research traceability is normalized by `40_EVIDENCE_DERIVED_REQUIREMENT_L
 | REQ-EPR-000/002/003/004 | model-gateway | existing provider routing/registry modules | matching QUAL-EPR and gates A/B/C |
 | REQ-EPR-001 | domain-events | Run/protocol/event contracts and migration | actual database/restart proof |
 | REQ-EPR-005/006/007/009 | core-runtime | existing bounded leg executor and routing epoch | real provider/Git/cancel/restart; gates B/D/E/F |
-| REQ-EPR-008 | effects-security | prior/realized risk, capability/effect checks | protected-path and reviewer denial mutation tests |
+| REQ-EPR-008 | effects-security | PolicyEnvelope and factual RealizedRisk, capability/effect checks | protected-path and reviewer denial mutation tests |
 | REQ-EPR-010 | observability | complete attempt accounting and raw outcomes | provider usage/event reconciliation |
 | REQ-EPR-011/012 | eval-bench | isolated replay and offline policy promotion | scratch snapshot/effect isolation and rollback; gate G |
 | REQ-EPR-013 | skills | qualified model/Skill profiles and role prompts | real Skill/provider/holdout/provenance; gate G |

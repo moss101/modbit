@@ -12,6 +12,8 @@ Preserve the original 291 EV rows and prior IDs/owners; amend 14 EPR tasks and a
 
 Governance maintenance (DOC-GOV-001, doc 96, 2026-09-05): evidence references on graph nodes use a validated `kind:value` grammar, decision statuses are validated against doc 93, `../AGENTS.md`, `../README.md` and `../SKILLS.md` match the sealed package and five-step reseal, and the pinned tool constants are documented in doc 74. No requirement, owner, ADR or EPR clause changed.
 
+Later dossier-only maintenance is logged append-only in doc 97 (`97_DOSSIER_MAINTENANCE_LOG.md`). Its first entry, DOC-GOV-002, aligns docs 12/14/16/21/33/44/74 with EPR v1.1: component placement by crate and owner, the `review_isolated` execution profile and the reviewer tool projection.
+
 ## What changed in V3.1 (structure only, no requirement changes)
 
 1. All specification files live in `docs/`; the governing files `README.md`, `AGENTS.md`, `SKILLS.md`, `MANIFEST.md` and `graph/` live at the repository root.
@@ -137,6 +139,7 @@ Do **not** preload the whole dossier. `89_BUILD_AGENT_CONTEXT_LOADING_POLICY.md`
 - `94_EXECUTION_POLICY_DOSSIER_TASK_AND_HANDOFF.md` — historical v1.0 dossier task and evidence
 - `95_EPR_V1_1_DOSSIER_TASK_AND_HANDOFF.md` — EPR v1.1 dossier audit, tests, revision and reseal handoff
 - `96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md` — governance maintenance decision record and handoff (DOC-GOV-001): evidence grammar, decision-status validation, governing-file alignment, pinned constants
+- `97_DOSSIER_MAINTENANCE_LOG.md` — append-only log of later dossier-only tasks (DOC-GOV-002 onward): decision record, handoff and evidence pointers per entry
 
 ### 98–99 Live state
 - `98_BUILD_MANIFEST.md` — milestone status table updated by implementation agents; task-level status lives in the project graph

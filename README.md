@@ -24,7 +24,7 @@ tools/
   check_dossier.py              integrity gate for docs + graph + manifest + evidence grammar
   test_dossier.py               copied-package positive and negative tests of the tooling
 evidence/                       retained evidence of dossier-only tasks (baseline, validation, test logs)
-docs/                           79 specification files, uniquely numbered by section
+docs/                           80 specification files, uniquely numbered by section
 ```
 
 ## Where to start
@@ -83,7 +83,7 @@ Names do not satisfy behavior. A feature is complete only when its domain contra
 
 ## Status
 
-Specification: V3.3 EPR v1.1 (2026-09-05): 291 preserved REQ-EV rows plus 20 additive REQ-EPR rows, EPR-000..019 work packages and QUAL-EPR proofs. Governance maintenance reseal DOC-GOV-001 (2026-09-05) added the evidence-reference grammar and decision-status validation; see [doc 96](docs/96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md).  
+Specification: V3.3 EPR v1.1 (2026-09-05): 291 preserved REQ-EV rows plus 20 additive REQ-EPR rows, EPR-000..019 work packages and QUAL-EPR proofs. Governance maintenance reseal DOC-GOV-001 (2026-09-05) added the evidence-reference grammar and decision-status validation; see [doc 96](docs/96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md). DOC-GOV-002 aligned the implementation specifications with EPR v1.1; see the [maintenance log](docs/97_DOSSIER_MAINTENANCE_LOG.md).  
 Implementation: `NOT_STARTED` on every milestone. See `docs/98_BUILD_MANIFEST.md`.
 
 ## Execution policy development
