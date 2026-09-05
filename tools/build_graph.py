@@ -46,6 +46,7 @@ GOV_HANDOFF_DOC = "96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md"
 GOV_CHANGE = "DR-GOV-2026-09-05"
 GOV_LOG_DOC = "97_DOSSIER_MAINTENANCE_LOG.md"
 GOV2_CHANGE = "DR-GOV-2026-09-05-002"
+GOV3_CHANGE = "DR-GOV-2026-09-05-003"
 
 # Tasks named in docs/43's "V2 sequencing delta" but never enumerated as Mx.y rows.
 ADDED_TASKS = [
@@ -182,7 +183,7 @@ NODE_TYPES = {
     "requirement": "REQ-EV from docs/40 or additive REQ-EPR from docs/49",
     "imp_task": "IMP-EV from docs/41 or EPR from docs/49; carries status and evidence",
     "dossier_task": "governance package work outside product milestone roll-ups",
-    "release_gate": "EPR promotion gate from docs/61; evidence criteria, not a completion claim",
+    "release_gate": "EPR promotion gate from docs/61; derived state OPEN/TASKS_COMPLETE/SATISFIED; carries attestation evidence, never a lifecycle status",
     "source_patch": "immutable user-supplied patch provenance",
     "change_record": "explicit approved dossier amendment",
     "qual_test": "QUAL-EV from docs/42 or QUAL-EPR from docs/61",
@@ -211,6 +212,7 @@ EDGE_TYPES = {
     "adopts": "change record → immutable source patch",
     "supersedes": "new authority → prior authority, only within the recorded scope",
     "refines": "v1.1 source/change → previous source/change; non-conflicting authority survives",
+    "gated_by": "milestone → release gate that must be SATISFIED before the milestone rolls up COMPLETE",
 }
 
 
@@ -476,6 +478,7 @@ def build(previous=None):
             link(sid, t["milestone"], "proves")
     for gate in egates:
         link(gate["id"], epr.QUAL_DOC, "specified_by")
+        link("M10", gate["id"], "gated_by")
         for tid in gate["required_tasks"]:
             link(gate["id"], tid, "requires_task")
             link(gate["id"], "QUAL-" + tid, "proven_by")
@@ -559,6 +562,16 @@ def build(previous=None):
     link("DOC-GOV-002", "governance", "owned_by")
     link("DOC-GOV-002", GOV_LOG_DOC, "specified_by")
     link("DOC-GOV-002", GOV2_CHANGE, "authorized_by")
+    add({"id": GOV3_CHANGE, "type": "change_record", "title": "Approved release-gate attestation and one-step lifecycle enforcement",
+         "status": "APPROVED", "source": "docs/" + GOV_LOG_DOC})
+    link(GOV3_CHANGE, GOV_LOG_DOC, "specified_by")
+    add({"id": "DOC-GOV-003", "type": "dossier_task", "title": "Enforce release-gate attestation and one-step lifecycle transitions",
+         "subsystem": "governance", "source": "docs/" + GOV_LOG_DOC,
+         "acceptance": "gated_by edges, derived gate states, attest/gates commands, GATED roll-up, one-step transitions with noted BLOCKED/backward moves, G7 check; copied-package tests pass; no product proof"})
+    link("DOC-GOV-003", "DOC-GOV-002", "after")
+    link("DOC-GOV-003", "governance", "owned_by")
+    link("DOC-GOV-003", GOV_LOG_DOC, "specified_by")
+    link("DOC-GOV-003", GOV3_CHANGE, "authorized_by")
 
     # live state preservation ------------------------------------------------
     for n in nodes:
@@ -566,7 +579,13 @@ def build(previous=None):
             old = prev.get(n["id"], {})
             n["status"] = old.get("status", "NOT_STARTED")
             n["evidence"] = old.get("evidence", [])
-            for k in ("notes", "owner_agent", "status_changed_on"):
+            for k in ("notes", "owner_agent", "status_changed_on", "blocked_from"):
+                if k in old:
+                    n[k] = old[k]
+        elif n["type"] == "release_gate":
+            old = prev.get(n["id"], {})
+            n["evidence"] = old.get("evidence", [])
+            for k in ("attested_on", "attested_by", "notes"):
                 if k in old:
                     n[k] = old[k]
 

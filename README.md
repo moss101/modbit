@@ -70,12 +70,14 @@ python3 tools/graph.py ready              # what can be started now
 python3 tools/graph.py show M1.5          # one node with all its links
 python3 tools/graph.py set IMP-EV-0013 WIRED
 python3 tools/graph.py set IMP-EV-0013 COMPLETE --evidence run:2026-09-20/qual-ev-0013 --evidence commit:abc123
-python3 tools/graph.py status             # milestone roll-up
+python3 tools/graph.py status             # milestone roll-up (M10 reads GATED until gates A–G are attested)
+python3 tools/graph.py gates              # release-gate readiness: OPEN / TASKS_COMPLETE / SATISFIED
+python3 tools/graph.py attest EPR-GATE-A --evidence artifact:evidence/release/gate-a.json
 python3 tools/graph.py render > graph/PROJECT_GRAPH.md   # refresh the mermaid view
 python3 tools/check_dossier.py            # integrity gate
 ```
 
-The tools need only Python 3.9+ and the standard library. Evidence references use the `kind:value` grammar defined in [docs/93](docs/93_STATUS_VOCABULARY_AND_LIFECYCLE.md); the tools reject anything else.
+The tools need only Python 3.9+ and the standard library. Evidence references use the `kind:value` grammar defined in [docs/93](docs/93_STATUS_VOCABULARY_AND_LIFECYCLE.md); the tools reject anything else. Status moves one lifecycle step at a time, and release gates are attested only after their tasks are complete.
 
 ## Non-negotiables in one paragraph
 
@@ -83,7 +85,7 @@ Names do not satisfy behavior. A feature is complete only when its domain contra
 
 ## Status
 
-Specification: V3.3 EPR v1.1 (2026-09-05): 291 preserved REQ-EV rows plus 20 additive REQ-EPR rows, EPR-000..019 work packages and QUAL-EPR proofs. Governance maintenance reseal DOC-GOV-001 (2026-09-05) added the evidence-reference grammar and decision-status validation; see [doc 96](docs/96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md). DOC-GOV-002 aligned the implementation specifications with EPR v1.1; see the [maintenance log](docs/97_DOSSIER_MAINTENANCE_LOG.md).  
+Specification: V3.3 EPR v1.1 (2026-09-05): 291 preserved REQ-EV rows plus 20 additive REQ-EPR rows, EPR-000..019 work packages and QUAL-EPR proofs. Governance maintenance reseal DOC-GOV-001 (2026-09-05) added the evidence-reference grammar and decision-status validation; see [doc 96](docs/96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md). DOC-GOV-002 aligned the implementation specifications with EPR v1.1, and DOC-GOV-003 made release-gate attestation and one-step lifecycle transitions tool-enforced; see the [maintenance log](docs/97_DOSSIER_MAINTENANCE_LOG.md).  
 Implementation: `NOT_STARTED` on every milestone. See `docs/98_BUILD_MANIFEST.md`.
 
 ## Execution policy development

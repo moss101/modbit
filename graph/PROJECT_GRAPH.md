@@ -16,10 +16,10 @@ One JSON file that answers *what exists, what depends on what, what proves what,
 | `subsystem` | 23 | canonical single-owner boundary (docs/81); owns REQ rows and IMP tasks; delivered in a primary milestone |
 | `requirement` | 311 | REQ-EV from docs/40 or additive REQ-EPR from docs/49 |
 | `imp_task` | 285 | IMP-EV from docs/41 or EPR from docs/49; carries status and evidence |
-| `dossier_task` | 4 | governance package work outside product milestone roll-ups |
-| `release_gate` | 7 | EPR promotion gate from docs/61; evidence criteria, not a completion claim |
+| `dossier_task` | 5 | governance package work outside product milestone roll-ups |
+| `release_gate` | 7 | EPR promotion gate from docs/61; derived state OPEN/TASKS_COMPLETE/SATISFIED; carries attestation evidence, never a lifecycle status |
 | `source_patch` | 2 | immutable user-supplied patch provenance |
-| `change_record` | 4 | explicit approved dossier amendment |
+| `change_record` | 5 | explicit approved dossier amendment |
 | `qual_test` | 311 | QUAL-EV from docs/42 or QUAL-EPR from docs/61 |
 | `scenario` | 117 | E2E-nnn, WSK-E2E-nnn, MEDIA-E2E-nnn release-gate scenario or FI-nn fault case |
 | `decision` | 56 | MOD-* or ADR-R-* decision from docs/02 with authority status |
@@ -27,14 +27,14 @@ One JSON file that answers *what exists, what depends on what, what proves what,
 | Edge type | Count | Meaning |
 |---|---:|---|
 | `in_section` | 80 | doc → section |
-| `references` | 289 | doc → doc (explicit filename mention) |
+| `references` | 294 | doc → doc (explicit filename mention) |
 | `depends_on` | 18 | milestone → milestone it requires COMPLETE first |
 | `part_of` | 78 | milestone_task → milestone |
-| `after` | 110 | work item → required COMPLETE work item, including cross-milestone EPR dependencies |
+| `after` | 111 | work item → required COMPLETE work item, including cross-milestone EPR dependencies |
 | `delivered_in` | 22 | subsystem → primary milestone |
-| `specified_by` | 101 | subsystem → doc |
+| `specified_by` | 103 | subsystem → doc |
 | `owned_by_req` | 311 | requirement → subsystem |
-| `owned_by` | 289 | imp_task → subsystem |
+| `owned_by` | 290 | imp_task → subsystem |
 | `scheduled_in` | 285 | imp_task → milestone |
 | `implemented_by` | 285 | requirement → imp_task |
 | `qualified_by` | 311 | requirement → qual_test |
@@ -43,10 +43,11 @@ One JSON file that answers *what exists, what depends on what, what proves what,
 | `constrains` | 63 | decision → subsystem |
 | `requires_task` | 27 | release gate → required implementation task |
 | `extends` | 38 | additive requirement → related preserved EV requirement |
-| `authorized_by` | 87 | adopted task/decision/requirement → approved change record |
+| `authorized_by` | 88 | adopted task/decision/requirement → approved change record |
 | `adopts` | 2 | change record → immutable source patch |
 | `supersedes` | 10 | new authority → prior authority, only within the recorded scope |
 | `refines` | 3 | v1.1 source/change → previous source/change; non-conflicting authority survives |
+| `gated_by` | 7 | milestone → release gate that must be SATISFIED before the milestone rolls up COMPLETE |
 
 ## Milestone dependency graph (live status)
 
@@ -110,7 +111,7 @@ Critical path (reliability spine): **M0 → M1 → M2 → M4**. Do not start bro
 | M7 Live browser | NOT_STARTED | no | 8 | 18 | 0 | 0 | M2 | E2E-013..016. |
 | M8 Cloud isolated execution | NOT_STARTED | no | 9 | 13 | 0 | 0 | M4, M7 | E2E-017/018/024. |
 | M9 Engineering memory/effects/security hardening | NOT_STARTED | no | 6 | 19 | 0 | 0 | M4, M5 | memory cannot be created from transcript without promotion; receipt chain verifies; threat tests pass. |
-| M10 Release hardening | NOT_STARTED | no | 7 | 10 | 0 | 0 | M3, M5, M6, M7, M8, M9 | full Release Zero proof + package evidence |
+| M10 Release hardening | NOT_STARTED | no | 7 | 10 | 0 | 0 | M3, M5, M6, M7, M8, M9 | full Release Zero proof + package evidence + EPR gates A–G SATISFIED. |
 
 ## Subsystems → milestones
 
@@ -119,7 +120,7 @@ Each canonical subsystem is a single-owner boundary (`docs/81_ARCHITECTURE_GUARD
 ```mermaid
 flowchart TB
   subgraph M0["M0 — Repository and authority"]
-    governance["Architecture Governance & Product Scope<br/>6 tasks"]
+    governance["Architecture Governance & Product Scope<br/>7 tasks"]
   end
   subgraph M1["M1 — Durable local shell and Core"]
     domain_events["Domain Model, Event Store & Protocol State<br/>20 tasks"]
@@ -175,7 +176,7 @@ flowchart TB
 | `eval-bench` Eval Harness & Benchmarks | M3 | `benchmarks/retrieval`, `benchmarks/context-economics`, `benchmarks/agent-engineering`, `benchmarks/latency` | `53`, `61`, `38` | 19 | 16 | MOD-JIT-001, ADR-R-044, ADR-R-051, ADR-R-056 |
 | `extensions-hooks` Hook Bus, Extension System & Importers | M9 | `crates/tools (hooks)`, `crates/skills (import)` | `25` | 8 | 7 | — |
 | `external-tools` MCP Hub, Integrations & Web Gateway | M9 | `crates/tools (external.*)` | `16` | 5 | 4 | — |
-| `governance` Architecture Governance & Product Scope | M0 | `tools/architecture-lint`, `tools/evidence-check`, `docs/decisions` | `02`, `03`, `81`, `82` | 8 | 6 | MOD-PROD-001, MOD-IDE-001, MOD-IDE-002, MOD-COV-001 |
+| `governance` Architecture Governance & Product Scope | M0 | `tools/architecture-lint`, `tools/evidence-check`, `docs/decisions` | `02`, `03`, `81`, `82` | 8 | 7 | MOD-PROD-001, MOD-IDE-001, MOD-IDE-002, MOD-COV-001 |
 | `media` Media Pipeline & Artifact Store | M5 | `crates/tools (media)`, `object store` | `25` | 5 | 5 | MOD-MEDIA-001, MOD-MEDIA-002, MOD-MM-001 |
 | `memory` Engineering Memory | M9 | `crates/memory` | `19` | 1 | 1 | — |
 | `model-gateway` Execution Policy Router & Provider Gateway | M2 | `crates/providers` | `15`, `27`, `38` | 11 | 11 | ADR-R-039, ADR-R-040, ADR-R-041, ADR-R-047, ADR-R-049, ADR-R-050 |
@@ -300,15 +301,17 @@ flowchart LR
 | EPR-018 | M6 / 4 | NOT_STARTED | effects-security | EPR-006, M6.4 | REQ-EPR-018 / QUAL-EPR-018 |
 | EPR-019 | M9 / 5 | NOT_STARTED | eval-bench | EPR-007, EPR-017, EPR-010 | REQ-EPR-019 / QUAL-EPR-019 |
 
-| Activation gate | Required tasks | Acceptance |
-|---|---|---|
-| EPR-GATE-A: Conditional correctness and assurance | EPR-001, EPR-002, EPR-004, EPR-005, EPR-008, EPR-014, EPR-017 | Schema-2 conditional admission, every slot prevalidated/budgeted, finite retries/termination, no generated branch, separate risk/acceptance and no partial apply |
-| EPR-GATE-B: Initial-leg DIRECT baseline non-regression | EPR-000, EPR-005 | Actual initial-to-accept path preserves verified success, cost/latency tolerances, recovery/tool reliability and complete direct-attempt accounting |
-| EPR-GATE-C: Profiler and confidence-adjusted feasibility | EPR-002, EPR-003, EPR-015, EPR-016 | Intrinsic profiler calibration/OOD, versioned representative statistics, LCB/posterior tau/delta, cold-start rejection, lowest-cost feasible and explicit QUALITY_FLOOR_INFEASIBLE |
-| EPR-GATE-D: Escalation CASCADE path benefit | EPR-006, EPR-017, EPR-019 | Whole-plan conservative quality floor, lower complete expected cost on approved slice, bounded rejection/escalation latency; acceptance/risk error thresholds independently pass |
-| EPR-GATE-E: Isolated review CRITIQUE path benefit | EPR-007, EPR-018, EPR-019 | Relational defect/critical recall and success gain; acceptable false positives/churn/inference/tool/process cost; allowed ephemeral work and denied canonical/persistent/external effects; no solver hidden reasoning |
-| EPR-GATE-F: Multi-turn economics | EPR-000, EPR-009, EPR-016 | Confidence-feasible switch remains better after lost cache/refill/write/latency/hysteresis, no unnecessary switching regression, fenced slot/restart behavior |
-| EPR-GATE-G: Independently safe gate calibration and rollout | EPR-010, EPR-011, EPR-012, EPR-013, EPR-019 | Separate request/leg/gate attribution, holdout acceptance false accept/reject and realized-risk false negative/positive plus critical_surface_miss_rate within approved limits; controlled promotion/propensity, safe replay, compatible previous-good rollback |
+| Activation gate | State | Required tasks | Attestation evidence | Acceptance |
+|---|---|---|---|---|
+| EPR-GATE-A: Conditional correctness and assurance | OPEN | EPR-001, EPR-002, EPR-004, EPR-005, EPR-008, EPR-014, EPR-017 | none | Schema-2 conditional admission, every slot prevalidated/budgeted, finite retries/termination, no generated branch, separate risk/acceptance and no partial apply |
+| EPR-GATE-B: Initial-leg DIRECT baseline non-regression | OPEN | EPR-000, EPR-005 | none | Actual initial-to-accept path preserves verified success, cost/latency tolerances, recovery/tool reliability and complete direct-attempt accounting |
+| EPR-GATE-C: Profiler and confidence-adjusted feasibility | OPEN | EPR-002, EPR-003, EPR-015, EPR-016 | none | Intrinsic profiler calibration/OOD, versioned representative statistics, LCB/posterior tau/delta, cold-start rejection, lowest-cost feasible and explicit QUALITY_FLOOR_INFEASIBLE |
+| EPR-GATE-D: Escalation CASCADE path benefit | OPEN | EPR-006, EPR-017, EPR-019 | none | Whole-plan conservative quality floor, lower complete expected cost on approved slice, bounded rejection/escalation latency; acceptance/risk error thresholds independently pass |
+| EPR-GATE-E: Isolated review CRITIQUE path benefit | OPEN | EPR-007, EPR-018, EPR-019 | none | Relational defect/critical recall and success gain; acceptable false positives/churn/inference/tool/process cost; allowed ephemeral work and denied canonical/persistent/external effects; no solver hidden reasoning |
+| EPR-GATE-F: Multi-turn economics | OPEN | EPR-000, EPR-009, EPR-016 | none | Confidence-feasible switch remains better after lost cache/refill/write/latency/hysteresis, no unnecessary switching regression, fenced slot/restart behavior |
+| EPR-GATE-G: Independently safe gate calibration and rollout | OPEN | EPR-010, EPR-011, EPR-012, EPR-013, EPR-019 | none | Separate request/leg/gate attribution, holdout acceptance false accept/reject and realized-risk false negative/positive plus critical_surface_miss_rate within approved limits; controlled promotion/propensity, safe replay, compatible previous-good rollback |
+
+Gate state is derived (docs/93): OPEN until every required task is COMPLETE, TASKS_COMPLETE, then SATISFIED once attested with `graph.py attest`. A milestone linked by `gated_by` rolls up GATED, not COMPLETE, until all its gates are SATISFIED: M10 → EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G.
 
 ## Scoped v1.1 supersessions and source provenance
 
@@ -348,6 +351,7 @@ flowchart LR
 - `DOC-EPR-002`: COMPLETE; Integrate and reseal EPR v1.1 supersession; evidence: artifact:evidence/dossier-epr-v1.1/validation.json, artifact:evidence/dossier-epr-v1.1/tests.log, revision:sha256:c5c151160d074ab8e1d5d6280c14309ef8d58f8939be07cdea3297f2913aa3a4
 - `DOC-GOV-001`: COMPLETE; Reseal governing files, evidence grammar and decision statuses; evidence: run:dossier-gov-2026-09-05-final, artifact:evidence/dossier-gov/validation.json, artifact:evidence/dossier-gov/tests.log, revision:sha256:d5d9333148ba10f30634034f883c8c90af46ca1991e8a93799cc5d97859ded80
 - `DOC-GOV-002`: COMPLETE; Align implementation specs and execution profiles with EPR v1.1; evidence: run:dossier-gov-002-2026-09-05-final, artifact:evidence/dossier-gov-002/validation.json, artifact:evidence/dossier-gov-002/tests.log, revision:sha256:8e9f70a42a14d6592ac53f463385a61bcdc4f5563045b9f7a5499fc13051522d, commit:e39f3a477b5234c1ca519c692cbc0b8db880d71a
+- `DOC-GOV-003`: NOT_STARTED; Enforce release-gate attestation and one-step lifecycle transitions; evidence: none
 
 ## Milestone tasks in execution order
 

@@ -92,7 +92,7 @@ python3 tools/graph.py set <id> <STATE> [--evidence <ref> ...]
 python3 tools/graph.py status            # milestone roll-up
 python3 tools/check_dossier.py           # must pass
 ```
-`--evidence` values must follow the docs/93 grammar and `artifact:` paths must exist in the package; the tool rejects free text. Update the milestone row in `docs/98_BUILD_MANIFEST.md` only from the roll-up. Never bulk-mark a milestone because its directories exist. If evidence expired (architecture/dependency/protocol change), move the node back to `REAL_TESTING`.  
+`--evidence` values must follow the docs/93 grammar and `artifact:` paths must exist in the package; the tool rejects free text. Status moves one step at a time; `BLOCKED` and backward moves require `--note`. Update the milestone row in `docs/98_BUILD_MANIFEST.md` only from the roll-up. Never bulk-mark a milestone because its directories exist. If evidence expired (architecture/dependency/protocol change), move the node back to `REAL_TESTING`.  
 **Outputs:** consistent graph + manifest.  
 **Governed by:** `docs/87_HANDOFF_AND_MANIFEST_PROTOCOL.md`, `docs/98_BUILD_MANIFEST.md`, `docs/93_STATUS_VOCABULARY_AND_LIFECYCLE.md`.
 
@@ -133,7 +133,7 @@ python3 tools/check_dossier.py           # must pass
 ## `release-gate`
 
 **Trigger:** preparing a release candidate or closing a milestone.  
-**Steps:** run every mandatory E2E in `docs/51_E2E_ACCEPTANCE_TEST_CATALOG.md` on signed candidate binaries; run `docs/91_FEATURE_COMPLETION_AUDIT.md` per production requirement; verify no item in `docs/73_RELEASE_BLOCKERS_AND_STOP_THE_LINE_RULES.md` is present; verify `python3 tools/check_dossier.py` passes; archive the evidence bundle. Release Zero (`docs/60_RELEASE_ZERO_EXPANDED_PROOF.md`) must pass before any "end-to-end works" claim.  
+**Steps:** run every mandatory E2E in `docs/51_E2E_ACCEPTANCE_TEST_CATALOG.md` on signed candidate binaries; run `docs/91_FEATURE_COMPLETION_AUDIT.md` per production requirement; verify no item in `docs/73_RELEASE_BLOCKERS_AND_STOP_THE_LINE_RULES.md` is present; verify `python3 tools/check_dossier.py` passes; attest each EPR gate A–G with `python3 tools/graph.py attest EPR-GATE-x --evidence ...` once its tasks are `COMPLETE` and the doc 61 evidence exists, and confirm `python3 tools/graph.py gates` shows all seven `SATISFIED` before M10 can roll up `COMPLETE`; archive the evidence bundle. Release Zero (`docs/60_RELEASE_ZERO_EXPANDED_PROOF.md`) must pass before any "end-to-end works" claim.  
 **Governed by:** `docs/70_CI_CD_RELEASE_AND_SUPPLY_CHAIN.md`, `docs/83_DEFINITION_OF_DONE_AND_ACCEPTANCE.md`, `docs/74_PACKAGE_INTEGRITY_AND_BUILD_COVERAGE.md`.
 
 ## `dossier-maintenance`
@@ -166,4 +166,4 @@ DR-EPR-2026-09-05-v1.1 in doc 06 authorizes surgical amendments to the EPR ledge
 
 ## Governance maintenance (DOC-GOV-001)
 
-DR-GOV-2026-09-05 in `docs/96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md` authorizes the 2026-09-05 maintenance reseal: `AGENTS.md`, `README.md` and this file aligned with the sealed package and five-step reseal; the evidence-reference grammar in doc 93 enforced by `tools/graph.py` and `tools/check_dossier.py`; MOD-SKILL-001 normalized to the single status `EXPERIMENT`; pinned tool constants documented in doc 74. DOC-GOV-001 follows DOC-EPR-002, is excluded from product roll-ups, and proves nothing about the product. Subsequent dossier-only tasks (DOC-GOV-002 onward) append an entry to `docs/97_DOSSIER_MAINTENANCE_LOG.md` instead of taking a new file number, because governance numbers 80–97 are exhausted; DOC-GOV-002 aligned docs 12/14/16/21/33/44 with EPR v1.1 placement, the `review_isolated` profile and reviewer projection.
+DR-GOV-2026-09-05 in `docs/96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md` authorizes the 2026-09-05 maintenance reseal: `AGENTS.md`, `README.md` and this file aligned with the sealed package and five-step reseal; the evidence-reference grammar in doc 93 enforced by `tools/graph.py` and `tools/check_dossier.py`; MOD-SKILL-001 normalized to the single status `EXPERIMENT`; pinned tool constants documented in doc 74. DOC-GOV-001 follows DOC-EPR-002, is excluded from product roll-ups, and proves nothing about the product. Subsequent dossier-only tasks (DOC-GOV-002 onward) append an entry to `docs/97_DOSSIER_MAINTENANCE_LOG.md` instead of taking a new file number, because governance numbers 80–97 are exhausted; DOC-GOV-002 aligned docs 12/14/16/21/33/44 with EPR v1.1 placement, the `review_isolated` profile and reviewer projection. DOC-GOV-003 added `gated_by` edges, derived gate states with `graph.py attest`/`gates`, the `GATED` roll-up and one-step lifecycle transitions.

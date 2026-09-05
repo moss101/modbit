@@ -32,6 +32,8 @@ Use authenticated production command routes into actual Core, provider, policy, 
 
 ## Release and promotion gates
 
+Each gate's satisfaction is recorded on its graph node with `python3 tools/graph.py attest EPR-GATE-x --evidence ...` only after every required task is COMPLETE and the gate's own evidence below exists; M10 rolls up GATED, not COMPLETE, until all seven gates are SATISFIED (`93_STATUS_VOCABULARY_AND_LIFECYCLE.md`).
+
 Gate nodes are evidence criteria, not task status or executable workflow selectors. Current aliases DIRECT/CASCADE/CRITIQUE name observed path slices. Confidence bounds predict plan outcomes; deterministic/current acceptance evidence still decides actual completion. Gate/risk safety is independently release-critical.
 
 | Gate | Name | Required tasks | Acceptance |

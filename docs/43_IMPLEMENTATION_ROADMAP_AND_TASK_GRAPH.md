@@ -137,6 +137,8 @@ Proof: memory cannot be created from transcript without promotion; receipt chain
 **M10.5** docs/runbooks/support diagnostics.  
 **M10.6** Release Zero scenario.
 
+Proof: full Release Zero proof + package evidence + EPR gates A–G SATISFIED.
+
 ### Critical path
 
 `M0 → M1 → M2 → M4` is the reliability spine. `M3` and `M5` can proceed after M2 contracts stabilize. `M6` depends on M2+M4. `M7` depends on policy/tool/event contracts. `M8` depends on M4+M7 interfaces. Do not start broad multi-agent/cloud work before the single-agent durable local loop is E2E proven.

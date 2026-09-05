@@ -15,7 +15,8 @@ Checks
   G2  every REQ/IMP/QUAL in docs is in the graph and vice versa
   G3  statuses are from the vocabulary; E2E_PROVEN/COMPLETE carry evidence; every evidence ref follows the docs/93 grammar
   G4  COMPLETE tasks have COMPLETE prerequisites; edges resolve
-  G5  docs/98 milestone table is not ahead of the graph roll-up
+  G5  docs/98 milestone table matches the graph roll-up (GATED is a valid roll-up state)
+  G7  release gates: attestation evidence grammar; no attestation while required tasks are incomplete; gated_by edges valid
   D6/G6 additive EPR coverage; current source/graph equivalence; acyclic prerequisites
   M1  (--manifest) every manifest.json hash matches the file on disk
 """
@@ -168,6 +169,13 @@ def main(argv):
         adr_count = sum(1 for n in g["nodes"] if n["type"] == "decision" and n["id"].startswith("ADR-R-"))
         gate_count = sum(1 for n in g["nodes"] if n["type"] == "release_gate")
         for n in g["nodes"]:
+            if n["type"] == "release_gate":
+                for ref in n.get("evidence") or []:
+                    err = graphtool.evidence_ref_error(ref)
+                    if err:
+                        find("G7", "%s: %s" % (n["id"], err))
+                if n.get("evidence") and ix.gate_state(n["id"]) == "OPEN":
+                    find("G7", "%s carries attestation evidence while required tasks are not COMPLETE" % n["id"])
             if n["type"] == "decision" and n.get("status") not in graphtool.DECISION_STATES:
                 find("D7", "graph decision %s has status %r outside the docs/93 ladder" % (n["id"], n.get("status")))
             if n["type"] in graphtool.WORK_TYPES:
@@ -199,7 +207,7 @@ def main(argv):
                 mid, st = m.groups()
                 if roll.get(mid) != st:
                     find("G5", "docs/98 says %s %s but graph roll-up is %s" % (mid, st, roll.get(mid)))
-                if st not in graphtool.STATES and st != "IN_PROGRESS":
+                if st not in graphtool.STATES and st not in ("IN_PROGRESS", graphtool.MILESTONE_GATED):
                     find("G5", "docs/98 row %s uses non-vocabulary status %s" % (mid, st))
 
         try:

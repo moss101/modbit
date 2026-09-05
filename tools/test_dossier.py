@@ -280,6 +280,8 @@ class DossierTests(unittest.TestCase):
         self.assertEqual(nodes["DOC-GOV-001"]["status"], "COMPLETE")
         self.assertIn("DOC-GOV-001", self.run_tool("graph", "show", "DOC-GOV-002"))
         self.assertIn("97_DOSSIER_MAINTENANCE_LOG.md", self.run_tool("graph", "show", "DR-GOV-2026-09-05-002"))
+        self.assertEqual(nodes["DOC-GOV-002"]["status"], "COMPLETE")
+        self.assertIn("DOC-GOV-002", self.run_tool("graph", "show", "DOC-GOV-003"))
         out = self.run_tool("graph", "show", "DOC-GOV-001")
         for required in ("DOC-EPR-002", "DR-GOV-2026-09-05", "96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md", "governance"):
             self.assertIn(required, out)
@@ -304,6 +306,48 @@ class DossierTests(unittest.TestCase):
             body = (self.root / rel).read_text()
             self.assertNotIn("prior/realized risk", body, rel)
             self.assertNotIn("deterministic execution plan compiler", body, rel)
+
+    def test_lifecycle_transitions_are_one_step(self):
+        self.run_tool("graph", "set", "M0.1", "IMPLEMENTING", ok=False, contains="one step at a time")
+        self.run_tool("graph", "set", "M0.1", "AUDITING")
+        self.run_tool("graph", "set", "M0.1", "BLOCKED", ok=False, contains="requires --note")
+        self.run_tool("graph", "set", "M0.1", "BLOCKED", "--note", "fixture blocker with reproduction")
+        self.run_tool("graph", "set", "M0.1", "IMPLEMENTING", ok=False, contains="resume at or below")
+        self.run_tool("graph", "set", "M0.1", "AUDITING")
+        self.run_tool("graph", "set", "M0.1", "NOT_STARTED", ok=False, contains="requires --note")
+        self.run_tool("graph", "set", "M0.1", "NOT_STARTED", "--note", "fixture regression")
+        self.run_tool("check_dossier", contains="OK:")
+
+    def test_gate_attestation_and_gated_rollup(self):
+        before = (self.root / "graph/project-graph.json").read_bytes()
+        self.run_tool("graph", "attest", "EPR-GATE-A", "--evidence", "run:fixture-gate", ok=False, contains="required tasks not COMPLETE")
+        self.run_tool("graph", "attest", "EPR-GATE-A", ok=False, contains="at least one --evidence")
+        self.run_tool("graph", "attest", "EPR-006", "--evidence", "run:fixture-gate", ok=False, contains="release gates only")
+        self.assertEqual(before, (self.root / "graph/project-graph.json").read_bytes())
+        out = self.run_tool("graph", "gates")
+        self.assertIn("EPR-GATE-G", out)
+        self.assertIn("OPEN", out)
+        self.assertIn("M10 is gated by", out)
+        g = self.graph()
+        for node in g["nodes"]:
+            if node["type"] in ("imp_task", "milestone_task"):
+                node["status"] = "COMPLETE"
+                node["evidence"] = ["run:fixture-all-complete"]
+        self.write_graph(g)
+        status = self.run_tool("graph", "status")
+        self.assertRegex(status, r"M10\s+GATED")
+        self.assertRegex(status, r"M9\s+COMPLETE")
+        for letter in "ABCDEFG":
+            self.run_tool("graph", "attest", "EPR-GATE-" + letter, "--evidence",
+                          "artifact:evidence/dossier-gov/validation.json", "--agent", "fixture-release-agent")
+        self.assertRegex(self.run_tool("graph", "status"), r"M10\s+COMPLETE")
+        self.assertIn("SATISFIED", self.run_tool("graph", "gates"))
+        g = self.graph()
+        nodes = {n["id"]: n for n in g["nodes"]}
+        nodes["EPR-019"]["status"] = "NOT_STARTED"
+        nodes["EPR-019"]["evidence"] = []
+        self.write_graph(g)
+        self.run_tool("check_dossier", ok=False, contains="[G7] EPR-GATE-D")
 
 
 if __name__ == "__main__":

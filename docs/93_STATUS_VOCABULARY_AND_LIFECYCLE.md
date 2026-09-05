@@ -28,7 +28,19 @@
 | `COMPLETE` | E2E proven | manifest row points to evidence refs; PR evidence template filled; remaining work empty |
 | `BLOCKED` | any | blocker recorded with reproduction and next safe action |
 
-Only `COMPLETE` means done. A milestone is `COMPLETE` only when every task in it is `COMPLETE` and the milestone proof in `43_IMPLEMENTATION_ROADMAP_AND_TASK_GRAPH.md` has evidence.
+Only `COMPLETE` means done. A milestone is `COMPLETE` only when every task in it is `COMPLETE`, the milestone proof in `43_IMPLEMENTATION_ROADMAP_AND_TASK_GRAPH.md` has evidence, and every release gate linked to it by `gated_by` is `SATISFIED`.
+
+## Transition rules (enforced by `tools/graph.py set`)
+
+- Forward moves advance exactly one state along the lifecycle. A node cannot jump from `NOT_STARTED` to `COMPLETE`; dossier tasks walk the same ladder and their stage-applicability table explains each step.
+- `E2E_PROVEN` and `COMPLETE` require evidence in the grammar below. Any state other than `NOT_STARTED` or `BLOCKED` requires upstream milestones and `after` prerequisites to be `COMPLETE`.
+- `BLOCKED` requires `--note` recording the blocker, reproduction and next safe action. The state it was blocked from is stored, and the node may leave `BLOCKED` only to that state or an earlier one.
+- Backward moves (evidence expiry, regression) may target any earlier state but require `--note`.
+- Setting the current state again is allowed and only appends evidence or notes.
+
+## Release gate state (derived)
+
+Release gates (`EPR-GATE-A..G`, `61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md`) carry no lifecycle status. Their state is derived: `OPEN` while any required task is not `COMPLETE`; `TASKS_COMPLETE` when every required task is `COMPLETE`; `SATISFIED` when, in addition, a release agent has recorded the gate's own evidence (approved threshold profile, holdout, shadow, canary and rollback results) with `python3 tools/graph.py attest EPR-GATE-x --evidence ...`. Attestation is refused while any required task is incomplete. A milestone linked to gates by `gated_by` (M10 to all seven) rolls up `GATED`, not `COMPLETE`, until every gate is `SATISFIED`. `tools/check_dossier.py` G7 rejects malformed gate evidence and attestations recorded ahead of their tasks; `python3 tools/graph.py gates` prints the table.
 
 ## Feature depth ladder (capabilities)
 

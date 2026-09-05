@@ -7,6 +7,10 @@ Commands
   set     <node-id> <STATE> [--evidence REF]... [--note TEXT] [--agent NAME]
           REF grammar: <kind>:<value>, kind in run|test|commit|revision|build|env|artifact|event|effect|checkpoint
           (docs/93); artifact: package paths must exist. Free text is rejected.
+          Transitions move one lifecycle step at a time; BLOCKED and backward moves need --note.
+  attest  <gate-id> --evidence REF... [--note TEXT] [--agent NAME]
+          record release-gate evidence; refused until every required task is COMPLETE
+  gates                      release-gate readiness: OPEN / TASKS_COMPLETE / SATISFIED, and gated milestones
   status                     milestone roll-up
   render  [--write]          mermaid/markdown view (stdout, or graph/PROJECT_GRAPH.md)
   path                       critical path and milestone dependency order
@@ -34,6 +38,8 @@ DECISION_STATES = ["LOCKED", "PROVISIONAL", "EXPERIMENT", "DEFERRED", "REJECTED"
 EVIDENCE_KINDS = ["run", "test", "commit", "revision", "build", "env", "artifact", "event", "effect", "checkpoint"]
 EVIDENCE_REF = re.compile(r"^(%s):([!-~]+)$" % "|".join(EVIDENCE_KINDS))
 PACKAGE_PATH = re.compile(r"^[A-Za-z0-9_./-]+$")
+GATE_STATES = ["OPEN", "TASKS_COMPLETE", "SATISFIED"]
+MILESTONE_GATED = "GATED"
 
 
 def evidence_ref_error(ref, root=ROOT):
@@ -116,6 +122,8 @@ class Index(object):
         if any(s == "BLOCKED" for s in states):
             return "BLOCKED"
         if all(s == "COMPLETE" for s in states):
+            if any(self.gate_state(gid) != "SATISFIED" for gid in self.milestone_gates(mid)):
+                return MILESTONE_GATED
             return "COMPLETE"
         if all(s == "NOT_STARTED" for s in states):
             return "NOT_STARTED"
@@ -123,6 +131,17 @@ class Index(object):
 
     def milestone_unblocked(self, mid):
         return all(self.milestone_state(d) == "COMPLETE" for d in self.outs(mid, "depends_on"))
+
+    # ---- release gates ------------------------------------------------------
+    def milestone_gates(self, mid):
+        return self.outs(mid, "gated_by")
+
+    def gate_state(self, gid):
+        """Derived, never stored: OPEN until every required task is COMPLETE, then TASKS_COMPLETE, then SATISFIED once attested."""
+        required = self.outs(gid, "requires_task")
+        if not required or any(self.nodes[t].get("status") != "COMPLETE" for t in required):
+            return "OPEN"
+        return "SATISFIED" if self.nodes[gid].get("evidence") else "TASKS_COMPLETE"
 
 
 def dependency_findings(ix):
@@ -141,6 +160,9 @@ def dependency_findings(ix):
             if any(ix.nodes[edge[k]]["type"] != "milestone" for k in ("from", "to")):
                 errors.append("depends_on edge must join milestones: %s" % edge)
             adjacency[edge["from"]].add(edge["to"])
+        elif edge["type"] == "gated_by":
+            if ix.nodes[edge["from"]]["type"] != "milestone" or ix.nodes[edge["to"]]["type"] != "release_gate":
+                errors.append("gated_by edge must join a milestone to a release gate: %s" % edge)
     for milestone in ix.by_type("milestone"):
         for task in ix.milestone_work(milestone["id"]):
             adjacency[milestone["id"]].add(task["id"])
@@ -244,6 +266,24 @@ def cmd_set(args):
             if ix.nodes[d].get("status") != "COMPLETE":
                 sys.exit("cannot %s %s: prerequisite %s is %s" % (args.state, n["id"], d, ix.nodes[d].get("status")))
     prev = n.get("status", "NOT_STARTED")
+    if args.state != prev:
+        if args.state == "BLOCKED":
+            if not args.note:
+                sys.exit("BLOCKED requires --note recording the blocker, reproduction and next safe action (docs/93)")
+            n["blocked_from"] = prev
+        elif prev == "BLOCKED":
+            ceiling = n.get("blocked_from", "NOT_STARTED")
+            if LIFECYCLE.index(args.state) > LIFECYCLE.index(ceiling):
+                sys.exit("cannot leave BLOCKED to %s: resume at or below the state it was blocked from (%s)" % (args.state, ceiling))
+            n.pop("blocked_from", None)
+        else:
+            step = LIFECYCLE.index(args.state) - LIFECYCLE.index(prev)
+            if step > 1:
+                sys.exit("cannot %s %s from %s: the lifecycle moves one step at a time (%s); docs/93" % (
+                    args.state, n["id"], prev, " -> ".join(LIFECYCLE)))
+            if step < 0 and not args.note:
+                sys.exit("moving %s back from %s to %s requires --note explaining the evidence expiry or regression (docs/93)" % (
+                    n["id"], prev, args.state))
     n["status"] = args.state
     if args.note:
         n.setdefault("notes", []).append({"at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -253,6 +293,50 @@ def cmd_set(args):
     n["status_changed_on"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     save(g)
     print("%s: %s → %s (evidence: %d)" % (n["id"], prev, args.state, len(n["evidence"])))
+
+
+def cmd_attest(args):
+    g = load()
+    ix = Index(g)
+    n = ix.nodes.get(args.id)
+    if not n:
+        sys.exit("unknown node: %s" % args.id)
+    if n["type"] != "release_gate":
+        sys.exit("attest applies to release gates only; %s is %s" % (n["id"], n["type"]))
+    if not args.evidence:
+        sys.exit("attest requires at least one --evidence reference with the gate's own proof (docs/61, docs/93)")
+    pending = [t for t in ix.outs(n["id"], "requires_task") if ix.nodes[t].get("status") != "COMPLETE"]
+    if pending:
+        sys.exit("cannot attest %s: required tasks not COMPLETE: %s" % (n["id"], ", ".join(pending)))
+    n.setdefault("evidence", [])
+    for ref in args.evidence:
+        err = evidence_ref_error(ref)
+        if err:
+            sys.exit("cannot record evidence on %s: %s" % (n["id"], err))
+        if ref not in n["evidence"]:
+            n["evidence"].append(ref)
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    n["attested_on"] = now
+    if args.agent:
+        n["attested_by"] = args.agent
+    if args.note:
+        n.setdefault("notes", []).append({"at": now, "note": args.note})
+    save(g)
+    print("%s: %s (evidence: %d)" % (n["id"], ix.gate_state(n["id"]), len(n["evidence"])))
+
+
+def cmd_gates(args):
+    ix = Index(load())
+    print("%-12s %-15s %9s %8s  %s" % ("GATE", "STATE", "TASKS", "EVIDENCE", "TITLE"))
+    for gate in sorted(ix.by_type("release_gate"), key=lambda n: n["id"]):
+        req = ix.outs(gate["id"], "requires_task")
+        done = sum(1 for t in req if ix.nodes[t].get("status") == "COMPLETE")
+        print("%-12s %-15s %4d/%-4d %8d  %s" % (gate["id"], ix.gate_state(gate["id"]), done, len(req),
+                                                len(gate.get("evidence", [])), gate["title"]))
+    for m in sorted(ix.by_type("milestone"), key=lambda n: n["order"]):
+        gates = ix.milestone_gates(m["id"])
+        if gates:
+            print("%s is gated by %s; roll-up state %s" % (m["id"], ", ".join(gates), ix.milestone_state(m["id"])))
 
 
 def rollup(ix):
@@ -444,10 +528,15 @@ def render(g):
     for t in epr_tasks:
         L.append("| %s | %s / %s | %s | %s | %s | %s / %s |" % (t["id"], t["milestone"], t["phase"], t.get("status", "NOT_STARTED"), t["subsystem"], ", ".join(ix.outs(t["id"], "after")), t["requirement"], t["qual"]))
     L.append("")
-    L.append("| Activation gate | Required tasks | Acceptance |")
-    L.append("|---|---|---|")
+    L.append("| Activation gate | State | Required tasks | Attestation evidence | Acceptance |")
+    L.append("|---|---|---|---|---|")
     for gate in sorted(ix.by_type("release_gate"), key=lambda n: n["id"]):
-        L.append("| %s: %s | %s | %s |" % (gate["id"], gate["title"], ", ".join(ix.outs(gate["id"], "requires_task")), gate["acceptance"].replace("|", "/")))
+        L.append("| %s: %s | %s | %s | %s | %s |" % (gate["id"], gate["title"], ix.gate_state(gate["id"]), ", ".join(ix.outs(gate["id"], "requires_task")),
+                                                   ", ".join(gate.get("evidence", [])) or "none", gate["acceptance"].replace("|", "/")))
+    L.append("")
+    L.append("Gate state is derived (docs/93): OPEN until every required task is COMPLETE, TASKS_COMPLETE, then SATISFIED once attested with `graph.py attest`. "
+             "A milestone linked by `gated_by` rolls up GATED, not COMPLETE, until all its gates are SATISFIED: " +
+             "; ".join("%s → %s" % (m["id"], ", ".join(ix.milestone_gates(m["id"]))) for m in ix.by_type("milestone") if ix.milestone_gates(m["id"])) + ".")
     L.append("")
     L.append("## Scoped v1.1 supersessions and source provenance")
     L.append("")
@@ -545,6 +634,8 @@ def main(argv=None):
     a = sp.add_parser("set"); a.add_argument("id"); a.add_argument("state")
     a.add_argument("--evidence", action="append"); a.add_argument("--note"); a.add_argument("--agent"); a.set_defaults(fn=cmd_set)
     a = sp.add_parser("status"); a.set_defaults(fn=cmd_status)
+    a = sp.add_parser("attest"); a.add_argument("id"); a.add_argument("--evidence", action="append"); a.add_argument("--note"); a.add_argument("--agent"); a.set_defaults(fn=cmd_attest)
+    a = sp.add_parser("gates"); a.set_defaults(fn=cmd_gates)
     a = sp.add_parser("render"); a.add_argument("--write", action="store_true"); a.set_defaults(fn=cmd_render)
     a = sp.add_parser("path"); a.set_defaults(fn=cmd_path)
     a = sp.add_parser("stats"); a.set_defaults(fn=cmd_stats)

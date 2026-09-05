@@ -94,7 +94,7 @@ python3 tools/graph.py set IMP-EV-0012 COMPLETE --evidence run:2026-09-14T10:22Z
 python3 tools/check_dossier.py
 ```
 
-Every `--evidence` value must follow the grammar `<kind>:<value>` with kind `run`, `test`, `commit`, `revision`, `build`, `env`, `artifact`, `event`, `effect` or `checkpoint` (`docs/93_STATUS_VOCABULARY_AND_LIFECYCLE.md`). An `artifact:` path inside the package must exist. The graph tool and `tools/check_dossier.py` reject anything else, including free text such as `done`.
+Every `--evidence` value must follow the grammar `<kind>:<value>` with kind `run`, `test`, `commit`, `revision`, `build`, `env`, `artifact`, `event`, `effect` or `checkpoint` (`docs/93_STATUS_VOCABULARY_AND_LIFECYCLE.md`). An `artifact:` path inside the package must exist. The graph tool and `tools/check_dossier.py` reject anything else, including free text such as `done`. Transitions move one lifecycle step at a time; `BLOCKED` and backward moves require `--note`. Release gates A–G are attested with `python3 tools/graph.py attest` only after their required tasks are `COMPLETE`, and M10 stays `GATED` until all seven are `SATISFIED`.
 
 ## Handoff
 

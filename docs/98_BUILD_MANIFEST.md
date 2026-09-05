@@ -14,7 +14,7 @@
 | M7 | live browser/computer use | NOT_STARTED | actual Chromium, same-session takeover, hostile-page test |
 | M8 | isolated cloud execution | NOT_STARTED | real guest, tenant isolation, loss/recovery |
 | M9 | memory/effects/security | NOT_STARTED | promotion policy + receipt chain + attack suite |
-| M10 | release hardening | NOT_STARTED | full Release Zero proof + package evidence |
+| M10 | release hardening | NOT_STARTED | full Release Zero proof + package evidence + EPR gates A–G SATISFIED |
 
 ## Task manifest rule
 
@@ -29,7 +29,7 @@ python3 tools/graph.py status
 python3 tools/check_dossier.py
 ```
 
-A milestone row here may not read `COMPLETE` while any task node in that milestone is not `COMPLETE`; `tools/check_dossier.py` enforces this.
+A milestone row here may not read `COMPLETE` while any task node in that milestone is not `COMPLETE`; `tools/check_dossier.py` enforces this. M10 reads `GATED` while its tasks are `COMPLETE` but a release gate is not yet attested (`python3 tools/graph.py gates`, `93_STATUS_VOCABULARY_AND_LIFECYCLE.md`).
 
 ## Execution policy adoption and live scope
 

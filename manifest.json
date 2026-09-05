@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 80,
-    "root_and_tooling": 25,
-    "docs_bytes": 806666
+    "root_and_tooling": 27,
+    "docs_bytes": 816149
   },
   "sections": [
     {
@@ -59,8 +59,8 @@
       "section": "authority",
       "section_title": "Authority and orientation",
       "title": "Modbit — AI-Agent Build Dossier V3.3 EPR v1.1",
-      "bytes": 13473,
-      "sha256": "f708b90d9a79c04ac52112b8a685c434af077b8919e41b255844d572f87b6e32"
+      "bytes": 13653,
+      "sha256": "92b14922729032dde5310a6e17da3937e669f5f940bcf9b297f6b2138ffaec04"
     },
     {
       "path": "docs/01_START_HERE_FOR_BUILD_AGENTS.md",
@@ -392,8 +392,8 @@
       "section": "requirements",
       "section_title": "Requirements, tasks and traceability",
       "title": "Implementation Roadmap and Verifiable Task Graph",
-      "bytes": 10071,
-      "sha256": "6d4d899c3f8fb45c9892bb88baa72c3d8c310471a663375499cdb11460de00c3"
+      "bytes": 10151,
+      "sha256": "6e5691535d4d84c8cb3d812fb3289021e05dd27ea4f8f3a4cb7fbe72187ba646"
     },
     {
       "path": "docs/44_REQUIREMENTS_TRACEABILITY_MATRIX.md",
@@ -554,8 +554,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Execution policy qualification and rollout gates",
-      "bytes": 41759,
-      "sha256": "5c5856fc45b83837b3450271017bb0eb516b620b9dd622fd3b49e3a1302b481a"
+      "bytes": 42076,
+      "sha256": "27acefadb50e86b616bbe64818f9f32ef04df15a3ba7bd4c9ab5344651a4d15b"
     },
     {
       "path": "docs/70_CI_CD_RELEASE_AND_SUPPLY_CHAIN.md",
@@ -599,8 +599,8 @@
       "section": "delivery",
       "section_title": "Delivery and operations",
       "title": "Package Integrity and Build Coverage",
-      "bytes": 3293,
-      "sha256": "66e61606ef25862a979f7fd0eebad55dd175beebe934d07461ea38a2dbc63b32"
+      "bytes": 3505,
+      "sha256": "9706b5272cbb6e630b51f9af1fc7e53ed3f38fdb0eb034f28c90e40001b8fa3f"
     },
     {
       "path": "docs/80_ANTI_SUPERFICIAL_IMPLEMENTATION_STANDARD.md",
@@ -725,8 +725,8 @@
       "section": "governance",
       "section_title": "Agent process and governance",
       "title": "Status Vocabulary and Lifecycle Reconciliation",
-      "bytes": 6478,
-      "sha256": "d83cfc849e56d9fabcfa78c636dd820d037bd5f9a7f2d4fbd715125eb5615cb6"
+      "bytes": 8226,
+      "sha256": "ec99a74df6df433be3b4bd9b5c3e60cb5c61700928e6c3aade635c03c3b1e7fe"
     },
     {
       "path": "docs/94_EXECUTION_POLICY_DOSSIER_TASK_AND_HANDOFF.md",
@@ -761,8 +761,8 @@
       "section": "governance",
       "section_title": "Agent process and governance",
       "title": "Dossier maintenance log",
-      "bytes": 8219,
-      "sha256": "867b3cb1805b04e2a7f30e085249539394d48f98857b688ed7b42706f965baa5"
+      "bytes": 14974,
+      "sha256": "e4bf77d082b7377861f4f6dbba6530fd1d4f73aa1b54429b9a192dd86154b928"
     },
     {
       "path": "docs/98_BUILD_MANIFEST.md",
@@ -770,15 +770,15 @@
       "section": "live-state",
       "section_title": "Live state",
       "title": "Build Manifest",
-      "bytes": 3174,
-      "sha256": "58ab8a2b04ee9cc88cd26a1cffbafeb9416a887bc8ba5860032aa3013c274b2b"
+      "bytes": 3365,
+      "sha256": "cd93a79836c8b39f5276f4d34b6031adb21f79a8a826b8c81861475eb8b851df"
     }
   ],
   "root_and_tooling": [
     {
       "path": "AGENTS.md",
-      "bytes": 8658,
-      "sha256": "e1792c0b3902482136a473aea46fbdc8690045624cb059099114bcdbd61aefff"
+      "bytes": 8925,
+      "sha256": "e6fdc7488e29517acf70323531b7f9ff6239bc37b125833694aadbcaf4a8b1ee"
     },
     {
       "path": "MODBIT-PATCH-EPR-v1.1-Supersession-and-Refinement.md",
@@ -792,13 +792,13 @@
     },
     {
       "path": "README.md",
-      "bytes": 7483,
-      "sha256": "fa5362de28a879e2795dc5387c7ff485cda775028eb663ec65004718af73333c"
+      "bytes": 7931,
+      "sha256": "6aae13ac4cda902e372be2023ae122b9715340167d61da7e9d9225d597c5e9ce"
     },
     {
       "path": "SKILLS.md",
-      "bytes": 16480,
-      "sha256": "7c24b9fa187948a7307a6c548461006a193925f0c9047c8a9f54ae5efc5535e2"
+      "bytes": 16962,
+      "sha256": "ec04e362a9ebf3809cda3fc589ed09b7face304548ad6b8b19e6170453d8744d"
     },
     {
       "path": "evidence/dossier-epr-v1.1/baseline.json",
@@ -846,6 +846,16 @@
       "sha256": "1ed2daef187391d67483160273931e79c96bf7d3c0f09c42da46933d40318829"
     },
     {
+      "path": "evidence/dossier-gov-003/baseline.json",
+      "bytes": 12931,
+      "sha256": "7e84a7abb4cebaed652a689f2921fbbae622708e87fa57372c79b801990bd013"
+    },
+    {
+      "path": "evidence/dossier-gov-003/tests.log",
+      "bytes": 2525,
+      "sha256": "9a9a4f4965c44ac8e0f70eae2fba09f00d32ed99e5cb98bb4436666bec5b4666"
+    },
+    {
       "path": "evidence/dossier-gov/baseline.json",
       "bytes": 11772,
       "sha256": "f9c8db7cc997add9aaa708929bc14bde5a04a84147c87b73ed5a78be9a43b6f3"
@@ -862,18 +872,18 @@
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 34650,
-      "sha256": "5a7c96f743ccdaed0235e44dac5ee55ca8803994630643de46c80102f55cd21f"
+      "bytes": 35435,
+      "sha256": "fed4b480715e58a264909648820e4debba2f0595aa64a5ce54cf899fd2526c8b"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 727019,
-      "sha256": "1185f6640edab481745194f2f5c8694b8a7d38bff5d67b6c9ac5d6c88e76c8fc"
+      "bytes": 729693,
+      "sha256": "867891ccbe712b4959d5d6ddcba83182b6be1ec8103449234c5d0fa8c4fc5aa5"
     },
     {
       "path": "tools/build_graph.py",
-      "bytes": 36619,
-      "sha256": "ba526f79a9a80ed6105466f7fbf8433a255b1a48ca52b704525268858b740954"
+      "bytes": 38012,
+      "sha256": "f27c098030d1b0ffa35c00c750ec7e74a784a774411f6d9c1050f864ad9d42ff"
     },
     {
       "path": "tools/build_manifest.py",
@@ -882,8 +892,8 @@
     },
     {
       "path": "tools/check_dossier.py",
-      "bytes": 13572,
-      "sha256": "f2a1c9440e6d0787ffef26507ef2fc9d978035da655e9f9aab43ec2d8b980b1d"
+      "bytes": 14189,
+      "sha256": "8b7881ee9092ef76f45bd208b028812f2e7b486724a4af965308db21ea3c336b"
     },
     {
       "path": "tools/dossier_epr.py",
@@ -892,13 +902,13 @@
     },
     {
       "path": "tools/graph.py",
-      "bytes": 26413,
-      "sha256": "5e9f61dcb380b24517df03d0284b4fa9c3dc9fc86ec69b852771be4373a5e144"
+      "bytes": 31816,
+      "sha256": "be5f0b73fe3de618196dd749e7fc730c4960962f6f87b837f45ffc3a8eb721ad"
     },
     {
       "path": "tools/test_dossier.py",
-      "bytes": 16739,
-      "sha256": "c246d0add34510d7ce090a3f7c6bca0ac08b0e08ef9949237066f21db92d7936"
+      "bytes": 19514,
+      "sha256": "920891cf25a4781e89064ce616377e3ceaac77620816c3bdc007ebe9608de573"
     }
   ],
   "renames_v3_to_v3_1": {

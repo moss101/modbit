@@ -31,7 +31,7 @@
   "requirement": "REQ-EV from docs/40 or additive REQ-EPR from docs/49",
   "imp_task": "IMP-EV from docs/41 or EPR from docs/49; carries status and evidence",
   "dossier_task": "governance package work outside product milestone roll-ups",
-  "release_gate": "EPR promotion gate from docs/61; evidence criteria, not a completion claim",
+  "release_gate": "EPR promotion gate from docs/61; derived state OPEN/TASKS_COMPLETE/SATISFIED; carries attestation evidence, never a lifecycle status",
   "source_patch": "immutable user-supplied patch provenance",
   "change_record": "explicit approved dossier amendment",
   "qual_test": "QUAL-EV from docs/42 or QUAL-EPR from docs/61",
@@ -59,7 +59,8 @@
   "authorized_by": "adopted task/decision/requirement → approved change record",
   "adopts": "change record → immutable source patch",
   "supersedes": "new authority → prior authority, only within the recorded scope",
-  "refines": "v1.1 source/change → previous source/change; non-conflicting authority survives"
+  "refines": "v1.1 source/change → previous source/change; non-conflicting authority survives",
+  "gated_by": "milestone → release gate that must be SATISFIED before the milestone rolls up COMPLETE"
  },
  "nodes": [
   {
@@ -864,7 +865,7 @@
    "title": "Release hardening",
    "priority": "",
    "order": 10,
-   "proof": "full Release Zero proof + package evidence",
+   "proof": "full Release Zero proof + package evidence + EPR gates A–G SATISFIED.",
    "source": "docs/43_IMPLEMENTATION_ROADMAP_AND_TASK_GRAPH.md",
    "scope": "release hardening"
   },
@@ -14311,7 +14312,8 @@
     "EPR-017"
    ],
    "acceptance": "Schema-2 conditional admission, every slot prevalidated/budgeted, finite retries/termination, no generated branch, separate risk/acceptance and no partial apply",
-   "source": "docs/61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md"
+   "source": "docs/61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md",
+   "evidence": []
   },
   {
    "id": "EPR-GATE-B",
@@ -14322,7 +14324,8 @@
     "EPR-005"
    ],
    "acceptance": "Actual initial-to-accept path preserves verified success, cost/latency tolerances, recovery/tool reliability and complete direct-attempt accounting",
-   "source": "docs/61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md"
+   "source": "docs/61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md",
+   "evidence": []
   },
   {
    "id": "EPR-GATE-C",
@@ -14335,7 +14338,8 @@
     "EPR-016"
    ],
    "acceptance": "Intrinsic profiler calibration/OOD, versioned representative statistics, LCB/posterior tau/delta, cold-start rejection, lowest-cost feasible and explicit QUALITY_FLOOR_INFEASIBLE",
-   "source": "docs/61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md"
+   "source": "docs/61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md",
+   "evidence": []
   },
   {
    "id": "EPR-GATE-D",
@@ -14347,7 +14351,8 @@
     "EPR-019"
    ],
    "acceptance": "Whole-plan conservative quality floor, lower complete expected cost on approved slice, bounded rejection/escalation latency; acceptance/risk error thresholds independently pass",
-   "source": "docs/61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md"
+   "source": "docs/61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md",
+   "evidence": []
   },
   {
    "id": "EPR-GATE-E",
@@ -14359,7 +14364,8 @@
     "EPR-019"
    ],
    "acceptance": "Relational defect/critical recall and success gain; acceptable false positives/churn/inference/tool/process cost; allowed ephemeral work and denied canonical/persistent/external effects; no solver hidden reasoning",
-   "source": "docs/61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md"
+   "source": "docs/61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md",
+   "evidence": []
   },
   {
    "id": "EPR-GATE-F",
@@ -14371,7 +14377,8 @@
     "EPR-016"
    ],
    "acceptance": "Confidence-feasible switch remains better after lost cache/refill/write/latency/hysteresis, no unnecessary switching regression, fenced slot/restart behavior",
-   "source": "docs/61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md"
+   "source": "docs/61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md",
+   "evidence": []
   },
   {
    "id": "EPR-GATE-G",
@@ -14385,7 +14392,8 @@
     "EPR-019"
    ],
    "acceptance": "Separate request/leg/gate attribution, holdout acceptance false accept/reject and realized-risk false negative/positive plus critical_surface_miss_rate within approved limits; controlled promotion/propensity, safe replay, compatible previous-good rollback",
-   "source": "docs/61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md"
+   "source": "docs/61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md",
+   "evidence": []
   },
   {
    "id": "MODBIT-PATCH-EPR-2026-09-05",
@@ -14743,6 +14751,23 @@
    ],
    "owner_agent": "claude-fable-5.1",
    "status_changed_on": "2026-09-05T10:33:18Z"
+  },
+  {
+   "id": "DR-GOV-2026-09-05-003",
+   "type": "change_record",
+   "title": "Approved release-gate attestation and one-step lifecycle enforcement",
+   "status": "APPROVED",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md"
+  },
+  {
+   "id": "DOC-GOV-003",
+   "type": "dossier_task",
+   "title": "Enforce release-gate attestation and one-step lifecycle transitions",
+   "subsystem": "governance",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
+   "acceptance": "gated_by edges, derived gate states, attest/gates commands, GATED roll-up, one-step transitions with noted BLOCKED/backward moves, G7 check; copied-package tests pass; no product proof",
+   "status": "NOT_STARTED",
+   "evidence": []
   }
  ],
  "edges": [
@@ -15927,6 +15952,11 @@
    "type": "references"
   },
   {
+   "from": "61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md",
+   "to": "93_STATUS_VOCABULARY_AND_LIFECYCLE.md",
+   "type": "references"
+  },
+  {
    "from": "70_CI_CD_RELEASE_AND_SUPPLY_CHAIN.md",
    "to": "51_E2E_ACCEPTANCE_TEST_CATALOG.md",
    "type": "references"
@@ -15974,6 +16004,11 @@
   {
    "from": "93_STATUS_VOCABULARY_AND_LIFECYCLE.md",
    "to": "43_IMPLEMENTATION_ROADMAP_AND_TASK_GRAPH.md",
+   "type": "references"
+  },
+  {
+   "from": "93_STATUS_VOCABULARY_AND_LIFECYCLE.md",
+   "to": "61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md",
    "type": "references"
   },
   {
@@ -16553,12 +16588,27 @@
   },
   {
    "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "43_IMPLEMENTATION_ROADMAP_AND_TASK_GRAPH.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
    "to": "44_REQUIREMENTS_TRACEABILITY_MATRIX.md",
    "type": "references"
   },
   {
    "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
    "to": "74_PACKAGE_INTEGRITY_AND_BUILD_COVERAGE.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "93_STATUS_VOCABULARY_AND_LIFECYCLE.md",
    "type": "references"
   },
   {
@@ -28347,6 +28397,11 @@
    "type": "specified_by"
   },
   {
+   "from": "M10",
+   "to": "EPR-GATE-A",
+   "type": "gated_by"
+  },
+  {
    "from": "EPR-GATE-A",
    "to": "EPR-001",
    "type": "requires_task"
@@ -28422,6 +28477,11 @@
    "type": "specified_by"
   },
   {
+   "from": "M10",
+   "to": "EPR-GATE-B",
+   "type": "gated_by"
+  },
+  {
    "from": "EPR-GATE-B",
    "to": "EPR-000",
    "type": "requires_task"
@@ -28445,6 +28505,11 @@
    "from": "EPR-GATE-C",
    "to": "61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md",
    "type": "specified_by"
+  },
+  {
+   "from": "M10",
+   "to": "EPR-GATE-C",
+   "type": "gated_by"
   },
   {
    "from": "EPR-GATE-C",
@@ -28492,6 +28557,11 @@
    "type": "specified_by"
   },
   {
+   "from": "M10",
+   "to": "EPR-GATE-D",
+   "type": "gated_by"
+  },
+  {
    "from": "EPR-GATE-D",
    "to": "EPR-006",
    "type": "requires_task"
@@ -28525,6 +28595,11 @@
    "from": "EPR-GATE-E",
    "to": "61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md",
    "type": "specified_by"
+  },
+  {
+   "from": "M10",
+   "to": "EPR-GATE-E",
+   "type": "gated_by"
   },
   {
    "from": "EPR-GATE-E",
@@ -28562,6 +28637,11 @@
    "type": "specified_by"
   },
   {
+   "from": "M10",
+   "to": "EPR-GATE-F",
+   "type": "gated_by"
+  },
+  {
    "from": "EPR-GATE-F",
    "to": "EPR-000",
    "type": "requires_task"
@@ -28595,6 +28675,11 @@
    "from": "EPR-GATE-G",
    "to": "61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md",
    "type": "specified_by"
+  },
+  {
+   "from": "M10",
+   "to": "EPR-GATE-G",
+   "type": "gated_by"
   },
   {
    "from": "EPR-GATE-G",
@@ -29145,7 +29230,31 @@
    "from": "DOC-GOV-002",
    "to": "DR-GOV-2026-09-05-002",
    "type": "authorized_by"
+  },
+  {
+   "from": "DR-GOV-2026-09-05-003",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-GOV-003",
+   "to": "DOC-GOV-002",
+   "type": "after"
+  },
+  {
+   "from": "DOC-GOV-003",
+   "to": "governance",
+   "type": "owned_by"
+  },
+  {
+   "from": "DOC-GOV-003",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-GOV-003",
+   "to": "DR-GOV-2026-09-05-003",
+   "type": "authorized_by"
   }
- ],
- "updated_on": "2026-09-05T10:33:18Z"
+ ]
 }
