@@ -331,6 +331,14 @@
    "section": "architecture"
   },
   {
+   "id": "28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
+   "type": "doc",
+   "title": "Agent competence: planning, verification and repair",
+   "path": "docs/28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
+   "number": 28,
+   "section": "architecture"
+  },
+  {
    "id": "29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md",
    "type": "doc",
    "title": "Client surfaces and source-control integration",
@@ -592,6 +600,14 @@
    "title": "Product extension requirements, tasks and qualifications",
    "path": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
    "number": 62,
+   "section": "verification"
+  },
+  {
+   "id": "63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
+   "type": "doc",
+   "title": "Agent competence benchmarks and regression suites",
+   "path": "docs/63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
+   "number": 63,
    "section": "verification"
   },
   {
@@ -14623,6 +14639,110 @@
    "mandatory_behavior": "Deferred proof: comments and notifications are durable events with provenance and never authority"
   },
   {
+   "id": "REQ-PX-014",
+   "type": "requirement",
+   "title": "Understanding and planning contract",
+   "disposition": "ADOPT",
+   "subsystem": "core-runtime",
+   "owner_label": "core-runtime",
+   "imp": "PX-014",
+   "qual": "QUAL-PX-014",
+   "release": "ALPHA",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Real fixture task: the agent records a plan through plan.update before the first write, asks exactly one typed question on an ambiguous fixture and none on an unambiguous one, and plan revisions appear as events in the timeline"
+  },
+  {
+   "id": "REQ-PX-015",
+   "type": "requirement",
+   "title": "Retrieval-before-edit contract",
+   "disposition": "ADOPT",
+   "subsystem": "context-engine",
+   "owner_label": "context-engine",
+   "imp": "PX-015",
+   "qual": "QUAL-PX-015",
+   "release": "BETA",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Real fixture task: every edited file has a retrieval record at the current workspace revision and the Context Ledger records use; symbol edits show definition and reference retrieval"
+  },
+  {
+   "id": "REQ-PX-016",
+   "type": "requirement",
+   "title": "Change strategy contract",
+   "disposition": "ADOPT",
+   "subsystem": "workspace-git",
+   "owner_label": "workspace-git",
+   "imp": "PX-016",
+   "qual": "QUAL-PX-016",
+   "release": "ALPHA",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Real fixture task with a test harness: failing test written first, then the change; diffs are revision-bound ChangeTransactions with one concern each; a file outside the plan triggers a plan revision event"
+  },
+  {
+   "id": "REQ-PX-017",
+   "type": "requirement",
+   "title": "Verification plan derivation contract",
+   "disposition": "ADOPT",
+   "subsystem": "verification",
+   "owner_label": "verification",
+   "imp": "PX-017",
+   "qual": "QUAL-PX-017",
+   "release": "ALPHA",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Real fixture: derived verification plan recorded before the first run with build, typecheck, targeted tests, diagnostics delta and diff invariants; agent-added checks appear; mandatory checks cannot be removed"
+  },
+  {
+   "id": "REQ-PX-018",
+   "type": "requirement",
+   "title": "Bounded evidence-driven repair loop with RepairAttempt records",
+   "disposition": "ADOPT",
+   "subsystem": "core-runtime",
+   "owner_label": "core-runtime",
+   "imp": "PX-018",
+   "qual": "QUAL-PX-018",
+   "release": "ALPHA",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Seeded failing fixture: each repair attempt records failure signature, hypothesis, evidence, intended fix, change ref and verification result before the next run; a repeated equivalent hypothesis triggers escalation or Needs Attention with the attempt history; attempt bounds from policy are enforced"
+  },
+  {
+   "id": "REQ-PX-019",
+   "type": "requirement",
+   "title": "Self-review and completion contract",
+   "disposition": "ADOPT",
+   "subsystem": "verification",
+   "owner_label": "verification",
+   "imp": "PX-019",
+   "qual": "QUAL-PX-019",
+   "release": "ALPHA",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Real fixture: the SelfReview step lists plan coverage, executed verifications, receipts, scope and leftovers; unresolved findings block the completion proposal; the Acceptance Gate, not the agent, decides completion"
+  },
+  {
+   "id": "REQ-PX-020",
+   "type": "requirement",
+   "title": "Fixed M2 competence baseline on public and internal suites",
+   "disposition": "ADOPT",
+   "subsystem": "eval-bench",
+   "owner_label": "eval-bench",
+   "imp": "PX-020",
+   "qual": "QUAL-PX-020",
+   "release": "BETA",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Both suites run under the frozen protocol on the real M2 product with the direct configuration; the immutable baseline bundle (digests, model metadata, per-task results, intervals) is recorded and referenced by digest"
+  },
+  {
+   "id": "REQ-PX-021",
+   "type": "requirement",
+   "title": "Competence regression gate and targets after baseline",
+   "disposition": "ADOPT",
+   "subsystem": "eval-bench",
+   "owner_label": "eval-bench",
+   "imp": "PX-021",
+   "qual": "QUAL-PX-021",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Targets set by Decision Record per metric and tier after the baseline; the release candidate competence gate fails on regression beyond approved thresholds with intervals, including cost-improving routing changes that regress competence"
+  },
+  {
    "id": "PX-000",
    "type": "imp_task",
    "title": "Headless CLI thin client for the task lifecycle",
@@ -14897,6 +15017,205 @@
    "evidence": []
   },
   {
+   "id": "PX-014",
+   "type": "imp_task",
+   "title": "Understanding and planning contract",
+   "requirement": "REQ-PX-014",
+   "qual": "QUAL-PX-014",
+   "subsystem": "core-runtime",
+   "owner_label": "core-runtime",
+   "milestone": "M2",
+   "release": "ALPHA",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "Real fixture task: the agent records a plan through plan.update before the first write, asks exactly one typed question on an ambiguous fixture and none on an unambiguous one, and plan revisions appear as events in the timeline",
+   "prerequisites": [
+    "M2.7"
+   ],
+   "related_requirements": [
+    "REQ-EV-0010"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-014",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-015",
+   "type": "imp_task",
+   "title": "Retrieval-before-edit contract",
+   "requirement": "REQ-PX-015",
+   "qual": "QUAL-PX-015",
+   "subsystem": "context-engine",
+   "owner_label": "context-engine",
+   "milestone": "M3",
+   "release": "BETA",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "Real fixture task: every edited file has a retrieval record at the current workspace revision and the Context Ledger records use; symbol edits show definition and reference retrieval",
+   "prerequisites": [
+    "M3.7",
+    "PX-014"
+   ],
+   "related_requirements": [
+    "REQ-EV-0010"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-015",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-016",
+   "type": "imp_task",
+   "title": "Change strategy contract",
+   "requirement": "REQ-PX-016",
+   "qual": "QUAL-PX-016",
+   "subsystem": "workspace-git",
+   "owner_label": "workspace-git",
+   "milestone": "M2",
+   "release": "ALPHA",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "Real fixture task with a test harness: failing test written first, then the change; diffs are revision-bound ChangeTransactions with one concern each; a file outside the plan triggers a plan revision event",
+   "prerequisites": [
+    "M2.1",
+    "M2.2",
+    "PX-014"
+   ],
+   "related_requirements": [
+    "REQ-EV-0010"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-016",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-017",
+   "type": "imp_task",
+   "title": "Verification plan derivation contract",
+   "requirement": "REQ-PX-017",
+   "qual": "QUAL-PX-017",
+   "subsystem": "verification",
+   "owner_label": "verification",
+   "milestone": "M2",
+   "release": "ALPHA",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "Real fixture: derived verification plan recorded before the first run with build, typecheck, targeted tests, diagnostics delta and diff invariants; agent-added checks appear; mandatory checks cannot be removed",
+   "prerequisites": [
+    "M2.8",
+    "PX-014"
+   ],
+   "related_requirements": [
+    "REQ-EV-0010"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-017",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-018",
+   "type": "imp_task",
+   "title": "Bounded evidence-driven repair loop with RepairAttempt records",
+   "requirement": "REQ-PX-018",
+   "qual": "QUAL-PX-018",
+   "subsystem": "core-runtime",
+   "owner_label": "core-runtime",
+   "milestone": "M2",
+   "release": "ALPHA",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "Seeded failing fixture: each repair attempt records failure signature, hypothesis, evidence, intended fix, change ref and verification result before the next run; a repeated equivalent hypothesis triggers escalation or Needs Attention with the attempt history; attempt bounds from policy are enforced",
+   "prerequisites": [
+    "PX-017"
+   ],
+   "related_requirements": [
+    "REQ-EV-0010"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-018",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-019",
+   "type": "imp_task",
+   "title": "Self-review and completion contract",
+   "requirement": "REQ-PX-019",
+   "qual": "QUAL-PX-019",
+   "subsystem": "verification",
+   "owner_label": "verification",
+   "milestone": "M2",
+   "release": "ALPHA",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "Real fixture: the SelfReview step lists plan coverage, executed verifications, receipts, scope and leftovers; unresolved findings block the completion proposal; the Acceptance Gate, not the agent, decides completion",
+   "prerequisites": [
+    "PX-018"
+   ],
+   "related_requirements": [
+    "REQ-EV-0010"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-019",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-020",
+   "type": "imp_task",
+   "title": "Fixed M2 competence baseline on public and internal suites",
+   "requirement": "REQ-PX-020",
+   "qual": "QUAL-PX-020",
+   "subsystem": "eval-bench",
+   "owner_label": "eval-bench",
+   "milestone": "M3",
+   "release": "BETA",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "Both suites run under the frozen protocol on the real M2 product with the direct configuration; the immutable baseline bundle (digests, model metadata, per-task results, intervals) is recorded and referenced by digest",
+   "prerequisites": [
+    "M2.9",
+    "PX-019",
+    "M3.9"
+   ],
+   "related_requirements": [
+    "REQ-EV-0029"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-020",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-021",
+   "type": "imp_task",
+   "title": "Competence regression gate and targets after baseline",
+   "requirement": "REQ-PX-021",
+   "qual": "QUAL-PX-021",
+   "subsystem": "eval-bench",
+   "owner_label": "eval-bench",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "Targets set by Decision Record per metric and tier after the baseline; the release candidate competence gate fails on regression beyond approved thresholds with intervals, including cost-improving routing changes that regress competence",
+   "prerequisites": [
+    "PX-020",
+    "M10.4"
+   ],
+   "related_requirements": [
+    "REQ-EV-0029"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-021",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
    "id": "QUAL-PX-000",
    "type": "qual_test",
    "requirement": "REQ-PX-000",
@@ -15037,6 +15356,86 @@
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
   },
   {
+   "id": "QUAL-PX-014",
+   "type": "qual_test",
+   "requirement": "REQ-PX-014",
+   "owner_label": "core-runtime",
+   "title": "Real fixture task: the agent records a plan through plan.update before the first write, asks exactly one typed question on an ambiguous fixture and none on an unambiguous one, and plan revisions appear as events in the timeline",
+   "failure_proof": "A write before any plan is rejected by Core; a question that merely confirms verifiable repository facts is flagged by the internal suite",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-015",
+   "type": "qual_test",
+   "requirement": "REQ-PX-015",
+   "owner_label": "context-engine",
+   "title": "Real fixture task: every edited file has a retrieval record at the current workspace revision and the Context Ledger records use; symbol edits show definition and reference retrieval",
+   "failure_proof": "An edit to a file without a retrieval record is rejected as a ToolCallPolicyDecision; a stale-revision retrieval does not satisfy the rule",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-016",
+   "type": "qual_test",
+   "requirement": "REQ-PX-016",
+   "owner_label": "workspace-git",
+   "title": "Real fixture task with a test harness: failing test written first, then the change; diffs are revision-bound ChangeTransactions with one concern each; a file outside the plan triggers a plan revision event",
+   "failure_proof": "Silent scope widening without a plan revision is rejected; lockfile edited by hand rather than by its generator is flagged",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-017",
+   "type": "qual_test",
+   "requirement": "REQ-PX-017",
+   "owner_label": "verification",
+   "title": "Real fixture: derived verification plan recorded before the first run with build, typecheck, targeted tests, diagnostics delta and diff invariants; agent-added checks appear; mandatory checks cannot be removed",
+   "failure_proof": "Attempt to delete a mandatory check is rejected; a task that fails still has its recorded plan",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-018",
+   "type": "qual_test",
+   "requirement": "REQ-PX-018",
+   "owner_label": "core-runtime",
+   "title": "Seeded failing fixture: each repair attempt records failure signature, hypothesis, evidence, intended fix, change ref and verification result before the next run; a repeated equivalent hypothesis triggers escalation or Needs Attention with the attempt history; attempt bounds from policy are enforced",
+   "failure_proof": "A change after a failed verification without a RepairAttempt is rejected; equivalent hypothesis executed twice is impossible; bound exhaustion never truncates silently; WORSENED attempts are reverted or justified",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-019",
+   "type": "qual_test",
+   "requirement": "REQ-PX-019",
+   "owner_label": "verification",
+   "title": "Real fixture: the SelfReview step lists plan coverage, executed verifications, receipts, scope and leftovers; unresolved findings block the completion proposal; the Acceptance Gate, not the agent, decides completion",
+   "failure_proof": "A completion proposal without a SelfReview or with unresolved findings is rejected; agent text claiming done changes nothing",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-020",
+   "type": "qual_test",
+   "requirement": "REQ-PX-020",
+   "owner_label": "eval-bench",
+   "title": "Both suites run under the frozen protocol on the real M2 product with the direct configuration; the immutable baseline bundle (digests, model metadata, per-task results, intervals) is recorded and referenced by digest",
+   "failure_proof": "A baseline with gold-patch access, unpinned images or missing trial counts is rejected; no target may be recorded before this baseline exists",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-021",
+   "type": "qual_test",
+   "requirement": "REQ-PX-021",
+   "owner_label": "eval-bench",
+   "title": "Targets set by Decision Record per metric and tier after the baseline; the release candidate competence gate fails on regression beyond approved thresholds with intervals, including cost-improving routing changes that regress competence",
+   "failure_proof": "A target recorded without a baseline digest is rejected; a candidate that regresses first-pass success or repair-loop distribution cannot pass the gate regardless of routing savings",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
    "id": "PX-E2E-000",
    "type": "scenario",
    "kind": "px-e2e",
@@ -15111,6 +15510,62 @@
    "type": "scenario",
    "kind": "px-e2e",
    "title": "Webhook intake through the Cloud API",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-014",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Plan before write",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-015",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "No edit without retrieval",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-016",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Tests first, scope disciplined",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-017",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Verification plan recorded first",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-018",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Bounded repair with escalation on repeated hypothesis",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-019",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Self-review gates the completion proposal",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-020",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Baseline bundle",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-021",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Regression gate",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
   },
   {
@@ -15709,6 +16164,16 @@
    "status_changed_on": "2026-09-05T12:35:47Z"
   },
   {
+   "id": "DOC-PX-003",
+   "type": "dossier_task",
+   "title": "Product extension stage C: agent competence contracts and benchmarks",
+   "subsystem": "governance",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
+   "acceptance": "Stage sealed on main with change and seal commits; full integrity gate passes; no product proof",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
    "id": "ALPHA",
    "type": "release",
    "title": "Local coding loop and recovery spine",
@@ -15861,6 +16326,11 @@
   },
   {
    "from": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "to": "section:architecture",
+   "type": "in_section"
+  },
+  {
+   "from": "28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
    "to": "section:architecture",
    "type": "in_section"
   },
@@ -16026,6 +16496,11 @@
   },
   {
    "from": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "to": "section:verification",
+   "type": "in_section"
+  },
+  {
+   "from": "63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
    "to": "section:verification",
    "type": "in_section"
   },
@@ -16281,6 +16756,11 @@
   },
   {
    "from": "00_MASTER_INDEX.md",
+   "to": "28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
+   "type": "references"
+  },
+  {
+   "from": "00_MASTER_INDEX.md",
    "to": "29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md",
    "type": "references"
   },
@@ -16442,6 +16922,11 @@
   {
    "from": "00_MASTER_INDEX.md",
    "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "references"
+  },
+  {
+   "from": "00_MASTER_INDEX.md",
+   "to": "63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
    "type": "references"
   },
   {
@@ -16821,12 +17306,22 @@
   },
   {
    "from": "13_DOMAIN_MODEL_AND_STATE_MACHINES.md",
+   "to": "28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
+   "type": "references"
+  },
+  {
+   "from": "13_DOMAIN_MODEL_AND_STATE_MACHINES.md",
    "to": "38_EXECUTION_POLICY_CONTRACTS_AND_ALGORITHMS.md",
    "type": "references"
   },
   {
    "from": "14_AGENT_RUNTIME_AND_ORCHESTRATION.md",
    "to": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "type": "references"
+  },
+  {
+   "from": "14_AGENT_RUNTIME_AND_ORCHESTRATION.md",
+   "to": "28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
    "type": "references"
   },
   {
@@ -17030,6 +17525,56 @@
    "type": "references"
   },
   {
+   "from": "28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
+   "to": "07_PRODUCT_EXTENSION_DECISION_RECORD.md",
+   "type": "references"
+  },
+  {
+   "from": "28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
+   "to": "13_DOMAIN_MODEL_AND_STATE_MACHINES.md",
+   "type": "references"
+  },
+  {
+   "from": "28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
+   "to": "14_AGENT_RUNTIME_AND_ORCHESTRATION.md",
+   "type": "references"
+  },
+  {
+   "from": "28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
+   "to": "18_CONTEXT_RETRIEVAL_AND_ENGINEERING_KNOWLEDGE.md",
+   "type": "references"
+  },
+  {
+   "from": "28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
+   "to": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "type": "references"
+  },
+  {
+   "from": "28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
+   "to": "30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md",
+   "type": "references"
+  },
+  {
+   "from": "28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
+   "to": "31_DATABASE_AND_STORAGE_SCHEMA.md",
+   "type": "references"
+  },
+  {
+   "from": "28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
+   "to": "33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md",
+   "type": "references"
+  },
+  {
+   "from": "28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
+   "to": "63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
+   "type": "references"
+  },
+  {
+   "from": "28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
+   "to": "83_DEFINITION_OF_DONE_AND_ACCEPTANCE.md",
+   "type": "references"
+  },
+  {
    "from": "29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md",
    "to": "07_PRODUCT_EXTENSION_DECISION_RECORD.md",
    "type": "references"
@@ -17056,6 +17601,11 @@
   },
   {
    "from": "30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md",
+   "to": "28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
+   "type": "references"
+  },
+  {
+   "from": "30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md",
    "to": "29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md",
    "type": "references"
   },
@@ -17067,6 +17617,11 @@
   {
    "from": "30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md",
    "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "references"
+  },
+  {
+   "from": "31_DATABASE_AND_STORAGE_SCHEMA.md",
+   "to": "28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
    "type": "references"
   },
   {
@@ -17220,6 +17775,11 @@
    "type": "references"
   },
   {
+   "from": "53_PERFORMANCE_AND_BENCHMARK_PLAN.md",
+   "to": "63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
+   "type": "references"
+  },
+  {
    "from": "59_RELEASE_ZERO_PROOF_SCENARIO.md",
    "to": "60_RELEASE_ZERO_EXPANDED_PROOF.md",
    "type": "references"
@@ -17251,6 +17811,11 @@
   },
   {
    "from": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "to": "28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
+   "type": "references"
+  },
+  {
+   "from": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
    "to": "29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md",
    "type": "references"
   },
@@ -17261,7 +17826,17 @@
   },
   {
    "from": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "to": "63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
+   "type": "references"
+  },
+  {
+   "from": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
    "to": "75_PHASED_RELEASE_PLAN_AND_READINESS.md",
+   "type": "references"
+  },
+  {
+   "from": "63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
+   "to": "50_TEST_STRATEGY_REAL_SYSTEM_GATES.md",
    "type": "references"
   },
   {
@@ -17926,6 +18501,11 @@
   },
   {
    "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "13_DOMAIN_MODEL_AND_STATE_MACHINES.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
    "to": "14_AGENT_RUNTIME_AND_ORCHESTRATION.md",
    "type": "references"
   },
@@ -17966,12 +18546,22 @@
   },
   {
    "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
    "to": "29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md",
    "type": "references"
   },
   {
    "from": "97_DOSSIER_MAINTENANCE_LOG.md",
    "to": "30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "31_DATABASE_AND_STORAGE_SCHEMA.md",
    "type": "references"
   },
   {
@@ -18011,6 +18601,11 @@
   },
   {
    "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "53_PERFORMANCE_AND_BENCHMARK_PLAN.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
    "to": "56_TOOL_CAPABILITY_CONFORMANCE.md",
    "type": "references"
   },
@@ -18022,6 +18617,11 @@
   {
    "from": "97_DOSSIER_MAINTENANCE_LOG.md",
    "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
    "type": "references"
   },
   {
@@ -18965,6 +19565,11 @@
    "type": "specified_by"
   },
   {
+   "from": "core-runtime",
+   "to": "28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
+   "type": "specified_by"
+  },
+  {
    "from": "desktop",
    "to": "M1",
    "type": "delivered_in"
@@ -19046,12 +19651,22 @@
   },
   {
    "from": "verification",
+   "to": "28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "verification",
    "to": "50_TEST_STRATEGY_REAL_SYSTEM_GATES.md",
    "type": "specified_by"
   },
   {
    "from": "verification",
    "to": "51_E2E_ACCEPTANCE_TEST_CATALOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "verification",
+   "to": "63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
    "type": "specified_by"
   },
   {
@@ -19067,6 +19682,11 @@
   {
    "from": "context-engine",
    "to": "18_CONTEXT_RETRIEVAL_AND_ENGINEERING_KNOWLEDGE.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "context-engine",
+   "to": "28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
    "type": "specified_by"
   },
   {
@@ -19122,6 +19742,11 @@
   {
    "from": "eval-bench",
    "to": "61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "eval-bench",
+   "to": "63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
    "type": "specified_by"
   },
   {
@@ -30545,6 +31170,206 @@
    "type": "authorized_by"
   },
   {
+   "from": "REQ-PX-014",
+   "to": "core-runtime",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-014",
+   "to": "QUAL-PX-014",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-014",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-014",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-014",
+   "to": "PX-014",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-015",
+   "to": "context-engine",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-015",
+   "to": "QUAL-PX-015",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-015",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-015",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-015",
+   "to": "PX-015",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-016",
+   "to": "workspace-git",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-016",
+   "to": "QUAL-PX-016",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-016",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-016",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-016",
+   "to": "PX-016",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-017",
+   "to": "verification",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-017",
+   "to": "QUAL-PX-017",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-017",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-017",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-017",
+   "to": "PX-017",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-018",
+   "to": "core-runtime",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-018",
+   "to": "QUAL-PX-018",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-018",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-018",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-018",
+   "to": "PX-018",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-019",
+   "to": "verification",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-019",
+   "to": "QUAL-PX-019",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-019",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-019",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-019",
+   "to": "PX-019",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-020",
+   "to": "eval-bench",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-020",
+   "to": "QUAL-PX-020",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-020",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-020",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-020",
+   "to": "PX-020",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-021",
+   "to": "eval-bench",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-021",
+   "to": "QUAL-PX-021",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-021",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-021",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-021",
+   "to": "PX-021",
+   "type": "implemented_by"
+  },
+  {
    "from": "PX-000",
    "to": "DR-PX-2026-09-05",
    "type": "authorized_by"
@@ -31087,6 +31912,401 @@
   {
    "from": "PX-E2E-011",
    "to": "M8",
+   "type": "proves"
+  },
+  {
+   "from": "PX-014",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-014",
+   "to": "core-runtime",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-014",
+   "to": "M2",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-014",
+   "to": "QUAL-PX-014",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-014",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-014",
+   "to": "M2.7",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-014",
+   "to": "REQ-EV-0010",
+   "type": "extends"
+  },
+  {
+   "from": "PX-014",
+   "to": "PX-E2E-014",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-014",
+   "to": "M2",
+   "type": "proves"
+  },
+  {
+   "from": "PX-015",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-015",
+   "to": "context-engine",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-015",
+   "to": "M3",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-015",
+   "to": "QUAL-PX-015",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-015",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-015",
+   "to": "M3.7",
+   "type": "after"
+  },
+  {
+   "from": "PX-015",
+   "to": "PX-014",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-015",
+   "to": "REQ-EV-0010",
+   "type": "extends"
+  },
+  {
+   "from": "PX-015",
+   "to": "PX-E2E-015",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-015",
+   "to": "M3",
+   "type": "proves"
+  },
+  {
+   "from": "PX-016",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-016",
+   "to": "workspace-git",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-016",
+   "to": "M2",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-016",
+   "to": "QUAL-PX-016",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-016",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-016",
+   "to": "M2.1",
+   "type": "after"
+  },
+  {
+   "from": "PX-016",
+   "to": "M2.2",
+   "type": "after"
+  },
+  {
+   "from": "PX-016",
+   "to": "PX-014",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-016",
+   "to": "REQ-EV-0010",
+   "type": "extends"
+  },
+  {
+   "from": "PX-016",
+   "to": "PX-E2E-016",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-016",
+   "to": "M2",
+   "type": "proves"
+  },
+  {
+   "from": "PX-017",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-017",
+   "to": "verification",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-017",
+   "to": "M2",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-017",
+   "to": "QUAL-PX-017",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-017",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-017",
+   "to": "M2.8",
+   "type": "after"
+  },
+  {
+   "from": "PX-017",
+   "to": "PX-014",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-017",
+   "to": "REQ-EV-0010",
+   "type": "extends"
+  },
+  {
+   "from": "PX-017",
+   "to": "PX-E2E-017",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-017",
+   "to": "M2",
+   "type": "proves"
+  },
+  {
+   "from": "PX-018",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-018",
+   "to": "core-runtime",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-018",
+   "to": "M2",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-018",
+   "to": "QUAL-PX-018",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-018",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-018",
+   "to": "PX-017",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-018",
+   "to": "REQ-EV-0010",
+   "type": "extends"
+  },
+  {
+   "from": "PX-018",
+   "to": "PX-E2E-018",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-018",
+   "to": "M2",
+   "type": "proves"
+  },
+  {
+   "from": "PX-019",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-019",
+   "to": "verification",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-019",
+   "to": "M2",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-019",
+   "to": "QUAL-PX-019",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-019",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-019",
+   "to": "PX-018",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-019",
+   "to": "REQ-EV-0010",
+   "type": "extends"
+  },
+  {
+   "from": "PX-019",
+   "to": "PX-E2E-019",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-019",
+   "to": "M2",
+   "type": "proves"
+  },
+  {
+   "from": "PX-020",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-020",
+   "to": "eval-bench",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-020",
+   "to": "M3",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-020",
+   "to": "QUAL-PX-020",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-020",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-020",
+   "to": "M2.9",
+   "type": "after"
+  },
+  {
+   "from": "PX-020",
+   "to": "PX-019",
+   "type": "after"
+  },
+  {
+   "from": "PX-020",
+   "to": "M3.9",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-020",
+   "to": "REQ-EV-0029",
+   "type": "extends"
+  },
+  {
+   "from": "PX-020",
+   "to": "PX-E2E-020",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-020",
+   "to": "M3",
+   "type": "proves"
+  },
+  {
+   "from": "PX-021",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-021",
+   "to": "eval-bench",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-021",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-021",
+   "to": "QUAL-PX-021",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-021",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-021",
+   "to": "PX-020",
+   "type": "after"
+  },
+  {
+   "from": "PX-021",
+   "to": "M10.4",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-021",
+   "to": "REQ-EV-0029",
+   "type": "extends"
+  },
+  {
+   "from": "PX-021",
+   "to": "PX-E2E-021",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-021",
+   "to": "M10",
    "type": "proves"
   },
   {
@@ -31671,6 +32891,26 @@
   },
   {
    "from": "DOC-PX-002",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "DOC-PX-003",
+   "to": "DOC-PX-002",
+   "type": "after"
+  },
+  {
+   "from": "DOC-PX-003",
+   "to": "governance",
+   "type": "owned_by"
+  },
+  {
+   "from": "DOC-PX-003",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-PX-003",
    "to": "DR-PX-2026-09-05",
    "type": "authorized_by"
   },
@@ -32277,6 +33517,31 @@
   {
    "from": "ALPHA",
    "to": "PX-001",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "PX-014",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "PX-016",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "PX-017",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "PX-018",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "PX-019",
    "type": "includes"
   },
   {
@@ -33812,6 +35077,41 @@
   {
    "from": "BETA",
    "to": "PX-010",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "PX-014",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "PX-015",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "PX-016",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "PX-017",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "PX-018",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "PX-019",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "PX-020",
    "type": "includes"
   },
   {
@@ -35686,6 +36986,46 @@
   },
   {
    "from": "RELEASE_ZERO",
+   "to": "PX-014",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-015",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-016",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-017",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-018",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-019",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-020",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-021",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
    "to": "EPR-GATE-A",
    "type": "requires_gate"
   },
@@ -35719,6 +37059,5 @@
    "to": "EPR-GATE-G",
    "type": "requires_gate"
   }
- ],
- "updated_on": "2026-09-05T12:35:47Z"
+ ]
 }

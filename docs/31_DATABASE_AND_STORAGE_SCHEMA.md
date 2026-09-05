@@ -62,6 +62,10 @@ Unique `(task_id, epoch)`.
 ### `memory_items`
 `memory_id PK, scope_type, scope_id, type, content_object_hash, source_ref, confidence, sensitivity, ttl_at, revision_binding, supersedes_id, state, created_at, validated_at`.
 
+### `repair_attempts`
+`attempt_id PK, run_id FK, turn_id, attempt_ordinal, failure_signature_hash, failure_signature_ref, hypothesis_hash, hypothesis_ref, evidence_refs_json, intended_fix_ref, change_ref, verification_result_ref, outcome, created_at`.
+Unique `(run_id, failure_signature_hash, hypothesis_hash)` makes an equivalent repeated hypothesis unrepresentable as a new attempt; the runtime escalates instead (`28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md`). Plans and self-reviews persist as WorkGraph state and `run_steps` rows with object refs.
+
 ### `output_refs`
 `output_ref_id PK, object_hash, content_type, byte_length, checksum, preview_text, created_at, retention_class`.
 

@@ -27,7 +27,7 @@ One concrete execution attempt/continuation of a task. A task can have multiple 
 One model interaction cycle, including context compile, model stream and resulting tool/procedural activity.
 
 ### RunStep
-Typed atomic runtime step: `ContextCompile`, `ModelInvoke`, `ToolCall`, `ProcedureRun`, `ApprovalWait`, `Verification`, `Checkpoint`, `Handoff`, `UserQuestion`.
+Typed atomic runtime step: `ContextCompile`, `ModelInvoke`, `ToolCall`, `ProcedureRun`, `ApprovalWait`, `Verification`, `Checkpoint`, `Handoff`, `UserQuestion`, and the competence steps `Plan`, `RepairAttempt` and `SelfReview` (`28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md`).
 
 ### Agent node
 Logical reasoning actor bound to task/subtask, model policy, capabilities and workspace scope. It is not a process identity.

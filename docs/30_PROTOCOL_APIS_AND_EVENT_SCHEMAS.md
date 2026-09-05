@@ -96,6 +96,9 @@ CommandEnvelope {
 ### Workspace/execution
 `WorkspaceRevisionAdvanced, FileChanged, GitStateChanged, TerminalCreated, TerminalOutputAdvanced, ProcessExited, SandboxLeaseAcquired, SandboxLost, BrowserSessionCreated, BrowserStateAdvanced, BrowserControlTransferred`.
 
+### Competence
+`PlanRecorded, PlanRevised, RepairAttemptRecorded, RepairEscalated, SelfReviewRecorded` (`28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md`).
+
 ### Durability
 `CheckpointStarted, CheckpointCommitted, CheckpointRejectedStale, CompactionStarted, CompactionCommitted, CompactionRejectedStale, MemoryItemPromoted, MemoryItemSuperseded`.
 

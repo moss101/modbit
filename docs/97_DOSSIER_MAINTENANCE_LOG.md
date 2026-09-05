@@ -306,3 +306,39 @@ Recorded in doc 07 for the whole extension; this entry adds only: **Test impact*
 | Changed | `MANIFEST.md`, `manifest.json`, `graph/PROJECT_GRAPH.md`, `graph/project-graph.json` |
 | Changed | `docs/00_MASTER_INDEX.md`, `docs/10_PRODUCT_PRD_AND_UX.md`, `docs/12_REPOSITORY_AND_MODULE_LAYOUT.md`, `docs/17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md`, `docs/20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md`, `docs/24_CLOUD_CONTROL_PLANE_AND_SYNC.md`, `docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md`, `docs/32_DESKTOP_FRONTEND_IMPLEMENTATION.md`, `docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md`, `docs/97_DOSSIER_MAINTENANCE_LOG.md` |
 | Changed | `tools/build_graph.py`, `tools/test_dossier.py` |
+
+## DOC-PX-003 — Product extension stage C: agent competence contracts and benchmarks
+
+### Identity and authority
+
+- Task: DOC-PX-003 (`dossier_task`); owner: governance; prerequisite: DOC-PX-002 COMPLETE; outside product roll-ups.
+- Decision Record: DR-PX-2026-09-05 item 6.
+- Scope: new docs 28 and 63; ledger rows REQ-PX-014..021 with cards, qualifications and PX-E2E scenarios (all ADOPT; five in Alpha, two in Beta, one in Release Zero); RunStep types in doc 13; runtime-loop paragraph in doc 14; events in doc 30; `repair_attempts` table in doc 31; pointer in doc 53; spec-doc links for core-runtime, verification, context-engine and eval-bench; one test; index entries.
+- Revision before change: `../evidence/dossier-px-003/baseline.json`.
+
+### Stage applicability
+
+| Stage | DOC-PX-003 execution |
+|---|---|
+| AUDITING | Read docs 13/14/30/31/33/53 for existing planning, verification-plan and RunStep text; no repair-attempt or competence-benchmark specification existed |
+| IMPLEMENTING | Docs 28/63, ledger rows, domain/protocol/storage additions, pointers, test |
+| WIRED | Regenerated graph and manifests through the real CLIs |
+| REAL_TESTING | `check_dossier --manifest` and the copied-package suite |
+| E2E_PROVEN | Change commit on `main` pushed; evidence retained |
+| COMPLETE | One-step ladder with evidence; seal commit |
+| Product qualification | Non-applicable: no product source exists |
+
+### Status and handoff
+
+- **Interfaces:** ledger grows to twenty-two rows; Alpha now includes PX-014/016/017/018/019; Beta adds PX-015/020; Release Zero adds PX-021.
+- **Evidence:** `../evidence/dossier-px-003/` bundle; change commit recorded as `commit:` evidence on DOC-PX-003.
+- **Next safe action:** stage D (DOC-PX-004): doc 39 UX flows, onboarding and interaction budgets.
+
+### Exact file inventory for this change
+
+| Action | Path |
+|---|---|
+| Added | `docs/28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md`, `docs/63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md`; `evidence/dossier-px-003/baseline.json`, `tests.log`, `validation.json` |
+| Changed | `MANIFEST.md`, `manifest.json`, `graph/PROJECT_GRAPH.md`, `graph/project-graph.json` |
+| Changed | `docs/00_MASTER_INDEX.md`, `docs/13_DOMAIN_MODEL_AND_STATE_MACHINES.md`, `docs/14_AGENT_RUNTIME_AND_ORCHESTRATION.md`, `docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md`, `docs/31_DATABASE_AND_STORAGE_SCHEMA.md`, `docs/53_PERFORMANCE_AND_BENCHMARK_PLAN.md`, `docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md`, `docs/97_DOSSIER_MAINTENANCE_LOG.md` |
+| Changed | `tools/build_graph.py`, `tools/test_dossier.py` |

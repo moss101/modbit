@@ -79,6 +79,7 @@ Do **not** preload the whole dossier. `89_BUILD_AGENT_CONTEXT_LOADING_POLICY.md`
 - `25_MULTIMODAL_MEDIA_AND_NOTEBOOK_RUNTIME.md` — MediaEnvelope, media reads, provider normalization
 - `26_SKILL_REGISTRY_AND_EVOLUTION.md` — skill registry and experiment-gated Skill Evolution Lab
 - `27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md` — adopted routing/workflow architecture and ownership
+- `28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md` — how the agent works: planning, retrieval-before-edit, change strategy, verification plan, bounded evidence-driven repair, self-review
 - `29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md` — thin-client contract (CLI, IDE adapters), inline patch via ChangeTransaction, GitHub forge tools, PR/review/CI/issue integration, deferred collaboration
 
 ### 30–39 Implementation specifications
@@ -118,6 +119,7 @@ Do **not** preload the whole dossier. `89_BUILD_AGENT_CONTEXT_LOADING_POLICY.md`
 - `60_RELEASE_ZERO_EXPANDED_PROOF.md` — authoritative superset (E2E-025)
 - `61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md` — 20 QUAL-EPR, 40 real/fault scenarios, gates A–G
 - `62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md` — additive REQ-PX/PX/QUAL-PX ledger and PX-E2E scenarios (here because 40–49 is full; totals computed, not pinned)
+- `63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md` — public and internal competence suites, metrics, fixed M2 baseline before targets, regression gate
 
 ### 70–79 Delivery and operations
 - `70_CI_CD_RELEASE_AND_SUPPLY_CHAIN.md` — PR/nightly/RC pipelines, reproducibility, updates

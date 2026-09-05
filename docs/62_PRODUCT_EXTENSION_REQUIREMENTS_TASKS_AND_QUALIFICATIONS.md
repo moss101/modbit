@@ -22,6 +22,14 @@ Columns: requirement, title, task, qualification, canonical owner, milestone, re
 | REQ-PX-011 | Forge webhook intake through the Cloud API | PX-011 | QUAL-PX-011 | sandbox-cloud | M8 | RELEASE_ZERO | ADOPT | PX-010,M8.1 |
 | REQ-PX-012 | Team collaboration: shared task history and assignment | — | QUAL-PX-012 | desktop | — | POST_ZERO | DEFERRED | — |
 | REQ-PX-013 | Team collaboration: comments and chat notifications | — | QUAL-PX-013 | desktop | — | POST_ZERO | DEFERRED | — |
+| REQ-PX-014 | Understanding and planning contract | PX-014 | QUAL-PX-014 | core-runtime | M2 | ALPHA | ADOPT | M2.7 |
+| REQ-PX-015 | Retrieval-before-edit contract | PX-015 | QUAL-PX-015 | context-engine | M3 | BETA | ADOPT | M3.7,PX-014 |
+| REQ-PX-016 | Change strategy contract | PX-016 | QUAL-PX-016 | workspace-git | M2 | ALPHA | ADOPT | M2.1,M2.2,PX-014 |
+| REQ-PX-017 | Verification plan derivation contract | PX-017 | QUAL-PX-017 | verification | M2 | ALPHA | ADOPT | M2.8,PX-014 |
+| REQ-PX-018 | Bounded evidence-driven repair loop with RepairAttempt records | PX-018 | QUAL-PX-018 | core-runtime | M2 | ALPHA | ADOPT | PX-017 |
+| REQ-PX-019 | Self-review and completion contract | PX-019 | QUAL-PX-019 | verification | M2 | ALPHA | ADOPT | PX-018 |
+| REQ-PX-020 | Fixed M2 competence baseline on public and internal suites | PX-020 | QUAL-PX-020 | eval-bench | M3 | BETA | ADOPT | M2.9,PX-019,M3.9 |
+| REQ-PX-021 | Competence regression gate and targets after baseline | PX-021 | QUAL-PX-021 | eval-bench | M10 | RELEASE_ZERO | ADOPT | PX-020,M10.4 |
 
 ## Qualifications
 
@@ -41,6 +49,14 @@ Columns: requirement, title, task, qualification, canonical owner, milestone, re
 | QUAL-PX-011 | REQ-PX-011 | sandbox-cloud | Real GitHub App webhook to the staging Cloud API creates the same canonical task for the tenant after signature verification and policy; the desktop sees it by cursor | Unsigned or replayed webhook is rejected and audited; cross-tenant repository mapping is denied; no second task model exists |
 | QUAL-PX-012 | REQ-PX-012 | desktop | Deferred proof: shared history and assignment appear as cloud projections readable by multiple authenticated clients with tenant isolation | Deferred; not on the Release Zero path |
 | QUAL-PX-013 | REQ-PX-013 | desktop | Deferred proof: comments and notifications are durable events with provenance and never authority | Deferred; not on the Release Zero path |
+| QUAL-PX-014 | REQ-PX-014 | core-runtime | Real fixture task: the agent records a plan through plan.update before the first write, asks exactly one typed question on an ambiguous fixture and none on an unambiguous one, and plan revisions appear as events in the timeline | A write before any plan is rejected by Core; a question that merely confirms verifiable repository facts is flagged by the internal suite |
+| QUAL-PX-015 | REQ-PX-015 | context-engine | Real fixture task: every edited file has a retrieval record at the current workspace revision and the Context Ledger records use; symbol edits show definition and reference retrieval | An edit to a file without a retrieval record is rejected as a ToolCallPolicyDecision; a stale-revision retrieval does not satisfy the rule |
+| QUAL-PX-016 | REQ-PX-016 | workspace-git | Real fixture task with a test harness: failing test written first, then the change; diffs are revision-bound ChangeTransactions with one concern each; a file outside the plan triggers a plan revision event | Silent scope widening without a plan revision is rejected; lockfile edited by hand rather than by its generator is flagged |
+| QUAL-PX-017 | REQ-PX-017 | verification | Real fixture: derived verification plan recorded before the first run with build, typecheck, targeted tests, diagnostics delta and diff invariants; agent-added checks appear; mandatory checks cannot be removed | Attempt to delete a mandatory check is rejected; a task that fails still has its recorded plan |
+| QUAL-PX-018 | REQ-PX-018 | core-runtime | Seeded failing fixture: each repair attempt records failure signature, hypothesis, evidence, intended fix, change ref and verification result before the next run; a repeated equivalent hypothesis triggers escalation or Needs Attention with the attempt history; attempt bounds from policy are enforced | A change after a failed verification without a RepairAttempt is rejected; equivalent hypothesis executed twice is impossible; bound exhaustion never truncates silently; WORSENED attempts are reverted or justified |
+| QUAL-PX-019 | REQ-PX-019 | verification | Real fixture: the SelfReview step lists plan coverage, executed verifications, receipts, scope and leftovers; unresolved findings block the completion proposal; the Acceptance Gate, not the agent, decides completion | A completion proposal without a SelfReview or with unresolved findings is rejected; agent text claiming done changes nothing |
+| QUAL-PX-020 | REQ-PX-020 | eval-bench | Both suites run under the frozen protocol on the real M2 product with the direct configuration; the immutable baseline bundle (digests, model metadata, per-task results, intervals) is recorded and referenced by digest | A baseline with gold-patch access, unpinned images or missing trial counts is rejected; no target may be recorded before this baseline exists |
+| QUAL-PX-021 | REQ-PX-021 | eval-bench | Targets set by Decision Record per metric and tier after the baseline; the release candidate competence gate fails on regression beyond approved thresholds with intervals, including cost-improving routing changes that regress competence | A target recorded without a baseline digest is rejected; a candidate that regresses first-pass success or repair-loop distribution cannot pass the gate regardless of routing savings |
 
 ## Task cards
 
@@ -178,6 +194,103 @@ Columns: requirement, title, task, qualification, canonical owner, milestone, re
 - **Evidence:** build digest, Core and client revisions, event cursor ranges, effect receipt ids, run ids and artifact digests under the existing evidence rules.
 - **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
 
+<a id="px-014"></a>
+
+## PX-014 — Understanding and planning contract
+
+- **Requirement:** REQ-PX-014; **related preserved requirements:** REQ-EV-0010.
+- **Owner / milestone / release:** core-runtime / M2 / ALPHA; **prerequisites:** M2.7.
+- **Scope and acceptance:** Clarification policy and plan artifact per `28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md` §1: a plan recorded through plan.update before the first write, typed questions only when the change set, verification or a protected effect depends on the answer, plan revisions as events.
+- **Production wiring:** WorkGraph plan state and `plan.get/update` tools; Core rejects writes before a plan; `PlanRecorded`/`PlanRevised` events.
+- **Real qualification:** QUAL-PX-014 / PX-E2E-014.
+- **Failure and negative proof:** as in QUAL-PX-014.
+- **Evidence:** build digest, Core revision, event cursor ranges, plan/RepairAttempt/SelfReview refs, run ids and artifact digests under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+<a id="px-015"></a>
+
+## PX-015 — Retrieval-before-edit contract
+
+- **Requirement:** REQ-PX-015; **related preserved requirements:** REQ-EV-0010.
+- **Owner / milestone / release:** context-engine / M3 / BETA; **prerequisites:** M3.7, PX-014.
+- **Scope and acceptance:** No edit without a retrieval record for the file at the current workspace revision; symbol edits require definition and reference retrieval; Context Ledger records retrieval and later use (`28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md` §2).
+- **Production wiring:** Context Engine retrieval records joined to ChangeTransaction preconditions; policy decision on violation.
+- **Real qualification:** QUAL-PX-015 / PX-E2E-015.
+- **Failure and negative proof:** as in QUAL-PX-015.
+- **Evidence:** build digest, Core revision, event cursor ranges, plan/RepairAttempt/SelfReview refs, run ids and artifact digests under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+<a id="px-016"></a>
+
+## PX-016 — Change strategy contract
+
+- **Requirement:** REQ-PX-016; **related preserved requirements:** REQ-EV-0010.
+- **Owner / milestone / release:** workspace-git / M2 / ALPHA; **prerequisites:** M2.1, M2.2, PX-014.
+- **Scope and acceptance:** Small revision-bound diffs, one concern per ChangeTransaction where possible, tests first where a harness exists, explicit plan revision on scope change, generated files only via generators (`28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md` §3).
+- **Production wiring:** Change Engine transaction metadata carries plan linkage; scope check against the plan's expected set.
+- **Real qualification:** QUAL-PX-016 / PX-E2E-016.
+- **Failure and negative proof:** as in QUAL-PX-016.
+- **Evidence:** build digest, Core revision, event cursor ranges, plan/RepairAttempt/SelfReview refs, run ids and artifact digests under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+<a id="px-017"></a>
+
+## PX-017 — Verification plan derivation contract
+
+- **Requirement:** REQ-PX-017; **related preserved requirements:** REQ-EV-0010.
+- **Owner / milestone / release:** verification / M2 / ALPHA; **prerequisites:** M2.8, PX-014.
+- **Scope and acceptance:** Verification plan derived from task type, changed files, repository configuration and agent proposals, recorded before the first run; agent may add, never remove, mandatory checks (`28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md` §4).
+- **Production wiring:** Verification Engine plan materialization already specified in doc 33, now recorded as an event and bound to the plan.
+- **Real qualification:** QUAL-PX-017 / PX-E2E-017.
+- **Failure and negative proof:** as in QUAL-PX-017.
+- **Evidence:** build digest, Core revision, event cursor ranges, plan/RepairAttempt/SelfReview refs, run ids and artifact digests under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+<a id="px-018"></a>
+
+## PX-018 — Bounded evidence-driven repair loop with RepairAttempt records
+
+- **Requirement:** REQ-PX-018; **related preserved requirements:** REQ-EV-0010.
+- **Owner / milestone / release:** core-runtime / M2 / ALPHA; **prerequisites:** PX-017.
+- **Scope and acceptance:** RepairAttempt record per attempt (failure signature, hypothesis, evidence, intended fix, change ref, verification result, outcome); equivalent repeated hypotheses escalate through compiled slots or Needs Attention; policy bounds per failure signature and per task; WORSENED attempts reverted or justified (`28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md` §5).
+- **Production wiring:** Core-runtime loop control with `RepairAttemptRecorded`/`RepairEscalated` events and `repair_attempts` persistence; escalation via EPR slots when present.
+- **Real qualification:** QUAL-PX-018 / PX-E2E-018.
+- **Failure and negative proof:** as in QUAL-PX-018.
+- **Evidence:** build digest, Core revision, event cursor ranges, plan/RepairAttempt/SelfReview refs, run ids and artifact digests under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+<a id="px-019"></a>
+
+## PX-019 — Self-review and completion contract
+
+- **Requirement:** REQ-PX-019; **related preserved requirements:** REQ-EV-0010.
+- **Owner / milestone / release:** verification / M2 / ALPHA; **prerequisites:** PX-018.
+- **Scope and acceptance:** SelfReview step with structured findings before any completion proposal; unresolved findings block the proposal; the Acceptance Gate decides completion (`28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md` §6).
+- **Production wiring:** Verification Engine consumes the SelfReview; `SelfReviewRecorded` event; completion proposal gated.
+- **Real qualification:** QUAL-PX-019 / PX-E2E-019.
+- **Failure and negative proof:** as in QUAL-PX-019.
+- **Evidence:** build digest, Core revision, event cursor ranges, plan/RepairAttempt/SelfReview refs, run ids and artifact digests under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+<a id="px-020"></a>
+
+## PX-020 — Fixed M2 competence baseline on public and internal suites
+
+- **Requirement:** REQ-PX-020; **related preserved requirements:** REQ-EV-0029.
+- **Owner / milestone / release:** eval-bench / M3 / BETA; **prerequisites:** M2.9, PX-019, M3.9.
+- **Scope and acceptance:** Run the public benchmark and the internal competence suite under the frozen protocol of `63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md` on the real M2 product with the direct configuration and record the immutable baseline bundle.
+- **Production wiring:** Eval Harness under `benchmarks/agent-engineering`; fixture repositories from doc 50; baseline artifacts in the object store by digest.
+- **Real qualification:** QUAL-PX-020 / PX-E2E-020.
+- **Failure and negative proof:** as in QUAL-PX-020.
+- **Evidence:** build digest, Core revision, event cursor ranges, plan/RepairAttempt/SelfReview refs, run ids and artifact digests under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+<a id="px-021"></a>
+
+## PX-021 — Competence regression gate and targets after baseline
+
+- **Requirement:** REQ-PX-021; **related preserved requirements:** REQ-EV-0029.
+- **Owner / milestone / release:** eval-bench / M10 / RELEASE_ZERO; **prerequisites:** PX-020, M10.4.
+- **Scope and acceptance:** Targets by Decision Record per metric and tier only after the baseline; release-candidate competence gate with intervals; cost-improving routing changes that regress competence fail (doc 63).
+- **Production wiring:** Release gate tooling and Policy Lab reporting; thresholds versioned with the release profile.
+- **Real qualification:** QUAL-PX-021 / PX-E2E-021.
+- **Failure and negative proof:** as in QUAL-PX-021.
+- **Evidence:** build digest, Core revision, event cursor ranges, plan/RepairAttempt/SelfReview refs, run ids and artifact digests under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
 ## Real-system scenarios
 
 ### PX-E2E-000 — Headless CLI task lifecycle
@@ -245,3 +358,51 @@ Columns: requirement, title, task, qualification, canonical owner, milestone, re
 **Setup:** staging Cloud API with a GitHub App installation on the fixture repository.  
 **Action:** deliver a signed webhook, a replayed webhook and an unsigned webhook.  
 **Pass:** one canonical task created for the tenant and visible to the desktop by cursor; replay and unsigned deliveries rejected and audited.
+
+### PX-E2E-014 — Plan before write
+
+**Setup:** fixture with one ambiguous and one unambiguous task.  
+**Action:** run both.  
+**Pass:** plan recorded before the first write in both; exactly one typed question on the ambiguous task; a forced write before plan is rejected.
+
+### PX-E2E-015 — No edit without retrieval
+
+**Setup:** fixture task touching a symbol used in three files.  
+**Action:** run the task; then force an edit to an unretrieved file.  
+**Pass:** retrieval records exist for every edited file at the current revision; the forced edit is rejected with a policy decision.
+
+### PX-E2E-016 — Tests first, scope disciplined
+
+**Setup:** `ts-webapp` behavior change with an existing test harness.  
+**Action:** run the task; induce a change outside the plan.  
+**Pass:** failing test precedes the change; the out-of-plan file triggers a plan revision event; lockfile untouched by hand.
+
+### PX-E2E-017 — Verification plan recorded first
+
+**Setup:** fixture task that will fail verification.  
+**Action:** run; attempt to remove a mandatory check.  
+**Pass:** derived plan recorded before the first run and retained after failure; removal rejected.
+
+### PX-E2E-018 — Bounded repair with escalation on repeated hypothesis
+
+**Setup:** seeded failure whose obvious fix does not work.  
+**Action:** run with policy bounds of two attempts per signature.  
+**Pass:** each attempt has a complete RepairAttempt record; the second equivalent hypothesis is not executed and the task escalates or moves to Needs Attention with history; a WORSENED attempt is reverted.
+
+### PX-E2E-019 — Self-review gates the completion proposal
+
+**Setup:** fixture task completed with one leftover debug statement.  
+**Action:** let the agent propose completion.  
+**Pass:** SelfReview finds the leftover; proposal blocked until resolved; Acceptance Gate decides afterwards.
+
+### PX-E2E-020 — Baseline bundle
+
+**Setup:** real M2 product, frozen protocol, both suites.  
+**Action:** run the baseline.  
+**Pass:** immutable bundle with digests, model metadata, trials, per-task results and intervals; attempt with gold-patch access rejected.
+
+### PX-E2E-021 — Regression gate
+
+**Setup:** baseline bundle and a candidate build with a seeded competence regression and a routing cost improvement.  
+**Action:** run the gate.  
+**Pass:** candidate fails the competence gate; a target recorded without a baseline digest is rejected.

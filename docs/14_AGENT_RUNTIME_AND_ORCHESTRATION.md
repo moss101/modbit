@@ -32,6 +32,10 @@ The loop is event-driven and executes one bounded conditional transaction. DIREC
 
 Use `27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md` for workflow semantics and `38_EXECUTION_POLICY_CONTRACTS_AND_ALGORITHMS.md` for bounded transitions, persistence and failure algorithms.
 
+## Competence contracts inside the loop
+
+Steps 5 to 9 execute the competence contracts of `28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md`: a plan is recorded before the first write, no file is edited without a retrieval record at the current revision, changes are small revision-bound transactions with tests first where a harness exists, the verification plan is derived and recorded before it runs, every repair attempt is a RepairAttempt record whose repeated equivalent hypothesis escalates through a compiled slot or Needs Attention, and a SelfReview precedes any completion proposal. Core enforces these as policy decisions and events; prompts express them.
+
 ## Decomposition
 
 The primary agent may propose `SubtaskSpec` values containing: objective, expected artifacts, dependencies, read scope, proposed write scope, required tools, execution profile, verification condition and budget.

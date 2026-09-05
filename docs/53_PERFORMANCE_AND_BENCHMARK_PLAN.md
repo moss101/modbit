@@ -59,7 +59,7 @@ Do not publish/claim until independently reproduced. Record index build time sep
 - Changed-code impact accuracy.
 - Diagnostic/test linkage precision.
 - Cross-file relation answer correctness.
-- SWE-bench Verified or equivalent coding suite using frozen model/environment for regression; establish baseline before setting score target.
+- SWE-bench Verified or equivalent coding suite using frozen model/environment for regression; establish baseline before setting score target. Protocol, internal competence suite, baseline-then-target rule and regression gate: `63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md`.
 
 ## Agent reliability metrics
 

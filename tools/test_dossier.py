@@ -287,6 +287,7 @@ class DossierTests(unittest.TestCase):
         self.assertEqual(nodes["DOC-GOV-004"]["status"], "COMPLETE")
         self.assertIn("DOC-GOV-004", self.run_tool("graph", "show", "DOC-PX-001"))
         self.assertIn("DOC-PX-001", self.run_tool("graph", "show", "DOC-PX-002"))
+        self.assertIn("DOC-PX-002", self.run_tool("graph", "show", "DOC-PX-003"))
         out = self.run_tool("graph", "show", "DOC-GOV-001")
         for required in ("DOC-EPR-002", "DR-GOV-2026-09-05", "96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md", "governance"):
             self.assertIn(required, out)
@@ -432,6 +433,21 @@ class DossierTests(unittest.TestCase):
         out = self.run_tool("graph", "show", "PX-007")
         for needle in ("PX-006", "M2.2", "QUAL-PX-007", "PX-E2E-007", "workspace-git", "DR-PX-2026-09-05"):
             self.assertIn(needle, out)
+
+    def test_competence_contracts_are_specified_and_wired(self):
+        out = self.run_tool("graph", "show", "PX-018")
+        for needle in ("PX-017", "QUAL-PX-018", "PX-E2E-018", "core-runtime", "ALPHA" if False else "M2"):
+            self.assertIn(needle, out)
+        d28 = (self.root / "docs/28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md").read_text()
+        for needle in ("RepairAttempt", "failure_signature", "hypothesis", "Equivalent repeated hypotheses", "SelfReview"):
+            self.assertIn(needle, d28)
+        d63 = (self.root / "docs/63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md").read_text()
+        self.assertIn("Baseline-then-target", d63)
+        self.assertIn("repair_attempts", (self.root / "docs/31_DATABASE_AND_STORAGE_SCHEMA.md").read_text())
+        alpha = {e["to"] for e in self.graph()["edges"] if e["type"] == "includes" and e["from"] == "ALPHA"}
+        for tid in ("PX-014", "PX-016", "PX-017", "PX-018", "PX-019"):
+            self.assertIn(tid, alpha)
+        self.assertNotIn("PX-020", alpha)
 
 
 if __name__ == "__main__":
