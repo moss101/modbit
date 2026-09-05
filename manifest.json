@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 80,
-    "root_and_tooling": 27,
+    "root_and_tooling": 28,
     "docs_bytes": 816149
   },
   "sections": [
@@ -854,6 +854,11 @@
       "path": "evidence/dossier-gov-003/tests.log",
       "bytes": 2525,
       "sha256": "9a9a4f4965c44ac8e0f70eae2fba09f00d32ed99e5cb98bb4436666bec5b4666"
+    },
+    {
+      "path": "evidence/dossier-gov-003/validation.json",
+      "bytes": 15139,
+      "sha256": "5758c95dfa054a9e402acbe287ac95fadea40fa5347ca1c52d1ca1cb41f4dbd6"
     },
     {
       "path": "evidence/dossier-gov/baseline.json",
