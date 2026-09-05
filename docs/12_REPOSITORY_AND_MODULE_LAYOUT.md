@@ -18,7 +18,8 @@ modbit/
 │  ├─ desktop/                  # Electron main, preload, React renderer
 │  ├─ cloud-api/                # Rust HTTP/WSS API service
 │  ├─ cloud-worker/             # remote Core host
-│  └─ sandbox-gateway/          # tenant-bound MicroVM substrate boundary
+│  ├─ sandbox-gateway/          # tenant-bound MicroVM substrate boundary
+│  └─ cli/                      # headless thin client over SurfaceProtocol (Alpha)
 ├─ crates/
 │  ├─ domain/                   # IDs, domain objects, state transitions
 │  ├─ protocol/                 # local/cloud framing + generated schemas
@@ -52,7 +53,9 @@ modbit/
 ├─ packages/
 │  ├─ ui/                       # reusable React components
 │  ├─ surface-protocol/         # TS generated protocol/API types
-│  └─ design-tokens/
+│  ├─ design-tokens/
+│  ├─ ide-adapter-core/         # shared thin-client library and conformance suite for IDE adapters
+│  └─ vscode-adapter/           # first IDE adapter (Beta); JetBrains only after conformance
 ├─ tests/
 │  ├─ integration/
 │  ├─ e2e-local/
@@ -117,3 +120,7 @@ No new crate, service, scheduler or storage authority is introduced. Every v1.1 
 | Role-specific context and skill compilation for solver, reviewer, reviser and escalation legs | context-engine, skills | `crates/context`, `crates/prompt-compiler`, `crates/skills` | inputs to EPR-005/007/013 |
 
 Core calls the compiler through canonical routing interfaces, admits and executes exactly one bounded conditional transaction, calls the Gateway for inference and the normal tool runtime for effects. DIRECT, CASCADE and CRITIQUE are labels emitted by observability over the executed path, not modules or dispatch selectors. Providers cannot call workspace tools. Renderer, guest and plugin code receive no model credentials, policy weights or statistics. Legacy v1.0 `ExecutionPlan`, `QualityGateResult` and `CriticResult` exist only as decode adapters in `crates/domain`; new writers emit the v1.1 contracts.
+
+## Client surfaces and forge placement (DR-PX-2026-09-05)
+
+`apps/cli` and every IDE adapter are thin SurfaceProtocol clients owned by the desktop owner; they contain no orchestration, context, memory, Git, recovery, policy or tool code. The `forge.*` family lives in `crates/tools (external.*)` behind the External Tool Hub; pull-request semantics stay in `crates/git` and the Change Engine; CI evidence ingestion sits in `crates/verification`; webhook intake is a Cloud API endpoint. See `29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md`.

@@ -84,7 +84,7 @@ attention-first supervision, implemented as Modbit-native states:
 Cards show task goal, workspace, execution location, objective profile, current execution phase (drafting, verifying, reviewing, escalating, awaiting human), duration, active agent count, latest evidence, risk/effect indicator and next required action. Do not interrupt the user for routine progress.
 
 ### 2. New Task
-Required inputs: goal, workspace/repository or general Work space. Optional advanced controls: branch/base revision, objective profile (Cost, Balance, Intelligence or an organization profile) or an allowed manual model pin, execution mode (`local_trusted` / `cloud_isolated`), permission profile, browser access, skill pack.
+Required inputs: goal, workspace/repository or general Work space, or a forge issue URL whose text enters as untrusted context. The desktop, the headless CLI and IDE adapters are interchangeable thin clients of one Core. Optional advanced controls: branch/base revision, objective profile (Cost, Balance, Intelligence or an organization profile) or an allowed manual model pin, execution mode (`local_trusted` / `cloud_isolated`), permission profile, browser access, skill pack.
 
 Submission creates a durable Session + Task before model invocation, so a crash after clicking Run is recoverable.
 
@@ -113,7 +113,7 @@ Contains:
 - reviewer findings and how each was resolved;
 - complete cost and time by leg, including reviewer tool cost;
 - evidence chain;
-- merge/apply/export actions.
+- merge/apply/export actions, and open or update a pull request as a protected effect with a receipt (`29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md`).
 
 A green “done” state is impossible without the configured verification gate passing, and impossible while the acceptance verdict is REJECT or INCONCLUSIVE.
 

@@ -79,6 +79,7 @@ Do **not** preload the whole dossier. `89_BUILD_AGENT_CONTEXT_LOADING_POLICY.md`
 - `25_MULTIMODAL_MEDIA_AND_NOTEBOOK_RUNTIME.md` — MediaEnvelope, media reads, provider normalization
 - `26_SKILL_REGISTRY_AND_EVOLUTION.md` — skill registry and experiment-gated Skill Evolution Lab
 - `27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md` — adopted routing/workflow architecture and ownership
+- `29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md` — thin-client contract (CLI, IDE adapters), inline patch via ChangeTransaction, GitHub forge tools, PR/review/CI/issue integration, deferred collaboration
 
 ### 30–39 Implementation specifications
 - `30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md` — SurfaceProtocol, cloud API, envelopes, event types

@@ -13,7 +13,7 @@ Cloud exists for isolated MicroVM execution, remote continuation, durable cross-
 ## Services
 
 ### Cloud API
-Rust service exposing authenticated HTTPS control endpoints and WSS/SSE-style event stream. Responsibilities: account/tenant auth, session directory, remote run create/stop/steer, artifact access grants, signed execution-policy/registry/statistics bundle distribution, provider policy lookup and worker lease coordination.
+Rust service exposing authenticated HTTPS control endpoints and WSS/SSE-style event stream. Responsibilities: account/tenant auth, session directory, remote run create/stop/steer, artifact access grants, signed execution-policy/registry/statistics bundle distribution, forge webhook intake (issue-to-task and PR events, PX-011), provider policy lookup and worker lease coordination.
 
 ### Cloud Core Worker
 Hosts one or more session kernels subject to capacity. Acquires fenced session lease from Postgres before processing events. Executes Agent Runtime and calls Sandbox Gateway.

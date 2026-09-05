@@ -286,6 +286,7 @@ class DossierTests(unittest.TestCase):
         self.assertIn("DOC-GOV-003", self.run_tool("graph", "show", "DOC-GOV-004"))
         self.assertEqual(nodes["DOC-GOV-004"]["status"], "COMPLETE")
         self.assertIn("DOC-GOV-004", self.run_tool("graph", "show", "DOC-PX-001"))
+        self.assertIn("DOC-PX-001", self.run_tool("graph", "show", "DOC-PX-002"))
         out = self.run_tool("graph", "show", "DOC-GOV-001")
         for required in ("DOC-EPR-002", "DR-GOV-2026-09-05", "96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md", "governance"):
             self.assertIn(required, out)
@@ -370,7 +371,7 @@ class DossierTests(unittest.TestCase):
         self.run_tool("check_dossier", ok=False, contains="[D9]")
         p.write_text(original.replace("| M2 | ALPHA | ADOPT |", "| M2 | ALPHA | DEFERRED |", 1))
         self.run_tool("build_graph", ok=False, contains="DEFERRED row")
-        p.write_text(original.replace("| REQ-PX-000 |", "| REQ-PX-005 |", 1).replace("| QUAL-PX-000 | REQ-PX-000 |", "| QUAL-PX-000 | REQ-PX-005 |", 1))
+        p.write_text(original.replace("| REQ-PX-000 |", "| REQ-PX-999 |", 1).replace("| QUAL-PX-000 | REQ-PX-000 |", "| QUAL-PX-999 | REQ-PX-999 |", 1))
         self.run_tool("build_graph", ok=False, contains="contiguous")
 
     def test_release_readiness_is_derived_from_tasks(self):
@@ -416,6 +417,21 @@ class DossierTests(unittest.TestCase):
         g["edges"].append({"from": "IMP-EV-9999", "to": "M2", "type": "scheduled_in"})
         self.write_graph(g)
         self.run_tool("check_dossier", ok=False, contains="[G8] IMP-EV-9999")
+
+    def test_deferred_px_rows_have_no_tasks_and_no_release(self):
+        g = self.graph()
+        nodes = {n["id"]: n for n in g["nodes"]}
+        self.assertEqual(nodes["REQ-PX-003"]["disposition"], "DEFERRED")
+        self.assertFalse([e for e in g["edges"] if e["from"] == "REQ-PX-003" and e["type"] == "implemented_by"])
+        self.assertNotIn("PX-003", nodes)
+        self.assertIn("QUAL-PX-003", nodes)
+        included = {e["to"] for e in g["edges"] if e["type"] == "includes"}
+        self.assertIn("PX-002", included)
+        self.assertNotIn("PX-002", {e["to"] for e in g["edges"] if e["type"] == "includes" and e["from"] == "ALPHA"})
+        self.assertIn("PX-002", {e["to"] for e in g["edges"] if e["type"] == "includes" and e["from"] == "BETA"})
+        out = self.run_tool("graph", "show", "PX-007")
+        for needle in ("PX-006", "M2.2", "QUAL-PX-007", "PX-E2E-007", "workspace-git", "DR-PX-2026-09-05"):
+            self.assertIn(needle, out)
 
 
 if __name__ == "__main__":

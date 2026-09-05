@@ -4,7 +4,7 @@
 
 ## Model-visible strategy
 
-Most turns see a small task-scoped direct surface. Procedural mode may expose `exec`, `wait`, and `request_user_input` while an isolated composition runtime invokes authorized `tools.*` bindings. Discovery never grants authority. Reviewer legs of a conditional plan see a further restricted projection: read-only canonical access plus scratch writes and bounded processes inside the disposable review worktree; effectful families (`change.apply`, `git.merge.*`, `git.worktree.*` on canonical trees, `browser.action`, `computer.action`, `external.call`, `web.*`, `memory.propose`) are excluded and kernel-denied under the `review_isolated` profile (`16_TOOL_CAPABILITY_AND_PROCEDURAL_RUNTIME.md`, `21_TERMINAL_EXECUTION_AND_SANDBOX.md`, EPR-018). No new tool family is introduced for review.
+Most turns see a small task-scoped direct surface. Procedural mode may expose `exec`, `wait`, and `request_user_input` while an isolated composition runtime invokes authorized `tools.*` bindings. Discovery never grants authority. Reviewer legs of a conditional plan see a further restricted projection: read-only canonical access plus scratch writes and bounded processes inside the disposable review worktree; effectful families (`change.apply`, `git.merge.*`, `git.worktree.*` on canonical trees, `browser.action`, `computer.action`, `external.call`, `web.*`, `memory.propose`) are excluded and kernel-denied under the `review_isolated` profile (`16_TOOL_CAPABILITY_AND_PROCEDURAL_RUNTIME.md`, `21_TERMINAL_EXECUTION_AND_SANDBOX.md`, EPR-018). No new tool family is introduced for review. The `forge.*` family (DR-PX-2026-09-05, PX-006) is admitted under the new-tool rule below because a forge API is a distinct effector with protected external effects that existing tools plus a skill cannot express safely; thin clients never call it directly, they issue canonical commands that the Core executes through it (`29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md`).
 
 | Canonical tool/family | Class | Purpose | Protected effect? | Owner |
 |---|---|---|---|---|
@@ -36,6 +36,8 @@ Most turns see a small task-scoped direct surface. Procedural mode may expose `e
 | artifact.get / range | Artifacts | content-addressed result/evidence range | No | Artifact Store |
 | memory.query | Memory | retrieve scoped curated engineering memory | No | Engineering Memory |
 | memory.propose | Memory | propose governed durable memory | promotion separate | Engineering Memory |
+| forge.issue.read / forge.pr.comments.read / forge.ci.status | Forge | read issues, review comments and CI results from an allowed forge (GitHub first) as untrusted, provenance-bound data | No (network lease) | External Tool Hub |
+| forge.pr.create / forge.pr.update | Forge | open or update a pull request for a reviewed candidate revision | Yes | External Tool Hub with Change Engine |
 
 ## Capability lifecycle
 

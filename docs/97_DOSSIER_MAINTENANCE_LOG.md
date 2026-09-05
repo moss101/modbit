@@ -270,3 +270,39 @@ Recorded in doc 07 for the whole extension; this entry adds only: **Test impact*
 | Changed | `AGENTS.md`, `MANIFEST.md`, `README.md`, `SKILLS.md`, `manifest.json` |
 | Changed | `docs/00_MASTER_INDEX.md`, `docs/43_IMPLEMENTATION_ROADMAP_AND_TASK_GRAPH.md`, `docs/46_REQUIREMENT_COVERAGE_FREEZE_GATE.md`, `docs/47_REQUIREMENT_COVERAGE_AUDIT_REPORT.md`, `docs/50_TEST_STRATEGY_REAL_SYSTEM_GATES.md`, `docs/74_PACKAGE_INTEGRITY_AND_BUILD_COVERAGE.md`, `docs/83_DEFINITION_OF_DONE_AND_ACCEPTANCE.md`, `docs/85_AGENT_TASK_EXECUTION_PROTOCOL.md`, `docs/86_TASK_CARD_TEMPLATE.md`, `docs/90_PR_CHANGE_EVIDENCE_TEMPLATE.md`, `docs/93_STATUS_VOCABULARY_AND_LIFECYCLE.md`, `docs/97_DOSSIER_MAINTENANCE_LOG.md`, `docs/98_BUILD_MANIFEST.md` |
 | Changed | `graph/PROJECT_GRAPH.md`, `graph/project-graph.json`, `tools/build_graph.py`, `tools/build_manifest.py`, `tools/check_dossier.py`, `tools/graph.py`, `tools/test_dossier.py` |
+
+## DOC-PX-002 — Product extension stage B: client surfaces and source-control integration
+
+### Identity and authority
+
+- Task: DOC-PX-002 (`dossier_task`); owner: governance; prerequisite: DOC-PX-001 COMPLETE; outside product roll-ups.
+- Decision Record: DR-PX-2026-09-05 items 4, 5 and 10.
+- Scope: new doc 29; ledger rows REQ-PX-001..013 with task cards, qualifications and PX-E2E scenarios (ten ADOPT, three DEFERRED); protocol commands and events in doc 30; `forge.*` tool family in doc 17; inline patch and PR wording in doc 20; crate placement in doc 12; small edits in docs 10/24/32; desktop and external-tools spec-doc links in the builder; one test; index entry. No base row, owner, ADR, EPR row or product status changes.
+- Revision before change: `../evidence/dossier-px-002/baseline.json`.
+
+### Stage applicability
+
+| Stage | DOC-PX-002 execution |
+|---|---|
+| AUDITING | Read docs 10/12/17/20/24/30/32 anchors; confirmed no existing forge, adapter or inline-patch specification |
+| IMPLEMENTING | Doc 29, ledger rows, protocol and inventory additions, placement, pointers, test |
+| WIRED | Regenerated graph and manifests through the real CLIs |
+| REAL_TESTING | `check_dossier --manifest` and the copied-package suite |
+| E2E_PROVEN | Change commit on `main` pushed; evidence retained |
+| COMPLETE | One-step ladder with evidence; seal commit |
+| Product qualification | Non-applicable: no product source exists |
+
+### Status and handoff
+
+- **Interfaces:** ledger grows to fourteen rows; releases now include PX-001 in ALPHA, PX-002/004/005/006/007/010 in BETA, PX-008/009/011 in RELEASE_ZERO; DEFERRED rows REQ-PX-003/012/013 have qualifications and no tasks.
+- **Evidence:** `../evidence/dossier-px-002/` bundle; change commit recorded as `commit:` evidence on DOC-PX-002.
+- **Next safe action:** stage C (DOC-PX-003): docs 28 and 63, agent competence contracts and benchmark protocol.
+
+### Exact file inventory for this change
+
+| Action | Path |
+|---|---|
+| Added | `docs/29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md`; `evidence/dossier-px-002/baseline.json`, `tests.log`, `validation.json` |
+| Changed | `MANIFEST.md`, `manifest.json`, `graph/PROJECT_GRAPH.md`, `graph/project-graph.json` |
+| Changed | `docs/00_MASTER_INDEX.md`, `docs/10_PRODUCT_PRD_AND_UX.md`, `docs/12_REPOSITORY_AND_MODULE_LAYOUT.md`, `docs/17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md`, `docs/20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md`, `docs/24_CLOUD_CONTROL_PLANE_AND_SYNC.md`, `docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md`, `docs/32_DESKTOP_FRONTEND_IMPLEMENTATION.md`, `docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md`, `docs/97_DOSSIER_MAINTENANCE_LOG.md` |
+| Changed | `tools/build_graph.py`, `tools/test_dossier.py` |

@@ -39,7 +39,8 @@ src/
 ├─ evidence/
 ├─ workspaces/
 ├─ settings/
-└─ protocol-client/
+├─ protocol-client/
+└─ shared with apps/cli and packages/ide-adapter-core: one thin-client contract (docs/29)
 ```
 
 ## Event consumption

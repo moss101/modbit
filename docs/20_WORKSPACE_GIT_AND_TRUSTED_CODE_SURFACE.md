@@ -56,7 +56,7 @@ A CodeReference carries workspace/file revision. If later edits invalidate the l
 
 ## Direct user edits
 
-P0 does not build a general editor. “Open externally” uses OS/editor URI integrations where available. If a constrained inline patch action is later added, it must go through Workspace File Service with revision precondition and provenance `user_direct_edit`; it does not create a second buffer model.
+P0 does not build a general editor. “Open externally” uses OS/editor URI integrations where available. A constrained inline patch action is approved for Beta (DR-PX-2026-09-05, PX-005): it goes exclusively through the canonical ChangeTransaction on the Workspace File Service with revision precondition, path policy after symlink resolution and provenance `user_direct_edit`; it creates no buffer model in any client, and external development-environment adapters use the same command (`29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md`). Pull requests from a reviewed result use the typed Git branch push plus the `forge.pr.*` tools as protected external effects (PX-007).
 
 ## Verified compound candidate application
 

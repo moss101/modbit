@@ -331,6 +331,14 @@
    "section": "architecture"
   },
   {
+   "id": "29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md",
+   "type": "doc",
+   "title": "Client surfaces and source-control integration",
+   "path": "docs/29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md",
+   "number": 29,
+   "section": "architecture"
+  },
+  {
    "id": "30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md",
    "type": "doc",
    "title": "Protocol, APIs, and Event Schemas",
@@ -1797,8 +1805,10 @@
    "title": "Desktop Surface & UI",
    "crates": [
     "apps/desktop",
+    "apps/cli",
     "packages/ui",
     "packages/surface-protocol",
+    "packages/ide-adapter-core",
     "packages/design-tokens"
    ],
    "primary_milestone": "M1"
@@ -1961,7 +1971,8 @@
    "type": "subsystem",
    "title": "MCP Hub, Integrations & Web Gateway",
    "crates": [
-    "crates/tools (external.*)"
+    "crates/tools (external.*)",
+    "crates/tools (forge.*)"
    ],
    "primary_milestone": "M9"
   },
@@ -14443,6 +14454,175 @@
    "mandatory_behavior": "Real Core plus the CLI process on a fixture repository: create a task, stream events by cursor as JSON lines, answer a question, approve one protected effect, kill and restart Core, resume by cursor; exit codes match the documented contract and exactly one effect receipt exists"
   },
   {
+   "id": "REQ-PX-001",
+   "type": "requirement",
+   "title": "Thin-client conformance contract for external development-environment adapters",
+   "disposition": "ADOPT",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": "PX-001",
+   "qual": "QUAL-PX-001",
+   "release": "ALPHA",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Conformance suite run against the CLI and the desktop protocol client on a real Core: command idempotency, cursor replay after disconnect, intent-hash-bound approval, attention reasons and acceptance verdict rendering, Core rejection paths; static dependency scan proves no provider, filesystem, Git or policy code in the client"
+  },
+  {
+   "id": "REQ-PX-002",
+   "type": "requirement",
+   "title": "VS Code adapter as a conformant thin client",
+   "disposition": "ADOPT",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": "PX-002",
+   "qual": "QUAL-PX-002",
+   "release": "BETA",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Real VS Code extension host loading the adapter against a real local Core: create, steer, approve, review a fixture task from the editor; diagnostics forwarded with revision; restart the editor mid-task and resume by cursor"
+  },
+  {
+   "id": "REQ-PX-003",
+   "type": "requirement",
+   "title": "JetBrains adapter after abstraction conformance",
+   "disposition": "DEFERRED",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": null,
+   "qual": "QUAL-PX-003",
+   "release": "POST_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Entry condition, not a current proof: the shared adapter library passes QUAL-PX-001 and QUAL-PX-002 on VS Code, then a JetBrains host passes the identical suite before any promotion Decision Record"
+  },
+  {
+   "id": "REQ-PX-004",
+   "type": "requirement",
+   "title": "Provenance-bound external diagnostics intake",
+   "disposition": "ADOPT",
+   "subsystem": "context-engine",
+   "owner_label": "context-engine",
+   "imp": "PX-004",
+   "qual": "QUAL-PX-004",
+   "release": "BETA",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Real adapter submits language-service diagnostics for a fixture revision; Core normalizes them with provenance external_ide, they appear in Context Pack provenance and verification plan inputs, and a mandatory verification step still executes Modbit's own check"
+  },
+  {
+   "id": "REQ-PX-005",
+   "type": "requirement",
+   "title": "Constrained inline patch through ChangeTransaction",
+   "disposition": "ADOPT",
+   "subsystem": "workspace-git",
+   "owner_label": "workspace-git",
+   "imp": "PX-005",
+   "qual": "QUAL-PX-005",
+   "release": "BETA",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "From the review surface and from the CLI apply a one-hunk user edit to a real worktree through ChangeTransaction: revision precondition checked, provenance user_direct_edit recorded, workspace revision advanced, stale CodeReferences invalidated"
+  },
+  {
+   "id": "REQ-PX-006",
+   "type": "requirement",
+   "title": "GitHub forge adapter behind the External Tool Hub",
+   "disposition": "ADOPT",
+   "subsystem": "external-tools",
+   "owner_label": "external-tools",
+   "imp": "PX-006",
+   "qual": "QUAL-PX-006",
+   "release": "BETA",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Real GitHub test repository through the forge adapter: read an issue, create and update a PR, read review comments and check-run status, each with capability lease, effect class, receipt and idempotency key; token supplied by the secret broker only"
+  },
+  {
+   "id": "REQ-PX-007",
+   "type": "requirement",
+   "title": "Pull request create and update from a reviewed result",
+   "disposition": "ADOPT",
+   "subsystem": "workspace-git",
+   "owner_label": "workspace-git",
+   "imp": "PX-007",
+   "qual": "QUAL-PX-007",
+   "release": "BETA",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Reviewed fixture result opens a PR on a dedicated branch after approval; PR body carries the evidence summary; a later revision updates the same PR with a new receipt"
+  },
+  {
+   "id": "REQ-PX-008",
+   "type": "requirement",
+   "title": "Review-comment steering as untrusted durable input",
+   "disposition": "ADOPT",
+   "subsystem": "core-runtime",
+   "owner_label": "core-runtime",
+   "imp": "PX-008",
+   "qual": "QUAL-PX-008",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Review comment from an allowed identity on the fixture PR becomes a TaskSteered event with provenance forge_review_comment and untrusted tagging, and the agent acts on it"
+  },
+  {
+   "id": "REQ-PX-009",
+   "type": "requirement",
+   "title": "CI-result ingestion as provenance-bearing evidence",
+   "disposition": "ADOPT",
+   "subsystem": "verification",
+   "owner_label": "verification",
+   "imp": "PX-009",
+   "qual": "QUAL-PX-009",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Real check-run results for the task branch are ingested as evidence artifacts with provider, run id, commit and OutputRef logs and appear in Review with provenance ci"
+  },
+  {
+   "id": "REQ-PX-010",
+   "type": "requirement",
+   "title": "Issue-to-task intake from CLI and desktop",
+   "disposition": "ADOPT",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": "PX-010",
+   "qual": "QUAL-PX-010",
+   "release": "BETA",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "From the CLI and the desktop New Task screen create a task from a real issue URL; issue text enters as untrusted context with provenance forge_issue and the task runs the ordinary loop"
+  },
+  {
+   "id": "REQ-PX-011",
+   "type": "requirement",
+   "title": "Forge webhook intake through the Cloud API",
+   "disposition": "ADOPT",
+   "subsystem": "sandbox-cloud",
+   "owner_label": "sandbox-cloud",
+   "imp": "PX-011",
+   "qual": "QUAL-PX-011",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Real GitHub App webhook to the staging Cloud API creates the same canonical task for the tenant after signature verification and policy; the desktop sees it by cursor"
+  },
+  {
+   "id": "REQ-PX-012",
+   "type": "requirement",
+   "title": "Team collaboration: shared task history and assignment",
+   "disposition": "DEFERRED",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": null,
+   "qual": "QUAL-PX-012",
+   "release": "POST_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Deferred proof: shared history and assignment appear as cloud projections readable by multiple authenticated clients with tenant isolation"
+  },
+  {
+   "id": "REQ-PX-013",
+   "type": "requirement",
+   "title": "Team collaboration: comments and chat notifications",
+   "disposition": "DEFERRED",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": null,
+   "qual": "QUAL-PX-013",
+   "release": "POST_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Deferred proof: comments and notifications are durable events with provenance and never authority"
+  },
+  {
    "id": "PX-000",
    "type": "imp_task",
    "title": "Headless CLI thin client for the task lifecycle",
@@ -14468,6 +14648,255 @@
    "evidence": []
   },
   {
+   "id": "PX-001",
+   "type": "imp_task",
+   "title": "Thin-client conformance contract for external development-environment adapters",
+   "requirement": "REQ-PX-001",
+   "qual": "QUAL-PX-001",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "milestone": "M2",
+   "release": "ALPHA",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "Conformance suite run against the CLI and the desktop protocol client on a real Core: command idempotency, cursor replay after disconnect, intent-hash-bound approval, attention reasons and acceptance verdict rendering, Core rejection paths; static dependency scan proves no provider, filesystem, Git or policy code in the client",
+   "prerequisites": [
+    "PX-000"
+   ],
+   "related_requirements": [
+    "REQ-EV-0010"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-001",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-002",
+   "type": "imp_task",
+   "title": "VS Code adapter as a conformant thin client",
+   "requirement": "REQ-PX-002",
+   "qual": "QUAL-PX-002",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "milestone": "M6",
+   "release": "BETA",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "Real VS Code extension host loading the adapter against a real local Core: create, steer, approve, review a fixture task from the editor; diagnostics forwarded with revision; restart the editor mid-task and resume by cursor",
+   "prerequisites": [
+    "PX-001",
+    "M6.6"
+   ],
+   "related_requirements": [
+    "REQ-EV-0010"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-002",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-004",
+   "type": "imp_task",
+   "title": "Provenance-bound external diagnostics intake",
+   "requirement": "REQ-PX-004",
+   "qual": "QUAL-PX-004",
+   "subsystem": "context-engine",
+   "owner_label": "context-engine",
+   "milestone": "M6",
+   "release": "BETA",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "Real adapter submits language-service diagnostics for a fixture revision; Core normalizes them with provenance external_ide, they appear in Context Pack provenance and verification plan inputs, and a mandatory verification step still executes Modbit's own check",
+   "prerequisites": [
+    "PX-001",
+    "M3.4"
+   ],
+   "related_requirements": [
+    "REQ-EV-0010"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-004",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-005",
+   "type": "imp_task",
+   "title": "Constrained inline patch through ChangeTransaction",
+   "requirement": "REQ-PX-005",
+   "qual": "QUAL-PX-005",
+   "subsystem": "workspace-git",
+   "owner_label": "workspace-git",
+   "milestone": "M6",
+   "release": "BETA",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "From the review surface and from the CLI apply a one-hunk user edit to a real worktree through ChangeTransaction: revision precondition checked, provenance user_direct_edit recorded, workspace revision advanced, stale CodeReferences invalidated",
+   "prerequisites": [
+    "M2.1",
+    "M2.9"
+   ],
+   "related_requirements": [
+    "REQ-EV-0010"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-005",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-006",
+   "type": "imp_task",
+   "title": "GitHub forge adapter behind the External Tool Hub",
+   "requirement": "REQ-PX-006",
+   "qual": "QUAL-PX-006",
+   "subsystem": "external-tools",
+   "owner_label": "external-tools",
+   "milestone": "M6",
+   "release": "BETA",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "Real GitHub test repository through the forge adapter: read an issue, create and update a PR, read review comments and check-run status, each with capability lease, effect class, receipt and idempotency key; token supplied by the secret broker only",
+   "prerequisites": [
+    "M2.5",
+    "M6.5"
+   ],
+   "related_requirements": [
+    "REQ-EV-0010"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-006",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-007",
+   "type": "imp_task",
+   "title": "Pull request create and update from a reviewed result",
+   "requirement": "REQ-PX-007",
+   "qual": "QUAL-PX-007",
+   "subsystem": "workspace-git",
+   "owner_label": "workspace-git",
+   "milestone": "M6",
+   "release": "BETA",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "Reviewed fixture result opens a PR on a dedicated branch after approval; PR body carries the evidence summary; a later revision updates the same PR with a new receipt",
+   "prerequisites": [
+    "PX-006",
+    "M2.2"
+   ],
+   "related_requirements": [
+    "REQ-EV-0010"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-007",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-008",
+   "type": "imp_task",
+   "title": "Review-comment steering as untrusted durable input",
+   "requirement": "REQ-PX-008",
+   "qual": "QUAL-PX-008",
+   "subsystem": "core-runtime",
+   "owner_label": "core-runtime",
+   "milestone": "M9",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "Review comment from an allowed identity on the fixture PR becomes a TaskSteered event with provenance forge_review_comment and untrusted tagging, and the agent acts on it",
+   "prerequisites": [
+    "PX-007",
+    "M6.5"
+   ],
+   "related_requirements": [
+    "REQ-EV-0010"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-008",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-009",
+   "type": "imp_task",
+   "title": "CI-result ingestion as provenance-bearing evidence",
+   "requirement": "REQ-PX-009",
+   "qual": "QUAL-PX-009",
+   "subsystem": "verification",
+   "owner_label": "verification",
+   "milestone": "M9",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "Real check-run results for the task branch are ingested as evidence artifacts with provider, run id, commit and OutputRef logs and appear in Review with provenance ci",
+   "prerequisites": [
+    "PX-007",
+    "M2.8"
+   ],
+   "related_requirements": [
+    "REQ-EV-0010"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-009",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-010",
+   "type": "imp_task",
+   "title": "Issue-to-task intake from CLI and desktop",
+   "requirement": "REQ-PX-010",
+   "qual": "QUAL-PX-010",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "milestone": "M6",
+   "release": "BETA",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "From the CLI and the desktop New Task screen create a task from a real issue URL; issue text enters as untrusted context with provenance forge_issue and the task runs the ordinary loop",
+   "prerequisites": [
+    "PX-006",
+    "PX-000"
+   ],
+   "related_requirements": [
+    "REQ-EV-0010"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-010",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-011",
+   "type": "imp_task",
+   "title": "Forge webhook intake through the Cloud API",
+   "requirement": "REQ-PX-011",
+   "qual": "QUAL-PX-011",
+   "subsystem": "sandbox-cloud",
+   "owner_label": "sandbox-cloud",
+   "milestone": "M8",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "Real GitHub App webhook to the staging Cloud API creates the same canonical task for the tenant after signature verification and policy; the desktop sees it by cursor",
+   "prerequisites": [
+    "PX-010",
+    "M8.1"
+   ],
+   "related_requirements": [
+    "REQ-EV-0010"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-011",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
    "id": "QUAL-PX-000",
    "type": "qual_test",
    "requirement": "REQ-PX-000",
@@ -14478,10 +14907,210 @@
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
   },
   {
+   "id": "QUAL-PX-001",
+   "type": "qual_test",
+   "requirement": "REQ-PX-001",
+   "owner_label": "desktop",
+   "title": "Conformance suite run against the CLI and the desktop protocol client on a real Core: command idempotency, cursor replay after disconnect, intent-hash-bound approval, attention reasons and acceptance verdict rendering, Core rejection paths; static dependency scan proves no provider, filesystem, Git or policy code in the client",
+   "failure_proof": "A client that retries a command with a new id, replays without a cursor, or links a Git or provider library fails the suite and is not exposed",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-002",
+   "type": "qual_test",
+   "requirement": "REQ-PX-002",
+   "owner_label": "desktop",
+   "title": "Real VS Code extension host loading the adapter against a real local Core: create, steer, approve, review a fixture task from the editor; diagnostics forwarded with revision; restart the editor mid-task and resume by cursor",
+   "failure_proof": "Adapter attempting to write the workspace, run a tool or read a secret has no code path and the Core rejects any forged command; a revision-mismatched diagnostics batch is discarded with an event",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-003",
+   "type": "qual_test",
+   "requirement": "REQ-PX-003",
+   "owner_label": "desktop",
+   "title": "Entry condition, not a current proof: the shared adapter library passes QUAL-PX-001 and QUAL-PX-002 on VS Code, then a JetBrains host passes the identical suite before any promotion Decision Record",
+   "failure_proof": "Deferred; any JetBrains code before the entry condition is a release blocker under doc 73",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-004",
+   "type": "qual_test",
+   "requirement": "REQ-PX-004",
+   "owner_label": "context-engine",
+   "title": "Real adapter submits language-service diagnostics for a fixture revision; Core normalizes them with provenance external_ide, they appear in Context Pack provenance and verification plan inputs, and a mandatory verification step still executes Modbit's own check",
+   "failure_proof": "Submission for a stale revision is discarded; a diagnostics batch cannot mark any verification step passed; malformed batches are rejected before persistence",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-005",
+   "type": "qual_test",
+   "requirement": "REQ-PX-005",
+   "owner_label": "workspace-git",
+   "title": "From the review surface and from the CLI apply a one-hunk user edit to a real worktree through ChangeTransaction: revision precondition checked, provenance user_direct_edit recorded, workspace revision advanced, stale CodeReferences invalidated",
+   "failure_proof": "Edit against a stale revision is refused; edit to a protected path is denied after symlink resolution; no client keeps an unsaved buffer",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-006",
+   "type": "qual_test",
+   "requirement": "REQ-PX-006",
+   "owner_label": "external-tools",
+   "title": "Real GitHub test repository through the forge adapter: read an issue, create and update a PR, read review comments and check-run status, each with capability lease, effect class, receipt and idempotency key; token supplied by the secret broker only",
+   "failure_proof": "Call without lease or with a token in arguments is rejected; retried create with the same idempotency key yields one PR; egress to any other host is denied",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-007",
+   "type": "qual_test",
+   "requirement": "REQ-PX-007",
+   "owner_label": "workspace-git",
+   "title": "Reviewed fixture result opens a PR on a dedicated branch after approval; PR body carries the evidence summary; a later revision updates the same PR with a new receipt",
+   "failure_proof": "Stale candidate revision cannot be pushed; denied approval leaves no branch on the remote; crash after push before receipt reconciles to exactly one PR",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-008",
+   "type": "qual_test",
+   "requirement": "REQ-PX-008",
+   "owner_label": "core-runtime",
+   "title": "Review comment from an allowed identity on the fixture PR becomes a TaskSteered event with provenance forge_review_comment and untrusted tagging, and the agent acts on it",
+   "failure_proof": "Comment from a disallowed identity is recorded and ignored; comment text asking to approve an effect or widen capability changes nothing; injection suite passes",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-009",
+   "type": "qual_test",
+   "requirement": "REQ-PX-009",
+   "owner_label": "verification",
+   "title": "Real check-run results for the task branch are ingested as evidence artifacts with provider, run id, commit and OutputRef logs and appear in Review with provenance ci",
+   "failure_proof": "A green CI run cannot mark a qualification PASS; a qualification naming a real test still runs in Modbit; mismatched commit is rejected",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-010",
+   "type": "qual_test",
+   "requirement": "REQ-PX-010",
+   "owner_label": "desktop",
+   "title": "From the CLI and the desktop New Task screen create a task from a real issue URL; issue text enters as untrusted context with provenance forge_issue and the task runs the ordinary loop",
+   "failure_proof": "Issue text containing instructions cannot change policy or capabilities; unreadable issue yields a clear error and no task",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-011",
+   "type": "qual_test",
+   "requirement": "REQ-PX-011",
+   "owner_label": "sandbox-cloud",
+   "title": "Real GitHub App webhook to the staging Cloud API creates the same canonical task for the tenant after signature verification and policy; the desktop sees it by cursor",
+   "failure_proof": "Unsigned or replayed webhook is rejected and audited; cross-tenant repository mapping is denied; no second task model exists",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-012",
+   "type": "qual_test",
+   "requirement": "REQ-PX-012",
+   "owner_label": "desktop",
+   "title": "Deferred proof: shared history and assignment appear as cloud projections readable by multiple authenticated clients with tenant isolation",
+   "failure_proof": "Deferred; not on the Release Zero path",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-013",
+   "type": "qual_test",
+   "requirement": "REQ-PX-013",
+   "owner_label": "desktop",
+   "title": "Deferred proof: comments and notifications are durable events with provenance and never authority",
+   "failure_proof": "Deferred; not on the Release Zero path",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
    "id": "PX-E2E-000",
    "type": "scenario",
    "kind": "px-e2e",
    "title": "Headless CLI task lifecycle",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-001",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Thin-client conformance on CLI and desktop client",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-002",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "VS Code adapter drives a real task",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-004",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "External diagnostics as evidence only",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-005",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Inline patch through ChangeTransaction",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-006",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Forge adapter with leases and receipts",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-007",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Pull request from a reviewed result",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-008",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Review-comment steering",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-009",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "CI results are evidence, not verdicts",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-010",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Task from an issue",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-011",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Webhook intake through the Cloud API",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
   },
   {
@@ -15024,6 +15653,16 @@
    "status_changed_on": "2026-09-05T12:29:39Z"
   },
   {
+   "id": "DOC-PX-002",
+   "type": "dossier_task",
+   "title": "Product extension stage B: client surfaces and source-control integration",
+   "subsystem": "governance",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
+   "acceptance": "Stage sealed on main with change and seal commits; full integrity gate passes; no product proof",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
    "id": "ALPHA",
    "type": "release",
    "title": "Local coding loop and recovery spine",
@@ -15176,6 +15815,11 @@
   },
   {
    "from": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "to": "section:architecture",
+   "type": "in_section"
+  },
+  {
+   "from": "29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md",
    "to": "section:architecture",
    "type": "in_section"
   },
@@ -15587,6 +16231,11 @@
   {
    "from": "00_MASTER_INDEX.md",
    "to": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "type": "references"
+  },
+  {
+   "from": "00_MASTER_INDEX.md",
+   "to": "29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md",
    "type": "references"
   },
   {
@@ -16071,6 +16720,11 @@
   },
   {
    "from": "10_PRODUCT_PRD_AND_UX.md",
+   "to": "29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md",
+   "type": "references"
+  },
+  {
+   "from": "10_PRODUCT_PRD_AND_UX.md",
    "to": "30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md",
    "type": "references"
   },
@@ -16107,6 +16761,11 @@
   {
    "from": "12_REPOSITORY_AND_MODULE_LAYOUT.md",
    "to": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "type": "references"
+  },
+  {
+   "from": "12_REPOSITORY_AND_MODULE_LAYOUT.md",
+   "to": "29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md",
    "type": "references"
   },
   {
@@ -16157,6 +16816,16 @@
   {
    "from": "17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md",
    "to": "21_TERMINAL_EXECUTION_AND_SANDBOX.md",
+   "type": "references"
+  },
+  {
+   "from": "17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md",
+   "to": "29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md",
+   "type": "references"
+  },
+  {
+   "from": "20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md",
+   "to": "29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md",
    "type": "references"
   },
   {
@@ -16315,8 +16984,43 @@
    "type": "references"
   },
   {
+   "from": "29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md",
+   "to": "07_PRODUCT_EXTENSION_DECISION_RECORD.md",
+   "type": "references"
+  },
+  {
+   "from": "29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md",
+   "to": "17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md",
+   "type": "references"
+  },
+  {
+   "from": "29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md",
+   "to": "18_CONTEXT_RETRIEVAL_AND_ENGINEERING_KNOWLEDGE.md",
+   "type": "references"
+  },
+  {
+   "from": "29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md",
+   "to": "30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md",
+   "type": "references"
+  },
+  {
+   "from": "29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md",
+   "to": "32_DESKTOP_FRONTEND_IMPLEMENTATION.md",
+   "type": "references"
+  },
+  {
+   "from": "30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md",
+   "to": "29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md",
+   "type": "references"
+  },
+  {
    "from": "30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md",
    "to": "38_EXECUTION_POLICY_CONTRACTS_AND_ALGORITHMS.md",
+   "type": "references"
+  },
+  {
+   "from": "30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
    "type": "references"
   },
   {
@@ -16482,6 +17186,26 @@
   {
    "from": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
    "to": "07_PRODUCT_EXTENSION_DECISION_RECORD.md",
+   "type": "references"
+  },
+  {
+   "from": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "to": "17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md",
+   "type": "references"
+  },
+  {
+   "from": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "to": "20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md",
+   "type": "references"
+  },
+  {
+   "from": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "to": "24_CLOUD_CONTROL_PLANE_AND_SYNC.md",
+   "type": "references"
+  },
+  {
+   "from": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "to": "29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md",
    "type": "references"
   },
   {
@@ -17176,6 +17900,11 @@
   },
   {
    "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
    "to": "21_TERMINAL_EXECUTION_AND_SANDBOX.md",
    "type": "references"
   },
@@ -17187,6 +17916,16 @@
   {
    "from": "97_DOSSIER_MAINTENANCE_LOG.md",
    "to": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md",
    "type": "references"
   },
   {
@@ -18191,6 +18930,11 @@
   },
   {
    "from": "desktop",
+   "to": "29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "desktop",
    "to": "32_DESKTOP_FRONTEND_IMPLEMENTATION.md",
    "type": "specified_by"
   },
@@ -18392,6 +19136,11 @@
   {
    "from": "external-tools",
    "to": "16_TOOL_CAPABILITY_AND_PROCEDURAL_RUNTIME.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "external-tools",
+   "to": "29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md",
    "type": "specified_by"
   },
   {
@@ -29440,6 +30189,316 @@
    "type": "implemented_by"
   },
   {
+   "from": "REQ-PX-001",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-001",
+   "to": "QUAL-PX-001",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-001",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-001",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-001",
+   "to": "PX-001",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-002",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-002",
+   "to": "QUAL-PX-002",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-002",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-002",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-002",
+   "to": "PX-002",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-003",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-003",
+   "to": "QUAL-PX-003",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-003",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-003",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-004",
+   "to": "context-engine",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-004",
+   "to": "QUAL-PX-004",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-004",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-004",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-004",
+   "to": "PX-004",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-005",
+   "to": "workspace-git",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-005",
+   "to": "QUAL-PX-005",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-005",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-005",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-005",
+   "to": "PX-005",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-006",
+   "to": "external-tools",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-006",
+   "to": "QUAL-PX-006",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-006",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-006",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-006",
+   "to": "PX-006",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-007",
+   "to": "workspace-git",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-007",
+   "to": "QUAL-PX-007",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-007",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-007",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-007",
+   "to": "PX-007",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-008",
+   "to": "core-runtime",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-008",
+   "to": "QUAL-PX-008",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-008",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-008",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-008",
+   "to": "PX-008",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-009",
+   "to": "verification",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-009",
+   "to": "QUAL-PX-009",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-009",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-009",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-009",
+   "to": "PX-009",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-010",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-010",
+   "to": "QUAL-PX-010",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-010",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-010",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-010",
+   "to": "PX-010",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-011",
+   "to": "sandbox-cloud",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-011",
+   "to": "QUAL-PX-011",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-011",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-011",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-011",
+   "to": "PX-011",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-012",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-012",
+   "to": "QUAL-PX-012",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-012",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-012",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-013",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-013",
+   "to": "QUAL-PX-013",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-013",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-013",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
    "from": "PX-000",
    "to": "DR-PX-2026-09-05",
    "type": "authorized_by"
@@ -29487,6 +30546,501 @@
   {
    "from": "PX-E2E-000",
    "to": "M2",
+   "type": "proves"
+  },
+  {
+   "from": "PX-001",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-001",
+   "to": "desktop",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-001",
+   "to": "M2",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-001",
+   "to": "QUAL-PX-001",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-001",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-001",
+   "to": "PX-000",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-001",
+   "to": "REQ-EV-0010",
+   "type": "extends"
+  },
+  {
+   "from": "PX-001",
+   "to": "PX-E2E-001",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-001",
+   "to": "M2",
+   "type": "proves"
+  },
+  {
+   "from": "PX-002",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-002",
+   "to": "desktop",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-002",
+   "to": "M6",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-002",
+   "to": "QUAL-PX-002",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-002",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-002",
+   "to": "PX-001",
+   "type": "after"
+  },
+  {
+   "from": "PX-002",
+   "to": "M6.6",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-002",
+   "to": "REQ-EV-0010",
+   "type": "extends"
+  },
+  {
+   "from": "PX-002",
+   "to": "PX-E2E-002",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-002",
+   "to": "M6",
+   "type": "proves"
+  },
+  {
+   "from": "PX-004",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-004",
+   "to": "context-engine",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-004",
+   "to": "M6",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-004",
+   "to": "QUAL-PX-004",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-004",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-004",
+   "to": "PX-001",
+   "type": "after"
+  },
+  {
+   "from": "PX-004",
+   "to": "M3.4",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-004",
+   "to": "REQ-EV-0010",
+   "type": "extends"
+  },
+  {
+   "from": "PX-004",
+   "to": "PX-E2E-004",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-004",
+   "to": "M6",
+   "type": "proves"
+  },
+  {
+   "from": "PX-005",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-005",
+   "to": "workspace-git",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-005",
+   "to": "M6",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-005",
+   "to": "QUAL-PX-005",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-005",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-005",
+   "to": "M2.1",
+   "type": "after"
+  },
+  {
+   "from": "PX-005",
+   "to": "M2.9",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-005",
+   "to": "REQ-EV-0010",
+   "type": "extends"
+  },
+  {
+   "from": "PX-005",
+   "to": "PX-E2E-005",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-005",
+   "to": "M6",
+   "type": "proves"
+  },
+  {
+   "from": "PX-006",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-006",
+   "to": "external-tools",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-006",
+   "to": "M6",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-006",
+   "to": "QUAL-PX-006",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-006",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-006",
+   "to": "M2.5",
+   "type": "after"
+  },
+  {
+   "from": "PX-006",
+   "to": "M6.5",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-006",
+   "to": "REQ-EV-0010",
+   "type": "extends"
+  },
+  {
+   "from": "PX-006",
+   "to": "PX-E2E-006",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-006",
+   "to": "M6",
+   "type": "proves"
+  },
+  {
+   "from": "PX-007",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-007",
+   "to": "workspace-git",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-007",
+   "to": "M6",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-007",
+   "to": "QUAL-PX-007",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-007",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-007",
+   "to": "PX-006",
+   "type": "after"
+  },
+  {
+   "from": "PX-007",
+   "to": "M2.2",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-007",
+   "to": "REQ-EV-0010",
+   "type": "extends"
+  },
+  {
+   "from": "PX-007",
+   "to": "PX-E2E-007",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-007",
+   "to": "M6",
+   "type": "proves"
+  },
+  {
+   "from": "PX-008",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-008",
+   "to": "core-runtime",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-008",
+   "to": "M9",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-008",
+   "to": "QUAL-PX-008",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-008",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-008",
+   "to": "PX-007",
+   "type": "after"
+  },
+  {
+   "from": "PX-008",
+   "to": "M6.5",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-008",
+   "to": "REQ-EV-0010",
+   "type": "extends"
+  },
+  {
+   "from": "PX-008",
+   "to": "PX-E2E-008",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-008",
+   "to": "M9",
+   "type": "proves"
+  },
+  {
+   "from": "PX-009",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-009",
+   "to": "verification",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-009",
+   "to": "M9",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-009",
+   "to": "QUAL-PX-009",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-009",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-009",
+   "to": "PX-007",
+   "type": "after"
+  },
+  {
+   "from": "PX-009",
+   "to": "M2.8",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-009",
+   "to": "REQ-EV-0010",
+   "type": "extends"
+  },
+  {
+   "from": "PX-009",
+   "to": "PX-E2E-009",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-009",
+   "to": "M9",
+   "type": "proves"
+  },
+  {
+   "from": "PX-010",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-010",
+   "to": "desktop",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-010",
+   "to": "M6",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-010",
+   "to": "QUAL-PX-010",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-010",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-010",
+   "to": "PX-006",
+   "type": "after"
+  },
+  {
+   "from": "PX-010",
+   "to": "PX-000",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-010",
+   "to": "REQ-EV-0010",
+   "type": "extends"
+  },
+  {
+   "from": "PX-010",
+   "to": "PX-E2E-010",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-010",
+   "to": "M6",
+   "type": "proves"
+  },
+  {
+   "from": "PX-011",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-011",
+   "to": "sandbox-cloud",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-011",
+   "to": "M8",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-011",
+   "to": "QUAL-PX-011",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-011",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-011",
+   "to": "PX-010",
+   "type": "after"
+  },
+  {
+   "from": "PX-011",
+   "to": "M8.1",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-011",
+   "to": "REQ-EV-0010",
+   "type": "extends"
+  },
+  {
+   "from": "PX-011",
+   "to": "PX-E2E-011",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-011",
+   "to": "M8",
    "type": "proves"
   },
   {
@@ -30051,6 +31605,26 @@
   },
   {
    "from": "DOC-PX-001",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "DOC-PX-002",
+   "to": "DOC-PX-001",
+   "type": "after"
+  },
+  {
+   "from": "DOC-PX-002",
+   "to": "governance",
+   "type": "owned_by"
+  },
+  {
+   "from": "DOC-PX-002",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-PX-002",
    "to": "DR-PX-2026-09-05",
    "type": "authorized_by"
   },
@@ -30652,6 +32226,11 @@
   {
    "from": "ALPHA",
    "to": "PX-000",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "PX-001",
    "type": "includes"
   },
   {
@@ -32152,6 +33731,41 @@
   {
    "from": "BETA",
    "to": "PX-000",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "PX-001",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "PX-002",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "PX-004",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "PX-005",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "PX-006",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "PX-007",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "PX-010",
    "type": "includes"
   },
   {
@@ -33976,6 +35590,56 @@
   },
   {
    "from": "RELEASE_ZERO",
+   "to": "PX-001",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-002",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-004",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-005",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-006",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-007",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-008",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-009",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-010",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-011",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
    "to": "EPR-GATE-A",
    "type": "requires_gate"
   },
@@ -34009,6 +35673,5 @@
    "to": "EPR-GATE-G",
    "type": "requires_gate"
   }
- ],
- "updated_on": "2026-09-05T12:29:39Z"
+ ]
 }

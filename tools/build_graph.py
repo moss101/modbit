@@ -49,7 +49,8 @@ GOV_LOG_DOC = "97_DOSSIER_MAINTENANCE_LOG.md"
 GOV2_CHANGE = "DR-GOV-2026-09-05-002"
 GOV3_CHANGE = "DR-GOV-2026-09-05-003"
 GOV4_CHANGE = "DR-GOV-2026-09-05-004"
-PX_STAGES = [("DOC-PX-001", "DOC-GOV-004", "Product extension stage A: authority, PX ledger tooling, phased releases, governance tiering")]
+PX_STAGES = [("DOC-PX-001", "DOC-GOV-004", "Product extension stage A: authority, PX ledger tooling, phased releases, governance tiering"),
+             ("DOC-PX-002", "DOC-PX-001", "Product extension stage B: client surfaces and source-control integration")]
 
 # Tasks named in docs/43's "V2 sequencing delta" but never enumerated as Mx.y rows.
 ADDED_TASKS = [
@@ -77,7 +78,7 @@ SUBSYSTEMS = [
     ("governance", "Architecture Governance & Product Scope", ["tools/architecture-lint", "tools/evidence-check", "docs/decisions"], ["02", "03", "81", "82"], "M0"),
     ("domain-events", "Domain Model, Event Store & Protocol State", ["crates/domain", "crates/protocol", "crates/event-store", "crates/protocol-state"], ["13", "30", "31"], "M1"),
     ("core-runtime", "Agent Runtime, Scheduler, WorkGraph/AgentGraph", ["crates/core-runtime"], ["14"], "M1"),
-    ("desktop", "Desktop Surface & UI", ["apps/desktop", "packages/ui", "packages/surface-protocol", "packages/design-tokens"], ["10", "32"], "M1"),
+    ("desktop", "Desktop Surface & UI", ["apps/desktop", "apps/cli", "packages/ui", "packages/surface-protocol", "packages/ide-adapter-core", "packages/design-tokens"], ["10", "29", "32"], "M1"),
     ("model-gateway", "Execution Policy Router & Provider Gateway", ["crates/providers"], ["15", "27", "38"], "M2"),
     ("tool-runtime", "Tool Registry & Capability Kernel", ["crates/tools", "crates/policy"], ["16", "17"], "M2"),
     ("workspace-git", "Workspace Fabric, Change Engine & Git", ["crates/workspace", "crates/git"], ["20"], "M2"),
@@ -93,7 +94,7 @@ SUBSYSTEMS = [
     ("sandbox-cloud", "Sandbox Gateway, Guest & Cloud Control Plane", ["crates/sandbox", "apps/cloud-api", "apps/cloud-worker", "apps/sandbox-gateway", "services/modbit-guest"], ["21", "24"], "M8"),
     ("effects-security", "Policy Kernel, Effect Ledger & Secrets", ["crates/policy", "crates/effects", "crates/secrets"], ["23", "52"], "M9"),
     ("memory", "Engineering Memory", ["crates/memory"], ["19"], "M9"),
-    ("external-tools", "MCP Hub, Integrations & Web Gateway", ["crates/tools (external.*)"], ["16"], "M9"),
+    ("external-tools", "MCP Hub, Integrations & Web Gateway", ["crates/tools (external.*)", "crates/tools (forge.*)"], ["16", "29"], "M9"),
     ("extensions-hooks", "Hook Bus, Extension System & Importers", ["crates/tools (hooks)", "crates/skills (import)"], ["25"], "M9"),
     ("observability", "Observability, Cost & Operations", ["crates/observability"], ["34", "71"], "M10"),
     ("automation", "Automation / Scheduling (DEFERRED)", [], ["02"], None),
