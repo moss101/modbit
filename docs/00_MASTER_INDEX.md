@@ -12,7 +12,7 @@ Preserve the original 291 EV rows and prior IDs/owners; amend 14 EPR tasks and a
 
 Governance maintenance (DOC-GOV-001, doc 96, 2026-09-05): evidence references on graph nodes use a validated `kind:value` grammar, decision statuses are validated against doc 93, `../AGENTS.md`, `../README.md` and `../SKILLS.md` match the sealed package and five-step reseal, and the pinned tool constants are documented in doc 74. No requirement, owner, ADR or EPR clause changed.
 
-Later dossier-only maintenance is logged append-only in doc 97 (`97_DOSSIER_MAINTENANCE_LOG.md`). Its first entry, DOC-GOV-002, aligns docs 12/14/16/21/33/44/74 with EPR v1.1: component placement by crate and owner, the `review_isolated` execution profile and the reviewer tool projection. DOC-GOV-003 adds `gated_by` edges from M10 to gates A–G, derived gate states with `graph.py attest` and `gates`, the `GATED` roll-up and one-step lifecycle transitions (doc 93).
+Later dossier-only maintenance is logged append-only in doc 97 (`97_DOSSIER_MAINTENANCE_LOG.md`). Its first entry, DOC-GOV-002, aligns docs 12/14/16/21/33/44/74 with EPR v1.1: component placement by crate and owner, the `review_isolated` execution profile and the reviewer tool projection. DOC-GOV-003 adds `gated_by` edges from M10 to gates A–G, derived gate states with `graph.py attest` and `gates`, the `GATED` roll-up and one-step lifecycle transitions (doc 93). DOC-GOV-004 carries both patches into the product-facing docs (10/17/19/24/32/56/83) and adds the source section coverage map in doc 27 §28, enforced by check D8.
 
 ## What changed in V3.1 (structure only, no requirement changes)
 

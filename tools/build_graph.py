@@ -47,6 +47,7 @@ GOV_CHANGE = "DR-GOV-2026-09-05"
 GOV_LOG_DOC = "97_DOSSIER_MAINTENANCE_LOG.md"
 GOV2_CHANGE = "DR-GOV-2026-09-05-002"
 GOV3_CHANGE = "DR-GOV-2026-09-05-003"
+GOV4_CHANGE = "DR-GOV-2026-09-05-004"
 
 # Tasks named in docs/43's "V2 sequencing delta" but never enumerated as Mx.y rows.
 ADDED_TASKS = [
@@ -572,6 +573,17 @@ def build(previous=None):
     link("DOC-GOV-003", "governance", "owned_by")
     link("DOC-GOV-003", GOV_LOG_DOC, "specified_by")
     link("DOC-GOV-003", GOV3_CHANGE, "authorized_by")
+    add({"id": GOV4_CHANGE, "type": "change_record", "title": "Approved product-facing integration of both EPR patches and source coverage map",
+         "status": "APPROVED", "source": "docs/" + GOV_LOG_DOC})
+    link(GOV4_CHANGE, GOV_LOG_DOC, "specified_by")
+    link(GOV4_CHANGE, epr.V11_CHANGE, "refines")
+    add({"id": "DOC-GOV-004", "type": "dossier_task", "title": "Integrate EPR patches into product, cloud, durability and acceptance docs; add coverage map",
+         "subsystem": "governance", "source": "docs/" + GOV_LOG_DOC,
+         "acceptance": "Docs 10/17/19/24/32/56/83 carry the patch UX, cloud, durability, projection, conformance and done rules; doc 27 coverage map covers every patch section and D8 enforces it; copied-package tests pass; no product proof"})
+    link("DOC-GOV-004", "DOC-GOV-003", "after")
+    link("DOC-GOV-004", "governance", "owned_by")
+    link("DOC-GOV-004", GOV_LOG_DOC, "specified_by")
+    link("DOC-GOV-004", GOV4_CHANGE, "authorized_by")
 
     # live state preservation ------------------------------------------------
     for n in nodes:

@@ -29,6 +29,7 @@ A tool marked production cannot pass by returning a canned success value.
 | Web | real allowlisted test endpoint | fetch/search/network policy/redirect/size limit |
 | Artifact | real content store | OutputRef range/digest/restart/tenant isolation |
 | Memory | real DB | query/propose/promotion/scope/TTL/conflict/no transcript auto-promotion |
+| Review isolation | real disposable worktree + sandboxed process under `review_isolated` | permitted scratch write/build/test; denied canonical write, commit/push, secret read, egress, deploy; hidden-reasoning exclusion; cleanup on accept/cancel/kill (EPR-E2E-018, EPR-FI-018) |
 
 ## Procedural runtime proof
 

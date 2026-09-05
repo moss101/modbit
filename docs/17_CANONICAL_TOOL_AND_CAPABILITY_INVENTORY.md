@@ -4,7 +4,7 @@
 
 ## Model-visible strategy
 
-Most turns see a small task-scoped direct surface. Procedural mode may expose `exec`, `wait`, and `request_user_input` while an isolated composition runtime invokes authorized `tools.*` bindings. Discovery never grants authority.
+Most turns see a small task-scoped direct surface. Procedural mode may expose `exec`, `wait`, and `request_user_input` while an isolated composition runtime invokes authorized `tools.*` bindings. Discovery never grants authority. Reviewer legs of a conditional plan see a further restricted projection: read-only canonical access plus scratch writes and bounded processes inside the disposable review worktree; effectful families (`change.apply`, `git.merge.*`, `git.worktree.*` on canonical trees, `browser.action`, `computer.action`, `external.call`, `web.*`, `memory.propose`) are excluded and kernel-denied under the `review_isolated` profile (`16_TOOL_CAPABILITY_AND_PROCEDURAL_RUNTIME.md`, `21_TERMINAL_EXECUTION_AND_SANDBOX.md`, EPR-018). No new tool family is introduced for review.
 
 | Canonical tool/family | Class | Purpose | Protected effect? | Owner |
 |---|---|---|---|---|

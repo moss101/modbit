@@ -11,6 +11,7 @@ Checks
   D4  every ADOPT/ADAPT/EXPERIMENT row has an IMP-EV task and a QUAL-EV test
   D5  no de-branding artifacts or placeholder tokens
   D7  decision statuses in docs/02 and on graph decision nodes use the docs/93 decision ladder
+  D8  every top-level section of both root source patches appears in the doc 27 source coverage map
   G1  graph exists and every doc is a node; every doc node exists on disk
   G2  every REQ/IMP/QUAL in docs is in the graph and vice versa
   G3  statuses are from the vocabulary; E2E_PROVEN/COMPLETE carry evidence; every evidence ref follows the docs/93 grammar
@@ -139,6 +140,18 @@ def main(argv):
     for did, status in re.findall(r"^\| ((?:MOD-[A-Z]+|ADR-R)-\d{3}) \| .+? \| \*\*(.+?)\*\* \| .+? \|$", text[decisions_doc], re.M):
         if status.strip() not in graphtool.DECISION_STATES:
             find("D7", "%s has decision status %r outside %s" % (did, status.strip(), "/".join(graphtool.DECISION_STATES)))
+
+    # D8: every top-level section of both root patches is mapped in the doc 27 coverage map
+    coverage = text[[f for f in docs if f.startswith("27_")][0]]
+    for label, path in (("v1.0", epr.PATCH_FILE), ("v1.1", epr.V11_PATCH_FILE)):
+        patch_path = os.path.join(ROOT, path)
+        if not os.path.exists(patch_path):
+            find("D8", "missing root source patch %s" % path)
+            continue
+        sections = set(re.findall(r"^## (\d+)\.", read(patch_path), re.M))
+        mapped = set(re.findall(r"^\| %s §(\d+) \|" % re.escape(label), coverage, re.M))
+        for s in sorted(sections - mapped, key=int):
+            find("D8", "%s patch section %s is not in the doc 27 source coverage map" % (label, s))
 
     # graph
     adr_count = gate_count = 0

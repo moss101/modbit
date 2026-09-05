@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 80,
-    "root_and_tooling": 28,
-    "docs_bytes": 816149
+    "root_and_tooling": 31,
+    "docs_bytes": 834875
   },
   "sections": [
     {
@@ -59,8 +59,8 @@
       "section": "authority",
       "section_title": "Authority and orientation",
       "title": "Modbit — AI-Agent Build Dossier V3.3 EPR v1.1",
-      "bytes": 13653,
-      "sha256": "92b14922729032dde5310a6e17da3937e669f5f940bcf9b297f6b2138ffaec04"
+      "bytes": 13817,
+      "sha256": "c68fe31fae347ca399123320a7c9ef34dfe2b76b095b2867dd8ec76c693a7042"
     },
     {
       "path": "docs/01_START_HERE_FOR_BUILD_AGENTS.md",
@@ -122,8 +122,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Product Requirements and UX Specification",
-      "bytes": 7237,
-      "sha256": "94c1e321dceb0f568781901f47f67f60892ce9ea811b9874a89660b650258f17"
+      "bytes": 9823,
+      "sha256": "59c3e65c368c6c236f61b1ff67e9aeb0fcb55e6f08762cc9092383dba1c0c9fa"
     },
     {
       "path": "docs/11_SYSTEM_ARCHITECTURE.md",
@@ -185,8 +185,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Canonical Tool and Capability Inventory",
-      "bytes": 4372,
-      "sha256": "dec6fbc6f5bee1cb3313bef50ffb10199c1f64bdcfef49ba0b7bac06447ca4ac"
+      "bytes": 4933,
+      "sha256": "5e8e8a9e33802d8b1f30dad1883eb749179545123713a5b0e0971d85c8a0c822"
     },
     {
       "path": "docs/18_CONTEXT_RETRIEVAL_AND_ENGINEERING_KNOWLEDGE.md",
@@ -203,8 +203,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Durable State, Memory, Compaction, and Checkpoints",
-      "bytes": 4607,
-      "sha256": "e83345c2e232db629bd45c7076ec8ad8f0751674cef3c82c72a5d45fcb4fd63e"
+      "bytes": 4917,
+      "sha256": "a2cd03cb090f1f19c330669becc67fcf87fe6e7c85e2524c803ad6eb432bc056"
     },
     {
       "path": "docs/20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md",
@@ -248,8 +248,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Cloud Control Plane, Remote Execution, and Sync",
-      "bytes": 2971,
-      "sha256": "adbd0235a34e23792054573eb80b94de23bac62e9e959d8d17824adfb2d22f8f"
+      "bytes": 5005,
+      "sha256": "1762c717134fba2df6b23f9251ae3ca28f9d54fbf672f603f240d707b6de7277"
     },
     {
       "path": "docs/25_MULTIMODAL_MEDIA_AND_NOTEBOOK_RUNTIME.md",
@@ -275,8 +275,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Execution policy router and verified orchestration",
-      "bytes": 52265,
-      "sha256": "e63fb667851f5072662ac3626773ec0b821e9cbdd51230e62c66a414998bb326"
+      "bytes": 57211,
+      "sha256": "a95915dd93ad971360748c1fc05874aa4177793e6cfc6f7a8ba9baf3d2c6294b"
     },
     {
       "path": "docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md",
@@ -302,8 +302,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Desktop Frontend Implementation",
-      "bytes": 4789,
-      "sha256": "68e7d16bb1815528689a9486395cde15ec70f602d07b0d7bbb079b5136f4cf62"
+      "bytes": 5342,
+      "sha256": "8ced650aa5bff55bcfd5a7901bf43b75bf6c58181c8f432845a6bb4c9389183a"
     },
     {
       "path": "docs/33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md",
@@ -509,8 +509,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Tool Parity and Capability Conformance — Real Effect Tests",
-      "bytes": 2790,
-      "sha256": "3f8c4641d4d7996b862b4344a1a5df8ed47714858113c91a53dd9a87fc6a1332"
+      "bytes": 3070,
+      "sha256": "69e4737b3086c3ad7517a992fabb7b158cb9e208c5d6d34f09bcbbc0154c1f7d"
     },
     {
       "path": "docs/57_SKILL_EVOLUTION_REAL_TESTS.md",
@@ -599,8 +599,8 @@
       "section": "delivery",
       "section_title": "Delivery and operations",
       "title": "Package Integrity and Build Coverage",
-      "bytes": 3505,
-      "sha256": "9706b5272cbb6e630b51f9af1fc7e53ed3f38fdb0eb034f28c90e40001b8fa3f"
+      "bytes": 3671,
+      "sha256": "e69d6d1535248d8140c9556779255da2c3502a428d0a1f166d15192b69c4bf4e"
     },
     {
       "path": "docs/80_ANTI_SUPERFICIAL_IMPLEMENTATION_STANDARD.md",
@@ -635,8 +635,8 @@
       "section": "governance",
       "section_title": "Agent process and governance",
       "title": "Definition of Done and Acceptance Criteria",
-      "bytes": 3840,
-      "sha256": "ed66e9d4528f518f5b78612ee2170ae3d7a8c30004f68a98dcd26649f3692730"
+      "bytes": 4279,
+      "sha256": "addc5f5965a44599e6616f2f5b49d70010a687b426de353389cb2c5cad7c3d15"
     },
     {
       "path": "docs/84_EXISTING_CODE_FEATURE_AUDIT_PROTOCOL.md",
@@ -761,8 +761,8 @@
       "section": "governance",
       "section_title": "Agent process and governance",
       "title": "Dossier maintenance log",
-      "bytes": 14974,
-      "sha256": "e4bf77d082b7377861f4f6dbba6530fd1d4f73aa1b54429b9a192dd86154b928"
+      "bytes": 21661,
+      "sha256": "42ff0d5c1e75d9ced7bd88b76177b14ef13a014757d48ad1d123bb93ef692c5d"
     },
     {
       "path": "docs/98_BUILD_MANIFEST.md",
@@ -792,13 +792,13 @@
     },
     {
       "path": "README.md",
-      "bytes": 7931,
-      "sha256": "6aae13ac4cda902e372be2023ae122b9715340167d61da7e9d9225d597c5e9ce"
+      "bytes": 8113,
+      "sha256": "da3a98dd27b7a904638a4b05d2c4c4102cbb372f70169e55b7922eea1f89afef"
     },
     {
       "path": "SKILLS.md",
-      "bytes": 16962,
-      "sha256": "ec04e362a9ebf3809cda3fc589ed09b7face304548ad6b8b19e6170453d8744d"
+      "bytes": 17085,
+      "sha256": "5878c58726cb9a46165926bd9da02cc3262bdaf06d87b200ffe61e5acf0bbecd"
     },
     {
       "path": "evidence/dossier-epr-v1.1/baseline.json",
@@ -861,6 +861,21 @@
       "sha256": "5758c95dfa054a9e402acbe287ac95fadea40fa5347ca1c52d1ca1cb41f4dbd6"
     },
     {
+      "path": "evidence/dossier-gov-004/baseline.json",
+      "bytes": 13157,
+      "sha256": "d8eb58214c0c1a49dacf825699c8bfc063a8e453d2d200f6fc42d4323cabedb9"
+    },
+    {
+      "path": "evidence/dossier-gov-004/tests.log",
+      "bytes": 2592,
+      "sha256": "ba61cc34aec9c28c5b3a2a27b40e67c1f65200d8f9076a837df250c081cb8cd1"
+    },
+    {
+      "path": "evidence/dossier-gov-004/validation.json",
+      "bytes": 14824,
+      "sha256": "38b271df486c68ff1afcd7ce5779ea371f956d7583a85edb8d9e7b7dc5736876"
+    },
+    {
       "path": "evidence/dossier-gov/baseline.json",
       "bytes": 11772,
       "sha256": "f9c8db7cc997add9aaa708929bc14bde5a04a84147c87b73ed5a78be9a43b6f3"
@@ -877,18 +892,18 @@
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 35691,
-      "sha256": "1003d3dd6ea192b90225371fe3cb762cf60a48acfb886502ae808305432eba04"
+      "bytes": 35829,
+      "sha256": "8fa2122ce146cdefa7fa956217951ec2684590c26f75a9d2d4464e492eb510a4"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 731450,
-      "sha256": "2add8d5e00c7697721b7ec72c32662ae0bf38c5e894d2456e1f938393ce66fc3"
+      "bytes": 739352,
+      "sha256": "5867af3d7c777e8f702eebbb88b4e9405c2c4493514dd01fe30f25f88780a496"
     },
     {
       "path": "tools/build_graph.py",
-      "bytes": 38012,
-      "sha256": "f27c098030d1b0ffa35c00c750ec7e74a784a774411f6d9c1050f864ad9d42ff"
+      "bytes": 39035,
+      "sha256": "4f408aa96ba62a43d14887080f1afbfb6871f33b6737892379f461a65408a61a"
     },
     {
       "path": "tools/build_manifest.py",
@@ -897,8 +912,8 @@
     },
     {
       "path": "tools/check_dossier.py",
-      "bytes": 14189,
-      "sha256": "8b7881ee9092ef76f45bd208b028812f2e7b486724a4af965308db21ea3c336b"
+      "bytes": 15018,
+      "sha256": "24b89a8be1ea48cb2fbca997f8f82376a5a7e5fffd7c16a3683a4ab25cc8e5ff"
     },
     {
       "path": "tools/dossier_epr.py",
@@ -912,8 +927,8 @@
     },
     {
       "path": "tools/test_dossier.py",
-      "bytes": 19514,
-      "sha256": "920891cf25a4781e89064ce616377e3ceaac77620816c3bdc007ebe9608de573"
+      "bytes": 20287,
+      "sha256": "74cc7e943331b581d62cd0f4dacbf627d9aa3b1f588091b612657e5ac580e2f8"
     }
   ],
   "renames_v3_to_v3_1": {

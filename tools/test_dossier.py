@@ -282,6 +282,8 @@ class DossierTests(unittest.TestCase):
         self.assertIn("97_DOSSIER_MAINTENANCE_LOG.md", self.run_tool("graph", "show", "DR-GOV-2026-09-05-002"))
         self.assertEqual(nodes["DOC-GOV-002"]["status"], "COMPLETE")
         self.assertIn("DOC-GOV-002", self.run_tool("graph", "show", "DOC-GOV-003"))
+        self.assertEqual(nodes["DOC-GOV-003"]["status"], "COMPLETE")
+        self.assertIn("DOC-GOV-003", self.run_tool("graph", "show", "DOC-GOV-004"))
         out = self.run_tool("graph", "show", "DOC-GOV-001")
         for required in ("DOC-EPR-002", "DR-GOV-2026-09-05", "96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md", "governance"):
             self.assertIn(required, out)
@@ -348,6 +350,14 @@ class DossierTests(unittest.TestCase):
         nodes["EPR-019"]["evidence"] = []
         self.write_graph(g)
         self.run_tool("check_dossier", ok=False, contains="[G7] EPR-GATE-D")
+
+    def test_patch_coverage_map_is_complete(self):
+        self.run_tool("check_dossier", contains="OK:")
+        p = self.root / "docs/27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md"
+        p.write_text("\n".join(l for l in p.read_text().splitlines() if not l.startswith("| v1.1 §22 |")) + "\n")
+        self.run_tool("check_dossier", ok=False, contains="[D8] v1.1 patch section 22")
+        for rel in ("docs/10_PRODUCT_PRD_AND_UX.md", "docs/24_CLOUD_CONTROL_PLANE_AND_SYNC.md", "docs/32_DESKTOP_FRONTEND_IMPLEMENTATION.md"):
+            self.assertIn("quality floor", (self.root / rel).read_text(), rel)
 
 
 if __name__ == "__main__":

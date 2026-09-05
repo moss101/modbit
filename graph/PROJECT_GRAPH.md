@@ -16,10 +16,10 @@ One JSON file that answers *what exists, what depends on what, what proves what,
 | `subsystem` | 23 | canonical single-owner boundary (docs/81); owns REQ rows and IMP tasks; delivered in a primary milestone |
 | `requirement` | 311 | REQ-EV from docs/40 or additive REQ-EPR from docs/49 |
 | `imp_task` | 285 | IMP-EV from docs/41 or EPR from docs/49; carries status and evidence |
-| `dossier_task` | 5 | governance package work outside product milestone roll-ups |
+| `dossier_task` | 6 | governance package work outside product milestone roll-ups |
 | `release_gate` | 7 | EPR promotion gate from docs/61; derived state OPEN/TASKS_COMPLETE/SATISFIED; carries attestation evidence, never a lifecycle status |
 | `source_patch` | 2 | immutable user-supplied patch provenance |
-| `change_record` | 5 | explicit approved dossier amendment |
+| `change_record` | 6 | explicit approved dossier amendment |
 | `qual_test` | 311 | QUAL-EV from docs/42 or QUAL-EPR from docs/61 |
 | `scenario` | 117 | E2E-nnn, WSK-E2E-nnn, MEDIA-E2E-nnn release-gate scenario or FI-nn fault case |
 | `decision` | 56 | MOD-* or ADR-R-* decision from docs/02 with authority status |
@@ -27,14 +27,14 @@ One JSON file that answers *what exists, what depends on what, what proves what,
 | Edge type | Count | Meaning |
 |---|---:|---|
 | `in_section` | 80 | doc → section |
-| `references` | 294 | doc → doc (explicit filename mention) |
+| `references` | 339 | doc → doc (explicit filename mention) |
 | `depends_on` | 18 | milestone → milestone it requires COMPLETE first |
 | `part_of` | 78 | milestone_task → milestone |
-| `after` | 111 | work item → required COMPLETE work item, including cross-milestone EPR dependencies |
+| `after` | 112 | work item → required COMPLETE work item, including cross-milestone EPR dependencies |
 | `delivered_in` | 22 | subsystem → primary milestone |
-| `specified_by` | 103 | subsystem → doc |
+| `specified_by` | 105 | subsystem → doc |
 | `owned_by_req` | 311 | requirement → subsystem |
-| `owned_by` | 290 | imp_task → subsystem |
+| `owned_by` | 291 | imp_task → subsystem |
 | `scheduled_in` | 285 | imp_task → milestone |
 | `implemented_by` | 285 | requirement → imp_task |
 | `qualified_by` | 311 | requirement → qual_test |
@@ -43,10 +43,10 @@ One JSON file that answers *what exists, what depends on what, what proves what,
 | `constrains` | 63 | decision → subsystem |
 | `requires_task` | 27 | release gate → required implementation task |
 | `extends` | 38 | additive requirement → related preserved EV requirement |
-| `authorized_by` | 88 | adopted task/decision/requirement → approved change record |
+| `authorized_by` | 89 | adopted task/decision/requirement → approved change record |
 | `adopts` | 2 | change record → immutable source patch |
 | `supersedes` | 10 | new authority → prior authority, only within the recorded scope |
-| `refines` | 3 | v1.1 source/change → previous source/change; non-conflicting authority survives |
+| `refines` | 4 | v1.1 source/change → previous source/change; non-conflicting authority survives |
 | `gated_by` | 7 | milestone → release gate that must be SATISFIED before the milestone rolls up COMPLETE |
 
 ## Milestone dependency graph (live status)
@@ -120,7 +120,7 @@ Each canonical subsystem is a single-owner boundary (`docs/81_ARCHITECTURE_GUARD
 ```mermaid
 flowchart TB
   subgraph M0["M0 — Repository and authority"]
-    governance["Architecture Governance & Product Scope<br/>7 tasks"]
+    governance["Architecture Governance & Product Scope<br/>8 tasks"]
   end
   subgraph M1["M1 — Durable local shell and Core"]
     domain_events["Domain Model, Event Store & Protocol State<br/>20 tasks"]
@@ -176,7 +176,7 @@ flowchart TB
 | `eval-bench` Eval Harness & Benchmarks | M3 | `benchmarks/retrieval`, `benchmarks/context-economics`, `benchmarks/agent-engineering`, `benchmarks/latency` | `53`, `61`, `38` | 19 | 16 | MOD-JIT-001, ADR-R-044, ADR-R-051, ADR-R-056 |
 | `extensions-hooks` Hook Bus, Extension System & Importers | M9 | `crates/tools (hooks)`, `crates/skills (import)` | `25` | 8 | 7 | — |
 | `external-tools` MCP Hub, Integrations & Web Gateway | M9 | `crates/tools (external.*)` | `16` | 5 | 4 | — |
-| `governance` Architecture Governance & Product Scope | M0 | `tools/architecture-lint`, `tools/evidence-check`, `docs/decisions` | `02`, `03`, `81`, `82` | 8 | 7 | MOD-PROD-001, MOD-IDE-001, MOD-IDE-002, MOD-COV-001 |
+| `governance` Architecture Governance & Product Scope | M0 | `tools/architecture-lint`, `tools/evidence-check`, `docs/decisions` | `02`, `03`, `81`, `82` | 8 | 8 | MOD-PROD-001, MOD-IDE-001, MOD-IDE-002, MOD-COV-001 |
 | `media` Media Pipeline & Artifact Store | M5 | `crates/tools (media)`, `object store` | `25` | 5 | 5 | MOD-MEDIA-001, MOD-MEDIA-002, MOD-MM-001 |
 | `memory` Engineering Memory | M9 | `crates/memory` | `19` | 1 | 1 | — |
 | `model-gateway` Execution Policy Router & Provider Gateway | M2 | `crates/providers` | `15`, `27`, `38` | 11 | 11 | ADR-R-039, ADR-R-040, ADR-R-041, ADR-R-047, ADR-R-049, ADR-R-050 |
@@ -352,6 +352,7 @@ flowchart LR
 - `DOC-GOV-001`: COMPLETE; Reseal governing files, evidence grammar and decision statuses; evidence: run:dossier-gov-2026-09-05-final, artifact:evidence/dossier-gov/validation.json, artifact:evidence/dossier-gov/tests.log, revision:sha256:d5d9333148ba10f30634034f883c8c90af46ca1991e8a93799cc5d97859ded80
 - `DOC-GOV-002`: COMPLETE; Align implementation specs and execution profiles with EPR v1.1; evidence: run:dossier-gov-002-2026-09-05-final, artifact:evidence/dossier-gov-002/validation.json, artifact:evidence/dossier-gov-002/tests.log, revision:sha256:8e9f70a42a14d6592ac53f463385a61bcdc4f5563045b9f7a5499fc13051522d, commit:e39f3a477b5234c1ca519c692cbc0b8db880d71a
 - `DOC-GOV-003`: COMPLETE; Enforce release-gate attestation and one-step lifecycle transitions; evidence: run:dossier-gov-003-2026-09-05-final, artifact:evidence/dossier-gov-003/validation.json, artifact:evidence/dossier-gov-003/tests.log, revision:sha256:1072a96f9b3564a839a12ab40243fbced08e732458c5df62cabb0ab2c2ab253d, commit:d426b1be87768e28acb8c30eca0330daa0f674e9
+- `DOC-GOV-004`: NOT_STARTED; Integrate EPR patches into product, cloud, durability and acceptance docs; add coverage map; evidence: none
 
 ## Milestone tasks in execution order
 

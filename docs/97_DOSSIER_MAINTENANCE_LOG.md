@@ -150,3 +150,78 @@ Append-only record of dossier-only maintenance tasks after DOC-GOV-001. Each ent
 | Changed | `tools/check_dossier.py` |
 | Changed | `tools/graph.py` |
 | Changed | `tools/test_dossier.py` |
+
+## DOC-GOV-004 — Integrate both EPR patches into product-facing docs and add the source coverage map
+
+### Identity and authority
+
+- Task: DOC-GOV-004 (`dossier_task`); owner: governance; prerequisite: DOC-GOV-003 COMPLETE; outside product roll-ups.
+- Decision Record: DR-GOV-2026-09-05-004, approved for dossier adoption. On 2026-09-05 the user restated the original task: complete both root patches into the docs, revise the architecture, and enhance the application overall, with everything consolidated on `main`.
+- Scope: docs 10, 17, 19, 24, 32, 56, 83 (product, tool inventory, durability, cloud, desktop, conformance, definition of done); doc 27 §28 coverage map; check D8 and its test; pointers in docs 00/74, `../README.md`, `../SKILLS.md`; this entry. No requirement row, owner, ADR clause, EPR task, gate definition or product status changes.
+- Revision before change: `../evidence/dossier-gov-004/baseline.json` (main commit and every package hash).
+
+### Decision Record (change-control fields)
+
+| Field | Content |
+|---|---|
+| Trigger / evidence | Coverage audit on 2026-09-05: every section of both patches was carried by some doc, but no map proved it, and the product-facing docs had not absorbed the patch. Doc 10 had one paragraph on objective modes and nothing on human-required continuations, quality-floor infeasibility, the acceptance verdict, reviewer findings or organization controls; doc 24 had no mention of policy/registry/statistics bundle distribution or routing telemetry; doc 19 predated slot tables and version pins; docs 17/56/83 did not mention the reviewer profile or the acceptance gate. |
+| Current behavior | A build agent could implement EPR-005/007/010 to spec and still ship a UI, cloud API and definition of done that ignore the patch. |
+| Replacement | Doc 10 "Execution policy in the product": objective modes, visible phases, needs-attention reasons, Review contents, label policy, organization controls. Doc 32 `execution-policy/` module and attention reasons. Doc 24 signed bundle distribution, offline freshness rule and routing telemetry path. Doc 19 slot table, versions and review lease in durable state. Doc 17 reviewer projection. Doc 56 review-isolation conformance suite. Doc 83 execution-policy acceptance. Doc 27 §28 maps all 28 v1.0 and 22 v1.1 sections; D8 enforces the map. |
+| Migration | Documentation only; no graph live state changes other than DOC-GOV-004. |
+| Compatibility | Consistent with ADR-R-039..056, docs 06/27/38/49/61 and the owner table; no owner moves. |
+| Security impact | None on the product. The cloud doc now states that clients never receive routing weights, statistics or credentials, and that telemetry excludes solver hidden reasoning. |
+| Test impact | One test added: removing a coverage-map row makes D8 fail; docs 10/24/32 mention the quality floor. |
+| Rollback | Revert the change and seal commits on `main`, or restore the inventory below from `baseline.json`, and rerun the reseal. Requires another Decision Record. |
+| Explicit user approval | Given in chat on 2026-09-05 (consolidate to main; complete the patches into the docs, revise the architecture, enhance the application overall). |
+
+### Stage applicability
+
+| Stage | DOC-GOV-004 execution |
+|---|---|
+| AUDITING | Section-by-section coverage audit of both patches against the docs; read docs 10/17/19/24/32/56/83; baseline hashes |
+| IMPLEMENTING | Doc text, coverage map, check D8, test, this entry |
+| WIRED | Regenerated graph and manifests through the real CLIs |
+| REAL_TESTING | `check_dossier --manifest` and the copied-package suite including the new test |
+| E2E_PROVEN | Change commit on `main` pushed; evidence bundle retained |
+| COMPLETE | Status set through the one-step ladder with evidence; seal commit |
+| Product provider/sandbox/SQLite/Git qualification | Non-applicable: no product source exists and no product claim is made |
+
+### Status and handoff
+
+- **Task and requirements:** DOC-GOV-004 under DR-GOV-2026-09-05-004. Docs 40/41/42/49/61, both root patches and every prior evidence bundle are byte-identical to the baseline; doc 27 sections 1–27 are unchanged and §28 is appended.
+- **Revision:** repository `https://github.com/moss101/modbit.git`, branch `main`, baseline commit in `baseline.json`. Content revision: `source_revision_sha256` in `../evidence/dossier-gov-004/validation.json`. The change commit hash is recorded as `commit:` evidence on the DOC-GOV-004 node; the seal commit changes only graph live state and manifests.
+- **Interfaces:** graph schema 1.2; nodes DR-GOV-2026-09-05-004 and DOC-GOV-004; check D8; no tool command changes.
+- **Evidence:** `../evidence/dossier-gov-004/baseline.json`, `../evidence/dossier-gov-004/tests.log`, `../evidence/dossier-gov-004/validation.json`.
+- **Checks:** Python syntax parse of all six tools; `python3 tools/test_dossier.py` (33 tests) all passed; `build_manifest`, `build_graph`, `build_manifest`, `check_dossier --manifest` all exit 0; exact outputs in validation.json.
+- **Faults exercised:** missing coverage-map row rejected by D8, plus the full prior negative suite.
+- **Remaining dossier acceptance:** none after the final integrity check.
+- **Remaining product work/blockers:** unchanged. Production source is absent; all milestones and EPR-000..019 remain NOT_STARTED; numerical EPR thresholds still need approved measured profiles.
+- **Next safe action:** `python3 tools/graph.py ready` and take M0.1; the specification is complete for that start.
+
+### Exact file inventory for this change
+
+| Action | Path |
+|---|---|
+| Added | `evidence/dossier-gov-004/baseline.json` |
+| Added | `evidence/dossier-gov-004/tests.log` |
+| Added | `evidence/dossier-gov-004/validation.json` |
+| Changed | `MANIFEST.md` |
+| Changed | `README.md` |
+| Changed | `SKILLS.md` |
+| Changed | `docs/00_MASTER_INDEX.md` |
+| Changed | `docs/10_PRODUCT_PRD_AND_UX.md` |
+| Changed | `docs/17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md` |
+| Changed | `docs/19_DURABLE_STATE_MEMORY_COMPACTION_CHECKPOINTS.md` |
+| Changed | `docs/24_CLOUD_CONTROL_PLANE_AND_SYNC.md` |
+| Changed | `docs/27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md` |
+| Changed | `docs/32_DESKTOP_FRONTEND_IMPLEMENTATION.md` |
+| Changed | `docs/56_TOOL_CAPABILITY_CONFORMANCE.md` |
+| Changed | `docs/74_PACKAGE_INTEGRITY_AND_BUILD_COVERAGE.md` |
+| Changed | `docs/83_DEFINITION_OF_DONE_AND_ACCEPTANCE.md` |
+| Changed | `docs/97_DOSSIER_MAINTENANCE_LOG.md` |
+| Changed | `graph/PROJECT_GRAPH.md` |
+| Changed | `graph/project-graph.json` |
+| Changed | `manifest.json` |
+| Changed | `tools/build_graph.py` |
+| Changed | `tools/check_dossier.py` |
+| Changed | `tools/test_dossier.py` |

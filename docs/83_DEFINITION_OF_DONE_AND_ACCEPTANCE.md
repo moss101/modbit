@@ -71,6 +71,9 @@ Actual MicroVM launched in staging; tenant-bound lease and network isolation ver
 ### Effect Ledger
 Hash chain verifies from genesis/head; protected effects without receipt are a release blocker.
 
+### Execution policy
+A routed task is done only when the Acceptance Gate returns ACCEPT at the exact candidate revision against the assurance that RealizedRisk required, every activated continuation slot is settled, request/leg/gate accounting is recorded, and no economical draft was shown as complete earlier. Release additionally requires gates A–G attested (`python3 tools/graph.py gates`; `93_STATUS_VOCABULARY_AND_LIFECYCLE.md`).
+
 ## “No mockup” enforcement
 
 `tools/evidence-check` scans test metadata: a completion claim must reference an allowed E2E scenario ID and candidate build digest. UI snapshots, mocked provider traces, fake sandbox classes and in-memory database tests cannot be attached as completion proof.

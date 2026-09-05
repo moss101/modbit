@@ -48,7 +48,8 @@ Use periodic full baseline + intermediate deltas. Restore validates every object
 - terminal session ID + last acknowledged output cursor;
 - browser session/control lease;
 - sandbox lease + generation;
-- model stream attempt and safe resume boundary.
+- model stream attempt and safe resume boundary;
+- active ConditionalExecutionPlan slot activation, budget reservation and the `review_isolated` worktree/process lease of an in-flight review leg.
 
 ## Engineering Memory
 
@@ -77,4 +78,4 @@ This flow is release-tested by process kill at every major state.
 
 ## Routing state in the existing durability layers
 
-Plan/leg/attempt and budget/epoch state belongs to canonical events/protocol projections and checkpoint payloads, not Engineering Memory or transcript reconstruction. Compaction transitions may trigger a recorded re-route only after pending effects reconcile. Preserve active configuration, cache ref, prior profile, route epoch, candidate revision and reservation refs across local/cloud handoff and actual Core kill/restart. Reject old route/compaction/lease generations. Source algorithms: doc 38; proof: EPR-001/008/009 in doc 61.
+The conditional plan, its slot table and activation counts, leg/attempt, budget reservation, route epoch and the exact registry, statistics, compiler, gate and realized-risk versions it was compiled with belong to canonical events/protocol projections and checkpoint payloads, not Engineering Memory or transcript reconstruction. Compaction transitions may trigger a recorded re-route only after pending effects reconcile. Preserve active configuration, cache ref, prior profile, route epoch, candidate revision and reservation refs across local/cloud handoff and actual Core kill/restart. Reject old route/compaction/lease generations. Source algorithms: doc 38; proof: EPR-001/008/009 in doc 61.

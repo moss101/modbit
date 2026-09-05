@@ -1157,3 +1157,59 @@ Profile intrinsic task demand, derive canonical legal constraints, compile the c
 
 The Model Gateway remains inference/credential boundary; Core owns execution; policy, worktrees/checkpoints, context, skills, verification and recovery remain canonical. Outcome Statistics is derived versioned data under existing owners. DIRECT, CASCADE and CRITIQUE classify executed paths. The Isolated Non-Committing Reviewer can gather evidence in a disposable sandbox but cannot own the canonical workspace or persistent/external effects. No architecture or learned score substitutes for real verification.
 
+## 28. Source section coverage map
+
+Every top-level section of both immutable root patches is carried by the numbered dossier as listed here; `tools/check_dossier.py` D8 fails if a patch section disappears from this map. Section numbers on the left are the patches' own; "27 §n" refers to this document.
+
+| Source | Section | Carried by |
+|---|---|---|
+| v1.0 §1 | Purpose | 27 §1 |
+| v1.0 §2 | Authority amendments | 27 §2; `02_AUTHORITY_AND_DECISIONS.md`; `03_ARCHITECTURAL_CONFLICTS_AND_SUPERSESSIONS.md`; `05_EXECUTION_POLICY_ROUTER_ADOPTION_DECISION.md` |
+| v1.0 §3 | Product outcome | 27 §3 |
+| v1.0 §4 | Architectural invariants | 27 §4; `81_ARCHITECTURE_GUARDRAILS_AND_FORBIDDEN_DUPLICATION.md` |
+| v1.0 §5 | Runtime architecture, Policy Envelope | 27 §5; `23_SECURITY_POLICY_EFFECT_LEDGER.md`; `38_EXECUTION_POLICY_CONTRACTS_AND_ALGORITHMS.md` |
+| v1.0 §6 | Request Profiler | 27 §6; `15_MODEL_ROUTER_AND_PROVIDER_GATEWAY.md`; doc 38 |
+| v1.0 §7 | Execution Plan Compiler (template clauses superseded) | 27 §7; docs 15/38; supersession in `06_EPR_V1_1_SUPERSESSION_DECISION.md` |
+| v1.0 §8 | ExecutionPlan contract (now ConditionalExecutionPlan) | 27 §8; `30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md`; doc 38 |
+| v1.0 §9 | Bounded Transaction Executor | 27 §9; `14_AGENT_RUNTIME_AND_ORCHESTRATION.md`; `20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md`; docs 23/38 |
+| v1.0 §10 | Routing and execution telemetry | 27 §10; docs 30; `34_OBSERVABILITY_COST_AND_OPERATIONS_DATA.md` |
+| v1.0 §11 | Outcome and reward model | 27 §11; doc 34 |
+| v1.0 §12 | Counterfactual learning | 27 §12; `53_PERFORMANCE_AND_BENCHMARK_PLAN.md` |
+| v1.0 §13 | Offline Policy Lab | 27 §13; `12_REPOSITORY_AND_MODULE_LAYOUT.md`; docs 53/61 |
+| v1.0 §14 | Primary metrics | docs 34/53; `61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md` |
+| v1.0 §15 | Critic selection model (now reviewer statistics) | 27 §7.3; docs 06/38 |
+| v1.0 §16 | Multi-turn behavior | 27 §7.6; doc 15; `19_DURABLE_STATE_MEMORY_COMPACTION_CHECKPOINTS.md` |
+| v1.0 §17 | Auto-mode UX and enterprise policy | `10_PRODUCT_PRD_AND_UX.md`; `32_DESKTOP_FRONTEND_IMPLEMENTATION.md`; `24_CLOUD_CONTROL_PLANE_AND_SYNC.md`; doc 30 |
+| v1.0 §18 | Security and trust rules | doc 23; `52_SECURITY_THREAT_MODEL_AND_TESTS.md` |
+| v1.0 §19 | Integration with existing components | `11_SYSTEM_ARCHITECTURE.md`; docs 12/14/15/18/20/26/33; §19.7 in docs 10/32 |
+| v1.0 §20 | Required dossier integration (old file names) | historical: doc 05; `94_EXECUTION_POLICY_DOSSIER_TASK_AND_HANDOFF.md` |
+| v1.0 §21 | Implementation work packages | `49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md` |
+| v1.0 §22 | Delivery sequence | `43_IMPLEMENTATION_ROADMAP_AND_TASK_GRAPH.md`; doc 49 |
+| v1.0 §23 | Release gates | doc 61 |
+| v1.0 §24 | Failure handling | doc 38 (typed failures); `71_OPERATIONS_RUNBOOK.md`; EPR-FI scenarios in doc 61 |
+| v1.0 §25 | Non-goals | 27 (non-goals); doc 81 |
+| v1.0 §26 | Acceptance examples | 27 (examples); doc 61 source example fixtures |
+| v1.0 §27 | Final architectural decision (superseded by v1.1 §22) | 27 §27; doc 06 |
+| v1.0 §28 | Adoption checklist | historical: docs 05/94 |
+| v1.1 §1 | Purpose | doc 06; `00_MASTER_INDEX.md` |
+| v1.1 §2 | Normative architecture after v1.1 | doc 11 conditional execution flow; 27 §5–9 |
+| v1.1 §3 | Supersession: workflow templates | 27 §2.3, §8; doc 06; ADR-R-049 in doc 02 |
+| v1.1 §4 | Supersession: quality objective | 27 §7.5; doc 38 CompileConfidenceFeasiblePlan; ADR-R-050 |
+| v1.1 §5 | Cold-start rule | 27 §7.3; doc 61 thresholds and priors |
+| v1.1 §6 | Model Registry vs Outcome Statistics | 27 §7.2–7.3; docs 31/38; ADR-R-051 |
+| v1.1 §7 | Supersession: escalation probability | 27 §7.3; doc 38 |
+| v1.1 §8 | Supersession: risk handling | 27 §5.1, §9.3; docs 23/38; ADR-R-052 |
+| v1.1 §9 | Realized Risk vs Acceptance Gate | 27 §9.3–9.4; docs 33/38; ADR-R-052 |
+| v1.1 §10 | Reviewer terminology and capability model | 27 §9.5; docs 16/21/23; ADR-R-053 |
+| v1.1 §11 | Evidence-first review ordering | 27 §9.2; doc 38 |
+| v1.1 §12 | Prevalidated continuation slots | 27 §7.7, §8; doc 38 ValidateConditionalExecutionPlan; ADR-R-054 |
+| v1.1 §13 | Multi-turn routing refinement | 27 §7.6; docs 15/19 |
+| v1.1 §14 | Logging changes | 27 §10; docs 30/34/38 |
+| v1.1 §15 | Reward attribution | 27 §11.3; doc 34; ADR-R-055 |
+| v1.1 §16 | Gate evaluation becomes release-critical | 27 §13.4; doc 61 gate G and EPR-019; `73_RELEASE_BLOCKERS_AND_STOP_THE_LINE_RULES.md`; ADR-R-056 |
+| v1.1 §17 | Updated policy-search space | 27 §13.2; doc 61 |
+| v1.1 §18 | Required amendments to v1.0 | doc 06; `v1.1:18` references in doc 49 |
+| v1.1 §19 | ADR amendments | doc 02 |
+| v1.1 §20 | Task delta | EPR-014..019 in doc 49 |
+| v1.1 §21 | Integration prompt | `95_EPR_V1_1_DOSSIER_TASK_AND_HANDOFF.md` |
+| v1.1 §22 | Final authority statement | 27 §27 |

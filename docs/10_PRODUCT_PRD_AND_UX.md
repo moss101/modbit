@@ -62,7 +62,7 @@ Artifacts
 └─ Evidence receipts
 
 Settings
-├─ Models/providers
+├─ Models/providers and execution policy
 ├─ Execution locations
 ├─ Permissions/policy
 ├─ Browser permissions
@@ -74,17 +74,17 @@ Settings
 
 ### 1. Home / Fleet
 attention-first supervision, implemented as Modbit-native states:
-- **Needs Attention**: approval, blocked credential, ambiguity, protected effect, conflict.
+- **Needs Attention**: approval, blocked credential, ambiguity, protected effect, conflict, human-required continuation of an execution plan, quality floor infeasible under current policy, budget exhausted with partial evidence.
 - **Ready for Review**: completed work with evidence and unresolved review decisions.
 - **Running**: active turns/subagents.
 - **Waiting**: waiting on external process, model quota, user-specified condition or queue capacity.
 - **Completed**: accepted/merged/exported.
 - **Failed**: terminal task failure after retry/recovery policy.
 
-Cards show task goal, workspace, execution location, duration, active agent count, latest evidence, risk/effect indicator and next required action. Do not interrupt the user for routine progress.
+Cards show task goal, workspace, execution location, objective profile, current execution phase (drafting, verifying, reviewing, escalating, awaiting human), duration, active agent count, latest evidence, risk/effect indicator and next required action. Do not interrupt the user for routine progress.
 
 ### 2. New Task
-Required inputs: goal, workspace/repository or general Work space. Optional advanced controls: branch/base revision, model policy, execution mode (`local_trusted` / `cloud_isolated`), permission profile, browser access, skill pack.
+Required inputs: goal, workspace/repository or general Work space. Optional advanced controls: branch/base revision, objective profile (Cost, Balance, Intelligence or an organization profile) or an allowed manual model pin, execution mode (`local_trusted` / `cloud_isolated`), permission profile, browser access, skill pack.
 
 Submission creates a durable Session + Task before model invocation, so a crash after clicking Run is recoverable.
 
@@ -109,10 +109,13 @@ Contains:
 - tests/verification actually executed;
 - unresolved diagnostics;
 - external effects and approvals;
+- the execution path actually taken (initial leg, escalation, independent review, human approval) with the acceptance verdict and the assurance level it had to meet;
+- reviewer findings and how each was resolved;
+- complete cost and time by leg, including reviewer tool cost;
 - evidence chain;
 - merge/apply/export actions.
 
-A green “done” state is impossible without the configured verification gate passing.
+A green “done” state is impossible without the configured verification gate passing, and impossible while the acceptance verdict is REJECT or INCONCLUSIVE.
 
 ## User journeys
 
@@ -134,8 +137,18 @@ Keyboard navigation for all fleet/review/approval actions; semantic labels on ag
 
 ## Product acceptance
 
-The product is usable when a new user can clone/open a real repository, delegate a nontrivial change, observe real tool execution, survive restart, review a real diff and verification evidence, and accept the result without entering an IDE.
+The product is usable when a new user can clone/open a real repository, delegate a nontrivial change, observe real tool execution, survive restart, review a real diff and verification evidence, see why the result was accepted, escalated or independently reviewed and what it cost, and accept the result without entering an IDE.
 
-## Execution objectives and workflow progress
+## Execution policy in the product
 
-Auto mode offers Cost, Balance (default), Intelligence and permitted organization profiles. Each remains subject to the same quality floor, permissions, data policy and budget. Allowed manual model pins remain available for expert/reproducible work and report conflicts explicitly. Users see useful running/verifying/reviewing/escalating/needs-attention progress, full task cost and unresolved outcomes through Core projections. Model/workflow labels are policy-controlled but always internally auditable; development/admin diagnostics expose authorized reasons and versions. An economical draft is not presented as completed before required gates pass. See docs 15/27 and EPR-005 in doc 49.
+**Objective modes.** Auto mode offers Cost, Balance (default), Intelligence and permitted organization profiles. Every mode is subject to the same confidence-adjusted quality floor, permissions, data policy and budget; the user never has to pick a model to benefit from Auto. Allowed manual model pins remain available for expert, debugging, evaluation and reproducibility work; a pin still runs inside Modbit safety, context, tool, verification and cost boundaries and reports conflicts with policy explicitly.
+
+**What the user sees.** Progress is projected from Core events as drafting, verifying, reviewing, escalating, awaiting human or needs-attention, together with complete task cost and unresolved outcomes. An economical draft is never presented as completed before the required gates pass. When no plan clears the quality floor, the task shows that the floor was infeasible under current policy and continues with the best eligible plan without claiming the target was met. Human-required continuations appear as Needs Attention items with the exact approval requested.
+
+**Review.** The Review screen shows the executed path (initial leg, escalation, independent review, human approval), the acceptance verdict with the assurance level it had to meet, reviewer findings and their resolution, and cost by leg. The dossier labels DIRECT, CASCADE and CRITIQUE may appear as path labels where policy permits; they are never user choices.
+
+**Labels and diagnostics.** The effective model and workflow are always logged internally. UI visibility of model and workflow labels is policy-controlled; development, canary and enterprise debugging expose authorized reasons and versions through routing diagnostics. A hidden label never makes routing unauditable.
+
+**Organization controls** (policy, not UI toggles): permitted objective modes; permitted model and provider families; data residency; maximum request budget; maximum reasoning effort; repositories or paths where independent review is mandatory; whether escalation continuations are allowed; whether manual pins are allowed; routing telemetry retention; label visibility. These arrive as part of the signed policy bundle (`24_CLOUD_CONTROL_PLANE_AND_SYNC.md`) and are enforced by Core, never by the renderer.
+
+Contracts and events: `30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md`; renderer projections: `32_DESKTOP_FRONTEND_IMPLEMENTATION.md`; architecture: docs 15/27; proof: EPR-005/007/010 in `49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md`.

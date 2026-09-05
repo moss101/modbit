@@ -14814,6 +14814,23 @@
    ],
    "owner_agent": "claude-fable-5.1",
    "status_changed_on": "2026-09-05T10:57:16Z"
+  },
+  {
+   "id": "DR-GOV-2026-09-05-004",
+   "type": "change_record",
+   "title": "Approved product-facing integration of both EPR patches and source coverage map",
+   "status": "APPROVED",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md"
+  },
+  {
+   "id": "DOC-GOV-004",
+   "type": "dossier_task",
+   "title": "Integrate EPR patches into product, cloud, durability and acceptance docs; add coverage map",
+   "subsystem": "governance",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
+   "acceptance": "Docs 10/17/19/24/32/56/83 carry the patch UX, cloud, durability, projection, conformance and done rules; doc 27 coverage map covers every patch section and D8 enforces it; copied-package tests pass; no product proof",
+   "status": "NOT_STARTED",
+   "evidence": []
   }
  ],
  "edges": [
@@ -15783,6 +15800,26 @@
    "type": "references"
   },
   {
+   "from": "10_PRODUCT_PRD_AND_UX.md",
+   "to": "24_CLOUD_CONTROL_PLANE_AND_SYNC.md",
+   "type": "references"
+  },
+  {
+   "from": "10_PRODUCT_PRD_AND_UX.md",
+   "to": "30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md",
+   "type": "references"
+  },
+  {
+   "from": "10_PRODUCT_PRD_AND_UX.md",
+   "to": "32_DESKTOP_FRONTEND_IMPLEMENTATION.md",
+   "type": "references"
+  },
+  {
+   "from": "10_PRODUCT_PRD_AND_UX.md",
+   "to": "49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md",
+   "type": "references"
+  },
+  {
    "from": "11_SYSTEM_ARCHITECTURE.md",
    "to": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
    "type": "references"
@@ -15848,13 +15885,168 @@
    "type": "references"
   },
   {
+   "from": "17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md",
+   "to": "16_TOOL_CAPABILITY_AND_PROCEDURAL_RUNTIME.md",
+   "type": "references"
+  },
+  {
+   "from": "17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md",
+   "to": "21_TERMINAL_EXECUTION_AND_SANDBOX.md",
+   "type": "references"
+  },
+  {
+   "from": "24_CLOUD_CONTROL_PLANE_AND_SYNC.md",
+   "to": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "type": "references"
+  },
+  {
+   "from": "24_CLOUD_CONTROL_PLANE_AND_SYNC.md",
+   "to": "38_EXECUTION_POLICY_CONTRACTS_AND_ALGORITHMS.md",
+   "type": "references"
+  },
+  {
+   "from": "24_CLOUD_CONTROL_PLANE_AND_SYNC.md",
+   "to": "49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md",
+   "type": "references"
+  },
+  {
+   "from": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "to": "00_MASTER_INDEX.md",
+   "type": "references"
+  },
+  {
+   "from": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "to": "02_AUTHORITY_AND_DECISIONS.md",
+   "type": "references"
+  },
+  {
+   "from": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "to": "03_ARCHITECTURAL_CONFLICTS_AND_SUPERSESSIONS.md",
+   "type": "references"
+  },
+  {
+   "from": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "to": "05_EXECUTION_POLICY_ROUTER_ADOPTION_DECISION.md",
+   "type": "references"
+  },
+  {
    "from": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
    "to": "06_EPR_V1_1_SUPERSESSION_DECISION.md",
    "type": "references"
   },
   {
    "from": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "to": "10_PRODUCT_PRD_AND_UX.md",
+   "type": "references"
+  },
+  {
+   "from": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "to": "11_SYSTEM_ARCHITECTURE.md",
+   "type": "references"
+  },
+  {
+   "from": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "to": "12_REPOSITORY_AND_MODULE_LAYOUT.md",
+   "type": "references"
+  },
+  {
+   "from": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "to": "14_AGENT_RUNTIME_AND_ORCHESTRATION.md",
+   "type": "references"
+  },
+  {
+   "from": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "to": "15_MODEL_ROUTER_AND_PROVIDER_GATEWAY.md",
+   "type": "references"
+  },
+  {
+   "from": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "to": "19_DURABLE_STATE_MEMORY_COMPACTION_CHECKPOINTS.md",
+   "type": "references"
+  },
+  {
+   "from": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "to": "20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md",
+   "type": "references"
+  },
+  {
+   "from": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "to": "23_SECURITY_POLICY_EFFECT_LEDGER.md",
+   "type": "references"
+  },
+  {
+   "from": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "to": "24_CLOUD_CONTROL_PLANE_AND_SYNC.md",
+   "type": "references"
+  },
+  {
+   "from": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "to": "30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md",
+   "type": "references"
+  },
+  {
+   "from": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "to": "32_DESKTOP_FRONTEND_IMPLEMENTATION.md",
+   "type": "references"
+  },
+  {
+   "from": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "to": "34_OBSERVABILITY_COST_AND_OPERATIONS_DATA.md",
+   "type": "references"
+  },
+  {
+   "from": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
    "to": "38_EXECUTION_POLICY_CONTRACTS_AND_ALGORITHMS.md",
+   "type": "references"
+  },
+  {
+   "from": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "to": "43_IMPLEMENTATION_ROADMAP_AND_TASK_GRAPH.md",
+   "type": "references"
+  },
+  {
+   "from": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "to": "49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md",
+   "type": "references"
+  },
+  {
+   "from": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "to": "52_SECURITY_THREAT_MODEL_AND_TESTS.md",
+   "type": "references"
+  },
+  {
+   "from": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "to": "53_PERFORMANCE_AND_BENCHMARK_PLAN.md",
+   "type": "references"
+  },
+  {
+   "from": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "to": "61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md",
+   "type": "references"
+  },
+  {
+   "from": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "to": "71_OPERATIONS_RUNBOOK.md",
+   "type": "references"
+  },
+  {
+   "from": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "to": "73_RELEASE_BLOCKERS_AND_STOP_THE_LINE_RULES.md",
+   "type": "references"
+  },
+  {
+   "from": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "to": "81_ARCHITECTURE_GUARDRAILS_AND_FORBIDDEN_DUPLICATION.md",
+   "type": "references"
+  },
+  {
+   "from": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "to": "94_EXECUTION_POLICY_DOSSIER_TASK_AND_HANDOFF.md",
+   "type": "references"
+  },
+  {
+   "from": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "to": "95_EPR_V1_1_DOSSIER_TASK_AND_HANDOFF.md",
    "type": "references"
   },
   {
@@ -16009,6 +16201,11 @@
   },
   {
    "from": "74_PACKAGE_INTEGRITY_AND_BUILD_COVERAGE.md",
+   "to": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "type": "references"
+  },
+  {
+   "from": "74_PACKAGE_INTEGRITY_AND_BUILD_COVERAGE.md",
    "to": "93_STATUS_VOCABULARY_AND_LIFECYCLE.md",
    "type": "references"
   },
@@ -16025,6 +16222,11 @@
   {
    "from": "83_DEFINITION_OF_DONE_AND_ACCEPTANCE.md",
    "to": "82_NO_PLACEHOLDER_PRODUCTION_EVIDENCE_GATE.md",
+   "type": "references"
+  },
+  {
+   "from": "83_DEFINITION_OF_DONE_AND_ACCEPTANCE.md",
+   "to": "93_STATUS_VOCABULARY_AND_LIFECYCLE.md",
    "type": "references"
   },
   {
@@ -16609,6 +16811,11 @@
   },
   {
    "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "10_PRODUCT_PRD_AND_UX.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
    "to": "12_REPOSITORY_AND_MODULE_LAYOUT.md",
    "type": "references"
   },
@@ -16624,7 +16831,32 @@
   },
   {
    "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "19_DURABLE_STATE_MEMORY_COMPACTION_CHECKPOINTS.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
    "to": "21_TERMINAL_EXECUTION_AND_SANDBOX.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "24_CLOUD_CONTROL_PLANE_AND_SYNC.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "32_DESKTOP_FRONTEND_IMPLEMENTATION.md",
    "type": "references"
   },
   {
@@ -16644,12 +16876,22 @@
   },
   {
    "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "56_TOOL_CAPABILITY_CONFORMANCE.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
    "to": "61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md",
    "type": "references"
   },
   {
    "from": "97_DOSSIER_MAINTENANCE_LOG.md",
    "to": "74_PACKAGE_INTEGRITY_AND_BUILD_COVERAGE.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "83_DEFINITION_OF_DONE_AND_ACCEPTANCE.md",
    "type": "references"
   },
   {
@@ -29301,7 +29543,36 @@
    "from": "DOC-GOV-003",
    "to": "DR-GOV-2026-09-05-003",
    "type": "authorized_by"
+  },
+  {
+   "from": "DR-GOV-2026-09-05-004",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DR-GOV-2026-09-05-004",
+   "to": "DR-EPR-2026-09-05-v1.1",
+   "type": "refines"
+  },
+  {
+   "from": "DOC-GOV-004",
+   "to": "DOC-GOV-003",
+   "type": "after"
+  },
+  {
+   "from": "DOC-GOV-004",
+   "to": "governance",
+   "type": "owned_by"
+  },
+  {
+   "from": "DOC-GOV-004",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-GOV-004",
+   "to": "DR-GOV-2026-09-05-004",
+   "type": "authorized_by"
   }
- ],
- "updated_on": "2026-09-05T10:57:16Z"
+ ]
 }

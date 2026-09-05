@@ -31,6 +31,7 @@ src/
 ├─ task/
 ├─ timeline/
 ├─ approvals/
+├─ execution-policy/
 ├─ code-review/
 ├─ terminal/
 ├─ browser/
@@ -61,7 +62,7 @@ Advanced controls map directly to typed policy/execution options; no hidden chec
 
 ## Attention UX
 
-`Needs Attention` is derived from structured reasons: approval pending, user question, policy conflict, capacity/quota, secret required, ambiguous effect, merge conflict or unrecoverable runtime fault. The card shows the **single next action**, not raw agent logs.
+`Needs Attention` is derived from structured reasons: approval pending, user question, policy conflict, capacity/quota, secret required, ambiguous effect, merge conflict, human-required plan continuation, quality floor infeasible, budget exhausted with partial evidence, or unrecoverable runtime fault. The card shows the **single next action**, not raw agent logs.
 
 ## Task surface
 
@@ -93,4 +94,4 @@ A screen is not complete until Playwright/Electron E2E drives the real app again
 
 ## Execution policy projections
 
-Implement objective preference controls and allowed manual pins using `SetExecutionPreference` in SurfaceProtocol. Render plan/leg verification and escalation progress, complete task usage and exact failure/attention reasons from Core events. Expose `GetRoutingDiagnostics` only when authorized; labels follow organization policy. Do not ship routing classifier, model economics, weights, registry authority or credentials in renderer/plugin business logic. Reconnect by event cursor with no repeated provider dispatch. Validate these flows through EPR-005/010 in doc 61.
+Implement objective preference controls and allowed manual pins using `SetExecutionPreference` in SurfaceProtocol. Render plan/leg verification and escalation progress, complete task usage and exact failure/attention reasons from Core events. Expose `GetRoutingDiagnostics` only when authorized; labels follow organization policy. Do not ship routing classifier, model economics, weights, registry authority or credentials in renderer/plugin business logic. Reconnect by event cursor with no repeated provider dispatch. The `execution-policy/` module owns the preference controls, the executed-path timeline (initial leg, escalation, independent review, human), the acceptance verdict with its required assurance, reviewer findings and per-leg cost; the Review surface embeds these projections and cannot render a done state while the verdict is REJECT or INCONCLUSIVE. Path labels and model labels follow the policy bundle's visibility rule. Validate these flows through EPR-005/007/010 in doc 61.
