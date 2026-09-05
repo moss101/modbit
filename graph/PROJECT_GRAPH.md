@@ -351,7 +351,7 @@ flowchart LR
 - `DOC-EPR-002`: COMPLETE; Integrate and reseal EPR v1.1 supersession; evidence: artifact:evidence/dossier-epr-v1.1/validation.json, artifact:evidence/dossier-epr-v1.1/tests.log, revision:sha256:c5c151160d074ab8e1d5d6280c14309ef8d58f8939be07cdea3297f2913aa3a4
 - `DOC-GOV-001`: COMPLETE; Reseal governing files, evidence grammar and decision statuses; evidence: run:dossier-gov-2026-09-05-final, artifact:evidence/dossier-gov/validation.json, artifact:evidence/dossier-gov/tests.log, revision:sha256:d5d9333148ba10f30634034f883c8c90af46ca1991e8a93799cc5d97859ded80
 - `DOC-GOV-002`: COMPLETE; Align implementation specs and execution profiles with EPR v1.1; evidence: run:dossier-gov-002-2026-09-05-final, artifact:evidence/dossier-gov-002/validation.json, artifact:evidence/dossier-gov-002/tests.log, revision:sha256:8e9f70a42a14d6592ac53f463385a61bcdc4f5563045b9f7a5499fc13051522d, commit:e39f3a477b5234c1ca519c692cbc0b8db880d71a
-- `DOC-GOV-003`: NOT_STARTED; Enforce release-gate attestation and one-step lifecycle transitions; evidence: none
+- `DOC-GOV-003`: COMPLETE; Enforce release-gate attestation and one-step lifecycle transitions; evidence: run:dossier-gov-003-2026-09-05-final, artifact:evidence/dossier-gov-003/validation.json, artifact:evidence/dossier-gov-003/tests.log, revision:sha256:1072a96f9b3564a839a12ab40243fbced08e732458c5df62cabb0ab2c2ab253d, commit:d426b1be87768e28acb8c30eca0330daa0f674e9
 
 ## Milestone tasks in execution order
 

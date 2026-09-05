@@ -14766,8 +14766,54 @@
    "subsystem": "governance",
    "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
    "acceptance": "gated_by edges, derived gate states, attest/gates commands, GATED roll-up, one-step transitions with noted BLOCKED/backward moves, G7 check; copied-package tests pass; no product proof",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:dossier-gov-003-2026-09-05-final",
+    "artifact:evidence/dossier-gov-003/validation.json",
+    "artifact:evidence/dossier-gov-003/tests.log",
+    "revision:sha256:1072a96f9b3564a839a12ab40243fbced08e732458c5df62cabb0ab2c2ab253d",
+    "commit:d426b1be87768e28acb8c30eca0330daa0f674e9"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-05T10:57:16Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Traced graph.py set/rollup, build_graph gates, check_dossier; baseline hashed at branch base"
+    },
+    {
+     "at": "2026-09-05T10:57:16Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "gated_by edges, derived gate states, attest/gates commands, one-step transitions, G7, docs 43/61/74/93/98"
+    },
+    {
+     "at": "2026-09-05T10:57:16Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Regenerated graph and both manifests through the real CLIs"
+    },
+    {
+     "at": "2026-09-05T10:57:16Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "check_dossier --manifest exit 0; 32 copied-package tests passed including the two new ones"
+    },
+    {
+     "at": "2026-09-05T10:57:16Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "Change commit d426b1b pushed to GitHub; evidence bundle retained"
+    },
+    {
+     "at": "2026-09-05T10:57:16Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Dossier-only completion; no product status changed. Commit 849f6e6 was labelled seal but only regenerated manifests because the status transitions were rejected on a quoting error; this transition set is the actual seal."
+    }
+   ],
+   "owner_agent": "claude-fable-5.1",
+   "status_changed_on": "2026-09-05T10:57:16Z"
   }
  ],
  "edges": [
@@ -29256,5 +29302,6 @@
    "to": "DR-GOV-2026-09-05-003",
    "type": "authorized_by"
   }
- ]
+ ],
+ "updated_on": "2026-09-05T10:57:16Z"
 }
