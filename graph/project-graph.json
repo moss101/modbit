@@ -16453,8 +16453,54 @@
    "subsystem": "governance",
    "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
    "acceptance": "Stage sealed on main with change and seal commits; full integrity gate passes; no product proof",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:dossier-px-004-2026-09-05-final",
+    "artifact:evidence/dossier-px-004/validation.json",
+    "artifact:evidence/dossier-px-004/tests.log",
+    "revision:sha256:afd47083a105c959760a5ec04dcd4a56b777e5ccdcc143ef29945b55a2e705cb",
+    "commit:46ffd21796431c2df4805b0fe168b66c375f66e7"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-05T12:43:00Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Read docs 10/32/53; no flows, onboarding, state matrix or notification model existed; baseline hashed at main 9983ad7"
+    },
+    {
+     "at": "2026-09-05T12:43:00Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "Doc 39, ledger rows 022-025 with cards/quals/scenarios, doc 10 acceptance criterion, doc 32 state rules, doc 53 pointer"
+    },
+    {
+     "at": "2026-09-05T12:43:00Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Regenerated graph and both manifests through the real CLIs"
+    },
+    {
+     "at": "2026-09-05T12:43:00Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "check_dossier --manifest exit 0; copied-package suite passed including the UX measurability test"
+    },
+    {
+     "at": "2026-09-05T12:43:00Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "Change commit on main; evidence bundle retained"
+    },
+    {
+     "at": "2026-09-05T12:43:00Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Dossier-only completion; no product status changed"
+    }
+   ],
+   "owner_agent": "claude-fable-5.1",
+   "status_changed_on": "2026-09-05T12:43:00Z"
   },
   {
    "id": "ALPHA",
@@ -37757,5 +37803,6 @@
    "to": "EPR-GATE-G",
    "type": "requires_gate"
   }
- ]
+ ],
+ "updated_on": "2026-09-05T12:43:00Z"
 }
