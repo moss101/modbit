@@ -1,0 +1,31 @@
+test_completion_and_upstream_guards_do_not_mutate_graph (__main__.DossierTests) ... ok
+test_cross_task_readiness_and_status_guard (__main__.DossierTests) ... ok
+test_dossier_completion_is_excluded_from_product_rollup (__main__.DossierTests) ... ok
+test_duplicate_task_card_is_rejected (__main__.DossierTests) ... ok
+test_ev_ledger_and_original_patch_preserved (__main__.DossierTests) ... ok
+test_explicit_epr_cycle_is_rejected (__main__.DossierTests) ... ok
+test_gate_missing_task_is_rejected (__main__.DossierTests) ... ok
+test_graph_rejects_duplicate_and_dangling_nodes (__main__.DossierTests) ... ok
+test_human_manifest_cannot_drift_from_json (__main__.DossierTests) ... ok
+test_implicit_milestone_cycle_is_rejected (__main__.DossierTests) ... ok
+test_independent_gate_calibration_cannot_be_removed (__main__.DossierTests) ... ok
+test_legacy_runtime_algorithm_is_rejected (__main__.DossierTests) ... ok
+test_manifest_detects_source_tampering (__main__.DossierTests) ... ok
+test_manifest_detects_unlisted_payload (__main__.DossierTests) ... ok
+test_missing_adr_is_rejected (__main__.DossierTests) ... ok
+test_missing_requirement_is_rejected (__main__.DossierTests) ... ok
+test_missing_scoped_supersession_is_rejected (__main__.DossierTests) ... ok
+test_missing_statistics_replay_version_is_rejected (__main__.DossierTests) ... ok
+test_owner_disagreement_is_rejected (__main__.DossierTests) ... ok
+test_real_generation_integrity_and_epr_neighborhood (__main__.DossierTests) ... ok
+test_regeneration_is_deterministic_and_preserves_live_state (__main__.DossierTests) ... ok
+test_resealing_cannot_bless_modified_v11_source (__main__.DossierTests) ... ok
+test_source_change_requires_graph_regeneration (__main__.DossierTests) ... ok
+test_v11_provenance_and_delta_trace_are_generated (__main__.DossierTests) ... ok
+test_v11_source_and_historical_evidence_preserved (__main__.DossierTests) ... ok
+test_wrong_qualification_requirement_is_rejected (__main__.DossierTests) ... ok
+
+----------------------------------------------------------------------
+Ran 26 tests in 3.997s
+
+OK
