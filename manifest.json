@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 80,
-    "root_and_tooling": 24,
+    "root_and_tooling": 25,
     "docs_bytes": 806666
   },
   "sections": [
@@ -841,6 +841,11 @@
       "sha256": "a26eed18096f69be8e2ea1ede09a1b08926a1e34074c2c1ca2ebff06bf7b86fe"
     },
     {
+      "path": "evidence/dossier-gov-002/validation.json",
+      "bytes": 14887,
+      "sha256": "1ed2daef187391d67483160273931e79c96bf7d3c0f09c42da46933d40318829"
+    },
+    {
       "path": "evidence/dossier-gov/baseline.json",
       "bytes": 11772,
       "sha256": "f9c8db7cc997add9aaa708929bc14bde5a04a84147c87b73ed5a78be9a43b6f3"
@@ -857,13 +862,13 @@
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 34394,
-      "sha256": "2e026b7dcda1aaf6b43d954c4d05b42fb30da321bde904f6216d5802f5ad56d7"
+      "bytes": 34650,
+      "sha256": "5a7c96f743ccdaed0235e44dac5ee55ca8803994630643de46c80102f55cd21f"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 726157,
-      "sha256": "32b4bd24a626c0421e8ae74620901a93160857e7d14d52a5285dc6ae674e554d"
+      "bytes": 727019,
+      "sha256": "1185f6640edab481745194f2f5c8694b8a7d38bff5d67b6c9ac5d6c88e76c8fc"
     },
     {
       "path": "tools/build_graph.py",

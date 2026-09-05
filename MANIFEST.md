@@ -125,11 +125,12 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/dossier-epr/validation.json` | retained evidence | 12563 | `ee2d386295ecb31c3b359fdba301db35b9586fb63defba4b1027f71b084a3efe` |
 | `evidence/dossier-gov-002/baseline.json` | retained evidence | 12442 | `cfcc5c2fafd72b51c539c1dea7375f991f123c3ee4f4b80e70126a8de941501d` |
 | `evidence/dossier-gov-002/tests.log` | retained evidence | 2384 | `a26eed18096f69be8e2ea1ede09a1b08926a1e34074c2c1ca2ebff06bf7b86fe` |
+| `evidence/dossier-gov-002/validation.json` | retained evidence | 14887 | `1ed2daef187391d67483160273931e79c96bf7d3c0f09c42da46933d40318829` |
 | `evidence/dossier-gov/baseline.json` | retained evidence | 11772 | `f9c8db7cc997add9aaa708929bc14bde5a04a84147c87b73ed5a78be9a43b6f3` |
 | `evidence/dossier-gov/tests.log` | retained evidence | 2307 | `8a0e53ed17231b88a8be6aec74cf98f98812bae46574c89f2c2ae7bac6368a58` |
 | `evidence/dossier-gov/validation.json` | retained evidence | 14440 | `d1d5ddad3e4fee8e441610d48d1de489c788fb8e2b363b9336207bbf27dcbfc9` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 34394 | `2e026b7dcda1aaf6b43d954c4d05b42fb30da321bde904f6216d5802f5ad56d7` |
-| `graph/project-graph.json` | project driver graph with live status | 726157 | `32b4bd24a626c0421e8ae74620901a93160857e7d14d52a5285dc6ae674e554d` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 34650 | `5a7c96f743ccdaed0235e44dac5ee55ca8803994630643de46c80102f55cd21f` |
+| `graph/project-graph.json` | project driver graph with live status | 727019 | `1185f6640edab481745194f2f5c8694b8a7d38bff5d67b6c9ac5d6c88e76c8fc` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 36619 | `ba526f79a9a80ed6105466f7fbf8433a255b1a48ca52b704525268858b740954` |
 | `tools/build_manifest.py` | regenerates this manifest | 14688 | `109302ee48580adfb2d50edafb7b829c5bd199c079b6217840db9277e62efe47` |
 | `tools/check_dossier.py` | integrity gate | 13572 | `f2a1c9440e6d0787ffef26507ef2fc9d978035da655e9f9aab43ec2d8b980b1d` |

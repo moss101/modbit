@@ -347,7 +347,7 @@ flowchart LR
 - `DOC-EPR-001`: COMPLETE; Adopt execution policy patch into development dossier; evidence: run:dossier-epr-2026-09-05-final, artifact:evidence/dossier-epr/validation.json, artifact:evidence/dossier-epr/tests.log, revision:sha256:4eee4d2ed0a2e334ae4c903e0b7cbd872e4827d71b6b864257746806af363f51
 - `DOC-EPR-002`: COMPLETE; Integrate and reseal EPR v1.1 supersession; evidence: artifact:evidence/dossier-epr-v1.1/validation.json, artifact:evidence/dossier-epr-v1.1/tests.log, revision:sha256:c5c151160d074ab8e1d5d6280c14309ef8d58f8939be07cdea3297f2913aa3a4
 - `DOC-GOV-001`: COMPLETE; Reseal governing files, evidence grammar and decision statuses; evidence: run:dossier-gov-2026-09-05-final, artifact:evidence/dossier-gov/validation.json, artifact:evidence/dossier-gov/tests.log, revision:sha256:d5d9333148ba10f30634034f883c8c90af46ca1991e8a93799cc5d97859ded80
-- `DOC-GOV-002`: NOT_STARTED; Align implementation specs and execution profiles with EPR v1.1; evidence: none
+- `DOC-GOV-002`: COMPLETE; Align implementation specs and execution profiles with EPR v1.1; evidence: run:dossier-gov-002-2026-09-05-final, artifact:evidence/dossier-gov-002/validation.json, artifact:evidence/dossier-gov-002/tests.log, revision:sha256:8e9f70a42a14d6592ac53f463385a61bcdc4f5563045b9f7a5499fc13051522d, commit:e39f3a477b5234c1ca519c692cbc0b8db880d71a
 
 ## Milestone tasks in execution order
 
