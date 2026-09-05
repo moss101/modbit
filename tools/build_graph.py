@@ -21,6 +21,7 @@ OUT = os.path.join(ROOT, "graph", "project-graph.json")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import graph as graphtool  # noqa: E402
 import dossier_epr as epr  # noqa: E402
+import dossier_px as px  # noqa: E402
 
 SECTIONS = [
     ("authority", 0, 9, "Authority and orientation"),
@@ -48,6 +49,7 @@ GOV_LOG_DOC = "97_DOSSIER_MAINTENANCE_LOG.md"
 GOV2_CHANGE = "DR-GOV-2026-09-05-002"
 GOV3_CHANGE = "DR-GOV-2026-09-05-003"
 GOV4_CHANGE = "DR-GOV-2026-09-05-004"
+PX_STAGES = [("DOC-PX-001", "DOC-GOV-004", "Product extension stage A: authority, PX ledger tooling, phased releases, governance tiering")]
 
 # Tasks named in docs/43's "V2 sequencing delta" but never enumerated as Mx.y rows.
 ADDED_TASKS = [
@@ -181,14 +183,15 @@ NODE_TYPES = {
     "milestone": "M0–M10 from docs/43; carries proof statement and dependency edges",
     "milestone_task": "Mx.y row from docs/43 (plus five tasks the V2 sequencing delta named but did not enumerate); ordered inside its milestone; carries status",
     "subsystem": "canonical single-owner boundary (docs/81); owns REQ rows and IMP tasks; delivered in a primary milestone",
-    "requirement": "REQ-EV from docs/40 or additive REQ-EPR from docs/49",
-    "imp_task": "IMP-EV from docs/41 or EPR from docs/49; carries status and evidence",
+    "requirement": "REQ-EV from docs/40, additive REQ-EPR from docs/49 or additive REQ-PX from docs/62",
+    "imp_task": "IMP-EV from docs/41, EPR from docs/49 or PX from docs/62; carries status and evidence",
     "dossier_task": "governance package work outside product milestone roll-ups",
     "release_gate": "EPR promotion gate from docs/61; derived state OPEN/TASKS_COMPLETE/SATISFIED; carries attestation evidence, never a lifecycle status",
     "source_patch": "immutable user-supplied patch provenance",
     "change_record": "explicit approved dossier amendment",
-    "qual_test": "QUAL-EV from docs/42 or QUAL-EPR from docs/61",
-    "scenario": "E2E-nnn, WSK-E2E-nnn, MEDIA-E2E-nnn release-gate scenario or FI-nn fault case",
+    "qual_test": "QUAL-EV from docs/42, QUAL-EPR from docs/61 or QUAL-PX from docs/62",
+    "release": "ALPHA / BETA / RELEASE_ZERO projection from docs/75; readiness derived from included work items and required gates, never stored",
+    "scenario": "E2E-nnn, WSK-E2E-nnn, MEDIA-E2E-nnn, EPR-E2E/FI-nnn or PX-E2E-nnn scenario, or FI-nn fault case",
     "decision": "MOD-* or ADR-R-* decision from docs/02 with authority status",
 }
 EDGE_TYPES = {
@@ -214,6 +217,8 @@ EDGE_TYPES = {
     "supersedes": "new authority → prior authority, only within the recorded scope",
     "refines": "v1.1 source/change → previous source/change; non-conflicting authority survives",
     "gated_by": "milestone → release gate that must be SATISFIED before the milestone rolls up COMPLETE",
+    "includes": "release → product work item whose COMPLETE status the release requires",
+    "requires_gate": "release → release gate that must be SATISFIED before the release is READY",
 }
 
 
@@ -485,6 +490,40 @@ def build(previous=None):
             link(gate["id"], "QUAL-" + tid, "proven_by")
     link("M10.3", "EPR-013", "after")
     link("M10.3", "EPR-019", "after")
+
+    # Additive product-extension ledger (DR-PX-2026-09-05); totals computed from rows -------
+    preqs, ptasks, pquals, pscen = px.parse(DOCS)
+    for n in preqs + ptasks:
+        if n["subsystem"] not in subsystem_ids:
+            raise ValueError("unknown PX canonical owner: " + n["subsystem"])
+    for n in ptasks:
+        if n["milestone"] not in milestones:
+            raise ValueError("unknown PX milestone: " + n["milestone"])
+    add({"id": px.CHANGE, "type": "change_record", "title": "Approved product extension: additive PX ledger, phased releases, governance tiering",
+         "status": "APPROVED", "source": "docs/" + px.DECISION_DOC})
+    link(px.CHANGE, px.DECISION_DOC, "specified_by")
+    for n in preqs + ptasks + pquals + pscen:
+        add(n)
+    for r in preqs:
+        link(r["id"], r["subsystem"], "owned_by_req")
+        link(r["id"], r["qual"], "qualified_by")
+        link(r["id"], px.LEDGER_DOC, "specified_by")
+        link(r["id"], px.CHANGE, "authorized_by")
+        if r["imp"]:
+            link(r["id"], r["imp"], "implemented_by")
+    for t in ptasks:
+        link(t["id"], px.CHANGE, "authorized_by")
+        link(t["id"], t["subsystem"], "owned_by")
+        link(t["id"], t["milestone"], "scheduled_in")
+        link(t["id"], t["qual"], "proven_by")
+        link(t["id"], px.LEDGER_DOC, "specified_by")
+        for dep in t["prerequisites"]:
+            link(t["id"], dep, "after")
+        for rid in t["related_requirements"]:
+            link(t["requirement"], rid, "extends")
+        sid = "PX-E2E-" + t["id"][-3:]
+        link(t["id"], sid, "proven_by")
+        link(sid, t["milestone"], "proves")
     for sid in ("domain-events", "core-runtime", "effects-security", "verification", "skills", "observability", "eval-bench"):
         link(sid, doc_by_number("38"), "specified_by")
     link("verification", epr.QUAL_DOC, "specified_by")
@@ -584,6 +623,38 @@ def build(previous=None):
     link("DOC-GOV-004", "governance", "owned_by")
     link("DOC-GOV-004", GOV_LOG_DOC, "specified_by")
     link("DOC-GOV-004", GOV4_CHANGE, "authorized_by")
+    for stage_id, prev_stage, stage_title in PX_STAGES:
+        add({"id": stage_id, "type": "dossier_task", "title": stage_title, "subsystem": "governance", "source": "docs/" + GOV_LOG_DOC,
+             "acceptance": "Stage sealed on main with change and seal commits; full integrity gate passes; no product proof"})
+        link(stage_id, prev_stage, "after")
+        link(stage_id, "governance", "owned_by")
+        link(stage_id, GOV_LOG_DOC, "specified_by")
+        link(stage_id, px.CHANGE, "authorized_by")
+
+    # releases: derived projections over work items (docs/75) ----------------
+    ms_of, owner_of = {}, {}
+    for e in edges:
+        if e["type"] in ("part_of", "scheduled_in"):
+            ms_of[e["from"]] = e["to"]
+        elif e["type"] == "owned_by":
+            owner_of[e["from"]] = e["to"]
+    px_release = {t["id"]: t["release"] for t in ptasks}
+    work_items = [n for n in nodes if n["type"] in ("milestone_task", "imp_task")]
+    for order, rule in enumerate(px.release_rules(DOCS)):
+        add({"id": rule["id"], "type": "release", "title": rule["title"], "order": order, "rule": rule["rule"],
+             "source": "docs/" + px.RELEASE_DOC})
+        for w in work_items:
+            wid = w["id"]
+            if wid in px_release:
+                included = rule["all"] or graphtool.RELEASE_ORDER.index(px_release[wid]) <= order
+            else:
+                included = rule["all"] or (ms_of.get(wid) in rule["milestones"] and wid not in rule["exclude_tasks"]
+                                           and not any(wid.startswith(pfx) for pfx in rule["exclude_prefixes"])
+                                           and owner_of.get(wid) not in rule["exclude_owners"])
+            if included:
+                link(rule["id"], wid, "includes")
+        for gid in rule["gates"]:
+            link(rule["id"], gid, "requires_gate")
 
     # live state preservation ------------------------------------------------
     for n in nodes:

@@ -161,6 +161,10 @@ The V2 delta above names work that never received a task row. V3.1 enumerates it
 | **M6.7** | M6 | Durable subagent continuation: background child survives restart | kill Core mid-child run; child identity, lineage, event offsets and result envelope survive |
 | **M10.7** | M10 | Canonical tool and capability conformance harness (`56_TOOL_CAPABILITY_CONFORMANCE.md`) | every production tool family passes its real-substrate conformance suite; no canned success |
 
+## Release projections
+
+ALPHA, BETA and RELEASE_ZERO are derived projections over these tasks, defined in `75_PHASED_RELEASE_PLAN_AND_READINESS.md` and computed by `python3 tools/graph.py releases`; they add no status and no milestone. PX tasks from `62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md` schedule into these milestones like EPR tasks.
+
 ## Machine-readable form
 
 `../graph/project-graph.json` is generated from this file (milestones, `Mx.y` tasks, proofs, dependencies) plus the ledgers. Task order inside a milestone is the order listed here. `python3 tools/graph.py ready` answers "what next"; `python3 tools/graph.py status` produces the roll-up for `98_BUILD_MANIFEST.md`.

@@ -7,6 +7,8 @@
 - Canonical owner:
 - Requirement IDs:
 - Risk class: low / medium / high / protected-effect / recovery-critical
+- Evidence tier: release-critical / iteration. Iteration is allowed only if the change modifies none of: effect-bearing behavior, canonical persistence, permissions/policy, execution, recovery, protocol/schema, security boundary, evidence semantics. Mixed or uncertain → release-critical.
+- Release membership: ALPHA / BETA / RELEASE_ZERO (from `python3 tools/graph.py show <id>`)
 
 ## Goal
 

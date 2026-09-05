@@ -38,6 +38,12 @@ Only `COMPLETE` means done. A milestone is `COMPLETE` only when every task in it
 - Backward moves (evidence expiry, regression) may target any earlier state but require `--note`.
 - Setting the current state again is allowed and only appends evidence or notes.
 
+## Evidence tiers and release projections
+
+The lifecycle is the same for every change. What differs by **behavioral risk** is the evidence that lets a change leave `REAL_TESTING` and `E2E_PROVEN`: release-critical changes need the real-effect and packaged E2E proof; iteration-tier changes, which by definition touch no effect-bearing behavior, canonical persistence, permissions or policy, execution, recovery, protocol or schema, security boundary or evidence semantics, need the packaged UI smoke suite against a real Core (`83_DEFINITION_OF_DONE_AND_ACCEPTANCE.md`). Mixed or uncertain changes are release-critical. The tier is recorded on the task card and in evidence references, never as a status.
+
+Releases `ALPHA`, `BETA` and `RELEASE_ZERO` (`75_PHASED_RELEASE_PLAN_AND_READINESS.md`) are derived projections: `NOT_READY`, `BLOCKED` or `READY`, computed from included work items and required gates by `tools/graph.py releases`. They cannot be set, and they are not a fourth ladder.
+
 ## Release gate state (derived)
 
 Release gates (`EPR-GATE-A..G`, `61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md`) carry no lifecycle status. Their state is derived: `OPEN` while any required task is not `COMPLETE`; `TASKS_COMPLETE` when every required task is `COMPLETE`; `SATISFIED` when, in addition, a release agent has recorded the gate's own evidence (approved threshold profile, holdout, shadow, canary and rollback results) with `python3 tools/graph.py attest EPR-GATE-x --evidence ...`. Attestation is refused while any required task is incomplete. A milestone linked to gates by `gated_by` (M10 to all seven) rolls up `GATED`, not `COMPLETE`, until every gate is `SATISFIED`. `tools/check_dossier.py` G7 rejects malformed gate evidence and attestations recorded ahead of their tasks; `python3 tools/graph.py gates` prints the table.

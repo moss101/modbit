@@ -243,6 +243,7 @@ def render(manifest):
         "tools/check_dossier.py": "integrity gate",
         "tools/dossier_epr.py": "parses additive EPR authority and traceability",
         "tools/test_dossier.py": "copied-package integration and negative tests",
+        "tools/dossier_px.py": "parses the additive product-extension ledger and phased release rules",
     }
     for e in root_entries:
         role = roles.get(e["path"], "retained evidence" if e["path"].startswith("evidence/") else "source patch provenance")

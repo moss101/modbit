@@ -4,6 +4,10 @@
 
 `REQ-*`, `REQ-EV-*`, task IDs.
 
+## Evidence tier
+
+release-critical or iteration, with the behavioral-risk checklist answered: effect-bearing behavior, canonical persistence, permissions/policy, execution, recovery, protocol/schema, security boundary, evidence semantics. Any yes or unsure → release-critical.
+
 ## Existing behavior
 
 Trace and classification before this change.

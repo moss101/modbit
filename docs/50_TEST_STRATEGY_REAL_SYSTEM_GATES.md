@@ -10,6 +10,10 @@
 
 Production features must be real. Unit tests may use fakes for pure logic, clocks or induced errors, but **no feature can reach COMPLETE from mocked-only tests**. The release gate uses actual compiled binaries/services, real disk, real Git, real Chromium, real databases, real sandbox substrate where applicable and live model-provider calls.
 
+## Evidence tier selection
+
+Before choosing test levels, classify the change by behavioral risk (`83_DEFINITION_OF_DONE_AND_ACCEPTANCE.md`). Release-critical changes run the full pyramid below through level 4 or 5. Iteration-tier changes, which modify none of effect-bearing behavior, canonical persistence, permissions or policy, execution, recovery, protocol or schema, security boundaries or evidence semantics, run levels 1 and 2 plus the packaged UI smoke subset of level 4 against a real local Core. Mixed or uncertain changes are release-critical. In neither tier does a mocked Core, provider, store or effector count as proof.
+
 ## Test pyramid
 
 ### 1. Pure unit tests

@@ -284,6 +284,8 @@ class DossierTests(unittest.TestCase):
         self.assertIn("DOC-GOV-002", self.run_tool("graph", "show", "DOC-GOV-003"))
         self.assertEqual(nodes["DOC-GOV-003"]["status"], "COMPLETE")
         self.assertIn("DOC-GOV-003", self.run_tool("graph", "show", "DOC-GOV-004"))
+        self.assertEqual(nodes["DOC-GOV-004"]["status"], "COMPLETE")
+        self.assertIn("DOC-GOV-004", self.run_tool("graph", "show", "DOC-PX-001"))
         out = self.run_tool("graph", "show", "DOC-GOV-001")
         for required in ("DOC-EPR-002", "DR-GOV-2026-09-05", "96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md", "governance"):
             self.assertIn(required, out)
@@ -358,6 +360,62 @@ class DossierTests(unittest.TestCase):
         self.run_tool("check_dossier", ok=False, contains="[D8] v1.1 patch section 22")
         for rel in ("docs/10_PRODUCT_PRD_AND_UX.md", "docs/24_CLOUD_CONTROL_PLANE_AND_SYNC.md", "docs/32_DESKTOP_FRONTEND_IMPLEMENTATION.md"):
             self.assertIn("quality floor", (self.root / rel).read_text(), rel)
+
+    def test_px_ledger_structure_is_enforced(self):
+        ledger = "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+        p = self.root / ledger
+        original = p.read_text()
+        p.write_text(original.replace("## PX-000 — ", "## PX-000-renamed — ", 1))
+        self.run_tool("build_graph", ok=False, contains="task card")
+        self.run_tool("check_dossier", ok=False, contains="[D9]")
+        p.write_text(original.replace("| M2 | ALPHA | ADOPT |", "| M2 | ALPHA | DEFERRED |", 1))
+        self.run_tool("build_graph", ok=False, contains="DEFERRED row")
+        p.write_text(original.replace("| REQ-PX-000 |", "| REQ-PX-005 |", 1).replace("| QUAL-PX-000 | REQ-PX-000 |", "| QUAL-PX-000 | REQ-PX-005 |", 1))
+        self.run_tool("build_graph", ok=False, contains="contiguous")
+
+    def test_release_readiness_is_derived_from_tasks(self):
+        out = self.run_tool("graph", "releases")
+        self.assertRegex(out, r"ALPHA\s+NOT_READY")
+        self.assertRegex(out, r"RELEASE_ZERO\s+NOT_READY")
+        scoped = self.run_tool("graph", "ready", "--release", "ALPHA")
+        self.assertIn("M0.1", scoped)
+        self.assertNotIn("DOC-PX-001", scoped)
+        self.run_tool("graph", "ready", "--release", "NOPE", ok=False, contains="unknown release")
+        self.run_tool("graph", "set", "ALPHA", "COMPLETE", "--evidence", "run:fixture", ok=False, contains="status is only tracked on work items")
+        g = self.graph()
+        alpha = {e["to"] for e in g["edges"] if e["type"] == "includes" and e["from"] == "ALPHA"}
+        self.assertIn("M1.1", alpha)
+        self.assertIn("PX-000", alpha)
+        self.assertNotIn("M2.10", alpha)
+        self.assertFalse(any(i.startswith("EPR-") for i in alpha))
+        nodes = {n["id"]: n for n in g["nodes"]}
+        for i in alpha:
+            nodes[i]["status"] = "COMPLETE"
+            nodes[i]["evidence"] = ["run:fixture-alpha"]
+        self.write_graph(g)
+        out = self.run_tool("graph", "releases")
+        self.assertRegex(out, r"ALPHA\s+READY")
+        self.assertRegex(out, r"RELEASE_ZERO\s+NOT_READY")
+        nodes["M1.1"]["status"] = "BLOCKED"
+        self.write_graph(g)
+        self.assertRegex(self.run_tool("graph", "releases"), r"ALPHA\s+BLOCKED")
+        for n in g["nodes"]:
+            if n["type"] in ("imp_task", "milestone_task"):
+                n["status"] = "COMPLETE"
+                n["evidence"] = ["run:fixture-all"]
+        self.write_graph(g)
+        self.assertRegex(self.run_tool("graph", "releases"), r"RELEASE_ZERO\s+NOT_READY")
+        for letter in "ABCDEFG":
+            self.run_tool("graph", "attest", "EPR-GATE-" + letter, "--evidence", "artifact:evidence/dossier-gov/validation.json")
+        self.assertRegex(self.run_tool("graph", "releases"), r"RELEASE_ZERO\s+READY")
+
+    def test_work_item_outside_release_zero_is_rejected(self):
+        g = self.graph()
+        g["nodes"].append({"id": "IMP-EV-9999", "type": "imp_task", "title": "orphan fixture", "status": "NOT_STARTED", "evidence": []})
+        g["edges"].append({"from": "IMP-EV-9999", "to": "core-runtime", "type": "owned_by"})
+        g["edges"].append({"from": "IMP-EV-9999", "to": "M2", "type": "scheduled_in"})
+        self.write_graph(g)
+        self.run_tool("check_dossier", ok=False, contains="[G8] IMP-EV-9999")
 
 
 if __name__ == "__main__":

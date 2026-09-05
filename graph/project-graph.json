@@ -28,14 +28,15 @@
   "milestone": "M0–M10 from docs/43; carries proof statement and dependency edges",
   "milestone_task": "Mx.y row from docs/43 (plus five tasks the V2 sequencing delta named but did not enumerate); ordered inside its milestone; carries status",
   "subsystem": "canonical single-owner boundary (docs/81); owns REQ rows and IMP tasks; delivered in a primary milestone",
-  "requirement": "REQ-EV from docs/40 or additive REQ-EPR from docs/49",
-  "imp_task": "IMP-EV from docs/41 or EPR from docs/49; carries status and evidence",
+  "requirement": "REQ-EV from docs/40, additive REQ-EPR from docs/49 or additive REQ-PX from docs/62",
+  "imp_task": "IMP-EV from docs/41, EPR from docs/49 or PX from docs/62; carries status and evidence",
   "dossier_task": "governance package work outside product milestone roll-ups",
   "release_gate": "EPR promotion gate from docs/61; derived state OPEN/TASKS_COMPLETE/SATISFIED; carries attestation evidence, never a lifecycle status",
   "source_patch": "immutable user-supplied patch provenance",
   "change_record": "explicit approved dossier amendment",
-  "qual_test": "QUAL-EV from docs/42 or QUAL-EPR from docs/61",
-  "scenario": "E2E-nnn, WSK-E2E-nnn, MEDIA-E2E-nnn release-gate scenario or FI-nn fault case",
+  "qual_test": "QUAL-EV from docs/42, QUAL-EPR from docs/61 or QUAL-PX from docs/62",
+  "release": "ALPHA / BETA / RELEASE_ZERO projection from docs/75; readiness derived from included work items and required gates, never stored",
+  "scenario": "E2E-nnn, WSK-E2E-nnn, MEDIA-E2E-nnn, EPR-E2E/FI-nnn or PX-E2E-nnn scenario, or FI-nn fault case",
   "decision": "MOD-* or ADR-R-* decision from docs/02 with authority status"
  },
  "edge_types": {
@@ -60,7 +61,9 @@
   "adopts": "change record → immutable source patch",
   "supersedes": "new authority → prior authority, only within the recorded scope",
   "refines": "v1.1 source/change → previous source/change; non-conflicting authority survives",
-  "gated_by": "milestone → release gate that must be SATISFIED before the milestone rolls up COMPLETE"
+  "gated_by": "milestone → release gate that must be SATISFIED before the milestone rolls up COMPLETE",
+  "includes": "release → product work item whose COMPLETE status the release requires",
+  "requires_gate": "release → release gate that must be SATISFIED before the release is READY"
  },
  "nodes": [
   {
@@ -173,6 +176,14 @@
    "title": "EPR v1.1 supersession decision",
    "path": "docs/06_EPR_V1_1_SUPERSESSION_DECISION.md",
    "number": 6,
+   "section": "authority"
+  },
+  {
+   "id": "07_PRODUCT_EXTENSION_DECISION_RECORD.md",
+   "type": "doc",
+   "title": "Product extension decision record",
+   "path": "docs/07_PRODUCT_EXTENSION_DECISION_RECORD.md",
+   "number": 7,
    "section": "authority"
   },
   {
@@ -568,6 +579,14 @@
    "section": "verification"
   },
   {
+   "id": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "doc",
+   "title": "Product extension requirements, tasks and qualifications",
+   "path": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "number": 62,
+   "section": "verification"
+  },
+  {
    "id": "70_CI_CD_RELEASE_AND_SUPPLY_CHAIN.md",
    "type": "doc",
    "title": "CI/CD, Release Engineering, and Supply Chain",
@@ -605,6 +624,14 @@
    "title": "Package Integrity and Build Coverage",
    "path": "docs/74_PACKAGE_INTEGRITY_AND_BUILD_COVERAGE.md",
    "number": 74,
+   "section": "delivery"
+  },
+  {
+   "id": "75_PHASED_RELEASE_PLAN_AND_READINESS.md",
+   "type": "doc",
+   "title": "Phased release plan and readiness",
+   "path": "docs/75_PHASED_RELEASE_PLAN_AND_READINESS.md",
+   "number": 75,
    "section": "delivery"
   },
   {
@@ -14396,6 +14423,68 @@
    "evidence": []
   },
   {
+   "id": "DR-PX-2026-09-05",
+   "type": "change_record",
+   "title": "Approved product extension: additive PX ledger, phased releases, governance tiering",
+   "status": "APPROVED",
+   "source": "docs/07_PRODUCT_EXTENSION_DECISION_RECORD.md"
+  },
+  {
+   "id": "REQ-PX-000",
+   "type": "requirement",
+   "title": "Headless CLI thin client for the task lifecycle",
+   "disposition": "ADOPT",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": "PX-000",
+   "qual": "QUAL-PX-000",
+   "release": "ALPHA",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Real Core plus the CLI process on a fixture repository: create a task, stream events by cursor as JSON lines, answer a question, approve one protected effect, kill and restart Core, resume by cursor; exit codes match the documented contract and exactly one effect receipt exists"
+  },
+  {
+   "id": "PX-000",
+   "type": "imp_task",
+   "title": "Headless CLI thin client for the task lifecycle",
+   "requirement": "REQ-PX-000",
+   "qual": "QUAL-PX-000",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "milestone": "M2",
+   "release": "ALPHA",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "Real Core plus the CLI process on a fixture repository: create a task, stream events by cursor as JSON lines, answer a question, approve one protected effect, kill and restart Core, resume by cursor; exit codes match the documented contract and exactly one effect receipt exists",
+   "prerequisites": [
+    "M1.3",
+    "M2.7"
+   ],
+   "related_requirements": [
+    "REQ-EV-0010"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-000",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "QUAL-PX-000",
+   "type": "qual_test",
+   "requirement": "REQ-PX-000",
+   "owner_label": "desktop",
+   "title": "Real Core plus the CLI process on a fixture repository: create a task, stream events by cursor as JSON lines, answer a question, approve one protected effect, kill and restart Core, resume by cursor; exit codes match the documented contract and exactly one effect receipt exists",
+   "failure_proof": "Kill the CLI mid-stream and reconnect: no duplicate command, no duplicate effect. A forged command without the boot secret is rejected. The CLI binary contains no provider, filesystem, Git or policy code path: static dependency check and runtime tracing both prove every effect went through Core",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-000",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Headless CLI task lifecycle",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
    "id": "MODBIT-PATCH-EPR-2026-09-05",
    "type": "source_patch",
    "title": "Execution policy source patch v1.0",
@@ -14877,6 +14966,40 @@
    ],
    "owner_agent": "claude-fable-5.1",
    "status_changed_on": "2026-09-05T11:21:06Z"
+  },
+  {
+   "id": "DOC-PX-001",
+   "type": "dossier_task",
+   "title": "Product extension stage A: authority, PX ledger tooling, phased releases, governance tiering",
+   "subsystem": "governance",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
+   "acceptance": "Stage sealed on main with change and seal commits; full integrity gate passes; no product proof",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "ALPHA",
+   "type": "release",
+   "title": "Local coding loop and recovery spine",
+   "order": 0,
+   "rule": "| ALPHA | Local coding loop and recovery spine | M0, M1, M2, M4 | M2.10 | EPR- | — | — |",
+   "source": "docs/75_PHASED_RELEASE_PLAN_AND_READINESS.md"
+  },
+  {
+   "id": "BETA",
+   "type": "release",
+   "title": "Intelligence, fleet and browser",
+   "order": 1,
+   "rule": "| BETA | Intelligence, fleet and browser | M0, M1, M2, M3, M4, M5, M6, M7 | — | — | — | — |",
+   "source": "docs/75_PHASED_RELEASE_PLAN_AND_READINESS.md"
+  },
+  {
+   "id": "RELEASE_ZERO",
+   "type": "release",
+   "title": "Full end-to-end proof",
+   "order": 2,
+   "rule": "| RELEASE_ZERO | Full end-to-end proof | ALL | — | — | — | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G |",
+   "source": "docs/75_PHASED_RELEASE_PLAN_AND_READINESS.md"
   }
  ],
  "edges": [
@@ -14912,6 +15035,11 @@
   },
   {
    "from": "06_EPR_V1_1_SUPERSESSION_DECISION.md",
+   "to": "section:authority",
+   "type": "in_section"
+  },
+  {
+   "from": "07_PRODUCT_EXTENSION_DECISION_RECORD.md",
    "to": "section:authority",
    "type": "in_section"
   },
@@ -15161,6 +15289,11 @@
    "type": "in_section"
   },
   {
+   "from": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "to": "section:verification",
+   "type": "in_section"
+  },
+  {
    "from": "70_CI_CD_RELEASE_AND_SUPPLY_CHAIN.md",
    "to": "section:delivery",
    "type": "in_section"
@@ -15182,6 +15315,11 @@
   },
   {
    "from": "74_PACKAGE_INTEGRITY_AND_BUILD_COVERAGE.md",
+   "to": "section:delivery",
+   "type": "in_section"
+  },
+  {
+   "from": "75_PHASED_RELEASE_PLAN_AND_READINESS.md",
    "to": "section:delivery",
    "type": "in_section"
   },
@@ -15308,6 +15446,11 @@
   {
    "from": "00_MASTER_INDEX.md",
    "to": "06_EPR_V1_1_SUPERSESSION_DECISION.md",
+   "type": "references"
+  },
+  {
+   "from": "00_MASTER_INDEX.md",
+   "to": "07_PRODUCT_EXTENSION_DECISION_RECORD.md",
    "type": "references"
   },
   {
@@ -15557,6 +15700,11 @@
   },
   {
    "from": "00_MASTER_INDEX.md",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "references"
+  },
+  {
+   "from": "00_MASTER_INDEX.md",
    "to": "70_CI_CD_RELEASE_AND_SUPPLY_CHAIN.md",
    "type": "references"
   },
@@ -15578,6 +15726,11 @@
   {
    "from": "00_MASTER_INDEX.md",
    "to": "74_PACKAGE_INTEGRITY_AND_BUILD_COVERAGE.md",
+   "type": "references"
+  },
+  {
+   "from": "00_MASTER_INDEX.md",
+   "to": "75_PHASED_RELEASE_PLAN_AND_READINESS.md",
    "type": "references"
   },
   {
@@ -15846,6 +15999,26 @@
    "type": "references"
   },
   {
+   "from": "07_PRODUCT_EXTENSION_DECISION_RECORD.md",
+   "to": "40_EVIDENCE_DERIVED_REQUIREMENT_LEDGER.md",
+   "type": "references"
+  },
+  {
+   "from": "07_PRODUCT_EXTENSION_DECISION_RECORD.md",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "references"
+  },
+  {
+   "from": "07_PRODUCT_EXTENSION_DECISION_RECORD.md",
+   "to": "75_PHASED_RELEASE_PLAN_AND_READINESS.md",
+   "type": "references"
+  },
+  {
+   "from": "07_PRODUCT_EXTENSION_DECISION_RECORD.md",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "references"
+  },
+  {
    "from": "10_PRODUCT_PRD_AND_UX.md",
    "to": "24_CLOUD_CONTROL_PLANE_AND_SYNC.md",
    "type": "references"
@@ -16157,6 +16330,16 @@
   },
   {
    "from": "43_IMPLEMENTATION_ROADMAP_AND_TASK_GRAPH.md",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "references"
+  },
+  {
+   "from": "43_IMPLEMENTATION_ROADMAP_AND_TASK_GRAPH.md",
+   "to": "75_PHASED_RELEASE_PLAN_AND_READINESS.md",
+   "type": "references"
+  },
+  {
+   "from": "43_IMPLEMENTATION_ROADMAP_AND_TASK_GRAPH.md",
    "to": "98_BUILD_MANIFEST.md",
    "type": "references"
   },
@@ -16168,6 +16351,11 @@
   {
    "from": "46_REQUIREMENT_COVERAGE_FREEZE_GATE.md",
    "to": "40_EVIDENCE_DERIVED_REQUIREMENT_LEDGER.md",
+   "type": "references"
+  },
+  {
+   "from": "46_REQUIREMENT_COVERAGE_FREEZE_GATE.md",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
    "type": "references"
   },
   {
@@ -16193,6 +16381,11 @@
   {
    "from": "50_TEST_STRATEGY_REAL_SYSTEM_GATES.md",
    "to": "58_MULTIMODAL_MEDIA_REAL_TESTS.md",
+   "type": "references"
+  },
+  {
+   "from": "50_TEST_STRATEGY_REAL_SYSTEM_GATES.md",
+   "to": "83_DEFINITION_OF_DONE_AND_ACCEPTANCE.md",
    "type": "references"
   },
   {
@@ -16241,6 +16434,21 @@
    "type": "references"
   },
   {
+   "from": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "to": "07_PRODUCT_EXTENSION_DECISION_RECORD.md",
+   "type": "references"
+  },
+  {
+   "from": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "to": "30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md",
+   "type": "references"
+  },
+  {
+   "from": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "to": "75_PHASED_RELEASE_PLAN_AND_READINESS.md",
+   "type": "references"
+  },
+  {
    "from": "70_CI_CD_RELEASE_AND_SUPPLY_CHAIN.md",
    "to": "51_E2E_ACCEPTANCE_TEST_CATALOG.md",
    "type": "references"
@@ -16261,6 +16469,26 @@
    "type": "references"
   },
   {
+   "from": "75_PHASED_RELEASE_PLAN_AND_READINESS.md",
+   "to": "60_RELEASE_ZERO_EXPANDED_PROOF.md",
+   "type": "references"
+  },
+  {
+   "from": "75_PHASED_RELEASE_PLAN_AND_READINESS.md",
+   "to": "72_RISK_REGISTER_AND_OPEN_DECISIONS.md",
+   "type": "references"
+  },
+  {
+   "from": "75_PHASED_RELEASE_PLAN_AND_READINESS.md",
+   "to": "83_DEFINITION_OF_DONE_AND_ACCEPTANCE.md",
+   "type": "references"
+  },
+  {
+   "from": "75_PHASED_RELEASE_PLAN_AND_READINESS.md",
+   "to": "98_BUILD_MANIFEST.md",
+   "type": "references"
+  },
+  {
    "from": "83_DEFINITION_OF_DONE_AND_ACCEPTANCE.md",
    "to": "47_REQUIREMENT_COVERAGE_AUDIT_REPORT.md",
    "type": "references"
@@ -16273,6 +16501,11 @@
   {
    "from": "83_DEFINITION_OF_DONE_AND_ACCEPTANCE.md",
    "to": "93_STATUS_VOCABULARY_AND_LIFECYCLE.md",
+   "type": "references"
+  },
+  {
+   "from": "85_AGENT_TASK_EXECUTION_PROTOCOL.md",
+   "to": "83_DEFINITION_OF_DONE_AND_ACCEPTANCE.md",
    "type": "references"
   },
   {
@@ -16308,6 +16541,11 @@
   {
    "from": "93_STATUS_VOCABULARY_AND_LIFECYCLE.md",
    "to": "72_RISK_REGISTER_AND_OPEN_DECISIONS.md",
+   "type": "references"
+  },
+  {
+   "from": "93_STATUS_VOCABULARY_AND_LIFECYCLE.md",
+   "to": "75_PHASED_RELEASE_PLAN_AND_READINESS.md",
    "type": "references"
   },
   {
@@ -16857,6 +17095,11 @@
   },
   {
    "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "07_PRODUCT_EXTENSION_DECISION_RECORD.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
    "to": "10_PRODUCT_PRD_AND_UX.md",
    "type": "references"
   },
@@ -16922,6 +17165,21 @@
   },
   {
    "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "46_REQUIREMENT_COVERAGE_FREEZE_GATE.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "47_REQUIREMENT_COVERAGE_AUDIT_REPORT.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "50_TEST_STRATEGY_REAL_SYSTEM_GATES.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
    "to": "56_TOOL_CAPABILITY_CONFORMANCE.md",
    "type": "references"
   },
@@ -16932,12 +17190,37 @@
   },
   {
    "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
    "to": "74_PACKAGE_INTEGRITY_AND_BUILD_COVERAGE.md",
    "type": "references"
   },
   {
    "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "75_PHASED_RELEASE_PLAN_AND_READINESS.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
    "to": "83_DEFINITION_OF_DONE_AND_ACCEPTANCE.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "85_AGENT_TASK_EXECUTION_PROTOCOL.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "86_TASK_CARD_TEMPLATE.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "90_PR_CHANGE_EVIDENCE_TEMPLATE.md",
    "type": "references"
   },
   {
@@ -16948,6 +17231,11 @@
   {
    "from": "97_DOSSIER_MAINTENANCE_LOG.md",
    "to": "98_BUILD_MANIFEST.md",
+   "type": "references"
+  },
+  {
+   "from": "98_BUILD_MANIFEST.md",
+   "to": "75_PHASED_RELEASE_PLAN_AND_READINESS.md",
    "type": "references"
   },
   {
@@ -29076,6 +29364,86 @@
    "type": "after"
   },
   {
+   "from": "DR-PX-2026-09-05",
+   "to": "07_PRODUCT_EXTENSION_DECISION_RECORD.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-000",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-000",
+   "to": "QUAL-PX-000",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-000",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-000",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-000",
+   "to": "PX-000",
+   "type": "implemented_by"
+  },
+  {
+   "from": "PX-000",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-000",
+   "to": "desktop",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-000",
+   "to": "M2",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-000",
+   "to": "QUAL-PX-000",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-000",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-000",
+   "to": "M1.3",
+   "type": "after"
+  },
+  {
+   "from": "PX-000",
+   "to": "M2.7",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-000",
+   "to": "REQ-EV-0010",
+   "type": "extends"
+  },
+  {
+   "from": "PX-000",
+   "to": "PX-E2E-000",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-000",
+   "to": "M2",
+   "type": "proves"
+  },
+  {
    "from": "domain-events",
    "to": "38_EXECUTION_POLICY_CONTRACTS_AND_ALGORITHMS.md",
    "type": "specified_by"
@@ -29619,7 +29987,3981 @@
    "from": "DOC-GOV-004",
    "to": "DR-GOV-2026-09-05-004",
    "type": "authorized_by"
+  },
+  {
+   "from": "DOC-PX-001",
+   "to": "DOC-GOV-004",
+   "type": "after"
+  },
+  {
+   "from": "DOC-PX-001",
+   "to": "governance",
+   "type": "owned_by"
+  },
+  {
+   "from": "DOC-PX-001",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-PX-001",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "ALPHA",
+   "to": "M0.1",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "M0.2",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "M0.3",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "M1.1",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "M1.2",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "M1.3",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "M1.4",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "M1.5",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "M2.1",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "M2.2",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "M2.3",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "M2.4",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "M2.5",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "M2.6",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "M2.7",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "M2.8",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "M2.9",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "M4.1",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "M4.2",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "M4.3",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "M4.4",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "M4.5",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "M4.6",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "M0.4",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0010",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0011",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0012",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0013",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0014",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0015",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0016",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0018",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0019",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0021",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0022",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0025",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0026",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0027",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0028",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0029",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0030",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0031",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0035",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0036",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0037",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0039",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0040",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0041",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0043",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0044",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0045",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0054",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0055",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0062",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0063",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0064",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0065",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0067",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0068",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0069",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0070",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0071",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0073",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0077",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0079",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0080",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0088",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0091",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0093",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0096",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0098",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0100",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0101",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0102",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0103",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0106",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0108",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0112",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0116",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0119",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0121",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0122",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0123",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0124",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0125",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0132",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0133",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0134",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0135",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0136",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0143",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0146",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0147",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0152",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0175",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0176",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0177",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0180",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0188",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0189",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0190",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0191",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0192",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0194",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0208",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0212",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0217",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0221",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0222",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0229",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0239",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0242",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0245",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0261",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0262",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0265",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0269",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0271",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "IMP-EV-0273",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "PX-000",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M0.1",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M0.2",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M0.3",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M1.1",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M1.2",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M1.3",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M1.4",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M1.5",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M2.1",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M2.2",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M2.3",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M2.4",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M2.5",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M2.6",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M2.7",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M2.8",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M2.9",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M3.1",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M3.2",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M3.3",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M3.4",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M3.5",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M3.6",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M3.7",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M3.8",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M3.9",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M4.1",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M4.2",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M4.3",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M4.4",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M4.5",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M4.6",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M5.1",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M5.2",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M5.3",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M5.4",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M5.5",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M5.6",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M6.1",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M6.2",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M6.3",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M6.4",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M6.5",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M6.6",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M7.1",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M7.2",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M7.3",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M7.4",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M7.5",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M7.6",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M7.7",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M7.8",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M0.4",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M2.10",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M5.7",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "M6.7",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0001",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0002",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0003",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0004",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0005",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0006",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0007",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0008",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0009",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0010",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0011",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0012",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0013",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0014",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0015",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0016",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0018",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0019",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0020",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0021",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0022",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0025",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0026",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0027",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0028",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0029",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0030",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0031",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0035",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0036",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0037",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0039",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0040",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0041",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0043",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0044",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0045",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0046",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0047",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0048",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0049",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0050",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0051",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0052",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0053",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0054",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0055",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0056",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0057",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0058",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0059",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0060",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0061",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0062",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0063",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0064",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0065",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0067",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0068",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0069",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0070",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0071",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0073",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0077",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0078",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0079",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0080",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0082",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0083",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0084",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0085",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0086",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0087",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0088",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0089",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0090",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0091",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0092",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0093",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0096",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0097",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0098",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0099",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0100",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0101",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0102",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0103",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0105",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0106",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0107",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0108",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0110",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0111",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0112",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0114",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0115",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0116",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0117",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0118",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0119",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0120",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0121",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0122",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0123",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0124",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0125",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0127",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0129",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0130",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0131",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0132",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0133",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0134",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0135",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0136",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0141",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0143",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0144",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0145",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0146",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0147",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0150",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0151",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0152",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0153",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0154",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0155",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0157",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0158",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0159",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0160",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0161",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0163",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0164",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0165",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0166",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0167",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0168",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0169",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0170",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0171",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0172",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0173",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0174",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0175",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0176",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0177",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0178",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0179",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0180",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0181",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0182",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0184",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0185",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0186",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0187",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0188",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0189",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0190",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0191",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0192",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0194",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0196",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0197",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0198",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0199",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0200",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0201",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0202",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0203",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0204",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0205",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0206",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0207",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0208",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0209",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0210",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0212",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0213",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0214",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0217",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0218",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0219",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0220",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0221",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0222",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0223",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0229",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0230",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0231",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0234",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0237",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0238",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0239",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0241",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0242",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0245",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0247",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0248",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0249",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0250",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0251",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0252",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0253",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0254",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0255",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0256",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0261",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0262",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0263",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0265",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0267",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0268",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0269",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0271",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0272",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0273",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0274",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0275",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0276",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0277",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0278",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0279",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0280",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0281",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0282",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0283",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "IMP-EV-0284",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "EPR-000",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "EPR-001",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "EPR-002",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "EPR-003",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "EPR-004",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "EPR-005",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "EPR-006",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "EPR-007",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "EPR-008",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "EPR-009",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "EPR-014",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "EPR-015",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "EPR-016",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "EPR-017",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "EPR-018",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "PX-000",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M0.1",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M0.2",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M0.3",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M1.1",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M1.2",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M1.3",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M1.4",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M1.5",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M2.1",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M2.2",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M2.3",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M2.4",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M2.5",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M2.6",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M2.7",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M2.8",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M2.9",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M3.1",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M3.2",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M3.3",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M3.4",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M3.5",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M3.6",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M3.7",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M3.8",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M3.9",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M4.1",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M4.2",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M4.3",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M4.4",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M4.5",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M4.6",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M5.1",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M5.2",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M5.3",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M5.4",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M5.5",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M5.6",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M6.1",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M6.2",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M6.3",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M6.4",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M6.5",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M6.6",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M7.1",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M7.2",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M7.3",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M7.4",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M7.5",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M7.6",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M7.7",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M7.8",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M8.1",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M8.2",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M8.3",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M8.4",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M8.5",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M8.6",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M8.7",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M8.8",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M8.9",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M9.1",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M9.2",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M9.3",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M9.4",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M9.5",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M9.6",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M10.1",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M10.2",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M10.3",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M10.4",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M10.5",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M10.6",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M0.4",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M2.10",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M5.7",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M6.7",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "M10.7",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0001",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0002",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0003",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0004",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0005",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0006",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0007",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0008",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0009",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0010",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0011",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0012",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0013",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0014",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0015",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0016",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0017",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0018",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0019",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0020",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0021",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0022",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0023",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0024",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0025",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0026",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0027",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0028",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0029",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0030",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0031",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0032",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0035",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0036",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0037",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0039",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0040",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0041",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0042",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0043",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0044",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0045",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0046",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0047",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0048",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0049",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0050",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0051",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0052",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0053",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0054",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0055",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0056",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0057",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0058",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0059",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0060",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0061",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0062",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0063",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0064",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0065",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0066",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0067",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0068",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0069",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0070",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0071",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0072",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0073",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0075",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0076",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0077",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0078",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0079",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0080",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0081",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0082",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0083",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0084",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0085",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0086",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0087",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0088",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0089",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0090",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0091",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0092",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0093",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0096",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0097",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0098",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0099",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0100",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0101",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0102",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0103",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0104",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0105",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0106",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0107",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0108",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0109",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0110",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0111",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0112",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0114",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0115",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0116",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0117",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0118",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0119",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0120",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0121",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0122",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0123",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0124",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0125",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0126",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0127",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0128",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0129",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0130",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0131",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0132",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0133",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0134",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0135",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0136",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0137",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0138",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0139",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0141",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0142",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0143",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0144",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0145",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0146",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0147",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0150",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0151",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0152",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0153",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0154",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0155",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0157",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0158",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0159",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0160",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0161",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0162",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0163",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0164",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0165",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0166",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0167",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0168",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0169",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0170",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0171",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0172",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0173",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0174",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0175",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0176",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0177",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0178",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0179",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0180",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0181",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0182",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0183",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0184",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0185",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0186",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0187",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0188",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0189",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0190",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0191",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0192",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0193",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0194",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0196",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0197",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0198",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0199",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0200",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0201",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0202",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0203",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0204",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0205",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0206",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0207",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0208",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0209",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0210",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0211",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0212",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0213",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0214",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0215",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0217",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0218",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0219",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0220",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0221",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0222",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0223",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0224",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0225",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0229",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0230",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0231",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0233",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0234",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0237",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0238",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0239",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0240",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0241",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0242",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0244",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0245",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0246",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0247",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0248",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0249",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0250",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0251",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0252",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0253",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0254",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0255",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0256",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0261",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0262",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0263",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0265",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0267",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0268",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0269",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0270",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0271",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0272",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0273",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0274",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0275",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0276",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0277",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0278",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0279",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0280",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0281",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0282",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0283",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0284",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0285",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0286",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0287",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0288",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0289",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0290",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "IMP-EV-0291",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "EPR-000",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "EPR-001",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "EPR-002",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "EPR-003",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "EPR-004",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "EPR-005",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "EPR-006",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "EPR-007",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "EPR-008",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "EPR-009",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "EPR-010",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "EPR-011",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "EPR-012",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "EPR-013",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "EPR-014",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "EPR-015",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "EPR-016",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "EPR-017",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "EPR-018",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "EPR-019",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-000",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "EPR-GATE-A",
+   "type": "requires_gate"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "EPR-GATE-B",
+   "type": "requires_gate"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "EPR-GATE-C",
+   "type": "requires_gate"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "EPR-GATE-D",
+   "type": "requires_gate"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "EPR-GATE-E",
+   "type": "requires_gate"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "EPR-GATE-F",
+   "type": "requires_gate"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "EPR-GATE-G",
+   "type": "requires_gate"
   }
- ],
- "updated_on": "2026-09-05T11:21:06Z"
+ ]
 }

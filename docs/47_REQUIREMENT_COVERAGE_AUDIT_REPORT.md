@@ -20,3 +20,7 @@ This is requirements coverage, **not implementation completion**. `98_BUILD_MANI
 ## V3.3 EPR v1.1 adoption audit
 
 The original 13 work packages are amended in place, EPR-000 retains the baseline, and EPR-014..019 add six distinct refinement slices. Docs 49/61 add 20 locked requirements and qualifications, 40 real/fault scenarios and gates A–G. Source technical sections are retained in doc 27, serialization/algorithm refinements in doc 38, and adoption/supersession mapping in docs 05/06. Existing 291 REQ-EV rows and canonical owner assignments are preserved. Package evidence is recorded in doc 95 and `../evidence/dossier-epr-v1.1/`; it proves dossier traceability only. All runtime acceptance remains to be implemented and measured.
+
+## Product extension ledger (DR-PX-2026-09-05)
+
+The PX ledger in doc 62 is parsed and structurally validated by `tools/dossier_px.py`; its rows carry owner, milestone, release, disposition and prerequisites, and effective requirement, task and qualification totals are computed from base plus EPR plus PX rather than stated here. Release membership and readiness for ALPHA, BETA and RELEASE_ZERO derive from those rows and the existing work items (doc 75).

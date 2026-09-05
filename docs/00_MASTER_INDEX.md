@@ -14,6 +14,8 @@ Governance maintenance (DOC-GOV-001, doc 96, 2026-09-05): evidence references on
 
 Later dossier-only maintenance is logged append-only in doc 97 (`97_DOSSIER_MAINTENANCE_LOG.md`). Its first entry, DOC-GOV-002, aligns docs 12/14/16/21/33/44/74 with EPR v1.1: component placement by crate and owner, the `review_isolated` execution profile and the reviewer tool projection. DOC-GOV-003 adds `gated_by` edges from M10 to gates A–G, derived gate states with `graph.py attest` and `gates`, the `GATED` roll-up and one-step lifecycle transitions (doc 93). DOC-GOV-004 carries both patches into the product-facing docs (10/17/19/24/32/56/83) and adds the source section coverage map in doc 27 §28, enforced by check D8.
 
+Product extension (DR-PX-2026-09-05, doc 07): an additive `REQ-PX` ledger in doc 62 with computed totals, phased releases in doc 75 whose readiness is derived from task-level state, and evidence tiers by behavioral risk in docs 83/93/50. Stages B–E add client surfaces and source control, agent competence and benchmarks, UX flows, and the language and platform matrix. Product implementation remains NOT_STARTED.
+
 ## What changed in V3.1 (structure only, no requirement changes)
 
 1. All specification files live in `docs/`; the governing files `README.md`, `AGENTS.md`, `SKILLS.md`, `MANIFEST.md` and `graph/` live at the repository root.
@@ -35,7 +37,7 @@ The architecture dossier was complete enough for human architects but could caus
 | 10–29 | Architecture and subsystems | PRD/UX, system architecture, layout, domain model, each canonical subsystem |
 | 30–39 | Implementation specifications | protocol, storage, desktop, backend, observability, dependency bindings, build/buy, donor policy |
 | 40–49 | Requirements, tasks and traceability | 291-row EV ledger, 265 EV tasks, 291 EV qualifications plus 20 additive EPR requirements/tasks/qualifications, roadmap, traceability, coverage gates, depth contracts |
-| 50–69 | Verification and testing | test strategy, E2E catalog, security, performance, fault/chaos, conformance, real-system suites, Release Zero |
+| 50–69 | Verification and testing | test strategy, E2E catalog, security, performance, fault/chaos, conformance, real-system suites, Release Zero, EPR gates, additive PX ledger |
 | 70–79 | Delivery and operations | CI/CD, runbook, risk register, release blockers, package integrity |
 | 80–97 | Agent process and governance | anti-superficial standard, guardrails, no-placeholder gate, DoD, audit/execution/handoff/parallel protocols, templates, status vocabulary |
 | 98–99 | Live state | build manifest (updated by implementation agents) |
@@ -56,6 +58,7 @@ Do **not** preload the whole dossier. `89_BUILD_AGENT_CONTEXT_LOADING_POLICY.md`
 - `04_REQUIREMENT_BASIS_AND_LIMITS.md` — what "complete coverage" means and does not mean
 - `05_EXECUTION_POLICY_ROUTER_ADOPTION_DECISION.md` — historical v1.0 adoption and compatibility
 - `06_EPR_V1_1_SUPERSESSION_DECISION.md` — approved current supersession, delta task collision/ownership audit
+- `07_PRODUCT_EXTENSION_DECISION_RECORD.md` — DR-PX: twelve approved decisions for the additive PX ledger, phased releases, governance tiering, client surfaces, source control, competence, UX, languages, platforms, collaboration
 
 ### 10–29 Architecture and subsystems
 - `10_PRODUCT_PRD_AND_UX.md` — product thesis, screens, journeys, acceptance
@@ -113,6 +116,7 @@ Do **not** preload the whole dossier. `89_BUILD_AGENT_CONTEXT_LOADING_POLICY.md`
 - `59_RELEASE_ZERO_PROOF_SCENARIO.md` — original single proof scenario
 - `60_RELEASE_ZERO_EXPANDED_PROOF.md` — authoritative superset (E2E-025)
 - `61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md` — 20 QUAL-EPR, 40 real/fault scenarios, gates A–G
+- `62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md` — additive REQ-PX/PX/QUAL-PX ledger and PX-E2E scenarios (here because 40–49 is full; totals computed, not pinned)
 
 ### 70–79 Delivery and operations
 - `70_CI_CD_RELEASE_AND_SUPPLY_CHAIN.md` — PR/nightly/RC pipelines, reproducibility, updates
@@ -120,6 +124,7 @@ Do **not** preload the whole dossier. `89_BUILD_AGENT_CONTEXT_LOADING_POLICY.md`
 - `72_RISK_REGISTER_AND_OPEN_DECISIONS.md` — risks, provisional choices, go/no-go checkpoints
 - `73_RELEASE_BLOCKERS_AND_STOP_THE_LINE_RULES.md` — non-waivable blockers
 - `74_PACKAGE_INTEGRITY_AND_BUILD_COVERAGE.md` — documentation and product CI integrity checks
+- `75_PHASED_RELEASE_PLAN_AND_READINESS.md` — ALPHA/BETA/RELEASE_ZERO as derived projections, membership rules, readiness derivation
 
 ### 80–97 Agent process and governance
 - `80_ANTI_SUPERFICIAL_IMPLEMENTATION_STANDARD.md` — feature-depth equation, thin-implementation traps

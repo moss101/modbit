@@ -10,44 +10,47 @@ One JSON file that answers *what exists, what depends on what, what proves what,
 | Node type | Count | Meaning |
 |---|---:|---|
 | `section` | 8 | numbering range of the dossier |
-| `doc` | 80 | one specification file in docs/ |
+| `doc` | 83 | one specification file in docs/ |
 | `milestone` | 11 | M0–M10 from docs/43; carries proof statement and dependency edges |
 | `milestone_task` | 78 | Mx.y row from docs/43 (plus five tasks the V2 sequencing delta named but did not enumerate); ordered inside its milestone; carries status |
 | `subsystem` | 23 | canonical single-owner boundary (docs/81); owns REQ rows and IMP tasks; delivered in a primary milestone |
-| `requirement` | 311 | REQ-EV from docs/40 or additive REQ-EPR from docs/49 |
-| `imp_task` | 285 | IMP-EV from docs/41 or EPR from docs/49; carries status and evidence |
-| `dossier_task` | 6 | governance package work outside product milestone roll-ups |
+| `requirement` | 312 | REQ-EV from docs/40, additive REQ-EPR from docs/49 or additive REQ-PX from docs/62 |
+| `imp_task` | 286 | IMP-EV from docs/41, EPR from docs/49 or PX from docs/62; carries status and evidence |
+| `dossier_task` | 7 | governance package work outside product milestone roll-ups |
 | `release_gate` | 7 | EPR promotion gate from docs/61; derived state OPEN/TASKS_COMPLETE/SATISFIED; carries attestation evidence, never a lifecycle status |
 | `source_patch` | 2 | immutable user-supplied patch provenance |
-| `change_record` | 6 | explicit approved dossier amendment |
-| `qual_test` | 311 | QUAL-EV from docs/42 or QUAL-EPR from docs/61 |
-| `scenario` | 117 | E2E-nnn, WSK-E2E-nnn, MEDIA-E2E-nnn release-gate scenario or FI-nn fault case |
+| `change_record` | 7 | explicit approved dossier amendment |
+| `qual_test` | 312 | QUAL-EV from docs/42, QUAL-EPR from docs/61 or QUAL-PX from docs/62 |
+| `release` | 3 | ALPHA / BETA / RELEASE_ZERO projection from docs/75; readiness derived from included work items and required gates, never stored |
+| `scenario` | 118 | E2E-nnn, WSK-E2E-nnn, MEDIA-E2E-nnn, EPR-E2E/FI-nnn or PX-E2E-nnn scenario, or FI-nn fault case |
 | `decision` | 56 | MOD-* or ADR-R-* decision from docs/02 with authority status |
 
 | Edge type | Count | Meaning |
 |---|---:|---|
-| `in_section` | 80 | doc → section |
-| `references` | 339 | doc → doc (explicit filename mention) |
+| `in_section` | 83 | doc → section |
+| `references` | 369 | doc → doc (explicit filename mention) |
 | `depends_on` | 18 | milestone → milestone it requires COMPLETE first |
 | `part_of` | 78 | milestone_task → milestone |
-| `after` | 112 | work item → required COMPLETE work item, including cross-milestone EPR dependencies |
+| `after` | 115 | work item → required COMPLETE work item, including cross-milestone EPR dependencies |
 | `delivered_in` | 22 | subsystem → primary milestone |
-| `specified_by` | 105 | subsystem → doc |
-| `owned_by_req` | 311 | requirement → subsystem |
-| `owned_by` | 291 | imp_task → subsystem |
-| `scheduled_in` | 285 | imp_task → milestone |
-| `implemented_by` | 285 | requirement → imp_task |
-| `qualified_by` | 311 | requirement → qual_test |
-| `proven_by` | 352 | imp_task → qual_test |
-| `proves` | 117 | scenario → milestone |
+| `specified_by` | 109 | subsystem → doc |
+| `owned_by_req` | 312 | requirement → subsystem |
+| `owned_by` | 293 | imp_task → subsystem |
+| `scheduled_in` | 286 | imp_task → milestone |
+| `implemented_by` | 286 | requirement → imp_task |
+| `qualified_by` | 312 | requirement → qual_test |
+| `proven_by` | 354 | imp_task → qual_test |
+| `proves` | 118 | scenario → milestone |
 | `constrains` | 63 | decision → subsystem |
 | `requires_task` | 27 | release gate → required implementation task |
-| `extends` | 38 | additive requirement → related preserved EV requirement |
-| `authorized_by` | 89 | adopted task/decision/requirement → approved change record |
+| `extends` | 39 | additive requirement → related preserved EV requirement |
+| `authorized_by` | 92 | adopted task/decision/requirement → approved change record |
 | `adopts` | 2 | change record → immutable source patch |
 | `supersedes` | 10 | new authority → prior authority, only within the recorded scope |
 | `refines` | 4 | v1.1 source/change → previous source/change; non-conflicting authority survives |
 | `gated_by` | 7 | milestone → release gate that must be SATISFIED before the milestone rolls up COMPLETE |
+| `includes` | 784 | release → product work item whose COMPLETE status the release requires |
+| `requires_gate` | 7 | release → release gate that must be SATISFIED before the release is READY |
 
 ## Milestone dependency graph (live status)
 
@@ -55,7 +58,7 @@ One JSON file that answers *what exists, what depends on what, what proves what,
 flowchart LR
   M0["M0<br/>Repository and authority<br/>0/6 done"]
   M1["M1<br/>Durable local shell and Core<br/>0/31 done"]
-  M2["M2<br/>Real local engineering loop<br/>0/81 done"]
+  M2["M2<br/>Real local engineering loop<br/>0/82 done"]
   M3["M3<br/>Context intelligence<br/>0/54 done"]
   M4["M4<br/>Durable recovery spine<br/>0/14 done"]
   M5["M5<br/>Procedural runtime and skills<br/>0/40 done"]
@@ -103,7 +106,7 @@ Critical path (reliability spine): **M0 → M1 → M2 → M4**. Do not start bro
 |---|---|---|---:|---:|---:|---:|---|---|
 | M0 Repository and authority | NOT_STARTED | yes | 4 | 2 | 0 | 0 | — | clean clone build + architecture lint |
 | M1 Durable local shell and Core | NOT_STARTED | no | 5 | 26 | 0 | 0 | M0 | user creates durable task, kills/restarts app/Core, same task recovers with no fake state. |
-| M2 Real local engineering loop | NOT_STARTED | no | 10 | 71 | 0 | 0 | M1 | E2E-001/002/003 with live model and actual test pass. |
+| M2 Real local engineering loop | NOT_STARTED | no | 10 | 72 | 0 | 0 | M1 | E2E-001/002/003 with live model and actual test pass. |
 | M3 Context intelligence | NOT_STARTED | no | 9 | 45 | 0 | 0 | M2 | profile A/B/C benchmark plus retrieval-before-edit visible in task evidence. |
 | M4 Durable recovery spine | NOT_STARTED | no | 6 | 8 | 0 | 0 | M2 | E2E-004/005/006/007/008. |
 | M5 Procedural runtime and skills | NOT_STARTED | no | 7 | 33 | 0 | 0 | M2 | E2E-011/012; direct and procedural mode yield equivalent receipts/policy behavior. |
@@ -120,12 +123,12 @@ Each canonical subsystem is a single-owner boundary (`docs/81_ARCHITECTURE_GUARD
 ```mermaid
 flowchart TB
   subgraph M0["M0 — Repository and authority"]
-    governance["Architecture Governance & Product Scope<br/>8 tasks"]
+    governance["Architecture Governance & Product Scope<br/>9 tasks"]
   end
   subgraph M1["M1 — Durable local shell and Core"]
     domain_events["Domain Model, Event Store & Protocol State<br/>20 tasks"]
     core_runtime["Agent Runtime, Scheduler, WorkGraph/AgentGraph<br/>46 tasks"]
-    desktop["Desktop Surface & UI<br/>11 tasks"]
+    desktop["Desktop Surface & UI<br/>12 tasks"]
   end
   subgraph M2["M2 — Real local engineering loop"]
     model_gateway["Execution Policy Router & Provider Gateway<br/>11 tasks"]
@@ -169,14 +172,14 @@ flowchart TB
 | `browser` Browser & Computer Runtime | M7 | `crates/browser` | `22` | 18 | 18 | MOD-BROWSE-001 |
 | `context-engine` Context Engine, Retrieval & Diagnostics | M3 | `crates/context`, `crates/retrieval`, `crates/diagnostics` | `18` | 43 | 40 | MOD-CTX-001, MOD-CTX-002, MOD-EMB-001, MOD-CTX-003 |
 | `core-runtime` Agent Runtime, Scheduler, WorkGraph/AgentGraph | M1 | `crates/core-runtime` | `14`, `38` | 49 | 46 | MOD-CORE-001, MOD-AGENT-001, MOD-ORCH-001, MOD-INPUT-001, ADR-R-042, ADR-R-043, ADR-R-047, ADR-R-048, ADR-R-049, ADR-R-053, ADR-R-054 |
-| `desktop` Desktop Surface & UI | M1 | `apps/desktop`, `packages/ui`, `packages/surface-protocol`, `packages/design-tokens` | `10`, `32` | 11 | 11 | MOD-SURF-001, MOD-SURF-002, MOD-UX-001, MOD-DESK-001 |
+| `desktop` Desktop Surface & UI | M1 | `apps/desktop`, `packages/ui`, `packages/surface-protocol`, `packages/design-tokens` | `10`, `32` | 12 | 12 | MOD-SURF-001, MOD-SURF-002, MOD-UX-001, MOD-DESK-001 |
 | `domain-events` Domain Model, Event Store & Protocol State | M1 | `crates/domain`, `crates/protocol`, `crates/event-store`, `crates/protocol-state` | `13`, `30`, `31`, `38` | 24 | 20 | — |
 | `durability` Compaction, Checkpoints & Recovery Spine | M4 | `crates/compaction`, `crates/checkpoint` | `19` | 4 | 4 | MOD-STATE-001, MOD-STATE-002, MOD-STATE-003 |
 | `effects-security` Policy Kernel, Effect Ledger & Secrets | M9 | `crates/policy`, `crates/effects`, `crates/secrets` | `23`, `52`, `38` | 19 | 18 | MOD-EFFECT-001, ADR-R-043, ADR-R-046, ADR-R-052, ADR-R-053 |
 | `eval-bench` Eval Harness & Benchmarks | M3 | `benchmarks/retrieval`, `benchmarks/context-economics`, `benchmarks/agent-engineering`, `benchmarks/latency` | `53`, `61`, `38` | 19 | 16 | MOD-JIT-001, ADR-R-044, ADR-R-051, ADR-R-056 |
 | `extensions-hooks` Hook Bus, Extension System & Importers | M9 | `crates/tools (hooks)`, `crates/skills (import)` | `25` | 8 | 7 | — |
 | `external-tools` MCP Hub, Integrations & Web Gateway | M9 | `crates/tools (external.*)` | `16` | 5 | 4 | — |
-| `governance` Architecture Governance & Product Scope | M0 | `tools/architecture-lint`, `tools/evidence-check`, `docs/decisions` | `02`, `03`, `81`, `82` | 8 | 8 | MOD-PROD-001, MOD-IDE-001, MOD-IDE-002, MOD-COV-001 |
+| `governance` Architecture Governance & Product Scope | M0 | `tools/architecture-lint`, `tools/evidence-check`, `docs/decisions` | `02`, `03`, `81`, `82` | 8 | 9 | MOD-PROD-001, MOD-IDE-001, MOD-IDE-002, MOD-COV-001 |
 | `media` Media Pipeline & Artifact Store | M5 | `crates/tools (media)`, `object store` | `25` | 5 | 5 | MOD-MEDIA-001, MOD-MEDIA-002, MOD-MM-001 |
 | `memory` Engineering Memory | M9 | `crates/memory` | `19` | 1 | 1 | — |
 | `model-gateway` Execution Policy Router & Provider Gateway | M2 | `crates/providers` | `15`, `27`, `38` | 11 | 11 | ADR-R-039, ADR-R-040, ADR-R-041, ADR-R-047, ADR-R-049, ADR-R-050 |
@@ -208,7 +211,7 @@ flowchart LR
   ETASK -->|owned_by| SUB
 ```
 
-Disposition counts: ADAPT 63, ADOPT 209, ALREADY COVERED 11, DEFERRED 9, EXPERIMENT 13, REJECT 6.
+Disposition counts: ADAPT 63, ADOPT 210, ALREADY COVERED 11, DEFERRED 9, EXPERIMENT 13, REJECT 6.
 
 ## Execution policy development dependencies
 
@@ -313,6 +316,16 @@ flowchart LR
 
 Gate state is derived (docs/93): OPEN until every required task is COMPLETE, TASKS_COMPLETE, then SATISFIED once attested with `graph.py attest`. A milestone linked by `gated_by` rolls up GATED, not COMPLETE, until all its gates are SATISFIED: M10 → EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G.
 
+## Release readiness (derived)
+
+Releases are projections over work items and gates (docs/75). Readiness is computed, never set: NOT_READY until every included item is COMPLETE and every required gate SATISFIED; BLOCKED if any included item is BLOCKED.
+
+| Release | State | Included work items | Complete | Blocked | Required gates | Rule |
+|---|---|---:|---:|---:|---|---|
+| ALPHA: Local coding loop and recovery spine | NOT_READY | 120 | 0 | 0 | none | / ALPHA / Local coding loop and recovery spine / M0, M1, M2, M4 / M2.10 / EPR- / — / — / |
+| BETA: Intelligence, fleet and browser | NOT_READY | 300 | 0 | 0 | none | / BETA / Intelligence, fleet and browser / M0, M1, M2, M3, M4, M5, M6, M7 / — / — / — / — / |
+| RELEASE_ZERO: Full end-to-end proof | NOT_READY | 364 | 0 | 0 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
+
 ## Scoped v1.1 supersessions and source provenance
 
 ```mermaid
@@ -353,6 +366,7 @@ flowchart LR
 - `DOC-GOV-002`: COMPLETE; Align implementation specs and execution profiles with EPR v1.1; evidence: run:dossier-gov-002-2026-09-05-final, artifact:evidence/dossier-gov-002/validation.json, artifact:evidence/dossier-gov-002/tests.log, revision:sha256:8e9f70a42a14d6592ac53f463385a61bcdc4f5563045b9f7a5499fc13051522d, commit:e39f3a477b5234c1ca519c692cbc0b8db880d71a
 - `DOC-GOV-003`: COMPLETE; Enforce release-gate attestation and one-step lifecycle transitions; evidence: run:dossier-gov-003-2026-09-05-final, artifact:evidence/dossier-gov-003/validation.json, artifact:evidence/dossier-gov-003/tests.log, revision:sha256:1072a96f9b3564a839a12ab40243fbced08e732458c5df62cabb0ab2c2ab253d, commit:d426b1be87768e28acb8c30eca0330daa0f674e9
 - `DOC-GOV-004`: COMPLETE; Integrate EPR patches into product, cloud, durability and acceptance docs; add coverage map; evidence: run:dossier-gov-004-2026-09-05-final, artifact:evidence/dossier-gov-004/validation.json, artifact:evidence/dossier-gov-004/tests.log, revision:sha256:a6914e8017a318b9c3de28de5aabd553c3f6d2d7d676ebafcbf765067c2206d1, commit:f2b7250762e04f7ab68cf44530b2a3a9b1afd769
+- `DOC-PX-001`: NOT_STARTED; Product extension stage A: authority, PX ledger tooling, phased releases, governance tiering; evidence: none
 
 ## Milestone tasks in execution order
 
@@ -495,7 +509,7 @@ flowchart LR
 |---|---|
 | M0 | — |
 | M1 | — |
-| M2 | E2E-001, E2E-002, E2E-003, E2E-019, E2E-020, E2E-021, E2E-022, EPR-E2E-000, EPR-E2E-001, EPR-E2E-002, EPR-E2E-003, EPR-E2E-004, EPR-E2E-005, EPR-E2E-014, EPR-E2E-015, EPR-E2E-016, EPR-FI-000, EPR-FI-001, EPR-FI-002, EPR-FI-003, EPR-FI-004, EPR-FI-005, EPR-FI-014, EPR-FI-015, EPR-FI-016, FI-11, FI-12 |
+| M2 | E2E-001, E2E-002, E2E-003, E2E-019, E2E-020, E2E-021, E2E-022, EPR-E2E-000, EPR-E2E-001, EPR-E2E-002, EPR-E2E-003, EPR-E2E-004, EPR-E2E-005, EPR-E2E-014, EPR-E2E-015, EPR-E2E-016, EPR-FI-000, EPR-FI-001, EPR-FI-002, EPR-FI-003, EPR-FI-004, EPR-FI-005, EPR-FI-014, EPR-FI-015, EPR-FI-016, FI-11, FI-12, PX-E2E-000 |
 | M3 | FI-24 |
 | M4 | E2E-004, E2E-005, E2E-006, E2E-007, E2E-008, EPR-E2E-008, EPR-E2E-009, EPR-E2E-017, EPR-FI-008, EPR-FI-009, EPR-FI-017, FI-01, FI-02, FI-03, FI-04, FI-05, FI-06, FI-07, FI-08, FI-09, FI-10, FI-16, FI-19, FI-20, FI-21, FI-27, FI-28, FI-29 |
 | M5 | E2E-011, E2E-012, EPR-E2E-006, EPR-FI-006, MEDIA-E2E-001, MEDIA-E2E-002, MEDIA-E2E-003, MEDIA-E2E-004, MEDIA-E2E-005, MEDIA-E2E-006, MEDIA-E2E-007, MEDIA-E2E-008, MEDIA-E2E-009, MEDIA-E2E-010, MEDIA-E2E-011, MEDIA-E2E-012, WSK-E2E-001, WSK-E2E-002, WSK-E2E-003, WSK-E2E-004, WSK-E2E-005, WSK-E2E-006, WSK-E2E-007, WSK-E2E-008, WSK-E2E-009, WSK-E2E-010 |
@@ -509,12 +523,12 @@ flowchart LR
 
 | Section | Documents |
 |---|---|
-| Authority and orientation | `00`, `01`, `02`, `03`, `04`, `05`, `06` |
+| Authority and orientation | `00`, `01`, `02`, `03`, `04`, `05`, `06`, `07` |
 | Architecture and subsystems | `10`, `11`, `12`, `13`, `14`, `15`, `16`, `17`, `18`, `19`, `20`, `21`, `22`, `23`, `24`, `25`, `26`, `27` |
 | Implementation specifications | `30`, `31`, `32`, `33`, `34`, `35`, `36`, `37`, `38` |
 | Requirements, tasks and traceability | `40`, `41`, `42`, `43`, `44`, `45`, `46`, `47`, `48`, `49` |
-| Verification and testing | `50`, `51`, `52`, `53`, `54`, `55`, `56`, `57`, `58`, `59`, `60`, `61` |
-| Delivery and operations | `70`, `71`, `72`, `73`, `74` |
+| Verification and testing | `50`, `51`, `52`, `53`, `54`, `55`, `56`, `57`, `58`, `59`, `60`, `61`, `62` |
+| Delivery and operations | `70`, `71`, `72`, `73`, `74`, `75` |
 | Agent process and governance | `80`, `81`, `82`, `83`, `84`, `85`, `86`, `87`, `88`, `89`, `90`, `91`, `92`, `93`, `94`, `95`, `96`, `97` |
 | Live state | `98` |
 

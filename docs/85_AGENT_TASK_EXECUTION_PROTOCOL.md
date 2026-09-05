@@ -6,7 +6,8 @@
 - enumerate requirement IDs;
 - run existing-code feature audit;
 - identify architecture owner and forbidden boundaries;
-- identify tests that will prove completion before writing code.
+- identify tests that will prove completion before writing code;
+- classify the evidence tier by behavioral risk (`83_DEFINITION_OF_DONE_AND_ACCEPTANCE.md`); mixed or uncertain is release-critical.
 
 ## Phase B — plan
 

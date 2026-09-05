@@ -11,6 +11,8 @@ Commands
   attest  <gate-id> --evidence REF... [--note TEXT] [--agent NAME]
           record release-gate evidence; refused until every required task is COMPLETE
   gates                      release-gate readiness: OPEN / TASKS_COMPLETE / SATISFIED, and gated milestones
+  releases                   derived release readiness (ALPHA / BETA / RELEASE_ZERO): NOT_READY / BLOCKED / READY
+  ready --release ALPHA      restrict the ready list to work items included in one release
   status                     milestone roll-up
   render  [--write]          mermaid/markdown view (stdout, or graph/PROJECT_GRAPH.md)
   path                       critical path and milestone dependency order
@@ -40,6 +42,8 @@ EVIDENCE_REF = re.compile(r"^(%s):([!-~]+)$" % "|".join(EVIDENCE_KINDS))
 PACKAGE_PATH = re.compile(r"^[A-Za-z0-9_./-]+$")
 GATE_STATES = ["OPEN", "TASKS_COMPLETE", "SATISFIED"]
 MILESTONE_GATED = "GATED"
+RELEASE_ORDER = ["ALPHA", "BETA", "RELEASE_ZERO"]
+RELEASE_STATES = ["NOT_READY", "BLOCKED", "READY"]
 
 
 def evidence_ref_error(ref, root=ROOT):
@@ -143,6 +147,21 @@ class Index(object):
             return "OPEN"
         return "SATISFIED" if self.nodes[gid].get("evidence") else "TASKS_COMPLETE"
 
+    # ---- releases (derived projections, never a stored status) ----------------
+    def release_items(self, rid):
+        return self.outs(rid, "includes")
+
+    def release_state(self, rid):
+        """READY only when every included work item is COMPLETE and every required gate is SATISFIED; BLOCKED if any item is BLOCKED."""
+        items = self.release_items(rid)
+        statuses = [self.nodes[i].get("status", "NOT_STARTED") for i in items]
+        if any(s == "BLOCKED" for s in statuses):
+            return "BLOCKED"
+        gates = self.outs(rid, "requires_gate")
+        if items and all(s == "COMPLETE" for s in statuses) and all(self.gate_state(g) == "SATISFIED" for g in gates):
+            return "READY"
+        return "NOT_READY"
+
 
 def dependency_findings(ix):
     """Check executable prerequisites, including implicit milestone roll-ups."""
@@ -160,6 +179,12 @@ def dependency_findings(ix):
             if any(ix.nodes[edge[k]]["type"] != "milestone" for k in ("from", "to")):
                 errors.append("depends_on edge must join milestones: %s" % edge)
             adjacency[edge["from"]].add(edge["to"])
+        elif edge["type"] == "includes":
+            if ix.nodes[edge["from"]]["type"] != "release" or ix.nodes[edge["to"]]["type"] not in ("milestone_task", "imp_task"):
+                errors.append("includes edge must join a release to a product work item: %s" % edge)
+        elif edge["type"] == "requires_gate":
+            if ix.nodes[edge["from"]]["type"] != "release" or ix.nodes[edge["to"]]["type"] != "release_gate":
+                errors.append("requires_gate edge must join a release to a release gate: %s" % edge)
         elif edge["type"] == "gated_by":
             if ix.nodes[edge["from"]]["type"] != "milestone" or ix.nodes[edge["to"]]["type"] != "release_gate":
                 errors.append("gated_by edge must join a milestone to a release gate: %s" % edge)
@@ -192,6 +217,11 @@ def cmd_ready(args):
     g = load()
     ix = Index(g)
     rows = []
+    scope = None
+    if getattr(args, "release", None):
+        if args.release not in ix.nodes or ix.nodes[args.release]["type"] != "release":
+            sys.exit("unknown release %r; expected one of %s" % (args.release, ", ".join(RELEASE_ORDER)))
+        scope = set(ix.release_items(args.release))
     for m in sorted(ix.by_type("milestone"), key=lambda n: n["order"]):
         unblocked = ix.milestone_unblocked(m["id"])
         if not unblocked and not args.all:
@@ -200,12 +230,16 @@ def cmd_ready(args):
             st = t.get("status", "NOT_STARTED")
             if st in ("COMPLETE",):
                 continue
+            if scope is not None and t["id"] not in scope:
+                continue
             deps = ix.outs(t["id"], "after")
             deps_ok = all(ix.nodes[d].get("status") == "COMPLETE" for d in deps)
             if not deps_ok:
                 continue
             rows.append((m["id"], t["id"], t["type"], st, "" if unblocked else "milestone blocked", t["title"]))
     for t in sorted(ix.by_type("dossier_task"), key=lambda n: n["id"]):
+        if scope is not None:
+            break
         if t.get("status", "NOT_STARTED") != "COMPLETE" and all(
                 ix.nodes[d].get("status") == "COMPLETE" for d in ix.outs(t["id"], "after")):
             rows.append(("—", t["id"], t["type"], t.get("status", "NOT_STARTED"), "dossier only", t["title"]))
@@ -337,6 +371,34 @@ def cmd_gates(args):
         gates = ix.milestone_gates(m["id"])
         if gates:
             print("%s is gated by %s; roll-up state %s" % (m["id"], ", ".join(gates), ix.milestone_state(m["id"])))
+
+
+def cmd_releases(args):
+    ix = Index(load())
+    print("%-13s %-10s %11s %8s %7s  %s" % ("RELEASE", "STATE", "ITEMS", "BLOCKED", "GATES", "TITLE"))
+    for rid in RELEASE_ORDER:
+        if rid not in ix.nodes:
+            continue
+        items = ix.release_items(rid)
+        statuses = [ix.nodes[i].get("status", "NOT_STARTED") for i in items]
+        gates = ix.outs(rid, "requires_gate")
+        sat = sum(1 for g in gates if ix.gate_state(g) == "SATISFIED")
+        print("%-13s %-10s %5d/%-5d %8d %3d/%-3d  %s" % (rid, ix.release_state(rid), statuses.count("COMPLETE"), len(items),
+                                                      statuses.count("BLOCKED"), sat, len(gates), ix.nodes[rid]["title"]))
+    for rid in RELEASE_ORDER:
+        if rid not in ix.nodes:
+            continue
+        startable = []
+        for i in ix.release_items(rid):
+            n = ix.nodes[i]
+            if n.get("status", "NOT_STARTED") != "NOT_STARTED":
+                continue
+            m = ix.milestone_of(i)
+            if m and not ix.milestone_unblocked(m):
+                continue
+            if all(ix.nodes[d].get("status") == "COMPLETE" for d in ix.outs(i, "after")):
+                startable.append(i)
+        print("%s: %d startable now%s" % (rid, len(startable), (": " + ", ".join(sorted(startable)[:6]) + (" …" if len(startable) > 6 else "")) if startable else ""))
 
 
 def rollup(ix):
@@ -538,6 +600,19 @@ def render(g):
              "A milestone linked by `gated_by` rolls up GATED, not COMPLETE, until all its gates are SATISFIED: " +
              "; ".join("%s → %s" % (m["id"], ", ".join(ix.milestone_gates(m["id"]))) for m in ix.by_type("milestone") if ix.milestone_gates(m["id"])) + ".")
     L.append("")
+    L.append("## Release readiness (derived)")
+    L.append("")
+    L.append("Releases are projections over work items and gates (docs/75). Readiness is computed, never set: NOT_READY until every included item is COMPLETE and every required gate SATISFIED; BLOCKED if any included item is BLOCKED.")
+    L.append("")
+    L.append("| Release | State | Included work items | Complete | Blocked | Required gates | Rule |")
+    L.append("|---|---|---:|---:|---:|---|---|")
+    for rid in RELEASE_ORDER:
+        if rid in ix.nodes:
+            items = ix.release_items(rid)
+            st = [ix.nodes[i].get("status", "NOT_STARTED") for i in items]
+            L.append("| %s: %s | %s | %d | %d | %d | %s | %s |" % (rid, ix.nodes[rid]["title"], ix.release_state(rid), len(items), st.count("COMPLETE"), st.count("BLOCKED"),
+                                                            ", ".join(ix.outs(rid, "requires_gate")) or "none", ix.nodes[rid].get("rule", "").replace("|", "/")))
+    L.append("")
     L.append("## Scoped v1.1 supersessions and source provenance")
     L.append("")
     L.append("```mermaid")
@@ -629,13 +704,14 @@ def cmd_render(args):
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sp = p.add_subparsers(dest="cmd")
-    a = sp.add_parser("ready"); a.add_argument("--all", action="store_true"); a.set_defaults(fn=cmd_ready)
+    a = sp.add_parser("ready"); a.add_argument("--all", action="store_true"); a.add_argument("--release"); a.set_defaults(fn=cmd_ready)
     a = sp.add_parser("show"); a.add_argument("id"); a.set_defaults(fn=cmd_show)
     a = sp.add_parser("set"); a.add_argument("id"); a.add_argument("state")
     a.add_argument("--evidence", action="append"); a.add_argument("--note"); a.add_argument("--agent"); a.set_defaults(fn=cmd_set)
     a = sp.add_parser("status"); a.set_defaults(fn=cmd_status)
     a = sp.add_parser("attest"); a.add_argument("id"); a.add_argument("--evidence", action="append"); a.add_argument("--note"); a.add_argument("--agent"); a.set_defaults(fn=cmd_attest)
     a = sp.add_parser("gates"); a.set_defaults(fn=cmd_gates)
+    a = sp.add_parser("releases"); a.set_defaults(fn=cmd_releases)
     a = sp.add_parser("render"); a.add_argument("--write", action="store_true"); a.set_defaults(fn=cmd_render)
     a = sp.add_parser("path"); a.set_defaults(fn=cmd_path)
     a = sp.add_parser("stats"); a.set_defaults(fn=cmd_stats)

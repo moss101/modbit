@@ -34,7 +34,7 @@ Skipping a stage is allowed only when the task card explicitly marks it non-appl
 
 ## Before modifying code
 
-1. Run `python3 tools/graph.py ready` and take a task whose dependencies are `COMPLETE`. Do not start work on a milestone whose upstream milestone is not proven.
+1. Run `python3 tools/graph.py ready` (or `ready --release ALPHA` while Alpha is not READY) and take a task whose dependencies are `COMPLETE`. Do not start work on a milestone whose upstream milestone is not proven.
 2. Read `docs/01_START_HERE_FOR_BUILD_AGENTS.md` and follow its read order.
 3. Read the authoritative subsystem specification(s) linked from the task's subsystem node in the graph.
 4. Read every `REQ-EV-*` requirement attached to the task (`docs/40_EVIDENCE_DERIVED_REQUIREMENT_LEDGER.md`). For an `EPR-*` task also read its `REQ-EPR-*` row and task card in `docs/49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md` and the current supersession record `docs/06_EPR_V1_1_SUPERSESSION_DECISION.md`.
@@ -73,6 +73,10 @@ Do not introduce a second scheduler, policy engine, event store, protocol-state 
 ## Real-effect requirement
 
 Production capabilities require at least one production-equivalent proof using the real boundary: real filesystem/Git/process/database/browser/sandbox/provider/external-tool transport as applicable. Lower-level mocks are allowed for deterministic edge cases but never close a production feature.
+
+## Evidence tiers
+
+Every change declares an evidence tier by **behavioral risk**, never by file location (`docs/83_DEFINITION_OF_DONE_AND_ACCEPTANCE.md`). The iteration tier is allowed only when the change modifies none of: effect-bearing behavior, canonical persistence, permissions or policy, execution, recovery, protocol or schema, a security boundary, or evidence semantics. Anything mixed or uncertain is release-critical. In both tiers the Core, protocol and stores under test are real; no mock closes a production behavior.
 
 ## Failure behavior
 

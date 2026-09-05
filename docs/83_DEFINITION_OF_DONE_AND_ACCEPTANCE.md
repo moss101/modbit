@@ -23,6 +23,15 @@ Required real-system scenario passes and evidence bundle exists.
 ### COMPLETE
 E2E proven **plus** security/recovery/observability/performance/documentation acceptance for that feature; no placeholder path or critical unresolved defect.
 
+## Evidence tiers by behavioral risk (DR-PX-2026-09-05)
+
+Every change declares one of two evidence tiers on its task card and PR. The tier follows **what the change does**, never which file or component it touches.
+
+- **Release-critical tier** (default). Full checklist below, real cross-process integration, restart/resume proof where durability is claimed, and the real E2E path on a packaged candidate.
+- **Iteration tier.** Permitted only when the change does not modify effect-bearing behavior, canonical persistence, permissions or policy, execution, recovery, protocol or schema, a security boundary, or evidence semantics. Evidence is unit and component tests plus the packaged UI smoke suite driven against a real local Core through the real SurfaceProtocol, plus accessibility checks; screenshots stay supplemental.
+- Any **mixed or uncertain** change uses the release-critical tier. A reviewer may reclassify a change upward, never downward. "No mock closes a production behavior" is invariant in both tiers: the iteration tier changes how much real-effect proof is required, not whether the Core, protocol and stores in the test are real.
+- The tier is a property of the change recorded in its evidence references; it is not a lifecycle state and does not appear in the graph status vocabulary.
+
 ## Universal completion checklist
 
 A feature is COMPLETE only when all applicable boxes are true:

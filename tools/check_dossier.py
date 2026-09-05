@@ -12,12 +12,14 @@ Checks
   D5  no de-branding artifacts or placeholder tokens
   D7  decision statuses in docs/02 and on graph decision nodes use the docs/93 decision ladder
   D8  every top-level section of both root source patches appears in the doc 27 source coverage map
+  D9  additive product-extension ledger (docs/62) is structurally valid; totals are computed, never pinned
   G1  graph exists and every doc is a node; every doc node exists on disk
   G2  every REQ/IMP/QUAL in docs is in the graph and vice versa
   G3  statuses are from the vocabulary; E2E_PROVEN/COMPLETE carry evidence; every evidence ref follows the docs/93 grammar
   G4  COMPLETE tasks have COMPLETE prerequisites; edges resolve
   G5  docs/98 milestone table matches the graph roll-up (GATED is a valid roll-up state)
   G7  release gates: attestation evidence grammar; no attestation while required tasks are incomplete; gated_by edges valid
+  G8  releases ALPHA/BETA/RELEASE_ZERO exist, nest, and RELEASE_ZERO includes every product work item
   D6/G6 additive EPR coverage; current source/graph equivalence; acyclic prerequisites
   M1  (--manifest) every manifest.json hash matches the file on disk
 """
@@ -33,6 +35,7 @@ DOCS = os.path.join(ROOT, "docs")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import graph as graphtool  # noqa: E402
 import dossier_epr as epr  # noqa: E402
+import dossier_px as px  # noqa: E402
 import build_graph as graphbuilder  # noqa: E402
 import build_manifest as manifestbuilder  # noqa: E402
 
@@ -121,6 +124,15 @@ def main(argv):
         e_qual_ids = {n["id"] for n in eq}
     except (ValueError, OSError) as exc:
         find("D6", "EPR coverage invalid: " + str(exc))
+    p_req_ids, p_imp_ids, p_qual_ids = set(), set(), set()
+    try:
+        pr, pt, pq, ps = px.parse(DOCS)
+        px.release_rules(DOCS)
+        p_req_ids = {n["id"] for n in pr}
+        p_imp_ids = {n["id"] for n in pt}
+        p_qual_ids = {n["id"] for n in pq}
+    except (ValueError, OSError) as exc:
+        find("D9", "product extension ledger invalid: " + str(exc))
 
     # D5
     for f in docs + roots:
@@ -175,10 +187,21 @@ def main(argv):
         g_req = {n["id"] for n in ix.by_type("requirement")}
         g_imp = {n["id"] for n in ix.by_type("imp_task")}
         g_qual = {n["id"] for n in ix.by_type("qual_test")}
-        for label, a, b in (("REQ", set(req_ids) | e_req_ids, g_req),
-                            ("IMP", imp_ids | e_imp_ids, g_imp), ("QUAL", qual_ids | e_qual_ids, g_qual)):
+        for label, a, b in (("REQ", set(req_ids) | e_req_ids | p_req_ids, g_req),
+                            ("IMP", imp_ids | e_imp_ids | p_imp_ids, g_imp), ("QUAL", qual_ids | e_qual_ids | p_qual_ids, g_qual)):
             if a != b:
                 find("G2", "%s mismatch docs vs graph: docs-only=%s graph-only=%s" % (label, sorted(a - b)[:5], sorted(b - a)[:5]))
+        releases = {n["id"] for n in ix.by_type("release")}
+        if releases != set(graphtool.RELEASE_ORDER):
+            find("G8", "expected releases %s, graph has %s (run tools/build_graph.py)" % (graphtool.RELEASE_ORDER, sorted(releases)))
+        else:
+            zero = set(ix.release_items("RELEASE_ZERO"))
+            for n in g["nodes"]:
+                if n["type"] in ("milestone_task", "imp_task") and n["id"] not in zero:
+                    find("G8", "%s is not included in RELEASE_ZERO" % n["id"])
+            alpha, beta = set(ix.release_items("ALPHA")), set(ix.release_items("BETA"))
+            if not (alpha and alpha <= beta <= zero):
+                find("G8", "release membership must be non-empty and nested ALPHA <= BETA <= RELEASE_ZERO")
         adr_count = sum(1 for n in g["nodes"] if n["type"] == "decision" and n["id"].startswith("ADR-R-"))
         gate_count = sum(1 for n in g["nodes"] if n["type"] == "release_gate")
         for n in g["nodes"]:
@@ -279,8 +302,9 @@ def main(argv):
             print("[%s] %s" % (code, msg))
         print("FAIL: %d finding(s)" % len(findings))
         return 1
-    print("OK: %d docs, %d REQ-EV, %d IMP-EV, %d QUAL-EV + %d REQ-EPR/EPR/QUAL-EPR, %d ADR-R, %d gates; graph and references consistent%s" % (
-        len(docs), len(req_ids), len(imp_ids), len(qual_ids), len(e_req_ids), adr_count, gate_count,
+    print("OK: %d docs; base %d REQ-EV/%d IMP-EV/%d QUAL-EV + EPR %d + PX %d (%d ADOPT tasks) = %d requirements effective; %d ADR-R, %d gates, %d releases; graph and references consistent%s" % (
+        len(docs), len(req_ids), len(imp_ids), len(qual_ids), len(e_req_ids), len(p_req_ids), len(p_imp_ids),
+        len(req_ids) + len(e_req_ids) + len(p_req_ids), adr_count, gate_count, len(graphtool.RELEASE_ORDER),
         "; manifest hashes verified" if "--manifest" in argv else ""))
     return 0
 

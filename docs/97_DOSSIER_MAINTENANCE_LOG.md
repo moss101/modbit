@@ -225,3 +225,48 @@ Append-only record of dossier-only maintenance tasks after DOC-GOV-001. Each ent
 | Changed | `tools/build_graph.py` |
 | Changed | `tools/check_dossier.py` |
 | Changed | `tools/test_dossier.py` |
+
+## DOC-PX-001 — Product extension stage A: authority, PX ledger tooling, phased releases, governance tiering
+
+### Identity and authority
+
+- Task: DOC-PX-001 (`dossier_task`); owner: governance; prerequisite: DOC-GOV-004 COMPLETE; outside product roll-ups.
+- Decision Record: DR-PX-2026-09-05 in `07_PRODUCT_EXTENSION_DECISION_RECORD.md`, approved by the user on 2026-09-05 with twelve numbered decisions.
+- Scope: doc 07; the additive ledger doc 62 with its first row (headless CLI, Alpha); doc 75 phased releases; governance tiering by behavioral risk in docs 50/83/85/86/90/93 and `../AGENTS.md`; `tools/dossier_px.py`; release nodes, `includes`/`requires_gate` edges, `graph.py releases` and `ready --release`; checks D9 and G8; computed effective totals in the check summary; three tests; pointers in docs 00/43/46/47/74/98, `../README.md`, `../SKILLS.md`. No base row, owner, ADR, EPR row or product status changes.
+- Revision before change: `../evidence/dossier-px-001/baseline.json`.
+
+### Decision Record fields
+
+Recorded in doc 07 for the whole extension; this entry adds only: **Test impact** three tests (ledger structure, release derivation, release membership); **Rollback** revert this stage's two commits on `main`.
+
+### Stage applicability
+
+| Stage | DOC-PX-001 execution |
+|---|---|
+| AUDITING | Owner distribution of M0/M1/M2/M4 work read from the graph to ground Alpha membership; templates 85/86/90 read for tiering |
+| IMPLEMENTING | Parser, builder, graph tool, checks, tests, docs 07/62/75, tiering text, pointers |
+| WIRED | Regenerated graph and manifests through the real CLIs |
+| REAL_TESTING | `check_dossier --manifest` and the copied-package suite |
+| E2E_PROVEN | Change commit on `main` pushed; evidence retained |
+| COMPLETE | One-step ladder with evidence; seal commit |
+| Product qualification | Non-applicable: no product source exists |
+
+### Status and handoff
+
+- **Interfaces:** graph schema 1.2; node type `release`; edge types `includes`, `requires_gate`; commands `releases`, `ready --release`; checks D9, G8; the check summary now prints base plus EPR plus PX effective totals.
+- **Evidence:** `../evidence/dossier-px-001/baseline.json`, `tests.log`, `validation.json`; change commit recorded as `commit:` evidence on DOC-PX-001.
+- **Remaining product work:** unchanged; all releases NOT_READY; all work items NOT_STARTED.
+- **Next safe action:** stage B (DOC-PX-002): doc 29 client surfaces and source control with its ledger rows.
+
+### Exact file inventory for this change
+
+| Action | Path |
+|---|---|
+| Added | `docs/07_PRODUCT_EXTENSION_DECISION_RECORD.md` |
+| Added | `docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md` |
+| Added | `docs/75_PHASED_RELEASE_PLAN_AND_READINESS.md` |
+| Added | `tools/dossier_px.py` |
+| Added | `evidence/dossier-px-001/baseline.json`, `tests.log`, `validation.json` |
+| Changed | `AGENTS.md`, `MANIFEST.md`, `README.md`, `SKILLS.md`, `manifest.json` |
+| Changed | `docs/00_MASTER_INDEX.md`, `docs/43_IMPLEMENTATION_ROADMAP_AND_TASK_GRAPH.md`, `docs/46_REQUIREMENT_COVERAGE_FREEZE_GATE.md`, `docs/47_REQUIREMENT_COVERAGE_AUDIT_REPORT.md`, `docs/50_TEST_STRATEGY_REAL_SYSTEM_GATES.md`, `docs/74_PACKAGE_INTEGRITY_AND_BUILD_COVERAGE.md`, `docs/83_DEFINITION_OF_DONE_AND_ACCEPTANCE.md`, `docs/85_AGENT_TASK_EXECUTION_PROTOCOL.md`, `docs/86_TASK_CARD_TEMPLATE.md`, `docs/90_PR_CHANGE_EVIDENCE_TEMPLATE.md`, `docs/93_STATUS_VOCABULARY_AND_LIFECYCLE.md`, `docs/97_DOSSIER_MAINTENANCE_LOG.md`, `docs/98_BUILD_MANIFEST.md` |
+| Changed | `graph/PROJECT_GRAPH.md`, `graph/project-graph.json`, `tools/build_graph.py`, `tools/build_manifest.py`, `tools/check_dossier.py`, `tools/graph.py`, `tools/test_dossier.py` |
