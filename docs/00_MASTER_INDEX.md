@@ -14,7 +14,7 @@ Governance maintenance (DOC-GOV-001, doc 96, 2026-09-05): evidence references on
 
 Later dossier-only maintenance is logged append-only in doc 97 (`97_DOSSIER_MAINTENANCE_LOG.md`). Its first entry, DOC-GOV-002, aligns docs 12/14/16/21/33/44/74 with EPR v1.1: component placement by crate and owner, the `review_isolated` execution profile and the reviewer tool projection. DOC-GOV-003 adds `gated_by` edges from M10 to gates A–G, derived gate states with `graph.py attest` and `gates`, the `GATED` roll-up and one-step lifecycle transitions (doc 93). DOC-GOV-004 carries both patches into the product-facing docs (10/17/19/24/32/56/83) and adds the source section coverage map in doc 27 §28, enforced by check D8.
 
-Product extension (DR-PX-2026-09-05, doc 07): an additive `REQ-PX` ledger in doc 62 with computed totals, phased releases in doc 75 whose readiness is derived from task-level state, and evidence tiers by behavioral risk in docs 83/93/50. Stages B–E add client surfaces and source control, agent competence and benchmarks, UX flows, and the language and platform matrix. Product implementation remains NOT_STARTED.
+Product extension (DR-PX-2026-09-05, doc 07): an additive `REQ-PX` ledger in doc 62 with computed totals, phased releases in doc 75 whose readiness is derived from task-level state, and evidence tiers by behavioral risk in docs 83/93/50. Stages B–E added client surfaces and source control (doc 29), agent competence and benchmarks (docs 28/63), UX flows (doc 39) and the language and platform matrix (doc 76); the ledger in doc 62 carries every row with owner, milestone, release and disposition. Product implementation remains NOT_STARTED.
 
 ## What changed in V3.1 (structure only, no requirement changes)
 
@@ -129,6 +129,7 @@ Do **not** preload the whole dossier. `89_BUILD_AGENT_CONTEXT_LOADING_POLICY.md`
 - `73_RELEASE_BLOCKERS_AND_STOP_THE_LINE_RULES.md` — non-waivable blockers
 - `74_PACKAGE_INTEGRITY_AND_BUILD_COVERAGE.md` — documentation and product CI integrity checks
 - `75_PHASED_RELEASE_PLAN_AND_READINESS.md` — ALPHA/BETA/RELEASE_ZERO as derived projections, membership rules, readiness derivation
+- `76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md` — language tiers A/B/C/Unsupported earned by conformance suites; platform states CI_COMPATIBLE vs RELEASE_GRADE; macOS Alpha
 
 ### 80–97 Agent process and governance
 - `80_ANTI_SUPERFICIAL_IMPLEMENTATION_STANDARD.md` — feature-depth equation, thin-implementation traps

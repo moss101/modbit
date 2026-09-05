@@ -11,7 +11,7 @@ This is a clean build. Tasks are ordered to produce executable vertical slices e
 ## M0 — Repository and authority (P0)
 
 **M0.1** Create monorepo, Rust workspace, pnpm workspace, CI, architecture-lint.  
-Acceptance: fresh clone builds on macOS/Linux/Windows CI; forbidden dependency test works.
+Acceptance: fresh clone builds on macOS/Linux/Windows CI; forbidden dependency test works. CI on Windows and Linux establishes CI_COMPATIBLE only; macOS is the Alpha release platform and other platforms are promoted separately (`76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md`).
 
 **M0.2** Add authoritative ADRs and status ledger.  
 Acceptance: CI rejects changed locked architecture file without linked ADR metadata.

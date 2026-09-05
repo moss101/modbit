@@ -135,6 +135,10 @@ A green “done” state is impossible without the configured verification gate 
 
 Every screen above has empty, loading, populated, error, degraded and recovery states, a notification model that interrupts only for attention, completion and failure, a complete keyboard model and interaction budgets, all specified and measured in `39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md`.
 
+## Languages and platforms
+
+Language support is a tiered, earned claim and platform support is separate from CI compatibility; both are defined in `76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md`. Alpha ships on macOS with TypeScript/JavaScript, Python and Rust at the Alpha baseline, and every client shows the language and platform state honestly.
+
 ## Accessibility
 
 Keyboard navigation for all fleet/review/approval actions; semantic labels on agent/tool states; no color-only status; diff and terminal views expose text alternatives; browser takeover state announced; reduced motion respected.

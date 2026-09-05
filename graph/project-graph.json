@@ -667,6 +667,14 @@
    "section": "delivery"
   },
   {
+   "id": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
+   "type": "doc",
+   "title": "Language and platform support matrix",
+   "path": "docs/76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
+   "number": 76,
+   "section": "delivery"
+  },
+  {
    "id": "80_ANTI_SUPERFICIAL_IMPLEMENTATION_STANDARD.md",
    "type": "doc",
    "title": "Anti-Superficial Implementation Standard",
@@ -932,7 +940,7 @@
    "id": "M0.1",
    "type": "milestone_task",
    "title": "Create monorepo, Rust workspace, pnpm workspace, CI, architecture-lint",
-   "acceptance": "fresh clone builds on macOS/Linux/Windows CI; forbidden dependency test works.",
+   "acceptance": "fresh clone builds on macOS/Linux/Windows CI; forbidden dependency test works. CI on Windows and Linux establishes CI_COMPATIBLE only; macOS is the Alpha release platform and other platforms are promoted separately (`76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md`).",
    "milestone": "M0",
    "order": 0,
    "source": "docs/43",
@@ -14803,6 +14811,84 @@
    "mandatory_behavior": "Packaged E2E asserts every interaction budget in doc 39 on reference hardware with Playwright traces and Core event timestamps"
   },
   {
+   "id": "REQ-PX-026",
+   "type": "requirement",
+   "title": "Alpha language baseline for TypeScript/JavaScript, Python and Rust",
+   "disposition": "ADOPT",
+   "subsystem": "verification",
+   "owner_label": "verification",
+   "imp": "PX-026",
+   "qual": "QUAL-PX-026",
+   "release": "ALPHA",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "On the ts-webapp, python-service and rust-cli fixtures: exact and BM25 retrieval, revision-bound edits and real compiler and test-runner evidence attributed to tasks; clients label the languages at the Alpha baseline, not Tier A"
+  },
+  {
+   "id": "REQ-PX-027",
+   "type": "requirement",
+   "title": "Language tier conformance suites A, B and C",
+   "disposition": "ADOPT",
+   "subsystem": "verification",
+   "owner_label": "verification",
+   "imp": "PX-027",
+   "qual": "QUAL-PX-027",
+   "release": "BETA",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "Tier A, B and C conformance suites exist and run on real fixture repositories: symbol/reference recall and diagnostics parity for A, symbol extraction and build-output diagnostics for B, text safety and configured-command evidence for C; a language enters a tier only through a recorded pass"
+  },
+  {
+   "id": "REQ-PX-028",
+   "type": "requirement",
+   "title": "Tier A conformance for TypeScript/JavaScript, Python and Rust",
+   "disposition": "ADOPT",
+   "subsystem": "context-engine",
+   "owner_label": "context-engine",
+   "imp": "PX-028",
+   "qual": "QUAL-PX-028",
+   "release": "BETA",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "TypeScript/JavaScript, Python and Rust pass the Tier A suite with real headless language services on the fixtures; incremental index latency within budget; competence suite tasks for each language pass at baseline"
+  },
+  {
+   "id": "REQ-PX-029",
+   "type": "requirement",
+   "title": "Explicit degradation path for Tier C and Unsupported languages",
+   "disposition": "ADOPT",
+   "subsystem": "context-engine",
+   "owner_label": "context-engine",
+   "imp": "PX-029",
+   "qual": "QUAL-PX-029",
+   "release": "BETA",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "A fixture with an Unsupported language and one with a Tier C language: retrieval falls back to text, verification uses only configured commands, the plan states the limitation, every client shows the language state, edits to the Unsupported language require explicit per-task opt-in with provenance"
+  },
+  {
+   "id": "REQ-PX-030",
+   "type": "requirement",
+   "title": "Platform CI compatibility matrix from M0, never release-grade by itself",
+   "disposition": "ADOPT",
+   "subsystem": "governance",
+   "owner_label": "governance",
+   "imp": "PX-030",
+   "qual": "QUAL-PX-030",
+   "release": "ALPHA",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "CI builds Core, CLI and runtime on macOS, Windows and Linux from M0 and runs unit, component and platform conformance suites (PTY/process, language services, Git, path policy, secrets, packaging, browser host); results labeled CI_COMPATIBLE only"
+  },
+  {
+   "id": "REQ-PX-031",
+   "type": "requirement",
+   "title": "Desktop platform release promotion by platform-specific E2E",
+   "disposition": "ADOPT",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "imp": "PX-031",
+   "qual": "QUAL-PX-031",
+   "release": "RELEASE_ZERO",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "mandatory_behavior": "macOS reaches RELEASE_GRADE by the packaged desktop E2E catalog and the applicable Release Zero subset; Windows and Linux stay CI_COMPATIBLE until their own packaged E2E passes and a Decision Record records promotion"
+  },
+  {
    "id": "PX-000",
    "type": "imp_task",
    "title": "Headless CLI thin client for the task lifecycle",
@@ -15375,6 +15461,153 @@
    "evidence": []
   },
   {
+   "id": "PX-026",
+   "type": "imp_task",
+   "title": "Alpha language baseline for TypeScript/JavaScript, Python and Rust",
+   "requirement": "REQ-PX-026",
+   "qual": "QUAL-PX-026",
+   "subsystem": "verification",
+   "owner_label": "verification",
+   "milestone": "M2",
+   "release": "ALPHA",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "On the ts-webapp, python-service and rust-cli fixtures: exact and BM25 retrieval, revision-bound edits and real compiler and test-runner evidence attributed to tasks; clients label the languages at the Alpha baseline, not Tier A",
+   "prerequisites": [
+    "M2.8"
+   ],
+   "related_requirements": [
+    "REQ-EV-0010"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-026",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-027",
+   "type": "imp_task",
+   "title": "Language tier conformance suites A, B and C",
+   "requirement": "REQ-PX-027",
+   "qual": "QUAL-PX-027",
+   "subsystem": "verification",
+   "owner_label": "verification",
+   "milestone": "M3",
+   "release": "BETA",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "Tier A, B and C conformance suites exist and run on real fixture repositories: symbol/reference recall and diagnostics parity for A, symbol extraction and build-output diagnostics for B, text safety and configured-command evidence for C; a language enters a tier only through a recorded pass",
+   "prerequisites": [
+    "M3.3",
+    "M3.4",
+    "PX-026"
+   ],
+   "related_requirements": [
+    "REQ-EV-0010"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-027",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-028",
+   "type": "imp_task",
+   "title": "Tier A conformance for TypeScript/JavaScript, Python and Rust",
+   "requirement": "REQ-PX-028",
+   "qual": "QUAL-PX-028",
+   "subsystem": "context-engine",
+   "owner_label": "context-engine",
+   "milestone": "M3",
+   "release": "BETA",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "TypeScript/JavaScript, Python and Rust pass the Tier A suite with real headless language services on the fixtures; incremental index latency within budget; competence suite tasks for each language pass at baseline",
+   "prerequisites": [
+    "PX-027"
+   ],
+   "related_requirements": [
+    "REQ-EV-0010"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-028",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-029",
+   "type": "imp_task",
+   "title": "Explicit degradation path for Tier C and Unsupported languages",
+   "requirement": "REQ-PX-029",
+   "qual": "QUAL-PX-029",
+   "subsystem": "context-engine",
+   "owner_label": "context-engine",
+   "milestone": "M3",
+   "release": "BETA",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "A fixture with an Unsupported language and one with a Tier C language: retrieval falls back to text, verification uses only configured commands, the plan states the limitation, every client shows the language state, edits to the Unsupported language require explicit per-task opt-in with provenance",
+   "prerequisites": [
+    "PX-027"
+   ],
+   "related_requirements": [
+    "REQ-EV-0010"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-029",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-030",
+   "type": "imp_task",
+   "title": "Platform CI compatibility matrix from M0, never release-grade by itself",
+   "requirement": "REQ-PX-030",
+   "qual": "QUAL-PX-030",
+   "subsystem": "governance",
+   "owner_label": "governance",
+   "milestone": "M0",
+   "release": "ALPHA",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "CI builds Core, CLI and runtime on macOS, Windows and Linux from M0 and runs unit, component and platform conformance suites (PTY/process, language services, Git, path policy, secrets, packaging, browser host); results labeled CI_COMPATIBLE only",
+   "prerequisites": [
+    "M0.1"
+   ],
+   "related_requirements": [
+    "REQ-EV-0010"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-030",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
+   "id": "PX-031",
+   "type": "imp_task",
+   "title": "Desktop platform release promotion by platform-specific E2E",
+   "requirement": "REQ-PX-031",
+   "qual": "QUAL-PX-031",
+   "subsystem": "desktop",
+   "owner_label": "desktop",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
+   "disposition": "ADOPT",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "acceptance": "macOS reaches RELEASE_GRADE by the packaged desktop E2E catalog and the applicable Release Zero subset; Windows and Linux stay CI_COMPATIBLE until their own packaged E2E passes and a Decision Record records promotion",
+   "prerequisites": [
+    "M10.3",
+    "PX-030"
+   ],
+   "related_requirements": [
+    "REQ-EV-0010"
+   ],
+   "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-031",
+   "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
    "id": "QUAL-PX-000",
    "type": "qual_test",
    "requirement": "REQ-PX-000",
@@ -15635,6 +15868,66 @@
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
   },
   {
+   "id": "QUAL-PX-026",
+   "type": "qual_test",
+   "requirement": "REQ-PX-026",
+   "owner_label": "verification",
+   "title": "On the ts-webapp, python-service and rust-cli fixtures: exact and BM25 retrieval, revision-bound edits and real compiler and test-runner evidence attributed to tasks; clients label the languages at the Alpha baseline, not Tier A",
+   "failure_proof": "Any structural or language-service claim in Alpha for these languages fails; an edit that corrupts encoding or line endings fails",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-027",
+   "type": "qual_test",
+   "requirement": "REQ-PX-027",
+   "owner_label": "verification",
+   "title": "Tier A, B and C conformance suites exist and run on real fixture repositories: symbol/reference recall and diagnostics parity for A, symbol extraction and build-output diagnostics for B, text safety and configured-command evidence for C; a language enters a tier only through a recorded pass",
+   "failure_proof": "A language listed in a tier without a recorded suite pass is a release blocker; a grammar alone cannot classify a language",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-028",
+   "type": "qual_test",
+   "requirement": "REQ-PX-028",
+   "owner_label": "context-engine",
+   "title": "TypeScript/JavaScript, Python and Rust pass the Tier A suite with real headless language services on the fixtures; incremental index latency within budget; competence suite tasks for each language pass at baseline",
+   "failure_proof": "Diagnostics parity failure or missing references on fixtures blocks the tier; a dead language service degrades explicitly rather than faking results",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-029",
+   "type": "qual_test",
+   "requirement": "REQ-PX-029",
+   "owner_label": "context-engine",
+   "title": "A fixture with an Unsupported language and one with a Tier C language: retrieval falls back to text, verification uses only configured commands, the plan states the limitation, every client shows the language state, edits to the Unsupported language require explicit per-task opt-in with provenance",
+   "failure_proof": "Any structural claim, silent fallback or edit without opt-in fails",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-030",
+   "type": "qual_test",
+   "requirement": "REQ-PX-030",
+   "owner_label": "governance",
+   "title": "CI builds Core, CLI and runtime on macOS, Windows and Linux from M0 and runs unit, component and platform conformance suites (PTY/process, language services, Git, path policy, secrets, packaging, browser host); results labeled CI_COMPATIBLE only",
+   "failure_proof": "Documentation, app or CLI text describing a CI-compatible platform as supported fails; a failing platform suite blocks the merge, not the label",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "QUAL-PX-031",
+   "type": "qual_test",
+   "requirement": "REQ-PX-031",
+   "owner_label": "desktop",
+   "title": "macOS reaches RELEASE_GRADE by the packaged desktop E2E catalog and the applicable Release Zero subset; Windows and Linux stay CI_COMPATIBLE until their own packaged E2E passes and a Decision Record records promotion",
+   "failure_proof": "Promotion without platform E2E evidence is rejected; Release Zero on macOS does not imply any other platform",
+   "evidence_class": "real-system or production-equivalent",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
    "id": "PX-E2E-000",
    "type": "scenario",
    "kind": "px-e2e",
@@ -15793,6 +16086,48 @@
    "type": "scenario",
    "kind": "px-e2e",
    "title": "Interaction budgets",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-026",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Alpha language baseline",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-027",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Tier suites gate classification",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-028",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Tier A for the three languages",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-029",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Explicit degradation",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-030",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Platform CI matrix",
+   "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+  },
+  {
+   "id": "PX-E2E-031",
+   "type": "scenario",
+   "kind": "px-e2e",
+   "title": "Platform promotion",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
   },
   {
@@ -16503,6 +16838,16 @@
    "status_changed_on": "2026-09-05T12:43:00Z"
   },
   {
+   "id": "DOC-PX-005",
+   "type": "dossier_task",
+   "title": "Product extension stage E: language and platform support matrix",
+   "subsystem": "governance",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
+   "acceptance": "Stage sealed on main with change and seal commits; full integrity gate passes; no product proof",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
    "id": "ALPHA",
    "type": "release",
    "title": "Local coding loop and recovery spine",
@@ -16865,6 +17210,11 @@
   },
   {
    "from": "75_PHASED_RELEASE_PLAN_AND_READINESS.md",
+   "to": "section:delivery",
+   "type": "in_section"
+  },
+  {
+   "from": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
    "to": "section:delivery",
    "type": "in_section"
   },
@@ -17300,6 +17650,11 @@
   },
   {
    "from": "00_MASTER_INDEX.md",
+   "to": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
+   "type": "references"
+  },
+  {
+   "from": "00_MASTER_INDEX.md",
    "to": "80_ANTI_SUPERFICIAL_IMPLEMENTATION_STANDARD.md",
    "type": "references"
   },
@@ -17614,6 +17969,11 @@
    "type": "references"
   },
   {
+   "from": "10_PRODUCT_PRD_AND_UX.md",
+   "to": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
+   "type": "references"
+  },
+  {
    "from": "11_SYSTEM_ARCHITECTURE.md",
    "to": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
    "type": "references"
@@ -17709,8 +18069,18 @@
    "type": "references"
   },
   {
+   "from": "18_CONTEXT_RETRIEVAL_AND_ENGINEERING_KNOWLEDGE.md",
+   "to": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
+   "type": "references"
+  },
+  {
    "from": "20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md",
    "to": "29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md",
+   "type": "references"
+  },
+  {
+   "from": "20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md",
+   "to": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
    "type": "references"
   },
   {
@@ -17915,6 +18285,11 @@
   },
   {
    "from": "28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
+   "to": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
+   "type": "references"
+  },
+  {
+   "from": "28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
    "to": "83_DEFINITION_OF_DONE_AND_ACCEPTANCE.md",
    "type": "references"
   },
@@ -18060,6 +18435,11 @@
   },
   {
    "from": "43_IMPLEMENTATION_ROADMAP_AND_TASK_GRAPH.md",
+   "to": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
+   "type": "references"
+  },
+  {
+   "from": "43_IMPLEMENTATION_ROADMAP_AND_TASK_GRAPH.md",
    "to": "98_BUILD_MANIFEST.md",
    "type": "references"
   },
@@ -18154,6 +18534,11 @@
    "type": "references"
   },
   {
+   "from": "56_TOOL_CAPABILITY_CONFORMANCE.md",
+   "to": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
+   "type": "references"
+  },
+  {
    "from": "59_RELEASE_ZERO_PROOF_SCENARIO.md",
    "to": "60_RELEASE_ZERO_EXPANDED_PROOF.md",
    "type": "references"
@@ -18205,12 +18590,22 @@
   },
   {
    "from": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "to": "56_TOOL_CAPABILITY_CONFORMANCE.md",
+   "type": "references"
+  },
+  {
+   "from": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
    "to": "63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
    "type": "references"
   },
   {
    "from": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
    "to": "75_PHASED_RELEASE_PLAN_AND_READINESS.md",
+   "type": "references"
+  },
+  {
+   "from": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "to": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
    "type": "references"
   },
   {
@@ -18221,6 +18616,11 @@
   {
    "from": "70_CI_CD_RELEASE_AND_SUPPLY_CHAIN.md",
    "to": "51_E2E_ACCEPTANCE_TEST_CATALOG.md",
+   "type": "references"
+  },
+  {
+   "from": "72_RISK_REGISTER_AND_OPEN_DECISIONS.md",
+   "to": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
    "type": "references"
   },
   {
@@ -18250,12 +18650,52 @@
   },
   {
    "from": "75_PHASED_RELEASE_PLAN_AND_READINESS.md",
+   "to": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
+   "type": "references"
+  },
+  {
+   "from": "75_PHASED_RELEASE_PLAN_AND_READINESS.md",
    "to": "83_DEFINITION_OF_DONE_AND_ACCEPTANCE.md",
    "type": "references"
   },
   {
    "from": "75_PHASED_RELEASE_PLAN_AND_READINESS.md",
    "to": "98_BUILD_MANIFEST.md",
+   "type": "references"
+  },
+  {
+   "from": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
+   "to": "07_PRODUCT_EXTENSION_DECISION_RECORD.md",
+   "type": "references"
+  },
+  {
+   "from": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
+   "to": "18_CONTEXT_RETRIEVAL_AND_ENGINEERING_KNOWLEDGE.md",
+   "type": "references"
+  },
+  {
+   "from": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
+   "to": "20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md",
+   "type": "references"
+  },
+  {
+   "from": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
+   "to": "56_TOOL_CAPABILITY_CONFORMANCE.md",
+   "type": "references"
+  },
+  {
+   "from": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
+   "to": "63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
+   "type": "references"
+  },
+  {
+   "from": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
+   "to": "72_RISK_REGISTER_AND_OPEN_DECISIONS.md",
+   "type": "references"
+  },
+  {
+   "from": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
+   "to": "75_PHASED_RELEASE_PLAN_AND_READINESS.md",
    "type": "references"
   },
   {
@@ -18900,6 +19340,11 @@
   },
   {
    "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "18_CONTEXT_RETRIEVAL_AND_ENGINEERING_KNOWLEDGE.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
    "to": "19_DURABLE_STATE_MEMORY_COMPACTION_CHECKPOINTS.md",
    "type": "references"
   },
@@ -19010,12 +19455,22 @@
   },
   {
    "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "72_RISK_REGISTER_AND_OPEN_DECISIONS.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
    "to": "74_PACKAGE_INTEGRITY_AND_BUILD_COVERAGE.md",
    "type": "references"
   },
   {
    "from": "97_DOSSIER_MAINTENANCE_LOG.md",
    "to": "75_PHASED_RELEASE_PLAN_AND_READINESS.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
    "type": "references"
   },
   {
@@ -19910,6 +20365,11 @@
   },
   {
    "from": "governance",
+   "to": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "governance",
    "to": "81_ARCHITECTURE_GUARDRAILS_AND_FORBIDDEN_DUPLICATION.md",
    "type": "specified_by"
   },
@@ -20060,6 +20520,11 @@
   },
   {
    "from": "verification",
+   "to": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "verification",
    "to": "83_DEFINITION_OF_DONE_AND_ACCEPTANCE.md",
    "type": "specified_by"
   },
@@ -20076,6 +20541,11 @@
   {
    "from": "context-engine",
    "to": "28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "context-engine",
+   "to": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
    "type": "specified_by"
   },
   {
@@ -31859,6 +32329,156 @@
    "type": "implemented_by"
   },
   {
+   "from": "REQ-PX-026",
+   "to": "verification",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-026",
+   "to": "QUAL-PX-026",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-026",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-026",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-026",
+   "to": "PX-026",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-027",
+   "to": "verification",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-027",
+   "to": "QUAL-PX-027",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-027",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-027",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-027",
+   "to": "PX-027",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-028",
+   "to": "context-engine",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-028",
+   "to": "QUAL-PX-028",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-028",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-028",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-028",
+   "to": "PX-028",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-029",
+   "to": "context-engine",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-029",
+   "to": "QUAL-PX-029",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-029",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-029",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-029",
+   "to": "PX-029",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-030",
+   "to": "governance",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-030",
+   "to": "QUAL-PX-030",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-030",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-030",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-030",
+   "to": "PX-030",
+   "type": "implemented_by"
+  },
+  {
+   "from": "REQ-PX-031",
+   "to": "desktop",
+   "type": "owned_by_req"
+  },
+  {
+   "from": "REQ-PX-031",
+   "to": "QUAL-PX-031",
+   "type": "qualified_by"
+  },
+  {
+   "from": "REQ-PX-031",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "REQ-PX-031",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "REQ-PX-031",
+   "to": "PX-031",
+   "type": "implemented_by"
+  },
+  {
    "from": "PX-000",
    "to": "DR-PX-2026-09-05",
    "type": "authorized_by"
@@ -32994,6 +33614,291 @@
    "type": "proves"
   },
   {
+   "from": "PX-026",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-026",
+   "to": "verification",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-026",
+   "to": "M2",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-026",
+   "to": "QUAL-PX-026",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-026",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-026",
+   "to": "M2.8",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-026",
+   "to": "REQ-EV-0010",
+   "type": "extends"
+  },
+  {
+   "from": "PX-026",
+   "to": "PX-E2E-026",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-026",
+   "to": "M2",
+   "type": "proves"
+  },
+  {
+   "from": "PX-027",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-027",
+   "to": "verification",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-027",
+   "to": "M3",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-027",
+   "to": "QUAL-PX-027",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-027",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-027",
+   "to": "M3.3",
+   "type": "after"
+  },
+  {
+   "from": "PX-027",
+   "to": "M3.4",
+   "type": "after"
+  },
+  {
+   "from": "PX-027",
+   "to": "PX-026",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-027",
+   "to": "REQ-EV-0010",
+   "type": "extends"
+  },
+  {
+   "from": "PX-027",
+   "to": "PX-E2E-027",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-027",
+   "to": "M3",
+   "type": "proves"
+  },
+  {
+   "from": "PX-028",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-028",
+   "to": "context-engine",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-028",
+   "to": "M3",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-028",
+   "to": "QUAL-PX-028",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-028",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-028",
+   "to": "PX-027",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-028",
+   "to": "REQ-EV-0010",
+   "type": "extends"
+  },
+  {
+   "from": "PX-028",
+   "to": "PX-E2E-028",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-028",
+   "to": "M3",
+   "type": "proves"
+  },
+  {
+   "from": "PX-029",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-029",
+   "to": "context-engine",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-029",
+   "to": "M3",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-029",
+   "to": "QUAL-PX-029",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-029",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-029",
+   "to": "PX-027",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-029",
+   "to": "REQ-EV-0010",
+   "type": "extends"
+  },
+  {
+   "from": "PX-029",
+   "to": "PX-E2E-029",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-029",
+   "to": "M3",
+   "type": "proves"
+  },
+  {
+   "from": "PX-030",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-030",
+   "to": "governance",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-030",
+   "to": "M0",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-030",
+   "to": "QUAL-PX-030",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-030",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-030",
+   "to": "M0.1",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-030",
+   "to": "REQ-EV-0010",
+   "type": "extends"
+  },
+  {
+   "from": "PX-030",
+   "to": "PX-E2E-030",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-030",
+   "to": "M0",
+   "type": "proves"
+  },
+  {
+   "from": "PX-031",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "PX-031",
+   "to": "desktop",
+   "type": "owned_by"
+  },
+  {
+   "from": "PX-031",
+   "to": "M10",
+   "type": "scheduled_in"
+  },
+  {
+   "from": "PX-031",
+   "to": "QUAL-PX-031",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-031",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "PX-031",
+   "to": "M10.3",
+   "type": "after"
+  },
+  {
+   "from": "PX-031",
+   "to": "PX-030",
+   "type": "after"
+  },
+  {
+   "from": "REQ-PX-031",
+   "to": "REQ-EV-0010",
+   "type": "extends"
+  },
+  {
+   "from": "PX-031",
+   "to": "PX-E2E-031",
+   "type": "proven_by"
+  },
+  {
+   "from": "PX-E2E-031",
+   "to": "M10",
+   "type": "proves"
+  },
+  {
    "from": "domain-events",
    "to": "38_EXECUTION_POLICY_CONTRACTS_AND_ALGORITHMS.md",
    "type": "specified_by"
@@ -33615,6 +34520,26 @@
   },
   {
    "from": "DOC-PX-004",
+   "to": "DR-PX-2026-09-05",
+   "type": "authorized_by"
+  },
+  {
+   "from": "DOC-PX-005",
+   "to": "DOC-PX-004",
+   "type": "after"
+  },
+  {
+   "from": "DOC-PX-005",
+   "to": "governance",
+   "type": "owned_by"
+  },
+  {
+   "from": "DOC-PX-005",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-PX-005",
    "to": "DR-PX-2026-09-05",
    "type": "authorized_by"
   },
@@ -34251,6 +35176,16 @@
   {
    "from": "ALPHA",
    "to": "PX-022",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "PX-026",
+   "type": "includes"
+  },
+  {
+   "from": "ALPHA",
+   "to": "PX-030",
    "type": "includes"
   },
   {
@@ -35836,6 +36771,31 @@
   {
    "from": "BETA",
    "to": "PX-024",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "PX-026",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "PX-027",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "PX-028",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "PX-029",
+   "type": "includes"
+  },
+  {
+   "from": "BETA",
+   "to": "PX-030",
    "type": "includes"
   },
   {
@@ -37770,6 +38730,36 @@
   },
   {
    "from": "RELEASE_ZERO",
+   "to": "PX-026",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-027",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-028",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-029",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-030",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
+   "to": "PX-031",
+   "type": "includes"
+  },
+  {
+   "from": "RELEASE_ZERO",
    "to": "EPR-GATE-A",
    "type": "requires_gate"
   },
@@ -37803,6 +38793,5 @@
    "to": "EPR-GATE-G",
    "type": "requires_gate"
   }
- ],
- "updated_on": "2026-09-05T12:43:00Z"
+ ]
 }

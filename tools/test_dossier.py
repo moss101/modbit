@@ -289,6 +289,7 @@ class DossierTests(unittest.TestCase):
         self.assertIn("DOC-PX-001", self.run_tool("graph", "show", "DOC-PX-002"))
         self.assertIn("DOC-PX-002", self.run_tool("graph", "show", "DOC-PX-003"))
         self.assertIn("DOC-PX-003", self.run_tool("graph", "show", "DOC-PX-004"))
+        self.assertIn("DOC-PX-004", self.run_tool("graph", "show", "DOC-PX-005"))
         out = self.run_tool("graph", "show", "DOC-GOV-001")
         for required in ("DOC-EPR-002", "DR-GOV-2026-09-05", "96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md", "governance"):
             self.assertIn(required, out)
@@ -461,6 +462,20 @@ class DossierTests(unittest.TestCase):
         alpha = {e["to"] for e in self.graph()["edges"] if e["type"] == "includes" and e["from"] == "ALPHA"}
         self.assertIn("PX-022", alpha)
         self.assertNotIn("PX-025", alpha)
+
+    def test_language_and_platform_matrix_is_earned_not_assumed(self):
+        d76 = (self.root / "docs/76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md").read_text()
+        for needle in ("Tier A", "Tier B", "Tier C", "Unsupported", "CI_COMPATIBLE", "RELEASE_GRADE", "only after"):
+            self.assertIn(needle, d76)
+        g = self.graph()
+        alpha = {e["to"] for e in g["edges"] if e["type"] == "includes" and e["from"] == "ALPHA"}
+        self.assertIn("PX-026", alpha)
+        self.assertIn("PX-030", alpha)
+        self.assertNotIn("PX-028", alpha)
+        self.assertNotIn("PX-031", alpha)
+        out = self.run_tool("graph", "show", "PX-030")
+        for needle in ("M0.1", "governance", "QUAL-PX-030", "M0"):
+            self.assertIn(needle, out)
 
 
 if __name__ == "__main__":

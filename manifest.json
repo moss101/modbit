@@ -6,9 +6,9 @@
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
-    "docs": 87,
-    "root_and_tooling": 44,
-    "docs_bytes": 946880
+    "docs": 88,
+    "root_and_tooling": 47,
+    "docs_bytes": 969023
   },
   "sections": [
     {
@@ -59,8 +59,8 @@
       "section": "authority",
       "section_title": "Authority and orientation",
       "title": "Modbit — AI-Agent Build Dossier V3.3 EPR v1.1",
-      "bytes": 15553,
-      "sha256": "cb874c5c5ea8fd33b9fbe7058ac0ba5161c8a07eddb2495d83fceac126cfd6a3"
+      "bytes": 15855,
+      "sha256": "741b79f5788d9abbfd331244c4d0737bb6c7ebe6ad1b029bcad14815fb3180e3"
     },
     {
       "path": "docs/01_START_HERE_FOR_BUILD_AGENTS.md",
@@ -131,8 +131,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Product Requirements and UX Specification",
-      "bytes": 10754,
-      "sha256": "8d227d45b322e757fc372590fda8b4b11b61471f751099ea7635b7c04214a162"
+      "bytes": 11101,
+      "sha256": "38dc62ccf11c5e92d2ef0e0e5e07a0e185d5dfba3a9a86c490eaff58b621d8dc"
     },
     {
       "path": "docs/11_SYSTEM_ARCHITECTURE.md",
@@ -203,8 +203,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Context, Retrieval, and Engineering Knowledge Engine",
-      "bytes": 5660,
-      "sha256": "3755bbb880d958321ab80cbf48092cdfbd7ddc34cb30450c235ac8a60562564e"
+      "bytes": 5728,
+      "sha256": "c6a362588d301b22d0f57bd11accecd6af33a9a5f7abc391afb15d7bef6f2303"
     },
     {
       "path": "docs/19_DURABLE_STATE_MEMORY_COMPACTION_CHECKPOINTS.md",
@@ -221,8 +221,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Workspace, Git, Worktrees, Diagnostics, and Trusted Code Surface",
-      "bytes": 3963,
-      "sha256": "a0a333e5258935caa4b106f845f801400862d286fa001c8ca8d861b05621ba07"
+      "bytes": 4238,
+      "sha256": "71e5a6df1723eb19bfa3816eeb1bee5a5b73f3250ad53a2055fb65a1c79e6129"
     },
     {
       "path": "docs/21_TERMINAL_EXECUTION_AND_SANDBOX.md",
@@ -293,8 +293,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Agent competence: planning, verification and repair",
-      "bytes": 7624,
-      "sha256": "181448de6de2ed0d322c455428f881e1167286f2bbc81e88d9a603d21d0335cf"
+      "bytes": 7602,
+      "sha256": "6f64f72af16398c9b2ebd334693d96864651c68d5fb1bf0b9274b95c6d8c4892"
     },
     {
       "path": "docs/29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md",
@@ -428,8 +428,8 @@
       "section": "requirements",
       "section_title": "Requirements, tasks and traceability",
       "title": "Implementation Roadmap and Verifiable Task Graph",
-      "bytes": 10513,
-      "sha256": "56f3f0cbba1682f2920416ffca956f5c85755fc9c669b10cb22068cdafd2531e"
+      "bytes": 10697,
+      "sha256": "b2d0b11512831d08f4c48d2efa5b49cf43ff943fb543096d5fc6d8a648292cc4"
     },
     {
       "path": "docs/44_REQUIREMENTS_TRACEABILITY_MATRIX.md",
@@ -545,8 +545,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Tool Parity and Capability Conformance — Real Effect Tests",
-      "bytes": 3070,
-      "sha256": "69e4737b3086c3ad7517a992fabb7b158cb9e208c5d6d34f09bcbbc0154c1f7d"
+      "bytes": 3568,
+      "sha256": "c09341f0dca70001fcd929ede0ba6576849bb14f5391fad11330f211a88894b1"
     },
     {
       "path": "docs/57_SKILL_EVOLUTION_REAL_TESTS.md",
@@ -599,8 +599,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Product extension requirements, tasks and qualifications",
-      "bytes": 50365,
-      "sha256": "311ee9ae68f0f35662c761234b9e6255b8f6b15eb0d12c58dc976e58ec570c6e"
+      "bytes": 62007,
+      "sha256": "decab0a9209df0b6c28704123a0499a8a5895c7ac8f9d808e53eb4042af31f41"
     },
     {
       "path": "docs/63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
@@ -635,8 +635,8 @@
       "section": "delivery",
       "section_title": "Delivery and operations",
       "title": "Risk Register and Open Technical Decisions",
-      "bytes": 8446,
-      "sha256": "d8f50beffbb989e82f2f4ed68504bdbef460d5a37032171d97b509173279b1f9"
+      "bytes": 8581,
+      "sha256": "e3f524b9e16b848e655767f7a49e14715a2d2f00a48a55541958d756a3b7433e"
     },
     {
       "path": "docs/73_RELEASE_BLOCKERS_AND_STOP_THE_LINE_RULES.md",
@@ -662,8 +662,17 @@
       "section": "delivery",
       "section_title": "Delivery and operations",
       "title": "Phased release plan and readiness",
-      "bytes": 4238,
-      "sha256": "059da8ffb8cf6c9b019408a37666366eb21cd821fc9702fa9f536d6fb4a3bcd0"
+      "bytes": 4279,
+      "sha256": "6f753c623b64d361d02e590f9ee446d180d3a524b411b8f305183096e396d2ac"
+    },
+    {
+      "path": "docs/76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
+      "number": 76,
+      "section": "delivery",
+      "section_title": "Delivery and operations",
+      "title": "Language and platform support matrix",
+      "bytes": 5687,
+      "sha256": "753831f02bc261061c80249f4a7eca23e6e8891f886df25b52bb41331fc80b3f"
     },
     {
       "path": "docs/80_ANTI_SUPERFICIAL_IMPLEMENTATION_STANDARD.md",
@@ -824,8 +833,8 @@
       "section": "governance",
       "section_title": "Agent process and governance",
       "title": "Dossier maintenance log",
-      "bytes": 32985,
-      "sha256": "d8e84a6b9eb0a87558941c473aa70e5281477bb851120a3bc9ed57e498ecf33f"
+      "bytes": 35971,
+      "sha256": "db88e661d9b91c36ae7eb6e34d8f5ba4424165765c04593ef726bddcd8542de9"
     },
     {
       "path": "docs/98_BUILD_MANIFEST.md",
@@ -855,13 +864,13 @@
     },
     {
       "path": "README.md",
-      "bytes": 8707,
-      "sha256": "cab8e955cfad61c103130dce19918858af9a36ea20f2742c4fbf94ee7481ee87"
+      "bytes": 8897,
+      "sha256": "18e094a7dad9d5f17ae1e32544f643fd925114db379881bdfedb3c96de4abc9d"
     },
     {
       "path": "SKILLS.md",
-      "bytes": 17860,
-      "sha256": "e964270eeb61d64f43cc95cceafc798f1300ccbb72d02cf54db393fb601bec5a"
+      "bytes": 17887,
+      "sha256": "0086b1d6a5388a449311fac4e39721066a1e243df772fa471d66d3ee8513a6e8"
     },
     {
       "path": "evidence/dossier-epr-v1.1/baseline.json",
@@ -1014,19 +1023,34 @@
       "sha256": "019df047fb26509756b92d54cb3a82748d8f4fb5ed6f4958b2a511fd0d426e99"
     },
     {
+      "path": "evidence/dossier-px-005/baseline.json",
+      "bytes": 15853,
+      "sha256": "584c79505481975c194fcf718edc5d97c9f532147c17d3e3aa074db043377e97"
+    },
+    {
+      "path": "evidence/dossier-px-005/tests.log",
+      "bytes": 3140,
+      "sha256": "1bf71c1c7a133f4f714fe41f18b4d153c3de9b68f53ee41867c0e0311fd5eefb"
+    },
+    {
+      "path": "evidence/dossier-px-005/validation.json",
+      "bytes": 15961,
+      "sha256": "8189e703354696361e179b539ea5bed5ed3f5d2b5e78ae3bf810823ad650bb24"
+    },
+    {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 39490,
-      "sha256": "8ffce33cad880e2ac3263fd494e7916fbf147fa53528b8600b16ef8811b1b95e"
+      "bytes": 39874,
+      "sha256": "18855f41860c45d97a0b439cf50dc7843600ea1aab55e9be68e7325f7a09ade2"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 921733,
-      "sha256": "96db450f6755c635ab66fc944eb792a017949c3c8529557850b64ec7f04443fb"
+      "bytes": 949762,
+      "sha256": "b401f613b369bdf176187a042624045f38cb499b1f5427ca80493ebe0b09d23b"
     },
     {
       "path": "tools/build_graph.py",
-      "bytes": 43614,
-      "sha256": "eed1405877e2512bcb13b1440fdcaf17f0f7c040a906fce4ebbfdfca9514f5f8"
+      "bytes": 43742,
+      "sha256": "adbe6b668eabffb309b3e05adafa762fd7e277b05833795e5ea6d97c8d10e0d2"
     },
     {
       "path": "tools/build_manifest.py",
@@ -1055,8 +1079,8 @@
     },
     {
       "path": "tools/test_dossier.py",
-      "bytes": 26807,
-      "sha256": "e63c752fa1fc6b5c41fc78b247091b5781e07b1892a3834b34638943fac1105c"
+      "bytes": 27653,
+      "sha256": "32f5671d453b90f58d1cadb4b6a6be707b387b4e0916a5bb029b7a5dc584f572"
     }
   ],
   "renames_v3_to_v3_1": {

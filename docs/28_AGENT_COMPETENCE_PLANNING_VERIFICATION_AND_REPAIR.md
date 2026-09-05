@@ -70,7 +70,7 @@ Before proposing completion the agent runs a self-review against the plan: every
 
 ## Roles, prompts and skills
 
-Solver, reviser, reviewer and escalation prompts compiled by the Prompt/Skill Compiler carry these contracts as instructions, and the runtime enforces them as behavior. Skills may specialize strategies per language or framework (the language and platform support matrix, doc 76, added in stage E) but cannot relax a contract. The Isolated Non-Committing Reviewer receives the plan, the RepairAttempt history and the self-review as evidence, never the solver's hidden reasoning.
+Solver, reviser, reviewer and escalation prompts compiled by the Prompt/Skill Compiler carry these contracts as instructions, and the runtime enforces them as behavior. Skills may specialize strategies per language or framework (`76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md`) but cannot relax a contract. The Isolated Non-Committing Reviewer receives the plan, the RepairAttempt history and the self-review as evidence, never the solver's hidden reasoning.
 
 ## Events, persistence and measurement
 

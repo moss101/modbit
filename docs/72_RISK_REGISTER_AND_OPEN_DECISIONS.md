@@ -19,7 +19,7 @@
 | Engineering Memory pollutes future context with stale/untrusted facts | Medium | High | explicit promotion, provenance/confidence/TTL/revision binding, conflict/supersession | Context |
 | Electron renderer/browser increases desktop attack surface | Medium | High | strict main/preload/renderer boundary, sandbox, CSP, untrusted browser partition, Core authority outside renderer | Desktop/Security |
 | Live-provider E2E becomes flaky/costly | Medium | Medium | objective repo-state assertions, multi-trial nightly runs, frozen low-cost test tasks, provider health labeling; mocked tests never substitute for release proof | QA/AI |
-| Cross-platform PTY/LSP/Git differences create drift | High | Medium | platform conformance suites, packaged CI runners, capability reporting, explicit unsupported states | Execution |
+| Cross-platform PTY/LSP/Git differences create drift | High | Medium | platform conformance suites on every platform from M0, packaged CI runners, capability reporting, explicit unsupported states; CI compatibility is never presented as release-grade support (`76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md`) | Execution |
 | Context/model costs become opaque | Medium | High | per-turn token/cache/tool/sandbox accounting; task budgets and cost evidence | Runtime/Platform |
 
 ## Provisional implementation choices

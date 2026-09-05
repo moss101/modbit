@@ -28,7 +28,7 @@ No task writes directly to the user's active worktree unless the explicit permis
 
 ## Headless diagnostics
 
-Modbit launches language servers independently of any IDE. `diagnostics` crate manages server discovery/configuration, document sync from canonical files, health, timeout and normalized errors/warnings/symbols. Unsupported languages still get syntax/compile/test evidence.
+Modbit launches language servers independently of any IDE. `diagnostics` crate manages server discovery/configuration, document sync from canonical files, health, timeout and normalized errors/warnings/symbols. Language capability follows the tiers of `76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md`: Tier A has language services, Tier B structural parsing with build-output diagnostics, Tier C text-safe edits with configured-command evidence, and Unsupported languages are read-only unless the user opts in per task; degradation is always explicit.
 
 ## Trusted Code Surface
 

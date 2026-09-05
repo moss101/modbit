@@ -4,7 +4,7 @@ Authorized by DR-PX-2026-09-05. Releases are **projections** over the work items
 
 ## Releases
 
-**ALPHA: local coding loop and recovery spine.** macOS, `local_trusted` execution, one agent, the desktop app and the headless CLI as interchangeable thin clients, real Git worktrees, real tests, trusted code review, approvals and receipts, exact crash recovery. Routing is the direct baseline only; no browser, cloud, procedural runtime, skills or media. Languages: the Tier A set at the Alpha baseline defined in the language matrix. Proof: E2E-001..008 as applicable to the included tasks, plus the PX-E2E scenarios of Alpha rows.
+**ALPHA: local coding loop and recovery spine.** macOS, `local_trusted` execution, one agent, the desktop app and the headless CLI as interchangeable thin clients, real Git worktrees, real tests, trusted code review, approvals and receipts, exact crash recovery. Routing is the direct baseline only; no browser, cloud, procedural runtime, skills or media. Languages: TypeScript/JavaScript, Python and Rust at the Alpha baseline of `76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md`. Proof: E2E-001..008 as applicable to the included tasks, plus the PX-E2E scenarios of Alpha rows.
 
 **BETA: intelligence, fleet and browser.** Adds context intelligence, procedural runtime and skills, subagents and fleet supervision, the live browser, execution-policy phases 0–4 and the first IDE adapter. Windows and Linux core and runtime compatibility are exercised in CI but are not release-grade platform support.
 

@@ -29,6 +29,8 @@ A tool marked production cannot pass by returning a canned success value.
 | Web | real allowlisted test endpoint | fetch/search/network policy/redirect/size limit |
 | Artifact | real content store | OutputRef range/digest/restart/tenant isolation |
 | Memory | real DB | query/propose/promotion/scope/TTL/conflict/no transcript auto-promotion |
+| Language tiers | real fixture repositories per language | Tier A/B/C suites of `76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md`: recall, diagnostics parity, structural edit safety, text safety, configured-command evidence; a language enters a tier only through a recorded pass (PX-027) |
+| Platform conformance | CI runners for macOS, Windows, Linux | PTY/process, language services, Git, path/symlink policy, secrets, packaging, browser host; results labeled CI_COMPATIBLE, never support (PX-030) |
 | Review isolation | real disposable worktree + sandboxed process under `review_isolated` | permitted scratch write/build/test; denied canonical write, commit/push, secret read, egress, deploy; hidden-reasoning exclusion; cleanup on accept/cancel/kill (EPR-E2E-018, EPR-FI-018) |
 
 ## Procedural runtime proof

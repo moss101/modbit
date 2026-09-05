@@ -378,3 +378,40 @@ Recorded in doc 07 for the whole extension; this entry adds only: **Test impact*
 | Changed | `MANIFEST.md`, `manifest.json`, `graph/PROJECT_GRAPH.md`, `graph/project-graph.json` |
 | Changed | `docs/00_MASTER_INDEX.md`, `docs/10_PRODUCT_PRD_AND_UX.md`, `docs/32_DESKTOP_FRONTEND_IMPLEMENTATION.md`, `docs/53_PERFORMANCE_AND_BENCHMARK_PLAN.md`, `docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md`, `docs/97_DOSSIER_MAINTENANCE_LOG.md` |
 | Changed | `tools/build_graph.py`, `tools/test_dossier.py` |
+
+## DOC-PX-005 — Product extension stage E: language and platform support matrix
+
+### Identity and authority
+
+- Task: DOC-PX-005 (`dossier_task`); owner: governance; prerequisite: DOC-PX-004 COMPLETE; outside product roll-ups. Completes stages A–E of DR-PX-2026-09-05.
+- Decision Record: DR-PX-2026-09-05 items 8 and 9.
+- Scope: new doc 76; ledger rows REQ-PX-026..031 (all ADOPT; Alpha baseline and platform CI matrix in Alpha, tier suites and Tier A and degradation in Beta, platform promotion in Release Zero); pointer edits in docs 10/18/20/28/43/56/72/75; index, README and SKILLS updates; spec-doc links for context-engine, verification and governance; one test.
+- Revision before change: `../evidence/dossier-px-005/baseline.json`.
+
+### Stage applicability
+
+| Stage | DOC-PX-005 execution |
+|---|---|
+| AUDITING | Read docs 18/20/43/56/72 for language and platform text; no tier definitions, conformance rule or platform-state separation existed |
+| IMPLEMENTING | Doc 76, ledger rows, pointer edits, test |
+| WIRED | Regenerated graph and manifests through the real CLIs |
+| REAL_TESTING | `check_dossier --manifest` and the copied-package suite |
+| E2E_PROVEN | Change commit on `main` pushed; evidence retained |
+| COMPLETE | One-step ladder with evidence; seal commit, then the complete gate after the final seal |
+| Product qualification | Non-applicable: no product source exists |
+
+### Status and handoff
+
+- **Interfaces:** ledger at thirty-two rows (twenty-nine ADOPT tasks, three DEFERRED); Alpha adds PX-026/030; Beta adds PX-027/028/029; Release Zero adds PX-031. Free doc numbers remaining: 08, 09, 64–69, 77–79.
+- **Evidence:** `../evidence/dossier-px-005/` bundle; change commit recorded as `commit:` evidence on DOC-PX-005.
+- **Remaining product work:** unchanged; every release NOT_READY; every work item NOT_STARTED; numerical EPR thresholds and competence targets await measured baselines by design.
+- **Next safe action:** `python3 tools/graph.py ready --release ALPHA` and take M0.1; PX-030 follows it inside M0.
+
+### Exact file inventory for this change
+
+| Action | Path |
+|---|---|
+| Added | `docs/76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md`; `evidence/dossier-px-005/baseline.json`, `tests.log`, `validation.json` |
+| Changed | `MANIFEST.md`, `README.md`, `SKILLS.md`, `manifest.json`, `graph/PROJECT_GRAPH.md`, `graph/project-graph.json` |
+| Changed | `docs/00_MASTER_INDEX.md`, `docs/10_PRODUCT_PRD_AND_UX.md`, `docs/18_CONTEXT_RETRIEVAL_AND_ENGINEERING_KNOWLEDGE.md`, `docs/20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md`, `docs/28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md`, `docs/43_IMPLEMENTATION_ROADMAP_AND_TASK_GRAPH.md`, `docs/56_TOOL_CAPABILITY_CONFORMANCE.md`, `docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md`, `docs/72_RISK_REGISTER_AND_OPEN_DECISIONS.md`, `docs/75_PHASED_RELEASE_PLAN_AND_READINESS.md`, `docs/97_DOSSIER_MAINTENANCE_LOG.md` |
+| Changed | `tools/build_graph.py`, `tools/test_dossier.py` |

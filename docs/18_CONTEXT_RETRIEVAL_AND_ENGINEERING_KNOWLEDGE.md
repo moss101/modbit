@@ -17,7 +17,7 @@ For each immutable workspace revision:
 - lexical token index (BM25);
 - semantic chunk embeddings;
 - tree-sitter AST and symbol definitions;
-- headless LSP symbols/references where available;
+- headless LSP symbols/references where the language has earned Tier A (`76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md`);
 - import/dependency edges;
 - Git ownership/change history and changed-line context;
 - diagnostics;

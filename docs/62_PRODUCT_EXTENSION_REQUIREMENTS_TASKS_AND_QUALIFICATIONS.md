@@ -34,6 +34,12 @@ Columns: requirement, title, task, qualification, canonical owner, milestone, re
 | REQ-PX-023 | Screen flow and state completeness with notification model | PX-023 | QUAL-PX-023 | desktop | M6 | BETA | ADOPT | M6.6,PX-022 |
 | REQ-PX-024 | Keyboard model and accessibility conformance | PX-024 | QUAL-PX-024 | desktop | M6 | BETA | ADOPT | M6.6 |
 | REQ-PX-025 | Interaction budgets enforced in packaged E2E | PX-025 | QUAL-PX-025 | desktop | M10 | RELEASE_ZERO | ADOPT | M10.4,PX-023 |
+| REQ-PX-026 | Alpha language baseline for TypeScript/JavaScript, Python and Rust | PX-026 | QUAL-PX-026 | verification | M2 | ALPHA | ADOPT | M2.8 |
+| REQ-PX-027 | Language tier conformance suites A, B and C | PX-027 | QUAL-PX-027 | verification | M3 | BETA | ADOPT | M3.3,M3.4,PX-026 |
+| REQ-PX-028 | Tier A conformance for TypeScript/JavaScript, Python and Rust | PX-028 | QUAL-PX-028 | context-engine | M3 | BETA | ADOPT | PX-027 |
+| REQ-PX-029 | Explicit degradation path for Tier C and Unsupported languages | PX-029 | QUAL-PX-029 | context-engine | M3 | BETA | ADOPT | PX-027 |
+| REQ-PX-030 | Platform CI compatibility matrix from M0, never release-grade by itself | PX-030 | QUAL-PX-030 | governance | M0 | ALPHA | ADOPT | M0.1 |
+| REQ-PX-031 | Desktop platform release promotion by platform-specific E2E | PX-031 | QUAL-PX-031 | desktop | M10 | RELEASE_ZERO | ADOPT | M10.3,PX-030 |
 
 ## Qualifications
 
@@ -65,6 +71,12 @@ Columns: requirement, title, task, qualification, canonical owner, milestone, re
 | QUAL-PX-023 | REQ-PX-023 | desktop | Each screen's empty, loading, populated, error, degraded and recovery states are forced against a real Core (Core restart, provider down, stale bundle, offline, unknown outcome, quality floor infeasible, human continuation) and each names cause, next action and evidence; notifications fire only for attention, completion and failure and coalesce per task | A screen missing a required state fails the matrix; routine progress producing a notification fails; a recovery banner claiming progress not in Core events fails |
 | QUAL-PX-024 | REQ-PX-024 | desktop | Every screen traversed by keyboard only in the packaged app; global shortcuts, list navigation, review navigation and approval with confirmation work; accessibility suite passes; focus retained across state changes; live regions announce attention changes | Any control unreachable by keyboard, any color-only status, or lost focus on a Core event fails |
 | QUAL-PX-025 | REQ-PX-025 | desktop | Packaged E2E asserts every interaction budget in doc 39 on reference hardware with Playwright traces and Core event timestamps | A budget miss on a release-critical path fails the candidate; timings taken from screenshots rather than traces are rejected |
+| QUAL-PX-026 | REQ-PX-026 | verification | On the ts-webapp, python-service and rust-cli fixtures: exact and BM25 retrieval, revision-bound edits and real compiler and test-runner evidence attributed to tasks; clients label the languages at the Alpha baseline, not Tier A | Any structural or language-service claim in Alpha for these languages fails; an edit that corrupts encoding or line endings fails |
+| QUAL-PX-027 | REQ-PX-027 | verification | Tier A, B and C conformance suites exist and run on real fixture repositories: symbol/reference recall and diagnostics parity for A, symbol extraction and build-output diagnostics for B, text safety and configured-command evidence for C; a language enters a tier only through a recorded pass | A language listed in a tier without a recorded suite pass is a release blocker; a grammar alone cannot classify a language |
+| QUAL-PX-028 | REQ-PX-028 | context-engine | TypeScript/JavaScript, Python and Rust pass the Tier A suite with real headless language services on the fixtures; incremental index latency within budget; competence suite tasks for each language pass at baseline | Diagnostics parity failure or missing references on fixtures blocks the tier; a dead language service degrades explicitly rather than faking results |
+| QUAL-PX-029 | REQ-PX-029 | context-engine | A fixture with an Unsupported language and one with a Tier C language: retrieval falls back to text, verification uses only configured commands, the plan states the limitation, every client shows the language state, edits to the Unsupported language require explicit per-task opt-in with provenance | Any structural claim, silent fallback or edit without opt-in fails |
+| QUAL-PX-030 | REQ-PX-030 | governance | CI builds Core, CLI and runtime on macOS, Windows and Linux from M0 and runs unit, component and platform conformance suites (PTY/process, language services, Git, path policy, secrets, packaging, browser host); results labeled CI_COMPATIBLE only | Documentation, app or CLI text describing a CI-compatible platform as supported fails; a failing platform suite blocks the merge, not the label |
+| QUAL-PX-031 | REQ-PX-031 | desktop | macOS reaches RELEASE_GRADE by the packaged desktop E2E catalog and the applicable Release Zero subset; Windows and Linux stay CI_COMPATIBLE until their own packaged E2E passes and a Decision Record records promotion | Promotion without platform E2E evidence is rejected; Release Zero on macOS does not imply any other platform |
 
 ## Task cards
 
@@ -348,6 +360,79 @@ Columns: requirement, title, task, qualification, canonical owner, milestone, re
 - **Evidence:** build digest, Core and renderer revisions, Playwright traces, Core event timestamps, run ids and artifact digests under the existing evidence rules.
 - **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
 
+<a id="px-026"></a>
+
+## PX-026 — Alpha language baseline for TypeScript/JavaScript, Python and Rust
+
+- **Requirement:** REQ-PX-026; **related preserved requirements:** REQ-EV-0010.
+- **Owner / milestone / release:** verification / M2 / ALPHA; **prerequisites:** M2.8.
+- **Scope and acceptance:** Prove the three Alpha candidates at Tier C plus real compile and test evidence on the fixture stacks, with honest labels in every client (`76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md`).
+- **Production wiring:** Verification Engine command evidence and the exact/BM25 paths of M2; labels via Core projections.
+- **Real qualification:** QUAL-PX-026 / PX-E2E-026.
+- **Failure and negative proof:** as in QUAL-PX-026.
+- **Evidence:** build digest, revisions, suite run ids, per-language and per-platform results, artifact digests under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+<a id="px-027"></a>
+
+## PX-027 — Language tier conformance suites A, B and C
+
+- **Requirement:** REQ-PX-027; **related preserved requirements:** REQ-EV-0010.
+- **Owner / milestone / release:** verification / M3 / BETA; **prerequisites:** M3.3, M3.4, PX-026.
+- **Scope and acceptance:** Implement the tier suites in `76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md` over real fixture repositories and make tier entry a recorded pass; add the suites to `56_TOOL_CAPABILITY_CONFORMANCE.md`.
+- **Production wiring:** Eval Harness plus verification fixtures; recorded promotion artifacts.
+- **Real qualification:** QUAL-PX-027 / PX-E2E-027.
+- **Failure and negative proof:** as in QUAL-PX-027.
+- **Evidence:** build digest, revisions, suite run ids, per-language and per-platform results, artifact digests under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+<a id="px-028"></a>
+
+## PX-028 — Tier A conformance for TypeScript/JavaScript, Python and Rust
+
+- **Requirement:** REQ-PX-028; **related preserved requirements:** REQ-EV-0010.
+- **Owner / milestone / release:** context-engine / M3 / BETA; **prerequisites:** PX-027.
+- **Scope and acceptance:** Pass the Tier A suite for the three languages with real headless language services, incremental index latency within budget and competence baseline tasks passing (`76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md`).
+- **Production wiring:** `crates/diagnostics` language-service adapters and `crates/retrieval` structural indexes of M3.
+- **Real qualification:** QUAL-PX-028 / PX-E2E-028.
+- **Failure and negative proof:** as in QUAL-PX-028.
+- **Evidence:** build digest, revisions, suite run ids, per-language and per-platform results, artifact digests under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+<a id="px-029"></a>
+
+## PX-029 — Explicit degradation path for Tier C and Unsupported languages
+
+- **Requirement:** REQ-PX-029; **related preserved requirements:** REQ-EV-0010.
+- **Owner / milestone / release:** context-engine / M3 / BETA; **prerequisites:** PX-027.
+- **Scope and acceptance:** Visible, explicit degradation: text retrieval, configured-command verification only, plan states the limitation, language state shown in every client, per-task opt-in with provenance for edits to Unsupported languages (`76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md`).
+- **Production wiring:** Context Engine language classification joined to the plan and verification plan; projection field on tasks.
+- **Real qualification:** QUAL-PX-029 / PX-E2E-029.
+- **Failure and negative proof:** as in QUAL-PX-029.
+- **Evidence:** build digest, revisions, suite run ids, per-language and per-platform results, artifact digests under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+<a id="px-030"></a>
+
+## PX-030 — Platform CI compatibility matrix from M0, never release-grade by itself
+
+- **Requirement:** REQ-PX-030; **related preserved requirements:** REQ-EV-0010.
+- **Owner / milestone / release:** governance / M0 / ALPHA; **prerequisites:** M0.1.
+- **Scope and acceptance:** CI builds and platform conformance suites on macOS, Windows and Linux from M0; results labeled CI_COMPATIBLE; no documentation or client text presents CI compatibility as support (`76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md`).
+- **Production wiring:** CI matrix in the monorepo of M0.1 plus the platform conformance suites; label enforcement in docs and clients.
+- **Real qualification:** QUAL-PX-030 / PX-E2E-030.
+- **Failure and negative proof:** as in QUAL-PX-030.
+- **Evidence:** build digest, revisions, suite run ids, per-language and per-platform results, artifact digests under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+<a id="px-031"></a>
+
+## PX-031 — Desktop platform release promotion by platform-specific E2E
+
+- **Requirement:** REQ-PX-031; **related preserved requirements:** REQ-EV-0010.
+- **Owner / milestone / release:** desktop / M10 / RELEASE_ZERO; **prerequisites:** M10.3, PX-030.
+- **Scope and acceptance:** macOS reaches RELEASE_GRADE through the packaged desktop E2E catalog and the applicable Release Zero subset; other platforms are promoted only by their own packaged E2E evidence and a Decision Record (`76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md`).
+- **Production wiring:** release gate tooling records platform promotions with evidence bundles.
+- **Real qualification:** QUAL-PX-031 / PX-E2E-031.
+- **Failure and negative proof:** as in QUAL-PX-031.
+- **Evidence:** build digest, revisions, suite run ids, per-language and per-platform results, artifact digests under the existing evidence rules.
+- **Completion:** production-equivalent real proof and no unresolved acceptance criteria; graph.py is the only status writer. Product status is NOT_STARTED at adoption.
+
 ## Real-system scenarios
 
 ### PX-E2E-000 — Headless CLI task lifecycle
@@ -487,3 +572,39 @@ Columns: requirement, title, task, qualification, canonical owner, milestone, re
 **Setup:** packaged app on reference hardware.  
 **Action:** measure each budgeted interaction from traces and Core timestamps.  
 **Pass:** all budgets met at p95; a seeded regression fails the candidate.
+
+### PX-E2E-026 — Alpha language baseline
+
+**Setup:** ts-webapp, python-service and rust-cli fixtures on the Alpha product.  
+**Action:** run a task per fixture.  
+**Pass:** text retrieval, safe edits and real compiler and test evidence; clients label the languages at the Alpha baseline with no structural claim.
+
+### PX-E2E-027 — Tier suites gate classification
+
+**Setup:** tier suites and a language with a grammar but no recorded pass.  
+**Action:** run the suites; attempt to list the language in Tier B.  
+**Pass:** suites run on real fixtures; the unrecorded listing is rejected as a release blocker.
+
+### PX-E2E-028 — Tier A for the three languages
+
+**Setup:** real headless language services on the fixtures.  
+**Action:** run the Tier A suite and the per-language competence baseline tasks.  
+**Pass:** recall and diagnostics parity thresholds met; incremental index latency within budget; dead language service degrades explicitly.
+
+### PX-E2E-029 — Explicit degradation
+
+**Setup:** fixtures in an Unsupported language and a Tier C language.  
+**Action:** run tasks that touch them.  
+**Pass:** text retrieval and configured-command verification only; plan states the limitation; language state visible in desktop and CLI; Unsupported edit requires per-task opt-in.
+
+### PX-E2E-030 — Platform CI matrix
+
+**Setup:** CI runners for macOS, Windows and Linux.  
+**Action:** build Core, CLI and runtime; run platform conformance suites; scan docs and client strings.  
+**Pass:** results labeled CI_COMPATIBLE; any text presenting CI compatibility as support fails the scan.
+
+### PX-E2E-031 — Platform promotion
+
+**Setup:** packaged desktop E2E catalog on macOS; Windows and Linux without packaged E2E.  
+**Action:** run the promotion check.  
+**Pass:** macOS RELEASE_GRADE with evidence bundle; Windows and Linux remain CI_COMPATIBLE; promotion without platform E2E is rejected.
