@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 72,
+    "root_and_tooling": 74,
     "docs_bytes": 1037117
   },
   "sections": [
@@ -1172,14 +1172,24 @@
       "sha256": "fffe98068a3edb9ebcbcdfb4c347a351ef3d314c4ed57d71478d3664bf9e5c31"
     },
     {
+      "path": "evidence/m0/M0.4/TASK_CARD.md",
+      "bytes": 3773,
+      "sha256": "edf7380ae9d901960328e6fdf3e4751a65e9ed6abdf8f971acaf356d542f9668"
+    },
+    {
+      "path": "evidence/m0/M0.4/inject-failure-duplicate-canonical-owner.log",
+      "bytes": 553,
+      "sha256": "09e52f7b1f7ebe0d69d05e28f83df42ed227828a6ffdbb5406f76fa8659afefb"
+    },
+    {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 40965,
-      "sha256": "bef927b030c1cb16211fb4a20a2905e7d3045be23b9c35447a5c928a224b3461"
+      "bytes": 40966,
+      "sha256": "465de30e6d0831d926b7608efb27acd5a6c491d18b02f11b457a57e338e483f1"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1012345,
-      "sha256": "62c809689ca837c6b23293852b99329772f4a79380f9d5fe193764a38b0bd087"
+      "bytes": 1012933,
+      "sha256": "a481c308d1092e6f0f37275d62b55429968a88ab463dd4d9bdabcbaa3253557c"
     },
     {
       "path": "tools/build_graph.py",
@@ -1193,8 +1203,8 @@
     },
     {
       "path": "tools/check_dossier.py",
-      "bytes": 16615,
-      "sha256": "17490633d9f5e4c25322c197cbbe765b6e3573cec639c152cd7744c792995e9c"
+      "bytes": 17596,
+      "sha256": "5c9b7a782d245223726f860ca583d766929a6f5662b644adebee64d257ad426b"
     },
     {
       "path": "tools/dossier_epr.py",
@@ -1213,8 +1223,8 @@
     },
     {
       "path": "tools/test_dossier.py",
-      "bytes": 30855,
-      "sha256": "3353d654e986b0fb44c9d6530e1eb06d325efbcfcfe3a9e23ab0eeb7b4901125"
+      "bytes": 32079,
+      "sha256": "e5ac3ebc524a9684ba5b6573e39be15f56992f13672487eb02b204eee13c2b7b"
     }
   ],
   "renames_v3_to_v3_1": {

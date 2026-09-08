@@ -50,6 +50,12 @@ jobs:
         run: cargo test --workspace --locked
       - name: Architecture dependency lint (docs/12, docs/81)
         run: cargo run --locked -p architecture-lint -- --manifest-path Cargo.toml --rules tools/architecture-lint/rules.toml
+      - name: Module registration lint — owner, canonical single-owner systems, capability requirement ids (M0.4, docs/45, docs/81)
+        shell: bash
+        run: |
+          args=()
+          for m in packages/*/package.json apps/desktop/package.json; do args+=(--ts-manifest "$m"); done
+          cargo run --locked -p architecture-lint -- modules --repo . --manifest-path Cargo.toml --graph graph/project-graph.json --rules tools/architecture-lint/rules.toml "${args[@]}"
 
   node:
     name: node CI_COMPATIBLE (${{ matrix.os }})
@@ -122,7 +128,7 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
-      - name: Manifest and graph integrity
+      - name: Manifest, graph and traceability integrity (REQ→IMP→QUAL, owners, qualifying evidence; M0.4)
         run: python3 tools/check_dossier.py --manifest
       - name: Dossier self-tests
         run: python3 tools/test_dossier.py

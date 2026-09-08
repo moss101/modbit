@@ -2,16 +2,18 @@
 //!
 //! Subcommands: `deps` (default) checks dependency direction over `cargo
 //! metadata`; `locked` checks that commits changing locked paths carry an
-//! accepted Decision Record trailer (DR-M0-002). Exit 0 when clean, 1 when
-//! violations exist, 2 on operational error.
+//! accepted Decision Record trailer (DR-M0-002); `modules` checks module
+//! registrations (owner, canonical systems, capabilities) against the project
+//! graph (M0.4). Exit 0 when clean, 1 when violations exist, 2 on error.
 
 use std::path::PathBuf;
 use std::process::ExitCode;
 
 use architecture_lint::locked::check_locked;
+use architecture_lint::modules::{GraphFacts, check_modules, collect};
 use architecture_lint::{Graph, Rules, check};
 
-const USAGE: &str = "usage:\n  architecture-lint [deps] [--manifest-path Cargo.toml] [--rules tools/architecture-lint/rules.toml] [--include-dev]\n  architecture-lint locked [--repo .] [--base <sha>] [--head HEAD] [--rules tools/architecture-lint/rules.toml]";
+const USAGE: &str = "usage:\n  architecture-lint [deps] [--manifest-path Cargo.toml] [--rules tools/architecture-lint/rules.toml] [--include-dev]\n  architecture-lint locked [--repo .] [--base <sha>] [--head HEAD] [--rules tools/architecture-lint/rules.toml]\n  architecture-lint modules [--repo .] [--manifest-path Cargo.toml] [--graph graph/project-graph.json] [--ts-manifest <package.json>]... [--rules ...]";
 
 fn take(args: &mut impl Iterator<Item = String>) -> anyhow::Result<String> {
     args.next().ok_or_else(|| anyhow::anyhow!(USAGE))
@@ -20,7 +22,7 @@ fn take(args: &mut impl Iterator<Item = String>) -> anyhow::Result<String> {
 fn run() -> anyhow::Result<bool> {
     let mut args = std::env::args().skip(1).peekable();
     let mode = match args.peek().map(String::as_str) {
-        Some("deps") | Some("locked") => args.next().unwrap(),
+        Some("deps") | Some("locked") | Some("modules") => args.next().unwrap(),
         Some("-h") | Some("--help") => {
             println!("{USAGE}");
             return Ok(true);
@@ -33,6 +35,8 @@ fn run() -> anyhow::Result<bool> {
     let mut repo = PathBuf::from(".");
     let mut base: Option<String> = None;
     let mut head = "HEAD".to_owned();
+    let mut graph_path = PathBuf::from("graph/project-graph.json");
+    let mut ts_manifests: Vec<PathBuf> = Vec::new();
     while let Some(a) = args.next() {
         match a.as_str() {
             "--rules" => rules_path = PathBuf::from(take(&mut args)?),
@@ -41,6 +45,8 @@ fn run() -> anyhow::Result<bool> {
             "--repo" => repo = PathBuf::from(take(&mut args)?),
             "--base" => base = Some(take(&mut args)?),
             "--head" => head = take(&mut args)?,
+            "--graph" => graph_path = PathBuf::from(take(&mut args)?),
+            "--ts-manifest" => ts_manifests.push(PathBuf::from(take(&mut args)?)),
             "-h" | "--help" => {
                 println!("{USAGE}");
                 return Ok(true);
@@ -61,6 +67,23 @@ fn run() -> anyhow::Result<bool> {
                 graph.members.len(),
                 rules.forbid.len(),
                 rules.confine.len(),
+                violations.len()
+            );
+            Ok(violations.is_empty())
+        }
+        "modules" => {
+            let facts = GraphFacts::load(&graph_path)?;
+            let modules = collect(&manifest, &ts_manifests)?;
+            let violations = check_modules(&repo, &modules, &facts, &rules);
+            for v in &violations {
+                eprintln!("{v}");
+            }
+            println!(
+                "architecture-lint modules: {} modules, {} canonical systems, {} subsystems, {} requirements, {} violation(s)",
+                modules.len(),
+                rules.canonical.len(),
+                facts.subsystems.len(),
+                facts.requirements.len(),
                 violations.len()
             );
             Ok(violations.is_empty())

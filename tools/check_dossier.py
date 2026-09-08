@@ -13,9 +13,11 @@ Checks
   D7  decision statuses in docs/02 and on graph decision nodes use the docs/93 decision ladder
   D8  every top-level section of both root source patches appears in the doc 27 source coverage map
   D9  additive product-extension ledger (docs/62) is structurally valid; totals are computed, never pinned
+  D10 every ADOPT/ADAPT/EXPERIMENT REQ-EV row names a canonical owner known to the graph builder (M0.4)
   G1  graph exists and every doc is a node; every doc node exists on disk
   G2  every REQ/IMP/QUAL in docs is in the graph and vice versa
   G3  statuses are from the vocabulary; E2E_PROVEN/COMPLETE carry evidence; every evidence ref follows the docs/93 grammar
+  G9  a COMPLETE product work item carries qualifying evidence: at least one run:/test: ref and one commit:/revision: ref (M0.4, docs/87)
   G4  COMPLETE tasks have COMPLETE prerequisites; edges resolve
   G5  docs/98 milestone table matches the graph roll-up (GATED is a valid roll-up state)
   G7  release gates: attestation evidence grammar; no attestation while required tasks are incomplete; gated_by edges valid
@@ -112,6 +114,9 @@ def main(argv):
                 find("D4", "%s names %s which is not in %s" % (rid, imp, tasks))
         if qual not in qual_ids:
             find("D4", "%s names %s which is not in %s" % (rid, qual, quals))
+        owner = cells[3]
+        if disp in ("ADOPT", "ADAPT", "EXPERIMENT") and (not owner or owner not in graphbuilder.OWNER_MAP):
+            find("D10", "%s (%s) has no canonical owner known to tools/build_graph.py OWNER_MAP: %r" % (rid, disp, owner))
     for iid in imp_ids:
         if "REQ-EV-" + iid[-4:] not in req_ids:
             find("D4", "%s has no matching requirement row" % iid)
@@ -220,6 +225,12 @@ def main(argv):
                     find("G3", "%s has invalid status %r" % (n["id"], st))
                 if st in graphtool.EVIDENCE_REQUIRED and not n.get("evidence"):
                     find("G3", "%s is %s without evidence" % (n["id"], st))
+                if st == "COMPLETE" and n["type"] in ("imp_task", "milestone_task"):
+                    kinds = {ref.split(":", 1)[0] for ref in n.get("evidence") or []}
+                    if not kinds & {"run", "test"}:
+                        find("G9", "%s is COMPLETE without a run:/test: evidence ref" % n["id"])
+                    if not kinds & {"commit", "revision"}:
+                        find("G9", "%s is COMPLETE without a commit:/revision: evidence ref" % n["id"])
                 for ref in n.get("evidence") or []:
                     err = graphtool.evidence_ref_error(ref)
                     if err:

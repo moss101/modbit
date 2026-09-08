@@ -18,5 +18,10 @@
   "devDependencies": {
     "@bufbuild/buf": "1.72.0",
     "@bufbuild/protoc-gen-es": "2.14.1"
+  },
+  "modbit": {
+    "owner": "domain-events",
+    "canonical": [],
+    "capabilities": []
   }
 }

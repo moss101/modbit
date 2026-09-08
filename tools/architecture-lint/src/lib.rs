@@ -61,6 +61,15 @@ impl Default for LockedPolicy {
     }
 }
 
+/// A doc 81 canonical single-owner system.
+#[derive(Debug, Clone, Deserialize)]
+pub struct CanonicalSystem {
+    /// Stable id claimed by module registrations.
+    pub id: String,
+    /// Human description.
+    pub description: String,
+}
+
 /// The rule file.
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct Rules {
@@ -76,6 +85,9 @@ pub struct Rules {
     /// Decision Record linking policy.
     #[serde(default)]
     pub locked_policy: LockedPolicy,
+    /// Canonical single-owner systems (docs/81).
+    #[serde(default)]
+    pub canonical: Vec<CanonicalSystem>,
 }
 
 impl Rules {
@@ -287,6 +299,7 @@ pub fn check(graph: &Graph, rules: &Rules) -> Vec<Violation> {
 }
 
 pub mod locked;
+pub mod modules;
 
 #[cfg(test)]
 mod tests {

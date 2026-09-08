@@ -396,6 +396,29 @@ class DossierTests(unittest.TestCase):
         p.write_text(original.replace("| REQ-PX-000 |", "| REQ-PX-999 |", 1).replace("| QUAL-PX-000 | REQ-PX-000 |", "| QUAL-PX-999 | REQ-PX-999 |", 1))
         self.run_tool("build_graph", ok=False, contains="contiguous")
 
+    def test_adopt_row_without_owner_is_rejected(self):
+        ledger = "docs/40_EVIDENCE_DERIVED_REQUIREMENT_LEDGER.md"
+        self.edit(ledger, "| REQ-EV-0208 | No second general memory system | ADOPT | Architecture Governance |",
+                  "| REQ-EV-0208 | No second general memory system | ADOPT |  |")
+        self.run_tool("check_dossier", ok=False, contains="[D10]")
+        self.run_tool("build_graph", ok=False, contains="OWNER_MAP is missing")
+
+    def test_complete_without_qualifying_evidence_is_rejected(self):
+        g = self.graph()
+        for node in g["nodes"]:
+            if node["id"] == "IMP-EV-0208":
+                node["status"] = "COMPLETE"
+                node["evidence"] = ["artifact:README.md"]
+        self.write_graph(g)
+        out = self.run_tool("check_dossier", ok=False, contains="[G9]")
+        self.assertIn("without a run:/test: evidence ref", out)
+        self.assertIn("without a commit:/revision: evidence ref", out)
+        for node in g["nodes"]:
+            if node["id"] == "IMP-EV-0208":
+                node["evidence"] = ["run:fixture-run", "commit:abc123"]
+        self.write_graph(g)
+        self.assertNotIn("[G9]", self.run_tool("check_dossier", ok=False))
+
     def test_release_readiness_is_derived_from_tasks(self):
         self.reset_m01_fixture()
         out = self.run_tool("graph", "releases")

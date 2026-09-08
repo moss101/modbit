@@ -149,3 +149,65 @@ reason = "accepted Decision Records are immutable; supersede with a new record"
 [[locked]]
 path = "tools/architecture-lint/rules.toml"
 reason = "the rules themselves encode locked decisions"
+
+# ---------------------------------------------------------------------------
+# Canonical single-owner systems (docs/81 "Canonical single-owner systems").
+# Each may be claimed by at most one workspace member via
+# `[package.metadata.modbit] canonical = [...]` (or "modbit.canonical" in
+# package.json). A second claimant needs `migration_adr` naming an accepted
+# record under docs/decisions/. Checked by `architecture-lint modules`.
+
+[[canonical]]
+id = "orchestration"
+description = "WorkGraph / AgentGraph / StateGraph in Core"
+[[canonical]]
+id = "event-state"
+description = "canonical event/session state"
+[[canonical]]
+id = "protocol-state"
+description = "protocol state (pending calls/approvals/questions/lifecycle)"
+[[canonical]]
+id = "protocol-state-wire"
+description = "SurfaceProtocol wire schemas and framing"
+[[canonical]]
+id = "context-retrieval-engine"
+description = "context/retrieval engine"
+[[canonical]]
+id = "engineering-memory"
+description = "engineering memory"
+[[canonical]]
+id = "compaction-epochs"
+description = "compaction epochs"
+[[canonical]]
+id = "checkpoint-engine"
+description = "checkpoint engine"
+[[canonical]]
+id = "policy-kernel"
+description = "capability/policy kernel"
+[[canonical]]
+id = "approval-effect-dispatch"
+description = "approval/effect dispatch"
+[[canonical]]
+id = "effect-ledger"
+description = "effect/evidence ledger"
+[[canonical]]
+id = "tool-registry"
+description = "tool registry"
+[[canonical]]
+id = "procedural-tool-runtime"
+description = "procedural tool runtime"
+[[canonical]]
+id = "terminal-process-broker"
+description = "terminal/process broker"
+[[canonical]]
+id = "workspace-change-engine"
+description = "workspace/change engine"
+[[canonical]]
+id = "browser-runtime"
+description = "browser session/control runtime"
+[[canonical]]
+id = "sandbox-gateway-abstraction"
+description = "sandbox gateway/backend abstraction"
+[[canonical]]
+id = "model-provider-gateway"
+description = "model provider gateway"

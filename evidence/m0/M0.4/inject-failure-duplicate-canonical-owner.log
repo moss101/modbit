@@ -1,0 +1,5 @@
+# Fault case, 2026-09-08: crates/git/Cargo.toml temporarily claimed canonical = ["workspace-change-engine"], already owned by modbit-workspace.
+$ cargo run -q --locked -p architecture-lint -- modules --ts-manifest packages/ui/package.json ...
+MODULE modbit-git, modbit-workspace : canonical system `workspace-change-engine` has 2 active implementations without an accepted migration ADR (docs/81: parallel implementations may not exist)
+architecture-lint modules: 36 modules, 18 canonical systems, 23 subsystems, 352 requirements, 1 violation(s)
+exit=1
