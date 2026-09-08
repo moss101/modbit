@@ -1,0 +1,12 @@
+{
+  "task": "M0.3",
+  "commits": {"implementation": "6383caf", "ci_fix": "39eaa4c"},
+  "evidence_tier": "release-critical",
+  "runs": [
+    {"id": "gha-34262954953", "kind": "hosted CI on 6383caf", "result": "FAILED in node/protocol jobs: pnpm 11 ignored @bufbuild/buf build script on fresh install (onlyBuiltDependencies not honored); fixed by allowBuilds in 39eaa4c"},
+    {"id": "gha-34263340707", "kind": "hosted CI on 39eaa4c", "result": "PASS: all ten jobs green; protocol-roundtrip regenerated TS bindings with no drift, Rust fixtures fresh, TS decoded/rebuilt/encoded 6 samples byte-identically, Rust decoded TS fixtures identically, committed fixtures unchanged", "url": "https://github.com/moss101/modbit/actions/runs/34263340707", "log": "ci-run-34263340707.json, ci-run-34263340707-roundtrip.log"},
+    {"id": "inject-failure-corrupted-ts-fixture", "kind": "fault: enum byte changed in a TS fixture", "result": "Rust round-trip test FAILED as required", "log": "inject-failure-corrupted-ts-fixture.log"}
+  ],
+  "samples": ["command_envelope", "event_envelope", "tool_call_request", "tool_call_result", "output_ref_read_response", "hello"],
+  "acceptance": {"round-trip compatibility tests": "PASS: Rust->TS and TS->Rust byte-identical for all samples on hosted CI and locally"}
+}

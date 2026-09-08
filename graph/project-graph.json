@@ -1069,8 +1069,15 @@
    "milestone": "M0",
    "order": 2,
    "source": "docs/43",
-   "status": "IMPLEMENTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-34263340707",
+    "commit:39eaa4c",
+    "commit:6383caf",
+    "artifact:evidence/m0/M0.3/evidence.json",
+    "artifact:evidence/m0/M0.3/TASK_CARD.md",
+    "artifact:tests/fixtures/protocol/v1/rust/command_envelope.bin"
+   ],
    "notes": [
     {
      "at": "2026-09-08T18:13:16Z",
@@ -1083,10 +1090,22 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "proto/modbit/v1 schema, prost+protox build-time Rust codegen, protoc-gen-es TS codegen committed, protocol-fixtures round trip both directions, CI job protocol-roundtrip."
+    },
+    {
+     "at": "2026-09-08T18:31:39Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "CI job protocol-roundtrip and the rust/node matrix build from the schema source on every push (run 34263340707)."
+    },
+    {
+     "at": "2026-09-08T18:31:39Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Cross-language round trip passes both directions on hosted CI; corrupted-fixture fault case fails as required."
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-09-08T18:25:16Z"
+   "status_changed_on": "2026-09-08T18:31:40Z"
   },
   {
    "id": "M1.1",

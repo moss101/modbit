@@ -180,9 +180,12 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m0/M0.2/evidence.json` | retained evidence | 1652 | `0e5f18a1d986c92794b845b902b54fa6523b0f4595ed0673a313c5ca5b60a327` |
 | `evidence/m0/M0.2/inject-failure-silent-locked-change.log` | retained evidence | 490 | `a2d112b6cf3f72b6d16ea99650d82d531986822cb9e34b9f96ade11d5a104f01` |
 | `evidence/m0/M0.3/TASK_CARD.md` | retained evidence | 3429 | `cd35519419404947c7b2f2848b8fab8c0433f4301572f4975e93bec637012eb9` |
+| `evidence/m0/M0.3/ci-run-34263340707-roundtrip.log` | retained evidence | 1673 | `1d9ccdd465238a322a4fdb68e1b0dc340a2eccbf7ebe292beb43bd5c601603ee` |
+| `evidence/m0/M0.3/ci-run-34263340707.json` | retained evidence | 904 | `077ca6f46143aeb0d7f42e53a091b6fb1fcd5933cd61b89e7f2fee391ee2a649` |
+| `evidence/m0/M0.3/evidence.json` | retained evidence | 1292 | `7d676c993b8f7b5acf88be87dfc74a05352901463dec12bb2b3556b4dddee9d7` |
 | `evidence/m0/M0.3/inject-failure-corrupted-ts-fixture.log` | retained evidence | 581 | `fffe98068a3edb9ebcbcdfb4c347a351ef3d314c4ed57d71478d3664bf9e5c31` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 40969 | `8346b2890182f58abda8aca39766767b9c05e2df606ac8836a0434beab8b7555` |
-| `graph/project-graph.json` | project driver graph with live status | 1011665 | `156fca1635c71736d8045f6c10f78f1b31ba74c1f809f6ac8debf745c3892807` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 40965 | `bef927b030c1cb16211fb4a20a2905e7d3045be23b9c35447a5c928a224b3461` |
+| `graph/project-graph.json` | project driver graph with live status | 1012345 | `62c809689ca837c6b23293852b99329772f4a79380f9d5fe193764a38b0bd087` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 45304 | `473c9881a97b045102a3f7e71e651553d6997491bb94dc0bc2bc90ad23ce93de` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 16615 | `17490633d9f5e4c25322c197cbbe765b6e3573cec639c152cd7744c792995e9c` |

@@ -56,7 +56,7 @@ One JSON file that answers *what exists, what depends on what, what proves what,
 
 ```mermaid
 flowchart LR
-  M0["M0<br/>Repository and authority<br/>2/7 done"]
+  M0["M0<br/>Repository and authority<br/>3/7 done"]
   M1["M1<br/>Durable local shell and Core<br/>0/31 done"]
   M2["M2<br/>Real local engineering loop<br/>0/99 done"]
   M3["M3<br/>Context intelligence<br/>0/60 done"]
@@ -104,7 +104,7 @@ Critical path (reliability spine): **M0 → M1 → M2 → M4**. Do not start bro
 
 | Milestone | State | Unblocked | Milestone tasks | Implementation tasks | Complete | Blocked | Depends on | Proof |
 |---|---|---|---:|---:|---:|---:|---|---|
-| M0 Repository and authority | IN_PROGRESS | yes | 4 | 3 | 2 | 0 | — | clean clone build + architecture lint |
+| M0 Repository and authority | IN_PROGRESS | yes | 4 | 3 | 3 | 0 | — | clean clone build + architecture lint |
 | M1 Durable local shell and Core | NOT_STARTED | no | 5 | 26 | 0 | 0 | M0 | user creates durable task, kills/restarts app/Core, same task recovers with no fake state. |
 | M2 Real local engineering loop | NOT_STARTED | no | 10 | 89 | 0 | 0 | M1 | E2E-001/002/003 with live model and actual test pass. |
 | M3 Context intelligence | NOT_STARTED | no | 9 | 51 | 0 | 0 | M2 | profile A/B/C benchmark plus retrieval-before-edit visible in task evidence. |
@@ -322,9 +322,9 @@ Releases are projections over work items and gates (docs/75). Readiness is compu
 
 | Release | State | Included work items | Complete | Blocked | Required gates | Rule |
 |---|---|---:|---:|---:|---|---|
-| ALPHA: Local coding loop and recovery spine | NOT_READY | 138 | 2 | 0 | none | / ALPHA / Local coding loop and recovery spine / M0, M1, M2, M4 / M2.10 / EPR- / — / — / |
-| BETA: Intelligence, fleet and browser | NOT_READY | 331 | 2 | 0 | none | / BETA / Intelligence, fleet and browser / M0, M1, M2, M3, M4, M5, M6, M7 / — / — / — / — / |
-| RELEASE_ZERO: Full end-to-end proof | NOT_READY | 401 | 2 | 0 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
+| ALPHA: Local coding loop and recovery spine | NOT_READY | 138 | 3 | 0 | none | / ALPHA / Local coding loop and recovery spine / M0, M1, M2, M4 / M2.10 / EPR- / — / — / |
+| BETA: Intelligence, fleet and browser | NOT_READY | 331 | 3 | 0 | none | / BETA / Intelligence, fleet and browser / M0, M1, M2, M3, M4, M5, M6, M7 / — / — / — / — / |
+| RELEASE_ZERO: Full end-to-end proof | NOT_READY | 401 | 3 | 0 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
 
 ## Scoped v1.1 supersessions and source provenance
 
@@ -381,7 +381,7 @@ flowchart LR
 |---|---|---|---|
 | `M0.1` | COMPLETE | Create monorepo, Rust workspace, pnpm workspace, CI, architecture-lint | fresh clone builds on macOS/Linux/Windows CI; forbidden dependency test works. CI on Windows and Linux establishes CI_COMPATIBLE only; macOS is the Alpha release platform and other platforms are promoted separately (`76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md`). |
 | `M0.2` | COMPLETE | Add authoritative ADRs and status ledger | CI rejects changed locked architecture file without linked ADR metadata. |
-| `M0.3` | IMPLEMENTING | Protobuf domain/protocol generation Rust↔TS | round-trip compatibility tests. |
+| `M0.3` | COMPLETE | Protobuf domain/protocol generation Rust↔TS | round-trip compatibility tests. |
 | `M0.4` | NOT_STARTED | Requirement-coverage CI and REQ→IMP→QUAL traceability parser | CI fails on ADOPT/ADAPT row without owner/IMP-EV/QUAL-EV, COMPLETE task without evidence, or duplicate active owner |
 
 ### M1 — Durable local shell and Core

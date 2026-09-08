@@ -1,0 +1,9 @@
+protocol Rust<->TS round trip and generated-code freshness (M0.3)	UNKNOWN STEP	2026-09-08T18:30:10.2404058Z ✔ round trip command_envelope: Rust bytes -> TS fields -> TS bytes (40.431785ms)
+protocol Rust<->TS round trip and generated-code freshness (M0.3)	UNKNOWN STEP	2026-09-08T18:30:10.2427620Z ✔ round trip event_envelope: Rust bytes -> TS fields -> TS bytes (50.64513ms)
+protocol Rust<->TS round trip and generated-code freshness (M0.3)	UNKNOWN STEP	2026-09-08T18:30:10.2447885Z ✔ round trip hello: Rust bytes -> TS fields -> TS bytes (1.417953ms)
+protocol Rust<->TS round trip and generated-code freshness (M0.3)	UNKNOWN STEP	2026-09-08T18:30:10.2455368Z ✔ round trip output_ref_read_response: Rust bytes -> TS fields -> TS bytes (0.693608ms)
+protocol Rust<->TS round trip and generated-code freshness (M0.3)	UNKNOWN STEP	2026-09-08T18:30:10.2456320Z ✔ round trip tool_call_request: Rust bytes -> TS fields -> TS bytes (0.695662ms)
+protocol Rust<->TS round trip and generated-code freshness (M0.3)	UNKNOWN STEP	2026-09-08T18:30:10.2457112Z ✔ round trip tool_call_result: Rust bytes -> TS fields -> TS bytes (0.602784ms)
+protocol Rust<->TS round trip and generated-code freshness (M0.3)	UNKNOWN STEP	2026-09-08T18:30:10.5248923Z test committed_rust_fixtures_are_fresh ... ok
+protocol Rust<->TS round trip and generated-code freshness (M0.3)	UNKNOWN STEP	2026-09-08T18:30:10.5249651Z test typescript_encoded_fixtures_decode_and_reencode_identically ... ok
+protocol Rust<->TS round trip and generated-code freshness (M0.3)	UNKNOWN STEP	2026-09-08T18:30:10.5250592Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
