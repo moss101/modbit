@@ -1,0 +1,15 @@
+{
+  "task": "M0.2",
+  "decision_record": "docs/decisions/DR-M0-002-locked-architecture-file-guard.md",
+  "commit": "f7967d32d91dda3bd41a5df15438114f3799f509",
+  "evidence_tier": "release-critical",
+  "runs": [
+    {"id": "cargo-test-architecture-lint-locked-f7967d3", "kind": "real-git tests (6) + unit test for front-matter status", "platform": "macos local and hosted macOS/Linux/Windows (run 34256278530)", "result": "PASS"},
+    {"id": "inject-failure-silent-locked-change", "kind": "local scratch branch with silent docs/11 change", "result": "REJECTED (1 violation, exit 1)", "log": "inject-failure-silent-locked-change.log"},
+    {"id": "gha-34256278530", "kind": "hosted CI on f7967d3 (positive: commit carries its own Decision-Record trailer)", "result": "PASS: all nine jobs green; locked-files reported 0 violations over ceef604..f7967d3", "url": "https://github.com/moss101/modbit/actions/runs/34256278530"},
+    {"id": "gha-34256442560", "kind": "hosted CI on draft PR #3 (negative: scratch branch commit 022bf05 changed docs/11 with no trailer)", "result": "REJECTED: locked-files job failed with `LOCKED 022bf05 changes docs/11_SYSTEM_ARCHITECTURE.md : no Decision-Record: trailer`; dossier integrity also failed on the hash change; PR closed and branch deleted", "url": "https://github.com/moss101/modbit/actions/runs/34256442560", "log": "ci-run-34256442560-negative.json, ci-run-34256442560-negative.json.log"}
+  ],
+  "acceptance": {
+    "CI rejects changed locked architecture file without linked ADR metadata": "PASS: run 34256442560 (negative) failed the locked-files job; run 34256278530 (positive, trailer present) passed"
+  }
+}

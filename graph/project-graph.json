@@ -1017,8 +1017,15 @@
    "milestone": "M0",
    "order": 1,
    "source": "docs/43",
-   "status": "IMPLEMENTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-34256442560",
+    "run:gha-34256278530",
+    "commit:f7967d3",
+    "artifact:evidence/m0/M0.2/evidence.json",
+    "artifact:evidence/m0/M0.2/TASK_CARD.md",
+    "artifact:docs/decisions/DR-M0-002-locked-architecture-file-guard.md"
+   ],
    "notes": [
     {
      "at": "2026-09-08T17:13:33Z",
@@ -1031,10 +1038,28 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "docs/decisions ledger + DR-M0-002, locked rules, architecture-lint locked subcommand with real-git tests, CI job locked-files; local guard runs pass and reject the silent scratch change."
+    },
+    {
+     "at": "2026-09-08T17:21:59Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "CI job locked-files invokes architecture-lint locked on every push and PR with full history (run 34256278530)."
+    },
+    {
+     "at": "2026-09-08T17:21:59Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Real-git tests pass on macOS/Linux/Windows runners; local scratch branch silent change rejected."
+    },
+    {
+     "at": "2026-09-08T17:21:59Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "Hosted CI rejected a silent locked change on draft PR #3 and accepted the trailer-bearing commit."
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-09-08T17:17:30Z"
+   "status_changed_on": "2026-09-08T17:21:59Z"
   },
   {
    "id": "M0.3",

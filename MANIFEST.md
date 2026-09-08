@@ -175,9 +175,12 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m0/M0.1/fresh-clone-macos-425d80d.log` | retained evidence | 34857 | `c85b7e2c0c538764ffab1fa9dd5a710809526af2f06ce6d30a57f09b65ad1cd8` |
 | `evidence/m0/M0.1/inject-failure.log` | retained evidence | 235 | `dc63bccf2385b3a07a3212dab9d175503e979e91fa6a132d17197eb2765c0db0` |
 | `evidence/m0/M0.2/TASK_CARD.md` | retained evidence | 2958 | `68de49ba288220792905a019d3e19c47449dd382020d0e68fa471833850bf754` |
+| `evidence/m0/M0.2/ci-run-34256442560-negative.json` | retained evidence | 794 | `daad25aaf3be9e16a5747cfe9733ef6ee663e004061450662915248214d4e17f` |
+| `evidence/m0/M0.2/ci-run-34256442560-negative.json.log` | retained evidence | 612 | `68b5931b1a92a0a9e7f44a816ae9f89bc3c10a4be4192e1b275394442eced79f` |
+| `evidence/m0/M0.2/evidence.json` | retained evidence | 1652 | `0e5f18a1d986c92794b845b902b54fa6523b0f4595ed0673a313c5ca5b60a327` |
 | `evidence/m0/M0.2/inject-failure-silent-locked-change.log` | retained evidence | 490 | `a2d112b6cf3f72b6d16ea99650d82d531986822cb9e34b9f96ade11d5a104f01` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 40972 | `1e0df527779426d4d0923d41d6c262cda64569bcd4e435d1f8ce1376a52bba78` |
-| `graph/project-graph.json` | project driver graph with live status | 1010125 | `0262ab8cfcdfbf7edf4f3d45cdad5f4c3830f04f48ecb511eacceb6a1067ed36` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 40968 | `d51e6094c5b5803f5ea458481b76cece37c6a2d13ec183b026aed7fd2497f864` |
+| `graph/project-graph.json` | project driver graph with live status | 1011015 | `f0c1e10a7390481633f11438e93fc482a70ebf3df2582a2171b9158de5d3e08e` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 45304 | `473c9881a97b045102a3f7e71e651553d6997491bb94dc0bc2bc90ad23ce93de` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 16615 | `17490633d9f5e4c25322c197cbbe765b6e3573cec639c152cd7744c792995e9c` |

@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 64,
+    "root_and_tooling": 67,
     "docs_bytes": 1037117
   },
   "sections": [
@@ -1127,19 +1127,34 @@
       "sha256": "68de49ba288220792905a019d3e19c47449dd382020d0e68fa471833850bf754"
     },
     {
+      "path": "evidence/m0/M0.2/ci-run-34256442560-negative.json",
+      "bytes": 794,
+      "sha256": "daad25aaf3be9e16a5747cfe9733ef6ee663e004061450662915248214d4e17f"
+    },
+    {
+      "path": "evidence/m0/M0.2/ci-run-34256442560-negative.json.log",
+      "bytes": 612,
+      "sha256": "68b5931b1a92a0a9e7f44a816ae9f89bc3c10a4be4192e1b275394442eced79f"
+    },
+    {
+      "path": "evidence/m0/M0.2/evidence.json",
+      "bytes": 1652,
+      "sha256": "0e5f18a1d986c92794b845b902b54fa6523b0f4595ed0673a313c5ca5b60a327"
+    },
+    {
       "path": "evidence/m0/M0.2/inject-failure-silent-locked-change.log",
       "bytes": 490,
       "sha256": "a2d112b6cf3f72b6d16ea99650d82d531986822cb9e34b9f96ade11d5a104f01"
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 40972,
-      "sha256": "1e0df527779426d4d0923d41d6c262cda64569bcd4e435d1f8ce1376a52bba78"
+      "bytes": 40968,
+      "sha256": "d51e6094c5b5803f5ea458481b76cece37c6a2d13ec183b026aed7fd2497f864"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1010125,
-      "sha256": "0262ab8cfcdfbf7edf4f3d45cdad5f4c3830f04f48ecb511eacceb6a1067ed36"
+      "bytes": 1011015,
+      "sha256": "f0c1e10a7390481633f11438e93fc482a70ebf3df2582a2171b9158de5d3e08e"
     },
     {
       "path": "tools/build_graph.py",
