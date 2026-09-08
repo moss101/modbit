@@ -174,3 +174,5 @@ flowchart TD
 ```
 
 Every slot, repeat count, reachable combination and worst-case reservation is validated before initial dispatch. Diagram return arrows consume finite admitted transitions; they never authorize a generated branch or unbounded loop. Hard-ineligible plans fail before dispatch; an empty confidence-feasible set explicitly flags QUALITY_FLOOR_INFEASIBLE on the best hard-eligible alternative. Reviewer execution uses disposable scratch and bounded processes with canonical writes/external effects denied. DIRECT/CASCADE/CRITIQUE are derived path labels only. Detailed semantics, events and recovery are in docs 27/38.
+
+<!-- M0.2 negative proof: silent locked change; this branch is deleted after CI fails -->
