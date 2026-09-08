@@ -1,0 +1,15 @@
+{
+  "expected": {
+    "clientBuild": "0.0.0",
+    "clientKind": "CLIENT_KIND_CLI",
+    "protocolVersion": {
+      "major": 1,
+      "minor": 0
+    },
+    "supportedCommandTypes": [
+      "CreateSession",
+      "CreateTask"
+    ]
+  },
+  "type": "modbit.v1.Hello"
+}

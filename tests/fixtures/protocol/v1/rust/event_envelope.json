@@ -1,0 +1,18 @@
+{
+  "expected": {
+    "causationId": null,
+    "eventId": "55555555555555555555555555555555",
+    "eventType": "TaskCreated",
+    "payload": "",
+    "recordedAt": {
+      "nanos": 0,
+      "seconds": "1757289601"
+    },
+    "runId": "66666666666666666666666666666666",
+    "schemaVersion": 1,
+    "sequence": "9007199254740993",
+    "sessionId": "44444444444444444444444444444444",
+    "tenantId": "22222222222222222222222222222222"
+  },
+  "type": "modbit.v1.EventEnvelope"
+}

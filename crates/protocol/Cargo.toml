@@ -9,6 +9,13 @@ publish.workspace = true
 
 [dependencies]
 modbit-domain.workspace = true
+prost.workspace = true
+prost-types.workspace = true
+
+[build-dependencies]
+prost.workspace = true
+prost-build.workspace = true
+protox.workspace = true
 
 [lints]
 workspace = true

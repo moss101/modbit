@@ -1,0 +1,11 @@
+# TypeScript bindings for crates/protocol/proto (M0.3). Run `pnpm generate`;
+# CI verifies the committed output matches the schema source (docs/70).
+version: v2
+inputs:
+  - directory: ../../crates/protocol/proto
+plugins:
+  - local: protoc-gen-es
+    out: src/gen
+    opt:
+      - target=js+dts
+      - import_extension=js

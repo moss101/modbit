@@ -1,0 +1,14 @@
+{
+  "expected": {
+    "argumentsJson": "{\"path\":\"README.md\"}",
+    "capabilityLeaseId": "88888888888888888888888888888888",
+    "executionProfile": "local_default",
+    "expectedWorkspaceRevision": "0",
+    "outputBudgetBytes": "1048576",
+    "timeoutMs": "30000",
+    "toolCallId": "77777777777777777777777777777777",
+    "toolName": "fs.read",
+    "toolVersion": "1"
+  },
+  "type": "modbit.v1.ToolCallRequest"
+}

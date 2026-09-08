@@ -1,0 +1,39 @@
+// Tool call wire schema (docs/30 "Tool call wire schema").
+syntax = "proto3";
+
+package modbit.v1;
+
+import "modbit/v1/domain.proto";
+
+message ToolCallRequest {
+  Id tool_call_id = 1;
+  string tool_name = 2;
+  string tool_version = 3;
+  string arguments_json = 4;
+  Id capability_lease_id = 5;
+  string execution_profile = 6;
+  optional uint64 expected_workspace_revision = 7;
+  uint64 timeout_ms = 8;
+  uint64 output_budget_bytes = 9;
+}
+
+// Application outcome is always distinguished from transport/runtime outcome.
+enum ToolCallStatus {
+  TOOL_CALL_STATUS_UNSPECIFIED = 0;
+  TOOL_CALL_STATUS_SUCCESS = 1;
+  TOOL_CALL_STATUS_APPLICATION_FAILURE = 2;
+  TOOL_CALL_STATUS_INFRA_FAILURE = 3;
+  TOOL_CALL_STATUS_CANCELLED = 4;
+  TOOL_CALL_STATUS_UNKNOWN_OUTCOME = 5;
+}
+
+message ToolCallResult {
+  Id tool_call_id = 1;
+  ToolCallStatus status = 2;
+  optional string structured_output_json = 3;
+  optional Id stdout_ref = 4;
+  optional Id stderr_ref = 5;
+  repeated Id produced_artifact_ids = 6;
+  repeated Id effect_receipt_ids = 7;
+  optional uint64 workspace_revision_after = 8;
+}

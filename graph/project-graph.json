@@ -1069,8 +1069,24 @@
    "milestone": "M0",
    "order": 2,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-08T18:13:16Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: NOT-FOUND. crates/protocol and packages/surface-protocol are empty M0.1 shells; no schema source, no generator, no round-trip tests."
+    },
+    {
+     "at": "2026-09-08T18:25:16Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "proto/modbit/v1 schema, prost+protox build-time Rust codegen, protoc-gen-es TS codegen committed, protocol-fixtures round trip both directions, CI job protocol-roundtrip."
+    }
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-09-08T18:25:16Z"
   },
   {
    "id": "M1.1",

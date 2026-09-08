@@ -38,6 +38,7 @@ members = [
     "services/modbit-execd",
     "services/modbit-guest",
     "tools/architecture-lint",
+    "tools/protocol-fixtures",
 ]
 
 [workspace.package]
@@ -80,6 +81,10 @@ modbit-observability = { path = "crates/observability" }
 anyhow = "1.0.104"
 cargo_metadata = "0.23.1"
 globset = "0.4.20"
+prost = "0.14.4"
+prost-build = "0.14.4"
+prost-types = "0.14.4"
+protox = "0.9.1"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 tempfile = "3.27.0"

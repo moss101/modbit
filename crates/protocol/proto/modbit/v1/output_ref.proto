@@ -1,0 +1,22 @@
+// OutputRef ranged reads (docs/30 "OutputRef API"). An OutputRef is immutable;
+// clients never load the whole object implicitly.
+syntax = "proto3";
+
+package modbit.v1;
+
+import "modbit/v1/domain.proto";
+
+message OutputRefReadRequest {
+  Id output_ref_id = 1;
+  uint64 offset = 2;
+  uint64 length = 3;
+}
+
+message OutputRefReadResponse {
+  Id output_ref_id = 1;
+  bytes checksum_sha256 = 2;
+  uint64 total_bytes = 3;
+  string content_type = 4;
+  uint64 offset = 5;
+  bytes data = 6;
+}

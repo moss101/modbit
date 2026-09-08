@@ -1,0 +1,16 @@
+{
+  "expected": {
+    "effectReceiptIds": [],
+    "producedArtifactIds": [
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    ],
+    "status": "TOOL_CALL_STATUS_UNKNOWN_OUTCOME",
+    "stderrRef": null,
+    "stdoutRef": "99999999999999999999999999999999",
+    "structuredOutputJson": null,
+    "toolCallId": "77777777777777777777777777777777",
+    "workspaceRevisionAfter": "18446744073709551615"
+  },
+  "type": "modbit.v1.ToolCallResult"
+}

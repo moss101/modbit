@@ -1,0 +1,36 @@
+// Canonical command and event envelopes (docs/30 "Canonical command envelope",
+// "Canonical event types"). Payloads are the encoded bytes of the message named
+// by command_type / event_type; every persisted event stores schema_version.
+syntax = "proto3";
+
+package modbit.v1;
+
+import "google/protobuf/timestamp.proto";
+import "modbit/v1/domain.proto";
+
+message CommandEnvelope {
+  Id command_id = 1;
+  Id tenant_id = 2;
+  Id user_id = 3;
+  optional Id session_id = 4;
+  optional Id aggregate_id = 5;
+  optional uint64 expected_generation = 6;
+  string command_type = 7;
+  uint32 schema_version = 8;
+  bytes payload = 9;
+  google.protobuf.Timestamp issued_at = 10;
+}
+
+message EventEnvelope {
+  Id event_id = 1;
+  Id tenant_id = 2;
+  Id session_id = 3;
+  optional Id run_id = 4;
+  // Monotonic per-session sequence used for cursor replay.
+  uint64 sequence = 5;
+  optional Id causation_id = 6;
+  string event_type = 7;
+  uint32 schema_version = 8;
+  bytes payload = 9;
+  google.protobuf.Timestamp recorded_at = 10;
+}

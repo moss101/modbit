@@ -1,0 +1,8 @@
+# Fault case, 2026-09-08: tests/fixtures/protocol/v1/ts/tool_call_result.bin had its ToolCallStatus
+# byte changed from 5 (UNKNOWN_OUTCOME) to 1 (SUCCESS); the Rust round-trip test must fail.
+$ cargo test --locked -p protocol-fixtures
+test typescript_encoded_fixtures_decode_and_reencode_identically ... FAILED
+test committed_rust_fixtures_are_fresh ... ok
+thread 'typescript_encoded_fixtures_decode_and_reencode_identically' panicked at tools/protocol-fixtures/tests/roundtrip.rs:36:9
+test result: FAILED. 1 passed; 1 failed
+# Fixture restored; the suite passes again (2 passed).

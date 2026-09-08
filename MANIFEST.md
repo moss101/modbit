@@ -179,8 +179,10 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m0/M0.2/ci-run-34256442560-negative.json.log` | retained evidence | 612 | `68b5931b1a92a0a9e7f44a816ae9f89bc3c10a4be4192e1b275394442eced79f` |
 | `evidence/m0/M0.2/evidence.json` | retained evidence | 1652 | `0e5f18a1d986c92794b845b902b54fa6523b0f4595ed0673a313c5ca5b60a327` |
 | `evidence/m0/M0.2/inject-failure-silent-locked-change.log` | retained evidence | 490 | `a2d112b6cf3f72b6d16ea99650d82d531986822cb9e34b9f96ade11d5a104f01` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 40968 | `d51e6094c5b5803f5ea458481b76cece37c6a2d13ec183b026aed7fd2497f864` |
-| `graph/project-graph.json` | project driver graph with live status | 1011015 | `f0c1e10a7390481633f11438e93fc482a70ebf3df2582a2171b9158de5d3e08e` |
+| `evidence/m0/M0.3/TASK_CARD.md` | retained evidence | 3429 | `cd35519419404947c7b2f2848b8fab8c0433f4301572f4975e93bec637012eb9` |
+| `evidence/m0/M0.3/inject-failure-corrupted-ts-fixture.log` | retained evidence | 581 | `fffe98068a3edb9ebcbcdfb4c347a351ef3d314c4ed57d71478d3664bf9e5c31` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 40969 | `8346b2890182f58abda8aca39766767b9c05e2df606ac8836a0434beab8b7555` |
+| `graph/project-graph.json` | project driver graph with live status | 1011665 | `156fca1635c71736d8045f6c10f78f1b31ba74c1f809f6ac8debf745c3892807` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 45304 | `473c9881a97b045102a3f7e71e651553d6997491bb94dc0bc2bc90ad23ce93de` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 16615 | `17490633d9f5e4c25322c197cbbe765b6e3573cec639c152cd7744c792995e9c` |

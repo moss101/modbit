@@ -1,0 +1,11 @@
+{
+  "expected": {
+    "checksumSha256": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "contentType": "text/plain; charset=utf-8",
+    "data": "68c3a96c6c6f0a",
+    "offset": "4096",
+    "outputRefId": "99999999999999999999999999999999",
+    "totalBytes": "1048576"
+  },
+  "type": "modbit.v1.OutputRefReadResponse"
+}

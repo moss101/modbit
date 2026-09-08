@@ -4,9 +4,19 @@
   "private": true,
   "description": "generated SurfaceProtocol/API TypeScript types (generation arrives with M0.3)",
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
-    "test": "node --test \"src/**/*.test.ts\""
+    "test": "node --test \"src/**/*.test.ts\"",
+    "generate": "rm -rf src/gen && mkdir -p src/gen && buf generate"
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "2.14.1"
+  },
+  "devDependencies": {
+    "@bufbuild/buf": "1.72.0",
+    "@bufbuild/protoc-gen-es": "2.14.1"
   }
 }

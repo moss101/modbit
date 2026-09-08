@@ -1,0 +1,19 @@
+// Modbit canonical domain identity and versioning types (docs/13, docs/30).
+// Package modbit.v1 is protocol major version 1. Never reuse or renumber a
+// field; additive changes only inside a major version.
+syntax = "proto3";
+
+package modbit.v1;
+
+// Opaque 128-bit identifier (UUID/ULID-class), canonical 16-byte encoding.
+// Applies to every *Id in docs/13 "Identity types".
+message Id {
+  bytes value = 1;
+}
+
+// Protocol version negotiated between a surface and Core (docs/30
+// "Version compatibility"). Different majors block mutation.
+message ProtocolVersion {
+  uint32 major = 1;
+  uint32 minor = 2;
+}

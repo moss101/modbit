@@ -72,6 +72,33 @@ jobs:
       - name: Test
         run: pnpm test
 
+  protocol-roundtrip:
+    name: protocol Rust<->TS round trip and generated-code freshness (M0.3)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Install pinned Rust toolchain (rust-toolchain.toml)
+        run: rustup show
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4 (reads packageManager)
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Regenerate TypeScript bindings from crates/protocol/proto and require no drift (docs/70)
+        run: |
+          pnpm --filter @modbit/surface-protocol generate
+          git diff --exit-code -- packages/surface-protocol/src/gen
+      - name: Rust fixtures are fresh (Rust encoding of the samples)
+        run: cargo run --locked -p protocol-fixtures -- --check
+      - name: "TS: decode Rust bytes, rebuild independently, encode (writes ts fixtures)"
+        run: pnpm --filter @modbit/surface-protocol test
+      - name: "Rust: decode TS bytes and require identical canonical encoding"
+        run: cargo test --locked -p protocol-fixtures
+      - name: Committed fixtures match what both sides produced
+        run: git diff --exit-code -- tests/fixtures/protocol
+
   locked-files:
     name: locked architecture files require a Decision Record (DR-M0-002)
     runs-on: ubuntu-latest
@@ -102,7 +129,7 @@ jobs:
 
   ci-compatible:
     name: CI_COMPATIBLE summary (not release-grade)
-    needs: [rust, node, locked-files, dossier]
+    needs: [rust, node, protocol-roundtrip, locked-files, dossier]
     runs-on: ubuntu-latest
     steps:
       - name: Record platform label

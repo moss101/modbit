@@ -1,0 +1,32 @@
+// Protocol capability negotiation at connect time (docs/30 "Version
+// compatibility"). A major mismatch blocks task mutation with an explicit
+// upgrade requirement.
+syntax = "proto3";
+
+package modbit.v1;
+
+import "modbit/v1/domain.proto";
+
+enum ClientKind {
+  CLIENT_KIND_UNSPECIFIED = 0;
+  CLIENT_KIND_DESKTOP = 1;
+  CLIENT_KIND_CLI = 2;
+  CLIENT_KIND_IDE_ADAPTER = 3;
+  CLIENT_KIND_CLOUD_WORKER = 4;
+  CLIENT_KIND_SANDBOX_GUEST = 5;
+}
+
+message Hello {
+  ProtocolVersion protocol_version = 1;
+  ClientKind client_kind = 2;
+  string client_build = 3;
+  repeated string supported_command_types = 4;
+}
+
+message HelloAck {
+  ProtocolVersion protocol_version = 1;
+  bool compatible = 2;
+  bool upgrade_required = 3;
+  string reason = 4;
+  repeated string supported_command_types = 5;
+}
