@@ -32,7 +32,13 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Install pinned Rust toolchain (rust-toolchain.toml)
-        uses: dtolnay/rust-toolchain@d1031067263f94b142dd6c0ce24c5eb9d02d52a0 # master, reads rust-toolchain.toml
+        # rustup on the hosted runners installs the channel and components from
+        # rust-toolchain.toml; no second copy of the pin lives in this workflow.
+        run: |
+          rustup show
+          rustup --version
+          cargo --version
+          rustc --version
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
       - name: Format
         run: cargo fmt --all --check
