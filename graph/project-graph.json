@@ -1886,8 +1886,14 @@
    "order": 3,
    "source": "docs/45_REQUIREMENT_TO_TASK_TO_TEST_TRACEABILITY.md; docs/43 V2 sequencing delta",
    "note": "added in V3.1 from the V2 sequencing delta",
-   "status": "IMPLEMENTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-34265091455",
+    "commit:1e94980",
+    "artifact:evidence/m0/M0.4/evidence.json",
+    "artifact:evidence/m0/M0.4/TASK_CARD.md",
+    "artifact:docs/decisions/DR-M0-004-module-registration-and-canonical-systems.md"
+   ],
    "notes": [
     {
      "at": "2026-09-08T18:39:48Z",
@@ -1900,10 +1906,22 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "Audit: IMPLEMENTED-PARTIAL (D4/G3 existed). Added D10 owner check, G9 qualifying-evidence check, module registrations on all 40 members, [[canonical]] systems, architecture-lint modules subcommand with real-cargo tests, CI steps."
+    },
+    {
+     "at": "2026-09-08T18:49:19Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "CI runs check_dossier D10/G9 (dossier job) and architecture-lint modules (rust matrix) on every push (run 34265091455)."
+    },
+    {
+     "at": "2026-09-08T18:49:19Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Negative cases executed on hosted CI via test_dossier and modules tests; injected duplicate owner rejected locally."
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-09-08T18:46:44Z"
+   "status_changed_on": "2026-09-08T18:49:19Z"
   },
   {
    "id": "M2.10",

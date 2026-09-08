@@ -127,7 +127,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `README.md` | human orientation | 10200 | `575c1c947f4064ae19894a43916f66fca49974a3002a368c05314d80f3d7ccff` |
 | `SKILLS.md` | governed procedures for agents | 18306 | `d6a62b1df940c10e1e4dec05af6a8ce7c94b65018c9e24a6bd76f88a7978d27c` |
 | `docs/decisions/DR-M0-002-locked-architecture-file-guard.md` | source patch provenance | 2738 | `17609542de912b116bd113cc36d4c1fc5c863658bdd539e11e5f5b7c8772a240` |
-| `docs/decisions/README.md` | source patch provenance | 1983 | `45c258437a418aafb72427d5de208afcb9d0184a9b496aaf5ea05874be8a0081` |
+| `docs/decisions/DR-M0-004-module-registration-and-canonical-systems.md` | source patch provenance | 2457 | `20217db18f46557448325ec23d75b1cf638cd9e4c8b96eddc8d1f512260ca992` |
+| `docs/decisions/README.md` | source patch provenance | 2102 | `eac197a6739ded8f65a6c9e9dccfd0929f39a413072d2bda83aadd9324c9b489` |
 | `evidence/dossier-epr-v1.1/baseline.json` | retained evidence | 11128 | `ae11c9be07272788d2957bff45bc1333f879e121d2b5205ebc01ce780ec62543` |
 | `evidence/dossier-epr-v1.1/tests.log` | retained evidence | 2071 | `2f4bbebb6db1f0f0c6802f8dee65e5d6aa7933db6d1bda28a8acd70aa9bd88b3` |
 | `evidence/dossier-epr-v1.1/validation.json` | retained evidence | 14010 | `288bf2fff83122240110c926d18d8ef616a9257fc62bc54eb70b536088dfbfb5` |
@@ -185,9 +186,10 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m0/M0.3/evidence.json` | retained evidence | 1292 | `7d676c993b8f7b5acf88be87dfc74a05352901463dec12bb2b3556b4dddee9d7` |
 | `evidence/m0/M0.3/inject-failure-corrupted-ts-fixture.log` | retained evidence | 581 | `fffe98068a3edb9ebcbcdfb4c347a351ef3d314c4ed57d71478d3664bf9e5c31` |
 | `evidence/m0/M0.4/TASK_CARD.md` | retained evidence | 3773 | `edf7380ae9d901960328e6fdf3e4751a65e9ed6abdf8f971acaf356d542f9668` |
+| `evidence/m0/M0.4/evidence.json` | retained evidence | 1576 | `bdb12d74fc3c8e1f162a2a49b96d1006ba7d72c064614d6e8f1ee58a43a76f05` |
 | `evidence/m0/M0.4/inject-failure-duplicate-canonical-owner.log` | retained evidence | 553 | `09e52f7b1f7ebe0d69d05e28f83df42ed227828a6ffdbb5406f76fa8659afefb` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 40966 | `465de30e6d0831d926b7608efb27acd5a6c491d18b02f11b457a57e338e483f1` |
-| `graph/project-graph.json` | project driver graph with live status | 1012933 | `a481c308d1092e6f0f37275d62b55429968a88ab463dd4d9bdabcbaa3253557c` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 40962 | `82de586425bea4fe6a7a73c4da015119a77490ba5cdbac19241eeae21ef90ce8` |
+| `graph/project-graph.json` | project driver graph with live status | 1013620 | `2654044bfd07a3fca485cb56188c564c3504bdcb1cee6bbded7a44bece606af0` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 45304 | `473c9881a97b045102a3f7e71e651553d6997491bb94dc0bc2bc90ad23ce93de` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 17596 | `5c9b7a782d245223726f860ca583d766929a6f5662b644adebee64d257ad426b` |

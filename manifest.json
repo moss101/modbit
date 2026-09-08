@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 74,
+    "root_and_tooling": 76,
     "docs_bytes": 1037117
   },
   "sections": [
@@ -887,9 +887,14 @@
       "sha256": "17609542de912b116bd113cc36d4c1fc5c863658bdd539e11e5f5b7c8772a240"
     },
     {
+      "path": "docs/decisions/DR-M0-004-module-registration-and-canonical-systems.md",
+      "bytes": 2457,
+      "sha256": "20217db18f46557448325ec23d75b1cf638cd9e4c8b96eddc8d1f512260ca992"
+    },
+    {
       "path": "docs/decisions/README.md",
-      "bytes": 1983,
-      "sha256": "45c258437a418aafb72427d5de208afcb9d0184a9b496aaf5ea05874be8a0081"
+      "bytes": 2102,
+      "sha256": "eac197a6739ded8f65a6c9e9dccfd0929f39a413072d2bda83aadd9324c9b489"
     },
     {
       "path": "evidence/dossier-epr-v1.1/baseline.json",
@@ -1177,19 +1182,24 @@
       "sha256": "edf7380ae9d901960328e6fdf3e4751a65e9ed6abdf8f971acaf356d542f9668"
     },
     {
+      "path": "evidence/m0/M0.4/evidence.json",
+      "bytes": 1576,
+      "sha256": "bdb12d74fc3c8e1f162a2a49b96d1006ba7d72c064614d6e8f1ee58a43a76f05"
+    },
+    {
       "path": "evidence/m0/M0.4/inject-failure-duplicate-canonical-owner.log",
       "bytes": 553,
       "sha256": "09e52f7b1f7ebe0d69d05e28f83df42ed227828a6ffdbb5406f76fa8659afefb"
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 40966,
-      "sha256": "465de30e6d0831d926b7608efb27acd5a6c491d18b02f11b457a57e338e483f1"
+      "bytes": 40962,
+      "sha256": "82de586425bea4fe6a7a73c4da015119a77490ba5cdbac19241eeae21ef90ce8"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1012933,
-      "sha256": "a481c308d1092e6f0f37275d62b55429968a88ab463dd4d9bdabcbaa3253557c"
+      "bytes": 1013620,
+      "sha256": "2654044bfd07a3fca485cb56188c564c3504bdcb1cee6bbded7a44bece606af0"
     },
     {
       "path": "tools/build_graph.py",

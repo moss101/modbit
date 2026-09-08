@@ -1,0 +1,16 @@
+{
+  "task": "M0.4",
+  "decision_record": "docs/decisions/DR-M0-004-module-registration-and-canonical-systems.md",
+  "commit": "1e94980",
+  "evidence_tier": "release-critical",
+  "runs": [
+    {"id": "gha-34265091455", "kind": "hosted CI on 1e94980", "result": "PASS: ten jobs green on macOS/Linux/Windows; module lint reported 40 modules, 18 canonical systems, 0 violations on every platform; dossier job ran check_dossier (D10, G9) and test_dossier including the two new negative cases; architecture-lint modules tests (5) ran on every platform", "url": "https://github.com/moss101/modbit/actions/runs/34265091455"},
+    {"id": "test-dossier-d10-g9-negatives", "kind": "copied-package negatives: ADOPT row without owner -> [D10] and build_graph refusal; COMPLETE with only artifact: -> [G9] twice; run:+commit: clears G9", "result": "PASS locally and in run 34265091455"},
+    {"id": "inject-failure-duplicate-canonical-owner", "kind": "fault: crates/git claimed workspace-change-engine already owned by modbit-workspace", "result": "REJECTED (exit 1)", "log": "inject-failure-duplicate-canonical-owner.log"}
+  ],
+  "acceptance": {
+    "ADOPT/ADAPT row without owner/IMP-EV/QUAL-EV fails CI": "PASS: D4 (existing) + D10 (new) in check_dossier, run by the dossier job; negatives proven by test_dossier",
+    "COMPLETE task without evidence fails CI": "PASS: G3 (existing) + G9 (new: run/test and commit/revision refs required)",
+    "duplicate active owner fails CI": "PASS: architecture-lint modules on three platforms; negative proven by tests and the injected claim"
+  }
+}
