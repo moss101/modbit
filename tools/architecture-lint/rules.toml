@@ -1,0 +1,89 @@
+# Modbit architecture dependency rules.
+# Authority: docs/12_REPOSITORY_AND_MODULE_LAYOUT.md ("Dependency direction"),
+#            docs/81_ARCHITECTURE_GUARDRAILS_AND_FORBIDDEN_DUPLICATION.md ("Forbidden dependency directions"),
+#            docs/35_DEPENDENCY_AND_BINDING_DECISIONS.md ("Binding rule").
+# Evaluated by tools/architecture-lint over `cargo metadata`. Every [[forbid]] rule
+# matches package names with globs and is violated when any package matching `to`
+# is reachable from a workspace member matching `from` through normal or build
+# dependencies (transitively). [[confine]] rules restrict which workspace members
+# may depend directly on an external package.
+
+[[forbid]]
+from = "modbit-domain"
+to = "modbit-*"
+reason = "docs/12: `domain` depends on no infrastructure crate"
+
+[[forbid]]
+from = "modbit-event-store"
+to = "modbit-providers"
+reason = "docs/12: event-store -> provider implementation is forbidden"
+
+[[forbid]]
+from = "modbit-workspace"
+to = "modbit-browser"
+reason = "docs/12: workspace -> browser is forbidden"
+
+[[forbid]]
+from = "modbit-guest"
+to = "modbit-cloud-api"
+reason = "docs/12: guest -> cloud-api business logic is forbidden"
+
+[[forbid]]
+from = "modbit-sandbox"
+to = "modbit-core-runtime"
+reason = "docs/12: sandbox does not import scheduler internals"
+
+[[forbid]]
+from = "modbit-browser"
+to = "modbit-core-runtime"
+reason = "docs/12: browser does not import scheduler internals"
+
+[[forbid]]
+from = "modbit-providers"
+to = "modbit-workspace"
+reason = "docs/81: model adapters must not mutate workspace; docs/12: providers cannot call workspace tools"
+
+[[forbid]]
+from = "modbit-providers"
+to = "modbit-git"
+reason = "docs/81: model adapters must not mutate workspace"
+
+[[forbid]]
+from = "modbit-providers"
+to = "modbit-tools"
+reason = "docs/12: providers cannot call workspace tools"
+
+[[forbid]]
+from = "modbit-providers"
+to = "modbit-effects"
+reason = "docs/81: model adapters must not invoke protected effects directly"
+
+[[forbid]]
+from = "modbit-providers"
+to = "modbit-terminal"
+reason = "docs/81: model adapters must not invoke protected effects directly"
+
+[[forbid]]
+from = "modbit-protocol-state"
+to = "modbit-memory"
+reason = "docs/81: memory must not be used as protocol/recovery state"
+
+[[forbid]]
+from = "modbit-checkpoint"
+to = "modbit-memory"
+reason = "docs/81: memory must not be used as protocol/recovery state"
+
+[[forbid]]
+from = "modbit-protocol"
+to = "modbit-event-store"
+reason = "docs/12: UI protocol depends on domain DTOs, never database types"
+
+[[forbid]]
+from = "modbit-cli"
+to = "modbit-{core-runtime,context,memory,git,checkpoint,policy,tools,workspace,terminal,sandbox,browser}"
+reason = "docs/12 (DR-PX): CLI is a thin SurfaceProtocol client with no orchestration, context, memory, Git, recovery, policy or tool code"
+
+[[confine]]
+package = "cubesandbox*"
+allowed = ["modbit-sandbox"]
+reason = "docs/35: the cloud isolation dependency is confined to the SandboxBackend adapter"

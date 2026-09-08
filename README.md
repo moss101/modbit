@@ -97,3 +97,15 @@ Start with [adoption and compatibility](docs/06_EPR_V1_1_SUPERSESSION_DECISION.m
 `python3 tools/graph.py show EPR-006` displays a complete dependency/requirement/test neighborhood. DOC-EPR-002 tracks only this dossier refinement/reseal outside product roll-ups. Its audit and exact validation evidence are in [the handoff](docs/95_EPR_V1_1_DOSSIER_TASK_AND_HANDOFF.md).
 
 After changing documents or statuses, run the regeneration sequence in [package integrity](docs/74_PACKAGE_INTEGRITY_AND_BUILD_COVERAGE.md). Hash the final graph, run `python3 tools/check_dossier.py --manifest`, then `python3 tools/test_dossier.py` for copied-package negative checks. Do not mark a runtime task complete from these documentation checks.
+
+## Building the product (from M0.1)
+
+The monorepo layout follows `docs/12_REPOSITORY_AND_MODULE_LAYOUT.md`: a Rust workspace (`Cargo.toml`, `crates/`, `apps/`, `services/`, `tools/architecture-lint`) and a pnpm workspace (`pnpm-workspace.yaml`, `packages/`, `apps/desktop`). Toolchains are pinned in `rust-toolchain.toml`, `.node-version` and the `packageManager` field.
+
+```bash
+cargo build --workspace --locked && cargo test --workspace --locked
+cargo run --locked -p architecture-lint        # forbidden dependency edges (docs/12, docs/81)
+pnpm install --frozen-lockfile && pnpm typecheck && pnpm test
+```
+
+`.github/workflows/ci.yml` runs the same on macOS, Linux and Windows. Those results establish `CI_COMPATIBLE` only; macOS is the Alpha release platform and other platforms are promoted separately (`docs/76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md`). Task status lives on the graph (`python3 tools/graph.py status`), never in code presence.

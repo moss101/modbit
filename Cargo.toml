@@ -1,0 +1,94 @@
+# Modbit monorepo — Rust workspace root (docs/12_REPOSITORY_AND_MODULE_LAYOUT.md).
+# Dependency direction between members is enforced by tools/architecture-lint
+# using tools/architecture-lint/rules.toml (docs/12, docs/81).
+
+[workspace]
+resolver = "3"
+members = [
+    "crates/domain",
+    "crates/protocol",
+    "crates/core-runtime",
+    "crates/event-store",
+    "crates/protocol-state",
+    "crates/checkpoint",
+    "crates/compaction",
+    "crates/memory",
+    "crates/effects",
+    "crates/policy",
+    "crates/providers",
+    "crates/prompt-compiler",
+    "crates/skills",
+    "crates/tools",
+    "crates/procedural-runtime",
+    "crates/context",
+    "crates/retrieval",
+    "crates/workspace",
+    "crates/git",
+    "crates/diagnostics",
+    "crates/terminal",
+    "crates/browser",
+    "crates/sandbox",
+    "crates/verification",
+    "crates/secrets",
+    "crates/observability",
+    "apps/cloud-api",
+    "apps/cloud-worker",
+    "apps/sandbox-gateway",
+    "apps/cli",
+    "services/modbit-execd",
+    "services/modbit-guest",
+    "tools/architecture-lint",
+]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.97"
+license = "UNLICENSED"
+publish = false
+
+[workspace.dependencies]
+# intra-workspace
+modbit-domain = { path = "crates/domain" }
+modbit-protocol = { path = "crates/protocol" }
+modbit-core-runtime = { path = "crates/core-runtime" }
+modbit-event-store = { path = "crates/event-store" }
+modbit-protocol-state = { path = "crates/protocol-state" }
+modbit-checkpoint = { path = "crates/checkpoint" }
+modbit-compaction = { path = "crates/compaction" }
+modbit-memory = { path = "crates/memory" }
+modbit-effects = { path = "crates/effects" }
+modbit-policy = { path = "crates/policy" }
+modbit-providers = { path = "crates/providers" }
+modbit-prompt-compiler = { path = "crates/prompt-compiler" }
+modbit-skills = { path = "crates/skills" }
+modbit-tools = { path = "crates/tools" }
+modbit-procedural-runtime = { path = "crates/procedural-runtime" }
+modbit-context = { path = "crates/context" }
+modbit-retrieval = { path = "crates/retrieval" }
+modbit-workspace = { path = "crates/workspace" }
+modbit-git = { path = "crates/git" }
+modbit-diagnostics = { path = "crates/diagnostics" }
+modbit-terminal = { path = "crates/terminal" }
+modbit-browser = { path = "crates/browser" }
+modbit-sandbox = { path = "crates/sandbox" }
+modbit-verification = { path = "crates/verification" }
+modbit-secrets = { path = "crates/secrets" }
+modbit-observability = { path = "crates/observability" }
+
+# external (exact versions pinned in Cargo.lock; new dependencies follow docs/36 and docs/70 supply-chain policy)
+anyhow = "1.0.104"
+cargo_metadata = "0.23.1"
+globset = "0.4.20"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+tempfile = "3.27.0"
+toml = "1.1.5"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+unused_crate_dependencies = "allow"
+
+[workspace.lints.clippy]
+all = "warn"

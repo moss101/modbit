@@ -1,0 +1,14 @@
+[package]
+name = "modbit-event-store"
+description = "Modbit event-store: append-only canonical event store and projections"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+modbit-domain.workspace = true
+
+[lints]
+workspace = true

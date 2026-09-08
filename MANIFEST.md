@@ -1,7 +1,7 @@
 # Modbit Dossier Manifest — V3.3 EPR v1.1
 
 > **Authority date:** 2026-09-05  
-> **Generated:** 2026-09-05 by `tools/build_manifest.py`  
+> **Generated:** 2026-09-08 by `tools/build_manifest.py`  
 > **Scope:** every specification file in `docs/` plus the root governing files and tooling. The previous `99_MANIFEST.md` covered only 39 Part 2 files; this manifest covers all 89 docs.
 > **Machine-readable twin:** `manifest.json` (same content, same hashes).
 
@@ -115,7 +115,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 95 | `docs/95_EPR_V1_1_DOSSIER_TASK_AND_HANDOFF.md` | EPR v1.1 dossier task and handoff | governance | 10525 | `264069b600baf40d1e54d2f89be7e9804a8b77c0dbf3ddb0a9dca41111582413` |
 | 96 | `docs/96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md` | Dossier governance maintenance task and handoff | governance | 9070 | `af650309e48dd7fd60dd6d286c460ed7c3128a2201964078c7f50aea385bfb8c` |
 | 97 | `docs/97_DOSSIER_MAINTENANCE_LOG.md` | Dossier maintenance log | governance | 43736 | `ae48c1832a920977def82d1ba4b7d492d4281c60a3723beaef613d3144c97073` |
-| 98 | `docs/98_BUILD_MANIFEST.md` | Build Manifest | live-state | 3749 | `f5985229df1a88f96fb95c0f3f2f7e49e4f700c5011f1252f4ec522e247649a5` |
+| 98 | `docs/98_BUILD_MANIFEST.md` | Build Manifest | live-state | 3749 | `5ada3bfc00b781bf568d03265a38706be329afd12475d0d96d640a8608e4a4f9` |
 
 ## Root governing files and tooling
 
@@ -124,7 +124,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `AGENTS.md` | build-agent operating contract (highest authority) | 9512 | `52facabdca45abd2fcdaf10a7b0141057895217af95560395dc0d24a8793b64f` |
 | `MODBIT-PATCH-EPR-v1.1-Supersession-and-Refinement.md` | source patch provenance | 20229 | `30dbacdb3a37b364f535f55ed7bf4ea8fa35d70cd6f85c9a61897ac9db72f2bd` |
 | `MODBIT-PATCH-Execution-Policy-Router-and-Verified-Multi-Model-Orchestration.md` | source patch provenance | 54208 | `9e0cee7d49d442033b875e250a61a212b898dd6f4bf35826cdad5ffeb71edb66` |
-| `README.md` | human orientation | 9250 | `e418d9a62a0dd8069c180b06aebece825ff3b215ab89ec78e89dc373461e5574` |
+| `README.md` | human orientation | 10200 | `575c1c947f4064ae19894a43916f66fca49974a3002a368c05314d80f3d7ccff` |
 | `SKILLS.md` | governed procedures for agents | 18306 | `d6a62b1df940c10e1e4dec05af6a8ce7c94b65018c9e24a6bd76f88a7978d27c` |
 | `evidence/dossier-epr-v1.1/baseline.json` | retained evidence | 11128 | `ae11c9be07272788d2957bff45bc1333f879e121d2b5205ebc01ce780ec62543` |
 | `evidence/dossier-epr-v1.1/tests.log` | retained evidence | 2071 | `2f4bbebb6db1f0f0c6802f8dee65e5d6aa7933db6d1bda28a8acd70aa9bd88b3` |
@@ -162,15 +162,17 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/dossier-px-006/baseline.json` | retained evidence | 16080 | `b0cd8948df0a7c91df18027fffb8d52ca28641144c8122818d23680733d17ac4` |
 | `evidence/dossier-px-006/tests.log` | retained evidence | 3230 | `e45b9fac1be0036aefd60fb9f67ce07c9dde430dfb82b5f7e616d503a6fcf731` |
 | `evidence/dossier-px-006/validation.json` | retained evidence | 16174 | `048c2969e4cd3424647d0e67c3937fe84a59584a22f7c34cfb51b348224736fa` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 40974 | `e85562fe87c7e26b21ab26d9146c694321a7baf08c3c1f1b4fa5c4c7cc112a0d` |
-| `graph/project-graph.json` | project driver graph with live status | 1007111 | `8aea050c81c44ab65c12955751d465eac866920020da6007645d19a727f2bcb5` |
+| `evidence/m0/M0.1/TASK_CARD.md` | retained evidence | 3898 | `d7968e10523fa28be1b23f3214c41225a051940659a51628e0f2adcb3c504092` |
+| `evidence/m0/M0.1/inject-failure.log` | retained evidence | 235 | `dc63bccf2385b3a07a3212dab9d175503e979e91fa6a132d17197eb2765c0db0` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 40975 | `63da8b5ed99919a73b13e3bc8d155111fa190b1ac6eee82a60386f7a439d6ddd` |
+| `graph/project-graph.json` | project driver graph with live status | 1007747 | `fa78f4c89af94e4be6e8cdbdaf11ec1223b85df879371b2dbbc0aff3c94781f2` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 45304 | `473c9881a97b045102a3f7e71e651553d6997491bb94dc0bc2bc90ad23ce93de` |
 | `tools/build_manifest.py` | regenerates this manifest | 14792 | `8b162fc559327ea57f133ea269b165e37e2f3538e85166ca2d58cd6b02dd781b` |
 | `tools/check_dossier.py` | integrity gate | 16615 | `17490633d9f5e4c25322c197cbbe765b6e3573cec639c152cd7744c792995e9c` |
 | `tools/dossier_epr.py` | parses additive EPR authority and traceability | 9310 | `4b5e399ee1b4886662294e3780d7f0630195e29c8198256ff7719d5236591a18` |
 | `tools/dossier_px.py` | parses the additive product-extension ledger and phased release rules | 6931 | `0a7dd5bd5872fb1d959c56fd017bd3916062d0f60d1bc51b9abceddc134202e2` |
 | `tools/graph.py` | query/update graph | 36313 | `76f2a79fca3c305205f34573b94118c99511944833e8e602bf0eba7e2ac305cb` |
-| `tools/test_dossier.py` | copied-package integration and negative tests | 29902 | `563f757375137ea9d5476f313de1eadea8de885cab8ebd2bb72e223b46a439c5` |
+| `tools/test_dossier.py` | copied-package integration and negative tests | 30510 | `1bdaf62e9e4c332df96ecd5c994daffb2846f9c8bcbca69bb333ec17292d6ad4` |
 
 ## Rename map (V3 flat numbering → V3.1 `docs/`)
 

@@ -1,0 +1,12 @@
+{
+  "name": "@modbit/desktop",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Electron main, preload and React renderer behind SurfaceProtocol (shell arrives with M1.4)",
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --test \"src/**/*.test.ts\""
+  }
+}

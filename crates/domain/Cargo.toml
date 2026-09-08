@@ -1,0 +1,13 @@
+[package]
+name = "modbit-domain"
+description = "Modbit domain: IDs, domain objects and state transitions; depends on no infrastructure crate"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+
+[lints]
+workspace = true

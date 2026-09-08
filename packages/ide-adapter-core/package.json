@@ -1,0 +1,12 @@
+{
+  "name": "@modbit/ide-adapter-core",
+  "version": "0.0.0",
+  "private": true,
+  "description": "shared thin-client library and conformance suite for IDE adapters",
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --test \"src/**/*.test.ts\""
+  }
+}

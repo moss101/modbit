@@ -1,0 +1,2 @@
+FORBIDDEN modbit-browser -> modbit-core-runtime via modbit-browser -> modbit-core-runtime (docs/12: browser does not import scheduler internals)
+architecture-lint: 33 workspace members, 15 forbid rules, 1 confine rules, 1 violation(s)

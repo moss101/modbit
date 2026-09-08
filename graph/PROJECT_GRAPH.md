@@ -1,7 +1,7 @@
 # Modbit Project Graph
 
 > Generated from `graph/project-graph.json` by `tools/graph.py render --write`. Do not edit by hand; edit the graph through `tools/graph.py set` or regenerate structure with `tools/build_graph.py`.  
-> Graph generated on 2026-09-05; view rendered on 2026-09-05.
+> Graph generated on 2026-09-08; view rendered on 2026-09-08.
 
 ## What the graph is
 
@@ -85,7 +85,7 @@ flowchart LR
   M7 --> M10
   M8 --> M10
   M9 --> M10
-  style M0 fill:#f3f4f6,stroke:#9ca3af,color:#111827
+  style M0 fill:#fef3c7,stroke:#d97706,color:#111827
   style M1 fill:#f3f4f6,stroke:#9ca3af,color:#111827
   style M2 fill:#f3f4f6,stroke:#9ca3af,color:#111827
   style M3 fill:#f3f4f6,stroke:#9ca3af,color:#111827
@@ -104,7 +104,7 @@ Critical path (reliability spine): **M0 → M1 → M2 → M4**. Do not start bro
 
 | Milestone | State | Unblocked | Milestone tasks | Implementation tasks | Complete | Blocked | Depends on | Proof |
 |---|---|---|---:|---:|---:|---:|---|---|
-| M0 Repository and authority | NOT_STARTED | yes | 4 | 3 | 0 | 0 | — | clean clone build + architecture lint |
+| M0 Repository and authority | IN_PROGRESS | yes | 4 | 3 | 0 | 0 | — | clean clone build + architecture lint |
 | M1 Durable local shell and Core | NOT_STARTED | no | 5 | 26 | 0 | 0 | M0 | user creates durable task, kills/restarts app/Core, same task recovers with no fake state. |
 | M2 Real local engineering loop | NOT_STARTED | no | 10 | 89 | 0 | 0 | M1 | E2E-001/002/003 with live model and actual test pass. |
 | M3 Context intelligence | NOT_STARTED | no | 9 | 51 | 0 | 0 | M2 | profile A/B/C benchmark plus retrieval-before-edit visible in task evidence. |
@@ -379,7 +379,7 @@ flowchart LR
 
 | Task | Status | Title | Acceptance / note |
 |---|---|---|---|
-| `M0.1` | NOT_STARTED | Create monorepo, Rust workspace, pnpm workspace, CI, architecture-lint | fresh clone builds on macOS/Linux/Windows CI; forbidden dependency test works. CI on Windows and Linux establishes CI_COMPATIBLE only; macOS is the Alpha release platform and other platforms are promoted separately (`76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md`). |
+| `M0.1` | IMPLEMENTING | Create monorepo, Rust workspace, pnpm workspace, CI, architecture-lint | fresh clone builds on macOS/Linux/Windows CI; forbidden dependency test works. CI on Windows and Linux establishes CI_COMPATIBLE only; macOS is the Alpha release platform and other platforms are promoted separately (`76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md`). |
 | `M0.2` | NOT_STARTED | Add authoritative ADRs and status ledger | CI rejects changed locked architecture file without linked ADR metadata. |
 | `M0.3` | NOT_STARTED | Protobuf domain/protocol generation Rust↔TS | round-trip compatibility tests. |
 | `M0.4` | NOT_STARTED | Requirement-coverage CI and REQ→IMP→QUAL traceability parser | CI fails on ADOPT/ADAPT row without owner/IMP-EV/QUAL-EV, COMPLETE task without evidence, or duplicate active owner |

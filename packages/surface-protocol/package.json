@@ -1,0 +1,12 @@
+{
+  "name": "@modbit/surface-protocol",
+  "version": "0.0.0",
+  "private": true,
+  "description": "generated SurfaceProtocol/API TypeScript types (generation arrives with M0.3)",
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --test \"src/**/*.test.ts\""
+  }
+}

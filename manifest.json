@@ -2,12 +2,12 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-09-05",
+  "generated_on": "2026-09-08",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 50,
+    "root_and_tooling": 52,
     "docs_bytes": 1037117
   },
   "sections": [
@@ -852,7 +852,7 @@
       "section_title": "Live state",
       "title": "Build Manifest",
       "bytes": 3749,
-      "sha256": "f5985229df1a88f96fb95c0f3f2f7e49e4f700c5011f1252f4ec522e247649a5"
+      "sha256": "5ada3bfc00b781bf568d03265a38706be329afd12475d0d96d640a8608e4a4f9"
     }
   ],
   "root_and_tooling": [
@@ -873,8 +873,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 9250,
-      "sha256": "e418d9a62a0dd8069c180b06aebece825ff3b215ab89ec78e89dc373461e5574"
+      "bytes": 10200,
+      "sha256": "575c1c947f4064ae19894a43916f66fca49974a3002a368c05314d80f3d7ccff"
     },
     {
       "path": "SKILLS.md",
@@ -1062,14 +1062,24 @@
       "sha256": "048c2969e4cd3424647d0e67c3937fe84a59584a22f7c34cfb51b348224736fa"
     },
     {
+      "path": "evidence/m0/M0.1/TASK_CARD.md",
+      "bytes": 3898,
+      "sha256": "d7968e10523fa28be1b23f3214c41225a051940659a51628e0f2adcb3c504092"
+    },
+    {
+      "path": "evidence/m0/M0.1/inject-failure.log",
+      "bytes": 235,
+      "sha256": "dc63bccf2385b3a07a3212dab9d175503e979e91fa6a132d17197eb2765c0db0"
+    },
+    {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 40974,
-      "sha256": "e85562fe87c7e26b21ab26d9146c694321a7baf08c3c1f1b4fa5c4c7cc112a0d"
+      "bytes": 40975,
+      "sha256": "63da8b5ed99919a73b13e3bc8d155111fa190b1ac6eee82a60386f7a439d6ddd"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1007111,
-      "sha256": "8aea050c81c44ab65c12955751d465eac866920020da6007645d19a727f2bcb5"
+      "bytes": 1007747,
+      "sha256": "fa78f4c89af94e4be6e8cdbdaf11ec1223b85df879371b2dbbc0aff3c94781f2"
     },
     {
       "path": "tools/build_graph.py",
@@ -1103,8 +1113,8 @@
     },
     {
       "path": "tools/test_dossier.py",
-      "bytes": 29902,
-      "sha256": "563f757375137ea9d5476f313de1eadea8de885cab8ebd2bb72e223b46a439c5"
+      "bytes": 30510,
+      "sha256": "1bdaf62e9e4c332df96ecd5c994daffb2846f9c8bcbca69bb333ec17292d6ad4"
     }
   ],
   "renames_v3_to_v3_1": {

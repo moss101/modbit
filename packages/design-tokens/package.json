@@ -1,0 +1,12 @@
+{
+  "name": "@modbit/design-tokens",
+  "version": "0.0.0",
+  "private": true,
+  "description": "design tokens shared by desktop surfaces",
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --test \"src/**/*.test.ts\""
+  }
+}

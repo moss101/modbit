@@ -1,0 +1,6 @@
+# Modbit monorepo — pnpm workspace (docs/12_REPOSITORY_AND_MODULE_LAYOUT.md).
+# Rust apps/services under apps/ and services/ carry no package.json and are
+# ignored by pnpm; only TypeScript surfaces are workspace packages.
+packages:
+  - "apps/desktop"
+  - "packages/*"

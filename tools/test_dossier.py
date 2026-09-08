@@ -7,6 +7,7 @@ working dossier or weaken a production security check.
 """
 import hashlib
 import json
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -317,6 +318,17 @@ class DossierTests(unittest.TestCase):
             self.assertNotIn("deterministic execution plan compiler", body, rel)
 
     def test_lifecycle_transitions_are_one_step(self):
+        # Fixture: product work on M0.1 has started, so reset the copied package
+        # to a NOT_STARTED node and matching docs/98 roll-up before walking the ladder.
+        g = self.graph()
+        for node in g["nodes"]:
+            if node["id"] == "M0.1":
+                node["status"] = "NOT_STARTED"
+                node["evidence"] = []
+                node.pop("notes", None)
+        self.write_graph(g)
+        bm = self.root / "docs/98_BUILD_MANIFEST.md"
+        bm.write_text(re.sub(r"^(\| M0 \| .+? \| )[A-Z_]+( \|)", r"\g<1>NOT_STARTED\g<2>", bm.read_text(), count=1, flags=re.M))
         self.run_tool("graph", "set", "M0.1", "IMPLEMENTING", ok=False, contains="one step at a time")
         self.run_tool("graph", "set", "M0.1", "AUDITING")
         self.run_tool("graph", "set", "M0.1", "BLOCKED", ok=False, contains="requires --note")

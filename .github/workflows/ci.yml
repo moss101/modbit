@@ -1,0 +1,95 @@
+# Modbit CI (docs/70_CI_CD_RELEASE_AND_SUPPLY_CHAIN.md, PX-030 / docs/76).
+#
+# Every platform job establishes CI_COMPATIBLE only. macOS is the Alpha release
+# platform; Windows and Linux become RELEASE_GRADE only through PX-031 evidence
+# and a Decision Record. Nothing here is release-grade proof by itself.
+#
+# Actions are pinned by commit SHA (supply-chain policy, docs/70).
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+  RUSTFLAGS: "-D warnings"
+
+jobs:
+  rust:
+    name: rust CI_COMPATIBLE (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Install pinned Rust toolchain (rust-toolchain.toml)
+        uses: dtolnay/rust-toolchain@d1031067263f94b142dd6c0ce24c5eb9d02d52a0 # master, reads rust-toolchain.toml
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - name: Format
+        run: cargo fmt --all --check
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --locked
+      - name: Build
+        run: cargo build --workspace --locked
+      - name: Test (includes real cargo-metadata forbidden-edge test)
+        run: cargo test --workspace --locked
+      - name: Architecture dependency lint (docs/12, docs/81)
+        run: cargo run --locked -p architecture-lint -- --manifest-path Cargo.toml --rules tools/architecture-lint/rules.toml
+
+  node:
+    name: node CI_COMPATIBLE (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4 (reads packageManager)
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - name: Install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Test
+        run: pnpm test
+
+  dossier:
+    name: dossier integrity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Manifest and graph integrity
+        run: python3 tools/check_dossier.py --manifest
+      - name: Dossier self-tests
+        run: python3 tools/test_dossier.py
+
+  ci-compatible:
+    name: CI_COMPATIBLE summary (not release-grade)
+    needs: [rust, node, dossier]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Record platform label
+        run: |
+          {
+            echo "## Platform result: CI_COMPATIBLE only"
+            echo
+            echo "Core, CLI and runtime built and tested on macOS, Linux and Windows."
+            echo "This label is never release-grade by itself (docs/76, PX-030); release"
+            echo "promotion requires platform-specific E2E evidence (PX-031) and a Decision Record."
+          } >> "$GITHUB_STEP_SUMMARY"

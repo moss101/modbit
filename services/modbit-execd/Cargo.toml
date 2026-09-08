@@ -1,0 +1,16 @@
+[package]
+name = "modbit-execd"
+description = "Modbit modbit-execd: durable PTY/process broker"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+modbit-domain.workspace = true
+modbit-protocol.workspace = true
+modbit-terminal.workspace = true
+
+[lints]
+workspace = true

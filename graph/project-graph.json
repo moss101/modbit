@@ -3,7 +3,7 @@
  "product": "Modbit",
  "edition": "V3.3 EPR v1.1",
  "authority_date": "2026-09-05",
- "generated_on": "2026-09-05",
+ "generated_on": "2026-09-08",
  "generator": "tools/build_graph.py",
  "status_vocabulary": [
   "NOT_STARTED",
@@ -952,8 +952,24 @@
    "milestone": "M0",
    "order": 0,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-08T16:37:29Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: NOT-FOUND. Repository is docs-only (dossier, graph, tools, evidence); no Cargo.toml, pnpm-workspace.yaml, CI or architecture-lint. First missing link: workspace roots."
+    },
+    {
+     "at": "2026-09-08T16:45:03Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "Workspace roots, 26 crates, 6 Rust binaries, 6 TS packages, architecture-lint with real cargo-metadata tests, CI workflow written; local cargo/pnpm checks pass."
+    }
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-09-08T16:45:03Z"
   },
   {
    "id": "M0.2",
@@ -40597,6 +40613,5 @@
    "to": "EPR-GATE-G",
    "type": "requires_gate"
   }
- ],
- "updated_on": "2026-09-05T13:57:54Z"
+ ]
 }
