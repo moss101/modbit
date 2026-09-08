@@ -380,7 +380,7 @@ flowchart LR
 | Task | Status | Title | Acceptance / note |
 |---|---|---|---|
 | `M0.1` | COMPLETE | Create monorepo, Rust workspace, pnpm workspace, CI, architecture-lint | fresh clone builds on macOS/Linux/Windows CI; forbidden dependency test works. CI on Windows and Linux establishes CI_COMPATIBLE only; macOS is the Alpha release platform and other platforms are promoted separately (`76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md`). |
-| `M0.2` | NOT_STARTED | Add authoritative ADRs and status ledger | CI rejects changed locked architecture file without linked ADR metadata. |
+| `M0.2` | IMPLEMENTING | Add authoritative ADRs and status ledger | CI rejects changed locked architecture file without linked ADR metadata. |
 | `M0.3` | NOT_STARTED | Protobuf domain/protocol generation Rust↔TS | round-trip compatibility tests. |
 | `M0.4` | NOT_STARTED | Requirement-coverage CI and REQ→IMP→QUAL traceability parser | CI fails on ADOPT/ADAPT row without owner/IMP-EV/QUAL-EV, COMPLETE task without evidence, or duplicate active owner |
 

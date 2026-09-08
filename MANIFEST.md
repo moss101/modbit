@@ -126,6 +126,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `MODBIT-PATCH-Execution-Policy-Router-and-Verified-Multi-Model-Orchestration.md` | source patch provenance | 54208 | `9e0cee7d49d442033b875e250a61a212b898dd6f4bf35826cdad5ffeb71edb66` |
 | `README.md` | human orientation | 10200 | `575c1c947f4064ae19894a43916f66fca49974a3002a368c05314d80f3d7ccff` |
 | `SKILLS.md` | governed procedures for agents | 18306 | `d6a62b1df940c10e1e4dec05af6a8ce7c94b65018c9e24a6bd76f88a7978d27c` |
+| `docs/decisions/DR-M0-002-locked-architecture-file-guard.md` | source patch provenance | 2738 | `17609542de912b116bd113cc36d4c1fc5c863658bdd539e11e5f5b7c8772a240` |
+| `docs/decisions/README.md` | source patch provenance | 1983 | `45c258437a418aafb72427d5de208afcb9d0184a9b496aaf5ea05874be8a0081` |
 | `evidence/dossier-epr-v1.1/baseline.json` | retained evidence | 11128 | `ae11c9be07272788d2957bff45bc1333f879e121d2b5205ebc01ce780ec62543` |
 | `evidence/dossier-epr-v1.1/tests.log` | retained evidence | 2071 | `2f4bbebb6db1f0f0c6802f8dee65e5d6aa7933db6d1bda28a8acd70aa9bd88b3` |
 | `evidence/dossier-epr-v1.1/validation.json` | retained evidence | 14010 | `288bf2fff83122240110c926d18d8ef616a9257fc62bc54eb70b536088dfbfb5` |
@@ -172,15 +174,17 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m0/M0.1/fresh-clone-linux-rust-425d80d.log` | retained evidence | 705 | `e4479b5b004531c95e0671d3f0fc123547a37ca272417c58d51d8170558e9d96` |
 | `evidence/m0/M0.1/fresh-clone-macos-425d80d.log` | retained evidence | 34857 | `c85b7e2c0c538764ffab1fa9dd5a710809526af2f06ce6d30a57f09b65ad1cd8` |
 | `evidence/m0/M0.1/inject-failure.log` | retained evidence | 235 | `dc63bccf2385b3a07a3212dab9d175503e979e91fa6a132d17197eb2765c0db0` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 40971 | `75b9321f919221e3f7fa4229c1695b2b814f161093e185cf0565d07c9c1e0ce9` |
-| `graph/project-graph.json` | project driver graph with live status | 1009495 | `7eb599c2ada5373110da26270e7ee8aea1628923935bf476d2346b9c15418673` |
+| `evidence/m0/M0.2/TASK_CARD.md` | retained evidence | 2958 | `68de49ba288220792905a019d3e19c47449dd382020d0e68fa471833850bf754` |
+| `evidence/m0/M0.2/inject-failure-silent-locked-change.log` | retained evidence | 490 | `a2d112b6cf3f72b6d16ea99650d82d531986822cb9e34b9f96ade11d5a104f01` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 40972 | `1e0df527779426d4d0923d41d6c262cda64569bcd4e435d1f8ce1376a52bba78` |
+| `graph/project-graph.json` | project driver graph with live status | 1010125 | `0262ab8cfcdfbf7edf4f3d45cdad5f4c3830f04f48ecb511eacceb6a1067ed36` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 45304 | `473c9881a97b045102a3f7e71e651553d6997491bb94dc0bc2bc90ad23ce93de` |
-| `tools/build_manifest.py` | regenerates this manifest | 14792 | `8b162fc559327ea57f133ea269b165e37e2f3538e85166ca2d58cd6b02dd781b` |
+| `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 16615 | `17490633d9f5e4c25322c197cbbe765b6e3573cec639c152cd7744c792995e9c` |
 | `tools/dossier_epr.py` | parses additive EPR authority and traceability | 9310 | `4b5e399ee1b4886662294e3780d7f0630195e29c8198256ff7719d5236591a18` |
 | `tools/dossier_px.py` | parses the additive product-extension ledger and phased release rules | 6931 | `0a7dd5bd5872fb1d959c56fd017bd3916062d0f60d1bc51b9abceddc134202e2` |
 | `tools/graph.py` | query/update graph | 36313 | `76f2a79fca3c305205f34573b94118c99511944833e8e602bf0eba7e2ac305cb` |
-| `tools/test_dossier.py` | copied-package integration and negative tests | 30772 | `45258f29c32bad9f89412c9e4c865ebe42eaa51721064b0fbca5b92d4f72e7b5` |
+| `tools/test_dossier.py` | copied-package integration and negative tests | 30855 | `3353d654e986b0fb44c9d6530e1eb06d325efbcfcfe3a9e23ab0eeb7b4901125` |
 
 ## Rename map (V3 flat numbering → V3.1 `docs/`)
 

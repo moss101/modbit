@@ -1017,8 +1017,24 @@
    "milestone": "M0",
    "order": 1,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-08T17:13:33Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: NOT-FOUND. No docs/decisions/ directory, no ADR metadata convention in CI, no locked-file guard."
+    },
+    {
+     "at": "2026-09-08T17:17:30Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "docs/decisions ledger + DR-M0-002, locked rules, architecture-lint locked subcommand with real-git tests, CI job locked-files; local guard runs pass and reject the silent scratch change."
+    }
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-09-08T17:17:30Z"
   },
   {
    "id": "M0.3",

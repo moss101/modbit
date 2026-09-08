@@ -1,0 +1,6 @@
+# Live negative case, 2026-09-08: scratch branch scratch/locked-guard-negative (commit 24729d4, since deleted)
+# appended a comment to docs/11_SYSTEM_ARCHITECTURE.md with no trailer.
+$ cargo run -q --locked -p architecture-lint -- locked --repo . --base main --head scratch/locked-guard-negative
+LOCKED 24729d4 changes docs/11_SYSTEM_ARCHITECTURE.md : no `Decision-Record:` trailer
+architecture-lint locked: 13 locked rules, range main..scratch/locked-guard-negative, 1 violation(s)
+exit=1

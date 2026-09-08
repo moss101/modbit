@@ -318,12 +318,13 @@ class DossierTests(unittest.TestCase):
             self.assertNotIn("deterministic execution plan compiler", body, rel)
 
     def reset_m01_fixture(self):
-        # Product work on M0.1 has started in the live graph. Tests that exercise the
-        # lifecycle from a clean start reset the copied package to a NOT_STARTED M0.1
-        # with a matching docs/98 roll-up; the delivered package is never modified.
+        # Product work on M0 has started in the live graph. Tests that exercise the
+        # lifecycle from a clean start reset every M0 work item in the copied package
+        # to NOT_STARTED with a matching docs/98 roll-up; the delivered package is
+        # never modified.
         g = self.graph()
         for node in g["nodes"]:
-            if node["id"] == "M0.1":
+            if node.get("milestone") == "M0" and node["type"] in ("milestone_task", "imp_task"):
                 node["status"] = "NOT_STARTED"
                 node["evidence"] = []
                 for key in ("notes", "blocked_from", "status_changed_on"):

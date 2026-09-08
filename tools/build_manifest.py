@@ -110,6 +110,7 @@ def package_files():
     root = Path(ROOT)
     paths = [p for p in root.glob("*.md") if p.name != "MANIFEST.md"]
     paths += [root / "graph/project-graph.json", root / "graph/PROJECT_GRAPH.md"]
+    paths += list((root / "docs/decisions").glob("*.md"))
     paths += list((root / "tools").glob("*.py"))
     if (root / "evidence").exists():
         paths += [p for p in (root / "evidence").rglob("*") if p.is_file() and "__pycache__" not in p.parts]
@@ -178,7 +179,7 @@ def build():
         "authority_date": AUTHORITY_DATE,
         "generated_on": date.today().isoformat(),
         "hash_algorithm": "sha256",
-        "scope_rule": "docs/*.md, root *.md except MANIFEST.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
+        "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
         "counts": {
             "docs": len(entries),
             "root_and_tooling": len(root_entries),

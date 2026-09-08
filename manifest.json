@@ -4,10 +4,10 @@
   "authority_date": "2026-09-05",
   "generated_on": "2026-09-08",
   "hash_algorithm": "sha256",
-  "scope_rule": "docs/*.md, root *.md except MANIFEST.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
+  "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 60,
+    "root_and_tooling": 64,
     "docs_bytes": 1037117
   },
   "sections": [
@@ -882,6 +882,16 @@
       "sha256": "d6a62b1df940c10e1e4dec05af6a8ce7c94b65018c9e24a6bd76f88a7978d27c"
     },
     {
+      "path": "docs/decisions/DR-M0-002-locked-architecture-file-guard.md",
+      "bytes": 2738,
+      "sha256": "17609542de912b116bd113cc36d4c1fc5c863658bdd539e11e5f5b7c8772a240"
+    },
+    {
+      "path": "docs/decisions/README.md",
+      "bytes": 1983,
+      "sha256": "45c258437a418aafb72427d5de208afcb9d0184a9b496aaf5ea05874be8a0081"
+    },
+    {
       "path": "evidence/dossier-epr-v1.1/baseline.json",
       "bytes": 11128,
       "sha256": "ae11c9be07272788d2957bff45bc1333f879e121d2b5205ebc01ce780ec62543"
@@ -1112,14 +1122,24 @@
       "sha256": "dc63bccf2385b3a07a3212dab9d175503e979e91fa6a132d17197eb2765c0db0"
     },
     {
+      "path": "evidence/m0/M0.2/TASK_CARD.md",
+      "bytes": 2958,
+      "sha256": "68de49ba288220792905a019d3e19c47449dd382020d0e68fa471833850bf754"
+    },
+    {
+      "path": "evidence/m0/M0.2/inject-failure-silent-locked-change.log",
+      "bytes": 490,
+      "sha256": "a2d112b6cf3f72b6d16ea99650d82d531986822cb9e34b9f96ade11d5a104f01"
+    },
+    {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 40971,
-      "sha256": "75b9321f919221e3f7fa4229c1695b2b814f161093e185cf0565d07c9c1e0ce9"
+      "bytes": 40972,
+      "sha256": "1e0df527779426d4d0923d41d6c262cda64569bcd4e435d1f8ce1376a52bba78"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1009495,
-      "sha256": "7eb599c2ada5373110da26270e7ee8aea1628923935bf476d2346b9c15418673"
+      "bytes": 1010125,
+      "sha256": "0262ab8cfcdfbf7edf4f3d45cdad5f4c3830f04f48ecb511eacceb6a1067ed36"
     },
     {
       "path": "tools/build_graph.py",
@@ -1128,8 +1148,8 @@
     },
     {
       "path": "tools/build_manifest.py",
-      "bytes": 14792,
-      "sha256": "8b162fc559327ea57f133ea269b165e37e2f3538e85166ca2d58cd6b02dd781b"
+      "bytes": 14871,
+      "sha256": "b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7"
     },
     {
       "path": "tools/check_dossier.py",
@@ -1153,8 +1173,8 @@
     },
     {
       "path": "tools/test_dossier.py",
-      "bytes": 30772,
-      "sha256": "45258f29c32bad9f89412c9e4c865ebe42eaa51721064b0fbca5b92d4f72e7b5"
+      "bytes": 30855,
+      "sha256": "3353d654e986b0fb44c9d6530e1eb06d325efbcfcfe3a9e23ab0eeb7b4901125"
     }
   ],
   "renames_v3_to_v3_1": {

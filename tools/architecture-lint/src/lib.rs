@@ -34,6 +34,33 @@ pub struct ConfineRule {
     pub reason: String,
 }
 
+/// A path (glob) whose change requires a linked Decision Record.
+#[derive(Debug, Clone, Deserialize)]
+pub struct LockedRule {
+    /// Glob over repository-relative paths.
+    pub path: String,
+    /// Authority reference explaining why the path is locked.
+    pub reason: String,
+}
+
+/// How a commit links the Decision Record that authorises a locked change.
+#[derive(Debug, Clone, Deserialize)]
+pub struct LockedPolicy {
+    /// Git trailer key, e.g. `Decision-Record`.
+    pub trailer: String,
+    /// Directory (repository-relative) that holds Decision Records.
+    pub decisions_dir: String,
+}
+
+impl Default for LockedPolicy {
+    fn default() -> Self {
+        LockedPolicy {
+            trailer: "Decision-Record".to_owned(),
+            decisions_dir: "docs/decisions".to_owned(),
+        }
+    }
+}
+
 /// The rule file.
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct Rules {
@@ -43,6 +70,12 @@ pub struct Rules {
     /// Confined external packages.
     #[serde(default)]
     pub confine: Vec<ConfineRule>,
+    /// Locked paths.
+    #[serde(default)]
+    pub locked: Vec<LockedRule>,
+    /// Decision Record linking policy.
+    #[serde(default)]
+    pub locked_policy: LockedPolicy,
 }
 
 impl Rules {
@@ -55,6 +88,9 @@ impl Rules {
         }
         for r in &rules.confine {
             Glob::new(&r.package).with_context(|| format!("invalid glob `{}`", r.package))?;
+        }
+        for r in &rules.locked {
+            Glob::new(&r.path).with_context(|| format!("invalid glob `{}`", r.path))?;
         }
         Ok(rules)
     }
@@ -249,6 +285,8 @@ pub fn check(graph: &Graph, rules: &Rules) -> Vec<Violation> {
     }
     out
 }
+
+pub mod locked;
 
 #[cfg(test)]
 mod tests {

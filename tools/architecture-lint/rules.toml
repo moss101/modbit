@@ -87,3 +87,65 @@ reason = "docs/12 (DR-PX): CLI is a thin SurfaceProtocol client with no orchestr
 package = "cubesandbox*"
 allowed = ["modbit-sandbox"]
 reason = "docs/35: the cloud isolation dependency is confined to the SandboxBackend adapter"
+
+# ---------------------------------------------------------------------------
+# Locked paths (DR-M0-002, docs/02 change control, docs/46, AGENTS.md).
+# A commit that changes any of these must carry a `Decision-Record:` trailer
+# naming an accepted record under docs/decisions/. Enforced by
+# `architecture-lint locked` in CI.
+
+[locked_policy]
+trailer = "Decision-Record"
+decisions_dir = "docs/decisions"
+
+[[locked]]
+path = "AGENTS.md"
+reason = "highest-priority operating contract; changed only by governance Decision Records"
+
+[[locked]]
+path = "docs/02_AUTHORITY_AND_DECISIONS.md"
+reason = "decision register; LOCKED rows change only by Decision Record (docs/02 change control)"
+
+[[locked]]
+path = "docs/0{5,6,7}_*.md"
+reason = "approved Decision Records are immutable provenance"
+
+[[locked]]
+path = "docs/11_SYSTEM_ARCHITECTURE.md"
+reason = "canonical architecture (docs/02 MOD-CORE-001 and locked owners)"
+
+[[locked]]
+path = "docs/12_REPOSITORY_AND_MODULE_LAYOUT.md"
+reason = "module ownership and dependency direction"
+
+[[locked]]
+path = "docs/13_DOMAIN_MODEL_AND_STATE_MACHINES.md"
+reason = "domain contracts and state machines"
+
+[[locked]]
+path = "docs/4{0,1,2}_*.md"
+reason = "docs/46: requirement rows, dispositions, owners, tasks and qualifications are frozen"
+
+[[locked]]
+path = "docs/46_REQUIREMENT_COVERAGE_FREEZE_GATE.md"
+reason = "coverage freeze gate"
+
+[[locked]]
+path = "docs/49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md"
+reason = "docs/46: additive EPR coverage locked under the same rule"
+
+[[locked]]
+path = "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+reason = "docs/46: additive PX ledger locked under the same rule"
+
+[[locked]]
+path = "docs/81_ARCHITECTURE_GUARDRAILS_AND_FORBIDDEN_DUPLICATION.md"
+reason = "canonical single-owner systems and forbidden directions"
+
+[[locked]]
+path = "docs/decisions/DR-*.md"
+reason = "accepted Decision Records are immutable; supersede with a new record"
+
+[[locked]]
+path = "tools/architecture-lint/rules.toml"
+reason = "the rules themselves encode locked decisions"

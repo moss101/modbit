@@ -72,6 +72,21 @@ jobs:
       - name: Test
         run: pnpm test
 
+  locked-files:
+    name: locked architecture files require a Decision Record (DR-M0-002)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+      - name: Install pinned Rust toolchain (rust-toolchain.toml)
+        run: rustup show
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - name: Check every commit in range for locked-path changes without an accepted Decision Record trailer
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: cargo run --locked -p architecture-lint -- locked --repo . --base "$BASE" --head "${{ github.sha }}" --rules tools/architecture-lint/rules.toml
+
   dossier:
     name: dossier integrity
     runs-on: ubuntu-latest
@@ -87,7 +102,7 @@ jobs:
 
   ci-compatible:
     name: CI_COMPATIBLE summary (not release-grade)
-    needs: [rust, node, dossier]
+    needs: [rust, node, locked-files, dossier]
     runs-on: ubuntu-latest
     steps:
       - name: Record platform label
