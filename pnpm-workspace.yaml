@@ -4,10 +4,7 @@
 packages:
   - "apps/desktop"
   - "packages/*"
-allowBuilds:
-  '@bufbuild/buf': set this to true or false
-
 # Dependencies allowed to run install scripts (supply-chain policy, docs/70).
 # @bufbuild/buf installs its pinned CLI binary in postinstall.
-onlyBuiltDependencies:
-  - "@bufbuild/buf"
+allowBuilds:
+  "@bufbuild/buf": true
