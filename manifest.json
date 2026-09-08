@@ -1143,8 +1143,8 @@
     },
     {
       "path": "tools/test_dossier.py",
-      "bytes": 30510,
-      "sha256": "1bdaf62e9e4c332df96ecd5c994daffb2846f9c8bcbca69bb333ec17292d6ad4"
+      "bytes": 30772,
+      "sha256": "45258f29c32bad9f89412c9e4c865ebe42eaa51721064b0fbca5b92d4f72e7b5"
     }
   ],
   "renames_v3_to_v3_1": {

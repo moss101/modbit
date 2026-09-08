@@ -178,7 +178,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `tools/dossier_epr.py` | parses additive EPR authority and traceability | 9310 | `4b5e399ee1b4886662294e3780d7f0630195e29c8198256ff7719d5236591a18` |
 | `tools/dossier_px.py` | parses the additive product-extension ledger and phased release rules | 6931 | `0a7dd5bd5872fb1d959c56fd017bd3916062d0f60d1bc51b9abceddc134202e2` |
 | `tools/graph.py` | query/update graph | 36313 | `76f2a79fca3c305205f34573b94118c99511944833e8e602bf0eba7e2ac305cb` |
-| `tools/test_dossier.py` | copied-package integration and negative tests | 30510 | `1bdaf62e9e4c332df96ecd5c994daffb2846f9c8bcbca69bb333ec17292d6ad4` |
+| `tools/test_dossier.py` | copied-package integration and negative tests | 30772 | `45258f29c32bad9f89412c9e4c865ebe42eaa51721064b0fbca5b92d4f72e7b5` |
 
 ## Rename map (V3 flat numbering → V3.1 `docs/`)
 

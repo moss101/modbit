@@ -317,18 +317,23 @@ class DossierTests(unittest.TestCase):
             self.assertNotIn("prior/realized risk", body, rel)
             self.assertNotIn("deterministic execution plan compiler", body, rel)
 
-    def test_lifecycle_transitions_are_one_step(self):
-        # Fixture: product work on M0.1 has started, so reset the copied package
-        # to a NOT_STARTED node and matching docs/98 roll-up before walking the ladder.
+    def reset_m01_fixture(self):
+        # Product work on M0.1 has started in the live graph. Tests that exercise the
+        # lifecycle from a clean start reset the copied package to a NOT_STARTED M0.1
+        # with a matching docs/98 roll-up; the delivered package is never modified.
         g = self.graph()
         for node in g["nodes"]:
             if node["id"] == "M0.1":
                 node["status"] = "NOT_STARTED"
                 node["evidence"] = []
-                node.pop("notes", None)
+                for key in ("notes", "blocked_from", "status_changed_on"):
+                    node.pop(key, None)
         self.write_graph(g)
         bm = self.root / "docs/98_BUILD_MANIFEST.md"
         bm.write_text(re.sub(r"^(\| M0 \| .+? \| )[A-Z_]+( \|)", r"\g<1>NOT_STARTED\g<2>", bm.read_text(), count=1, flags=re.M))
+
+    def test_lifecycle_transitions_are_one_step(self):
+        self.reset_m01_fixture()
         self.run_tool("graph", "set", "M0.1", "IMPLEMENTING", ok=False, contains="one step at a time")
         self.run_tool("graph", "set", "M0.1", "AUDITING")
         self.run_tool("graph", "set", "M0.1", "BLOCKED", ok=False, contains="requires --note")
@@ -391,6 +396,7 @@ class DossierTests(unittest.TestCase):
         self.run_tool("build_graph", ok=False, contains="contiguous")
 
     def test_release_readiness_is_derived_from_tasks(self):
+        self.reset_m01_fixture()
         out = self.run_tool("graph", "releases")
         self.assertRegex(out, r"ALPHA\s+NOT_READY")
         self.assertRegex(out, r"RELEASE_ZERO\s+NOT_READY")
