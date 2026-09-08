@@ -66,11 +66,11 @@ A fresh clone builds and tests on macOS, Linux and Windows CI; forbidden depende
 - test run IDs: `fresh-clone-macos-425d80d`, `fresh-clone-linux-rust-425d80d`, `fresh-clone-linux-node-425d80d`, `fresh-clone-linux-dossier-425d80d`, `inject-failure-browser-core-runtime` (all in `evidence.json`)
 - artifacts/effect/event refs: `evidence/m0/M0.1/evidence.json`, logs in this directory
 - environment/build digest: see `evidence.json` `environment`
-- hosted CI: run 34253119985 did not start (GitHub billing); Windows unproven
+- hosted CI: run 34255336543 on commit b20de22 green on macOS, Linux and Windows (run 34253119985 initially blocked by billing, then failed only in toolchain install; fixed by b20de22)
 
 ## Remaining acceptance criteria
 
-- green `ci` workflow on macOS, Linux and Windows runners (blocked on GitHub Actions billing; see `evidence.json` `blocker`)
+None. All platform results are `CI_COMPATIBLE` only (docs/76); no release-grade claim is made.
 
 ## Status
 

@@ -1,0 +1,33 @@
+   1 node CI_COMPATIBLE (macos-latest)	Test	2026-09-08T17:09:29.2623350Z packages/design-tokens test: ℹ pass 1
+   1 node CI_COMPATIBLE (macos-latest)	Test	2026-09-08T17:09:29.2729300Z apps/desktop test: ℹ pass 1
+   1 node CI_COMPATIBLE (macos-latest)	Test	2026-09-08T17:09:29.3029240Z packages/ide-adapter-core test: ℹ pass 1
+   1 node CI_COMPATIBLE (macos-latest)	Test	2026-09-08T17:09:29.4054970Z packages/surface-protocol test: ℹ pass 1
+   1 node CI_COMPATIBLE (macos-latest)	Test	2026-09-08T17:09:29.5429720Z packages/vscode-adapter test: ℹ pass 1
+   1 node CI_COMPATIBLE (macos-latest)	Test	2026-09-08T17:09:29.5741260Z packages/ui test: ℹ pass 1
+   1 node CI_COMPATIBLE (ubuntu-latest)	Test	2026-09-08T17:09:14.3679146Z packages/design-tokens test: ℹ pass 1
+   1 node CI_COMPATIBLE (ubuntu-latest)	Test	2026-09-08T17:09:14.3696378Z packages/surface-protocol test: ℹ pass 1
+   1 node CI_COMPATIBLE (ubuntu-latest)	Test	2026-09-08T17:09:14.3710158Z packages/ide-adapter-core test: ℹ pass 1
+   1 node CI_COMPATIBLE (ubuntu-latest)	Test	2026-09-08T17:09:14.3720685Z apps/desktop test: ℹ pass 1
+   1 node CI_COMPATIBLE (ubuntu-latest)	Test	2026-09-08T17:09:14.5343684Z packages/ui test: ℹ pass 1
+   1 node CI_COMPATIBLE (ubuntu-latest)	Test	2026-09-08T17:09:14.5522650Z packages/vscode-adapter test: ℹ pass 1
+   1 node CI_COMPATIBLE (windows-latest)	Test	2026-09-08T17:09:27.5575234Z packages/design-tokens test: ℹ pass 1
+   1 node CI_COMPATIBLE (windows-latest)	Test	2026-09-08T17:09:27.5943543Z apps/desktop test: ℹ pass 1
+   1 node CI_COMPATIBLE (windows-latest)	Test	2026-09-08T17:09:27.6299753Z packages/surface-protocol test: ℹ pass 1
+   1 node CI_COMPATIBLE (windows-latest)	Test	2026-09-08T17:09:27.6461465Z packages/ide-adapter-core test: ℹ pass 1
+   1 node CI_COMPATIBLE (windows-latest)	Test	2026-09-08T17:09:27.8325844Z packages/ui test: ℹ pass 1
+   1 node CI_COMPATIBLE (windows-latest)	Test	2026-09-08T17:09:27.8369371Z packages/vscode-adapter test: ℹ pass 1
+   1 rust CI_COMPATIBLE (macos-latest)	Architecture dependency lint (docs/12, docs/81)	2026-09-08T17:09:39.9747520Z architecture-lint: 33 workspace members, 15 forbid rules, 1 confine rules, 0 violation(s)
+   1 rust CI_COMPATIBLE (macos-latest)	Install pinned Rust toolchain (rust-toolchain.toml)	2026-09-08T17:09:15.7436500Z info: the currently active `rustc` version is `rustc 1.97.1 (8bab26f4f 2026-07-14)`
+   1 rust CI_COMPATIBLE (macos-latest)	Install pinned Rust toolchain (rust-toolchain.toml)	2026-09-08T17:09:15.8260680Z rustc 1.97.1 (8bab26f4f 2026-07-14)
+   1 rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-08T17:09:38.3392770Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+   1 rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-08T17:09:39.0923280Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.75s
+   1 rust CI_COMPATIBLE (ubuntu-latest)	Architecture dependency lint (docs/12, docs/81)	2026-09-08T17:09:25.0109428Z architecture-lint: 33 workspace members, 15 forbid rules, 1 confine rules, 0 violation(s)
+   1 rust CI_COMPATIBLE (ubuntu-latest)	Install pinned Rust toolchain (rust-toolchain.toml)	2026-09-08T17:09:10.4783555Z info: the currently active `rustc` version is `rustc 1.97.1 (8bab26f4f 2026-07-14)`
+   1 rust CI_COMPATIBLE (ubuntu-latest)	Install pinned Rust toolchain (rust-toolchain.toml)	2026-09-08T17:09:10.5219906Z rustc 1.97.1 (8bab26f4f 2026-07-14)
+   1 rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-08T17:09:24.3122262Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+   1 rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-08T17:09:24.5421914Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.23s
+   1 rust CI_COMPATIBLE (windows-latest)	Architecture dependency lint (docs/12, docs/81)	2026-09-08T17:10:13.3089204Z architecture-lint: 33 workspace members, 15 forbid rules, 1 confine rules, 0 violation(s)
+   1 rust CI_COMPATIBLE (windows-latest)	Install pinned Rust toolchain (rust-toolchain.toml)	2026-09-08T17:09:21.1537568Z info: the currently active `rustc` version is `rustc 1.97.1 (8bab26f4f 2026-07-14)`
+   1 rust CI_COMPATIBLE (windows-latest)	Install pinned Rust toolchain (rust-toolchain.toml)	2026-09-08T17:09:22.3820536Z rustc 1.97.1 (8bab26f4f 2026-07-14)
+   1 rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-08T17:10:06.4922178Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+   1 rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-08T17:10:11.1777456Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.66s

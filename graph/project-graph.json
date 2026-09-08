@@ -952,8 +952,16 @@
    "milestone": "M0",
    "order": 0,
    "source": "docs/43",
-   "status": "BLOCKED",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-34255336543",
+    "commit:b20de22",
+    "artifact:evidence/m0/M0.1/evidence.json",
+    "commit:425d80d",
+    "artifact:evidence/m0/M0.1/TASK_CARD.md",
+    "artifact:evidence/m0/M0.1/ci-run-34255336543.json",
+    "env:rust-1.97.1-node-26.5.1-pnpm-11.8.0"
+   ],
    "notes": [
     {
      "at": "2026-09-08T16:37:29Z",
@@ -972,11 +980,34 @@
      "from": "IMPLEMENTING",
      "to": "BLOCKED",
      "note": "Blocked on hosted CI: GitHub Actions refused to start jobs for run 34253119985 (account payments failed / spending limit). Reproduction: gh run view 34253119985. Local evidence in evidence/m0/M0.1 (macOS fresh clone PASS, Linux container fresh clone PASS, injected forbidden edge REJECTED). Next safe action: owner fixes GitHub billing, reruns ci workflow; on green macOS/Linux/Windows run, resume at IMPLEMENTING and walk WIRED -> REAL_TESTING -> E2E_PROVEN -> COMPLETE with run: evidence."
+    },
+    {
+     "at": "2026-09-08T17:11:16Z",
+     "from": "BLOCKED",
+     "to": "IMPLEMENTING",
+     "note": "Blocker cleared: owner fixed GitHub billing; toolchain-install step fixed in b20de22."
+    },
+    {
+     "at": "2026-09-08T17:11:16Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "CI workflow invokes architecture-lint and the full build/test on every push; run 34255336543 executed it on three platforms."
+    },
+    {
+     "at": "2026-09-08T17:11:16Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Real cargo-metadata forbidden-edge tests and injected-edge fault case pass on hosted macOS/Linux/Windows runners (run 34255336543)."
+    },
+    {
+     "at": "2026-09-08T17:11:16Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "Fresh clone builds on macOS, Linux and Windows hosted CI; CI_COMPATIBLE only."
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-09-08T16:50:26Z",
-   "blocked_from": "IMPLEMENTING"
+   "status_changed_on": "2026-09-08T17:11:16Z"
   },
   {
    "id": "M0.2",
