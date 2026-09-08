@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 52,
-    "docs_bytes": 1037117
+    "root_and_tooling": 58,
+    "docs_bytes": 1037113
   },
   "sections": [
     {
@@ -851,8 +851,8 @@
       "section": "live-state",
       "section_title": "Live state",
       "title": "Build Manifest",
-      "bytes": 3749,
-      "sha256": "5ada3bfc00b781bf568d03265a38706be329afd12475d0d96d640a8608e4a4f9"
+      "bytes": 3745,
+      "sha256": "713222211a17c98c13f5528167c6e0df022dabdd8916659c356b4a1ae1bb0fa1"
     }
   ],
   "root_and_tooling": [
@@ -1063,8 +1063,38 @@
     },
     {
       "path": "evidence/m0/M0.1/TASK_CARD.md",
-      "bytes": 3898,
-      "sha256": "d7968e10523fa28be1b23f3214c41225a051940659a51628e0f2adcb3c504092"
+      "bytes": 4505,
+      "sha256": "c597a9e74a5fb4bb02efad5915a74c526192cd26775d613df5f628a24f44522e"
+    },
+    {
+      "path": "evidence/m0/M0.1/ci-run-34253119985.json",
+      "bytes": 201,
+      "sha256": "a200a78dc118e491331d8a0922f83ca924078dffa05665a157ef7a5350dd9854"
+    },
+    {
+      "path": "evidence/m0/M0.1/evidence.json",
+      "bytes": 2842,
+      "sha256": "5f3e3bab51cfcf49a2e1413e4c2dde9d15050f8866f406b4e5bf491ec5f08a67"
+    },
+    {
+      "path": "evidence/m0/M0.1/fresh-clone-linux-dossier-425d80d.log",
+      "bytes": 209,
+      "sha256": "f415eee1654ba75f6776bc97e9c95498ab9b5a33aa7b45e071c7bc89fe6a2b91"
+    },
+    {
+      "path": "evidence/m0/M0.1/fresh-clone-linux-node-425d80d.log",
+      "bytes": 733,
+      "sha256": "d0b9bea9982714039d4de44675e0b62c5aadf658ba7bc431bd8d74cbfad900da"
+    },
+    {
+      "path": "evidence/m0/M0.1/fresh-clone-linux-rust-425d80d.log",
+      "bytes": 705,
+      "sha256": "e4479b5b004531c95e0671d3f0fc123547a37ca272417c58d51d8170558e9d96"
+    },
+    {
+      "path": "evidence/m0/M0.1/fresh-clone-macos-425d80d.log",
+      "bytes": 34857,
+      "sha256": "c85b7e2c0c538764ffab1fa9dd5a710809526af2f06ce6d30a57f09b65ad1cd8"
     },
     {
       "path": "evidence/m0/M0.1/inject-failure.log",
@@ -1073,13 +1103,13 @@
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 40975,
-      "sha256": "63da8b5ed99919a73b13e3bc8d155111fa190b1ac6eee82a60386f7a439d6ddd"
+      "bytes": 40960,
+      "sha256": "81e960a6f0b2ae5c46429d66317410b4b9916aa84afc39c72cbe50eaa018317c"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1007747,
-      "sha256": "fa78f4c89af94e4be6e8cdbdaf11ec1223b85df879371b2dbbc0aff3c94781f2"
+      "bytes": 1008382,
+      "sha256": "5d780627ecb4483a9215a4145e8c06a2fcb9a6a2443701de179eb946e094d7f3"
     },
     {
       "path": "tools/build_graph.py",

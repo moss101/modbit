@@ -4,7 +4,7 @@
 
 | Milestone | Scope | Status | Required proof |
 |---|---|---|---|
-| M0 | repository/CI/protocol generation | IN_PROGRESS | clean clone build + architecture lint |
+| M0 | repository/CI/protocol generation | BLOCKED | clean clone build + architecture lint |
 | M1 | durable local shell/Core | NOT_STARTED | create task, kill/restart app+Core, exact recovery |
 | M2 | real local coding loop | NOT_STARTED | live provider + real repo edit/test/review |
 | M3 | context intelligence | NOT_STARTED | fixed-revision retrieval benchmarks + freshness proof |

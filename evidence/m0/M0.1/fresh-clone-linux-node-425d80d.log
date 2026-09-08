@@ -1,0 +1,22 @@
+v26.5.1
+Linux aarch64
+11.8.0
+Done in 1.5s using pnpm v11.8.0
+apps/desktop typecheck: Done
+packages/surface-protocol typecheck: Done
+packages/design-tokens typecheck: Done
+packages/ide-adapter-core typecheck: Done
+packages/ui typecheck: Done
+packages/vscode-adapter typecheck: Done
+apps/desktop test: ℹ pass 1
+apps/desktop test: ℹ fail 0
+packages/design-tokens test: ℹ pass 1
+packages/design-tokens test: ℹ fail 0
+packages/ide-adapter-core test: ℹ pass 1
+packages/ide-adapter-core test: ℹ fail 0
+packages/surface-protocol test: ℹ pass 1
+packages/surface-protocol test: ℹ fail 0
+packages/ui test: ℹ pass 1
+packages/vscode-adapter test: ℹ pass 1
+packages/vscode-adapter test: ℹ fail 0
+packages/ui test: ℹ fail 0

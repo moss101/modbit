@@ -1,0 +1,10 @@
+rustc 1.97.1 (8bab26f4f 2026-07-14)
+Linux aarch64
+PRETTY_NAME="Debian GNU/Linux 12 (bookworm)"
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.87s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.14s
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.63s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.01s
+     Running `target/debug/architecture-lint --manifest-path Cargo.toml --rules tools/architecture-lint/rules.toml`
+architecture-lint: 33 workspace members, 15 forbid rules, 1 confine rules, 0 violation(s)

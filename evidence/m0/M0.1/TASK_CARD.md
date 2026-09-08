@@ -62,7 +62,15 @@ A fresh clone builds and tests on macOS, Linux and Windows CI; forbidden depende
 
 ## Completion evidence
 
-See `evidence.json` in this directory and the `--evidence` references on graph node M0.1.
+- commit/revision: 425d80d4b80534f2066a6c9d1a68d725778dcd97 (scaffold), evidence commit follows
+- test run IDs: `fresh-clone-macos-425d80d`, `fresh-clone-linux-rust-425d80d`, `fresh-clone-linux-node-425d80d`, `fresh-clone-linux-dossier-425d80d`, `inject-failure-browser-core-runtime` (all in `evidence.json`)
+- artifacts/effect/event refs: `evidence/m0/M0.1/evidence.json`, logs in this directory
+- environment/build digest: see `evidence.json` `environment`
+- hosted CI: run 34253119985 did not start (GitHub billing); Windows unproven
+
+## Remaining acceptance criteria
+
+- green `ci` workflow on macOS, Linux and Windows runners (blocked on GitHub Actions billing; see `evidence.json` `blocker`)
 
 ## Status
 

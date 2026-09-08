@@ -1,0 +1,27 @@
+{
+  "task": "M0.1",
+  "commit": "425d80d4b80534f2066a6c9d1a68d725778dcd97",
+  "evidence_tier": "release-critical",
+  "environment": {
+    "macos": {"os": "macOS 26.5.1 arm64", "rustc": "1.97.1", "node": "26.5.1", "pnpm": "11.8.0", "python": "3.9.6"},
+    "linux": {"os": "Debian 12 bookworm aarch64 (Docker 29.7.2, images rust:1.97.1-bookworm, node:26.5.1-bookworm, python:3.12-slim)", "rustc": "1.97.1", "node": "26.5.1", "pnpm": "11.8.0"}
+  },
+  "runs": [
+    {"id": "fresh-clone-macos-425d80d", "kind": "fresh clone build+test+lint+pnpm+dossier", "platform": "macos", "result": "PASS", "log": "fresh-clone-macos-425d80d.log"},
+    {"id": "fresh-clone-linux-rust-425d80d", "kind": "fresh clone fmt+clippy+build+test+architecture-lint", "platform": "linux", "result": "PASS", "log": "fresh-clone-linux-rust-425d80d.log"},
+    {"id": "fresh-clone-linux-node-425d80d", "kind": "fresh clone pnpm install --frozen-lockfile + typecheck + test", "platform": "linux", "result": "PASS", "log": "fresh-clone-linux-node-425d80d.log"},
+    {"id": "fresh-clone-linux-dossier-425d80d", "kind": "check_dossier --manifest + test_dossier", "platform": "linux", "result": "PASS", "log": "fresh-clone-linux-dossier-425d80d.log"},
+    {"id": "inject-failure-browser-core-runtime", "kind": "fault injection: modbit-browser -> modbit-core-runtime edge added to real workspace", "platform": "macos", "result": "REJECTED by architecture-lint (expected)", "log": "inject-failure.log"},
+    {"id": "gha-34253119985", "kind": "GitHub Actions ci workflow on push of 425d80d", "platform": "macos-latest, ubuntu-latest, windows-latest", "result": "NOT_STARTED: GitHub refused to start runners (account payment failed / spending limit)", "log": "ci-run-34253119985.json"}
+  ],
+  "platform_labels": {"macos": "CI_COMPATIBLE (local fresh clone only; hosted CI not run)", "linux": "CI_COMPATIBLE (container fresh clone only; hosted CI not run)", "windows": "UNPROVEN"},
+  "acceptance": {
+    "fresh clone builds on macOS/Linux/Windows CI": "PARTIAL: macOS and Linux proven from a fresh clone locally; Windows and hosted CI blocked by GitHub Actions billing",
+    "forbidden dependency test works": "PASS: unit tests, real cargo-metadata tests on disposable and real workspaces, CLI exit codes, and an injected forbidden edge in the real workspace"
+  },
+  "blocker": {
+    "description": "GitHub Actions jobs are not started: 'recent account payments have failed or your spending limit needs to be increased' (repository moss101/modbit, run 34253119985).",
+    "reproduction": "gh run view 34253119985",
+    "next_safe_action": "Owner fixes billing in GitHub Settings > Billing & plans, then re-runs the workflow (gh run rerun 34253119985 or push). On a green three-platform run, record run:<id> evidence and walk M0.1 WIRED -> REAL_TESTING -> E2E_PROVEN -> COMPLETE."
+  }
+}

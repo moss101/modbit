@@ -952,7 +952,7 @@
    "milestone": "M0",
    "order": 0,
    "source": "docs/43",
-   "status": "IMPLEMENTING",
+   "status": "BLOCKED",
    "evidence": [],
    "notes": [
     {
@@ -966,10 +966,17 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "Workspace roots, 26 crates, 6 Rust binaries, 6 TS packages, architecture-lint with real cargo-metadata tests, CI workflow written; local cargo/pnpm checks pass."
+    },
+    {
+     "at": "2026-09-08T16:50:26Z",
+     "from": "IMPLEMENTING",
+     "to": "BLOCKED",
+     "note": "Blocked on hosted CI: GitHub Actions refused to start jobs for run 34253119985 (account payments failed / spending limit). Reproduction: gh run view 34253119985. Local evidence in evidence/m0/M0.1 (macOS fresh clone PASS, Linux container fresh clone PASS, injected forbidden edge REJECTED). Next safe action: owner fixes GitHub billing, reruns ci workflow; on green macOS/Linux/Windows run, resume at IMPLEMENTING and walk WIRED -> REAL_TESTING -> E2E_PROVEN -> COMPLETE with run: evidence."
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-09-08T16:45:03Z"
+   "status_changed_on": "2026-09-08T16:50:26Z",
+   "blocked_from": "IMPLEMENTING"
   },
   {
    "id": "M0.2",
