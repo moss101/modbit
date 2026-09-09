@@ -1,0 +1,10 @@
+{
+  "task": "M1.4", "commit": "935bff2", "evidence_tier": "release-critical",
+  "runs": [
+    {"id": "gha-34316794416", "kind": "hosted CI on 935bff2", "result": "PASS: thirteen jobs green; desktop E2E (Playwright driving the real Electron app against the real modbit-core) passed on macOS, Linux under xvfb, and Windows, including Core SIGKILL -> degraded banner -> respawn -> recovery banner and a full app restart on the same profile", "url": "https://github.com/moss101/modbit/actions/runs/34316794416", "log": "ci-run-34316794416.json, ci-run-34316794416-e2e.log"},
+    {"id": "local-e2e", "kind": "same Playwright suite on the developer machine", "result": "PASS (2 tests, 2.1s)", "log": "local-e2e.log"},
+    {"id": "renderer-model-unit", "kind": "node --test on the event reducer", "result": "PASS (3 tests)"}
+  ],
+  "faults": ["Core process hard-killed under the running app: task card persists from the Core projection, no invented progress, recovery re-read", "app closed and relaunched: tasks return from the Core", "renderer sends invalid session id / goal: main rejects with BAD_ARGUMENT", "socket path length defect (M1.3) and ESM/CJS entry defect and quit-without-stopping-Core defect found by driving the real app; all fixed"],
+  "acceptance": {"Electron shell + real Fleet/New Task UI against Core": "PASS on three platforms through the docs/32 frontend completion gate (Playwright/Electron E2E against real local Core through process restart)"}
+}

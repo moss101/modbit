@@ -1253,8 +1253,15 @@
    "milestone": "M1",
    "order": 3,
    "source": "docs/43",
-   "status": "IMPLEMENTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-34316794416",
+    "commit:935bff2",
+    "artifact:evidence/m1/M1.4/evidence.json",
+    "artifact:evidence/m1/M1.4/TASK_CARD.md",
+    "artifact:evidence/m1/M1.4/local-e2e.log",
+    "test:fleet.spec.ts"
+   ],
    "notes": [
     {
      "at": "2026-09-09T05:21:55Z",
@@ -1267,10 +1274,22 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "Electron main/preload/renderer, Node SurfaceProtocol client, Core supervisor with restart, Fleet + New Task screens, Playwright E2E incl. Core kill/recovery and app restart passing locally."
+    },
+    {
+     "at": "2026-09-09T05:57:53Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Electron main is the only Core client; renderer reaches Core only through the preload bridge; CI job desktop-e2e runs on three platforms (run 34316794416)."
+    },
+    {
+     "at": "2026-09-09T05:57:53Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Playwright/Electron E2E against the real Core incl. Core kill/recovery and app restart passes on hosted macOS/Linux/Windows."
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-09-09T05:54:24Z"
+   "status_changed_on": "2026-09-09T05:57:53Z"
   },
   {
    "id": "M1.5",
