@@ -491,7 +491,16 @@ async fn kill_points_during_a_command_stream_never_duplicate_or_tear_state() {
                 }
             })
         };
-        tokio::time::sleep(Duration::from_millis(15 + (round as u64 * 23) % 60)).await;
+        // Wait until the writer has real progress (platform latency varies:
+        // Windows named pipes are slower than Unix sockets), then kill at a
+        // round-dependent moment so kills land at different points.
+        let progress_target = 3 + (round as usize * 5) % 12;
+        let deadline = std::time::Instant::now() + Duration::from_secs(30);
+        while acked.lock().unwrap().len() < progress_target && std::time::Instant::now() < deadline
+        {
+            tokio::time::sleep(Duration::from_millis(1)).await;
+        }
+        tokio::time::sleep(Duration::from_micros(((round as u64 * 7919) % 5000) + 200)).await;
         core.kill();
         let _ = writer.await;
         let sent = sent.lock().unwrap().clone();
