@@ -1781,8 +1781,17 @@
    "milestone": "M2",
    "order": 8,
    "source": "docs/43",
-   "status": "IMPLEMENTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "test:m2_9_review_surface_applies_per_hunk_decisions_and_commits",
+    "test:selective_application_matches_user_choices_exactly",
+    "test:review.spec.ts",
+    "run:gha-34391973639",
+    "commit:1fac234",
+    "commit:0eedd12",
+    "artifact:evidence/m2/M2.9/evidence.json",
+    "artifact:evidence/m2/M2.9/TASK_CARD.md"
+   ],
    "notes": [
     {
      "at": "2026-09-09T18:43:24Z",
@@ -1795,9 +1804,33 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "git diff parsing + selective hunk application; Core GetReviewBundle/GetCodeView/DecideReview with revision-bound per-hunk revert, commit, RETURN with queued feedback; desktop Review screen and Start action; CLI review show/decide"
+    },
+    {
+     "at": "2026-09-09T18:59:52Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Core GetReviewBundle/GetCodeView/DecideReview; desktop Review screen and Start action over validated IPC; CLI review show/decide"
+    },
+    {
+     "at": "2026-09-09T18:59:52Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Real Git checkout, real Core, real Electron app with a scripted model; per-hunk decisions and restart faults pass on hosted macOS/Linux/Windows"
+    },
+    {
+     "at": "2026-09-09T18:59:53Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "Hosted CI run 34391973639 green on three platforms"
+    },
+    {
+     "at": "2026-09-09T18:59:53Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Sealed with hosted CI evidence"
     }
    ],
-   "status_changed_on": "2026-09-09T18:43:24Z"
+   "status_changed_on": "2026-09-09T18:59:53Z"
   },
   {
    "id": "M3.1",
