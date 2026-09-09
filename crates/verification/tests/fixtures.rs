@@ -697,3 +697,69 @@ fn qual_ev_0069_disabled_semantic_verification_makes_zero_model_calls() {
         "no semantic verifier path exists"
     );
 }
+
+/// QUAL-EV-0068: a verifier that crashes (killed by a signal, or never
+/// starts) yields an INDETERMINATE completion that blocks acceptance; it is
+/// never mapped to a pass.
+#[tokio::test]
+async fn qual_ev_0068_verifier_crash_is_indeterminate_never_success() {
+    let (tmp, root) = fixture_copy("rust-cli");
+    let sink = MemSink::default();
+    let engine = VerificationEngine::new(&ProcessRunner, &sink, VerificationPolicy::default());
+    let env = flaky_env(tmp.path());
+    let crash = if cfg!(unix) {
+        vec!["sh".to_owned(), "-c".to_owned(), "kill -9 $$".to_owned()]
+    } else {
+        vec![
+            root.join("no-such-verifier.exe")
+                .to_string_lossy()
+                .into_owned(),
+        ]
+    };
+    let mut plan = derive(&root, &[], &[]);
+    plan.commands = vec![CheckCommand {
+        id: "suite:crashing".into(),
+        family: RunnerFamily::ConfiguredCommand,
+        argv: crash,
+        mandatory: true,
+        reporter_file: None,
+    }];
+    let (baseline, _) = engine
+        .run_stage(
+            &plan,
+            "plan-c",
+            "run-c",
+            Stage::Baseline,
+            &root,
+            "rev-0",
+            &env,
+            &[],
+        )
+        .await;
+    let (completion, _) = engine
+        .run_stage(
+            &plan,
+            "plan-c",
+            "run-c",
+            Stage::Completion,
+            &root,
+            "rev-1",
+            &env,
+            &[],
+        )
+        .await;
+    assert_ne!(completion.status, ReportStatus::Passed, "{completion:?}");
+    assert!(
+        completion
+            .reports
+            .iter()
+            .all(|r| r.status != ReportStatus::Passed
+                && r.checks.iter().all(|c| c.status != CheckStatus::Pass)),
+        "{completion:?}"
+    );
+    let a = attribute(&baseline, &completion, &derive(&root, &[], &[]));
+    assert!(
+        a.blocks_acceptance && a.inconclusive,
+        "crash is INDETERMINATE and blocks acceptance: {a:?}"
+    );
+}
