@@ -337,26 +337,62 @@ async fn vitest_fixture_parses_structured_reports_when_vitest_is_installed() {
             .find(|c| c.location.symbol.as_deref() == Some(name))
             .map(|c| c.status)
     };
-    assert_eq!(status_of("cart formats totals"), Some(CheckStatus::Pass));
+    assert_eq!(status_of("cart > formats totals"), Some(CheckStatus::Pass));
     assert_eq!(
-        status_of("cart acceptance rejects negative quantity"),
+        status_of("cart > acceptance rejects negative quantity"),
         Some(CheckStatus::Fail)
     );
     assert_eq!(
-        status_of("cart preexisting failing unrelated"),
+        status_of("cart > preexisting failing unrelated"),
         Some(CheckStatus::Fail)
     );
+    let diagnostics = baseline
+        .reports
+        .iter()
+        .map(|r| {
+            format!(
+                "{:?} exit={:?} adapter={} argv={:?} checks={:?}",
+                r.stage,
+                r.exit_code,
+                r.parser.adapter,
+                r.runner.argv,
+                r.checks
+                    .iter()
+                    .map(|c| (c.check_id.clone(), c.status))
+                    .collect::<Vec<_>>()
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    let raw_tails = sink
+        .0
+        .lock()
+        .unwrap()
+        .iter()
+        .map(|b| {
+            let t = String::from_utf8_lossy(b);
+            t.chars()
+                .rev()
+                .take(700)
+                .collect::<String>()
+                .chars()
+                .rev()
+                .collect::<String>()
+        })
+        .collect::<Vec<_>>()
+        .join("\n---\n");
     assert_eq!(
-        status_of("cart flaky first run fails"),
+        status_of("cart > flaky first run fails"),
         Some(CheckStatus::Flaky),
-        "{:?}",
-        baseline.checks()
+        "{diagnostics}\nraw tails:\n{raw_tails}"
     );
     assert_eq!(quarantines.len(), 1);
     let acc = baseline
         .checks()
         .into_iter()
-        .find(|c| c.location.symbol.as_deref() == Some("cart acceptance rejects negative quantity"))
+        .find(|c| {
+            c.location.symbol.as_deref() == Some("cart > acceptance rejects negative quantity")
+        })
         .unwrap();
     assert_eq!(acc.location.path.as_deref(), Some("test/cart.test.ts"));
     assert_eq!(acc.error_class.as_deref(), Some("AssertionError"));

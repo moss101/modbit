@@ -206,7 +206,7 @@ pub fn parse_cargo(stdout: &str, stderr: &str) -> Vec<CheckResult> {
         .map(str::trim)
         .filter_map(|l| {
             if let Some(rest) = l.strip_prefix("Running ") {
-                rest.split(" (").next().map(|s| s.trim().to_owned())
+                rest.split(" (").next().map(|s| s.trim().replace('\\', "/"))
             } else if l.starts_with("Doc-tests ") {
                 Some("doc-tests".into())
             } else {
@@ -337,6 +337,16 @@ pub fn parse_vitest_json(json: &str) -> Vec<CheckResult> {
             .unwrap_or_else(|| name.to_owned());
         for a in file["assertionResults"].as_array().into_iter().flatten() {
             let full = a["fullName"].as_str().unwrap_or_default();
+            // vitest's name filter (`-t`) matches `ancestors > title`, not the
+            // space-joined fullName; the symbol carries the filterable form.
+            let mut symbol: Vec<String> = a["ancestorTitles"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|t| t.as_str().map(str::to_owned))
+                .collect();
+            symbol.push(a["title"].as_str().unwrap_or(full).to_owned());
+            let symbol = symbol.join(" > ");
             let status = match a["status"].as_str() {
                 Some("passed") => CheckStatus::Pass,
                 Some("failed") => CheckStatus::Fail,
@@ -367,7 +377,7 @@ pub fn parse_vitest_json(json: &str) -> Vec<CheckResult> {
                 location: Location {
                     path: Some(rel.clone()),
                     line,
-                    symbol: Some(full.to_owned()),
+                    symbol: Some(symbol),
                 },
                 error_class,
                 message_fingerprint: if msgs.is_empty() {
