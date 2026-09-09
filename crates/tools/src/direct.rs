@@ -693,6 +693,301 @@ async fn run_process(ctx: &InvokeContext, args: &Value, request_id: &str) -> Too
     }
 }
 
+/// Wait window for `shell.read` when the process is still running.
+const READ_WAIT_MS: u64 = 250;
+
+tool!(
+    ShellStart,
+    spec(
+        "shell.start",
+        "Start a long-running command in the background and return its durable handle (session_id); read it with shell.read, list with shell.list, stop with shell.cancel (REQ-EV-0221).",
+        EffectClass::ReversibleWrite,
+        serde_json::from_str(SHELL_SCHEMA).expect("schema"),
+        &["shell.exec"],
+        Idempotency::NonIdempotent
+    ),
+    |ctx, args| {
+        let Some(target) = &ctx.exec else {
+            return ToolOutcome::infra("NO_BROKER", "no terminal broker is attached to this Core");
+        };
+        let rid = request_id(ctx, &args, "bg");
+        let req = match exec_request(ctx, &args, &rid).await {
+            Ok(r) => r,
+            Err(o) => return o,
+        };
+        let argv = req.argv.clone();
+        let mut client = match ExecClient::connect(&target.endpoint, &target.boot_secret).await {
+            Ok(c) => c,
+            Err(e) => return ToolOutcome::infra("BROKER_UNAVAILABLE", e.to_string()),
+        };
+        if let Err(e) = client.exec(req).await {
+            return ToolOutcome::infra("BROKER_SEND", e.to_string());
+        }
+        loop {
+            match client.next().await {
+                Ok(Some(Event::Started(st))) => {
+                    // Detach: the broker keeps the session; the handle is durable.
+                    return ToolOutcome::ok(
+                        json!({"session_id": st.session_id, "request_id": rid, "argv": argv, "replayed": st.replayed, "running": true}),
+                    );
+                }
+                Ok(Some(Event::Exited(x))) => {
+                    return ToolOutcome::ok(
+                        json!({"session_id": x.session_id, "request_id": rid, "argv": argv, "running": false, "exit_code": x.exit_code, "output_ref": x.output_ref, "total_bytes": x.total_bytes}),
+                    );
+                }
+                Ok(Some(_)) => {}
+                Ok(None) => return ToolOutcome::infra("BROKER_CLOSED", "connection closed"),
+                Err(e) => return ToolOutcome::infra("BROKER_ERROR", e.to_string()),
+            }
+        }
+    }
+);
+
+tool!(
+    ShellRead,
+    spec(
+        "shell.read",
+        "Read a background command's output from a byte cursor: a bounded preview (max_bytes, default 8192), the next cursor, running/exit status and, once exited, the full OutputRef; waits at most wait_ms (default 250) for output (REQ-EV-0221).",
+        EffectClass::ReadOnly,
+        json!({"type":"object","properties":{"session_id":{"type":"string"},"after_cursor":{"type":"integer","minimum":0},"wait_ms":{"type":"integer","minimum":0,"maximum":10000},"max_bytes":{"type":"integer","minimum":1}},"required":["session_id"],"additionalProperties":false}),
+        &["shell.exec"],
+        Idempotency::Idempotent
+    ),
+    |ctx, args| {
+        let Some(target) = &ctx.exec else {
+            return ToolOutcome::infra("NO_BROKER", "no terminal broker is attached to this Core");
+        };
+        let session_id = s(&args, "session_id");
+        let after = args
+            .get("after_cursor")
+            .and_then(Value::as_u64)
+            .unwrap_or(0);
+        let wait = std::time::Duration::from_millis(
+            args.get("wait_ms")
+                .and_then(Value::as_u64)
+                .unwrap_or(READ_WAIT_MS),
+        );
+        let mut client = match ExecClient::connect(&target.endpoint, &target.boot_secret).await {
+            Ok(c) => c,
+            Err(e) => return ToolOutcome::infra("BROKER_UNAVAILABLE", e.to_string()),
+        };
+        if let Err(e) = client.attach(&session_id, after).await {
+            return ToolOutcome::infra("BROKER_SEND", e.to_string());
+        }
+        let budget = (args
+            .get("max_bytes")
+            .and_then(Value::as_u64)
+            .unwrap_or(8192) as usize)
+            .min(ctx.output_budget_bytes as usize)
+            .max(1);
+        let mut data = Vec::new();
+        let mut next_cursor = after;
+        let mut truncated = false;
+        let mut exited: Option<Value> = None;
+        let mut running = true;
+        let deadline = tokio::time::Instant::now() + wait;
+        loop {
+            let ev = match tokio::time::timeout_at(deadline, client.next()).await {
+                Ok(ev) => ev,
+                Err(_) => break,
+            };
+            match ev {
+                Ok(Some(Event::Started(_))) => {}
+                Ok(Some(Event::Output(o))) => {
+                    next_cursor = o.cursor + o.data.len() as u64;
+                    if data.len() < budget {
+                        let room = budget - data.len();
+                        if o.data.len() > room {
+                            data.extend_from_slice(&o.data[..room]);
+                            truncated = true;
+                            next_cursor = o.cursor + room as u64;
+                            break;
+                        }
+                        data.extend_from_slice(&o.data);
+                    } else {
+                        truncated = true;
+                        break;
+                    }
+                }
+                Ok(Some(Event::Exited(x))) => {
+                    running = false;
+                    exited = Some(
+                        json!({"exit_code": x.exit_code, "signal": x.signal, "timed_out": x.timed_out, "cancelled": x.cancelled, "output_ref": x.output_ref, "total_bytes": x.total_bytes, "duration_ms": x.duration_ms}),
+                    );
+                    break;
+                }
+                Ok(Some(Event::Sessions(_))) => {}
+                Ok(None) => break,
+                Err(modbit_terminal::Error::Exec { code, message, .. }) => {
+                    return ToolOutcome::fail(&code, message);
+                }
+                Err(e) => return ToolOutcome::infra("BROKER_ERROR", e.to_string()),
+            }
+        }
+        ToolOutcome::ok(
+            json!({"session_id": session_id, "after_cursor": after, "preview": String::from_utf8_lossy(&data), "preview_bytes": data.len(), "next_cursor": next_cursor, "truncated": truncated, "running": running, "exited": exited}),
+        )
+    }
+);
+
+tool!(
+    ShellList,
+    spec(
+        "shell.list",
+        "List the broker's background command sessions with their status (REQ-EV-0221).",
+        EffectClass::ReadOnly,
+        json!({"type":"object","properties":{},"additionalProperties":false}),
+        &["shell.exec"],
+        Idempotency::Idempotent
+    ),
+    |ctx, _args| {
+        let Some(target) = &ctx.exec else {
+            return ToolOutcome::infra("NO_BROKER", "no terminal broker is attached to this Core");
+        };
+        let mut client = match ExecClient::connect(&target.endpoint, &target.boot_secret).await {
+            Ok(c) => c,
+            Err(e) => return ToolOutcome::infra("BROKER_UNAVAILABLE", e.to_string()),
+        };
+        if let Err(e) = client.list().await {
+            return ToolOutcome::infra("BROKER_SEND", e.to_string());
+        }
+        loop {
+            match client.next().await {
+                Ok(Some(Event::Sessions(list))) => {
+                    let sessions: Vec<Value> = list
+                        .iter()
+                        .map(|x| json!({"session_id": x.session_id, "request_id": x.request_id, "argv": x.argv, "running": x.running, "bytes_so_far": x.bytes_so_far, "exit_code": x.exit_code}))
+                        .collect();
+                    return ToolOutcome::ok(json!({"sessions": sessions}));
+                }
+                Ok(Some(_)) => {}
+                Ok(None) => return ToolOutcome::infra("BROKER_CLOSED", "connection closed"),
+                Err(e) => return ToolOutcome::infra("BROKER_ERROR", e.to_string()),
+            }
+        }
+    }
+);
+
+tool!(
+    ShellCancel,
+    spec(
+        "shell.cancel",
+        "Stop a background command by handle; the exit is observed and the full OutputRef returned (REQ-EV-0221).",
+        EffectClass::ReversibleWrite,
+        json!({"type":"object","properties":{"session_id":{"type":"string"}},"required":["session_id"],"additionalProperties":false}),
+        &["shell.exec"],
+        Idempotency::Idempotent
+    ),
+    |ctx, args| {
+        let Some(target) = &ctx.exec else {
+            return ToolOutcome::infra("NO_BROKER", "no terminal broker is attached to this Core");
+        };
+        let session_id = s(&args, "session_id");
+        let mut client = match ExecClient::connect(&target.endpoint, &target.boot_secret).await {
+            Ok(c) => c,
+            Err(e) => return ToolOutcome::infra("BROKER_UNAVAILABLE", e.to_string()),
+        };
+        // Attach live first so the exit is observed, then cancel.
+        if let Err(e) = client.attach(&session_id, u64::MAX / 2).await {
+            return ToolOutcome::infra("BROKER_SEND", e.to_string());
+        }
+        if let Err(e) = client.cancel(&session_id).await {
+            return ToolOutcome::infra("BROKER_SEND", e.to_string());
+        }
+        let deadline = std::time::Duration::from_secs(10);
+        loop {
+            match tokio::time::timeout(deadline, client.next()).await {
+                Ok(Ok(Some(Event::Exited(x)))) => {
+                    return ToolOutcome::ok(
+                        json!({"session_id": session_id, "cancelled": true, "exit_code": x.exit_code, "signal": x.signal, "output_ref": x.output_ref, "total_bytes": x.total_bytes}),
+                    );
+                }
+                Ok(Ok(Some(_))) => {}
+                Ok(Ok(None)) => return ToolOutcome::infra("BROKER_CLOSED", "connection closed"),
+                Ok(Err(modbit_terminal::Error::Exec { code, message, .. })) => {
+                    return ToolOutcome::fail(&code, message);
+                }
+                Ok(Err(e)) => return ToolOutcome::infra("BROKER_ERROR", e.to_string()),
+                Err(_) => {
+                    return ToolOutcome {
+                        unknown_outcome: Some(
+                            "the process did not report an exit within 10s of cancel".into(),
+                        ),
+                        ..ToolOutcome::infra("CANCEL_TIMEOUT", "no exit observed")
+                    };
+                }
+            }
+        }
+    }
+);
+
+/// Build the broker request for a shell-backed tool (argv, policy-checked cwd, env, stdin, budget).
+async fn exec_request(
+    ctx: &InvokeContext,
+    args: &Value,
+    request_id: &str,
+) -> std::result::Result<ExecRequest, ToolOutcome> {
+    let argv: Vec<String> = args
+        .get("argv")
+        .and_then(Value::as_array)
+        .map(|a| {
+            a.iter()
+                .filter_map(Value::as_str)
+                .map(str::to_owned)
+                .collect()
+        })
+        .unwrap_or_default();
+    if argv.is_empty() {
+        return Err(ToolOutcome::fail("ARGV_REQUIRED", "argv must not be empty"));
+    }
+    let cwd = match (&ctx.workspace, args.get("cwd").and_then(Value::as_str)) {
+        (Some(ws), Some(rel)) => match ws.lock().await.resolve(rel) {
+            Ok(r) => r.absolute.to_string_lossy().into_owned(),
+            Err(e) => return Err(ws_err(e)),
+        },
+        (_, _) => match &ctx.workspace_root {
+            Some(root) => root.to_string_lossy().into_owned(),
+            None => return Err(no_workspace()),
+        },
+    };
+    let env: std::collections::HashMap<String, String> = args
+        .get("env")
+        .and_then(Value::as_object)
+        .map(|m| {
+            m.iter()
+                .filter_map(|(k, v)| v.as_str().map(|v| (k.clone(), v.to_owned())))
+                .collect()
+        })
+        .unwrap_or_default();
+    Ok(ExecRequest {
+        request_id: request_id.into(),
+        argv,
+        cwd,
+        env,
+        inherit_env: args
+            .get("inherit_env")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+        timeout_ms: args
+            .get("timeout_ms")
+            .and_then(Value::as_u64)
+            .unwrap_or(60_000),
+        pty: args.get("pty").and_then(Value::as_bool).unwrap_or(false),
+        stdin_mode: if args.get("stdin").and_then(Value::as_str).is_some() {
+            "open".into()
+        } else {
+            "closed".into()
+        },
+        output_budget_bytes: ctx.output_budget_bytes,
+        execution_profile: ctx.execution_profile.clone(),
+        capability_lease_id: ctx.capability_lease_id.map(|l| modbit_protocol::v1::Id {
+            value: l.as_bytes().to_vec(),
+        }),
+        terminal_session_id: None,
+    })
+}
+
 const SHELL_SCHEMA: &str = r#"{"type":"object","properties":{"argv":{"type":"array","items":{"type":"string"},"minItems":1},"cwd":{"type":"string"},"env":{"type":"object","additionalProperties":{"type":"string"}},"inherit_env":{"type":"boolean"},"timeout_ms":{"type":"integer","minimum":1},"pty":{"type":"boolean"},"stdin":{"type":"string"},"request_id":{"type":"string"}},"required":["argv"],"additionalProperties":false}"#;
 
 fn request_id(ctx: &InvokeContext, args: &Value, prefix: &str) -> String {
@@ -818,6 +1113,10 @@ pub fn register_direct(registry: &mut ToolRegistry) -> Result<()> {
         FsGlob::shared(),
         ChangeApply::shared(),
         ChangeBatch::shared(),
+        ShellStart::shared(),
+        ShellRead::shared(),
+        ShellList::shared(),
+        ShellCancel::shared(),
         GitStatus::shared(),
         GitDiff::shared(),
         GitWorktreeCreate::shared(),

@@ -381,6 +381,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "GetCodeView",
                     "DecideReview",
                     "UndoToolCall",
+                    "AskSideQuestion",
                 ]
                 .map(String::from)
                 .to_vec(),
@@ -1392,6 +1393,29 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 }
                 .encode_to_vec(),
             )
+        }
+        "AskSideQuestion" => {
+            let Ok(p) = wire::AskSideQuestion::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "AskSideQuestion");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            if p.text.trim().is_empty() {
+                return reject(cid, "BAD_PAYLOAD", "text required");
+            }
+            let task = {
+                let store = core.store.lock().await;
+                match store.task(&task_id) {
+                    Ok(Some(t)) => t,
+                    Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                }
+            };
+            match crate::side::ask(core, &task, &p.text, &p.endpoint, &p.model).await {
+                Ok(a) => accept(cid, false, a.encode_to_vec()),
+                Err((code, message)) => reject(cid, &code, message),
+            }
         }
         "UndoToolCall" => {
             let Ok(p) = wire::UndoToolCall::decode(env.payload.as_slice()) else {

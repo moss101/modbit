@@ -173,6 +173,64 @@
     "shell.exec"
    ],
    "test": "shell_exec_and_test_run_go_through_the_real_broker"
+  },
+  {
+   "tool": "shell.start",
+   "family": "shell",
+   "source_behaviors": [
+    "Bash run_in_background",
+    "background job"
+   ],
+   "owner": "Terminal Broker",
+   "effect": "ReversibleWrite",
+   "capabilities": [
+    "shell.exec"
+   ],
+   "test": "qual_ev_0221_background_handles_survive_client_restart_with_bounded_preview_and_cancel"
+  },
+  {
+   "tool": "shell.read",
+   "family": "shell",
+   "source_behaviors": [
+    "TaskOutput",
+    "BashOutput",
+    "tail"
+   ],
+   "owner": "Terminal Broker",
+   "effect": "ReadOnly",
+   "capabilities": [
+    "shell.exec"
+   ],
+   "test": "qual_ev_0221_background_handles_survive_client_restart_with_bounded_preview_and_cancel"
+  },
+  {
+   "tool": "shell.list",
+   "family": "shell",
+   "source_behaviors": [
+    "/tasks",
+    "jobs"
+   ],
+   "owner": "Terminal Broker",
+   "effect": "ReadOnly",
+   "capabilities": [
+    "shell.exec"
+   ],
+   "test": "qual_ev_0221_background_handles_survive_client_restart_with_bounded_preview_and_cancel"
+  },
+  {
+   "tool": "shell.cancel",
+   "family": "shell",
+   "source_behaviors": [
+    "TaskStop",
+    "KillShell",
+    "kill"
+   ],
+   "owner": "Terminal Broker",
+   "effect": "ReversibleWrite",
+   "capabilities": [
+    "shell.exec"
+   ],
+   "test": "qual_ev_0221_background_handles_survive_client_restart_with_bounded_preview_and_cancel"
   }
  ],
  "harness": [

@@ -13,6 +13,7 @@ mod probe;
 mod review;
 mod runtime;
 mod server;
+mod side;
 mod tools;
 mod undo;
 mod verify;

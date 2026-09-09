@@ -327,6 +327,24 @@ message UndoPlanView {
   uint64 workspace_revision = 5;
 }
 
+// REQ-EV-0261: a side question answered from a bounded snapshot of the task
+// (goal, plan, recent transcript) without touching the task's state or log.
+message AskSideQuestion {
+  Id task_id = 1;
+  string text = 2;
+  string endpoint = 3;            // empty = the run's defaults
+  string model = 4;
+}
+
+message SideAnswer {
+  string text = 1;
+  string route_json = 2;
+  uint64 input_tokens = 3;
+  uint64 output_tokens = 4;
+  uint64 last_offset = 5;         // the log offset, unchanged by the question
+  uint32 snapshot_messages = 6;   // how many transcript messages the snapshot carried
+}
+
 message GetCapabilityLeases {
   Id task_id = 1;
 }

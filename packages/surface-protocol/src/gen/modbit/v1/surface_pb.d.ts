@@ -1332,6 +1332,87 @@ export declare type UndoPlanView = Message<"modbit.v1.UndoPlanView"> & {
 export declare const UndoPlanViewSchema: GenMessage<UndoPlanView>;
 
 /**
+ * REQ-EV-0261: a side question answered from a bounded snapshot of the task
+ * (goal, plan, recent transcript) without touching the task's state or log.
+ *
+ * @generated from message modbit.v1.AskSideQuestion
+ */
+export declare type AskSideQuestion = Message<"modbit.v1.AskSideQuestion"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: string text = 2;
+   */
+  text: string;
+
+  /**
+   * empty = the run's defaults
+   *
+   * @generated from field: string endpoint = 3;
+   */
+  endpoint: string;
+
+  /**
+   * @generated from field: string model = 4;
+   */
+  model: string;
+};
+
+/**
+ * Describes the message modbit.v1.AskSideQuestion.
+ * Use `create(AskSideQuestionSchema)` to create a new message.
+ */
+export declare const AskSideQuestionSchema: GenMessage<AskSideQuestion>;
+
+/**
+ * @generated from message modbit.v1.SideAnswer
+ */
+export declare type SideAnswer = Message<"modbit.v1.SideAnswer"> & {
+  /**
+   * @generated from field: string text = 1;
+   */
+  text: string;
+
+  /**
+   * @generated from field: string route_json = 2;
+   */
+  routeJson: string;
+
+  /**
+   * @generated from field: uint64 input_tokens = 3;
+   */
+  inputTokens: bigint;
+
+  /**
+   * @generated from field: uint64 output_tokens = 4;
+   */
+  outputTokens: bigint;
+
+  /**
+   * the log offset, unchanged by the question
+   *
+   * @generated from field: uint64 last_offset = 5;
+   */
+  lastOffset: bigint;
+
+  /**
+   * how many transcript messages the snapshot carried
+   *
+   * @generated from field: uint32 snapshot_messages = 6;
+   */
+  snapshotMessages: number;
+};
+
+/**
+ * Describes the message modbit.v1.SideAnswer.
+ * Use `create(SideAnswerSchema)` to create a new message.
+ */
+export declare const SideAnswerSchema: GenMessage<SideAnswer>;
+
+/**
  * @generated from message modbit.v1.GetCapabilityLeases
  */
 export declare type GetCapabilityLeases = Message<"modbit.v1.GetCapabilityLeases"> & {

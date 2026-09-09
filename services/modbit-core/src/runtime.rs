@@ -422,7 +422,7 @@ fn append(
 }
 
 /// Rebuild the transcript and harness state from the task's events.
-async fn rebuild(
+pub(crate) async fn rebuild(
     core: &Core,
     task: &Task,
     budgets: Budgets,
@@ -664,18 +664,31 @@ async fn run_loop(
         // before this boundary (including before the loop started).
         let mut inputs = std::mem::take(&mut carried);
         inputs.extend(pending_inputs(&core, &task, seen_offset).await);
+        // SteeringPolicy (REQ-EV-0191): STEER = interrupt-and-replace (applied
+        // in order, and an in-flight model stream is cut when one arrives);
+        // COLLECT = coalesced into one message after the current turn;
+        // FOLLOW_UP = ordered separate turns (one per boundary, the rest carried).
+        let mut apply: Vec<(String, &str)> = Vec::new();
+        let mut collects: Vec<String> = Vec::new();
+        let mut follow_ups: Vec<String> = Vec::new();
         for (text, mode) in inputs {
-            let label = match mode {
-                InputMode::Steer => "STEER",
-                InputMode::Collect => "COLLECT",
-                InputMode::FollowUp => "FOLLOW_UP",
-            };
-            let entry = TranscriptEntry::User {
-                text: format!("[{label}] {text}"),
-            };
+            match mode {
+                InputMode::Steer => apply.push((text, "STEER")),
+                InputMode::Collect => collects.push(text),
+                InputMode::FollowUp => follow_ups.push(text),
+            }
+        }
+        if !collects.is_empty() {
+            apply.push((collects.join("\n"), "COLLECT"));
+        }
+        let mut follow_ups = follow_ups.into_iter();
+        if let Some(first) = follow_ups.next() {
+            apply.push((first, "FOLLOW_UP"));
+        }
+        carried.extend(follow_ups.map(|t| (t, InputMode::FollowUp)));
+        for (text, label) in apply {
             transcript.push(Message::text(Role::User, format!("[{label}] {text}")));
             state.steers += 1;
-            let _ = entry;
             let mut store = core.store.lock().await;
             let off = append(
                 &mut store,
@@ -855,7 +868,8 @@ async fn run_loop(
             tools: true,
             ..Default::default()
         };
-        let stream = match core.gateway.stream(request, &needs, cancel.clone()) {
+        let stream_cancel = cancel.child_token();
+        let stream = match core.gateway.stream(request, &needs, stream_cancel.clone()) {
             Ok(s) => s,
             Err(e) => {
                 let mut store = core.store.lock().await;
@@ -899,19 +913,76 @@ async fn run_loop(
         let mut usage = modbit_providers::Usage::default();
         let mut error: Option<(String, String)> = None;
         let mut events = stream.events;
-        while let Some(ev) = events.recv().await {
-            match ev {
-                ModelEvent::MessageDelta { text: t } => text.push_str(&t),
-                ModelEvent::ToolCallComplete {
-                    call_id,
-                    name,
-                    arguments_json,
-                } => calls.push((call_id, name, arguments_json)),
-                ModelEvent::Usage { usage: u } => usage = u,
-                ModelEvent::Completed { .. } => {}
-                ModelEvent::Error { code, message, .. } => error = Some((code, message)),
-                _ => {}
+        // A STEER queued while the model streams interrupts the stream
+        // (REQ-EV-0191 interrupt-and-replace); the log offset watch wakes us.
+        let mut offset_rx = core.last_offset.subscribe();
+        let mut interrupted = false;
+        loop {
+            tokio::select! {
+                ev = events.recv() => {
+                    let Some(ev) = ev else { break };
+                    match ev {
+                        ModelEvent::MessageDelta { text: t } => text.push_str(&t),
+                        ModelEvent::ToolCallComplete {
+                            call_id,
+                            name,
+                            arguments_json,
+                        } => calls.push((call_id, name, arguments_json)),
+                        ModelEvent::Usage { usage: u } => usage = u,
+                        ModelEvent::Completed { .. } => {}
+                        ModelEvent::Error { code, message, .. } => error = Some((code, message)),
+                        _ => {}
+                    }
+                }
+                changed = offset_rx.changed() => {
+                    if changed.is_err() {
+                        continue;
+                    }
+                    let steer_pending = pending_inputs(&core, &task, seen_offset)
+                        .await
+                        .iter()
+                        .any(|(_, m)| matches!(m, InputMode::Steer));
+                    if steer_pending {
+                        interrupted = true;
+                        stream_cancel.cancel();
+                        break;
+                    }
+                }
             }
+        }
+        if interrupted {
+            let mut store = core.store.lock().await;
+            let _ = append(
+                &mut store,
+                &core,
+                Lineage {
+                    step: Some(invoke_step),
+                    ..lturn
+                },
+                AggregateType::RunStep,
+                *invoke_step.as_bytes(),
+                vec![typed(
+                    "StepCancelled",
+                    &StepEvent::StepCancelled,
+                    actor.clone(),
+                )],
+            );
+            let _ = append(
+                &mut store,
+                &core,
+                lturn,
+                AggregateType::Turn,
+                *turn_id.as_bytes(),
+                vec![typed(
+                    "TurnInterrupted",
+                    &TurnEvent::TurnInterrupted,
+                    actor.clone(),
+                )],
+            );
+            drop(store);
+            // Nothing from the interrupted response is applied; the boundary
+            // applies the steer and the next turn starts from it.
+            continue 'outer;
         }
         let route_record = stream
             .route

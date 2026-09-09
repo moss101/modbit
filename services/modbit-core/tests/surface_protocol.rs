@@ -4651,3 +4651,377 @@ async fn qual_ev_0096_0116_0133_0044_0031_tool_surface_is_compiled_from_support_
         "{probed:?}"
     );
 }
+
+async fn queue_input(c: &mut Client, task: &Id, g: Option<u64>, cmd: u8, mode: &str, text: &str) {
+    use modbit_protocol::v1::QueueInput;
+    let ack = c
+        .command(envelope_fenced(
+            id16(cmd),
+            "QueueInput",
+            QueueInput {
+                task_id: Some(task.clone()),
+                input_id: format!("in-{cmd:02x}"),
+                mode: mode.into(),
+                text: text.into(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(ack.status, CommandStatus::Accepted as i32, "{ack:?}");
+}
+
+/// QUAL-EV-0221: a background command has a durable handle that survives a
+/// client restart; its output is read from a byte cursor as a bounded
+/// preview that continues exactly; list shows status; cancel stops the real
+/// process and the full OutputRef is returned.
+#[tokio::test]
+async fn qual_ev_0221_background_handles_survive_client_restart_with_bounded_preview_and_cancel() {
+    let (_repo, root) = plain_repo(&[("a.txt", "a\n")]);
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn(dir.path());
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xB0)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xB1, "local_trusted").await;
+    let start = r#"{"argv":["sh","-c","i=0; while true; do echo tick $i; i=$((i+1)); sleep 0.02; done"],"inherit_env":true,"timeout_ms":600000}"#;
+    let r = invoke_tool(&mut c, &task, g, 0xB2, 0xC1, "shell.start", start).await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let handle = so["session_id"].as_str().unwrap().to_owned();
+    assert!(so["running"].as_bool().unwrap());
+    // UI restart: a fresh client connection.
+    let mut c2 = core.client().await;
+    let r = invoke_tool(&mut c2, &task, g, 0xB3, 0xC2, "shell.list", "{}").await;
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let mine = so["sessions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|x| x["session_id"] == handle.as_str())
+        .unwrap_or_else(|| panic!("{so}"));
+    assert_eq!(mine["running"], true);
+    let read = |after: u64| {
+        format!(
+            r#"{{"session_id":"{handle}","after_cursor":{after},"wait_ms":400,"max_bytes":600}}"#
+        )
+    };
+    let r = invoke_tool(&mut c2, &task, g, 0xB4, 0xC3, "shell.read", &read(0)).await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let p1: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert!(
+        p1["preview_bytes"].as_u64().unwrap() <= 600 && p1["running"] == true,
+        "{p1}"
+    );
+    let next = p1["next_cursor"].as_u64().unwrap();
+    assert!(next > 0 && next == p1["preview_bytes"].as_u64().unwrap());
+    let r = invoke_tool(&mut c2, &task, g, 0xB5, 0xC4, "shell.read", &read(next)).await;
+    let p2: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(p2["after_cursor"].as_u64().unwrap(), next);
+    let combined = format!(
+        "{}{}",
+        p1["preview"].as_str().unwrap(),
+        p2["preview"].as_str().unwrap()
+    );
+    let ticks: Vec<u64> = combined
+        .lines()
+        .filter(|l| l.starts_with("tick ") && combined.ends_with('\n') || l.starts_with("tick "))
+        .filter_map(|l| l[5..].trim().parse().ok())
+        .collect();
+    assert!(ticks.len() >= 3, "{combined:?}");
+    let complete = if combined.ends_with('\n') {
+        &ticks[..]
+    } else {
+        &ticks[..ticks.len() - 1]
+    };
+    assert!(
+        complete.windows(2).all(|w| w[1] == w[0] + 1),
+        "the cursor continuation is exact, no gap or overlap: {complete:?}"
+    );
+    assert_eq!(complete[0], 0);
+    // Stop it: the real process exits and the complete output is by reference.
+    let r = invoke_tool(
+        &mut c2,
+        &task,
+        g,
+        0xB6,
+        0xC5,
+        "shell.cancel",
+        &format!(r#"{{"session_id":"{handle}"}}"#),
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let x: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert!(
+        x["cancelled"] == true && !x["output_ref"].as_str().unwrap().is_empty(),
+        "{x}"
+    );
+    assert!(
+        x["total_bytes"].as_u64().unwrap()
+            >= p1["preview_bytes"].as_u64().unwrap() + p2["preview_bytes"].as_u64().unwrap()
+    );
+    let r = invoke_tool(&mut c2, &task, g, 0xB7, 0xC6, "shell.list", "{}").await;
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let mine = so["sessions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|x| x["session_id"] == handle.as_str())
+        .unwrap();
+    assert_eq!(mine["running"], false);
+    let r = invoke_tool(&mut c2, &task, g, 0xB8, 0xC7, "shell.read", &read(0)).await;
+    let p3: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert!(
+        p3["running"] == false && p3["exited"]["cancelled"] == true,
+        "{p3}"
+    );
+    let r = invoke_tool(
+        &mut c2,
+        &task,
+        g,
+        0xB9,
+        0xC8,
+        "shell.read",
+        r#"{"session_id":"no-such-session","after_cursor":0}"#,
+    )
+    .await;
+    assert_eq!(
+        (r.status.as_str(), r.error_code.as_str()),
+        ("APPLICATION_FAILURE", "UNKNOWN_SESSION"),
+        "{r:?}"
+    );
+}
+
+async fn task_status(c: &mut Client, id: u8, task: &Id) -> modbit_protocol::v1::TaskStatus {
+    use modbit_protocol::v1::GetTaskStatus;
+    let ack = c
+        .command(envelope(
+            id16(id),
+            "GetTaskStatus",
+            GetTaskStatus {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    Client::result(&ack).unwrap()
+}
+
+/// QUAL-EV-0261: a side question is answered from a bounded snapshot (goal,
+/// plan, recent transcript) with no tools and appends nothing: the task's
+/// state and the log cursor are unchanged.
+#[tokio::test]
+async fn qual_ev_0261_side_question_answers_from_a_snapshot_without_touching_task_state_or_cursor()
+{
+    use modbit_protocol::v1::{AskSideQuestion, SideAnswer};
+    use serde_json::json;
+    let (_repo, root) = plain_repo(&[("a.txt", "a\n")]);
+    let (base, seen) = scripted_model(vec![json!({"text": "SIDE ANSWER"})], None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xC0)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xC1, "local_trusted").await;
+    let before = task_status(&mut c, 0xC2, &task).await;
+    let events_before = task_events(&core, &session, &task).await.len();
+    let ack = c
+        .command(envelope(
+            id16(0xC3),
+            "AskSideQuestion",
+            AskSideQuestion {
+                task_id: Some(task.clone()),
+                text: "what does a.txt contain?".into(),
+                endpoint: String::new(),
+                model: String::new(),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let a: SideAnswer = Client::result(&ack).unwrap();
+    assert_eq!(a.text, "SIDE ANSWER");
+    assert_eq!(a.last_offset, before.last_offset, "the cursor did not move");
+    let after = task_status(&mut c, 0xC4, &task).await;
+    assert_eq!(
+        (after.state.as_str(), after.last_offset, after.loop_alive),
+        (before.state.as_str(), before.last_offset, false)
+    );
+    assert_eq!(
+        task_events(&core, &session, &task).await.len(),
+        events_before,
+        "nothing appended"
+    );
+    let body = seen.lock().unwrap()[0].clone();
+    assert!(
+        body["tools"].as_array().is_none_or(|t| t.is_empty()),
+        "no tools on a side question: {body}"
+    );
+    let msgs = body["messages"].as_array().unwrap();
+    assert!(
+        msgs[0]["role"] == "system"
+            && msgs[0]["content"]
+                .as_str()
+                .unwrap()
+                .contains("Task goal: x")
+    );
+    assert!(
+        msgs.last().unwrap()["content"]
+            .as_str()
+            .unwrap()
+            .contains("[SIDE QUESTION] what does a.txt contain?")
+    );
+    assert!(
+        a.route_json.contains("\"endpoint\":\"openai\""),
+        "{}",
+        a.route_json
+    );
+    // An empty question is refused before any model call.
+    let err = c
+        .command(envelope(
+            id16(0xC5),
+            "AskSideQuestion",
+            AskSideQuestion {
+                task_id: Some(task.clone()),
+                text: "  ".into(),
+                endpoint: String::new(),
+                model: String::new(),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "BAD_PAYLOAD"),
+        "{err}"
+    );
+    assert_eq!(seen.lock().unwrap().len(), 1);
+}
+
+/// QUAL-EV-0191: SteeringPolicy. COLLECT inputs coalesce into one message
+/// after the current turn; FOLLOW_UP inputs become ordered separate turns;
+/// a STEER interrupts the in-flight model stream, nothing from the
+/// interrupted response is applied, and the next turn starts from the steer.
+#[tokio::test]
+async fn qual_ev_0191_steering_policy_interrupts_replaces_coalesces_and_orders() {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (_repo, root) = plain_repo(&[("a.txt", "a\n")]);
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "o", "expected_files": []}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    // The second request (one tool result so far) stalls until the stream is cut.
+    let (base, seen) = scripted_model(script, Some(1)).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xD0)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xD1, "local_trusted").await;
+    queue_input(&mut c, &task, g, 0xD2, "COLLECT", "c1").await;
+    queue_input(&mut c, &task, g, 0xD3, "COLLECT", "c2").await;
+    queue_input(&mut c, &task, g, 0xD4, "FOLLOW_UP", "f1").await;
+    queue_input(&mut c, &task, g, 0xD5, "FOLLOW_UP", "f2").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xD6),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: "openai".into(),
+                model: "gpt-5".into(),
+                max_turns: 0,
+                max_tool_calls: 0,
+                max_no_progress_turns: 0,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let wait_requests = |n: usize| {
+        let seen = std::sync::Arc::clone(&seen);
+        async move {
+            let deadline = std::time::Instant::now() + Duration::from_secs(60);
+            while seen.lock().unwrap().len() < n {
+                assert!(
+                    std::time::Instant::now() < deadline,
+                    "waiting for request {n}"
+                );
+                tokio::time::sleep(Duration::from_millis(50)).await;
+            }
+        }
+    };
+    wait_requests(2).await;
+    // Request 1 is streaming (stalled): a STEER cuts it.
+    queue_input(&mut c, &task, g, 0xD7, "STEER", "s1").await;
+    wait_requests(3).await;
+    let status = wait_task(&mut c, &task, 60).await;
+    assert!(
+        status.state == "ReadyForReview" || status.state == "Completed",
+        "{status:?}"
+    );
+    let bodies = seen.lock().unwrap().clone();
+    let user_texts = |b: &serde_json::Value| -> Vec<String> {
+        b["messages"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|m| m["role"] == "user")
+            .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+            .collect()
+    };
+    let first = user_texts(&bodies[0]);
+    assert!(
+        first.iter().any(|t| t == "[COLLECT] c1\nc2"),
+        "COLLECT coalesces into one message: {first:?}"
+    );
+    assert!(
+        first.iter().any(|t| t == "[FOLLOW_UP] f1") && !first.iter().any(|t| t.contains("f2")),
+        "FOLLOW_UP one per boundary: {first:?}"
+    );
+    let second = user_texts(&bodies[1]);
+    assert!(
+        second.iter().any(|t| t == "[FOLLOW_UP] f2") && !first.iter().any(|t| t.contains("f2")),
+        "the carried follow-up lands at the next boundary, as its own turn: {second:?}"
+    );
+    let third = user_texts(&bodies[2]);
+    assert!(third.iter().any(|t| t == "[STEER] s1"), "{third:?}");
+    let evs = task_events(&core, &session, &task).await;
+    assert!(
+        evs.iter()
+            .any(|(a, t, _)| a == "turn" && t == "TurnInterrupted"),
+        "{evs:#?}"
+    );
+    assert!(
+        evs.iter()
+            .any(|(a, t, _)| a == "run_step" && t == "StepCancelled")
+    );
+    let steered: Vec<String> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "TaskSteered")
+        .map(|(_, _, p)| p["text"].as_str().unwrap().to_owned())
+        .collect();
+    assert_eq!(
+        steered,
+        vec![
+            "c1
+c2", "f1", "f2", "s1"
+        ],
+        "order of applied inputs"
+    );
+}
