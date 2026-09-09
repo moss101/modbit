@@ -1,0 +1,114 @@
+// Local SurfaceProtocol frames (docs/30 "Local SurfaceProtocol"). One
+// SurfaceFrame per length-prefixed wire frame (crates/protocol framing).
+// Commands carry the canonical CommandEnvelope; the payload of each command
+// type is the matching message below encoded into `payload`.
+syntax = "proto3";
+
+package modbit.v1;
+
+import "google/protobuf/timestamp.proto";
+import "modbit/v1/domain.proto";
+import "modbit/v1/envelope.proto";
+import "modbit/v1/negotiation.proto";
+
+// Authentication sent with Hello: the boot-scoped secret the client obtained
+// from the Core it spawned (docs/30). Never logged, never persisted.
+message Auth {
+  bytes boot_secret = 1;
+}
+
+message ClientHello {
+  Hello hello = 1;
+  Auth auth = 2;
+}
+
+// Command payloads (M1.3 subset; docs/30 command list).
+message CreateSession {
+  Id space_id = 1;
+}
+
+message CreateTask {
+  Id session_id = 1;
+  string goal_text = 2;
+  Id workspace_id = 3;
+  string execution_profile = 4;
+  string origin = 5;  // desktop | cli | ide_adapter | forge_issue | forge_webhook
+}
+
+message GetSessionSnapshot {
+  Id session_id = 1;
+}
+
+message SubscribeEvents {
+  Id session_id = 1;
+  // Deliver events with offset > after_offset, then live events.
+  uint64 after_offset = 2;
+}
+
+// Command acknowledgement.
+enum CommandStatus {
+  COMMAND_STATUS_UNSPECIFIED = 0;
+  COMMAND_STATUS_ACCEPTED = 1;
+  COMMAND_STATUS_REPLAYED = 2;     // idempotent replay of an earlier command_id
+  COMMAND_STATUS_REJECTED = 3;     // typed error in `error`
+}
+
+message CommandAck {
+  Id command_id = 1;
+  CommandStatus status = 2;
+  string error_code = 3;
+  string error_message = 4;
+  // Result payload: SessionCreated / TaskCreated / SessionSnapshot encoded bytes.
+  bytes result = 5;
+}
+
+message SessionCreated {
+  Id session_id = 1;
+  uint64 offset = 2;
+}
+
+message TaskCreated {
+  Id task_id = 1;
+  uint64 offset = 2;
+}
+
+message TaskView {
+  Id task_id = 1;
+  string goal_text = 2;
+  string state = 3;
+  uint64 generation = 4;
+  google.protobuf.Timestamp created_at = 5;
+}
+
+message SessionSnapshot {
+  Id session_id = 1;
+  string state = 2;
+  uint64 generation = 3;
+  repeated TaskView tasks = 4;
+  // Highest event offset included in this snapshot; subscribe after it.
+  uint64 last_offset = 5;
+}
+
+// A stored event delivered to a subscriber.
+message StoredEventFrame {
+  uint64 offset = 1;
+  EventEnvelope event = 2;
+}
+
+// Transport-level error (protocol violation); the connection closes after it.
+message ProtocolError {
+  string code = 1;
+  string message = 2;
+}
+
+message SurfaceFrame {
+  oneof body {
+    ClientHello client_hello = 1;
+    HelloAck hello_ack = 2;
+    CommandEnvelope command = 3;
+    CommandAck command_ack = 4;
+    SubscribeEvents subscribe = 5;
+    StoredEventFrame event = 6;
+    ProtocolError error = 7;
+  }
+}

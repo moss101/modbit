@@ -37,6 +37,7 @@ members = [
     "apps/cli",
     "services/modbit-execd",
     "services/modbit-guest",
+    "services/modbit-core",
     "tools/architecture-lint",
     "tools/protocol-fixtures",
 ]
@@ -87,6 +88,9 @@ uuid = { version = "1.26.0", features = ["v7", "serde"] }
 cargo_metadata = "0.23.1"
 globset = "0.4.20"
 prost = "0.14.4"
+rand = "0.10.2"
+subtle = "2.6.1"
+tokio = { version = "1.53.1", features = ["rt-multi-thread", "net", "io-util", "macros", "sync", "time", "process", "signal"] }
 prost-build = "0.14.4"
 prost-types = "0.14.4"
 protox = "0.9.1"

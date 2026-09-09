@@ -1207,8 +1207,24 @@
    "milestone": "M1",
    "order": 2,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-09T05:09:17Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: NOT-FOUND. modbit-protocol has wire types only; no transport, framing, authentication or command dispatch; core-runtime and cli are shells."
+    },
+    {
+     "at": "2026-09-09T05:17:55Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "surface.proto, bounded framing, ready-line secret handoff, authenticated client, modbit-core daemon (UDS/named pipe, singleton lock, idempotent commands, offset subscriptions), CLI thin client; real-binary tests pass locally."
+    }
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-09-09T05:17:55Z"
   },
   {
    "id": "M1.4",

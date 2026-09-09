@@ -1,0 +1,17 @@
+# CLI transcript, 2026-09-09, real modbit-cli spawning real modbit-core (data dir under the session scratchpad, >100 chars)
+$ modbit-cli session create
+session f545029bbfea11fc4930e08678d79d41
+$ modbit-cli task create --session f545029bbfea11fc4930e08678d79d41 fix the flaky build
+task a8e8f4616b0bf362a48597523aaaf33d
+$ modbit-cli session show --session f545029bbfea11fc4930e08678d79d41
+session state=Active generation=1 last_offset=3
+task a8e8f4616b0bf362a48597523aaaf33d state=Queued generation=2 goal="fix the flaky build"
+$ modbit-cli events tail --session f545029bbfea11fc4930e08678d79d41 --after 0
+1 seq=1 SessionCreated
+2 seq=1 TaskCreated
+3 seq=2 TaskQueued
+$ modbit-cli events tail --session f545029bbfea11fc4930e08678d79d41 --after 2
+3 seq=2 TaskQueued
+$ modbit-cli session show --session 00
+modbit-cli: `00` is not a 32-hex-char id
+exit=1

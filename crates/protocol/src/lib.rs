@@ -6,8 +6,14 @@
 //! in `packages/surface-protocol` and are proven equivalent by the
 //! cross-language round-trip fixtures in `tools/protocol-fixtures`.
 //!
-//! Transport framing, authentication and command handling arrive with M1.3;
-//! nothing here dispatches a command.
+//! M1.3 adds `framing` (bounded length-prefixed frames), `local` (endpoint
+//! naming and the ready line that hands a spawned client the boot secret) and
+//! `client` (an authenticated async client used by the CLI and tests). Command
+//! handling lives in `modbit-core`; nothing here executes a command.
+
+pub mod client;
+pub mod framing;
+pub mod local;
 
 /// Protocol major version 1 message types, generated from `proto/modbit/v1`.
 #[allow(missing_docs, clippy::all)]

@@ -1,0 +1,36 @@
+[package]
+name = "modbit-core"
+description = "Modbit modbit-core: local Rust daemon owning the canonical runtime, stores and the authenticated local SurfaceProtocol (docs/11 deployment units)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+modbit-domain.workspace = true
+modbit-event-store.workspace = true
+modbit-protocol.workspace = true
+prost.workspace = true
+prost-types.workspace = true
+rand.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+subtle.workspace = true
+tokio.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true
+
+# Module registration parsed by `architecture-lint modules` (M0.4, docs/45, docs/81).
+[package.metadata.modbit]
+owner = "core-runtime"
+canonical = []
+capabilities = [
+  { id = "surface.local_ipc", requirements = ["REQ-EV-0103", "REQ-EV-0108", "REQ-EV-0192"] },
+  { id = "events.subscribe_from_offset", requirements = ["REQ-EV-0010"] },
+]
