@@ -791,7 +791,14 @@ dependencies = [
 name = "modbit-workspace"
 version = "0.0.0"
 dependencies = [
+ "globset",
+ "hex",
  "modbit-domain",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "thiserror",
 ]
 
 [[package]]

@@ -6,7 +6,7 @@
 |---|---|---|---|
 | M0 | repository/CI/protocol generation | COMPLETE | clean clone build + architecture lint |
 | M1 | durable local shell/Core | COMPLETE | create task, kill/restart app+Core, exact recovery |
-| M2 | real local coding loop | NOT_STARTED | live provider + real repo edit/test/review |
+| M2 | real local coding loop | IN_PROGRESS | live provider + real repo edit/test/review |
 | M3 | context intelligence | NOT_STARTED | fixed-revision retrieval benchmarks + freshness proof |
 | M4 | durable recovery spine | NOT_STARTED | kill-point suite, compaction/checkpoint fencing |
 | M5 | procedural runtime/skills | NOT_STARTED | real tools through isolated composition + skill provenance |

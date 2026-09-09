@@ -1345,8 +1345,24 @@
    "milestone": "M2",
    "order": 0,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-09T11:50:06Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: NOT-FOUND. modbit-workspace is an M0.1 shell; no file service, path policy or revisioning."
+    },
+    {
+     "at": "2026-09-09T11:54:21Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "modbit-workspace: path policy with symlink resolution and protected patterns, typed ops with preconditions and atomic writes, persisted WorkspaceRevision bound to git HEAD; six real-fs tests pass locally."
+    }
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-09-09T11:54:21Z"
   },
   {
    "id": "M2.2",

@@ -87,7 +87,7 @@ flowchart LR
   M9 --> M10
   style M0 fill:#dcfce7,stroke:#16a34a,color:#111827
   style M1 fill:#dcfce7,stroke:#16a34a,color:#111827
-  style M2 fill:#f3f4f6,stroke:#9ca3af,color:#111827
+  style M2 fill:#fef3c7,stroke:#d97706,color:#111827
   style M3 fill:#f3f4f6,stroke:#9ca3af,color:#111827
   style M4 fill:#f3f4f6,stroke:#9ca3af,color:#111827
   style M5 fill:#f3f4f6,stroke:#9ca3af,color:#111827
@@ -106,7 +106,7 @@ Critical path (reliability spine): **M0 → M1 → M2 → M4**. Do not start bro
 |---|---|---|---:|---:|---:|---:|---|---|
 | M0 Repository and authority | COMPLETE | yes | 4 | 1 | 5 | 0 | — | clean clone build + architecture lint |
 | M1 Durable local shell and Core | COMPLETE | yes | 5 | 14 | 19 | 0 | M0 | user creates durable task, kills/restarts app/Core, same task recovers with no fake state. |
-| M2 Real local engineering loop | NOT_STARTED | yes | 10 | 95 | 0 | 0 | M1 | E2E-001/002/003 with live model and actual test pass. |
+| M2 Real local engineering loop | IN_PROGRESS | yes | 10 | 95 | 0 | 0 | M1 | E2E-001/002/003 with live model and actual test pass. |
 | M3 Context intelligence | NOT_STARTED | no | 9 | 53 | 0 | 0 | M2 | profile A/B/C benchmark plus retrieval-before-edit visible in task evidence. |
 | M4 Durable recovery spine | NOT_STARTED | no | 6 | 12 | 0 | 0 | M2 | E2E-004/005/006/007/008. |
 | M5 Procedural runtime and skills | NOT_STARTED | no | 7 | 33 | 0 | 0 | M2 | E2E-011/012; direct and procedural mode yield equivalent receipts/policy behavior. |
@@ -398,7 +398,7 @@ flowchart LR
 
 | Task | Status | Title | Acceptance / note |
 |---|---|---|---|
-| `M2.1` | NOT_STARTED | Workspace File Service with safe paths/revisions |  |
+| `M2.1` | IMPLEMENTING | Workspace File Service with safe paths/revisions |  |
 | `M2.2` | NOT_STARTED | Git branch/worktree/diff operations |  |
 | `M2.3` | NOT_STARTED | `modbit-execd` structured argv/PTy/replay/OutputRef |  |
 | `M2.4` | NOT_STARTED | Tool Registry + direct `fs/git/shell/test` tools |  |
