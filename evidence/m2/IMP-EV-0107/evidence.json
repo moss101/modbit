@@ -1,0 +1,33 @@
+{
+ "task": "IMP-EV-0107",
+ "requirement": "REQ-EV-0107",
+ "qual": "QUAL-EV-0107",
+ "tests": [
+  "m2_8_verification_engine_gates_completion_on_real_cargo_fixture",
+  "m2_7_one_agent_runtime_drives_a_coding_task_to_ready_for_review"
+ ],
+ "substrate_commits": [
+  "47876da",
+  "f789fbd",
+  "9ad1c3c",
+  "22114e8",
+  "5d4c142",
+  "b41fdbb",
+  "d5abd95"
+ ],
+ "batch_commits": [
+  "e9be6a4",
+  "d672609",
+  "7bdf76d"
+ ],
+ "runs": [
+  {
+   "id": "gha-34409173853",
+   "kind": "hosted CI on 7bdf76d",
+   "result": "PASS: twelve jobs green on macOS, Linux and Windows (runs 34408383597/34408713618 on the earlier batch commits failed once on Linux: the closed-stdin refusal raced the child's exit; fixed in 7bdf76d)",
+   "url": "https://github.com/moss101/modbit/actions/runs/34409173853",
+   "log": "ci-run-34409173853.json, ci-run-34409173853-tests.log"
+  }
+ ],
+ "proof": "the model sees the bounded failure summary, repairs, and the raw log stays retrievable by digest"
+}

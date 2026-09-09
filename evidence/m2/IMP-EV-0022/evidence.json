@@ -1,0 +1,32 @@
+{
+ "task": "IMP-EV-0022",
+ "requirement": "REQ-EV-0022",
+ "qual": "QUAL-EV-0022",
+ "tests": [
+  "qual_ev_0022_dirty_snapshot_reconstructs_exactly_and_cleanup_removes_the_ref"
+ ],
+ "substrate_commits": [
+  "47876da",
+  "f789fbd",
+  "9ad1c3c",
+  "22114e8",
+  "5d4c142",
+  "b41fdbb",
+  "d5abd95"
+ ],
+ "batch_commits": [
+  "e9be6a4",
+  "d672609",
+  "7bdf76d"
+ ],
+ "runs": [
+  {
+   "id": "gha-34409173853",
+   "kind": "hosted CI on 7bdf76d",
+   "result": "PASS: twelve jobs green on macOS, Linux and Windows (runs 34408383597/34408713618 on the earlier batch commits failed once on Linux: the closed-stdin refusal raced the child's exit; fixed in 7bdf76d)",
+   "url": "https://github.com/moss101/modbit/actions/runs/34409173853",
+   "log": "ci-run-34409173853.json, ci-run-34409173853-tests.log"
+  }
+ ],
+ "proof": "the snapshot reproduces the dirty tree byte-for-byte and cleanup leaves no temporary ref"
+}

@@ -6794,8 +6794,57 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0011",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0011_blob_addressed_payloads_survive_reopen_and_digest_mismatch_fails_closed",
+    "test:qual_ev_0108_multi_mb_object_is_read_in_bounded_ranges",
+    "run:gha-34409173853",
+    "commit:e9be6a4",
+    "commit:7bdf76d",
+    "artifact:evidence/m2/IMP-EV-0011/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0011/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0011/ci-run-34409173853.json",
+    "artifact:evidence/m2/IMP-EV-0011/ci-run-34409173853-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T21:58:00Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (substrate delivered by M2.1-M2.10; a 3 MB payload is stored by reference, readable after reopen, and a tampered object is refused)"
+    },
+    {
+     "at": "2026-09-09T21:58:00Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "named qualification test(s) for QUAL-EV-0011 against the real substrate"
+    },
+    {
+     "at": "2026-09-09T21:58:00Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tests run in the workspace test suite on hosted CI (ci.yml rust/desktop-e2e matrices)"
+    },
+    {
+     "at": "2026-09-09T21:58:00Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real processes, real git, real SQLite, real Core over the socket"
+    },
+    {
+     "at": "2026-09-09T21:58:00Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 7bdf76d"
+    },
+    {
+     "at": "2026-09-09T21:58:00Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0011: a 3 MB payload is stored by reference, readable after reopen, and a tampered object is refused"
+    }
+   ],
+   "status_changed_on": "2026-09-09T21:58:00Z"
   },
   {
    "id": "IMP-EV-0012",
@@ -6836,8 +6885,57 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0014",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:stale_preconditions_are_rejected_and_nothing_is_written",
+    "test:replacement_is_atomic_when_the_rename_fails",
+    "run:gha-34409173853",
+    "commit:e9be6a4",
+    "commit:7bdf76d",
+    "artifact:evidence/m2/IMP-EV-0014/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0014/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0014/ci-run-34409173853.json",
+    "artifact:evidence/m2/IMP-EV-0014/ci-run-34409173853-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T21:58:00Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (substrate delivered by M2.1-M2.10; a stale revision precondition is refused before any byte is written; the user's edit survives)"
+    },
+    {
+     "at": "2026-09-09T21:58:00Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "named qualification test(s) for QUAL-EV-0014 against the real substrate"
+    },
+    {
+     "at": "2026-09-09T21:58:00Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tests run in the workspace test suite on hosted CI (ci.yml rust/desktop-e2e matrices)"
+    },
+    {
+     "at": "2026-09-09T21:58:00Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real processes, real git, real SQLite, real Core over the socket"
+    },
+    {
+     "at": "2026-09-09T21:58:00Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 7bdf76d"
+    },
+    {
+     "at": "2026-09-09T21:58:00Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0014: a stale revision precondition is refused before any byte is written; the user's edit survives"
+    }
+   ],
+   "status_changed_on": "2026-09-09T21:58:00Z"
   },
   {
    "id": "IMP-EV-0015",
@@ -6892,8 +6990,57 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0018",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:cargo_fixture_baseline_labels_known_failing_quarantines_flaky_and_attributes_regressions",
+    "test:m2_8_verification_engine_gates_completion_on_real_cargo_fixture",
+    "run:gha-34409173853",
+    "commit:e9be6a4",
+    "commit:7bdf76d",
+    "artifact:evidence/m2/IMP-EV-0018/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0018/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0018/ci-run-34409173853.json",
+    "artifact:evidence/m2/IMP-EV-0018/ci-run-34409173853-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T21:58:00Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (substrate delivered by M2.1-M2.10; KNOWN_FAILING at baseline is never a REGRESSION; only new failures are attributed)"
+    },
+    {
+     "at": "2026-09-09T21:58:00Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "named qualification test(s) for QUAL-EV-0018 against the real substrate"
+    },
+    {
+     "at": "2026-09-09T21:58:00Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tests run in the workspace test suite on hosted CI (ci.yml rust/desktop-e2e matrices)"
+    },
+    {
+     "at": "2026-09-09T21:58:00Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real processes, real git, real SQLite, real Core over the socket"
+    },
+    {
+     "at": "2026-09-09T21:58:00Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 7bdf76d"
+    },
+    {
+     "at": "2026-09-09T21:58:01Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0018: KNOWN_FAILING at baseline is never a REGRESSION; only new failures are attributed"
+    }
+   ],
+   "status_changed_on": "2026-09-09T21:58:01Z"
   },
   {
    "id": "IMP-EV-0019",
@@ -6906,8 +7053,57 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0019",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0019_0269_ten_megabytes_stream_in_bounded_chunks_and_output_ref_digest_matches",
+    "test:shell_exec_and_test_run_go_through_the_real_broker",
+    "run:gha-34409173853",
+    "commit:e9be6a4",
+    "commit:7bdf76d",
+    "artifact:evidence/m2/IMP-EV-0019/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0019/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0019/ci-run-34409173853.json",
+    "artifact:evidence/m2/IMP-EV-0019/ci-run-34409173853-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T21:58:01Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (substrate delivered by M2.1-M2.10; bounded chunks for replay, bounded model view, full artifact by digest)"
+    },
+    {
+     "at": "2026-09-09T21:58:01Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "named qualification test(s) for QUAL-EV-0019 against the real substrate"
+    },
+    {
+     "at": "2026-09-09T21:58:01Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tests run in the workspace test suite on hosted CI (ci.yml rust/desktop-e2e matrices)"
+    },
+    {
+     "at": "2026-09-09T21:58:01Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real processes, real git, real SQLite, real Core over the socket"
+    },
+    {
+     "at": "2026-09-09T21:58:01Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 7bdf76d"
+    },
+    {
+     "at": "2026-09-09T21:58:01Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0019: bounded chunks for replay, bounded model view, full artifact by digest"
+    }
+   ],
+   "status_changed_on": "2026-09-09T21:58:01Z"
   },
   {
    "id": "IMP-EV-0020",
@@ -6948,8 +7144,56 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0022",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0022_dirty_snapshot_reconstructs_exactly_and_cleanup_removes_the_ref",
+    "run:gha-34409173853",
+    "commit:e9be6a4",
+    "commit:7bdf76d",
+    "artifact:evidence/m2/IMP-EV-0022/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0022/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0022/ci-run-34409173853.json",
+    "artifact:evidence/m2/IMP-EV-0022/ci-run-34409173853-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T21:58:01Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (substrate delivered by M2.1-M2.10; the snapshot reproduces the dirty tree byte-for-byte and cleanup leaves no temporary ref)"
+    },
+    {
+     "at": "2026-09-09T21:58:01Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "named qualification test(s) for QUAL-EV-0022 against the real substrate"
+    },
+    {
+     "at": "2026-09-09T21:58:01Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tests run in the workspace test suite on hosted CI (ci.yml rust/desktop-e2e matrices)"
+    },
+    {
+     "at": "2026-09-09T21:58:01Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real processes, real git, real SQLite, real Core over the socket"
+    },
+    {
+     "at": "2026-09-09T21:58:01Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 7bdf76d"
+    },
+    {
+     "at": "2026-09-09T21:58:01Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0022: the snapshot reproduces the dirty tree byte-for-byte and cleanup leaves no temporary ref"
+    }
+   ],
+   "status_changed_on": "2026-09-09T21:58:01Z"
   },
   {
    "id": "IMP-EV-0023",
@@ -6990,8 +7234,56 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0025",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0025_stdin_is_explicit_and_two_requests_do_not_share_environment",
+    "run:gha-34409173853",
+    "commit:e9be6a4",
+    "commit:7bdf76d",
+    "artifact:evidence/m2/IMP-EV-0025/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0025/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0025/ci-run-34409173853.json",
+    "artifact:evidence/m2/IMP-EV-0025/ci-run-34409173853-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T21:58:01Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (substrate delivered by M2.1-M2.10; two requests through one broker share no cwd, env or shell state)"
+    },
+    {
+     "at": "2026-09-09T21:58:01Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "named qualification test(s) for QUAL-EV-0025 against the real substrate"
+    },
+    {
+     "at": "2026-09-09T21:58:01Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tests run in the workspace test suite on hosted CI (ci.yml rust/desktop-e2e matrices)"
+    },
+    {
+     "at": "2026-09-09T21:58:01Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real processes, real git, real SQLite, real Core over the socket"
+    },
+    {
+     "at": "2026-09-09T21:58:02Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 7bdf76d"
+    },
+    {
+     "at": "2026-09-09T21:58:02Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0025: two requests through one broker share no cwd, env or shell state"
+    }
+   ],
+   "status_changed_on": "2026-09-09T21:58:02Z"
   },
   {
    "id": "IMP-EV-0026",
@@ -7004,8 +7296,56 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0026",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:shell_exec_and_test_run_go_through_the_real_broker",
+    "run:gha-34409173853",
+    "commit:e9be6a4",
+    "commit:7bdf76d",
+    "artifact:evidence/m2/IMP-EV-0026/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0026/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0026/ci-run-34409173853.json",
+    "artifact:evidence/m2/IMP-EV-0026/ci-run-34409173853-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T21:58:02Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (substrate delivered by M2.1-M2.10; 4000 lines of build noise reach the model as a < 8 KB view; the full raw output is retained and its digest matches)"
+    },
+    {
+     "at": "2026-09-09T21:58:02Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "named qualification test(s) for QUAL-EV-0026 against the real substrate"
+    },
+    {
+     "at": "2026-09-09T21:58:02Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tests run in the workspace test suite on hosted CI (ci.yml rust/desktop-e2e matrices)"
+    },
+    {
+     "at": "2026-09-09T21:58:02Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real processes, real git, real SQLite, real Core over the socket"
+    },
+    {
+     "at": "2026-09-09T21:58:02Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 7bdf76d"
+    },
+    {
+     "at": "2026-09-09T21:58:02Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0026: 4000 lines of build noise reach the model as a < 8 KB view; the full raw output is retained and its digest matches"
+    }
+   ],
+   "status_changed_on": "2026-09-09T21:58:02Z"
   },
   {
    "id": "IMP-EV-0027",
@@ -7018,8 +7358,56 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0027",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0271_0027_0135_detach_reattach_from_cursor_exactly_then_cancel_kills_the_real_process",
+    "run:gha-34409173853",
+    "commit:e9be6a4",
+    "commit:7bdf76d",
+    "artifact:evidence/m2/IMP-EV-0027/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0027/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0027/ci-run-34409173853.json",
+    "artifact:evidence/m2/IMP-EV-0027/ci-run-34409173853-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T21:58:02Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (substrate delivered by M2.1-M2.10; cancel after reattach kills the real process; the exit is observed)"
+    },
+    {
+     "at": "2026-09-09T21:58:02Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "named qualification test(s) for QUAL-EV-0027 against the real substrate"
+    },
+    {
+     "at": "2026-09-09T21:58:02Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tests run in the workspace test suite on hosted CI (ci.yml rust/desktop-e2e matrices)"
+    },
+    {
+     "at": "2026-09-09T21:58:02Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real processes, real git, real SQLite, real Core over the socket"
+    },
+    {
+     "at": "2026-09-09T21:58:02Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 7bdf76d"
+    },
+    {
+     "at": "2026-09-09T21:58:02Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0027: cancel after reattach kills the real process; the exit is observed"
+    }
+   ],
+   "status_changed_on": "2026-09-09T21:58:02Z"
   },
   {
    "id": "IMP-EV-0028",
@@ -7032,8 +7420,56 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0028",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0028_0189_capability_catalog_refuses_mismatched_models_before_dispatch",
+    "run:gha-34409173853",
+    "commit:e9be6a4",
+    "commit:7bdf76d",
+    "artifact:evidence/m2/IMP-EV-0028/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0028/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0028/ci-run-34409173853.json",
+    "artifact:evidence/m2/IMP-EV-0028/ci-run-34409173853-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T21:58:02Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (substrate delivered by M2.1-M2.10; tools/vision/reasoning mismatches are refused before any bytes are sent; an eligible endpoint is selected)"
+    },
+    {
+     "at": "2026-09-09T21:58:02Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "named qualification test(s) for QUAL-EV-0028 against the real substrate"
+    },
+    {
+     "at": "2026-09-09T21:58:02Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tests run in the workspace test suite on hosted CI (ci.yml rust/desktop-e2e matrices)"
+    },
+    {
+     "at": "2026-09-09T21:58:03Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real processes, real git, real SQLite, real Core over the socket"
+    },
+    {
+     "at": "2026-09-09T21:58:03Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 7bdf76d"
+    },
+    {
+     "at": "2026-09-09T21:58:03Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0028: tools/vision/reasoning mismatches are refused before any bytes are sent; an eligible endpoint is selected"
+    }
+   ],
+   "status_changed_on": "2026-09-09T21:58:03Z"
   },
   {
    "id": "IMP-EV-0029",
@@ -7117,8 +7553,57 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0036",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:m2_9_review_surface_applies_per_hunk_decisions_and_commits",
+    "test:review.spec.ts",
+    "run:gha-34409173853",
+    "commit:e9be6a4",
+    "commit:7bdf76d",
+    "artifact:evidence/m2/IMP-EV-0036/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0036/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0036/ci-run-34409173853.json",
+    "artifact:evidence/m2/IMP-EV-0036/ci-run-34409173853-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T21:58:03Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (substrate delivered by M2.1-M2.10; the committed diff equals the accepted hunks only; rejected hunks are left uncommitted)"
+    },
+    {
+     "at": "2026-09-09T21:58:03Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "named qualification test(s) for QUAL-EV-0036 against the real substrate"
+    },
+    {
+     "at": "2026-09-09T21:58:03Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tests run in the workspace test suite on hosted CI (ci.yml rust/desktop-e2e matrices)"
+    },
+    {
+     "at": "2026-09-09T21:58:03Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real processes, real git, real SQLite, real Core over the socket"
+    },
+    {
+     "at": "2026-09-09T21:58:03Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 7bdf76d"
+    },
+    {
+     "at": "2026-09-09T21:58:03Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0036: the committed diff equals the accepted hunks only; rejected hunks are left uncommitted"
+    }
+   ],
+   "status_changed_on": "2026-09-09T21:58:03Z"
   },
   {
    "id": "IMP-EV-0037",
@@ -7297,8 +7782,56 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0045",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0045_autonomous_profile_cannot_exceed_or_ask_past_its_ceiling",
+    "run:gha-34409173853",
+    "commit:e9be6a4",
+    "commit:7bdf76d",
+    "artifact:evidence/m2/IMP-EV-0045/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0045/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0045/ci-run-34409173853.json",
+    "artifact:evidence/m2/IMP-EV-0045/ci-run-34409173853-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T21:58:03Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (substrate delivered by M2.1-M2.10; local_autonomous is denied above its ceiling and cannot escalate through approval)"
+    },
+    {
+     "at": "2026-09-09T21:58:03Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "named qualification test(s) for QUAL-EV-0045 against the real substrate"
+    },
+    {
+     "at": "2026-09-09T21:58:03Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tests run in the workspace test suite on hosted CI (ci.yml rust/desktop-e2e matrices)"
+    },
+    {
+     "at": "2026-09-09T21:58:03Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real processes, real git, real SQLite, real Core over the socket"
+    },
+    {
+     "at": "2026-09-09T21:58:03Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 7bdf76d"
+    },
+    {
+     "at": "2026-09-09T21:58:03Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0045: local_autonomous is denied above its ceiling and cannot escalate through approval"
+    }
+   ],
+   "status_changed_on": "2026-09-09T21:58:03Z"
   },
   {
    "id": "IMP-EV-0046",
@@ -7639,8 +8172,56 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0067",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0067_merge_transaction_exposes_injected_conflict_and_is_recoverable",
+    "run:gha-34409173853",
+    "commit:e9be6a4",
+    "commit:7bdf76d",
+    "artifact:evidence/m2/IMP-EV-0067/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0067/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0067/ci-run-34409173853.json",
+    "artifact:evidence/m2/IMP-EV-0067/ci-run-34409173853-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T21:58:03Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (substrate delivered by M2.1-M2.10; a real merge conflict is exposed as data and the transaction can be abandoned cleanly)"
+    },
+    {
+     "at": "2026-09-09T21:58:03Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "named qualification test(s) for QUAL-EV-0067 against the real substrate"
+    },
+    {
+     "at": "2026-09-09T21:58:04Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tests run in the workspace test suite on hosted CI (ci.yml rust/desktop-e2e matrices)"
+    },
+    {
+     "at": "2026-09-09T21:58:04Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real processes, real git, real SQLite, real Core over the socket"
+    },
+    {
+     "at": "2026-09-09T21:58:04Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 7bdf76d"
+    },
+    {
+     "at": "2026-09-09T21:58:04Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0067: a real merge conflict is exposed as data and the transaction can be abandoned cleanly"
+    }
+   ],
+   "status_changed_on": "2026-09-09T21:58:04Z"
   },
   {
    "id": "IMP-EV-0068",
@@ -7653,8 +8234,57 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0068",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0068_verifier_crash_is_indeterminate_never_success",
+    "test:cargo_fixture_baseline_labels_known_failing_quarantines_flaky_and_attributes_regressions",
+    "run:gha-34409173853",
+    "commit:e9be6a4",
+    "commit:7bdf76d",
+    "artifact:evidence/m2/IMP-EV-0068/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0068/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0068/ci-run-34409173853.json",
+    "artifact:evidence/m2/IMP-EV-0068/ci-run-34409173853-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T21:58:04Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (substrate delivered by M2.1-M2.10; a verifier killed by SIGKILL or absent yields no PASS; attribution is inconclusive and blocks)"
+    },
+    {
+     "at": "2026-09-09T21:58:04Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "named qualification test(s) for QUAL-EV-0068 against the real substrate"
+    },
+    {
+     "at": "2026-09-09T21:58:04Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tests run in the workspace test suite on hosted CI (ci.yml rust/desktop-e2e matrices)"
+    },
+    {
+     "at": "2026-09-09T21:58:04Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real processes, real git, real SQLite, real Core over the socket"
+    },
+    {
+     "at": "2026-09-09T21:58:04Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 7bdf76d"
+    },
+    {
+     "at": "2026-09-09T21:58:04Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0068: a verifier killed by SIGKILL or absent yields no PASS; attribution is inconclusive and blocks"
+    }
+   ],
+   "status_changed_on": "2026-09-09T21:58:04Z"
   },
   {
    "id": "IMP-EV-0069",
@@ -7667,8 +8297,56 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0069",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0069_disabled_semantic_verification_makes_zero_model_calls",
+    "run:gha-34409173853",
+    "commit:e9be6a4",
+    "commit:7bdf76d",
+    "artifact:evidence/m2/IMP-EV-0069/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0069/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0069/ci-run-34409173853.json",
+    "artifact:evidence/m2/IMP-EV-0069/ci-run-34409173853-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T21:58:04Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (substrate delivered by M2.1-M2.10; EXPERIMENT off by default: the verification crate has no model port, so zero calls by construction)"
+    },
+    {
+     "at": "2026-09-09T21:58:04Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "named qualification test(s) for QUAL-EV-0069 against the real substrate"
+    },
+    {
+     "at": "2026-09-09T21:58:04Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tests run in the workspace test suite on hosted CI (ci.yml rust/desktop-e2e matrices)"
+    },
+    {
+     "at": "2026-09-09T21:58:04Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real processes, real git, real SQLite, real Core over the socket"
+    },
+    {
+     "at": "2026-09-09T21:58:04Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 7bdf76d"
+    },
+    {
+     "at": "2026-09-09T21:58:04Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0069: EXPERIMENT off by default: the verification crate has no model port, so zero calls by construction"
+    }
+   ],
+   "status_changed_on": "2026-09-09T21:58:04Z"
   },
   {
    "id": "IMP-EV-0070",
@@ -7794,8 +8472,56 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0079",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0079_invalid_arguments_are_rejected_before_any_effector",
+    "run:gha-34409173853",
+    "commit:e9be6a4",
+    "commit:7bdf76d",
+    "artifact:evidence/m2/IMP-EV-0079/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0079/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0079/ci-run-34409173853.json",
+    "artifact:evidence/m2/IMP-EV-0079/ci-run-34409173853-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T21:58:05Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (substrate delivered by M2.1-M2.10; malformed and alias arguments never reach the effector; the refusal is typed on the log)"
+    },
+    {
+     "at": "2026-09-09T21:58:05Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "named qualification test(s) for QUAL-EV-0079 against the real substrate"
+    },
+    {
+     "at": "2026-09-09T21:58:05Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tests run in the workspace test suite on hosted CI (ci.yml rust/desktop-e2e matrices)"
+    },
+    {
+     "at": "2026-09-09T21:58:05Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real processes, real git, real SQLite, real Core over the socket"
+    },
+    {
+     "at": "2026-09-09T21:58:05Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 7bdf76d"
+    },
+    {
+     "at": "2026-09-09T21:58:05Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0079: malformed and alias arguments never reach the effector; the refusal is typed on the log"
+    }
+   ],
+   "status_changed_on": "2026-09-09T21:58:05Z"
   },
   {
    "id": "IMP-EV-0080",
@@ -7808,8 +8534,57 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0080",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0239_0080_denial_is_monotonic_and_argument_text_cannot_bypass_policy",
+    "test:lease_is_authority_not_tool_name",
+    "run:gha-34409173853",
+    "commit:e9be6a4",
+    "commit:7bdf76d",
+    "artifact:evidence/m2/IMP-EV-0080/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0080/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0080/ci-run-34409173853.json",
+    "artifact:evidence/m2/IMP-EV-0080/ci-run-34409173853-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T21:58:05Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (substrate delivered by M2.1-M2.10; argument text claiming authorization changes nothing; the lease is the authority)"
+    },
+    {
+     "at": "2026-09-09T21:58:05Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "named qualification test(s) for QUAL-EV-0080 against the real substrate"
+    },
+    {
+     "at": "2026-09-09T21:58:05Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tests run in the workspace test suite on hosted CI (ci.yml rust/desktop-e2e matrices)"
+    },
+    {
+     "at": "2026-09-09T21:58:05Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real processes, real git, real SQLite, real Core over the socket"
+    },
+    {
+     "at": "2026-09-09T21:58:05Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 7bdf76d"
+    },
+    {
+     "at": "2026-09-09T21:58:05Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0080: argument text claiming authorization changes nothing; the lease is the authority"
+    }
+   ],
+   "status_changed_on": "2026-09-09T21:58:05Z"
   },
   {
    "id": "IMP-EV-0081",
@@ -7962,8 +8737,56 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0091",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0091_project_allow_cannot_weaken_admin_deny",
+    "run:gha-34409173853",
+    "commit:e9be6a4",
+    "commit:7bdf76d",
+    "artifact:evidence/m2/IMP-EV-0091/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0091/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0091/ci-run-34409173853.json",
+    "artifact:evidence/m2/IMP-EV-0091/ci-run-34409173853-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T21:58:05Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (substrate delivered by M2.1-M2.10; a project allow never overrides an admin deny)"
+    },
+    {
+     "at": "2026-09-09T21:58:05Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "named qualification test(s) for QUAL-EV-0091 against the real substrate"
+    },
+    {
+     "at": "2026-09-09T21:58:05Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tests run in the workspace test suite on hosted CI (ci.yml rust/desktop-e2e matrices)"
+    },
+    {
+     "at": "2026-09-09T21:58:05Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real processes, real git, real SQLite, real Core over the socket"
+    },
+    {
+     "at": "2026-09-09T21:58:05Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 7bdf76d"
+    },
+    {
+     "at": "2026-09-09T21:58:06Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0091: a project allow never overrides an admin deny"
+    }
+   ],
+   "status_changed_on": "2026-09-09T21:58:06Z"
   },
   {
    "id": "IMP-EV-0092",
@@ -7990,8 +8813,56 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0093",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0093_trusted_workspace_cannot_use_denied_network_or_secret",
+    "run:gha-34409173853",
+    "commit:e9be6a4",
+    "commit:7bdf76d",
+    "artifact:evidence/m2/IMP-EV-0093/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0093/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0093/ci-run-34409173853.json",
+    "artifact:evidence/m2/IMP-EV-0093/ci-run-34409173853-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T21:58:06Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (substrate delivered by M2.1-M2.10; trust widens file scope only; network and secret capabilities stay denied)"
+    },
+    {
+     "at": "2026-09-09T21:58:06Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "named qualification test(s) for QUAL-EV-0093 against the real substrate"
+    },
+    {
+     "at": "2026-09-09T21:58:06Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tests run in the workspace test suite on hosted CI (ci.yml rust/desktop-e2e matrices)"
+    },
+    {
+     "at": "2026-09-09T21:58:06Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real processes, real git, real SQLite, real Core over the socket"
+    },
+    {
+     "at": "2026-09-09T21:58:06Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 7bdf76d"
+    },
+    {
+     "at": "2026-09-09T21:58:06Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0093: trust widens file scope only; network and secret capabilities stay denied"
+    }
+   ],
+   "status_changed_on": "2026-09-09T21:58:06Z"
   },
   {
    "id": "IMP-EV-0096",
@@ -8033,8 +8904,56 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0098",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:m2_7_harness_refuses_unplanned_writes_exhausts_budgets_and_resumes_after_restart",
+    "run:gha-34409173853",
+    "commit:e9be6a4",
+    "commit:7bdf76d",
+    "artifact:evidence/m2/IMP-EV-0098/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0098/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0098/ci-run-34409173853.json",
+    "artifact:evidence/m2/IMP-EV-0098/ci-run-34409173853-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T21:58:06Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (substrate delivered by M2.1-M2.10; after a Core restart the first resumed request carries every tool result paired with its call; no duplicate write)"
+    },
+    {
+     "at": "2026-09-09T21:58:06Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "named qualification test(s) for QUAL-EV-0098 against the real substrate"
+    },
+    {
+     "at": "2026-09-09T21:58:06Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tests run in the workspace test suite on hosted CI (ci.yml rust/desktop-e2e matrices)"
+    },
+    {
+     "at": "2026-09-09T21:58:06Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real processes, real git, real SQLite, real Core over the socket"
+    },
+    {
+     "at": "2026-09-09T21:58:06Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 7bdf76d"
+    },
+    {
+     "at": "2026-09-09T21:58:06Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0098: after a Core restart the first resumed request carries every tool result paired with its call; no duplicate write"
+    }
+   ],
+   "status_changed_on": "2026-09-09T21:58:06Z"
   },
   {
    "id": "IMP-EV-0099",
@@ -8061,8 +8980,56 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0100",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0100_argv_cwd_env_streams_exit_code_and_timeout_are_explicit",
+    "run:gha-34409173853",
+    "commit:e9be6a4",
+    "commit:7bdf76d",
+    "artifact:evidence/m2/IMP-EV-0100/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0100/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0100/ci-run-34409173853.json",
+    "artifact:evidence/m2/IMP-EV-0100/ci-run-34409173853-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T21:58:06Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (substrate delivered by M2.1-M2.10; every contract field asserted against a real child process)"
+    },
+    {
+     "at": "2026-09-09T21:58:06Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "named qualification test(s) for QUAL-EV-0100 against the real substrate"
+    },
+    {
+     "at": "2026-09-09T21:58:06Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tests run in the workspace test suite on hosted CI (ci.yml rust/desktop-e2e matrices)"
+    },
+    {
+     "at": "2026-09-09T21:58:06Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real processes, real git, real SQLite, real Core over the socket"
+    },
+    {
+     "at": "2026-09-09T21:58:07Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 7bdf76d"
+    },
+    {
+     "at": "2026-09-09T21:58:07Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0100: every contract field asserted against a real child process"
+    }
+   ],
+   "status_changed_on": "2026-09-09T21:58:07Z"
   },
   {
    "id": "IMP-EV-0101",
@@ -8262,8 +9229,57 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0107",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:m2_8_verification_engine_gates_completion_on_real_cargo_fixture",
+    "test:m2_7_one_agent_runtime_drives_a_coding_task_to_ready_for_review",
+    "run:gha-34409173853",
+    "commit:e9be6a4",
+    "commit:7bdf76d",
+    "artifact:evidence/m2/IMP-EV-0107/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0107/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0107/ci-run-34409173853.json",
+    "artifact:evidence/m2/IMP-EV-0107/ci-run-34409173853-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T21:58:07Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (substrate delivered by M2.1-M2.10; the model sees the bounded failure summary, repairs, and the raw log stays retrievable by digest)"
+    },
+    {
+     "at": "2026-09-09T21:58:07Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "named qualification test(s) for QUAL-EV-0107 against the real substrate"
+    },
+    {
+     "at": "2026-09-09T21:58:07Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tests run in the workspace test suite on hosted CI (ci.yml rust/desktop-e2e matrices)"
+    },
+    {
+     "at": "2026-09-09T21:58:07Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real processes, real git, real SQLite, real Core over the socket"
+    },
+    {
+     "at": "2026-09-09T21:58:07Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 7bdf76d"
+    },
+    {
+     "at": "2026-09-09T21:58:07Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0107: the model sees the bounded failure summary, repairs, and the raw log stays retrievable by digest"
+    }
+   ],
+   "status_changed_on": "2026-09-09T21:58:07Z"
   },
   {
    "id": "IMP-EV-0108",
@@ -8366,8 +9382,56 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0112",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0112_route_record_shows_requested_vs_resolved_values_and_policy_reason",
+    "run:gha-34409173853",
+    "commit:e9be6a4",
+    "commit:7bdf76d",
+    "artifact:evidence/m2/IMP-EV-0112/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0112/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0112/ci-run-34409173853.json",
+    "artifact:evidence/m2/IMP-EV-0112/ci-run-34409173853-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T21:58:07Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (substrate delivered by M2.1-M2.10; requested and resolved model, effort and tier plus the policy reason; provider-neutral)"
+    },
+    {
+     "at": "2026-09-09T21:58:07Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "named qualification test(s) for QUAL-EV-0112 against the real substrate"
+    },
+    {
+     "at": "2026-09-09T21:58:07Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tests run in the workspace test suite on hosted CI (ci.yml rust/desktop-e2e matrices)"
+    },
+    {
+     "at": "2026-09-09T21:58:07Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real processes, real git, real SQLite, real Core over the socket"
+    },
+    {
+     "at": "2026-09-09T21:58:07Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 7bdf76d"
+    },
+    {
+     "at": "2026-09-09T21:58:07Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0112: requested and resolved model, effort and tier plus the policy reason; provider-neutral"
+    }
+   ],
+   "status_changed_on": "2026-09-09T21:58:07Z"
   },
   {
    "id": "IMP-EV-0114",
@@ -8451,8 +9515,56 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0119",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:m2_8_verification_engine_gates_completion_on_real_cargo_fixture",
+    "run:gha-34409173853",
+    "commit:e9be6a4",
+    "commit:7bdf76d",
+    "artifact:evidence/m2/IMP-EV-0119/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0119/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0119/ci-run-34409173853.json",
+    "artifact:evidence/m2/IMP-EV-0119/ci-run-34409173853-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T21:58:07Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (substrate delivered by M2.1-M2.10; task.complete with failing acceptance is refused; the run stays open until the gate passes)"
+    },
+    {
+     "at": "2026-09-09T21:58:07Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "named qualification test(s) for QUAL-EV-0119 against the real substrate"
+    },
+    {
+     "at": "2026-09-09T21:58:08Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tests run in the workspace test suite on hosted CI (ci.yml rust/desktop-e2e matrices)"
+    },
+    {
+     "at": "2026-09-09T21:58:08Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real processes, real git, real SQLite, real Core over the socket"
+    },
+    {
+     "at": "2026-09-09T21:58:08Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 7bdf76d"
+    },
+    {
+     "at": "2026-09-09T21:58:08Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0119: task.complete with failing acceptance is refused; the run stays open until the gate passes"
+    }
+   ],
+   "status_changed_on": "2026-09-09T21:58:08Z"
   },
   {
    "id": "IMP-EV-0120",
@@ -8557,8 +9669,57 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0124",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0125_0124_worktrees_isolate_parallel_writes_and_carry_lineage",
+    "test:qual_ev_0067_merge_transaction_exposes_injected_conflict_and_is_recoverable",
+    "run:gha-34409173853",
+    "commit:e9be6a4",
+    "commit:7bdf76d",
+    "artifact:evidence/m2/IMP-EV-0124/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0124/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0124/ci-run-34409173853.json",
+    "artifact:evidence/m2/IMP-EV-0124/ci-run-34409173853-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T21:58:08Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (substrate delivered by M2.1-M2.10; branches cloned from one base diverge and the merge transaction surfaces the conflict)"
+    },
+    {
+     "at": "2026-09-09T21:58:08Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "named qualification test(s) for QUAL-EV-0124 against the real substrate"
+    },
+    {
+     "at": "2026-09-09T21:58:08Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tests run in the workspace test suite on hosted CI (ci.yml rust/desktop-e2e matrices)"
+    },
+    {
+     "at": "2026-09-09T21:58:08Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real processes, real git, real SQLite, real Core over the socket"
+    },
+    {
+     "at": "2026-09-09T21:58:08Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 7bdf76d"
+    },
+    {
+     "at": "2026-09-09T21:58:08Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0124: branches cloned from one base diverge and the merge transaction surfaces the conflict"
+    }
+   ],
+   "status_changed_on": "2026-09-09T21:58:08Z"
   },
   {
    "id": "IMP-EV-0125",
@@ -8571,8 +9732,56 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0125",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0125_0124_worktrees_isolate_parallel_writes_and_carry_lineage",
+    "run:gha-34409173853",
+    "commit:e9be6a4",
+    "commit:7bdf76d",
+    "artifact:evidence/m2/IMP-EV-0125/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0125/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0125/ci-run-34409173853.json",
+    "artifact:evidence/m2/IMP-EV-0125/ci-run-34409173853-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T21:58:08Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (substrate delivered by M2.1-M2.10; two worktrees written in parallel never see each other's changes)"
+    },
+    {
+     "at": "2026-09-09T21:58:08Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "named qualification test(s) for QUAL-EV-0125 against the real substrate"
+    },
+    {
+     "at": "2026-09-09T21:58:08Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tests run in the workspace test suite on hosted CI (ci.yml rust/desktop-e2e matrices)"
+    },
+    {
+     "at": "2026-09-09T21:58:08Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real processes, real git, real SQLite, real Core over the socket"
+    },
+    {
+     "at": "2026-09-09T21:58:08Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 7bdf76d"
+    },
+    {
+     "at": "2026-09-09T21:58:08Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0125: two worktrees written in parallel never see each other's changes"
+    }
+   ],
+   "status_changed_on": "2026-09-09T21:58:08Z"
   },
   {
    "id": "IMP-EV-0126",
@@ -8711,8 +9920,56 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0135",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0271_0027_0135_detach_reattach_from_cursor_exactly_then_cancel_kills_the_real_process",
+    "run:gha-34409173853",
+    "commit:e9be6a4",
+    "commit:7bdf76d",
+    "artifact:evidence/m2/IMP-EV-0135/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0135/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0135/ci-run-34409173853.json",
+    "artifact:evidence/m2/IMP-EV-0135/ci-run-34409173853-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T21:58:08Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (substrate delivered by M2.1-M2.10; the real process keeps running across client detach; output beyond the cap is retained by digest, not dropped silently)"
+    },
+    {
+     "at": "2026-09-09T21:58:08Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "named qualification test(s) for QUAL-EV-0135 against the real substrate"
+    },
+    {
+     "at": "2026-09-09T21:58:09Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tests run in the workspace test suite on hosted CI (ci.yml rust/desktop-e2e matrices)"
+    },
+    {
+     "at": "2026-09-09T21:58:09Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real processes, real git, real SQLite, real Core over the socket"
+    },
+    {
+     "at": "2026-09-09T21:58:09Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 7bdf76d"
+    },
+    {
+     "at": "2026-09-09T21:58:09Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0135: the real process keeps running across client detach; output beyond the cap is retained by digest, not dropped silently"
+    }
+   ],
+   "status_changed_on": "2026-09-09T21:58:09Z"
   },
   {
    "id": "IMP-EV-0136",
@@ -8725,8 +9982,57 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0136",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0136_modes_compile_to_monotonic_policy_and_no_tool_switches_them",
+    "test:qual_ev_0194_approvals_are_canonical_and_never_resolved_by_the_model",
+    "run:gha-34409173853",
+    "commit:e9be6a4",
+    "commit:7bdf76d",
+    "artifact:evidence/m2/IMP-EV-0136/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0136/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0136/ci-run-34409173853.json",
+    "artifact:evidence/m2/IMP-EV-0136/ci-run-34409173853-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T21:58:09Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (substrate delivered by M2.1-M2.10; the tool registry exposes no policy or mode tool; the kernel denies unknown operations)"
+    },
+    {
+     "at": "2026-09-09T21:58:09Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "named qualification test(s) for QUAL-EV-0136 against the real substrate"
+    },
+    {
+     "at": "2026-09-09T21:58:09Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tests run in the workspace test suite on hosted CI (ci.yml rust/desktop-e2e matrices)"
+    },
+    {
+     "at": "2026-09-09T21:58:09Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real processes, real git, real SQLite, real Core over the socket"
+    },
+    {
+     "at": "2026-09-09T21:58:09Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 7bdf76d"
+    },
+    {
+     "at": "2026-09-09T21:58:09Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0136: the tool registry exposes no policy or mode tool; the kernel denies unknown operations"
+    }
+   ],
+   "status_changed_on": "2026-09-09T21:58:09Z"
   },
   {
    "id": "IMP-EV-0137",
@@ -9481,8 +10787,56 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0189",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0028_0189_capability_catalog_refuses_mismatched_models_before_dispatch",
+    "run:gha-34409173853",
+    "commit:e9be6a4",
+    "commit:7bdf76d",
+    "artifact:evidence/m2/IMP-EV-0189/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0189/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0189/ci-run-34409173853.json",
+    "artifact:evidence/m2/IMP-EV-0189/ci-run-34409173853-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T21:58:09Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (substrate delivered by M2.1-M2.10; an image request to a text-only model is refused with a typed reason and routed to a vision-capable endpoint)"
+    },
+    {
+     "at": "2026-09-09T21:58:09Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "named qualification test(s) for QUAL-EV-0189 against the real substrate"
+    },
+    {
+     "at": "2026-09-09T21:58:09Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tests run in the workspace test suite on hosted CI (ci.yml rust/desktop-e2e matrices)"
+    },
+    {
+     "at": "2026-09-09T21:58:09Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real processes, real git, real SQLite, real Core over the socket"
+    },
+    {
+     "at": "2026-09-09T21:58:09Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 7bdf76d"
+    },
+    {
+     "at": "2026-09-09T21:58:09Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0189: an image request to a text-only model is refused with a typed reason and routed to a vision-capable endpoint"
+    }
+   ],
+   "status_changed_on": "2026-09-09T21:58:09Z"
   },
   {
    "id": "IMP-EV-0190",
@@ -9587,8 +10941,56 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0194",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0194_approvals_are_canonical_and_never_resolved_by_the_model",
+    "run:gha-34409173853",
+    "commit:e9be6a4",
+    "commit:7bdf76d",
+    "artifact:evidence/m2/IMP-EV-0194/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0194/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0194/ci-run-34409173853.json",
+    "artifact:evidence/m2/IMP-EV-0194/ci-run-34409173853-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T21:58:09Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (substrate delivered by M2.1-M2.10; first decision wins, the conflicting one replays the recorded outcome, one ApprovalResolved on the log)"
+    },
+    {
+     "at": "2026-09-09T21:58:10Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "named qualification test(s) for QUAL-EV-0194 against the real substrate"
+    },
+    {
+     "at": "2026-09-09T21:58:10Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tests run in the workspace test suite on hosted CI (ci.yml rust/desktop-e2e matrices)"
+    },
+    {
+     "at": "2026-09-09T21:58:10Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real processes, real git, real SQLite, real Core over the socket"
+    },
+    {
+     "at": "2026-09-09T21:58:10Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 7bdf76d"
+    },
+    {
+     "at": "2026-09-09T21:58:10Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0194: first decision wins, the conflicting one replays the recorded outcome, one ApprovalResolved on the log"
+    }
+   ],
+   "status_changed_on": "2026-09-09T21:58:10Z"
   },
   {
    "id": "IMP-EV-0196",
@@ -10140,8 +11542,56 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0239",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0239_0080_denial_is_monotonic_and_argument_text_cannot_bypass_policy",
+    "run:gha-34409173853",
+    "commit:e9be6a4",
+    "commit:7bdf76d",
+    "artifact:evidence/m2/IMP-EV-0239/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0239/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0239/ci-run-34409173853.json",
+    "artifact:evidence/m2/IMP-EV-0239/ci-run-34409173853-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T21:58:10Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (substrate delivered by M2.1-M2.10; no post-guard stage can flip a DENY; the effector is never invoked)"
+    },
+    {
+     "at": "2026-09-09T21:58:10Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "named qualification test(s) for QUAL-EV-0239 against the real substrate"
+    },
+    {
+     "at": "2026-09-09T21:58:10Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tests run in the workspace test suite on hosted CI (ci.yml rust/desktop-e2e matrices)"
+    },
+    {
+     "at": "2026-09-09T21:58:10Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real processes, real git, real SQLite, real Core over the socket"
+    },
+    {
+     "at": "2026-09-09T21:58:10Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 7bdf76d"
+    },
+    {
+     "at": "2026-09-09T21:58:10Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0239: no post-guard stage can flip a DENY; the effector is never invoked"
+    }
+   ],
+   "status_changed_on": "2026-09-09T21:58:10Z"
   },
   {
    "id": "IMP-EV-0240",
@@ -10498,8 +11948,57 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0269",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0269_large_results_are_paged_by_output_ref_with_matching_digest",
+    "test:qual_ev_0019_0269_ten_megabytes_stream_in_bounded_chunks_and_output_ref_digest_matches",
+    "run:gha-34409173853",
+    "commit:e9be6a4",
+    "commit:7bdf76d",
+    "artifact:evidence/m2/IMP-EV-0269/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0269/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0269/ci-run-34409173853.json",
+    "artifact:evidence/m2/IMP-EV-0269/ci-run-34409173853-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T21:58:10Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (substrate delivered by M2.1-M2.10; 10 MB of real process output paged by OutputRef; SHA-256 of the pages equals the raw output)"
+    },
+    {
+     "at": "2026-09-09T21:58:11Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "named qualification test(s) for QUAL-EV-0269 against the real substrate"
+    },
+    {
+     "at": "2026-09-09T21:58:11Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tests run in the workspace test suite on hosted CI (ci.yml rust/desktop-e2e matrices)"
+    },
+    {
+     "at": "2026-09-09T21:58:11Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real processes, real git, real SQLite, real Core over the socket"
+    },
+    {
+     "at": "2026-09-09T21:58:11Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 7bdf76d"
+    },
+    {
+     "at": "2026-09-09T21:58:11Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0269: 10 MB of real process output paged by OutputRef; SHA-256 of the pages equals the raw output"
+    }
+   ],
+   "status_changed_on": "2026-09-09T21:58:11Z"
   },
   {
    "id": "IMP-EV-0270",
@@ -10526,8 +12025,57 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0271",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0271_0027_0135_detach_reattach_from_cursor_exactly_then_cancel_kills_the_real_process",
+    "test:pty_mode_runs_a_real_terminal_session",
+    "run:gha-34409173853",
+    "commit:e9be6a4",
+    "commit:7bdf76d",
+    "artifact:evidence/m2/IMP-EV-0271/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0271/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0271/ci-run-34409173853.json",
+    "artifact:evidence/m2/IMP-EV-0271/ci-run-34409173853-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T21:58:11Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (substrate delivered by M2.1-M2.10; detach, reattach from a cursor and receive the exact tail; the process outlives the client)"
+    },
+    {
+     "at": "2026-09-09T21:58:11Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "named qualification test(s) for QUAL-EV-0271 against the real substrate"
+    },
+    {
+     "at": "2026-09-09T21:58:11Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tests run in the workspace test suite on hosted CI (ci.yml rust/desktop-e2e matrices)"
+    },
+    {
+     "at": "2026-09-09T21:58:11Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real processes, real git, real SQLite, real Core over the socket"
+    },
+    {
+     "at": "2026-09-09T21:58:11Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 7bdf76d"
+    },
+    {
+     "at": "2026-09-09T21:58:11Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0271: detach, reattach from a cursor and receive the exact tail; the process outlives the client"
+    }
+   ],
+   "status_changed_on": "2026-09-09T21:58:11Z"
   },
   {
    "id": "IMP-EV-0272",

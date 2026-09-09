@@ -1,0 +1,32 @@
+{
+ "task": "IMP-EV-0026",
+ "requirement": "REQ-EV-0026",
+ "qual": "QUAL-EV-0026",
+ "tests": [
+  "shell_exec_and_test_run_go_through_the_real_broker"
+ ],
+ "substrate_commits": [
+  "47876da",
+  "f789fbd",
+  "9ad1c3c",
+  "22114e8",
+  "5d4c142",
+  "b41fdbb",
+  "d5abd95"
+ ],
+ "batch_commits": [
+  "e9be6a4",
+  "d672609",
+  "7bdf76d"
+ ],
+ "runs": [
+  {
+   "id": "gha-34409173853",
+   "kind": "hosted CI on 7bdf76d",
+   "result": "PASS: twelve jobs green on macOS, Linux and Windows (runs 34408383597/34408713618 on the earlier batch commits failed once on Linux: the closed-stdin refusal raced the child's exit; fixed in 7bdf76d)",
+   "url": "https://github.com/moss101/modbit/actions/runs/34409173853",
+   "log": "ci-run-34409173853.json, ci-run-34409173853-tests.log"
+  }
+ ],
+ "proof": "4000 lines of build noise reach the model as a < 8 KB view; the full raw output is retained and its digest matches"
+}
