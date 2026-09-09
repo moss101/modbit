@@ -1,6 +1,9 @@
 //! Real-effect tests for the Event Store: real SQLite files on disk, a real
 //! object directory, process reopen, a hard kill (SIGKILL / TerminateProcess)
 //! of a writer process mid-append, and row-level tampering.
+//!
+//! These tests exercise the raw log with the `ToolCall` aggregate, whose
+//! projection belongs to a later milestone, so payloads stay free-form.
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -24,7 +27,7 @@ fn req(
         run_id: None,
         turn_id: None,
         step_id: None,
-        aggregate_type: AggregateType::Task,
+        aggregate_type: AggregateType::ToolCall,
         aggregate_id: agg,
         expected_sequence: expected,
         events,
@@ -216,7 +219,7 @@ fn newer_schema_is_refused() {
     EventStore::open(dir.path()).unwrap();
     let conn = rusqlite::Connection::open(dir.path().join("core.db")).unwrap();
     conn.execute(
-        "UPDATE schema_meta SET value = '99' WHERE key = 'schema_version'",
+        "INSERT INTO schema_migrations (version, name, checksum, applied_at) VALUES (99, 'future', 'x', 0)",
         [],
     )
     .unwrap();
@@ -227,7 +230,7 @@ fn newer_schema_is_refused() {
             err,
             Error::SchemaTooNew {
                 found: 99,
-                supported: 1
+                supported: 2
             }
         ),
         "{err}"

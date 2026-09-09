@@ -1160,8 +1160,24 @@
    "milestone": "M1",
    "order": 1,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-09T04:40:57Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Audit: IMPLEMENTED-PARTIAL. Event store v1 schema exists with schema_meta version; no migration ledger with forward/rollback plans, no projection tables (sessions/tasks/runs/turns/run_steps), no command idempotency store."
+    },
+    {
+     "at": "2026-09-09T04:52:59Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "Checksummed migration ledger, v2 projections/commands schema, projections in the append transaction with rebuild, command idempotency, committed v1 fixture migrated in tests."
+    }
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-09-09T04:52:59Z"
   },
   {
    "id": "M1.3",

@@ -7,8 +7,9 @@ use modbit_domain::{EventId, RunId, RunStepId, SessionId, TaskId, TenantId, Time
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params};
 use sha2::{Digest, Sha256};
 
+use crate::migrations::MigrationReport;
 use crate::objects::ObjectStore;
-use crate::schema::{INLINE_PAYLOAD_CEILING, SCHEMA_VERSION, V1};
+use crate::schema::INLINE_PAYLOAD_CEILING;
 use crate::{Error, Result};
 
 /// A stored event with its store-wide offset.
@@ -160,44 +161,31 @@ fn blob16(bytes: Vec<u8>) -> rusqlite::Result<[u8; 16]> {
 
 impl EventStore {
     /// Open (creating) the store rooted at `dir`: `core.db` plus `objects/`.
+    /// Applies pending migrations; refuses a newer schema.
     pub fn open(dir: &Path) -> Result<Self> {
+        Self::open_with_report(dir).map(|(s, _)| s)
+    }
+
+    /// Open and return the migration report.
+    pub fn open_with_report(dir: &Path) -> Result<(Self, MigrationReport)> {
         std::fs::create_dir_all(dir)?;
         let db_path = dir.join("core.db");
-        let conn = Connection::open(&db_path)?;
+        let mut conn = Connection::open(&db_path)?;
         conn.pragma_update(None, "journal_mode", "WAL")?;
         conn.pragma_update(None, "synchronous", "FULL")?;
         conn.pragma_update(None, "foreign_keys", "ON")?;
-        conn.execute_batch(V1)?;
-        let found: Option<String> = conn
-            .query_row(
-                "SELECT value FROM schema_meta WHERE key = 'schema_version'",
-                [],
-                |r| r.get(0),
-            )
-            .optional()?;
-        match found {
-            None => {
-                conn.execute(
-                    "INSERT INTO schema_meta (key, value) VALUES ('schema_version', ?1)",
-                    params![SCHEMA_VERSION.to_string()],
-                )?;
-            }
-            Some(v) => {
-                let found: u32 = v.parse().unwrap_or(u32::MAX);
-                if found > SCHEMA_VERSION {
-                    return Err(Error::SchemaTooNew {
-                        found,
-                        supported: SCHEMA_VERSION,
-                    });
-                }
-            }
-        }
+        let report = crate::migrations::migrate(&mut conn)?;
         let objects = ObjectStore::open(dir.join("objects"))?;
-        Ok(Self {
+        let mut store = Self {
             conn,
             objects,
             db_path,
-        })
+        };
+        if report.applied.contains(&2) {
+            // Projections were introduced after events may already exist: derive them.
+            store.rebuild_projections()?;
+        }
+        Ok((store, report))
     }
 
     /// The object store.
@@ -227,110 +215,111 @@ impl EventStore {
             .unwrap_or((0, String::new())))
     }
 
-    /// Append events to one aggregate in a single transaction.
+    /// Append events to one aggregate in a single transaction, updating the
+    /// projections in that same transaction.
     pub fn append(&mut self, req: AppendRequest) -> Result<Vec<StoredEvent>> {
         let tx = self
             .conn
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
-        let (current, mut previous_hash) = {
-            let row: Option<(i64, String)> = tx
-                .query_row(
-                    "SELECT sequence, integrity_hash FROM events WHERE aggregate_id = ?1 ORDER BY sequence DESC LIMIT 1",
-                    params![req.aggregate_id.as_slice()],
-                    |r| Ok((r.get(0)?, r.get(1)?)),
-                )
-                .optional()?;
-            row.map(|(s, h)| (s as u64, h))
-                .unwrap_or((0, String::new()))
-        };
-        if let Some(expected) = req.expected_sequence
-            && expected != current
-        {
-            return Err(Error::SequenceConflict {
-                aggregate: hex::encode(req.aggregate_id),
-                expected,
-                actual: current,
-            });
-        }
-        let mut out = Vec::with_capacity(req.events.len());
-        for (sequence, ev) in (current + 1..).zip(req.events) {
-            let payload_text = ev.payload.to_string();
-            let payload = if payload_text.len() > INLINE_PAYLOAD_CEILING {
-                let hash = self.objects.put(payload_text.as_bytes())?;
-                PayloadRef::Object {
-                    object_hash: hash,
-                    byte_length: payload_text.len() as u64,
-                }
-            } else {
-                PayloadRef::Inline {
-                    payload: ev.payload,
-                }
-            };
-            let mut env = EventEnvelope {
-                event_id: EventId::new(),
-                tenant_id: req.tenant_id,
-                session_id: req.session_id,
-                task_id: req.task_id,
-                run_id: req.run_id,
-                turn_id: req.turn_id,
-                step_id: req.step_id,
-                aggregate_type: req.aggregate_type,
-                aggregate_id: req.aggregate_id,
-                sequence,
-                event_type: ev.event_type,
-                schema_version: modbit_domain::SCHEMA_VERSION,
-                occurred_at: ev.occurred_at.unwrap_or_else(Timestamp::now),
-                actor: ev.actor,
-                causation_id: ev.causation_id,
-                correlation_id: ev.correlation_id,
-                payload,
-                integrity_hash: String::new(),
-            };
-            env.integrity_hash = chain_hash(&previous_hash, &env);
-            previous_hash = env.integrity_hash.clone();
-            let (actor_type, actor_id) = actor_columns(&env.actor);
-            let (inline, object_hash, byte_length) = match &env.payload {
-                PayloadRef::Inline { payload } => (Some(payload.to_string()), None, None),
-                PayloadRef::Object {
-                    object_hash,
-                    byte_length,
-                } => (None, Some(object_hash.clone()), Some(*byte_length as i64)),
-            };
-            tx.execute(
-                "INSERT INTO events (event_id, tenant_id, session_id, task_id, run_id, turn_id, step_id, aggregate_type, aggregate_id, sequence, event_type, schema_version, occurred_at, actor_type, actor_id, causation_id, correlation_id, payload_inline, payload_object_hash, payload_byte_length, integrity_hash)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21)",
-                params![
-                    env.event_id.as_bytes().as_slice(),
-                    env.tenant_id.as_bytes().as_slice(),
-                    env.session_id.as_bytes().as_slice(),
-                    opt_blob(env.task_id.map(|x| *x.as_bytes())),
-                    opt_blob(env.run_id.map(|x| *x.as_bytes())),
-                    opt_blob(env.turn_id.map(|x| *x.as_bytes())),
-                    opt_blob(env.step_id.map(|x| *x.as_bytes())),
-                    env.aggregate_type.as_str(),
-                    env.aggregate_id.as_slice(),
-                    env.sequence as i64,
-                    &env.event_type,
-                    env.schema_version,
-                    env.occurred_at.millis(),
-                    actor_type,
-                    actor_id,
-                    opt_blob(env.causation_id.map(|x| *x.as_bytes())),
-                    opt_blob(env.correlation_id.map(|x| *x.as_bytes())),
-                    inline,
-                    object_hash,
-                    byte_length,
-                    &env.integrity_hash,
-                ],
-            )?;
-            let offset = tx.last_insert_rowid() as u64;
-            out.push(StoredEvent {
-                offset,
-                envelope: env,
-            });
-        }
+        let out = append_in(&tx, &self.objects, req)?;
         tx.commit()?;
         Ok(out)
+    }
+
+    /// Execute a mutating command idempotently (docs/30: "Mutating commands are
+    /// idempotent by `command_id`"). A retry with the same `command_id` and
+    /// `request_hash` returns the recorded outcome without appending; the same
+    /// id with a different hash is a conflict.
+    pub fn execute_command(
+        &mut self,
+        cmd: CommandRecord,
+        req: AppendRequest,
+    ) -> Result<CommandOutcome> {
+        let tx = self
+            .conn
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let prior: Option<(String, Option<i64>, Option<i64>)> = tx
+            .query_row(
+                "SELECT request_hash, first_event_offset, last_event_offset FROM commands WHERE command_id = ?1",
+                params![cmd.command_id.as_bytes().as_slice()],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .optional()?;
+        if let Some((hash, first, last)) = prior {
+            if hash != cmd.request_hash {
+                return Err(Error::IdempotencyConflict {
+                    command_id: hex::encode(cmd.command_id.as_bytes()),
+                });
+            }
+            let events = match (first, last) {
+                (Some(f), Some(l)) => read_range(&tx, f as u64, l as u64)?,
+                _ => Vec::new(),
+            };
+            return Ok(CommandOutcome::Replayed(events));
+        }
+        let events = append_in(&tx, &self.objects, req)?;
+        tx.execute(
+            "INSERT INTO commands (command_id, tenant_id, command_type, request_hash, first_event_offset, last_event_offset, accepted_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![
+                cmd.command_id.as_bytes().as_slice(),
+                cmd.tenant_id.as_bytes().as_slice(),
+                &cmd.command_type,
+                &cmd.request_hash,
+                events.first().map(|e| e.offset as i64),
+                events.last().map(|e| e.offset as i64),
+                Timestamp::now().millis(),
+            ],
+        )?;
+        tx.commit()?;
+        Ok(CommandOutcome::Applied(events))
+    }
+
+    /// Rebuild every projection row from the event log (idempotent).
+    pub fn rebuild_projections(&mut self) -> Result<u64> {
+        let tx = self
+            .conn
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let n = crate::projections::rebuild(&tx, &self.objects)?;
+        tx.commit()?;
+        Ok(n)
+    }
+
+    /// Offset the projections are caught up to.
+    pub fn projection_offset(&self) -> Result<u64> {
+        let v: Option<i64> = self
+            .conn
+            .query_row(
+                "SELECT last_offset FROM projection_state WHERE name = ?1",
+                params![crate::projections::PROJECTION_NAME],
+                |r| r.get(0),
+            )
+            .optional()?;
+        Ok(v.unwrap_or(0) as u64)
+    }
+
+    /// Load a task projection.
+    pub fn task(&self, id: &TaskId) -> Result<Option<modbit_domain::task::Task>> {
+        crate::projections::load_task(&self.conn, id)
+    }
+
+    /// Load a session projection.
+    pub fn session(&self, id: &SessionId) -> Result<Option<modbit_domain::session::Session>> {
+        crate::projections::load_session(&self.conn, id)
+    }
+
+    /// Load a run projection.
+    pub fn run(&self, id: &RunId) -> Result<Option<modbit_domain::run::Run>> {
+        crate::projections::load_run(&self.conn, id)
+    }
+
+    /// Load a turn projection.
+    pub fn turn(&self, id: &TurnId) -> Result<Option<modbit_domain::turn::Turn>> {
+        crate::projections::load_turn(&self.conn, id)
+    }
+
+    /// Load a run-step projection.
+    pub fn step(&self, id: &RunStepId) -> Result<Option<modbit_domain::step::RunStep>> {
+        crate::projections::load_step(&self.conn, id)
     }
 
     /// Events of one aggregate with `sequence > after`, ascending.
@@ -436,6 +425,154 @@ impl EventStore {
             })
         }
     }
+}
+
+/// A command's identity for the idempotency ledger.
+#[derive(Clone, Debug)]
+pub struct CommandRecord {
+    /// Stable command id chosen by the client.
+    pub command_id: EventId,
+    /// Tenant scope.
+    pub tenant_id: TenantId,
+    /// Command type name.
+    pub command_type: String,
+    /// Hash of the full request (payload + target), so a reused id with a
+    /// different request is detected.
+    pub request_hash: String,
+}
+
+/// Result of an idempotent command execution.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CommandOutcome {
+    /// Executed now; these events were appended.
+    Applied(Vec<StoredEvent>),
+    /// Already executed earlier; these are the events it appended then.
+    Replayed(Vec<StoredEvent>),
+}
+
+/// Events with `offset` in `[first, last]`.
+fn read_range(conn: &Connection, first: u64, last: u64) -> Result<Vec<StoredEvent>> {
+    let mut stmt = conn.prepare_cached(&format!(
+        "SELECT {COLUMNS} FROM events WHERE offset >= ?1 AND offset <= ?2 ORDER BY offset ASC"
+    ))?;
+    let rows = stmt.query_map(params![first as i64, last as i64], row_to_event)?;
+    rows.map(|r| r.map_err(Error::from)).collect()
+}
+
+/// Every event with `offset > after`, ascending.
+pub(crate) fn read_all_from(conn: &Connection, after: u64) -> Result<Vec<StoredEvent>> {
+    let mut stmt = conn.prepare_cached(&format!(
+        "SELECT {COLUMNS} FROM events WHERE offset > ?1 ORDER BY offset ASC"
+    ))?;
+    let rows = stmt.query_map(params![after as i64], row_to_event)?;
+    rows.map(|r| r.map_err(Error::from)).collect()
+}
+
+fn append_in(
+    tx: &rusqlite::Transaction<'_>,
+    objects: &ObjectStore,
+    req: AppendRequest,
+) -> Result<Vec<StoredEvent>> {
+    let (current, mut previous_hash) = {
+        let row: Option<(i64, String)> = tx
+                .query_row(
+                    "SELECT sequence, integrity_hash FROM events WHERE aggregate_id = ?1 ORDER BY sequence DESC LIMIT 1",
+                    params![req.aggregate_id.as_slice()],
+                    |r| Ok((r.get(0)?, r.get(1)?)),
+                )
+                .optional()?;
+        row.map(|(s, h)| (s as u64, h))
+            .unwrap_or((0, String::new()))
+    };
+    if let Some(expected) = req.expected_sequence
+        && expected != current
+    {
+        return Err(Error::SequenceConflict {
+            aggregate: hex::encode(req.aggregate_id),
+            expected,
+            actual: current,
+        });
+    }
+    let mut out = Vec::with_capacity(req.events.len());
+    for (sequence, ev) in (current + 1..).zip(req.events) {
+        let payload_text = ev.payload.to_string();
+        let payload = if payload_text.len() > INLINE_PAYLOAD_CEILING {
+            let hash = objects.put(payload_text.as_bytes())?;
+            PayloadRef::Object {
+                object_hash: hash,
+                byte_length: payload_text.len() as u64,
+            }
+        } else {
+            PayloadRef::Inline {
+                payload: ev.payload,
+            }
+        };
+        let mut env = EventEnvelope {
+            event_id: EventId::new(),
+            tenant_id: req.tenant_id,
+            session_id: req.session_id,
+            task_id: req.task_id,
+            run_id: req.run_id,
+            turn_id: req.turn_id,
+            step_id: req.step_id,
+            aggregate_type: req.aggregate_type,
+            aggregate_id: req.aggregate_id,
+            sequence,
+            event_type: ev.event_type,
+            schema_version: modbit_domain::SCHEMA_VERSION,
+            occurred_at: ev.occurred_at.unwrap_or_else(Timestamp::now),
+            actor: ev.actor,
+            causation_id: ev.causation_id,
+            correlation_id: ev.correlation_id,
+            payload,
+            integrity_hash: String::new(),
+        };
+        env.integrity_hash = chain_hash(&previous_hash, &env);
+        previous_hash = env.integrity_hash.clone();
+        let (actor_type, actor_id) = actor_columns(&env.actor);
+        let (inline, object_hash, byte_length) = match &env.payload {
+            PayloadRef::Inline { payload } => (Some(payload.to_string()), None, None),
+            PayloadRef::Object {
+                object_hash,
+                byte_length,
+            } => (None, Some(object_hash.clone()), Some(*byte_length as i64)),
+        };
+        tx.execute(
+                "INSERT INTO events (event_id, tenant_id, session_id, task_id, run_id, turn_id, step_id, aggregate_type, aggregate_id, sequence, event_type, schema_version, occurred_at, actor_type, actor_id, causation_id, correlation_id, payload_inline, payload_object_hash, payload_byte_length, integrity_hash)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21)",
+                params![
+                    env.event_id.as_bytes().as_slice(),
+                    env.tenant_id.as_bytes().as_slice(),
+                    env.session_id.as_bytes().as_slice(),
+                    opt_blob(env.task_id.map(|x| *x.as_bytes())),
+                    opt_blob(env.run_id.map(|x| *x.as_bytes())),
+                    opt_blob(env.turn_id.map(|x| *x.as_bytes())),
+                    opt_blob(env.step_id.map(|x| *x.as_bytes())),
+                    env.aggregate_type.as_str(),
+                    env.aggregate_id.as_slice(),
+                    env.sequence as i64,
+                    &env.event_type,
+                    env.schema_version,
+                    env.occurred_at.millis(),
+                    actor_type,
+                    actor_id,
+                    opt_blob(env.causation_id.map(|x| *x.as_bytes())),
+                    opt_blob(env.correlation_id.map(|x| *x.as_bytes())),
+                    inline,
+                    object_hash,
+                    byte_length,
+                    &env.integrity_hash,
+                ],
+            )?;
+        let offset = tx.last_insert_rowid() as u64;
+        let stored = StoredEvent {
+            offset,
+            envelope: env,
+        };
+        crate::projections::apply(tx, &stored, objects)?;
+        out.push(stored);
+    }
+    Ok(out)
 }
 
 const COLUMNS: &str = "offset, event_id, tenant_id, session_id, task_id, run_id, turn_id, step_id, aggregate_type, aggregate_id, sequence, event_type, schema_version, occurred_at, actor_type, actor_id, causation_id, correlation_id, payload_inline, payload_object_hash, payload_byte_length, integrity_hash";

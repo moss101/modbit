@@ -18,16 +18,23 @@
 //! - a store-wide monotonic `offset` lets clients resume a session stream from
 //!   the last offset they saw (REQ-EV-0010).
 //!
-//! Projections and command idempotency arrive with M1.2 in this crate.
+//! M1.2 adds, in this crate: a checksummed migration ledger (`migrations`),
+//! projections of the five core aggregates updated in the same transaction as
+//! the append and rebuildable from the log (`projections`), and a command
+//! idempotency ledger so a retried command with the same `command_id` replays
+//! its recorded outcome instead of appending again (docs/30, docs/33).
 
 #![forbid(unsafe_code)]
 
+pub mod migrations;
 pub mod objects;
+pub mod projections;
 pub mod schema;
 mod store;
 
+pub use migrations::MigrationReport;
 pub use objects::ObjectStore;
-pub use store::{AppendRequest, EventStore, NewEvent, StoredEvent};
+pub use store::{AppendRequest, CommandOutcome, CommandRecord, EventStore, NewEvent, StoredEvent};
 
 /// Errors from the store.
 #[derive(Debug, thiserror::Error)]
@@ -70,6 +77,20 @@ pub enum Error {
         found: u32,
         /// Supported version.
         supported: u32,
+    },
+    /// A projection could not apply an event (illegal transition in the log).
+    #[error("projection failure at offset {offset}: {detail}")]
+    Projection {
+        /// Store offset of the offending event.
+        offset: u64,
+        /// What was wrong.
+        detail: String,
+    },
+    /// A command id was reused with a different request.
+    #[error("command {command_id} was already accepted with a different request hash")]
+    IdempotencyConflict {
+        /// Command id (hex).
+        command_id: String,
     },
     /// An object referenced by an event is missing or corrupt.
     #[error("object {hash} {detail}")]

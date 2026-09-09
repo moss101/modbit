@@ -389,7 +389,7 @@ flowchart LR
 | Task | Status | Title | Acceptance / note |
 |---|---|---|---|
 | `M1.1` | COMPLETE | Implement Session/Task/Run/Turn/RunStep domain and event store |  |
-| `M1.2` | NOT_STARTED | Implement SQLite migrations, projections, command idempotency |  |
+| `M1.2` | IMPLEMENTING | Implement SQLite migrations, projections, command idempotency |  |
 | `M1.3` | NOT_STARTED | Implement local authenticated SurfaceProtocol |  |
 | `M1.4` | NOT_STARTED | Electron shell + real Fleet/New Task UI against Core |  |
 | `M1.5` | NOT_STARTED | Crash/restart snapshot + event replay |  |
