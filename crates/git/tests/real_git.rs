@@ -8,7 +8,7 @@ use modbit_git::{MergeState, Repo};
 
 /// Read text with line endings normalized (a user's global autocrlf must not matter).
 fn read_lf(p: &Path) -> String {
-    read_lf(&p).replace("\r\n", "\n")
+    std::fs::read_to_string(p).unwrap().replace("\r\n", "\n")
 }
 
 fn write(p: &Path, s: &str) {
