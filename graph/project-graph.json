@@ -1299,8 +1299,15 @@
    "milestone": "M1",
    "order": 4,
    "source": "docs/43",
-   "status": "IMPLEMENTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-34317667928",
+    "commit:6245d4c",
+    "commit:2714a90",
+    "artifact:evidence/m1/M1.5/evidence.json",
+    "artifact:evidence/m1/M1.5/TASK_CARD.md",
+    "test:kill_points_during_a_command_stream_never_duplicate_or_tear_state"
+   ],
    "notes": [
     {
      "at": "2026-09-09T05:58:33Z",
@@ -1313,10 +1320,22 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "recover_on_start (integrity, chain verification, projection catch-up, boot generation) before endpoint bind; GetRecoveryReport; desktop recovery banner; kill-point suite passes locally (5 rounds, hundreds of tasks, in-flight kills)."
+    },
+    {
+     "at": "2026-09-09T06:09:36Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Recovery runs in the production startup path before the endpoint binds; desktop consumes the report on every reconnect; CI runs all suites on three platforms (run 34317667928)."
+    },
+    {
+     "at": "2026-09-09T06:09:36Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Kill-point suite, store recovery tests and desktop recovery E2E pass on hosted macOS/Linux/Windows."
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-09-09T06:04:36Z"
+   "status_changed_on": "2026-09-09T06:09:37Z"
   },
   {
    "id": "M2.1",

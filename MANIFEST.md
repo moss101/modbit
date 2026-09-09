@@ -208,9 +208,12 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m1/M1.4/evidence.json` | retained evidence | 1466 | `39649bc0e2563fff06fb134fb0d38bcf96fe10cc68fdbffa9018057405621b16` |
 | `evidence/m1/M1.4/local-e2e.log` | retained evidence | 313 | `85975357f09871239436ab721ab8e7de79ac630698a8d75cd2374d8668c4cbdf` |
 | `evidence/m1/M1.5/TASK_CARD.md` | retained evidence | 3696 | `71ce0451ca96dff7b2f1ffdd3b95ccbea2ee1e5ef74f56259ff88476fb091455` |
+| `evidence/m1/M1.5/ci-run-34317667928-tests.log` | retained evidence | 1254 | `90d3f63b1fdc60b4cc52d7c209a39dc65ff9e6cdfc30ecb679e1a035be9af899` |
+| `evidence/m1/M1.5/ci-run-34317667928.json` | retained evidence | 1231 | `f04d433a5ac15227f0b852fec3966e145a110018e72899338ed92b5546a68fec` |
+| `evidence/m1/M1.5/evidence.json` | retained evidence | 1739 | `5e0a7f11ce1a4b72fd57b7a762dc17005284345c4d98cf5b7eb9d3dc31e24caf` |
 | `evidence/m1/M1.5/local-desktop-e2e-with-recovery-banner.log` | retained evidence | 313 | `f1c58150b0ac188655b0c3440b9cbd549085d01e3e8fd5c031053f6a2bdfedfb` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 40954 | `f170bacd835585d57ff0d361a265282e1c10e19d30d6d4876c95f4a9c9bb7006` |
-| `graph/project-graph.json` | project driver graph with live status | 1021575 | `4ec5e0b045a7b46629f53e57d29a12037aa2f5b099a3c6cf77e965e126af4c2d` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 40953 | `be7d532894449daec05a7e61aaee102a0965129c3b5ca518186c64c776b04a7b` |
+| `graph/project-graph.json` | project driver graph with live status | 1022317 | `bc145713ca4f1d2a4a31958500f4892bd51d579c491e8ae321546f2c4eaca4d0` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 45547 | `a56d91335f3d4bfcf2860f87d71f96548d508841a6d2e60c5c38e0f2dd466557` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 17596 | `5c9b7a782d245223726f860ca583d766929a6f5662b644adebee64d257ad426b` |

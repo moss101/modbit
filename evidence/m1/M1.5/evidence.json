@@ -1,0 +1,10 @@
+{
+  "task": "M1.5", "commits": {"implementation": "2714a90", "fix": "6245d4c"}, "evidence_tier": "release-critical",
+  "runs": [
+    {"id": "gha-34317498249", "kind": "hosted CI on 2714a90", "result": "macOS/Linux PASS; Windows kill-point suite FAILED: fixed 15 ms pre-kill sleep gave the writer no progress over the slower named pipe; suite now waits for real progress before each kill"},
+    {"id": "gha-34317667928", "kind": "hosted CI on 6245d4c", "result": "PASS: thirteen jobs green; kill-point suite passes on macOS, Linux and Windows; store recovery tests pass; desktop E2E shows the recovery banner with exact recovered counts on three platforms", "url": "https://github.com/moss101/modbit/actions/runs/34317667928", "log": "ci-run-34317667928.json, ci-run-34317667928-tests.log"},
+    {"id": "local-kill-point", "kind": "suite run repeatedly on the developer machine", "result": "PASS every run (e.g. 587/517/536/100/91 tasks, 4–5 of 5 rounds killed with commands in flight)"}
+  ],
+  "faults": ["Core SIGKILLed mid-command stream (before commit / after commit before ack / between commands), five rounds", "projection cursor deliberately lagged and task rows deleted: rebuilt from the log at startup", "forged event: recovery refuses and the Core does not start", "Core SIGKILLed under the desktop app: recovery banner states 1 session, 1 task, nothing to reconcile"],
+  "acceptance": {"crash/restart snapshot + event replay": "PASS: CoreReady only after recovery; report served; no duplicate or torn state at any kill point", "M1 milestone proof (docs/43)": "user creates durable task, kills/restarts app and Core, same task recovers with no fake state — proven by the desktop E2E (M1.4) and the kill-point suite (M1.5)"}
+}

@@ -1,0 +1,6 @@
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T06:08:01.6688390Z test kill_points_during_a_command_stream_never_duplicate_or_tear_state ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T06:08:01.7337310Z test startup_recovery_verifies_chains_rebuilds_lagging_projections_and_bumps_boot_generation ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T06:07:38.6035559Z test kill_points_during_a_command_stream_never_duplicate_or_tear_state ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T06:07:38.6418945Z test startup_recovery_verifies_chains_rebuilds_lagging_projections_and_bumps_boot_generation ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T06:08:31.6496157Z test kill_points_during_a_command_stream_never_duplicate_or_tear_state ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T06:08:32.3917568Z test startup_recovery_verifies_chains_rebuilds_lagging_projections_and_bumps_boot_generation ... ok
