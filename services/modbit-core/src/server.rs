@@ -382,6 +382,8 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "DecideReview",
                     "UndoToolCall",
                     "AskSideQuestion",
+                    "ListQuestions",
+                    "RespondToQuestion",
                 ]
                 .map(String::from)
                 .to_vec(),
@@ -1394,6 +1396,107 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 .encode_to_vec(),
             )
         }
+        "ListQuestions" => {
+            let Ok(p) = wire::ListQuestions::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "ListQuestions");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let store = core.store.lock().await;
+            accept(
+                cid,
+                false,
+                wire::QuestionList {
+                    questions: questions_of(&store, &task_id),
+                }
+                .encode_to_vec(),
+            )
+        }
+        "RespondToQuestion" => {
+            let Ok(p) = wire::RespondToQuestion::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "RespondToQuestion");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let task = {
+                let store = core.store.lock().await;
+                match store.task(&task_id) {
+                    Ok(Some(t)) => t,
+                    Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                }
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
+                return ack;
+            }
+            let mut store = core.store.lock().await;
+            let questions = questions_of(&store, &task_id);
+            let Some(q) = questions.iter().find(|q| q.question_id == p.question_id) else {
+                return reject(cid, "UNKNOWN_QUESTION", p.question_id);
+            };
+            if q.answered {
+                return accept(
+                    cid,
+                    true,
+                    wire::QuestionResponded {
+                        question_id: q.question_id.clone(),
+                        already_answered: true,
+                    }
+                    .encode_to_vec(),
+                );
+            }
+            let option_id = (!p.option_id.is_empty()).then(|| p.option_id.clone());
+            let text = (!p.text.trim().is_empty()).then(|| p.text.trim().to_owned());
+            if let Some(o) = &option_id
+                && !q.options.iter().any(|x| &x.id == o)
+            {
+                return reject(
+                    cid,
+                    "BAD_ANSWER",
+                    format!(
+                        "option `{o}` is not one of {:?}",
+                        q.options.iter().map(|x| &x.id).collect::<Vec<_>>()
+                    ),
+                );
+            }
+            if option_id.is_none() && (text.is_none() || !q.allow_free_text) {
+                return reject(
+                    cid,
+                    "BAD_ANSWER",
+                    "answer with one of the options (free text is not accepted here)",
+                );
+            }
+            let actor = Actor::User(core.user_id);
+            if let Err(e) = crate::runtime::append(
+                &mut store,
+                core,
+                crate::runtime::Lineage::task(core.tenant_id, task.session_id, task_id),
+                AggregateType::Task,
+                *task_id.as_bytes(),
+                vec![crate::runtime::typed(
+                    "UserQuestionAnswered",
+                    &modbit_domain::task::TaskEvent::UserQuestionAnswered {
+                        question_id: p.question_id.clone(),
+                        option_id,
+                        text,
+                    },
+                    actor,
+                )],
+            ) {
+                return reject(cid, "STORE", e.to_string());
+            }
+            accept(
+                cid,
+                false,
+                wire::QuestionResponded {
+                    question_id: p.question_id,
+                    already_answered: false,
+                }
+                .encode_to_vec(),
+            )
+        }
         "AskSideQuestion" => {
             let Ok(p) = wire::AskSideQuestion::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "AskSideQuestion");
@@ -1940,4 +2043,58 @@ fn error_code(e: &modbit_event_store::Error) -> &'static str {
         SchemaTooNew { .. } => "SCHEMA_TOO_NEW",
         _ => "STORE_ERROR",
     }
+}
+
+/// The task's questions in order, with their answers.
+fn questions_of(store: &EventStore, task_id: &TaskId) -> Vec<wire::QuestionView> {
+    let events = store
+        .read_aggregate(task_id.as_bytes(), 0, usize::MAX)
+        .unwrap_or_default();
+    let mut out: Vec<wire::QuestionView> = Vec::new();
+    for e in &events {
+        let p = store.payload(&e.envelope).unwrap_or_default();
+        match e.envelope.event_type.as_str() {
+            "UserQuestionAsked" => out.push(wire::QuestionView {
+                question_id: p["question_id"].as_str().unwrap_or_default().to_owned(),
+                call_id: p["call_id"].as_str().unwrap_or_default().to_owned(),
+                question: p["question"].as_str().unwrap_or_default().to_owned(),
+                options: p["options"]
+                    .as_array()
+                    .map(|a| {
+                        a.iter()
+                            .map(|o| wire::QuestionOptionView {
+                                id: o["id"].as_str().unwrap_or_default().to_owned(),
+                                label: o["label"].as_str().unwrap_or_default().to_owned(),
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_default(),
+                allow_free_text: p["allow_free_text"].as_bool().unwrap_or(false),
+                reason: p["reason"].as_str().unwrap_or_default().to_owned(),
+                flags: p["flags"]
+                    .as_array()
+                    .map(|a| {
+                        a.iter()
+                            .filter_map(|f| f.as_str().map(str::to_owned))
+                            .collect()
+                    })
+                    .unwrap_or_default(),
+                answered: false,
+                option_id: String::new(),
+                text: String::new(),
+            }),
+            "UserQuestionAnswered" => {
+                if let Some(q) = out
+                    .iter_mut()
+                    .find(|q| Some(q.question_id.as_str()) == p["question_id"].as_str())
+                {
+                    q.answered = true;
+                    q.option_id = p["option_id"].as_str().unwrap_or_default().to_owned();
+                    q.text = p["text"].as_str().unwrap_or_default().to_owned();
+                }
+            }
+            _ => {}
+        }
+    }
+    out
 }

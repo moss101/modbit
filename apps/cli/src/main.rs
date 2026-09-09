@@ -37,13 +37,28 @@ use modbit_protocol::v1::{
     ClientKind, CommandEnvelope, CreateSession, CreateTask, DecideReview, EffectReceiptList,
     EmergencyStop, EmergencyStopped, GetCapabilityLeases, GetEffectReceipts, GetReviewBundle,
     GetSessionSnapshot, GetTaskStatus, HunkRef, Id, InvokeTool, ListApprovals, ListModels,
-    ListTools, ModelList, ModelProbed, ProbeModel, ResolveApproval, ReviewBundle, ReviewDecided,
-    SessionCreated, SessionLeaseAcquired, SessionSnapshot, StartTask, TaskCancelRequested,
-    TaskCreated, TaskRunStarted, TaskStatus, ToolInvoked, ToolList, UndoPlanView, UndoToolCall,
+    ListQuestions, ListTools, ModelList, ModelProbed, ProbeModel, QuestionList, QuestionResponded,
+    ResolveApproval, RespondToQuestion, ReviewBundle, ReviewDecided, SessionCreated,
+    SessionLeaseAcquired, SessionSnapshot, StartTask, TaskCancelRequested, TaskCreated,
+    TaskRunStarted, TaskStatus, ToolInvoked, ToolList, UndoPlanView, UndoToolCall,
 };
 use prost::Message;
 
-const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
+/// Process exit code (docs: apps/cli/README.md). Set by task-state commands.
+static EXIT_CODE: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(0);
+
+/// Exit code for a task state: 0 done (ReadyForReview/Completed), 2 needs
+/// input (Waiting: question or approval), 3 cancelled/failed, 4 still running.
+fn exit_for_state(state: &str) -> u8 {
+    match state {
+        "ReadyForReview" | "Completed" => 0,
+        "Waiting" => 2,
+        "Cancelled" | "Failed" => 3,
+        _ => 4,
+    }
+}
+
+const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] [--json] | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
 
 fn parse_id(hex: &str) -> Result<Id, String> {
     let bytes = decode_hex(hex)
@@ -246,7 +261,32 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 {
                     Ok(Ok(Some(e))) => {
                         let ev = e.event.unwrap_or_default();
-                        println!("{} seq={} {}", e.offset, ev.sequence, ev.event_type);
+                        if words.contains(&"--json") {
+                            // Inline payloads are unwrapped; object payloads keep their ref.
+                            let mut payload =
+                                serde_json::from_slice::<serde_json::Value>(&ev.payload)
+                                    .unwrap_or_else(|_| {
+                                        serde_json::Value::String(encode_hex(&ev.payload))
+                                    });
+                            if payload["kind"] == "inline"
+                                && let Some(inner) = payload.get_mut("payload")
+                            {
+                                payload = inner.take();
+                            }
+                            println!(
+                                "{}",
+                                serde_json::json!({
+                                    "offset": e.offset,
+                                    "sequence": ev.sequence,
+                                    "aggregate_type": ev.aggregate_type,
+                                    "event_type": ev.event_type,
+                                    "task_id": ev.task_id.as_ref().map(|t| encode_hex(&t.value)),
+                                    "payload": payload,
+                                })
+                            );
+                        } else {
+                            println!("{} seq={} {}", e.offset, ev.sequence, ev.event_type);
+                        }
                     }
                     Ok(Ok(None)) => break,
                     Ok(Err(e)) => return Err(e.to_string()),
@@ -476,52 +516,84 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 .transpose()?
                 .unwrap_or(0);
             let lease = acquire_lease(&mut client, &sid).await?;
+            start_task(
+                &mut client,
+                &task_id,
+                lease,
+                opt("--endpoint").unwrap_or_default(),
+                opt("--model").unwrap_or_default(),
+                max_turns,
+            )
+            .await?;
+            if words.contains(&"--wait") {
+                wait_until_idle(&mut client, &task_id).await?;
+            }
+        }
+        ["question", "list", ..] => {
+            let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
+            let ack = client
+                .command(envelope(
+                    "ListQuestions",
+                    ListQuestions {
+                        task_id: Some(task_id),
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let l: QuestionList = Client::result(&ack).map_err(|e| e.to_string())?;
+            for q in &l.questions {
+                println!(
+                    "question {} answered={} reason={} flags={} option={} text={:?} {:?}",
+                    q.question_id,
+                    q.answered,
+                    q.reason,
+                    q.flags.join(","),
+                    q.option_id,
+                    q.text,
+                    q.question
+                );
+                for o in &q.options {
+                    println!("  option {} {:?}", o.id, o.label);
+                }
+            }
+        }
+        ["question", "answer", ..] => {
+            let sid = parse_id(opt("--session").ok_or(USAGE)?)?;
+            let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
+            let question_id = opt("--question").ok_or(USAGE)?.to_owned();
+            let text = positionals(&words, 2).join(" ");
+            let lease = acquire_lease(&mut client, &sid).await?;
             let ack = client
                 .command(envelope_fenced(
-                    "StartTask",
-                    StartTask {
+                    "RespondToQuestion",
+                    RespondToQuestion {
                         task_id: Some(task_id.clone()),
-                        endpoint: opt("--endpoint").unwrap_or_default().to_owned(),
-                        model: opt("--model").unwrap_or_default().to_owned(),
-                        max_turns,
-                        max_tool_calls: 0,
-                        max_no_progress_turns: 0,
+                        question_id: question_id.clone(),
+                        option_id: opt("--option").unwrap_or_default().to_owned(),
+                        text,
                     }
                     .encode_to_vec(),
                     Some(lease),
                 ))
                 .await
                 .map_err(|e| e.to_string())?;
-            let r: TaskRunStarted = Client::result(&ack).map_err(|e| e.to_string())?;
+            let r: QuestionResponded = Client::result(&ack).map_err(|e| e.to_string())?;
             println!(
-                "run {} resumed={} endpoint={} model={}",
-                encode_hex(&r.run_id.unwrap_or_default().value),
-                r.resumed,
-                r.endpoint,
-                r.model
+                "answered {} already_answered={}",
+                r.question_id, r.already_answered
             );
+            start_task(
+                &mut client,
+                &task_id,
+                lease,
+                opt("--endpoint").unwrap_or_default(),
+                opt("--model").unwrap_or_default(),
+                0,
+            )
+            .await?;
             if words.contains(&"--wait") {
-                loop {
-                    let ack = client
-                        .command(envelope(
-                            "GetTaskStatus",
-                            GetTaskStatus {
-                                task_id: Some(task_id.clone()),
-                            }
-                            .encode_to_vec(),
-                        ))
-                        .await
-                        .map_err(|e| e.to_string())?;
-                    let st: TaskStatus = Client::result(&ack).map_err(|e| e.to_string())?;
-                    if !st.loop_alive {
-                        println!(
-                            "task state={} wait_reason={} run_state={}",
-                            st.state, st.wait_reason, st.run_state
-                        );
-                        break;
-                    }
-                    tokio::time::sleep(std::time::Duration::from_millis(250)).await;
-                }
+                wait_until_idle(&mut client, &task_id).await?;
             }
         }
         ["task", "cancel", ..] => {
@@ -558,6 +630,10 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
             println!(
                 "task state={} wait_reason={} run_state={} loop_alive={}",
                 st.state, st.wait_reason, st.run_state, st.loop_alive
+            );
+            EXIT_CODE.store(
+                exit_for_state(&st.state),
+                std::sync::atomic::Ordering::SeqCst,
             );
         }
         ["change", "undo", ..] => {
@@ -816,6 +892,73 @@ fn positionals<'a>(words: &[&'a str], skip: usize) -> Vec<&'a str> {
 }
 
 /// The CLI becomes the session's single mutation owner for this invocation.
+async fn start_task(
+    client: &mut Client,
+    task_id: &Id,
+    lease: u64,
+    endpoint: &str,
+    model: &str,
+    max_turns: u32,
+) -> Result<(), String> {
+    let ack = client
+        .command(envelope_fenced(
+            "StartTask",
+            StartTask {
+                task_id: Some(task_id.clone()),
+                endpoint: endpoint.to_owned(),
+                model: model.to_owned(),
+                max_turns,
+                max_tool_calls: 0,
+                max_no_progress_turns: 0,
+            }
+            .encode_to_vec(),
+            Some(lease),
+        ))
+        .await
+        .map_err(|e| e.to_string())?;
+    let r: TaskRunStarted = Client::result(&ack).map_err(|e| e.to_string())?;
+    println!(
+        "run {} resumed={} endpoint={} model={}",
+        encode_hex(&r.run_id.unwrap_or_default().value),
+        r.resumed,
+        r.endpoint,
+        r.model
+    );
+    Ok(())
+}
+
+/// Poll until the agent loop is idle, print the state and set the exit code
+/// (0 done, 2 needs input, 3 cancelled/failed): headless use never hangs on
+/// a question or an approval.
+async fn wait_until_idle(client: &mut Client, task_id: &Id) -> Result<(), String> {
+    loop {
+        let ack = client
+            .command(envelope(
+                "GetTaskStatus",
+                GetTaskStatus {
+                    task_id: Some(task_id.clone()),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .map_err(|e| e.to_string())?;
+        let st: TaskStatus = Client::result(&ack).map_err(|e| e.to_string())?;
+        if !st.loop_alive {
+            println!(
+                "task state={} wait_reason={} run_state={}",
+                st.state, st.wait_reason, st.run_state
+            );
+            EXIT_CODE.store(
+                exit_for_state(&st.state),
+                std::sync::atomic::Ordering::SeqCst,
+            );
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+    }
+    Ok(())
+}
+
 async fn acquire_lease(client: &mut Client, sid: &Id) -> Result<u64, String> {
     let lease = client
         .command(envelope(
@@ -843,7 +986,7 @@ fn main() -> ExitCode {
         .build()
         .expect("runtime");
     match rt.block_on(run(args)) {
-        Ok(()) => ExitCode::SUCCESS,
+        Ok(()) => ExitCode::from(EXIT_CODE.load(std::sync::atomic::Ordering::SeqCst)),
         Err(e) => {
             eprintln!("modbit-cli: {e}");
             ExitCode::from(1)

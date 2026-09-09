@@ -1413,6 +1413,179 @@ export declare type SideAnswer = Message<"modbit.v1.SideAnswer"> & {
 export declare const SideAnswerSchema: GenMessage<SideAnswer>;
 
 /**
+ * REQ-EV-0222 / PX-000: typed questions. The run suspends on `user.ask`;
+ * RespondToQuestion records the answer (StartTask then resumes the run).
+ *
+ * @generated from message modbit.v1.ListQuestions
+ */
+export declare type ListQuestions = Message<"modbit.v1.ListQuestions"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.ListQuestions.
+ * Use `create(ListQuestionsSchema)` to create a new message.
+ */
+export declare const ListQuestionsSchema: GenMessage<ListQuestions>;
+
+/**
+ * @generated from message modbit.v1.QuestionOptionView
+ */
+export declare type QuestionOptionView = Message<"modbit.v1.QuestionOptionView"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string label = 2;
+   */
+  label: string;
+};
+
+/**
+ * Describes the message modbit.v1.QuestionOptionView.
+ * Use `create(QuestionOptionViewSchema)` to create a new message.
+ */
+export declare const QuestionOptionViewSchema: GenMessage<QuestionOptionView>;
+
+/**
+ * @generated from message modbit.v1.QuestionView
+ */
+export declare type QuestionView = Message<"modbit.v1.QuestionView"> & {
+  /**
+   * @generated from field: string question_id = 1;
+   */
+  questionId: string;
+
+  /**
+   * @generated from field: string call_id = 2;
+   */
+  callId: string;
+
+  /**
+   * @generated from field: string question = 3;
+   */
+  question: string;
+
+  /**
+   * @generated from field: repeated modbit.v1.QuestionOptionView options = 4;
+   */
+  options: QuestionOptionView[];
+
+  /**
+   * @generated from field: bool allow_free_text = 5;
+   */
+  allowFreeText: boolean;
+
+  /**
+   * @generated from field: string reason = 6;
+   */
+  reason: string;
+
+  /**
+   * @generated from field: repeated string flags = 7;
+   */
+  flags: string[];
+
+  /**
+   * @generated from field: bool answered = 8;
+   */
+  answered: boolean;
+
+  /**
+   * @generated from field: string option_id = 9;
+   */
+  optionId: string;
+
+  /**
+   * @generated from field: string text = 10;
+   */
+  text: string;
+};
+
+/**
+ * Describes the message modbit.v1.QuestionView.
+ * Use `create(QuestionViewSchema)` to create a new message.
+ */
+export declare const QuestionViewSchema: GenMessage<QuestionView>;
+
+/**
+ * @generated from message modbit.v1.QuestionList
+ */
+export declare type QuestionList = Message<"modbit.v1.QuestionList"> & {
+  /**
+   * @generated from field: repeated modbit.v1.QuestionView questions = 1;
+   */
+  questions: QuestionView[];
+};
+
+/**
+ * Describes the message modbit.v1.QuestionList.
+ * Use `create(QuestionListSchema)` to create a new message.
+ */
+export declare const QuestionListSchema: GenMessage<QuestionList>;
+
+/**
+ * @generated from message modbit.v1.RespondToQuestion
+ */
+export declare type RespondToQuestion = Message<"modbit.v1.RespondToQuestion"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: string question_id = 2;
+   */
+  questionId: string;
+
+  /**
+   * one of the question's options, or empty
+   *
+   * @generated from field: string option_id = 3;
+   */
+  optionId: string;
+
+  /**
+   * free text when the question allows it
+   *
+   * @generated from field: string text = 4;
+   */
+  text: string;
+};
+
+/**
+ * Describes the message modbit.v1.RespondToQuestion.
+ * Use `create(RespondToQuestionSchema)` to create a new message.
+ */
+export declare const RespondToQuestionSchema: GenMessage<RespondToQuestion>;
+
+/**
+ * @generated from message modbit.v1.QuestionResponded
+ */
+export declare type QuestionResponded = Message<"modbit.v1.QuestionResponded"> & {
+  /**
+   * @generated from field: string question_id = 1;
+   */
+  questionId: string;
+
+  /**
+   * @generated from field: bool already_answered = 2;
+   */
+  alreadyAnswered: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.QuestionResponded.
+ * Use `create(QuestionRespondedSchema)` to create a new message.
+ */
+export declare const QuestionRespondedSchema: GenMessage<QuestionResponded>;
+
+/**
  * @generated from message modbit.v1.GetCapabilityLeases
  */
 export declare type GetCapabilityLeases = Message<"modbit.v1.GetCapabilityLeases"> & {

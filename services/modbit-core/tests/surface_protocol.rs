@@ -4570,7 +4570,7 @@ async fn qual_ev_0096_0116_0133_0044_0031_tool_surface_is_compiled_from_support_
     // QUAL-EV-0116: bytes of the projected schema vs an eager projection of the whole host
     // list (itself already without the unsupported shell tools).
     // Both sides in the provider wire shape; the three harness tools are in both and left out.
-    let harness = ["plan.update", "task.complete", "verify.run"];
+    let harness = ["plan.update", "task.complete", "verify.run", "user.ask"];
     let projected_wire: Vec<serde_json::Value> = first["tools"]
         .as_array()
         .unwrap()
@@ -5023,5 +5023,326 @@ async fn qual_ev_0191_steering_policy_interrupts_replaces_coalesces_and_orders()
 c2", "f1", "f2", "s1"
         ],
         "order of applied inputs"
+    );
+}
+
+/// QUAL-EV-0222 / QUAL-PX-014: a typed question with concrete options
+/// suspends the run (Waiting/UserInput, loop idle: headless never hangs);
+/// resuming without an answer is refused; the answer becomes the tool
+/// result the model sees next. An ambiguous fixture yields exactly one
+/// question, an unambiguous one none; a question that merely confirms a
+/// verifiable repository fact is flagged; plan revisions are on the timeline.
+#[tokio::test]
+async fn qual_ev_0222_px_014_typed_question_suspends_the_run_and_the_answer_resumes_it() {
+    use modbit_protocol::v1::{
+        ListQuestions, QuestionList, QuestionResponded, RespondToQuestion, StartTask,
+        TaskRunStarted,
+    };
+    use serde_json::json;
+    let (_repo, root) = plain_repo(&[("a.txt", "a\n")]);
+    let ambiguous = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "pick a config", "expected_files": ["chosen.txt"]}}]}),
+        json!({"calls": [{"name": "user.ask", "args": {"question": "Which config should the new file follow?", "options": [{"id": "a", "label": "the a layout"}, {"id": "b", "label": "the b layout"}], "reason": "change_set"}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "pick a config", "expected_files": ["chosen.txt", "notes.txt"], "reason": "the answer adds a note"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "chosen.txt", "op": "create", "content": "a\n"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(ambiguous, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xE0)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xE1, "local_trusted").await;
+    let start = StartTask {
+        task_id: Some(task.clone()),
+        endpoint: "openai".into(),
+        model: "gpt-5".into(),
+        max_turns: 0,
+        max_tool_calls: 0,
+        max_no_progress_turns: 0,
+    }
+    .encode_to_vec();
+    let ack = c
+        .command(envelope_fenced(id16(0xE2), "StartTask", start.clone(), g))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 60).await;
+    assert_eq!(
+        (st.state.as_str(), st.wait_reason.as_str(), st.loop_alive),
+        ("Waiting", "UserInput", false),
+        "{st:?}"
+    );
+    let ack = c
+        .command(envelope(
+            id16(0xE3),
+            "ListQuestions",
+            ListQuestions {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let l: QuestionList = Client::result(&ack).unwrap();
+    assert_eq!(l.questions.len(), 1, "{l:?}");
+    let q = &l.questions[0];
+    assert!(
+        !q.answered
+            && q.options.iter().map(|o| o.id.as_str()).collect::<Vec<_>>() == ["a", "b"]
+            && q.reason == "change_set"
+            && q.flags.is_empty(),
+        "{q:?}"
+    );
+    // Resuming without an answer is refused: the run never spins on a pending question.
+    let err = c
+        .command(envelope_fenced(id16(0xE4), "StartTask", start.clone(), g))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "QUESTION_PENDING"),
+        "{err}"
+    );
+    // A wrong option is refused; the typed answer is recorded once.
+    let err = c
+        .command(envelope_fenced(
+            id16(0xE5),
+            "RespondToQuestion",
+            RespondToQuestion {
+                task_id: Some(task.clone()),
+                question_id: q.question_id.clone(),
+                option_id: "z".into(),
+                text: String::new(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "BAD_ANSWER"),
+        "{err}"
+    );
+    let err = c
+        .command(envelope_fenced(
+            id16(0xE6),
+            "RespondToQuestion",
+            RespondToQuestion {
+                task_id: Some(task.clone()),
+                question_id: q.question_id.clone(),
+                option_id: String::new(),
+                text: "free text".into(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "BAD_ANSWER"),
+        "free text is not accepted when options are typed: {err}"
+    );
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xE7),
+            "RespondToQuestion",
+            RespondToQuestion {
+                task_id: Some(task.clone()),
+                question_id: q.question_id.clone(),
+                option_id: "a".into(),
+                text: String::new(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let r: QuestionResponded = Client::result(&ack).unwrap();
+    assert!(!r.already_answered);
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xE8),
+            "RespondToQuestion",
+            RespondToQuestion {
+                task_id: Some(task.clone()),
+                question_id: q.question_id.clone(),
+                option_id: "b".into(),
+                text: String::new(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(
+        (
+            ack.status,
+            Client::result::<QuestionResponded>(&ack)
+                .unwrap()
+                .already_answered
+        ),
+        (CommandStatus::Replayed as i32, true),
+        "a second answer replays the first"
+    );
+    let ack = c
+        .command(envelope_fenced(id16(0xE9), "StartTask", start, g))
+        .await
+        .unwrap();
+    assert!(Client::result::<TaskRunStarted>(&ack).unwrap().resumed);
+    let st = wait_task(&mut c, &task, 60).await;
+    let trail = task_events(&core, &session, &task).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}\n{trail:#?}");
+    // The model saw the answer as the result of its user.ask call, exactly once.
+    let bodies = seen.lock().unwrap().clone();
+    let resumed = &bodies[2]["messages"];
+    let answers: Vec<&serde_json::Value> = resumed
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| {
+            m["role"] == "tool"
+                && m["content"]
+                    .as_str()
+                    .is_some_and(|c| c.contains("\"option_id\":\"a\""))
+        })
+        .collect();
+    assert_eq!(answers.len(), 1, "{resumed}");
+    assert!(
+        !resumed.to_string().contains("status: PENDING"),
+        "the placeholder was replaced by the answer"
+    );
+    let evs = task_events(&core, &session, &task).await;
+    let asked = evs
+        .iter()
+        .filter(|(_, t, _)| t == "UserQuestionAsked")
+        .count();
+    let answered = evs
+        .iter()
+        .filter(|(_, t, _)| t == "UserQuestionAnswered")
+        .count();
+    assert_eq!((asked, answered), (1, 1));
+    assert!(
+        evs.iter().any(|(_, t, _)| t == "PlanRecorded")
+            && evs.iter().any(|(_, t, _)| t == "PlanRevised"),
+        "plan revisions appear on the timeline"
+    );
+    let plan_before_write = evs
+        .iter()
+        .position(|(_, t, _)| t == "PlanRecorded")
+        .unwrap()
+        < evs
+            .iter()
+            .position(|(_, t, p)| t == "ToolCallProposed" && p["tool_name"] == "change.apply")
+            .unwrap();
+    assert!(plan_before_write);
+    assert!(_repo.path().join("chosen.txt").exists());
+    // Unambiguous fixture: no question at all.
+    let unambiguous = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "o", "expected_files": ["plain.txt"]}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "plain.txt", "op": "create", "content": "p\n"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    let (base2, _seen2) = scripted_model(unambiguous, None).await;
+    let dir2 = tempfile::tempdir().unwrap();
+    let env2 = [
+        ("MODBIT_OPENAI_BASE_URL", base2.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core2 = CoreProcess::spawn_with_env(dir2.path(), &env2);
+    let mut c2 = core2.client().await;
+    let (session2, _) = create_session(&mut c2, id16(0xEA)).await;
+    let g2 = lease_for(&session2);
+    let (_repo2, root2) = plain_repo(&[("a.txt", "a\n")]);
+    let task2 =
+        create_task_with_profile(&mut c2, &session2, g2, &root2, 0xEB, "local_trusted").await;
+    let ack = c2
+        .command(envelope_fenced(
+            id16(0xEC),
+            "StartTask",
+            StartTask {
+                task_id: Some(task2.clone()),
+                endpoint: "openai".into(),
+                model: "gpt-5".into(),
+                max_turns: 0,
+                max_tool_calls: 0,
+                max_no_progress_turns: 0,
+            }
+            .encode_to_vec(),
+            g2,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    assert_eq!(wait_task(&mut c2, &task2, 60).await.state, "ReadyForReview");
+    assert_eq!(
+        task_events(&core2, &session2, &task2)
+            .await
+            .iter()
+            .filter(|(_, t, _)| t == "UserQuestionAsked")
+            .count(),
+        0
+    );
+    // A question that only confirms a verifiable repository fact is flagged.
+    let confirming = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "o", "expected_files": []}}]}),
+        json!({"calls": [{"name": "user.ask", "args": {"question": "Does a.txt exist in the repository?", "options": [{"id": "yes", "label": "yes"}, {"id": "no", "label": "no"}], "reason": "other"}}]}),
+    ];
+    let (base3, _seen3) = scripted_model(confirming, None).await;
+    let dir3 = tempfile::tempdir().unwrap();
+    let env3 = [
+        ("MODBIT_OPENAI_BASE_URL", base3.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core3 = CoreProcess::spawn_with_env(dir3.path(), &env3);
+    let mut c3 = core3.client().await;
+    let (session3, _) = create_session(&mut c3, id16(0xED)).await;
+    let g3 = lease_for(&session3);
+    let (_repo3, root3) = plain_repo(&[("a.txt", "a\n")]);
+    let task3 =
+        create_task_with_profile(&mut c3, &session3, g3, &root3, 0xEE, "local_trusted").await;
+    let ack = c3
+        .command(envelope_fenced(
+            id16(0xEF),
+            "StartTask",
+            StartTask {
+                task_id: Some(task3.clone()),
+                endpoint: "openai".into(),
+                model: "gpt-5".into(),
+                max_turns: 0,
+                max_tool_calls: 0,
+                max_no_progress_turns: 0,
+            }
+            .encode_to_vec(),
+            g3,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    assert_eq!(wait_task(&mut c3, &task3, 60).await.state, "Waiting");
+    let ack = c3
+        .command(envelope(
+            id16(0xF0),
+            "ListQuestions",
+            ListQuestions {
+                task_id: Some(task3.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let l: QuestionList = Client::result(&ack).unwrap();
+    assert_eq!(
+        l.questions[0].flags,
+        vec!["CONFIRMS_REPOSITORY_FACT".to_owned()],
+        "{:?}",
+        l.questions
     );
 }

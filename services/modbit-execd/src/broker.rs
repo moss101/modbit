@@ -407,6 +407,15 @@ async fn kill(s: &Arc<Session>) {
     match k.take() {
         Some(Killer::Child(child)) => {
             if let Some(c) = child.lock().await.as_mut() {
+                // Windows: kill the whole tree, or a grandchild keeps the output
+                // pipes open and the exit is never observed (REQ-EV-0221 cancel).
+                #[cfg(windows)]
+                if let Some(pid) = c.id() {
+                    let _ = tokio::process::Command::new("taskkill")
+                        .args(["/T", "/F", "/PID", &pid.to_string()])
+                        .output()
+                        .await;
+                }
                 let _ = c.start_kill();
             }
         }
@@ -660,8 +669,17 @@ impl Broker {
             } else {
                 wait.await
             };
-            let _ = p1.await;
-            let _ = p2.await;
+            // After a kill (cancel or timeout) a surviving grandchild may hold the
+            // pipes: bound the reader wait so the exit is still reported.
+            let abrupt = timed_out || s.cancelled.load(Ordering::SeqCst);
+            if abrupt {
+                let grace = std::time::Duration::from_secs(2);
+                let _ = tokio::time::timeout(grace, p1).await;
+                let _ = tokio::time::timeout(grace, p2).await;
+            } else {
+                let _ = p1.await;
+                let _ = p2.await;
+            }
             #[cfg(unix)]
             let signal = {
                 use std::os::unix::process::ExitStatusExt;

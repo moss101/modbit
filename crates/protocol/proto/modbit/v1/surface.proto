@@ -345,6 +345,46 @@ message SideAnswer {
   uint32 snapshot_messages = 6;   // how many transcript messages the snapshot carried
 }
 
+// REQ-EV-0222 / PX-000: typed questions. The run suspends on `user.ask`;
+// RespondToQuestion records the answer (StartTask then resumes the run).
+message ListQuestions {
+  Id task_id = 1;
+}
+
+message QuestionOptionView {
+  string id = 1;
+  string label = 2;
+}
+
+message QuestionView {
+  string question_id = 1;
+  string call_id = 2;
+  string question = 3;
+  repeated QuestionOptionView options = 4;
+  bool allow_free_text = 5;
+  string reason = 6;
+  repeated string flags = 7;
+  bool answered = 8;
+  string option_id = 9;
+  string text = 10;
+}
+
+message QuestionList {
+  repeated QuestionView questions = 1;
+}
+
+message RespondToQuestion {
+  Id task_id = 1;
+  string question_id = 2;
+  string option_id = 3;           // one of the question's options, or empty
+  string text = 4;                // free text when the question allows it
+}
+
+message QuestionResponded {
+  string question_id = 1;
+  bool already_answered = 2;
+}
+
 message GetCapabilityLeases {
   Id task_id = 1;
 }

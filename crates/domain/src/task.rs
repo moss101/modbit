@@ -142,6 +142,15 @@ pub struct Task {
     pub failure_code: Option<String>,
 }
 
+/// One typed alternative of a `UserQuestionAsked`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct QuestionOption {
+    /// Stable id the answer names.
+    pub id: String,
+    /// Human label.
+    pub label: String,
+}
+
 /// Task events (docs/30 "Session/task").
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "event_type")]
@@ -199,6 +208,34 @@ pub enum TaskEvent {
     TaskNeedsAttention {
         /// Reason text.
         reason: String,
+    },
+    /// `UserQuestionAsked` (REQ-EV-0222, docs/28 clarification policy): a typed
+    /// question with concrete alternatives; the run suspends until answered.
+    /// No state change (the suspension is `TaskWaiting(UserInput)`).
+    UserQuestionAsked {
+        /// Question id (stable; the answer names it).
+        question_id: String,
+        /// The model's tool call id the answer becomes the result of.
+        call_id: String,
+        /// Question text.
+        question: String,
+        /// Typed alternatives (empty = free text only).
+        options: Vec<QuestionOption>,
+        /// Whether free text is accepted.
+        allow_free_text: bool,
+        /// Why the answer is needed: `change_set` | `verification` | `protected_effect` | other.
+        reason: String,
+        /// Policy flags (`CONFIRMS_REPOSITORY_FACT`: the question asks what the repository already answers).
+        flags: Vec<String>,
+    },
+    /// `UserQuestionAnswered`: the user's typed answer; no state change.
+    UserQuestionAnswered {
+        /// Question id.
+        question_id: String,
+        /// Chosen option id, if any.
+        option_id: Option<String>,
+        /// Free text, if any.
+        text: Option<String>,
     },
     /// `TaskInputQueued`: a durable, ordered user input (REQ-EV-0262); no
     /// state change. Ordering is the aggregate sequence.
@@ -292,6 +329,8 @@ impl TaskEvent {
             Self::TaskSteered { .. } => "TaskSteered",
             Self::TaskNeedsAttention { .. } => "TaskNeedsAttention",
             Self::TaskInputQueued { .. } => "TaskInputQueued",
+            Self::UserQuestionAsked { .. } => "UserQuestionAsked",
+            Self::UserQuestionAnswered { .. } => "UserQuestionAnswered",
             Self::PlanRecorded { .. } => "PlanRecorded",
             Self::PlanRevised { .. } => "PlanRevised",
             Self::SelfReviewRecorded { .. } => "SelfReviewRecorded",
@@ -387,6 +426,8 @@ impl Task {
             TaskEvent::TaskSteered { .. }
             | TaskEvent::TaskNeedsAttention { .. }
             | TaskEvent::TaskInputQueued { .. }
+            | TaskEvent::UserQuestionAsked { .. }
+            | TaskEvent::UserQuestionAnswered { .. }
             | TaskEvent::PlanRecorded { .. }
             | TaskEvent::PlanRevised { .. }
             | TaskEvent::SelfReviewRecorded { .. }

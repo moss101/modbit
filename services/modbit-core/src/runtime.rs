@@ -14,8 +14,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use modbit_core_runtime::harness::{
-    self, Budgets, COMPLETE_TOOL, HarnessRefusal, HarnessState, PLAN_TOOL, Plan, VERIFY_TOOL,
-    WRITE_TOOLS,
+    self, ASK_TOOL, Budgets, COMPLETE_TOOL, HarnessRefusal, HarnessState, PLAN_TOOL, Plan,
+    VERIFY_TOOL, WRITE_TOOLS,
 };
 use modbit_domain::event::{Actor, AggregateType};
 use modbit_domain::run::{OwnerLocation, RunEvent, RunState};
@@ -90,6 +90,8 @@ enum TranscriptEntry {
 /// Outcome of the loop.
 enum LoopEnd {
     ReadyForReview,
+    /// A typed question is pending (REQ-EV-0222): the run suspends, never hangs.
+    NeedsInput(String),
     Cancelled,
     BudgetExhausted(harness::Exhausted),
     ProviderFailed(String, String),
@@ -153,6 +155,9 @@ impl Runtime {
                     (run_id, false)
                 }
                 TaskState::Waiting(_) => {
+                    if let Some(q) = pending_question(&store, &task) {
+                        return Err(("QUESTION_PENDING".into(), q));
+                    }
                     let run = store
                         .runs_for_task(&task.task_id)
                         .ok()
@@ -354,7 +359,7 @@ pub fn reconcile_after_restart(store: &mut EventStore, core_tenant: TenantId) ->
 }
 
 #[derive(Clone, Copy)]
-struct Lineage {
+pub(crate) struct Lineage {
     tenant: TenantId,
     session: SessionId,
     task: Option<TaskId>,
@@ -364,7 +369,7 @@ struct Lineage {
 }
 
 impl Lineage {
-    fn task(tenant: TenantId, session: SessionId, task: TaskId) -> Self {
+    pub(crate) fn task(tenant: TenantId, session: SessionId, task: TaskId) -> Self {
         Self {
             tenant,
             session,
@@ -382,7 +387,7 @@ impl Lineage {
     }
 }
 
-fn typed<E: serde::Serialize>(event_type: &str, e: &E, actor: Actor) -> NewEvent {
+pub(crate) fn typed<E: serde::Serialize>(event_type: &str, e: &E, actor: Actor) -> NewEvent {
     let mut ev = NewEvent::new(
         event_type,
         serde_json::to_value(e).expect("serializable"),
@@ -392,7 +397,7 @@ fn typed<E: serde::Serialize>(event_type: &str, e: &E, actor: Actor) -> NewEvent
     ev
 }
 
-fn append(
+pub(crate) fn append(
     store: &mut EventStore,
     core: &Core,
     l: Lineage,
@@ -435,10 +440,11 @@ pub(crate) async fn rebuild(
         budgets,
         ..Default::default()
     };
-    let mut transcript = Vec::new();
+    let mut transcript: Vec<Message> = Vec::new();
     let mut last_offset = 0;
     let mut pending_steps: HashMap<[u8; 16], StepType> = HashMap::new();
     let mut queued: Vec<(String, InputMode)> = Vec::new();
+    let mut questions: std::collections::HashMap<String, String> = std::collections::HashMap::new();
     let mut applied = 0usize;
     for ev in events
         .iter()
@@ -504,6 +510,52 @@ pub(crate) async fn rebuild(
                     .unwrap_or(InputMode::FollowUp);
                 if let Some(t) = payload["text"].as_str() {
                     queued.push((t.to_owned(), mode));
+                }
+            }
+            "UserQuestionAsked" => {
+                if let (Some(q), Some(c)) =
+                    (payload["question_id"].as_str(), payload["call_id"].as_str())
+                {
+                    questions.insert(q.to_owned(), c.to_owned());
+                }
+            }
+            "UserQuestionAnswered" => {
+                // The answer becomes the result of the model's `user.ask` call.
+                if let Some(call_id) = payload["question_id"]
+                    .as_str()
+                    .and_then(|q| questions.get(q))
+                {
+                    let answer = serde_json::json!({"status": "ANSWERED", "option_id": payload["option_id"], "text": payload["text"]})
+                        .to_string();
+                    let mut replaced = false;
+                    for m in transcript.iter_mut().rev() {
+                        for part in &mut m.parts {
+                            if let ContentPart::ToolResult {
+                                call_id: c,
+                                content,
+                                is_error,
+                            } = part
+                                && c.as_str() == call_id.as_str()
+                            {
+                                *content = answer.clone();
+                                *is_error = false;
+                                replaced = true;
+                            }
+                        }
+                        if replaced {
+                            break;
+                        }
+                    }
+                    if !replaced {
+                        transcript.push(Message {
+                            role: Role::Tool,
+                            parts: vec![ContentPart::ToolResult {
+                                call_id: call_id.clone(),
+                                content: answer,
+                                is_error: false,
+                            }],
+                        });
+                    }
                 }
             }
             "StepScheduled" => {
@@ -598,6 +650,11 @@ fn projection(
             input_schema: s.input_schema,
         })
         .collect();
+    tools.push(ToolProjection {
+        name: ASK_TOOL.into(),
+        description: "Ask the user one typed question only when the change set, the verification or a protected effect depends on the answer; offer concrete options. Never ask what the repository can answer. The run suspends until the answer arrives.".into(),
+        input_schema: serde_json::json!({"type":"object","properties":{"question":{"type":"string"},"options":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"label":{"type":"string"}},"required":["id","label"]}},"allow_free_text":{"type":"boolean"},"reason":{"type":"string","enum":["change_set","verification","protected_effect","other"]}},"required":["question","reason"]}),
+    });
     tools.push(ToolProjection {
         name: PLAN_TOOL.into(),
         description: "Record or revise the plan before writing: outcome, expected files, verification, protected effects.".into(),
@@ -1122,6 +1179,7 @@ async fn run_loop(
         // ---- Actions
         let mut progress = false;
         let mut completed = false;
+        let mut pending_question: Option<String> = None;
         let mut step_ordinal = 2u32;
         for (call_id, name, arguments_json) in calls {
             if cancel.is_cancelled() {
@@ -1150,6 +1208,18 @@ async fn run_loop(
                             Some("INVALID_PLAN".to_owned())
                         },
                     )
+                }
+                ASK_TOOL => {
+                    let (entry, question_id) =
+                        handle_ask(&core, &task, lturn, &actor, &call_id, &arguments_json).await;
+                    match question_id {
+                        Some(q) => {
+                            pending_question = Some(q);
+                            progress = true;
+                            (entry, StepType::UserQuestion, None)
+                        }
+                        None => (entry, StepType::UserQuestion, Some("BAD_QUESTION".into())),
+                    }
                 }
                 VERIFY_TOOL => {
                     let (entry, ok, rev) =
@@ -1405,9 +1475,12 @@ async fn run_loop(
                 );
             }
             apply_entry(&mut transcript, &mut state, entry);
-            if completed {
+            if completed || pending_question.is_some() {
                 break;
             }
+        }
+        if let Some(q) = pending_question {
+            break LoopEnd::NeedsInput(q);
         }
         if cancel.is_cancelled() {
             let mut store = core.store.lock().await;
@@ -1566,6 +1639,43 @@ async fn run_loop(
                                 "budget `{}` exhausted ({}/{}); partial evidence retained",
                                 x.budget, x.used, x.limit
                             ),
+                        },
+                        actor.clone(),
+                    ),
+                ],
+            );
+        }
+        LoopEnd::NeedsInput(question_id) => {
+            let _ = append(
+                &mut store,
+                &core,
+                lt,
+                AggregateType::Run,
+                *run_id.as_bytes(),
+                vec![typed(
+                    "RunSuspended",
+                    &RunEvent::RunSuspended,
+                    actor.clone(),
+                )],
+            );
+            let _ = append(
+                &mut store,
+                &core,
+                lt,
+                AggregateType::Task,
+                *task.task_id.as_bytes(),
+                vec![
+                    typed(
+                        "TaskWaiting",
+                        &TaskEvent::TaskWaiting {
+                            reason: WaitReason::UserInput,
+                        },
+                        actor.clone(),
+                    ),
+                    typed(
+                        "TaskNeedsAttention",
+                        &TaskEvent::TaskNeedsAttention {
+                            reason: format!("question pending: {question_id}"),
                         },
                         actor.clone(),
                     ),
@@ -2578,4 +2688,129 @@ async fn transaction_invariants(
     } else {
         Some(deny_reasons.join("; "))
     }
+}
+
+/// The unanswered question of `task`, if any (asked without a later answer).
+pub(crate) fn pending_question(store: &EventStore, task: &Task) -> Option<String> {
+    let events = store
+        .read_aggregate(task.task_id.as_bytes(), 0, usize::MAX)
+        .unwrap_or_default();
+    let mut open: Option<String> = None;
+    for e in &events {
+        let payload = store.payload(&e.envelope).unwrap_or_default();
+        match e.envelope.event_type.as_str() {
+            "UserQuestionAsked" => open = payload["question_id"].as_str().map(str::to_owned),
+            "UserQuestionAnswered" if open.as_deref() == payload["question_id"].as_str() => {
+                open = None;
+            }
+            _ => {}
+        }
+    }
+    open
+}
+
+/// `user.ask`: record the typed question (with policy flags) and hand back the
+/// placeholder result; the loop suspends the run right after.
+async fn handle_ask(
+    core: &Core,
+    task: &Task,
+    lt: Lineage,
+    actor: &Actor,
+    call_id: &str,
+    arguments_json: &str,
+) -> (TranscriptEntry, Option<String>) {
+    let v: serde_json::Value = serde_json::from_str(arguments_json).unwrap_or_default();
+    let question = v["question"].as_str().unwrap_or_default().trim().to_owned();
+    let options: Vec<modbit_domain::task::QuestionOption> = v["options"]
+        .as_array()
+        .map(|a| {
+            a.iter()
+                .filter_map(|o| {
+                    Some(modbit_domain::task::QuestionOption {
+                        id: o["id"].as_str()?.to_owned(),
+                        label: o["label"].as_str().unwrap_or_default().to_owned(),
+                    })
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    let allow_free_text = v["allow_free_text"].as_bool().unwrap_or(options.is_empty());
+    let reason = v["reason"].as_str().unwrap_or("other").to_owned();
+    if question.is_empty() || (options.is_empty() && !allow_free_text) {
+        return (
+            TranscriptEntry::ToolResult {
+                call_id: call_id.into(),
+                name: ASK_TOOL.into(),
+                text: "status: REFUSED\nerror_code: BAD_QUESTION\nerror: a question needs text and either options or free text".into(),
+                failure_signature: None,
+                clears: vec![],
+                wrote: None,
+                progress: false,
+            },
+            None,
+        );
+    }
+    // docs/28: never ask what the repository can answer. A yes/no question
+    // naming an existing workspace path is flagged (the answer is verifiable).
+    let mut flags = Vec::new();
+    if let Some(root) = task.workspace_root.as_deref() {
+        let mentions_existing_path = question
+            .split(|c: char| c.is_whitespace() || c == '`' || c == '\'' || c == '"' || c == '?')
+            .filter(|w| w.contains('.') || w.contains('/'))
+            .any(|w| std::path::Path::new(root).join(w).exists());
+        let yes_no = options.len() <= 2
+            && options.iter().all(|o| {
+                let id = o.id.to_ascii_lowercase();
+                matches!(id.as_str(), "yes" | "no" | "y" | "n" | "true" | "false")
+            });
+        if mentions_existing_path && (yes_no || options.is_empty()) {
+            flags.push("CONFIRMS_REPOSITORY_FACT".to_owned());
+        }
+    }
+    let clean: String = call_id
+        .chars()
+        .filter(char::is_ascii_alphanumeric)
+        .take(24)
+        .collect();
+    let question_id = format!("q-{clean}");
+    let mut store = core.store.lock().await;
+    let _ = append(
+        &mut store,
+        core,
+        lt,
+        AggregateType::Task,
+        *task.task_id.as_bytes(),
+        vec![typed(
+            "UserQuestionAsked",
+            &TaskEvent::UserQuestionAsked {
+                question_id: question_id.clone(),
+                call_id: call_id.into(),
+                question: question.clone(),
+                options: options.clone(),
+                allow_free_text,
+                reason,
+                flags: flags.clone(),
+            },
+            actor.clone(),
+        )],
+    );
+    (
+        TranscriptEntry::ToolResult {
+            call_id: call_id.into(),
+            name: ASK_TOOL.into(),
+            text: format!(
+                "status: PENDING\nquestion_id: {question_id}\nthe run is suspended until the user answers{}",
+                if flags.is_empty() {
+                    String::new()
+                } else {
+                    format!("\nflags: {}", flags.join(","))
+                }
+            ),
+            failure_signature: None,
+            clears: vec![],
+            wrote: None,
+            progress: true,
+        },
+        Some(question_id),
+    )
 }

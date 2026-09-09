@@ -1227,6 +1227,7 @@ dependencies = [
  "modbit-protocol",
  "prost",
  "rand",
+ "serde_json",
  "tempfile",
  "tokio",
 ]

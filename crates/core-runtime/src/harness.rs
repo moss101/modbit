@@ -141,6 +141,8 @@ pub const COMPLETE_TOOL: &str = "task.complete";
 
 /// Verification tool the harness serves (TARGETED run through the engine).
 pub const VERIFY_TOOL: &str = "verify.run";
+/// Harness tool: a typed question to the user (REQ-EV-0222); the run suspends until answered.
+pub const ASK_TOOL: &str = "user.ask";
 
 /// Tool names that write the workspace (need a plan first).
 pub const WRITE_TOOLS: &[&str] = &[

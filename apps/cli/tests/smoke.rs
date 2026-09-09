@@ -384,10 +384,11 @@ fn cli_drives_a_real_core_end_to_end() {
     let (ok, out, all) = cli(&data_dir, &core, &["lease", "list", "--task", &tid]);
     assert!(ok && out.contains("status=REVOKED"), "{all}");
 
-    // M2.7: task status is served for a task that has not started.
+    // M2.7: task status is served for a task that has not started (exit 4:
+    // still Queued, per apps/cli/README.md).
     let (ok, out, all) = cli(&data_dir, &core, &["task", "status", "--task", &tid]);
     assert!(
-        ok && out.contains("state=Queued") && out.contains("loop_alive=false"),
+        !ok && out.contains("state=Queued") && out.contains("loop_alive=false"),
         "{all}"
     );
 
