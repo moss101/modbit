@@ -171,11 +171,13 @@ impl EventStore {
         std::fs::create_dir_all(dir)?;
         let db_path = dir.join("core.db");
         let mut conn = Connection::open(&db_path)?;
+        // Concurrent openers/writers wait for a lock instead of failing
+        // (SQLITE_BUSY); set before the pragmas, which take a write lock on a
+        // fresh database.
+        conn.busy_timeout(std::time::Duration::from_secs(10))?;
         conn.pragma_update(None, "journal_mode", "WAL")?;
         conn.pragma_update(None, "synchronous", "FULL")?;
         conn.pragma_update(None, "foreign_keys", "ON")?;
-        // Concurrent openers/writers wait for a lock instead of failing (SQLITE_BUSY).
-        conn.busy_timeout(std::time::Duration::from_secs(10))?;
         let report = crate::migrations::migrate(&mut conn)?;
         let objects = ObjectStore::open(dir.join("objects"))?;
         let mut store = Self {
