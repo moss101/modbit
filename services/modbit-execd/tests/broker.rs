@@ -326,8 +326,9 @@ async fn qual_ev_0025_stdin_is_explicit_and_two_requests_do_not_share_environmen
     let (_, out, _, exited) = run_to_exit(&mut c).await;
     assert_eq!(String::from_utf8(out).unwrap(), "got:hello\ngot:quit\n");
     assert_eq!(exited.exit_code, Some(0));
-    // Closed stdin: writes are refused.
-    c.exec(req("closed", "echo-args", &[])).await.unwrap();
+    // Closed stdin: writes are refused while the process is alive (a
+    // long-lived child, so the refusal cannot race the exit).
+    c.exec(req("closed", "ticker", &[])).await.unwrap();
     let Event::Started(s) = c.next().await.unwrap().unwrap() else {
         panic!()
     };
@@ -346,6 +347,8 @@ async fn qual_ev_0025_stdin_is_explicit_and_two_requests_do_not_share_environmen
         }
     }
     assert!(saw_refusal, "writing to closed stdin is a typed error");
+    c.cancel(&s.session_id).await.unwrap();
+    let _ = run_to_exit(&mut c).await;
     // Environment isolation (REQ-EV-0025): the second request does not see the first's variable.
     let mut c2 = execd.client().await;
     let mut a = req("env-a", "echo-args", &[]);
