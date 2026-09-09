@@ -291,6 +291,38 @@ message EffectReceiptList {
   string detail = 3;
 }
 
+// REQ-EV-0064/0065: typed undo of one tool call's file changes. `apply=false`
+// returns the plan only; `apply=true` applies it when every path still has
+// its post-edit content (a user edit after the change refuses the revert).
+message UndoToolCall {
+  Id task_id = 1;
+  Id tool_call_id = 2;
+  bool apply = 3;
+}
+
+message UndoStepView {
+  string path = 1;
+  string action = 2;               // delete | restore | replace
+  string expected_content_hash = 3;
+  bool expect_absent = 4;
+  string restore_ref = 5;          // object hash of the content to restore
+  string resulting_hash = 6;
+}
+
+message UndoRefusal {
+  string path = 1;
+  string code = 2;                 // USER_EDITED | PATH_PRESENT | PATH_MISSING | STEP_FAILED
+  string detail = 3;
+}
+
+message UndoPlanView {
+  Id tool_call_id = 1;
+  repeated UndoStepView steps = 2;
+  bool applied = 3;
+  repeated UndoRefusal refusals = 4;
+  uint64 workspace_revision = 5;
+}
+
 message GetCapabilityLeases {
   Id task_id = 1;
 }

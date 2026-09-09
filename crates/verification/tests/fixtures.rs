@@ -763,3 +763,56 @@ async fn qual_ev_0068_verifier_crash_is_indeterminate_never_success() {
         "crash is INDETERMINATE and blocks acceptance: {a:?}"
     );
 }
+
+/// QUAL-EV-0071: a credential seeded into a patch is denied (DI-5) with
+/// evidence naming the file, whatever the plan says; the runtime refuses the
+/// transaction on any DENY (see the M2.8 Core test for the TRANSACTION stage).
+#[test]
+fn qual_ev_0071_secret_in_patch_is_denied_with_evidence() {
+    let ctx = InvariantContext {
+        write_set: Some(vec!["src/config.rs".into()]),
+        plan_entries: vec!["src/config.rs".into()],
+        acceptance_named: vec![],
+        baseline_failing: vec![],
+        protected_paths: vec![],
+        formatting_churn_lines: 50,
+        expected_revision: None,
+    };
+    let v = evaluate_diff(
+        &ctx,
+        &[ChangedFile {
+            path: "src/config.rs".into(),
+            old: Some("pub const KEY: &str = \"\";\n".into()),
+            new: Some("pub const KEY: &str = \"sk-live-0123456789abcdefghijklmnop\";\n".into()),
+        }],
+        None,
+    );
+    let secret = v
+        .iter()
+        .find(|x| x.id == "DI-5")
+        .unwrap_or_else(|| panic!("{v:?}"));
+    assert_eq!(secret.class, Class::Deny);
+    assert_eq!(secret.paths, vec!["src/config.rs".to_owned()]);
+    assert!(
+        secret.evidence.starts_with("credential-like token"),
+        "{}",
+        secret.evidence
+    );
+    assert!(
+        !secret.evidence.contains("0123456789abcdefghijklmnop"),
+        "evidence never echoes the secret"
+    );
+    // The same edit without the credential passes every invariant.
+    assert!(
+        evaluate_diff(
+            &ctx,
+            &[ChangedFile {
+                path: "src/config.rs".into(),
+                old: Some("pub const KEY: &str = \"\";\n".into()),
+                new: Some("pub const KEY: &str = \"from-env\";\n".into()),
+            }],
+            None,
+        )
+        .is_empty()
+    );
+}

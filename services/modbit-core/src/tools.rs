@@ -214,11 +214,45 @@ impl ToolHost {
             kernel: Some(Arc::new(port)),
             tool_call_id: None,
         };
+        // REQ-EV-0106: snapshot the write targets so every successful write can
+        // land a revision-bound FileChanged event with content and diff refs.
+        let change_targets = change_targets(tool_name, arguments_json);
+        let (pre_bytes, pre_revision) = match (&ctx.workspace, change_targets.is_empty()) {
+            (Some(ws), false) => {
+                let ws = ws.lock().await;
+                let mut m = HashMap::new();
+                for p in &change_targets {
+                    m.insert(p.clone(), read_workspace_file(&ws, p));
+                }
+                (m, ws.revision().number)
+            }
+            _ => (HashMap::new(), 0),
+        };
         let outcome = self
             .runtime
             .invoke(&ctx, tool_call_id, tool_name, arguments_json)
             .await;
         let mut result = outcome.result.clone();
+        let mut file_events = Vec::new();
+        if result.status == ToolStatus::Success
+            && !change_targets.is_empty()
+            && let (Some(ws), Some(root)) = (&ctx.workspace, &root)
+        {
+            let changes = workspace_changes(&result.structured_output);
+            let ws = ws.lock().await;
+            let objects = store.lock().await.objects().clone();
+            file_events = file_changed_events(
+                &objects,
+                &ws,
+                task_id,
+                tool_call_id,
+                &changes,
+                &pre_bytes,
+                pre_revision,
+                "",
+            );
+            let _ = root;
+        }
         let effect_class = outcome
             .effect_class
             .unwrap_or(modbit_domain::toolcall::EffectClass::ReadOnly);
@@ -475,6 +509,18 @@ impl ToolHost {
                     events: evs,
                 })?;
             }
+            if !file_events.is_empty()
+                && let Some(root) = &root
+            {
+                append_file_events(
+                    &mut st,
+                    tenant_id,
+                    session_id,
+                    task_id,
+                    &root.to_string_lossy(),
+                    file_events,
+                )?;
+            }
         }
         Ok(Invoked {
             result,
@@ -576,4 +622,159 @@ fn typed<E: serde::Serialize>(event_type: &str, e: &E, actor: Actor) -> NewEvent
     );
     ev.occurred_at = Some(modbit_domain::Timestamp::now());
     ev
+}
+
+/// Root-relative paths a write tool targets (for the pre-write snapshot).
+fn change_targets(tool_name: &str, arguments_json: &str) -> Vec<String> {
+    let Ok(v) = serde_json::from_str::<serde_json::Value>(arguments_json) else {
+        return vec![];
+    };
+    match tool_name {
+        "change.apply" => v
+            .get("path")
+            .and_then(serde_json::Value::as_str)
+            .map(|p| vec![p.to_owned()])
+            .unwrap_or_default(),
+        "change.batch" => v
+            .get("ops")
+            .and_then(serde_json::Value::as_array)
+            .map(|ops| {
+                ops.iter()
+                    .filter_map(|o| o.get("path").and_then(serde_json::Value::as_str))
+                    .map(str::to_owned)
+                    .collect()
+            })
+            .unwrap_or_default(),
+        _ => vec![],
+    }
+}
+
+/// Current bytes of a workspace file (`None` when absent or unreadable).
+pub(crate) fn read_workspace_file(ws: &WorkspaceService, path: &str) -> Option<Vec<u8>> {
+    let r = ws.resolve(path).ok()?;
+    std::fs::read(&r.absolute).ok()
+}
+
+/// The typed change records a write tool reported (`change` or `changes`).
+pub(crate) fn workspace_changes(
+    structured_output: &serde_json::Value,
+) -> Vec<modbit_workspace::WorkspaceChange> {
+    let mut out = Vec::new();
+    if let Some(c) = structured_output.get("change")
+        && let Ok(c) = serde_json::from_value(c.clone())
+    {
+        out.push(c);
+    }
+    if let Some(cs) = structured_output
+        .get("changes")
+        .and_then(serde_json::Value::as_array)
+    {
+        out.extend(
+            cs.iter()
+                .filter_map(|c| serde_json::from_value(c.clone()).ok()),
+        );
+    }
+    out
+}
+
+/// Workspace aggregate id: the worktree id digest (stable per root).
+pub(crate) fn workspace_aggregate_id(root: &str) -> [u8; 16] {
+    use sha2::{Digest, Sha256};
+    let id = modbit_workspace::WorkspaceRevision::worktree_id_for(Path::new(root));
+    let h = Sha256::digest(id.as_bytes());
+    let mut out = [0u8; 16];
+    out.copy_from_slice(&h[..16]);
+    out
+}
+
+/// Build `FileChanged` events for the change records of one tool call:
+/// before/after content and a unified diff stored by reference, never bytes.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn file_changed_events(
+    objects: &ObjectStore,
+    ws: &WorkspaceService,
+    task_id: TaskId,
+    tool_call_id: ToolCallId,
+    changes: &[modbit_workspace::WorkspaceChange],
+    pre_bytes: &HashMap<String, Option<Vec<u8>>>,
+    pre_revision: u64,
+    op_prefix: &str,
+) -> Vec<NewEvent> {
+    use modbit_domain::workspace::WorkspaceEvent;
+    let mut previous = pre_revision;
+    let mut events = Vec::new();
+    for c in changes {
+        let before = pre_bytes.get(&c.path).cloned().flatten();
+        let before = before.filter(|_| c.before_hash.is_some());
+        let after = if c.after_hash.is_some() {
+            read_workspace_file(ws, &c.path)
+        } else {
+            None
+        };
+        let put = |b: &Option<Vec<u8>>| b.as_ref().and_then(|b| objects.put(b).ok());
+        let before_ref = put(&before);
+        let after_ref = put(&after);
+        let diff_ref = match (
+            before.as_deref().map(std::str::from_utf8),
+            after.as_deref().map(std::str::from_utf8),
+        ) {
+            (Some(Ok(o)), Some(Ok(n))) => Some(unified_diff(&c.path, o, n)),
+            (Some(Ok(o)), None) => Some(unified_diff(&c.path, o, "")),
+            (None, Some(Ok(n))) => Some(unified_diff(&c.path, "", n)),
+            _ => None,
+        }
+        .and_then(|d| objects.put(d.as_bytes()).ok());
+        events.push(typed(
+            "FileChanged",
+            &WorkspaceEvent::FileChanged {
+                task_id,
+                tool_call_id,
+                path: c.path.clone(),
+                op: format!("{op_prefix}{}", c.op),
+                before_hash: c.before_hash.clone(),
+                after_hash: c.after_hash.clone(),
+                before_ref,
+                after_ref,
+                diff_ref,
+                workspace_revision: c.workspace_revision.number,
+                previous_revision: previous,
+            },
+            Actor::Core("tool-host".into()),
+        ));
+        previous = c.workspace_revision.number;
+    }
+    events
+}
+
+/// Unified diff (3 lines of context, `a/` `b/` headers) between two texts.
+pub(crate) fn unified_diff(path: &str, old: &str, new: &str) -> String {
+    similar::TextDiff::from_lines(old, new)
+        .unified_diff()
+        .context_radius(3)
+        .header(&format!("a/{path}"), &format!("b/{path}"))
+        .to_string()
+}
+
+/// Append `FileChanged` events on the workspace aggregate of `root`.
+pub(crate) fn append_file_events(
+    st: &mut EventStore,
+    tenant_id: TenantId,
+    session_id: SessionId,
+    task_id: TaskId,
+    root: &str,
+    events: Vec<NewEvent>,
+) -> Result<()> {
+    st.append(AppendRequest {
+        tenant_id,
+        session_id,
+        task_id: Some(task_id),
+        run_id: None,
+        turn_id: None,
+        step_id: None,
+        aggregate_type: AggregateType::Workspace,
+        aggregate_id: workspace_aggregate_id(root),
+        expected_sequence: None,
+        events,
+    })?;
+    Ok(())
 }

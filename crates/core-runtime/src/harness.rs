@@ -143,7 +143,12 @@ pub const COMPLETE_TOOL: &str = "task.complete";
 pub const VERIFY_TOOL: &str = "verify.run";
 
 /// Tool names that write the workspace (need a plan first).
-pub const WRITE_TOOLS: &[&str] = &["change.apply", "git.worktree.create", "git.worktree.close"];
+pub const WRITE_TOOLS: &[&str] = &[
+    "change.apply",
+    "change.batch",
+    "git.worktree.create",
+    "git.worktree.close",
+];
 
 impl HarnessState {
     /// Check a turn may start; `Err` names the exhausted budget.

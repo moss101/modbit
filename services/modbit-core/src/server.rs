@@ -379,6 +379,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "GetReviewBundle",
                     "GetCodeView",
                     "DecideReview",
+                    "UndoToolCall",
                 ]
                 .map(String::from)
                 .to_vec(),
@@ -1371,6 +1372,64 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 }
                 .encode_to_vec(),
             )
+        }
+        "UndoToolCall" => {
+            let Ok(p) = wire::UndoToolCall::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "UndoToolCall");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let Some(call) = p
+                .tool_call_id
+                .as_ref()
+                .and_then(id16)
+                .map(ToolCallId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "tool_call_id required");
+            };
+            let task = {
+                let store = core.store.lock().await;
+                match store.task(&task_id) {
+                    Ok(Some(t)) => t,
+                    Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                }
+            };
+            let Some(root) = task.workspace_root.clone() else {
+                return reject(cid, "NO_WORKSPACE", "the task has no workspace root");
+            };
+            let plan = match crate::undo::plan(core, &root, call).await {
+                Ok(p) => p,
+                Err(e) => return reject(cid, "UNDO_PLAN", e.to_string()),
+            };
+            if plan.steps.is_empty() {
+                return reject(cid, "NOTHING_TO_UNDO", "the call changed no files");
+            }
+            if !p.apply {
+                let rev = match core.tools.workspace(&root).await {
+                    Ok((ws, _)) => ws.lock().await.revision().number,
+                    Err(_) => 0,
+                };
+                return accept(
+                    cid,
+                    false,
+                    crate::undo::view(&plan, false, vec![], rev).encode_to_vec(),
+                );
+            }
+            if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
+                return ack;
+            }
+            match crate::undo::apply(core, core.tenant_id, task.session_id, task_id, &root, &plan)
+                .await
+            {
+                Ok((applied, refusals, rev)) => accept(
+                    cid,
+                    false,
+                    crate::undo::view(&plan, applied, refusals, rev).encode_to_vec(),
+                ),
+                Err(e) => reject(cid, "UNDO_FAILED", e.to_string()),
+            }
         }
         "GetEffectReceipts" => {
             let Ok(p) = wire::GetEffectReceipts::decode(env.payload.as_slice()) else {

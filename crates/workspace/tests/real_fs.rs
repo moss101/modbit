@@ -5,7 +5,10 @@
 use std::path::Path;
 use std::process::Command;
 
-use modbit_workspace::{ApplyPatch, Edit, EntryKind, Error, WorkspaceService, WritePrecondition};
+use modbit_workspace::{
+    ApplyPatch, ChangeOp, ChangeOpKind, Edit, EntryKind, Error, MatchTier, TextEdit,
+    WorkspaceService, WritePrecondition, content_hash,
+};
 
 fn git(dir: &Path, args: &[&str]) {
     let out = Command::new("git")
@@ -372,4 +375,178 @@ fn replacement_is_atomic_when_the_rename_fails() {
         "original intact"
     );
     assert_eq!(ws.revision().number, 1);
+}
+
+fn edit(old: &str, new: &str) -> TextEdit {
+    TextEdit {
+        old: old.into(),
+        new: new.into(),
+    }
+}
+
+/// QUAL-EV-0015: the match ladder is exact → whitespace remap → error; an
+/// ambiguous (duplicated) target fails at either tier and the worktree,
+/// revision and temp files are exactly as before; a miss carries a
+/// contextual suggestion that is never applied.
+#[test]
+fn qual_ev_0015_ambiguous_target_fails_and_leaves_the_worktree_unchanged() {
+    let (root, state) = setup();
+    let src = "fn a() {\n    return 1;\n}\nfn b() {\n    return 1;\n}\n";
+    std::fs::write(root.path().join("src/lib.rs"), src).unwrap();
+    let mut ws = WorkspaceService::open(root.path(), state.path(), &[]).unwrap();
+    let rev0 = ws.revision().number;
+    let pre = WritePrecondition::default();
+    // Exact tier: two byte-identical occurrences.
+    let e = ws
+        .edit_by_match(
+            "src/lib.rs",
+            &[edit("    return 1;\n", "    return 2;\n")],
+            pre.clone(),
+        )
+        .unwrap_err();
+    assert!(
+        matches!(&e, Error::StepFailed { step: 0, cause, .. }
+            if matches!(**cause, Error::AmbiguousTarget { occurrences: 2, ref tier, .. } if tier == "exact")),
+        "{e}"
+    );
+    // Whitespace tier: no exact match (tab vs spaces), two remapped matches.
+    let e = ws
+        .edit_by_match(
+            "src/lib.rs",
+            &[edit("\treturn 1;", "\treturn 2;")],
+            pre.clone(),
+        )
+        .unwrap_err();
+    assert!(
+        matches!(&e, Error::StepFailed { cause, .. }
+            if matches!(**cause, Error::AmbiguousTarget { occurrences: 2, ref tier, .. } if tier == "whitespace_remap")),
+        "{e}"
+    );
+    // Miss: a contextual suggestion, never a guess.
+    let e = ws
+        .edit_by_match(
+            "src/lib.rs",
+            &[edit("    return 3;", "    return 4;")],
+            pre.clone(),
+        )
+        .unwrap_err();
+    assert!(
+        matches!(&e, Error::StepFailed { cause, .. }
+            if matches!(**cause, Error::NoMatch { suggestion: Some(ref s), .. } if s == "return 1;")),
+        "{e}"
+    );
+    // Nothing moved: bytes, revision, no temp files.
+    assert_eq!(
+        std::fs::read_to_string(root.path().join("src/lib.rs")).unwrap(),
+        src
+    );
+    assert_eq!(ws.revision().number, rev0);
+    assert!(
+        std::fs::read_dir(root.path().join("src"))
+            .unwrap()
+            .all(|e| !e
+                .unwrap()
+                .file_name()
+                .to_string_lossy()
+                .starts_with(".modbit-tmp"))
+    );
+    // A unique target through the whitespace tier applies, with the tier reported.
+    let (change, tiers) = ws
+        .edit_by_match(
+            "src/lib.rs",
+            &[edit("fn b() {\nreturn 1;\n}", "fn b() {\n    return 2;\n}")],
+            pre,
+        )
+        .unwrap();
+    assert_eq!(tiers, vec![MatchTier::WhitespaceRemap]);
+    assert_eq!(change.op, "edit");
+    assert_eq!(
+        std::fs::read_to_string(root.path().join("src/lib.rs")).unwrap(),
+        "fn a() {\n    return 1;\n}\nfn b() {\n    return 2;\n}\n"
+    );
+    assert_eq!(ws.revision().number, rev0 + 1);
+}
+
+/// QUAL-EV-0016: ordered ops with per-step validation; an injected failure at
+/// step N restores every earlier path byte-for-byte and reports the step.
+#[test]
+fn qual_ev_0016_failed_step_rolls_back_earlier_steps_and_reports_the_step() {
+    let (root, state) = setup();
+    let mut ws = WorkspaceService::open(root.path(), state.path(), &[]).unwrap();
+    let main0 = std::fs::read(root.path().join("src/main.rs")).unwrap();
+    let readme0 = std::fs::read(root.path().join("README.md")).unwrap();
+    let pre = WritePrecondition::default;
+    let stale = WritePrecondition {
+        expected_content_hash: Some(content_hash(b"not the current content")),
+        ..WritePrecondition::default()
+    };
+    let ops = vec![
+        ChangeOp {
+            path: "src/new.rs".into(),
+            kind: ChangeOpKind::Create(b"pub fn n() {}\n".to_vec()),
+            pre: pre(),
+        },
+        ChangeOp {
+            path: "src/main.rs".into(),
+            kind: ChangeOpKind::Edit(vec![edit("fn main() {}", "fn main() { n(); }")]),
+            pre: pre(),
+        },
+        ChangeOp {
+            path: "README.md".into(),
+            kind: ChangeOpKind::Delete,
+            pre: pre(),
+        },
+        // Injected failure: a stale precondition at step 3.
+        ChangeOp {
+            path: "src/lib.rs".into(),
+            kind: ChangeOpKind::Create(b"x".to_vec()),
+            pre: stale,
+        },
+    ];
+    let e = ws.apply_transaction(&ops).unwrap_err();
+    let Error::StepFailed {
+        step,
+        rolled_back,
+        restored,
+        unrestored,
+        cause,
+    } = e
+    else {
+        panic!("{e}");
+    };
+    assert_eq!((step, rolled_back), (3, true), "{cause}");
+    assert!(matches!(*cause, Error::Precondition { .. }), "{cause}");
+    let mut r = restored.clone();
+    r.sort();
+    assert_eq!(r, vec!["README.md", "src/main.rs", "src/new.rs"]);
+    assert!(unrestored.is_empty());
+    assert!(!root.path().join("src/new.rs").exists());
+    assert_eq!(
+        std::fs::read(root.path().join("src/main.rs")).unwrap(),
+        main0
+    );
+    assert_eq!(
+        std::fs::read(root.path().join("README.md")).unwrap(),
+        readme0
+    );
+    assert!(!root.path().join("src/lib.rs").exists());
+    // The same ops without the poisoned step succeed and report every change in order.
+    let changes = ws.apply_transaction(&ops[..3]).unwrap();
+    assert_eq!(
+        changes
+            .iter()
+            .map(|c| (c.path.as_str(), c.op.as_str()))
+            .collect::<Vec<_>>(),
+        vec![
+            ("src/new.rs", "create"),
+            ("src/main.rs", "edit"),
+            ("README.md", "delete")
+        ]
+    );
+    assert!(
+        changes
+            .windows(2)
+            .all(|w| w[0].workspace_revision.number < w[1].workspace_revision.number)
+    );
+    assert!(!root.path().join("README.md").exists());
 }

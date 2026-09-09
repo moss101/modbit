@@ -25,6 +25,7 @@ pub mod task;
 pub mod time;
 pub mod toolcall;
 pub mod turn;
+pub mod workspace;
 
 pub use event::{Actor, AggregateType, EventEnvelope, PayloadRef, SCHEMA_VERSION};
 pub use ids::*;

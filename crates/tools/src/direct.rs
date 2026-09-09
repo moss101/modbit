@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use modbit_protocol::v1::ExecRequest;
 use modbit_terminal::{Event, ExecClient};
-use modbit_workspace::{ApplyPatch, Edit, WritePrecondition};
+use modbit_workspace::{ApplyPatch, ChangeOp, ChangeOpKind, Edit, TextEdit, WritePrecondition};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 
@@ -63,6 +63,14 @@ fn ws_err(e: modbit_workspace::Error) -> ToolOutcome {
         modbit_workspace::Error::EditOutOfBounds { .. } => "EDIT_OUT_OF_BOUNDS",
         modbit_workspace::Error::Invalid { .. } => "INVALID_OPERATION",
         modbit_workspace::Error::Io { .. } => "IO",
+        modbit_workspace::Error::AmbiguousTarget { .. } => "AMBIGUOUS_TARGET",
+        modbit_workspace::Error::NoMatch { .. } => "NO_MATCH",
+        modbit_workspace::Error::StepFailed { cause, .. } => match cause.as_ref() {
+            modbit_workspace::Error::AmbiguousTarget { .. } => "AMBIGUOUS_TARGET",
+            modbit_workspace::Error::NoMatch { .. } => "NO_MATCH",
+            modbit_workspace::Error::Precondition { .. } => "PRECONDITION_FAILED",
+            _ => "STEP_FAILED",
+        },
     };
     ToolOutcome::fail(code, e.to_string())
 }
@@ -265,9 +273,9 @@ tool!(
     ChangeApply,
     spec(
         "change.apply",
-        "Apply a revision-bound change: create | replace | patch (byte-range edits) | delete; refuses stale preconditions.",
+        "Apply a revision-bound change: create | replace | patch (byte-range edits) | edit (ordered text edits located exactly once: exact, then whitespace-remapped; ambiguity fails) | delete; refuses stale preconditions.",
         EffectClass::ReversibleWrite,
-        json!({"type":"object","properties":{"path":{"type":"string"},"op":{"type":"string","enum":["create","replace","patch","delete"]},"content":{"type":"string"},"edits":{"type":"array","items":{"type":"object","properties":{"start":{"type":"integer","minimum":0},"end":{"type":"integer","minimum":0},"replacement":{"type":"string"}},"required":["start","end","replacement"],"additionalProperties":false}},"expected_content_hash":{"type":"string"},"expected_workspace_revision":{"type":"integer","minimum":0}},"required":["path","op"],"additionalProperties":false}),
+        json!({"type":"object","properties":{"path":{"type":"string"},"op":{"type":"string","enum":["create","replace","patch","edit","delete"]},"content":{"type":"string"},"edits":{"type":"array","items":{"type":"object","properties":{"start":{"type":"integer","minimum":0},"end":{"type":"integer","minimum":0},"replacement":{"type":"string"}},"required":["start","end","replacement"],"additionalProperties":false}},"text_edits":{"type":"array","items":{"type":"object","properties":{"old":{"type":"string"},"new":{"type":"string"}},"required":["old","new"],"additionalProperties":false}},"expected_content_hash":{"type":"string"},"expected_workspace_revision":{"type":"integer","minimum":0}},"required":["path","op"],"additionalProperties":false}),
         &["fs.write"],
         Idempotency::NonIdempotent
     ),
@@ -300,6 +308,22 @@ tool!(
                 }
                 ws.apply_patch(&path, &ApplyPatch { edits }, pre)
             }
+            "edit" => {
+                let edits = text_edits(&args);
+                if edits.is_empty() {
+                    return ToolOutcome::fail("NO_EDITS", "edit needs at least one text edit");
+                }
+                match ws.edit_by_match(&path, &edits, pre) {
+                    Ok((change, tiers)) => {
+                        let rev = change.workspace_revision.number;
+                        let mut o =
+                            ToolOutcome::ok(json!({"change": change, "match_tiers": tiers}));
+                        o.workspace_revision_after = Some(rev);
+                        return o;
+                    }
+                    Err(e) => return ws_err(e),
+                }
+            }
             "delete" => ws.delete(&path, pre),
             other => return ToolOutcome::fail("BAD_OP", format!("unknown op `{other}`")),
         };
@@ -308,6 +332,90 @@ tool!(
                 let rev = change.workspace_revision.number;
                 let mut o = ToolOutcome::ok(json!({"change": change}));
                 o.workspace_revision_after = Some(rev);
+                o
+            }
+            Err(e) => ws_err(e),
+        }
+    }
+);
+
+fn text_edits(args: &Value) -> Vec<TextEdit> {
+    args.get("text_edits")
+        .and_then(Value::as_array)
+        .map(|a| {
+            a.iter()
+                .map(|e| TextEdit {
+                    old: s(e, "old"),
+                    new: s(e, "new"),
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+tool!(
+    ChangeBatch,
+    spec(
+        "change.batch",
+        "Ordered multi-file change transaction (REQ-EV-0016): create | replace | edit | delete per op with per-step validation; a failure at step N restores every earlier path and reports the step.",
+        EffectClass::ReversibleWrite,
+        json!({"type":"object","properties":{"ops":{"type":"array","minItems":1,"items":{"type":"object","properties":{"path":{"type":"string"},"op":{"type":"string","enum":["create","replace","edit","delete"]},"content":{"type":"string"},"text_edits":{"type":"array","items":{"type":"object","properties":{"old":{"type":"string"},"new":{"type":"string"}},"required":["old","new"],"additionalProperties":false}},"expected_content_hash":{"type":"string"},"expected_workspace_revision":{"type":"integer","minimum":0}},"required":["path","op"],"additionalProperties":false}}},"required":["ops"],"additionalProperties":false}),
+        &["fs.write"],
+        Idempotency::NonIdempotent
+    ),
+    |ctx, args| {
+        let Some(ws) = &ctx.workspace else {
+            return no_workspace();
+        };
+        let mut ops = Vec::new();
+        for o in args
+            .get("ops")
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default()
+        {
+            let kind = match s(&o, "op").as_str() {
+                "create" => ChangeOpKind::Create(s(&o, "content").into_bytes()),
+                "replace" => ChangeOpKind::Replace(s(&o, "content").into_bytes()),
+                "edit" => {
+                    let e = text_edits(&o);
+                    if e.is_empty() {
+                        return ToolOutcome::fail("NO_EDITS", "edit needs at least one text edit");
+                    }
+                    ChangeOpKind::Edit(e)
+                }
+                "delete" => ChangeOpKind::Delete,
+                other => return ToolOutcome::fail("BAD_OP", format!("unknown op `{other}`")),
+            };
+            ops.push(ChangeOp {
+                path: s(&o, "path"),
+                kind,
+                pre: precondition(&o),
+            });
+        }
+        let mut ws = ws.lock().await;
+        match ws.apply_transaction(&ops) {
+            Ok(changes) => {
+                let rev = changes.last().map(|c| c.workspace_revision.number);
+                let mut o = ToolOutcome::ok(json!({"changes": changes}));
+                o.workspace_revision_after = rev;
+                o
+            }
+            Err(modbit_workspace::Error::StepFailed {
+                step,
+                cause,
+                rolled_back,
+                restored,
+                unrestored,
+            }) => {
+                let mut o = ws_err(modbit_workspace::Error::StepFailed {
+                    step,
+                    cause,
+                    rolled_back,
+                    restored: restored.clone(),
+                    unrestored: unrestored.clone(),
+                });
+                o.structured_output = json!({"failed_step": step, "rolled_back": rolled_back, "restored": restored, "unrestored": unrestored, "workspace_revision": ws.revision().number});
                 o
             }
             Err(e) => ws_err(e),
@@ -709,6 +817,7 @@ pub fn register_direct(registry: &mut ToolRegistry) -> Result<()> {
         FsStat::shared(),
         FsGlob::shared(),
         ChangeApply::shared(),
+        ChangeBatch::shared(),
         GitStatus::shared(),
         GitDiff::shared(),
         GitWorktreeCreate::shared(),

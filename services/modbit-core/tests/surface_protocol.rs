@@ -3987,3 +3987,427 @@ async fn qual_ev_0194_approvals_are_canonical_and_never_resolved_by_the_model() 
         "one canonical resolution on the log"
     );
 }
+
+fn plain_repo(files: &[(&str, &str)]) -> (tempfile::TempDir, String) {
+    let repo = tempfile::tempdir().unwrap();
+    for (p, c) in files {
+        std::fs::write(repo.path().join(p), c).unwrap();
+    }
+    for args in [
+        vec!["init", "-q", "-b", "main"],
+        vec!["add", "-A"],
+        vec![
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@e",
+            "commit",
+            "-q",
+            "-m",
+            "base",
+        ],
+    ] {
+        assert!(
+            Command::new("git")
+                .arg("-C")
+                .arg(repo.path())
+                .args(&args)
+                .status()
+                .unwrap()
+                .success()
+        );
+    }
+    let root = repo
+        .path()
+        .canonicalize()
+        .unwrap()
+        .to_string_lossy()
+        .trim_start_matches(r"\\?\")
+        .to_owned();
+    (repo, root)
+}
+
+async fn invoke_tool(
+    c: &mut Client,
+    task: &Id,
+    g: Option<u64>,
+    cmd: u8,
+    call: u8,
+    tool: &str,
+    args: &str,
+) -> modbit_protocol::v1::ToolInvoked {
+    let ack = c
+        .command(envelope_fenced(
+            id16(cmd),
+            "InvokeTool",
+            modbit_protocol::v1::InvokeTool {
+                task_id: Some(task.clone()),
+                tool_name: tool.into(),
+                arguments_json: args.into(),
+                tool_call_id: Some(id16(call)),
+                output_budget_bytes: 65536,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    Client::result(&ack).unwrap()
+}
+
+async fn read_object(c: &mut Client, id: Id, hash: &str) -> String {
+    use modbit_protocol::v1::{ObjectRangeChunk, ReadObjectRange};
+    let ack = c
+        .command(envelope(
+            id,
+            "ReadObjectRange",
+            ReadObjectRange {
+                object_hash: hash.to_owned(),
+                offset: 0,
+                length: 1024 * 1024,
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let chunk: ObjectRangeChunk = Client::result(&ack).unwrap();
+    String::from_utf8(chunk.data).unwrap()
+}
+
+/// QUAL-EV-0106: every write lands a revision-bound `FileChanged` event with
+/// before/after content and a unified diff by reference; the review surface
+/// shows the identical content refs and hunk lines.
+#[tokio::test]
+async fn qual_ev_0106_every_write_lands_a_revision_bound_file_changed_event_matching_the_review_bundle()
+ {
+    use modbit_protocol::v1::{GetReviewBundle, ReviewBundle};
+    let (_repo, root) = plain_repo(&[("a.txt", "one\ntwo\nthree\n"), ("gone.txt", "bye\n")]);
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn(dir.path());
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xD0)).await;
+    let g = lease_for(&session);
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xD1),
+            "CreateTask",
+            CreateTask {
+                session_id: Some(session.clone()),
+                goal_text: "x".into(),
+                workspace_id: None,
+                execution_profile: String::new(),
+                origin: "cli".into(),
+                workspace_root: root.clone(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let task = Client::result::<TaskCreated>(&ack)
+        .unwrap()
+        .task_id
+        .unwrap();
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xD2,
+        0xF1,
+        "change.apply",
+        r#"{"path":"a.txt","op":"edit","text_edits":[{"old":"two","new":"2"}]}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xD3,
+        0xF2,
+        "change.apply",
+        r#"{"path":"gone.txt","op":"delete"}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let evs = task_events(&core, &session, &task).await;
+    let changed: Vec<_> = evs
+        .iter()
+        .filter(|(a, t, _)| a == "workspace" && t == "FileChanged")
+        .map(|(_, _, p)| p.clone())
+        .collect();
+    assert_eq!(changed.len(), 2, "{evs:#?}");
+    let e = &changed[0];
+    assert_eq!(
+        (e["path"].as_str(), e["op"].as_str()),
+        (Some("a.txt"), Some("edit"))
+    );
+    assert!(
+        e["before_hash"].is_string()
+            && e["after_hash"].is_string()
+            && e["before_ref"].is_string()
+            && e["after_ref"].is_string()
+    );
+    assert_eq!(
+        e["workspace_revision"].as_u64().unwrap(),
+        e["previous_revision"].as_u64().unwrap() + 1
+    );
+    assert_eq!(
+        e["tool_call_id"]
+            .as_str()
+            .map(|v| v.replace('-', "").to_lowercase()),
+        Some(hex::encode([0xF1u8; 16]))
+    );
+    let diff = read_object(&mut c, id16(0xD4), e["diff_ref"].as_str().unwrap()).await;
+    assert!(diff.starts_with("--- a/a.txt\n+++ b/a.txt\n@@"), "{diff}");
+    assert!(diff.contains("-two\n+2\n"), "{diff}");
+    let after = read_object(&mut c, id16(0xD5), e["after_ref"].as_str().unwrap()).await;
+    assert_eq!(after, "one\n2\nthree\n");
+    let d = &changed[1];
+    assert!(
+        d["after_hash"].is_null() && d["after_ref"].is_null() && d["before_ref"].is_string(),
+        "{d}"
+    );
+    assert!(
+        read_object(&mut c, id16(0xD6), d["diff_ref"].as_str().unwrap())
+            .await
+            .contains("-bye\n")
+    );
+    // The review surface shows the very same content refs and hunk lines.
+    let ack = c
+        .command(envelope(
+            id16(0xD7),
+            "GetReviewBundle",
+            GetReviewBundle {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let b: ReviewBundle = Client::result(&ack).unwrap();
+    let f = b
+        .files
+        .iter()
+        .find(|f| f.path == "a.txt")
+        .unwrap_or_else(|| panic!("{b:?}"));
+    assert_eq!(
+        (f.old_content_ref.as_str(), f.new_content_ref.as_str()),
+        (
+            e["before_ref"].as_str().unwrap(),
+            e["after_ref"].as_str().unwrap()
+        )
+    );
+    assert_eq!(f.file_revision, e["after_hash"].as_str().unwrap());
+    let evidence_lines: Vec<&str> = diff
+        .lines()
+        .skip_while(|l| !l.starts_with("@@"))
+        .skip(1)
+        .collect();
+    assert_eq!(f.hunks.len(), 1);
+    assert_eq!(
+        f.hunks[0].lines, evidence_lines,
+        "review hunk equals the evidence diff"
+    );
+    let gone = b.files.iter().find(|f| f.path == "gone.txt").unwrap();
+    assert_eq!(
+        (gone.status.as_str(), gone.old_content_ref.as_str()),
+        ("D", d["before_ref"].as_str().unwrap())
+    );
+}
+
+/// QUAL-EV-0064/0065: undo is a typed plan of inverse actions (delete the
+/// created, restore the deleted, replace the modified) applied only while
+/// every path still carries its post-edit content; unrelated user edits are
+/// untouched and a user edit on a changed path refuses the revert.
+#[tokio::test]
+async fn qual_ev_0064_0065_typed_undo_restores_inverse_actions_and_a_user_edit_blocks_the_revert() {
+    use modbit_protocol::v1::{InvokeTool, ToolInvoked, UndoPlanView, UndoToolCall};
+    let (repo, root) = plain_repo(&[("b.txt", "b\n"), ("c.txt", "c\n"), ("user.txt", "u\n")]);
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn(dir.path());
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xE0)).await;
+    let g = lease_for(&session);
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xE1),
+            "CreateTask",
+            CreateTask {
+                session_id: Some(session.clone()),
+                goal_text: "x".into(),
+                workspace_id: None,
+                execution_profile: String::new(),
+                origin: "cli".into(),
+                workspace_root: root.clone(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let task = Client::result::<TaskCreated>(&ack)
+        .unwrap()
+        .task_id
+        .unwrap();
+    let batch = r#"{"ops":[{"path":"n.txt","op":"create","content":"new\n"},{"path":"b.txt","op":"edit","text_edits":[{"old":"b","new":"B"}]},{"path":"c.txt","op":"delete"}]}"#;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xE2),
+            "InvokeTool",
+            InvokeTool {
+                task_id: Some(task.clone()),
+                tool_name: "change.batch".into(),
+                arguments_json: batch.into(),
+                tool_call_id: Some(id16(0xF2)),
+                output_budget_bytes: 65536,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let r: ToolInvoked = Client::result(&ack).unwrap();
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    assert!(repo.path().join("n.txt").exists() && !repo.path().join("c.txt").exists());
+    // Unrelated user work after the change.
+    std::fs::write(repo.path().join("user.txt"), "user edit\n").unwrap();
+    // The plan alone (no lease needed): latest change first, typed inverses.
+    let ack = c
+        .command(envelope(
+            id16(0xE3),
+            "UndoToolCall",
+            UndoToolCall {
+                task_id: Some(task.clone()),
+                tool_call_id: Some(id16(0xF2)),
+                apply: false,
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let plan: UndoPlanView = Client::result(&ack).unwrap();
+    assert!(!plan.applied);
+    assert_eq!(
+        plan.steps
+            .iter()
+            .map(|s| (s.path.as_str(), s.action.as_str()))
+            .collect::<Vec<_>>(),
+        vec![
+            ("c.txt", "restore"),
+            ("b.txt", "replace"),
+            ("n.txt", "delete")
+        ]
+    );
+    assert!(plan.steps[0].expect_absent && !plan.steps[0].restore_ref.is_empty());
+    assert!(
+        !plan.steps[1].expected_content_hash.is_empty() && !plan.steps[1].restore_ref.is_empty()
+    );
+    assert!(
+        plan.steps[2].restore_ref.is_empty() && !plan.steps[2].expected_content_hash.is_empty()
+    );
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xE4),
+            "UndoToolCall",
+            UndoToolCall {
+                task_id: Some(task.clone()),
+                tool_call_id: Some(id16(0xF2)),
+                apply: true,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let done: UndoPlanView = Client::result(&ack).unwrap();
+    assert!(done.applied && done.refusals.is_empty(), "{done:?}");
+    assert!(!repo.path().join("n.txt").exists());
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("b.txt")).unwrap(),
+        "b\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("c.txt")).unwrap(),
+        "c\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("user.txt")).unwrap(),
+        "user edit\n",
+        "unrelated user changes preserved"
+    );
+    let evs = task_events(&core, &session, &task).await;
+    let undo_ops: Vec<String> = evs
+        .iter()
+        .filter(|(a, t, p)| {
+            a == "workspace" && t == "FileChanged" && p["op"].as_str().unwrap().starts_with("undo:")
+        })
+        .map(|(_, _, p)| p["op"].as_str().unwrap().to_owned())
+        .collect();
+    assert_eq!(
+        undo_ops,
+        vec!["undo:create", "undo:atomic_replace", "undo:delete"]
+    );
+    // QUAL-EV-0065: a user edit after the agent's change blocks the destructive revert.
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xE5),
+            "InvokeTool",
+            InvokeTool {
+                task_id: Some(task.clone()),
+                tool_name: "change.apply".into(),
+                arguments_json: r#"{"path":"e.txt","op":"create","content":"e\n"}"#.into(),
+                tool_call_id: Some(id16(0xF3)),
+                output_budget_bytes: 65536,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(
+        Client::result::<ToolInvoked>(&ack).unwrap().status,
+        "SUCCESS"
+    );
+    std::fs::write(repo.path().join("e.txt"), "mine\n").unwrap();
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xE6),
+            "UndoToolCall",
+            UndoToolCall {
+                task_id: Some(task.clone()),
+                tool_call_id: Some(id16(0xF3)),
+                apply: true,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let refused: UndoPlanView = Client::result(&ack).unwrap();
+    assert!(!refused.applied, "{refused:?}");
+    assert_eq!(
+        (
+            refused.refusals[0].code.as_str(),
+            refused.refusals[0].path.as_str()
+        ),
+        ("USER_EDITED", "e.txt")
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("e.txt")).unwrap(),
+        "mine\n",
+        "nothing written on refusal"
+    );
+    let evs = task_events(&core, &session, &task).await;
+    assert_eq!(
+        evs.iter()
+            .filter(|(_, t, p)| t == "FileChanged"
+                && p["tool_call_id"]
+                    .as_str()
+                    .map(|v| v.replace('-', "").to_lowercase())
+                    == Some(hex::encode([0xF3u8; 16]))
+                && p["op"].as_str().unwrap().starts_with("undo:"))
+            .count(),
+        0
+    );
+}

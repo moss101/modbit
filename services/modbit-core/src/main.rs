@@ -14,6 +14,7 @@ mod review;
 mod runtime;
 mod server;
 mod tools;
+mod undo;
 mod verify;
 
 fn usage() -> &'static str {

@@ -52,6 +52,7 @@ license = "UNLICENSED"
 publish = false
 
 [workspace.dependencies]
+similar = "2.7"
 # intra-workspace
 modbit-domain = { path = "crates/domain" }
 modbit-protocol = { path = "crates/protocol" }

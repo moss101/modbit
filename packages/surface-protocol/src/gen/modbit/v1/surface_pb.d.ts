@@ -1186,6 +1186,145 @@ export declare type EffectReceiptList = Message<"modbit.v1.EffectReceiptList"> &
 export declare const EffectReceiptListSchema: GenMessage<EffectReceiptList>;
 
 /**
+ * REQ-EV-0064/0065: typed undo of one tool call's file changes. `apply=false`
+ * returns the plan only; `apply=true` applies it when every path still has
+ * its post-edit content (a user edit after the change refuses the revert).
+ *
+ * @generated from message modbit.v1.UndoToolCall
+ */
+export declare type UndoToolCall = Message<"modbit.v1.UndoToolCall"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: modbit.v1.Id tool_call_id = 2;
+   */
+  toolCallId?: Id | undefined;
+
+  /**
+   * @generated from field: bool apply = 3;
+   */
+  apply: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.UndoToolCall.
+ * Use `create(UndoToolCallSchema)` to create a new message.
+ */
+export declare const UndoToolCallSchema: GenMessage<UndoToolCall>;
+
+/**
+ * @generated from message modbit.v1.UndoStepView
+ */
+export declare type UndoStepView = Message<"modbit.v1.UndoStepView"> & {
+  /**
+   * @generated from field: string path = 1;
+   */
+  path: string;
+
+  /**
+   * delete | restore | replace
+   *
+   * @generated from field: string action = 2;
+   */
+  action: string;
+
+  /**
+   * @generated from field: string expected_content_hash = 3;
+   */
+  expectedContentHash: string;
+
+  /**
+   * @generated from field: bool expect_absent = 4;
+   */
+  expectAbsent: boolean;
+
+  /**
+   * object hash of the content to restore
+   *
+   * @generated from field: string restore_ref = 5;
+   */
+  restoreRef: string;
+
+  /**
+   * @generated from field: string resulting_hash = 6;
+   */
+  resultingHash: string;
+};
+
+/**
+ * Describes the message modbit.v1.UndoStepView.
+ * Use `create(UndoStepViewSchema)` to create a new message.
+ */
+export declare const UndoStepViewSchema: GenMessage<UndoStepView>;
+
+/**
+ * @generated from message modbit.v1.UndoRefusal
+ */
+export declare type UndoRefusal = Message<"modbit.v1.UndoRefusal"> & {
+  /**
+   * @generated from field: string path = 1;
+   */
+  path: string;
+
+  /**
+   * USER_EDITED | PATH_PRESENT | PATH_MISSING | STEP_FAILED
+   *
+   * @generated from field: string code = 2;
+   */
+  code: string;
+
+  /**
+   * @generated from field: string detail = 3;
+   */
+  detail: string;
+};
+
+/**
+ * Describes the message modbit.v1.UndoRefusal.
+ * Use `create(UndoRefusalSchema)` to create a new message.
+ */
+export declare const UndoRefusalSchema: GenMessage<UndoRefusal>;
+
+/**
+ * @generated from message modbit.v1.UndoPlanView
+ */
+export declare type UndoPlanView = Message<"modbit.v1.UndoPlanView"> & {
+  /**
+   * @generated from field: modbit.v1.Id tool_call_id = 1;
+   */
+  toolCallId?: Id | undefined;
+
+  /**
+   * @generated from field: repeated modbit.v1.UndoStepView steps = 2;
+   */
+  steps: UndoStepView[];
+
+  /**
+   * @generated from field: bool applied = 3;
+   */
+  applied: boolean;
+
+  /**
+   * @generated from field: repeated modbit.v1.UndoRefusal refusals = 4;
+   */
+  refusals: UndoRefusal[];
+
+  /**
+   * @generated from field: uint64 workspace_revision = 5;
+   */
+  workspaceRevision: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.UndoPlanView.
+ * Use `create(UndoPlanViewSchema)` to create a new message.
+ */
+export declare const UndoPlanViewSchema: GenMessage<UndoPlanView>;
+
+/**
  * @generated from message modbit.v1.GetCapabilityLeases
  */
 export declare type GetCapabilityLeases = Message<"modbit.v1.GetCapabilityLeases"> & {

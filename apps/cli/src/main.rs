@@ -39,11 +39,11 @@ use modbit_protocol::v1::{
     GetSessionSnapshot, GetTaskStatus, HunkRef, Id, InvokeTool, ListApprovals, ListModels,
     ListTools, ModelList, ModelProbed, ProbeModel, ResolveApproval, ReviewBundle, ReviewDecided,
     SessionCreated, SessionLeaseAcquired, SessionSnapshot, StartTask, TaskCancelRequested,
-    TaskCreated, TaskRunStarted, TaskStatus, ToolInvoked, ToolList,
+    TaskCreated, TaskRunStarted, TaskStatus, ToolInvoked, ToolList, UndoPlanView, UndoToolCall,
 };
 use prost::Message;
 
-const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] | tool list | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
+const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] | tool list | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
 
 fn parse_id(hex: &str) -> Result<Id, String> {
     let bytes = decode_hex(hex)
@@ -553,6 +553,44 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 "task state={} wait_reason={} run_state={} loop_alive={}",
                 st.state, st.wait_reason, st.run_state, st.loop_alive
             );
+        }
+        ["change", "undo", ..] => {
+            let session_id = parse_id(opt("--session").ok_or(USAGE)?)?;
+            let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
+            let call = parse_id(opt("--call").ok_or(USAGE)?)?;
+            let apply = words.contains(&"--apply");
+            let payload = UndoToolCall {
+                task_id: Some(task_id),
+                tool_call_id: Some(call),
+                apply,
+            }
+            .encode_to_vec();
+            let ack = if apply {
+                let lease = acquire_lease(&mut client, &session_id).await?;
+                client
+                    .command(envelope_fenced("UndoToolCall", payload, Some(lease)))
+                    .await
+            } else {
+                client.command(envelope("UndoToolCall", payload)).await
+            }
+            .map_err(|e| e.to_string())?;
+            let v: UndoPlanView = Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "undo applied={} steps={} refusals={} workspace_revision={}",
+                v.applied,
+                v.steps.len(),
+                v.refusals.len(),
+                v.workspace_revision
+            );
+            for st in &v.steps {
+                println!(
+                    "step {} {} expected={} restore={} result={}",
+                    st.action, st.path, st.expected_content_hash, st.restore_ref, st.resulting_hash
+                );
+            }
+            for r in &v.refusals {
+                println!("refusal {} {} {}", r.code, r.path, r.detail);
+            }
         }
         ["review", "show", ..] => {
             let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;

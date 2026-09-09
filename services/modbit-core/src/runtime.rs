@@ -1155,7 +1155,7 @@ async fn run_loop(
                                 step_ordinal += 1;
                             }
                             // Per-transaction diff invariants (docs/64 §4).
-                            if name == "change.apply"
+                            if (name == "change.apply" || name == "change.batch")
                                 && let Some(refusal) = transaction_invariants(
                                     &core,
                                     &task,
@@ -1916,10 +1916,17 @@ async fn execute_tool(
         } else {
             None
         };
-        let wrote = if name == "change.apply" && r.status == ToolStatus::Success {
+        let wrote = if (name == "change.apply" || name == "change.batch")
+            && r.status == ToolStatus::Success
+        {
             serde_json::from_str::<serde_json::Value>(args)
                 .ok()
-                .and_then(|v| v["path"].as_str().map(str::to_owned))
+                .and_then(|v| {
+                    v["path"]
+                        .as_str()
+                        .or_else(|| v["ops"][0]["path"].as_str())
+                        .map(str::to_owned)
+                })
         } else {
             None
         };
@@ -2354,7 +2361,61 @@ async fn handle_verify(
     (entry, ok, rev)
 }
 
-/// DI evaluation for one proposed `change.apply`; `Some(reason)` denies.
+/// The file as one change op would leave it (text ops are simulated; a
+/// failing edit leaves the old content, which the tool then refuses anyway).
+fn proposed_file(root: &str, op: &serde_json::Value) -> Option<modbit_verification::ChangedFile> {
+    let path = op["path"].as_str()?.to_owned();
+    let old = std::fs::read(std::path::Path::new(root).join(&path))
+        .ok()
+        .map(|b| String::from_utf8_lossy(&b).into_owned());
+    let new = match op["op"].as_str() {
+        Some("delete") => None,
+        Some("create") | Some("replace") => {
+            Some(op["content"].as_str().unwrap_or_default().to_owned())
+        }
+        Some("edit") => {
+            let mut content = old.clone()?;
+            for e in op["text_edits"].as_array().cloned().unwrap_or_default() {
+                let (o, n) = (
+                    e["old"].as_str().unwrap_or_default(),
+                    e["new"].as_str().unwrap_or_default(),
+                );
+                match modbit_workspace::locate(&content, o, &path) {
+                    Ok((start, end, _)) => content.replace_range(start..end, n),
+                    Err(_) => break,
+                }
+            }
+            Some(content)
+        }
+        Some("patch") => {
+            let original = old.clone()?;
+            let mut out = String::new();
+            let mut cursor = 0usize;
+            for e in op["edits"].as_array().cloned().unwrap_or_default() {
+                let (start, end) = (
+                    e["start"].as_u64().unwrap_or(0) as usize,
+                    e["end"].as_u64().unwrap_or(0) as usize,
+                );
+                if start < cursor || end < start || end > original.len() {
+                    return Some(modbit_verification::ChangedFile {
+                        path,
+                        old: Some(original.clone()),
+                        new: Some(original),
+                    });
+                }
+                out.push_str(original.get(cursor..start).unwrap_or_default());
+                out.push_str(e["replacement"].as_str().unwrap_or_default());
+                cursor = end;
+            }
+            out.push_str(original.get(cursor..).unwrap_or_default());
+            Some(out)
+        }
+        _ => old.clone(),
+    };
+    Some(modbit_verification::ChangedFile { path, old, new })
+}
+
+/// DI evaluation for one proposed `change.apply` / `change.batch`; `Some(reason)` denies.
 async fn transaction_invariants(
     core: &Core,
     task: &Task,
@@ -2364,24 +2425,21 @@ async fn transaction_invariants(
     args: &str,
 ) -> Option<String> {
     let v: serde_json::Value = serde_json::from_str(args).ok()?;
-    let path = v["path"].as_str()?.to_owned();
     let root = task.workspace_root.as_deref()?;
-    let old = std::fs::read(std::path::Path::new(root).join(&path))
-        .ok()
-        .map(|b| String::from_utf8_lossy(&b).into_owned());
-    let new = match v["op"].as_str() {
-        Some("delete") => None,
-        Some("create") | Some("replace") => {
-            Some(v["content"].as_str().unwrap_or_default().to_owned())
-        }
-        _ => old.clone(),
+    let ops: Vec<serde_json::Value> = match v["ops"].as_array() {
+        Some(ops) => ops.clone(),
+        None => vec![v.clone()],
     };
-    let file = modbit_verification::ChangedFile {
-        path: path.clone(),
-        old,
-        new,
-    };
-    let violations = modbit_verification::evaluate_file(&invariant_context(state), &file, None);
+    let ctx = invariant_context(state);
+    let mut violations = Vec::new();
+    let mut path = String::new();
+    for op in &ops {
+        let Some(file) = proposed_file(root, op) else {
+            continue;
+        };
+        path.clone_from(&file.path);
+        violations.extend(modbit_verification::evaluate_file(&ctx, &file, None));
+    }
     if violations.is_empty() {
         return None;
     }

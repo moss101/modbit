@@ -34,6 +34,8 @@ pub enum AggregateType {
     Checkpoint,
     /// Compaction epoch.
     CompactionEpoch,
+    /// Workspace (worktree) change stream.
+    Workspace,
 }
 
 impl AggregateType {
@@ -51,6 +53,7 @@ impl AggregateType {
             Self::CapabilityLease => "capability_lease",
             Self::Checkpoint => "checkpoint",
             Self::CompactionEpoch => "compaction_epoch",
+            Self::Workspace => "workspace",
         }
     }
 
@@ -68,6 +71,7 @@ impl AggregateType {
             "capability_lease" => Self::CapabilityLease,
             "checkpoint" => Self::Checkpoint,
             "compaction_epoch" => Self::CompactionEpoch,
+            "workspace" => Self::Workspace,
             _ => return None,
         })
     }

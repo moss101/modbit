@@ -26,8 +26,8 @@ pub mod service;
 pub use paths::{PathPolicy, ResolvedPath};
 pub use revision::WorkspaceRevision;
 pub use service::{
-    ApplyPatch, Edit, EntryKind, FileRead, FileStat, WorkspaceChange, WorkspaceService,
-    WritePrecondition,
+    ApplyPatch, ChangeOp, ChangeOpKind, Edit, EntryKind, FileRead, FileStat, MatchTier, TextEdit,
+    WorkspaceChange, WorkspaceService, WritePrecondition, content_hash, locate,
 };
 
 /// Errors of the file service.
@@ -81,6 +81,39 @@ pub enum Error {
         path: String,
         /// Detail.
         detail: String,
+    },
+    /// The edit target matched more than once at the given ladder tier (REQ-EV-0015: never guess).
+    #[error("ambiguous edit target in `{path}`: {occurrences} {tier} matches")]
+    AmbiguousTarget {
+        /// Path.
+        path: String,
+        /// Number of matches.
+        occurrences: usize,
+        /// Ladder tier at which the ambiguity arose.
+        tier: String,
+    },
+    /// The edit target was not found at any ladder tier; `suggestion` is the closest line seen.
+    #[error("edit target not found in `{path}` (closest: {suggestion:?})")]
+    NoMatch {
+        /// Path.
+        path: String,
+        /// Closest existing line, for a contextual suggestion.
+        suggestion: Option<String>,
+    },
+    /// A step of an ordered edit list or transaction failed; nothing after it ran.
+    #[error("step {step} failed: {cause}; rolled back: {rolled_back}")]
+    StepFailed {
+        /// Zero-based failing step.
+        step: usize,
+        /// Cause.
+        #[source]
+        cause: Box<Error>,
+        /// Whether every earlier step was restored.
+        rolled_back: bool,
+        /// Paths restored to their pre-transaction content.
+        restored: Vec<String>,
+        /// Paths whose restore itself failed (explicit partial state).
+        unrestored: Vec<String>,
     },
 }
 

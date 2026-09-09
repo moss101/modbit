@@ -80,6 +80,139 @@ pub struct ApplyPatch {
     pub edits: Vec<Edit>,
 }
 
+/// One text edit located by the deterministic match ladder (REQ-EV-0015).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TextEdit {
+    /// Text to find (must match exactly once at some ladder tier).
+    pub old: String,
+    /// Replacement text.
+    pub new: String,
+}
+
+/// Ladder tier at which an edit target was located.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MatchTier {
+    /// Byte-exact unique match.
+    Exact,
+    /// Unique match after trimming each line's leading/trailing whitespace.
+    WhitespaceRemap,
+}
+
+/// One operation of a multi-file transaction (REQ-EV-0016).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChangeOp {
+    /// Root-relative path.
+    pub path: String,
+    /// Operation.
+    pub kind: ChangeOpKind,
+    /// Precondition.
+    pub pre: WritePrecondition,
+}
+
+/// Transaction operation kinds.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ChangeOpKind {
+    /// Create with content.
+    Create(Vec<u8>),
+    /// Replace whole content.
+    Replace(Vec<u8>),
+    /// Ordered text edits through the match ladder.
+    Edit(Vec<TextEdit>),
+    /// Delete.
+    Delete,
+}
+
+/// Locate `needle` in `content` through the ladder: exact → whitespace remap
+/// → ambiguity/no-match error. Returns the byte range and the tier.
+pub fn locate(content: &str, needle: &str, path: &str) -> Result<(usize, usize, MatchTier)> {
+    if needle.is_empty() {
+        return Err(Error::Invalid {
+            path: path.into(),
+            detail: "empty edit target".into(),
+        });
+    }
+    let exact: Vec<usize> = content.match_indices(needle).map(|(i, _)| i).collect();
+    match exact.len() {
+        1 => return Ok((exact[0], exact[0] + needle.len(), MatchTier::Exact)),
+        n if n > 1 => {
+            return Err(Error::AmbiguousTarget {
+                path: path.into(),
+                occurrences: n,
+                tier: "exact".into(),
+            });
+        }
+        _ => {}
+    }
+    // Whitespace remap: compare line windows with each line trimmed.
+    let needle_lines: Vec<&str> = needle.lines().map(str::trim).collect();
+    let mut offsets = Vec::new();
+    let mut pos = 0usize;
+    for line in content.split_inclusive('\n') {
+        offsets.push((
+            pos,
+            pos + line.len(),
+            line.trim_end_matches(['\n', '\r']).trim(),
+        ));
+        pos += line.len();
+    }
+    let mut hits = Vec::new();
+    if !needle_lines.is_empty() && needle_lines.len() <= offsets.len() {
+        for i in 0..=offsets.len() - needle_lines.len() {
+            if (0..needle_lines.len()).all(|k| offsets[i + k].2 == needle_lines[k]) {
+                let start = offsets[i].0;
+                let last = offsets[i + needle_lines.len() - 1];
+                // Keep the trailing newline out of the range unless the needle ends with one.
+                let end = if needle.ends_with('\n') {
+                    last.1
+                } else {
+                    last.0 + content[last.0..last.1].trim_end_matches(['\n', '\r']).len()
+                };
+                hits.push((start, end));
+            }
+        }
+    }
+    match hits.len() {
+        1 => Ok((hits[0].0, hits[0].1, MatchTier::WhitespaceRemap)),
+        n if n > 1 => Err(Error::AmbiguousTarget {
+            path: path.into(),
+            occurrences: n,
+            tier: "whitespace_remap".into(),
+        }),
+        _ => {
+            // Contextual suggestion: the existing line sharing the longest common prefix
+            // with the first non-empty needle line. Never applied, only reported.
+            let first = needle_lines
+                .iter()
+                .find(|l| !l.is_empty())
+                .copied()
+                .unwrap_or("");
+            let suggestion = offsets
+                .iter()
+                .map(|o| o.2)
+                .filter(|l| !l.is_empty())
+                .max_by_key(|l| {
+                    l.chars()
+                        .zip(first.chars())
+                        .take_while(|(a, b)| a == b)
+                        .count()
+                })
+                .filter(|l| {
+                    l.chars()
+                        .zip(first.chars())
+                        .take_while(|(a, b)| a == b)
+                        .count()
+                        >= 4
+                })
+                .map(str::to_owned);
+            Err(Error::NoMatch {
+                path: path.into(),
+                suggestion,
+            })
+        }
+    }
+}
+
 /// A typed change record produced by every successful write (basis of the
 /// revision-bound change events of REQ-EV-0106).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -465,5 +598,116 @@ impl WorkspaceService {
         std::fs::rename(&src.absolute, &dst.absolute).map_err(|e| Self::io(&src.absolute, e))?;
         self.commit(&src, "move_from", before.clone(), None)?;
         self.commit(&dst, "move_to", None, before)
+    }
+
+    /// Ordered text edits through the match ladder (REQ-EV-0015/0016): each
+    /// edit is located against the content as left by the previous one; a
+    /// failure at step N writes nothing (the file is written once, atomically).
+    pub fn edit_by_match(
+        &mut self,
+        path: &str,
+        edits: &[TextEdit],
+        pre: WritePrecondition,
+    ) -> Result<(WorkspaceChange, Vec<MatchTier>)> {
+        let r = self.policy.check(path)?;
+        let before = self.check_precondition(&r, path, &pre)?;
+        let Some(before_hash) = before else {
+            return Err(Error::Precondition {
+                path: path.into(),
+                detail: "edit needs an existing file".into(),
+            });
+        };
+        let original = std::fs::read(&r.absolute).map_err(|e| Self::io(&r.absolute, e))?;
+        let mut content = String::from_utf8(original).map_err(|_| Error::Invalid {
+            path: path.into(),
+            detail: "edit needs UTF-8 text".into(),
+        })?;
+        let mut tiers = Vec::with_capacity(edits.len());
+        for (i, e) in edits.iter().enumerate() {
+            let (start, end, tier) =
+                locate(&content, &e.old, path).map_err(|cause| Error::StepFailed {
+                    step: i,
+                    cause: Box::new(cause),
+                    rolled_back: true,
+                    restored: vec![],
+                    unrestored: vec![],
+                })?;
+            content.replace_range(start..end, &e.new);
+            tiers.push(tier);
+        }
+        write_atomic(&self.tmp_for(&r.absolute), &r.absolute, content.as_bytes())?;
+        let change = self.commit(
+            &r,
+            "edit",
+            Some(before_hash),
+            Some(content_hash(content.as_bytes())),
+        )?;
+        Ok((change, tiers))
+    }
+
+    /// Multi-file transaction (REQ-EV-0016): operations run in order with
+    /// per-step validation; a failure at step N restores every earlier path
+    /// to its pre-transaction bytes and reports the step, or reports the
+    /// explicit partial state when a restore itself fails.
+    pub fn apply_transaction(&mut self, ops: &[ChangeOp]) -> Result<Vec<WorkspaceChange>> {
+        let mut done: Vec<(String, Option<Vec<u8>>)> = Vec::new();
+        let mut changes = Vec::new();
+        for (i, op) in ops.iter().enumerate() {
+            // Pre-step snapshot for rollback; policy failures surface from the step itself.
+            let snapshot = match self.policy.check(&op.path) {
+                Ok(r) => match std::fs::read(&r.absolute) {
+                    Ok(b) => Some(b),
+                    Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
+                    Err(e) => {
+                        return Err(Error::StepFailed {
+                            step: i,
+                            cause: Box::new(Self::io(&r.absolute, e)),
+                            rolled_back: done.is_empty(),
+                            restored: vec![],
+                            unrestored: done.iter().map(|(p, _)| p.clone()).collect(),
+                        });
+                    }
+                },
+                Err(_) => None,
+            };
+            let result = match &op.kind {
+                ChangeOpKind::Create(b) => self.create(&op.path, b, op.pre.clone()),
+                ChangeOpKind::Replace(b) => self.atomic_replace(&op.path, b, op.pre.clone()),
+                ChangeOpKind::Edit(edits) => self
+                    .edit_by_match(&op.path, edits, op.pre.clone())
+                    .map(|(c, _)| c),
+                ChangeOpKind::Delete => self.delete(&op.path, op.pre.clone()),
+            };
+            match result {
+                Ok(c) => {
+                    done.push((op.path.clone(), snapshot));
+                    changes.push(c);
+                }
+                Err(cause) => {
+                    let (mut restored, mut unrestored) = (Vec::new(), Vec::new());
+                    for (path, bytes) in done.iter().rev() {
+                        let ok = match bytes {
+                            Some(b) => self
+                                .atomic_replace(path, b, WritePrecondition::default())
+                                .is_ok(),
+                            None => self.delete(path, WritePrecondition::default()).is_ok(),
+                        };
+                        if ok {
+                            restored.push(path.clone());
+                        } else {
+                            unrestored.push(path.clone());
+                        }
+                    }
+                    return Err(Error::StepFailed {
+                        step: i,
+                        rolled_back: unrestored.is_empty(),
+                        cause: Box::new(cause),
+                        restored,
+                        unrestored,
+                    });
+                }
+            }
+        }
+        Ok(changes)
     }
 }

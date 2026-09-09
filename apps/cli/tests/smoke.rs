@@ -223,6 +223,66 @@ fn cli_drives_a_real_core_end_to_end() {
         "{all}"
     );
 
+    // REQ-EV-0064/0065 (M2 backlog): a typed undo plan for one call, applied through the CLI.
+    let create_call = "fedcba9876543210fedcba9876543210";
+    let (ok, out, all) = cli(
+        &data_dir,
+        &core,
+        &[
+            "tool",
+            "invoke",
+            "--session",
+            &sid,
+            "--task",
+            &tid,
+            "--call",
+            create_call,
+            "change.apply",
+            r#"{"path":"made.txt","op":"create","content":"made\n"}"#,
+        ],
+    );
+    assert!(ok && out.contains("status=SUCCESS"), "{all}");
+    assert!(repo.join("made.txt").exists());
+    let (ok, out, all) = cli(
+        &data_dir,
+        &core,
+        &[
+            "change",
+            "undo",
+            "--session",
+            &sid,
+            "--task",
+            &tid,
+            "--call",
+            create_call,
+        ],
+    );
+    assert!(
+        ok && out.contains("undo applied=false steps=1") && out.contains("step delete made.txt"),
+        "{all}"
+    );
+    assert!(
+        repo.join("made.txt").exists(),
+        "a plan alone changes nothing"
+    );
+    let (ok, out, all) = cli(
+        &data_dir,
+        &core,
+        &[
+            "change",
+            "undo",
+            "--session",
+            &sid,
+            "--task",
+            &tid,
+            "--call",
+            create_call,
+            "--apply",
+        ],
+    );
+    assert!(ok && out.contains("undo applied=true steps=1"), "{all}");
+    assert!(!repo.join("made.txt").exists());
+
     // M2.5: the task lease, an approval-gated destructive tool, the receipt chain.
     let (ok, out, all) = cli(&data_dir, &core, &["lease", "list", "--task", &tid]);
     assert!(
