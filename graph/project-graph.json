@@ -1602,12 +1602,17 @@
    "milestone": "M2",
    "order": 5,
    "source": "docs/43",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "test:openai_streaming_tool_round_trip_over_real_http",
     "test:anthropic_streaming_tool_round_trip_over_real_http",
     "test:capability_catalog_refuses_mismatched_models_before_dispatch",
-    "test:m2_6_provider_gateway_streams_through_the_core_over_real_http"
+    "test:m2_6_provider_gateway_streams_through_the_core_over_real_http",
+    "run:gha-34378814770",
+    "commit:41032dc",
+    "artifact:docs/decisions/DR-M2-001-live-provider-proof-pending-credentials.md",
+    "artifact:evidence/m2/M2.6/evidence.json",
+    "artifact:evidence/m2/M2.6/TASK_CARD.md"
    ],
    "notes": [
     {
@@ -1633,9 +1638,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "Real HTTP against wire-faithful local servers with fault injection; live production proof deferred by DR-M2-001"
+    },
+    {
+     "at": "2026-09-09T16:52:05Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "Hosted CI run 34378814770 green on three platforms; live production proof deferred by DR-M2-001"
+    },
+    {
+     "at": "2026-09-09T16:52:05Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Sealed with hosted CI evidence; live provider proof tracked by DR-M2-001"
     }
    ],
-   "status_changed_on": "2026-09-09T16:51:33Z"
+   "status_changed_on": "2026-09-09T16:52:05Z"
   },
   {
    "id": "M2.7",
