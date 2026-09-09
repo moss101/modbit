@@ -9,15 +9,22 @@ publish.workspace = true
 
 [dependencies]
 modbit-domain.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
 
 [lints]
 workspace = true
 
 # Module registration parsed by `architecture-lint modules` (M0.4, docs/45, docs/81).
-# owner: subsystem node id in graph/project-graph.json; canonical: doc 81 single-owner
-# systems this crate is THE implementation of (at most one member per system);
-# capabilities: production capabilities with their requirement ids (none yet).
 [package.metadata.modbit]
 owner = "workspace-git"
 canonical = []
-capabilities = []
+capabilities = [
+  { id = "git.worktree", requirements = ["REQ-EV-0125", "REQ-EV-0124"] },
+  { id = "git.merge_transaction", requirements = ["REQ-EV-0067"] },
+  { id = "git.snapshot", requirements = ["REQ-EV-0022"] },
+]

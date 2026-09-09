@@ -654,6 +654,10 @@ name = "modbit-git"
 version = "0.0.0"
 dependencies = [
  "modbit-domain",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
 ]
 
 [[package]]

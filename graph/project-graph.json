@@ -1390,8 +1390,24 @@
    "milestone": "M2",
    "order": 1,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-09T12:03:33Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: NOT-FOUND for typed Git operations; modbit-workspace reads HEAD via the git binary only."
+    },
+    {
+     "at": "2026-09-09T12:09:48Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "modbit-git: typed repo/branch/worktree/diff/commit, merge transaction with conflict evidence, dirty snapshots; four real-git tests pass locally."
+    }
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-09-09T12:09:48Z"
   },
   {
    "id": "M2.3",
