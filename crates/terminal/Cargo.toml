@@ -9,15 +9,16 @@ publish.workspace = true
 
 [dependencies]
 modbit-domain.workspace = true
+modbit-protocol.workspace = true
+prost.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
 
 [lints]
 workspace = true
 
 # Module registration parsed by `architecture-lint modules` (M0.4, docs/45, docs/81).
-# owner: subsystem node id in graph/project-graph.json; canonical: doc 81 single-owner
-# systems this crate is THE implementation of (at most one member per system);
-# capabilities: production capabilities with their requirement ids (none yet).
 [package.metadata.modbit]
 owner = "terminal"
 canonical = []
-capabilities = []
+capabilities = [{ id = "exec.client", requirements = ["REQ-EV-0100", "REQ-EV-0271"] }]

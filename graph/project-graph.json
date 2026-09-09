@@ -1436,8 +1436,24 @@
    "milestone": "M2",
    "order": 2,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-09T12:21:06Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: NOT-FOUND. services/modbit-execd and crates/terminal are M0.1 shells."
+    },
+    {
+     "at": "2026-09-09T12:47:52Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "modbit-execd broker (piped + PTY, durable log with byte cursors, replay, cancel, OutputRef spill) and modbit-terminal client; six real-process tests pass locally."
+    }
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-09-09T12:47:52Z"
   },
   {
    "id": "M2.4",

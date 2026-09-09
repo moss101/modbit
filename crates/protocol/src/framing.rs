@@ -8,6 +8,47 @@ use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 use crate::v1::SurfaceFrame;
 
+/// Write any length-prefixed protobuf message (shared by the execd protocol).
+pub async fn write_message<W: AsyncWrite + Unpin, M: Message>(
+    w: &mut W,
+    msg: &M,
+) -> Result<(), FrameError> {
+    let bytes = msg.encode_to_vec();
+    if bytes.len() > MAX_FRAME_BYTES {
+        return Err(FrameError::TooLarge {
+            declared: bytes.len(),
+            max: MAX_FRAME_BYTES,
+        });
+    }
+    let len = u32::try_from(bytes.len()).expect("bounded above");
+    w.write_all(&len.to_be_bytes()).await?;
+    w.write_all(&bytes).await?;
+    w.flush().await?;
+    Ok(())
+}
+
+/// Read any length-prefixed protobuf message; `Ok(None)` on clean EOF.
+pub async fn read_message<R: AsyncRead + Unpin, M: Message + Default>(
+    r: &mut R,
+) -> Result<Option<M>, FrameError> {
+    let mut len = [0u8; 4];
+    match r.read_exact(&mut len).await {
+        Ok(_) => {}
+        Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => return Ok(None),
+        Err(e) => return Err(e.into()),
+    }
+    let declared = u32::from_be_bytes(len) as usize;
+    if declared > MAX_FRAME_BYTES {
+        return Err(FrameError::TooLarge {
+            declared,
+            max: MAX_FRAME_BYTES,
+        });
+    }
+    let mut buf = vec![0u8; declared];
+    r.read_exact(&mut buf).await?;
+    Ok(Some(M::decode(buf.as_slice())?))
+}
+
 /// Hard ceiling for one frame.
 pub const MAX_FRAME_BYTES: usize = 4 * 1024 * 1024;
 

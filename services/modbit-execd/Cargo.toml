@@ -8,18 +8,32 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
+anyhow.workspace = true
+hex.workspace = true
 modbit-domain.workspace = true
 modbit-protocol.workspace = true
 modbit-terminal.workspace = true
+portable-pty.workspace = true
+prost.workspace = true
+rand.workspace = true
+sha2.workspace = true
+subtle.workspace = true
+tokio.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+hex.workspace = true
+sha2.workspace = true
 
 [lints]
 workspace = true
 
 # Module registration parsed by `architecture-lint modules` (M0.4, docs/45, docs/81).
-# owner: subsystem node id in graph/project-graph.json; canonical: doc 81 single-owner
-# systems this crate is THE implementation of (at most one member per system);
-# capabilities: production capabilities with their requirement ids (none yet).
 [package.metadata.modbit]
 owner = "terminal"
 canonical = ["terminal-process-broker"]
-capabilities = []
+capabilities = [
+  { id = "exec.process", requirements = ["REQ-EV-0100", "REQ-EV-0025"] },
+  { id = "exec.replay", requirements = ["REQ-EV-0271", "REQ-EV-0027", "REQ-EV-0135"] },
+  { id = "exec.output_ref", requirements = ["REQ-EV-0019", "REQ-EV-0269", "REQ-EV-0026"] },
+]

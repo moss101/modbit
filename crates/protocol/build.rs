@@ -13,6 +13,11 @@ fn main() {
         .filter(|p| p.extension().is_some_and(|x| x == "proto"))
         .collect();
     files.sort();
+    // Watch the directory too, so a newly added .proto triggers regeneration.
+    println!(
+        "cargo:rerun-if-changed={}",
+        proto_root.join("modbit/v1").display()
+    );
     for f in &files {
         println!("cargo:rerun-if-changed={}", f.display());
     }

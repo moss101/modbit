@@ -1,0 +1,107 @@
+// modbit-execd wire protocol (docs/21 "Structured command contract", "Durable
+// modbit-execd"). Same framing and boot-secret handshake as the local
+// SurfaceProtocol; the broker only executes what an authenticated Core sends,
+// it never decides policy or mints capabilities.
+syntax = "proto3";
+
+package modbit.v1;
+
+import "modbit/v1/domain.proto";
+import "modbit/v1/negotiation.proto";
+import "modbit/v1/surface.proto";
+
+message ExecRequest {
+  string request_id = 1;              // client-stable; retries replay
+  repeated string argv = 2;
+  string cwd = 3;
+  map<string, string> env = 4;        // explicit environment (no inheritance unless listed)
+  bool inherit_env = 5;               // when true, start from the broker's environment then apply `env`
+  uint64 timeout_ms = 6;              // 0 = none
+  bool pty = 7;
+  string stdin_mode = 8;              // "closed" | "open"
+  uint64 output_budget_bytes = 9;     // inline bytes delivered to the model view before the rest is by ref
+  string execution_profile = 10;
+  Id capability_lease_id = 11;
+  optional string terminal_session_id = 12;  // reuse a durable shell session (M2 later)
+}
+
+message ExecStarted {
+  string request_id = 1;
+  string session_id = 2;              // durable handle for attach/cancel/replay
+  uint32 process_id = 3;
+  bool replayed = 4;
+}
+
+// One slice of output in cursor order. `cursor` is the byte offset of the
+// first byte of `data` in the session's full output log; `stream` is
+// "stdout", "stderr" or "pty".
+message OutputChunk {
+  string session_id = 1;
+  uint64 cursor = 2;
+  string stream = 3;
+  bytes data = 4;
+}
+
+message ProcessExited {
+  string session_id = 1;
+  optional int32 exit_code = 2;
+  optional int32 signal = 3;
+  uint64 duration_ms = 4;
+  // Content-addressed full output (sha256 hex) and its size; the model view is bounded, this is complete.
+  string output_ref = 5;
+  uint64 total_bytes = 6;
+  bool timed_out = 7;
+  bool cancelled = 8;
+}
+
+message Attach {
+  string session_id = 1;
+  uint64 after_cursor = 2;            // replay output with cursor >= after_cursor, then live
+}
+
+message WriteStdin {
+  string session_id = 1;
+  bytes data = 2;
+}
+
+message Cancel {
+  string session_id = 1;
+}
+
+message ListSessions {}
+
+message SessionInfo {
+  string session_id = 1;
+  string request_id = 2;
+  repeated string argv = 3;
+  bool running = 4;
+  uint64 bytes_so_far = 5;
+  optional int32 exit_code = 6;
+}
+
+message SessionList {
+  repeated SessionInfo sessions = 1;
+}
+
+message ExecError {
+  string request_id = 1;
+  string code = 2;
+  string message = 3;
+}
+
+message ExecFrame {
+  oneof body {
+    ClientHello client_hello = 1;
+    HelloAck hello_ack = 2;
+    ExecRequest exec = 3;
+    ExecStarted started = 4;
+    OutputChunk output = 5;
+    ProcessExited exited = 6;
+    Attach attach = 7;
+    WriteStdin stdin = 8;
+    Cancel cancel = 9;
+    ListSessions list = 10;
+    SessionList sessions = 11;
+    ExecError error = 12;
+  }
+}
