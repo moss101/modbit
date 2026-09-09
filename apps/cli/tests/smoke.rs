@@ -92,16 +92,19 @@ fn cli_drives_a_real_core_end_to_end() {
     );
     assert!(ok, "{all}");
     let lines: Vec<_> = out.lines().collect();
-    assert_eq!(lines.len(), 3, "{all}");
+    assert_eq!(lines.len(), 4, "{all}");
     assert!(
-        lines[0].ends_with("SessionCreated") && lines[2].ends_with("TaskQueued"),
+        lines[0].ends_with("SessionCreated")
+            && lines[1].ends_with("SessionLeaseAcquired")
+            && lines[2].ends_with("TaskCreated")
+            && lines[3].ends_with("TaskQueued"),
         "{all}"
     );
 
     let (ok, out, all) = cli(
         &data_dir,
         &core,
-        &["events", "tail", "--session", &sid, "--after", "2"],
+        &["events", "tail", "--session", &sid, "--after", "3"],
     );
     assert!(
         ok && out.lines().count() == 1 && out.contains("TaskQueued"),

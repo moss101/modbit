@@ -6301,8 +6301,24 @@
    "milestone": "M1",
    "qual": "QUAL-EV-0010",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-09T11:45:19Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Audit: IMPLEMENTED-PARTIAL on the M1.1–M1.5 substrate; see evidence/m1/IMP-EV-0010/TASK_CARD.md"
+    },
+    {
+     "at": "2026-09-09T11:45:19Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "Behavior and named qualification test implemented (see card)."
+    }
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-09-09T11:45:19Z"
   },
   {
    "id": "IMP-EV-0011",
@@ -6617,10 +6633,11 @@
    "type": "imp_task",
    "title": "Context Inspector",
    "owner_label": "Workspace UI",
+   "milestone_override": "DR-M1-006: Context Inspector needs PromptEnvelope context ids (M2.7/M3)",
    "requirement": "REQ-EV-0035",
    "disposition": "ADOPT",
    "subsystem": "desktop",
-   "milestone": "M1",
+   "milestone": "M3",
    "qual": "QUAL-EV-0035",
    "source": "docs/41",
    "status": "NOT_STARTED",
@@ -6651,8 +6668,24 @@
    "milestone": "M1",
    "qual": "QUAL-EV-0037",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-09T11:45:19Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Audit: IMPLEMENTED-PARTIAL on the M1.1–M1.5 substrate; see evidence/m1/IMP-EV-0037/TASK_CARD.md"
+    },
+    {
+     "at": "2026-09-09T11:45:19Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "Behavior and named qualification test implemented (see card)."
+    }
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-09-09T11:45:19Z"
   },
   {
    "id": "IMP-EV-0039",
@@ -6665,8 +6698,24 @@
    "milestone": "M1",
    "qual": "QUAL-EV-0039",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-09T11:45:19Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Audit: IMPLEMENTED-PARTIAL on the M1.1–M1.5 substrate; see evidence/m1/IMP-EV-0039/TASK_CARD.md"
+    },
+    {
+     "at": "2026-09-09T11:45:19Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "Behavior and named qualification test implemented (see card)."
+    }
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-09-09T11:45:19Z"
   },
   {
    "id": "IMP-EV-0040",
@@ -6875,8 +6924,24 @@
    "milestone": "M1",
    "qual": "QUAL-EV-0054",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-09T11:45:19Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Audit: IMPLEMENTED-PARTIAL on the M1.1–M1.5 substrate; see evidence/m1/IMP-EV-0054/TASK_CARD.md"
+    },
+    {
+     "at": "2026-09-09T11:45:20Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "Behavior and named qualification test implemented (see card)."
+    }
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-09-09T11:45:20Z"
   },
   {
    "id": "IMP-EV-0055",
@@ -7177,10 +7242,11 @@
    "type": "imp_task",
    "title": "Session branching",
    "owner_label": "Execution Timeline",
+   "milestone_override": "DR-M1-006: session branching needs checkpoints and worktrees (M4.3)",
    "requirement": "REQ-EV-0077",
    "disposition": "ADOPT",
    "subsystem": "domain-events",
-   "milestone": "M1",
+   "milestone": "M4",
    "qual": "QUAL-EV-0077",
    "source": "docs/41",
    "status": "NOT_STARTED",
@@ -7443,10 +7509,11 @@
    "type": "imp_task",
    "title": "Typed tool result re-entry",
    "owner_label": "Event Protocol",
+   "milestone_override": "DR-M1-006: typed tool result re-entry needs provider replay (M2.6/M2.7)",
    "requirement": "REQ-EV-0098",
    "disposition": "ADOPT",
    "subsystem": "domain-events",
-   "milestone": "M1",
+   "milestone": "M2",
    "qual": "QUAL-EV-0098",
    "source": "docs/41",
    "status": "NOT_STARTED",
@@ -7491,8 +7558,24 @@
    "milestone": "M1",
    "qual": "QUAL-EV-0101",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-09T11:45:20Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Audit: IMPLEMENTED-PARTIAL on the M1.1–M1.5 substrate; see evidence/m1/IMP-EV-0101/TASK_CARD.md"
+    },
+    {
+     "at": "2026-09-09T11:45:20Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "Behavior and named qualification test implemented (see card)."
+    }
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-09-09T11:45:20Z"
   },
   {
    "id": "IMP-EV-0102",
@@ -7505,8 +7588,24 @@
    "milestone": "M1",
    "qual": "QUAL-EV-0102",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-09T11:45:20Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Audit: IMPLEMENTED-PARTIAL on the M1.1–M1.5 substrate; see evidence/m1/IMP-EV-0102/TASK_CARD.md"
+    },
+    {
+     "at": "2026-09-09T11:45:20Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "Behavior and named qualification test implemented (see card)."
+    }
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-09-09T11:45:20Z"
   },
   {
    "id": "IMP-EV-0103",
@@ -7519,8 +7618,24 @@
    "milestone": "M1",
    "qual": "QUAL-EV-0103",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-09T11:45:20Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Audit: IMPLEMENTED-PARTIAL on the M1.1–M1.5 substrate; see evidence/m1/IMP-EV-0103/TASK_CARD.md"
+    },
+    {
+     "at": "2026-09-09T11:45:20Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "Behavior and named qualification test implemented (see card)."
+    }
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-09-09T11:45:20Z"
   },
   {
    "id": "IMP-EV-0104",
@@ -7590,8 +7705,24 @@
    "milestone": "M1",
    "qual": "QUAL-EV-0108",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-09T11:45:20Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Audit: IMPLEMENTED-PARTIAL on the M1.1–M1.5 substrate; see evidence/m1/IMP-EV-0108/TASK_CARD.md"
+    },
+    {
+     "at": "2026-09-09T11:45:20Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "Behavior and named qualification test implemented (see card)."
+    }
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-09-09T11:45:20Z"
   },
   {
    "id": "IMP-EV-0109",
@@ -7724,10 +7855,11 @@
    "type": "imp_task",
    "title": "Goal mode",
    "owner_label": "Task Runtime",
+   "milestone_override": "DR-M1-006: goal mode needs verification acceptance (M2.8)",
    "requirement": "REQ-EV-0119",
    "disposition": "ADAPT",
    "subsystem": "core-runtime",
-   "milestone": "M1",
+   "milestone": "M2",
    "qual": "QUAL-EV-0119",
    "source": "docs/41",
    "status": "NOT_STARTED",
@@ -7758,18 +7890,35 @@
    "milestone": "M1",
    "qual": "QUAL-EV-0121",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-09T11:45:20Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Audit: IMPLEMENTED-PARTIAL on the M1.1–M1.5 substrate; see evidence/m1/IMP-EV-0121/TASK_CARD.md"
+    },
+    {
+     "at": "2026-09-09T11:45:20Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "Behavior and named qualification test implemented (see card)."
+    }
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-09-09T11:45:20Z"
   },
   {
    "id": "IMP-EV-0122",
    "type": "imp_task",
    "title": "Fork session",
    "owner_label": "Execution Timeline",
+   "milestone_override": "DR-M1-006: fork session needs checkpoints and worktrees (M4.3)",
    "requirement": "REQ-EV-0122",
    "disposition": "ADOPT",
    "subsystem": "domain-events",
-   "milestone": "M1",
+   "milestone": "M4",
    "qual": "QUAL-EV-0122",
    "source": "docs/41",
    "status": "NOT_STARTED",
@@ -7780,10 +7929,11 @@
    "type": "imp_task",
    "title": "Rewind/session tree",
    "owner_label": "Execution Timeline",
+   "milestone_override": "DR-M1-006: rewind/session tree needs checkpoints (M4.3)",
    "requirement": "REQ-EV-0123",
    "disposition": "ADOPT",
    "subsystem": "domain-events",
-   "milestone": "M1",
+   "milestone": "M4",
    "qual": "QUAL-EV-0123",
    "source": "docs/41",
    "status": "NOT_STARTED",
@@ -8052,8 +8202,24 @@
    "milestone": "M1",
    "qual": "QUAL-EV-0143",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-09T11:45:20Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Audit: IMPLEMENTED-PARTIAL on the M1.1–M1.5 substrate; see evidence/m1/IMP-EV-0143/TASK_CARD.md"
+    },
+    {
+     "at": "2026-09-09T11:45:20Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "Behavior and named qualification test implemented (see card)."
+    }
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-09-09T11:45:20Z"
   },
   {
    "id": "IMP-EV-0144",
@@ -8150,8 +8316,24 @@
    "milestone": "M1",
    "qual": "QUAL-EV-0152",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-09T11:45:20Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Audit: IMPLEMENTED-PARTIAL on the M1.1–M1.5 substrate; see evidence/m1/IMP-EV-0152/TASK_CARD.md"
+    },
+    {
+     "at": "2026-09-09T11:45:20Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "Behavior and named qualification test implemented (see card)."
+    }
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-09-09T11:45:20Z"
   },
   {
    "id": "IMP-EV-0153",
@@ -8452,10 +8634,11 @@
    "type": "imp_task",
    "title": "Context Inspector",
    "owner_label": "Workspace UI",
+   "milestone_override": "DR-M1-006: Context Inspector needs PromptEnvelope context ids (M2.7/M3)",
    "requirement": "REQ-EV-0175",
    "disposition": "ADOPT",
    "subsystem": "desktop",
-   "milestone": "M1",
+   "milestone": "M3",
    "qual": "QUAL-EV-0175",
    "source": "docs/41",
    "status": "NOT_STARTED",
@@ -8522,10 +8705,11 @@
    "type": "imp_task",
    "title": "Default background delegation policy",
    "owner_label": "Scheduler",
+   "milestone_override": "DR-M1-006: background delegation policy needs the subagent scheduler (M6)",
    "requirement": "REQ-EV-0180",
    "disposition": "ADAPT",
    "subsystem": "core-runtime",
-   "milestone": "M1",
+   "milestone": "M6",
    "qual": "QUAL-EV-0180",
    "source": "docs/41",
    "status": "NOT_STARTED",
@@ -8662,10 +8846,11 @@
    "type": "imp_task",
    "title": "Channel image/file ingestion",
    "owner_label": "Input Gateway",
+   "milestone_override": "DR-M1-006: channel ingestion needs MediaEnvelope (M2.10)",
    "requirement": "REQ-EV-0190",
    "disposition": "ADAPT",
    "subsystem": "core-runtime",
-   "milestone": "M1",
+   "milestone": "M2",
    "qual": "QUAL-EV-0190",
    "source": "docs/41",
    "status": "NOT_STARTED",
@@ -8676,10 +8861,11 @@
    "type": "imp_task",
    "title": "steer / collect / followup dispatch modes",
    "owner_label": "Input Queue",
+   "milestone_override": "DR-M1-006: STEER/COLLECT/FOLLOW_UP dispatch needs a running turn (M2.7)",
    "requirement": "REQ-EV-0191",
    "disposition": "ADOPT",
    "subsystem": "core-runtime",
-   "milestone": "M1",
+   "milestone": "M2",
    "qual": "QUAL-EV-0191",
    "source": "docs/41",
    "status": "NOT_STARTED",
@@ -8696,8 +8882,24 @@
    "milestone": "M1",
    "qual": "QUAL-EV-0192",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-09T11:45:20Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Audit: IMPLEMENTED-PARTIAL on the M1.1–M1.5 substrate; see evidence/m1/IMP-EV-0192/TASK_CARD.md"
+    },
+    {
+     "at": "2026-09-09T11:45:20Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "Behavior and named qualification test implemented (see card)."
+    }
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-09-09T11:45:20Z"
   },
   {
    "id": "IMP-EV-0193",
@@ -9102,10 +9304,11 @@
    "type": "imp_task",
    "title": "Background task list/output/stop",
    "owner_label": "Task Runtime",
+   "milestone_override": "DR-M1-006: background task list/output/stop needs the terminal broker (M2.3)",
    "requirement": "REQ-EV-0221",
    "disposition": "ADOPT",
    "subsystem": "core-runtime",
-   "milestone": "M1",
+   "milestone": "M2",
    "qual": "QUAL-EV-0221",
    "source": "docs/41",
    "status": "NOT_STARTED",
@@ -9509,10 +9712,11 @@
    "type": "imp_task",
    "title": "Non-disruptive side question",
    "owner_label": "Input Queue",
+   "milestone_override": "DR-M1-006: side question needs a running turn and context snapshot (M2.7)",
    "requirement": "REQ-EV-0261",
    "disposition": "ADAPT",
    "subsystem": "core-runtime",
-   "milestone": "M1",
+   "milestone": "M2",
    "qual": "QUAL-EV-0261",
    "source": "docs/41",
    "status": "NOT_STARTED",
@@ -9529,8 +9733,24 @@
    "milestone": "M1",
    "qual": "QUAL-EV-0262",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-09T11:45:20Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Audit: IMPLEMENTED-PARTIAL on the M1.1–M1.5 substrate; see evidence/m1/IMP-EV-0262/TASK_CARD.md"
+    },
+    {
+     "at": "2026-09-09T11:45:20Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "Behavior and named qualification test implemented (see card)."
+    }
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-09-09T11:45:20Z"
   },
   {
    "id": "IMP-EV-0263",
@@ -9655,8 +9875,24 @@
    "milestone": "M1",
    "qual": "QUAL-EV-0273",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-09T11:45:20Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Audit: IMPLEMENTED-PARTIAL on the M1.1–M1.5 substrate; see evidence/m1/IMP-EV-0273/TASK_CARD.md"
+    },
+    {
+     "at": "2026-09-09T11:45:21Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "Behavior and named qualification test implemented (see card)."
+    }
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-09-09T11:45:21Z"
   },
   {
    "id": "IMP-EV-0274",
@@ -26613,7 +26849,7 @@
   },
   {
    "from": "IMP-EV-0035",
-   "to": "M1",
+   "to": "M3",
    "type": "scheduled_in"
   },
   {
@@ -27213,7 +27449,7 @@
   },
   {
    "from": "IMP-EV-0077",
-   "to": "M1",
+   "to": "M4",
    "type": "scheduled_in"
   },
   {
@@ -27498,7 +27734,7 @@
   },
   {
    "from": "IMP-EV-0098",
-   "to": "M1",
+   "to": "M2",
    "type": "scheduled_in"
   },
   {
@@ -27798,7 +28034,7 @@
   },
   {
    "from": "IMP-EV-0119",
-   "to": "M1",
+   "to": "M2",
    "type": "scheduled_in"
   },
   {
@@ -27843,7 +28079,7 @@
   },
   {
    "from": "IMP-EV-0122",
-   "to": "M1",
+   "to": "M4",
    "type": "scheduled_in"
   },
   {
@@ -27858,7 +28094,7 @@
   },
   {
    "from": "IMP-EV-0123",
-   "to": "M1",
+   "to": "M4",
    "type": "scheduled_in"
   },
   {
@@ -28578,7 +28814,7 @@
   },
   {
    "from": "IMP-EV-0175",
-   "to": "M1",
+   "to": "M3",
    "type": "scheduled_in"
   },
   {
@@ -28653,7 +28889,7 @@
   },
   {
    "from": "IMP-EV-0180",
-   "to": "M1",
+   "to": "M6",
    "type": "scheduled_in"
   },
   {
@@ -28803,7 +29039,7 @@
   },
   {
    "from": "IMP-EV-0190",
-   "to": "M1",
+   "to": "M2",
    "type": "scheduled_in"
   },
   {
@@ -28818,7 +29054,7 @@
   },
   {
    "from": "IMP-EV-0191",
-   "to": "M1",
+   "to": "M2",
    "type": "scheduled_in"
   },
   {
@@ -29238,7 +29474,7 @@
   },
   {
    "from": "IMP-EV-0221",
-   "to": "M1",
+   "to": "M2",
    "type": "scheduled_in"
   },
   {
@@ -29673,7 +29909,7 @@
   },
   {
    "from": "IMP-EV-0261",
-   "to": "M1",
+   "to": "M2",
    "type": "scheduled_in"
   },
   {
@@ -36798,11 +37034,6 @@
   },
   {
    "from": "ALPHA",
-   "to": "IMP-EV-0035",
-   "type": "includes"
-  },
-  {
-   "from": "ALPHA",
    "to": "IMP-EV-0036",
    "type": "includes"
   },
@@ -37063,22 +37294,12 @@
   },
   {
    "from": "ALPHA",
-   "to": "IMP-EV-0175",
-   "type": "includes"
-  },
-  {
-   "from": "ALPHA",
    "to": "IMP-EV-0176",
    "type": "includes"
   },
   {
    "from": "ALPHA",
    "to": "IMP-EV-0177",
-   "type": "includes"
-  },
-  {
-   "from": "ALPHA",
-   "to": "IMP-EV-0180",
    "type": "includes"
   },
   {

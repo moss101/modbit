@@ -81,6 +81,18 @@ fn id16(b: u8) -> Id {
     Id { value: vec![b; 16] }
 }
 
+/// A command carrying the session lease generation (fencing).
+fn envelope_fenced(
+    command_id: Id,
+    command_type: &str,
+    payload: Vec<u8>,
+    generation: Option<u64>,
+) -> CommandEnvelope {
+    let mut e = envelope(command_id, command_type, payload);
+    e.expected_generation = generation;
+    e
+}
+
 fn envelope(command_id: Id, command_type: &str, payload: Vec<u8>) -> CommandEnvelope {
     CommandEnvelope {
         command_id: Some(command_id),
@@ -99,14 +111,56 @@ fn envelope(command_id: Id, command_type: &str, payload: Vec<u8>) -> CommandEnve
 async fn create_session(c: &mut Client, command_id: Id) -> (Id, u64) {
     let ack = c
         .command(envelope(
-            command_id,
+            command_id.clone(),
             "CreateSession",
             CreateSession { space_id: None }.encode_to_vec(),
         ))
         .await
         .unwrap();
     let r: SessionCreated = Client::result(&ack).unwrap();
-    (r.session_id.unwrap(), r.offset)
+    let session = r.session_id.unwrap();
+    // Tests act as the single mutation owner: acquire the lease right away.
+    acquire_lease(
+        c,
+        Id {
+            value: command_id.value.iter().map(|b| b ^ 0x5A).collect(),
+        },
+        session.clone(),
+        "test",
+    )
+    .await;
+    (session, r.offset)
+}
+
+thread_local! {
+    static LEASE: std::cell::RefCell<std::collections::HashMap<Vec<u8>, u64>> =
+        std::cell::RefCell::new(std::collections::HashMap::new());
+}
+
+fn lease_for(session: &Id) -> Option<u64> {
+    LEASE.with(|l| l.borrow().get(&session.value).copied())
+}
+
+async fn acquire_lease(c: &mut Client, command_id: Id, session: Id, owner: &str) -> u64 {
+    use modbit_protocol::v1::{AcquireSessionLease, SessionLeaseAcquired};
+    let ack = c
+        .command(envelope(
+            command_id,
+            "AcquireSessionLease",
+            AcquireSessionLease {
+                session_id: Some(session.clone()),
+                owner: owner.into(),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let r: SessionLeaseAcquired = Client::result(&ack).unwrap();
+    LEASE.with(|l| {
+        l.borrow_mut()
+            .insert(session.value.clone(), r.lease_generation)
+    });
+    r.lease_generation
 }
 
 async fn create_task(
@@ -116,17 +170,18 @@ async fn create_task(
     goal: &str,
 ) -> Result<(Id, u64, i32), ClientError> {
     let ack = c
-        .command(envelope(
+        .command(envelope_fenced(
             command_id,
             "CreateTask",
             CreateTask {
-                session_id: Some(session),
+                session_id: Some(session.clone()),
                 goal_text: goal.into(),
                 workspace_id: None,
                 execution_profile: String::new(),
                 origin: "cli".into(),
             }
             .encode_to_vec(),
+            lease_for(&session),
         ))
         .await?;
     let r: TaskCreated = Client::result(&ack).unwrap();
@@ -143,13 +198,13 @@ async fn commands_subscription_resume_and_idempotent_replay_over_the_real_socket
     let (task1, off2, status) = create_task(&mut a, id16(0x11), session.clone(), "first")
         .await
         .unwrap();
-    assert_eq!((off2, status), (3, CommandStatus::Accepted as i32));
+    assert_eq!((off2, status), (4, CommandStatus::Accepted as i32));
 
     // A second client (REQ-EV-0192: multiple clients, one session) subscribes from the start.
     let mut b = core.client().await;
     b.subscribe(session.clone(), 0).await.unwrap();
     let mut seen = Vec::new();
-    for _ in 0..3 {
+    for _ in 0..4 {
         let e = b.next_event().await.unwrap().unwrap();
         seen.push((e.offset, e.event.unwrap().event_type));
     }
@@ -157,8 +212,9 @@ async fn commands_subscription_resume_and_idempotent_replay_over_the_real_socket
         seen,
         vec![
             (1, "SessionCreated".into()),
-            (2, "TaskCreated".into()),
-            (3, "TaskQueued".into())
+            (2, "SessionLeaseAcquired".into()),
+            (3, "TaskCreated".into()),
+            (4, "TaskQueued".into())
         ]
     );
 
@@ -166,7 +222,7 @@ async fn commands_subscription_resume_and_idempotent_replay_over_the_real_socket
     let (task2, off4, _) = create_task(&mut a, id16(0x12), session.clone(), "second")
         .await
         .unwrap();
-    assert_eq!(off4, 5);
+    assert_eq!(off4, 6);
     let e = tokio::time::timeout(Duration::from_secs(5), b.next_event())
         .await
         .unwrap()
@@ -174,26 +230,26 @@ async fn commands_subscription_resume_and_idempotent_replay_over_the_real_socket
         .unwrap();
     assert_eq!(
         (e.offset, e.event.as_ref().unwrap().event_type.as_str()),
-        (4, "TaskCreated")
+        (5, "TaskCreated")
     );
     let e = b.next_event().await.unwrap().unwrap();
-    assert_eq!(e.offset, 5);
+    assert_eq!(e.offset, 6);
 
     // Disconnect B, produce more, reconnect from the last offset: exact continuation (REQ-EV-0010).
     drop(b);
     let (_, off6, _) = create_task(&mut a, id16(0x13), session.clone(), "third")
         .await
         .unwrap();
-    assert_eq!(off6, 7);
+    assert_eq!(off6, 8);
     let mut b2 = core.client().await;
-    b2.subscribe(session.clone(), 5).await.unwrap();
+    b2.subscribe(session.clone(), 6).await.unwrap();
     let e = b2.next_event().await.unwrap().unwrap();
     assert_eq!(
         (e.offset, e.event.as_ref().unwrap().event_type.as_str()),
-        (6, "TaskCreated")
+        (7, "TaskCreated")
     );
     let e = b2.next_event().await.unwrap().unwrap();
-    assert_eq!(e.offset, 7);
+    assert_eq!(e.offset, 8);
 
     // Idempotent replay: the same command_id and request replays; no new events.
     let (task1_again, off_again, status) =
@@ -202,7 +258,7 @@ async fn commands_subscription_resume_and_idempotent_replay_over_the_real_socket
             .unwrap();
     assert_eq!(
         (task1_again, off_again, status),
-        (task1, 3, CommandStatus::Replayed as i32)
+        (task1, 4, CommandStatus::Replayed as i32)
     );
     // Same command_id, different request: rejected.
     let err = create_task(&mut a, id16(0x11), session.clone(), "changed")
@@ -233,7 +289,7 @@ async fn commands_subscription_resume_and_idempotent_replay_over_the_real_socket
             .iter()
             .any(|t| t.task_id.as_ref() == Some(&task2))
     );
-    assert_eq!(snap.last_offset, 7);
+    assert_eq!(snap.last_offset, 8);
 
     // Unknown session and unsupported command are typed rejections.
     let err = create_task(&mut a, id16(0x30), id16(0x77), "x")
@@ -592,4 +648,358 @@ async fn kill_points_during_a_command_stream_never_duplicate_or_tear_state() {
     eprintln!(
         "kill-point suite: {expected_tasks} tasks, {in_flight_kills} rounds killed with commands in flight"
     );
+}
+
+/// QUAL-EV-0054 / QUAL-EV-0273: dual resume — two clients contend for one
+/// session; only the current lease generation can append mutation events, the
+/// stale writer is rejected, and fencing survives a Core restart.
+#[tokio::test]
+async fn qual_ev_0054_0273_session_lease_fences_out_stale_writers_across_restart() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut core = CoreProcess::spawn(dir.path());
+    let mut a = core.client().await;
+    let (session, _) = create_session(&mut a, id16(0xA0)).await; // a holds generation 1
+    let ga = lease_for(&session).unwrap();
+    assert_eq!(ga, 1);
+    assert!(
+        create_task(&mut a, id16(0xA1), session.clone(), "by a")
+            .await
+            .is_ok()
+    );
+
+    // Client B resumes the same session and takes the lease: generation 2.
+    let mut b = core.client().await;
+    let gb = acquire_lease(&mut b, id16(0xA2), session.clone(), "b").await;
+    assert_eq!(gb, 2);
+    assert!(
+        create_task(&mut b, id16(0xA3), session.clone(), "by b")
+            .await
+            .is_ok()
+    );
+    // A is now stale: its generation 1 is rejected, nothing appended.
+    let stale = a
+        .command(envelope_fenced(
+            id16(0xA4),
+            "CreateTask",
+            CreateTask {
+                session_id: Some(session.clone()),
+                goal_text: "stale".into(),
+                workspace_id: None,
+                execution_profile: String::new(),
+                origin: "cli".into(),
+            }
+            .encode_to_vec(),
+            Some(1),
+        ))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(stale, ClientError::Rejected { ref code, .. } if code == "STALE_LEASE"),
+        "{stale}"
+    );
+    // No generation at all is also refused.
+    let none = a
+        .command(envelope(
+            id16(0xA5),
+            "CreateTask",
+            CreateTask {
+                session_id: Some(session.clone()),
+                goal_text: "no lease".into(),
+                workspace_id: None,
+                execution_profile: String::new(),
+                origin: "cli".into(),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(none, ClientError::Rejected { ref code, .. } if code == "LEASE_REQUIRED"),
+        "{none}"
+    );
+
+    // Restart: the persisted generation still fences A; B must re-acquire (3) to continue.
+    core.kill();
+    let core2 = CoreProcess::spawn(dir.path());
+    let mut a2 = core2.client().await;
+    let stale = a2
+        .command(envelope_fenced(
+            id16(0xA6),
+            "CreateTask",
+            CreateTask {
+                session_id: Some(session.clone()),
+                goal_text: "stale after restart".into(),
+                workspace_id: None,
+                execution_profile: String::new(),
+                origin: "cli".into(),
+            }
+            .encode_to_vec(),
+            Some(1),
+        ))
+        .await
+        .unwrap_err();
+    assert!(matches!(stale, ClientError::Rejected { ref code, .. } if code == "STALE_LEASE"));
+    let mut b2 = core2.client().await;
+    assert_eq!(
+        acquire_lease(&mut b2, id16(0xA7), session.clone(), "b").await,
+        3
+    );
+    assert!(
+        create_task(&mut b2, id16(0xA8), session.clone(), "by b after restart")
+            .await
+            .is_ok()
+    );
+    let ack = b2
+        .command(envelope(
+            id16(0xA9),
+            "GetSessionSnapshot",
+            GetSessionSnapshot {
+                session_id: Some(session.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let snap: SessionSnapshot = Client::result(&ack).unwrap();
+    assert_eq!(snap.tasks.len(), 3, "exactly the leased writes landed");
+}
+
+/// QUAL-EV-0262: queued inputs are durable, typed, ordered events; ordering is
+/// preserved across reconnect and Core restart; retries replay.
+#[tokio::test]
+async fn qual_ev_0262_queued_inputs_keep_order_across_reconnect_and_restart() {
+    use modbit_protocol::v1::{InputQueued, QueueInput};
+    let dir = tempfile::tempdir().unwrap();
+    let mut core = CoreProcess::spawn(dir.path());
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xB0)).await;
+    let (task, _, _) = create_task(&mut c, id16(0xB1), session.clone(), "queue target")
+        .await
+        .unwrap();
+    let q = |i: u8, mode: &str, text: &str| {
+        QueueInput {
+            task_id: Some(task.clone()),
+            input_id: format!("in-{i}"),
+            mode: mode.into(),
+            text: text.into(),
+        }
+        .encode_to_vec()
+    };
+    let g = lease_for(&session);
+    let mut seqs = Vec::new();
+    for (i, (mode, text)) in [
+        ("FOLLOW_UP", "first"),
+        ("COLLECT", "second"),
+        ("STEER", "third"),
+    ]
+    .iter()
+    .enumerate()
+    {
+        let ack = c
+            .command(envelope_fenced(
+                id16(0xB2 + i as u8),
+                "QueueInput",
+                q(i as u8, mode, text),
+                g,
+            ))
+            .await
+            .unwrap();
+        let r: InputQueued = Client::result(&ack).unwrap();
+        seqs.push(r.sequence);
+    }
+    assert_eq!(
+        seqs,
+        vec![3, 4, 5],
+        "inputs follow the task's aggregate sequence"
+    );
+    // Retry of the second input replays, appending nothing.
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xB3),
+            "QueueInput",
+            q(1, "COLLECT", "second"),
+            g,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(ack.status, CommandStatus::Replayed as i32);
+    let bad = c
+        .command(envelope_fenced(
+            id16(0xB9),
+            "QueueInput",
+            q(9, "SHOUT", "x"),
+            g,
+        ))
+        .await
+        .unwrap_err();
+    assert!(matches!(bad, ClientError::Rejected { ref code, .. } if code == "BAD_PAYLOAD"));
+
+    // Reconnect and replay from the start: the input events arrive in order with their modes.
+    drop(c);
+    let mut r = core.client().await;
+    r.subscribe(session.clone(), 0).await.unwrap();
+    let mut inputs = Vec::new();
+    while inputs.len() < 3 {
+        let e = r.next_event().await.unwrap().unwrap();
+        let ev = e.event.unwrap();
+        if ev.event_type == "TaskInputQueued" {
+            let p: serde_json::Value = serde_json::from_slice(&ev.payload).unwrap();
+            inputs.push((
+                ev.sequence,
+                p["payload"]["mode"].as_str().unwrap().to_owned(),
+                p["payload"]["text"].as_str().unwrap().to_owned(),
+            ));
+        }
+    }
+    assert_eq!(
+        inputs,
+        vec![
+            (3, "FOLLOW_UP".into(), "first".into()),
+            (4, "COLLECT".into(), "second".into()),
+            (5, "STEER".into(), "third".into())
+        ]
+    );
+    // And after a Core restart the same order is served.
+    core.kill();
+    let core2 = CoreProcess::spawn(dir.path());
+    let mut r2 = core2.client().await;
+    r2.subscribe(session.clone(), 4).await.unwrap();
+    let mut seen = Vec::new();
+    for _ in 0..3 {
+        let e = r2.next_event().await.unwrap().unwrap();
+        seen.push(e.event.unwrap().sequence);
+    }
+    assert_eq!(seen, vec![3, 4, 5]);
+}
+
+/// QUAL-EV-0108: a multi-megabyte object is served only as bounded ranges;
+/// an over-large range is refused; the stream stays responsive for others.
+#[tokio::test]
+async fn qual_ev_0108_multi_mb_object_is_read_in_bounded_ranges() {
+    use modbit_protocol::v1::{ObjectRangeChunk, ReadObjectRange};
+    let dir = tempfile::tempdir().unwrap();
+    // Write a 10 MiB object straight into the store's object directory (as a
+    // terminal/browser result would be spilled by ref), then read it over the socket.
+    let objects =
+        modbit_event_store::ObjectStore::open(dir.path().join("core").join("objects")).unwrap();
+    let big: Vec<u8> = (0..10 * 1024 * 1024u32).map(|i| (i % 251) as u8).collect();
+    let hash = objects.put(&big).unwrap();
+    let core = CoreProcess::spawn(dir.path());
+    let mut c = core.client().await;
+    let too_big = c
+        .command(envelope(
+            id16(0xC0),
+            "ReadObjectRange",
+            ReadObjectRange {
+                object_hash: hash.clone(),
+                offset: 0,
+                length: 2 * 1024 * 1024,
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(too_big, ClientError::Rejected { ref code, .. } if code == "RANGE_TOO_LARGE"),
+        "{too_big}"
+    );
+    let mut got = Vec::with_capacity(big.len());
+    let mut offset = 0u64;
+    let mut chunks = 0;
+    let started = std::time::Instant::now();
+    loop {
+        let ack = c
+            .command(envelope(
+                id16(0xC1),
+                "ReadObjectRange",
+                ReadObjectRange {
+                    object_hash: hash.clone(),
+                    offset,
+                    length: 1024 * 1024,
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        let chunk: ObjectRangeChunk = Client::result(&ack).unwrap();
+        assert_eq!(chunk.total_bytes as usize, big.len());
+        assert!(chunk.data.len() <= 1024 * 1024);
+        if chunk.data.is_empty() {
+            break;
+        }
+        got.extend_from_slice(&chunk.data);
+        offset += chunk.data.len() as u64;
+        chunks += 1;
+    }
+    assert_eq!(chunks, 10);
+    assert_eq!(got, big, "ranges reassemble to the exact object");
+    assert!(started.elapsed() < Duration::from_secs(20));
+    let unknown = c
+        .command(envelope(
+            id16(0xC2),
+            "ReadObjectRange",
+            ReadObjectRange {
+                object_hash: "0".repeat(64),
+                offset: 0,
+                length: 16,
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap_err();
+    assert!(matches!(unknown, ClientError::Rejected { ref code, .. } if code == "UNKNOWN_OBJECT"));
+}
+
+/// QUAL-EV-0010: reconnecting from the last offset yields the exact stream;
+/// a cursor beyond the log is refused so the client rehydrates from a snapshot
+/// instead of silently skipping events.
+#[tokio::test]
+async fn qual_ev_0010_offset_resume_is_exact_and_invalid_cursors_force_rehydrate() {
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn(dir.path());
+    let mut a = core.client().await;
+    let (session, _) = create_session(&mut a, id16(0xD0)).await;
+    for i in 0..5u8 {
+        create_task(&mut a, id16(0xD1 + i), session.clone(), &format!("t{i}"))
+            .await
+            .unwrap();
+    }
+    // Full stream once, then resume from the middle: identical suffix.
+    let mut s1 = core.client().await;
+    s1.subscribe(session.clone(), 0).await.unwrap();
+    let mut all = Vec::new();
+    for _ in 0..12 {
+        let e = s1.next_event().await.unwrap().unwrap();
+        all.push((e.offset, e.event.unwrap().event_type));
+    }
+    drop(s1);
+    let mut s2 = core.client().await;
+    s2.subscribe(session.clone(), all[6].0).await.unwrap();
+    let mut tail = Vec::new();
+    for _ in 0..5 {
+        let e = s2.next_event().await.unwrap().unwrap();
+        tail.push((e.offset, e.event.unwrap().event_type));
+    }
+    assert_eq!(tail, all[7..12].to_vec());
+    // Beyond the log: INVALID_CURSOR, connection closed; snapshot gives the true last offset.
+    let mut s3 = core.client().await;
+    s3.subscribe(session.clone(), 10_000).await.unwrap();
+    let err = s3.next_event().await.unwrap_err();
+    assert!(
+        matches!(err, ClientError::Protocol { ref code, .. } if code == "INVALID_CURSOR"),
+        "{err}"
+    );
+    let ack = a
+        .command(envelope(
+            id16(0xDF),
+            "GetSessionSnapshot",
+            GetSessionSnapshot {
+                session_id: Some(session.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let snap: SessionSnapshot = Client::result(&ack).unwrap();
+    assert_eq!(snap.last_offset, all[11].0);
 }

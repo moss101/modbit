@@ -19,8 +19,8 @@ use std::process::{Command, ExitCode, Stdio};
 use modbit_protocol::client::Client;
 use modbit_protocol::local::{ReadyLine, decode_hex, encode_hex};
 use modbit_protocol::v1::{
-    ClientKind, CommandEnvelope, CreateSession, CreateTask, GetSessionSnapshot, Id, SessionCreated,
-    SessionSnapshot, TaskCreated,
+    AcquireSessionLease, ClientKind, CommandEnvelope, CreateSession, CreateTask,
+    GetSessionSnapshot, Id, SessionCreated, SessionLeaseAcquired, SessionSnapshot, TaskCreated,
 };
 use prost::Message;
 
@@ -40,13 +40,22 @@ fn fresh_id() -> Id {
 }
 
 fn envelope(command_type: &str, payload: Vec<u8>) -> CommandEnvelope {
+    envelope_fenced(command_type, payload, None)
+}
+
+/// Mutating commands present the session lease generation (docs/13 fencing).
+fn envelope_fenced(
+    command_type: &str,
+    payload: Vec<u8>,
+    generation: Option<u64>,
+) -> CommandEnvelope {
     CommandEnvelope {
         command_id: Some(fresh_id()),
         tenant_id: None,
         user_id: None,
         session_id: None,
         aggregate_id: None,
-        expected_generation: None,
+        expected_generation: generation,
         command_type: command_type.into(),
         schema_version: 1,
         payload,
@@ -170,8 +179,21 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
             if goal.is_empty() {
                 return Err(USAGE.into());
             }
-            let ack = client
+            // The CLI becomes the session's single mutation owner for this invocation.
+            let lease = client
                 .command(envelope(
+                    "AcquireSessionLease",
+                    AcquireSessionLease {
+                        session_id: Some(sid.clone()),
+                        owner: format!("modbit-cli {}", env!("CARGO_PKG_VERSION")),
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let lease: SessionLeaseAcquired = Client::result(&lease).map_err(|e| e.to_string())?;
+            let ack = client
+                .command(envelope_fenced(
                     "CreateTask",
                     CreateTask {
                         session_id: Some(sid),
@@ -181,6 +203,7 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                         origin: "cli".into(),
                     }
                     .encode_to_vec(),
+                    Some(lease.lease_generation),
                 ))
                 .await
                 .map_err(|e| e.to_string())?;

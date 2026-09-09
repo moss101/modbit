@@ -9,6 +9,8 @@ publish.workspace = true
 
 [dependencies]
 modbit-domain.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 
 [lints]
 workspace = true
@@ -20,4 +22,4 @@ workspace = true
 [package.metadata.modbit]
 owner = "effects-security"
 canonical = ["policy-kernel", "approval-effect-dispatch"]
-capabilities = []
+capabilities = [{ id = "config.resolve", requirements = ["REQ-EV-0039"] }]

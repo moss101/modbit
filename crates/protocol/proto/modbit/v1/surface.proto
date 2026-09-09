@@ -132,3 +132,50 @@ message RecoveryReport {
   repeated string notes = 9;
   uint64 recovery_ms = 10;
 }
+
+// Session kernel lease (REQ-EV-0054 / REQ-EV-0273; docs/13 fencing, docs/33
+// "Session kernel lease"). The single mutation owner presents the current
+// generation in `CommandEnvelope.expected_generation`; a stale writer is
+// rejected with STALE_LEASE. Acquiring always mints a strictly greater
+// generation, so a previous owner is fenced out even across a Core restart.
+message AcquireSessionLease {
+  Id session_id = 1;
+  string owner = 2;
+}
+
+message SessionLeaseAcquired {
+  Id session_id = 1;
+  uint64 lease_generation = 2;
+  uint64 offset = 3;
+}
+
+// Durable, ordered user input on a task (REQ-EV-0262; MOD-INPUT-001 typed
+// STEER / COLLECT / FOLLOW_UP). Requires the session lease.
+message QueueInput {
+  Id task_id = 1;
+  string input_id = 2;   // client-stable; retries replay
+  string mode = 3;       // STEER | COLLECT | FOLLOW_UP
+  string text = 4;
+}
+
+message InputQueued {
+  Id task_id = 1;
+  uint64 sequence = 2;
+  uint64 offset = 3;
+}
+
+// Bounded range read of a content-addressed object (docs/30 "OutputRef API",
+// REQ-EV-0108): the whole object is never sent in one frame.
+message ReadObjectRange {
+  string object_hash = 1;
+  uint64 offset = 2;
+  uint64 length = 3;     // capped at MAX_OBJECT_CHUNK (1 MiB)
+}
+
+message ObjectRangeChunk {
+  string object_hash = 1;
+  uint64 total_bytes = 2;
+  uint64 offset = 3;
+  bytes data = 4;
+  bytes checksum_sha256 = 5;  // of the whole object
+}

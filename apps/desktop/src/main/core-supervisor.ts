@@ -71,6 +71,9 @@ export class CoreSupervisor {
       this.client = client;
       client.onClose = (reason) => {
         if (this.client === client) this.client = null;
+        // An INVALID_CURSOR close means our subscription cursor was beyond the
+        // Core's log (REQ-EV-0010): reconnecting re-reads the snapshot, so the
+        // renderer rehydrates instead of skipping events.
         if (!this.stopped) this.scheduleRestart(`connection lost: ${reason}`);
       };
       this.setStatus({ state: "connected", pid: child.pid ?? 0, endpoint: ready.endpoint, restarts: this.restarts });

@@ -56,6 +56,12 @@ pub struct Session {
     pub updated_at: Timestamp,
     /// The task currently in focus, if any.
     pub current_task_id: Option<TaskId>,
+    /// Kernel lease generation (docs/13 "Fencing and epochs", docs/33 "Session
+    /// kernel lease"): the single mutation owner presents this generation; a
+    /// stale writer is rejected. `0` until a lease is acquired.
+    pub lease_generation: u64,
+    /// Opaque identity of the lease owner (client build/kind label).
+    pub lease_owner: Option<String>,
 }
 
 /// Session events (docs/30 "Session/task").
@@ -82,6 +88,14 @@ pub enum SessionEvent {
         /// New focus.
         task_id: Option<TaskId>,
     },
+    /// `SessionLeaseAcquired`: a client became the single mutation owner with
+    /// a new, strictly greater lease generation (REQ-EV-0054, REQ-EV-0273).
+    SessionLeaseAcquired {
+        /// New generation.
+        lease_generation: u64,
+        /// Owner label.
+        owner: String,
+    },
 }
 
 impl SessionEvent {
@@ -94,6 +108,7 @@ impl SessionEvent {
             Self::SessionResumed => "SessionResumed",
             Self::SessionArchived => "SessionArchived",
             Self::SessionFocusChanged { .. } => "SessionFocusChanged",
+            Self::SessionLeaseAcquired { .. } => "SessionLeaseAcquired",
         }
     }
 }
@@ -120,6 +135,8 @@ impl Session {
                 created_at: at,
                 updated_at: at,
                 current_task_id: None,
+                lease_generation: 0,
+                lease_owner: None,
             }),
             other => Err(crate::InvalidTransition {
                 aggregate: "Session",
@@ -155,6 +172,23 @@ impl Session {
                     });
                 }
                 self.current_task_id = *task_id;
+                None
+            }
+            SessionEvent::SessionLeaseAcquired {
+                lease_generation,
+                owner,
+            } => {
+                // Fencing: generations only move forward; an equal or older
+                // generation is a stale writer and is never applied silently.
+                if self.state.is_terminal() || *lease_generation <= self.lease_generation {
+                    return Err(crate::InvalidTransition {
+                        aggregate: "Session",
+                        from: format!("lease generation {}", self.lease_generation),
+                        to: format!("stale lease generation {lease_generation}"),
+                    });
+                }
+                self.lease_generation = *lease_generation;
+                self.lease_owner = Some(owner.clone());
                 None
             }
         };

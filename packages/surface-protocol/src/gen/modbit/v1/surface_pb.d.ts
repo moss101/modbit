@@ -494,6 +494,192 @@ export declare type RecoveryReport = Message<"modbit.v1.RecoveryReport"> & {
 export declare const RecoveryReportSchema: GenMessage<RecoveryReport>;
 
 /**
+ * Session kernel lease (REQ-EV-0054 / REQ-EV-0273; docs/13 fencing, docs/33
+ * "Session kernel lease"). The single mutation owner presents the current
+ * generation in `CommandEnvelope.expected_generation`; a stale writer is
+ * rejected with STALE_LEASE. Acquiring always mints a strictly greater
+ * generation, so a previous owner is fenced out even across a Core restart.
+ *
+ * @generated from message modbit.v1.AcquireSessionLease
+ */
+export declare type AcquireSessionLease = Message<"modbit.v1.AcquireSessionLease"> & {
+  /**
+   * @generated from field: modbit.v1.Id session_id = 1;
+   */
+  sessionId?: Id | undefined;
+
+  /**
+   * @generated from field: string owner = 2;
+   */
+  owner: string;
+};
+
+/**
+ * Describes the message modbit.v1.AcquireSessionLease.
+ * Use `create(AcquireSessionLeaseSchema)` to create a new message.
+ */
+export declare const AcquireSessionLeaseSchema: GenMessage<AcquireSessionLease>;
+
+/**
+ * @generated from message modbit.v1.SessionLeaseAcquired
+ */
+export declare type SessionLeaseAcquired = Message<"modbit.v1.SessionLeaseAcquired"> & {
+  /**
+   * @generated from field: modbit.v1.Id session_id = 1;
+   */
+  sessionId?: Id | undefined;
+
+  /**
+   * @generated from field: uint64 lease_generation = 2;
+   */
+  leaseGeneration: bigint;
+
+  /**
+   * @generated from field: uint64 offset = 3;
+   */
+  offset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.SessionLeaseAcquired.
+ * Use `create(SessionLeaseAcquiredSchema)` to create a new message.
+ */
+export declare const SessionLeaseAcquiredSchema: GenMessage<SessionLeaseAcquired>;
+
+/**
+ * Durable, ordered user input on a task (REQ-EV-0262; MOD-INPUT-001 typed
+ * STEER / COLLECT / FOLLOW_UP). Requires the session lease.
+ *
+ * @generated from message modbit.v1.QueueInput
+ */
+export declare type QueueInput = Message<"modbit.v1.QueueInput"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * client-stable; retries replay
+   *
+   * @generated from field: string input_id = 2;
+   */
+  inputId: string;
+
+  /**
+   * STEER | COLLECT | FOLLOW_UP
+   *
+   * @generated from field: string mode = 3;
+   */
+  mode: string;
+
+  /**
+   * @generated from field: string text = 4;
+   */
+  text: string;
+};
+
+/**
+ * Describes the message modbit.v1.QueueInput.
+ * Use `create(QueueInputSchema)` to create a new message.
+ */
+export declare const QueueInputSchema: GenMessage<QueueInput>;
+
+/**
+ * @generated from message modbit.v1.InputQueued
+ */
+export declare type InputQueued = Message<"modbit.v1.InputQueued"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: uint64 sequence = 2;
+   */
+  sequence: bigint;
+
+  /**
+   * @generated from field: uint64 offset = 3;
+   */
+  offset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.InputQueued.
+ * Use `create(InputQueuedSchema)` to create a new message.
+ */
+export declare const InputQueuedSchema: GenMessage<InputQueued>;
+
+/**
+ * Bounded range read of a content-addressed object (docs/30 "OutputRef API",
+ * REQ-EV-0108): the whole object is never sent in one frame.
+ *
+ * @generated from message modbit.v1.ReadObjectRange
+ */
+export declare type ReadObjectRange = Message<"modbit.v1.ReadObjectRange"> & {
+  /**
+   * @generated from field: string object_hash = 1;
+   */
+  objectHash: string;
+
+  /**
+   * @generated from field: uint64 offset = 2;
+   */
+  offset: bigint;
+
+  /**
+   * capped at MAX_OBJECT_CHUNK (1 MiB)
+   *
+   * @generated from field: uint64 length = 3;
+   */
+  length: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.ReadObjectRange.
+ * Use `create(ReadObjectRangeSchema)` to create a new message.
+ */
+export declare const ReadObjectRangeSchema: GenMessage<ReadObjectRange>;
+
+/**
+ * @generated from message modbit.v1.ObjectRangeChunk
+ */
+export declare type ObjectRangeChunk = Message<"modbit.v1.ObjectRangeChunk"> & {
+  /**
+   * @generated from field: string object_hash = 1;
+   */
+  objectHash: string;
+
+  /**
+   * @generated from field: uint64 total_bytes = 2;
+   */
+  totalBytes: bigint;
+
+  /**
+   * @generated from field: uint64 offset = 3;
+   */
+  offset: bigint;
+
+  /**
+   * @generated from field: bytes data = 4;
+   */
+  data: Uint8Array;
+
+  /**
+   * of the whole object
+   *
+   * @generated from field: bytes checksum_sha256 = 5;
+   */
+  checksumSha256: Uint8Array;
+};
+
+/**
+ * Describes the message modbit.v1.ObjectRangeChunk.
+ * Use `create(ObjectRangeChunkSchema)` to create a new message.
+ */
+export declare const ObjectRangeChunkSchema: GenMessage<ObjectRangeChunk>;
+
+/**
  * Command acknowledgement.
  *
  * @generated from enum modbit.v1.CommandStatus

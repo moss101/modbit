@@ -63,6 +63,19 @@ PX6_FIRST_ROW = 32
 MILESTONE_OVERRIDES = {
     "IMP-EV-0107": ("M2", "DR-PX-2026-09-05-006: bounded failure evidence is a prerequisite of the M2 repair loop (PX-018, PX-033, PX-039); scheduled ahead of its owner label's default milestone"),
     "IMP-EV-0242": ("M4", "DR-M0-005: QUAL-EV-0242 (restart loses no durable truth while the hook process resets) needs the durable store, hook bus and kill-point recovery suite of M1/M4; scheduled after its owner label's default milestone"),
+    # DR-M1-006: twelve M1-labelled tasks whose qualifications need M2–M6 runtime.
+    "IMP-EV-0035": ("M3", "DR-M1-006: Context Inspector needs PromptEnvelope context ids (M2.7/M3)"),
+    "IMP-EV-0175": ("M3", "DR-M1-006: Context Inspector needs PromptEnvelope context ids (M2.7/M3)"),
+    "IMP-EV-0077": ("M4", "DR-M1-006: session branching needs checkpoints and worktrees (M4.3)"),
+    "IMP-EV-0122": ("M4", "DR-M1-006: fork session needs checkpoints and worktrees (M4.3)"),
+    "IMP-EV-0123": ("M4", "DR-M1-006: rewind/session tree needs checkpoints (M4.3)"),
+    "IMP-EV-0098": ("M2", "DR-M1-006: typed tool result re-entry needs provider replay (M2.6/M2.7)"),
+    "IMP-EV-0119": ("M2", "DR-M1-006: goal mode needs verification acceptance (M2.8)"),
+    "IMP-EV-0190": ("M2", "DR-M1-006: channel ingestion needs MediaEnvelope (M2.10)"),
+    "IMP-EV-0191": ("M2", "DR-M1-006: STEER/COLLECT/FOLLOW_UP dispatch needs a running turn (M2.7)"),
+    "IMP-EV-0261": ("M2", "DR-M1-006: side question needs a running turn and context snapshot (M2.7)"),
+    "IMP-EV-0221": ("M2", "DR-M1-006: background task list/output/stop needs the terminal broker (M2.3)"),
+    "IMP-EV-0180": ("M6", "DR-M1-006: background delegation policy needs the subagent scheduler (M6)"),
 }
 
 # Tasks named in docs/43's "V2 sequencing delta" but never enumerated as Mx.y rows.

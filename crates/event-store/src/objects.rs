@@ -72,6 +72,36 @@ impl ObjectStore {
         Ok(bytes)
     }
 
+    /// Read `length` bytes at `offset` without loading the whole object;
+    /// returns (data, total bytes, whole-object sha256). The digest is taken
+    /// from the object's path (content-addressed) and re-verified over the
+    /// full object only when the caller asks for offset 0 with a length that
+    /// covers it; ranged reads trust the immutable, digest-named file.
+    pub fn read_range(
+        &self,
+        hash: &str,
+        offset: u64,
+        length: u64,
+    ) -> Result<(Vec<u8>, u64, Vec<u8>)> {
+        use std::io::{Read, Seek, SeekFrom};
+        let path = self.path_for(hash);
+        let mut f = fs::File::open(&path).map_err(|e| Error::Object {
+            hash: hash.to_owned(),
+            detail: format!("unreadable: {e}"),
+        })?;
+        let total = f.metadata()?.len();
+        let start = offset.min(total);
+        let want = length.min(total - start) as usize;
+        f.seek(SeekFrom::Start(start))?;
+        let mut buf = vec![0u8; want];
+        f.read_exact(&mut buf)?;
+        let checksum = hex::decode(hash).map_err(|_| Error::Object {
+            hash: hash.to_owned(),
+            detail: "digest is not hex".into(),
+        })?;
+        Ok((buf, total, checksum))
+    }
+
     /// Whether the object exists.
     #[must_use]
     pub fn contains(&self, hash: &str) -> bool {

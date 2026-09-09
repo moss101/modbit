@@ -10,6 +10,7 @@
 import { connect, type Socket } from "node:net";
 import { create, fromBinary, toBinary, type MessageInitShape } from "@bufbuild/protobuf";
 import {
+  AcquireSessionLeaseSchema,
   ClientKind,
   CommandAckSchema,
   CommandEnvelopeSchema,
@@ -21,6 +22,7 @@ import {
   IdSchema,
   RecoveryReportSchema,
   SessionCreatedSchema,
+  SessionLeaseAcquiredSchema,
   SessionSnapshotSchema,
   SubscribeEventsSchema,
   SurfaceFrameSchema,
@@ -196,9 +198,12 @@ export class CoreClient {
     this.fail("closed by client");
   }
 
-  command(commandType: string, payload: Uint8Array, commandId: Uint8Array = freshId()): Promise<CommandAck> {
+  /** Session lease generations this client holds (docs/13 fencing). */
+  private leases = new Map<string, bigint>();
+
+  command(commandType: string, payload: Uint8Array, commandId: Uint8Array = freshId(), expectedGeneration?: bigint): Promise<CommandAck> {
     if (this.closed) return Promise.reject(new ProtocolError("DISCONNECTED", "client closed"));
-    const envelope = create(CommandEnvelopeSchema, { commandId: { value: commandId }, commandType, schemaVersion: 1, payload });
+    const envelope = create(CommandEnvelopeSchema, { commandId: { value: commandId }, commandType, schemaVersion: 1, payload, ...(expectedGeneration !== undefined ? { expectedGeneration } : {}) });
     return new Promise((resolve, reject) => {
       this.pending.push({ resolve, reject });
       this.socket.write(encodeFrame({ body: { case: "command", value: envelope } }));
@@ -211,9 +216,22 @@ export class CoreClient {
     return { sessionId: hex(r.sessionId?.value ?? new Uint8Array()), offset: r.offset };
   }
 
+  /** Become the session's single mutation owner; returns the new generation. */
+  async acquireSessionLease(sessionId: string, owner: string): Promise<bigint> {
+    const payload = toBinary(AcquireSessionLeaseSchema, create(AcquireSessionLeaseSchema, { sessionId: { value: unhex(sessionId) }, owner }));
+    const ack = await this.command("AcquireSessionLease", payload);
+    const r = fromBinary(SessionLeaseAcquiredSchema, ack.result);
+    this.leases.set(sessionId, r.leaseGeneration);
+    return r.leaseGeneration;
+  }
+
+  leaseGeneration(sessionId: string): bigint | undefined {
+    return this.leases.get(sessionId);
+  }
+
   async createTask(sessionId: string, goalText: string, commandId?: Uint8Array): Promise<{ taskId: string; offset: bigint; replayed: boolean }> {
     const payload = toBinary(CreateTaskSchema, create(CreateTaskSchema, { sessionId: { value: unhex(sessionId) }, goalText, executionProfile: "local_trusted", origin: "desktop" }));
-    const ack = await this.command("CreateTask", payload, commandId);
+    const ack = await this.command("CreateTask", payload, commandId, this.leases.get(sessionId));
     const r = fromBinary(TaskCreatedSchema, ack.result);
     return { taskId: hex(r.taskId?.value ?? new Uint8Array()), offset: r.offset, replayed: ack.status === CommandStatus.REPLAYED };
   }

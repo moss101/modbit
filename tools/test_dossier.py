@@ -545,6 +545,9 @@ class DossierTests(unittest.TestCase):
         self.assertIn("DR-PX-2026-09-05-006", nodes["IMP-EV-0107"]["milestone_override"])
         self.assertEqual(nodes["IMP-EV-0242"]["milestone"], "M4")
         self.assertIn("DR-M0-005", nodes["IMP-EV-0242"]["milestone_override"])
+        self.assertEqual(nodes["IMP-EV-0119"]["milestone"], "M2")
+        self.assertEqual(nodes["IMP-EV-0180"]["milestone"], "M6")
+        self.assertIn("DR-M1-006", nodes["IMP-EV-0180"]["milestone_override"])
         out = self.run_tool("graph", "show", "PX-033")
         for needle in ("IMP-EV-0107", "M2.8", "QUAL-PX-033", "PX-E2E-033", "verification", "DR-PX-2026-09-05-006"):
             self.assertIn(needle, out)

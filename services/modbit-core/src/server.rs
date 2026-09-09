@@ -13,7 +13,7 @@ use std::sync::Arc;
 use anyhow::{Context, Result};
 use modbit_domain::event::{Actor, AggregateType};
 use modbit_domain::session::SessionEvent;
-use modbit_domain::task::{TaskEvent, TaskOrigin};
+use modbit_domain::task::{InputMode, TaskEvent, TaskOrigin};
 use modbit_domain::{
     EventId, SessionId, SpaceId, TaskId, TenantId, Timestamp, UserId, WorkspaceId,
 };
@@ -26,9 +26,9 @@ use modbit_protocol::framing::{FrameError, read_frame, write_frame};
 use modbit_protocol::local::{Endpoint, ReadyLine, encode_hex};
 use modbit_protocol::v1::surface_frame::Body;
 use modbit_protocol::v1::{
-    self as wire, CommandAck, CommandEnvelope, CommandStatus, HelloAck, ProtocolError,
-    SessionCreated, SessionSnapshot, StoredEventFrame, SubscribeEvents, SurfaceFrame, TaskCreated,
-    TaskView,
+    self as wire, CommandAck, CommandEnvelope, CommandStatus, HelloAck, InputQueued,
+    ObjectRangeChunk, ProtocolError, SessionCreated, SessionLeaseAcquired, SessionSnapshot,
+    StoredEventFrame, SubscribeEvents, SurfaceFrame, TaskCreated, TaskView,
 };
 use prost::Message;
 use subtle::ConstantTimeEq;
@@ -50,6 +50,47 @@ pub struct Core {
 
 /// Bounded number of events per subscription batch (REQ-EV-0108).
 const BATCH: usize = 256;
+
+/// Largest object range served in one frame (REQ-EV-0108).
+const MAX_OBJECT_CHUNK: u64 = 1024 * 1024;
+
+/// Fencing (docs/13, docs/33): a mutating command must present the session's
+/// current lease generation in `expected_generation`.
+async fn require_lease(
+    core: &Core,
+    cid: &Option<wire::Id>,
+    env: &CommandEnvelope,
+    session_id: &SessionId,
+) -> Result<(), CommandAck> {
+    let store = core.store.lock().await;
+    let session = match store.session(session_id) {
+        Ok(Some(s)) => s,
+        Ok(None) => {
+            return Err(reject(
+                cid.clone(),
+                "UNKNOWN_SESSION",
+                session_id.to_string(),
+            ));
+        }
+        Err(e) => return Err(reject(cid.clone(), error_code(&e), e.to_string())),
+    };
+    match env.expected_generation {
+        Some(g) if g == session.lease_generation && g > 0 => Ok(()),
+        Some(g) => Err(reject(
+            cid.clone(),
+            "STALE_LEASE",
+            format!(
+                "presented lease generation {g}, current is {} (owner {:?}); re-acquire the session lease",
+                session.lease_generation, session.lease_owner
+            ),
+        )),
+        None => Err(reject(
+            cid.clone(),
+            "LEASE_REQUIRED",
+            "mutating commands must present expected_generation from AcquireSessionLease",
+        )),
+    }
+}
 
 /// Run the daemon until the listener fails or the process is signalled.
 pub async fn run(data_dir: PathBuf) -> Result<()> {
@@ -293,6 +334,9 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "GetSessionSnapshot",
                     "SubscribeEvents",
                     "GetRecoveryReport",
+                    "AcquireSessionLease",
+                    "QueueInput",
+                    "ReadObjectRange",
                 ]
                 .map(String::from)
                 .to_vec(),
@@ -371,6 +415,17 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     .await?;
                     return Ok(());
                 };
+                // REQ-EV-0010: a cursor beyond the log cannot be resumed from; the
+                // client must rehydrate from a snapshot rather than silently skip.
+                let last = core.store.lock().await.last_offset()?;
+                if after_offset > last {
+                    write_frame(
+                        &mut stream,
+                        &error_frame("INVALID_CURSOR", format!("after_offset {after_offset} is beyond the log ({last}); rehydrate from a snapshot")),
+                    )
+                    .await?;
+                    return Ok(());
+                }
                 subscription = Some((SessionId::from_bytes(sid), after_offset));
                 rx.mark_changed();
             }
@@ -551,6 +606,9 @@ async fn handle_command(core: &Core, env: CommandEnvelope) -> CommandAck {
                 "forge_webhook" => TaskOrigin::ForgeWebhook,
                 other => return reject(cid, "BAD_PAYLOAD", format!("unknown origin `{other}`")),
             };
+            if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
+                return ack;
+            }
             let workspace_id = p
                 .workspace_id
                 .as_ref()
@@ -671,6 +729,184 @@ async fn handle_command(core: &Core, env: CommandEnvelope) -> CommandAck {
                 }
                 .encode_to_vec(),
             )
+        }
+        "AcquireSessionLease" => {
+            let Ok(p) = wire::AcquireSessionLease::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "AcquireSessionLease");
+            };
+            let Some(session_id) = p
+                .session_id
+                .as_ref()
+                .and_then(id16)
+                .map(SessionId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "session_id required");
+            };
+            let mut store = core.store.lock().await;
+            let session = match store.session(&session_id) {
+                Ok(Some(s)) => s,
+                Ok(None) => return reject(cid, "UNKNOWN_SESSION", session_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            let next_generation = session.lease_generation + 1;
+            let req = AppendRequest {
+                tenant_id: core.tenant_id,
+                session_id,
+                task_id: None,
+                run_id: None,
+                turn_id: None,
+                step_id: None,
+                aggregate_type: AggregateType::Session,
+                aggregate_id: *session_id.as_bytes(),
+                expected_sequence: None,
+                events: vec![typed(
+                    "SessionLeaseAcquired",
+                    &SessionEvent::SessionLeaseAcquired {
+                        lease_generation: next_generation,
+                        owner: p.owner.clone(),
+                    },
+                    actor,
+                )],
+            };
+            match store.execute_command(record("AcquireSessionLease"), req) {
+                Ok(outcome) => {
+                    let (events, replayed) = split(outcome);
+                    let offset = events.last().map(|e| e.offset).unwrap_or(0);
+                    if !replayed {
+                        core.last_offset.send_replace(offset);
+                    }
+                    // A replay returns the generation this command minted, not the current one.
+                    let generation = if replayed {
+                        store
+                            .session(&session_id)
+                            .ok()
+                            .flatten()
+                            .map(|s| s.lease_generation)
+                            .unwrap_or(next_generation)
+                    } else {
+                        next_generation
+                    };
+                    accept(
+                        cid,
+                        replayed,
+                        SessionLeaseAcquired {
+                            session_id: Some(wire_id(session_id.as_bytes())),
+                            lease_generation: generation,
+                            offset,
+                        }
+                        .encode_to_vec(),
+                    )
+                }
+                Err(e) => reject(cid, error_code(&e), e.to_string()),
+            }
+        }
+        "QueueInput" => {
+            let Ok(p) = wire::QueueInput::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "QueueInput");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let mode = match p.mode.as_str() {
+                "STEER" => InputMode::Steer,
+                "COLLECT" => InputMode::Collect,
+                "FOLLOW_UP" => InputMode::FollowUp,
+                other => {
+                    return reject(cid, "BAD_PAYLOAD", format!("unknown input mode `{other}`"));
+                }
+            };
+            if p.input_id.is_empty() || p.text.trim().is_empty() {
+                return reject(cid, "BAD_PAYLOAD", "input_id and text required");
+            }
+            let session_id = {
+                let store = core.store.lock().await;
+                match store.task(&task_id) {
+                    Ok(Some(t)) => t.session_id,
+                    Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                }
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
+                return ack;
+            }
+            let req = AppendRequest {
+                tenant_id: core.tenant_id,
+                session_id,
+                task_id: Some(task_id),
+                run_id: None,
+                turn_id: None,
+                step_id: None,
+                aggregate_type: AggregateType::Task,
+                aggregate_id: *task_id.as_bytes(),
+                expected_sequence: None,
+                events: vec![typed(
+                    "TaskInputQueued",
+                    &TaskEvent::TaskInputQueued {
+                        input_id: p.input_id.clone(),
+                        mode,
+                        text: p.text.clone(),
+                    },
+                    actor,
+                )],
+            };
+            let mut store = core.store.lock().await;
+            match store.execute_command(record("QueueInput"), req) {
+                Ok(outcome) => {
+                    let (events, replayed) = split(outcome);
+                    let last = events.last();
+                    let (offset, sequence) = last
+                        .map(|e| (e.offset, e.envelope.sequence))
+                        .unwrap_or((0, 0));
+                    if !replayed {
+                        core.last_offset.send_replace(offset);
+                    }
+                    accept(
+                        cid,
+                        replayed,
+                        InputQueued {
+                            task_id: Some(wire_id(task_id.as_bytes())),
+                            sequence,
+                            offset,
+                        }
+                        .encode_to_vec(),
+                    )
+                }
+                Err(e) => reject(cid, error_code(&e), e.to_string()),
+            }
+        }
+        "ReadObjectRange" => {
+            let Ok(p) = wire::ReadObjectRange::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "ReadObjectRange");
+            };
+            if p.object_hash.len() != 64 || !p.object_hash.bytes().all(|b| b.is_ascii_hexdigit()) {
+                return reject(cid, "BAD_PAYLOAD", "object_hash must be 64 hex chars");
+            }
+            if p.length == 0 || p.length > MAX_OBJECT_CHUNK {
+                return reject(
+                    cid,
+                    "RANGE_TOO_LARGE",
+                    format!("length must be 1..={MAX_OBJECT_CHUNK}"),
+                );
+            }
+            let store = core.store.lock().await;
+            match store
+                .objects()
+                .read_range(&p.object_hash, p.offset, p.length)
+            {
+                Ok((data, total, checksum)) => accept(
+                    cid,
+                    false,
+                    ObjectRangeChunk {
+                        object_hash: p.object_hash,
+                        total_bytes: total,
+                        offset: p.offset,
+                        data,
+                        checksum_sha256: checksum,
+                    }
+                    .encode_to_vec(),
+                ),
+                Err(e) => reject(cid, "UNKNOWN_OBJECT", e.to_string()),
+            }
         }
         "GetRecoveryReport" => {
             let r = &core.recovery;

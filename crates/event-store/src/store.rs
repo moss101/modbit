@@ -198,7 +198,7 @@ impl EventStore {
             objects,
             db_path,
         };
-        if report.applied.contains(&2) {
+        if report.applied.iter().any(|v| *v >= 2) {
             // Projections were introduced after events may already exist: derive them.
             store.rebuild_projections()?;
         }

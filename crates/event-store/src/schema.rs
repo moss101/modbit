@@ -146,6 +146,12 @@ CREATE TABLE IF NOT EXISTS commands (
 );
 "#;
 
+/// Version 3 (M1 leases): session lease generation and owner (REQ-EV-0054/0273).
+pub const V3_SESSION_LEASES: &str = r#"
+ALTER TABLE sessions ADD COLUMN lease_generation INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE sessions ADD COLUMN lease_owner TEXT;
+"#;
+
 /// All migrations in order. Never edit an entry once shipped; append a new one.
 pub const MIGRATIONS: &[Migration] = &[
     Migration {
@@ -159,6 +165,12 @@ pub const MIGRATIONS: &[Migration] = &[
         name: "projections_and_commands",
         up: V2_PROJECTIONS_AND_COMMANDS,
         rollback: "Read-compatible with version 1 readers of `events`: the new tables are derivable (`rebuild_projections`) and `commands` only adds idempotency. Rollback = drop the seven added tables; no event is touched.",
+    },
+    Migration {
+        version: 3,
+        name: "session_leases",
+        up: V3_SESSION_LEASES,
+        rollback: "Additive columns with defaults; version-2 readers ignore them. Rollback = rebuild projections after dropping the columns; no event is touched.",
     },
 ];
 

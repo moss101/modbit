@@ -50,8 +50,11 @@ const supervisor = new CoreSupervisor(
         if (subscription) subscription.cursor = BigInt(ev.offset);
         send("core:event", ev);
       };
-      // Recovery: re-attach the live subscription from the last cursor we delivered,
+      // Recovery: re-take the session lease (a new generation fences any stale
+      // owner), re-attach the live subscription from the last cursor we delivered,
       // and tell the renderer exactly what the Core recovered (docs/39 PX-023).
+      const local = loadLocalState();
+      if (local.sessionId) void c.acquireSessionLease(local.sessionId, `desktop ${app.getVersion()}`).catch(() => {});
       if (subscription) c.subscribe(subscription.sessionId, subscription.cursor);
       void c
         .getRecoveryReport()
@@ -94,7 +97,9 @@ function requireGoal(v: unknown): string {
 ipcMain.handle("core:status", () => supervisor.status);
 ipcMain.handle("core:localState", () => loadLocalState());
 ipcMain.handle("session:create", async () => {
-  const r = await requireClient().createSession(freshId());
+  const c = requireClient();
+  const r = await c.createSession(freshId());
+  await c.acquireSessionLease(r.sessionId, `desktop ${app.getVersion()}`);
   saveLocalState({ sessionId: r.sessionId });
   return r.sessionId;
 });
@@ -114,7 +119,9 @@ ipcMain.handle("task:create", async (_e: IpcMainInvokeEvent, sessionId: unknown,
   const g = requireGoal(goal);
   // The renderer supplies a stable command id so a retry after a crash replays instead of duplicating.
   const cid = typeof commandIdHex === "string" && HEX32.test(commandIdHex) ? new Uint8Array(Buffer.from(commandIdHex, "hex")) : freshId();
-  return requireClient().createTask(sid, g, cid);
+  const c = requireClient();
+  if (c.leaseGeneration(sid) === undefined) await c.acquireSessionLease(sid, `desktop ${app.getVersion()}`);
+  return c.createTask(sid, g, cid);
 });
 ipcMain.handle("events:subscribe", (_e: IpcMainInvokeEvent, sessionId: unknown, afterOffset: unknown) => {
   const sid = requireSessionId(sessionId);

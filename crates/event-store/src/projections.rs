@@ -57,8 +57,8 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                 s.apply(&event, at).map_err(|e| invalid(e, offset))?;
             }
             tx.execute(
-                "INSERT OR REPLACE INTO sessions (session_id, tenant_id, user_id, space_id, state, generation, created_at, updated_at, current_task_id, last_event_sequence)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                "INSERT OR REPLACE INTO sessions (session_id, tenant_id, user_id, space_id, state, generation, created_at, updated_at, current_task_id, last_event_sequence, lease_generation, lease_owner)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
                 params![
                     s.session_id.as_bytes().as_slice(),
                     s.tenant_id.as_bytes().as_slice(),
@@ -70,6 +70,8 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                     s.updated_at.millis(),
                     s.current_task_id.map(|t| t.as_bytes().to_vec()),
                     ev.envelope.sequence as i64,
+                    s.lease_generation as i64,
+                    &s.lease_owner,
                 ],
             )?;
         }
@@ -223,7 +225,7 @@ fn blob16(v: Vec<u8>) -> rusqlite::Result<[u8; 16]> {
 pub fn load_session(tx: &rusqlite::Connection, id: &SessionId) -> Result<Option<Session>> {
     let row = tx
         .query_row(
-            "SELECT tenant_id, user_id, space_id, state, generation, created_at, updated_at, current_task_id FROM sessions WHERE session_id = ?1",
+            "SELECT tenant_id, user_id, space_id, state, generation, created_at, updated_at, current_task_id, lease_generation, lease_owner FROM sessions WHERE session_id = ?1",
             params![id.as_bytes().as_slice()],
             |r| {
                 Ok((
@@ -235,11 +237,25 @@ pub fn load_session(tx: &rusqlite::Connection, id: &SessionId) -> Result<Option<
                     r.get::<_, i64>(5)?,
                     r.get::<_, i64>(6)?,
                     r.get::<_, Option<Vec<u8>>>(7)?,
+                    r.get::<_, i64>(8)?,
+                    r.get::<_, Option<String>>(9)?,
                 ))
             },
         )
         .optional()?;
-    let Some((tenant, user, space, state, generation, created, updated, current)) = row else {
+    let Some((
+        tenant,
+        user,
+        space,
+        state,
+        generation,
+        created,
+        updated,
+        current,
+        lease_generation,
+        lease_owner,
+    )) = row
+    else {
         return Ok(None);
     };
     Ok(Some(Session {
@@ -252,6 +268,8 @@ pub fn load_session(tx: &rusqlite::Connection, id: &SessionId) -> Result<Option<
         created_at: Timestamp(created),
         updated_at: Timestamp(updated),
         current_task_id: current.map(blob16).transpose()?.map(TaskId::from_bytes),
+        lease_generation: lease_generation as u64,
+        lease_owner,
     }))
 }
 

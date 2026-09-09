@@ -7,3 +7,7 @@
 //! This crate is created by milestone task M0.1 and carries no behavior yet.
 //! Behavior arrives only through the graph-scheduled tasks that name this
 //! crate as owner; nothing here may be read as an implemented feature.
+
+pub mod config;
+
+pub use config::{Authority, Layer, Permission, Provenance, Resolved, ResolvedConfig, resolve};

@@ -45,6 +45,21 @@ pub enum TaskOrigin {
     ForgeWebhook,
 }
 
+/// Typed input dispatch mode (MOD-INPUT-001, docs/14): concurrency semantics
+/// live in Core. `Steer` interrupts and replaces at the next safe boundary,
+/// `Collect` coalesces after the current step, `FollowUp` is an ordered
+/// separate turn.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum InputMode {
+    /// Interrupt and replace.
+    Steer,
+    /// Coalesce after the current step.
+    Collect,
+    /// Ordered separate turn.
+    FollowUp,
+}
+
 /// Task lifecycle.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -179,6 +194,16 @@ pub enum TaskEvent {
         /// Reason text.
         reason: String,
     },
+    /// `TaskInputQueued`: a durable, ordered user input (REQ-EV-0262); no
+    /// state change. Ordering is the aggregate sequence.
+    TaskInputQueued {
+        /// Client-chosen input id (stable across retries).
+        input_id: String,
+        /// Dispatch mode.
+        mode: InputMode,
+        /// Text.
+        text: String,
+    },
 }
 
 impl TaskEvent {
@@ -198,6 +223,7 @@ impl TaskEvent {
             Self::TaskCancelled => "TaskCancelled",
             Self::TaskSteered { .. } => "TaskSteered",
             Self::TaskNeedsAttention { .. } => "TaskNeedsAttention",
+            Self::TaskInputQueued { .. } => "TaskInputQueued",
         }
     }
 }
@@ -282,7 +308,9 @@ impl Task {
                 Some(Failed)
             }
             TaskEvent::TaskCancelled => Some(Cancelled),
-            TaskEvent::TaskSteered { .. } | TaskEvent::TaskNeedsAttention { .. } => {
+            TaskEvent::TaskSteered { .. }
+            | TaskEvent::TaskNeedsAttention { .. }
+            | TaskEvent::TaskInputQueued { .. } => {
                 if self.state.is_terminal() {
                     return Err(invalid(&self.state, event.event_type()));
                 }
