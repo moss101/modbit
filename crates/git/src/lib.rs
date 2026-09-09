@@ -596,8 +596,17 @@ fn git_path(path: &Path) -> Result<String> {
     let s = path
         .to_str()
         .ok_or_else(|| Error::Parse("non-utf8 path".into()))?;
-    Ok(match s.strip_prefix(r"\\?\UNC\") {
-        Some(unc) => format!(r"\\{unc}"),
-        None => s.strip_prefix(r"\\?\").unwrap_or(s).to_owned(),
-    })
+    Ok(
+        match s
+            .strip_prefix(r"\\?\UNC\")
+            .or_else(|| s.strip_prefix("//?/UNC/"))
+        {
+            Some(unc) => format!(r"\\{unc}"),
+            None => s
+                .strip_prefix(r"\\?\")
+                .or_else(|| s.strip_prefix("//?/"))
+                .unwrap_or(s)
+                .to_owned(),
+        },
+    )
 }

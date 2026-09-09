@@ -327,7 +327,10 @@ async fn fs_change_and_git_tools_run_against_the_real_substrate_with_revision_bi
             "git.worktree.create",
             &format!(
                 r#"{{"branch":"task/x","path":"{}"}}"#,
-                wt.display().to_string().replace('\\', "/")
+                wt.display()
+                    .to_string()
+                    .trim_start_matches(r"\\?\")
+                    .replace('\\', "/")
             ),
         )
         .await;
@@ -341,7 +344,10 @@ async fn fs_change_and_git_tools_run_against_the_real_substrate_with_revision_bi
             "git.worktree.close",
             &format!(
                 r#"{{"path":"{}"}}"#,
-                wt.display().to_string().replace('\\', "/")
+                wt.display()
+                    .to_string()
+                    .trim_start_matches(r"\\?\")
+                    .replace('\\', "/")
             ),
         )
         .await;
