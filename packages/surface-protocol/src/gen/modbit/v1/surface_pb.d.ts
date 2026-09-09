@@ -779,6 +779,20 @@ export declare type ToolInvoked = Message<"modbit.v1.ToolInvoked"> & {
    * @generated from field: string result_ref = 8;
    */
   resultRef: string;
+
+  /**
+   * hex; set when status is APPROVAL_PENDING or an approval was consumed
+   *
+   * @generated from field: string approval_id = 9;
+   */
+  approvalId: string;
+
+  /**
+   * hex effect ids appended to the receipt chain (docs/23)
+   *
+   * @generated from field: repeated string effect_receipt_ids = 10;
+   */
+  effectReceiptIds: string[];
 };
 
 /**
@@ -850,6 +864,416 @@ export declare type ToolList = Message<"modbit.v1.ToolList"> & {
  * Use `create(ToolListSchema)` to create a new message.
  */
 export declare const ToolListSchema: GenMessage<ToolList>;
+
+/**
+ * @generated from message modbit.v1.ListApprovals
+ */
+export declare type ListApprovals = Message<"modbit.v1.ListApprovals"> & {
+  /**
+   * @generated from field: modbit.v1.Id session_id = 1;
+   */
+  sessionId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.ListApprovals.
+ * Use `create(ListApprovalsSchema)` to create a new message.
+ */
+export declare const ListApprovalsSchema: GenMessage<ListApprovals>;
+
+/**
+ * @generated from message modbit.v1.ApprovalView
+ */
+export declare type ApprovalView = Message<"modbit.v1.ApprovalView"> & {
+  /**
+   * @generated from field: modbit.v1.Id approval_id = 1;
+   */
+  approvalId?: Id | undefined;
+
+  /**
+   * @generated from field: modbit.v1.Id task_id = 2;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: modbit.v1.Id tool_call_id = 3;
+   */
+  toolCallId?: Id | undefined;
+
+  /**
+   * @generated from field: string tool_name = 4;
+   */
+  toolName: string;
+
+  /**
+   * @generated from field: string effect_class = 5;
+   */
+  effectClass: string;
+
+  /**
+   * sha256 of the normalized arguments the approval binds
+   *
+   * @generated from field: string intent_hash = 6;
+   */
+  intentHash: string;
+
+  /**
+   * @generated from field: string scope_json = 7;
+   */
+  scopeJson: string;
+
+  /**
+   * REQUESTED | APPROVED | DENIED | EXPIRED
+   *
+   * @generated from field: string status = 8;
+   */
+  status: string;
+
+  /**
+   * @generated from field: int64 requested_at_ms = 9;
+   */
+  requestedAtMs: bigint;
+
+  /**
+   * 0 = never
+   *
+   * @generated from field: int64 expires_at_ms = 10;
+   */
+  expiresAtMs: bigint;
+
+  /**
+   * @generated from field: string resolver = 11;
+   */
+  resolver: string;
+};
+
+/**
+ * Describes the message modbit.v1.ApprovalView.
+ * Use `create(ApprovalViewSchema)` to create a new message.
+ */
+export declare const ApprovalViewSchema: GenMessage<ApprovalView>;
+
+/**
+ * @generated from message modbit.v1.ApprovalList
+ */
+export declare type ApprovalList = Message<"modbit.v1.ApprovalList"> & {
+  /**
+   * @generated from field: repeated modbit.v1.ApprovalView approvals = 1;
+   */
+  approvals: ApprovalView[];
+};
+
+/**
+ * Describes the message modbit.v1.ApprovalList.
+ * Use `create(ApprovalListSchema)` to create a new message.
+ */
+export declare const ApprovalListSchema: GenMessage<ApprovalList>;
+
+/**
+ * @generated from message modbit.v1.ResolveApproval
+ */
+export declare type ResolveApproval = Message<"modbit.v1.ResolveApproval"> & {
+  /**
+   * @generated from field: modbit.v1.Id approval_id = 1;
+   */
+  approvalId?: Id | undefined;
+
+  /**
+   * @generated from field: bool approve = 2;
+   */
+  approve: boolean;
+
+  /**
+   * @generated from field: string reason = 3;
+   */
+  reason: string;
+};
+
+/**
+ * Describes the message modbit.v1.ResolveApproval.
+ * Use `create(ResolveApprovalSchema)` to create a new message.
+ */
+export declare const ResolveApprovalSchema: GenMessage<ResolveApproval>;
+
+/**
+ * @generated from message modbit.v1.ApprovalResolvedAck
+ */
+export declare type ApprovalResolvedAck = Message<"modbit.v1.ApprovalResolvedAck"> & {
+  /**
+   * @generated from field: modbit.v1.Id approval_id = 1;
+   */
+  approvalId?: Id | undefined;
+
+  /**
+   * @generated from field: string status = 2;
+   */
+  status: string;
+
+  /**
+   * @generated from field: uint64 offset = 3;
+   */
+  offset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.ApprovalResolvedAck.
+ * Use `create(ApprovalResolvedAckSchema)` to create a new message.
+ */
+export declare const ApprovalResolvedAckSchema: GenMessage<ApprovalResolvedAck>;
+
+/**
+ * @generated from message modbit.v1.EmergencyStop
+ */
+export declare type EmergencyStop = Message<"modbit.v1.EmergencyStop"> & {
+  /**
+   * @generated from field: modbit.v1.Id session_id = 1;
+   */
+  sessionId?: Id | undefined;
+
+  /**
+   * @generated from field: string reason = 2;
+   */
+  reason: string;
+};
+
+/**
+ * Describes the message modbit.v1.EmergencyStop.
+ * Use `create(EmergencyStopSchema)` to create a new message.
+ */
+export declare const EmergencyStopSchema: GenMessage<EmergencyStop>;
+
+/**
+ * @generated from message modbit.v1.EmergencyStopped
+ */
+export declare type EmergencyStopped = Message<"modbit.v1.EmergencyStopped"> & {
+  /**
+   * @generated from field: uint32 leases_revoked = 1;
+   */
+  leasesRevoked: number;
+
+  /**
+   * @generated from field: uint64 offset = 2;
+   */
+  offset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.EmergencyStopped.
+ * Use `create(EmergencyStoppedSchema)` to create a new message.
+ */
+export declare const EmergencyStoppedSchema: GenMessage<EmergencyStopped>;
+
+/**
+ * @generated from message modbit.v1.GetEffectReceipts
+ */
+export declare type GetEffectReceipts = Message<"modbit.v1.GetEffectReceipts"> & {
+  /**
+   * absent = the whole chain
+   *
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.GetEffectReceipts.
+ * Use `create(GetEffectReceiptsSchema)` to create a new message.
+ */
+export declare const GetEffectReceiptsSchema: GenMessage<GetEffectReceipts>;
+
+/**
+ * @generated from message modbit.v1.EffectReceiptView
+ */
+export declare type EffectReceiptView = Message<"modbit.v1.EffectReceiptView"> & {
+  /**
+   * @generated from field: modbit.v1.Id effect_id = 1;
+   */
+  effectId?: Id | undefined;
+
+  /**
+   * @generated from field: string previous_receipt_hash = 2;
+   */
+  previousReceiptHash: string;
+
+  /**
+   * @generated from field: modbit.v1.Id task_id = 3;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: modbit.v1.Id tool_call_id = 4;
+   */
+  toolCallId?: Id | undefined;
+
+  /**
+   * @generated from field: modbit.v1.Id capability_lease_id = 5;
+   */
+  capabilityLeaseId?: Id | undefined;
+
+  /**
+   * @generated from field: string intent_hash = 6;
+   */
+  intentHash: string;
+
+  /**
+   * @generated from field: string policy_decision = 7;
+   */
+  policyDecision: string;
+
+  /**
+   * @generated from field: modbit.v1.Id approval_id = 8;
+   */
+  approvalId?: Id | undefined;
+
+  /**
+   * @generated from field: string execution_target = 9;
+   */
+  executionTarget: string;
+
+  /**
+   * @generated from field: string evidence_ref = 10;
+   */
+  evidenceRef: string;
+
+  /**
+   * @generated from field: string status = 11;
+   */
+  status: string;
+
+  /**
+   * @generated from field: int64 occurred_at_ms = 12;
+   */
+  occurredAtMs: bigint;
+
+  /**
+   * @generated from field: string receipt_hash = 13;
+   */
+  receiptHash: string;
+};
+
+/**
+ * Describes the message modbit.v1.EffectReceiptView.
+ * Use `create(EffectReceiptViewSchema)` to create a new message.
+ */
+export declare const EffectReceiptViewSchema: GenMessage<EffectReceiptView>;
+
+/**
+ * @generated from message modbit.v1.EffectReceiptList
+ */
+export declare type EffectReceiptList = Message<"modbit.v1.EffectReceiptList"> & {
+  /**
+   * @generated from field: repeated modbit.v1.EffectReceiptView receipts = 1;
+   */
+  receipts: EffectReceiptView[];
+
+  /**
+   * every hash recomputes and links to its predecessor
+   *
+   * @generated from field: bool chain_valid = 2;
+   */
+  chainValid: boolean;
+
+  /**
+   * @generated from field: string detail = 3;
+   */
+  detail: string;
+};
+
+/**
+ * Describes the message modbit.v1.EffectReceiptList.
+ * Use `create(EffectReceiptListSchema)` to create a new message.
+ */
+export declare const EffectReceiptListSchema: GenMessage<EffectReceiptList>;
+
+/**
+ * @generated from message modbit.v1.GetCapabilityLeases
+ */
+export declare type GetCapabilityLeases = Message<"modbit.v1.GetCapabilityLeases"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.GetCapabilityLeases.
+ * Use `create(GetCapabilityLeasesSchema)` to create a new message.
+ */
+export declare const GetCapabilityLeasesSchema: GenMessage<GetCapabilityLeases>;
+
+/**
+ * @generated from message modbit.v1.CapabilityLeaseView
+ */
+export declare type CapabilityLeaseView = Message<"modbit.v1.CapabilityLeaseView"> & {
+  /**
+   * @generated from field: modbit.v1.Id lease_id = 1;
+   */
+  leaseId?: Id | undefined;
+
+  /**
+   * @generated from field: modbit.v1.Id task_id = 2;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: repeated string resources = 3;
+   */
+  resources: string[];
+
+  /**
+   * @generated from field: repeated string operations = 4;
+   */
+  operations: string[];
+
+  /**
+   * @generated from field: string effect_ceiling = 5;
+   */
+  effectCeiling: string;
+
+  /**
+   * @generated from field: string execution_profile = 6;
+   */
+  executionProfile: string;
+
+  /**
+   * @generated from field: uint64 generation = 7;
+   */
+  generation: bigint;
+
+  /**
+   * ACTIVE | REVOKED
+   *
+   * @generated from field: string status = 8;
+   */
+  status: string;
+
+  /**
+   * @generated from field: string revoke_reason = 9;
+   */
+  revokeReason: string;
+};
+
+/**
+ * Describes the message modbit.v1.CapabilityLeaseView.
+ * Use `create(CapabilityLeaseViewSchema)` to create a new message.
+ */
+export declare const CapabilityLeaseViewSchema: GenMessage<CapabilityLeaseView>;
+
+/**
+ * @generated from message modbit.v1.CapabilityLeaseList
+ */
+export declare type CapabilityLeaseList = Message<"modbit.v1.CapabilityLeaseList"> & {
+  /**
+   * @generated from field: repeated modbit.v1.CapabilityLeaseView leases = 1;
+   */
+  leases: CapabilityLeaseView[];
+};
+
+/**
+ * Describes the message modbit.v1.CapabilityLeaseList.
+ * Use `create(CapabilityLeaseListSchema)` to create a new message.
+ */
+export declare const CapabilityLeaseListSchema: GenMessage<CapabilityLeaseList>;
 
 /**
  * Command acknowledgement.

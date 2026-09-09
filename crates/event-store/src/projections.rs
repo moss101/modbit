@@ -3,14 +3,20 @@
 //! reducers, updated inside the same transaction as the append, and can be
 //! rebuilt from the event log at any time (consumers are idempotent, docs/13).
 
+use modbit_domain::approval::{Approval, ApprovalEvent};
 use modbit_domain::event::{AggregateType, PayloadRef};
+use modbit_domain::lease::{CapabilityLease, CapabilityLeaseEvent};
 use modbit_domain::run::{Run, RunEvent};
 use modbit_domain::session::{Session, SessionEvent};
 use modbit_domain::step::{RunStep, StepEvent};
 use modbit_domain::task::{Task, TaskEvent, TaskState};
+use modbit_domain::toolcall::EffectReceipt;
 use modbit_domain::toolcall::{ToolCall, ToolCallEvent};
 use modbit_domain::turn::{Turn, TurnEvent};
-use modbit_domain::{RunId, RunStepId, SessionId, TaskId, Timestamp, ToolCallId, TurnId};
+use modbit_domain::{
+    ApprovalId, CapabilityLeaseId, RunId, RunStepId, SessionId, TaskId, Timestamp, ToolCallId,
+    TurnId,
+};
 use rusqlite::{OptionalExtension, Transaction, params};
 
 use crate::store::StoredEvent;
@@ -58,8 +64,8 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                 s.apply(&event, at).map_err(|e| invalid(e, offset))?;
             }
             tx.execute(
-                "INSERT OR REPLACE INTO sessions (session_id, tenant_id, user_id, space_id, state, generation, created_at, updated_at, current_task_id, last_event_sequence, lease_generation, lease_owner)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+                "INSERT OR REPLACE INTO sessions (session_id, tenant_id, user_id, space_id, state, generation, created_at, updated_at, current_task_id, last_event_sequence, lease_generation, lease_owner, emergency_stopped_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
                 params![
                     s.session_id.as_bytes().as_slice(),
                     s.tenant_id.as_bytes().as_slice(),
@@ -73,6 +79,7 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                     ev.envelope.sequence as i64,
                     s.lease_generation as i64,
                     &s.lease_owner,
+                    s.emergency_stopped_at.map(Timestamp::millis),
                 ],
             )?;
         }
@@ -210,9 +217,12 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
             if ev.envelope.sequence > 1 {
                 c.apply(&event, at).map_err(|e| invalid(e, offset))?;
             }
+            if let ToolCallEvent::EffectReceiptAppended { receipt } = &event {
+                insert_receipt(tx, receipt)?;
+            }
             tx.execute(
-                "INSERT OR REPLACE INTO tool_calls (tool_call_id, task_id, step_id, tool_name, tool_version, effect_class, capability_lease_id, status, arguments_hash, generation, dispatched_at, completed_at, result_ref, unknown_outcome_reason, policy_decision)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
+                "INSERT OR REPLACE INTO tool_calls (tool_call_id, task_id, step_id, tool_name, tool_version, effect_class, capability_lease_id, status, arguments_hash, generation, dispatched_at, completed_at, result_ref, unknown_outcome_reason, policy_decision, approval_id)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
                 params![
                     c.tool_call_id.as_bytes().as_slice(),
                     c.task_id.as_bytes().as_slice(),
@@ -229,10 +239,71 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                     &c.result_ref,
                     &c.unknown_outcome_reason,
                     &c.policy_decision,
+                    c.approval_id.map(|a| a.as_bytes().to_vec()),
                 ],
             )?;
         }
-        // Aggregates whose projections belong to later milestones (protocol state, leases, checkpoints).
+        AggregateType::Approval => {
+            let event: ApprovalEvent = serde_json::from_value(payload)?;
+            let aid = ApprovalId::from_bytes(id);
+            let mut a = match load_approval(tx, &aid)? {
+                Some(a) => a,
+                None => Approval::create(aid, &event, at).map_err(|e| invalid(e, offset))?,
+            };
+            if ev.envelope.sequence > 1 {
+                a.apply(&event, at).map_err(|e| invalid(e, offset))?;
+            }
+            tx.execute(
+                "INSERT OR REPLACE INTO approvals (approval_id, task_id, tool_call_id, tool_name, effect_class, intent_hash, scope_json, status, generation, requested_at, resolved_at, resolver_user_id, expires_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+                params![
+                    a.approval_id.as_bytes().as_slice(),
+                    a.task_id.as_bytes().as_slice(),
+                    a.tool_call_id.as_bytes().as_slice(),
+                    &a.tool_name,
+                    serde_json::to_string(&a.effect_class)?.trim_matches('"'),
+                    &a.intent_hash,
+                    &a.scope_json,
+                    serde_json::to_string(&a.state)?.trim_matches('"'),
+                    a.generation as i64,
+                    a.requested_at.millis(),
+                    a.resolved_at.map(Timestamp::millis),
+                    &a.resolver,
+                    a.expires_at.map(Timestamp::millis),
+                ],
+            )?;
+        }
+        AggregateType::CapabilityLease => {
+            let event: CapabilityLeaseEvent = serde_json::from_value(payload)?;
+            let lid = CapabilityLeaseId::from_bytes(id);
+            let mut l = match load_lease(tx, &lid)? {
+                Some(l) => l,
+                None => CapabilityLease::create(lid, &event, at).map_err(|e| invalid(e, offset))?,
+            };
+            if ev.envelope.sequence > 1 {
+                l.apply(&event, at).map_err(|e| invalid(e, offset))?;
+            }
+            tx.execute(
+                "INSERT OR REPLACE INTO capability_leases (lease_id, tenant_id, task_id, agent_id, resource_json, operations_json, effect_ceiling, execution_profile, generation, status, expires_at, revoked_at, revoke_reason)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+                params![
+                    l.lease_id.as_bytes().as_slice(),
+                    l.tenant_id.as_bytes().as_slice(),
+                    l.task_id.as_bytes().as_slice(),
+                    &l.agent_id,
+                    serde_json::to_string(&l.resources)?,
+                    serde_json::to_string(&l.operations)?,
+                    serde_json::to_string(&l.effect_ceiling)?.trim_matches('"'),
+                    &l.execution_profile,
+                    l.generation as i64,
+                    serde_json::to_string(&l.state)?.trim_matches('"'),
+                    l.expires_at.map(Timestamp::millis),
+                    l.revoked_at.map(Timestamp::millis),
+                    &l.revoke_reason,
+                ],
+            )?;
+        }
+        // Aggregates whose projections belong to later milestones (protocol state, checkpoints).
         _ => {}
     }
     tx.execute(
@@ -259,7 +330,7 @@ fn blob16(v: Vec<u8>) -> rusqlite::Result<[u8; 16]> {
 pub fn load_session(tx: &rusqlite::Connection, id: &SessionId) -> Result<Option<Session>> {
     let row = tx
         .query_row(
-            "SELECT tenant_id, user_id, space_id, state, generation, created_at, updated_at, current_task_id, lease_generation, lease_owner FROM sessions WHERE session_id = ?1",
+            "SELECT tenant_id, user_id, space_id, state, generation, created_at, updated_at, current_task_id, lease_generation, lease_owner, emergency_stopped_at FROM sessions WHERE session_id = ?1",
             params![id.as_bytes().as_slice()],
             |r| {
                 Ok((
@@ -273,6 +344,7 @@ pub fn load_session(tx: &rusqlite::Connection, id: &SessionId) -> Result<Option<
                     r.get::<_, Option<Vec<u8>>>(7)?,
                     r.get::<_, i64>(8)?,
                     r.get::<_, Option<String>>(9)?,
+                    r.get::<_, Option<i64>>(10)?,
                 ))
             },
         )
@@ -288,6 +360,7 @@ pub fn load_session(tx: &rusqlite::Connection, id: &SessionId) -> Result<Option<
         current,
         lease_generation,
         lease_owner,
+        stopped,
     )) = row
     else {
         return Ok(None);
@@ -304,6 +377,7 @@ pub fn load_session(tx: &rusqlite::Connection, id: &SessionId) -> Result<Option<
         current_task_id: current.map(blob16).transpose()?.map(TaskId::from_bytes),
         lease_generation: lease_generation as u64,
         lease_owner,
+        emergency_stopped_at: stopped.map(Timestamp),
     }))
 }
 
@@ -497,7 +571,7 @@ pub fn load_step(tx: &rusqlite::Connection, id: &RunStepId) -> Result<Option<Run
 pub fn load_tool_call(tx: &rusqlite::Connection, id: &ToolCallId) -> Result<Option<ToolCall>> {
     let row = tx
         .query_row(
-            "SELECT task_id, step_id, tool_name, tool_version, effect_class, capability_lease_id, status, arguments_hash, generation, dispatched_at, completed_at, result_ref, unknown_outcome_reason, policy_decision FROM tool_calls WHERE tool_call_id = ?1",
+            "SELECT task_id, step_id, tool_name, tool_version, effect_class, capability_lease_id, status, arguments_hash, generation, dispatched_at, completed_at, result_ref, unknown_outcome_reason, policy_decision, approval_id FROM tool_calls WHERE tool_call_id = ?1",
             params![id.as_bytes().as_slice()],
             |r| {
                 Ok((
@@ -515,6 +589,7 @@ pub fn load_tool_call(tx: &rusqlite::Connection, id: &ToolCallId) -> Result<Opti
                     r.get::<_, Option<String>>(11)?,
                     r.get::<_, Option<String>>(12)?,
                     r.get::<_, Option<String>>(13)?,
+                    r.get::<_, Option<Vec<u8>>>(14)?,
                 ))
             },
         )
@@ -534,6 +609,7 @@ pub fn load_tool_call(tx: &rusqlite::Connection, id: &ToolCallId) -> Result<Opti
         result,
         unknown,
         policy,
+        approval,
     )) = row
     else {
         return Ok(None);
@@ -557,12 +633,258 @@ pub fn load_tool_call(tx: &rusqlite::Connection, id: &ToolCallId) -> Result<Opti
         result_ref: result,
         unknown_outcome_reason: unknown,
         policy_decision: policy,
+        approval_id: approval
+            .map(blob16)
+            .transpose()?
+            .map(ApprovalId::from_bytes),
     }))
+}
+
+fn approval_from_row(r: &rusqlite::Row<'_>) -> rusqlite::Result<Approval> {
+    let id: Vec<u8> = r.get(0)?;
+    let task: Vec<u8> = r.get(1)?;
+    let call: Vec<u8> = r.get(2)?;
+    let effect: String = r.get(4)?;
+    let status: String = r.get(7)?;
+    Ok(Approval {
+        approval_id: ApprovalId::from_bytes(blob16(id)?),
+        task_id: TaskId::from_bytes(blob16(task)?),
+        tool_call_id: ToolCallId::from_bytes(blob16(call)?),
+        tool_name: r.get(3)?,
+        effect_class: q(&effect).map_err(|_| rusqlite::Error::InvalidQuery)?,
+        intent_hash: r.get(5)?,
+        scope_json: r.get(6)?,
+        state: q(&status).map_err(|_| rusqlite::Error::InvalidQuery)?,
+        generation: r.get::<_, i64>(8)? as u64,
+        requested_at: Timestamp(r.get(9)?),
+        resolved_at: r.get::<_, Option<i64>>(10)?.map(Timestamp),
+        resolver: r.get(11)?,
+        expires_at: r.get::<_, Option<i64>>(12)?.map(Timestamp),
+    })
+}
+
+const APPROVAL_COLS: &str = "approval_id, task_id, tool_call_id, tool_name, effect_class, intent_hash, scope_json, status, generation, requested_at, resolved_at, resolver_user_id, expires_at";
+
+/// Load an approval.
+pub fn load_approval(tx: &rusqlite::Connection, id: &ApprovalId) -> Result<Option<Approval>> {
+    Ok(tx
+        .query_row(
+            &format!("SELECT {APPROVAL_COLS} FROM approvals WHERE approval_id = ?1"),
+            params![id.as_bytes().as_slice()],
+            approval_from_row,
+        )
+        .optional()?)
+}
+
+/// The latest approval bound to a tool call, if any.
+pub fn load_approval_for_call(
+    tx: &rusqlite::Connection,
+    id: &ToolCallId,
+) -> Result<Option<Approval>> {
+    Ok(tx
+        .query_row(
+            &format!(
+                "SELECT {APPROVAL_COLS} FROM approvals WHERE tool_call_id = ?1 ORDER BY requested_at DESC, approval_id DESC LIMIT 1"
+            ),
+            params![id.as_bytes().as_slice()],
+            approval_from_row,
+        )
+        .optional()?)
+}
+
+/// Approvals of every task in a session, pending first, oldest first.
+pub fn load_approvals_for_session(
+    tx: &rusqlite::Connection,
+    session: &SessionId,
+) -> Result<Vec<Approval>> {
+    let mut stmt = tx.prepare(&format!(
+        "SELECT {} FROM approvals a JOIN tasks t ON t.task_id = a.task_id WHERE t.session_id = ?1 ORDER BY (a.status <> 'REQUESTED'), a.requested_at, a.approval_id",
+        APPROVAL_COLS
+            .split(", ")
+            .map(|c| format!("a.{c}"))
+            .collect::<Vec<_>>()
+            .join(", ")
+    ))?;
+    let rows = stmt.query_map(params![session.as_bytes().as_slice()], approval_from_row)?;
+    Ok(rows.collect::<std::result::Result<Vec<_>, _>>()?)
+}
+
+fn lease_from_row(r: &rusqlite::Row<'_>) -> rusqlite::Result<CapabilityLease> {
+    let id: Vec<u8> = r.get(0)?;
+    let tenant: Vec<u8> = r.get(1)?;
+    let task: Vec<u8> = r.get(2)?;
+    let resources: String = r.get(4)?;
+    let operations: String = r.get(5)?;
+    let ceiling: String = r.get(6)?;
+    let status: String = r.get(9)?;
+    Ok(CapabilityLease {
+        lease_id: CapabilityLeaseId::from_bytes(blob16(id)?),
+        tenant_id: modbit_domain::TenantId::from_bytes(blob16(tenant)?),
+        task_id: TaskId::from_bytes(blob16(task)?),
+        agent_id: r.get(3)?,
+        resources: serde_json::from_str(&resources).map_err(|_| rusqlite::Error::InvalidQuery)?,
+        operations: serde_json::from_str(&operations).map_err(|_| rusqlite::Error::InvalidQuery)?,
+        effect_ceiling: q(&ceiling).map_err(|_| rusqlite::Error::InvalidQuery)?,
+        execution_profile: r.get(7)?,
+        generation: r.get::<_, i64>(8)? as u64,
+        state: q(&status).map_err(|_| rusqlite::Error::InvalidQuery)?,
+        expires_at: r.get::<_, Option<i64>>(10)?.map(Timestamp),
+        revoked_at: r.get::<_, Option<i64>>(11)?.map(Timestamp),
+        revoke_reason: r.get(12)?,
+    })
+}
+
+const LEASE_COLS: &str = "lease_id, tenant_id, task_id, agent_id, resource_json, operations_json, effect_ceiling, execution_profile, generation, status, expires_at, revoked_at, revoke_reason";
+
+/// Load a lease.
+pub fn load_lease(
+    tx: &rusqlite::Connection,
+    id: &CapabilityLeaseId,
+) -> Result<Option<CapabilityLease>> {
+    Ok(tx
+        .query_row(
+            &format!("SELECT {LEASE_COLS} FROM capability_leases WHERE lease_id = ?1"),
+            params![id.as_bytes().as_slice()],
+            lease_from_row,
+        )
+        .optional()?)
+}
+
+/// Every lease of a task, newest generation first.
+pub fn load_leases_for_task(
+    tx: &rusqlite::Connection,
+    task: &TaskId,
+) -> Result<Vec<CapabilityLease>> {
+    let mut stmt = tx.prepare(&format!(
+        "SELECT {LEASE_COLS} FROM capability_leases WHERE task_id = ?1 ORDER BY generation DESC, lease_id DESC"
+    ))?;
+    let rows = stmt.query_map(params![task.as_bytes().as_slice()], lease_from_row)?;
+    Ok(rows.collect::<std::result::Result<Vec<_>, _>>()?)
+}
+
+/// Every active lease of every task in a session.
+pub fn load_active_leases_for_session(
+    tx: &rusqlite::Connection,
+    session: &SessionId,
+) -> Result<Vec<CapabilityLease>> {
+    let mut stmt = tx.prepare(&format!(
+        "SELECT {} FROM capability_leases l JOIN tasks t ON t.task_id = l.task_id WHERE t.session_id = ?1 AND l.status = 'ACTIVE' ORDER BY l.lease_id",
+        LEASE_COLS
+            .split(", ")
+            .map(|c| format!("l.{c}"))
+            .collect::<Vec<_>>()
+            .join(", ")
+    ))?;
+    let rows = stmt.query_map(params![session.as_bytes().as_slice()], lease_from_row)?;
+    Ok(rows.collect::<std::result::Result<Vec<_>, _>>()?)
+}
+
+fn insert_receipt(tx: &rusqlite::Connection, r: &EffectReceipt) -> Result<()> {
+    let seq: i64 = tx.query_row(
+        "SELECT COALESCE(MAX(seq), 0) + 1 FROM effect_receipts",
+        [],
+        |row| row.get(0),
+    )?;
+    tx.execute(
+        "INSERT OR IGNORE INTO effect_receipts (effect_id, seq, previous_receipt_hash, task_id, turn_id, step_id, tool_call_id, capability_lease_id, intent_hash, policy_decision, approval_id, execution_target, evidence_ref, status, occurred_at, receipt_hash)
+         VALUES (?1, ?2, ?3, ?4, NULL, NULL, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
+        params![
+            r.effect_id.as_bytes().as_slice(),
+            seq,
+            &r.previous_receipt_hash,
+            r.task_id.as_bytes().as_slice(),
+            r.tool_call_id.as_bytes().as_slice(),
+            r.capability_lease_id.map(|l| l.as_bytes().to_vec()),
+            &r.intent_hash,
+            &r.policy_decision,
+            r.approval_id.map(|a| a.as_bytes().to_vec()),
+            &r.execution_target,
+            &r.evidence_ref,
+            &r.status,
+            r.occurred_at.millis(),
+            &r.receipt_hash,
+        ],
+    )?;
+    Ok(())
+}
+
+fn receipt_from_row(r: &rusqlite::Row<'_>) -> rusqlite::Result<EffectReceipt> {
+    let id: Vec<u8> = r.get(0)?;
+    let task: Vec<u8> = r.get(2)?;
+    let call: Vec<u8> = r.get(3)?;
+    let lease: Option<Vec<u8>> = r.get(4)?;
+    let approval: Option<Vec<u8>> = r.get(7)?;
+    Ok(EffectReceipt {
+        effect_id: modbit_domain::EffectId::from_bytes(blob16(id)?),
+        previous_receipt_hash: r.get(1)?,
+        task_id: TaskId::from_bytes(blob16(task)?),
+        tool_call_id: ToolCallId::from_bytes(blob16(call)?),
+        capability_lease_id: lease
+            .map(blob16)
+            .transpose()?
+            .map(CapabilityLeaseId::from_bytes),
+        intent_hash: r.get(5)?,
+        policy_decision: r.get(6)?,
+        approval_id: approval
+            .map(blob16)
+            .transpose()?
+            .map(ApprovalId::from_bytes),
+        execution_target: r.get(8)?,
+        evidence_ref: r.get(9)?,
+        status: r.get(10)?,
+        occurred_at: Timestamp(r.get(11)?),
+        receipt_hash: r.get(12)?,
+    })
+}
+
+const RECEIPT_COLS: &str = "effect_id, previous_receipt_hash, task_id, tool_call_id, capability_lease_id, intent_hash, policy_decision, approval_id, execution_target, evidence_ref, status, occurred_at, receipt_hash";
+
+/// The hash of the newest receipt in the chain, if any.
+pub fn last_receipt_hash(tx: &rusqlite::Connection) -> Result<Option<String>> {
+    Ok(tx
+        .query_row(
+            "SELECT receipt_hash FROM effect_receipts ORDER BY seq DESC LIMIT 1",
+            [],
+            |r| r.get(0),
+        )
+        .optional()?)
+}
+
+/// The whole receipt chain in order (optionally one task's receipts).
+pub fn load_receipts(
+    tx: &rusqlite::Connection,
+    task: Option<&TaskId>,
+) -> Result<Vec<EffectReceipt>> {
+    let mut out = Vec::new();
+    match task {
+        Some(t) => {
+            let mut stmt = tx.prepare(&format!(
+                "SELECT {RECEIPT_COLS} FROM effect_receipts WHERE task_id = ?1 ORDER BY seq"
+            ))?;
+            let rows = stmt.query_map(params![t.as_bytes().as_slice()], receipt_from_row)?;
+            for r in rows {
+                out.push(r?);
+            }
+        }
+        None => {
+            let mut stmt = tx.prepare(&format!(
+                "SELECT {RECEIPT_COLS} FROM effect_receipts ORDER BY seq"
+            ))?;
+            let rows = stmt.query_map([], receipt_from_row)?;
+            for r in rows {
+                out.push(r?);
+            }
+        }
+    }
+    Ok(out)
 }
 
 /// Truncate the projection tables and replay every event from offset 0.
 pub fn rebuild(tx: &Transaction<'_>, objects: &crate::ObjectStore) -> Result<u64> {
     for t in [
+        "effect_receipts",
+        "approvals",
+        "capability_leases",
         "tool_calls",
         "run_steps",
         "turns",

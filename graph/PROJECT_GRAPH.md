@@ -402,7 +402,7 @@ flowchart LR
 | `M2.2` | COMPLETE | Git branch/worktree/diff operations |  |
 | `M2.3` | COMPLETE | `modbit-execd` structured argv/PTy/replay/OutputRef |  |
 | `M2.4` | COMPLETE | Tool Registry + direct `fs/git/shell/test` tools |  |
-| `M2.5` | NOT_STARTED | Capability Kernel + basic approval flow |  |
+| `M2.5` | IMPLEMENTING | Capability Kernel + basic approval flow |  |
 | `M2.6` | NOT_STARTED | Provider Gateway OpenAI + Anthropic streaming |  |
 | `M2.7` | NOT_STARTED | Basic Prompt Compiler and one-agent runtime |  |
 | `M2.8` | NOT_STARTED | Verification engine build/test checks | derived plan recorded before the first run; BASELINE, TARGETED and COMPLETION stages with regression attribution; normalized `TestReport`/`CheckResult` from real runners on the Alpha fixtures; flake rerun protocol; diff invariants DI-1..DI-9 (`64_VERIFICATION_EXECUTION_CONTRACTS.md`, PX-032..034/036/037). |

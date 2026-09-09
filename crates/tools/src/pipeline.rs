@@ -32,6 +32,7 @@ pub struct ExecTarget {
 }
 
 /// Everything a tool may touch during one invocation.
+#[derive(Clone)]
 pub struct InvokeContext {
     /// Task.
     pub task_id: TaskId,
@@ -49,6 +50,9 @@ pub struct InvokeContext {
     pub sink: Arc<dyn ObjectSink>,
     /// Inline output budget for this call.
     pub output_budget_bytes: u64,
+    /// Per-call kernel adapter overriding the runtime's default policy (the
+    /// Core binds the task lease, the call's approval and the session state).
+    pub kernel: Option<Arc<dyn CapabilityPort>>,
 }
 
 /// Status of a tool call result (docs/30 `ToolCallResult.status` plus the
@@ -68,6 +72,8 @@ pub enum ToolStatus {
     UnknownOutcome,
     /// Policy denied before any effect.
     PolicyDenied,
+    /// Policy needs an approval bound to this intent before any effect.
+    ApprovalPending,
     /// Arguments failed normalization or schema validation before any effect.
     InvalidArguments,
     /// Unknown tool.
@@ -155,6 +161,19 @@ fn canonical(v: &Value) -> String {
         }
     }
     sort(v).to_string()
+}
+
+/// sha256 of the canonical JSON of `arguments_json` (the intent hash an
+/// approval binds), or `None` when the text is not a JSON object.
+#[must_use]
+pub fn arguments_hash(arguments_json: &str) -> Option<String> {
+    let v: Value = serde_json::from_str(arguments_json).ok()?;
+    if !v.is_object() {
+        return None;
+    }
+    let mut h = Sha256::new();
+    h.update(canonical(&v).as_bytes());
+    Some(hex::encode(h.finalize()))
 }
 
 /// Runtime: registry + kernel port.
@@ -301,13 +320,18 @@ impl ToolRuntime {
         });
 
         // 3. policy (arguments are never shown to the kernel as text)
-        let decision = self.policy.decide(&PolicyRequest {
+        let port: &dyn CapabilityPort = match &ctx.kernel {
+            Some(k) => k.as_ref(),
+            None => self.policy.as_ref(),
+        };
+        let decision = port.decide(&PolicyRequest {
             tool_name: spec.name.clone(),
             effect_class: spec.effect_class,
             required_capabilities: spec.required_capabilities.clone(),
             execution_profile: ctx.execution_profile.clone(),
             has_workspace: ctx.workspace.is_some(),
             has_lease: ctx.capability_lease_id.is_some(),
+            intent_hash: args_hash.clone(),
         });
         if !spec
             .execution_profiles
@@ -329,6 +353,24 @@ impl ToolRuntime {
             stage: "policy".into(),
             outcome: format!("{decision:?}"),
         });
+        // Approval needed: no effect; the Core opens the approval and the same
+        // tool_call_id re-enters the pipeline once it is resolved.
+        if let PolicyDecision::ApprovalRequired { reason, .. } = &decision
+            && verdict.denied.is_none()
+        {
+            return PipelineOutcome {
+                result: base(
+                    ToolStatus::ApprovalPending,
+                    &args_hash,
+                    Some("APPROVAL_REQUIRED".into()),
+                    Some(reason.clone()),
+                ),
+                stages,
+                policy: Some(decision),
+                effect_class: Some(spec.effect_class),
+                tool_version: Some(spec.version.clone()),
+            };
+        }
         // Monotonic guard: nothing after this point may clear a denial.
         if let Some((code, reason)) = &verdict.denied {
             return PipelineOutcome {

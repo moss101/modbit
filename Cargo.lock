@@ -794,8 +794,10 @@ name = "modbit-core"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "hex",
  "modbit-domain",
  "modbit-event-store",
+ "modbit-policy",
  "modbit-protocol",
  "modbit-terminal",
  "modbit-tools",
@@ -805,6 +807,7 @@ dependencies = [
  "rand",
  "serde",
  "serde_json",
+ "sha2",
  "subtle",
  "tempfile",
  "tokio",
@@ -911,9 +914,11 @@ dependencies = [
 name = "modbit-policy"
 version = "0.0.0"
 dependencies = [
+ "hex",
  "modbit-domain",
  "serde",
  "serde_json",
+ "sha2",
 ]
 
 [[package]]

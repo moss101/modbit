@@ -62,6 +62,9 @@ pub struct Session {
     pub lease_generation: u64,
     /// Opaque identity of the lease owner (client build/kind label).
     pub lease_owner: Option<String>,
+    /// Emergency stop time (docs/23 "Emergency stop"): while set, the kernel
+    /// blocks every new effect in this session.
+    pub emergency_stopped_at: Option<Timestamp>,
 }
 
 /// Session events (docs/30 "Session/task").
@@ -96,6 +99,11 @@ pub enum SessionEvent {
         /// Owner label.
         owner: String,
     },
+    /// `EmergencyStopActivated`: block new effects; leases are revoked alongside.
+    EmergencyStopActivated {
+        /// Reason.
+        reason: String,
+    },
 }
 
 impl SessionEvent {
@@ -109,6 +117,7 @@ impl SessionEvent {
             Self::SessionArchived => "SessionArchived",
             Self::SessionFocusChanged { .. } => "SessionFocusChanged",
             Self::SessionLeaseAcquired { .. } => "SessionLeaseAcquired",
+            Self::EmergencyStopActivated { .. } => "EmergencyStopActivated",
         }
     }
 }
@@ -137,6 +146,7 @@ impl Session {
                 current_task_id: None,
                 lease_generation: 0,
                 lease_owner: None,
+                emergency_stopped_at: None,
             }),
             other => Err(crate::InvalidTransition {
                 aggregate: "Session",
@@ -189,6 +199,10 @@ impl Session {
                 }
                 self.lease_generation = *lease_generation;
                 self.lease_owner = Some(owner.clone());
+                None
+            }
+            SessionEvent::EmergencyStopActivated { .. } => {
+                self.emergency_stopped_at = Some(at);
                 None
             }
         };

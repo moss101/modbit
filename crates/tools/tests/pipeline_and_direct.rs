@@ -76,6 +76,7 @@ fn fixture(exec: Option<ExecTarget>) -> Fixture {
         exec,
         sink: sink.clone(),
         output_budget_bytes: 4096,
+        kernel: None,
     };
     let mut registry = ToolRegistry::new();
     modbit_tools::direct::register_direct(&mut registry).unwrap();
@@ -189,6 +190,7 @@ async fn qual_ev_0239_0080_denial_is_monotonic_and_argument_text_cannot_bypass_p
         exec: None,
         sink: f.sink.clone(),
         output_budget_bytes: 4096,
+        kernel: None,
     };
     let o = f
         .runtime
@@ -340,6 +342,46 @@ async fn fs_change_and_git_tools_run_against_the_real_substrate_with_revision_bi
         .runtime
         .invoke(
             &f.ctx,
+            ToolCallId::new(),
+            "git.worktree.close",
+            &format!(
+                r#"{{"path":"{}"}}"#,
+                wt.display()
+                    .to_string()
+                    .trim_start_matches(r"\\?\")
+                    .replace('\\', "/")
+            ),
+        )
+        .await;
+    // Destructive: the default policy asks for an approval and nothing happens.
+    assert_eq!(
+        o.result.status,
+        ToolStatus::ApprovalPending,
+        "{:?}",
+        o.result
+    );
+    assert!(
+        matches!(&o.policy, Some(PolicyDecision::ApprovalRequired { scope_json, .. }) if scope_json.contains(&o.result.arguments_hash)),
+        "{:?}",
+        o.policy
+    );
+    assert!(wt.exists(), "no effect before approval");
+    // A per-call kernel adapter (what the Core binds after an approval) lets it through.
+    struct Approved;
+    impl CapabilityPort for Approved {
+        fn decide(&self, _: &PolicyRequest) -> PolicyDecision {
+            PolicyDecision::Allow {
+                rule: "approval:test".into(),
+                approval_id: Some("test".into()),
+            }
+        }
+    }
+    let mut approved_ctx = f.ctx.clone();
+    approved_ctx.kernel = Some(Arc::new(Approved));
+    let o = f
+        .runtime
+        .invoke(
+            &approved_ctx,
             ToolCallId::new(),
             "git.worktree.close",
             &format!(

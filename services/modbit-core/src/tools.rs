@@ -11,14 +11,18 @@ use std::process::{Child, Command, Stdio};
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
+use modbit_domain::approval::{Approval, ApprovalEvent};
 use modbit_domain::event::{Actor, AggregateType};
-use modbit_domain::toolcall::ToolCallEvent;
-use modbit_domain::{SessionId, TaskId, TenantId, ToolCallId};
+use modbit_domain::lease::CapabilityLease;
+use modbit_domain::toolcall::{EffectReceipt, ToolCall, ToolCallEvent, ToolCallState};
+use modbit_domain::{ApprovalId, SessionId, TaskId, TenantId, ToolCallId};
 use modbit_event_store::{AppendRequest, EventStore, NewEvent, ObjectStore};
+use modbit_policy::{CapabilityKernel, KernelDecision, KernelRequest};
 use modbit_protocol::local::{ReadyLine, decode_hex};
 use modbit_tools::pipeline::ExecTarget;
 use modbit_tools::{
-    InvokeContext, ObjectSink, PolicyDecision, ProfilePolicy, ToolRegistry, ToolRuntime, ToolStatus,
+    CapabilityPort, InvokeContext, ObjectSink, PolicyDecision, PolicyRequest, ProfilePolicy,
+    ToolRegistry, ToolRuntime, ToolStatus,
 };
 use modbit_workspace::WorkspaceService;
 use tokio::sync::Mutex;
@@ -153,22 +157,33 @@ impl ToolHost {
         Ok((ws, canonical))
     }
 
-    /// Run one call through the pipeline, recording ToolCall events on the log.
-    #[allow(clippy::too_many_arguments)]
+    /// Run one call through the pipeline with the Capability Kernel bound to
+    /// the task's lease, the call's approval and the session state; record
+    /// the ToolCall trail (and, for protected effects, a receipt) on the log.
+    ///
+    /// `existing` is the projection of a call re-entering the pipeline after
+    /// an approval (same `tool_call_id`, same intent hash).
     pub async fn invoke(
         &self,
         store: &Mutex<EventStore>,
-        tenant_id: TenantId,
-        session_id: SessionId,
-        task_id: TaskId,
-        workspace_root: Option<String>,
-        execution_profile: &str,
-        tool_call_id: ToolCallId,
-        tool_name: &str,
-        arguments_json: &str,
-        output_budget_bytes: u64,
-        actor: Actor,
-    ) -> Result<(modbit_tools::ToolCallResult, String)> {
+        call: InvokeRequest<'_>,
+    ) -> Result<Invoked> {
+        let InvokeRequest {
+            tenant_id,
+            session_id,
+            task_id,
+            workspace_root,
+            execution_profile,
+            tool_call_id,
+            tool_name,
+            arguments_json,
+            output_budget_bytes,
+            actor,
+            lease,
+            approval,
+            emergency_stopped,
+            existing,
+        } = call;
         let (workspace, root) = match &workspace_root {
             Some(r) => {
                 let (ws, canonical) = self.workspace(r).await?;
@@ -177,97 +192,160 @@ impl ToolHost {
             None => (None, None),
         };
         let sink: Arc<dyn ObjectSink> = Arc::new(StoreSink(store.lock().await.objects().clone()));
+        let lease_id = lease.as_ref().map(|l| l.lease_id);
+        let port = KernelPort {
+            kernel: CapabilityKernel::default(),
+            lease,
+            approval,
+            emergency_stopped,
+        };
         let ctx = InvokeContext {
             task_id,
             execution_profile: execution_profile.to_owned(),
-            capability_lease_id: None,
+            capability_lease_id: lease_id,
             workspace,
-            workspace_root: root,
+            workspace_root: root.clone(),
             exec: self.execd.as_ref().map(|e| e.target.clone()),
             sink,
             output_budget_bytes,
+            kernel: Some(Arc::new(port)),
         };
         let outcome = self
             .runtime
             .invoke(&ctx, tool_call_id, tool_name, arguments_json)
             .await;
-        // Evidence: the stage trail becomes ToolCall events on the canonical log.
+        let mut result = outcome.result.clone();
         let effect_class = outcome
             .effect_class
             .unwrap_or(modbit_domain::toolcall::EffectClass::ReadOnly);
-        let mut events = vec![typed(
-            "ToolCallProposed",
-            &ToolCallEvent::ToolCallProposed {
-                task_id,
-                step_id: None,
-                tool_name: tool_name.to_owned(),
-                tool_version: outcome.tool_version.clone().unwrap_or_default(),
-                effect_class,
-                capability_lease_id: None,
-                arguments_hash: outcome.result.arguments_hash.clone(),
-            },
-            actor.clone(),
-        )];
-        let result_json = serde_json::to_vec(&outcome.result)?;
-        let result_ref = store.lock().await.objects().put(&result_json)?;
-        match outcome.result.status {
+        let now = modbit_domain::Timestamp::now();
+
+        // Evidence: the stage trail becomes ToolCall events on the canonical log.
+        let mut events = Vec::new();
+        let (expected_sequence, prior_state) = match &existing {
+            Some(c) => (Some(c.generation), Some(c.state)),
+            None => (Some(0), None),
+        };
+        if existing.is_none() {
+            events.push(typed(
+                "ToolCallProposed",
+                &ToolCallEvent::ToolCallProposed {
+                    task_id,
+                    step_id: None,
+                    tool_name: tool_name.to_owned(),
+                    tool_version: outcome.tool_version.clone().unwrap_or_default(),
+                    effect_class,
+                    capability_lease_id: lease_id,
+                    arguments_hash: result.arguments_hash.clone(),
+                },
+                actor.clone(),
+            ));
+        }
+        let mut approval_id: Option<ApprovalId> = None;
+        let mut approval_events: Option<(ApprovalId, Vec<NewEvent>)> = None;
+        let mut receipt: Option<EffectReceipt> = None;
+        match result.status {
             ToolStatus::InvalidArguments | ToolStatus::UnknownTool => {
                 events.push(typed(
                     "ToolCallFailed",
                     &ToolCallEvent::ToolCallFailed {
-                        failure_code: outcome.result.error_code.clone().unwrap_or_default(),
-                        result_ref: Some(result_ref.clone()),
+                        failure_code: result.error_code.clone().unwrap_or_default(),
+                        result_ref: None,
                     },
                     actor.clone(),
                 ));
             }
-            ToolStatus::PolicyDenied => {
-                let (decision, approval_required) = match &outcome.policy {
-                    Some(PolicyDecision::Deny {
-                        code,
-                        reason,
-                        approval_required,
-                    }) => (format!("{code}: {reason}"), *approval_required),
+            ToolStatus::ApprovalPending => {
+                let (reason, scope_json) = match &outcome.policy {
+                    Some(PolicyDecision::ApprovalRequired { reason, scope_json }) => {
+                        (reason.clone(), scope_json.clone())
+                    }
                     _ => (
-                        outcome.result.error_message.clone().unwrap_or_default(),
-                        false,
+                        result.error_message.clone().unwrap_or_default(),
+                        "{}".into(),
                     ),
                 };
-                events.push(typed(
-                    "ToolCallValidated",
-                    &ToolCallEvent::ToolCallValidated,
-                    actor.clone(),
-                ));
+                if prior_state == Some(ToolCallState::ApprovalPending) {
+                    // Still waiting: nothing new on the log; report the open approval.
+                    approval_id = existing.as_ref().and_then(|c| c.approval_id);
+                    events.clear();
+                } else {
+                    let id = ApprovalId::new();
+                    approval_id = Some(id);
+                    events.push(typed(
+                        "ToolCallValidated",
+                        &ToolCallEvent::ToolCallValidated,
+                        actor.clone(),
+                    ));
+                    events.push(typed(
+                        "ToolCallApprovalRequested",
+                        &ToolCallEvent::ToolCallApprovalRequested {
+                            approval_id: id,
+                            decision: format!("APPROVAL_REQUIRED: {reason}"),
+                        },
+                        actor.clone(),
+                    ));
+                    approval_events = Some((
+                        id,
+                        vec![typed(
+                            "ApprovalRequested",
+                            &ApprovalEvent::ApprovalRequested {
+                                task_id,
+                                tool_call_id,
+                                tool_name: tool_name.to_owned(),
+                                effect_class,
+                                intent_hash: result.arguments_hash.clone(),
+                                scope_json,
+                                expires_at: Some(modbit_domain::Timestamp(now.0 + APPROVAL_TTL_MS)),
+                            },
+                            actor.clone(),
+                        )],
+                    ));
+                }
+            }
+            ToolStatus::PolicyDenied => {
+                let decision = match &outcome.policy {
+                    Some(PolicyDecision::Deny { code, reason, .. }) => format!("{code}: {reason}"),
+                    _ => result.error_message.clone().unwrap_or_default(),
+                };
+                if prior_state != Some(ToolCallState::ApprovalPending) {
+                    events.push(typed(
+                        "ToolCallValidated",
+                        &ToolCallEvent::ToolCallValidated,
+                        actor.clone(),
+                    ));
+                }
                 events.push(typed(
                     "ToolCallPolicyDecision",
                     &ToolCallEvent::ToolCallPolicyDecision {
                         allowed: false,
                         decision,
-                        approval_required,
+                        approval_required: false,
                     },
                     actor.clone(),
                 ));
-                if approval_required {
-                    // ApprovalPending stays open for M2.5; record the failure of this attempt as evidence via result_ref only.
-                } else {
-                    // Denied outright: the aggregate is already Failed by the decision event.
-                }
             }
             _ => {
-                let decision = match &outcome.policy {
-                    Some(PolicyDecision::Allow { rule }) => rule.clone(),
-                    other => format!("{other:?}"),
+                let (decision, used_approval) = match &outcome.policy {
+                    Some(PolicyDecision::Allow { rule, approval_id }) => (
+                        rule.clone(),
+                        approval_id.as_ref().and_then(|a| ApprovalId::parse(a).ok()),
+                    ),
+                    other => (format!("{other:?}"), None),
                 };
-                events.push(typed(
-                    "ToolCallValidated",
-                    &ToolCallEvent::ToolCallValidated,
-                    actor.clone(),
-                ));
+                approval_id = used_approval;
+                if prior_state != Some(ToolCallState::ApprovalPending) {
+                    events.push(typed(
+                        "ToolCallValidated",
+                        &ToolCallEvent::ToolCallValidated,
+                        actor.clone(),
+                    ));
+                }
                 events.push(typed(
                     "ToolCallPolicyDecision",
                     &ToolCallEvent::ToolCallPolicyDecision {
                         allowed: true,
-                        decision,
+                        decision: decision.clone(),
                         approval_required: false,
                     },
                     actor.clone(),
@@ -277,51 +355,212 @@ impl ToolHost {
                     &ToolCallEvent::ToolCallDispatched,
                     actor.clone(),
                 ));
-                match outcome.result.status {
-                    ToolStatus::Success => events.push(typed(
-                        "ToolCallSucceeded",
-                        &ToolCallEvent::ToolCallSucceeded {
-                            result_ref: result_ref.clone(),
-                        },
-                        actor.clone(),
-                    )),
-                    ToolStatus::UnknownOutcome => events.push(typed(
-                        "ToolCallUnknownOutcome",
-                        &ToolCallEvent::ToolCallUnknownOutcome {
-                            reason: outcome.result.error_message.clone().unwrap_or_default(),
-                        },
-                        actor.clone(),
-                    )),
-                    ToolStatus::Cancelled => events.push(typed(
-                        "ToolCallCancelled",
-                        &ToolCallEvent::ToolCallCancelled,
-                        actor.clone(),
-                    )),
-                    _ => events.push(typed(
-                        "ToolCallFailed",
-                        &ToolCallEvent::ToolCallFailed {
-                            failure_code: outcome.result.error_code.clone().unwrap_or_default(),
-                            result_ref: Some(result_ref.clone()),
-                        },
-                        actor.clone(),
-                    )),
+                // Protected/external/destructive effects get a receipt in the chain.
+                if effect_class >= modbit_domain::toolcall::EffectClass::ProtectedWrite {
+                    let effect_id = modbit_domain::EffectId::new();
+                    result.effect_receipt_ids.push(effect_id.to_string());
+                    receipt = Some(EffectReceipt {
+                        effect_id,
+                        previous_receipt_hash: None,
+                        task_id,
+                        tool_call_id,
+                        capability_lease_id: lease_id,
+                        intent_hash: result.arguments_hash.clone(),
+                        policy_decision: decision,
+                        approval_id: used_approval,
+                        execution_target: root
+                            .as_ref()
+                            .map(|r| format!("local:{}", r.display()))
+                            .unwrap_or_else(|| "local".into()),
+                        evidence_ref: None,
+                        status: format!("{:?}", result.status).to_uppercase(),
+                        occurred_at: now,
+                        receipt_hash: String::new(),
+                    });
                 }
             }
         }
-        let req = AppendRequest {
-            tenant_id,
-            session_id,
-            task_id: Some(task_id),
-            run_id: None,
-            turn_id: None,
-            step_id: None,
-            aggregate_type: AggregateType::ToolCall,
-            aggregate_id: *tool_call_id.as_bytes(),
-            expected_sequence: Some(0),
-            events,
-        };
-        store.lock().await.append(req)?;
-        Ok((outcome.result, result_ref))
+        let result_json = serde_json::to_vec(&result)?;
+        let result_ref = store.lock().await.objects().put(&result_json)?;
+        if let Some(mut r) = receipt.take() {
+            r.evidence_ref = Some(result_ref.clone());
+            r.previous_receipt_hash = store.lock().await.last_receipt_hash()?;
+            let sealed = modbit_policy::ledger::seal(r);
+            events.push(typed(
+                "EffectReceiptAppended",
+                &ToolCallEvent::EffectReceiptAppended { receipt: sealed },
+                actor.clone(),
+            ));
+        }
+        if matches!(
+            result.status,
+            ToolStatus::Success
+                | ToolStatus::ApplicationFailure
+                | ToolStatus::InfraFailure
+                | ToolStatus::Cancelled
+                | ToolStatus::UnknownOutcome
+        ) {
+            match result.status {
+                ToolStatus::Success => events.push(typed(
+                    "ToolCallSucceeded",
+                    &ToolCallEvent::ToolCallSucceeded {
+                        result_ref: result_ref.clone(),
+                    },
+                    actor.clone(),
+                )),
+                ToolStatus::UnknownOutcome => events.push(typed(
+                    "ToolCallUnknownOutcome",
+                    &ToolCallEvent::ToolCallUnknownOutcome {
+                        reason: result.error_message.clone().unwrap_or_default(),
+                    },
+                    actor.clone(),
+                )),
+                ToolStatus::Cancelled => events.push(typed(
+                    "ToolCallCancelled",
+                    &ToolCallEvent::ToolCallCancelled,
+                    actor.clone(),
+                )),
+                _ => events.push(typed(
+                    "ToolCallFailed",
+                    &ToolCallEvent::ToolCallFailed {
+                        failure_code: result.error_code.clone().unwrap_or_default(),
+                        result_ref: Some(result_ref.clone()),
+                    },
+                    actor.clone(),
+                )),
+            }
+        } else if matches!(
+            result.status,
+            ToolStatus::InvalidArguments | ToolStatus::UnknownTool
+        ) {
+            // Attach the diagnostics object to the failure recorded above.
+            if let Some(NewEvent { payload, .. }) = events.last_mut()
+                && let Some(obj) = payload.as_object_mut()
+            {
+                obj.insert(
+                    "result_ref".into(),
+                    serde_json::Value::String(result_ref.clone()),
+                );
+            }
+        }
+        if !events.is_empty() {
+            let mut st = store.lock().await;
+            st.append(AppendRequest {
+                tenant_id,
+                session_id,
+                task_id: Some(task_id),
+                run_id: None,
+                turn_id: None,
+                step_id: None,
+                aggregate_type: AggregateType::ToolCall,
+                aggregate_id: *tool_call_id.as_bytes(),
+                expected_sequence,
+                events,
+            })?;
+            if let Some((id, evs)) = approval_events {
+                st.append(AppendRequest {
+                    tenant_id,
+                    session_id,
+                    task_id: Some(task_id),
+                    run_id: None,
+                    turn_id: None,
+                    step_id: None,
+                    aggregate_type: AggregateType::Approval,
+                    aggregate_id: *id.as_bytes(),
+                    expected_sequence: Some(0),
+                    events: evs,
+                })?;
+            }
+        }
+        Ok(Invoked {
+            result,
+            result_ref,
+            approval_id,
+        })
+    }
+}
+
+/// Approvals expire a day after they are requested (docs/23: approval binds expiry).
+const APPROVAL_TTL_MS: i64 = 24 * 60 * 60 * 1000;
+
+/// One invocation as the Core sees it.
+pub struct InvokeRequest<'a> {
+    /// Tenant.
+    pub tenant_id: TenantId,
+    /// Session.
+    pub session_id: SessionId,
+    /// Task.
+    pub task_id: TaskId,
+    /// Approved workspace root.
+    pub workspace_root: Option<String>,
+    /// Execution profile.
+    pub execution_profile: &'a str,
+    /// Client-stable call id.
+    pub tool_call_id: ToolCallId,
+    /// Tool.
+    pub tool_name: &'a str,
+    /// Arguments.
+    pub arguments_json: &'a str,
+    /// Inline budget.
+    pub output_budget_bytes: u64,
+    /// Actor.
+    pub actor: Actor,
+    /// The task's current lease.
+    pub lease: Option<CapabilityLease>,
+    /// Approval bound to this call, if any.
+    pub approval: Option<Approval>,
+    /// Session emergency stop.
+    pub emergency_stopped: bool,
+    /// Existing projection when the call re-enters after an approval.
+    pub existing: Option<ToolCall>,
+}
+
+/// What an invocation produced.
+pub struct Invoked {
+    /// Result.
+    pub result: modbit_tools::ToolCallResult,
+    /// Object hash of the result JSON.
+    pub result_ref: String,
+    /// Approval opened or consumed.
+    pub approval_id: Option<ApprovalId>,
+}
+
+/// Per-call adapter from the pipeline port to the Capability Kernel.
+struct KernelPort {
+    kernel: CapabilityKernel,
+    lease: Option<CapabilityLease>,
+    approval: Option<Approval>,
+    emergency_stopped: bool,
+}
+
+impl CapabilityPort for KernelPort {
+    fn decide(&self, req: &PolicyRequest) -> PolicyDecision {
+        let d = self.kernel.decide(&KernelRequest {
+            tool_name: &req.tool_name,
+            effect_class: req.effect_class,
+            required_capabilities: &req.required_capabilities,
+            execution_profile: &req.execution_profile,
+            lease: self.lease.as_ref(),
+            approval: self.approval.as_ref(),
+            intent_hash: &req.intent_hash,
+            config: None,
+            emergency_stopped: self.emergency_stopped,
+            now: modbit_domain::Timestamp::now(),
+        });
+        match d {
+            KernelDecision::Allow { rule, approval_id } => PolicyDecision::Allow {
+                rule,
+                approval_id: approval_id.map(|a| a.to_string()),
+            },
+            KernelDecision::Deny { code, reason } => PolicyDecision::Deny {
+                code,
+                reason,
+                approval_required: false,
+            },
+            KernelDecision::ApprovalRequired { reason, scope_json } => {
+                PolicyDecision::ApprovalRequired { reason, scope_json }
+            }
+        }
     }
 }
 

@@ -12,8 +12,10 @@
 
 #![forbid(unsafe_code)]
 
+pub mod approval;
 pub mod event;
 pub mod ids;
+pub mod lease;
 pub mod run;
 pub mod session;
 pub mod state;

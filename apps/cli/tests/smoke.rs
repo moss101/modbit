@@ -92,12 +92,13 @@ fn cli_drives_a_real_core_end_to_end() {
     );
     assert!(ok, "{all}");
     let lines: Vec<_> = out.lines().collect();
-    assert_eq!(lines.len(), 4, "{all}");
+    assert_eq!(lines.len(), 5, "{all}");
     assert!(
         lines[0].ends_with("SessionCreated")
             && lines[1].ends_with("SessionLeaseAcquired")
             && lines[2].ends_with("TaskCreated")
-            && lines[3].ends_with("TaskQueued"),
+            && lines[3].ends_with("TaskQueued")
+            && lines[4].ends_with("CapabilityLeaseGranted"),
         "{all}"
     );
 
@@ -107,7 +108,7 @@ fn cli_drives_a_real_core_end_to_end() {
         &["events", "tail", "--session", &sid, "--after", "3"],
     );
     assert!(
-        ok && out.lines().count() == 1 && out.contains("TaskQueued"),
+        ok && out.lines().count() == 2 && out.contains("TaskQueued"),
         "{all}"
     );
 
@@ -120,15 +121,30 @@ fn cli_drives_a_real_core_end_to_end() {
     let repo = tmp.path().join("repo");
     std::fs::create_dir_all(&repo).unwrap();
     std::fs::write(repo.join("hello.txt"), "hi\n").unwrap();
-    assert!(
-        Command::new("git")
-            .arg("-C")
-            .arg(&repo)
-            .args(["init", "-q"])
-            .status()
-            .unwrap()
-            .success()
-    );
+    for args in [
+        vec!["init", "-q", "-b", "main"],
+        vec!["add", "-A"],
+        vec![
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@e",
+            "commit",
+            "-q",
+            "-m",
+            "base",
+        ],
+    ] {
+        assert!(
+            Command::new("git")
+                .arg("-C")
+                .arg(&repo)
+                .args(&args)
+                .status()
+                .unwrap()
+                .success()
+        );
+    }
     let repo_str = repo
         .canonicalize()
         .unwrap()
@@ -206,6 +222,107 @@ fn cli_drives_a_real_core_end_to_end() {
         ok && out.contains("ToolCallSucceeded") && out.contains("ToolCallFailed"),
         "{all}"
     );
+
+    // M2.5: the task lease, an approval-gated destructive tool, the receipt chain.
+    let (ok, out, all) = cli(&data_dir, &core, &["lease", "list", "--task", &tid]);
+    assert!(
+        ok && out.contains("status=ACTIVE") && out.contains("profile=local_trusted"),
+        "{all}"
+    );
+    let wt = repo_str.clone() + "-wt";
+    let wt_json = wt.replace('\\', "/");
+    let (ok, out, all) = cli(
+        &data_dir,
+        &core,
+        &[
+            "tool",
+            "invoke",
+            "--session",
+            &sid,
+            "--task",
+            &tid,
+            "git.worktree.create",
+            &format!(r#"{{"branch":"task/cli","path":"{wt_json}"}}"#),
+        ],
+    );
+    assert!(ok && out.contains("status=SUCCESS"), "{all}");
+    let call = "0123456789abcdef0123456789abcdef";
+    let close = format!(r#"{{"path":"{wt_json}"}}"#);
+    let (ok, out, all) = cli(
+        &data_dir,
+        &core,
+        &[
+            "tool",
+            "invoke",
+            "--session",
+            &sid,
+            "--task",
+            &tid,
+            "--call",
+            call,
+            "git.worktree.close",
+            &close,
+        ],
+    );
+    assert!(ok && out.contains("status=APPROVAL_PENDING"), "{all}");
+    assert!(
+        std::path::Path::new(&wt).exists(),
+        "no effect before approval"
+    );
+    let (ok, out, all) = cli(&data_dir, &core, &["approval", "list", "--session", &sid]);
+    assert!(ok && out.contains("status=REQUESTED"), "{all}");
+    let approval = out
+        .lines()
+        .find_map(|l| l.strip_prefix("approval "))
+        .and_then(|l| l.split(' ').next())
+        .unwrap()
+        .to_owned();
+    let (ok, out, all) = cli(
+        &data_dir,
+        &core,
+        &[
+            "approval",
+            "resolve",
+            "--session",
+            &sid,
+            "--approval",
+            &approval,
+            "approve",
+            "looks",
+            "fine",
+        ],
+    );
+    assert!(ok && out.contains("status=APPROVED"), "{all}");
+    let (ok, out, all) = cli(
+        &data_dir,
+        &core,
+        &[
+            "tool",
+            "invoke",
+            "--session",
+            &sid,
+            "--task",
+            &tid,
+            "--call",
+            call,
+            "git.worktree.close",
+            &close,
+        ],
+    );
+    assert!(
+        ok && out.contains("status=SUCCESS") && out.contains(&format!("approval={approval}")),
+        "{all}"
+    );
+    assert!(!std::path::Path::new(&wt).exists());
+    let (ok, out, all) = cli(&data_dir, &core, &["receipts", "--task", &tid]);
+    assert!(
+        ok && out.contains("receipt_chain valid=true count=1") && out.contains("status=SUCCESS"),
+        "{all}"
+    );
+    let (ok, out, all) = cli(&data_dir, &core, &["stop", "--session", &sid, "halt"]);
+    assert!(ok && out.contains("leases_revoked=2"), "{all}");
+    let (ok, out, all) = cli(&data_dir, &core, &["lease", "list", "--task", &tid]);
+    assert!(ok && out.contains("status=REVOKED"), "{all}");
 
     let (ok, _, all) = cli(&data_dir, &core, &["session", "show", "--session", "00"]);
     assert!(!ok && all.contains("not a 32-hex-char id"), "{all}");

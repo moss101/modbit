@@ -201,6 +201,8 @@ message ToolInvoked {
   string error_message = 6;
   uint64 workspace_revision_after = 7;
   string result_ref = 8;         // object hash of the full ToolCallResult JSON
+  string approval_id = 9;        // hex; set when status is APPROVAL_PENDING or an approval was consumed
+  repeated string effect_receipt_ids = 10; // hex effect ids appended to the receipt chain (docs/23)
 }
 
 message ListTools {}
@@ -215,4 +217,96 @@ message ToolSpecView {
 
 message ToolList {
   repeated ToolSpecView tools = 1;
+}
+
+// ---- M2.5 Capability Kernel + approval flow (docs/23) ----
+
+message ListApprovals {
+  Id session_id = 1;
+}
+
+message ApprovalView {
+  Id approval_id = 1;
+  Id task_id = 2;
+  Id tool_call_id = 3;
+  string tool_name = 4;
+  string effect_class = 5;
+  string intent_hash = 6;        // sha256 of the normalized arguments the approval binds
+  string scope_json = 7;
+  string status = 8;             // REQUESTED | APPROVED | DENIED | EXPIRED
+  int64 requested_at_ms = 9;
+  int64 expires_at_ms = 10;      // 0 = never
+  string resolver = 11;
+}
+
+message ApprovalList {
+  repeated ApprovalView approvals = 1;
+}
+
+message ResolveApproval {
+  Id approval_id = 1;
+  bool approve = 2;
+  string reason = 3;
+}
+
+message ApprovalResolvedAck {
+  Id approval_id = 1;
+  string status = 2;
+  uint64 offset = 3;
+}
+
+message EmergencyStop {
+  Id session_id = 1;
+  string reason = 2;
+}
+
+message EmergencyStopped {
+  uint32 leases_revoked = 1;
+  uint64 offset = 2;
+}
+
+message GetEffectReceipts {
+  Id task_id = 1;                // absent = the whole chain
+}
+
+message EffectReceiptView {
+  Id effect_id = 1;
+  string previous_receipt_hash = 2;
+  Id task_id = 3;
+  Id tool_call_id = 4;
+  Id capability_lease_id = 5;
+  string intent_hash = 6;
+  string policy_decision = 7;
+  Id approval_id = 8;
+  string execution_target = 9;
+  string evidence_ref = 10;
+  string status = 11;
+  int64 occurred_at_ms = 12;
+  string receipt_hash = 13;
+}
+
+message EffectReceiptList {
+  repeated EffectReceiptView receipts = 1;
+  bool chain_valid = 2;          // every hash recomputes and links to its predecessor
+  string detail = 3;
+}
+
+message GetCapabilityLeases {
+  Id task_id = 1;
+}
+
+message CapabilityLeaseView {
+  Id lease_id = 1;
+  Id task_id = 2;
+  repeated string resources = 3;
+  repeated string operations = 4;
+  string effect_ceiling = 5;
+  string execution_profile = 6;
+  uint64 generation = 7;
+  string status = 8;             // ACTIVE | REVOKED
+  string revoke_reason = 9;
+}
+
+message CapabilityLeaseList {
+  repeated CapabilityLeaseView leases = 1;
 }

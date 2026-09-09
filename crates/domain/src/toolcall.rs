@@ -5,7 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::ids::{CapabilityLeaseId, RunStepId, TaskId, ToolCallId};
+use crate::ids::{ApprovalId, CapabilityLeaseId, EffectId, RunStepId, TaskId, ToolCallId};
 use crate::state::StateMachine;
 use crate::time::Timestamp;
 
@@ -119,6 +119,40 @@ pub struct ToolCall {
     pub unknown_outcome_reason: Option<String>,
     /// Policy decision text.
     pub policy_decision: Option<String>,
+    /// Approval the call waits on / executed under.
+    pub approval_id: Option<ApprovalId>,
+}
+
+/// A protected-effect receipt (docs/23 "Protected-effect receipt chain").
+/// `receipt_hash` = sha256 over the canonical JSON of every other field.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EffectReceipt {
+    /// Identity.
+    pub effect_id: EffectId,
+    /// Previous receipt hash in the tenant chain (`None` for the first).
+    pub previous_receipt_hash: Option<String>,
+    /// Task.
+    pub task_id: TaskId,
+    /// Tool call.
+    pub tool_call_id: ToolCallId,
+    /// Lease presented.
+    pub capability_lease_id: Option<CapabilityLeaseId>,
+    /// Intent hash.
+    pub intent_hash: String,
+    /// Policy decision text.
+    pub policy_decision: String,
+    /// Approval used.
+    pub approval_id: Option<ApprovalId>,
+    /// Where it ran.
+    pub execution_target: String,
+    /// Result object hash.
+    pub evidence_ref: Option<String>,
+    /// Outcome status.
+    pub status: String,
+    /// When.
+    pub occurred_at: Timestamp,
+    /// Hash of the receipt.
+    pub receipt_hash: String,
 }
 
 /// Tool call events (docs/30 "Tool/procedure").
@@ -153,8 +187,20 @@ pub enum ToolCallEvent {
         /// Approval needed (moves to ApprovalPending when not allowed but approvable).
         approval_required: bool,
     },
+    /// `ToolCallApprovalRequested`: validated, policy needs an approval.
+    ToolCallApprovalRequested {
+        /// Approval opened.
+        approval_id: ApprovalId,
+        /// Decision text.
+        decision: String,
+    },
     /// `ToolCallDispatched`.
     ToolCallDispatched,
+    /// `EffectReceiptAppended`: a protected/external effect got a receipt.
+    EffectReceiptAppended {
+        /// Receipt.
+        receipt: EffectReceipt,
+    },
     /// `ToolCallSucceeded`.
     ToolCallSucceeded {
         /// Result object hash.
@@ -184,7 +230,9 @@ impl ToolCallEvent {
             Self::ToolCallProposed { .. } => "ToolCallProposed",
             Self::ToolCallValidated => "ToolCallValidated",
             Self::ToolCallPolicyDecision { .. } => "ToolCallPolicyDecision",
+            Self::ToolCallApprovalRequested { .. } => "ToolCallApprovalRequested",
             Self::ToolCallDispatched => "ToolCallDispatched",
+            Self::EffectReceiptAppended { .. } => "EffectReceiptAppended",
             Self::ToolCallSucceeded { .. } => "ToolCallSucceeded",
             Self::ToolCallFailed { .. } => "ToolCallFailed",
             Self::ToolCallCancelled => "ToolCallCancelled",
@@ -233,6 +281,7 @@ impl ToolCall {
                 result_ref: None,
                 unknown_outcome_reason: None,
                 policy_decision: None,
+                approval_id: None,
             }),
             other => Err(crate::InvalidTransition {
                 aggregate: "ToolCall",
@@ -268,7 +317,24 @@ impl ToolCall {
                     Failed
                 }
             }
+            ToolCallEvent::ToolCallApprovalRequested {
+                approval_id,
+                decision,
+            } => {
+                self.policy_decision = Some(decision.clone());
+                self.approval_id = Some(*approval_id);
+                ApprovalPending
+            }
             ToolCallEvent::ToolCallDispatched => Dispatched,
+            ToolCallEvent::EffectReceiptAppended { receipt } => {
+                // Receipts attach to a dispatched call; they do not move the state.
+                if !matches!(self.state, Dispatched | Streaming) {
+                    return Err(invalid(self.state, "EffectReceiptAppended"));
+                }
+                self.generation += 1;
+                let _ = receipt;
+                return Ok(());
+            }
             ToolCallEvent::ToolCallSucceeded { result_ref } => {
                 self.state.transition(Succeeded)?;
                 self.result_ref = Some(result_ref.clone());

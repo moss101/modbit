@@ -175,6 +175,67 @@ CREATE TABLE IF NOT EXISTS tool_calls (
 CREATE INDEX IF NOT EXISTS tool_calls_task ON tool_calls (task_id, dispatched_at);
 "#;
 
+/// Version 5 (M2.5): approvals, capability leases, the effect receipt chain
+/// (docs/31 `approvals`, `capability_leases`, `effect_receipts`) and the
+/// session emergency stop.
+pub const V5_KERNEL: &str = r#"
+ALTER TABLE sessions ADD COLUMN emergency_stopped_at INTEGER;
+ALTER TABLE tool_calls ADD COLUMN approval_id BLOB;
+CREATE TABLE IF NOT EXISTS approvals (
+  approval_id      BLOB PRIMARY KEY NOT NULL,
+  task_id          BLOB NOT NULL,
+  tool_call_id     BLOB NOT NULL,
+  tool_name        TEXT NOT NULL,
+  effect_class     TEXT NOT NULL,
+  intent_hash      TEXT NOT NULL,
+  scope_json       TEXT NOT NULL,
+  status           TEXT NOT NULL,
+  generation       INTEGER NOT NULL,
+  requested_at     INTEGER NOT NULL,
+  resolved_at      INTEGER,
+  resolver_user_id TEXT,
+  expires_at       INTEGER
+);
+CREATE INDEX IF NOT EXISTS approvals_task ON approvals (task_id, status);
+CREATE INDEX IF NOT EXISTS approvals_tool_call ON approvals (tool_call_id);
+CREATE TABLE IF NOT EXISTS capability_leases (
+  lease_id          BLOB PRIMARY KEY NOT NULL,
+  tenant_id         BLOB NOT NULL,
+  task_id           BLOB NOT NULL,
+  agent_id          TEXT,
+  resource_json     TEXT NOT NULL,
+  operations_json   TEXT NOT NULL,
+  effect_ceiling    TEXT NOT NULL,
+  execution_profile TEXT NOT NULL,
+  generation        INTEGER NOT NULL,
+  status            TEXT NOT NULL,
+  expires_at        INTEGER,
+  revoked_at        INTEGER,
+  revoke_reason     TEXT
+);
+CREATE INDEX IF NOT EXISTS capability_leases_task ON capability_leases (task_id, status);
+CREATE TABLE IF NOT EXISTS effect_receipts (
+  effect_id             BLOB PRIMARY KEY NOT NULL,
+  seq                   INTEGER NOT NULL,
+  previous_receipt_hash TEXT,
+  task_id               BLOB NOT NULL,
+  turn_id               BLOB,
+  step_id               BLOB,
+  tool_call_id          BLOB NOT NULL,
+  capability_lease_id   BLOB,
+  intent_hash           TEXT NOT NULL,
+  policy_decision       TEXT NOT NULL,
+  approval_id           BLOB,
+  execution_target      TEXT NOT NULL,
+  evidence_ref          TEXT,
+  status                TEXT NOT NULL,
+  occurred_at           INTEGER NOT NULL,
+  receipt_hash          TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS effect_receipts_seq ON effect_receipts (seq);
+CREATE INDEX IF NOT EXISTS effect_receipts_task ON effect_receipts (task_id, seq);
+"#;
+
 /// All migrations in order. Never edit an entry once shipped; append a new one.
 pub const MIGRATIONS: &[Migration] = &[
     Migration {
@@ -200,6 +261,12 @@ pub const MIGRATIONS: &[Migration] = &[
         name: "workspace_root_and_tool_calls",
         up: V4_WORKSPACE_ROOT_AND_TOOL_CALLS,
         rollback: "Additive: a nullable column and a derivable table. Rollback = drop `tool_calls` and rebuild projections; no event is touched.",
+    },
+    Migration {
+        version: 5,
+        name: "kernel_approvals_leases_receipts",
+        up: V5_KERNEL,
+        rollback: "Additive: nullable columns and derivable tables. Rollback = drop `approvals`, `capability_leases`, `effect_receipts` and rebuild projections; no event is touched.",
     },
 ];
 

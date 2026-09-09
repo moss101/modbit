@@ -1542,8 +1542,23 @@
    "milestone": "M2",
    "order": 4,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-09T14:13:52Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: IMPLEMENTED-PARTIAL (M2.4 kernel port + lease-less default policy; no leases, approvals, receipts or stop)"
+    },
+    {
+     "at": "2026-09-09T14:13:52Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "modbit-policy kernel+ledger; domain Approval/CapabilityLease aggregates; store schema v5; Core InvokeTool binds the kernel, ListApprovals/ResolveApproval/EmergencyStop/GetEffectReceipts/GetCapabilityLeases; CLI subcommands"
+    }
+   ],
+   "status_changed_on": "2026-09-09T14:13:52Z"
   },
   {
    "id": "M2.6",

@@ -11,6 +11,7 @@ publish.workspace = true
 anyhow.workspace = true
 modbit-domain.workspace = true
 modbit-event-store.workspace = true
+modbit-policy.workspace = true
 modbit-protocol.workspace = true
 modbit-terminal.workspace = true
 modbit-tools.workspace = true
@@ -20,6 +21,8 @@ prost-types.workspace = true
 rand.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
+hex.workspace = true
 subtle.workspace = true
 tokio.workspace = true
 

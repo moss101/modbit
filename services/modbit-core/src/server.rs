@@ -11,9 +11,13 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
+use modbit_domain::approval::ApprovalEvent;
 use modbit_domain::event::{Actor, AggregateType};
+use modbit_domain::lease::CapabilityLeaseEvent;
 use modbit_domain::session::SessionEvent;
+use modbit_domain::state::StateMachine;
 use modbit_domain::task::{InputMode, TaskEvent, TaskOrigin};
+use modbit_domain::toolcall::ToolCallEvent;
 use modbit_domain::{
     EventId, SessionId, SpaceId, TaskId, TenantId, Timestamp, ToolCallId, UserId, WorkspaceId,
 };
@@ -342,6 +346,11 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "ReadObjectRange",
                     "InvokeTool",
                     "ListTools",
+                    "ListApprovals",
+                    "ResolveApproval",
+                    "EmergencyStop",
+                    "GetEffectReceipts",
+                    "GetCapabilityLeases",
                 ]
                 .map(String::from)
                 .to_vec(),
@@ -642,7 +651,7 @@ async fn handle_command(core: &Core, env: CommandEnvelope) -> CommandAck {
                         "TaskCreated",
                         &TaskEvent::TaskCreated {
                             session_id,
-                            goal_text: p.goal_text,
+                            goal_text: p.goal_text.clone(),
                             workspace_id,
                             workspace_root: if p.workspace_root.is_empty() {
                                 None
@@ -653,21 +662,70 @@ async fn handle_command(core: &Core, env: CommandEnvelope) -> CommandAck {
                             execution_profile: if p.execution_profile.is_empty() {
                                 "local_trusted".into()
                             } else {
-                                p.execution_profile
+                                p.execution_profile.clone()
                             },
                             policy_profile_id: None,
                             origin,
                         },
                         actor.clone(),
                     ),
-                    typed("TaskQueued", &TaskEvent::TaskQueued, actor),
+                    typed("TaskQueued", &TaskEvent::TaskQueued, actor.clone()),
                 ],
+            };
+            let profile = if p.execution_profile.is_empty() {
+                "local_trusted".to_owned()
+            } else {
+                p.execution_profile.clone()
+            };
+            let root = if p.workspace_root.is_empty() {
+                None
+            } else {
+                Some(p.workspace_root.clone())
             };
             match store.execute_command(record("CreateTask"), req) {
                 Ok(outcome) => {
                     let (events, replayed) = split(outcome);
-                    let offset = events.last().map(|e| e.offset).unwrap_or(0);
+                    let mut offset = events.last().map(|e| e.offset).unwrap_or(0);
                     if !replayed {
+                        // Capability Kernel (docs/23): the task's default lease. Tools
+                        // present it; the tool name alone is never authority.
+                        let (resources, operations, effect_ceiling) =
+                            modbit_policy::default_lease_for_profile(&profile, root.as_deref());
+                        let lease_id = modbit_domain::CapabilityLeaseId::new();
+                        let grant = AppendRequest {
+                            tenant_id: core.tenant_id,
+                            session_id,
+                            task_id: Some(task_id),
+                            run_id: None,
+                            turn_id: None,
+                            step_id: None,
+                            aggregate_type: AggregateType::CapabilityLease,
+                            aggregate_id: *lease_id.as_bytes(),
+                            expected_sequence: Some(0),
+                            events: vec![typed(
+                                "CapabilityLeaseGranted",
+                                &CapabilityLeaseEvent::CapabilityLeaseGranted {
+                                    tenant_id: core.tenant_id,
+                                    task_id,
+                                    agent_id: None,
+                                    resources,
+                                    operations,
+                                    effect_ceiling,
+                                    execution_profile: profile,
+                                    generation: 1,
+                                    expires_at: None,
+                                },
+                                actor.clone(),
+                            )],
+                        };
+                        match store.append(grant) {
+                            Ok(stored) => {
+                                if let Some(last) = stored.last() {
+                                    offset = last.offset;
+                                }
+                            }
+                            Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                        }
                         core.last_offset.send_replace(offset);
                     }
                     accept(
@@ -954,60 +1012,397 @@ async fn handle_command(core: &Core, env: CommandEnvelope) -> CommandAck {
             else {
                 return reject(cid, "BAD_PAYLOAD", "tool_call_id required (16 bytes)");
             };
-            let task = {
+            let (task, session) = {
                 let store = core.store.lock().await;
-                match store.task(&task_id) {
+                let task = match store.task(&task_id) {
                     Ok(Some(t)) => t,
                     Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
                     Err(e) => return reject(cid, error_code(&e), e.to_string()),
-                }
+                };
+                let session = match store.session(&task.session_id) {
+                    Ok(Some(s)) => s,
+                    Ok(None) => return reject(cid, "UNKNOWN_SESSION", task.session_id.to_string()),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                };
+                (task, session)
             };
             if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
                 return ack;
             }
-            // Idempotent by tool_call_id: an existing call replays its recorded result.
-            let prior = {
+            // Idempotent by tool_call_id: a finished call replays its recorded
+            // result; a call waiting on an approval re-enters the pipeline with
+            // the same intent; a different intent under the same id is refused.
+            let (existing, lease, approval) = {
                 let store = core.store.lock().await;
-                match store.tool_call(&tool_call_id) {
-                    Ok(Some(existing)) => existing.result_ref.and_then(|r| {
-                        let bytes = store.objects().get(&r).ok()?;
-                        let prior: modbit_tools::ToolCallResult =
-                            serde_json::from_slice(&bytes).ok()?;
-                        Some((prior, r))
-                    }),
-                    _ => None,
+                let existing = match store.tool_call(&tool_call_id) {
+                    Ok(e) => e,
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                };
+                if let Some(c) = &existing {
+                    if let Some(h) = modbit_tools::arguments_hash(&p.arguments_json)
+                        && h != c.arguments_hash
+                    {
+                        return reject(
+                            cid,
+                            "TOOL_CALL_ID_REUSED",
+                            "tool_call_id already bound to different arguments (intent hash mismatch)",
+                        );
+                    }
+                    if let Some(r) = &c.result_ref
+                        && let Ok(bytes) = store.objects().get(r)
+                        && let Ok(prior) =
+                            serde_json::from_slice::<modbit_tools::ToolCallResult>(&bytes)
+                    {
+                        return accept(
+                            cid,
+                            true,
+                            tool_invoked(&prior, r, c.approval_id).encode_to_vec(),
+                        );
+                    }
+                    if c.state.is_terminal() {
+                        let mut view = wire::ToolInvoked {
+                            tool_call_id: Some(wire_id(c.tool_call_id.as_bytes())),
+                            status: "POLICY_DENIED".into(),
+                            error_code: "APPROVAL_DENIED".into(),
+                            error_message: c.policy_decision.clone().unwrap_or_default(),
+                            ..Default::default()
+                        };
+                        view.approval_id = c
+                            .approval_id
+                            .map(|a| encode_hex(a.as_bytes()))
+                            .unwrap_or_default();
+                        return accept(cid, true, view.encode_to_vec());
+                    }
+                    if c.state != modbit_domain::toolcall::ToolCallState::ApprovalPending {
+                        return reject(cid, "TOOL_CALL_IN_FLIGHT", format!("{:?}", c.state));
+                    }
                 }
+                let lease = match store.leases_for_task(&task_id) {
+                    Ok(l) => l.into_iter().next(),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                };
+                let approval = match store.approval_for_call(&tool_call_id) {
+                    Ok(a) => a,
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                };
+                (existing, lease, approval)
             };
-            if let Some((prior, r)) = prior {
-                return accept(cid, true, tool_invoked(&prior, &r).encode_to_vec());
-            }
-            match core
-                .tools
-                .invoke(
-                    &core.store,
-                    core.tenant_id,
-                    task.session_id,
-                    task_id,
-                    task.workspace_root.clone(),
-                    &task.execution_profile,
-                    tool_call_id,
-                    &p.tool_name,
-                    &p.arguments_json,
-                    p.output_budget_bytes,
-                    actor,
-                )
-                .await
-            {
-                Ok((result, result_ref)) => {
+            let req = crate::tools::InvokeRequest {
+                tenant_id: core.tenant_id,
+                session_id: task.session_id,
+                task_id,
+                workspace_root: task.workspace_root.clone(),
+                execution_profile: &task.execution_profile,
+                tool_call_id,
+                tool_name: &p.tool_name,
+                arguments_json: &p.arguments_json,
+                output_budget_bytes: p.output_budget_bytes,
+                actor,
+                lease,
+                approval,
+                emergency_stopped: session.emergency_stopped_at.is_some(),
+                existing,
+            };
+            match core.tools.invoke(&core.store, req).await {
+                Ok(done) => {
                     let offset = core.store.lock().await.last_offset().unwrap_or(0);
                     core.last_offset.send_replace(offset);
                     accept(
                         cid,
                         false,
-                        tool_invoked(&result, &result_ref).encode_to_vec(),
+                        tool_invoked(&done.result, &done.result_ref, done.approval_id)
+                            .encode_to_vec(),
                     )
                 }
                 Err(e) => reject(cid, "TOOL_HOST", e.to_string()),
+            }
+        }
+        "ListApprovals" => {
+            let Ok(p) = wire::ListApprovals::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "ListApprovals");
+            };
+            let Some(session_id) = p
+                .session_id
+                .as_ref()
+                .and_then(id16)
+                .map(SessionId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "session_id required");
+            };
+            let store = core.store.lock().await;
+            match store.approvals_for_session(&session_id) {
+                Ok(list) => accept(
+                    cid,
+                    false,
+                    wire::ApprovalList {
+                        approvals: list.iter().map(approval_view).collect(),
+                    }
+                    .encode_to_vec(),
+                ),
+                Err(e) => reject(cid, error_code(&e), e.to_string()),
+            }
+        }
+        "ResolveApproval" => {
+            let Ok(p) = wire::ResolveApproval::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "ResolveApproval");
+            };
+            let Some(approval_id) = p
+                .approval_id
+                .as_ref()
+                .and_then(id16)
+                .map(modbit_domain::ApprovalId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "approval_id required");
+            };
+            let (approval, task) = {
+                let store = core.store.lock().await;
+                let approval = match store.approval(&approval_id) {
+                    Ok(Some(a)) => a,
+                    Ok(None) => return reject(cid, "UNKNOWN_APPROVAL", approval_id.to_string()),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                };
+                let task = match store.task(&approval.task_id) {
+                    Ok(Some(t)) => t,
+                    Ok(None) => return reject(cid, "UNKNOWN_TASK", approval.task_id.to_string()),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                };
+                (approval, task)
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
+                return ack;
+            }
+            if approval.state != modbit_domain::approval::ApprovalState::Requested {
+                return accept(
+                    cid,
+                    true,
+                    wire::ApprovalResolvedAck {
+                        approval_id: Some(wire_id(approval_id.as_bytes())),
+                        status: format!("{:?}", approval.state).to_uppercase(),
+                        offset: 0,
+                    }
+                    .encode_to_vec(),
+                );
+            }
+            let mut store = core.store.lock().await;
+            let resolved = AppendRequest {
+                tenant_id: core.tenant_id,
+                session_id: task.session_id,
+                task_id: Some(task.task_id),
+                run_id: None,
+                turn_id: None,
+                step_id: None,
+                aggregate_type: AggregateType::Approval,
+                aggregate_id: *approval_id.as_bytes(),
+                expected_sequence: Some(approval.generation),
+                events: vec![typed(
+                    "ApprovalResolved",
+                    &ApprovalEvent::ApprovalResolved {
+                        approved: p.approve,
+                        resolver: format!("user:{}", core.user_id),
+                        reason: p.reason.clone(),
+                    },
+                    actor.clone(),
+                )],
+            };
+            let mut offset = match store.append(resolved) {
+                Ok(ev) => ev.last().map(|e| e.offset).unwrap_or(0),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            if !p.approve
+                && let Ok(Some(call)) = store.tool_call(&approval.tool_call_id)
+                && call.state == modbit_domain::toolcall::ToolCallState::ApprovalPending
+            {
+                let failed = AppendRequest {
+                    tenant_id: core.tenant_id,
+                    session_id: task.session_id,
+                    task_id: Some(task.task_id),
+                    run_id: None,
+                    turn_id: None,
+                    step_id: None,
+                    aggregate_type: AggregateType::ToolCall,
+                    aggregate_id: *call.tool_call_id.as_bytes(),
+                    expected_sequence: Some(call.generation),
+                    events: vec![typed(
+                        "ToolCallFailed",
+                        &ToolCallEvent::ToolCallFailed {
+                            failure_code: "APPROVAL_DENIED".into(),
+                            result_ref: None,
+                        },
+                        actor.clone(),
+                    )],
+                };
+                match store.append(failed) {
+                    Ok(ev) => offset = ev.last().map(|e| e.offset).unwrap_or(offset),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                }
+            }
+            core.last_offset.send_replace(offset);
+            accept(
+                cid,
+                false,
+                wire::ApprovalResolvedAck {
+                    approval_id: Some(wire_id(approval_id.as_bytes())),
+                    status: if p.approve { "APPROVED" } else { "DENIED" }.into(),
+                    offset,
+                }
+                .encode_to_vec(),
+            )
+        }
+        "EmergencyStop" => {
+            let Ok(p) = wire::EmergencyStop::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "EmergencyStop");
+            };
+            let Some(session_id) = p
+                .session_id
+                .as_ref()
+                .and_then(id16)
+                .map(SessionId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "session_id required");
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
+                return ack;
+            }
+            let mut store = core.store.lock().await;
+            let session = match store.session(&session_id) {
+                Ok(Some(s)) => s,
+                Ok(None) => return reject(cid, "UNKNOWN_SESSION", session_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            let reason = if p.reason.is_empty() {
+                "operator emergency stop".to_owned()
+            } else {
+                p.reason.clone()
+            };
+            let mut offset = 0;
+            if session.emergency_stopped_at.is_none() {
+                let stop = AppendRequest {
+                    tenant_id: core.tenant_id,
+                    session_id,
+                    task_id: None,
+                    run_id: None,
+                    turn_id: None,
+                    step_id: None,
+                    aggregate_type: AggregateType::Session,
+                    aggregate_id: *session_id.as_bytes(),
+                    expected_sequence: Some(session.generation),
+                    events: vec![typed(
+                        "EmergencyStopActivated",
+                        &SessionEvent::EmergencyStopActivated {
+                            reason: reason.clone(),
+                        },
+                        actor.clone(),
+                    )],
+                };
+                match store.append(stop) {
+                    Ok(ev) => offset = ev.last().map(|e| e.offset).unwrap_or(0),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                }
+            }
+            let leases = match store.active_leases_for_session(&session_id) {
+                Ok(l) => l,
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            let mut revoked = 0u32;
+            for l in leases {
+                let req = AppendRequest {
+                    tenant_id: core.tenant_id,
+                    session_id,
+                    task_id: Some(l.task_id),
+                    run_id: None,
+                    turn_id: None,
+                    step_id: None,
+                    aggregate_type: AggregateType::CapabilityLease,
+                    aggregate_id: *l.lease_id.as_bytes(),
+                    expected_sequence: None,
+                    events: vec![typed(
+                        "CapabilityLeaseRevoked",
+                        &CapabilityLeaseEvent::CapabilityLeaseRevoked {
+                            reason: format!("EMERGENCY_STOP: {reason}"),
+                        },
+                        actor.clone(),
+                    )],
+                };
+                match store.append(req) {
+                    Ok(ev) => {
+                        revoked += 1;
+                        offset = ev.last().map(|e| e.offset).unwrap_or(offset);
+                    }
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                }
+            }
+            if offset > 0 {
+                core.last_offset.send_replace(offset);
+            }
+            accept(
+                cid,
+                false,
+                wire::EmergencyStopped {
+                    leases_revoked: revoked,
+                    offset,
+                }
+                .encode_to_vec(),
+            )
+        }
+        "GetEffectReceipts" => {
+            let Ok(p) = wire::GetEffectReceipts::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "GetEffectReceipts");
+            };
+            let task = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes);
+            let store = core.store.lock().await;
+            // Verify the whole chain (links cross tasks), then project the requested slice.
+            let all = match store.receipts(None) {
+                Ok(r) => r,
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            let verified = modbit_policy::ledger::verify_chain(&all);
+            let receipts: Vec<_> = all
+                .iter()
+                .filter(|r| task.is_none_or(|t| r.task_id == t))
+                .map(receipt_view)
+                .collect();
+            accept(
+                cid,
+                false,
+                wire::EffectReceiptList {
+                    receipts,
+                    chain_valid: verified.is_ok(),
+                    detail: verified.err().unwrap_or_default(),
+                }
+                .encode_to_vec(),
+            )
+        }
+        "GetCapabilityLeases" => {
+            let Ok(p) = wire::GetCapabilityLeases::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "GetCapabilityLeases");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let store = core.store.lock().await;
+            match store.leases_for_task(&task_id) {
+                Ok(list) => accept(
+                    cid,
+                    false,
+                    wire::CapabilityLeaseList {
+                        leases: list
+                            .iter()
+                            .map(|l| wire::CapabilityLeaseView {
+                                lease_id: Some(wire_id(l.lease_id.as_bytes())),
+                                task_id: Some(wire_id(l.task_id.as_bytes())),
+                                resources: l.resources.clone(),
+                                operations: l.operations.clone(),
+                                effect_ceiling: format!("{:?}", l.effect_ceiling),
+                                execution_profile: l.execution_profile.clone(),
+                                generation: l.generation,
+                                status: format!("{:?}", l.state).to_uppercase(),
+                                revoke_reason: l.revoke_reason.clone().unwrap_or_default(),
+                            })
+                            .collect(),
+                    }
+                    .encode_to_vec(),
+                ),
+                Err(e) => reject(cid, error_code(&e), e.to_string()),
             }
         }
         "GetRecoveryReport" => {
@@ -1041,7 +1436,11 @@ async fn handle_command(core: &Core, env: CommandEnvelope) -> CommandAck {
     }
 }
 
-fn tool_invoked(r: &modbit_tools::ToolCallResult, result_ref: &str) -> wire::ToolInvoked {
+fn tool_invoked(
+    r: &modbit_tools::ToolCallResult,
+    result_ref: &str,
+    approval_id: Option<modbit_domain::ApprovalId>,
+) -> wire::ToolInvoked {
     wire::ToolInvoked {
         tool_call_id: Some(wire_id(r.tool_call_id.as_bytes())),
         status: format!("{:?}", r.status)
@@ -1050,6 +1449,7 @@ fn tool_invoked(r: &modbit_tools::ToolCallResult, result_ref: &str) -> wire::Too
             .replace("INFRAFAILURE", "INFRA_FAILURE")
             .replace("UNKNOWNOUTCOME", "UNKNOWN_OUTCOME")
             .replace("POLICYDENIED", "POLICY_DENIED")
+            .replace("APPROVALPENDING", "APPROVAL_PENDING")
             .replace("INVALIDARGUMENTS", "INVALID_ARGUMENTS")
             .replace("UNKNOWNTOOL", "UNKNOWN_TOOL"),
         structured_output_json: r.structured_output.to_string(),
@@ -1058,6 +1458,44 @@ fn tool_invoked(r: &modbit_tools::ToolCallResult, result_ref: &str) -> wire::Too
         error_message: r.error_message.clone().unwrap_or_default(),
         workspace_revision_after: r.workspace_revision_after.unwrap_or(0),
         result_ref: result_ref.to_owned(),
+        approval_id: approval_id
+            .map(|a| encode_hex(a.as_bytes()))
+            .unwrap_or_default(),
+        effect_receipt_ids: r.effect_receipt_ids.clone(),
+    }
+}
+
+fn approval_view(a: &modbit_domain::approval::Approval) -> wire::ApprovalView {
+    wire::ApprovalView {
+        approval_id: Some(wire_id(a.approval_id.as_bytes())),
+        task_id: Some(wire_id(a.task_id.as_bytes())),
+        tool_call_id: Some(wire_id(a.tool_call_id.as_bytes())),
+        tool_name: a.tool_name.clone(),
+        effect_class: format!("{:?}", a.effect_class),
+        intent_hash: a.intent_hash.clone(),
+        scope_json: a.scope_json.clone(),
+        status: format!("{:?}", a.state).to_uppercase(),
+        requested_at_ms: a.requested_at.millis(),
+        expires_at_ms: a.expires_at.map(Timestamp::millis).unwrap_or(0),
+        resolver: a.resolver.clone().unwrap_or_default(),
+    }
+}
+
+fn receipt_view(r: &modbit_domain::toolcall::EffectReceipt) -> wire::EffectReceiptView {
+    wire::EffectReceiptView {
+        effect_id: Some(wire_id(r.effect_id.as_bytes())),
+        previous_receipt_hash: r.previous_receipt_hash.clone().unwrap_or_default(),
+        task_id: Some(wire_id(r.task_id.as_bytes())),
+        tool_call_id: Some(wire_id(r.tool_call_id.as_bytes())),
+        capability_lease_id: r.capability_lease_id.map(|l| wire_id(l.as_bytes())),
+        intent_hash: r.intent_hash.clone(),
+        policy_decision: r.policy_decision.clone(),
+        approval_id: r.approval_id.map(|a| wire_id(a.as_bytes())),
+        execution_target: r.execution_target.clone(),
+        evidence_ref: r.evidence_ref.clone().unwrap_or_default(),
+        status: r.status.clone(),
+        occurred_at_ms: r.occurred_at.millis(),
+        receipt_hash: r.receipt_hash.clone(),
     }
 }
 

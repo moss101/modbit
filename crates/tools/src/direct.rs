@@ -12,7 +12,7 @@ use crate::pipeline::InvokeContext;
 use crate::registry::{BoxFuture, Idempotency, Tool, ToolOutcome, ToolRegistry, ToolSpec};
 use crate::{EffectClass, Result};
 
-const PROFILES: &[&str] = &["local_trusted", "review_isolated"];
+const PROFILES: &[&str] = &["local_trusted", "review_isolated", "local_autonomous"];
 
 fn spec(
     name: &str,
@@ -386,8 +386,8 @@ tool!(
     GitWorktreeClose,
     spec(
         "git.worktree.close",
-        "Remove a task worktree.",
-        EffectClass::ReversibleWrite,
+        "Remove a task worktree (forced: uncommitted work in it is lost).",
+        EffectClass::Destructive,
         json!({"type":"object","properties":{"path":{"type":"string","minLength":1}},"required":["path"],"additionalProperties":false}),
         &["git.worktree"],
         Idempotency::Idempotent

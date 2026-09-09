@@ -1,7 +1,10 @@
-//! Capability Kernel port (docs/23). The kernel itself is M2.5; this module
-//! defines the boundary the pipeline calls and a conservative default policy
-//! for `local_trusted`: routine reads and reversible writes inside an
-//! approved workspace are allowed, everything else requires approval.
+//! Capability Kernel port (docs/23): the boundary the pipeline calls before
+//! any effect. The kernel itself lives in `modbit-policy::kernel` and is
+//! adapted per call by the Core (it needs the task's lease, the approval bound
+//! to the call and the session's emergency-stop state). [`ProfilePolicy`] is
+//! the lease-less default used by tests and by tools running without a Core:
+//! routine reads and reversible writes inside an approved workspace are
+//! allowed, everything else requires an approval.
 
 use serde::{Deserialize, Serialize};
 
@@ -22,6 +25,8 @@ pub struct PolicyRequest {
     pub has_workspace: bool,
     /// Whether the caller presented a capability lease.
     pub has_lease: bool,
+    /// sha256 of the normalized arguments: the intent an approval binds to.
+    pub intent_hash: String,
 }
 
 /// Decision.
@@ -32,6 +37,16 @@ pub enum PolicyDecision {
     Allow {
         /// Rule that allowed.
         rule: String,
+        /// Approval consumed, if the rule was an approval.
+        #[serde(default)]
+        approval_id: Option<String>,
+    },
+    /// Not now: an approval bound to the intent hash could unlock it.
+    ApprovalRequired {
+        /// Reason.
+        reason: String,
+        /// Scope the approval would bind (JSON text).
+        scope_json: String,
     },
     /// Denied.
     Deny {
@@ -56,7 +71,9 @@ pub struct ProfilePolicy;
 
 impl CapabilityPort for ProfilePolicy {
     fn decide(&self, req: &PolicyRequest) -> PolicyDecision {
-        if req.execution_profile != "local_trusted" && req.execution_profile != "review_isolated" {
+        if !["local_trusted", "review_isolated", "local_autonomous"]
+            .contains(&req.execution_profile.as_str())
+        {
             return PolicyDecision::Deny {
                 code: "PROFILE_UNSUPPORTED".into(),
                 reason: format!(
@@ -69,9 +86,11 @@ impl CapabilityPort for ProfilePolicy {
         match req.effect_class {
             EffectClass::ReadOnly => PolicyDecision::Allow {
                 rule: "local_trusted:read_only".into(),
+                approval_id: None,
             },
             EffectClass::ReversibleWrite if req.has_workspace => PolicyDecision::Allow {
                 rule: "local_trusted:reversible_write_in_workspace".into(),
+                approval_id: None,
             },
             EffectClass::ReversibleWrite => PolicyDecision::Deny {
                 code: "NO_WORKSPACE".into(),
@@ -81,13 +100,19 @@ impl CapabilityPort for ProfilePolicy {
             EffectClass::ProtectedWrite
             | EffectClass::ExternalSideEffect
             | EffectClass::SecretAccess
-            | EffectClass::Destructive => PolicyDecision::Deny {
-                code: "APPROVAL_REQUIRED".into(),
+            | EffectClass::Destructive => PolicyDecision::ApprovalRequired {
                 reason: format!(
-                    "{:?} effects require an approval bound to the intent hash (Capability Kernel, M2.5)",
+                    "{:?} effects require an approval bound to the intent hash",
                     req.effect_class
                 ),
-                approval_required: true,
+                scope_json: serde_json::json!({
+                    "tool": req.tool_name,
+                    "effect_class": req.effect_class,
+                    "capabilities": req.required_capabilities,
+                    "execution_profile": req.execution_profile,
+                    "intent_hash": req.intent_hash,
+                })
+                .to_string(),
             },
         }
     }

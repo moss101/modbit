@@ -419,6 +419,67 @@ impl EventStore {
         crate::projections::load_tool_call(&self.conn, id)
     }
 
+    /// Load an approval projection.
+    pub fn approval(
+        &self,
+        id: &modbit_domain::ApprovalId,
+    ) -> Result<Option<modbit_domain::approval::Approval>> {
+        crate::projections::load_approval(&self.conn, id)
+    }
+
+    /// The latest approval bound to a tool call.
+    pub fn approval_for_call(
+        &self,
+        id: &modbit_domain::ToolCallId,
+    ) -> Result<Option<modbit_domain::approval::Approval>> {
+        crate::projections::load_approval_for_call(&self.conn, id)
+    }
+
+    /// Approvals across a session's tasks (pending first).
+    pub fn approvals_for_session(
+        &self,
+        id: &SessionId,
+    ) -> Result<Vec<modbit_domain::approval::Approval>> {
+        crate::projections::load_approvals_for_session(&self.conn, id)
+    }
+
+    /// Load a capability lease projection.
+    pub fn lease(
+        &self,
+        id: &modbit_domain::CapabilityLeaseId,
+    ) -> Result<Option<modbit_domain::lease::CapabilityLease>> {
+        crate::projections::load_lease(&self.conn, id)
+    }
+
+    /// Leases of a task, newest first.
+    pub fn leases_for_task(
+        &self,
+        id: &TaskId,
+    ) -> Result<Vec<modbit_domain::lease::CapabilityLease>> {
+        crate::projections::load_leases_for_task(&self.conn, id)
+    }
+
+    /// Active leases across a session's tasks.
+    pub fn active_leases_for_session(
+        &self,
+        id: &SessionId,
+    ) -> Result<Vec<modbit_domain::lease::CapabilityLease>> {
+        crate::projections::load_active_leases_for_session(&self.conn, id)
+    }
+
+    /// Newest receipt hash in the protected-effect chain.
+    pub fn last_receipt_hash(&self) -> Result<Option<String>> {
+        crate::projections::last_receipt_hash(&self.conn)
+    }
+
+    /// The receipt chain (all, or one task's).
+    pub fn receipts(
+        &self,
+        task: Option<&TaskId>,
+    ) -> Result<Vec<modbit_domain::toolcall::EffectReceipt>> {
+        crate::projections::load_receipts(&self.conn, task)
+    }
+
     /// Load a run-step projection.
     pub fn step(&self, id: &RunStepId) -> Result<Option<modbit_domain::step::RunStep>> {
         crate::projections::load_step(&self.conn, id)
