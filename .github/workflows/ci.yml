@@ -100,13 +100,21 @@ jobs:
         run: cargo build --locked -p modbit-core -p modbit-execd
       - name: Build desktop bundles
         run: pnpm --filter @modbit/desktop build
+      - name: Warm the Electron binary (a cold download inside the test budget stalls macOS runners)
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo apt-get update -qq && sudo apt-get install -y -qq xvfb > /dev/null
+            xvfb-run -a pnpm --filter @modbit/desktop exec electron --version || true
+          else
+            pnpm --filter @modbit/desktop exec electron --version || true
+          fi
       - name: Playwright drives the Electron app (Linux under xvfb)
         shell: bash
         env:
           MODBIT_CORE_BIN: ${{ github.workspace }}/target/debug/modbit-core${{ runner.os == 'Windows' && '.exe' || '' }}
         run: |
           if [ "$RUNNER_OS" = "Linux" ]; then
-            sudo apt-get update -qq && sudo apt-get install -y -qq xvfb > /dev/null
             xvfb-run -a pnpm --filter @modbit/desktop exec playwright test -c e2e/playwright.config.ts
           else
             pnpm --filter @modbit/desktop exec playwright test -c e2e/playwright.config.ts
