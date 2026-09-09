@@ -1,0 +1,4 @@
+{"task":"M2.1","commit":"14f7771","evidence_tier":"release-critical",
+ "runs":[{"id":"gha-34348031607","kind":"hosted CI on 14f7771","result":"PASS: thirteen jobs green; modbit-workspace real-fs tests pass on macOS, Linux and Windows (symlink tests unix-only by design)","url":"https://github.com/moss101/modbit/actions/runs/34348031607","log":"ci-run-34348031607.json, ci-run-34348031607-tests.log"}],
+ "faults":["symlink to a file outside the root","symlink to a directory outside the root","../ traversal","absolute path outside the root","protected .git/.ssh/.env/user pattern reads, writes and deletes","stale content hash after a concurrent edit","stale workspace revision","create over an existing file","malformed and overlapping edits","rename failure with read-only directory"],
+ "acceptance":{"Workspace File Service with safe paths/revisions":"PASS"}}

@@ -1,0 +1,16 @@
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T11:55:50.2613330Z test replacement_is_atomic_when_the_rename_fails ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T11:55:50.2865450Z test stale_preconditions_are_rejected_and_nothing_is_written ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T11:55:50.2910080Z test protected_paths_are_denied_after_resolution_and_listed_as_opaque ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T11:55:50.3543720Z test symlink_escapes_and_parent_traversal_are_rejected_for_reads_and_writes ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T11:55:50.4091410Z test typed_operations_advance_a_persisted_monotonic_revision_with_change_records ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T11:55:50.4251530Z test revision_binds_to_the_real_git_head_and_resets_changed_set_on_new_commit ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T11:55:48.6621260Z test replacement_is_atomic_when_the_rename_fails ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T11:55:48.6622479Z test stale_preconditions_are_rejected_and_nothing_is_written ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T11:55:48.6659611Z test protected_paths_are_denied_after_resolution_and_listed_as_opaque ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T11:55:48.6728759Z test symlink_escapes_and_parent_traversal_are_rejected_for_reads_and_writes ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T11:55:48.6854288Z test revision_binds_to_the_real_git_head_and_resets_changed_set_on_new_commit ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T11:55:48.6856698Z test typed_operations_advance_a_persisted_monotonic_revision_with_change_records ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T12:01:38.0837062Z test stale_preconditions_are_rejected_and_nothing_is_written ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T12:01:38.2865012Z test protected_paths_are_denied_after_resolution_and_listed_as_opaque ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T12:01:38.5076962Z test typed_operations_advance_a_persisted_monotonic_revision_with_change_records ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T12:01:38.6089203Z test revision_binds_to_the_real_git_head_and_resets_changed_set_on_new_commit ... ok

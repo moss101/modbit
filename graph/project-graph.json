@@ -1345,8 +1345,14 @@
    "milestone": "M2",
    "order": 0,
    "source": "docs/43",
-   "status": "IMPLEMENTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-34348031607",
+    "commit:14f7771",
+    "artifact:evidence/m2/M2.1/evidence.json",
+    "artifact:evidence/m2/M2.1/TASK_CARD.md",
+    "test:symlink_escapes_and_parent_traversal_are_rejected_for_reads_and_writes"
+   ],
    "notes": [
     {
      "at": "2026-09-09T11:50:06Z",
@@ -1359,10 +1365,22 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "modbit-workspace: path policy with symlink resolution and protected patterns, typed ops with preconditions and atomic writes, persisted WorkspaceRevision bound to git HEAD; six real-fs tests pass locally."
+    },
+    {
+     "at": "2026-09-09T12:02:51Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Service is the canonical write path consumed by the M2.4 tools; CI runs its real-fs tests on three platforms (run 34348031607)."
+    },
+    {
+     "at": "2026-09-09T12:02:51Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Escape, protection, precondition and atomicity faults pass on hosted macOS/Linux/Windows."
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-09-09T11:54:21Z"
+   "status_changed_on": "2026-09-09T12:02:52Z"
   },
   {
    "id": "M2.2",
