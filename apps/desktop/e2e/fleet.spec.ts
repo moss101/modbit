@@ -17,7 +17,15 @@ const coreBin = process.env.MODBIT_CORE_BIN ?? resolve(appDir, "..", "..", "targ
 async function launch(dataDir: string): Promise<{ app: ElectronApplication; page: Page }> {
   const app = await electron.launch({ args: [join(appDir, "dist", "main", "main.cjs")], env: { ...process.env, MODBIT_DATA_DIR: dataDir, MODBIT_CORE_BIN: coreBin } });
   const page = await app.firstWindow();
-  await expect(page.getByTestId("core-status")).toContainText("Core connected", { timeout: 30_000 });
+  // Diagnosability: the Electron main process relays the Core's stderr; keep it in the test output.
+  app.process().stderr?.on("data", (d: Buffer) => process.stderr.write(`[electron] ${d}`));
+  app.process().stdout?.on("data", (d: Buffer) => process.stderr.write(`[electron] ${d}`));
+  try {
+    await expect(page.getByTestId("core-status")).toContainText("Core connected", { timeout: 60_000 });
+  } catch (e) {
+    const status = await page.evaluate(() => window.modbit.coreStatus()).catch(() => null);
+    throw new Error(`Core did not connect: ${JSON.stringify(status)}; ${(e as Error).message}`);
+  }
   return { app, page };
 }
 
