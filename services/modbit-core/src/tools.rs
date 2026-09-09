@@ -22,7 +22,7 @@ use modbit_protocol::local::{ReadyLine, decode_hex};
 use modbit_tools::pipeline::ExecTarget;
 use modbit_tools::{
     CapabilityPort, InvokeContext, ObjectSink, PolicyDecision, PolicyRequest, ProfilePolicy,
-    ToolRegistry, ToolRuntime, ToolStatus,
+    ToolRegistry, ToolRuntime, ToolSpec, ToolStatus,
 };
 use modbit_workspace::WorkspaceService;
 use tokio::sync::Mutex;
@@ -166,6 +166,53 @@ impl ToolHost {
     ///
     /// `existing` is the projection of a call re-entering the pipeline after
     /// an approval (same `tool_call_id`, same intent hash).
+    /// The tool surface compiled from support × policy (REQ-EV-0096/0133/0044):
+    /// a tool is advertised only when its host consumer exists (the terminal
+    /// broker for shell-backed tools), the profile admits it and, given a
+    /// lease, the kernel would not deny it outright. Never a dead tool.
+    pub(crate) fn visible_specs(
+        &self,
+        profile: Option<&str>,
+        lease: Option<&CapabilityLease>,
+    ) -> Vec<ToolSpec> {
+        let kernel = CapabilityKernel::default();
+        self.runtime
+            .registry()
+            .specs()
+            .into_iter()
+            .filter(|s| {
+                if s.required_capabilities.iter().any(|c| c == "shell.exec") && self.execd.is_none()
+                {
+                    return false;
+                }
+                let Some(p) = profile else {
+                    return true;
+                };
+                if !s.execution_profiles.iter().any(|x| x == p) {
+                    return false;
+                }
+                match lease {
+                    Some(l) => !matches!(
+                        kernel.decide(&KernelRequest {
+                            tool_name: &s.name,
+                            effect_class: s.effect_class,
+                            required_capabilities: &s.required_capabilities,
+                            execution_profile: p,
+                            lease: Some(l),
+                            approval: None,
+                            intent_hash: "",
+                            config: None,
+                            emergency_stopped: false,
+                            now: modbit_domain::Timestamp::now(),
+                        }),
+                        KernelDecision::Deny { .. }
+                    ),
+                    None => true,
+                }
+            })
+            .collect()
+    }
+
     pub async fn invoke(
         &self,
         store: &Mutex<EventStore>,
@@ -680,7 +727,16 @@ pub(crate) fn workspace_changes(
 /// Workspace aggregate id: the worktree id digest (stable per root).
 pub(crate) fn workspace_aggregate_id(root: &str) -> [u8; 16] {
     use sha2::{Digest, Sha256};
-    let id = modbit_workspace::WorkspaceRevision::worktree_id_for(Path::new(root));
+    // Canonical and free of the Windows verbatim prefix, so the tool host
+    // (canonical root) and the surface commands (the task's stored root)
+    // address one aggregate.
+    let canon = std::fs::canonicalize(root).unwrap_or_else(|_| PathBuf::from(root));
+    let canon = canon.to_string_lossy().into_owned();
+    let canon = canon
+        .trim_start_matches(r"\\?\")
+        .trim_start_matches("//?/")
+        .to_owned();
+    let id = modbit_workspace::WorkspaceRevision::worktree_id_for(Path::new(&canon));
     let h = Sha256::digest(id.as_bytes());
     let mut out = [0u8; 16];
     out.copy_from_slice(&h[..16]);

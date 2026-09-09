@@ -1092,7 +1092,7 @@ async fn m2_4_invoke_tool_runs_direct_tools_through_registry_policy_and_event_lo
         .command(envelope(
             id16(0xE2),
             "ListTools",
-            ListTools {}.encode_to_vec(),
+            ListTools { task_id: None }.encode_to_vec(),
         ))
         .await
         .unwrap();
@@ -3877,7 +3877,7 @@ async fn qual_ev_0194_approvals_are_canonical_and_never_resolved_by_the_model() 
         .command(envelope(
             id16(0xE2),
             "ListTools",
-            ListTools {}.encode_to_vec(),
+            ListTools { task_id: None }.encode_to_vec(),
         ))
         .await
         .unwrap();
@@ -4409,5 +4409,245 @@ async fn qual_ev_0064_0065_typed_undo_restores_inverse_actions_and_a_user_edit_b
                 && p["op"].as_str().unwrap().starts_with("undo:"))
             .count(),
         0
+    );
+}
+
+async fn list_tools(c: &mut Client, id: u8, task: Option<Id>) -> Vec<(String, String, String)> {
+    use modbit_protocol::v1::{ListTools, ToolList};
+    let ack = c
+        .command(envelope(
+            id16(id),
+            "ListTools",
+            ListTools { task_id: task }.encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let l: ToolList = Client::result(&ack).unwrap();
+    l.tools
+        .into_iter()
+        .map(|t| (t.name, t.input_schema_json, t.description))
+        .collect()
+}
+
+async fn create_task_with_profile(
+    c: &mut Client,
+    session: &Id,
+    g: Option<u64>,
+    root: &str,
+    id: u8,
+    profile: &str,
+) -> Id {
+    let ack = c
+        .command(envelope_fenced(
+            id16(id),
+            "CreateTask",
+            CreateTask {
+                session_id: Some(session.clone()),
+                goal_text: "x".into(),
+                workspace_id: None,
+                execution_profile: profile.into(),
+                origin: "cli".into(),
+                workspace_root: root.into(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    Client::result::<TaskCreated>(&ack)
+        .unwrap()
+        .task_id
+        .unwrap()
+}
+
+/// QUAL-EV-0096/0116/0133/0044: the tool surface is compiled from host
+/// support × policy. Without the terminal broker the shell tools are absent
+/// from the host list and from the model's projection; a narrower profile
+/// drops the tools its lease does not carry; the projected schema is smaller
+/// than the eager all-tools baseline; a tool the model names outside the
+/// surface is refused before any effector. QUAL-EV-0031: an organization
+/// block keeps a provider unavailable to ListModels/ProbeModel.
+#[tokio::test]
+async fn qual_ev_0096_0116_0133_0044_0031_tool_surface_is_compiled_from_support_and_policy() {
+    use modbit_protocol::v1::{
+        ListModels, ModelList, ModelProbed, ProbeModel, StartTask, TaskRunStarted,
+    };
+    use serde_json::json;
+    let (_repo, root) = plain_repo(&[("a.txt", "a\n")]);
+    // The model names a tool the host cannot serve, then completes.
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "o", "expected_files": []}}]}),
+        json!({"calls": [{"name": "shell.exec", "args": {"argv": ["sh", "-c", "echo hi"], "inherit_env": true}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let no_broker = dir.path().join("no-such-execd");
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("MODBIT_ANTHROPIC_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_EXECD_BIN", no_broker.to_str().unwrap()),
+        ("MODBIT_MODEL_POLICY", "block=anthropic/*"),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let names = |v: &[(String, String, String)]| v.iter().map(|t| t.0.clone()).collect::<Vec<_>>();
+    let host = list_tools(&mut c, 0xA0, None).await;
+    assert!(
+        names(&host).iter().any(|n| n == "fs.read")
+            && names(&host).iter().any(|n| n == "change.apply")
+    );
+    assert!(
+        !names(&host)
+            .iter()
+            .any(|n| n == "shell.exec" || n == "test.run"),
+        "no broker: shell tools are not advertised: {:?}",
+        names(&host)
+    );
+    let (session, _) = create_session(&mut c, id16(0xA1)).await;
+    let g = lease_for(&session);
+    let trusted = create_task_with_profile(&mut c, &session, g, &root, 0xA2, "local_trusted").await;
+    let isolated =
+        create_task_with_profile(&mut c, &session, g, &root, 0xA3, "review_isolated").await;
+    let t_tools = list_tools(&mut c, 0xA4, Some(trusted.clone())).await;
+    let i_tools = list_tools(&mut c, 0xA5, Some(isolated.clone())).await;
+    assert!(names(&t_tools).iter().any(|n| n == "git.worktree.create"));
+    assert!(
+        !names(&i_tools)
+            .iter()
+            .any(|n| n.starts_with("git.worktree")),
+        "review_isolated lease carries no git.worktree: {:?}",
+        names(&i_tools)
+    );
+    assert!(names(&i_tools).iter().any(|n| n == "fs.read"));
+    assert!(
+        names(&i_tools).len() < names(&t_tools).len()
+            && names(&t_tools).len() <= names(&host).len()
+    );
+    // The model sees the compiled surface, and its schema is smaller than the eager baseline.
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xA6),
+            "StartTask",
+            StartTask {
+                task_id: Some(isolated.clone()),
+                endpoint: "openai".into(),
+                model: "gpt-5".into(),
+                max_turns: 0,
+                max_tool_calls: 0,
+                max_no_progress_turns: 0,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let status = wait_task(&mut c, &isolated, 60).await;
+    assert!(
+        status.state == "ReadyForReview" || status.state == "Completed",
+        "{status:?}\n{:#?}",
+        task_events(&core, &session, &isolated).await
+    );
+    let first = seen.lock().unwrap()[0].clone();
+    let projected: Vec<String> = first["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|t| t["function"]["name"].as_str().unwrap().to_owned())
+        .collect();
+    assert!(
+        !projected
+            .iter()
+            .any(|n| n == "shell.exec" || n.starts_with("git.worktree")),
+        "{projected:?}"
+    );
+    assert!(
+        projected.iter().any(|n| n == "fs.read") && projected.iter().any(|n| n == "plan.update")
+    );
+    // QUAL-EV-0116: bytes of the projected schema vs an eager projection of the whole host
+    // list (itself already without the unsupported shell tools).
+    // Both sides in the provider wire shape; the three harness tools are in both and left out.
+    let harness = ["plan.update", "task.complete", "verify.run"];
+    let projected_wire: Vec<serde_json::Value> = first["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|t| !harness.contains(&t["function"]["name"].as_str().unwrap()))
+        .cloned()
+        .collect();
+    let eager_wire: Vec<serde_json::Value> = host
+        .iter()
+        .map(|(n, schema, d)| {
+            json!({"type": "function", "function": {"name": n, "description": d, "parameters": serde_json::from_str::<serde_json::Value>(schema).unwrap()}})
+        })
+        .collect();
+    let projected_bytes = serde_json::to_string(&projected_wire).unwrap().len();
+    let eager_bytes = serde_json::to_string(&eager_wire).unwrap().len();
+    eprintln!(
+        "QUAL-EV-0116 tool schema bytes (wire shape, harness tools excluded): projected={projected_bytes} ({} tools) eager={eager_bytes} ({} tools)",
+        projected_wire.len(),
+        eager_wire.len()
+    );
+    assert!(
+        projected_bytes < eager_bytes,
+        "projected {projected_bytes} < eager {eager_bytes}"
+    );
+    // QUAL-EV-0044: the invisible tool was refused before any effector; no ToolCallProposed exists.
+    let evs = task_events(&core, &session, &isolated).await;
+    assert!(
+        evs.iter().any(|(a, t, p)| a == "run_step"
+            && t == "StepFailed"
+            && p["failure_code"] == "TOOL_NOT_VISIBLE"),
+        "{evs:#?}"
+    );
+    assert!(
+        !evs.iter()
+            .any(|(_, t, p)| t == "ToolCallProposed" && p["tool_name"] == "shell.exec")
+    );
+    // QUAL-EV-0031: the blocked provider is unavailable regardless of the request.
+    let ack = c
+        .command(envelope(
+            id16(0xA7),
+            "ListModels",
+            ListModels {}.encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let ml: ModelList = Client::result(&ack).unwrap();
+    let anth = ml
+        .models
+        .iter()
+        .find(|m| m.provider == "anthropic")
+        .unwrap_or_else(|| panic!("{ml:?}"));
+    assert_eq!(anth.blocked_by_policy, "block=anthropic/*");
+    assert!(
+        ml.models
+            .iter()
+            .filter(|m| m.provider == "openai")
+            .all(|m| m.blocked_by_policy.is_empty())
+    );
+    let ack = c
+        .command(envelope(
+            id16(0xA8),
+            "ProbeModel",
+            ProbeModel {
+                endpoint: "anthropic".into(),
+                model: anth.model.clone(),
+                prompt: "hi".into(),
+                with_tools: false,
+                timeout_ms: 5000,
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let probed: ModelProbed = Client::result(&ack).unwrap();
+    assert_eq!(
+        (probed.status.as_str(), probed.error_code.as_str()),
+        ("ROUTE_REFUSED", "POLICY_BLOCKED"),
+        "{probed:?}"
     );
 }

@@ -1045,3 +1045,64 @@ async fn qual_ev_0112_route_record_shows_requested_vs_resolved_values_and_policy
     let json = serde_json::to_value(&r).unwrap();
     assert!(json.get("requested_model").is_some() && json.get("resolved_model").is_some());
 }
+
+/// QUAL-EV-0031: an organization block on a provider keeps it unavailable
+/// whatever the task or profile requests; no bytes reach the provider and
+/// the policy cannot be weakened by the request.
+#[tokio::test]
+async fn qual_ev_0031_org_policy_blocks_the_provider_despite_the_request() {
+    use modbit_providers::OrgModelPolicy;
+    let server = fake(vec![Script::Sse(openai_text_stream(&["never"]))]).await;
+    let mut ep = endpoint(
+        "ep",
+        ProviderKind::OpenAi,
+        &server.base_url,
+        SecretHandle::None,
+        0,
+    );
+    ep.models[0].reasoning = true;
+    let policy = OrgModelPolicy::parse("block=openai/*;require=ep");
+    assert_eq!(policy.block, vec!["openai/*".to_owned()]);
+    let gw = ProviderGateway::new(vec![ep.clone()]).with_policy(policy);
+    let mut req = request(
+        "ep",
+        "m-tools",
+        vec![Message::text(Role::User, "hi")],
+        false,
+        5_000,
+    );
+    // The task/profile asks for the model explicitly, with effort and tier: still blocked.
+    req.model_policy.reasoning_effort = Some("high".into());
+    let err = gw.route(&req, &Requirements::default()).unwrap_err();
+    assert!(
+        matches!(&err, RouteError::PolicyBlocked { rule, .. } if rule == "block=openai/*"),
+        "{err}"
+    );
+    assert!(
+        gw.stream(
+            req.clone(),
+            &Requirements::default(),
+            CancellationToken::new()
+        )
+        .is_err()
+    );
+    assert!(
+        server.seen.lock().unwrap().is_empty(),
+        "no request reached the provider"
+    );
+    // A model-level block and an endpoint requirement each refuse independently.
+    let gw = ProviderGateway::new(vec![ep.clone()])
+        .with_policy(OrgModelPolicy::parse("block=openai/m-tools"));
+    assert!(matches!(
+        gw.route(&req, &Requirements::default()),
+        Err(RouteError::PolicyBlocked { .. })
+    ));
+    let gw =
+        ProviderGateway::new(vec![ep.clone()]).with_policy(OrgModelPolicy::parse("require=other"));
+    assert!(
+        matches!(gw.route(&req, &Requirements::default()), Err(RouteError::PolicyBlocked { ref rule, .. }) if rule == "require=other")
+    );
+    // Without a matching rule the same request routes.
+    let gw = ProviderGateway::new(vec![ep]).with_policy(OrgModelPolicy::parse("block=anthropic/*"));
+    assert!(gw.route(&req, &Requirements::default()).is_ok());
+}

@@ -646,3 +646,89 @@ async fn shell_exec_and_test_run_go_through_the_real_broker() {
         (ToolStatus::InfraFailure, Some("NO_BROKER"))
     );
 }
+
+/// QUAL-EV-0217: the compatibility matrix names, for every registered tool,
+/// the canonical owner, the effect class (equal to the registered one), the
+/// source behaviors it absorbs and a qualifying test that exists in the tree.
+#[test]
+fn qual_ev_0217_compatibility_matrix_covers_every_registered_tool_with_owner_effect_and_test() {
+    let matrix: serde_json::Value =
+        serde_json::from_str(include_str!("../tool-matrix.json")).unwrap();
+    let mut registry = ToolRegistry::new();
+    modbit_tools::direct::register_direct(&mut registry).unwrap();
+    let rows = matrix["registered"].as_array().unwrap();
+    let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut sources = String::new();
+    for dir in ["crates", "services", "apps"] {
+        for entry in walk(&repo.join(dir)) {
+            if entry.extension().is_some_and(|e| e == "rs")
+                && entry.to_string_lossy().contains("tests")
+            {
+                sources.push_str(&std::fs::read_to_string(&entry).unwrap_or_default());
+            }
+        }
+    }
+    for spec in registry.specs() {
+        let row = rows
+            .iter()
+            .find(|r| r["tool"] == spec.name)
+            .unwrap_or_else(|| panic!("no matrix row for {}", spec.name));
+        assert_eq!(
+            row["effect"],
+            format!("{:?}", spec.effect_class),
+            "{}",
+            spec.name
+        );
+        assert!(!row["owner"].as_str().unwrap().is_empty());
+        assert!(
+            !row["source_behaviors"].as_array().unwrap().is_empty(),
+            "{}",
+            spec.name
+        );
+        let caps: Vec<String> = row["capabilities"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|c| c.as_str().unwrap().to_owned())
+            .collect();
+        assert_eq!(caps, spec.required_capabilities, "{}", spec.name);
+        let test = row["test"].as_str().unwrap();
+        assert!(
+            sources.contains(&format!("fn {test}(")),
+            "{}: test `{test}` not found",
+            spec.name
+        );
+    }
+    // No row names a tool that is not registered (stale matrix rows are as bad as missing ones).
+    for r in rows {
+        assert!(
+            registry.get(r["tool"].as_str().unwrap()).is_some(),
+            "{}",
+            r["tool"]
+        );
+    }
+    for h in matrix["harness"].as_array().unwrap() {
+        assert!(sources.contains(&format!("fn {}(", h["test"].as_str().unwrap())));
+    }
+}
+
+fn walk(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
+    let mut out = Vec::new();
+    let Ok(rd) = std::fs::read_dir(dir) else {
+        return out;
+    };
+    for e in rd.flatten() {
+        let p = e.path();
+        if p.is_dir() {
+            if p.file_name()
+                .is_some_and(|n| n == "target" || n == "node_modules")
+            {
+                continue;
+            }
+            out.extend(walk(&p));
+        } else {
+            out.push(p);
+        }
+    }
+    out
+}

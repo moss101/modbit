@@ -60,6 +60,7 @@ pub async fn probe(gw: &ProviderGateway, p: &wire::ProbeModel) -> wire::ModelPro
                 RouteError::UnknownModel { .. } => "UNKNOWN_MODEL",
                 RouteError::CapabilityMismatch { .. } => "CAPABILITY_MISMATCH",
                 RouteError::MissingCredential(_) => "MISSING_CREDENTIAL",
+                RouteError::PolicyBlocked { .. } => "POLICY_BLOCKED",
             }
             .into();
             out.error_message = e.to_string();

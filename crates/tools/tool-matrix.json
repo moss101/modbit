@@ -1,0 +1,244 @@
+{
+ "version": 1,
+ "note": "REQ-EV-0217 compatibility matrix: source behaviors map to canonical Modbit tools, never to source names. Registered tools must each have a row whose effect equals the registered effect class and whose test exists in the repository.",
+ "registered": [
+  {
+   "tool": "fs.list",
+   "family": "file",
+   "source_behaviors": [
+    "ls",
+    "Glob (directory listing)",
+    "list_dir"
+   ],
+   "owner": "Workspace File Service",
+   "effect": "ReadOnly",
+   "capabilities": [
+    "fs.read"
+   ],
+   "test": "fs_change_and_git_tools_run_against_the_real_substrate_with_revision_binding"
+  },
+  {
+   "tool": "fs.read",
+   "family": "file",
+   "source_behaviors": [
+    "Read",
+    "cat",
+    "view_file",
+    "media read"
+   ],
+   "owner": "Workspace File Service",
+   "effect": "ReadOnly",
+   "capabilities": [
+    "fs.read"
+   ],
+   "test": "fs_read_returns_media_envelopes_through_the_registry"
+  },
+  {
+   "tool": "fs.stat",
+   "family": "file",
+   "source_behaviors": [
+    "stat"
+   ],
+   "owner": "Workspace File Service",
+   "effect": "ReadOnly",
+   "capabilities": [
+    "fs.read"
+   ],
+   "test": "fs_change_and_git_tools_run_against_the_real_substrate_with_revision_binding"
+  },
+  {
+   "tool": "fs.glob",
+   "family": "search",
+   "source_behaviors": [
+    "Glob",
+    "find",
+    "Grep (path filter)"
+   ],
+   "owner": "Workspace File Service",
+   "effect": "ReadOnly",
+   "capabilities": [
+    "fs.read"
+   ],
+   "test": "fs_change_and_git_tools_run_against_the_real_substrate_with_revision_binding"
+  },
+  {
+   "tool": "change.apply",
+   "family": "file",
+   "source_behaviors": [
+    "Edit",
+    "Write",
+    "str_replace_editor",
+    "apply_patch"
+   ],
+   "owner": "Change Engine",
+   "effect": "ReversibleWrite",
+   "capabilities": [
+    "fs.write"
+   ],
+   "test": "qual_ev_0015_ambiguous_target_fails_and_leaves_the_worktree_unchanged"
+  },
+  {
+   "tool": "change.batch",
+   "family": "file",
+   "source_behaviors": [
+    "MultiEdit",
+    "multi-file patch"
+   ],
+   "owner": "Change Engine",
+   "effect": "ReversibleWrite",
+   "capabilities": [
+    "fs.write"
+   ],
+   "test": "qual_ev_0016_failed_step_rolls_back_earlier_steps_and_reports_the_step"
+  },
+  {
+   "tool": "git.status",
+   "family": "task",
+   "source_behaviors": [
+    "git status"
+   ],
+   "owner": "Worktree Manager",
+   "effect": "ReadOnly",
+   "capabilities": [
+    "git.read"
+   ],
+   "test": "fs_change_and_git_tools_run_against_the_real_substrate_with_revision_binding"
+  },
+  {
+   "tool": "git.diff",
+   "family": "task",
+   "source_behaviors": [
+    "git diff"
+   ],
+   "owner": "Worktree Manager",
+   "effect": "ReadOnly",
+   "capabilities": [
+    "git.read"
+   ],
+   "test": "fs_change_and_git_tools_run_against_the_real_substrate_with_revision_binding"
+  },
+  {
+   "tool": "git.worktree.create",
+   "family": "task",
+   "source_behaviors": [
+    "EnterWorktree",
+    "git worktree add"
+   ],
+   "owner": "Worktree Manager",
+   "effect": "ReversibleWrite",
+   "capabilities": [
+    "git.worktree"
+   ],
+   "test": "qual_ev_0125_0124_worktrees_isolate_parallel_writes_and_carry_lineage"
+  },
+  {
+   "tool": "git.worktree.close",
+   "family": "task",
+   "source_behaviors": [
+    "ExitWorktree",
+    "git worktree remove"
+   ],
+   "owner": "Worktree Manager",
+   "effect": "Destructive",
+   "capabilities": [
+    "git.worktree"
+   ],
+   "test": "m2_5_capability_kernel_gates_destructive_tools_behind_intent_bound_approvals"
+  },
+  {
+   "tool": "shell.exec",
+   "family": "shell",
+   "source_behaviors": [
+    "Bash",
+    "run_command",
+    "exec"
+   ],
+   "owner": "Terminal Broker",
+   "effect": "ReversibleWrite",
+   "capabilities": [
+    "shell.exec"
+   ],
+   "test": "shell_exec_and_test_run_go_through_the_real_broker"
+  },
+  {
+   "tool": "test.run",
+   "family": "shell",
+   "source_behaviors": [
+    "run tests",
+    "verification command"
+   ],
+   "owner": "Terminal Broker / Verification Plane",
+   "effect": "ReversibleWrite",
+   "capabilities": [
+    "shell.exec"
+   ],
+   "test": "shell_exec_and_test_run_go_through_the_real_broker"
+  }
+ ],
+ "harness": [
+  {
+   "tool": "plan.update",
+   "family": "plan",
+   "source_behaviors": [
+    "TodoWrite",
+    "plan mode"
+   ],
+   "owner": "core-runtime harness",
+   "effect": "ReadOnly",
+   "test": "m2_7_harness_refuses_unplanned_writes_exhausts_budgets_and_resumes_after_restart"
+  },
+  {
+   "tool": "task.complete",
+   "family": "task",
+   "source_behaviors": [
+    "final answer",
+    "attempt_completion"
+   ],
+   "owner": "core-runtime harness",
+   "effect": "ReadOnly",
+   "test": "m2_8_verification_engine_gates_completion_on_real_cargo_fixture"
+  },
+  {
+   "tool": "verify.run",
+   "family": "task",
+   "source_behaviors": [
+    "run tests before done"
+   ],
+   "owner": "Verification Plane",
+   "effect": "ReadOnly",
+   "test": "m2_8_verification_engine_gates_completion_on_real_cargo_fixture"
+  }
+ ],
+ "families_without_registered_tool": [
+  {
+   "family": "web",
+   "source_behaviors": [
+    "WebFetch",
+    "WebSearch"
+   ],
+   "status": "DEFERRED (no browser/network consumer yet; REQ-EV-0088/0147)"
+  },
+  {
+   "family": "user-question",
+   "source_behaviors": [
+    "AskUserQuestion"
+   ],
+   "status": "PLANNED (REQ-EV-0222 structured AskUserQuestion)"
+  },
+  {
+   "family": "agent",
+   "source_behaviors": [
+    "Task/Agent spawn"
+   ],
+   "status": "DEFERRED (M3 multi-agent)"
+  },
+  {
+   "family": "media",
+   "source_behaviors": [
+    "image read",
+    "PDF read"
+   ],
+   "status": "SERVED by fs.read (MediaEnvelope, M2.10)"
+  }
+ ]
+}

@@ -147,7 +147,8 @@ pub async fn run(data_dir: PathBuf) -> Result<()> {
         recovery,
         started_at: Timestamp::now(),
         tools: crate::tools::ToolHost::new(&data_dir).context("tool host")?,
-        gateway: modbit_providers::ProviderGateway::new(modbit_providers::endpoints_from_env()),
+        gateway: modbit_providers::ProviderGateway::new(modbit_providers::endpoints_from_env())
+            .with_policy(modbit_providers::OrgModelPolicy::from_env()),
         runtime: crate::runtime::Runtime::default(),
     });
     let listener = Listener::bind(&endpoint)
@@ -1005,27 +1006,46 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 Err(e) => reject(cid, "UNKNOWN_OBJECT", e.to_string()),
             }
         }
-        "ListTools" => accept(
-            cid,
-            false,
-            wire::ToolList {
-                tools: core
-                    .tools
-                    .runtime
-                    .registry()
-                    .specs()
-                    .into_iter()
-                    .map(|t| wire::ToolSpecView {
-                        name: t.name,
-                        version: t.version,
-                        effect_class: format!("{:?}", t.effect_class),
-                        input_schema_json: t.input_schema.to_string(),
-                        description: t.description,
-                    })
-                    .collect(),
-            }
-            .encode_to_vec(),
-        ),
+        "ListTools" => {
+            let task_id = wire::ListTools::decode(env.payload.as_slice())
+                .ok()
+                .and_then(|p| p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes));
+            let (profile, lease) = match task_id {
+                Some(id) => {
+                    let store = core.store.lock().await;
+                    let task = match store.task(&id) {
+                        Ok(Some(t)) => t,
+                        Ok(None) => return reject(cid, "UNKNOWN_TASK", id.to_string()),
+                        Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                    };
+                    let lease = store
+                        .leases_for_task(&id)
+                        .ok()
+                        .and_then(|l| l.into_iter().next());
+                    (Some(task.execution_profile.clone()), lease)
+                }
+                None => (None, None),
+            };
+            accept(
+                cid,
+                false,
+                wire::ToolList {
+                    tools: core
+                        .tools
+                        .visible_specs(profile.as_deref(), lease.as_ref())
+                        .into_iter()
+                        .map(|t| wire::ToolSpecView {
+                            name: t.name,
+                            version: t.version,
+                            effect_class: format!("{:?}", t.effect_class),
+                            input_schema_json: t.input_schema.to_string(),
+                            description: t.description,
+                        })
+                        .collect(),
+                }
+                .encode_to_vec(),
+            )
+        }
         "InvokeTool" => {
             let Ok(p) = wire::InvokeTool::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "InvokeTool");
@@ -1513,6 +1533,10 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                         structured_output: m.structured_output,
                         input_modalities: m.input_modalities.clone(),
                         credential_available,
+                        blocked_by_policy: gw
+                            .policy()
+                            .blocking_rule(&ep.name, ep.kind, &m.model)
+                            .unwrap_or_default(),
                     });
                 }
                 let h = gw.health(&ep.name);

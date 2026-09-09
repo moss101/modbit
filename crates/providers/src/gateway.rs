@@ -97,6 +97,16 @@ pub enum RouteError {
         /// Model.
         model: String,
     },
+    /// Organization policy blocks the endpoint/model (REQ-EV-0031); no request can widen it.
+    #[error("endpoint `{endpoint}` model `{model}` is blocked by organization policy ({rule})")]
+    PolicyBlocked {
+        /// Endpoint.
+        endpoint: String,
+        /// Model.
+        model: String,
+        /// The rule that matched.
+        rule: String,
+    },
     /// The model lacks a required capability.
     #[error("model `{model}` lacks required capability `{capability}`")]
     CapabilityMismatch {
@@ -152,6 +162,72 @@ pub struct ProviderGateway {
     endpoints: Arc<BTreeMap<String, Endpoint>>,
     health: Arc<Mutex<BTreeMap<String, EndpointHealth>>>,
     client: reqwest::Client,
+    policy: Arc<OrgModelPolicy>,
+}
+
+/// Organization model policy (REQ-EV-0031): block or require providers,
+/// endpoints and models. Evaluated inside `route` before any capability or
+/// credential check, so a task or profile request can never widen it.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct OrgModelPolicy {
+    /// Blocked selectors: `provider/model`, `provider/*`, `endpoint:<name>` or `*`.
+    pub block: Vec<String>,
+    /// When set, only these endpoint names may be routed to.
+    pub require_endpoints: Vec<String>,
+}
+
+impl OrgModelPolicy {
+    /// Parse `MODBIT_MODEL_POLICY`: `block=anthropic/*,openai/gpt-5-mini;require=openai`.
+    #[must_use]
+    pub fn parse(spec: &str) -> Self {
+        let mut p = Self::default();
+        for clause in spec.split(';') {
+            let Some((k, v)) = clause.split_once('=') else {
+                continue;
+            };
+            let items = v
+                .split(',')
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(str::to_owned);
+            match k.trim() {
+                "block" => p.block.extend(items),
+                "require" => p.require_endpoints.extend(items),
+                _ => {}
+            }
+        }
+        p
+    }
+
+    /// From the environment (`MODBIT_MODEL_POLICY`), empty when unset.
+    #[must_use]
+    pub fn from_env() -> Self {
+        std::env::var("MODBIT_MODEL_POLICY")
+            .ok()
+            .map(|s| Self::parse(&s))
+            .unwrap_or_default()
+    }
+
+    /// The rule blocking `endpoint`/`kind`/`model`, if any.
+    #[must_use]
+    pub fn blocking_rule(&self, endpoint: &str, kind: ProviderKind, model: &str) -> Option<String> {
+        let provider = format!("{kind:?}").to_lowercase();
+        for rule in &self.block {
+            let hit = rule == "*"
+                || rule.strip_prefix("endpoint:") == Some(endpoint)
+                || rule == &format!("{provider}/*")
+                || rule == &format!("{provider}/{model}");
+            if hit {
+                return Some(format!("block={rule}"));
+            }
+        }
+        if !self.require_endpoints.is_empty()
+            && !self.require_endpoints.iter().any(|e| e == endpoint)
+        {
+            return Some(format!("require={}", self.require_endpoints.join(",")));
+        }
+        None
+    }
 }
 
 /// A running stream: events plus the route record filled as metadata arrives.
@@ -173,6 +249,7 @@ impl ProviderGateway {
         Self {
             endpoints: Arc::new(map),
             health: Arc::new(Mutex::new(BTreeMap::new())),
+            policy: Arc::new(OrgModelPolicy::default()),
             client: reqwest::Client::builder()
                 .connect_timeout(Duration::from_secs(10))
                 .build()
@@ -197,7 +274,20 @@ impl ProviderGateway {
             .unwrap_or_default()
     }
 
-    /// Resolve the route: endpoint, model and capability checks (no network).
+    /// Attach the organization model policy (REQ-EV-0031).
+    #[must_use]
+    pub fn with_policy(mut self, policy: OrgModelPolicy) -> Self {
+        self.policy = Arc::new(policy);
+        self
+    }
+
+    /// The organization model policy in force.
+    #[must_use]
+    pub fn policy(&self) -> &OrgModelPolicy {
+        &self.policy
+    }
+
+    /// Resolve the route: organization policy, endpoint, model and capability checks (no network).
     pub fn route(
         &self,
         req: &ModelRequest,
@@ -208,6 +298,16 @@ impl ProviderGateway {
             .get(&req.model_policy.endpoint)
             .cloned()
             .ok_or_else(|| RouteError::UnknownEndpoint(req.model_policy.endpoint.clone()))?;
+        if let Some(rule) = self
+            .policy
+            .blocking_rule(&ep.name, ep.kind, &req.model_policy.model)
+        {
+            return Err(RouteError::PolicyBlocked {
+                endpoint: ep.name.clone(),
+                model: req.model_policy.model.clone(),
+                rule,
+            });
+        }
         let cap = ep
             .models
             .iter()

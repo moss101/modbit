@@ -205,7 +205,11 @@ message ToolInvoked {
   repeated string effect_receipt_ids = 10; // hex effect ids appended to the receipt chain (docs/23)
 }
 
-message ListTools {}
+// REQ-EV-0096/0133: without a task the host-supported surface; with a task the
+// surface compiled from support x policy (profile, lease, admin denies).
+message ListTools {
+  Id task_id = 1;
+}
 
 message ToolSpecView {
   string name = 1;
@@ -359,6 +363,7 @@ message ModelCapabilityView {
   bool structured_output = 9;
   repeated string input_modalities = 10;
   bool credential_available = 11;
+  string blocked_by_policy = 12;   // REQ-EV-0031: the organization rule blocking it, empty when allowed
 }
 
 message EndpointHealthView {

@@ -802,9 +802,16 @@ export declare type ToolInvoked = Message<"modbit.v1.ToolInvoked"> & {
 export declare const ToolInvokedSchema: GenMessage<ToolInvoked>;
 
 /**
+ * REQ-EV-0096/0133: without a task the host-supported surface; with a task the
+ * surface compiled from support x policy (profile, lease, admin denies).
+ *
  * @generated from message modbit.v1.ListTools
  */
 export declare type ListTools = Message<"modbit.v1.ListTools"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
 };
 
 /**
@@ -1486,6 +1493,13 @@ export declare type ModelCapabilityView = Message<"modbit.v1.ModelCapabilityView
    * @generated from field: bool credential_available = 11;
    */
   credentialAvailable: boolean;
+
+  /**
+   * REQ-EV-0031: the organization rule blocking it, empty when allowed
+   *
+   * @generated from field: string blocked_by_policy = 12;
+   */
+  blockedByPolicy: string;
 };
 
 /**

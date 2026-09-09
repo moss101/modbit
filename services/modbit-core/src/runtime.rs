@@ -583,14 +583,15 @@ fn apply_entry(transcript: &mut Vec<Message>, state: &mut HarnessState, entry: T
 
 /// Tool projection for the task (docs/16): registry tools runnable under the
 /// profile plus the harness tools.
-fn projection(core: &Core, task: &Task) -> Vec<ToolProjection> {
+fn projection(
+    core: &Core,
+    task: &Task,
+    lease: Option<&modbit_domain::lease::CapabilityLease>,
+) -> Vec<ToolProjection> {
     let mut tools: Vec<ToolProjection> = core
         .tools
-        .runtime
-        .registry()
-        .specs()
+        .visible_specs(Some(&task.execution_profile), lease)
         .into_iter()
-        .filter(|s| s.execution_profiles.contains(&task.execution_profile))
         .map(|s| ToolProjection {
             name: s.name,
             description: format!("{} [effect: {:?}]", s.description, s.effect_class),
@@ -647,7 +648,14 @@ async fn run_loop(
     let lt = Lineage::run(core.tenant_id, task.session_id, task.task_id, run_id);
     let (mut transcript, mut state, mut seen_offset, mut carried) =
         rebuild(&core, &task, cfg.budgets).await;
-    let tools = projection(&core, &task);
+    let lease = core
+        .store
+        .lock()
+        .await
+        .leases_for_task(&task.task_id)
+        .ok()
+        .and_then(|l| l.into_iter().next());
+    let tools = projection(&core, &task, lease.as_ref());
     let end = 'outer: loop {
         if cancel.is_cancelled() {
             break LoopEnd::Cancelled;
@@ -1110,6 +1118,20 @@ async fn run_loop(
                             Some("COMPLETION_REFUSED".to_owned())
                         },
                     )
+                }
+                // REQ-EV-0044: a tool outside the compiled surface (unsupported by
+                // the host or not authorized) is refused before any effector.
+                n if !tools.iter().any(|t| t.name == n) => {
+                    let entry = TranscriptEntry::ToolResult {
+                        call_id: call_id.clone(),
+                        name: name.clone(),
+                        text: "status: REFUSED\nerror_code: TOOL_NOT_VISIBLE\nerror: the tool is not in this task's compiled surface (host support x policy)".into(),
+                        failure_signature: None,
+                        clears: vec![],
+                        wrote: None,
+                        progress: false,
+                    };
+                    (entry, StepType::ToolCall, Some("TOOL_NOT_VISIBLE".into()))
                 }
                 _ => {
                     match state.check_tool(&name).and_then(|()| {
