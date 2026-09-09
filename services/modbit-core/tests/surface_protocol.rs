@@ -26,9 +26,14 @@ struct CoreProcess {
 
 impl CoreProcess {
     fn spawn(data_dir: &std::path::Path) -> Self {
+        Self::spawn_with_env(data_dir, &[])
+    }
+
+    fn spawn_with_env(data_dir: &std::path::Path, env: &[(&str, &str)]) -> Self {
         let mut child = Command::new(env!("CARGO_BIN_EXE_modbit-core"))
             .arg("--data-dir")
             .arg(data_dir)
+            .envs(env.iter().map(|(k, v)| (k.to_string(), v.to_string())))
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit())
             .spawn()
@@ -1777,4 +1782,245 @@ async fn m2_5_capability_kernel_gates_destructive_tools_behind_intent_bound_appr
         calls.contains(&"ToolCallApprovalRequested") && calls.contains(&"EffectReceiptAppended"),
         "{calls:?}"
     );
+}
+
+/// Minimal OpenAI-compatible SSE server for the Core-level gateway proof.
+/// Answers every request with a tool call when tools were projected, else text.
+async fn fake_openai() -> (
+    String,
+    std::sync::Arc<std::sync::Mutex<Vec<serde_json::Value>>>,
+) {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let seen = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let seen2 = std::sync::Arc::clone(&seen);
+    tokio::spawn(async move {
+        loop {
+            let Ok((mut sock, _)) = listener.accept().await else {
+                return;
+            };
+            let seen = std::sync::Arc::clone(&seen2);
+            tokio::spawn(async move {
+                let mut buf = Vec::new();
+                let mut tmp = [0u8; 4096];
+                let (head_end, len) = loop {
+                    let n = sock.read(&mut tmp).await.unwrap_or(0);
+                    if n == 0 {
+                        return;
+                    }
+                    buf.extend_from_slice(&tmp[..n]);
+                    if let Some(i) = buf.windows(4).position(|w| w == b"\r\n\r\n") {
+                        let head = String::from_utf8_lossy(&buf[..i]).to_string();
+                        let len = head
+                            .lines()
+                            .find_map(|l| {
+                                let (k, v) = l.split_once(':')?;
+                                k.eq_ignore_ascii_case("content-length")
+                                    .then(|| v.trim().parse::<usize>().ok())
+                                    .flatten()
+                            })
+                            .unwrap_or(0);
+                        break (i + 4, len);
+                    }
+                };
+                while buf.len() < head_end + len {
+                    let n = sock.read(&mut tmp).await.unwrap_or(0);
+                    if n == 0 {
+                        break;
+                    }
+                    buf.extend_from_slice(&tmp[..n]);
+                }
+                let body: serde_json::Value =
+                    serde_json::from_slice(&buf[head_end..head_end + len]).unwrap_or_default();
+                let with_tools = body["tools"].is_array();
+                seen.lock().unwrap().push(body);
+                let mut frames: Vec<String> = Vec::new();
+                if with_tools {
+                    frames.push(serde_json::json!({"id":"c1","model":"gpt-5-mini-2026","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"call_p","type":"function","function":{"name":"probe.echo","arguments":"{\"text\":\"pong\"}"}}]},"finish_reason":null}]}).to_string());
+                    frames.push(serde_json::json!({"id":"c1","model":"gpt-5-mini-2026","choices":[{"index":0,"delta":{},"finish_reason":"tool_calls"}],"usage":{"prompt_tokens":21,"completion_tokens":7}}).to_string());
+                } else {
+                    frames.push(serde_json::json!({"id":"c2","model":"gpt-5-mini-2026","choices":[{"index":0,"delta":{"content":"pong"},"finish_reason":null}]}).to_string());
+                    frames.push(serde_json::json!({"id":"c2","model":"gpt-5-mini-2026","choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":20,"completion_tokens":1,"prompt_tokens_details":{"cached_tokens":16}}}).to_string());
+                }
+                frames.push("[DONE]".into());
+                let _ = sock
+                    .write_all(b"HTTP/1.1 200 OK\r\ncontent-type: text/event-stream\r\ntransfer-encoding: chunked\r\n\r\n")
+                    .await;
+                for f in frames {
+                    let frame = format!("data: {f}\n\n");
+                    let _ = sock
+                        .write_all(format!("{:x}\r\n{}\r\n", frame.len(), frame).as_bytes())
+                        .await;
+                }
+                let _ = sock.write_all(b"0\r\n\r\n").await;
+            });
+        }
+    });
+    (format!("http://127.0.0.1:{port}"), seen)
+}
+
+/// M2.6: the Provider Gateway is reachable only through the Core; the
+/// catalog, health and a real streaming probe are served over the socket.
+#[tokio::test]
+async fn m2_6_provider_gateway_streams_through_the_core_over_real_http() {
+    use modbit_protocol::v1::{ListModels, ModelList, ModelProbed, ProbeModel};
+    let (base, seen) = fake_openai().await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn_with_env(
+        dir.path(),
+        &[
+            ("MODBIT_OPENAI_BASE_URL", &base),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+        ],
+    );
+    let mut c = core.client().await;
+    let ack = c
+        .command(envelope(
+            id16(0x60),
+            "ListModels",
+            ListModels {}.encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let list: ModelList = Client::result(&ack).unwrap();
+    assert!(
+        list.models.iter().any(|m| m.endpoint == "openai"
+            && m.model == "gpt-5-mini"
+            && m.tools
+            && m.credential_available),
+        "{list:?}"
+    );
+    assert!(
+        !list.models.iter().any(|m| m.endpoint == "anthropic"),
+        "no key, no base url: not registered"
+    );
+    assert_eq!(
+        list.health
+            .iter()
+            .find(|h| h.endpoint == "openai")
+            .map(|h| h.requests),
+        Some(0)
+    );
+    // Text probe.
+    let ack = c
+        .command(envelope(
+            id16(0x61),
+            "ProbeModel",
+            ProbeModel {
+                endpoint: "openai".into(),
+                model: "gpt-5-mini".into(),
+                prompt: "Say pong.".into(),
+                with_tools: false,
+                timeout_ms: 10_000,
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let r: ModelProbed = Client::result(&ack).unwrap();
+    assert_eq!(
+        (r.status.as_str(), r.text.as_str(), r.stop_reason.as_str()),
+        ("COMPLETED", "pong", "end_turn"),
+        "{r:?}"
+    );
+    assert_eq!(
+        (r.input_tokens, r.output_tokens, r.cached_input_tokens),
+        (20, 1, 16)
+    );
+    let route: serde_json::Value = serde_json::from_str(&r.route_json).unwrap();
+    assert_eq!(
+        (
+            route["requested_model"].as_str(),
+            route["resolved_model"].as_str()
+        ),
+        (Some("gpt-5-mini"), Some("gpt-5-mini-2026"))
+    );
+    // Tool probe: a typed tool call comes back through the normalized events.
+    let ack = c
+        .command(envelope(
+            id16(0x62),
+            "ProbeModel",
+            ProbeModel {
+                endpoint: "openai".into(),
+                model: "gpt-5-mini".into(),
+                prompt: "Echo pong.".into(),
+                with_tools: true,
+                timeout_ms: 10_000,
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let r: ModelProbed = Client::result(&ack).unwrap();
+    assert_eq!(
+        (
+            r.status.as_str(),
+            r.stop_reason.as_str(),
+            r.tool_call_name.as_str()
+        ),
+        ("COMPLETED", "tool_use", "probe.echo"),
+        "{r:?}"
+    );
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(&r.tool_call_arguments_json).unwrap()["text"],
+        "pong"
+    );
+    // Capability mismatch is refused before any network call (REQ-EV-0028).
+    let before = seen.lock().unwrap().len();
+    let ack = c
+        .command(envelope(
+            id16(0x63),
+            "ProbeModel",
+            ProbeModel {
+                endpoint: "openai".into(),
+                model: "gpt-4.1".into(),
+                prompt: "x".into(),
+                with_tools: false,
+                timeout_ms: 1000,
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let ok: ModelProbed = Client::result(&ack).unwrap();
+    assert_eq!(ok.status, "COMPLETED");
+    let ack = c
+        .command(envelope(
+            id16(0x64),
+            "ProbeModel",
+            ProbeModel {
+                endpoint: "openai".into(),
+                model: "no-such-model".into(),
+                prompt: "x".into(),
+                with_tools: false,
+                timeout_ms: 1000,
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let r: ModelProbed = Client::result(&ack).unwrap();
+    assert_eq!(
+        (r.status.as_str(), r.error_code.as_str()),
+        ("ROUTE_REFUSED", "UNKNOWN_MODEL")
+    );
+    assert_eq!(seen.lock().unwrap().len(), before + 1);
+    // Health reflects the real calls; the wire carried the Core's requests.
+    let ack = c
+        .command(envelope(
+            id16(0x65),
+            "ListModels",
+            ListModels {}.encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let list: ModelList = Client::result(&ack).unwrap();
+    let h = list.health.iter().find(|h| h.endpoint == "openai").unwrap();
+    assert_eq!((h.requests, h.successes, h.failures), (3, 3, 0));
+    assert!(h.last_first_token_ms > 0 || h.requests > 0);
+    let bodies = seen.lock().unwrap().clone();
+    assert_eq!(bodies[0]["messages"][1]["content"], "Say pong.");
+    assert_eq!(bodies[1]["tools"][0]["function"]["name"], "probe.echo");
 }

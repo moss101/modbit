@@ -1276,6 +1276,275 @@ export declare type CapabilityLeaseList = Message<"modbit.v1.CapabilityLeaseList
 export declare const CapabilityLeaseListSchema: GenMessage<CapabilityLeaseList>;
 
 /**
+ * @generated from message modbit.v1.ListModels
+ */
+export declare type ListModels = Message<"modbit.v1.ListModels"> & {
+};
+
+/**
+ * Describes the message modbit.v1.ListModels.
+ * Use `create(ListModelsSchema)` to create a new message.
+ */
+export declare const ListModelsSchema: GenMessage<ListModels>;
+
+/**
+ * @generated from message modbit.v1.ModelCapabilityView
+ */
+export declare type ModelCapabilityView = Message<"modbit.v1.ModelCapabilityView"> & {
+  /**
+   * @generated from field: string endpoint = 1;
+   */
+  endpoint: string;
+
+  /**
+   * openai | anthropic
+   *
+   * @generated from field: string provider = 2;
+   */
+  provider: string;
+
+  /**
+   * @generated from field: string model = 3;
+   */
+  model: string;
+
+  /**
+   * @generated from field: uint32 context_tokens = 4;
+   */
+  contextTokens: number;
+
+  /**
+   * @generated from field: uint32 max_output_tokens = 5;
+   */
+  maxOutputTokens: number;
+
+  /**
+   * @generated from field: bool tools = 6;
+   */
+  tools: boolean;
+
+  /**
+   * @generated from field: bool vision = 7;
+   */
+  vision: boolean;
+
+  /**
+   * @generated from field: bool reasoning = 8;
+   */
+  reasoning: boolean;
+
+  /**
+   * @generated from field: bool structured_output = 9;
+   */
+  structuredOutput: boolean;
+
+  /**
+   * @generated from field: repeated string input_modalities = 10;
+   */
+  inputModalities: string[];
+
+  /**
+   * @generated from field: bool credential_available = 11;
+   */
+  credentialAvailable: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.ModelCapabilityView.
+ * Use `create(ModelCapabilityViewSchema)` to create a new message.
+ */
+export declare const ModelCapabilityViewSchema: GenMessage<ModelCapabilityView>;
+
+/**
+ * @generated from message modbit.v1.EndpointHealthView
+ */
+export declare type EndpointHealthView = Message<"modbit.v1.EndpointHealthView"> & {
+  /**
+   * @generated from field: string endpoint = 1;
+   */
+  endpoint: string;
+
+  /**
+   * @generated from field: uint64 requests = 2;
+   */
+  requests: bigint;
+
+  /**
+   * @generated from field: uint64 successes = 3;
+   */
+  successes: bigint;
+
+  /**
+   * @generated from field: uint64 failures = 4;
+   */
+  failures: bigint;
+
+  /**
+   * @generated from field: uint64 interruptions = 5;
+   */
+  interruptions: bigint;
+
+  /**
+   * @generated from field: uint64 cancellations = 6;
+   */
+  cancellations: bigint;
+
+  /**
+   * @generated from field: uint64 rate_limited = 7;
+   */
+  rateLimited: bigint;
+
+  /**
+   * 0 = none yet
+   *
+   * @generated from field: uint64 last_first_token_ms = 8;
+   */
+  lastFirstTokenMs: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.EndpointHealthView.
+ * Use `create(EndpointHealthViewSchema)` to create a new message.
+ */
+export declare const EndpointHealthViewSchema: GenMessage<EndpointHealthView>;
+
+/**
+ * @generated from message modbit.v1.ModelList
+ */
+export declare type ModelList = Message<"modbit.v1.ModelList"> & {
+  /**
+   * @generated from field: repeated modbit.v1.ModelCapabilityView models = 1;
+   */
+  models: ModelCapabilityView[];
+
+  /**
+   * @generated from field: repeated modbit.v1.EndpointHealthView health = 2;
+   */
+  health: EndpointHealthView[];
+};
+
+/**
+ * Describes the message modbit.v1.ModelList.
+ * Use `create(ModelListSchema)` to create a new message.
+ */
+export declare const ModelListSchema: GenMessage<ModelList>;
+
+/**
+ * Conformance probe: one real streaming call through the gateway (REQ-EV-0028).
+ *
+ * @generated from message modbit.v1.ProbeModel
+ */
+export declare type ProbeModel = Message<"modbit.v1.ProbeModel"> & {
+  /**
+   * @generated from field: string endpoint = 1;
+   */
+  endpoint: string;
+
+  /**
+   * @generated from field: string model = 2;
+   */
+  model: string;
+
+  /**
+   * @generated from field: string prompt = 3;
+   */
+  prompt: string;
+
+  /**
+   * project a scratch tool and expect a typed tool call
+   *
+   * @generated from field: bool with_tools = 4;
+   */
+  withTools: boolean;
+
+  /**
+   * @generated from field: uint64 timeout_ms = 5;
+   */
+  timeoutMs: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.ProbeModel.
+ * Use `create(ProbeModelSchema)` to create a new message.
+ */
+export declare const ProbeModelSchema: GenMessage<ProbeModel>;
+
+/**
+ * @generated from message modbit.v1.ModelProbed
+ */
+export declare type ModelProbed = Message<"modbit.v1.ModelProbed"> & {
+  /**
+   * COMPLETED | ERROR | ROUTE_REFUSED
+   *
+   * @generated from field: string status = 1;
+   */
+  status: string;
+
+  /**
+   * @generated from field: string text = 2;
+   */
+  text: string;
+
+  /**
+   * @generated from field: string stop_reason = 3;
+   */
+  stopReason: string;
+
+  /**
+   * @generated from field: string error_code = 4;
+   */
+  errorCode: string;
+
+  /**
+   * @generated from field: string error_message = 5;
+   */
+  errorMessage: string;
+
+  /**
+   * RouteRecord: requested vs resolved (REQ-EV-0112)
+   *
+   * @generated from field: string route_json = 6;
+   */
+  routeJson: string;
+
+  /**
+   * @generated from field: uint64 input_tokens = 7;
+   */
+  inputTokens: bigint;
+
+  /**
+   * @generated from field: uint64 output_tokens = 8;
+   */
+  outputTokens: bigint;
+
+  /**
+   * @generated from field: uint64 cached_input_tokens = 9;
+   */
+  cachedInputTokens: bigint;
+
+  /**
+   * @generated from field: string tool_call_name = 10;
+   */
+  toolCallName: string;
+
+  /**
+   * @generated from field: string tool_call_arguments_json = 11;
+   */
+  toolCallArgumentsJson: string;
+
+  /**
+   * @generated from field: uint32 events = 12;
+   */
+  events: number;
+};
+
+/**
+ * Describes the message modbit.v1.ModelProbed.
+ * Use `create(ModelProbedSchema)` to create a new message.
+ */
+export declare const ModelProbedSchema: GenMessage<ModelProbed>;
+
+/**
  * Command acknowledgement.
  *
  * @generated from enum modbit.v1.CommandStatus

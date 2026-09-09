@@ -15,6 +15,8 @@
 //!   modbit-cli --data-dir <dir> stop --session <hex-id> [reason]
 //!   modbit-cli --data-dir <dir> receipts [--task <hex-id>]
 //!   modbit-cli --data-dir <dir> lease list --task <hex-id>
+//!   modbit-cli --data-dir <dir> model list
+//!   modbit-cli --data-dir <dir> model probe --endpoint <name> --model <id> [--tools] <prompt>
 //!
 //! M1.3 mode: each invocation spawns a Core for the data directory, runs one
 //! command, and exits; the Core exits with the CLI. Attaching to a long-running
@@ -29,12 +31,12 @@ use modbit_protocol::v1::{
     AcquireSessionLease, ApprovalList, ApprovalResolvedAck, CapabilityLeaseList, ClientKind,
     CommandEnvelope, CreateSession, CreateTask, EffectReceiptList, EmergencyStop, EmergencyStopped,
     GetCapabilityLeases, GetEffectReceipts, GetSessionSnapshot, Id, InvokeTool, ListApprovals,
-    ListTools, ResolveApproval, SessionCreated, SessionLeaseAcquired, SessionSnapshot, TaskCreated,
-    ToolInvoked, ToolList,
+    ListModels, ListTools, ModelList, ModelProbed, ProbeModel, ResolveApproval, SessionCreated,
+    SessionLeaseAcquired, SessionSnapshot, TaskCreated, ToolInvoked, ToolList,
 };
 use prost::Message;
 
-const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] | tool list | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id>)";
+const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] | tool list | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
 
 fn parse_id(hex: &str) -> Result<Id, String> {
     let bytes = decode_hex(hex)
@@ -453,6 +455,84 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 );
             }
         }
+        ["model", "list"] => {
+            let ack = client
+                .command(envelope("ListModels", ListModels {}.encode_to_vec()))
+                .await
+                .map_err(|e| e.to_string())?;
+            let r: ModelList = Client::result(&ack).map_err(|e| e.to_string())?;
+            for m in r.models {
+                println!(
+                    "model {}/{} provider={} context={} tools={} vision={} reasoning={} credential={}",
+                    m.endpoint,
+                    m.model,
+                    m.provider,
+                    m.context_tokens,
+                    m.tools,
+                    m.vision,
+                    m.reasoning,
+                    m.credential_available
+                );
+            }
+            for h in r.health {
+                println!(
+                    "health {} requests={} successes={} failures={} interruptions={} rate_limited={} first_token_ms={}",
+                    h.endpoint,
+                    h.requests,
+                    h.successes,
+                    h.failures,
+                    h.interruptions,
+                    h.rate_limited,
+                    h.last_first_token_ms
+                );
+            }
+        }
+        ["model", "probe", ..] => {
+            let endpoint = opt("--endpoint").ok_or(USAGE)?.to_owned();
+            let model = opt("--model").ok_or(USAGE)?.to_owned();
+            let with_tools = words.contains(&"--tools");
+            let prompt = positionals(&words, 2)
+                .into_iter()
+                .filter(|w| *w != "--tools")
+                .collect::<Vec<_>>()
+                .join(" ");
+            let ack = client
+                .command(envelope(
+                    "ProbeModel",
+                    ProbeModel {
+                        endpoint,
+                        model,
+                        prompt,
+                        with_tools,
+                        timeout_ms: 60_000,
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let r: ModelProbed = Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "probe status={} stop={} error={:?} tokens={}/{} cached={} tool_call={} route={}",
+                r.status,
+                r.stop_reason,
+                r.error_code,
+                r.input_tokens,
+                r.output_tokens,
+                r.cached_input_tokens,
+                if r.tool_call_name.is_empty() {
+                    "-".to_owned()
+                } else {
+                    format!("{}{}", r.tool_call_name, r.tool_call_arguments_json)
+                },
+                r.route_json
+            );
+            if !r.text.is_empty() {
+                println!("{}", r.text);
+            }
+            if !r.error_message.is_empty() {
+                println!("error: {}", r.error_message);
+            }
+        }
         _ => return Err(USAGE.into()),
     }
     Ok(())
@@ -465,6 +545,8 @@ fn positionals<'a>(words: &[&'a str], skip: usize) -> Vec<&'a str> {
     for w in words.iter().skip(skip) {
         if skip_next {
             skip_next = false;
+        } else if *w == "--tools" {
+            // bare flag
         } else if w.starts_with("--") {
             skip_next = true;
         } else {

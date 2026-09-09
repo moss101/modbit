@@ -52,6 +52,8 @@ pub struct Core {
     started_at: Timestamp,
     /// Tool registry, kernel port, broker (M2.4).
     tools: crate::tools::ToolHost,
+    /// Provider Gateway (M2.6): endpoints from the Core's environment only.
+    gateway: modbit_providers::ProviderGateway,
 }
 
 /// Bounded number of events per subscription batch (REQ-EV-0108).
@@ -134,6 +136,7 @@ pub async fn run(data_dir: PathBuf) -> Result<()> {
         recovery,
         started_at: Timestamp::now(),
         tools: crate::tools::ToolHost::new(&data_dir).context("tool host")?,
+        gateway: modbit_providers::ProviderGateway::new(modbit_providers::endpoints_from_env()),
     });
     let listener = Listener::bind(&endpoint)
         .await
@@ -351,6 +354,8 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "EmergencyStop",
                     "GetEffectReceipts",
                     "GetCapabilityLeases",
+                    "ListModels",
+                    "ProbeModel",
                 ]
                 .map(String::from)
                 .to_vec(),
@@ -1404,6 +1409,57 @@ async fn handle_command(core: &Core, env: CommandEnvelope) -> CommandAck {
                 ),
                 Err(e) => reject(cid, error_code(&e), e.to_string()),
             }
+        }
+        "ListModels" => {
+            let gw = &core.gateway;
+            let mut models = Vec::new();
+            let mut health = Vec::new();
+            for ep in gw.endpoints() {
+                let credential_available =
+                    matches!(ep.credential, modbit_providers::SecretHandle::None)
+                        || ep.credential.resolve().is_some();
+                for m in &ep.models {
+                    models.push(wire::ModelCapabilityView {
+                        endpoint: ep.name.clone(),
+                        provider: format!("{:?}", ep.kind).to_lowercase(),
+                        model: m.model.clone(),
+                        context_tokens: m.context_tokens,
+                        max_output_tokens: m.max_output_tokens,
+                        tools: m.tools,
+                        vision: m.vision,
+                        reasoning: m.reasoning,
+                        structured_output: m.structured_output,
+                        input_modalities: m.input_modalities.clone(),
+                        credential_available,
+                    });
+                }
+                let h = gw.health(&ep.name);
+                health.push(wire::EndpointHealthView {
+                    endpoint: ep.name.clone(),
+                    requests: h.requests,
+                    successes: h.successes,
+                    failures: h.failures,
+                    interruptions: h.interruptions,
+                    cancellations: h.cancellations,
+                    rate_limited: h.rate_limited,
+                    last_first_token_ms: h.last_first_token_ms.unwrap_or(0),
+                });
+            }
+            accept(
+                cid,
+                false,
+                wire::ModelList { models, health }.encode_to_vec(),
+            )
+        }
+        "ProbeModel" => {
+            let Ok(p) = wire::ProbeModel::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "ProbeModel");
+            };
+            accept(
+                cid,
+                false,
+                crate::probe::probe(&core.gateway, &p).await.encode_to_vec(),
+            )
         }
         "GetRecoveryReport" => {
             let r = &core.recovery;

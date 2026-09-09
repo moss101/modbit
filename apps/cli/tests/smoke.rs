@@ -324,6 +324,25 @@ fn cli_drives_a_real_core_end_to_end() {
     let (ok, out, all) = cli(&data_dir, &core, &["lease", "list", "--task", &tid]);
     assert!(ok && out.contains("status=REVOKED"), "{all}");
 
+    // M2.6: the gateway catalog is served by the Core from its own environment.
+    let out = Command::new(env!("CARGO_BIN_EXE_modbit-cli"))
+        .env("MODBIT_CORE_BIN", &core)
+        .env("MODBIT_OPENAI_BASE_URL", "http://127.0.0.1:9")
+        .env("OPENAI_API_KEY", "")
+        .arg("--data-dir")
+        .arg(&data_dir)
+        .args(["model", "list"])
+        .output()
+        .unwrap();
+    let text = String::from_utf8_lossy(&out.stdout).to_string();
+    assert!(
+        out.status.success()
+            && text.contains("model openai/gpt-5-mini ")
+            && text.contains("health openai requests=0"),
+        "{text}{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+
     let (ok, _, all) = cli(&data_dir, &core, &["session", "show", "--session", "00"]);
     assert!(!ok && all.contains("not a 32-hex-char id"), "{all}");
     // No socket files leak into the data directory.

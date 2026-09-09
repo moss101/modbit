@@ -13,6 +13,7 @@ modbit-domain.workspace = true
 modbit-event-store.workspace = true
 modbit-policy.workspace = true
 modbit-protocol.workspace = true
+modbit-providers.workspace = true
 modbit-terminal.workspace = true
 modbit-tools.workspace = true
 modbit-workspace.workspace = true
@@ -25,6 +26,7 @@ sha2.workspace = true
 hex.workspace = true
 subtle.workspace = true
 tokio.workspace = true
+tokio-util.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

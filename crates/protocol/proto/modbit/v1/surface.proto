@@ -310,3 +310,61 @@ message CapabilityLeaseView {
 message CapabilityLeaseList {
   repeated CapabilityLeaseView leases = 1;
 }
+
+// ---- M2.6 Provider Gateway (docs/15) ----
+
+message ListModels {}
+
+message ModelCapabilityView {
+  string endpoint = 1;
+  string provider = 2;           // openai | anthropic
+  string model = 3;
+  uint32 context_tokens = 4;
+  uint32 max_output_tokens = 5;
+  bool tools = 6;
+  bool vision = 7;
+  bool reasoning = 8;
+  bool structured_output = 9;
+  repeated string input_modalities = 10;
+  bool credential_available = 11;
+}
+
+message EndpointHealthView {
+  string endpoint = 1;
+  uint64 requests = 2;
+  uint64 successes = 3;
+  uint64 failures = 4;
+  uint64 interruptions = 5;
+  uint64 cancellations = 6;
+  uint64 rate_limited = 7;
+  uint64 last_first_token_ms = 8; // 0 = none yet
+}
+
+message ModelList {
+  repeated ModelCapabilityView models = 1;
+  repeated EndpointHealthView health = 2;
+}
+
+// Conformance probe: one real streaming call through the gateway (REQ-EV-0028).
+message ProbeModel {
+  string endpoint = 1;
+  string model = 2;
+  string prompt = 3;
+  bool with_tools = 4;           // project a scratch tool and expect a typed tool call
+  uint64 timeout_ms = 5;
+}
+
+message ModelProbed {
+  string status = 1;             // COMPLETED | ERROR | ROUTE_REFUSED
+  string text = 2;
+  string stop_reason = 3;
+  string error_code = 4;
+  string error_message = 5;
+  string route_json = 6;         // RouteRecord: requested vs resolved (REQ-EV-0112)
+  uint64 input_tokens = 7;
+  uint64 output_tokens = 8;
+  uint64 cached_input_tokens = 9;
+  string tool_call_name = 10;
+  string tool_call_arguments_json = 11;
+  uint32 events = 12;
+}

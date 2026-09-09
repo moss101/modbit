@@ -1,9 +1,31 @@
-//! `modbit-providers` — model and embedding adapters, registry, profiler and conditional plan compiler.
+//! `modbit-providers` — model adapters and the Provider Gateway (docs/15).
+//! THE doc 81 model/provider gateway.
 //!
-//! Canonical owner: model-gateway (`docs/12_REPOSITORY_AND_MODULE_LAYOUT.md`,
-//! `docs/81_ARCHITECTURE_GUARDRAILS_AND_FORBIDDEN_DUPLICATION.md`).
-//! Dependency direction is enforced by `tools/architecture-lint`.
+//! One normalized streaming boundary: [`ModelRequest`] in, [`ModelEvent`]s
+//! out, for OpenAI-compatible Chat Completions and the Anthropic Messages
+//! API. The gateway owns the endpoint registry and capability catalog
+//! (REQ-EV-0028/0189), records requested vs resolved route metadata
+//! (REQ-EV-0112), retries transient failures only before the first token,
+//! enforces the request timeout, honours cancellation and keeps rolling
+//! health. Raw credentials are resolved per request through a
+//! [`SecretHandle`] and never reach events, errors or logs.
 //!
-//! This crate is created by milestone task M0.1 and carries no behavior yet.
-//! Behavior arrives only through the graph-scheduled tasks that name this
-//! crate as owner; nothing here may be read as an implemented feature.
+//! Registry/profiler/plan-compiler pieces of docs/15 and docs/27 arrive with
+//! their own scheduled tasks; nothing here routes by learned statistics.
+
+#![forbid(unsafe_code)]
+
+pub mod anthropic;
+pub mod contract;
+pub mod gateway;
+pub mod openai;
+pub mod sse;
+
+pub use contract::{
+    ContentPart, Message, ModelEvent, ModelPolicy, ModelRequest, ProviderKind, Role, SecretHandle,
+    ToolProjection, Usage, stop,
+};
+pub use gateway::{
+    Endpoint, EndpointHealth, ModelCapability, ModelStream, ProviderGateway, Requirements,
+    RouteError, RouteRecord, default_anthropic_models, default_openai_models, endpoints_from_env,
+};

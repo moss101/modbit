@@ -7,8 +7,22 @@ rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 
+[dev-dependencies]
+tempfile.workspace = true
+
 [dependencies]
+bytes.workspace = true
+futures-util.workspace = true
 modbit-domain.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+hex.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+rand.workspace = true
 
 [lints]
 workspace = true
@@ -20,4 +34,7 @@ workspace = true
 [package.metadata.modbit]
 owner = "model-gateway"
 canonical = ["model-provider-gateway"]
-capabilities = []
+capabilities = [
+  { id = "gateway.stream", requirements = ["REQ-EV-0112"] },
+  { id = "gateway.capabilities", requirements = ["REQ-EV-0028", "REQ-EV-0189"] },
+]

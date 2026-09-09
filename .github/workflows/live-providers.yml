@@ -1,0 +1,32 @@
+# Live provider proof (docs/15 "Live provider proof", DR-M2-001): real streaming,
+# typed tool-call round trip and cancellation against the production endpoints
+# with dedicated test credentials. Skips explicitly until the secrets exist.
+name: live-providers
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live:
+    name: live streaming proof against production endpoints
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Install pinned Rust toolchain (rust-toolchain.toml)
+        run: rustup show
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - name: Run the live conformance test (skips without credentials)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$OPENAI_API_KEY" ] && [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::notice::no provider secrets configured; live proof skipped (DR-M2-001)"
+            exit 0
+          fi
+          MODBIT_LIVE_PROVIDERS=1 cargo test --locked -p modbit-providers live_ -- --nocapture

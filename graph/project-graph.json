@@ -1602,8 +1602,23 @@
    "milestone": "M2",
    "order": 5,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-09T16:42:53Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: NOT-FOUND (crates/providers is an M0.1 shell)"
+    },
+    {
+     "at": "2026-09-09T16:42:53Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "modbit-providers gateway (OpenAI + Anthropic SSE adapters, catalog, route record, retry/timeout/cancel, health); Core ListModels/ProbeModel; CLI model list/probe; DR-M2-001 live proof workflow"
+    }
+   ],
+   "status_changed_on": "2026-09-09T16:42:53Z"
   },
   {
    "id": "M2.7",
