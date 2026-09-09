@@ -6,6 +6,11 @@ use std::path::Path;
 
 use modbit_git::{MergeState, Repo};
 
+/// Read text with line endings normalized (a user's global autocrlf must not matter).
+fn read_lf(p: &Path) -> String {
+    std::fs::read_to_string(p).unwrap().replace("\r\n", "\n")
+}
+
 fn write(p: &Path, s: &str) {
     std::fs::create_dir_all(p.parent().unwrap()).unwrap();
     std::fs::write(p, s).unwrap();
@@ -178,7 +183,12 @@ fn qual_ev_0022_dirty_snapshot_reconstructs_exactly_and_cleanup_removes_the_ref(
         "untracked\n"
     );
     assert!(!cloud.dir().join("README.md").exists());
-    assert_eq!(repo.show(&snap.commit, "new.txt").unwrap(), b"untracked\n");
+    assert_eq!(
+        String::from_utf8(repo.show(&snap.commit, "new.txt").unwrap())
+            .unwrap()
+            .replace("\r\n", "\n"),
+        "untracked\n"
+    );
     // Cleanup removes the ref safely; the snapshot is no longer addressable by name.
     repo.snapshot_cleanup(&snap).unwrap();
     assert!(!repo.ref_exists(&snap.reference));

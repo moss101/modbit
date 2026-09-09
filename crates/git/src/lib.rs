@@ -191,6 +191,9 @@ impl Repo {
     pub fn init(dir: &Path, initial_branch: &str) -> Result<Self> {
         std::fs::create_dir_all(dir).map_err(Error::Spawn)?;
         run(dir, &["init", "-q", "-b", initial_branch])?;
+        // Repositories Modbit creates store bytes as given: no line-ending
+        // rewriting on checkout (Git for Windows defaults autocrlf=true).
+        run(dir, &["config", "core.autocrlf", "false"])?;
         Self::open(dir)
     }
 
