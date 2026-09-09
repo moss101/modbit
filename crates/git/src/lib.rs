@@ -284,14 +284,7 @@ impl Repo {
     pub fn worktree_add(&self, path: &Path, branch: &str) -> Result<Repo> {
         run(
             &self.dir,
-            &[
-                "worktree",
-                "add",
-                "-q",
-                path.to_str()
-                    .ok_or_else(|| Error::Parse("non-utf8 path".into()))?,
-                branch,
-            ],
+            &["worktree", "add", "-q", &git_path(path)?, branch],
         )?;
         Repo::open(path)
     }
@@ -300,13 +293,7 @@ impl Repo {
     pub fn worktree_remove(&self, path: &Path) -> Result<()> {
         run(
             &self.dir,
-            &[
-                "worktree",
-                "remove",
-                "--force",
-                path.to_str()
-                    .ok_or_else(|| Error::Parse("non-utf8 path".into()))?,
-            ],
+            &["worktree", "remove", "--force", &git_path(path)?],
         )
         .map(|_| ())
     }
@@ -601,4 +588,16 @@ impl Repo {
         }
         Ok(out.stdout)
     }
+}
+
+/// A path as the git binary accepts it: canonicalized Windows paths carry the
+/// `\\?\` verbatim prefix, which git does not understand.
+fn git_path(path: &Path) -> Result<String> {
+    let s = path
+        .to_str()
+        .ok_or_else(|| Error::Parse("non-utf8 path".into()))?;
+    Ok(match s.strip_prefix(r"\\?\UNC\") {
+        Some(unc) => format!(r"\\{unc}"),
+        None => s.strip_prefix(r"\\?\").unwrap_or(s).to_owned(),
+    })
 }
