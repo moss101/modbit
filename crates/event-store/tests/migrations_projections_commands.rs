@@ -386,3 +386,41 @@ fn command_replay_is_idempotent_and_conflicting_reuse_is_rejected() {
         CommandOutcome::Replayed(_)
     ));
 }
+
+#[test]
+fn concurrent_openers_of_a_fresh_database_all_succeed_and_migrate_once() {
+    // Regression for the race fixed in M1.2: two processes opening a fresh
+    // core.db at the same time must serialize the migration, not collide on
+    // the ledger's unique version key.
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().to_path_buf();
+    let handles: Vec<_> = (0..6)
+        .map(|_| {
+            let p = path.clone();
+            std::thread::spawn(move || {
+                EventStore::open_with_report(&p)
+                    .map(|(_, r)| r)
+                    .map_err(|e| e.to_string())
+            })
+        })
+        .collect();
+    let reports: Vec<_> = handles.into_iter().map(|h| h.join().unwrap()).collect();
+    for r in &reports {
+        assert!(r.is_ok(), "{r:?}");
+    }
+    let applied_by: Vec<_> = reports
+        .iter()
+        .filter(|r| !r.as_ref().unwrap().applied.is_empty())
+        .count()
+        .into();
+    assert_eq!(
+        applied_by,
+        vec![1usize],
+        "exactly one opener applied the migrations"
+    );
+    let conn = rusqlite::Connection::open(dir.path().join("core.db")).unwrap();
+    let n: i64 = conn
+        .query_row("SELECT count(*) FROM schema_migrations", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(n, 2);
+}

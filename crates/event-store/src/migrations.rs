@@ -64,21 +64,24 @@ pub fn current_version(conn: &Connection) -> Result<u32> {
     Ok(v.unwrap_or(0) as u32)
 }
 
-/// Apply every pending migration in its own transaction.
+/// Apply every pending migration atomically under one IMMEDIATE transaction,
+/// so concurrent openers of a fresh database serialize instead of racing.
 pub fn migrate(conn: &mut Connection) -> Result<MigrationReport> {
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
     // Read the version before creating the ledger so a pre-ledger version-1
     // database (schema_meta only) is recognised as version 1, not 0.
-    let from_version = current_version(conn)?;
-    conn.execute_batch(LEDGER)?;
+    let from_version = current_version(&tx)?;
+    tx.execute_batch(LEDGER)?;
     if from_version > SCHEMA_VERSION {
         return Err(Error::SchemaTooNew {
             found: from_version,
             supported: SCHEMA_VERSION,
         });
     }
+    let now = modbit_domain::Timestamp::now().millis();
     // Drift check: an applied migration's SQL must still hash the same.
     for m in MIGRATIONS.iter().filter(|m| m.version <= from_version) {
-        let recorded: Option<String> = conn
+        let recorded: Option<String> = tx
             .query_row(
                 "SELECT checksum FROM schema_migrations WHERE version = ?1",
                 params![m.version],
@@ -99,30 +102,27 @@ pub fn migrate(conn: &mut Connection) -> Result<MigrationReport> {
             Some(_) => {}
             None => {
                 // Pre-ledger version-1 database: adopt it into the ledger without re-running.
-                let tx = conn.transaction()?;
                 tx.execute(
                     "INSERT INTO schema_migrations (version, name, checksum, applied_at) VALUES (?1, ?2, ?3, ?4)",
-                    params![m.version, m.name, sha256_hex(m.up.as_bytes()), modbit_domain::Timestamp::now().millis()],
+                    params![m.version, m.name, sha256_hex(m.up.as_bytes()), now],
                 )?;
-                tx.commit()?;
             }
         }
     }
     let mut applied = Vec::new();
     for m in MIGRATIONS.iter().filter(|m| m.version > from_version) {
-        let tx = conn.transaction()?;
         tx.execute_batch(m.up)?;
         tx.execute(
             "INSERT INTO schema_migrations (version, name, checksum, applied_at) VALUES (?1, ?2, ?3, ?4)",
-            params![m.version, m.name, sha256_hex(m.up.as_bytes()), modbit_domain::Timestamp::now().millis()],
+            params![m.version, m.name, sha256_hex(m.up.as_bytes()), now],
         )?;
         tx.execute(
             "INSERT OR REPLACE INTO schema_meta (key, value) VALUES ('schema_version', ?1)",
             params![m.version.to_string()],
         )?;
-        tx.commit()?;
         applied.push(m.version);
     }
+    tx.commit()?;
     Ok(MigrationReport {
         from_version,
         to_version: SCHEMA_VERSION,
