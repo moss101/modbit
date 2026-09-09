@@ -1,0 +1,7 @@
+# Binary fixtures must never be line-ending normalized (Windows checkouts convert LF text).
+tests/fixtures/media/** binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.pdf binary
+*.db binary
