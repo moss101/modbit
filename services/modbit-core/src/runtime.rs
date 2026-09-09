@@ -1981,10 +1981,14 @@ async fn run_verification(
     if stage == Stage::Baseline {
         let _ = std::fs::remove_file(&flaky_state);
     }
-    let env: Vec<(String, String)> = vec![(
-        "FIXTURE_FLAKY_STATE".into(),
-        flaky_state.to_string_lossy().into_owned(),
-    )];
+    let env: Vec<(String, String)> = vec![
+        (
+            "FIXTURE_FLAKY_STATE".into(),
+            flaky_state.to_string_lossy().into_owned(),
+        ),
+        ("CARGO_TERM_COLOR".into(), "never".into()),
+        ("NO_COLOR".into(), "1".into()),
+    ];
     let step_id = RunStepId::new();
     let vstage = match stage {
         Stage::Baseline => VerificationStage::Baseline,

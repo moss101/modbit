@@ -2823,7 +2823,10 @@ fn fixture_repo(name: &str) -> (tempfile::TempDir, String) {
             if e.path().is_dir() {
                 copy(&e.path(), &dst.join(&n));
             } else {
-                std::fs::copy(e.path(), dst.join(&n)).unwrap();
+                // Checkouts on Windows may carry CRLF; fixtures are LF text.
+                let bytes = std::fs::read(e.path()).unwrap();
+                let text = String::from_utf8_lossy(&bytes).replace("\r\n", "\n");
+                std::fs::write(dst.join(&n), text).unwrap();
             }
         }
     }
@@ -2907,6 +2910,7 @@ async fn m2_8_verification_engine_gates_completion_on_real_cargo_fixture() {
             ("MODBIT_OPENAI_BASE_URL", &base),
             ("OPENAI_API_KEY", ""),
             ("ANTHROPIC_API_KEY", ""),
+            ("CARGO_TERM_COLOR", "always"),
         ],
     );
     let mut c = core.client().await;

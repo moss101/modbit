@@ -101,6 +101,7 @@ fn flaky_env(dir: &Path) -> Vec<(String, String)> {
         "FIXTURE_FLAKY_STATE".into(),
         dir.join("flaky-state").to_string_lossy().into_owned(),
     ));
+    env.push(("CARGO_TERM_COLOR".into(), "always".into()));
     env
 }
 

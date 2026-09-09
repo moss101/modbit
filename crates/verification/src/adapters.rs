@@ -49,8 +49,35 @@ fn excerpt(s: &str) -> Option<String> {
     }
 }
 
+/// Remove ANSI escape sequences (runners colorize under CI settings).
+#[must_use]
+pub fn strip_ansi(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut chars = s.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\u{1b}' {
+            if chars.peek() == Some(&'[') {
+                chars.next();
+                for n in chars.by_ref() {
+                    if n.is_ascii_alphabetic() {
+                        break;
+                    }
+                }
+            }
+            continue;
+        }
+        out.push(c);
+    }
+    out
+}
+
 /// Parse into the report's `checks`/`parser`; the caller fills identity fields.
 pub fn parse(family: RunnerFamily, raw: &RawRun, report: &mut TestReport) {
+    let raw = &RawRun {
+        stdout: strip_ansi(&raw.stdout),
+        stderr: strip_ansi(&raw.stderr),
+        ..raw.clone()
+    };
     let combined = format!("{}{}", raw.stdout, raw.stderr);
     let (adapter, confidence) = match family {
         RunnerFamily::Cargo => {
