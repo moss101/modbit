@@ -1,0 +1,12 @@
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T12:19:01.7027920Z test non_repository_and_bad_revisions_are_typed_errors ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T12:19:01.9294610Z test qual_ev_0022_dirty_snapshot_reconstructs_exactly_and_cleanup_removes_the_ref ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T12:19:02.1304820Z test qual_ev_0067_merge_transaction_exposes_injected_conflict_and_is_recoverable ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T12:19:02.1671580Z test qual_ev_0125_0124_worktrees_isolate_parallel_writes_and_carry_lineage ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T12:18:18.9449772Z test non_repository_and_bad_revisions_are_typed_errors ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T12:18:18.9811265Z test qual_ev_0022_dirty_snapshot_reconstructs_exactly_and_cleanup_removes_the_ref ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T12:18:18.9983389Z test qual_ev_0125_0124_worktrees_isolate_parallel_writes_and_carry_lineage ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T12:18:19.0190761Z test qual_ev_0067_merge_transaction_exposes_injected_conflict_and_is_recoverable ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T12:19:18.0607996Z test non_repository_and_bad_revisions_are_typed_errors ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T12:19:18.7264696Z test qual_ev_0022_dirty_snapshot_reconstructs_exactly_and_cleanup_removes_the_ref ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T12:19:18.9539261Z test qual_ev_0125_0124_worktrees_isolate_parallel_writes_and_carry_lineage ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T12:19:19.2531790Z test qual_ev_0067_merge_transaction_exposes_injected_conflict_and_is_recoverable ... ok

@@ -1390,8 +1390,15 @@
    "milestone": "M2",
    "order": 1,
    "source": "docs/43",
-   "status": "IMPLEMENTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-34350179687",
+    "commit:b23a127",
+    "commit:272c0b7",
+    "artifact:evidence/m2/M2.2/evidence.json",
+    "artifact:evidence/m2/M2.2/TASK_CARD.md",
+    "test:qual_ev_0067_merge_transaction_exposes_injected_conflict_and_is_recoverable"
+   ],
    "notes": [
     {
      "at": "2026-09-09T12:03:33Z",
@@ -1404,10 +1411,22 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "modbit-git: typed repo/branch/worktree/diff/commit, merge transaction with conflict evidence, dirty snapshots; four real-git tests pass locally."
+    },
+    {
+     "at": "2026-09-09T12:20:28Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "modbit-git is the typed Git path for the M2.4 tools and M2.9 review; CI runs its real-git tests on three platforms (run 34350179687)."
+    },
+    {
+     "at": "2026-09-09T12:20:28Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Worktree isolation, injected conflict recovery and snapshot reconstruction pass on hosted macOS/Linux/Windows."
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-09-09T12:09:48Z"
+   "status_changed_on": "2026-09-09T12:20:28Z"
   },
   {
    "id": "M2.3",

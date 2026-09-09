@@ -1,0 +1,5 @@
+{"task":"M2.2","commits":{"implementation":"272c0b7","fixes":["7e13d01","43efef2","b23a127"]},"evidence_tier":"release-critical",
+ "runs":[{"id":"gha-34349468805","kind":"hosted CI on 272c0b7","result":"macOS/Linux PASS; Windows FAILED: Git for Windows autocrlf rewrote line endings on checkout"},
+         {"id":"gha-34350179687","kind":"hosted CI on b23a127","result":"PASS: thirteen jobs green; QUAL-EV-0125/0124, 0067, 0022 tests pass on macOS, Linux and Windows","url":"https://github.com/moss101/modbit/actions/runs/34350179687","log":"ci-run-34350179687.json, ci-run-34350179687-tests.log"}],
+ "faults":["parallel writes in two worktrees","injected merge conflict then abort, then resolve","commit refused while conflicted","dirty tracked+untracked+deleted snapshot reconstructed in a fresh worktree","non-repository and bad revisions"],
+ "acceptance":{"Git branch/worktree/diff operations":"PASS"}}
