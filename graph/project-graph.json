@@ -3,7 +3,7 @@
  "product": "Modbit",
  "edition": "V3.3 EPR v1.1",
  "authority_date": "2026-09-05",
- "generated_on": "2026-09-09",
+ "generated_on": "2026-09-10",
  "generator": "tools/build_graph.py",
  "status_vocabulary": [
   "NOT_STARTED",
@@ -2503,8 +2503,18 @@
    "order": 9,
    "source": "docs/25_MULTIMODAL_MEDIA_AND_NOTEBOOK_RUNTIME.md; docs/43 V2 sequencing delta",
    "note": "added in V3.1 from the V2 sequencing delta",
-   "status": "IMPLEMENTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "test:png_and_jpeg_reads_keep_images_as_images_with_stripped_egress_copies",
+    "test:budgets_stop_before_decoding_and_malformed_media_is_typed",
+    "test:text_pdf_is_extracted_deterministically_and_hostile_text_stays_untrusted",
+    "test:m2_10_media_reads_carry_digests_not_bytes_and_survive_restart",
+    "run:gha-34395436381",
+    "commit:d89fe63",
+    "commit:e456836",
+    "artifact:evidence/m2/M2.10/evidence.json",
+    "artifact:evidence/m2/M2.10/TASK_CARD.md"
+   ],
    "notes": [
     {
      "at": "2026-09-09T19:07:14Z",
@@ -2517,9 +2527,33 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "MediaEnvelope in domain; Media Pipeline in tools (magic-byte detection, PNG/JPEG dimensions and metadata-stripped egress, bounded PDF text, byte/pixel/page budgets, typed failures); fs.read returns envelopes; hashed media fixtures"
+    },
+    {
+     "at": "2026-09-09T21:32:36Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "fs.read routes non-text bytes through the Media Pipeline; envelopes and digests over the SurfaceProtocol; objects served by ReadObjectRange"
+    },
+    {
+     "at": "2026-09-09T21:32:36Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Real PNG/JPEG/PDF fixtures (hashed) through the pipeline, the registry and the Core; budgets, malformed input, hostile text and restart durability pass on hosted macOS/Linux/Windows"
+    },
+    {
+     "at": "2026-09-09T21:32:36Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "Hosted CI run 34395436381 green on three platforms"
+    },
+    {
+     "at": "2026-09-09T21:32:36Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Sealed with hosted CI evidence"
     }
    ],
-   "status_changed_on": "2026-09-09T19:07:14Z"
+   "status_changed_on": "2026-09-09T21:32:36Z"
   },
   {
    "id": "M5.7",

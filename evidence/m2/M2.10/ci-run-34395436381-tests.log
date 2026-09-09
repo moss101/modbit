@@ -1,0 +1,106 @@
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:14.9748040Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:15.7108800Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.73s
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:15.8052240Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:18.1880600Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.37s
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:18.6567220Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.46s
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:22.2169480Z test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.53s
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:23.1827630Z test m2_10_media_reads_carry_digests_not_bytes_and_survive_restart ... ok
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:27.9805410Z test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.69s
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:28.1275560Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:28.1600200Z test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:28.1753400Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:28.2038410Z test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:28.3496100Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:28.8933620Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.53s
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:29.5489360Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.60s
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:29.5706700Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:30.1885110Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.61s
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:30.2469940Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:30.2634280Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:30.2915760Z test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:30.3094200Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:30.3372540Z test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:34.3323110Z test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.98s
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:34.4785920Z test png_and_jpeg_reads_keep_images_as_images_with_stripped_egress_copies ... ok
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:34.4966270Z test text_pdf_is_extracted_deterministically_and_hostile_text_stays_untrusted ... ok
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:34.5568440Z test budgets_stop_before_decoding_and_malformed_media_is_typed ... ok
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:34.5685220Z test fs_read_returns_media_envelopes_through_the_registry ... ok
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:34.5686430Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:35.2760340Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.68s
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:37.3101050Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.97s
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:37.5089860Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:37.5469990Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+protocol Rust<->TS round trip and generated-code freshness (M0.3)	UNKNOWN STEP	2026-09-09T19:30:47.7608892Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+desktop E2E — real Electron app against real modbit-core (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:36.0306530Z   ✓  1 e2e/fleet.spec.ts:32:1 › new task renders from Core ids, fleet reduces Core events, and survives Core kill and app restart (6.7s)
+desktop E2E — real Electron app against real modbit-core (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:37.9628450Z   ✓  2 e2e/fleet.spec.ts:82:1 › renderer messages with invalid arguments are rejected by main (REQ-EV-0103) (1.9s)
+desktop E2E — real Electron app against real modbit-core (macos-latest)	UNKNOWN STEP	2026-09-09T19:32:45.9258080Z   ✓  3 e2e/review.spec.ts:65:1 › review surface: per-hunk decision commits exactly the user's choice and survives an app restart (7.9s)
+desktop E2E — real Electron app against real modbit-core (windows-latest)	UNKNOWN STEP	2026-09-09T19:32:19.5773731Z   ok 1 e2e\fleet.spec.ts:32:1 › new task renders from Core ids, fleet reduces Core events, and survives Core kill and app restart (4.1s)
+desktop E2E — real Electron app against real modbit-core (windows-latest)	UNKNOWN STEP	2026-09-09T19:32:20.0646831Z   ok 2 e2e\fleet.spec.ts:82:1 › renderer messages with invalid arguments are rejected by main (REQ-EV-0103) (473ms)
+desktop E2E — real Electron app against real modbit-core (windows-latest)	UNKNOWN STEP	2026-09-09T19:32:23.2629791Z   ok 3 e2e\review.spec.ts:65:1 › review surface: per-hunk decision commits exactly the user's choice and survives an app restart (3.2s)
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-09T19:32:56.3741500Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-09T19:32:58.5761121Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.18s
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-09T19:32:58.7588935Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-09T19:33:03.7332002Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.96s
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-09T19:33:04.3704310Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.62s
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-09T19:33:08.9676050Z test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.55s
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-09T19:33:10.7266227Z test m2_10_media_reads_carry_digests_not_bytes_and_survive_restart ... ok
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-09T19:33:20.8298894Z test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 11.79s
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-09T19:33:20.8431494Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-09T19:33:20.8673274Z test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-09T19:33:20.8788862Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-09T19:33:20.9013545Z test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-09T19:33:21.8774017Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.96s
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-09T19:33:24.8715447Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.98s
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-09T19:33:26.5579114Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.66s
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-09T19:33:26.5747015Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-09T19:33:28.2791247Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.69s
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-09T19:33:28.3255786Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-09T19:33:28.3401901Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-09T19:33:28.3625140Z test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-09T19:33:28.3784821Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-09T19:33:28.4016645Z test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-09T19:33:32.4306364Z test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.02s
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-09T19:33:32.5276500Z test png_and_jpeg_reads_keep_images_as_images_with_stripped_egress_copies ... ok
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-09T19:33:32.5316889Z test text_pdf_is_extracted_deterministically_and_hostile_text_stays_untrusted ... ok
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-09T19:33:32.5898303Z test fs_read_returns_media_envelopes_through_the_registry ... ok
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-09T19:33:32.6005962Z test budgets_stop_before_decoding_and_malformed_media_is_typed ... ok
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-09T19:33:32.6007619Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-09T19:33:33.9721184Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.36s
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-09T19:33:36.0577414Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.06s
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-09T19:33:36.6206085Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.54s
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-09T19:33:36.6716004Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:27.5795642Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:28.2022517Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.62s
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:28.2681740Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:29.0937296Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.82s
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:29.4051548Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.31s
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:31.5978469Z test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.19s
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:32.1451744Z test m2_10_media_reads_carry_digests_not_bytes_and_survive_restart ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:34.3801950Z test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.77s
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:34.3825975Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:34.3864829Z test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:34.3878014Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:34.3902840Z test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:34.5049303Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:35.5798820Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.07s
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:36.2103606Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.63s
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:36.2123767Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:36.3109617Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:36.3168281Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:36.3188595Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:36.3215584Z test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:36.3261189Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:36.3287150Z test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:40.2530644Z test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.92s
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:40.2666452Z test png_and_jpeg_reads_keep_images_as_images_with_stripped_egress_copies ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:40.2693965Z test text_pdf_is_extracted_deterministically_and_hostile_text_stays_untrusted ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:40.2900216Z test fs_read_returns_media_envelopes_through_the_registry ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:40.3284528Z test budgets_stop_before_decoding_and_malformed_media_is_typed ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:40.3285291Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:40.5219759Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.19s
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:41.5781638Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.05s
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:41.6144629Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:41.6187086Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+desktop E2E — real Electron app against real modbit-core (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:35.8964771Z   ✓  1 e2e/fleet.spec.ts:32:1 › new task renders from Core ids, fleet reduces Core events, and survives Core kill and app restart (8.8s)
+desktop E2E — real Electron app against real modbit-core (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:36.4484626Z   ✓  2 e2e/fleet.spec.ts:82:1 › renderer messages with invalid arguments are rejected by main (REQ-EV-0103) (541ms)
+desktop E2E — real Electron app against real modbit-core (ubuntu-latest)	UNKNOWN STEP	2026-09-09T19:31:38.1124815Z   ✓  3 e2e/review.spec.ts:65:1 › review surface: per-hunk decision commits exactly the user's choice and survives an app restart (1.6s)
