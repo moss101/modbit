@@ -10,6 +10,10 @@ publish.workspace = true
 [dependencies]
 modbit-domain.workspace = true
 modbit-protocol.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+hex.workspace = true
 
 [lints]
 workspace = true
@@ -21,4 +25,4 @@ workspace = true
 [package.metadata.modbit]
 owner = "core-runtime"
 canonical = ["orchestration"]
-capabilities = []
+capabilities = [{ id = "harness.contracts", requirements = ["REQ-EV-0099", "REQ-EV-0107"] }]

@@ -311,7 +311,7 @@ async fn commands_subscription_resume_and_idempotent_replay_over_the_real_socket
         .unwrap_err();
     assert!(matches!(err, ClientError::Rejected { ref code, .. } if code == "UNKNOWN_SESSION"));
     let err = a
-        .command(envelope(id16(0x31), "CancelTask", vec![]))
+        .command(envelope(id16(0x31), "FrobnicateTask", vec![]))
         .await
         .unwrap_err();
     assert!(matches!(err, ClientError::Rejected { ref code, .. } if code == "UNSUPPORTED_COMMAND"));
@@ -2023,4 +2023,776 @@ async fn m2_6_provider_gateway_streams_through_the_core_over_real_http() {
     let bodies = seen.lock().unwrap().clone();
     assert_eq!(bodies[0]["messages"][1]["content"], "Say pong.");
     assert_eq!(bodies[1]["tools"][0]["function"]["name"], "probe.echo");
+}
+
+/// Scripted OpenAI-compatible model for the runtime proof: the reply is
+/// chosen from the number of tool results already in the conversation, so the
+/// same script drives fresh runs and resumed runs identically.
+async fn scripted_model(
+    script: Vec<serde_json::Value>,
+    stall_at: Option<usize>,
+) -> (
+    String,
+    std::sync::Arc<std::sync::Mutex<Vec<serde_json::Value>>>,
+) {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let seen = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let seen2 = std::sync::Arc::clone(&seen);
+    let script = std::sync::Arc::new(script);
+    let stalled_once = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    tokio::spawn(async move {
+        loop {
+            let Ok((mut sock, _)) = listener.accept().await else {
+                return;
+            };
+            let seen = std::sync::Arc::clone(&seen2);
+            let script = std::sync::Arc::clone(&script);
+            let stalled_once = std::sync::Arc::clone(&stalled_once);
+            tokio::spawn(async move {
+                let mut buf = Vec::new();
+                let mut tmp = [0u8; 8192];
+                let (head_end, len) = loop {
+                    let n = sock.read(&mut tmp).await.unwrap_or(0);
+                    if n == 0 {
+                        return;
+                    }
+                    buf.extend_from_slice(&tmp[..n]);
+                    if let Some(i) = buf.windows(4).position(|w| w == b"\r\n\r\n") {
+                        let head = String::from_utf8_lossy(&buf[..i]).to_string();
+                        let len = head
+                            .lines()
+                            .find_map(|l| {
+                                let (k, v) = l.split_once(':')?;
+                                k.eq_ignore_ascii_case("content-length")
+                                    .then(|| v.trim().parse::<usize>().ok())
+                                    .flatten()
+                            })
+                            .unwrap_or(0);
+                        break (i + 4, len);
+                    }
+                };
+                while buf.len() < head_end + len {
+                    let n = sock.read(&mut tmp).await.unwrap_or(0);
+                    if n == 0 {
+                        break;
+                    }
+                    buf.extend_from_slice(&tmp[..n]);
+                }
+                let body: serde_json::Value =
+                    serde_json::from_slice(&buf[head_end..head_end + len]).unwrap_or_default();
+                let results = body["messages"]
+                    .as_array()
+                    .map(|m| m.iter().filter(|x| x["role"] == "tool").count())
+                    .unwrap_or(0);
+                seen.lock().unwrap().push(body);
+                if stall_at == Some(results)
+                    && !stalled_once.swap(true, std::sync::atomic::Ordering::SeqCst)
+                {
+                    tokio::time::sleep(Duration::from_secs(600)).await;
+                    return;
+                }
+                let reply = script.get(results).cloned().unwrap_or_else(
+                    || serde_json::json!({"text": "I have nothing further to do."}),
+                );
+                let mut frames: Vec<String> = Vec::new();
+                if let Some(t) = reply["text"].as_str() {
+                    frames.push(serde_json::json!({"id":"c","model":"scripted-1","choices":[{"index":0,"delta":{"content":t},"finish_reason":null}]}).to_string());
+                }
+                let calls = reply["calls"].as_array().cloned().unwrap_or_default();
+                for (i, c) in calls.iter().enumerate() {
+                    frames.push(serde_json::json!({"id":"c","model":"scripted-1","choices":[{"index":0,"delta":{"tool_calls":[{"index":i,"id":format!("call_{results}_{i}"),"type":"function","function":{"name":c["name"],"arguments":c["args"].to_string()}}]},"finish_reason":null}]}).to_string());
+                }
+                let finish = if calls.is_empty() {
+                    "stop"
+                } else {
+                    "tool_calls"
+                };
+                frames.push(serde_json::json!({"id":"c","model":"scripted-1","choices":[{"index":0,"delta":{},"finish_reason":finish}],"usage":{"prompt_tokens":100,"completion_tokens":10}}).to_string());
+                frames.push("[DONE]".into());
+                let _ = sock
+                    .write_all(b"HTTP/1.1 200 OK\r\ncontent-type: text/event-stream\r\ntransfer-encoding: chunked\r\n\r\n")
+                    .await;
+                for f in frames {
+                    let frame = format!("data: {f}\n\n");
+                    let _ = sock
+                        .write_all(format!("{:x}\r\n{}\r\n", frame.len(), frame).as_bytes())
+                        .await;
+                }
+                let _ = sock.write_all(b"0\r\n\r\n").await;
+            });
+        }
+    });
+    (format!("http://127.0.0.1:{port}"), seen)
+}
+
+fn git_repo_with_failing_check() -> (tempfile::TempDir, String) {
+    let repo = tempfile::tempdir().unwrap();
+    std::fs::write(repo.path().join("qty.txt"), "quantity = -5\n").unwrap();
+    // The "test": passes only once the file says quantities are validated.
+    std::fs::write(
+        repo.path().join("check.sh"),
+        "grep -q 'validated' qty.txt\n",
+    )
+    .unwrap();
+    for args in [
+        vec!["init", "-q", "-b", "main"],
+        vec!["add", "-A"],
+        vec![
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@e",
+            "commit",
+            "-q",
+            "-m",
+            "base",
+        ],
+    ] {
+        assert!(
+            Command::new("git")
+                .arg("-C")
+                .arg(repo.path())
+                .args(&args)
+                .status()
+                .unwrap()
+                .success()
+        );
+    }
+    let root = repo
+        .path()
+        .canonicalize()
+        .unwrap()
+        .to_string_lossy()
+        .trim_start_matches(r"\\?\")
+        .to_owned();
+    (repo, root)
+}
+
+/// The E2E-001/002 script: read, plan, edit (wrong), test fails, edit (right),
+/// test passes, complete. `hash` placeholders are filled by the model from the
+/// observation it received (the script uses expected_content_hash only on the
+/// second edit, read from the first fs.read result it "remembers").
+fn coding_script(fs_read_hash: &str) -> Vec<serde_json::Value> {
+    use serde_json::json;
+    vec![
+        json!({"text": "Reading the file first.", "calls": [{"name": "fs.read", "args": {"path": "qty.txt"}}]}),
+        json!({"text": "Planning.", "calls": [{"name": "plan.update", "args": {"outcome": "reject negative quantities", "expected_files": ["qty.txt"], "verification": ["sh check.sh"], "protected_effects": []}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "qty.txt", "op": "replace", "content": "quantity = 5\n", "expected_content_hash": fs_read_hash}}]}),
+        json!({"calls": [{"name": "test.run", "args": {"argv": ["sh", "check.sh"], "inherit_env": true}}]}),
+        json!({"text": "The check failed; the file must say validated.", "calls": [{"name": "change.apply", "args": {"path": "qty.txt", "op": "replace", "content": "quantity = 5 # validated: negatives rejected\n"}}]}),
+        json!({"calls": [{"name": "test.run", "args": {"argv": ["sh", "check.sh"], "inherit_env": true}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "Negative quantities are rejected and the check passes.", "self_review": {"findings": [{"text": "check.sh passes at the candidate revision", "resolved": true}], "verification": ["sh check.sh"]}}}]}),
+    ]
+}
+
+async fn wait_task(c: &mut Client, task: &Id, secs: u64) -> modbit_protocol::v1::TaskStatus {
+    use modbit_protocol::v1::{GetTaskStatus, TaskStatus};
+    let deadline = std::time::Instant::now() + Duration::from_secs(secs);
+    loop {
+        let ack = c
+            .command(envelope(
+                Id {
+                    value: (0..16).map(|_| rand::random::<u8>()).collect(),
+                },
+                "GetTaskStatus",
+                GetTaskStatus {
+                    task_id: Some(task.clone()),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        let st: TaskStatus = Client::result(&ack).unwrap();
+        if !st.loop_alive || std::time::Instant::now() > deadline {
+            return st;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+}
+
+async fn task_events(
+    core: &CoreProcess,
+    session: &Id,
+    task: &Id,
+) -> Vec<(String, String, serde_json::Value)> {
+    let mut s = core.client().await;
+    s.subscribe(session.clone(), 0).await.unwrap();
+    let mut out = Vec::new();
+    while let Ok(Ok(Some(e))) =
+        tokio::time::timeout(Duration::from_millis(400), s.next_event()).await
+    {
+        let ev = e.event.unwrap();
+        if ev.task_id.as_ref() == Some(task) {
+            let p: serde_json::Value = serde_json::from_slice(&ev.payload).unwrap_or_default();
+            out.push((ev.aggregate_type, ev.event_type, p["payload"].clone()));
+        }
+    }
+    out
+}
+
+/// M2.7: a real coding task end to end (E2E-001/002 shape): read → plan →
+/// edit → failing check is evidence, not turn failure → fix → passing check
+/// → completion handshake → ReadyForReview, with every step on the log.
+#[tokio::test]
+async fn m2_7_one_agent_runtime_drives_a_coding_task_to_ready_for_review() {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    let (repo, root) = git_repo_with_failing_check();
+    let hash = {
+        use sha2::Digest;
+        hex::encode(sha2::Sha256::digest(
+            std::fs::read(repo.path().join("qty.txt")).unwrap(),
+        ))
+    };
+    let (base, seen) = scripted_model(coding_script(&hash), None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn_with_env(
+        dir.path(),
+        &[
+            ("MODBIT_OPENAI_BASE_URL", &base),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+        ],
+    );
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x70)).await;
+    let g = lease_for(&session);
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x71),
+            "CreateTask",
+            CreateTask {
+                session_id: Some(session.clone()),
+                goal_text: "Reject negative quantities and make the check pass.".into(),
+                workspace_id: None,
+                execution_profile: String::new(),
+                origin: "cli".into(),
+                workspace_root: root.clone(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let task = Client::result::<TaskCreated>(&ack)
+        .unwrap()
+        .task_id
+        .unwrap();
+    // Starting needs the session lease; then the loop runs on its own.
+    let err = c
+        .command(envelope(
+            id16(0x72),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: String::new(),
+                max_turns: 0,
+                max_tool_calls: 0,
+                max_no_progress_turns: 0,
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap_err();
+    assert!(matches!(err, ClientError::Rejected { ref code, .. } if code == "LEASE_REQUIRED"));
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x73),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 0,
+                max_tool_calls: 0,
+                max_no_progress_turns: 0,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let started: TaskRunStarted = Client::result(&ack).unwrap();
+    assert_eq!(
+        (
+            started.resumed,
+            started.endpoint.as_str(),
+            started.model.as_str()
+        ),
+        (false, "openai", "gpt-5-mini")
+    );
+    let st = wait_task(&mut c, &task, 60).await;
+    let trail = task_events(&core, &session, &task).await;
+    assert_eq!(
+        (st.state.as_str(), st.run_state.as_str(), st.loop_alive),
+        ("ReadyForReview", "Completed", false),
+        "{st:?}\n{trail:#?}"
+    );
+    // Real effect on the real repository.
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("qty.txt")).unwrap(),
+        "quantity = 5 # validated: negatives rejected\n"
+    );
+    // Event trail.
+    let evs = task_events(&core, &session, &task).await;
+    let names = |agg: &str| {
+        evs.iter()
+            .filter(|(a, _, _)| a == agg)
+            .map(|(_, t, _)| t.as_str())
+            .collect::<Vec<_>>()
+    };
+    let task_trail = names("task");
+    for t in [
+        "TaskStarted",
+        "PlanRecorded",
+        "SelfReviewRecorded",
+        "TaskReadyForReview",
+    ] {
+        assert!(task_trail.contains(&t), "{task_trail:?}");
+    }
+    assert!(
+        !task_trail.contains(&"TaskFailed"),
+        "a failing check never fails the task (REQ-EV-0099)"
+    );
+    assert_eq!(names("run"), ["RunCreated", "RunStarted", "RunCompleted"]);
+    let turns = names("turn");
+    assert_eq!(
+        turns.iter().filter(|t| **t == "TurnPrepared").count(),
+        7,
+        "{turns:?}"
+    );
+    assert_eq!(turns.iter().filter(|t| **t == "TurnCompleted").count(), 7);
+    assert!(
+        turns.contains(&"ContextPackCompiled")
+            && turns.contains(&"ToolProjectionSelected")
+            && turns.contains(&"ModelUsageRecorded")
+    );
+    let steps: Vec<String> = evs
+        .iter()
+        .filter(|(a, t, _)| a == "run_step" && t == "StepScheduled")
+        .map(|(_, _, p)| {
+            p["step_type"]["kind"]
+                .as_str()
+                .unwrap_or_default()
+                .to_owned()
+        })
+        .collect();
+    assert_eq!(steps.iter().filter(|s| *s == "CONTEXT_COMPILE").count(), 7);
+    assert_eq!(steps.iter().filter(|s| *s == "MODEL_INVOKE").count(), 7);
+    assert_eq!(
+        steps.iter().filter(|s| *s == "TOOL_CALL").count(),
+        5,
+        "{steps:?}"
+    );
+    assert_eq!(
+        (
+            steps.iter().filter(|s| *s == "PLAN").count(),
+            steps.iter().filter(|s| *s == "SELF_REVIEW").count()
+        ),
+        (1, 1)
+    );
+    let calls = names("tool_call");
+    assert_eq!(
+        calls.iter().filter(|t| **t == "ToolCallSucceeded").count(),
+        5,
+        "{calls:?}"
+    );
+    // The model saw the failure as evidence: the fifth request carries the failed check observation.
+    let bodies = seen.lock().unwrap().clone();
+    assert_eq!(bodies.len(), 7);
+    let fifth = bodies[4]["messages"].as_array().unwrap();
+    let last_tool = fifth.iter().rev().find(|m| m["role"] == "tool").unwrap();
+    let content = last_tool["content"].as_str().unwrap();
+    assert!(
+        content.contains("status: SUCCESS") && content.contains("\"status\":\"FAILED\""),
+        "{content}"
+    );
+    assert!(
+        bodies[0]["messages"][0]["content"]
+            .as_str()
+            .unwrap()
+            .contains("plan.update"),
+        "system segment is stable"
+    );
+    assert!(bodies[6]["messages"].as_array().unwrap().iter().any(|m| {
+        m["role"] == "tool"
+            && m["content"]
+                .as_str()
+                .unwrap_or_default()
+                .contains("\"status\":\"PASSED\"")
+    }));
+    assert!(
+        bodies[0]["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|t| t["function"]["name"] == "task.complete")
+    );
+}
+
+/// Harness rules: a write before the plan is refused with evidence, budgets
+/// exhaust into Waiting with attention, and a Core restart resumes the run
+/// from the log without repeating a tool action (E2E-003 shape).
+#[tokio::test]
+async fn m2_7_harness_refuses_unplanned_writes_exhausts_budgets_and_resumes_after_restart() {
+    use modbit_protocol::v1::{CancelTask, StartTask, TaskCancelRequested, TaskRunStarted};
+    use serde_json::json;
+    let (repo, root) = git_repo_with_failing_check();
+    // Script: unplanned write (refused), plan, write, then the model stalls on
+    // the fourth request until the Core is restarted; afterwards it completes.
+    let script = vec![
+        json!({"calls": [{"name": "change.apply", "args": {"path": "qty.txt", "op": "replace", "content": "x\n"}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "o", "expected_files": ["qty.txt"]}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "qty.txt", "op": "replace", "content": "quantity = 1 # validated\n"}}]}),
+        json!({"calls": [{"name": "test.run", "args": {"argv": ["sh", "check.sh"], "inherit_env": true}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script.clone(), Some(3)).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x80)).await;
+    let g = lease_for(&session);
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x81),
+            "CreateTask",
+            CreateTask {
+                session_id: Some(session.clone()),
+                goal_text: "validate".into(),
+                workspace_id: None,
+                execution_profile: String::new(),
+                origin: "cli".into(),
+                workspace_root: root.clone(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let task = Client::result::<TaskCreated>(&ack)
+        .unwrap()
+        .task_id
+        .unwrap();
+    // Budget exhaustion first: one turn only.
+    let (base2, _) = scripted_model(
+        vec![
+            json!({"text": "thinking"}),
+            json!({"text": "still thinking"}),
+        ],
+        None,
+    )
+    .await;
+    let _ = base2;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x82),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 1,
+                max_tool_calls: 0,
+                max_no_progress_turns: 0,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 30).await;
+    assert_eq!(
+        (
+            st.state.as_str(),
+            st.wait_reason.as_str(),
+            st.run_state.as_str()
+        ),
+        ("Waiting", "UserInput", "Suspended"),
+        "{st:?}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("qty.txt")).unwrap(),
+        "quantity = -5\n",
+        "the unplanned write was refused"
+    );
+    let evs = task_events(&core, &session, &task).await;
+    assert!(
+        evs.iter()
+            .any(|(_, t, p)| t == "HarnessBudgetExhausted" && p["budget"] == "max_turns"),
+        "{evs:?}"
+    );
+    assert!(evs.iter().any(|(a, t, p)| a == "run_step"
+        && t == "StepFailed"
+        && p["failure_code"] == "HARNESS_PLAN_REQUIRED"));
+    assert!(
+        evs.iter().all(|(_, t, _)| t != "ToolCallProposed"),
+        "a harness refusal never reaches the kernel or an effector"
+    );
+    // Resume with a real budget: plan, write, then the model stalls; kill the Core mid-turn.
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x83),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 20,
+                max_tool_calls: 0,
+                max_no_progress_turns: 0,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let started: TaskRunStarted = Client::result(&ack).unwrap();
+    assert!(started.resumed);
+    let deadline = std::time::Instant::now() + Duration::from_secs(30);
+    while std::fs::read_to_string(repo.path().join("qty.txt")).unwrap()
+        != "quantity = 1 # validated\n"
+    {
+        assert!(std::time::Instant::now() < deadline, "write did not land");
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    // Let the stalled fourth request start, then hard-kill the Core.
+    let deadline = std::time::Instant::now() + Duration::from_secs(30);
+    while seen.lock().unwrap().len() < 4 {
+        assert!(std::time::Instant::now() < deadline);
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    drop(c);
+    core.kill();
+    let core2 = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c2 = core2.client().await;
+    let (session2, task2) = (session.clone(), task.clone());
+    let st = wait_task(&mut c2, &task2, 5).await;
+    assert_eq!(
+        (
+            st.state.as_str(),
+            st.wait_reason.as_str(),
+            st.run_state.as_str(),
+            st.loop_alive
+        ),
+        ("Waiting", "External", "Suspended", false),
+        "{st:?}"
+    );
+    let g2 = Some(acquire_lease(&mut c2, id16(0x84), session2.clone(), "resumer").await);
+    let requests_before = seen.lock().unwrap().len();
+    let ack = c2
+        .command(envelope_fenced(
+            id16(0x85),
+            "StartTask",
+            StartTask {
+                task_id: Some(task2.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 20,
+                max_tool_calls: 0,
+                max_no_progress_turns: 0,
+            }
+            .encode_to_vec(),
+            g2,
+        ))
+        .await
+        .unwrap();
+    let started: TaskRunStarted = Client::result(&ack).unwrap();
+    assert!(started.resumed);
+    let st = wait_task(&mut c2, &task2, 60).await;
+    let trail = task_events(&core2, &session2, &task2).await;
+    assert_eq!(
+        (st.state.as_str(), st.run_state.as_str()),
+        ("ReadyForReview", "Completed"),
+        "{st:?}\n{trail:#?}"
+    );
+    // The resumed conversation carried the earlier tool results (rebuilt from the log)
+    // and no tool action ran twice.
+    let bodies = seen.lock().unwrap().clone();
+    let resumed_first = &bodies[requests_before]["messages"];
+    let tool_results = resumed_first
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .count();
+    assert_eq!(tool_results, 3, "{resumed_first}");
+    let evs = task_events(&core2, &session2, &task2).await;
+    let applies = evs
+        .iter()
+        .filter(|(a, t, p)| {
+            a == "tool_call" && t == "ToolCallProposed" && p["tool_name"] == "change.apply"
+        })
+        .count();
+    assert_eq!(applies, 1, "no duplicate write after resume");
+    assert_eq!(
+        evs.iter()
+            .filter(|(a, t, _)| a == "run" && t == "RunResumed")
+            .count(),
+        2
+    );
+    assert!(
+        evs.iter()
+            .any(|(a, t, _)| a == "run" && t == "RunSuspended")
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("qty.txt")).unwrap(),
+        "quantity = 1 # validated\n"
+    );
+    // Cancel on a finished task is a no-op; on a live loop it interrupts the model stream.
+    let ack = c2
+        .command(envelope_fenced(
+            id16(0x86),
+            "CancelTask",
+            CancelTask {
+                task_id: Some(task2.clone()),
+            }
+            .encode_to_vec(),
+            g2,
+        ))
+        .await
+        .unwrap();
+    let r: TaskCancelRequested = Client::result(&ack).unwrap();
+    assert!(!r.was_running);
+    let (base3, seen3) = scripted_model(vec![], Some(0)).await;
+    let _ = base3;
+    let _ = seen3;
+}
+
+/// Steering lands between steps as a durable `TaskSteered` and reaches the
+/// model as a user message; cancellation interrupts the in-flight stream.
+#[tokio::test]
+async fn m2_7_steering_and_cancellation_apply_at_safe_boundaries() {
+    use modbit_protocol::v1::{
+        CancelTask, QueueInput, StartTask, TaskCancelRequested, TaskRunStarted,
+    };
+    use serde_json::json;
+    let (_repo, root) = git_repo_with_failing_check();
+    let script = vec![
+        json!({"calls": [{"name": "fs.read", "args": {"path": "qty.txt"}}]}),
+        json!({"calls": [{"name": "fs.stat", "args": {"path": "qty.txt"}}]}),
+    ];
+    let (base, seen) = scripted_model(script, Some(2)).await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn_with_env(
+        dir.path(),
+        &[
+            ("MODBIT_OPENAI_BASE_URL", &base),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+        ],
+    );
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x90)).await;
+    let g = lease_for(&session);
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x91),
+            "CreateTask",
+            CreateTask {
+                session_id: Some(session.clone()),
+                goal_text: "look around".into(),
+                workspace_id: None,
+                execution_profile: String::new(),
+                origin: "cli".into(),
+                workspace_root: root,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let task = Client::result::<TaskCreated>(&ack)
+        .unwrap()
+        .task_id
+        .unwrap();
+    // Queue a steer before the loop starts: it is applied at the first boundary.
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x92),
+            "QueueInput",
+            QueueInput {
+                task_id: Some(task.clone()),
+                input_id: "steer-1".into(),
+                mode: "STEER".into(),
+                text: "Only read files, never write.".into(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(ack.status, CommandStatus::Accepted as i32);
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x93),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 10,
+                max_tool_calls: 0,
+                max_no_progress_turns: 5,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    // Third request stalls; cancel while the stream is open.
+    let deadline = std::time::Instant::now() + Duration::from_secs(30);
+    while seen.lock().unwrap().len() < 3 {
+        assert!(std::time::Instant::now() < deadline);
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x94),
+            "CancelTask",
+            CancelTask {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let r: TaskCancelRequested = Client::result(&ack).unwrap();
+    assert!(r.was_running);
+    let st = wait_task(&mut c, &task, 20).await;
+    assert_eq!(
+        (st.state.as_str(), st.run_state.as_str(), st.loop_alive),
+        ("Cancelled", "Cancelled", false),
+        "{st:?}"
+    );
+    let bodies = seen.lock().unwrap().clone();
+    let first = bodies[0]["messages"].as_array().unwrap();
+    assert!(
+        first.iter().any(|m| m["role"] == "user"
+            && m["content"]
+                .as_str()
+                .unwrap_or_default()
+                .contains("[STEER] Only read files")),
+        "{first:?}"
+    );
+    let evs = task_events(&core, &session, &task).await;
+    let names: Vec<&str> = evs.iter().map(|(_, t, _)| t.as_str()).collect();
+    assert!(
+        names.contains(&"TaskSteered")
+            && names.contains(&"TurnInterrupted")
+            && names.contains(&"StepCancelled")
+            && names.contains(&"RunCancelled")
+            && names.contains(&"TaskCancelled"),
+        "{names:?}"
+    );
 }

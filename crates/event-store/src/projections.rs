@@ -879,6 +879,38 @@ pub fn load_receipts(
     Ok(out)
 }
 
+/// Tasks currently in `Running` state (interrupted loops after a restart).
+pub fn load_running_tasks(tx: &rusqlite::Connection) -> Result<Vec<Task>> {
+    let mut stmt =
+        tx.prepare("SELECT task_id FROM tasks WHERE state = 'RUNNING' ORDER BY created_at")?;
+    let ids: Vec<Vec<u8>> = stmt
+        .query_map([], |r| r.get(0))?
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+    let mut out = Vec::new();
+    for id in ids {
+        if let Some(t) = load_task(tx, &TaskId::from_bytes(blob16(id)?))? {
+            out.push(t);
+        }
+    }
+    Ok(out)
+}
+
+/// Runs of a task, newest attempt first.
+pub fn load_runs_for_task(tx: &rusqlite::Connection, task: &TaskId) -> Result<Vec<Run>> {
+    let mut stmt =
+        tx.prepare("SELECT run_id FROM runs WHERE task_id = ?1 ORDER BY attempt DESC")?;
+    let ids: Vec<Vec<u8>> = stmt
+        .query_map(params![task.as_bytes().as_slice()], |r| r.get(0))?
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+    let mut out = Vec::new();
+    for id in ids {
+        if let Some(r) = load_run(tx, &RunId::from_bytes(blob16(id)?))? {
+            out.push(r);
+        }
+    }
+    Ok(out)
+}
+
 /// Truncate the projection tables and replay every event from offset 0.
 pub fn rebuild(tx: &Transaction<'_>, objects: &crate::ObjectStore) -> Result<u64> {
     for t in [

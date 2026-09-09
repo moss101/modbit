@@ -1662,8 +1662,23 @@
    "milestone": "M2",
    "order": 6,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-09T17:12:11Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: NOT-FOUND (core-runtime and prompt-compiler were M0.1 shells)"
+    },
+    {
+     "at": "2026-09-09T17:12:11Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "prompt compiler (stable segments + projection hash), harness contracts, Core one-agent loop with Run/Turn/RunStep events, StartTask/CancelTask/GetTaskStatus, CLI task run/cancel/status; broker request ids now include the tool call id"
+    }
+   ],
+   "status_changed_on": "2026-09-09T17:12:11Z"
   },
   {
    "id": "M2.8",

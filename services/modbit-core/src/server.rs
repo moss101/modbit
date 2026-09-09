@@ -40,20 +40,22 @@ use tokio::sync::{Mutex, watch};
 
 /// Shared Core state for M1.3.
 pub struct Core {
-    store: Mutex<EventStore>,
+    pub(crate) store: Mutex<EventStore>,
     /// Latest committed store offset; subscribers wake on change.
-    last_offset: watch::Sender<u64>,
+    pub(crate) last_offset: watch::Sender<u64>,
     boot_secret: Vec<u8>,
     /// Local single-user identity for M1 (accounts arrive with the cloud plane).
-    tenant_id: TenantId,
-    user_id: UserId,
+    pub(crate) tenant_id: TenantId,
+    pub(crate) user_id: UserId,
     /// What startup recovery did (docs/19), served to clients.
     recovery: RecoveryOutcome,
     started_at: Timestamp,
     /// Tool registry, kernel port, broker (M2.4).
-    tools: crate::tools::ToolHost,
+    pub(crate) tools: crate::tools::ToolHost,
     /// Provider Gateway (M2.6): endpoints from the Core's environment only.
-    gateway: modbit_providers::ProviderGateway,
+    pub(crate) gateway: modbit_providers::ProviderGateway,
+    /// One-agent runtime (M2.7).
+    pub(crate) runtime: crate::runtime::Runtime,
 }
 
 /// Bounded number of events per subscription batch (REQ-EV-0108).
@@ -122,6 +124,15 @@ pub async fn run(data_dir: PathBuf) -> Result<()> {
             format!("; notes: {}", recovery.notes.join(" | "))
         }
     );
+    // Interrupted agent loops suspend at a turn boundary (docs/14); nothing re-executes.
+    let suspended =
+        crate::runtime::reconcile_after_restart(&mut store, TenantId::from_bytes([0xA1; 16]));
+    if !suspended.is_empty() {
+        eprintln!(
+            "modbit-core: suspended {} running task(s) after restart",
+            suspended.len()
+        );
+    }
     let start = store.last_offset()?;
     let boot_secret: Vec<u8> = (0..32).map(|_| rand::random::<u8>()).collect();
     let nonce = encode_hex(&(0..6).map(|_| rand::random::<u8>()).collect::<Vec<_>>());
@@ -137,6 +148,7 @@ pub async fn run(data_dir: PathBuf) -> Result<()> {
         started_at: Timestamp::now(),
         tools: crate::tools::ToolHost::new(&data_dir).context("tool host")?,
         gateway: modbit_providers::ProviderGateway::new(modbit_providers::endpoints_from_env()),
+        runtime: crate::runtime::Runtime::default(),
     });
     let listener = Listener::bind(&endpoint)
         .await
@@ -356,6 +368,9 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "GetCapabilityLeases",
                     "ListModels",
                     "ProbeModel",
+                    "StartTask",
+                    "CancelTask",
+                    "GetTaskStatus",
                 ]
                 .map(String::from)
                 .to_vec(),
@@ -526,7 +541,7 @@ fn accept(command_id: Option<wire::Id>, replayed: bool, result: Vec<u8>) -> Comm
     }
 }
 
-async fn handle_command(core: &Core, env: CommandEnvelope) -> CommandAck {
+async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
     let cid = env.command_id.clone();
     let Some(command_id) = env.command_id.as_ref().and_then(id16) else {
         return reject(cid, "BAD_COMMAND_ID", "command_id must be 16 bytes");
@@ -1459,6 +1474,196 @@ async fn handle_command(core: &Core, env: CommandEnvelope) -> CommandAck {
                 cid,
                 false,
                 crate::probe::probe(&core.gateway, &p).await.encode_to_vec(),
+            )
+        }
+        "StartTask" => {
+            let Ok(p) = wire::StartTask::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "StartTask");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let task = match core.store.lock().await.task(&task_id) {
+                Ok(Some(t)) => t,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
+                return ack;
+            }
+            let lease_generation = env.expected_generation.unwrap_or(0);
+            // Model policy: request → environment defaults → first registered.
+            let endpoints = core.gateway.endpoints();
+            let endpoint = if !p.endpoint.is_empty() {
+                p.endpoint.clone()
+            } else if let Ok(e) = std::env::var("MODBIT_DEFAULT_ENDPOINT") {
+                e
+            } else if let Some(e) = endpoints.first() {
+                e.name.clone()
+            } else {
+                return reject(
+                    cid,
+                    "NO_PROVIDER",
+                    "no provider endpoint is registered (set OPENAI_API_KEY / ANTHROPIC_API_KEY)",
+                );
+            };
+            let model = if !p.model.is_empty() {
+                p.model.clone()
+            } else if let Ok(m) = std::env::var("MODBIT_DEFAULT_MODEL") {
+                m
+            } else if let Some(m) = endpoints
+                .iter()
+                .find(|e| e.name == endpoint)
+                .and_then(|e| e.models.iter().find(|m| m.tools))
+            {
+                m.model.clone()
+            } else {
+                return reject(
+                    cid,
+                    "NO_MODEL",
+                    format!("endpoint `{endpoint}` serves no tool-capable model"),
+                );
+            };
+            let mut budgets = modbit_core_runtime::Budgets::default();
+            if p.max_turns > 0 {
+                budgets.max_turns = p.max_turns;
+            }
+            if p.max_tool_calls > 0 {
+                budgets.max_tool_calls = p.max_tool_calls;
+            }
+            if p.max_no_progress_turns > 0 {
+                budgets.max_consecutive_no_progress_turns = p.max_no_progress_turns;
+            }
+            let cfg = crate::runtime::StartConfig {
+                endpoint: endpoint.clone(),
+                model: model.clone(),
+                budgets,
+            };
+            match core
+                .runtime
+                .start(core, task, cfg, lease_generation, actor)
+                .await
+            {
+                Ok((run_id, resumed)) => accept(
+                    cid,
+                    false,
+                    wire::TaskRunStarted {
+                        run_id: Some(wire_id(run_id.as_bytes())),
+                        resumed,
+                        endpoint,
+                        model,
+                    }
+                    .encode_to_vec(),
+                ),
+                Err((code, msg)) => reject(cid, &code, msg),
+            }
+        }
+        "CancelTask" => {
+            let Ok(p) = wire::CancelTask::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "CancelTask");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let task = match core.store.lock().await.task(&task_id) {
+                Ok(Some(t)) => t,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
+                return ack;
+            }
+            let was_running = core.runtime.cancel(&task_id).await;
+            if !was_running && !task.state.is_terminal() {
+                // No loop alive: cancel durably here.
+                let mut store = core.store.lock().await;
+                if let Ok(runs) = store.runs_for_task(&task_id) {
+                    for r in runs.into_iter().filter(|r| !r.state.is_terminal()) {
+                        let _ = store.append(AppendRequest {
+                            tenant_id: core.tenant_id,
+                            session_id: task.session_id,
+                            task_id: Some(task_id),
+                            run_id: Some(r.run_id),
+                            turn_id: None,
+                            step_id: None,
+                            aggregate_type: AggregateType::Run,
+                            aggregate_id: *r.run_id.as_bytes(),
+                            expected_sequence: None,
+                            events: vec![typed(
+                                "RunCancelled",
+                                &modbit_domain::run::RunEvent::RunCancelled,
+                                actor.clone(),
+                            )],
+                        });
+                    }
+                }
+                match store.append(AppendRequest {
+                    tenant_id: core.tenant_id,
+                    session_id: task.session_id,
+                    task_id: Some(task_id),
+                    run_id: None,
+                    turn_id: None,
+                    step_id: None,
+                    aggregate_type: AggregateType::Task,
+                    aggregate_id: *task_id.as_bytes(),
+                    expected_sequence: None,
+                    events: vec![typed(
+                        "TaskCancelled",
+                        &TaskEvent::TaskCancelled,
+                        actor.clone(),
+                    )],
+                }) {
+                    Ok(ev) => {
+                        if let Some(last) = ev.last() {
+                            core.last_offset.send_replace(last.offset);
+                        }
+                    }
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                }
+            }
+            accept(
+                cid,
+                false,
+                wire::TaskCancelRequested { was_running }.encode_to_vec(),
+            )
+        }
+        "GetTaskStatus" => {
+            let Ok(p) = wire::GetTaskStatus::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "GetTaskStatus");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let loop_alive = core.runtime.is_running(&task_id).await;
+            let store = core.store.lock().await;
+            let task = match store.task(&task_id) {
+                Ok(Some(t)) => t,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            let (state, wait_reason) = match task.state {
+                modbit_domain::task::TaskState::Waiting(r) => {
+                    ("Waiting".to_owned(), format!("{r:?}"))
+                }
+                other => (format!("{other:?}"), String::new()),
+            };
+            let run_state = store
+                .runs_for_task(&task_id)
+                .ok()
+                .and_then(|r| r.into_iter().next())
+                .map(|r| format!("{:?}", r.state))
+                .unwrap_or_default();
+            accept(
+                cid,
+                false,
+                wire::TaskStatus {
+                    state,
+                    wait_reason,
+                    run_state,
+                    loop_alive,
+                    last_offset: store.last_offset().unwrap_or(0),
+                }
+                .encode_to_vec(),
             )
         }
         "GetRecoveryReport" => {

@@ -427,7 +427,9 @@ impl ProviderGateway {
             Ok(r) => r,
             Err(e) => {
                 let msg = redact(&e.to_string());
-                return if e.is_connect() || e.is_timeout() {
+                return if e.is_timeout() {
+                    Attempt::Timeout
+                } else if e.is_connect() {
                     Attempt::Retryable {
                         code: "CONNECT_FAILED".into(),
                         message: msg,
@@ -481,7 +483,9 @@ impl ProviderGateway {
                 Some(Ok(b)) => b,
                 Some(Err(e)) => {
                     let msg = redact(&e.to_string());
-                    return if first_token {
+                    return if e.is_timeout() {
+                        Attempt::Timeout
+                    } else if first_token {
                         Attempt::Interrupted(msg)
                     } else {
                         Attempt::Retryable {

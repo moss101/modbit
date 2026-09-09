@@ -209,6 +209,7 @@ impl ToolHost {
             sink,
             output_budget_bytes,
             kernel: Some(Arc::new(port)),
+            tool_call_id: None,
         };
         let outcome = self
             .runtime

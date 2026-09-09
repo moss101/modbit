@@ -210,6 +210,49 @@ pub enum TaskEvent {
         /// Text.
         text: String,
     },
+    /// `PlanRecorded` (docs/28 PX-014): the plan artifact before the first write; no state change.
+    PlanRecorded {
+        /// Object hash of the plan JSON.
+        plan_ref: String,
+        /// Files the plan expects to change (original write set).
+        expected_files: Vec<String>,
+        /// Plan version (1 = original).
+        version: u32,
+    },
+    /// `PlanRevised` with a scope delta; no state change.
+    PlanRevised {
+        /// Object hash of the plan JSON.
+        plan_ref: String,
+        /// Paths added.
+        added: Vec<String>,
+        /// Paths removed.
+        removed: Vec<String>,
+        /// Reason.
+        reason: String,
+        /// New version.
+        version: u32,
+    },
+    /// `SelfReviewRecorded` (docs/28 PX-019); no state change.
+    SelfReviewRecorded {
+        /// Object hash of the review JSON.
+        review_ref: String,
+        /// Unresolved findings (block completion).
+        unresolved: u32,
+    },
+    /// `HarnessBudgetExhausted` (docs/14 harness contract 5); no state change.
+    HarnessBudgetExhausted {
+        /// Which budget.
+        budget: String,
+        /// Limit.
+        limit: u64,
+        /// Value reached.
+        used: u64,
+    },
+    /// `NoProgressDetected` (docs/28 PX-039); no state change.
+    NoProgressDetected {
+        /// Consecutive turns without progress.
+        turns: u32,
+    },
 }
 
 impl TaskEvent {
@@ -230,6 +273,11 @@ impl TaskEvent {
             Self::TaskSteered { .. } => "TaskSteered",
             Self::TaskNeedsAttention { .. } => "TaskNeedsAttention",
             Self::TaskInputQueued { .. } => "TaskInputQueued",
+            Self::PlanRecorded { .. } => "PlanRecorded",
+            Self::PlanRevised { .. } => "PlanRevised",
+            Self::SelfReviewRecorded { .. } => "SelfReviewRecorded",
+            Self::HarnessBudgetExhausted { .. } => "HarnessBudgetExhausted",
+            Self::NoProgressDetected { .. } => "NoProgressDetected",
         }
     }
 }
@@ -318,7 +366,12 @@ impl Task {
             TaskEvent::TaskCancelled => Some(Cancelled),
             TaskEvent::TaskSteered { .. }
             | TaskEvent::TaskNeedsAttention { .. }
-            | TaskEvent::TaskInputQueued { .. } => {
+            | TaskEvent::TaskInputQueued { .. }
+            | TaskEvent::PlanRecorded { .. }
+            | TaskEvent::PlanRevised { .. }
+            | TaskEvent::SelfReviewRecorded { .. }
+            | TaskEvent::HarnessBudgetExhausted { .. }
+            | TaskEvent::NoProgressDetected { .. } => {
                 if self.state.is_terminal() {
                     return Err(invalid(&self.state, event.event_type()));
                 }

@@ -480,6 +480,16 @@ impl EventStore {
         crate::projections::load_receipts(&self.conn, task)
     }
 
+    /// Tasks in `Running` state.
+    pub fn running_tasks(&self) -> Result<Vec<modbit_domain::task::Task>> {
+        crate::projections::load_running_tasks(&self.conn)
+    }
+
+    /// Runs of a task, newest attempt first.
+    pub fn runs_for_task(&self, id: &TaskId) -> Result<Vec<modbit_domain::run::Run>> {
+        crate::projections::load_runs_for_task(&self.conn, id)
+    }
+
     /// Load a run-step projection.
     pub fn step(&self, id: &RunStepId) -> Result<Option<modbit_domain::step::RunStep>> {
         crate::projections::load_step(&self.conn, id)

@@ -10,6 +10,8 @@ publish.workspace = true
 [dependencies]
 anyhow.workspace = true
 modbit-domain.workspace = true
+modbit-prompt-compiler.workspace = true
+modbit-core-runtime.workspace = true
 modbit-event-store.workspace = true
 modbit-policy.workspace = true
 modbit-protocol.workspace = true

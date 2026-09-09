@@ -324,6 +324,13 @@ fn cli_drives_a_real_core_end_to_end() {
     let (ok, out, all) = cli(&data_dir, &core, &["lease", "list", "--task", &tid]);
     assert!(ok && out.contains("status=REVOKED"), "{all}");
 
+    // M2.7: task status is served for a task that has not started.
+    let (ok, out, all) = cli(&data_dir, &core, &["task", "status", "--task", &tid]);
+    assert!(
+        ok && out.contains("state=Queued") && out.contains("loop_alive=false"),
+        "{all}"
+    );
+
     // M2.6: the gateway catalog is served by the Core from its own environment.
     let out = Command::new(env!("CARGO_BIN_EXE_modbit-cli"))
         .env("MODBIT_CORE_BIN", &core)

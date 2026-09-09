@@ -77,6 +77,7 @@ fn fixture(exec: Option<ExecTarget>) -> Fixture {
         sink: sink.clone(),
         output_budget_bytes: 4096,
         kernel: None,
+        tool_call_id: None,
     };
     let mut registry = ToolRegistry::new();
     modbit_tools::direct::register_direct(&mut registry).unwrap();
@@ -191,6 +192,7 @@ async fn qual_ev_0239_0080_denial_is_monotonic_and_argument_text_cannot_bypass_p
         sink: f.sink.clone(),
         output_budget_bytes: 4096,
         kernel: None,
+        tool_call_id: None,
     };
     let o = f
         .runtime
@@ -562,6 +564,31 @@ async fn shell_exec_and_test_run_go_through_the_real_broker() {
     assert_eq!(o.result.status, ToolStatus::Success);
     assert_eq!(o.result.structured_output["status"], "FAILED");
     assert_eq!(o.result.structured_output["checks"][0]["status"], "FAIL");
+    // A new call with identical arguments runs the command again (the broker
+    // idempotency key includes the tool_call_id); the same call id replays.
+    let rerun_args =
+        format!(r#"{{"argv":["{git_bin}","rev-parse","--verify","HEAD"],"inherit_env":true}}"#);
+    let first_id = ToolCallId::new();
+    let a = f
+        .runtime
+        .invoke(&f.ctx, first_id, "test.run", &rerun_args)
+        .await;
+    let b = f
+        .runtime
+        .invoke(&f.ctx, ToolCallId::new(), "test.run", &rerun_args)
+        .await;
+    let same = f
+        .runtime
+        .invoke(&f.ctx, first_id, "test.run", &rerun_args)
+        .await;
+    assert_ne!(
+        a.result.structured_output["report_id"], b.result.structured_output["report_id"],
+        "a new call must not replay an older process"
+    );
+    assert_eq!(
+        a.result.structured_output["report_id"], same.result.structured_output["report_id"],
+        "the same call id replays"
+    );
     // No broker attached: infrastructure failure, never an unknown effect.
     let none = fixture(None);
     let o = none

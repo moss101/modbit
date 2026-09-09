@@ -1104,9 +1104,11 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "hex",
+ "modbit-core-runtime",
  "modbit-domain",
  "modbit-event-store",
  "modbit-policy",
+ "modbit-prompt-compiler",
  "modbit-protocol",
  "modbit-providers",
  "modbit-terminal",
@@ -1128,8 +1130,12 @@ dependencies = [
 name = "modbit-core-runtime"
 version = "0.0.0"
 dependencies = [
+ "hex",
  "modbit-domain",
  "modbit-protocol",
+ "serde",
+ "serde_json",
+ "sha2",
 ]
 
 [[package]]
@@ -1243,7 +1249,12 @@ dependencies = [
 name = "modbit-prompt-compiler"
 version = "0.0.0"
 dependencies = [
+ "hex",
  "modbit-domain",
+ "modbit-providers",
+ "serde",
+ "serde_json",
+ "sha2",
 ]
 
 [[package]]

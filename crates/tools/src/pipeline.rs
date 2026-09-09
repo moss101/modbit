@@ -53,6 +53,9 @@ pub struct InvokeContext {
     /// Per-call kernel adapter overriding the runtime's default policy (the
     /// Core binds the task lease, the call's approval and the session state).
     pub kernel: Option<Arc<dyn CapabilityPort>>,
+    /// The call being executed (set by the pipeline; effectors derive their
+    /// idempotency keys from it so a new call never replays an old one).
+    pub tool_call_id: Option<ToolCallId>,
 }
 
 /// Status of a tool call result (docs/30 `ToolCallResult.status` plus the
@@ -388,7 +391,9 @@ impl ToolRuntime {
         }
 
         // 4. execute against the real effector
-        let outcome: ToolOutcome = tool.invoke(ctx, args).await;
+        let mut call_ctx = ctx.clone();
+        call_ctx.tool_call_id = Some(tool_call_id);
+        let outcome: ToolOutcome = tool.invoke(&call_ctx, args).await;
         stages.push(StageRecord {
             stage: "execute".into(),
             outcome: if outcome.ok {

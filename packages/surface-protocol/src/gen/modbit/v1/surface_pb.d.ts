@@ -1545,6 +1545,178 @@ export declare type ModelProbed = Message<"modbit.v1.ModelProbed"> & {
 export declare const ModelProbedSchema: GenMessage<ModelProbed>;
 
 /**
+ * @generated from message modbit.v1.StartTask
+ */
+export declare type StartTask = Message<"modbit.v1.StartTask"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * gateway endpoint; empty = MODBIT_DEFAULT_ENDPOINT or the first registered
+   *
+   * @generated from field: string endpoint = 2;
+   */
+  endpoint: string;
+
+  /**
+   * empty = MODBIT_DEFAULT_MODEL or the endpoint's first model
+   *
+   * @generated from field: string model = 3;
+   */
+  model: string;
+
+  /**
+   * 0 = Alpha default (60)
+   *
+   * @generated from field: uint32 max_turns = 4;
+   */
+  maxTurns: number;
+
+  /**
+   * 0 = Alpha default (300)
+   *
+   * @generated from field: uint32 max_tool_calls = 5;
+   */
+  maxToolCalls: number;
+
+  /**
+   * 0 = Alpha default (3)
+   *
+   * @generated from field: uint32 max_no_progress_turns = 6;
+   */
+  maxNoProgressTurns: number;
+};
+
+/**
+ * Describes the message modbit.v1.StartTask.
+ * Use `create(StartTaskSchema)` to create a new message.
+ */
+export declare const StartTaskSchema: GenMessage<StartTask>;
+
+/**
+ * @generated from message modbit.v1.TaskRunStarted
+ */
+export declare type TaskRunStarted = Message<"modbit.v1.TaskRunStarted"> & {
+  /**
+   * @generated from field: modbit.v1.Id run_id = 1;
+   */
+  runId?: Id | undefined;
+
+  /**
+   * @generated from field: bool resumed = 2;
+   */
+  resumed: boolean;
+
+  /**
+   * @generated from field: string endpoint = 3;
+   */
+  endpoint: string;
+
+  /**
+   * @generated from field: string model = 4;
+   */
+  model: string;
+};
+
+/**
+ * Describes the message modbit.v1.TaskRunStarted.
+ * Use `create(TaskRunStartedSchema)` to create a new message.
+ */
+export declare const TaskRunStartedSchema: GenMessage<TaskRunStarted>;
+
+/**
+ * @generated from message modbit.v1.CancelTask
+ */
+export declare type CancelTask = Message<"modbit.v1.CancelTask"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.CancelTask.
+ * Use `create(CancelTaskSchema)` to create a new message.
+ */
+export declare const CancelTaskSchema: GenMessage<CancelTask>;
+
+/**
+ * @generated from message modbit.v1.TaskCancelRequested
+ */
+export declare type TaskCancelRequested = Message<"modbit.v1.TaskCancelRequested"> & {
+  /**
+   * @generated from field: bool was_running = 1;
+   */
+  wasRunning: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.TaskCancelRequested.
+ * Use `create(TaskCancelRequestedSchema)` to create a new message.
+ */
+export declare const TaskCancelRequestedSchema: GenMessage<TaskCancelRequested>;
+
+/**
+ * @generated from message modbit.v1.GetTaskStatus
+ */
+export declare type GetTaskStatus = Message<"modbit.v1.GetTaskStatus"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.GetTaskStatus.
+ * Use `create(GetTaskStatusSchema)` to create a new message.
+ */
+export declare const GetTaskStatusSchema: GenMessage<GetTaskStatus>;
+
+/**
+ * @generated from message modbit.v1.TaskStatus
+ */
+export declare type TaskStatus = Message<"modbit.v1.TaskStatus"> & {
+  /**
+   * Task state
+   *
+   * @generated from field: string state = 1;
+   */
+  state: string;
+
+  /**
+   * @generated from field: string wait_reason = 2;
+   */
+  waitReason: string;
+
+  /**
+   * latest run, empty if none
+   *
+   * @generated from field: string run_state = 3;
+   */
+  runState: string;
+
+  /**
+   * the agent loop is executing in this Core
+   *
+   * @generated from field: bool loop_alive = 4;
+   */
+  loopAlive: boolean;
+
+  /**
+   * @generated from field: uint64 last_offset = 5;
+   */
+  lastOffset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.TaskStatus.
+ * Use `create(TaskStatusSchema)` to create a new message.
+ */
+export declare const TaskStatusSchema: GenMessage<TaskStatus>;
+
+/**
  * Command acknowledgement.
  *
  * @generated from enum modbit.v1.CommandStatus

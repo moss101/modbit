@@ -368,3 +368,41 @@ message ModelProbed {
   string tool_call_arguments_json = 11;
   uint32 events = 12;
 }
+
+// ---- M2.7 one-agent runtime (docs/14) ----
+
+message StartTask {
+  Id task_id = 1;
+  string endpoint = 2;           // gateway endpoint; empty = MODBIT_DEFAULT_ENDPOINT or the first registered
+  string model = 3;              // empty = MODBIT_DEFAULT_MODEL or the endpoint's first model
+  uint32 max_turns = 4;          // 0 = Alpha default (60)
+  uint32 max_tool_calls = 5;     // 0 = Alpha default (300)
+  uint32 max_no_progress_turns = 6; // 0 = Alpha default (3)
+}
+
+message TaskRunStarted {
+  Id run_id = 1;
+  bool resumed = 2;
+  string endpoint = 3;
+  string model = 4;
+}
+
+message CancelTask {
+  Id task_id = 1;
+}
+
+message TaskCancelRequested {
+  bool was_running = 1;
+}
+
+message GetTaskStatus {
+  Id task_id = 1;
+}
+
+message TaskStatus {
+  string state = 1;              // Task state
+  string wait_reason = 2;
+  string run_state = 3;          // latest run, empty if none
+  bool loop_alive = 4;           // the agent loop is executing in this Core
+  uint64 last_offset = 5;
+}

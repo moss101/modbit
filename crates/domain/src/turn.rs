@@ -109,6 +109,17 @@ pub enum TurnEvent {
         /// Route.
         model_route: serde_json::Value,
     },
+    /// `ModelUsageRecorded`: provider usage for the invocation; no state change.
+    ModelUsageRecorded {
+        /// Input tokens.
+        input_tokens: u64,
+        /// Output tokens.
+        output_tokens: u64,
+        /// Cached input tokens.
+        cached_input_tokens: u64,
+        /// Route record JSON (requested vs resolved, REQ-EV-0112).
+        route: serde_json::Value,
+    },
     /// `ModelInvocationCompleted` (Streaming → Executing when actions were requested, else Verifying).
     ModelInvocationCompleted {
         /// Whether the model requested actions.
@@ -136,6 +147,7 @@ impl TurnEvent {
             Self::ContextPackCompiled { .. } => "ContextPackCompiled",
             Self::ToolProjectionSelected { .. } => "ToolProjectionSelected",
             Self::ModelInvocationStarted { .. } => "ModelInvocationStarted",
+            Self::ModelUsageRecorded { .. } => "ModelUsageRecorded",
             Self::ModelInvocationCompleted { .. } => "ModelInvocationCompleted",
             Self::TurnVerifying => "TurnVerifying",
             Self::TurnCompleted => "TurnCompleted",
@@ -210,6 +222,12 @@ impl Turn {
                 self.state.transition(Streaming)?;
                 self.model_route = Some(model_route.clone());
                 Some(Streaming)
+            }
+            TurnEvent::ModelUsageRecorded { .. } => {
+                if self.state != Streaming {
+                    return Err(invalid(self.state, "ModelUsageRecorded"));
+                }
+                None
             }
             TurnEvent::ModelInvocationCompleted { requested_actions } => {
                 Some(if *requested_actions {

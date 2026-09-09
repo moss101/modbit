@@ -15,6 +15,9 @@
 //!   modbit-cli --data-dir <dir> stop --session <hex-id> [reason]
 //!   modbit-cli --data-dir <dir> receipts [--task <hex-id>]
 //!   modbit-cli --data-dir <dir> lease list --task <hex-id>
+//!   modbit-cli --data-dir <dir> task run --session <hex-id> --task <hex-id> [--endpoint <name>] [--model <id>] [--max-turns N] [--wait]
+//!   modbit-cli --data-dir <dir> task cancel --session <hex-id> --task <hex-id>
+//!   modbit-cli --data-dir <dir> task status --task <hex-id>
 //!   modbit-cli --data-dir <dir> model list
 //!   modbit-cli --data-dir <dir> model probe --endpoint <name> --model <id> [--tools] <prompt>
 //!
@@ -28,15 +31,16 @@ use std::process::{Command, ExitCode, Stdio};
 use modbit_protocol::client::Client;
 use modbit_protocol::local::{ReadyLine, decode_hex, encode_hex};
 use modbit_protocol::v1::{
-    AcquireSessionLease, ApprovalList, ApprovalResolvedAck, CapabilityLeaseList, ClientKind,
-    CommandEnvelope, CreateSession, CreateTask, EffectReceiptList, EmergencyStop, EmergencyStopped,
-    GetCapabilityLeases, GetEffectReceipts, GetSessionSnapshot, Id, InvokeTool, ListApprovals,
-    ListModels, ListTools, ModelList, ModelProbed, ProbeModel, ResolveApproval, SessionCreated,
-    SessionLeaseAcquired, SessionSnapshot, TaskCreated, ToolInvoked, ToolList,
+    AcquireSessionLease, ApprovalList, ApprovalResolvedAck, CancelTask, CapabilityLeaseList,
+    ClientKind, CommandEnvelope, CreateSession, CreateTask, EffectReceiptList, EmergencyStop,
+    EmergencyStopped, GetCapabilityLeases, GetEffectReceipts, GetSessionSnapshot, GetTaskStatus,
+    Id, InvokeTool, ListApprovals, ListModels, ListTools, ModelList, ModelProbed, ProbeModel,
+    ResolveApproval, SessionCreated, SessionLeaseAcquired, SessionSnapshot, StartTask,
+    TaskCancelRequested, TaskCreated, TaskRunStarted, TaskStatus, ToolInvoked, ToolList,
 };
 use prost::Message;
 
-const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] | tool list | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
+const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] | tool list | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--wait] | task cancel --session <id> --task <id> | task status --task <id> | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
 
 fn parse_id(hex: &str) -> Result<Id, String> {
     let bytes = decode_hex(hex)
@@ -455,6 +459,98 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 );
             }
         }
+        ["task", "run", ..] => {
+            let sid = parse_id(opt("--session").ok_or(USAGE)?)?;
+            let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
+            let max_turns: u32 = opt("--max-turns")
+                .map(|v| v.parse().map_err(|_| USAGE))
+                .transpose()?
+                .unwrap_or(0);
+            let lease = acquire_lease(&mut client, &sid).await?;
+            let ack = client
+                .command(envelope_fenced(
+                    "StartTask",
+                    StartTask {
+                        task_id: Some(task_id.clone()),
+                        endpoint: opt("--endpoint").unwrap_or_default().to_owned(),
+                        model: opt("--model").unwrap_or_default().to_owned(),
+                        max_turns,
+                        max_tool_calls: 0,
+                        max_no_progress_turns: 0,
+                    }
+                    .encode_to_vec(),
+                    Some(lease),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let r: TaskRunStarted = Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "run {} resumed={} endpoint={} model={}",
+                encode_hex(&r.run_id.unwrap_or_default().value),
+                r.resumed,
+                r.endpoint,
+                r.model
+            );
+            if words.contains(&"--wait") {
+                loop {
+                    let ack = client
+                        .command(envelope(
+                            "GetTaskStatus",
+                            GetTaskStatus {
+                                task_id: Some(task_id.clone()),
+                            }
+                            .encode_to_vec(),
+                        ))
+                        .await
+                        .map_err(|e| e.to_string())?;
+                    let st: TaskStatus = Client::result(&ack).map_err(|e| e.to_string())?;
+                    if !st.loop_alive {
+                        println!(
+                            "task state={} wait_reason={} run_state={}",
+                            st.state, st.wait_reason, st.run_state
+                        );
+                        break;
+                    }
+                    tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+                }
+            }
+        }
+        ["task", "cancel", ..] => {
+            let sid = parse_id(opt("--session").ok_or(USAGE)?)?;
+            let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
+            let lease = acquire_lease(&mut client, &sid).await?;
+            let ack = client
+                .command(envelope_fenced(
+                    "CancelTask",
+                    CancelTask {
+                        task_id: Some(task_id),
+                    }
+                    .encode_to_vec(),
+                    Some(lease),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let r: TaskCancelRequested = Client::result(&ack).map_err(|e| e.to_string())?;
+            println!("cancel was_running={}", r.was_running);
+        }
+        ["task", "status", ..] => {
+            let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
+            let ack = client
+                .command(envelope(
+                    "GetTaskStatus",
+                    GetTaskStatus {
+                        task_id: Some(task_id),
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let st: TaskStatus = Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "task state={} wait_reason={} run_state={} loop_alive={}",
+                st.state, st.wait_reason, st.run_state, st.loop_alive
+            );
+        }
         ["model", "list"] => {
             let ack = client
                 .command(envelope("ListModels", ListModels {}.encode_to_vec()))
@@ -545,7 +641,7 @@ fn positionals<'a>(words: &[&'a str], skip: usize) -> Vec<&'a str> {
     for w in words.iter().skip(skip) {
         if skip_next {
             skip_next = false;
-        } else if *w == "--tools" {
+        } else if *w == "--tools" || *w == "--wait" {
             // bare flag
         } else if w.starts_with("--") {
             skip_next = true;

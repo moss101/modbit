@@ -555,6 +555,9 @@ fn request_id(ctx: &InvokeContext, args: &Value, prefix: &str) -> String {
         .unwrap_or_else(|| {
             let mut h = Sha256::new();
             h.update(ctx.task_id.as_bytes());
+            if let Some(call) = &ctx.tool_call_id {
+                h.update(call.as_bytes());
+            }
             h.update(args.to_string().as_bytes());
             format!("{prefix}-{}", &hex::encode(h.finalize())[..16])
         })
