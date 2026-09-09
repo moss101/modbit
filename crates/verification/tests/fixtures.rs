@@ -89,7 +89,10 @@ fn copy_dir(src: &Path, dst: &Path) {
         if p.is_dir() {
             copy_dir(&p, &dst.join(&name));
         } else {
-            std::fs::copy(&p, dst.join(&name)).unwrap();
+            // Checkouts on Windows may carry CRLF; fixtures are LF text.
+            let bytes = std::fs::read(&p).unwrap();
+            let text = String::from_utf8_lossy(&bytes).replace("\r\n", "\n");
+            std::fs::write(dst.join(&name), text).unwrap();
         }
     }
 }
