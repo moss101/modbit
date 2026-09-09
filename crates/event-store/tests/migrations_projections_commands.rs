@@ -408,16 +408,11 @@ fn concurrent_openers_of_a_fresh_database_all_succeed_and_migrate_once() {
     for r in &reports {
         assert!(r.is_ok(), "{r:?}");
     }
-    let applied_by: Vec<_> = reports
+    let applied_by = reports
         .iter()
         .filter(|r| !r.as_ref().unwrap().applied.is_empty())
-        .count()
-        .into();
-    assert_eq!(
-        applied_by,
-        vec![1usize],
-        "exactly one opener applied the migrations"
-    );
+        .count();
+    assert_eq!(applied_by, 1, "exactly one opener applied the migrations");
     let conn = rusqlite::Connection::open(dir.path().join("core.db")).unwrap();
     let n: i64 = conn
         .query_row("SELECT count(*) FROM schema_migrations", [], |r| r.get(0))
