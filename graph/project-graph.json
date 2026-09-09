@@ -1115,8 +1115,24 @@
    "milestone": "M1",
    "order": 0,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-09T04:20:10Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: NOT-FOUND. modbit-domain and modbit-event-store are empty M0.1 shells; no ids, aggregates, state machines, event envelope or SQLite store exist."
+    },
+    {
+     "at": "2026-09-09T04:28:15Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "Domain aggregates/state machines/envelope in modbit-domain; SQLite event store with chain, objects, offset resume, hard-kill test in modbit-event-store."
+    }
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-09-09T04:28:15Z"
   },
   {
    "id": "M1.2",

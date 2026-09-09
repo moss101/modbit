@@ -1,9 +1,28 @@
 //! `modbit-domain` — IDs, domain objects and state transitions; depends on no infrastructure crate.
 //!
-//! Canonical owner: core-runtime owner (`docs/12_REPOSITORY_AND_MODULE_LAYOUT.md`,
-//! `docs/81_ARCHITECTURE_GUARDRAILS_AND_FORBIDDEN_DUPLICATION.md`).
-//! Dependency direction is enforced by `tools/architecture-lint`.
+//! Canonical owner: core-runtime owner (`docs/12_REPOSITORY_AND_MODULE_LAYOUT.md`).
+//! Authority: `docs/13_DOMAIN_MODEL_AND_STATE_MACHINES.md` (identity types,
+//! aggregates, state machines, canonical event envelope, fencing) and
+//! `docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md` (event type names).
 //!
-//! This crate is created by milestone task M0.1 and carries no behavior yet.
-//! Behavior arrives only through the graph-scheduled tasks that name this
-//! crate as owner; nothing here may be read as an implemented feature.
+//! Everything here is pure: no I/O, no clocks other than [`Timestamp::now`],
+//! no persistence. Only the Event Store append plus transactional projection
+//! update may advance authoritative state (docs/13 "Invariants"); this crate
+//! supplies the types and the transition rules those components enforce.
+
+#![forbid(unsafe_code)]
+
+pub mod event;
+pub mod ids;
+pub mod run;
+pub mod session;
+pub mod state;
+pub mod step;
+pub mod task;
+pub mod time;
+pub mod turn;
+
+pub use event::{Actor, AggregateType, EventEnvelope, PayloadRef, SCHEMA_VERSION};
+pub use ids::*;
+pub use state::InvalidTransition;
+pub use time::Timestamp;

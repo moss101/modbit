@@ -79,6 +79,11 @@ modbit-observability = { path = "crates/observability" }
 
 # external (exact versions pinned in Cargo.lock; new dependencies follow docs/36 and docs/70 supply-chain policy)
 anyhow = "1.0.104"
+hex = "0.4.3"
+rusqlite = { version = "0.40.2", features = ["bundled"] }
+sha2 = "0.11.0"
+thiserror = "2.0.20"
+uuid = { version = "1.26.0", features = ["v7", "serde"] }
 cargo_metadata = "0.23.1"
 globset = "0.4.20"
 prost = "0.14.4"
