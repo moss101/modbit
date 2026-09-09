@@ -51,7 +51,9 @@ export class CoreSupervisor {
 
   private async spawnOnce(): Promise<void> {
     this.setStatus({ state: "starting", restarts: this.restarts });
-    const child = spawn(this.binary, ["--data-dir", this.dataDir], { stdio: ["ignore", "pipe", "pipe"] });
+    // stdin is the lifetime tether: the Core exits when this process goes away,
+    // so a killed or crashed desktop never leaves a Core holding the profile lock.
+    const child = spawn(this.binary, ["--data-dir", this.dataDir, "--tether-stdin"], { stdio: ["pipe", "pipe", "pipe"] });
     this.child = child;
     // Keep the Core's last stderr lines so a degraded state names the cause
     // (docs/39 PX-023): the user sees why the Core stopped, not just that it did.
@@ -126,9 +128,16 @@ export class CoreSupervisor {
     this.client?.close();
     this.client = null;
     if (this.child) {
-      this.child.stdout?.destroy();
-      this.child.kill();
+      const child = this.child;
       this.child = null;
+      child.stdin?.end();
+      child.stdout?.destroy();
+      child.kill();
+      // A Core that ignores SIGTERM (or is wedged) must not survive the desktop.
+      const escalate = setTimeout(() => {
+        if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
+      }, 2000);
+      escalate.unref();
     }
   }
 }

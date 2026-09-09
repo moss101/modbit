@@ -17,15 +17,17 @@ mod tools;
 mod verify;
 
 fn usage() -> &'static str {
-    "usage: modbit-core --data-dir <dir>"
+    "usage: modbit-core --data-dir <dir> [--tether-stdin]"
 }
 
 fn main() -> ExitCode {
     let mut data_dir: Option<PathBuf> = None;
+    let mut tether_stdin = false;
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
         match a.as_str() {
             "--data-dir" => data_dir = args.next().map(PathBuf::from),
+            "--tether-stdin" => tether_stdin = true,
             "-h" | "--help" => {
                 println!("{}", usage());
                 return ExitCode::SUCCESS;
@@ -40,6 +42,19 @@ fn main() -> ExitCode {
         eprintln!("modbit-core: --data-dir is required\n{}", usage());
         return ExitCode::from(2);
     };
+    // Parent tether (docs/33 one Core per profile): a supervising client holds
+    // our stdin; EOF means the client is gone and this Core must not outlive
+    // it, or its singleton lock would refuse the client's next Core.
+    if tether_stdin {
+        std::thread::spawn(|| {
+            use std::io::Read;
+            let mut sink = [0u8; 64];
+            let mut stdin = std::io::stdin();
+            while matches!(stdin.read(&mut sink), Ok(n) if n > 0) {}
+            eprintln!("modbit-core: supervising client closed its pipe; exiting");
+            std::process::exit(0);
+        });
+    }
     let rt = match tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()

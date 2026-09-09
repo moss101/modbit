@@ -88,22 +88,22 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 2202,
+                  "duration": 2036,
                   "errors": [],
                   "stdout": [],
                   "stderr": [
                     {
-                      "text": "[electron] modbit-core: recovery complete: boot_generation=2 events_verified=5 aggregates=3 projections_rebuilt=false sessions=1 tasks=1 in 0ms\n"
+                      "text": "[electron] modbit-core: recovery complete: boot_generation=2 events_verified=5 aggregates=3 projections_rebuilt=false sessions=1 tasks=1 in 1ms\n"
                     },
                     {
-                      "text": "[electron] Debugger ending on ws://127.0.0.1:63909/e12be1ed-e32f-4742-90ec-b0c194d61972\nFor help, see: https://nodejs.org/learn/getting-started/debugging\n"
+                      "text": "[electron] Debugger ending on ws://127.0.0.1:64005/a761a210-d779-4707-a69f-a52486ae9a5f\nFor help, see: https://nodejs.org/learn/getting-started/debugging\n"
                     },
                     {
-                      "text": "[electron] Debugger ending on ws://127.0.0.1:63914/ee147913-60fa-4b3c-9cff-077b0163448f\nFor help, see: https://nodejs.org/learn/getting-started/debugging\n"
+                      "text": "[electron] Debugger ending on ws://127.0.0.1:64010/c5c68514-94b8-4e00-8f2e-d8bc84acd0cd\nFor help, see: https://nodejs.org/learn/getting-started/debugging\n"
                     }
                   ],
                   "retry": 0,
-                  "startTime": "2026-09-09T19:23:11.234Z",
+                  "startTime": "2026-09-09T19:29:02.725Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -132,22 +132,22 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 371,
+                  "duration": 321,
                   "errors": [],
                   "stdout": [],
                   "stderr": [
                     {
-                      "text": "[electron] Error occurred in handler for 'task:create': Error: BAD_ARGUMENT: session id must be 32 hex chars\n    at requireSessionId \u001b[90m(/Users/mohsin/projects/modbit/apps/desktop/\u001b[39mdist/main/main.cjs:3795:54\u001b[90m)\u001b[39m\n    at \u001b[90m/Users/mohsin/projects/modbit/apps/desktop/\u001b[39mdist/main/main.cjs:3836:15\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                      "text": "[electron] Error occurred in handler for 'task:create': Error: BAD_ARGUMENT: session id must be 32 hex chars\n    at requireSessionId \u001b[90m(/Users/mohsin/projects/modbit/apps/desktop/\u001b[39mdist/main/main.cjs:3801:54\u001b[90m)\u001b[39m\n    at \u001b[90m/Users/mohsin/projects/modbit/apps/desktop/\u001b[39mdist/main/main.cjs:3842:15\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
                     },
                     {
-                      "text": "[electron] Error occurred in handler for 'session:snapshot': Error: BAD_ARGUMENT: session id must be 32 hex chars\n    at requireSessionId \u001b[90m(/Users/mohsin/projects/modbit/apps/desktop/\u001b[39mdist/main/main.cjs:3795:54\u001b[90m)\u001b[39m\n    at \u001b[90m/Users/mohsin/projects/modbit/apps/desktop/\u001b[39mdist/main/main.cjs:3825:15\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
+                      "text": "[electron] Error occurred in handler for 'session:snapshot': Error: BAD_ARGUMENT: session id must be 32 hex chars\n    at requireSessionId \u001b[90m(/Users/mohsin/projects/modbit/apps/desktop/\u001b[39mdist/main/main.cjs:3801:54\u001b[90m)\u001b[39m\n    at \u001b[90m/Users/mohsin/projects/modbit/apps/desktop/\u001b[39mdist/main/main.cjs:3831:15\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
                     },
                     {
-                      "text": "[electron] Debugger ending on ws://127.0.0.1:63918/35bd9ad3-743c-4d64-920b-ed03e27b293c\nFor help, see: https://nodejs.org/learn/getting-started/debugging\n"
+                      "text": "[electron] Debugger ending on ws://127.0.0.1:64014/4dac7130-20d6-4445-a688-13e036323000\nFor help, see: https://nodejs.org/learn/getting-started/debugging\n"
                     }
                   ],
                   "retry": 0,
-                  "startTime": "2026-09-09T19:23:13.446Z",
+                  "startTime": "2026-09-09T19:29:04.773Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -184,22 +184,22 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 1669,
+                  "duration": 1633,
                   "errors": [],
                   "stdout": [],
                   "stderr": [
                     {
-                      "text": "[electron] Debugger ending on ws://127.0.0.1:63923/9e8efea7-9395-466e-b8b3-0427bf875737\nFor help, see: https://nodejs.org/learn/getting-started/debugging\n"
+                      "text": "[electron] Debugger ending on ws://127.0.0.1:64019/3f3b0605-f0da-4c43-b23d-21836e792284\nFor help, see: https://nodejs.org/learn/getting-started/debugging\n"
                     },
                     {
-                      "text": "[electron] Error occurred in handler for 'review:bundle': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail \u001b[90m(/Users/mohsin/projects/modbit/apps/desktop/\u001b[39mdist/main/main.cjs:3534:54\u001b[90m)\u001b[39m\n    at _CoreClient.close \u001b[90m(/Users/mohsin/projects/modbit/apps/desktop/\u001b[39mdist/main/main.cjs:3539:10\u001b[90m)\u001b[39m\n    at CoreSupervisor.stop \u001b[90m(/Users/mohsin/projects/modbit/apps/desktop/\u001b[39mdist/main/main.cjs:3700:18\u001b[90m)\u001b[39m\n    at EventEmitter.<anonymous> \u001b[90m(/Users/mohsin/projects/modbit/apps/desktop/\u001b[39mdist/main/main.cjs:3929:14\u001b[90m)\u001b[39m\n\u001b[90m    at EventEmitter.emit (node:events:514:28)\u001b[39m\n    at import_electron.app.emit (/Users/mohsin/projects/modbit/node_modules/\u001b[4m.pnpm\u001b[24m/playwright-core@1.63.0/node_modules/\u001b[4mplaywright-core\u001b[24m/lib/server/electron/loader.js:104:10)\n    at eval (eval at evaluate (:311:30), <anonymous>:1:18)\n    at UtilityScript.evaluate (<anonymous>:313:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44) {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
+                      "text": "[electron] Error occurred in handler for 'review:bundle': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail \u001b[90m(/Users/mohsin/projects/modbit/apps/desktop/\u001b[39mdist/main/main.cjs:3534:54\u001b[90m)\u001b[39m\n    at _CoreClient.close \u001b[90m(/Users/mohsin/projects/modbit/apps/desktop/\u001b[39mdist/main/main.cjs:3539:10\u001b[90m)\u001b[39m\n    at CoreSupervisor.stop \u001b[90m(/Users/mohsin/projects/modbit/apps/desktop/\u001b[39mdist/main/main.cjs:3700:18\u001b[90m)\u001b[39m\n    at EventEmitter.<anonymous> \u001b[90m(/Users/mohsin/projects/modbit/apps/desktop/\u001b[39mdist/main/main.cjs:3935:14\u001b[90m)\u001b[39m\n\u001b[90m    at EventEmitter.emit (node:events:514:28)\u001b[39m\n    at import_electron.app.emit (/Users/mohsin/projects/modbit/node_modules/\u001b[4m.pnpm\u001b[24m/playwright-core@1.63.0/node_modules/\u001b[4mplaywright-core\u001b[24m/lib/server/electron/loader.js:104:10)\n    at eval (eval at evaluate (:311:30), <anonymous>:1:18)\n    at UtilityScript.evaluate (<anonymous>:313:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44) {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
                     },
                     {
-                      "text": "[electron] Debugger ending on ws://127.0.0.1:63928/b41029fb-0f5d-4eb9-80d9-63c07480a1a7\nFor help, see: https://nodejs.org/learn/getting-started/debugging\n"
+                      "text": "[electron] Debugger ending on ws://127.0.0.1:64024/d7725f01-db82-427f-aebf-e0b510bf1b2b\nFor help, see: https://nodejs.org/learn/getting-started/debugging\n"
                     }
                   ],
                   "retry": 0,
-                  "startTime": "2026-09-09T19:23:13.825Z",
+                  "startTime": "2026-09-09T19:29:05.100Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -217,8 +217,8 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-09-09T19:23:10.955Z",
-    "duration": 4557.786,
+    "startTime": "2026-09-09T19:29:02.566Z",
+    "duration": 4177.914,
     "expected": 3,
     "skipped": 0,
     "unexpected": 0,
