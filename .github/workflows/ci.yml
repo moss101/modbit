@@ -97,7 +97,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Build the real Core
-        run: cargo build --locked -p modbit-core
+        run: cargo build --locked -p modbit-core -p modbit-execd
       - name: Build desktop bundles
         run: pnpm --filter @modbit/desktop build
       - name: Playwright drives the Electron app (Linux under xvfb)

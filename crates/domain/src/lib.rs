@@ -20,6 +20,7 @@ pub mod state;
 pub mod step;
 pub mod task;
 pub mod time;
+pub mod toolcall;
 pub mod turn;
 
 pub use event::{Actor, AggregateType, EventEnvelope, PayloadRef, SCHEMA_VERSION};

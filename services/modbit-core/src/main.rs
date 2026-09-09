@@ -10,6 +10,7 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 mod server;
+mod tools;
 
 fn usage() -> &'static str {
     "usage: modbit-core --data-dir <dir>"

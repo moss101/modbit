@@ -5,9 +5,11 @@
 //!
 //! Usage:
 //!   modbit-cli --data-dir <dir> session create
-//!   modbit-cli --data-dir <dir> task create --session <hex-id> "<goal>"
+//!   modbit-cli --data-dir <dir> task create --session <hex-id> [--workspace <dir>] "<goal>"
 //!   modbit-cli --data-dir <dir> session show --session <hex-id>
 //!   modbit-cli --data-dir <dir> events tail --session <hex-id> [--after <offset>] [--count <n>]
+//!   modbit-cli --data-dir <dir> tool list
+//!   modbit-cli --data-dir <dir> tool invoke --session <hex-id> --task <hex-id> <tool> <arguments-json>
 //!
 //! M1.3 mode: each invocation spawns a Core for the data directory, runs one
 //! command, and exits; the Core exits with the CLI. Attaching to a long-running
@@ -20,11 +22,12 @@ use modbit_protocol::client::Client;
 use modbit_protocol::local::{ReadyLine, decode_hex, encode_hex};
 use modbit_protocol::v1::{
     AcquireSessionLease, ClientKind, CommandEnvelope, CreateSession, CreateTask,
-    GetSessionSnapshot, Id, SessionCreated, SessionLeaseAcquired, SessionSnapshot, TaskCreated,
+    GetSessionSnapshot, Id, InvokeTool, ListTools, SessionCreated, SessionLeaseAcquired,
+    SessionSnapshot, TaskCreated, ToolInvoked, ToolList,
 };
 use prost::Message;
 
-const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> <goal> | events tail --session <id> [--after N] [--count N])";
+const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] | tool list | tool invoke --session <id> --task <id> <tool> <arguments-json>)";
 
 fn parse_id(hex: &str) -> Result<Id, String> {
     let bytes = decode_hex(hex)
@@ -168,30 +171,23 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
         }
         ["task", "create", ..] => {
             let sid = parse_id(opt("--session").ok_or(USAGE)?)?;
-            let goal = words
-                .iter()
-                .skip(2)
-                .filter(|w| !w.starts_with("--"))
-                .skip_while(|w| parse_id(w).is_ok())
-                .cloned()
-                .collect::<Vec<_>>()
-                .join(" ");
+            let workspace_root = opt("--workspace").unwrap_or_default().to_owned();
+            let mut goal_words = Vec::new();
+            let mut skip = false;
+            for w in words.iter().skip(2) {
+                if skip {
+                    skip = false;
+                } else if *w == "--session" || *w == "--workspace" {
+                    skip = true;
+                } else {
+                    goal_words.push(*w);
+                }
+            }
+            let goal = goal_words.join(" ");
             if goal.is_empty() {
                 return Err(USAGE.into());
             }
-            // The CLI becomes the session's single mutation owner for this invocation.
-            let lease = client
-                .command(envelope(
-                    "AcquireSessionLease",
-                    AcquireSessionLease {
-                        session_id: Some(sid.clone()),
-                        owner: format!("modbit-cli {}", env!("CARGO_PKG_VERSION")),
-                    }
-                    .encode_to_vec(),
-                ))
-                .await
-                .map_err(|e| e.to_string())?;
-            let lease: SessionLeaseAcquired = Client::result(&lease).map_err(|e| e.to_string())?;
+            let lease = acquire_lease(&mut client, &sid).await?;
             let ack = client
                 .command(envelope_fenced(
                     "CreateTask",
@@ -201,9 +197,10 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                         workspace_id: None,
                         execution_profile: String::new(),
                         origin: "cli".into(),
+                        workspace_root,
                     }
                     .encode_to_vec(),
-                    Some(lease.lease_generation),
+                    Some(lease),
                 ))
                 .await
                 .map_err(|e| e.to_string())?;
@@ -241,9 +238,90 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 }
             }
         }
+        ["tool", "list"] => {
+            let ack = client
+                .command(envelope("ListTools", ListTools {}.encode_to_vec()))
+                .await
+                .map_err(|e| e.to_string())?;
+            let list: ToolList = Client::result(&ack).map_err(|e| e.to_string())?;
+            for t in list.tools {
+                println!(
+                    "tool {} v{} effect={} {}",
+                    t.name, t.version, t.effect_class, t.description
+                );
+            }
+        }
+        ["tool", "invoke", ..] => {
+            let sid = parse_id(opt("--session").ok_or(USAGE)?)?;
+            let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
+            let positional: Vec<&str> = {
+                let mut out = Vec::new();
+                let mut skip = false;
+                for w in words.iter().skip(2) {
+                    if skip {
+                        skip = false;
+                    } else if w.starts_with("--") {
+                        skip = true;
+                    } else {
+                        out.push(*w);
+                    }
+                }
+                out
+            };
+            let [tool_name, arguments_json] = positional.as_slice() else {
+                return Err(USAGE.into());
+            };
+            let lease = acquire_lease(&mut client, &sid).await?;
+            let ack = client
+                .command(envelope_fenced(
+                    "InvokeTool",
+                    InvokeTool {
+                        task_id: Some(task_id),
+                        tool_name: (*tool_name).into(),
+                        arguments_json: (*arguments_json).into(),
+                        tool_call_id: Some(fresh_id()),
+                        output_budget_bytes: 64 * 1024,
+                    }
+                    .encode_to_vec(),
+                    Some(lease),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let r: ToolInvoked = Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "tool_call {} status={} error_code={:?} revision_after={}",
+                encode_hex(&r.tool_call_id.unwrap_or_default().value),
+                r.status,
+                r.error_code,
+                r.workspace_revision_after
+            );
+            if !r.structured_output_json.is_empty() {
+                println!("{}", r.structured_output_json);
+            }
+            if !r.error_message.is_empty() {
+                println!("error: {}", r.error_message);
+            }
+        }
         _ => return Err(USAGE.into()),
     }
     Ok(())
+}
+
+/// The CLI becomes the session's single mutation owner for this invocation.
+async fn acquire_lease(client: &mut Client, sid: &Id) -> Result<u64, String> {
+    let lease = client
+        .command(envelope(
+            "AcquireSessionLease",
+            AcquireSessionLease {
+                session_id: Some(sid.clone()),
+                owner: format!("modbit-cli {}", env!("CARGO_PKG_VERSION")),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .map_err(|e| e.to_string())?;
+    let lease: SessionLeaseAcquired = Client::result(&lease).map_err(|e| e.to_string())?;
+    Ok(lease.lease_generation)
 }
 
 fn main() -> ExitCode {

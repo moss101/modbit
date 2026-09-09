@@ -401,7 +401,7 @@ flowchart LR
 | `M2.1` | COMPLETE | Workspace File Service with safe paths/revisions |  |
 | `M2.2` | COMPLETE | Git branch/worktree/diff operations |  |
 | `M2.3` | COMPLETE | `modbit-execd` structured argv/PTy/replay/OutputRef |  |
-| `M2.4` | NOT_STARTED | Tool Registry + direct `fs/git/shell/test` tools |  |
+| `M2.4` | IMPLEMENTING | Tool Registry + direct `fs/git/shell/test` tools |  |
 | `M2.5` | NOT_STARTED | Capability Kernel + basic approval flow |  |
 | `M2.6` | NOT_STARTED | Provider Gateway OpenAI + Anthropic streaming |  |
 | `M2.7` | NOT_STARTED | Basic Prompt Compiler and one-agent runtime |  |

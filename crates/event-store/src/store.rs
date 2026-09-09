@@ -411,6 +411,14 @@ impl EventStore {
         crate::projections::load_turn(&self.conn, id)
     }
 
+    /// Load a tool-call projection.
+    pub fn tool_call(
+        &self,
+        id: &modbit_domain::ToolCallId,
+    ) -> Result<Option<modbit_domain::toolcall::ToolCall>> {
+        crate::projections::load_tool_call(&self.conn, id)
+    }
+
     /// Load a run-step projection.
     pub fn step(&self, id: &RunStepId) -> Result<Option<modbit_domain::step::RunStep>> {
         crate::projections::load_step(&self.conn, id)

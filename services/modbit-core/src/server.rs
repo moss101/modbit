@@ -15,7 +15,7 @@ use modbit_domain::event::{Actor, AggregateType};
 use modbit_domain::session::SessionEvent;
 use modbit_domain::task::{InputMode, TaskEvent, TaskOrigin};
 use modbit_domain::{
-    EventId, SessionId, SpaceId, TaskId, TenantId, Timestamp, UserId, WorkspaceId,
+    EventId, SessionId, SpaceId, TaskId, TenantId, Timestamp, ToolCallId, UserId, WorkspaceId,
 };
 use modbit_event_store::{
     AppendRequest, CommandOutcome, CommandRecord, EventStore, NewEvent, RecoveryOutcome,
@@ -46,6 +46,8 @@ pub struct Core {
     /// What startup recovery did (docs/19), served to clients.
     recovery: RecoveryOutcome,
     started_at: Timestamp,
+    /// Tool registry, kernel port, broker (M2.4).
+    tools: crate::tools::ToolHost,
 }
 
 /// Bounded number of events per subscription batch (REQ-EV-0108).
@@ -127,6 +129,7 @@ pub async fn run(data_dir: PathBuf) -> Result<()> {
         user_id: UserId::from_bytes([0xB1; 16]),
         recovery,
         started_at: Timestamp::now(),
+        tools: crate::tools::ToolHost::new(&data_dir).context("tool host")?,
     });
     let listener = Listener::bind(&endpoint)
         .await
@@ -337,6 +340,8 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "AcquireSessionLease",
                     "QueueInput",
                     "ReadObjectRange",
+                    "InvokeTool",
+                    "ListTools",
                 ]
                 .map(String::from)
                 .to_vec(),
@@ -639,6 +644,11 @@ async fn handle_command(core: &Core, env: CommandEnvelope) -> CommandAck {
                             session_id,
                             goal_text: p.goal_text,
                             workspace_id,
+                            workspace_root: if p.workspace_root.is_empty() {
+                                None
+                            } else {
+                                Some(p.workspace_root.clone())
+                            },
                             base_revision: None,
                             execution_profile: if p.execution_profile.is_empty() {
                                 "local_trusted".into()
@@ -908,6 +918,98 @@ async fn handle_command(core: &Core, env: CommandEnvelope) -> CommandAck {
                 Err(e) => reject(cid, "UNKNOWN_OBJECT", e.to_string()),
             }
         }
+        "ListTools" => accept(
+            cid,
+            false,
+            wire::ToolList {
+                tools: core
+                    .tools
+                    .runtime
+                    .registry()
+                    .specs()
+                    .into_iter()
+                    .map(|t| wire::ToolSpecView {
+                        name: t.name,
+                        version: t.version,
+                        effect_class: format!("{:?}", t.effect_class),
+                        input_schema_json: t.input_schema.to_string(),
+                        description: t.description,
+                    })
+                    .collect(),
+            }
+            .encode_to_vec(),
+        ),
+        "InvokeTool" => {
+            let Ok(p) = wire::InvokeTool::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "InvokeTool");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let Some(tool_call_id) = p
+                .tool_call_id
+                .as_ref()
+                .and_then(id16)
+                .map(ToolCallId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "tool_call_id required (16 bytes)");
+            };
+            let task = {
+                let store = core.store.lock().await;
+                match store.task(&task_id) {
+                    Ok(Some(t)) => t,
+                    Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                }
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
+                return ack;
+            }
+            // Idempotent by tool_call_id: an existing call replays its recorded result.
+            let prior = {
+                let store = core.store.lock().await;
+                match store.tool_call(&tool_call_id) {
+                    Ok(Some(existing)) => existing.result_ref.and_then(|r| {
+                        let bytes = store.objects().get(&r).ok()?;
+                        let prior: modbit_tools::ToolCallResult =
+                            serde_json::from_slice(&bytes).ok()?;
+                        Some((prior, r))
+                    }),
+                    _ => None,
+                }
+            };
+            if let Some((prior, r)) = prior {
+                return accept(cid, true, tool_invoked(&prior, &r).encode_to_vec());
+            }
+            match core
+                .tools
+                .invoke(
+                    &core.store,
+                    core.tenant_id,
+                    task.session_id,
+                    task_id,
+                    task.workspace_root.clone(),
+                    &task.execution_profile,
+                    tool_call_id,
+                    &p.tool_name,
+                    &p.arguments_json,
+                    p.output_budget_bytes,
+                    actor,
+                )
+                .await
+            {
+                Ok((result, result_ref)) => {
+                    let offset = core.store.lock().await.last_offset().unwrap_or(0);
+                    core.last_offset.send_replace(offset);
+                    accept(
+                        cid,
+                        false,
+                        tool_invoked(&result, &result_ref).encode_to_vec(),
+                    )
+                }
+                Err(e) => reject(cid, "TOOL_HOST", e.to_string()),
+            }
+        }
         "GetRecoveryReport" => {
             let r = &core.recovery;
             accept(
@@ -936,6 +1038,26 @@ async fn handle_command(core: &Core, env: CommandEnvelope) -> CommandAck {
             "UNSUPPORTED_COMMAND",
             format!("`{other}` is not served by this build"),
         ),
+    }
+}
+
+fn tool_invoked(r: &modbit_tools::ToolCallResult, result_ref: &str) -> wire::ToolInvoked {
+    wire::ToolInvoked {
+        tool_call_id: Some(wire_id(r.tool_call_id.as_bytes())),
+        status: format!("{:?}", r.status)
+            .to_uppercase()
+            .replace("APPLICATIONFAILURE", "APPLICATION_FAILURE")
+            .replace("INFRAFAILURE", "INFRA_FAILURE")
+            .replace("UNKNOWNOUTCOME", "UNKNOWN_OUTCOME")
+            .replace("POLICYDENIED", "POLICY_DENIED")
+            .replace("INVALIDARGUMENTS", "INVALID_ARGUMENTS")
+            .replace("UNKNOWNTOOL", "UNKNOWN_TOOL"),
+        structured_output_json: r.structured_output.to_string(),
+        stdout_ref: r.stdout_ref.clone().unwrap_or_default(),
+        error_code: r.error_code.clone().unwrap_or_default(),
+        error_message: r.error_message.clone().unwrap_or_default(),
+        workspace_revision_after: r.workspace_revision_after.unwrap_or(0),
+        result_ref: result_ref.to_owned(),
     }
 }
 

@@ -152,6 +152,29 @@ ALTER TABLE sessions ADD COLUMN lease_generation INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE sessions ADD COLUMN lease_owner TEXT;
 "#;
 
+/// Version 4 (M2.4): task workspace root and the tool_calls projection (docs/31 `tool_calls`).
+pub const V4_WORKSPACE_ROOT_AND_TOOL_CALLS: &str = r#"
+ALTER TABLE tasks ADD COLUMN workspace_root TEXT;
+CREATE TABLE IF NOT EXISTS tool_calls (
+  tool_call_id           BLOB PRIMARY KEY NOT NULL,
+  task_id                BLOB NOT NULL,
+  step_id                BLOB,
+  tool_name              TEXT NOT NULL,
+  tool_version           TEXT NOT NULL,
+  effect_class           TEXT NOT NULL,
+  capability_lease_id    BLOB,
+  status                 TEXT NOT NULL,
+  arguments_hash         TEXT NOT NULL,
+  generation             INTEGER NOT NULL,
+  dispatched_at          INTEGER,
+  completed_at           INTEGER,
+  result_ref             TEXT,
+  unknown_outcome_reason TEXT,
+  policy_decision        TEXT
+);
+CREATE INDEX IF NOT EXISTS tool_calls_task ON tool_calls (task_id, dispatched_at);
+"#;
+
 /// All migrations in order. Never edit an entry once shipped; append a new one.
 pub const MIGRATIONS: &[Migration] = &[
     Migration {
@@ -171,6 +194,12 @@ pub const MIGRATIONS: &[Migration] = &[
         name: "session_leases",
         up: V3_SESSION_LEASES,
         rollback: "Additive columns with defaults; version-2 readers ignore them. Rollback = rebuild projections after dropping the columns; no event is touched.",
+    },
+    Migration {
+        version: 4,
+        name: "workspace_root_and_tool_calls",
+        up: V4_WORKSPACE_ROOT_AND_TOOL_CALLS,
+        rollback: "Additive: a nullable column and a derivable table. Rollback = drop `tool_calls` and rebuild projections; no event is touched.",
     },
 ];
 

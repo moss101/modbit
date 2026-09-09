@@ -33,6 +33,7 @@ message CreateTask {
   Id workspace_id = 3;
   string execution_profile = 4;
   string origin = 5;  // desktop | cli | ide_adapter | forge_issue | forge_webhook
+  string workspace_root = 6;  // canonical path of the user-approved workspace (empty = general Work space)
 }
 
 message GetSessionSnapshot {
@@ -178,4 +179,40 @@ message ObjectRangeChunk {
   uint64 offset = 3;
   bytes data = 4;
   bytes checksum_sha256 = 5;  // of the whole object
+}
+
+// Direct tool invocation through the registry, policy and event loop (M2.4,
+// docs/16 "Tool completion proof"). The Core records ToolCall events and
+// returns the docs/30 ToolCallResult. Requires the session lease.
+message InvokeTool {
+  Id task_id = 1;
+  string tool_name = 2;          // namespace.name from the canonical inventory (docs/17)
+  string arguments_json = 3;
+  Id tool_call_id = 4;           // client-stable; retries replay
+  uint64 output_budget_bytes = 5;
+}
+
+message ToolInvoked {
+  Id tool_call_id = 1;
+  string status = 2;             // SUCCESS | APPLICATION_FAILURE | INFRA_FAILURE | CANCELLED | UNKNOWN_OUTCOME | POLICY_DENIED | INVALID_ARGUMENTS
+  string structured_output_json = 3;
+  string stdout_ref = 4;         // object hash when spilled
+  string error_code = 5;
+  string error_message = 6;
+  uint64 workspace_revision_after = 7;
+  string result_ref = 8;         // object hash of the full ToolCallResult JSON
+}
+
+message ListTools {}
+
+message ToolSpecView {
+  string name = 1;
+  string version = 2;
+  string effect_class = 3;
+  string input_schema_json = 4;
+  string description = 5;
+}
+
+message ToolList {
+  repeated ToolSpecView tools = 1;
 }

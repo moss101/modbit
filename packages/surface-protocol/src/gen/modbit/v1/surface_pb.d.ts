@@ -107,6 +107,13 @@ export declare type CreateTask = Message<"modbit.v1.CreateTask"> & {
    * @generated from field: string origin = 5;
    */
   origin: string;
+
+  /**
+   * canonical path of the user-approved workspace (empty = general Work space)
+   *
+   * @generated from field: string workspace_root = 6;
+   */
+  workspaceRoot: string;
 };
 
 /**
@@ -678,6 +685,171 @@ export declare type ObjectRangeChunk = Message<"modbit.v1.ObjectRangeChunk"> & {
  * Use `create(ObjectRangeChunkSchema)` to create a new message.
  */
 export declare const ObjectRangeChunkSchema: GenMessage<ObjectRangeChunk>;
+
+/**
+ * Direct tool invocation through the registry, policy and event loop (M2.4,
+ * docs/16 "Tool completion proof"). The Core records ToolCall events and
+ * returns the docs/30 ToolCallResult. Requires the session lease.
+ *
+ * @generated from message modbit.v1.InvokeTool
+ */
+export declare type InvokeTool = Message<"modbit.v1.InvokeTool"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * namespace.name from the canonical inventory (docs/17)
+   *
+   * @generated from field: string tool_name = 2;
+   */
+  toolName: string;
+
+  /**
+   * @generated from field: string arguments_json = 3;
+   */
+  argumentsJson: string;
+
+  /**
+   * client-stable; retries replay
+   *
+   * @generated from field: modbit.v1.Id tool_call_id = 4;
+   */
+  toolCallId?: Id | undefined;
+
+  /**
+   * @generated from field: uint64 output_budget_bytes = 5;
+   */
+  outputBudgetBytes: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.InvokeTool.
+ * Use `create(InvokeToolSchema)` to create a new message.
+ */
+export declare const InvokeToolSchema: GenMessage<InvokeTool>;
+
+/**
+ * @generated from message modbit.v1.ToolInvoked
+ */
+export declare type ToolInvoked = Message<"modbit.v1.ToolInvoked"> & {
+  /**
+   * @generated from field: modbit.v1.Id tool_call_id = 1;
+   */
+  toolCallId?: Id | undefined;
+
+  /**
+   * SUCCESS | APPLICATION_FAILURE | INFRA_FAILURE | CANCELLED | UNKNOWN_OUTCOME | POLICY_DENIED | INVALID_ARGUMENTS
+   *
+   * @generated from field: string status = 2;
+   */
+  status: string;
+
+  /**
+   * @generated from field: string structured_output_json = 3;
+   */
+  structuredOutputJson: string;
+
+  /**
+   * object hash when spilled
+   *
+   * @generated from field: string stdout_ref = 4;
+   */
+  stdoutRef: string;
+
+  /**
+   * @generated from field: string error_code = 5;
+   */
+  errorCode: string;
+
+  /**
+   * @generated from field: string error_message = 6;
+   */
+  errorMessage: string;
+
+  /**
+   * @generated from field: uint64 workspace_revision_after = 7;
+   */
+  workspaceRevisionAfter: bigint;
+
+  /**
+   * object hash of the full ToolCallResult JSON
+   *
+   * @generated from field: string result_ref = 8;
+   */
+  resultRef: string;
+};
+
+/**
+ * Describes the message modbit.v1.ToolInvoked.
+ * Use `create(ToolInvokedSchema)` to create a new message.
+ */
+export declare const ToolInvokedSchema: GenMessage<ToolInvoked>;
+
+/**
+ * @generated from message modbit.v1.ListTools
+ */
+export declare type ListTools = Message<"modbit.v1.ListTools"> & {
+};
+
+/**
+ * Describes the message modbit.v1.ListTools.
+ * Use `create(ListToolsSchema)` to create a new message.
+ */
+export declare const ListToolsSchema: GenMessage<ListTools>;
+
+/**
+ * @generated from message modbit.v1.ToolSpecView
+ */
+export declare type ToolSpecView = Message<"modbit.v1.ToolSpecView"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string version = 2;
+   */
+  version: string;
+
+  /**
+   * @generated from field: string effect_class = 3;
+   */
+  effectClass: string;
+
+  /**
+   * @generated from field: string input_schema_json = 4;
+   */
+  inputSchemaJson: string;
+
+  /**
+   * @generated from field: string description = 5;
+   */
+  description: string;
+};
+
+/**
+ * Describes the message modbit.v1.ToolSpecView.
+ * Use `create(ToolSpecViewSchema)` to create a new message.
+ */
+export declare const ToolSpecViewSchema: GenMessage<ToolSpecView>;
+
+/**
+ * @generated from message modbit.v1.ToolList
+ */
+export declare type ToolList = Message<"modbit.v1.ToolList"> & {
+  /**
+   * @generated from field: repeated modbit.v1.ToolSpecView tools = 1;
+   */
+  tools: ToolSpecView[];
+};
+
+/**
+ * Describes the message modbit.v1.ToolList.
+ * Use `create(ToolListSchema)` to create a new message.
+ */
+export declare const ToolListSchema: GenMessage<ToolList>;
 
 /**
  * Command acknowledgement.

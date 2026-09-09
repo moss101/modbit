@@ -60,8 +60,8 @@ fn migrates_the_committed_m1_1_fixture_and_derives_projections() {
     std::fs::copy(fixture(), dir.path().join("core.db")).unwrap();
     let (store, report) = EventStore::open_with_report(dir.path()).unwrap();
     assert_eq!(report.from_version, 1);
-    assert_eq!(report.to_version, 3);
-    assert_eq!(report.applied, vec![2, 3]);
+    assert_eq!(report.to_version, 4);
+    assert_eq!(report.applied, vec![2, 3, 4]);
     // Events untouched (docs/31: migration preserves existing event ids).
     let task = TaskId::from_bytes([0xC3; 16]);
     assert_eq!(store.verify_aggregate(task.as_bytes()).unwrap(), 3);
@@ -82,12 +82,12 @@ fn migrates_the_committed_m1_1_fixture_and_derives_projections() {
     // Reopening is a no-op migration.
     let (_, report) = EventStore::open_with_report(dir.path()).unwrap();
     assert!(report.applied.is_empty());
-    assert_eq!(report.from_version, 3);
+    assert_eq!(report.from_version, 4);
     let conn = rusqlite::Connection::open(dir.path().join("core.db")).unwrap();
     let n: i64 = conn
         .query_row("SELECT count(*) FROM schema_migrations", [], |r| r.get(0))
         .unwrap();
-    assert_eq!(n, 3);
+    assert_eq!(n, 4);
 }
 
 #[test]
@@ -115,12 +115,12 @@ fn applied_migration_checksum_drift_and_newer_schema_are_refused() {
             err,
             Error::SchemaTooNew {
                 found: 9,
-                supported: 3
+                supported: 4
             }
         ),
         "{err}"
     );
-    assert_eq!(modbit_event_store::migrations::rollback_plans().len(), 3);
+    assert_eq!(modbit_event_store::migrations::rollback_plans().len(), 4);
 }
 
 #[test]
@@ -170,6 +170,7 @@ fn projections_follow_the_reducers_in_the_append_transaction_and_after_rebuild()
                         session_id: session,
                         goal_text: "g".into(),
                         workspace_id: WorkspaceId::new(),
+                        workspace_root: None,
                         base_revision: Some("abc".into()),
                         execution_profile: "local_trusted".into(),
                         policy_profile_id: None,
@@ -346,6 +347,7 @@ fn command_replay_is_idempotent_and_conflicting_reuse_is_rejected() {
                     session_id: session,
                     goal_text: "once".into(),
                     workspace_id: WorkspaceId::new(),
+                    workspace_root: None,
                     base_revision: None,
                     execution_profile: "local_trusted".into(),
                     policy_profile_id: None,
@@ -417,7 +419,7 @@ fn concurrent_openers_of_a_fresh_database_all_succeed_and_migrate_once() {
     let n: i64 = conn
         .query_row("SELECT count(*) FROM schema_migrations", [], |r| r.get(0))
         .unwrap();
-    assert_eq!(n, 3);
+    assert_eq!(n, 4);
 }
 
 #[test]
@@ -456,6 +458,7 @@ fn startup_recovery_verifies_chains_rebuilds_lagging_projections_and_bumps_boot_
                         session_id: session,
                         goal_text: "r".into(),
                         workspace_id: WorkspaceId::new(),
+                        workspace_root: None,
                         base_revision: None,
                         execution_profile: "local_trusted".into(),
                         policy_profile_id: None,

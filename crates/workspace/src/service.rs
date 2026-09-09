@@ -164,6 +164,12 @@ impl WorkspaceService {
         self.policy.root()
     }
 
+    /// Apply the path policy to `path` without opening it (for callers that
+    /// hand the resolved location to another effector, e.g. a process cwd).
+    pub fn resolve(&self, path: &str) -> Result<ResolvedPath> {
+        self.policy.check(path)
+    }
+
     fn io(path: &Path, e: std::io::Error) -> Error {
         Error::Io {
             path: path.display().to_string(),

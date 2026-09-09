@@ -117,6 +117,9 @@ pub struct Task {
     pub goal_text: String,
     /// Workspace the task operates in.
     pub workspace_id: WorkspaceId,
+    /// Canonical filesystem root of the user-approved workspace (`None` for a
+    /// general Work space with no repository).
+    pub workspace_root: Option<String>,
     /// Workspace revision the task started from.
     pub base_revision: Option<String>,
     /// Execution profile name (e.g. `local_trusted`).
@@ -151,6 +154,9 @@ pub enum TaskEvent {
         goal_text: String,
         /// Workspace.
         workspace_id: WorkspaceId,
+        /// Workspace root path (additive; absent in older events).
+        #[serde(default)]
+        workspace_root: Option<String>,
         /// Base revision.
         base_revision: Option<String>,
         /// Execution profile.
@@ -248,6 +254,7 @@ impl Task {
                 session_id,
                 goal_text,
                 workspace_id,
+                workspace_root,
                 base_revision,
                 execution_profile,
                 policy_profile_id,
@@ -257,6 +264,7 @@ impl Task {
                 session_id: *session_id,
                 goal_text: goal_text.clone(),
                 workspace_id: *workspace_id,
+                workspace_root: workspace_root.clone(),
                 base_revision: base_revision.clone(),
                 execution_profile: execution_profile.clone(),
                 policy_profile_id: policy_profile_id.clone(),
@@ -342,6 +350,7 @@ mod tests {
                 session_id: SessionId::new(),
                 goal_text: "fix the build".into(),
                 workspace_id: WorkspaceId::new(),
+                workspace_root: None,
                 base_revision: None,
                 execution_profile: "local_trusted".into(),
                 policy_profile_id: None,

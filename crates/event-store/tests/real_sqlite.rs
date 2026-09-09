@@ -2,7 +2,7 @@
 //! object directory, process reopen, a hard kill (SIGKILL / TerminateProcess)
 //! of a writer process mid-append, and row-level tampering.
 //!
-//! These tests exercise the raw log with the `ToolCall` aggregate, whose
+//! These tests exercise the raw log with the `Approval` aggregate, whose
 //! projection belongs to a later milestone, so payloads stay free-form.
 
 use std::path::{Path, PathBuf};
@@ -27,7 +27,7 @@ fn req(
         run_id: None,
         turn_id: None,
         step_id: None,
-        aggregate_type: AggregateType::ToolCall,
+        aggregate_type: AggregateType::Approval,
         aggregate_id: agg,
         expected_sequence: expected,
         events,
@@ -230,7 +230,7 @@ fn newer_schema_is_refused() {
             err,
             Error::SchemaTooNew {
                 found: 99,
-                supported: 3
+                supported: 4
             }
         ),
         "{err}"

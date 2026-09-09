@@ -8,8 +8,9 @@ use modbit_domain::run::{Run, RunEvent};
 use modbit_domain::session::{Session, SessionEvent};
 use modbit_domain::step::{RunStep, StepEvent};
 use modbit_domain::task::{Task, TaskEvent, TaskState};
+use modbit_domain::toolcall::{ToolCall, ToolCallEvent};
 use modbit_domain::turn::{Turn, TurnEvent};
-use modbit_domain::{RunId, RunStepId, SessionId, TaskId, Timestamp, TurnId};
+use modbit_domain::{RunId, RunStepId, SessionId, TaskId, Timestamp, ToolCallId, TurnId};
 use rusqlite::{OptionalExtension, Transaction, params};
 
 use crate::store::StoredEvent;
@@ -96,8 +97,8 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                 ),
             };
             tx.execute(
-                "INSERT OR REPLACE INTO tasks (task_id, session_id, goal_text, workspace_id, base_revision, execution_profile, policy_profile_id, origin, state, wait_reason, generation, created_at, started_at, completed_at, failure_code)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
+                "INSERT OR REPLACE INTO tasks (task_id, session_id, goal_text, workspace_id, base_revision, execution_profile, policy_profile_id, origin, state, wait_reason, generation, created_at, started_at, completed_at, failure_code, workspace_root)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
                 params![
                     t.task_id.as_bytes().as_slice(),
                     t.session_id.as_bytes().as_slice(),
@@ -114,6 +115,7 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                     t.started_at.map(Timestamp::millis),
                     t.completed_at.map(Timestamp::millis),
                     &t.failure_code,
+                    &t.workspace_root,
                 ],
             )?;
         }
@@ -198,6 +200,38 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                 ],
             )?;
         }
+        AggregateType::ToolCall => {
+            let event: ToolCallEvent = serde_json::from_value(payload)?;
+            let cid = ToolCallId::from_bytes(id);
+            let mut c = match load_tool_call(tx, &cid)? {
+                Some(c) => c,
+                None => ToolCall::create(cid, &event, at).map_err(|e| invalid(e, offset))?,
+            };
+            if ev.envelope.sequence > 1 {
+                c.apply(&event, at).map_err(|e| invalid(e, offset))?;
+            }
+            tx.execute(
+                "INSERT OR REPLACE INTO tool_calls (tool_call_id, task_id, step_id, tool_name, tool_version, effect_class, capability_lease_id, status, arguments_hash, generation, dispatched_at, completed_at, result_ref, unknown_outcome_reason, policy_decision)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
+                params![
+                    c.tool_call_id.as_bytes().as_slice(),
+                    c.task_id.as_bytes().as_slice(),
+                    c.step_id.map(|s| s.as_bytes().to_vec()),
+                    &c.tool_name,
+                    &c.tool_version,
+                    serde_json::to_string(&c.effect_class)?.trim_matches('"'),
+                    c.capability_lease_id.map(|l| l.as_bytes().to_vec()),
+                    serde_json::to_string(&c.state)?.trim_matches('"'),
+                    &c.arguments_hash,
+                    c.generation as i64,
+                    c.dispatched_at.map(Timestamp::millis),
+                    c.completed_at.map(Timestamp::millis),
+                    &c.result_ref,
+                    &c.unknown_outcome_reason,
+                    &c.policy_decision,
+                ],
+            )?;
+        }
         // Aggregates whose projections belong to later milestones (protocol state, leases, checkpoints).
         _ => {}
     }
@@ -277,7 +311,7 @@ pub fn load_session(tx: &rusqlite::Connection, id: &SessionId) -> Result<Option<
 pub fn load_task(tx: &rusqlite::Connection, id: &TaskId) -> Result<Option<Task>> {
     let row = tx
         .query_row(
-            "SELECT session_id, goal_text, workspace_id, base_revision, execution_profile, policy_profile_id, origin, state, wait_reason, generation, created_at, started_at, completed_at, failure_code FROM tasks WHERE task_id = ?1",
+            "SELECT session_id, goal_text, workspace_id, base_revision, execution_profile, policy_profile_id, origin, state, wait_reason, generation, created_at, started_at, completed_at, failure_code, workspace_root FROM tasks WHERE task_id = ?1",
             params![id.as_bytes().as_slice()],
             |r| {
                 Ok((
@@ -295,6 +329,7 @@ pub fn load_task(tx: &rusqlite::Connection, id: &TaskId) -> Result<Option<Task>>
                     r.get::<_, Option<i64>>(11)?,
                     r.get::<_, Option<i64>>(12)?,
                     r.get::<_, Option<String>>(13)?,
+                    r.get::<_, Option<String>>(14)?,
                 ))
             },
         )
@@ -314,6 +349,7 @@ pub fn load_task(tx: &rusqlite::Connection, id: &TaskId) -> Result<Option<Task>>
         started,
         completed,
         failure,
+        workspace_root,
     )) = row
     else {
         return Ok(None);
@@ -327,6 +363,7 @@ pub fn load_task(tx: &rusqlite::Connection, id: &TaskId) -> Result<Option<Task>>
         session_id: SessionId::from_bytes(blob16(session)?),
         goal_text: goal,
         workspace_id: modbit_domain::WorkspaceId::from_bytes(blob16(ws)?),
+        workspace_root,
         base_revision: base,
         execution_profile: profile,
         policy_profile_id: policy,
@@ -456,9 +493,83 @@ pub fn load_step(tx: &rusqlite::Connection, id: &RunStepId) -> Result<Option<Run
     }))
 }
 
+/// Load a tool-call projection row.
+pub fn load_tool_call(tx: &rusqlite::Connection, id: &ToolCallId) -> Result<Option<ToolCall>> {
+    let row = tx
+        .query_row(
+            "SELECT task_id, step_id, tool_name, tool_version, effect_class, capability_lease_id, status, arguments_hash, generation, dispatched_at, completed_at, result_ref, unknown_outcome_reason, policy_decision FROM tool_calls WHERE tool_call_id = ?1",
+            params![id.as_bytes().as_slice()],
+            |r| {
+                Ok((
+                    r.get::<_, Vec<u8>>(0)?,
+                    r.get::<_, Option<Vec<u8>>>(1)?,
+                    r.get::<_, String>(2)?,
+                    r.get::<_, String>(3)?,
+                    r.get::<_, String>(4)?,
+                    r.get::<_, Option<Vec<u8>>>(5)?,
+                    r.get::<_, String>(6)?,
+                    r.get::<_, String>(7)?,
+                    r.get::<_, i64>(8)?,
+                    r.get::<_, Option<i64>>(9)?,
+                    r.get::<_, Option<i64>>(10)?,
+                    r.get::<_, Option<String>>(11)?,
+                    r.get::<_, Option<String>>(12)?,
+                    r.get::<_, Option<String>>(13)?,
+                ))
+            },
+        )
+        .optional()?;
+    let Some((
+        task,
+        step,
+        name,
+        version,
+        effect,
+        lease,
+        status,
+        args,
+        generation,
+        dispatched,
+        completed,
+        result,
+        unknown,
+        policy,
+    )) = row
+    else {
+        return Ok(None);
+    };
+    Ok(Some(ToolCall {
+        tool_call_id: *id,
+        task_id: TaskId::from_bytes(blob16(task)?),
+        step_id: step.map(blob16).transpose()?.map(RunStepId::from_bytes),
+        tool_name: name,
+        tool_version: version,
+        effect_class: q(&effect)?,
+        capability_lease_id: lease
+            .map(blob16)
+            .transpose()?
+            .map(modbit_domain::CapabilityLeaseId::from_bytes),
+        arguments_hash: args,
+        state: q(&status)?,
+        generation: generation as u64,
+        dispatched_at: dispatched.map(Timestamp),
+        completed_at: completed.map(Timestamp),
+        result_ref: result,
+        unknown_outcome_reason: unknown,
+        policy_decision: policy,
+    }))
+}
+
 /// Truncate the projection tables and replay every event from offset 0.
 pub fn rebuild(tx: &Transaction<'_>, objects: &crate::ObjectStore) -> Result<u64> {
-    for t in ["run_steps", "turns", "runs", "tasks", "sessions"] {
+    for t in [
+        "tool_calls",
+        "run_steps",
+        "turns",
+        "runs",
+        "tasks",
+        "sessions",
+    ] {
         tx.execute(&format!("DELETE FROM {t}"), [])?;
     }
     tx.execute(

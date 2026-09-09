@@ -1482,8 +1482,24 @@
    "milestone": "M2",
    "order": 3,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-09T12:55:57Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: IMPLEMENTED-PARTIAL substrate (workspace, git, execd, terminal client exist); crates/tools is an M0.1 shell; no registry, envelopes or Core wiring."
+    },
+    {
+     "at": "2026-09-09T13:36:04Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "crates/tools registry+pipeline+direct tools; Core ListTools/InvokeTool with ToolCall events; CLI tool list/invoke; execd stdin tether"
+    }
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-09-09T13:36:04Z"
   },
   {
    "id": "M2.5",

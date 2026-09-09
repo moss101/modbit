@@ -111,6 +111,102 @@ fn cli_drives_a_real_core_end_to_end() {
         "{all}"
     );
 
+    // M2.4: tools through the registry, policy and event loop, from the CLI.
+    let (ok, out, all) = cli(&data_dir, &core, &["tool", "list"]);
+    assert!(
+        ok && out.contains("tool fs.read ") && out.contains("tool shell.exec "),
+        "{all}"
+    );
+    let repo = tmp.path().join("repo");
+    std::fs::create_dir_all(&repo).unwrap();
+    std::fs::write(repo.join("hello.txt"), "hi\n").unwrap();
+    assert!(
+        Command::new("git")
+            .arg("-C")
+            .arg(&repo)
+            .args(["init", "-q"])
+            .status()
+            .unwrap()
+            .success()
+    );
+    let repo_str = repo
+        .canonicalize()
+        .unwrap()
+        .to_string_lossy()
+        .trim_start_matches(r"\\?\")
+        .to_owned();
+    let (ok, out, all) = cli(
+        &data_dir,
+        &core,
+        &[
+            "task",
+            "create",
+            "--session",
+            &sid,
+            "--workspace",
+            &repo_str,
+            "read",
+            "a",
+            "file",
+        ],
+    );
+    assert!(ok, "{all}");
+    let tid = out.trim().strip_prefix("task ").unwrap().to_owned();
+    let (ok, out, all) = cli(
+        &data_dir,
+        &core,
+        &[
+            "tool",
+            "invoke",
+            "--session",
+            &sid,
+            "--task",
+            &tid,
+            "fs.read",
+            r#"{"path":"hello.txt"}"#,
+        ],
+    );
+    assert!(
+        ok && out.contains("status=SUCCESS") && out.contains(r#""content":"hi\n""#),
+        "{all}"
+    );
+    let (ok, out, all) = cli(
+        &data_dir,
+        &core,
+        &[
+            "tool",
+            "invoke",
+            "--session",
+            &sid,
+            "--task",
+            &tid,
+            "fs.read",
+            r#"{"path":"../etc/passwd"}"#,
+        ],
+    );
+    assert!(
+        ok && out.contains("status=APPLICATION_FAILURE") && out.contains("PATH_OUTSIDE_ROOT"),
+        "{all}"
+    );
+    let (ok, out, all) = cli(
+        &data_dir,
+        &core,
+        &[
+            "events",
+            "tail",
+            "--session",
+            &sid,
+            "--after",
+            "4",
+            "--count",
+            "50",
+        ],
+    );
+    assert!(
+        ok && out.contains("ToolCallSucceeded") && out.contains("ToolCallFailed"),
+        "{all}"
+    );
+
     let (ok, _, all) = cli(&data_dir, &core, &["session", "show", "--session", "00"]);
     assert!(!ok && all.contains("not a 32-hex-char id"), "{all}");
     // No socket files leak into the data directory.

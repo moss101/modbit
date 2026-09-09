@@ -32,6 +32,7 @@ fn a_failed_command_step_does_not_fail_the_turn_the_run_the_task_or_the_session(
             session_id: session.session_id,
             goal_text: "g".into(),
             workspace_id: WorkspaceId::new(),
+            workspace_root: None,
             base_revision: None,
             execution_profile: "local_trusted".into(),
             policy_profile_id: None,

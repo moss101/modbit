@@ -13,12 +13,14 @@ mod broker;
 
 fn main() -> ExitCode {
     let mut data_dir: Option<PathBuf> = None;
+    let mut tether_stdin = false;
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
         match a.as_str() {
             "--data-dir" => data_dir = args.next().map(PathBuf::from),
+            "--tether-stdin" => tether_stdin = true,
             "-h" | "--help" => {
-                println!("usage: modbit-execd --data-dir <dir>");
+                println!("usage: modbit-execd --data-dir <dir> [--tether-stdin]");
                 return ExitCode::SUCCESS;
             }
             other => {
@@ -31,6 +33,17 @@ fn main() -> ExitCode {
         eprintln!("modbit-execd: --data-dir is required");
         return ExitCode::from(2);
     };
+    // Parent tether (docs/17): the Core holds our stdin; EOF means the Core is
+    // gone and the broker must not outlive it.
+    if tether_stdin {
+        std::thread::spawn(|| {
+            use std::io::Read;
+            let mut sink = [0u8; 64];
+            let mut stdin = std::io::stdin();
+            while matches!(stdin.read(&mut sink), Ok(n) if n > 0) {}
+            std::process::exit(0);
+        });
+    }
     let rt = match tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()

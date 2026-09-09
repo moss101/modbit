@@ -179,6 +179,7 @@ async fn create_task(
                 workspace_id: None,
                 execution_profile: String::new(),
                 origin: "cli".into(),
+                workspace_root: String::new(),
             }
             .encode_to_vec(),
             lease_for(&session),
@@ -687,6 +688,7 @@ async fn qual_ev_0054_0273_session_lease_fences_out_stale_writers_across_restart
                 workspace_id: None,
                 execution_profile: String::new(),
                 origin: "cli".into(),
+                workspace_root: String::new(),
             }
             .encode_to_vec(),
             Some(1),
@@ -708,6 +710,7 @@ async fn qual_ev_0054_0273_session_lease_fences_out_stale_writers_across_restart
                 workspace_id: None,
                 execution_profile: String::new(),
                 origin: "cli".into(),
+                workspace_root: String::new(),
             }
             .encode_to_vec(),
         ))
@@ -732,6 +735,7 @@ async fn qual_ev_0054_0273_session_lease_fences_out_stale_writers_across_restart
                 workspace_id: None,
                 execution_profile: String::new(),
                 origin: "cli".into(),
+                workspace_root: String::new(),
             }
             .encode_to_vec(),
             Some(1),
@@ -1002,4 +1006,274 @@ async fn qual_ev_0010_offset_resume_is_exact_and_invalid_cursors_force_rehydrate
         .unwrap();
     let snap: SessionSnapshot = Client::result(&ack).unwrap();
     assert_eq!(snap.last_offset, all[11].0);
+}
+
+/// M2.4: tools are reachable only through the registry, the kernel port and
+/// the event loop (docs/16 "Tool completion proof"): every call lands as
+/// ToolCall events on the canonical log; real fs, git and broker effectors.
+#[tokio::test]
+async fn m2_4_invoke_tool_runs_direct_tools_through_registry_policy_and_event_log() {
+    use modbit_protocol::v1::{InvokeTool, ListTools, ToolInvoked, ToolList};
+    let dir = tempfile::tempdir().unwrap();
+    // A real repository as the task's approved workspace.
+    let repo = tempfile::tempdir().unwrap();
+    std::fs::write(repo.path().join("README.md"), "# demo\n").unwrap();
+    std::fs::write(repo.path().join(".env"), "SECRET=1\n").unwrap();
+    for args in [
+        vec!["init", "-q", "-b", "main"],
+        vec!["add", "-A"],
+        vec![
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@e",
+            "commit",
+            "-q",
+            "-m",
+            "base",
+        ],
+    ] {
+        assert!(
+            Command::new("git")
+                .arg("-C")
+                .arg(repo.path())
+                .args(&args)
+                .status()
+                .unwrap()
+                .success()
+        );
+    }
+    let root = repo
+        .path()
+        .canonicalize()
+        .unwrap()
+        .to_string_lossy()
+        .trim_start_matches(r"\\?\")
+        .to_owned();
+    let core = CoreProcess::spawn(dir.path());
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xE0)).await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xE1),
+            "CreateTask",
+            CreateTask {
+                session_id: Some(session.clone()),
+                goal_text: "use tools".into(),
+                workspace_id: None,
+                execution_profile: String::new(),
+                origin: "cli".into(),
+                workspace_root: root.clone(),
+            }
+            .encode_to_vec(),
+            lease_for(&session),
+        ))
+        .await
+        .unwrap();
+    let task = Client::result::<TaskCreated>(&ack)
+        .unwrap()
+        .task_id
+        .unwrap();
+    let g = lease_for(&session);
+    let ack = c
+        .command(envelope(
+            id16(0xE2),
+            "ListTools",
+            ListTools {}.encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let list: ToolList = Client::result(&ack).unwrap();
+    let names: Vec<_> = list.tools.iter().map(|t| t.name.as_str()).collect();
+    for n in [
+        "fs.read",
+        "change.apply",
+        "git.status",
+        "shell.exec",
+        "test.run",
+    ] {
+        assert!(names.contains(&n), "{names:?}");
+    }
+    async fn call(
+        c: &mut Client,
+        id: u8,
+        task: &Id,
+        g: Option<u64>,
+        tool: &str,
+        args: &str,
+    ) -> Result<ToolInvoked, ClientError> {
+        let ack = c
+            .command(envelope_fenced(
+                id16(id),
+                "InvokeTool",
+                InvokeTool {
+                    task_id: Some(task.clone()),
+                    tool_name: tool.into(),
+                    arguments_json: args.into(),
+                    tool_call_id: Some(id16(0xC0 ^ id)),
+                    output_budget_bytes: 4096,
+                }
+                .encode_to_vec(),
+                g,
+            ))
+            .await?;
+        Ok(Client::result(&ack).unwrap())
+    }
+    // fs.read succeeds with the revision-bound content hash.
+    let r = call(&mut c, 0x10, &task, g, "fs.read", r#"{"path":"README.md"}"#)
+        .await
+        .unwrap();
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let out: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(out["content"], "# demo\n");
+    let hash = out["content_hash"].as_str().unwrap().to_owned();
+    // change.apply with the precondition, then git.status sees the change.
+    let r = call(&mut c, 0x11, &task, g, "change.apply", &format!(r##"{{"path":"README.md","op":"replace","content":"# changed\n","expected_content_hash":"{hash}"}}"##)).await.unwrap();
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    assert!(r.workspace_revision_after >= 2);
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("README.md")).unwrap(),
+        "# changed\n"
+    );
+    let r = call(&mut c, 0x12, &task, g, "git.status", "{}")
+        .await
+        .unwrap();
+    assert_eq!(r.status, "SUCCESS");
+    assert!(r.structured_output_json.contains("README.md"));
+    // Protected path: application failure, file untouched.
+    let r = call(
+        &mut c,
+        0x13,
+        &task,
+        g,
+        "change.apply",
+        r#"{"path":".env","op":"replace","content":"pwned"}"#,
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        (r.status.as_str(), r.error_code.as_str()),
+        ("APPLICATION_FAILURE", "PATH_PROTECTED")
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join(".env")).unwrap(),
+        "SECRET=1\n"
+    );
+    // Schema violation never reaches an effector; unknown tool is typed.
+    let r = call(&mut c, 0x14, &task, g, "fs.read", r#"{"nope":1}"#)
+        .await
+        .unwrap();
+    assert_eq!(r.status, "INVALID_ARGUMENTS");
+    let r = call(&mut c, 0x15, &task, g, "no.such", "{}").await.unwrap();
+    assert_eq!(r.status, "UNKNOWN_TOOL");
+    // shell.exec and test.run through the Core-supervised broker.
+    let r = call(
+        &mut c,
+        0x16,
+        &task,
+        g,
+        "shell.exec",
+        r#"{"argv":["git","rev-parse","--verify","HEAD"],"inherit_env":true}"#,
+    )
+    .await
+    .unwrap();
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    assert_eq!(r.stdout_ref.len(), 64);
+    let r = call(
+        &mut c,
+        0x17,
+        &task,
+        g,
+        "test.run",
+        r#"{"argv":["git","rev-parse","--verify","nope"],"inherit_env":true}"#,
+    )
+    .await
+    .unwrap();
+    assert_eq!(r.status, "SUCCESS");
+    let rep: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(rep["status"], "FAILED");
+    assert_eq!(rep["parser"]["confidence"], "HEURISTIC");
+    // Lease is required for tool invocation; replay of a tool_call_id returns the recorded result.
+    let err = c
+        .command(envelope(
+            id16(0xE3),
+            "InvokeTool",
+            InvokeTool {
+                task_id: Some(task.clone()),
+                tool_name: "fs.read".into(),
+                arguments_json: "{}".into(),
+                tool_call_id: Some(id16(0x99)),
+                output_budget_bytes: 0,
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap_err();
+    assert!(matches!(err, ClientError::Rejected { ref code, .. } if code == "LEASE_REQUIRED"));
+    let again = c
+        .command(envelope_fenced(
+            id16(0xE4),
+            "InvokeTool",
+            InvokeTool {
+                task_id: Some(task.clone()),
+                tool_name: "fs.read".into(),
+                arguments_json: r#"{"path":"README.md"}"#.into(),
+                tool_call_id: Some(id16(0xC0 ^ 0x10)),
+                output_budget_bytes: 4096,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(again.status, CommandStatus::Replayed as i32);
+    // Every call is on the log as ToolCall events with the pipeline trail.
+    let mut s = core.client().await;
+    s.subscribe(session.clone(), 0).await.unwrap();
+    let mut types: Vec<(String, String)> = Vec::new();
+    let deadline = std::time::Instant::now() + Duration::from_secs(10);
+    while std::time::Instant::now() < deadline {
+        match tokio::time::timeout(Duration::from_millis(500), s.next_event()).await {
+            Ok(Ok(Some(e))) => {
+                let ev = e.event.unwrap();
+                if ev.aggregate_type == "tool_call" {
+                    types.push((hex_id(&ev.aggregate_id.unwrap()), ev.event_type));
+                }
+            }
+            _ => break,
+        }
+    }
+    let for_call = |id: u8| {
+        types
+            .iter()
+            .filter(|(a, _)| *a == hex_id(&id16(0xC0 ^ id)))
+            .map(|(_, t)| t.as_str())
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(
+        for_call(0x10),
+        [
+            "ToolCallProposed",
+            "ToolCallValidated",
+            "ToolCallPolicyDecision",
+            "ToolCallDispatched",
+            "ToolCallSucceeded"
+        ]
+    );
+    assert_eq!(
+        for_call(0x13),
+        [
+            "ToolCallProposed",
+            "ToolCallValidated",
+            "ToolCallPolicyDecision",
+            "ToolCallDispatched",
+            "ToolCallFailed"
+        ]
+    );
+    assert_eq!(for_call(0x14), ["ToolCallProposed", "ToolCallFailed"]);
+    assert_eq!(for_call(0x15), ["ToolCallProposed", "ToolCallFailed"]);
+}
+
+fn hex_id(id: &Id) -> String {
+    id.value.iter().map(|b| format!("{b:02x}")).collect()
 }
