@@ -1662,8 +1662,17 @@
    "milestone": "M2",
    "order": 6,
    "source": "docs/43",
-   "status": "IMPLEMENTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "test:m2_7_one_agent_runtime_drives_a_coding_task_to_ready_for_review",
+    "test:m2_7_harness_refuses_unplanned_writes_exhausts_budgets_and_resumes_after_restart",
+    "test:m2_7_steering_and_cancellation_apply_at_safe_boundaries",
+    "run:gha-34381792069",
+    "commit:6704ad2",
+    "artifact:docs/decisions/DR-M2-001-live-provider-proof-pending-credentials.md",
+    "artifact:evidence/m2/M2.7/evidence.json",
+    "artifact:evidence/m2/M2.7/TASK_CARD.md"
+   ],
    "notes": [
     {
      "at": "2026-09-09T17:12:11Z",
@@ -1676,9 +1685,33 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "prompt compiler (stable segments + projection hash), harness contracts, Core one-agent loop with Run/Turn/RunStep events, StartTask/CancelTask/GetTaskStatus, CLI task run/cancel/status; broker request ids now include the tool call id"
+    },
+    {
+     "at": "2026-09-09T17:19:46Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Core StartTask/CancelTask/GetTaskStatus drive the loop against the gateway, tool host and event store; CLI task run/cancel/status"
+    },
+    {
+     "at": "2026-09-09T17:19:46Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Real repository, broker and Core over the socket with a scripted wire-faithful model; harness faults, restart resume, steering and cancellation pass on hosted macOS/Linux/Windows"
+    },
+    {
+     "at": "2026-09-09T17:19:46Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "Hosted CI run 34381792069 green on three platforms; live-model proof deferred by DR-M2-001"
+    },
+    {
+     "at": "2026-09-09T17:19:46Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Sealed with hosted CI evidence"
     }
    ],
-   "status_changed_on": "2026-09-09T17:12:11Z"
+   "status_changed_on": "2026-09-09T17:19:46Z"
   },
   {
    "id": "M2.8",
