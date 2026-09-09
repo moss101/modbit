@@ -310,7 +310,7 @@ async fn qual_ev_0271_0027_0135_detach_reattach_from_cursor_exactly_then_cancel_
 }
 
 #[tokio::test]
-async fn stdin_is_explicit_and_two_requests_do_not_share_environment() {
+async fn qual_ev_0025_stdin_is_explicit_and_two_requests_do_not_share_environment() {
     let dir = tempfile::tempdir().unwrap();
     let execd = Execd::spawn(dir.path());
     let mut c = execd.client().await;

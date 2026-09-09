@@ -589,6 +589,47 @@ async fn shell_exec_and_test_run_go_through_the_real_broker() {
         a.result.structured_output["report_id"], same.result.structured_output["report_id"],
         "the same call id replays"
     );
+    // QUAL-EV-0026: a noisy command reaches the model as a bounded view while the
+    // full output is retained by digest (stream → batch → bounded view → OutputRef).
+    let noisy = r#"{"argv":["sh","-c","i=0; while [ $i -lt 4000 ]; do echo 'warning: the same repeated build noise line number '$i; i=$((i+1)); done"],"inherit_env":true}"#;
+    let mut noisy_ctx = f.ctx.clone();
+    noisy_ctx.output_budget_bytes = 4096;
+    if cfg!(unix) {
+        let o = f
+            .runtime
+            .invoke(&noisy_ctx, ToolCallId::new(), "shell.exec", noisy)
+            .await;
+        assert_eq!(o.result.status, ToolStatus::Success, "{:?}", o.result);
+        // The pipeline bounds the model-facing view: the oversized structured
+        // output itself becomes {preview, output_ref, byte_length} and the full
+        // JSON is retained by digest, as is the complete raw command output.
+        let so = &o.result.structured_output;
+        assert!(
+            o.result.structured_output.to_string().len() < 8 * 1024,
+            "the model view is bounded: {so}"
+        );
+        let preview = so["preview"].as_str().unwrap_or_else(|| panic!("{so}"));
+        assert!(preview.len() <= 4096 && so["byte_length"].as_u64().unwrap() > 4096);
+        let retained = f.sink.0.lock().unwrap().clone();
+        let full_json = retained
+            .iter()
+            .find(|(h, _)| h == so["output_ref"].as_str().unwrap())
+            .expect("full structured output retained by digest");
+        let inner: serde_json::Value = serde_json::from_slice(&full_json.1).unwrap();
+        assert_eq!(inner["stdout_truncated"], true);
+        let total = inner["total_bytes"].as_u64().unwrap();
+        assert!(total > 200_000, "{total}");
+        let raw = retained
+            .iter()
+            .find(|(h, _)| h == inner["output_ref"].as_str().unwrap())
+            .expect("full raw output retained by digest");
+        assert_eq!(raw.1.len() as u64, total);
+        assert_eq!(
+            hex::encode(Sha256::digest(&raw.1)),
+            inner["output_ref"].as_str().unwrap(),
+            "digest matches the complete raw output"
+        );
+    }
     // No broker attached: infrastructure failure, never an unknown effect.
     let none = fixture(None);
     let o = none

@@ -3804,3 +3804,186 @@ async fn m2_10_media_reads_carry_digests_not_bytes_and_survive_restart() {
         );
     }
 }
+
+/// QUAL-EV-0194: one canonical approval owns the decision; a client resolves
+/// it under the session lease, a second conflicting resolution replays the
+/// recorded outcome, and no model-facing tool can resolve approvals.
+#[tokio::test]
+async fn qual_ev_0194_approvals_are_canonical_and_never_resolved_by_the_model() {
+    use modbit_protocol::v1::{
+        ApprovalResolvedAck, InvokeTool, ListTools, ResolveApproval, ToolInvoked, ToolList,
+    };
+    let repo = tempfile::tempdir().unwrap();
+    std::fs::write(repo.path().join("a.txt"), "a\n").unwrap();
+    for args in [
+        vec!["init", "-q", "-b", "main"],
+        vec!["add", "-A"],
+        vec![
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@e",
+            "commit",
+            "-q",
+            "-m",
+            "base",
+        ],
+    ] {
+        assert!(
+            Command::new("git")
+                .arg("-C")
+                .arg(repo.path())
+                .args(&args)
+                .status()
+                .unwrap()
+                .success()
+        );
+    }
+    let root = repo
+        .path()
+        .canonicalize()
+        .unwrap()
+        .to_string_lossy()
+        .trim_start_matches(r"\\?\")
+        .to_owned();
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn(dir.path());
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xE0)).await;
+    let g = lease_for(&session);
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xE1),
+            "CreateTask",
+            CreateTask {
+                session_id: Some(session.clone()),
+                goal_text: "x".into(),
+                workspace_id: None,
+                execution_profile: String::new(),
+                origin: "cli".into(),
+                workspace_root: root.clone(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let task = Client::result::<TaskCreated>(&ack)
+        .unwrap()
+        .task_id
+        .unwrap();
+    // The model-facing registry has no approval or policy tool.
+    let ack = c
+        .command(envelope(
+            id16(0xE2),
+            "ListTools",
+            ListTools {}.encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let tools: ToolList = Client::result(&ack).unwrap();
+    assert!(
+        tools
+            .tools
+            .iter()
+            .all(|t| !t.name.contains("approval") && !t.name.contains("policy")),
+        "{:?}",
+        tools.tools.iter().map(|t| &t.name).collect::<Vec<_>>()
+    );
+    let wt = format!("{}-wt", root.replace('\\', "/"));
+    let r = c
+        .command(envelope_fenced(
+            id16(0xE3),
+            "InvokeTool",
+            InvokeTool {
+                task_id: Some(task.clone()),
+                tool_name: "git.worktree.create".into(),
+                arguments_json: format!(r#"{{"branch":"t/x","path":"{wt}"}}"#),
+                tool_call_id: Some(id16(0xF1)),
+                output_budget_bytes: 4096,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(Client::result::<ToolInvoked>(&r).unwrap().status, "SUCCESS");
+    let r = c
+        .command(envelope_fenced(
+            id16(0xE4),
+            "InvokeTool",
+            InvokeTool {
+                task_id: Some(task.clone()),
+                tool_name: "git.worktree.close".into(),
+                arguments_json: format!(r#"{{"path":"{wt}"}}"#),
+                tool_call_id: Some(id16(0xF2)),
+                output_budget_bytes: 4096,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let pending: ToolInvoked = Client::result(&r).unwrap();
+    assert_eq!(pending.status, "APPROVAL_PENDING");
+    let approval = Id {
+        value: decode_hex(&pending.approval_id).unwrap(),
+    };
+    // Two clients race: the first decision (deny) is canonical; the second (approve) replays DENIED.
+    let mut other = core.client().await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xE5),
+            "ResolveApproval",
+            ResolveApproval {
+                approval_id: Some(approval.clone()),
+                approve: false,
+                reason: "no".into(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(
+        Client::result::<ApprovalResolvedAck>(&ack).unwrap().status,
+        "DENIED"
+    );
+    let g2 = Some(acquire_lease(&mut other, id16(0xE6), session.clone(), "second-client").await);
+    let ack = other
+        .command(envelope_fenced(
+            id16(0xE7),
+            "ResolveApproval",
+            ResolveApproval {
+                approval_id: Some(approval.clone()),
+                approve: true,
+                reason: "yes".into(),
+            }
+            .encode_to_vec(),
+            g2,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(
+        (
+            ack.status,
+            Client::result::<ApprovalResolvedAck>(&ack)
+                .unwrap()
+                .status
+                .as_str()
+        ),
+        (CommandStatus::Replayed as i32, "DENIED")
+    );
+    assert!(
+        std::path::Path::new(&wt).exists(),
+        "the denied effect never happened"
+    );
+    let evs = task_events(&core, &session, &task).await;
+    assert_eq!(
+        evs.iter()
+            .filter(|(_, t, _)| t == "ApprovalResolved")
+            .count(),
+        1,
+        "one canonical resolution on the log"
+    );
+}

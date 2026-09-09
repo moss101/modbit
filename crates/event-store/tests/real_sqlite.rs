@@ -317,3 +317,48 @@ fn hard_killed_writer_leaves_a_verifiable_prefix_and_no_torn_event() {
         "last row is a whole event, not a torn one"
     );
 }
+
+/// QUAL-EV-0011: a multi-MB payload is content-addressed, retrievable by
+/// digest after reopen, and a digest mismatch (tampered object) fails closed.
+#[test]
+fn qual_ev_0011_blob_addressed_payloads_survive_reopen_and_digest_mismatch_fails_closed() {
+    let dir = tempfile::tempdir().unwrap();
+    let session = SessionId::new();
+    let agg = *TaskId::new().as_bytes();
+    let mut store = EventStore::open(dir.path()).unwrap();
+    let blob = "z".repeat(3 * 1024 * 1024);
+    let stored = store
+        .append(req(
+            session,
+            agg,
+            None,
+            vec![ev("BigState", json!({"blob": blob}))],
+        ))
+        .unwrap();
+    let PayloadRef::Object { object_hash, .. } = &stored[0].envelope.payload else {
+        panic!("large payload must be stored by reference");
+    };
+    let hash = object_hash.clone();
+    drop(store);
+    let store = EventStore::open(dir.path()).unwrap();
+    let bytes = store.objects().get(&hash).unwrap();
+    assert!(bytes.len() > 3 * 1024 * 1024);
+    assert_eq!(
+        store.payload(&stored[0].envelope).unwrap()["blob"]
+            .as_str()
+            .unwrap()
+            .len(),
+        3 * 1024 * 1024
+    );
+    // Tamper with the object file: retrieval fails closed instead of returning corrupt bytes.
+    let path = dir.path().join("objects").join(&hash[..2]).join(&hash[2..]);
+    assert!(path.exists(), "{}", path.display());
+    let mut corrupt = std::fs::read(&path).unwrap();
+    corrupt[10] ^= 0xFF;
+    std::fs::write(&path, corrupt).unwrap();
+    assert!(
+        store.objects().get(&hash).is_err(),
+        "digest mismatch must fail closed"
+    );
+    assert!(store.payload(&stored[0].envelope).is_err());
+}

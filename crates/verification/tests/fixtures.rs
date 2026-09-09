@@ -676,3 +676,24 @@ fn diff_invariants_deny_test_weakening_and_flag_the_rest() {
     assert!(v.iter().any(|x| x.id == "DI-9" && x.class == Class::Deny));
     assert!(denies(&v));
 }
+
+/// QUAL-EV-0069 (EXPERIMENT, off by default): the verification engine has no
+/// model port at all, so a disabled semantic verifier emits zero model calls
+/// by construction; deterministic gates decide.
+#[test]
+fn qual_ev_0069_disabled_semantic_verification_makes_zero_model_calls() {
+    let manifest =
+        std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml")).unwrap();
+    assert!(
+        !manifest.contains("modbit-providers"),
+        "the verification crate must not depend on the provider gateway"
+    );
+    let src = std::fs::read_dir(Path::new(env!("CARGO_MANIFEST_DIR")).join("src"))
+        .unwrap()
+        .map(|e| std::fs::read_to_string(e.unwrap().path()).unwrap())
+        .collect::<String>();
+    assert!(
+        !src.contains("ModelRequest") && !src.contains("ProviderGateway"),
+        "no semantic verifier path exists"
+    );
+}

@@ -397,3 +397,40 @@ fn approval_binds_intent_and_emergency_stop_blocks_effects() {
     read.emergency_stopped = true;
     assert_eq!(code(&k.decide(&read)), "ALLOW");
 }
+
+/// QUAL-EV-0136: permission modes compile to monotonic policy; a mode switch
+/// is a session-lease action, never something a model tool call can request.
+#[test]
+fn qual_ev_0136_modes_compile_to_monotonic_policy_and_no_tool_switches_them() {
+    let k = CapabilityKernel::default();
+    // The three shipped modes: each tightens; none loosens the envelope.
+    let env = k.envelope();
+    let trusted = env.profile_ceilings["local_trusted"];
+    let review = env.profile_ceilings["review_isolated"];
+    let auto = env.profile_ceilings["local_autonomous"];
+    assert!(review <= trusted && auto <= trusted);
+    assert!(env.no_approval_profiles.contains("local_autonomous"));
+    // Requests name a profile but cannot elevate: a lease for a narrower mode is denied wider effects.
+    let l = lease("review_isolated");
+    let c = caps(&["git.worktree"]);
+    let d = k.decide(&req(
+        "git.worktree.close",
+        EffectClass::Destructive,
+        &c,
+        "review_isolated",
+        Some(&l),
+    ));
+    // The narrower mode's default lease does not even carry the capability: denied, never allowed.
+    assert!(matches!(d, KernelDecision::Deny { .. }), "{}", code(&d));
+    // No capability id exists that changes modes: the kernel denies unknown operations outright.
+    let switch = caps(&["policy.mode.switch"]);
+    let l2 = lease("local_trusted");
+    let d = k.decide(&req(
+        "policy.switch_mode",
+        EffectClass::ReadOnly,
+        &switch,
+        "local_trusted",
+        Some(&l2),
+    ));
+    assert_eq!(code(&d), "CAPABILITY_NOT_LEASED");
+}

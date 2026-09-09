@@ -772,7 +772,7 @@ async fn interruption_after_first_token_is_reported_not_retried() {
 /// QUAL-EV-0028 / QUAL-EV-0189: capability mismatch routes away before any
 /// network call; missing credentials are typed.
 #[tokio::test]
-async fn capability_catalog_refuses_mismatched_models_before_dispatch() {
+async fn qual_ev_0028_0189_capability_catalog_refuses_mismatched_models_before_dispatch() {
     let server = fake(vec![]).await;
     let gw = ProviderGateway::new(vec![
         endpoint(
@@ -991,4 +991,57 @@ async fn live_streaming_tool_round_trip_and_cancellation_against_production_endp
             matches!(last, Some(ModelEvent::Completed { ref stop_reason }) if stop_reason == stop::CANCELLED)
         );
     }
+}
+
+/// QUAL-EV-0112: the routing record shows requested vs resolved model, effort
+/// and tier plus the policy reason, and it is provider-neutral.
+#[tokio::test]
+async fn qual_ev_0112_route_record_shows_requested_vs_resolved_values_and_policy_reason() {
+    let server = fake(vec![Script::Sse(openai_text_stream(&["ok"]))]).await;
+    let mut ep = endpoint(
+        "ep",
+        ProviderKind::OpenAi,
+        &server.base_url,
+        SecretHandle::None,
+        0,
+    );
+    ep.models[0].reasoning = true;
+    let gw = ProviderGateway::new(vec![ep]);
+    let mut req = request(
+        "ep",
+        "m-tools",
+        vec![Message::text(Role::User, "hi")],
+        false,
+        5_000,
+    );
+    req.model_policy.reasoning_effort = Some("high".into());
+    req.model_policy.service_tier = Some("priority".into());
+    let s = gw
+        .stream(req, &Requirements::default(), CancellationToken::new())
+        .unwrap();
+    let route = Arc::clone(&s.route);
+    let _ = collect(s).await;
+    let r = route.lock().unwrap().clone();
+    assert_eq!(r.requested_model, "m-tools");
+    assert_eq!(
+        r.resolved_model.as_deref(),
+        Some("m-tools-2026"),
+        "resolved from provider metadata"
+    );
+    assert_eq!(r.requested_reasoning_effort.as_deref(), Some("high"));
+    assert_eq!(r.requested_service_tier.as_deref(), Some("priority"));
+    // The fake stream reports no tier: the record says "unknown" rather than echoing the request.
+    assert_eq!(r.resolved_service_tier, None);
+    assert!(
+        r.reason.contains("policy endpoint `ep` serves `m-tools`"),
+        "{}",
+        r.reason
+    );
+    assert_eq!(r.kind, ProviderKind::OpenAi);
+    // The wire carried the requested envelope; the record is what the runtime logs (ModelUsageRecorded.route).
+    let seen = server.seen.lock().unwrap().clone();
+    assert_eq!(seen[0].body["reasoning_effort"], "high");
+    assert_eq!(seen[0].body["service_tier"], "priority");
+    let json = serde_json::to_value(&r).unwrap();
+    assert!(json.get("requested_model").is_some() && json.get("resolved_model").is_some());
 }
