@@ -1602,8 +1602,13 @@
    "milestone": "M2",
    "order": 5,
    "source": "docs/43",
-   "status": "IMPLEMENTING",
-   "evidence": [],
+   "status": "REAL_TESTING",
+   "evidence": [
+    "test:openai_streaming_tool_round_trip_over_real_http",
+    "test:anthropic_streaming_tool_round_trip_over_real_http",
+    "test:capability_catalog_refuses_mismatched_models_before_dispatch",
+    "test:m2_6_provider_gateway_streams_through_the_core_over_real_http"
+   ],
    "notes": [
     {
      "at": "2026-09-09T16:42:53Z",
@@ -1616,9 +1621,21 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "modbit-providers gateway (OpenAI + Anthropic SSE adapters, catalog, route record, retry/timeout/cancel, health); Core ListModels/ProbeModel; CLI model list/probe; DR-M2-001 live proof workflow"
+    },
+    {
+     "at": "2026-09-09T16:51:33Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Core owns the gateway (credentials from its environment); ListModels/ProbeModel over the SurfaceProtocol; CLI model list/probe"
+    },
+    {
+     "at": "2026-09-09T16:51:33Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Real HTTP against wire-faithful local servers with fault injection; live production proof deferred by DR-M2-001"
     }
    ],
-   "status_changed_on": "2026-09-09T16:42:53Z"
+   "status_changed_on": "2026-09-09T16:51:33Z"
   },
   {
    "id": "M2.7",
