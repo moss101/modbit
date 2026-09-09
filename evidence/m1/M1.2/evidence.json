@@ -1,0 +1,11 @@
+{
+  "task": "M1.2", "commits": {"implementation": "b51bcf8", "fixes": ["c6704ca", "07e2ad9", "ef1b10c", "cdd8790"]}, "evidence_tier": "release-critical",
+  "runs": [
+    {"id": "gha-34312728473", "kind": "hosted CI on b51bcf8", "result": "M1.2 tests PASS on all platforms; hard-kill test FAILED on all platforms: two processes opening a fresh core.db raced in the migration runner (UNIQUE schema_migrations.version)"},
+    {"id": "gha-34313251544", "kind": "hosted CI on 07e2ad9 (atomic migrations + regression test)", "result": "Linux PASS; macOS/Windows concurrent-open test FAILED with 'database is locked' (busy_timeout set after the pragmas)"},
+    {"id": "gha-34313397450", "kind": "hosted CI on ef1b10c (busy_timeout before pragmas)", "result": "macOS/Linux PASS; Windows FAILED: BUSY on a lock-upgrade path the busy handler does not cover"},
+    {"id": "gha-34313556827", "kind": "hosted CI on cdd8790 (bounded open retry)", "result": "PASS: ten jobs green; migrations/projections/commands tests, concurrent-open and hard-kill tests pass on macOS, Linux and Windows", "url": "https://github.com/moss101/modbit/actions/runs/34313556827"}
+  ],
+  "faults": ["checksum drift of an applied migration refused", "newer ledger version refused", "illegal transition mid-batch rolled back atomically", "reused command id with different request rejected", "six concurrent openers of a fresh database", "writer hard-killed mid-append while another process polls the same database"],
+  "acceptance": {"SQLite migrations": "PASS (ledger, checksums, fixture upgrade in CI on three platforms)", "projections": "PASS (same-transaction, rebuildable)", "command idempotency": "PASS (replay, conflict, reopen)"}
+}

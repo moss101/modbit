@@ -1160,8 +1160,16 @@
    "milestone": "M1",
    "order": 1,
    "source": "docs/43",
-   "status": "IMPLEMENTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-34313556827",
+    "commit:cdd8790",
+    "commit:b51bcf8",
+    "artifact:evidence/m1/M1.2/evidence.json",
+    "artifact:evidence/m1/M1.2/TASK_CARD.md",
+    "artifact:tests/fixtures/db/core-v1-m1.1.db",
+    "test:migrates_the_committed_m1_1_fixture_and_derives_projections"
+   ],
    "notes": [
     {
      "at": "2026-09-09T04:40:57Z",
@@ -1174,10 +1182,22 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "Checksummed migration ledger, v2 projections/commands schema, projections in the append transaction with rebuild, command idempotency, committed v1 fixture migrated in tests."
+    },
+    {
+     "at": "2026-09-09T05:08:32Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Migrations run on every open; projections in every append; execute_command is the command path; CI exercises all on three platforms (run 34313556827)."
+    },
+    {
+     "at": "2026-09-09T05:08:32Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Fixture upgrade, drift, atomic rollback, idempotency, concurrent-open and hard-kill faults pass on hosted macOS/Linux/Windows after three real race fixes."
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-09-09T04:52:59Z"
+   "status_changed_on": "2026-09-09T05:08:32Z"
   },
   {
    "id": "M1.3",
