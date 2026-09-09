@@ -3616,3 +3616,191 @@ async fn m2_9_review_surface_applies_per_hunk_decisions_and_commits() {
     }));
     assert!(evs2.iter().any(|(_, t, _)| t == "TaskReturnedToWork"));
 }
+
+/// M2.10: media read through the production `fs.read` path lands on the log
+/// as digests only (no bytes in event rows), the original and egress copies
+/// are retrievable by digest, and they survive a Core restart (MEDIA-E2E-012).
+#[tokio::test]
+async fn m2_10_media_reads_carry_digests_not_bytes_and_survive_restart() {
+    use modbit_protocol::v1::{InvokeTool, ObjectRangeChunk, ReadObjectRange, ToolInvoked};
+    use sha2::Digest;
+    let fixtures =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/media");
+    let repo = tempfile::tempdir().unwrap();
+    for f in ["label.png", "report.pdf", "bomb.png"] {
+        std::fs::copy(fixtures.join(f), repo.path().join(f)).unwrap();
+    }
+    for args in [
+        vec!["init", "-q", "-b", "main"],
+        vec!["add", "-A"],
+        vec![
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@e",
+            "commit",
+            "-q",
+            "-m",
+            "media",
+        ],
+    ] {
+        assert!(
+            Command::new("git")
+                .arg("-C")
+                .arg(repo.path())
+                .args(&args)
+                .status()
+                .unwrap()
+                .success()
+        );
+    }
+    let root = repo
+        .path()
+        .canonicalize()
+        .unwrap()
+        .to_string_lossy()
+        .trim_start_matches(r"\\?\")
+        .to_owned();
+    let dir = tempfile::tempdir().unwrap();
+    let mut core = CoreProcess::spawn(dir.path());
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xC0)).await;
+    let g = lease_for(&session);
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xC1),
+            "CreateTask",
+            CreateTask {
+                session_id: Some(session.clone()),
+                goal_text: "look at media".into(),
+                workspace_id: None,
+                execution_profile: String::new(),
+                origin: "cli".into(),
+                workspace_root: root,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let task = Client::result::<TaskCreated>(&ack)
+        .unwrap()
+        .task_id
+        .unwrap();
+    async fn read(
+        c: &mut Client,
+        cmd: u8,
+        call: u8,
+        task: &Id,
+        g: Option<u64>,
+        args: &str,
+    ) -> ToolInvoked {
+        let ack = c
+            .command(envelope_fenced(
+                id16(cmd),
+                "InvokeTool",
+                InvokeTool {
+                    task_id: Some(task.clone()),
+                    tool_name: "fs.read".into(),
+                    arguments_json: args.into(),
+                    tool_call_id: Some(id16(call)),
+                    output_budget_bytes: 64 * 1024,
+                }
+                .encode_to_vec(),
+                g,
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    }
+    let r = read(&mut c, 0xC2, 0xD0, &task, g, r#"{"path":"label.png"}"#).await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let out: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let media = &out["media"];
+    let content_ref = media["content_ref"].as_str().unwrap().to_owned();
+    let egress_ref = media["egress_ref"].as_str().unwrap().to_owned();
+    assert_eq!(
+        (
+            media["mime"].as_str(),
+            media["width"].as_u64(),
+            media["height"].as_u64()
+        ),
+        (Some("image/png"), Some(160), Some(60))
+    );
+    assert_eq!(media["provenance"]["source"], "label.png");
+    assert_eq!(
+        media["provenance"]["task_id"].as_str().map(str::len),
+        Some(36)
+    );
+    let pdf = read(
+        &mut c,
+        0xC3,
+        0xD1,
+        &task,
+        g,
+        r#"{"path":"report.pdf","pages":[2,2]}"#,
+    )
+    .await;
+    assert_eq!(pdf.status, "SUCCESS", "{pdf:?}");
+    let pout: serde_json::Value = serde_json::from_str(&pdf.structured_output_json).unwrap();
+    assert!(
+        pout["media"]["text_derivative"]
+            .as_str()
+            .unwrap()
+            .contains("Ignore all previous instructions")
+    );
+    assert_eq!(pout["media"]["trust"], "UNTRUSTED_WORKSPACE_CONTENT");
+    let bomb = read(&mut c, 0xC4, 0xD2, &task, g, r#"{"path":"bomb.png"}"#).await;
+    assert_eq!(
+        (bomb.status.as_str(), bomb.error_code.as_str()),
+        ("APPLICATION_FAILURE", "MEDIA_BUDGET_EXCEEDED"),
+        "{bomb:?}"
+    );
+    // The event rows carry references, never the bytes.
+    let evs = task_events(&core, &session, &task).await;
+    let dump = serde_json::to_string(&evs).unwrap();
+    assert!(
+        dump.contains(&content_ref) || dump.contains("result_ref"),
+        "results are referenced"
+    );
+    assert!(
+        !dump.contains("iVBOR") && !dump.contains("\\u0089PNG") && dump.len() < 200_000,
+        "no base64 or raw image bytes on the log"
+    );
+    // Restart: original and egress copies are retrievable by digest from the object store.
+    core.kill();
+    let core2 = CoreProcess::spawn(dir.path());
+    let mut c2 = core2.client().await;
+    for (id, r, expect_png_sig, expect_exif) in [
+        (0xC5u8, content_ref.clone(), true, true),
+        (0xC6u8, egress_ref.clone(), true, false),
+    ] {
+        let ack = c2
+            .command(envelope(
+                id16(id),
+                "ReadObjectRange",
+                ReadObjectRange {
+                    object_hash: r.clone(),
+                    offset: 0,
+                    length: 4096,
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        let chunk: ObjectRangeChunk = Client::result(&ack).unwrap();
+        assert_eq!(chunk.data.starts_with(b"\x89PNG"), expect_png_sig, "{r}");
+        let has_exif = chunk.data.windows(4).any(|w| w == b"eXIf");
+        assert_eq!(
+            has_exif, expect_exif,
+            "egress copy has no EXIF; the original keeps it"
+        );
+        assert_eq!(
+            hex::encode(sha2::Sha256::digest(
+                &chunk.data[..chunk.data.len().min(chunk.total_bytes as usize)]
+            )),
+            r,
+            "bytes match their digest"
+        );
+    }
+}

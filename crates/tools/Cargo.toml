@@ -11,11 +11,13 @@ publish.workspace = true
 globset.workspace = true
 hex.workspace = true
 jsonschema.workspace = true
+lopdf = { version = "0.44", default-features = false }
 modbit-domain.workspace = true
 modbit-git.workspace = true
 modbit-protocol.workspace = true
 modbit-terminal.workspace = true
 modbit-workspace.workspace = true
+png = "0.18"
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true

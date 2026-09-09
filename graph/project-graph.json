@@ -2503,8 +2503,23 @@
    "order": 9,
    "source": "docs/25_MULTIMODAL_MEDIA_AND_NOTEBOOK_RUNTIME.md; docs/43 V2 sequencing delta",
    "note": "added in V3.1 from the V2 sequencing delta",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-09T19:07:14Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: NOT-FOUND (fs.read hex-encoded binaries; no media model)"
+    },
+    {
+     "at": "2026-09-09T19:07:14Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "MediaEnvelope in domain; Media Pipeline in tools (magic-byte detection, PNG/JPEG dimensions and metadata-stripped egress, bounded PDF text, byte/pixel/page budgets, typed failures); fs.read returns envelopes; hashed media fixtures"
+    }
+   ],
+   "status_changed_on": "2026-09-09T19:07:14Z"
   },
   {
    "id": "M5.7",

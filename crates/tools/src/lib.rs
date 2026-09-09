@@ -18,6 +18,7 @@
 #![forbid(unsafe_code)]
 
 pub mod direct;
+pub mod media;
 pub mod pipeline;
 pub mod policy;
 pub mod registry;
