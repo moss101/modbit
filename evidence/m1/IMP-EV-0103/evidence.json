@@ -1,0 +1,16 @@
+{
+  "task": "IMP-EV-0103",
+  "commit": "d1abd2d",
+  "evidence_tier": "release-critical",
+  "runs": [
+    {
+      "id": "gha-34347242710",
+      "kind": "hosted CI on d1abd2d",
+      "result": "PASS on macOS, Linux and Windows (thirteen jobs green)",
+      "url": "https://github.com/moss101/modbit/actions/runs/34347242710",
+      "log": "../ci-run-34347242710.json"
+    }
+  ],
+  "qualification_test": "wrong_secret_hostile_and_oversized_frames_are_rejected",
+  "task_card": "evidence/m1/IMP-EV-0103/TASK_CARD.md"
+}

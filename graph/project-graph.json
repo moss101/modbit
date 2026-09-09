@@ -6301,8 +6301,14 @@
    "milestone": "M1",
    "qual": "QUAL-EV-0010",
    "source": "docs/41",
-   "status": "IMPLEMENTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-34347242710",
+    "commit:d1abd2d",
+    "artifact:evidence/m1/IMP-EV-0010/evidence.json",
+    "artifact:evidence/m1/IMP-EV-0010/TASK_CARD.md",
+    "test:qual_ev_0010_offset_resume_is_exact_and_invalid_cursors_force_rehydrate"
+   ],
    "notes": [
     {
      "at": "2026-09-09T11:45:19Z",
@@ -6315,10 +6321,22 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "Behavior and named qualification test implemented (see card)."
+    },
+    {
+     "at": "2026-09-09T11:49:00Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Reachable through the production Core command path / desktop IPC (run 34347242710)."
+    },
+    {
+     "at": "2026-09-09T11:49:00Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Named qualification test passes on hosted macOS/Linux/Windows."
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-09-09T11:45:19Z"
+   "status_changed_on": "2026-09-09T11:49:00Z"
   },
   {
    "id": "IMP-EV-0011",
@@ -6668,8 +6686,14 @@
    "milestone": "M1",
    "qual": "QUAL-EV-0037",
    "source": "docs/41",
-   "status": "IMPLEMENTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-34347242710",
+    "commit:d1abd2d",
+    "artifact:evidence/m1/IMP-EV-0037/evidence.json",
+    "artifact:evidence/m1/IMP-EV-0037/TASK_CARD.md",
+    "test:fleet.spec.ts"
+   ],
    "notes": [
     {
      "at": "2026-09-09T11:45:19Z",
@@ -6682,10 +6706,22 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "Behavior and named qualification test implemented (see card)."
+    },
+    {
+     "at": "2026-09-09T11:49:00Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Reachable through the production Core command path / desktop IPC (run 34347242710)."
+    },
+    {
+     "at": "2026-09-09T11:49:00Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Named qualification test passes on hosted macOS/Linux/Windows."
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-09-09T11:45:19Z"
+   "status_changed_on": "2026-09-09T11:49:00Z"
   },
   {
    "id": "IMP-EV-0039",
@@ -6698,8 +6734,14 @@
    "milestone": "M1",
    "qual": "QUAL-EV-0039",
    "source": "docs/41",
-   "status": "IMPLEMENTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-34347242710",
+    "commit:d1abd2d",
+    "artifact:evidence/m1/IMP-EV-0039/evidence.json",
+    "artifact:evidence/m1/IMP-EV-0039/TASK_CARD.md",
+    "test:config::tests::lower_authority_narrows_but_never_widens_and_everything_has_provenance"
+   ],
    "notes": [
     {
      "at": "2026-09-09T11:45:19Z",
@@ -6712,10 +6754,22 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "Behavior and named qualification test implemented (see card)."
+    },
+    {
+     "at": "2026-09-09T11:49:00Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Reachable through the production Core command path / desktop IPC (run 34347242710)."
+    },
+    {
+     "at": "2026-09-09T11:49:00Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Named qualification test passes on hosted macOS/Linux/Windows."
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-09-09T11:45:19Z"
+   "status_changed_on": "2026-09-09T11:49:01Z"
   },
   {
    "id": "IMP-EV-0040",
@@ -6924,8 +6978,14 @@
    "milestone": "M1",
    "qual": "QUAL-EV-0054",
    "source": "docs/41",
-   "status": "IMPLEMENTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-34347242710",
+    "commit:d1abd2d",
+    "artifact:evidence/m1/IMP-EV-0054/evidence.json",
+    "artifact:evidence/m1/IMP-EV-0054/TASK_CARD.md",
+    "test:qual_ev_0054_0273_session_lease_fences_out_stale_writers_across_restart"
+   ],
    "notes": [
     {
      "at": "2026-09-09T11:45:19Z",
@@ -6938,10 +6998,22 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "Behavior and named qualification test implemented (see card)."
+    },
+    {
+     "at": "2026-09-09T11:49:01Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Reachable through the production Core command path / desktop IPC (run 34347242710)."
+    },
+    {
+     "at": "2026-09-09T11:49:01Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Named qualification test passes on hosted macOS/Linux/Windows."
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-09-09T11:45:20Z"
+   "status_changed_on": "2026-09-09T11:49:01Z"
   },
   {
    "id": "IMP-EV-0055",
@@ -7558,8 +7630,14 @@
    "milestone": "M1",
    "qual": "QUAL-EV-0101",
    "source": "docs/41",
-   "status": "IMPLEMENTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-34347242710",
+    "commit:d1abd2d",
+    "artifact:evidence/m1/IMP-EV-0101/evidence.json",
+    "artifact:evidence/m1/IMP-EV-0101/TASK_CARD.md",
+    "test:kill_points_during_a_command_stream_never_duplicate_or_tear_state"
+   ],
    "notes": [
     {
      "at": "2026-09-09T11:45:20Z",
@@ -7572,10 +7650,22 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "Behavior and named qualification test implemented (see card)."
+    },
+    {
+     "at": "2026-09-09T11:49:01Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Reachable through the production Core command path / desktop IPC (run 34347242710)."
+    },
+    {
+     "at": "2026-09-09T11:49:01Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Named qualification test passes on hosted macOS/Linux/Windows."
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-09-09T11:45:20Z"
+   "status_changed_on": "2026-09-09T11:49:01Z"
   },
   {
    "id": "IMP-EV-0102",
@@ -7588,8 +7678,14 @@
    "milestone": "M1",
    "qual": "QUAL-EV-0102",
    "source": "docs/41",
-   "status": "IMPLEMENTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-34347242710",
+    "commit:d1abd2d",
+    "artifact:evidence/m1/IMP-EV-0102/evidence.json",
+    "artifact:evidence/m1/IMP-EV-0102/TASK_CARD.md",
+    "test:a_failed_command_step_does_not_fail_the_turn_the_run_the_task_or_the_session"
+   ],
    "notes": [
     {
      "at": "2026-09-09T11:45:20Z",
@@ -7602,10 +7698,22 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "Behavior and named qualification test implemented (see card)."
+    },
+    {
+     "at": "2026-09-09T11:49:01Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Reachable through the production Core command path / desktop IPC (run 34347242710)."
+    },
+    {
+     "at": "2026-09-09T11:49:01Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Named qualification test passes on hosted macOS/Linux/Windows."
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-09-09T11:45:20Z"
+   "status_changed_on": "2026-09-09T11:49:01Z"
   },
   {
    "id": "IMP-EV-0103",
@@ -7618,8 +7726,14 @@
    "milestone": "M1",
    "qual": "QUAL-EV-0103",
    "source": "docs/41",
-   "status": "IMPLEMENTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-34347242710",
+    "commit:d1abd2d",
+    "artifact:evidence/m1/IMP-EV-0103/evidence.json",
+    "artifact:evidence/m1/IMP-EV-0103/TASK_CARD.md",
+    "test:wrong_secret_hostile_and_oversized_frames_are_rejected"
+   ],
    "notes": [
     {
      "at": "2026-09-09T11:45:20Z",
@@ -7632,10 +7746,22 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "Behavior and named qualification test implemented (see card)."
+    },
+    {
+     "at": "2026-09-09T11:49:01Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Reachable through the production Core command path / desktop IPC (run 34347242710)."
+    },
+    {
+     "at": "2026-09-09T11:49:01Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Named qualification test passes on hosted macOS/Linux/Windows."
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-09-09T11:45:20Z"
+   "status_changed_on": "2026-09-09T11:49:01Z"
   },
   {
    "id": "IMP-EV-0104",
@@ -7705,8 +7831,14 @@
    "milestone": "M1",
    "qual": "QUAL-EV-0108",
    "source": "docs/41",
-   "status": "IMPLEMENTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-34347242710",
+    "commit:d1abd2d",
+    "artifact:evidence/m1/IMP-EV-0108/evidence.json",
+    "artifact:evidence/m1/IMP-EV-0108/TASK_CARD.md",
+    "test:qual_ev_0108_multi_mb_object_is_read_in_bounded_ranges"
+   ],
    "notes": [
     {
      "at": "2026-09-09T11:45:20Z",
@@ -7719,10 +7851,22 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "Behavior and named qualification test implemented (see card)."
+    },
+    {
+     "at": "2026-09-09T11:49:01Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Reachable through the production Core command path / desktop IPC (run 34347242710)."
+    },
+    {
+     "at": "2026-09-09T11:49:01Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Named qualification test passes on hosted macOS/Linux/Windows."
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-09-09T11:45:20Z"
+   "status_changed_on": "2026-09-09T11:49:02Z"
   },
   {
    "id": "IMP-EV-0109",
@@ -7890,8 +8034,14 @@
    "milestone": "M1",
    "qual": "QUAL-EV-0121",
    "source": "docs/41",
-   "status": "IMPLEMENTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-34347242710",
+    "commit:d1abd2d",
+    "artifact:evidence/m1/IMP-EV-0121/evidence.json",
+    "artifact:evidence/m1/IMP-EV-0121/TASK_CARD.md",
+    "test:qual_ev_0262_queued_inputs_keep_order_across_reconnect_and_restart"
+   ],
    "notes": [
     {
      "at": "2026-09-09T11:45:20Z",
@@ -7904,10 +8054,22 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "Behavior and named qualification test implemented (see card)."
+    },
+    {
+     "at": "2026-09-09T11:49:02Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Reachable through the production Core command path / desktop IPC (run 34347242710)."
+    },
+    {
+     "at": "2026-09-09T11:49:02Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Named qualification test passes on hosted macOS/Linux/Windows."
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-09-09T11:45:20Z"
+   "status_changed_on": "2026-09-09T11:49:02Z"
   },
   {
    "id": "IMP-EV-0122",
@@ -8202,8 +8364,14 @@
    "milestone": "M1",
    "qual": "QUAL-EV-0143",
    "source": "docs/41",
-   "status": "IMPLEMENTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-34347242710",
+    "commit:d1abd2d",
+    "artifact:evidence/m1/IMP-EV-0143/evidence.json",
+    "artifact:evidence/m1/IMP-EV-0143/TASK_CARD.md",
+    "test:fleet.spec.ts"
+   ],
    "notes": [
     {
      "at": "2026-09-09T11:45:20Z",
@@ -8216,10 +8384,22 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "Behavior and named qualification test implemented (see card)."
+    },
+    {
+     "at": "2026-09-09T11:49:02Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Reachable through the production Core command path / desktop IPC (run 34347242710)."
+    },
+    {
+     "at": "2026-09-09T11:49:02Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Named qualification test passes on hosted macOS/Linux/Windows."
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-09-09T11:45:20Z"
+   "status_changed_on": "2026-09-09T11:49:02Z"
   },
   {
    "id": "IMP-EV-0144",
@@ -8316,8 +8496,14 @@
    "milestone": "M1",
    "qual": "QUAL-EV-0152",
    "source": "docs/41",
-   "status": "IMPLEMENTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-34347242710",
+    "commit:d1abd2d",
+    "artifact:evidence/m1/IMP-EV-0152/evidence.json",
+    "artifact:evidence/m1/IMP-EV-0152/TASK_CARD.md",
+    "test:fleet.spec.ts"
+   ],
    "notes": [
     {
      "at": "2026-09-09T11:45:20Z",
@@ -8330,10 +8516,22 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "Behavior and named qualification test implemented (see card)."
+    },
+    {
+     "at": "2026-09-09T11:49:02Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Reachable through the production Core command path / desktop IPC (run 34347242710)."
+    },
+    {
+     "at": "2026-09-09T11:49:02Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Named qualification test passes on hosted macOS/Linux/Windows."
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-09-09T11:45:20Z"
+   "status_changed_on": "2026-09-09T11:49:02Z"
   },
   {
    "id": "IMP-EV-0153",
@@ -8882,8 +9080,14 @@
    "milestone": "M1",
    "qual": "QUAL-EV-0192",
    "source": "docs/41",
-   "status": "IMPLEMENTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-34347242710",
+    "commit:d1abd2d",
+    "artifact:evidence/m1/IMP-EV-0192/evidence.json",
+    "artifact:evidence/m1/IMP-EV-0192/TASK_CARD.md",
+    "test:commands_subscription_resume_and_idempotent_replay_over_the_real_socket"
+   ],
    "notes": [
     {
      "at": "2026-09-09T11:45:20Z",
@@ -8896,10 +9100,22 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "Behavior and named qualification test implemented (see card)."
+    },
+    {
+     "at": "2026-09-09T11:49:02Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Reachable through the production Core command path / desktop IPC (run 34347242710)."
+    },
+    {
+     "at": "2026-09-09T11:49:02Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Named qualification test passes on hosted macOS/Linux/Windows."
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-09-09T11:45:20Z"
+   "status_changed_on": "2026-09-09T11:49:02Z"
   },
   {
    "id": "IMP-EV-0193",
@@ -9733,8 +9949,14 @@
    "milestone": "M1",
    "qual": "QUAL-EV-0262",
    "source": "docs/41",
-   "status": "IMPLEMENTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-34347242710",
+    "commit:d1abd2d",
+    "artifact:evidence/m1/IMP-EV-0262/evidence.json",
+    "artifact:evidence/m1/IMP-EV-0262/TASK_CARD.md",
+    "test:qual_ev_0262_queued_inputs_keep_order_across_reconnect_and_restart"
+   ],
    "notes": [
     {
      "at": "2026-09-09T11:45:20Z",
@@ -9747,10 +9969,22 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "Behavior and named qualification test implemented (see card)."
+    },
+    {
+     "at": "2026-09-09T11:49:02Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Reachable through the production Core command path / desktop IPC (run 34347242710)."
+    },
+    {
+     "at": "2026-09-09T11:49:03Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Named qualification test passes on hosted macOS/Linux/Windows."
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-09-09T11:45:20Z"
+   "status_changed_on": "2026-09-09T11:49:03Z"
   },
   {
    "id": "IMP-EV-0263",
@@ -9875,8 +10109,14 @@
    "milestone": "M1",
    "qual": "QUAL-EV-0273",
    "source": "docs/41",
-   "status": "IMPLEMENTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-34347242710",
+    "commit:d1abd2d",
+    "artifact:evidence/m1/IMP-EV-0273/evidence.json",
+    "artifact:evidence/m1/IMP-EV-0273/TASK_CARD.md",
+    "test:qual_ev_0054_0273_session_lease_fences_out_stale_writers_across_restart"
+   ],
    "notes": [
     {
      "at": "2026-09-09T11:45:20Z",
@@ -9889,10 +10129,22 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "Behavior and named qualification test implemented (see card)."
+    },
+    {
+     "at": "2026-09-09T11:49:24Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Reachable through the production Core command path (run 34347242710)."
+    },
+    {
+     "at": "2026-09-09T11:49:24Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Named qualification test passes on hosted macOS/Linux/Windows."
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-09-09T11:45:21Z"
+   "status_changed_on": "2026-09-09T11:49:25Z"
   },
   {
    "id": "IMP-EV-0274",
