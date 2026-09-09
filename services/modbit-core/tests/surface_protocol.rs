@@ -432,3 +432,155 @@ async fn accepted_commands_survive_a_hard_kill_of_the_core_and_a_second_instance
         .unwrap();
     assert_eq!((again, status), (task, CommandStatus::Replayed as i32));
 }
+
+/// M1.5 kill-point suite (docs/54 faults 1 and 2, docs/19 resume): a writer
+/// task streams CreateTask commands continuously while the test hard-kills
+/// the Core at a random moment, so the kill lands before a commit, between
+/// commit and ack, or between commands. After every restart: recovery runs,
+/// the report is served, and re-sending every command of the round with its
+/// original command_id never duplicates a task (never-committed → Accepted
+/// exactly once; committed-but-unacked → Replayed).
+#[tokio::test]
+async fn kill_points_during_a_command_stream_never_duplicate_or_tear_state() {
+    use modbit_protocol::v1::{GetRecoveryReport, RecoveryReport};
+    use std::sync::{Arc, Mutex};
+    let dir = tempfile::tempdir().unwrap();
+    let mut core = CoreProcess::spawn(dir.path());
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x60)).await;
+    let mut expected_tasks: u64 = 0;
+    let mut next: u16 = 0x0100;
+    let mut in_flight_kills = 0;
+    for round in 0..5u32 {
+        // Writer: fire commands back to back, recording every id sent and every id acked.
+        let sent: Arc<Mutex<Vec<(Id, String)>>> = Arc::new(Mutex::new(Vec::new()));
+        let acked: Arc<Mutex<Vec<Id>>> = Arc::new(Mutex::new(Vec::new()));
+        let writer = {
+            let mut wc = core.client().await;
+            let (sent, acked, session) = (Arc::clone(&sent), Arc::clone(&acked), session.clone());
+            let base = next;
+            tokio::spawn(async move {
+                for i in 0..200u16 {
+                    let n = base + i;
+                    let cid = Id {
+                        value: vec![
+                            (n >> 8) as u8,
+                            n as u8,
+                            0x77,
+                            0x77,
+                            0x77,
+                            0x77,
+                            0x77,
+                            0x77,
+                            0x77,
+                            0x77,
+                            0x77,
+                            0x77,
+                            0x77,
+                            0x77,
+                            0x77,
+                            0x77,
+                        ],
+                    };
+                    let goal = format!("round {round} item {i}");
+                    sent.lock().unwrap().push((cid.clone(), goal.clone()));
+                    match create_task(&mut wc, cid.clone(), session.clone(), &goal).await {
+                        Ok(_) => acked.lock().unwrap().push(cid),
+                        Err(_) => break,
+                    }
+                }
+            })
+        };
+        tokio::time::sleep(Duration::from_millis(15 + (round as u64 * 23) % 60)).await;
+        core.kill();
+        let _ = writer.await;
+        let sent = sent.lock().unwrap().clone();
+        let acked = acked.lock().unwrap().clone();
+        next += 200;
+        assert!(
+            !acked.is_empty(),
+            "round {round}: the writer must have made progress before the kill"
+        );
+        let unacked = sent.len() - acked.len();
+        if unacked > 0 {
+            in_flight_kills += 1;
+        }
+        expected_tasks += acked.len() as u64;
+
+        // Restart, recover, and replay the whole round.
+        core = CoreProcess::spawn(dir.path());
+        c = core.client().await;
+        let ack = c
+            .command(envelope(
+                id16(0xF0 + round as u8),
+                "GetRecoveryReport",
+                GetRecoveryReport {}.encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        let report: RecoveryReport = Client::result(&ack).unwrap();
+        assert_eq!(
+            report.boot_generation,
+            u64::from(round) + 2,
+            "boot generation increments per start"
+        );
+        assert_eq!(report.sessions, 1);
+        assert!(
+            report.notes.is_empty(),
+            "a hard kill must leave nothing to repair beyond what SQLite guarantees: {:?}",
+            report.notes
+        );
+        assert!(
+            report.tasks >= expected_tasks,
+            "committed-but-unacked commands may add tasks, acked ones never vanish: {report:?}"
+        );
+        let committed_unacked = report.tasks - expected_tasks;
+        assert!(committed_unacked as usize <= unacked, "{report:?}");
+        expected_tasks = report.tasks;
+        let mut accepted_on_replay = 0u64;
+        for (cid, goal) in &sent {
+            let (_, _, status) = create_task(&mut c, cid.clone(), session.clone(), goal)
+                .await
+                .unwrap();
+            if status == CommandStatus::Accepted as i32 {
+                accepted_on_replay += 1;
+            }
+        }
+        assert_eq!(
+            accepted_on_replay as usize,
+            unacked - committed_unacked as usize,
+            "only never-committed commands are accepted on replay"
+        );
+        expected_tasks += accepted_on_replay;
+        let ack = c
+            .command(envelope(
+                id16(0xE0 + round as u8),
+                "GetSessionSnapshot",
+                GetSessionSnapshot {
+                    session_id: Some(session.clone()),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        let snap: SessionSnapshot = Client::result(&ack).unwrap();
+        assert_eq!(
+            snap.tasks.len() as u64,
+            expected_tasks,
+            "round {round}: tasks in the projection must equal accepted commands"
+        );
+        assert!(snap.tasks.iter().all(|t| t.state == "Queued"));
+        let mut goals: Vec<_> = snap.tasks.iter().map(|t| t.goal_text.clone()).collect();
+        let n = goals.len();
+        goals.sort();
+        goals.dedup();
+        assert_eq!(goals.len(), n, "no duplicate task for the same command");
+    }
+    assert!(
+        expected_tasks >= 40,
+        "the suite must have exercised real work: {expected_tasks}"
+    );
+    eprintln!(
+        "kill-point suite: {expected_tasks} tasks, {in_flight_kills} rounds killed with commands in flight"
+    );
+}

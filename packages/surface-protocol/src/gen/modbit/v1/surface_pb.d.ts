@@ -413,6 +413,87 @@ export declare type SurfaceFrame = Message<"modbit.v1.SurfaceFrame"> & {
 export declare const SurfaceFrameSchema: GenMessage<SurfaceFrame>;
 
 /**
+ * Startup recovery report (M1.5, docs/19 "Resume algorithm", docs/33 step 11:
+ * CoreReady only after recovery). Served by GetRecoveryReport; the desktop
+ * recovery banner shows what the Core actually recovered, never invented progress.
+ *
+ * @generated from message modbit.v1.GetRecoveryReport
+ */
+export declare type GetRecoveryReport = Message<"modbit.v1.GetRecoveryReport"> & {
+};
+
+/**
+ * Describes the message modbit.v1.GetRecoveryReport.
+ * Use `create(GetRecoveryReportSchema)` to create a new message.
+ */
+export declare const GetRecoveryReportSchema: GenMessage<GetRecoveryReport>;
+
+/**
+ * @generated from message modbit.v1.RecoveryReport
+ */
+export declare type RecoveryReport = Message<"modbit.v1.RecoveryReport"> & {
+  /**
+   * Monotonic per-data-directory Core start counter (fencing base).
+   *
+   * @generated from field: uint64 boot_generation = 1;
+   */
+  bootGeneration: bigint;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp started_at = 2;
+   */
+  startedAt?: Timestamp | undefined;
+
+  /**
+   * @generated from field: uint64 last_offset = 3;
+   */
+  lastOffset: bigint;
+
+  /**
+   * @generated from field: uint64 events_verified = 4;
+   */
+  eventsVerified: bigint;
+
+  /**
+   * @generated from field: uint64 aggregates_verified = 5;
+   */
+  aggregatesVerified: bigint;
+
+  /**
+   * @generated from field: bool projections_rebuilt = 6;
+   */
+  projectionsRebuilt: boolean;
+
+  /**
+   * @generated from field: uint64 sessions = 7;
+   */
+  sessions: bigint;
+
+  /**
+   * @generated from field: uint64 tasks = 8;
+   */
+  tasks: bigint;
+
+  /**
+   * Empty when the store was clean; otherwise what recovery had to do.
+   *
+   * @generated from field: repeated string notes = 9;
+   */
+  notes: string[];
+
+  /**
+   * @generated from field: uint64 recovery_ms = 10;
+   */
+  recoveryMs: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.RecoveryReport.
+ * Use `create(RecoveryReportSchema)` to create a new message.
+ */
+export declare const RecoveryReportSchema: GenMessage<RecoveryReport>;
+
+/**
  * Command acknowledgement.
  *
  * @generated from enum modbit.v1.CommandStatus

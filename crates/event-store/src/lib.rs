@@ -34,7 +34,10 @@ mod store;
 
 pub use migrations::MigrationReport;
 pub use objects::ObjectStore;
-pub use store::{AppendRequest, CommandOutcome, CommandRecord, EventStore, NewEvent, StoredEvent};
+pub use store::{
+    AppendRequest, CommandOutcome, CommandRecord, EventStore, NewEvent, RecoveryOutcome,
+    StoredEvent,
+};
 
 /// Errors from the store.
 #[derive(Debug, thiserror::Error)]

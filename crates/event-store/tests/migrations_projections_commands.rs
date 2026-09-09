@@ -419,3 +419,97 @@ fn concurrent_openers_of_a_fresh_database_all_succeed_and_migrate_once() {
         .unwrap();
     assert_eq!(n, 2);
 }
+
+#[test]
+fn startup_recovery_verifies_chains_rebuilds_lagging_projections_and_bumps_boot_generation() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut store = EventStore::open(dir.path()).unwrap();
+    let tenant = TenantId::new();
+    let session = SessionId::new();
+    store
+        .append(req(
+            tenant,
+            session,
+            AggregateType::Session,
+            *session.as_bytes(),
+            vec![typed(
+                "SessionCreated",
+                &SessionEvent::SessionCreated {
+                    tenant_id: tenant,
+                    user_id: UserId::new(),
+                    space_id: SpaceId::new(),
+                },
+            )],
+        ))
+        .unwrap();
+    let task = TaskId::new();
+    store
+        .append(req(
+            tenant,
+            session,
+            AggregateType::Task,
+            *task.as_bytes(),
+            vec![
+                typed(
+                    "TaskCreated",
+                    &TaskEvent::TaskCreated {
+                        session_id: session,
+                        goal_text: "r".into(),
+                        workspace_id: WorkspaceId::new(),
+                        base_revision: None,
+                        execution_profile: "local_trusted".into(),
+                        policy_profile_id: None,
+                        origin: TaskOrigin::Cli,
+                    },
+                ),
+                typed("TaskQueued", &TaskEvent::TaskQueued),
+            ],
+        ))
+        .unwrap();
+    let r1 = store.recover_on_start().unwrap();
+    assert_eq!(
+        (
+            r1.boot_generation,
+            r1.events_verified,
+            r1.aggregates_verified,
+            r1.sessions,
+            r1.tasks
+        ),
+        (1, 3, 2, 1, 1)
+    );
+    assert!(!r1.projections_rebuilt && r1.notes.is_empty(), "{r1:?}");
+    drop(store);
+
+    // Simulate a lagging projection cursor (e.g. an interrupted rebuild).
+    let conn = rusqlite::Connection::open(dir.path().join("core.db")).unwrap();
+    conn.execute("UPDATE projection_state SET last_offset = 1", [])
+        .unwrap();
+    conn.execute("DELETE FROM tasks", []).unwrap();
+    drop(conn);
+    let mut store = EventStore::open(dir.path()).unwrap();
+    assert!(store.task(&task).unwrap().is_none());
+    let r2 = store.recover_on_start().unwrap();
+    assert_eq!(r2.boot_generation, 2);
+    assert!(r2.projections_rebuilt);
+    assert_eq!(r2.notes.len(), 1, "{:?}", r2.notes);
+    assert!(
+        store.task(&task).unwrap().is_some(),
+        "projection rebuilt from the log"
+    );
+    assert_eq!(store.projection_offset().unwrap(), 3);
+
+    // A tampered log fails recovery instead of serving corrupt state.
+    drop(store);
+    let conn = rusqlite::Connection::open(dir.path().join("core.db")).unwrap();
+    conn.execute(
+        "UPDATE events SET event_type = 'Forged' WHERE sequence = 2",
+        [],
+    )
+    .unwrap();
+    drop(conn);
+    let mut store = EventStore::open(dir.path()).unwrap();
+    assert!(matches!(
+        store.recover_on_start().unwrap_err(),
+        Error::Integrity { .. }
+    ));
+}

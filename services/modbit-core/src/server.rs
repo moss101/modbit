@@ -18,7 +18,8 @@ use modbit_domain::{
     EventId, SessionId, SpaceId, TaskId, TenantId, Timestamp, UserId, WorkspaceId,
 };
 use modbit_event_store::{
-    AppendRequest, CommandOutcome, CommandRecord, EventStore, NewEvent, StoredEvent,
+    AppendRequest, CommandOutcome, CommandRecord, EventStore, NewEvent, RecoveryOutcome,
+    StoredEvent,
 };
 use modbit_protocol::client::BoxedStream;
 use modbit_protocol::framing::{FrameError, read_frame, write_frame};
@@ -42,6 +43,9 @@ pub struct Core {
     /// Local single-user identity for M1 (accounts arrive with the cloud plane).
     tenant_id: TenantId,
     user_id: UserId,
+    /// What startup recovery did (docs/19), served to clients.
+    recovery: RecoveryOutcome,
+    started_at: Timestamp,
 }
 
 /// Bounded number of events per subscription batch (REQ-EV-0108).
@@ -51,7 +55,24 @@ const BATCH: usize = 256;
 pub async fn run(data_dir: PathBuf) -> Result<()> {
     std::fs::create_dir_all(&data_dir)?;
     acquire_singleton_lock(&data_dir)?;
-    let store = EventStore::open(&data_dir.join("core")).context("opening core store")?;
+    let mut store = EventStore::open(&data_dir.join("core")).context("opening core store")?;
+    // docs/33: recovery completes before the endpoint is bound and CoreReady is announced.
+    let recovery = store.recover_on_start().context("startup recovery")?;
+    eprintln!(
+        "modbit-core: recovery complete: boot_generation={} events_verified={} aggregates={} projections_rebuilt={} sessions={} tasks={} in {}ms{}",
+        recovery.boot_generation,
+        recovery.events_verified,
+        recovery.aggregates_verified,
+        recovery.projections_rebuilt,
+        recovery.sessions,
+        recovery.tasks,
+        recovery.recovery_ms,
+        if recovery.notes.is_empty() {
+            String::new()
+        } else {
+            format!("; notes: {}", recovery.notes.join(" | "))
+        }
+    );
     let start = store.last_offset()?;
     let boot_secret: Vec<u8> = (0..32).map(|_| rand::random::<u8>()).collect();
     let nonce = encode_hex(&(0..6).map(|_| rand::random::<u8>()).collect::<Vec<_>>());
@@ -63,6 +84,8 @@ pub async fn run(data_dir: PathBuf) -> Result<()> {
         boot_secret: boot_secret.clone(),
         tenant_id: TenantId::from_bytes([0xA1; 16]),
         user_id: UserId::from_bytes([0xB1; 16]),
+        recovery,
+        started_at: Timestamp::now(),
     });
     let listener = Listener::bind(&endpoint)
         .await
@@ -269,6 +292,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "CreateTask",
                     "GetSessionSnapshot",
                     "SubscribeEvents",
+                    "GetRecoveryReport",
                 ]
                 .map(String::from)
                 .to_vec(),
@@ -644,6 +668,29 @@ async fn handle_command(core: &Core, env: CommandEnvelope) -> CommandAck {
                     generation: session.generation,
                     tasks,
                     last_offset,
+                }
+                .encode_to_vec(),
+            )
+        }
+        "GetRecoveryReport" => {
+            let r = &core.recovery;
+            accept(
+                cid,
+                false,
+                wire::RecoveryReport {
+                    boot_generation: r.boot_generation,
+                    started_at: Some(prost_types::Timestamp {
+                        seconds: core.started_at.millis().div_euclid(1000),
+                        nanos: (core.started_at.millis().rem_euclid(1000) * 1_000_000) as i32,
+                    }),
+                    last_offset: r.last_offset,
+                    events_verified: r.events_verified,
+                    aggregates_verified: r.aggregates_verified,
+                    projections_rebuilt: r.projections_rebuilt,
+                    sessions: r.sessions,
+                    tasks: r.tasks,
+                    notes: r.notes.clone(),
+                    recovery_ms: r.recovery_ms,
                 }
                 .encode_to_vec(),
             )

@@ -50,8 +50,25 @@ const supervisor = new CoreSupervisor(
         if (subscription) subscription.cursor = BigInt(ev.offset);
         send("core:event", ev);
       };
-      // Recovery: re-attach the live subscription from the last cursor we delivered.
+      // Recovery: re-attach the live subscription from the last cursor we delivered,
+      // and tell the renderer exactly what the Core recovered (docs/39 PX-023).
       if (subscription) c.subscribe(subscription.sessionId, subscription.cursor);
+      void c
+        .getRecoveryReport()
+        .then((r) =>
+          send("core:recovery", {
+            bootGeneration: r.bootGeneration.toString(),
+            lastOffset: r.lastOffset.toString(),
+            eventsVerified: r.eventsVerified.toString(),
+            aggregatesVerified: r.aggregatesVerified.toString(),
+            projectionsRebuilt: r.projectionsRebuilt,
+            sessions: r.sessions.toString(),
+            tasks: r.tasks.toString(),
+            notes: r.notes,
+            recoveryMs: r.recoveryMs.toString(),
+          }),
+        )
+        .catch(() => {});
     },
   },
   app.getVersion(),

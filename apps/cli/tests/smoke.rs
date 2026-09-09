@@ -26,7 +26,13 @@ fn core_bin() -> PathBuf {
     core
 }
 
-fn cli(data_dir: &std::path::Path, core: &std::path::Path, args: &[&str]) -> (bool, String) {
+/// Runs the CLI; returns (success, stdout, stdout+stderr). Assertions on
+/// values use stdout only: the Core's recovery log line arrives on stderr.
+fn cli(
+    data_dir: &std::path::Path,
+    core: &std::path::Path,
+    args: &[&str],
+) -> (bool, String, String) {
     let out = Command::new(env!("CARGO_BIN_EXE_modbit-cli"))
         .env("MODBIT_CORE_BIN", core)
         .arg("--data-dir")
@@ -34,14 +40,9 @@ fn cli(data_dir: &std::path::Path, core: &std::path::Path, args: &[&str]) -> (bo
         .args(args)
         .output()
         .unwrap();
-    (
-        out.status.success(),
-        format!(
-            "{}{}",
-            String::from_utf8_lossy(&out.stdout),
-            String::from_utf8_lossy(&out.stderr)
-        ),
-    )
+    let stdout = String::from_utf8_lossy(&out.stdout).to_string();
+    let all = format!("{stdout}{}", String::from_utf8_lossy(&out.stderr));
+    (out.status.success(), stdout, all)
 }
 
 #[test]
@@ -54,12 +55,12 @@ fn cli_drives_a_real_core_end_to_end() {
         .join("modbit-profile-directory");
     std::fs::create_dir_all(&data_dir).unwrap();
 
-    let (ok, out) = cli(&data_dir, &core, &["session", "create"]);
-    assert!(ok, "{out}");
+    let (ok, out, all) = cli(&data_dir, &core, &["session", "create"]);
+    assert!(ok, "{all}");
     let sid = out.trim().strip_prefix("session ").unwrap().to_owned();
-    assert_eq!(sid.len(), 32, "{out}");
+    assert_eq!(sid.len(), 32, "{all}");
 
-    let (ok, out) = cli(
+    let (ok, out, all) = cli(
         &data_dir,
         &core,
         &[
@@ -73,42 +74,42 @@ fn cli_drives_a_real_core_end_to_end() {
             "build",
         ],
     );
-    assert!(ok, "{out}");
-    assert!(out.starts_with("task "), "{out}");
+    assert!(ok, "{all}");
+    assert!(out.starts_with("task "), "{all}");
 
-    let (ok, out) = cli(&data_dir, &core, &["session", "show", "--session", &sid]);
-    assert!(ok, "{out}");
-    assert!(out.contains("state=Active"), "{out}");
+    let (ok, out, all) = cli(&data_dir, &core, &["session", "show", "--session", &sid]);
+    assert!(ok, "{all}");
+    assert!(out.contains("state=Active"), "{all}");
     assert!(
         out.contains("state=Queued") && out.contains("goal=\"fix the flaky build\""),
-        "{out}"
+        "{all}"
     );
 
-    let (ok, out) = cli(
+    let (ok, out, all) = cli(
         &data_dir,
         &core,
         &["events", "tail", "--session", &sid, "--after", "0"],
     );
-    assert!(ok, "{out}");
+    assert!(ok, "{all}");
     let lines: Vec<_> = out.lines().collect();
-    assert_eq!(lines.len(), 3, "{out}");
+    assert_eq!(lines.len(), 3, "{all}");
     assert!(
         lines[0].ends_with("SessionCreated") && lines[2].ends_with("TaskQueued"),
-        "{out}"
+        "{all}"
     );
 
-    let (ok, out) = cli(
+    let (ok, out, all) = cli(
         &data_dir,
         &core,
         &["events", "tail", "--session", &sid, "--after", "2"],
     );
     assert!(
         ok && out.lines().count() == 1 && out.contains("TaskQueued"),
-        "{out}"
+        "{all}"
     );
 
-    let (ok, out) = cli(&data_dir, &core, &["session", "show", "--session", "00"]);
-    assert!(!ok && out.contains("not a 32-hex-char id"), "{out}");
+    let (ok, _, all) = cli(&data_dir, &core, &["session", "show", "--session", "00"]);
+    assert!(!ok && all.contains("not a 32-hex-char id"), "{all}");
     // No socket files leak into the data directory.
     assert!(
         !std::fs::read_dir(&data_dir).unwrap().any(|e| e

@@ -13,6 +13,7 @@ export interface ModbitBridge {
   subscribe(sessionId: string, afterOffset: string): Promise<void>;
   onEvent(cb: (e: unknown) => void): () => void;
   onCoreStatus(cb: (s: unknown) => void): () => void;
+  onRecovery(cb: (r: unknown) => void): () => void;
   debugCoreInfo(): Promise<{ pid: number; endpoint: string } | null>;
 }
 
@@ -32,6 +33,11 @@ const bridge: ModbitBridge = {
     const listener = (_: unknown, s: unknown) => cb(s);
     ipcRenderer.on("core:status", listener);
     return () => ipcRenderer.removeListener("core:status", listener);
+  },
+  onRecovery: (cb) => {
+    const listener = (_: unknown, r: unknown) => cb(r);
+    ipcRenderer.on("core:recovery", listener);
+    return () => ipcRenderer.removeListener("core:recovery", listener);
   },
   debugCoreInfo: () => ipcRenderer.invoke("debug:coreInfo"),
 };

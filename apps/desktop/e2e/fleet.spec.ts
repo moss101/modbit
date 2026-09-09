@@ -50,6 +50,9 @@ test("new task renders from Core ids, fleet reduces Core events, and survives Co
   await expect(page.getByTestId("banner-restarting")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByTestId("core-status")).toContainText("Core connected", { timeout: 30_000 });
   await expect(page.getByTestId("banner-recovered")).toBeVisible({ timeout: 15_000 });
+  // The recovery banner states what the Core actually recovered (docs/39): one session, one task, chain verified.
+  await expect(page.getByTestId("banner-recovered")).toContainText("recovered 1 session(s) and 1 task(s)", { timeout: 15_000 });
+  await expect(page.getByTestId("banner-recovered")).toContainText("nothing left to reconcile");
   await expect(page.getByTestId("task-card")).toHaveCount(1);
   await expect(page.getByTestId("task-card").first()).toHaveAttribute("data-task-id", taskId!);
 

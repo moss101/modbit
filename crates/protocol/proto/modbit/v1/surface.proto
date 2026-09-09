@@ -112,3 +112,23 @@ message SurfaceFrame {
     ProtocolError error = 7;
   }
 }
+
+// Startup recovery report (M1.5, docs/19 "Resume algorithm", docs/33 step 11:
+// CoreReady only after recovery). Served by GetRecoveryReport; the desktop
+// recovery banner shows what the Core actually recovered, never invented progress.
+message GetRecoveryReport {}
+
+message RecoveryReport {
+  // Monotonic per-data-directory Core start counter (fencing base).
+  uint64 boot_generation = 1;
+  google.protobuf.Timestamp started_at = 2;
+  uint64 last_offset = 3;
+  uint64 events_verified = 4;
+  uint64 aggregates_verified = 5;
+  bool projections_rebuilt = 6;
+  uint64 sessions = 7;
+  uint64 tasks = 8;
+  // Empty when the store was clean; otherwise what recovery had to do.
+  repeated string notes = 9;
+  uint64 recovery_ms = 10;
+}

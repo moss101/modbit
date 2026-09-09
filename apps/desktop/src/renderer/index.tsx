@@ -23,6 +23,18 @@ type CoreStatus =
 
 type ScreenState = "loading" | "empty" | "populated" | "error";
 
+interface RecoveryInfo {
+  bootGeneration: string;
+  lastOffset: string;
+  eventsVerified: string;
+  aggregatesVerified: string;
+  projectionsRebuilt: boolean;
+  sessions: string;
+  tasks: string;
+  notes: string[];
+  recoveryMs: string;
+}
+
 const COLUMNS: { key: FleetColumn; title: string }[] = [
   { key: "needsAttention", title: "Needs Attention" },
   { key: "readyForReview", title: "Ready for Review" },
@@ -44,6 +56,7 @@ function App() {
   const [screen, setScreen] = useState<ScreenState>("loading");
   const [error, setError] = useState<string | null>(null);
   const [recovered, setRecovered] = useState<string | null>(null);
+  const [recovery, setRecovery] = useState<RecoveryInfo | null>(null);
   const [goal, setGoal] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const modelRef = useRef(model);
@@ -79,6 +92,7 @@ function App() {
       setModel((m) => applyEvent(m, e, e.taskId!));
       setScreen("populated");
     });
+    const offRecovery = window.modbit.onRecovery((raw) => setRecovery(raw as RecoveryInfo));
     const offStatus = window.modbit.onCoreStatus((raw) => {
       const s = raw as CoreStatus;
       setCore(s);
@@ -86,7 +100,7 @@ function App() {
       if (s.state === "connected") {
         if (wasRestarting.current) {
           wasRestarting.current = false;
-          setRecovered(`Core reconnected after restart ${s.restarts}; showing state re-read from the Core`);
+          setRecovered(`Core reconnected after restart ${s.restarts}`);
           // Recovery: re-read the projection so nothing shown is invented.
           void load();
         } else {
@@ -101,6 +115,7 @@ function App() {
     return () => {
       offEvent();
       offStatus();
+      offRecovery();
     };
   }, [load]);
 
@@ -163,7 +178,9 @@ function App() {
       )}
       {recovered && core.state === "connected" && (
         <div className="banner" data-kind="recovered" role="status" data-testid="banner-recovered">
-          {recovered} <button type="button" onClick={() => setRecovered(null)}>Dismiss</button>
+          <strong>Recovered</strong> — {recovered}
+          {recovery ? ` (boot ${recovery.bootGeneration}): the Core verified ${recovery.eventsVerified} events across ${recovery.aggregatesVerified} aggregates and recovered ${recovery.sessions} session(s) and ${recovery.tasks} task(s) in ${recovery.recoveryMs} ms${recovery.projectionsRebuilt ? "; projections were rebuilt from the log" : ""}${recovery.notes.length ? `; still to reconcile: ${recovery.notes.join("; ")}` : "; nothing left to reconcile"}.` : "."}{" "}
+          <button type="button" onClick={() => setRecovered(null)}>Dismiss</button>
         </div>
       )}
       {error && (

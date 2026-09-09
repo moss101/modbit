@@ -1299,8 +1299,24 @@
    "milestone": "M1",
    "order": 4,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-09T05:58:33Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Audit: IMPLEMENTED-PARTIAL. Store durability, projections and hard-kill recovery exist (M1.1/M1.2); Core reopens the store on start (M1.3); desktop resubscribes from its cursor after Core restart (M1.4). Missing: explicit startup reconciliation with snapshot integrity validation, CoreReady only after recovery, a kill-point suite over the Core process."
+    },
+    {
+     "at": "2026-09-09T06:04:36Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "recover_on_start (integrity, chain verification, projection catch-up, boot generation) before endpoint bind; GetRecoveryReport; desktop recovery banner; kill-point suite passes locally (5 rounds, hundreds of tasks, in-flight kills)."
+    }
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-09-09T06:04:36Z"
   },
   {
    "id": "M2.1",

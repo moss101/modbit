@@ -16,14 +16,17 @@ import {
   CommandStatus,
   CreateSessionSchema,
   CreateTaskSchema,
+  GetRecoveryReportSchema,
   GetSessionSnapshotSchema,
   IdSchema,
+  RecoveryReportSchema,
   SessionCreatedSchema,
   SessionSnapshotSchema,
   SubscribeEventsSchema,
   SurfaceFrameSchema,
   TaskCreatedSchema,
   type CommandAck,
+  type RecoveryReport,
   type SessionSnapshot,
   type StoredEventFrame,
   type SurfaceFrame,
@@ -218,6 +221,11 @@ export class CoreClient {
   async getSessionSnapshot(sessionId: string): Promise<SessionSnapshot> {
     const ack = await this.command("GetSessionSnapshot", toBinary(GetSessionSnapshotSchema, create(GetSessionSnapshotSchema, { sessionId: { value: unhex(sessionId) } })));
     return fromBinary(SessionSnapshotSchema, ack.result);
+  }
+
+  async getRecoveryReport(): Promise<RecoveryReport> {
+    const ack = await this.command("GetRecoveryReport", toBinary(GetRecoveryReportSchema, create(GetRecoveryReportSchema, {})));
+    return fromBinary(RecoveryReportSchema, ack.result);
   }
 
   subscribe(sessionId: string, afterOffset: bigint): void {

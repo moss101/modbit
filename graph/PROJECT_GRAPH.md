@@ -392,7 +392,7 @@ flowchart LR
 | `M1.2` | COMPLETE | Implement SQLite migrations, projections, command idempotency |  |
 | `M1.3` | COMPLETE | Implement local authenticated SurfaceProtocol |  |
 | `M1.4` | COMPLETE | Electron shell + real Fleet/New Task UI against Core |  |
-| `M1.5` | NOT_STARTED | Crash/restart snapshot + event replay |  |
+| `M1.5` | IMPLEMENTING | Crash/restart snapshot + event replay |  |
 
 ### M2 — Real local engineering loop
 

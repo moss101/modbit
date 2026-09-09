@@ -311,6 +311,73 @@ impl EventStore {
         Ok(n)
     }
 
+    /// Startup recovery (docs/19 resume steps 2 and 3 for M1, docs/33 step 11):
+    /// SQLite integrity check, hash-chain verification of every aggregate,
+    /// projection catch-up from the log when the cursor lags, and a persisted,
+    /// monotonically increasing boot generation. Returns what was done.
+    pub fn recover_on_start(&mut self) -> Result<RecoveryOutcome> {
+        let started = std::time::Instant::now();
+        self.integrity_check()?;
+        let mut notes = Vec::new();
+        let aggregate_ids: Vec<Vec<u8>> = {
+            let mut stmt = self
+                .conn
+                .prepare("SELECT DISTINCT aggregate_id FROM events")?;
+            let rows = stmt.query_map([], |r| r.get::<_, Vec<u8>>(0))?;
+            rows.collect::<std::result::Result<_, _>>()?
+        };
+        let mut events_verified = 0u64;
+        for id in &aggregate_ids {
+            let arr: [u8; 16] = id.as_slice().try_into().map_err(|_| Error::Integrity {
+                aggregate: hex::encode(id),
+                sequence: 0,
+                detail: "aggregate id is not 16 bytes".into(),
+            })?;
+            events_verified += self.verify_aggregate(&arr)?;
+        }
+        let last_offset = self.last_offset()?;
+        let projection_offset = self.projection_offset()?;
+        let mut projections_rebuilt = false;
+        if projection_offset != last_offset {
+            notes.push(format!("projection cursor {projection_offset} lagged the log at {last_offset}; rebuilt from the log"));
+            self.rebuild_projections()?;
+            projections_rebuilt = true;
+        }
+        let boot_generation: u64 = {
+            let prev: Option<String> = self
+                .conn
+                .query_row(
+                    "SELECT value FROM schema_meta WHERE key = 'boot_generation'",
+                    [],
+                    |r| r.get(0),
+                )
+                .optional()?;
+            let next = prev.and_then(|v| v.parse::<u64>().ok()).unwrap_or(0) + 1;
+            self.conn.execute(
+                "INSERT OR REPLACE INTO schema_meta (key, value) VALUES ('boot_generation', ?1)",
+                params![next.to_string()],
+            )?;
+            next
+        };
+        let sessions: i64 = self
+            .conn
+            .query_row("SELECT count(*) FROM sessions", [], |r| r.get(0))?;
+        let tasks: i64 = self
+            .conn
+            .query_row("SELECT count(*) FROM tasks", [], |r| r.get(0))?;
+        Ok(RecoveryOutcome {
+            boot_generation,
+            last_offset,
+            events_verified,
+            aggregates_verified: aggregate_ids.len() as u64,
+            projections_rebuilt,
+            sessions: sessions as u64,
+            tasks: tasks as u64,
+            notes,
+            recovery_ms: started.elapsed().as_millis() as u64,
+        })
+    }
+
     /// Offset the projections are caught up to.
     pub fn projection_offset(&self) -> Result<u64> {
         let v: Option<i64> = self
@@ -452,6 +519,29 @@ impl EventStore {
             })
         }
     }
+}
+
+/// What startup recovery did (M1.5).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RecoveryOutcome {
+    /// Monotonic per-store Core start counter.
+    pub boot_generation: u64,
+    /// Highest offset in the log.
+    pub last_offset: u64,
+    /// Events whose hash chain was re-verified.
+    pub events_verified: u64,
+    /// Aggregates verified.
+    pub aggregates_verified: u64,
+    /// Whether projections had to be rebuilt from the log.
+    pub projections_rebuilt: bool,
+    /// Session rows.
+    pub sessions: u64,
+    /// Task rows.
+    pub tasks: u64,
+    /// Human-readable notes about what recovery had to repair.
+    pub notes: Vec<String>,
+    /// Wall time spent.
+    pub recovery_ms: u64,
 }
 
 /// A command's identity for the idempotency ledger.
