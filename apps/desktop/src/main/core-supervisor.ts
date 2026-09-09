@@ -51,15 +51,24 @@ export class CoreSupervisor {
 
   private async spawnOnce(): Promise<void> {
     this.setStatus({ state: "starting", restarts: this.restarts });
-    const child = spawn(this.binary, ["--data-dir", this.dataDir], { stdio: ["ignore", "pipe", "inherit"] });
+    const child = spawn(this.binary, ["--data-dir", this.dataDir], { stdio: ["ignore", "pipe", "pipe"] });
     this.child = child;
+    // Keep the Core's last stderr lines so a degraded state names the cause
+    // (docs/39 PX-023): the user sees why the Core stopped, not just that it did.
+    const stderrTail: string[] = [];
+    createInterface({ input: child.stderr! }).on("line", (line) => {
+      process.stderr.write(`${line}\n`);
+      stderrTail.push(line);
+      if (stderrTail.length > 20) stderrTail.shift();
+    });
+    const tail = () => (stderrTail.length ? `: ${stderrTail.slice(-3).join(" | ")}` : "");
     const ready = await new Promise<ReadyLine>((resolve, reject) => {
       const rl = createInterface({ input: child.stdout! });
       rl.on("line", (line) => {
         const r = parseReadyLine(line);
         if (r) resolve(r);
       });
-      child.once("exit", (code) => reject(new Error(`modbit-core exited with ${code} before it was ready`)));
+      child.once("exit", (code) => reject(new Error(`modbit-core exited with ${code} before it was ready${tail()}`)));
       child.once("error", reject);
     }).catch((e: Error) => {
       this.scheduleRestart(e.message);
@@ -83,7 +92,7 @@ export class CoreSupervisor {
     }
     child.once("exit", (code, signal) => {
       if (this.child === child) this.child = null;
-      if (!this.stopped) this.scheduleRestart(`modbit-core exited (${code ?? signal})`);
+      if (!this.stopped) this.scheduleRestart(`modbit-core exited (${code ?? signal})${tail()}`);
     });
   }
 

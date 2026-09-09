@@ -212,12 +212,17 @@ fn acquire_singleton_lock(data_dir: &Path) -> Result<()> {
 
 #[cfg(unix)]
 fn process_alive(pid: u32) -> bool {
-    Path::new(&format!("/proc/{pid}")).exists()
-        || std::process::Command::new("kill")
-            .args(["-0", &pid.to_string()])
-            .output()
-            .map(|o| o.status.success())
-            .unwrap_or(false)
+    if Path::new("/proc").exists() {
+        return Path::new(&format!("/proc/{pid}")).exists();
+    }
+    // Without procfs (macOS): `kill -0` also succeeds for an unreaped zombie,
+    // so consult the process state and treat a zombie as dead.
+    let state = std::process::Command::new("ps")
+        .args(["-o", "stat=", "-p", &pid.to_string()])
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_owned())
+        .unwrap_or_default();
+    !state.is_empty() && !state.starts_with('Z')
 }
 
 #[cfg(windows)]
