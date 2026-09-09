@@ -8,7 +8,7 @@ use modbit_git::{MergeState, Repo};
 
 /// Read text with line endings normalized (a user's global autocrlf must not matter).
 fn read_lf(p: &Path) -> String {
-    std::fs::read_to_string(p).unwrap().replace("\r\n", "\n")
+    read_lf(&p).replace("\r\n", "\n")
 }
 
 fn write(p: &Path, s: &str) {
@@ -110,9 +110,7 @@ fn qual_ev_0067_merge_transaction_exposes_injected_conflict_and_is_recoverable()
         (feature.as_str(), main_head.as_str(), base.as_str())
     );
     assert!(
-        std::fs::read_to_string(repo.dir().join("README.md"))
-            .unwrap()
-            .contains("<<<<<<<"),
+        read_lf(&repo.dir().join("README.md")).contains("<<<<<<<"),
         "conflict markers are inspectable evidence"
     );
     // Committing a conflicted transaction is refused.
@@ -124,10 +122,7 @@ fn qual_ev_0067_merge_transaction_exposes_injected_conflict_and_is_recoverable()
     repo.merge_abort(&mut tx).unwrap();
     assert_eq!(tx.state, MergeState::Aborted);
     assert_eq!(repo.head().unwrap(), main_head);
-    assert_eq!(
-        std::fs::read_to_string(repo.dir().join("README.md")).unwrap(),
-        "# main\n"
-    );
+    assert_eq!(read_lf(&repo.dir().join("README.md")), "# main\n");
     assert!(repo.status().unwrap().is_empty());
     // Resolve path: begin again, write a resolution, mark resolved, commit.
     let mut tx2 = repo.merge_begin("tx-2", "feature").unwrap();
@@ -175,13 +170,10 @@ fn qual_ev_0022_dirty_snapshot_reconstructs_exactly_and_cleanup_removes_the_ref(
         .worktree_add(&dir.path().join("wt-cloud"), "cloud-run")
         .unwrap();
     assert_eq!(
-        std::fs::read_to_string(cloud.dir().join("src/lib.rs")).unwrap(),
+        read_lf(&cloud.dir().join("src/lib.rs")),
         "pub fn a() {}\npub fn dirty() {}\n"
     );
-    assert_eq!(
-        std::fs::read_to_string(cloud.dir().join("new.txt")).unwrap(),
-        "untracked\n"
-    );
+    assert_eq!(read_lf(&cloud.dir().join("new.txt")), "untracked\n");
     assert!(!cloud.dir().join("README.md").exists());
     assert_eq!(
         String::from_utf8(repo.show(&snap.commit, "new.txt").unwrap())
