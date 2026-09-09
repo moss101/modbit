@@ -1,7 +1,7 @@
 # Modbit Project Graph
 
 > Generated from `graph/project-graph.json` by `tools/graph.py render --write`. Do not edit by hand; edit the graph through `tools/graph.py set` or regenerate structure with `tools/build_graph.py`.  
-> Graph generated on 2026-09-08; view rendered on 2026-09-08.
+> Graph generated on 2026-09-09; view rendered on 2026-09-09.
 
 ## What the graph is
 
@@ -49,24 +49,24 @@ One JSON file that answers *what exists, what depends on what, what proves what,
 | `supersedes` | 10 | new authority → prior authority, only within the recorded scope |
 | `refines` | 5 | v1.1 source/change → previous source/change; non-conflicting authority survives |
 | `gated_by` | 7 | milestone → release gate that must be SATISFIED before the milestone rolls up COMPLETE |
-| `includes` | 870 | release → product work item whose COMPLETE status the release requires |
+| `includes` | 868 | release → product work item whose COMPLETE status the release requires |
 | `requires_gate` | 7 | release → release gate that must be SATISFIED before the release is READY |
 
 ## Milestone dependency graph (live status)
 
 ```mermaid
 flowchart LR
-  M0["M0<br/>Repository and authority<br/>4/7 done"]
+  M0["M0<br/>Repository and authority<br/>4/5 done"]
   M1["M1<br/>Durable local shell and Core<br/>0/31 done"]
   M2["M2<br/>Real local engineering loop<br/>0/99 done"]
   M3["M3<br/>Context intelligence<br/>0/60 done"]
-  M4["M4<br/>Durable recovery spine<br/>0/14 done"]
+  M4["M4<br/>Durable recovery spine<br/>0/15 done"]
   M5["M5<br/>Procedural runtime and skills<br/>0/40 done"]
   M6["M6<br/>Subagents/fleet<br/>0/54 done"]
   M7["M7<br/>Live browser<br/>0/26 done"]
   M8["M8<br/>Cloud isolated execution<br/>0/23 done"]
   M9["M9<br/>Engineering memory/effects/security hardening<br/>0/27 done"]
-  M10["M10<br/>Release hardening<br/>0/20 done"]
+  M10["M10<br/>Release hardening<br/>0/21 done"]
   M0 --> M1
   M1 --> M2
   M2 --> M3
@@ -104,17 +104,17 @@ Critical path (reliability spine): **M0 → M1 → M2 → M4**. Do not start bro
 
 | Milestone | State | Unblocked | Milestone tasks | Implementation tasks | Complete | Blocked | Depends on | Proof |
 |---|---|---|---:|---:|---:|---:|---|---|
-| M0 Repository and authority | IN_PROGRESS | yes | 4 | 3 | 4 | 0 | — | clean clone build + architecture lint |
+| M0 Repository and authority | IN_PROGRESS | yes | 4 | 1 | 4 | 0 | — | clean clone build + architecture lint |
 | M1 Durable local shell and Core | NOT_STARTED | no | 5 | 26 | 0 | 0 | M0 | user creates durable task, kills/restarts app/Core, same task recovers with no fake state. |
 | M2 Real local engineering loop | NOT_STARTED | no | 10 | 89 | 0 | 0 | M1 | E2E-001/002/003 with live model and actual test pass. |
 | M3 Context intelligence | NOT_STARTED | no | 9 | 51 | 0 | 0 | M2 | profile A/B/C benchmark plus retrieval-before-edit visible in task evidence. |
-| M4 Durable recovery spine | NOT_STARTED | no | 6 | 8 | 0 | 0 | M2 | E2E-004/005/006/007/008. |
+| M4 Durable recovery spine | NOT_STARTED | no | 6 | 9 | 0 | 0 | M2 | E2E-004/005/006/007/008. |
 | M5 Procedural runtime and skills | NOT_STARTED | no | 7 | 33 | 0 | 0 | M2 | E2E-011/012; direct and procedural mode yield equivalent receipts/policy behavior. |
 | M6 Subagents/fleet | NOT_STARTED | no | 7 | 47 | 0 | 0 | M2, M4 | E2E-009/010 and user can supervise multiple tasks without raw-log polling. |
 | M7 Live browser | NOT_STARTED | no | 8 | 18 | 0 | 0 | M2 | E2E-013..016. |
 | M8 Cloud isolated execution | NOT_STARTED | no | 9 | 14 | 0 | 0 | M4, M7 | E2E-017/018/024. |
 | M9 Engineering memory/effects/security hardening | NOT_STARTED | no | 6 | 21 | 0 | 0 | M4, M5 | memory cannot be created from transcript without promotion; receipt chain verifies; threat tests pass. |
-| M10 Release hardening | NOT_STARTED | no | 7 | 13 | 0 | 0 | M3, M5, M6, M7, M8, M9 | full Release Zero proof + package evidence + EPR gates A–G SATISFIED. |
+| M10 Release hardening | NOT_STARTED | no | 7 | 14 | 0 | 0 | M3, M5, M6, M7, M8, M9 | full Release Zero proof + package evidence + EPR gates A–G SATISFIED. |
 
 ## Subsystems → milestones
 
@@ -322,8 +322,8 @@ Releases are projections over work items and gates (docs/75). Readiness is compu
 
 | Release | State | Included work items | Complete | Blocked | Required gates | Rule |
 |---|---|---:|---:|---:|---|---|
-| ALPHA: Local coding loop and recovery spine | NOT_READY | 138 | 4 | 0 | none | / ALPHA / Local coding loop and recovery spine / M0, M1, M2, M4 / M2.10 / EPR- / — / — / |
-| BETA: Intelligence, fleet and browser | NOT_READY | 331 | 4 | 0 | none | / BETA / Intelligence, fleet and browser / M0, M1, M2, M3, M4, M5, M6, M7 / — / — / — / — / |
+| ALPHA: Local coding loop and recovery spine | NOT_READY | 137 | 4 | 0 | none | / ALPHA / Local coding loop and recovery spine / M0, M1, M2, M4 / M2.10 / EPR- / — / — / |
+| BETA: Intelligence, fleet and browser | NOT_READY | 330 | 4 | 0 | none | / BETA / Intelligence, fleet and browser / M0, M1, M2, M3, M4, M5, M6, M7 / — / — / — / — / |
 | RELEASE_ZERO: Full end-to-end proof | NOT_READY | 401 | 4 | 0 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
 
 ## Scoped v1.1 supersessions and source provenance
@@ -512,7 +512,7 @@ flowchart LR
 
 | Milestone | Scenarios |
 |---|---|
-| M0 | PX-E2E-030 |
+| M0 | — |
 | M1 | — |
 | M2 | E2E-001, E2E-002, E2E-003, E2E-019, E2E-020, E2E-021, E2E-022, EPR-E2E-000, EPR-E2E-001, EPR-E2E-002, EPR-E2E-003, EPR-E2E-004, EPR-E2E-005, EPR-E2E-014, EPR-E2E-015, EPR-E2E-016, EPR-FI-000, EPR-FI-001, EPR-FI-002, EPR-FI-003, EPR-FI-004, EPR-FI-005, EPR-FI-014, EPR-FI-015, EPR-FI-016, FI-11, FI-12, PX-E2E-000, PX-E2E-001, PX-E2E-014, PX-E2E-016, PX-E2E-017, PX-E2E-018, PX-E2E-019, PX-E2E-022, PX-E2E-026, PX-E2E-032, PX-E2E-033, PX-E2E-034, PX-E2E-036, PX-E2E-037, PX-E2E-038, PX-E2E-039, PX-E2E-040 |
 | M3 | FI-24, PX-E2E-015, PX-E2E-020, PX-E2E-027, PX-E2E-028, PX-E2E-029, PX-E2E-035 |
@@ -522,7 +522,7 @@ flowchart LR
 | M7 | E2E-013, E2E-014, E2E-015, E2E-016, FI-13, FI-14, FI-15 |
 | M8 | E2E-017, E2E-018, E2E-024, FI-17, FI-18, FI-30, PX-E2E-011 |
 | M9 | E2E-023, EPR-E2E-010, EPR-E2E-011, EPR-E2E-019, EPR-FI-010, EPR-FI-011, EPR-FI-019, FI-25, FI-26, PX-E2E-008, PX-E2E-009 |
-| M10 | E2E-025, EPR-E2E-012, EPR-E2E-013, EPR-FI-012, EPR-FI-013, PX-E2E-021, PX-E2E-025, PX-E2E-031 |
+| M10 | E2E-025, EPR-E2E-012, EPR-E2E-013, EPR-FI-012, EPR-FI-013, PX-E2E-021, PX-E2E-025, PX-E2E-030, PX-E2E-031 |
 
 ## Document map
 

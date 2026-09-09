@@ -62,6 +62,7 @@ PX6_FIRST_ROW = 32
 # Docs 40/41/42 stay byte-identical; the override is stored on the node as `milestone_override` (docs/74).
 MILESTONE_OVERRIDES = {
     "IMP-EV-0107": ("M2", "DR-PX-2026-09-05-006: bounded failure evidence is a prerequisite of the M2 repair loop (PX-018, PX-033, PX-039); scheduled ahead of its owner label's default milestone"),
+    "IMP-EV-0242": ("M4", "DR-M0-005: QUAL-EV-0242 (restart loses no durable truth while the hook process resets) needs the durable store, hook bus and kill-point recovery suite of M1/M4; scheduled after its owner label's default milestone"),
 }
 
 # Tasks named in docs/43's "V2 sequencing delta" but never enumerated as Mx.y rows.

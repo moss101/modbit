@@ -83,6 +83,20 @@ from = "modbit-cli"
 to = "modbit-{core-runtime,context,memory,git,checkpoint,policy,tools,workspace,terminal,sandbox,browser}"
 reason = "docs/12 (DR-PX): CLI is a thin SurfaceProtocol client with no orchestration, context, memory, Git, recovery, policy or tool code"
 
+# REQ-EV-0208 / IMP-EV-0208 (docs/40, docs/26, docs/81): the Skill Evolution Lab
+# and its wiki live in modbit-skills and may not become a parallel Engineering
+# Memory or recovery system. Memory access goes through modbit-memory's single
+# interface; recovery truth lives only in the durability/protocol stores.
+[[forbid]]
+from = "modbit-skills"
+to = "modbit-{protocol-state,checkpoint,compaction,event-store}"
+reason = "REQ-EV-0208: evolution wiki cannot become a parallel recovery system"
+
+[[forbid]]
+from = "modbit-{skills,procedural-runtime,prompt-compiler,context,retrieval}"
+to = "modbit-memory"
+reason = "REQ-EV-0208: only the runtime composes Engineering Memory; producers of context/skills receive memory items through core-runtime ports, never by owning the store"
+
 [[confine]]
 package = "cubesandbox*"
 allowed = ["modbit-sandbox"]

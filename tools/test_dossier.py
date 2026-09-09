@@ -513,11 +513,13 @@ class DossierTests(unittest.TestCase):
         g = self.graph()
         alpha = {e["to"] for e in g["edges"] if e["type"] == "includes" and e["from"] == "ALPHA"}
         self.assertIn("PX-026", alpha)
-        self.assertIn("PX-030", alpha)
+        self.assertNotIn("PX-030", alpha)  # DR-M0-005: M10 / RELEASE_ZERO
         self.assertNotIn("PX-028", alpha)
         self.assertNotIn("PX-031", alpha)
+        release_zero = {e["to"] for e in g["edges"] if e["type"] == "includes" and e["from"] == "RELEASE_ZERO"}
+        self.assertIn("PX-030", release_zero)
         out = self.run_tool("graph", "show", "PX-030")
-        for needle in ("M0.1", "governance", "QUAL-PX-030", "M0"):
+        for needle in ("M0.1", "governance", "QUAL-PX-030", "M10", "RELEASE_ZERO"):
             self.assertIn(needle, out)
 
     def test_verification_execution_and_harness_contracts_are_wired(self):
@@ -540,6 +542,8 @@ class DossierTests(unittest.TestCase):
         self.assertIn(("IMP-EV-0107", "M2"), scheduled)
         nodes = {n["id"]: n for n in g["nodes"]}
         self.assertIn("DR-PX-2026-09-05-006", nodes["IMP-EV-0107"]["milestone_override"])
+        self.assertEqual(nodes["IMP-EV-0242"]["milestone"], "M4")
+        self.assertIn("DR-M0-005", nodes["IMP-EV-0242"]["milestone_override"])
         out = self.run_tool("graph", "show", "PX-033")
         for needle in ("IMP-EV-0107", "M2.8", "QUAL-PX-033", "PX-E2E-033", "verification", "DR-PX-2026-09-05-006"):
             self.assertIn(needle, out)

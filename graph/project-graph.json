@@ -3,7 +3,7 @@
  "product": "Modbit",
  "edition": "V3.3 EPR v1.1",
  "authority_date": "2026-09-05",
- "generated_on": "2026-09-08",
+ "generated_on": "2026-09-09",
  "generator": "tools/build_graph.py",
  "status_vocabulary": [
   "NOT_STARTED",
@@ -8731,8 +8731,24 @@
    "milestone": "M0",
    "qual": "QUAL-EV-0208",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-09T04:14:21Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Audit: IMPLEMENTED-PARTIAL. engineering-memory canonical claim is unique to modbit-memory since M0.4; no dependency rule yet keeps the Skill Lab (modbit-skills) off memory persistence and recovery stores; no named QUAL-EV-0208 test."
+    },
+    {
+     "at": "2026-09-09T04:14:57Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "REQ-EV-0208 forbid rules and QUAL-EV-0208 tests (real workspace + negative) added to architecture-lint."
+    }
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-09-09T04:14:57Z"
   },
   {
    "id": "IMP-EV-0209",
@@ -9103,10 +9119,11 @@
    "type": "imp_task",
    "title": "Durable facts vs live interception separation",
    "owner_label": "Core Architecture",
+   "milestone_override": "DR-M0-005: QUAL-EV-0242 (restart loses no durable truth while the hook process resets) needs the durable store, hook bus and kill-point recovery suite of M1/M4; scheduled after its owner label's default milestone",
    "requirement": "REQ-EV-0242",
    "disposition": "ADOPT",
    "subsystem": "governance",
-   "milestone": "M0",
+   "milestone": "M4",
    "qual": "QUAL-EV-0242",
    "source": "docs/41",
    "status": "NOT_STARTED",
@@ -15051,7 +15068,7 @@
    "owner_label": "governance",
    "imp": "PX-030",
    "qual": "QUAL-PX-030",
-   "release": "ALPHA",
+   "release": "RELEASE_ZERO",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
    "mandatory_behavior": "CI builds Core, CLI and runtime on macOS, Windows and Linux from M0 and runs unit, component and platform conformance suites (PTY/process, language services, Git, path policy, secrets, packaging, browser host); results labeled CI_COMPATIBLE only"
   },
@@ -15863,8 +15880,8 @@
    "qual": "QUAL-PX-030",
    "subsystem": "governance",
    "owner_label": "governance",
-   "milestone": "M0",
-   "release": "ALPHA",
+   "milestone": "M10",
+   "release": "RELEASE_ZERO",
    "disposition": "ADOPT",
    "source": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
    "acceptance": "CI builds Core, CLI and runtime on macOS, Windows and Linux from M0 and runs unit, component and platform conformance suites (PTY/process, language services, Git, path policy, secrets, packaging, browser host); results labeled CI_COMPATIBLE only",
@@ -29253,7 +29270,7 @@
   },
   {
    "from": "IMP-EV-0242",
-   "to": "M0",
+   "to": "M4",
    "type": "scheduled_in"
   },
   {
@@ -35073,7 +35090,7 @@
   },
   {
    "from": "PX-030",
-   "to": "M0",
+   "to": "M10",
    "type": "scheduled_in"
   },
   {
@@ -35103,7 +35120,7 @@
   },
   {
    "from": "PX-E2E-030",
-   "to": "M0",
+   "to": "M10",
    "type": "proves"
   },
   {
@@ -37023,11 +37040,6 @@
   },
   {
    "from": "ALPHA",
-   "to": "PX-030",
-   "type": "includes"
-  },
-  {
-   "from": "ALPHA",
    "to": "PX-032",
    "type": "includes"
   },
@@ -38669,11 +38681,6 @@
   {
    "from": "BETA",
    "to": "PX-029",
-   "type": "includes"
-  },
-  {
-   "from": "BETA",
-   "to": "PX-030",
    "type": "includes"
   },
   {

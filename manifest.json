@@ -2,13 +2,13 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-09-08",
+  "generated_on": "2026-09-09",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 76,
-    "docs_bytes": 1037117
+    "root_and_tooling": 78,
+    "docs_bytes": 1037265
   },
   "sections": [
     {
@@ -599,8 +599,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Product extension requirements, tasks and qualifications",
-      "bytes": 88049,
-      "sha256": "fe1839dd911208e91d35105f9fa82bec12d8a77a29d955324ae898226990b8b5"
+      "bytes": 88197,
+      "sha256": "1212dbd1e9e1bb505b6ae751c39236daece9d1c37eeba7d8e1dde41f5aca6016"
     },
     {
       "path": "docs/63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
@@ -892,9 +892,14 @@
       "sha256": "20217db18f46557448325ec23d75b1cf638cd9e4c8b96eddc8d1f512260ca992"
     },
     {
+      "path": "docs/decisions/DR-M0-005-reschedule-runtime-dependent-m0-governance-tasks.md",
+      "bytes": 2912,
+      "sha256": "7b76feae285e44195b47d33981d5167f73dfc718eebc49d289d6c473c2949fe0"
+    },
+    {
       "path": "docs/decisions/README.md",
-      "bytes": 2102,
-      "sha256": "eac197a6739ded8f65a6c9e9dccfd0929f39a413072d2bda83aadd9324c9b489"
+      "bytes": 2196,
+      "sha256": "d2939245b7abbcdccc6027764fbed7fa415dddb6c53eb6b1e2688735b9d50602"
     },
     {
       "path": "evidence/dossier-epr-v1.1/baseline.json",
@@ -1077,6 +1082,11 @@
       "sha256": "048c2969e4cd3424647d0e67c3937fe84a59584a22f7c34cfb51b348224736fa"
     },
     {
+      "path": "evidence/m0/IMP-EV-0208/TASK_CARD.md",
+      "bytes": 2676,
+      "sha256": "2510e12a996033f4951c8a84a1adf68c6daca31607aa2695ebe53f8bcafb432a"
+    },
+    {
       "path": "evidence/m0/M0.1/TASK_CARD.md",
       "bytes": 4582,
       "sha256": "9fbef0d723b9482b33064013d20ed743868d04ae71a795e7387aff0672eb0c7c"
@@ -1193,18 +1203,18 @@
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 40962,
-      "sha256": "82de586425bea4fe6a7a73c4da015119a77490ba5cdbac19241eeae21ef90ce8"
+      "bytes": 40967,
+      "sha256": "740ee470be1cd166d41d5621cdebb1c39176e70615cfc5c029930bcd08ecc919"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1013620,
-      "sha256": "2654044bfd07a3fca485cb56188c564c3504bdcb1cee6bbded7a44bece606af0"
+      "bytes": 1014401,
+      "sha256": "49dee96fc8e13db1a834aa5ef35ebca134b8ad12e67af01d2473b3b1f0dc161c"
     },
     {
       "path": "tools/build_graph.py",
-      "bytes": 45304,
-      "sha256": "473c9881a97b045102a3f7e71e651553d6997491bb94dc0bc2bc90ad23ce93de"
+      "bytes": 45547,
+      "sha256": "a56d91335f3d4bfcf2860f87d71f96548d508841a6d2e60c5c38e0f2dd466557"
     },
     {
       "path": "tools/build_manifest.py",
@@ -1233,8 +1243,8 @@
     },
     {
       "path": "tools/test_dossier.py",
-      "bytes": 32079,
-      "sha256": "e5ac3ebc524a9684ba5b6573e39be15f56992f13672487eb02b204eee13c2b7b"
+      "bytes": 32435,
+      "sha256": "caed4a7e0a4b848ed8192c079a94fcbaa8e94bcb6441e477bcb7f489aa9ed912"
     }
   ],
   "renames_v3_to_v3_1": {

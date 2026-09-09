@@ -50,3 +50,4 @@ change of mind is a new record that names the old one in `supersedes`.
 |---|---|---|---|---|
 | DR-M0-002 | Locked architecture file guard and Decision Record trailer | accepted | 2026-09-08 | none |
 | DR-M0-004 | Module registration metadata and the canonical single-owner system list | accepted | 2026-09-08 | none |
+| DR-M0-005 | Reschedule IMP-EV-0242 to M4 and PX-030 to M10 | accepted | 2026-09-09 | none |

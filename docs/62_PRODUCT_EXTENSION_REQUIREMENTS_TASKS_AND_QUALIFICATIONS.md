@@ -38,7 +38,7 @@ Columns: requirement, title, task, qualification, canonical owner, milestone, re
 | REQ-PX-027 | Language tier conformance suites A, B and C | PX-027 | QUAL-PX-027 | verification | M3 | BETA | ADOPT | M3.3,M3.4,PX-026 |
 | REQ-PX-028 | Tier A conformance for TypeScript/JavaScript, Python and Rust | PX-028 | QUAL-PX-028 | context-engine | M3 | BETA | ADOPT | PX-027 |
 | REQ-PX-029 | Explicit degradation path for Tier C and Unsupported languages | PX-029 | QUAL-PX-029 | context-engine | M3 | BETA | ADOPT | PX-027 |
-| REQ-PX-030 | Platform CI compatibility matrix from M0, never release-grade by itself | PX-030 | QUAL-PX-030 | governance | M0 | ALPHA | ADOPT | M0.1 |
+| REQ-PX-030 | Platform CI compatibility matrix from M0, never release-grade by itself | PX-030 | QUAL-PX-030 | governance | M10 | RELEASE_ZERO | ADOPT | M0.1 |
 | REQ-PX-031 | Desktop platform release promotion by platform-specific E2E | PX-031 | QUAL-PX-031 | desktop | M10 | RELEASE_ZERO | ADOPT | M10.3,PX-030 |
 | REQ-PX-032 | Pre-change verification baseline and regression attribution | PX-032 | QUAL-PX-032 | verification | M2 | ALPHA | ADOPT | M2.8,PX-017 |
 | REQ-PX-033 | Normalized test reports and failing-check identity | PX-033 | QUAL-PX-033 | verification | M2 | ALPHA | ADOPT | M2.8,IMP-EV-0107 |
@@ -431,7 +431,7 @@ Columns: requirement, title, task, qualification, canonical owner, milestone, re
 ## PX-030 — Platform CI compatibility matrix from M0, never release-grade by itself
 
 - **Requirement:** REQ-PX-030; **related preserved requirements:** REQ-EV-0010.
-- **Owner / milestone / release:** governance / M0 / ALPHA; **prerequisites:** M0.1.
+- **Owner / milestone / release:** governance / M10 / RELEASE_ZERO (rescheduled from M0 / ALPHA by DR-M0-005: the matrix runs from M0.1, the task completes when every named conformance suite exists); **prerequisites:** M0.1.
 - **Scope and acceptance:** CI builds and platform conformance suites on macOS, Windows and Linux from M0; results labeled CI_COMPATIBLE; no documentation or client text presents CI compatibility as support (`76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md`).
 - **Production wiring:** CI matrix in the monorepo of M0.1 plus the platform conformance suites; label enforcement in docs and clients.
 - **Real qualification:** QUAL-PX-030 / PX-E2E-030.
