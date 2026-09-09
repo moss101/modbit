@@ -151,6 +151,14 @@ fn chain_hash(previous: &str, e: &EventEnvelope) -> String {
     hex::encode(h.finalize())
 }
 
+fn is_busy(e: &rusqlite::Error) -> bool {
+    matches!(
+        e,
+        rusqlite::Error::SqliteFailure(f, _)
+            if f.code == rusqlite::ErrorCode::DatabaseBusy || f.code == rusqlite::ErrorCode::DatabaseLocked
+    )
+}
+
 fn opt_blob(id: Option<[u8; 16]>) -> Option<Vec<u8>> {
     id.map(|b| b.to_vec())
 }
@@ -170,15 +178,20 @@ impl EventStore {
     pub fn open_with_report(dir: &Path) -> Result<(Self, MigrationReport)> {
         std::fs::create_dir_all(dir)?;
         let db_path = dir.join("core.db");
-        let mut conn = Connection::open(&db_path)?;
-        // Concurrent openers/writers wait for a lock instead of failing
-        // (SQLITE_BUSY); set before the pragmas, which take a write lock on a
-        // fresh database.
-        conn.busy_timeout(std::time::Duration::from_secs(10))?;
-        conn.pragma_update(None, "journal_mode", "WAL")?;
-        conn.pragma_update(None, "synchronous", "FULL")?;
-        conn.pragma_update(None, "foreign_keys", "ON")?;
-        let report = crate::migrations::migrate(&mut conn)?;
+        // Opening sets pragmas and runs migrations, both of which take write
+        // locks. The busy handler does not cover every lock-upgrade path
+        // (SQLite returns BUSY immediately when waiting could deadlock), so a
+        // concurrent opener retries with backoff for up to ten seconds.
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+        let (conn, report) = loop {
+            match Self::connect_and_migrate(&db_path) {
+                Ok(v) => break v,
+                Err(Error::Sqlite(e)) if is_busy(&e) && std::time::Instant::now() < deadline => {
+                    std::thread::sleep(std::time::Duration::from_millis(25));
+                }
+                Err(e) => return Err(e),
+            }
+        };
         let objects = ObjectStore::open(dir.join("objects"))?;
         let mut store = Self {
             conn,
@@ -190,6 +203,16 @@ impl EventStore {
             store.rebuild_projections()?;
         }
         Ok((store, report))
+    }
+
+    fn connect_and_migrate(db_path: &Path) -> Result<(Connection, MigrationReport)> {
+        let mut conn = Connection::open(db_path)?;
+        conn.busy_timeout(std::time::Duration::from_secs(10))?;
+        conn.pragma_update(None, "journal_mode", "WAL")?;
+        conn.pragma_update(None, "synchronous", "FULL")?;
+        conn.pragma_update(None, "foreign_keys", "ON")?;
+        let report = crate::migrations::migrate(&mut conn)?;
+        Ok((conn, report))
     }
 
     /// The object store.
