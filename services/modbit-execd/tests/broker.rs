@@ -129,24 +129,21 @@ async fn qual_ev_0100_argv_cwd_env_streams_exit_code_and_timeout_are_explicit() 
     let execd = Execd::spawn(dir.path());
     let mut c = execd.client().await;
     let mut r = req("r1", "echo-args", &["alpha", "beta gamma"]);
-    r.cwd = cwd
+    // Windows canonicalize yields a verbatim `\\?\` prefix that a child never prints back.
+    let cwd_text = cwd
         .path()
         .canonicalize()
         .unwrap()
         .to_string_lossy()
-        .into_owned();
+        .trim_start_matches(r"\\?\")
+        .to_owned();
+    r.cwd = cwd_text.clone();
     r.env.insert("MODBIT_T1".into(), "one".into());
     c.exec(r).await.unwrap();
     let (_, out, err, exited) = run_to_exit(&mut c).await;
     let text = String::from_utf8(out).unwrap();
     assert!(text.contains("args=[\"alpha\", \"beta gamma\"]"), "{text}");
-    assert!(
-        text.contains(&format!(
-            "cwd={}",
-            cwd.path().canonicalize().unwrap().display()
-        )),
-        "{text}"
-    );
+    assert!(text.contains(&format!("cwd={cwd_text}")), "{text}");
     assert!(text.contains("MODBIT_T1=one"), "{text}");
     assert!(
         text.contains("HOME_SET=false"),
