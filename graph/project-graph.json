@@ -1436,8 +1436,15 @@
    "milestone": "M2",
    "order": 2,
    "source": "docs/43",
-   "status": "IMPLEMENTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-34353528415",
+    "commit:7bbeb47",
+    "commit:dd74400",
+    "artifact:evidence/m2/M2.3/evidence.json",
+    "artifact:evidence/m2/M2.3/TASK_CARD.md",
+    "test:qual_ev_0271_0027_0135_detach_reattach_from_cursor_exactly_then_cancel_kills_the_real_process"
+   ],
    "notes": [
     {
      "at": "2026-09-09T12:21:06Z",
@@ -1450,10 +1457,22 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "modbit-execd broker (piped + PTY, durable log with byte cursors, replay, cancel, OutputRef spill) and modbit-terminal client; six real-process tests pass locally."
+    },
+    {
+     "at": "2026-09-09T12:55:17Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Broker binary + terminal client are the execution path for the M2.4 shell/test tools; CI runs the real-process suite on three platforms (run 34353528415)."
+    },
+    {
+     "at": "2026-09-09T12:55:17Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Timeout, cancel, detach/reattach, 10 MiB digest, stdin, env isolation, PTY and auth faults pass on hosted macOS/Linux/Windows."
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-09-09T12:47:52Z"
+   "status_changed_on": "2026-09-09T12:55:17Z"
   },
   {
    "id": "M2.4",
