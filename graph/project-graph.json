@@ -8731,8 +8731,14 @@
    "milestone": "M0",
    "qual": "QUAL-EV-0208",
    "source": "docs/41",
-   "status": "IMPLEMENTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-34310305749",
+    "commit:85c3f23",
+    "artifact:evidence/m0/IMP-EV-0208/evidence.json",
+    "artifact:evidence/m0/IMP-EV-0208/TASK_CARD.md",
+    "test:qual_ev_0208_exactly_one_engineering_memory_owner_and_no_parallel_paths"
+   ],
    "notes": [
     {
      "at": "2026-09-09T04:14:21Z",
@@ -8745,10 +8751,22 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "REQ-EV-0208 forbid rules and QUAL-EV-0208 tests (real workspace + negative) added to architecture-lint."
+    },
+    {
+     "at": "2026-09-09T04:18:11Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Rules and tests run in the rust CI matrix on every push (run 34310305749)."
+    },
+    {
+     "at": "2026-09-09T04:18:11Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "QUAL-EV-0208 tests pass on three hosted platforms; negative case rejected."
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-09-09T04:14:57Z"
+   "status_changed_on": "2026-09-09T04:18:11Z"
   },
   {
    "id": "IMP-EV-0209",

@@ -417,7 +417,8 @@ class DossierTests(unittest.TestCase):
             if node["id"] == "IMP-EV-0208":
                 node["evidence"] = ["run:fixture-run", "commit:abc123"]
         self.write_graph(g)
-        self.assertNotIn("[G9]", self.run_tool("check_dossier", ok=False))
+        result = subprocess.run([sys.executable, "tools/check_dossier.py"], cwd=self.root, capture_output=True, text=True, timeout=30)
+        self.assertNotIn("[G9]", result.stdout + result.stderr)
 
     def test_release_readiness_is_derived_from_tasks(self):
         self.reset_m01_fixture()

@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 78,
-    "docs_bytes": 1037265
+    "root_and_tooling": 79,
+    "docs_bytes": 1037262
   },
   "sections": [
     {
@@ -851,8 +851,8 @@
       "section": "live-state",
       "section_title": "Live state",
       "title": "Build Manifest",
-      "bytes": 3749,
-      "sha256": "5ada3bfc00b781bf568d03265a38706be329afd12475d0d96d640a8608e4a4f9"
+      "bytes": 3746,
+      "sha256": "9a00aa1d49b93117455136f62b1e1856b3bb8b00c64dbb4da6bb37f88180d6b8"
     }
   ],
   "root_and_tooling": [
@@ -1087,6 +1087,11 @@
       "sha256": "2510e12a996033f4951c8a84a1adf68c6daca31607aa2695ebe53f8bcafb432a"
     },
     {
+      "path": "evidence/m0/IMP-EV-0208/evidence.json",
+      "bytes": 747,
+      "sha256": "757c00fb86bc657d3d64089f599343a5a43c6f85249ed3463574780ce376726e"
+    },
+    {
       "path": "evidence/m0/M0.1/TASK_CARD.md",
       "bytes": 4582,
       "sha256": "9fbef0d723b9482b33064013d20ed743868d04ae71a795e7387aff0672eb0c7c"
@@ -1203,13 +1208,13 @@
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 40967,
-      "sha256": "740ee470be1cd166d41d5621cdebb1c39176e70615cfc5c029930bcd08ecc919"
+      "bytes": 40965,
+      "sha256": "bb72149a0383d382bf279536355896242807033f7b2a9f698a0060c1504d3220"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1014401,
-      "sha256": "49dee96fc8e13db1a834aa5ef35ebca134b8ad12e67af01d2473b3b1f0dc161c"
+      "bytes": 1015014,
+      "sha256": "a657c2a818df99c692534e3304cd4bf5909d708a91ed57763af6594f99efbb85"
     },
     {
       "path": "tools/build_graph.py",
@@ -1243,8 +1248,8 @@
     },
     {
       "path": "tools/test_dossier.py",
-      "bytes": 32435,
-      "sha256": "caed4a7e0a4b848ed8192c079a94fcbaa8e94bcb6441e477bcb7f489aa9ed912"
+      "bytes": 32559,
+      "sha256": "db25a07e7177a032fea15c120a0b5dd857ea971867dfb7a4af8fe2f053ec5a97"
     }
   ],
   "renames_v3_to_v3_1": {

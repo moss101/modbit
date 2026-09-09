@@ -1,0 +1,8 @@
+{
+  "task": "IMP-EV-0208", "requirement": "REQ-EV-0208", "qualification": "QUAL-EV-0208",
+  "commit": "85c3f23", "evidence_tier": "release-critical",
+  "runs": [
+    {"id": "gha-34310305749", "kind": "hosted CI on 85c3f23", "result": "PASS on macOS/Linux/Windows: qual_ev_0208_exactly_one_engineering_memory_owner_and_no_parallel_paths and qual_ev_0208_negative_second_memory_system_is_rejected; architecture-lint deps 17 forbid rules 0 violations", "url": "https://github.com/moss101/modbit/actions/runs/34310305749"}
+  ],
+  "acceptance": {"QUAL-EV-0208 architecture dependency test shows one Engineering Memory interface": "PASS: single claimant modbit-memory; Skill Lab has no path to memory or recovery stores; negative workspace rejected"}
+}
