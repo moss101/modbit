@@ -1721,8 +1721,18 @@
    "milestone": "M2",
    "order": 7,
    "source": "docs/43",
-   "status": "IMPLEMENTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "test:m2_8_verification_engine_gates_completion_on_real_cargo_fixture",
+    "test:cargo_fixture_baseline_labels_known_failing_quarantines_flaky_and_attributes_regressions",
+    "test:vitest_fixture_parses_structured_reports_when_vitest_is_installed",
+    "test:diff_invariants_deny_test_weakening_and_flag_the_rest",
+    "run:gha-34388863580",
+    "commit:9d343f7",
+    "commit:3a9a733",
+    "artifact:evidence/m2/M2.8/evidence.json",
+    "artifact:evidence/m2/M2.8/TASK_CARD.md"
+   ],
    "notes": [
     {
      "at": "2026-09-09T17:48:19Z",
@@ -1735,9 +1745,33 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "verification engine (plan, stages, adapters, flake rerun, attribution, DI-1..9), Alpha fixtures rust-cli/ts-webapp, schema v6, Core baseline/targeted/completion wiring"
+    },
+    {
+     "at": "2026-09-09T18:30:02Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Core runs BASELINE before the first write, verify.run TARGETED, COMPLETION on task.complete with attribution and whole-diff invariants; change.apply evaluates DI per transaction; broker-backed runner"
+    },
+    {
+     "at": "2026-09-09T18:30:02Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Real cargo and vitest runners on the Alpha fixtures through the Core and the engine; adapter, attribution and invariant faults pass on hosted macOS/Linux/Windows"
+    },
+    {
+     "at": "2026-09-09T18:30:02Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "Hosted CI run 34388863580 green on three platforms"
+    },
+    {
+     "at": "2026-09-09T18:30:02Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Sealed with hosted CI evidence"
     }
    ],
-   "status_changed_on": "2026-09-09T17:48:19Z"
+   "status_changed_on": "2026-09-09T18:30:02Z"
   },
   {
    "id": "M2.9",
