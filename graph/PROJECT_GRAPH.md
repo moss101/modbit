@@ -57,7 +57,7 @@ One JSON file that answers *what exists, what depends on what, what proves what,
 ```mermaid
 flowchart LR
   M0["M0<br/>Repository and authority<br/>5/5 done"]
-  M1["M1<br/>Durable local shell and Core<br/>2/31 done"]
+  M1["M1<br/>Durable local shell and Core<br/>3/31 done"]
   M2["M2<br/>Real local engineering loop<br/>0/99 done"]
   M3["M3<br/>Context intelligence<br/>0/60 done"]
   M4["M4<br/>Durable recovery spine<br/>0/15 done"]
@@ -105,7 +105,7 @@ Critical path (reliability spine): **M0 → M1 → M2 → M4**. Do not start bro
 | Milestone | State | Unblocked | Milestone tasks | Implementation tasks | Complete | Blocked | Depends on | Proof |
 |---|---|---|---:|---:|---:|---:|---|---|
 | M0 Repository and authority | COMPLETE | yes | 4 | 1 | 5 | 0 | — | clean clone build + architecture lint |
-| M1 Durable local shell and Core | IN_PROGRESS | yes | 5 | 26 | 2 | 0 | M0 | user creates durable task, kills/restarts app/Core, same task recovers with no fake state. |
+| M1 Durable local shell and Core | IN_PROGRESS | yes | 5 | 26 | 3 | 0 | M0 | user creates durable task, kills/restarts app/Core, same task recovers with no fake state. |
 | M2 Real local engineering loop | NOT_STARTED | no | 10 | 89 | 0 | 0 | M1 | E2E-001/002/003 with live model and actual test pass. |
 | M3 Context intelligence | NOT_STARTED | no | 9 | 51 | 0 | 0 | M2 | profile A/B/C benchmark plus retrieval-before-edit visible in task evidence. |
 | M4 Durable recovery spine | NOT_STARTED | no | 6 | 9 | 0 | 0 | M2 | E2E-004/005/006/007/008. |
@@ -322,9 +322,9 @@ Releases are projections over work items and gates (docs/75). Readiness is compu
 
 | Release | State | Included work items | Complete | Blocked | Required gates | Rule |
 |---|---|---:|---:|---:|---|---|
-| ALPHA: Local coding loop and recovery spine | NOT_READY | 137 | 7 | 0 | none | / ALPHA / Local coding loop and recovery spine / M0, M1, M2, M4 / M2.10 / EPR- / — / — / |
-| BETA: Intelligence, fleet and browser | NOT_READY | 330 | 7 | 0 | none | / BETA / Intelligence, fleet and browser / M0, M1, M2, M3, M4, M5, M6, M7 / — / — / — / — / |
-| RELEASE_ZERO: Full end-to-end proof | NOT_READY | 401 | 7 | 0 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
+| ALPHA: Local coding loop and recovery spine | NOT_READY | 137 | 8 | 0 | none | / ALPHA / Local coding loop and recovery spine / M0, M1, M2, M4 / M2.10 / EPR- / — / — / |
+| BETA: Intelligence, fleet and browser | NOT_READY | 330 | 8 | 0 | none | / BETA / Intelligence, fleet and browser / M0, M1, M2, M3, M4, M5, M6, M7 / — / — / — / — / |
+| RELEASE_ZERO: Full end-to-end proof | NOT_READY | 401 | 8 | 0 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
 
 ## Scoped v1.1 supersessions and source provenance
 
@@ -390,7 +390,7 @@ flowchart LR
 |---|---|---|---|
 | `M1.1` | COMPLETE | Implement Session/Task/Run/Turn/RunStep domain and event store |  |
 | `M1.2` | COMPLETE | Implement SQLite migrations, projections, command idempotency |  |
-| `M1.3` | IMPLEMENTING | Implement local authenticated SurfaceProtocol |  |
+| `M1.3` | COMPLETE | Implement local authenticated SurfaceProtocol |  |
 | `M1.4` | NOT_STARTED | Electron shell + real Fleet/New Task UI against Core |  |
 | `M1.5` | NOT_STARTED | Crash/restart snapshot + event replay |  |
 

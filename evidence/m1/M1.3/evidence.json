@@ -1,0 +1,9 @@
+{
+  "task": "M1.3", "commit": "86c5ed8", "evidence_tier": "release-critical",
+  "runs": [
+    {"id": "gha-34314359685", "kind": "hosted CI on 86c5ed8", "result": "PASS: ten jobs green; real-binary SurfaceProtocol tests (3) and CLI end-to-end smoke pass on macOS and Linux (Unix sockets) and Windows (named pipes)", "url": "https://github.com/moss101/modbit/actions/runs/34314359685", "log": "ci-run-34314359685.json, ci-run-34314359685-tests.log"},
+    {"id": "cli-transcript", "kind": "real modbit-cli driving real modbit-core with a >100-char data dir", "result": "PASS", "log": "cli-transcript.log"}
+  ],
+  "faults": ["wrong and empty boot secret refused", "command before handshake refused", "malformed bytes refused", "4 MiB+1 frame refused after handshake with the Core still serving", "protocol major mismatch refused with upgrade_required", "Core hard-killed: data intact, new secret, old secret refused, command replay recognised after restart", "second Core on the same profile refused", "socket path length defect found by the CLI on a long data dir and fixed with a private runtime dir"],
+  "acceptance": {"local authenticated SurfaceProtocol": "PASS on three platforms"}
+}

@@ -1,0 +1,15 @@
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T05:19:32.8713420Z test cli_drives_a_real_core_end_to_end ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T05:19:32.9176250Z test wrong_secret_hostile_and_oversized_frames_are_rejected ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T05:19:32.9245620Z test commands_subscription_resume_and_idempotent_replay_over_the_real_socket ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T05:19:32.9608760Z test accepted_commands_survive_a_hard_kill_of_the_core_and_a_second_instance_is_refused ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T05:19:33.3410170Z test local::tests::endpoint_fits_the_socket_path_limit_even_for_long_data_dirs ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T05:19:21.3065462Z test cli_drives_a_real_core_end_to_end ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T05:19:21.3285341Z test wrong_secret_hostile_and_oversized_frames_are_rejected ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T05:19:21.3361684Z test commands_subscription_resume_and_idempotent_replay_over_the_real_socket ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T05:19:21.3364642Z test accepted_commands_survive_a_hard_kill_of_the_core_and_a_second_instance_is_refused ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T05:19:25.8938609Z test local::tests::endpoint_fits_the_socket_path_limit_even_for_long_data_dirs ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T05:20:17.8255996Z test cli_drives_a_real_core_end_to_end ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T05:20:18.0974522Z test wrong_secret_hostile_and_oversized_frames_are_rejected ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T05:20:18.0991307Z test commands_subscription_resume_and_idempotent_replay_over_the_real_socket ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T05:20:18.1979441Z test accepted_commands_survive_a_hard_kill_of_the_core_and_a_second_instance_is_refused ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T05:20:22.1275072Z test local::tests::endpoint_fits_the_socket_path_limit_even_for_long_data_dirs ... ok

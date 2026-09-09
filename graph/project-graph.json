@@ -1207,8 +1207,15 @@
    "milestone": "M1",
    "order": 2,
    "source": "docs/43",
-   "status": "IMPLEMENTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-34314359685",
+    "commit:86c5ed8",
+    "artifact:evidence/m1/M1.3/evidence.json",
+    "artifact:evidence/m1/M1.3/cli-transcript.log",
+    "artifact:evidence/m1/M1.3/TASK_CARD.md",
+    "test:commands_subscription_resume_and_idempotent_replay_over_the_real_socket"
+   ],
    "notes": [
     {
      "at": "2026-09-09T05:09:17Z",
@@ -1221,10 +1228,22 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "surface.proto, bounded framing, ready-line secret handoff, authenticated client, modbit-core daemon (UDS/named pipe, singleton lock, idempotent commands, offset subscriptions), CLI thin client; real-binary tests pass locally."
+    },
+    {
+     "at": "2026-09-09T05:21:18Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "modbit-core binds the endpoint at startup; modbit-cli is a real client; CI runs the real-binary tests on three platforms (run 34314359685)."
+    },
+    {
+     "at": "2026-09-09T05:21:19Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Auth, framing, resume, idempotency, kill/restart and singleton faults pass on hosted macOS/Linux/Windows."
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-09-09T05:17:55Z"
+   "status_changed_on": "2026-09-09T05:21:19Z"
   },
   {
    "id": "M1.4",
