@@ -70,6 +70,27 @@ pub struct HarnessState {
     pub self_review_clean: bool,
     /// Steering inputs applied so far.
     pub steers: u32,
+    /// BASELINE verification recorded (docs/64 §1); writes wait for it.
+    #[serde(default)]
+    pub baseline_recorded: bool,
+    /// Derived verification plan object.
+    #[serde(default)]
+    pub verification_plan_ref: Option<String>,
+    /// Test symbols failing at BASELINE (KNOWN_FAILING; DI-3 protected).
+    #[serde(default)]
+    pub baseline_failing: Vec<String>,
+    /// Every BASELINE check with its status (regression attribution input).
+    #[serde(default)]
+    pub baseline_checks: Vec<(String, String)>,
+    /// Quarantined (FLAKY) check ids.
+    #[serde(default)]
+    pub quarantined: Vec<String>,
+    /// Open FLAG-class diff-invariant findings (block the SelfReview).
+    #[serde(default)]
+    pub open_flags: Vec<String>,
+    /// Revision of the last COMPLETION run that passed attribution.
+    #[serde(default)]
+    pub completion_verified_revision: Option<u64>,
 }
 
 /// Why the harness refused something.
@@ -90,6 +111,16 @@ pub enum HarnessRefusal {
         /// Signatures.
         failures: Vec<String>,
     },
+    /// Completion proposed with unresolved FLAG-class diff-invariant findings (docs/64 §4).
+    OpenFlags {
+        /// Findings.
+        flags: Vec<String>,
+    },
+    /// The COMPLETION run blocked acceptance (regression, indeterminate, deny invariant).
+    CompletionBlocked {
+        /// Reasons.
+        reasons: Vec<String>,
+    },
 }
 
 /// A budget that ran out.
@@ -107,6 +138,9 @@ pub struct Exhausted {
 pub const PLAN_TOOL: &str = "plan.update";
 /// Completion proposal tool.
 pub const COMPLETE_TOOL: &str = "task.complete";
+
+/// Verification tool the harness serves (TARGETED run through the engine).
+pub const VERIFY_TOOL: &str = "verify.run";
 
 /// Tool names that write the workspace (need a plan first).
 pub const WRITE_TOOLS: &[&str] = &["change.apply", "git.worktree.create", "git.worktree.close"];
@@ -199,7 +233,21 @@ impl HarnessState {
                 failures: self.open_failures.clone(),
             });
         }
+        if !self.open_flags.is_empty() {
+            return Err(HarnessRefusal::OpenFlags {
+                flags: self.open_flags.clone(),
+            });
+        }
         Ok(())
+    }
+
+    /// Resolve FLAG findings whose paths the plan now declares.
+    pub fn resolve_flags_by_plan(&mut self) {
+        if let Some(plan) = &self.plan {
+            let files = plan.expected_files.clone();
+            self.open_flags
+                .retain(|f| !files.iter().any(|p| f.contains(p.as_str())));
+        }
     }
 }
 

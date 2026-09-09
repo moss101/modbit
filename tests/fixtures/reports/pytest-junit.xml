@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuites>
+  <testsuite name="pytest" errors="1" failures="1" skipped="1" tests="5" time="0.412" timestamp="2026-09-09T10:00:00.000000" hostname="fixture">
+    <testcase classname="tests.test_orders" name="test_acceptance_rejects_negative_quantity" time="0.003">
+      <failure message="assert None is not None">tests/test_orders.py:12: in test_acceptance_rejects_negative_quantity
+    assert parse_quantity(&quot;-5&quot;) is None
+E   assert 5 is None
+E    +  where 5 = parse_quantity('-5')</failure>
+    </testcase>
+    <testcase classname="tests.test_orders" name="test_formats_totals" time="0.001" />
+    <testcase classname="tests.test_orders" name="test_preexisting_failing_unrelated" time="0.001">
+      <failure message="AssertionError: assert '1.00' == '1.0'">tests/test_orders.py:20: AssertionError</failure>
+    </testcase>
+    <testcase classname="tests.test_orders" name="test_flaky_first_run_fails" time="0.002">
+      <error message="OSError: [Errno 2] No such file or directory: '/tmp/pytest-flaky-0x7f3a1c'">tests/test_orders.py:28: OSError</error>
+    </testcase>
+    <testcase classname="tests.test_orders" name="test_parametrized[3-250-7.50]" time="0.001">
+      <skipped type="pytest.skip" message="needs locale" />
+    </testcase>
+  </testsuite>
+</testsuites>

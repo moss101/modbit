@@ -117,6 +117,94 @@ pub enum RunEvent {
     },
     /// `RunCancelled`.
     RunCancelled,
+    /// `VerificationBaselineRecorded` (docs/64 §1); no state change.
+    VerificationBaselineRecorded {
+        /// Verification run.
+        verification_run_id: String,
+        /// Derived plan object.
+        plan_ref: String,
+        /// Revision.
+        candidate_revision: String,
+        /// Environment digest.
+        environment_digest: String,
+        /// Overall status.
+        status: String,
+        /// Report objects.
+        report_refs: Vec<String>,
+        /// Check summaries: (check_id, kind, status, error_class, fingerprint).
+        checks: Vec<CheckSummary>,
+    },
+    /// `VerificationRunRecorded` (TARGETED / COMPLETION / RERUN); no state change.
+    VerificationRunRecorded {
+        /// Verification run.
+        verification_run_id: String,
+        /// Stage.
+        stage: String,
+        /// Plan object.
+        plan_ref: String,
+        /// Revision.
+        candidate_revision: String,
+        /// Environment digest.
+        environment_digest: String,
+        /// Overall status.
+        status: String,
+        /// Report objects.
+        report_refs: Vec<String>,
+        /// Check summaries.
+        checks: Vec<CheckSummary>,
+    },
+    /// `FlakyCheckQuarantined` (docs/64 §3); no state change.
+    FlakyCheckQuarantined {
+        /// Check.
+        check_id: String,
+        /// Run where it failed.
+        first_run_id: String,
+        /// Isolated rerun where it passed.
+        rerun_id: String,
+        /// Revision scope.
+        candidate_revision: String,
+    },
+    /// `RegressionAttributed` (docs/64 §1); no state change.
+    RegressionAttributed {
+        /// Completion run.
+        verification_run_id: String,
+        /// Check.
+        check_id: String,
+        /// REGRESSION | KNOWN_FAILING | COLLATERAL_FIX | DECLARED_CHANGE | FLAKY | NEW_FAILING | PASS.
+        attribution: String,
+    },
+    /// `DiffInvariantViolated` (docs/64 §4); no state change.
+    DiffInvariantViolated {
+        /// `DI-n`.
+        invariant: String,
+        /// DENY | FLAG.
+        class: String,
+        /// Paths.
+        paths: Vec<String>,
+        /// Evidence.
+        evidence: String,
+        /// Where it was evaluated: TRANSACTION | COMPLETION.
+        stage: String,
+    },
+}
+
+/// One check as recorded on the log (the full CheckResult lives in the report object).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CheckSummary {
+    /// Stable id.
+    pub check_id: String,
+    /// Kind.
+    pub kind: String,
+    /// Status.
+    pub status: String,
+    /// Duration.
+    pub duration_ms: u64,
+    /// Error class.
+    pub error_class: Option<String>,
+    /// Fingerprint.
+    pub message_fingerprint: Option<String>,
+    /// Location path.
+    pub path: Option<String>,
 }
 
 impl RunEvent {
@@ -131,6 +219,11 @@ impl RunEvent {
             Self::RunCompleted => "RunCompleted",
             Self::RunFailed { .. } => "RunFailed",
             Self::RunCancelled => "RunCancelled",
+            Self::VerificationBaselineRecorded { .. } => "VerificationBaselineRecorded",
+            Self::VerificationRunRecorded { .. } => "VerificationRunRecorded",
+            Self::FlakyCheckQuarantined { .. } => "FlakyCheckQuarantined",
+            Self::RegressionAttributed { .. } => "RegressionAttributed",
+            Self::DiffInvariantViolated { .. } => "DiffInvariantViolated",
         }
     }
 }
@@ -202,6 +295,21 @@ impl Run {
             RunEvent::RunCompleted => Completed,
             RunEvent::RunFailed { .. } => Failed,
             RunEvent::RunCancelled => Cancelled,
+            RunEvent::VerificationBaselineRecorded { .. }
+            | RunEvent::VerificationRunRecorded { .. }
+            | RunEvent::FlakyCheckQuarantined { .. }
+            | RunEvent::RegressionAttributed { .. }
+            | RunEvent::DiffInvariantViolated { .. } => {
+                if self.state.is_terminal() {
+                    return Err(crate::InvalidTransition {
+                        aggregate: "Run",
+                        from: format!("{:?}", self.state),
+                        to: event.event_type().into(),
+                    });
+                }
+                self.generation += 1;
+                return Ok(());
+            }
         };
         self.state = self.state.transition(to)?;
         if to == Running && self.started_at.is_none() {

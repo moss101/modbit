@@ -2356,7 +2356,17 @@ async fn m2_7_one_agent_runtime_drives_a_coding_task_to_ready_for_review() {
         !task_trail.contains(&"TaskFailed"),
         "a failing check never fails the task (REQ-EV-0099)"
     );
-    assert_eq!(names("run"), ["RunCreated", "RunStarted", "RunCompleted"]);
+    let run_trail = names("run");
+    assert_eq!(
+        &run_trail[..2],
+        ["RunCreated", "RunStarted"],
+        "{run_trail:?}"
+    );
+    assert_eq!(run_trail.last(), Some(&"RunCompleted"), "{run_trail:?}");
+    assert!(
+        run_trail.contains(&"VerificationBaselineRecorded"),
+        "a baseline precedes the first write even when no runner is configured: {run_trail:?}"
+    );
     let turns = names("turn");
     assert_eq!(
         turns.iter().filter(|t| **t == "TurnPrepared").count(),
@@ -2795,4 +2805,328 @@ async fn m2_7_steering_and_cancellation_apply_at_safe_boundaries() {
             && names.contains(&"TaskCancelled"),
         "{names:?}"
     );
+}
+
+fn fixture_repo(name: &str) -> (tempfile::TempDir, String) {
+    let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/fixtures/repos")
+        .join(name);
+    let dir = tempfile::tempdir().unwrap();
+    fn copy(src: &std::path::Path, dst: &std::path::Path) {
+        std::fs::create_dir_all(dst).unwrap();
+        for e in std::fs::read_dir(src).unwrap() {
+            let e = e.unwrap();
+            let n = e.file_name();
+            if n == "target" || n == "node_modules" || n == ".vitest" {
+                continue;
+            }
+            if e.path().is_dir() {
+                copy(&e.path(), &dst.join(&n));
+            } else {
+                std::fs::copy(e.path(), dst.join(&n)).unwrap();
+            }
+        }
+    }
+    copy(&src, dir.path());
+    for args in [
+        vec!["init", "-q", "-b", "main"],
+        vec!["add", "-A"],
+        vec![
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@e",
+            "commit",
+            "-q",
+            "-m",
+            "fixture",
+        ],
+    ] {
+        assert!(
+            Command::new("git")
+                .arg("-C")
+                .arg(dir.path())
+                .args(&args)
+                .status()
+                .unwrap()
+                .success()
+        );
+    }
+    let root = dir
+        .path()
+        .canonicalize()
+        .unwrap()
+        .to_string_lossy()
+        .trim_start_matches(r"\\?\")
+        .to_owned();
+    (dir, root)
+}
+
+/// M2.8: the verification engine inside the agent loop on the real rust-cli
+/// fixture (docs/64): BASELINE before the first write with KNOWN_FAILING and
+/// a quarantined flaky test; DI-3 denies weakening the acceptance test; a
+/// TARGETED run reports normalized failing checks; the COMPLETION run
+/// attributes a REGRESSION and refuses completion until it is fixed.
+#[tokio::test]
+async fn m2_8_verification_engine_gates_completion_on_real_cargo_fixture() {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (repo, root) = fixture_repo("rust-cli");
+    let lib = std::fs::read_to_string(repo.path().join("src/lib.rs")).unwrap();
+    let fixed_lib = lib.replace(
+        "    Ok(n)\n",
+        "    if n < 0 {\n        return Err(\"negative quantity\".into());\n    }\n    Ok(n)\n",
+    );
+    let broken_lib = fixed_lib.replace(
+        "format!(\"{}.{:02}\", cents / 100, cents % 100)",
+        "format!(\"{}.{:03}\", cents / 100, cents % 100)",
+    );
+    let tests_src = std::fs::read_to_string(repo.path().join("tests/quantities.rs")).unwrap();
+    let weakened_tests = tests_src.replace(
+        "#[test]\nfn acceptance_rejects_negative_quantity()",
+        "#[test]\n#[ignore]\nfn acceptance_rejects_negative_quantity()",
+    );
+    assert_ne!(weakened_tests, tests_src);
+    let script = vec![
+        json!({"calls": [{"name": "fs.read", "args": {"path": "src/lib.rs"}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "reject negative quantities", "expected_files": ["src/lib.rs"], "verification": ["acceptance_rejects_negative_quantity"]}}]}),
+        // Tempting shortcut: weaken the acceptance test. DI-3 denies it (and BASELINE runs first).
+        json!({"calls": [{"name": "change.apply", "args": {"path": "tests/quantities.rs", "op": "replace", "content": weakened_tests}}]}),
+        // Real fix that also breaks formatting.
+        json!({"calls": [{"name": "change.apply", "args": {"path": "src/lib.rs", "op": "replace", "content": broken_lib}}]}),
+        json!({"calls": [{"name": "verify.run", "args": {"reason": "check the fix"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "src/lib.rs", "op": "replace", "content": fixed_lib}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "negatives rejected; formatting restored", "self_review": {"findings": [{"text": "acceptance test passes", "resolved": true}]}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn_with_env(
+        dir.path(),
+        &[
+            ("MODBIT_OPENAI_BASE_URL", &base),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+        ],
+    );
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xA0)).await;
+    let g = lease_for(&session);
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xA1),
+            "CreateTask",
+            CreateTask {
+                session_id: Some(session.clone()),
+                goal_text:
+                    "Reject negative quantities so acceptance_rejects_negative_quantity passes."
+                        .into(),
+                workspace_id: None,
+                execution_profile: String::new(),
+                origin: "cli".into(),
+                workspace_root: root.clone(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let task = Client::result::<TaskCreated>(&ack)
+        .unwrap()
+        .task_id
+        .unwrap();
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xA2),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 20,
+                max_tool_calls: 0,
+                max_no_progress_turns: 5,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 240).await;
+    let evs = task_events(&core, &session, &task).await;
+    assert_eq!(
+        (st.state.as_str(), st.run_state.as_str()),
+        ("ReadyForReview", "Completed"),
+        "{st:?}\n{evs:#?}"
+    );
+    // The acceptance test was never weakened; the fix landed.
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("tests/quantities.rs")).unwrap(),
+        tests_src
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("src/lib.rs")).unwrap(),
+        fixed_lib
+    );
+    let of = |t: &str| {
+        evs.iter()
+            .filter(|(_, x, _)| x == t)
+            .map(|(_, _, p)| p.clone())
+            .collect::<Vec<_>>()
+    };
+    // BASELINE before the first write: KNOWN_FAILING labelled, flaky quarantined.
+    let baseline = of("VerificationBaselineRecorded");
+    assert_eq!(baseline.len(), 1, "{evs:#?}");
+    let base_checks = baseline[0]["checks"].as_array().unwrap();
+    let base_status = |sym: &str| {
+        base_checks
+            .iter()
+            .find(|c| {
+                c["check_id"]
+                    .as_str()
+                    .unwrap()
+                    .ends_with(&format!("::{sym}"))
+            })
+            .map(|c| c["status"].as_str().unwrap().to_owned())
+    };
+    assert_eq!(
+        base_status("acceptance_rejects_negative_quantity").as_deref(),
+        Some("FAIL")
+    );
+    assert_eq!(
+        base_status("preexisting_failing_unrelated").as_deref(),
+        Some("FAIL")
+    );
+    assert_eq!(base_status("formats_totals").as_deref(), Some("PASS"));
+    assert_eq!(
+        base_status("flaky_first_run_fails").as_deref(),
+        Some("FLAKY"),
+        "baseline checks {base_checks:?}; quarantines {:?}; runs {:?}; baseline {:?}",
+        of("FlakyCheckQuarantined"),
+        of("VerificationRunRecorded")
+            .iter()
+            .map(|r| r["stage"].clone())
+            .collect::<Vec<_>>(),
+        baseline[0]["verification_run_id"]
+    );
+    assert_eq!(of("FlakyCheckQuarantined").len(), 1);
+    let first_write_offset = evs
+        .iter()
+        .position(|(a, t, p)| {
+            a == "tool_call" && t == "ToolCallProposed" && p["tool_name"] == "change.apply"
+        })
+        .unwrap();
+    let baseline_offset = evs
+        .iter()
+        .position(|(_, t, _)| t == "VerificationBaselineRecorded")
+        .unwrap();
+    assert!(
+        baseline_offset < first_write_offset,
+        "baseline precedes the first write"
+    );
+    // DI-3: the weakening write was denied before any effect.
+    let di = of("DiffInvariantViolated");
+    assert!(
+        di.iter().any(|v| v["invariant"] == "DI-3"
+            && v["class"] == "DENY"
+            && v["stage"] == "TRANSACTION"),
+        "{di:?}"
+    );
+    let steps: Vec<serde_json::Value> = evs
+        .iter()
+        .filter(|(a, t, _)| a == "run_step" && t == "StepFailed")
+        .map(|(_, _, p)| p.clone())
+        .collect();
+    assert!(
+        steps
+            .iter()
+            .any(|p| p["failure_code"] == "DIFF_INVARIANT_DENY"),
+        "{steps:?}"
+    );
+    assert_eq!(
+        evs.iter()
+            .filter(|(a, t, p)| a == "tool_call"
+                && t == "ToolCallProposed"
+                && p["tool_name"] == "change.apply")
+            .count(),
+        2,
+        "only the two lib.rs writes reached the effector"
+    );
+    // TARGETED run recorded; COMPLETION twice: first blocked by a REGRESSION, then clean.
+    let runs = of("VerificationRunRecorded");
+    let stages: Vec<&str> = runs.iter().map(|r| r["stage"].as_str().unwrap()).collect();
+    assert_eq!(
+        stages,
+        ["TARGETED", "COMPLETION", "COMPLETION"],
+        "{stages:?}"
+    );
+    let attributed = of("RegressionAttributed");
+    assert!(
+        attributed.iter().any(|a| a["attribution"] == "REGRESSION"
+            && a["check_id"]
+                .as_str()
+                .unwrap()
+                .ends_with("::formats_totals")),
+        "{attributed:?}"
+    );
+    assert!(attributed.iter().any(|a| {
+        a["attribution"] == "KNOWN_FAILING"
+            && a["check_id"]
+                .as_str()
+                .unwrap()
+                .ends_with("::preexisting_failing_unrelated")
+    }));
+    assert!(attributed.iter().any(|a| {
+        a["attribution"] == "COLLATERAL_FIX"
+            && a["check_id"]
+                .as_str()
+                .unwrap()
+                .ends_with("::acceptance_rejects_negative_quantity")
+    }));
+    let last_completion = runs.last().unwrap();
+    assert_eq!(
+        last_completion["status"], "FAILED",
+        "the pre-existing failure keeps the suite FAILED without blocking acceptance"
+    );
+    let completion_attrs: Vec<&serde_json::Value> = attributed
+        .iter()
+        .filter(|a| a["verification_run_id"] == last_completion["verification_run_id"])
+        .collect();
+    assert!(
+        completion_attrs
+            .iter()
+            .all(|a| a["attribution"] != "REGRESSION"),
+        "{completion_attrs:?}"
+    );
+    let reviews = of("SelfReviewRecorded");
+    assert_eq!(reviews.len(), 2);
+    // The model saw the failing CheckResults first with the raw refs (REQ-EV-0107).
+    let bodies = seen.lock().unwrap().clone();
+    let verify_obs = bodies
+        .iter()
+        .flat_map(|b| b["messages"].as_array().unwrap().clone())
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .find(|t| t.contains("stage: Targeted"))
+        .unwrap();
+    assert!(
+        verify_obs.contains("cargo:tests/quantities.rs::formats_totals [Fail]")
+            && verify_obs.contains("raw_output_ref="),
+        "{verify_obs}"
+    );
+    let refusal = bodies
+        .iter()
+        .flat_map(|b| b["messages"].as_array().unwrap().clone())
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .find(|t| t.contains("COMPLETION_REFUSED"))
+        .unwrap();
+    assert!(refusal.contains("REGRESSION"), "{refusal}");
+    // Projection tables carry the runs and quarantines (docs/31).
+    assert!(
+        evs.iter()
+            .any(|(a, t, _)| a == "run_step" && t == "StepScheduled")
+    );
+    let _ = repo;
 }

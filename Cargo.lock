@@ -1107,12 +1107,14 @@ dependencies = [
  "modbit-core-runtime",
  "modbit-domain",
  "modbit-event-store",
+ "modbit-git",
  "modbit-policy",
  "modbit-prompt-compiler",
  "modbit-protocol",
  "modbit-providers",
  "modbit-terminal",
  "modbit-tools",
+ "modbit-verification",
  "modbit-workspace",
  "prost",
  "prost-types",
@@ -1369,7 +1371,14 @@ dependencies = [
 name = "modbit-verification"
 version = "0.0.0"
 dependencies = [
+ "hex",
  "modbit-domain",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "thiserror 2.0.20",
+ "tokio",
 ]
 
 [[package]]

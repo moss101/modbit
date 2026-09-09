@@ -6,7 +6,7 @@
 use modbit_domain::approval::{Approval, ApprovalEvent};
 use modbit_domain::event::{AggregateType, PayloadRef};
 use modbit_domain::lease::{CapabilityLease, CapabilityLeaseEvent};
-use modbit_domain::run::{Run, RunEvent};
+use modbit_domain::run::{CheckSummary, Run, RunEvent};
 use modbit_domain::session::{Session, SessionEvent};
 use modbit_domain::step::{RunStep, StepEvent};
 use modbit_domain::task::{Task, TaskEvent, TaskState};
@@ -135,6 +135,67 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
             };
             if ev.envelope.sequence > 1 {
                 r.apply(&event, at).map_err(|e| invalid(e, offset))?;
+            }
+            match &event {
+                RunEvent::VerificationBaselineRecorded {
+                    verification_run_id,
+                    plan_ref,
+                    candidate_revision,
+                    environment_digest,
+                    status,
+                    report_refs,
+                    checks,
+                } => {
+                    insert_verification_run(
+                        tx,
+                        &rid,
+                        verification_run_id,
+                        "BASELINE",
+                        plan_ref,
+                        candidate_revision,
+                        environment_digest,
+                        status,
+                        report_refs,
+                        checks,
+                        at,
+                    )?;
+                }
+                RunEvent::VerificationRunRecorded {
+                    verification_run_id,
+                    stage,
+                    plan_ref,
+                    candidate_revision,
+                    environment_digest,
+                    status,
+                    report_refs,
+                    checks,
+                } => {
+                    insert_verification_run(
+                        tx,
+                        &rid,
+                        verification_run_id,
+                        stage,
+                        plan_ref,
+                        candidate_revision,
+                        environment_digest,
+                        status,
+                        report_refs,
+                        checks,
+                        at,
+                    )?;
+                }
+                RunEvent::FlakyCheckQuarantined {
+                    check_id,
+                    first_run_id,
+                    rerun_id,
+                    candidate_revision,
+                } => {
+                    tx.execute(
+                        "INSERT OR IGNORE INTO flaky_checks (flaky_id, run_id, check_id, first_run_id, rerun_id, quarantined_at, scope_revision_range) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                        params![format!("{first_run_id}:{check_id}"), rid.as_bytes().as_slice(), check_id, first_run_id, rerun_id, at.millis(), candidate_revision],
+                    )?;
+                }
+                _ => {}
             }
             tx.execute(
                 "INSERT OR REPLACE INTO runs (run_id, task_id, attempt, owner_location, kernel_lease_generation, state, generation, started_at, ended_at)
@@ -911,9 +972,109 @@ pub fn load_runs_for_task(tx: &rusqlite::Connection, task: &TaskId) -> Result<Ve
     Ok(out)
 }
 
+#[allow(clippy::too_many_arguments)]
+fn insert_verification_run(
+    tx: &rusqlite::Connection,
+    run_id: &RunId,
+    verification_run_id: &str,
+    stage: &str,
+    plan_ref: &str,
+    candidate_revision: &str,
+    environment_digest: &str,
+    status: &str,
+    report_refs: &[String],
+    checks: &[CheckSummary],
+    at: Timestamp,
+) -> Result<()> {
+    tx.execute(
+        "INSERT OR REPLACE INTO verification_runs (verification_run_id, run_id, plan_ref, stage, candidate_revision, environment_digest, started_at, ended_at, status, report_ref) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7, ?8, ?9)",
+        params![verification_run_id, run_id.as_bytes().as_slice(), plan_ref, stage, candidate_revision, environment_digest, at.millis(), status, report_refs.join(",")],
+    )?;
+    for c in checks {
+        tx.execute(
+            "INSERT OR REPLACE INTO check_results (verification_run_id, check_id, kind, status, duration_ms, location_ref, error_class, message_fingerprint, output_ref) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, NULL)",
+            params![verification_run_id, c.check_id, c.kind, c.status, c.duration_ms as i64, c.path, c.error_class, c.message_fingerprint],
+        )?;
+    }
+    Ok(())
+}
+
+/// A verification run row.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct VerificationRunRow {
+    /// Id.
+    pub verification_run_id: String,
+    /// Stage.
+    pub stage: String,
+    /// Revision.
+    pub candidate_revision: String,
+    /// Status.
+    pub status: String,
+    /// Report refs.
+    pub report_refs: Vec<String>,
+    /// Started.
+    pub started_at: Timestamp,
+    /// Checks: (check_id, status).
+    pub checks: Vec<(String, String)>,
+}
+
+/// Verification runs of an agent run, oldest first.
+pub fn load_verification_runs(
+    tx: &rusqlite::Connection,
+    run: &RunId,
+) -> Result<Vec<VerificationRunRow>> {
+    let mut stmt = tx.prepare("SELECT verification_run_id, stage, candidate_revision, status, report_ref, started_at FROM verification_runs WHERE run_id = ?1 ORDER BY started_at, verification_run_id")?;
+    let rows = stmt
+        .query_map(params![run.as_bytes().as_slice()], |r| {
+            Ok(VerificationRunRow {
+                verification_run_id: r.get(0)?,
+                stage: r.get(1)?,
+                candidate_revision: r.get(2)?,
+                status: r.get(3)?,
+                report_refs: r
+                    .get::<_, String>(4)?
+                    .split(',')
+                    .filter(|s| !s.is_empty())
+                    .map(str::to_owned)
+                    .collect(),
+                started_at: Timestamp(r.get(5)?),
+                checks: vec![],
+            })
+        })?
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+    let mut out = Vec::new();
+    for mut row in rows {
+        let mut cs = tx.prepare("SELECT check_id, status FROM check_results WHERE verification_run_id = ?1 ORDER BY check_id")?;
+        row.checks = cs
+            .query_map(params![row.verification_run_id], |r| {
+                Ok((r.get(0)?, r.get(1)?))
+            })?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        out.push(row);
+    }
+    Ok(out)
+}
+
+/// Quarantined checks of an agent run.
+pub fn load_flaky_checks(
+    tx: &rusqlite::Connection,
+    run: &RunId,
+) -> Result<Vec<(String, String, String)>> {
+    let mut stmt = tx.prepare("SELECT check_id, first_run_id, rerun_id FROM flaky_checks WHERE run_id = ?1 ORDER BY quarantined_at")?;
+    let rows = stmt
+        .query_map(params![run.as_bytes().as_slice()], |r| {
+            Ok((r.get(0)?, r.get(1)?, r.get(2)?))
+        })?
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+    Ok(rows)
+}
+
 /// Truncate the projection tables and replay every event from offset 0.
 pub fn rebuild(tx: &Transaction<'_>, objects: &crate::ObjectStore) -> Result<u64> {
     for t in [
+        "check_results",
+        "verification_runs",
+        "flaky_checks",
         "effect_receipts",
         "approvals",
         "capability_leases",

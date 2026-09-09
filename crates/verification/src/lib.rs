@@ -1,9 +1,31 @@
-//! `modbit-verification` — deterministic gates, Acceptance Gate and test plans.
+//! `modbit-verification` — the Verification Engine (docs/28 §4, docs/64):
+//! derived verification plans, BASELINE/TARGETED/COMPLETION/RERUN stages over
+//! real runners, normalized `TestReport`/`CheckResult` with failing-check
+//! identity, the flaky-check rerun protocol, regression attribution and the
+//! diff invariants DI-1..DI-9.
 //!
-//! Canonical owner: verification (`docs/12_REPOSITORY_AND_MODULE_LAYOUT.md`,
-//! `docs/81_ARCHITECTURE_GUARDRAILS_AND_FORBIDDEN_DUPLICATION.md`).
-//! Dependency direction is enforced by `tools/architecture-lint`.
-//!
-//! This crate is created by milestone task M0.1 and carries no behavior yet.
-//! Behavior arrives only through the graph-scheduled tasks that name this
-//! crate as owner; nothing here may be read as an implemented feature.
+//! Canonical owner: verification. Commands run through a [`CommandRunner`]
+//! port the Core binds to the process broker; raw output is retained through
+//! an [`ArtifactSink`].
+
+#![forbid(unsafe_code)]
+
+pub mod adapters;
+pub mod engine;
+pub mod invariants;
+pub mod plan;
+pub mod report;
+
+pub use adapters::{RawRun, detect, parse, parse_cargo, parse_junit_xml, parse_vitest_json};
+pub use engine::{
+    ArtifactSink, Attribution, AttributionReport, CommandRunner, Quarantine, VerificationEngine,
+    VerificationPolicy, VerificationRun, attribute, attribute_against, environment_digest,
+};
+pub use invariants::{
+    ChangedFile, Class, InvariantContext, Violation, denies, evaluate_diff, evaluate_file,
+};
+pub use plan::{CheckCommand, VerificationPlan, derive};
+pub use report::{
+    CheckKind, CheckResult, CheckStatus, Confidence, Counts, Location, ParserInfo, ReportStatus,
+    RunnerFamily, RunnerInfo, Stage, TestReport, failure_signature, normalize_message,
+};

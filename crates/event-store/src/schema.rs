@@ -236,6 +236,48 @@ CREATE UNIQUE INDEX IF NOT EXISTS effect_receipts_seq ON effect_receipts (seq);
 CREATE INDEX IF NOT EXISTS effect_receipts_task ON effect_receipts (task_id, seq);
 "#;
 
+/// Version 6 (M2.8): verification runs, check results and flaky-check
+/// quarantines (docs/31 `verification_runs`, `check_results`, `flaky_checks`).
+pub const V6_VERIFICATION: &str = r#"
+CREATE TABLE IF NOT EXISTS verification_runs (
+  verification_run_id TEXT PRIMARY KEY NOT NULL,
+  run_id              BLOB NOT NULL,
+  plan_ref            TEXT NOT NULL,
+  stage               TEXT NOT NULL,
+  candidate_revision  TEXT NOT NULL,
+  environment_digest  TEXT NOT NULL,
+  started_at          INTEGER NOT NULL,
+  ended_at            INTEGER,
+  status              TEXT NOT NULL,
+  report_ref          TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS verification_runs_run ON verification_runs (run_id, started_at);
+CREATE TABLE IF NOT EXISTS check_results (
+  verification_run_id TEXT NOT NULL,
+  check_id            TEXT NOT NULL,
+  kind                TEXT NOT NULL,
+  status              TEXT NOT NULL,
+  duration_ms         INTEGER NOT NULL,
+  location_ref        TEXT,
+  error_class         TEXT,
+  message_fingerprint TEXT,
+  output_ref          TEXT,
+  PRIMARY KEY (verification_run_id, check_id)
+);
+CREATE TABLE IF NOT EXISTS flaky_checks (
+  flaky_id            TEXT PRIMARY KEY NOT NULL,
+  run_id              BLOB NOT NULL,
+  check_id            TEXT NOT NULL,
+  first_run_id        TEXT NOT NULL,
+  rerun_id            TEXT NOT NULL,
+  quarantined_at      INTEGER NOT NULL,
+  scope_revision_range TEXT NOT NULL,
+  expires_reason      TEXT,
+  resolved_at         INTEGER
+);
+CREATE INDEX IF NOT EXISTS flaky_checks_run ON flaky_checks (run_id);
+"#;
+
 /// All migrations in order. Never edit an entry once shipped; append a new one.
 pub const MIGRATIONS: &[Migration] = &[
     Migration {
@@ -267,6 +309,12 @@ pub const MIGRATIONS: &[Migration] = &[
         name: "kernel_approvals_leases_receipts",
         up: V5_KERNEL,
         rollback: "Additive: nullable columns and derivable tables. Rollback = drop `approvals`, `capability_leases`, `effect_receipts` and rebuild projections; no event is touched.",
+    },
+    Migration {
+        version: 6,
+        name: "verification_runs_checks_flaky",
+        up: V6_VERIFICATION,
+        rollback: "Additive derivable tables. Rollback = drop `verification_runs`, `check_results`, `flaky_checks` and rebuild projections; no event is touched.",
     },
 ];
 

@@ -1,0 +1,4 @@
+.vitest/
+node_modules/
+target/
+.modbit-vitest.json

@@ -4,6 +4,8 @@
 packages:
   - "apps/desktop"
   - "packages/*"
+  # Fixture target software (docs/50): a real vitest project the verification engine runs.
+  - "tests/fixtures/repos/ts-webapp"
 # Dependencies allowed to run install scripts (supply-chain policy, docs/70).
 # @bufbuild/buf installs its pinned CLI binary in postinstall.
 allowBuilds:

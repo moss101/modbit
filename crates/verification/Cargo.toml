@@ -8,7 +8,16 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
+hex.workspace = true
 modbit-domain.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+tokio.workspace = true
 
 [lints]
 workspace = true
@@ -20,4 +29,7 @@ workspace = true
 [package.metadata.modbit]
 owner = "verification"
 canonical = []
-capabilities = []
+capabilities = [
+  { id = "verification.stages", requirements = ["REQ-EV-0018", "REQ-EV-0068", "REQ-EV-0070"] },
+  { id = "verification.reports", requirements = ["REQ-EV-0107", "REQ-EV-0068"] },
+]

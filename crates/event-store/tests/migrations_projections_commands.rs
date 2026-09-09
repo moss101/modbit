@@ -60,8 +60,8 @@ fn migrates_the_committed_m1_1_fixture_and_derives_projections() {
     std::fs::copy(fixture(), dir.path().join("core.db")).unwrap();
     let (store, report) = EventStore::open_with_report(dir.path()).unwrap();
     assert_eq!(report.from_version, 1);
-    assert_eq!(report.to_version, 5);
-    assert_eq!(report.applied, vec![2, 3, 4, 5]);
+    assert_eq!(report.to_version, 6);
+    assert_eq!(report.applied, vec![2, 3, 4, 5, 6]);
     // Events untouched (docs/31: migration preserves existing event ids).
     let task = TaskId::from_bytes([0xC3; 16]);
     assert_eq!(store.verify_aggregate(task.as_bytes()).unwrap(), 3);
@@ -82,12 +82,12 @@ fn migrates_the_committed_m1_1_fixture_and_derives_projections() {
     // Reopening is a no-op migration.
     let (_, report) = EventStore::open_with_report(dir.path()).unwrap();
     assert!(report.applied.is_empty());
-    assert_eq!(report.from_version, 5);
+    assert_eq!(report.from_version, 6);
     let conn = rusqlite::Connection::open(dir.path().join("core.db")).unwrap();
     let n: i64 = conn
         .query_row("SELECT count(*) FROM schema_migrations", [], |r| r.get(0))
         .unwrap();
-    assert_eq!(n, 5);
+    assert_eq!(n, 6);
 }
 
 #[test]
@@ -115,12 +115,12 @@ fn applied_migration_checksum_drift_and_newer_schema_are_refused() {
             err,
             Error::SchemaTooNew {
                 found: 9,
-                supported: 5
+                supported: 6
             }
         ),
         "{err}"
     );
-    assert_eq!(modbit_event_store::migrations::rollback_plans().len(), 5);
+    assert_eq!(modbit_event_store::migrations::rollback_plans().len(), 6);
 }
 
 #[test]
@@ -419,7 +419,7 @@ fn concurrent_openers_of_a_fresh_database_all_succeed_and_migrate_once() {
     let n: i64 = conn
         .query_row("SELECT count(*) FROM schema_migrations", [], |r| r.get(0))
         .unwrap();
-    assert_eq!(n, 5);
+    assert_eq!(n, 6);
 }
 
 #[test]

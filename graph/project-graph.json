@@ -1721,8 +1721,23 @@
    "milestone": "M2",
    "order": 7,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-09T17:48:19Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: NOT-FOUND (crates/verification shell; test.run heuristic only)"
+    },
+    {
+     "at": "2026-09-09T17:48:19Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "verification engine (plan, stages, adapters, flake rerun, attribution, DI-1..9), Alpha fixtures rust-cli/ts-webapp, schema v6, Core baseline/targeted/completion wiring"
+    }
+   ],
+   "status_changed_on": "2026-09-09T17:48:19Z"
   },
   {
    "id": "M2.9",

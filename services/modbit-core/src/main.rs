@@ -13,6 +13,7 @@ mod probe;
 mod runtime;
 mod server;
 mod tools;
+mod verify;
 
 fn usage() -> &'static str {
     "usage: modbit-core --data-dir <dir>"

@@ -1,0 +1,12 @@
+{
+  "name": "@modbit-fixture/ts-webapp",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "fixture-test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "5.0.0"
+  }
+}

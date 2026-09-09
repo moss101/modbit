@@ -4,6 +4,8 @@
 
 [workspace]
 resolver = "3"
+# Fixture target software (docs/50): real cargo projects the verification engine runs, not workspace members.
+exclude = ["tests/fixtures/repos/rust-cli"]
 members = [
     "crates/domain",
     "crates/protocol",

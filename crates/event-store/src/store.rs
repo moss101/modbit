@@ -480,6 +480,19 @@ impl EventStore {
         crate::projections::load_receipts(&self.conn, task)
     }
 
+    /// Verification runs of an agent run.
+    pub fn verification_runs(
+        &self,
+        run: &RunId,
+    ) -> Result<Vec<crate::projections::VerificationRunRow>> {
+        crate::projections::load_verification_runs(&self.conn, run)
+    }
+
+    /// Quarantined checks of an agent run: (check_id, first_run_id, rerun_id).
+    pub fn flaky_checks(&self, run: &RunId) -> Result<Vec<(String, String, String)>> {
+        crate::projections::load_flaky_checks(&self.conn, run)
+    }
+
     /// Tasks in `Running` state.
     pub fn running_tasks(&self) -> Result<Vec<modbit_domain::task::Task>> {
         crate::projections::load_running_tasks(&self.conn)

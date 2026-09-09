@@ -14,10 +14,12 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use modbit_core_runtime::harness::{
-    self, Budgets, COMPLETE_TOOL, HarnessRefusal, HarnessState, PLAN_TOOL, Plan,
+    self, Budgets, COMPLETE_TOOL, HarnessRefusal, HarnessState, PLAN_TOOL, Plan, VERIFY_TOOL,
+    WRITE_TOOLS,
 };
 use modbit_domain::event::{Actor, AggregateType};
 use modbit_domain::run::{OwnerLocation, RunEvent, RunState};
+use modbit_domain::step::VerificationStage;
 use modbit_domain::step::{StepEvent, StepType};
 use modbit_domain::task::{InputMode, Task, TaskEvent, TaskState, WaitReason};
 use modbit_domain::toolcall::ToolCallState;
@@ -28,6 +30,7 @@ use modbit_providers::{
     ContentPart, Message, ModelEvent, ModelPolicy, Requirements, Role, ToolProjection,
 };
 use modbit_tools::ToolStatus;
+use modbit_verification::{Class, InvariantContext, Stage, VerificationEngine, VerificationPolicy};
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
@@ -401,6 +404,7 @@ async fn rebuild(
                     && let Ok(plan) = serde_json::from_slice::<Plan>(&bytes)
                 {
                     state.record_plan(plan);
+                    state.resolve_flags_by_plan();
                 }
             }
             "SelfReviewRecorded" => {
@@ -409,6 +413,41 @@ async fn rebuild(
             "TaskSteered" => {
                 state.steers += 1;
                 applied += 1;
+            }
+            "VerificationBaselineRecorded" => {
+                state.baseline_recorded = true;
+                state.verification_plan_ref = payload["plan_ref"].as_str().map(str::to_owned);
+                state.baseline_checks.clear();
+                state.baseline_failing.clear();
+                for c in payload["checks"].as_array().into_iter().flatten() {
+                    let id = c["check_id"].as_str().unwrap_or_default().to_owned();
+                    let st = c["status"].as_str().unwrap_or_default().to_owned();
+                    if matches!(st.as_str(), "FAIL" | "ERROR" | "TIMEOUT")
+                        && let Some(sym) = id.rsplit("::").next()
+                    {
+                        state.baseline_failing.push(sym.to_owned());
+                    }
+                    state.baseline_checks.push((id, st));
+                }
+            }
+            "FlakyCheckQuarantined" => {
+                if let Some(id) = payload["check_id"].as_str()
+                    && !state.quarantined.iter().any(|q| q == id)
+                {
+                    state.quarantined.push(id.to_owned());
+                }
+            }
+            "DiffInvariantViolated" => {
+                if payload["class"] == "FLAG" {
+                    let f = format!(
+                        "{} {}",
+                        payload["invariant"].as_str().unwrap_or_default(),
+                        payload["paths"][0].as_str().unwrap_or_default()
+                    );
+                    if !state.open_flags.contains(&f) {
+                        state.open_flags.push(f);
+                    }
+                }
             }
             "TaskInputQueued" => {
                 let mode = serde_json::from_value::<InputMode>(payload["mode"].clone())
@@ -517,6 +556,11 @@ fn projection(core: &Core, task: &Task) -> Vec<ToolProjection> {
         name: COMPLETE_TOOL.into(),
         description: "Propose completion with a self-review: summary, findings (unresolved ones block completion), verification evidence.".into(),
         input_schema: serde_json::json!({"type":"object","properties":{"summary":{"type":"string"},"self_review":{"type":"object","properties":{"findings":{"type":"array","items":{"type":"object","properties":{"text":{"type":"string"},"resolved":{"type":"boolean"}},"required":["text","resolved"]}},"verification":{"type":"array","items":{"type":"string"}}},"required":["findings"]}},"required":["summary","self_review"]}),
+    });
+    tools.push(ToolProjection {
+        name: VERIFY_TOOL.into(),
+        description: "Run the derived verification plan as a TARGETED stage (build, tests) and get normalized failing checks first; the COMPLETION run happens on task.complete.".into(),
+        input_schema: serde_json::json!({"type":"object","properties":{"reason":{"type":"string"}},"additionalProperties":false}),
     });
     tools.sort_by(|a, b| a.name.cmp(&b.name));
     tools
@@ -978,11 +1022,28 @@ async fn run_loop(
                         },
                     )
                 }
+                VERIFY_TOOL => {
+                    let (entry, ok, rev) =
+                        handle_verify(&core, &task, lturn, &actor, &mut state, &call_id).await;
+                    progress = true;
+                    (
+                        entry,
+                        StepType::Verification {
+                            stage: VerificationStage::Targeted,
+                            candidate_revision: rev,
+                        },
+                        if ok {
+                            None
+                        } else {
+                            Some("VERIFICATION_FAILED".to_owned())
+                        },
+                    )
+                }
                 COMPLETE_TOOL => {
                     let (entry, ok) = handle_complete(
                         &core,
                         &task,
-                        lt,
+                        lturn,
                         &actor,
                         &mut state,
                         &call_id,
@@ -1029,6 +1090,96 @@ async fn run_loop(
                             (entry, StepType::ToolCall, Some(format!("HARNESS_{code}")))
                         }
                         Ok(()) => {
+                            // BASELINE before the first write (docs/64 §1).
+                            if WRITE_TOOLS.contains(&name.as_str()) && !state.baseline_recorded {
+                                let _ = run_verification(
+                                    &core,
+                                    &task,
+                                    lturn,
+                                    &actor,
+                                    &mut state,
+                                    Stage::Baseline,
+                                    step_ordinal,
+                                )
+                                .await;
+                                step_ordinal += 1;
+                            }
+                            // Per-transaction diff invariants (docs/64 §4).
+                            if name == "change.apply"
+                                && let Some(refusal) = transaction_invariants(
+                                    &core,
+                                    &task,
+                                    lturn,
+                                    &actor,
+                                    &mut state,
+                                    &arguments_json,
+                                )
+                                .await
+                            {
+                                let entry = TranscriptEntry::ToolResult {
+                                    call_id: call_id.clone(),
+                                    name: name.clone(),
+                                    text: format!(
+                                        "status: REFUSED\nerror_code: DIFF_INVARIANT_DENY\nerror: {refusal}"
+                                    ),
+                                    failure_signature: None,
+                                    clears: vec![],
+                                    wrote: None,
+                                    progress: false,
+                                };
+                                let entry_ref = {
+                                    let store = core.store.lock().await;
+                                    store
+                                        .objects()
+                                        .put(
+                                            serde_json::to_vec(&entry)
+                                                .unwrap_or_default()
+                                                .as_slice(),
+                                        )
+                                        .ok()
+                                };
+                                let step_id = RunStepId::new();
+                                {
+                                    let mut store = core.store.lock().await;
+                                    let _ = append(
+                                        &mut store,
+                                        &core,
+                                        Lineage {
+                                            step: Some(step_id),
+                                            ..lturn
+                                        },
+                                        AggregateType::RunStep,
+                                        *step_id.as_bytes(),
+                                        vec![
+                                            typed(
+                                                "StepScheduled",
+                                                &StepEvent::StepScheduled {
+                                                    turn_id,
+                                                    step_type: StepType::ToolCall,
+                                                    ordinal: step_ordinal,
+                                                    input_ref: None,
+                                                },
+                                                actor.clone(),
+                                            ),
+                                            typed(
+                                                "StepStarted",
+                                                &StepEvent::StepStarted,
+                                                actor.clone(),
+                                            ),
+                                            typed(
+                                                "StepFailed",
+                                                &StepEvent::StepFailed {
+                                                    failure_code: "DIFF_INVARIANT_DENY".into(),
+                                                    output_ref: entry_ref,
+                                                },
+                                                actor.clone(),
+                                            ),
+                                        ],
+                                    );
+                                }
+                                apply_entry(&mut transcript, &mut state, entry);
+                                continue;
+                            }
                             state.tool_calls += 1;
                             let entry = execute_tool(
                                 &core,
@@ -1380,6 +1531,7 @@ async fn handle_plan(
                     .unwrap_or_default()
             };
             let (version, added, removed) = state.record_plan(plan.clone());
+            state.resolve_flags_by_plan();
             let reason = serde_json::from_str::<serde_json::Value>(args)
                 .ok()
                 .and_then(|v| v["reason"].as_str().map(str::to_owned))
@@ -1490,7 +1642,30 @@ async fn handle_complete(
         );
     }
     state.self_review_clean = unresolved == 0;
-    match state.check_completion(unresolved) {
+    // COMPLETION run at the final candidate revision (docs/64 §1, docs/14 contract 11):
+    // regression attribution against BASELINE and whole-diff invariants.
+    // Signatures from earlier TARGETED/COMPLETION runs are superseded by the
+    // COMPLETION run at the final revision; the plan gate, self-review and
+    // command failures still refuse outright.
+    let mut precheck_state = state.clone();
+    precheck_state
+        .open_failures
+        .retain(|f| !f.starts_with("verify:") && !f.starts_with("completion:"));
+    let precheck = precheck_state.check_completion(unresolved);
+    let verdict = if precheck.is_ok() {
+        let (_entry, ok, _rev) =
+            run_verification(core, task, lt, actor, state, Stage::Completion, 0).await;
+        if ok {
+            Ok(())
+        } else {
+            Err(HarnessRefusal::CompletionBlocked {
+                reasons: state.open_failures.clone(),
+            })
+        }
+    } else {
+        precheck
+    };
+    match verdict {
         Ok(()) => (
             TranscriptEntry::ToolResult {
                 call_id: call_id.into(),
@@ -1712,5 +1887,490 @@ async fn execute_tool(
             wrote,
             progress,
         };
+    }
+}
+
+/// Derive (or reload) the verification plan for the task.
+async fn verification_plan(
+    core: &Core,
+    task: &Task,
+    state: &mut HarnessState,
+) -> (modbit_verification::VerificationPlan, String) {
+    let root = task.workspace_root.as_deref().map(std::path::Path::new);
+    if let Some(r) = &state.verification_plan_ref {
+        let store = core.store.lock().await;
+        if let Ok(bytes) = store.objects().get(r)
+            && let Ok(mut plan) =
+                serde_json::from_slice::<modbit_verification::VerificationPlan>(&bytes)
+        {
+            if let Some(p) = &state.plan {
+                for v in &p.verification {
+                    if !plan.acceptance_named.contains(v) {
+                        plan.acceptance_named.push(v.clone());
+                    }
+                }
+            }
+            return (plan, r.clone());
+        }
+    }
+    let named: Vec<String> = state
+        .plan
+        .as_ref()
+        .map(|p| p.verification.clone())
+        .unwrap_or_default();
+    let plan = modbit_verification::derive(root.unwrap_or(std::path::Path::new(".")), &named, &[]);
+    let plan_ref = {
+        let store = core.store.lock().await;
+        store
+            .objects()
+            .put(serde_json::to_vec(&plan).unwrap_or_default().as_slice())
+            .unwrap_or_default()
+    };
+    state.verification_plan_ref = Some(plan_ref.clone());
+    (plan, plan_ref)
+}
+
+fn is_failing(s: modbit_verification::CheckStatus) -> bool {
+    matches!(
+        s,
+        modbit_verification::CheckStatus::Fail
+            | modbit_verification::CheckStatus::Error
+            | modbit_verification::CheckStatus::Timeout
+    )
+}
+
+/// Run a verification stage through the engine, record it on the Run and as
+/// a Verification step; update harness failure state. Returns the
+/// observation entry, whether acceptance is not blocked, and the revision.
+async fn run_verification(
+    core: &Core,
+    task: &Task,
+    lturn: Lineage,
+    actor: &Actor,
+    state: &mut HarnessState,
+    stage: Stage,
+    ordinal: u32,
+) -> (TranscriptEntry, bool, String) {
+    let candidate = format!("ws-rev-{}", state.candidate_revision.unwrap_or(0));
+    let Some(root) = task.workspace_root.clone() else {
+        return (
+            TranscriptEntry::ToolResult {
+                call_id: String::new(),
+                name: VERIFY_TOOL.into(),
+                text: "status: INFRA_FAILURE\nerror: task has no workspace root".into(),
+                failure_signature: None,
+                clears: vec![],
+                wrote: None,
+                progress: false,
+            },
+            false,
+            candidate,
+        );
+    };
+    let (plan, plan_ref) = verification_plan(core, task, state).await;
+    let runner = crate::verify::BrokerRunner {
+        target: core.tools.execd.as_ref().map(|e| e.target.clone()),
+        execution_profile: task.execution_profile.clone(),
+    };
+    let sink = crate::verify::ObjectSinkAdapter(core.store.lock().await.objects().clone());
+    let engine = VerificationEngine::new(&runner, &sink, VerificationPolicy::default());
+    let run_id = lturn.run.map(|r| r.to_string()).unwrap_or_default();
+    // Fixture-facing state lives outside the candidate tree, per agent run,
+    // and starts clean at BASELINE.
+    let flaky_state = std::env::temp_dir().join(format!("modbit-flaky-{run_id}"));
+    if stage == Stage::Baseline {
+        let _ = std::fs::remove_file(&flaky_state);
+    }
+    let env: Vec<(String, String)> = vec![(
+        "FIXTURE_FLAKY_STATE".into(),
+        flaky_state.to_string_lossy().into_owned(),
+    )];
+    let step_id = RunStepId::new();
+    let vstage = match stage {
+        Stage::Baseline => VerificationStage::Baseline,
+        Stage::Targeted => VerificationStage::Targeted,
+        Stage::Completion => VerificationStage::Completion,
+        Stage::Rerun => VerificationStage::Rerun,
+    };
+    if let Some(turn_id) = lturn.turn {
+        let mut store = core.store.lock().await;
+        let _ = append(
+            &mut store,
+            core,
+            Lineage {
+                step: Some(step_id),
+                ..lturn
+            },
+            AggregateType::RunStep,
+            *step_id.as_bytes(),
+            vec![
+                typed(
+                    "StepScheduled",
+                    &StepEvent::StepScheduled {
+                        turn_id,
+                        step_type: StepType::Verification {
+                            stage: vstage,
+                            candidate_revision: candidate.clone(),
+                        },
+                        ordinal: ordinal.max(1),
+                        input_ref: Some(plan_ref.clone()),
+                    },
+                    actor.clone(),
+                ),
+                typed("StepStarted", &StepEvent::StepStarted, actor.clone()),
+            ],
+        );
+    }
+    let (vrun, quarantines) = engine
+        .run_stage(
+            &plan,
+            &plan_ref,
+            &run_id,
+            stage,
+            std::path::Path::new(&root),
+            &candidate,
+            &env,
+            &["modbit-core".into()],
+        )
+        .await;
+    let vrun_ref = {
+        let store = core.store.lock().await;
+        store
+            .objects()
+            .put(serde_json::to_vec(&vrun).unwrap_or_default().as_slice())
+            .unwrap_or_default()
+    };
+    let mut events = crate::verify::stage_events(&vrun, &quarantines, actor);
+    let indeterminate = matches!(
+        vrun.status,
+        modbit_verification::ReportStatus::Unknown
+            | modbit_verification::ReportStatus::Timeout
+            | modbit_verification::ReportStatus::Cancelled
+    );
+    let ok;
+    let mut text = crate::verify::observation(&vrun, &*core.store.lock().await);
+    for q in &quarantines {
+        if !state.quarantined.contains(&q.check_id) {
+            state.quarantined.push(q.check_id.clone());
+        }
+    }
+    match stage {
+        Stage::Baseline => {
+            state.baseline_recorded = true;
+            state.baseline_checks = vrun
+                .checks()
+                .into_iter()
+                .map(|c| (c.check_id.clone(), format!("{:?}", c.status).to_uppercase()))
+                .collect();
+            state.baseline_failing = vrun
+                .checks()
+                .into_iter()
+                .filter(|c| is_failing(c.status))
+                .filter_map(|c| c.location.symbol.clone())
+                .collect();
+            text.push_str(&format!(
+                "baseline recorded: {} KNOWN_FAILING check(s) are never attributed to you: {}\n",
+                state.baseline_failing.len(),
+                state.baseline_failing.join(", ")
+            ));
+            ok = true;
+        }
+        Stage::Targeted | Stage::Rerun => {
+            state.open_failures.retain(|f| !f.starts_with("verify:"));
+            for sig in vrun.failure_signatures() {
+                let sym = sig
+                    .split("::")
+                    .nth(1)
+                    .map(|s| s.split(':').next().unwrap_or_default())
+                    .unwrap_or_default();
+                if state.baseline_failing.iter().any(|b| b == sym) {
+                    continue;
+                }
+                state.open_failures.push(format!("verify:{sig}"));
+            }
+            ok = !indeterminate
+                && state
+                    .open_failures
+                    .iter()
+                    .all(|f| !f.starts_with("verify:"));
+        }
+        Stage::Completion => {
+            let base: std::collections::BTreeMap<String, modbit_verification::CheckStatus> = state
+                .baseline_checks
+                .iter()
+                .filter_map(|(id, st)| {
+                    serde_json::from_value::<modbit_verification::CheckStatus>(
+                        serde_json::Value::String(st.clone()),
+                    )
+                    .ok()
+                    .map(|s| (id.clone(), s))
+                })
+                .collect();
+            let attribution = modbit_verification::attribute_against(&base, &vrun, &plan);
+            for (check, a) in &attribution.checks {
+                if *a != modbit_verification::Attribution::Pass {
+                    events.push(typed(
+                        "RegressionAttributed",
+                        &RunEvent::RegressionAttributed {
+                            verification_run_id: vrun.verification_run_id.clone(),
+                            check_id: check.clone(),
+                            attribution: attribution_label(*a),
+                        },
+                        actor.clone(),
+                    ));
+                }
+            }
+            let files = crate::verify::changed_files(std::path::Path::new(&root));
+            let ctx = invariant_context(state);
+            let violations = modbit_verification::evaluate_diff(&ctx, &files, None);
+            let mut deny = false;
+            for v in &violations {
+                events.push(typed(
+                    "DiffInvariantViolated",
+                    &RunEvent::DiffInvariantViolated {
+                        invariant: v.id.clone(),
+                        class: format!("{:?}", v.class).to_uppercase(),
+                        paths: v.paths.clone(),
+                        evidence: v.evidence.clone(),
+                        stage: "COMPLETION".into(),
+                    },
+                    actor.clone(),
+                ));
+                if v.class == Class::Deny {
+                    deny = true;
+                }
+                let f = format!("{} {}", v.id, v.paths.first().cloned().unwrap_or_default());
+                if v.class == Class::Flag && !state.open_flags.contains(&f) {
+                    state.open_flags.push(f);
+                }
+            }
+            state
+                .open_failures
+                .retain(|f| !f.starts_with("verify:") && !f.starts_with("completion:"));
+            for r in &attribution.reasons {
+                state.open_failures.push(format!("completion:{r}"));
+            }
+            if deny {
+                state
+                    .open_failures
+                    .push("completion:DENY-class diff invariant violated".into());
+            }
+            ok = !attribution.blocks_acceptance
+                && !deny
+                && state.open_flags.is_empty()
+                && matches!(
+                    vrun.status,
+                    modbit_verification::ReportStatus::Passed
+                        | modbit_verification::ReportStatus::Failed
+                );
+            if ok {
+                state.completion_verified_revision = state.candidate_revision;
+            }
+            text.push_str(&format!(
+                "attribution: {}\n",
+                attribution
+                    .checks
+                    .iter()
+                    .filter(|(_, a)| *a != modbit_verification::Attribution::Pass)
+                    .map(|(c, a)| format!("{c}={a:?}"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ));
+            for r in &attribution.reasons {
+                text.push_str(&format!("blocked: {r}\n"));
+            }
+            for v in &violations {
+                text.push_str(&format!(
+                    "invariant {} [{:?}] {}: {}\n",
+                    v.id,
+                    v.class,
+                    v.paths.join(","),
+                    v.evidence
+                ));
+            }
+        }
+    }
+    {
+        let mut store = core.store.lock().await;
+        if let Some(run_id) = lturn.run {
+            let _ = append(
+                &mut store,
+                core,
+                lturn,
+                AggregateType::Run,
+                *run_id.as_bytes(),
+                events,
+            );
+        }
+        if lturn.turn.is_some() {
+            let outcome = if ok {
+                typed(
+                    "StepSucceeded",
+                    &StepEvent::StepSucceeded {
+                        output_ref: Some(vrun_ref.clone()),
+                    },
+                    actor.clone(),
+                )
+            } else {
+                typed(
+                    "StepFailed",
+                    &StepEvent::StepFailed {
+                        failure_code: format!("{:?}", vrun.status).to_uppercase(),
+                        output_ref: Some(vrun_ref.clone()),
+                    },
+                    actor.clone(),
+                )
+            };
+            let _ = append(
+                &mut store,
+                core,
+                Lineage {
+                    step: Some(step_id),
+                    ..lturn
+                },
+                AggregateType::RunStep,
+                *step_id.as_bytes(),
+                vec![outcome],
+            );
+        }
+    }
+    (
+        TranscriptEntry::ToolResult {
+            call_id: String::new(),
+            name: VERIFY_TOOL.into(),
+            text,
+            failure_signature: None,
+            clears: vec![],
+            wrote: None,
+            progress: true,
+        },
+        ok,
+        candidate,
+    )
+}
+
+fn attribution_label(a: modbit_verification::Attribution) -> String {
+    use modbit_verification::Attribution::*;
+    match a {
+        Regression => "REGRESSION",
+        KnownFailing => "KNOWN_FAILING",
+        CollateralFix => "COLLATERAL_FIX",
+        DeclaredChange => "DECLARED_CHANGE",
+        Flaky => "FLAKY",
+        NewFailing => "NEW_FAILING",
+        Pass => "PASS",
+    }
+    .into()
+}
+
+fn invariant_context(state: &HarnessState) -> InvariantContext {
+    InvariantContext {
+        write_set: state.plan.as_ref().map(|p| p.expected_files.clone()),
+        plan_entries: state
+            .plan
+            .as_ref()
+            .map(|p| p.expected_files.clone())
+            .unwrap_or_default(),
+        acceptance_named: state
+            .plan
+            .as_ref()
+            .map(|p| p.verification.clone())
+            .unwrap_or_default(),
+        baseline_failing: state.baseline_failing.clone(),
+        protected_paths: vec![".github/".into(), ".modbit/".into()],
+        formatting_churn_lines: 50,
+        expected_revision: None,
+    }
+}
+
+/// The `verify.run` harness tool: a TARGETED stage.
+async fn handle_verify(
+    core: &Core,
+    task: &Task,
+    lturn: Lineage,
+    actor: &Actor,
+    state: &mut HarnessState,
+    call_id: &str,
+) -> (TranscriptEntry, bool, String) {
+    let (mut entry, ok, rev) =
+        run_verification(core, task, lturn, actor, state, Stage::Targeted, 0).await;
+    if let TranscriptEntry::ToolResult { call_id: c, .. } = &mut entry {
+        *c = call_id.to_owned();
+    }
+    (entry, ok, rev)
+}
+
+/// DI evaluation for one proposed `change.apply`; `Some(reason)` denies.
+async fn transaction_invariants(
+    core: &Core,
+    task: &Task,
+    lturn: Lineage,
+    actor: &Actor,
+    state: &mut HarnessState,
+    args: &str,
+) -> Option<String> {
+    let v: serde_json::Value = serde_json::from_str(args).ok()?;
+    let path = v["path"].as_str()?.to_owned();
+    let root = task.workspace_root.as_deref()?;
+    let old = std::fs::read(std::path::Path::new(root).join(&path))
+        .ok()
+        .map(|b| String::from_utf8_lossy(&b).into_owned());
+    let new = match v["op"].as_str() {
+        Some("delete") => None,
+        Some("create") | Some("replace") => {
+            Some(v["content"].as_str().unwrap_or_default().to_owned())
+        }
+        _ => old.clone(),
+    };
+    let file = modbit_verification::ChangedFile {
+        path: path.clone(),
+        old,
+        new,
+    };
+    let violations = modbit_verification::evaluate_file(&invariant_context(state), &file, None);
+    if violations.is_empty() {
+        return None;
+    }
+    let mut events = Vec::new();
+    let mut deny_reasons = Vec::new();
+    for x in &violations {
+        events.push(typed(
+            "DiffInvariantViolated",
+            &RunEvent::DiffInvariantViolated {
+                invariant: x.id.clone(),
+                class: format!("{:?}", x.class).to_uppercase(),
+                paths: x.paths.clone(),
+                evidence: x.evidence.clone(),
+                stage: "TRANSACTION".into(),
+            },
+            actor.clone(),
+        ));
+        match x.class {
+            Class::Deny => {
+                deny_reasons.push(format!("{} ({}): {}", x.id, x.paths.join(","), x.evidence));
+            }
+            Class::Flag => {
+                let f = format!("{} {}", x.id, path);
+                if !state.open_flags.contains(&f) {
+                    state.open_flags.push(f);
+                }
+            }
+        }
+    }
+    if let Some(run_id) = lturn.run {
+        let mut store = core.store.lock().await;
+        let _ = append(
+            &mut store,
+            core,
+            lturn,
+            AggregateType::Run,
+            *run_id.as_bytes(),
+            events,
+        );
+    }
+    if deny_reasons.is_empty() {
+        None
+    } else {
+        Some(deny_reasons.join("; "))
     }
 }
