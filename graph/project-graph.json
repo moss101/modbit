@@ -6948,8 +6948,56 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0015",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0015_ambiguous_target_fails_and_leaves_the_worktree_unchanged",
+    "run:gha-34413048026",
+    "commit:1b1d10f",
+    "commit:a4a456d",
+    "artifact:evidence/m2/IMP-EV-0015/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0015/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0015/ci-run-34413048026.json",
+    "artifact:evidence/m2/IMP-EV-0015/ci-run-34413048026-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T22:41:42Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: IMPLEMENTED in this batch (was NOT-FOUND: only byte-range patches existed)"
+    },
+    {
+     "at": "2026-09-09T22:41:42Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "M2 backlog batch 2: duplicated targets fail at either tier; bytes, revision and temp files untouched; a miss reports the closest line without applying it"
+    },
+    {
+     "at": "2026-09-09T22:41:42Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the Core surface / tool registry / gateway; exercised by the workspace test suite on hosted CI"
+    },
+    {
+     "at": "2026-09-09T22:41:42Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real filesystem, real git, real Core over the socket, real fake-provider HTTP"
+    },
+    {
+     "at": "2026-09-09T22:41:42Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at a4a456d"
+    },
+    {
+     "at": "2026-09-09T22:41:42Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0015: duplicated targets fail at either tier; bytes, revision and temp files untouched; a miss reports the closest line without applying it"
+    }
+   ],
+   "status_changed_on": "2026-09-09T22:41:42Z"
   },
   {
    "id": "IMP-EV-0016",
@@ -6962,8 +7010,57 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0016",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0016_failed_step_rolls_back_earlier_steps_and_reports_the_step",
+    "test:qual_ev_0064_0065_typed_undo_restores_inverse_actions_and_a_user_edit_blocks_the_revert",
+    "run:gha-34413048026",
+    "commit:1b1d10f",
+    "commit:a4a456d",
+    "artifact:evidence/m2/IMP-EV-0016/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0016/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0016/ci-run-34413048026.json",
+    "artifact:evidence/m2/IMP-EV-0016/ci-run-34413048026-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T22:41:42Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: IMPLEMENTED in this batch"
+    },
+    {
+     "at": "2026-09-09T22:41:42Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "M2 backlog batch 2: a stale precondition at step 3 restores steps 0..2 byte-for-byte and names the step; an unrestorable path would be reported as explicit partial state"
+    },
+    {
+     "at": "2026-09-09T22:41:42Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the Core surface / tool registry / gateway; exercised by the workspace test suite on hosted CI"
+    },
+    {
+     "at": "2026-09-09T22:41:42Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real filesystem, real git, real Core over the socket, real fake-provider HTTP"
+    },
+    {
+     "at": "2026-09-09T22:41:42Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at a4a456d"
+    },
+    {
+     "at": "2026-09-09T22:41:42Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0016: a stale precondition at step 3 restores steps 0..2 byte-for-byte and names the step; an unrestorable path would be reported as explicit partial state"
+    }
+   ],
+   "status_changed_on": "2026-09-09T22:41:42Z"
   },
   {
    "id": "IMP-EV-0017",
@@ -7510,8 +7607,57 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0031",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0031_org_policy_blocks_the_provider_despite_the_request",
+    "test:qual_ev_0096_0116_0133_0044_0031_tool_surface_is_compiled_from_support_and_policy",
+    "run:gha-34413048026",
+    "commit:1b1d10f",
+    "commit:a4a456d",
+    "artifact:evidence/m2/IMP-EV-0031/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0031/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0031/ci-run-34413048026.json",
+    "artifact:evidence/m2/IMP-EV-0031/ci-run-34413048026-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T22:41:45Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: IMPLEMENTED in this batch"
+    },
+    {
+     "at": "2026-09-09T22:41:45Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "M2 backlog batch 2: a blocked provider/model/endpoint is refused before any bytes leave, whatever effort/tier/model the request names"
+    },
+    {
+     "at": "2026-09-09T22:41:45Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the Core surface / tool registry / gateway; exercised by the workspace test suite on hosted CI"
+    },
+    {
+     "at": "2026-09-09T22:41:45Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real filesystem, real git, real Core over the socket, real fake-provider HTTP"
+    },
+    {
+     "at": "2026-09-09T22:41:45Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at a4a456d"
+    },
+    {
+     "at": "2026-09-09T22:41:45Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0031: a blocked provider/model/endpoint is refused before any bytes leave, whatever effort/tier/model the request names"
+    }
+   ],
+   "status_changed_on": "2026-09-09T22:41:45Z"
   },
   {
    "id": "IMP-EV-0032",
@@ -7768,8 +7914,56 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0044",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0096_0116_0133_0044_0031_tool_surface_is_compiled_from_support_and_policy",
+    "run:gha-34413048026",
+    "commit:1b1d10f",
+    "commit:a4a456d",
+    "artifact:evidence/m2/IMP-EV-0044/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0044/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0044/ci-run-34413048026.json",
+    "artifact:evidence/m2/IMP-EV-0044/ci-run-34413048026-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T22:41:44Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: IMPLEMENTED in this batch; the browser consumer itself is deferred (REQ-EV-0088/0147)"
+    },
+    {
+     "at": "2026-09-09T22:41:44Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "M2 backlog batch 2: the model naming shell.exec without a broker gets a typed refusal; no ToolCallProposed exists for it"
+    },
+    {
+     "at": "2026-09-09T22:41:45Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the Core surface / tool registry / gateway; exercised by the workspace test suite on hosted CI"
+    },
+    {
+     "at": "2026-09-09T22:41:45Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real filesystem, real git, real Core over the socket, real fake-provider HTTP"
+    },
+    {
+     "at": "2026-09-09T22:41:45Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at a4a456d"
+    },
+    {
+     "at": "2026-09-09T22:41:45Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0044: the model naming shell.exec without a broker gets a typed refusal; no ToolCallProposed exists for it"
+    }
+   ],
+   "status_changed_on": "2026-09-09T22:41:45Z"
   },
   {
    "id": "IMP-EV-0045",
@@ -8130,8 +8324,57 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0064",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0064_0065_typed_undo_restores_inverse_actions_and_a_user_edit_blocks_the_revert",
+    "test:cli_drives_a_real_core_end_to_end",
+    "run:gha-34413048026",
+    "commit:1b1d10f",
+    "commit:a4a456d",
+    "artifact:evidence/m2/IMP-EV-0064/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0064/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0064/ci-run-34413048026.json",
+    "artifact:evidence/m2/IMP-EV-0064/ci-run-34413048026-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T22:41:42Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: IMPLEMENTED in this batch"
+    },
+    {
+     "at": "2026-09-09T22:41:43Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "M2 backlog batch 2: delete the created, restore the deleted, replace the modified; unrelated user edits untouched; undo lands its own FileChanged events"
+    },
+    {
+     "at": "2026-09-09T22:41:43Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the Core surface / tool registry / gateway; exercised by the workspace test suite on hosted CI"
+    },
+    {
+     "at": "2026-09-09T22:41:43Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real filesystem, real git, real Core over the socket, real fake-provider HTTP"
+    },
+    {
+     "at": "2026-09-09T22:41:43Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at a4a456d"
+    },
+    {
+     "at": "2026-09-09T22:41:43Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0064: delete the created, restore the deleted, replace the modified; unrelated user edits untouched; undo lands its own FileChanged events"
+    }
+   ],
+   "status_changed_on": "2026-09-09T22:41:43Z"
   },
   {
    "id": "IMP-EV-0065",
@@ -8144,8 +8387,56 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0065",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0064_0065_typed_undo_restores_inverse_actions_and_a_user_edit_blocks_the_revert",
+    "run:gha-34413048026",
+    "commit:1b1d10f",
+    "commit:a4a456d",
+    "artifact:evidence/m2/IMP-EV-0065/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0065/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0065/ci-run-34413048026.json",
+    "artifact:evidence/m2/IMP-EV-0065/ci-run-34413048026-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T22:41:43Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: IMPLEMENTED in this batch"
+    },
+    {
+     "at": "2026-09-09T22:41:43Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "M2 backlog batch 2: a user edit after the agent's change refuses the revert with USER_EDITED and writes nothing"
+    },
+    {
+     "at": "2026-09-09T22:41:43Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the Core surface / tool registry / gateway; exercised by the workspace test suite on hosted CI"
+    },
+    {
+     "at": "2026-09-09T22:41:43Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real filesystem, real git, real Core over the socket, real fake-provider HTTP"
+    },
+    {
+     "at": "2026-09-09T22:41:43Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at a4a456d"
+    },
+    {
+     "at": "2026-09-09T22:41:43Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0065: a user edit after the agent's change refuses the revert with USER_EDITED and writes nothing"
+    }
+   ],
+   "status_changed_on": "2026-09-09T22:41:43Z"
   },
   {
    "id": "IMP-EV-0066",
@@ -8373,8 +8664,57 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0071",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0071_secret_in_patch_is_denied_with_evidence",
+    "test:m2_8_verification_engine_gates_completion_on_real_cargo_fixture",
+    "run:gha-34413048026",
+    "commit:1b1d10f",
+    "commit:a4a456d",
+    "artifact:evidence/m2/IMP-EV-0071/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0071/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0071/ci-run-34413048026.json",
+    "artifact:evidence/m2/IMP-EV-0071/ci-run-34413048026-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T22:41:43Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (DI-5 existed); named qualification added"
+    },
+    {
+     "at": "2026-09-09T22:41:43Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "M2 backlog batch 2: a credential-like token in a patch is DI-5 DENY with evidence naming the file and never echoing the secret; the runtime refuses DENY at the TRANSACTION stage (M2.8)"
+    },
+    {
+     "at": "2026-09-09T22:41:43Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the Core surface / tool registry / gateway; exercised by the workspace test suite on hosted CI"
+    },
+    {
+     "at": "2026-09-09T22:41:43Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real filesystem, real git, real Core over the socket, real fake-provider HTTP"
+    },
+    {
+     "at": "2026-09-09T22:41:43Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at a4a456d"
+    },
+    {
+     "at": "2026-09-09T22:41:43Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0071: a credential-like token in a patch is DI-5 DENY with evidence naming the file and never echoing the secret; the runtime refuses DENY at the TRANSACTION stage (M2.8)"
+    }
+   ],
+   "status_changed_on": "2026-09-09T22:41:43Z"
   },
   {
    "id": "IMP-EV-0072",
@@ -8875,8 +9215,56 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0096",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0096_0116_0133_0044_0031_tool_surface_is_compiled_from_support_and_policy",
+    "run:gha-34413048026",
+    "commit:1b1d10f",
+    "commit:a4a456d",
+    "artifact:evidence/m2/IMP-EV-0096/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0096/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0096/ci-run-34413048026.json",
+    "artifact:evidence/m2/IMP-EV-0096/ci-run-34413048026-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T22:41:43Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: IMPLEMENTED in this batch (was: every registered tool projected)"
+    },
+    {
+     "at": "2026-09-09T22:41:44Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "M2 backlog batch 2: local_trusted vs review_isolated surfaces differ exactly by the tools the lease does not carry; shell tools absent without the broker"
+    },
+    {
+     "at": "2026-09-09T22:41:44Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the Core surface / tool registry / gateway; exercised by the workspace test suite on hosted CI"
+    },
+    {
+     "at": "2026-09-09T22:41:44Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real filesystem, real git, real Core over the socket, real fake-provider HTTP"
+    },
+    {
+     "at": "2026-09-09T22:41:44Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at a4a456d"
+    },
+    {
+     "at": "2026-09-09T22:41:44Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0096: local_trusted vs review_isolated surfaces differ exactly by the tools the lease does not carry; shell tools absent without the broker"
+    }
+   ],
+   "status_changed_on": "2026-09-09T22:41:44Z"
   },
   {
    "id": "IMP-EV-0097",
@@ -9214,8 +9602,56 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0106",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0106_every_write_lands_a_revision_bound_file_changed_event_matching_the_review_bundle",
+    "run:gha-34413048026",
+    "commit:1b1d10f",
+    "commit:a4a456d",
+    "artifact:evidence/m2/IMP-EV-0106/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0106/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0106/ci-run-34413048026.json",
+    "artifact:evidence/m2/IMP-EV-0106/ci-run-34413048026-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T22:41:41Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: IMPLEMENTED in this batch (was NOT-FOUND: writes produced only a tool result)"
+    },
+    {
+     "at": "2026-09-09T22:41:41Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "M2 backlog batch 2: every successful change.apply/change.batch lands FileChanged with revision before/after and refs; the review bundle's content refs and hunk lines equal the evidence diff"
+    },
+    {
+     "at": "2026-09-09T22:41:42Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the Core surface / tool registry / gateway; exercised by the workspace test suite on hosted CI"
+    },
+    {
+     "at": "2026-09-09T22:41:42Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real filesystem, real git, real Core over the socket, real fake-provider HTTP"
+    },
+    {
+     "at": "2026-09-09T22:41:42Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at a4a456d"
+    },
+    {
+     "at": "2026-09-09T22:41:42Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0106: every successful change.apply/change.batch lands FileChanged with revision before/after and refs; the review bundle's content refs and hunk lines equal the evidence diff"
+    }
+   ],
+   "status_changed_on": "2026-09-09T22:41:42Z"
   },
   {
    "id": "IMP-EV-0107",
@@ -9472,8 +9908,56 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0116",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0096_0116_0133_0044_0031_tool_surface_is_compiled_from_support_and_policy",
+    "run:gha-34413048026",
+    "commit:1b1d10f",
+    "commit:a4a456d",
+    "artifact:evidence/m2/IMP-EV-0116/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0116/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0116/ci-run-34413048026.json",
+    "artifact:evidence/m2/IMP-EV-0116/ci-run-34413048026-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T22:41:44Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: IMPLEMENTED in this batch"
+    },
+    {
+     "at": "2026-09-09T22:41:44Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "M2 backlog batch 2: projected schema bytes are below the eager projection of the host list (printed as QUAL-EV-0116 in the test log)"
+    },
+    {
+     "at": "2026-09-09T22:41:44Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the Core surface / tool registry / gateway; exercised by the workspace test suite on hosted CI"
+    },
+    {
+     "at": "2026-09-09T22:41:44Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real filesystem, real git, real Core over the socket, real fake-provider HTTP"
+    },
+    {
+     "at": "2026-09-09T22:41:44Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at a4a456d"
+    },
+    {
+     "at": "2026-09-09T22:41:44Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0116: projected schema bytes are below the eager projection of the host list (printed as QUAL-EV-0116 in the test log)"
+    }
+   ],
+   "status_changed_on": "2026-09-09T22:41:44Z"
   },
   {
    "id": "IMP-EV-0117",
@@ -9892,8 +10376,56 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0133",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0096_0116_0133_0044_0031_tool_surface_is_compiled_from_support_and_policy",
+    "run:gha-34413048026",
+    "commit:1b1d10f",
+    "commit:a4a456d",
+    "artifact:evidence/m2/IMP-EV-0133/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0133/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0133/ci-run-34413048026.json",
+    "artifact:evidence/m2/IMP-EV-0133/ci-run-34413048026-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T22:41:44Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: IMPLEMENTED in this batch"
+    },
+    {
+     "at": "2026-09-09T22:41:44Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "M2 backlog batch 2: a Core started without the broker binary advertises no shell.exec/test.run to clients or the model"
+    },
+    {
+     "at": "2026-09-09T22:41:44Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the Core surface / tool registry / gateway; exercised by the workspace test suite on hosted CI"
+    },
+    {
+     "at": "2026-09-09T22:41:44Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real filesystem, real git, real Core over the socket, real fake-provider HTTP"
+    },
+    {
+     "at": "2026-09-09T22:41:44Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at a4a456d"
+    },
+    {
+     "at": "2026-09-09T22:41:44Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0133: a Core started without the broker binary advertises no shell.exec/test.run to clients or the model"
+    }
+   ],
+   "status_changed_on": "2026-09-09T22:41:44Z"
   },
   {
    "id": "IMP-EV-0134",
@@ -11317,8 +11849,56 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0217",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0217_compatibility_matrix_covers_every_registered_tool_with_owner_effect_and_test",
+    "run:gha-34413048026",
+    "commit:1b1d10f",
+    "commit:a4a456d",
+    "artifact:evidence/m2/IMP-EV-0217/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0217/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0217/ci-run-34413048026.json",
+    "artifact:evidence/m2/IMP-EV-0217/ci-run-34413048026-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-09T22:41:45Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: IMPLEMENTED in this batch"
+    },
+    {
+     "at": "2026-09-09T22:41:45Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "M2 backlog batch 2: every registered tool has a row with owner, effect equal to the registered class, capabilities, source behaviors and an existing qualifying test; no stale rows"
+    },
+    {
+     "at": "2026-09-09T22:41:45Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the Core surface / tool registry / gateway; exercised by the workspace test suite on hosted CI"
+    },
+    {
+     "at": "2026-09-09T22:41:45Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real filesystem, real git, real Core over the socket, real fake-provider HTTP"
+    },
+    {
+     "at": "2026-09-09T22:41:45Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at a4a456d"
+    },
+    {
+     "at": "2026-09-09T22:41:45Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0217: every registered tool has a row with owner, effect equal to the registered class, capabilities, source behaviors and an existing qualifying test; no stale rows"
+    }
+   ],
+   "status_changed_on": "2026-09-09T22:41:45Z"
   },
   {
    "id": "IMP-EV-0218",

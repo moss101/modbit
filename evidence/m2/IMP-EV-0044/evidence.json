@@ -1,0 +1,23 @@
+{
+ "task": "IMP-EV-0044",
+ "requirement": "REQ-EV-0044",
+ "qual": "QUAL-EV-0044",
+ "tests": [
+  "qual_ev_0096_0116_0133_0044_0031_tool_surface_is_compiled_from_support_and_policy"
+ ],
+ "batch_commits": [
+  "1b1d10f",
+  "a4a456d"
+ ],
+ "runs": [
+  {
+   "id": "gha-34413048026",
+   "kind": "hosted CI on a4a456d",
+   "result": "PASS: twelve jobs green on macOS, Linux and Windows (run 34411835704 on 1b1d10f failed the CLI undo smoke on Windows: the Workspace aggregate id differed between the canonical root and the task's stored root; fixed in a4a456d)",
+   "url": "https://github.com/moss101/modbit/actions/runs/34413048026",
+   "log": "ci-run-34413048026.json, ci-run-34413048026-tests.log"
+  }
+ ],
+ "proof": "the model naming shell.exec without a broker gets a typed refusal; no ToolCallProposed exists for it",
+ "audit": "IMPLEMENTED in this batch; the browser consumer itself is deferred (REQ-EV-0088/0147)"
+}

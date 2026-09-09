@@ -1,0 +1,24 @@
+{
+ "task": "IMP-EV-0071",
+ "requirement": "REQ-EV-0071",
+ "qual": "QUAL-EV-0071",
+ "tests": [
+  "qual_ev_0071_secret_in_patch_is_denied_with_evidence",
+  "m2_8_verification_engine_gates_completion_on_real_cargo_fixture"
+ ],
+ "batch_commits": [
+  "1b1d10f",
+  "a4a456d"
+ ],
+ "runs": [
+  {
+   "id": "gha-34413048026",
+   "kind": "hosted CI on a4a456d",
+   "result": "PASS: twelve jobs green on macOS, Linux and Windows (run 34411835704 on 1b1d10f failed the CLI undo smoke on Windows: the Workspace aggregate id differed between the canonical root and the task's stored root; fixed in a4a456d)",
+   "url": "https://github.com/moss101/modbit/actions/runs/34413048026",
+   "log": "ci-run-34413048026.json, ci-run-34413048026-tests.log"
+  }
+ ],
+ "proof": "a credential-like token in a patch is DI-5 DENY with evidence naming the file and never echoing the secret; the runtime refuses DENY at the TRANSACTION stage (M2.8)",
+ "audit": "FOUND (DI-5 existed); named qualification added"
+}
