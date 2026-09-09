@@ -1542,8 +1542,18 @@
    "milestone": "M2",
    "order": 4,
    "source": "docs/43",
-   "status": "IMPLEMENTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "test:m2_5_capability_kernel_gates_destructive_tools_behind_intent_bound_approvals",
+    "test:qual_ev_0045_autonomous_profile_cannot_exceed_or_ask_past_its_ceiling",
+    "test:qual_ev_0091_project_allow_cannot_weaken_admin_deny",
+    "test:qual_ev_0093_trusted_workspace_cannot_use_denied_network_or_secret",
+    "run:gha-34363127873",
+    "commit:4b42979",
+    "commit:17a12ea",
+    "artifact:evidence/m2/M2.5/evidence.json",
+    "artifact:evidence/m2/M2.5/TASK_CARD.md"
+   ],
    "notes": [
     {
      "at": "2026-09-09T14:13:52Z",
@@ -1556,9 +1566,33 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "modbit-policy kernel+ledger; domain Approval/CapabilityLease aggregates; store schema v5; Core InvokeTool binds the kernel, ListApprovals/ResolveApproval/EmergencyStop/GetEffectReceipts/GetCapabilityLeases; CLI subcommands"
+    },
+    {
+     "at": "2026-09-09T14:25:23Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "InvokeTool binds the kernel to the task lease, the call's approval and the session stop state; approvals/stop/receipts/leases reachable over the SurfaceProtocol and the CLI"
+    },
+    {
+     "at": "2026-09-09T14:25:23Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Kernel, ledger, pipeline, Core socket and CLI faults pass on hosted macOS/Linux/Windows"
+    },
+    {
+     "at": "2026-09-09T14:25:23Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "Hosted CI run 34363127873 green on three platforms"
+    },
+    {
+     "at": "2026-09-09T14:25:23Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Sealed with hosted CI evidence"
     }
    ],
-   "status_changed_on": "2026-09-09T14:13:52Z"
+   "status_changed_on": "2026-09-09T14:25:23Z"
   },
   {
    "id": "M2.6",

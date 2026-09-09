@@ -259,8 +259,11 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m2/M2.4/ci-run-34359068152.json` | retained evidence | 32955 | `d066d5e11a5fe8f72d98333b510919403bbce424b015ea1519d3b908591b9521` |
 | `evidence/m2/M2.4/evidence.json` | retained evidence | 1586 | `f02a35fdebfe98e87f3d563bda83f4bdcb8e462dbfaa1278879f50cd0b9d6721` |
 | `evidence/m2/M2.5/TASK_CARD.md` | retained evidence | 4575 | `a09d1c31ffa4aae21d7ebd05e55a122bd02db1ddda47ee050ba848f7c4c8669b` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 40944 | `a2e4858d983be61f1b9c022a81af3aa2c9e3763d1a7707dd7686ebe444ccb816` |
-| `graph/project-graph.json` | project driver graph with live status | 1044764 | `8e6a76e71e392085ec7038c65c73cda6a74adad3ed95ab1d7da32c611d76803c` |
+| `evidence/m2/M2.5/ci-run-34363127873-tests.log` | retained evidence | 19342 | `4b0565cf472772b46799d1c0b3b6bc6fea7dbbdf0d03876b096f50df053654f4` |
+| `evidence/m2/M2.5/ci-run-34363127873.json` | retained evidence | 33633 | `da103667c9053f60e93552c76619a2dfb51096fb7163ad9b6c2166550753d8bf` |
+| `evidence/m2/M2.5/evidence.json` | retained evidence | 1704 | `d119fa227b58033113ca516a86e2027aa0aaf05242df47f6661235d282720b33` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 40940 | `d7081c5119473e94801aa78a99b3b905e2e11afc6f484de0113639be0add9577` |
+| `graph/project-graph.json` | project driver graph with live status | 1046038 | `c28dff1975569957ab0289b42fe9c5fd2c883cef7f91b93df5d32f4b705e7d5c` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 46807 | `b013ef376845b2152e88f07abc7152522c4240662943fa6042413fc0a1626d45` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 17596 | `5c9b7a782d245223726f860ca583d766929a6f5662b644adebee64d257ad426b` |
