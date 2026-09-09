@@ -132,6 +132,24 @@ export declare type EventEnvelope = Message<"modbit.v1.EventEnvelope"> & {
    * @generated from field: google.protobuf.Timestamp recorded_at = 10;
    */
   recordedAt?: Timestamp | undefined;
+
+  /**
+   * Aggregate identity and task lineage (additive, M1.4): clients reduce
+   * events per aggregate without parsing payloads.
+   *
+   * @generated from field: string aggregate_type = 11;
+   */
+  aggregateType: string;
+
+  /**
+   * @generated from field: modbit.v1.Id aggregate_id = 12;
+   */
+  aggregateId?: Id | undefined;
+
+  /**
+   * @generated from field: optional modbit.v1.Id task_id = 13;
+   */
+  taskId?: Id | undefined;
 };
 
 /**

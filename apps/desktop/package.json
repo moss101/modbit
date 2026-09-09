@@ -2,18 +2,35 @@
   "name": "@modbit/desktop",
   "version": "0.0.0",
   "private": true,
-  "description": "Electron main, preload and React renderer behind SurfaceProtocol (shell arrives with M1.4)",
+  "description": "Electron main, preload and React renderer behind SurfaceProtocol (docs/32); hardened shell, Fleet and New Task screens against a real local Core",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
-    "test": "node --test \"src/**/*.test.ts\""
+    "build": "node build.mjs",
+    "test": "node --test \"src/**/*.test.ts\"",
+    "e2e": "node build.mjs && playwright test -c e2e/playwright.config.ts",
+    "start": "node build.mjs && electron dist/main/main.cjs"
   },
   "modbit": {
     "owner": "desktop",
     "canonical": [],
     "capabilities": []
-  }
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "2.14.1",
+    "@modbit/surface-protocol": "workspace:*",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.7",
+    "electron": "44.3.0",
+    "esbuild": "0.28.2"
+  },
+  "main": "dist/main/main.cjs"
 }

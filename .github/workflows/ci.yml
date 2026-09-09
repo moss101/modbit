@@ -78,6 +78,47 @@ jobs:
       - name: Test
         run: pnpm test
 
+  desktop-e2e:
+    name: desktop E2E — real Electron app against real modbit-core (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Install pinned Rust toolchain (rust-toolchain.toml)
+        run: rustup show
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4 (reads packageManager)
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build the real Core
+        run: cargo build --locked -p modbit-core
+      - name: Build desktop bundles
+        run: pnpm --filter @modbit/desktop build
+      - name: Playwright drives the Electron app (Linux under xvfb)
+        shell: bash
+        env:
+          MODBIT_CORE_BIN: ${{ github.workspace }}/target/debug/modbit-core${{ runner.os == 'Windows' && '.exe' || '' }}
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo apt-get update -qq && sudo apt-get install -y -qq xvfb > /dev/null
+            xvfb-run -a pnpm --filter @modbit/desktop exec playwright test -c e2e/playwright.config.ts
+          else
+            pnpm --filter @modbit/desktop exec playwright test -c e2e/playwright.config.ts
+          fi
+      - name: Upload traces on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: desktop-e2e-traces-${{ matrix.os }}
+          path: apps/desktop/test-results
+          if-no-files-found: ignore
+
   protocol-roundtrip:
     name: protocol Rust<->TS round trip and generated-code freshness (M0.3)
     runs-on: ubuntu-latest
@@ -135,7 +176,7 @@ jobs:
 
   ci-compatible:
     name: CI_COMPATIBLE summary (not release-grade)
-    needs: [rust, node, protocol-roundtrip, locked-files, dossier]
+    needs: [rust, node, desktop-e2e, protocol-roundtrip, locked-files, dossier]
     runs-on: ubuntu-latest
     steps:
       - name: Record platform label

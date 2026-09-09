@@ -8,3 +8,7 @@ packages:
 # @bufbuild/buf installs its pinned CLI binary in postinstall.
 allowBuilds:
   "@bufbuild/buf": true
+  electron: true
+  esbuild: true
+minimumReleaseAgeExclude:
+  - electron@44.3.0

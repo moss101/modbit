@@ -393,6 +393,9 @@ fn to_wire(ev: &StoredEvent) -> StoredEventFrame {
             event_type: e.event_type.clone(),
             schema_version: e.schema_version,
             payload,
+            aggregate_type: e.aggregate_type.as_str().to_owned(),
+            aggregate_id: Some(wire_id(&e.aggregate_id)),
+            task_id: e.task_id.map(|t| wire_id(t.as_bytes())),
             recorded_at: Some(prost_types::Timestamp {
                 seconds: e.occurred_at.millis().div_euclid(1000),
                 nanos: (e.occurred_at.millis().rem_euclid(1000) * 1_000_000) as i32,

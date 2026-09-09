@@ -90,6 +90,9 @@ pub fn samples() -> Vec<Sample> {
             seconds: 1_757_289_601,
             nanos: 0,
         }),
+        aggregate_type: "task".into(),
+        aggregate_id: id(0x77),
+        task_id: id(0x77),
     };
     let request = ToolCallRequest {
         tool_call_id: id(0x77),
@@ -154,7 +157,8 @@ pub fn samples() -> Vec<Sample> {
                 "eventId": idhex(0x55), "tenantId": idhex(0x22), "sessionId": idhex(0x44),
                 "runId": idhex(0x66), "sequence": "9007199254740993", "causationId": null,
                 "eventType": "TaskCreated", "schemaVersion": 1, "payload": "",
-                "recordedAt": {"seconds": "1757289601", "nanos": 0}
+                "recordedAt": {"seconds": "1757289601", "nanos": 0},
+                "aggregateType": "task", "aggregateId": idhex(0x77), "taskId": idhex(0x77)
             }),
             decode: reencode::<EventEnvelope>,
         },

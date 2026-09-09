@@ -1,0 +1,7 @@
+
+Running 2 tests using 1 worker
+
+  ✓  1 e2e/fleet.spec.ts:24:1 › new task renders from Core ids, fleet reduces Core events, and survives Core kill and app restart (1.6s)
+  ✓  2 e2e/fleet.spec.ts:71:1 › renderer messages with invalid arguments are rejected by main (REQ-EV-0103) (333ms)
+
+  2 passed (2.1s)

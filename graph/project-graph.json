@@ -1253,8 +1253,24 @@
    "milestone": "M1",
    "order": 3,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-09T05:21:55Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: NOT-FOUND. apps/desktop is an M0.1 shell; no Electron main/preload/renderer, no SurfaceProtocol TS client."
+    },
+    {
+     "at": "2026-09-09T05:54:24Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "Electron main/preload/renderer, Node SurfaceProtocol client, Core supervisor with restart, Fleet + New Task screens, Playwright E2E incl. Core kill/recovery and app restart passing locally."
+    }
+   ],
+   "owner_agent": "claude",
+   "status_changed_on": "2026-09-09T05:54:24Z"
   },
   {
    "id": "M1.5",

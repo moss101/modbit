@@ -1,5 +1,7 @@
 {
   "expected": {
+    "aggregateId": "77777777777777777777777777777777",
+    "aggregateType": "task",
     "causationId": null,
     "eventId": "55555555555555555555555555555555",
     "eventType": "TaskCreated",
@@ -12,6 +14,7 @@
     "schemaVersion": 1,
     "sequence": "9007199254740993",
     "sessionId": "44444444444444444444444444444444",
+    "taskId": "77777777777777777777777777777777",
     "tenantId": "22222222222222222222222222222222"
   },
   "type": "modbit.v1.EventEnvelope"

@@ -33,4 +33,9 @@ message EventEnvelope {
   uint32 schema_version = 8;
   bytes payload = 9;
   google.protobuf.Timestamp recorded_at = 10;
+  // Aggregate identity and task lineage (additive, M1.4): clients reduce
+  // events per aggregate without parsing payloads.
+  string aggregate_type = 11;
+  Id aggregate_id = 12;
+  optional Id task_id = 13;
 }

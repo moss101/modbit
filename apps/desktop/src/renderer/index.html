@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Modbit</title>
+    <style>
+      :root { color-scheme: light dark; --bg: #f6f7f9; --fg: #16181d; --muted: #5d6570; --card: #ffffff; --line: #d9dde3; --accent: #2456d8; --warn: #a15c00; --bad: #b3261e; --ok: #1b7f3b; }
+      @media (prefers-color-scheme: dark) { :root { --bg: #111318; --fg: #e8eaee; --muted: #9aa3ad; --card: #1b1e25; --line: #2c313a; --accent: #7aa2ff; --warn: #ffb454; --bad: #ff6b6b; --ok: #5ad27f; } }
+      body { margin: 0; font: 14px/1.4 system-ui, sans-serif; background: var(--bg); color: var(--fg); }
+      header { display: flex; align-items: center; gap: 16px; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--card); }
+      header h1 { font-size: 16px; margin: 0; }
+      .banner { padding: 10px 20px; border-bottom: 1px solid var(--line); }
+      .banner[data-kind="restarting"] { background: color-mix(in srgb, var(--warn) 12%, var(--card)); }
+      .banner[data-kind="recovered"] { background: color-mix(in srgb, var(--ok) 12%, var(--card)); }
+      .banner[data-kind="error"] { background: color-mix(in srgb, var(--bad) 12%, var(--card)); }
+      main { display: grid; grid-template-columns: 340px 1fr; gap: 20px; padding: 20px; }
+      form.composer { display: flex; flex-direction: column; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 16px; }
+      textarea { min-height: 120px; font: inherit; padding: 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); }
+      button { font: inherit; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--accent); color: white; cursor: pointer; }
+      button:disabled { opacity: 0.5; cursor: default; }
+      .fleet { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+      section.column { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px; min-height: 120px; }
+      section.column h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin: 0 0 8px; }
+      article.card { border: 1px solid var(--line); border-radius: 6px; padding: 10px; margin-bottom: 8px; }
+      article.card:focus { outline: 2px solid var(--accent); }
+      .meta { color: var(--muted); font-size: 12px; }
+      .empty { color: var(--muted); font-style: italic; }
+      .status { margin-left: auto; color: var(--muted); font-size: 12px; }
+      .sr-only { position: absolute; left: -9999px; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script src="./index.js"></script>
+  </body>
+</html>
