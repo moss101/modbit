@@ -1482,8 +1482,17 @@
    "milestone": "M2",
    "order": 3,
    "source": "docs/43",
-   "status": "IMPLEMENTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "test:m2_4_invoke_tool_runs_direct_tools_through_registry_policy_and_event_log",
+    "test:qual_ev_0239_0080_denial_is_monotonic_and_argument_text_cannot_bypass_policy",
+    "test:cli_drives_a_real_core_end_to_end",
+    "run:gha-34359068152",
+    "commit:44e508c",
+    "commit:b6ef128",
+    "artifact:evidence/m2/M2.4/evidence.json",
+    "artifact:evidence/m2/M2.4/TASK_CARD.md"
+   ],
    "notes": [
     {
      "at": "2026-09-09T12:55:57Z",
@@ -1496,10 +1505,34 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "crates/tools registry+pipeline+direct tools; Core ListTools/InvokeTool with ToolCall events; CLI tool list/invoke; execd stdin tether"
+    },
+    {
+     "at": "2026-09-09T13:53:12Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Core ListTools/InvokeTool are the only tool path; CLI tool list/invoke; desktop E2E job builds the broker"
+    },
+    {
+     "at": "2026-09-09T13:53:12Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Real repository, real broker, real socket: schema, policy, protected path, replay, lease and event-trail faults pass on hosted macOS/Linux/Windows"
+    },
+    {
+     "at": "2026-09-09T13:53:12Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "Hosted CI run 34359068152 green on three platforms"
+    },
+    {
+     "at": "2026-09-09T13:53:12Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Sealed with hosted CI evidence"
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-09-09T13:36:04Z"
+   "status_changed_on": "2026-09-09T13:53:12Z"
   },
   {
    "id": "M2.5",

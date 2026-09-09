@@ -1,0 +1,79 @@
+desktop E2E — real Electron app against real modbit-core (macos-latest) Playwright drives the Electron app (Linux under xvfb)	2026-09-09T13:52:00.1370920Z   ✓  1 e2e/fleet.spec.ts:24:1 › new task renders from Core ids, fleet reduces Core events, and survives Core kill and app restart (11.5s)
+desktop E2E — real Electron app against real modbit-core (macos-latest) Playwright drives the Electron app (Linux under xvfb)	2026-09-09T13:52:01.2096710Z   ✓  2 e2e/fleet.spec.ts:74:1 › renderer messages with invalid arguments are rejected by main (REQ-EV-0103) (1.1s)
+rust CI_COMPATIBLE (macos-latest) UNKNOWN STEP	2026-09-09T13:45:55.2635140Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (macos-latest) UNKNOWN STEP	2026-09-09T13:45:55.7902230Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.51s
+rust CI_COMPATIBLE (macos-latest) UNKNOWN STEP	2026-09-09T13:45:55.8742760Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+rust CI_COMPATIBLE (macos-latest) UNKNOWN STEP	2026-09-09T13:45:56.8629010Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.97s
+rust CI_COMPATIBLE (macos-latest) UNKNOWN STEP	2026-09-09T13:45:57.0618840Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.20s
+rust CI_COMPATIBLE (macos-latest) UNKNOWN STEP	2026-09-09T13:45:59.1685860Z test cli_drives_a_real_core_end_to_end ... ok
+rust CI_COMPATIBLE (macos-latest) UNKNOWN STEP	2026-09-09T13:45:59.1694690Z test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.09s
+rust CI_COMPATIBLE (macos-latest) UNKNOWN STEP	2026-09-09T13:46:00.2546650Z test m2_4_invoke_tool_runs_direct_tools_through_registry_policy_and_event_log ... ok
+rust CI_COMPATIBLE (macos-latest) UNKNOWN STEP	2026-09-09T13:46:00.2723850Z test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.01s
+rust CI_COMPATIBLE (macos-latest) UNKNOWN STEP	2026-09-09T13:46:00.2902430Z test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (macos-latest) UNKNOWN STEP	2026-09-09T13:46:00.2939260Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (macos-latest) UNKNOWN STEP	2026-09-09T13:46:00.3047290Z test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (macos-latest) UNKNOWN STEP	2026-09-09T13:46:00.4330390Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+rust CI_COMPATIBLE (macos-latest) UNKNOWN STEP	2026-09-09T13:46:05.3705660Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.92s
+rust CI_COMPATIBLE (macos-latest) UNKNOWN STEP	2026-09-09T13:46:06.0366140Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.64s
+rust CI_COMPATIBLE (macos-latest) UNKNOWN STEP	2026-09-09T13:46:06.5429700Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.46s
+rust CI_COMPATIBLE (macos-latest) UNKNOWN STEP	2026-09-09T13:46:06.5860500Z test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (macos-latest) UNKNOWN STEP	2026-09-09T13:46:06.6308760Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+rust CI_COMPATIBLE (macos-latest) UNKNOWN STEP	2026-09-09T13:46:06.9308170Z test qual_ev_0079_invalid_arguments_are_rejected_before_any_effector ... ok
+rust CI_COMPATIBLE (macos-latest) UNKNOWN STEP	2026-09-09T13:46:07.0896590Z test fs_change_and_git_tools_run_against_the_real_substrate_with_revision_binding ... ok
+rust CI_COMPATIBLE (macos-latest) UNKNOWN STEP	2026-09-09T13:46:07.1596280Z test shell_exec_and_test_run_go_through_the_real_broker ... ok
+rust CI_COMPATIBLE (macos-latest) UNKNOWN STEP	2026-09-09T13:46:07.1597020Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.41s
+rust CI_COMPATIBLE (macos-latest) UNKNOWN STEP	2026-09-09T13:46:07.3710690Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
+rust CI_COMPATIBLE (macos-latest) UNKNOWN STEP	2026-09-09T13:46:07.4106850Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (ubuntu-latest) UNKNOWN STEP	2026-09-09T13:45:40.0402381Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (ubuntu-latest) UNKNOWN STEP	2026-09-09T13:45:40.1558395Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+rust CI_COMPATIBLE (ubuntu-latest) UNKNOWN STEP	2026-09-09T13:45:40.2203546Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+rust CI_COMPATIBLE (ubuntu-latest) UNKNOWN STEP	2026-09-09T13:45:40.9144736Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.69s
+rust CI_COMPATIBLE (ubuntu-latest) UNKNOWN STEP	2026-09-09T13:45:41.1427068Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.23s
+rust CI_COMPATIBLE (ubuntu-latest) UNKNOWN STEP	2026-09-09T13:45:42.9464578Z test cli_drives_a_real_core_end_to_end ... ok
+rust CI_COMPATIBLE (ubuntu-latest) UNKNOWN STEP	2026-09-09T13:45:42.9465314Z test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.80s
+rust CI_COMPATIBLE (ubuntu-latest) UNKNOWN STEP	2026-09-09T13:45:43.6276972Z test m2_4_invoke_tool_runs_direct_tools_through_registry_policy_and_event_log ... ok
+rust CI_COMPATIBLE (ubuntu-latest) UNKNOWN STEP	2026-09-09T13:45:43.7396410Z test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.79s
+rust CI_COMPATIBLE (ubuntu-latest) UNKNOWN STEP	2026-09-09T13:45:43.7452145Z test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (ubuntu-latest) UNKNOWN STEP	2026-09-09T13:45:43.7462848Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (ubuntu-latest) UNKNOWN STEP	2026-09-09T13:45:43.7488879Z test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (ubuntu-latest) UNKNOWN STEP	2026-09-09T13:45:43.8369715Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+rust CI_COMPATIBLE (ubuntu-latest) UNKNOWN STEP	2026-09-09T13:45:55.2018987Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 11.36s
+rust CI_COMPATIBLE (ubuntu-latest) UNKNOWN STEP	2026-09-09T13:45:55.9760913Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.77s
+rust CI_COMPATIBLE (ubuntu-latest) UNKNOWN STEP	2026-09-09T13:45:56.0916553Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+rust CI_COMPATIBLE (ubuntu-latest) UNKNOWN STEP	2026-09-09T13:45:56.0975825Z test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (ubuntu-latest) UNKNOWN STEP	2026-09-09T13:45:56.1040504Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (ubuntu-latest) UNKNOWN STEP	2026-09-09T13:45:56.1572945Z test qual_ev_0079_invalid_arguments_are_rejected_before_any_effector ... ok
+rust CI_COMPATIBLE (ubuntu-latest) UNKNOWN STEP	2026-09-09T13:45:56.1967553Z test fs_change_and_git_tools_run_against_the_real_substrate_with_revision_binding ... ok
+rust CI_COMPATIBLE (ubuntu-latest) UNKNOWN STEP	2026-09-09T13:45:56.2701841Z test shell_exec_and_test_run_go_through_the_real_broker ... ok
+rust CI_COMPATIBLE (ubuntu-latest) UNKNOWN STEP	2026-09-09T13:45:56.2702654Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
+rust CI_COMPATIBLE (ubuntu-latest) UNKNOWN STEP	2026-09-09T13:45:56.3070353Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+rust CI_COMPATIBLE (ubuntu-latest) UNKNOWN STEP	2026-09-09T13:45:56.3116445Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+desktop E2E — real Electron app against real modbit-core (ubuntu-latest) UNKNOWN STEP	2026-09-09T13:45:45.6434156Z   ✓  1 e2e/fleet.spec.ts:24:1 › new task renders from Core ids, fleet reduces Core events, and survives Core kill and app restart (5.8s)
+desktop E2E — real Electron app against real modbit-core (ubuntu-latest) UNKNOWN STEP	2026-09-09T13:45:46.1827087Z   ✓  2 e2e/fleet.spec.ts:74:1 › renderer messages with invalid arguments are rejected by main (REQ-EV-0103) (528ms)
+desktop E2E — real Electron app against real modbit-core (windows-latest) UNKNOWN STEP	2026-09-09T13:47:20.5106970Z   ok 1 e2e\fleet.spec.ts:24:1 › new task renders from Core ids, fleet reduces Core events, and survives Core kill and app restart (12.1s)
+desktop E2E — real Electron app against real modbit-core (windows-latest) UNKNOWN STEP	2026-09-09T13:47:21.3249349Z   ok 2 e2e\fleet.spec.ts:74:1 › renderer messages with invalid arguments are rejected by main (REQ-EV-0103) (805ms)
+protocol Rust<->TS round trip and generated-code freshness (M0.3) UNKNOWN STEP	2026-09-09T13:45:39.0147039Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (windows-latest) UNKNOWN STEP	2026-09-09T13:47:32.4785564Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+rust CI_COMPATIBLE (windows-latest) UNKNOWN STEP	2026-09-09T13:47:38.1330423Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.62s
+rust CI_COMPATIBLE (windows-latest) UNKNOWN STEP	2026-09-09T13:47:38.3598530Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.21s
+rust CI_COMPATIBLE (windows-latest) UNKNOWN STEP	2026-09-09T13:47:44.1930426Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.82s
+rust CI_COMPATIBLE (windows-latest) UNKNOWN STEP	2026-09-09T13:47:44.7855568Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.58s
+rust CI_COMPATIBLE (windows-latest) UNKNOWN STEP	2026-09-09T13:47:47.9056448Z test cli_drives_a_real_core_end_to_end ... ok
+rust CI_COMPATIBLE (windows-latest) UNKNOWN STEP	2026-09-09T13:47:47.9057155Z test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.07s
+rust CI_COMPATIBLE (windows-latest) UNKNOWN STEP	2026-09-09T13:47:50.2578585Z test m2_4_invoke_tool_runs_direct_tools_through_registry_policy_and_event_log ... ok
+rust CI_COMPATIBLE (windows-latest) UNKNOWN STEP	2026-09-09T13:47:50.2579397Z test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.27s
+rust CI_COMPATIBLE (windows-latest) UNKNOWN STEP	2026-09-09T13:47:50.3009482Z test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (windows-latest) UNKNOWN STEP	2026-09-09T13:47:50.3146814Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (windows-latest) UNKNOWN STEP	2026-09-09T13:47:50.3407848Z test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (windows-latest) UNKNOWN STEP	2026-09-09T13:47:51.2526621Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.90s
+rust CI_COMPATIBLE (windows-latest) UNKNOWN STEP	2026-09-09T13:47:53.7807428Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.51s
+rust CI_COMPATIBLE (windows-latest) UNKNOWN STEP	2026-09-09T13:47:55.5600024Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.75s
+rust CI_COMPATIBLE (windows-latest) UNKNOWN STEP	2026-09-09T13:47:57.5451004Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.96s
+rust CI_COMPATIBLE (windows-latest) UNKNOWN STEP	2026-09-09T13:47:57.6007451Z test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (windows-latest) UNKNOWN STEP	2026-09-09T13:47:57.6440413Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (windows-latest) UNKNOWN STEP	2026-09-09T13:47:58.2673667Z test qual_ev_0079_invalid_arguments_are_rejected_before_any_effector ... ok
+rust CI_COMPATIBLE (windows-latest) UNKNOWN STEP	2026-09-09T13:47:58.8937198Z test fs_change_and_git_tools_run_against_the_real_substrate_with_revision_binding ... ok
+rust CI_COMPATIBLE (windows-latest) UNKNOWN STEP	2026-09-09T13:47:59.1038699Z test shell_exec_and_test_run_go_through_the_real_broker ... ok
+rust CI_COMPATIBLE (windows-latest) UNKNOWN STEP	2026-09-09T13:47:59.1039305Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.33s
+rust CI_COMPATIBLE (windows-latest) UNKNOWN STEP	2026-09-09T13:47:59.6512501Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.51s
+rust CI_COMPATIBLE (windows-latest) UNKNOWN STEP	2026-09-09T13:47:59.6965394Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
