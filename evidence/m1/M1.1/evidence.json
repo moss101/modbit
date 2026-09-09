@@ -1,0 +1,9 @@
+{
+  "task": "M1.1", "commit": "9e99043", "evidence_tier": "release-critical",
+  "runs": [
+    {"id": "gha-34311147323", "kind": "hosted CI on 9e99043", "result": "PASS: ten jobs green; modbit-domain 8 unit tests and modbit-event-store 5 real-SQLite tests (incl. hard-killed writer recovery, tamper/gap detection, newer-schema refusal) on macOS, Linux and Windows", "url": "https://github.com/moss101/modbit/actions/runs/34311147323", "log": "ci-run-34311147323.json, ci-run-34311147323-tests.log"},
+    {"id": "fault-hard-kill-writer", "kind": "writer process SIGKILLed mid-append after >=200 committed events; reopened store passes integrity_check, chain verifies, last row whole", "result": "PASS on three platforms (hosted) and locally"},
+    {"id": "fault-tamper", "kind": "forged payload row and deleted row", "result": "verify_aggregate reports Integrity error at the right sequence"}
+  ],
+  "acceptance": {"domain + event store": "PASS: state machines enforce doc 13 tables; store guarantees contiguous per-aggregate sequences, optimistic concurrency, hash chain, object refs, offset resume"}
+}

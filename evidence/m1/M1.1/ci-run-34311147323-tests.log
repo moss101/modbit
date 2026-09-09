@@ -1,0 +1,18 @@
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T04:29:57.7040400Z test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T04:29:57.7196360Z test newer_schema_is_refused ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T04:29:57.7315770Z test session_stream_resumes_from_offset_across_aggregates ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T04:29:57.7519020Z test tampered_row_fails_verification ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T04:29:57.7581430Z test append_read_chain_and_reopen_on_real_sqlite ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T04:29:58.0394370Z test hard_killed_writer_leaves_a_verifiable_prefix_and_no_torn_event ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T04:29:55.2778749Z test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T04:29:55.2966799Z test newer_schema_is_refused ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T04:29:55.2988353Z test session_stream_resumes_from_offset_across_aggregates ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T04:29:55.3099139Z test tampered_row_fails_verification ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T04:29:55.3157067Z test append_read_chain_and_reopen_on_real_sqlite ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T04:29:55.5202711Z test hard_killed_writer_leaves_a_verifiable_prefix_and_no_torn_event ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T04:30:30.0793479Z test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T04:30:30.8149497Z test newer_schema_is_refused ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T04:30:30.8255302Z test session_stream_resumes_from_offset_across_aggregates ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T04:30:30.9014443Z test append_read_chain_and_reopen_on_real_sqlite ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T04:30:31.2800761Z test tampered_row_fails_verification ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-09T04:30:32.3655837Z test hard_killed_writer_leaves_a_verifiable_prefix_and_no_torn_event ... ok

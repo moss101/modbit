@@ -192,15 +192,18 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m0/M0.4/evidence.json` | retained evidence | 1576 | `bdb12d74fc3c8e1f162a2a49b96d1006ba7d72c064614d6e8f1ee58a43a76f05` |
 | `evidence/m0/M0.4/inject-failure-duplicate-canonical-owner.log` | retained evidence | 553 | `09e52f7b1f7ebe0d69d05e28f83df42ed227828a6ffdbb5406f76fa8659afefb` |
 | `evidence/m1/M1.1/TASK_CARD.md` | retained evidence | 3834 | `18bd02ec3507b85c7d6b3179a4171ad7db28b03725c6652561405060f56fd826` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 40966 | `aa46699066136a7a9d5c36c9ca841c2d6976b231e3e3f3c9914e0d992762aa0e` |
-| `graph/project-graph.json` | project driver graph with live status | 1015658 | `0534c4fdca6c200d6239f76f8bb76c77f1471997747fbfc24916a242753422c9` |
+| `evidence/m1/M1.1/ci-run-34311147323-tests.log` | retained evidence | 3273 | `e7a9f998bfa13a0e9bfd3740a4bae800d105ae76efe0514862d04055cb187097` |
+| `evidence/m1/M1.1/ci-run-34311147323.json` | retained evidence | 904 | `f63e14257f2dcb858be866e0c76746fa265e6581a59e995e19f8c3f6dd39719a` |
+| `evidence/m1/M1.1/evidence.json` | retained evidence | 1102 | `d2204c954ad8d1acc7f508cc77ec47103aa3c86cf1cdee67be43892b1cc361fa` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 40962 | `c92491b88f500d36f382058b165b7726dea811c19130cae720b52a8290d8b7b4` |
+| `graph/project-graph.json` | project driver graph with live status | 1016305 | `e23d645ea56bdd117a0c02a98130b33dd6e0b372ef52ebea76de654679118c1d` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 45547 | `a56d91335f3d4bfcf2860f87d71f96548d508841a6d2e60c5c38e0f2dd466557` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 17596 | `5c9b7a782d245223726f860ca583d766929a6f5662b644adebee64d257ad426b` |
 | `tools/dossier_epr.py` | parses additive EPR authority and traceability | 9310 | `4b5e399ee1b4886662294e3780d7f0630195e29c8198256ff7719d5236591a18` |
 | `tools/dossier_px.py` | parses the additive product-extension ledger and phased release rules | 6931 | `0a7dd5bd5872fb1d959c56fd017bd3916062d0f60d1bc51b9abceddc134202e2` |
 | `tools/graph.py` | query/update graph | 36313 | `76f2a79fca3c305205f34573b94118c99511944833e8e602bf0eba7e2ac305cb` |
-| `tools/test_dossier.py` | copied-package integration and negative tests | 32559 | `db25a07e7177a032fea15c120a0b5dd857ea971867dfb7a4af8fe2f053ec5a97` |
+| `tools/test_dossier.py` | copied-package integration and negative tests | 32517 | `15dfa45b103300e7015e3b375abb3a2354effe58c9243a795fa8fa63a418ddea` |
 
 ## Rename map (V3 flat numbering → V3.1 `docs/`)
 

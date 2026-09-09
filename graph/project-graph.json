@@ -1115,8 +1115,14 @@
    "milestone": "M1",
    "order": 0,
    "source": "docs/43",
-   "status": "IMPLEMENTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-34311147323",
+    "commit:9e99043",
+    "artifact:evidence/m1/M1.1/evidence.json",
+    "artifact:evidence/m1/M1.1/TASK_CARD.md",
+    "test:hard_killed_writer_leaves_a_verifiable_prefix_and_no_torn_event"
+   ],
    "notes": [
     {
      "at": "2026-09-09T04:20:10Z",
@@ -1129,10 +1135,22 @@
      "from": "AUDITING",
      "to": "IMPLEMENTING",
      "note": "Domain aggregates/state machines/envelope in modbit-domain; SQLite event store with chain, objects, offset resume, hard-kill test in modbit-event-store."
+    },
+    {
+     "at": "2026-09-09T04:40:00Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Crates registered as canonical event-state; consumed by M1.2 projections; CI runs all tests on three platforms (run 34311147323)."
+    },
+    {
+     "at": "2026-09-09T04:40:00Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Real SQLite, hard-kill and tamper tests pass on hosted macOS/Linux/Windows."
     }
    ],
    "owner_agent": "claude",
-   "status_changed_on": "2026-09-09T04:28:15Z"
+   "status_changed_on": "2026-09-09T04:40:00Z"
   },
   {
    "id": "M1.2",

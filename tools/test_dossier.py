@@ -318,20 +318,20 @@ class DossierTests(unittest.TestCase):
             self.assertNotIn("deterministic execution plan compiler", body, rel)
 
     def reset_m01_fixture(self):
-        # Product work on M0 has started in the live graph. Tests that exercise the
-        # lifecycle from a clean start reset every M0 work item in the copied package
-        # to NOT_STARTED with a matching docs/98 roll-up; the delivered package is
-        # never modified.
+        # Product work has started in the live graph. Tests that exercise the
+        # lifecycle from a clean start reset every product work item in the copied
+        # package to NOT_STARTED with a matching docs/98 roll-up; the delivered
+        # package is never modified.
         g = self.graph()
         for node in g["nodes"]:
-            if node.get("milestone") == "M0" and node["type"] in ("milestone_task", "imp_task"):
+            if node["type"] in ("milestone_task", "imp_task"):
                 node["status"] = "NOT_STARTED"
                 node["evidence"] = []
                 for key in ("notes", "blocked_from", "status_changed_on"):
                     node.pop(key, None)
         self.write_graph(g)
         bm = self.root / "docs/98_BUILD_MANIFEST.md"
-        bm.write_text(re.sub(r"^(\| M0 \| .+? \| )[A-Z_]+( \|)", r"\g<1>NOT_STARTED\g<2>", bm.read_text(), count=1, flags=re.M))
+        bm.write_text(re.sub(r"^(\| M\d+ \| .+? \| )[A-Z_]+( \|)", r"\g<1>NOT_STARTED\g<2>", bm.read_text(), flags=re.M))
 
     def test_lifecycle_transitions_are_one_step(self):
         self.reset_m01_fixture()
