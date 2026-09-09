@@ -10,6 +10,7 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 mod probe;
+mod review;
 mod runtime;
 mod server;
 mod tools;

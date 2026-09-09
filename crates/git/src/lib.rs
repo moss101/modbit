@@ -12,6 +12,9 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+pub mod diff;
+pub use diff::{FileDiff, Hunk, apply_selected, parse_unified};
+
 use serde::{Deserialize, Serialize};
 
 /// Errors.

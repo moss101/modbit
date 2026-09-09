@@ -406,3 +406,95 @@ message TaskStatus {
   bool loop_alive = 4;           // the agent loop is executing in this Core
   uint64 last_offset = 5;
 }
+
+// ---- M2.9 Trusted Code Review Surface (docs/20) ----
+
+message GetReviewBundle {
+  Id task_id = 1;
+}
+
+message HunkView {
+  uint32 index = 1;
+  string header = 2;
+  uint32 old_start = 3;
+  uint32 old_lines = 4;
+  uint32 new_start = 5;
+  uint32 new_lines = 6;
+  repeated string lines = 7;     // unified lines with their prefix
+}
+
+message ReviewFile {
+  string path = 1;
+  string status = 2;             // A | M | D | R
+  bool binary = 3;
+  string old_content_ref = 4;    // object hash of the base text (empty for new files)
+  string new_content_ref = 5;    // object hash of the candidate text (empty for deletions)
+  string file_revision = 6;      // sha256 of the candidate content (the CodeReference file revision)
+  repeated HunkView hunks = 7;
+}
+
+message VerificationRunView {
+  string verification_run_id = 1;
+  string stage = 2;
+  string status = 3;
+  string candidate_revision = 4;
+  repeated string report_refs = 5;
+  repeated string check_ids = 6;
+  repeated string check_statuses = 7;
+}
+
+message ReviewBundle {
+  Id task_id = 1;
+  string task_state = 2;
+  uint64 workspace_revision = 3;
+  string base_commit = 4;
+  string workspace_root = 5;
+  repeated ReviewFile files = 6;
+  string plan_json = 7;
+  string self_review_json = 8;
+  repeated VerificationRunView verification_runs = 9;
+  repeated string attributions = 10;   // "check_id=ATTRIBUTION"
+  repeated string quarantined = 11;
+  repeated string invariant_findings = 12; // "DI-n CLASS path: evidence"
+  uint32 receipts = 13;
+  repeated string evidence_links = 14;     // "kind:ref" (report, raw output, receipt, event offset)
+}
+
+message GetCodeView {
+  Id task_id = 1;
+  string path = 2;
+  string expected_file_revision = 3; // optional: STALE when the file moved on
+}
+
+message CodeViewModel {
+  uint64 workspace_revision = 1;
+  string file_revision = 2;
+  string path = 3;
+  string content_ref = 4;
+  string syntax_language = 5;
+  repeated uint32 changed_ranges = 6; // pairs: start,end (1-based, inclusive) of candidate lines
+  repeated string evidence_links = 7;
+  bool stale = 8;
+  string text = 9;                    // bounded inline text (≤ 256 KiB); larger files by content_ref
+}
+
+message HunkRef {
+  string path = 1;
+  uint32 index = 2;
+}
+
+message DecideReview {
+  Id task_id = 1;
+  string decision = 2;           // ACCEPT | RETURN
+  repeated HunkRef rejected = 3;
+  string note = 4;
+  uint64 expected_workspace_revision = 5; // stale review is refused
+}
+
+message ReviewDecided {
+  string task_state = 1;
+  string commit = 2;
+  repeated string reverted = 3;  // path#index
+  uint64 workspace_revision = 4;
+  uint64 offset = 5;
+}

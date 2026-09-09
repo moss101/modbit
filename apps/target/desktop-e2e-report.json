@@ -88,12 +88,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 1940,
+                  "duration": 2009,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-09-09T11:42:04.617Z",
+                  "startTime": "2026-09-09T18:42:28.848Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -122,12 +122,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 330,
+                  "duration": 312,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-09-09T11:42:06.568Z",
+                  "startTime": "2026-09-09T18:42:30.869Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -141,13 +141,55 @@
           "column": 1
         }
       ]
+    },
+    {
+      "title": "review.spec.ts",
+      "file": "review.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "review surface: per-hunk decision commits exactly the user's choice and survives an app restart",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1880,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-09T18:42:31.189Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "12f883ce49bb8436c3d7-4c0fbd5a2e6f0adefdb6",
+          "file": "review.spec.ts",
+          "line": 57,
+          "column": 1
+        }
+      ]
     }
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-09-09T11:42:04.465Z",
-    "duration": 2442.58,
-    "expected": 2,
+    "startTime": "2026-09-09T18:42:28.652Z",
+    "duration": 4428.59,
+    "expected": 3,
     "skipped": 0,
     "unexpected": 0,
     "flaky": 0

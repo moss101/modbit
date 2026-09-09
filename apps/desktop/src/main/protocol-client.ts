@@ -12,23 +12,34 @@ import { create, fromBinary, toBinary, type MessageInitShape } from "@bufbuild/p
 import {
   AcquireSessionLeaseSchema,
   ClientKind,
+  CodeViewModelSchema,
   CommandAckSchema,
   CommandEnvelopeSchema,
   CommandStatus,
   CreateSessionSchema,
   CreateTaskSchema,
+  DecideReviewSchema,
+  GetCodeViewSchema,
   GetRecoveryReportSchema,
+  GetReviewBundleSchema,
   GetSessionSnapshotSchema,
   IdSchema,
   RecoveryReportSchema,
+  ReviewBundleSchema,
+  ReviewDecidedSchema,
   SessionCreatedSchema,
   SessionLeaseAcquiredSchema,
   SessionSnapshotSchema,
+  StartTaskSchema,
   SubscribeEventsSchema,
   SurfaceFrameSchema,
   TaskCreatedSchema,
+  TaskRunStartedSchema,
+  type CodeViewModel,
   type CommandAck,
   type RecoveryReport,
+  type ReviewBundle,
+  type ReviewDecided,
   type SessionSnapshot,
   type StoredEventFrame,
   type SurfaceFrame,
@@ -229,8 +240,8 @@ export class CoreClient {
     return this.leases.get(sessionId);
   }
 
-  async createTask(sessionId: string, goalText: string, commandId?: Uint8Array): Promise<{ taskId: string; offset: bigint; replayed: boolean }> {
-    const payload = toBinary(CreateTaskSchema, create(CreateTaskSchema, { sessionId: { value: unhex(sessionId) }, goalText, executionProfile: "local_trusted", origin: "desktop" }));
+  async createTask(sessionId: string, goalText: string, commandId?: Uint8Array, workspaceRoot = ""): Promise<{ taskId: string; offset: bigint; replayed: boolean }> {
+    const payload = toBinary(CreateTaskSchema, create(CreateTaskSchema, { sessionId: { value: unhex(sessionId) }, goalText, executionProfile: "local_trusted", origin: "desktop", workspaceRoot }));
     const ack = await this.command("CreateTask", payload, commandId, this.leases.get(sessionId));
     const r = fromBinary(TaskCreatedSchema, ack.result);
     return { taskId: hex(r.taskId?.value ?? new Uint8Array()), offset: r.offset, replayed: ack.status === CommandStatus.REPLAYED };
@@ -244,6 +255,29 @@ export class CoreClient {
   async getRecoveryReport(): Promise<RecoveryReport> {
     const ack = await this.command("GetRecoveryReport", toBinary(GetRecoveryReportSchema, create(GetRecoveryReportSchema, {})));
     return fromBinary(RecoveryReportSchema, ack.result);
+  }
+
+  async startTask(sessionId: string, taskId: string): Promise<{ runId: string; resumed: boolean; endpoint: string; model: string }> {
+    const payload = toBinary(StartTaskSchema, create(StartTaskSchema, { taskId: { value: unhex(taskId) } }));
+    const ack = await this.command("StartTask", payload, undefined, this.leases.get(sessionId));
+    const r = fromBinary(TaskRunStartedSchema, ack.result);
+    return { runId: hex(r.runId?.value ?? new Uint8Array()), resumed: r.resumed, endpoint: r.endpoint, model: r.model };
+  }
+
+  async getReviewBundle(taskId: string): Promise<ReviewBundle> {
+    const ack = await this.command("GetReviewBundle", toBinary(GetReviewBundleSchema, create(GetReviewBundleSchema, { taskId: { value: unhex(taskId) } })));
+    return fromBinary(ReviewBundleSchema, ack.result);
+  }
+
+  async getCodeView(taskId: string, path: string, expectedFileRevision = ""): Promise<CodeViewModel> {
+    const ack = await this.command("GetCodeView", toBinary(GetCodeViewSchema, create(GetCodeViewSchema, { taskId: { value: unhex(taskId) }, path, expectedFileRevision })));
+    return fromBinary(CodeViewModelSchema, ack.result);
+  }
+
+  async decideReview(sessionId: string, taskId: string, decision: "ACCEPT" | "RETURN", rejected: { path: string; index: number }[], note: string, expectedWorkspaceRevision: bigint): Promise<ReviewDecided> {
+    const payload = toBinary(DecideReviewSchema, create(DecideReviewSchema, { taskId: { value: unhex(taskId) }, decision, rejected: rejected.map((r) => ({ path: r.path, index: r.index })), note, expectedWorkspaceRevision }));
+    const ack = await this.command("DecideReview", payload, undefined, this.leases.get(sessionId));
+    return fromBinary(ReviewDecidedSchema, ack.result);
   }
 
   subscribe(sessionId: string, afterOffset: bigint): void {

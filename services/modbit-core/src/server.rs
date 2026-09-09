@@ -371,6 +371,9 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "StartTask",
                     "CancelTask",
                     "GetTaskStatus",
+                    "GetReviewBundle",
+                    "GetCodeView",
+                    "DecideReview",
                 ]
                 .map(String::from)
                 .to_vec(),
@@ -1665,6 +1668,44 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 }
                 .encode_to_vec(),
             )
+        }
+        "GetReviewBundle" => {
+            let Ok(p) = wire::GetReviewBundle::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "GetReviewBundle");
+            };
+            match crate::review::bundle(core, &p).await {
+                Ok(b) => accept(cid, false, b.encode_to_vec()),
+                Err((code, msg)) => reject(cid, &code, msg),
+            }
+        }
+        "GetCodeView" => {
+            let Ok(p) = wire::GetCodeView::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "GetCodeView");
+            };
+            match crate::review::code_view(core, &p).await {
+                Ok(v) => accept(cid, false, v.encode_to_vec()),
+                Err((code, msg)) => reject(cid, &code, msg),
+            }
+        }
+        "DecideReview" => {
+            let Ok(p) = wire::DecideReview::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "DecideReview");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let task = match core.store.lock().await.task(&task_id) {
+                Ok(Some(t)) => t,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
+                return ack;
+            }
+            match crate::review::decide(core, &p, actor).await {
+                Ok(v) => accept(cid, false, v.encode_to_vec()),
+                Err((code, msg)) => reject(cid, &code, msg),
+            }
         }
         "GetRecoveryReport" => {
             let r = &core.recovery;

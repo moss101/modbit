@@ -1781,8 +1781,23 @@
    "milestone": "M2",
    "order": 8,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "IMPLEMENTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-09T18:43:24Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: NOT-FOUND (no review commands, hunk model or review screen)"
+    },
+    {
+     "at": "2026-09-09T18:43:24Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "git diff parsing + selective hunk application; Core GetReviewBundle/GetCodeView/DecideReview with revision-bound per-hunk revert, commit, RETURN with queued feedback; desktop Review screen and Start action; CLI review show/decide"
+    }
+   ],
+   "status_changed_on": "2026-09-09T18:43:24Z"
   },
   {
    "id": "M3.1",

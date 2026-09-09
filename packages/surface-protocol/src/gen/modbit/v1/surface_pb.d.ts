@@ -1717,6 +1717,444 @@ export declare type TaskStatus = Message<"modbit.v1.TaskStatus"> & {
 export declare const TaskStatusSchema: GenMessage<TaskStatus>;
 
 /**
+ * @generated from message modbit.v1.GetReviewBundle
+ */
+export declare type GetReviewBundle = Message<"modbit.v1.GetReviewBundle"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.GetReviewBundle.
+ * Use `create(GetReviewBundleSchema)` to create a new message.
+ */
+export declare const GetReviewBundleSchema: GenMessage<GetReviewBundle>;
+
+/**
+ * @generated from message modbit.v1.HunkView
+ */
+export declare type HunkView = Message<"modbit.v1.HunkView"> & {
+  /**
+   * @generated from field: uint32 index = 1;
+   */
+  index: number;
+
+  /**
+   * @generated from field: string header = 2;
+   */
+  header: string;
+
+  /**
+   * @generated from field: uint32 old_start = 3;
+   */
+  oldStart: number;
+
+  /**
+   * @generated from field: uint32 old_lines = 4;
+   */
+  oldLines: number;
+
+  /**
+   * @generated from field: uint32 new_start = 5;
+   */
+  newStart: number;
+
+  /**
+   * @generated from field: uint32 new_lines = 6;
+   */
+  newLines: number;
+
+  /**
+   * unified lines with their prefix
+   *
+   * @generated from field: repeated string lines = 7;
+   */
+  lines: string[];
+};
+
+/**
+ * Describes the message modbit.v1.HunkView.
+ * Use `create(HunkViewSchema)` to create a new message.
+ */
+export declare const HunkViewSchema: GenMessage<HunkView>;
+
+/**
+ * @generated from message modbit.v1.ReviewFile
+ */
+export declare type ReviewFile = Message<"modbit.v1.ReviewFile"> & {
+  /**
+   * @generated from field: string path = 1;
+   */
+  path: string;
+
+  /**
+   * A | M | D | R
+   *
+   * @generated from field: string status = 2;
+   */
+  status: string;
+
+  /**
+   * @generated from field: bool binary = 3;
+   */
+  binary: boolean;
+
+  /**
+   * object hash of the base text (empty for new files)
+   *
+   * @generated from field: string old_content_ref = 4;
+   */
+  oldContentRef: string;
+
+  /**
+   * object hash of the candidate text (empty for deletions)
+   *
+   * @generated from field: string new_content_ref = 5;
+   */
+  newContentRef: string;
+
+  /**
+   * sha256 of the candidate content (the CodeReference file revision)
+   *
+   * @generated from field: string file_revision = 6;
+   */
+  fileRevision: string;
+
+  /**
+   * @generated from field: repeated modbit.v1.HunkView hunks = 7;
+   */
+  hunks: HunkView[];
+};
+
+/**
+ * Describes the message modbit.v1.ReviewFile.
+ * Use `create(ReviewFileSchema)` to create a new message.
+ */
+export declare const ReviewFileSchema: GenMessage<ReviewFile>;
+
+/**
+ * @generated from message modbit.v1.VerificationRunView
+ */
+export declare type VerificationRunView = Message<"modbit.v1.VerificationRunView"> & {
+  /**
+   * @generated from field: string verification_run_id = 1;
+   */
+  verificationRunId: string;
+
+  /**
+   * @generated from field: string stage = 2;
+   */
+  stage: string;
+
+  /**
+   * @generated from field: string status = 3;
+   */
+  status: string;
+
+  /**
+   * @generated from field: string candidate_revision = 4;
+   */
+  candidateRevision: string;
+
+  /**
+   * @generated from field: repeated string report_refs = 5;
+   */
+  reportRefs: string[];
+
+  /**
+   * @generated from field: repeated string check_ids = 6;
+   */
+  checkIds: string[];
+
+  /**
+   * @generated from field: repeated string check_statuses = 7;
+   */
+  checkStatuses: string[];
+};
+
+/**
+ * Describes the message modbit.v1.VerificationRunView.
+ * Use `create(VerificationRunViewSchema)` to create a new message.
+ */
+export declare const VerificationRunViewSchema: GenMessage<VerificationRunView>;
+
+/**
+ * @generated from message modbit.v1.ReviewBundle
+ */
+export declare type ReviewBundle = Message<"modbit.v1.ReviewBundle"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: string task_state = 2;
+   */
+  taskState: string;
+
+  /**
+   * @generated from field: uint64 workspace_revision = 3;
+   */
+  workspaceRevision: bigint;
+
+  /**
+   * @generated from field: string base_commit = 4;
+   */
+  baseCommit: string;
+
+  /**
+   * @generated from field: string workspace_root = 5;
+   */
+  workspaceRoot: string;
+
+  /**
+   * @generated from field: repeated modbit.v1.ReviewFile files = 6;
+   */
+  files: ReviewFile[];
+
+  /**
+   * @generated from field: string plan_json = 7;
+   */
+  planJson: string;
+
+  /**
+   * @generated from field: string self_review_json = 8;
+   */
+  selfReviewJson: string;
+
+  /**
+   * @generated from field: repeated modbit.v1.VerificationRunView verification_runs = 9;
+   */
+  verificationRuns: VerificationRunView[];
+
+  /**
+   * "check_id=ATTRIBUTION"
+   *
+   * @generated from field: repeated string attributions = 10;
+   */
+  attributions: string[];
+
+  /**
+   * @generated from field: repeated string quarantined = 11;
+   */
+  quarantined: string[];
+
+  /**
+   * "DI-n CLASS path: evidence"
+   *
+   * @generated from field: repeated string invariant_findings = 12;
+   */
+  invariantFindings: string[];
+
+  /**
+   * @generated from field: uint32 receipts = 13;
+   */
+  receipts: number;
+
+  /**
+   * "kind:ref" (report, raw output, receipt, event offset)
+   *
+   * @generated from field: repeated string evidence_links = 14;
+   */
+  evidenceLinks: string[];
+};
+
+/**
+ * Describes the message modbit.v1.ReviewBundle.
+ * Use `create(ReviewBundleSchema)` to create a new message.
+ */
+export declare const ReviewBundleSchema: GenMessage<ReviewBundle>;
+
+/**
+ * @generated from message modbit.v1.GetCodeView
+ */
+export declare type GetCodeView = Message<"modbit.v1.GetCodeView"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: string path = 2;
+   */
+  path: string;
+
+  /**
+   * optional: STALE when the file moved on
+   *
+   * @generated from field: string expected_file_revision = 3;
+   */
+  expectedFileRevision: string;
+};
+
+/**
+ * Describes the message modbit.v1.GetCodeView.
+ * Use `create(GetCodeViewSchema)` to create a new message.
+ */
+export declare const GetCodeViewSchema: GenMessage<GetCodeView>;
+
+/**
+ * @generated from message modbit.v1.CodeViewModel
+ */
+export declare type CodeViewModel = Message<"modbit.v1.CodeViewModel"> & {
+  /**
+   * @generated from field: uint64 workspace_revision = 1;
+   */
+  workspaceRevision: bigint;
+
+  /**
+   * @generated from field: string file_revision = 2;
+   */
+  fileRevision: string;
+
+  /**
+   * @generated from field: string path = 3;
+   */
+  path: string;
+
+  /**
+   * @generated from field: string content_ref = 4;
+   */
+  contentRef: string;
+
+  /**
+   * @generated from field: string syntax_language = 5;
+   */
+  syntaxLanguage: string;
+
+  /**
+   * pairs: start,end (1-based, inclusive) of candidate lines
+   *
+   * @generated from field: repeated uint32 changed_ranges = 6;
+   */
+  changedRanges: number[];
+
+  /**
+   * @generated from field: repeated string evidence_links = 7;
+   */
+  evidenceLinks: string[];
+
+  /**
+   * @generated from field: bool stale = 8;
+   */
+  stale: boolean;
+
+  /**
+   * bounded inline text (≤ 256 KiB); larger files by content_ref
+   *
+   * @generated from field: string text = 9;
+   */
+  text: string;
+};
+
+/**
+ * Describes the message modbit.v1.CodeViewModel.
+ * Use `create(CodeViewModelSchema)` to create a new message.
+ */
+export declare const CodeViewModelSchema: GenMessage<CodeViewModel>;
+
+/**
+ * @generated from message modbit.v1.HunkRef
+ */
+export declare type HunkRef = Message<"modbit.v1.HunkRef"> & {
+  /**
+   * @generated from field: string path = 1;
+   */
+  path: string;
+
+  /**
+   * @generated from field: uint32 index = 2;
+   */
+  index: number;
+};
+
+/**
+ * Describes the message modbit.v1.HunkRef.
+ * Use `create(HunkRefSchema)` to create a new message.
+ */
+export declare const HunkRefSchema: GenMessage<HunkRef>;
+
+/**
+ * @generated from message modbit.v1.DecideReview
+ */
+export declare type DecideReview = Message<"modbit.v1.DecideReview"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * ACCEPT | RETURN
+   *
+   * @generated from field: string decision = 2;
+   */
+  decision: string;
+
+  /**
+   * @generated from field: repeated modbit.v1.HunkRef rejected = 3;
+   */
+  rejected: HunkRef[];
+
+  /**
+   * @generated from field: string note = 4;
+   */
+  note: string;
+
+  /**
+   * stale review is refused
+   *
+   * @generated from field: uint64 expected_workspace_revision = 5;
+   */
+  expectedWorkspaceRevision: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.DecideReview.
+ * Use `create(DecideReviewSchema)` to create a new message.
+ */
+export declare const DecideReviewSchema: GenMessage<DecideReview>;
+
+/**
+ * @generated from message modbit.v1.ReviewDecided
+ */
+export declare type ReviewDecided = Message<"modbit.v1.ReviewDecided"> & {
+  /**
+   * @generated from field: string task_state = 1;
+   */
+  taskState: string;
+
+  /**
+   * @generated from field: string commit = 2;
+   */
+  commit: string;
+
+  /**
+   * path#index
+   *
+   * @generated from field: repeated string reverted = 3;
+   */
+  reverted: string[];
+
+  /**
+   * @generated from field: uint64 workspace_revision = 4;
+   */
+  workspaceRevision: bigint;
+
+  /**
+   * @generated from field: uint64 offset = 5;
+   */
+  offset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.ReviewDecided.
+ * Use `create(ReviewDecidedSchema)` to create a new message.
+ */
+export declare const ReviewDecidedSchema: GenMessage<ReviewDecided>;
+
+/**
  * Command acknowledgement.
  *
  * @generated from enum modbit.v1.CommandStatus

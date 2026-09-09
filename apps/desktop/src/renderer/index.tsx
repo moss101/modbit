@@ -7,7 +7,7 @@
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { applyEvent, columns, emptyModel, fromSnapshot, type Event, type FleetColumn, type Model, type Snapshot, type TaskCard } from "./model.ts";
-import type { ModbitBridge } from "../preload/preload.ts";
+import type { ModbitBridge, ReviewBundleView } from "../preload/preload.ts";
 
 declare global {
   interface Window {
@@ -58,7 +58,9 @@ function App() {
   const [recovered, setRecovered] = useState<string | null>(null);
   const [recovery, setRecovery] = useState<RecoveryInfo | null>(null);
   const [goal, setGoal] = useState("");
+  const [workspaceRoot, setWorkspaceRoot] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [reviewing, setReviewing] = useState<string | null>(null);
   const modelRef = useRef(model);
   modelRef.current = model;
   const wasRestarting = useRef(false);
@@ -135,7 +137,7 @@ function App() {
           setModel((m) => ({ ...m, sessionId }));
           await window.modbit.subscribe(sessionId, "0");
         }
-        const r = await window.modbit.createTask(sessionId, text, commandId);
+        const r = await window.modbit.createTask(sessionId, text, commandId, workspaceRoot.trim());
         // Render from the durable id the Core returned; the events will follow.
         setModel((m) => {
           if (m.tasks.has(r.taskId)) return m;
@@ -151,8 +153,19 @@ function App() {
         setSubmitting(false);
       }
     },
-    [goal, submitting],
+    [goal, workspaceRoot, submitting],
   );
+
+  const startTask = useCallback(async (taskId: string) => {
+    setError(null);
+    try {
+      const sessionId = modelRef.current.sessionId;
+      if (!sessionId) throw new Error("no session");
+      await window.modbit.startTask(sessionId, taskId);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }, []);
 
   const cols = useMemo(() => columns(model), [model]);
   const attention = cols.needsAttention.length;
@@ -188,11 +201,14 @@ function App() {
           <strong>Error</strong> — {error}. <button type="button" onClick={() => void load()}>Retry</button>
         </div>
       )}
-      <main>
+      {reviewing && model.sessionId && <Review taskId={reviewing} sessionId={model.sessionId} onClose={() => setReviewing(null)} />}
+      <main hidden={reviewing !== null}>
         <form className="composer" onSubmit={submit} aria-label="New Task">
           <h2 style={{ margin: 0, fontSize: 14 }}>New Task</h2>
           <label htmlFor="goal" className="meta">Goal</label>
           <textarea id="goal" data-testid="goal" value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="What should the agent achieve?" disabled={core.state !== "connected"} />
+          <label htmlFor="workspace" className="meta">Workspace root (a local Git checkout; empty for a Work space)</label>
+          <input id="workspace" data-testid="workspace" value={workspaceRoot} onChange={(e) => setWorkspaceRoot(e.target.value)} placeholder="/path/to/repo" disabled={core.state !== "connected"} />
           <div className="meta">Execution: local_trusted · Origin: desktop</div>
           <button type="submit" data-testid="run" disabled={core.state !== "connected" || submitting || !goal.trim()}>
             {submitting ? "Creating…" : "Run"}
@@ -209,7 +225,7 @@ function App() {
                 <h2>
                   {c.title} <span aria-hidden="true">({cols[c.key].length})</span>
                 </h2>
-                {cols[c.key].length === 0 ? <p className="empty">None</p> : cols[c.key].map((t) => <Card key={t.taskId} card={t} />)}
+                {cols[c.key].length === 0 ? <p className="empty">None</p> : cols[c.key].map((t) => <Card key={t.taskId} card={t} onStart={startTask} onReview={(id) => setReviewing(id)} />)}
               </section>
             ))}
           </div>
@@ -219,7 +235,8 @@ function App() {
   );
 }
 
-function Card({ card }: { card: TaskCard }) {
+function Card({ card, onStart, onReview }: { card: TaskCard; onStart: (id: string) => void; onReview: (id: string) => void }) {
+  const startable = card.state === "Queued" || (card.state === "Waiting" && card.waitReason === "UserInput");
   return (
     <article className="card" tabIndex={0} data-testid="task-card" data-task-id={card.taskId} data-state={card.state}>
       <div>{card.goalText}</div>
@@ -232,7 +249,187 @@ function Card({ card }: { card: TaskCard }) {
           next: <strong>{card.nextAction}</strong>
         </div>
       )}
+      <div className="actions">
+        {startable && (
+          <button type="button" data-testid="task-start" onClick={() => onStart(card.taskId)}>
+            {card.state === "Waiting" ? "Resume" : "Start"}
+          </button>
+        )}
+        {card.state === "ReadyForReview" && (
+          <button type="button" data-testid="task-review" onClick={() => onReview(card.taskId)}>
+            Review
+          </button>
+        )}
+      </div>
     </article>
+  );
+}
+
+/** Review screen (docs/20 "Trusted Code Surface", REQ-EV-0036): every fact on it
+ *  is a revision-bound payload from the Core; the renderer holds no buffers. */
+function Review({ taskId, sessionId, onClose }: { taskId: string; sessionId: string; onClose: () => void }) {
+  const [bundle, setBundle] = useState<ReviewBundleView | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [rejected, setRejected] = useState<Set<string>>(new Set());
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+  const load = useCallback(async () => {
+    setErr(null);
+    try {
+      setBundle(await window.modbit.reviewBundle(taskId));
+    } catch (e) {
+      setErr((e as Error).message);
+    }
+  }, [taskId]);
+  useEffect(() => {
+    void load();
+  }, [load]);
+  const toggle = (key: string) =>
+    setRejected((r) => {
+      const n = new Set(r);
+      if (n.has(key)) n.delete(key);
+      else n.add(key);
+      return n;
+    });
+  const decide = async (decision: "ACCEPT" | "RETURN") => {
+    if (!bundle || busy) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      const rej = Array.from(rejected).map((k) => {
+        const i = k.lastIndexOf("#");
+        return { path: k.slice(0, i), index: Number(k.slice(i + 1)) };
+      });
+      const d = await window.modbit.decideReview(sessionId, taskId, decision, rej, note, bundle.workspaceRevision);
+      setResult(decision === "ACCEPT" ? `Accepted: commit ${d.commit.slice(0, 12)}, ${d.reverted.length} hunk(s) reverted` : "Returned to work");
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const hunkCount = bundle ? bundle.files.reduce((n, f) => n + f.hunks.length, 0) : 0;
+  return (
+    <section className="review" data-testid="review" aria-label="Review">
+      <div className="review-head">
+        <h2 style={{ margin: 0 }}>Review</h2>
+        <span className="meta" data-testid="review-meta">
+          {bundle ? `task ${taskId.slice(0, 8)} · ${bundle.taskState} · workspace revision ${bundle.workspaceRevision} · base ${bundle.baseCommit.slice(0, 8)} · ${bundle.files.length} file(s), ${hunkCount} hunk(s), ${bundle.receipts} receipt(s)` : "loading from the Core…"}
+        </span>
+        <button type="button" data-testid="review-close" onClick={onClose}>
+          Back to fleet
+        </button>
+      </div>
+      {err && (
+        <div className="banner" data-kind="error" role="alert" data-testid="review-error">
+          <strong>Error</strong> — {err} <button type="button" onClick={() => void load()}>Reload</button>
+        </div>
+      )}
+      {result && (
+        <div className="banner" data-kind="recovered" role="status" data-testid="review-result">
+          {result}
+        </div>
+      )}
+      {bundle && (
+        <div className="review-body">
+          <div>
+            {bundle.files.length === 0 && <p className="empty" data-testid="review-empty">The candidate has no changes.</p>}
+            {bundle.files.map((f) => (
+              <article className="file" key={f.path} data-testid="review-file" data-path={f.path}>
+                <h3>
+                  {f.path} <span className="meta">{f.status === "A" ? "added" : f.status === "D" ? "deleted" : f.status === "R" ? "renamed" : "modified"} · file revision {f.fileRevision.slice(0, 12)}</span>
+                </h3>
+                {f.binary && <p className="meta">binary file</p>}
+                {f.hunks.map((h) => {
+                  const key = `${f.path}#${h.index}`;
+                  const isRejected = rejected.has(key);
+                  return (
+                    <div className="hunk" key={key} data-testid="review-hunk" data-hunk={key} data-rejected={isRejected}>
+                      <div className="hunk-head">
+                        <code>{h.header}</code>
+                        <label>
+                          <input type="checkbox" data-testid="hunk-reject" checked={isRejected} onChange={() => toggle(key)} disabled={result !== null} /> reject
+                        </label>
+                      </div>
+                      <pre>
+                        {h.lines.map((l, i) => (
+                          <span key={i} className={l.startsWith("+") ? "add" : l.startsWith("-") ? "del" : "ctx"}>
+                            {l}
+                            {"\n"}
+                          </span>
+                        ))}
+                      </pre>
+                    </div>
+                  );
+                })}
+              </article>
+            ))}
+          </div>
+          <aside>
+            <h3>Verification</h3>
+            {bundle.verificationRuns.length === 0 && <p className="empty">No verification runs recorded.</p>}
+            <ul data-testid="review-verification">
+              {bundle.verificationRuns.map((v) => (
+                <li key={v.id}>
+                  <strong>{v.stage}</strong> {v.status} · {v.checks.filter((c) => c.status === "PASS").length}/{v.checks.length} pass · {v.candidateRevision}
+                </li>
+              ))}
+            </ul>
+            {bundle.attributions.length > 0 && (
+              <>
+                <h3>Attribution</h3>
+                <ul data-testid="review-attribution">
+                  {bundle.attributions.map((a) => (
+                    <li key={a}>{a}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {bundle.quarantined.length > 0 && (
+              <>
+                <h3>Quarantined (flaky)</h3>
+                <ul>
+                  {bundle.quarantined.map((q) => (
+                    <li key={q}>{q}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {bundle.invariantFindings.length > 0 && (
+              <>
+                <h3>Diff invariants</h3>
+                <ul>
+                  {bundle.invariantFindings.map((q) => (
+                    <li key={q}>{q}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+            <h3>Plan</h3>
+            <pre className="small" data-testid="review-plan">{bundle.planJson || "(no plan recorded)"}</pre>
+            <h3>Self-review</h3>
+            <pre className="small">{bundle.selfReviewJson || "(none)"}</pre>
+            <h3>Evidence</h3>
+            <ul className="small" data-testid="review-evidence">
+              {bundle.evidenceLinks.map((e) => (
+                <li key={e}>{e}</li>
+              ))}
+            </ul>
+            <h3>Decision</h3>
+            <textarea data-testid="review-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Commit message / feedback" disabled={result !== null} />
+            <div className="actions">
+              <button type="button" data-testid="review-accept" onClick={() => void decide("ACCEPT")} disabled={busy || result !== null || bundle.taskState !== "ReadyForReview"}>
+                Accept{rejected.size ? ` (${rejected.size} rejected)` : ""}
+              </button>
+              <button type="button" data-testid="review-return" onClick={() => void decide("RETURN")} disabled={busy || result !== null || bundle.taskState !== "ReadyForReview"}>
+                Return to work
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
+    </section>
   );
 }
 

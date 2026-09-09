@@ -18,6 +18,8 @@
 //!   modbit-cli --data-dir <dir> task run --session <hex-id> --task <hex-id> [--endpoint <name>] [--model <id>] [--max-turns N] [--wait]
 //!   modbit-cli --data-dir <dir> task cancel --session <hex-id> --task <hex-id>
 //!   modbit-cli --data-dir <dir> task status --task <hex-id>
+//!   modbit-cli --data-dir <dir> review show --task <hex-id>
+//!   modbit-cli --data-dir <dir> review decide --session <hex-id> --task <hex-id> (accept|return) [--reject path#index ...] [note]
 //!   modbit-cli --data-dir <dir> model list
 //!   modbit-cli --data-dir <dir> model probe --endpoint <name> --model <id> [--tools] <prompt>
 //!
@@ -32,15 +34,16 @@ use modbit_protocol::client::Client;
 use modbit_protocol::local::{ReadyLine, decode_hex, encode_hex};
 use modbit_protocol::v1::{
     AcquireSessionLease, ApprovalList, ApprovalResolvedAck, CancelTask, CapabilityLeaseList,
-    ClientKind, CommandEnvelope, CreateSession, CreateTask, EffectReceiptList, EmergencyStop,
-    EmergencyStopped, GetCapabilityLeases, GetEffectReceipts, GetSessionSnapshot, GetTaskStatus,
-    Id, InvokeTool, ListApprovals, ListModels, ListTools, ModelList, ModelProbed, ProbeModel,
-    ResolveApproval, SessionCreated, SessionLeaseAcquired, SessionSnapshot, StartTask,
-    TaskCancelRequested, TaskCreated, TaskRunStarted, TaskStatus, ToolInvoked, ToolList,
+    ClientKind, CommandEnvelope, CreateSession, CreateTask, DecideReview, EffectReceiptList,
+    EmergencyStop, EmergencyStopped, GetCapabilityLeases, GetEffectReceipts, GetReviewBundle,
+    GetSessionSnapshot, GetTaskStatus, HunkRef, Id, InvokeTool, ListApprovals, ListModels,
+    ListTools, ModelList, ModelProbed, ProbeModel, ResolveApproval, ReviewBundle, ReviewDecided,
+    SessionCreated, SessionLeaseAcquired, SessionSnapshot, StartTask, TaskCancelRequested,
+    TaskCreated, TaskRunStarted, TaskStatus, ToolInvoked, ToolList,
 };
 use prost::Message;
 
-const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] | tool list | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--wait] | task cancel --session <id> --task <id> | task status --task <id> | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
+const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] | tool list | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
 
 fn parse_id(hex: &str) -> Result<Id, String> {
     let bytes = decode_hex(hex)
@@ -549,6 +552,122 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
             println!(
                 "task state={} wait_reason={} run_state={} loop_alive={}",
                 st.state, st.wait_reason, st.run_state, st.loop_alive
+            );
+        }
+        ["review", "show", ..] => {
+            let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
+            let ack = client
+                .command(envelope(
+                    "GetReviewBundle",
+                    GetReviewBundle {
+                        task_id: Some(task_id),
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let b: ReviewBundle = Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "review state={} workspace_revision={} base_commit={} files={} receipts={}",
+                b.task_state,
+                b.workspace_revision,
+                b.base_commit,
+                b.files.len(),
+                b.receipts
+            );
+            for f in &b.files {
+                println!(
+                    "file {} status={} hunks={} revision={}",
+                    f.path,
+                    f.status,
+                    f.hunks.len(),
+                    f.file_revision
+                );
+                for h in &f.hunks {
+                    println!("  hunk {}#{} {}", f.path, h.index, h.header);
+                    for l in &h.lines {
+                        println!("    {l}");
+                    }
+                }
+            }
+            for v in &b.verification_runs {
+                println!(
+                    "verification {} stage={} status={} checks={}",
+                    v.verification_run_id,
+                    v.stage,
+                    v.status,
+                    v.check_ids.len()
+                );
+            }
+            for a in &b.attributions {
+                println!("attribution {a}");
+            }
+            for q in &b.quarantined {
+                println!("quarantined {q}");
+            }
+            for i in &b.invariant_findings {
+                println!("invariant {i}");
+            }
+            for e in &b.evidence_links {
+                println!("evidence {e}");
+            }
+        }
+        ["review", "decide", ..] => {
+            let sid = parse_id(opt("--session").ok_or(USAGE)?)?;
+            let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
+            let mut rejected = Vec::new();
+            let mut positional = Vec::new();
+            let mut i = 2;
+            while i < words.len() {
+                match words[i] {
+                    "--session" | "--task" => i += 2,
+                    "--reject" => {
+                        let r = words.get(i + 1).ok_or(USAGE)?;
+                        let (path, idx) = r.rsplit_once('#').ok_or(USAGE)?;
+                        rejected.push(HunkRef {
+                            path: path.into(),
+                            index: idx.parse().map_err(|_| USAGE)?,
+                        });
+                        i += 2;
+                    }
+                    w => {
+                        positional.push(w);
+                        i += 1;
+                    }
+                }
+            }
+            let (verb, note) = match positional.as_slice() {
+                [v, rest @ ..] => (*v, rest.join(" ")),
+                _ => return Err(USAGE.into()),
+            };
+            let decision = match verb {
+                "accept" => "ACCEPT",
+                "return" => "RETURN",
+                _ => return Err(USAGE.into()),
+            };
+            let lease = acquire_lease(&mut client, &sid).await?;
+            let ack = client
+                .command(envelope_fenced(
+                    "DecideReview",
+                    DecideReview {
+                        task_id: Some(task_id),
+                        decision: decision.into(),
+                        rejected,
+                        note,
+                        expected_workspace_revision: 0,
+                    }
+                    .encode_to_vec(),
+                    Some(lease),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let r: ReviewDecided = Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "review decided state={} commit={} reverted={} workspace_revision={}",
+                r.task_state,
+                if r.commit.is_empty() { "-" } else { &r.commit },
+                r.reverted.join(","),
+                r.workspace_revision
             );
         }
         ["model", "list"] => {

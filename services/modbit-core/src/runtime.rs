@@ -157,11 +157,61 @@ impl Runtime {
                         .runs_for_task(&task.task_id)
                         .ok()
                         .and_then(|r| r.into_iter().find(|r| r.state == RunState::Suspended));
-                    let Some(run) = run else {
-                        return Err((
-                            "NO_SUSPENDED_RUN".into(),
-                            "waiting task has no suspended run to resume".into(),
-                        ));
+                    let run = match run {
+                        Some(r) => r,
+                        None => {
+                            // Returned from review (or never suspended): a fresh attempt.
+                            let run_id = RunId::new();
+                            let attempt = store
+                                .runs_for_task(&task.task_id)
+                                .map(|r| r.len() as u32 + 1)
+                                .unwrap_or(1);
+                            append(
+                                &mut store,
+                                core,
+                                Lineage::task(core.tenant_id, task.session_id, task.task_id),
+                                AggregateType::Task,
+                                *task.task_id.as_bytes(),
+                                vec![typed("TaskResumed", &TaskEvent::TaskResumed, actor.clone())],
+                            )
+                            .map_err(|e| ("STORE".into(), e))?;
+                            append(
+                                &mut store,
+                                core,
+                                Lineage::run(core.tenant_id, task.session_id, task.task_id, run_id),
+                                AggregateType::Run,
+                                *run_id.as_bytes(),
+                                vec![
+                                    typed(
+                                        "RunCreated",
+                                        &RunEvent::RunCreated {
+                                            task_id: task.task_id,
+                                            attempt,
+                                            owner_location: OwnerLocation::Local,
+                                            kernel_lease_generation: lease_generation,
+                                        },
+                                        actor.clone(),
+                                    ),
+                                    typed("RunStarted", &RunEvent::RunStarted, actor.clone()),
+                                ],
+                            )
+                            .map_err(|e| ("STORE".into(), e))?;
+                            drop(store);
+                            let cancel = CancellationToken::new();
+                            tasks.insert(
+                                task.task_id,
+                                Running {
+                                    cancel: cancel.clone(),
+                                },
+                            );
+                            let core2 = Arc::clone(core);
+                            tokio::spawn(async move {
+                                let task_id = task.task_id;
+                                run_loop(core2.clone(), task, run_id, cfg, cancel).await;
+                                core2.runtime.tasks.lock().await.remove(&task_id);
+                            });
+                            return Ok((run_id, true));
+                        }
                     };
                     if lease_generation < run.kernel_lease_generation {
                         return Err((

@@ -253,6 +253,25 @@ pub enum TaskEvent {
         /// Consecutive turns without progress.
         turns: u32,
     },
+    /// `ReviewDecisionRecorded` (docs/20 "Trusted Code Surface", REQ-EV-0036):
+    /// the user's per-hunk decision on the candidate; no state change (the
+    /// `TaskCompleted` / `TaskReturnedToWork` that follows carries the state).
+    ReviewDecisionRecorded {
+        /// `ACCEPT` or `RETURN`.
+        decision: String,
+        /// Candidate workspace revision reviewed.
+        candidate_revision: u64,
+        /// Hunks accepted, as `path#index`.
+        accepted: Vec<String>,
+        /// Hunks rejected, as `path#index`.
+        rejected: Vec<String>,
+        /// Commit created on accept.
+        commit: Option<String>,
+        /// Reviewer note.
+        note: String,
+        /// Provenance label (`user_review`).
+        provenance: String,
+    },
 }
 
 impl TaskEvent {
@@ -278,6 +297,7 @@ impl TaskEvent {
             Self::SelfReviewRecorded { .. } => "SelfReviewRecorded",
             Self::HarnessBudgetExhausted { .. } => "HarnessBudgetExhausted",
             Self::NoProgressDetected { .. } => "NoProgressDetected",
+            Self::ReviewDecisionRecorded { .. } => "ReviewDecisionRecorded",
         }
     }
 }
@@ -371,7 +391,8 @@ impl Task {
             | TaskEvent::PlanRevised { .. }
             | TaskEvent::SelfReviewRecorded { .. }
             | TaskEvent::HarnessBudgetExhausted { .. }
-            | TaskEvent::NoProgressDetected { .. } => {
+            | TaskEvent::NoProgressDetected { .. }
+            | TaskEvent::ReviewDecisionRecorded { .. } => {
                 if self.state.is_terminal() {
                     return Err(invalid(&self.state, event.event_type()));
                 }

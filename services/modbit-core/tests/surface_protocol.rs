@@ -3134,3 +3134,485 @@ async fn m2_8_verification_engine_gates_completion_on_real_cargo_fixture() {
     );
     let _ = repo;
 }
+
+/// M2.9: the Trusted Code Review Surface. The Core serves the revision-bound
+/// candidate as hunks with evidence; rejecting one hunk and accepting the
+/// rest rebuilds the file through the Workspace File Service and commits;
+/// the Git diff matches the user's choices exactly (REQ-EV-0036); a stale
+/// review is refused; RETURN sends the task back with the note queued.
+#[tokio::test]
+async fn m2_9_review_surface_applies_per_hunk_decisions_and_commits() {
+    use modbit_protocol::v1::{
+        CodeViewModel, DecideReview, GetCodeView, GetReviewBundle, HunkRef, ReviewBundle,
+        ReviewDecided, StartTask, TaskRunStarted,
+    };
+    use serde_json::json;
+    // A repo with two separated regions so the candidate has two hunks in one file.
+    let repo = tempfile::tempdir().unwrap();
+    let original = format!(
+        "{}\n{}\n",
+        (1..=8)
+            .map(|i| format!("line {i}"))
+            .collect::<Vec<_>>()
+            .join("\n"),
+        (9..=16)
+            .map(|i| format!("line {i}"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    );
+    std::fs::write(repo.path().join("notes.txt"), &original).unwrap();
+    for args in [
+        vec!["init", "-q", "-b", "main"],
+        vec!["add", "-A"],
+        vec![
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@e",
+            "commit",
+            "-q",
+            "-m",
+            "base",
+        ],
+    ] {
+        assert!(
+            Command::new("git")
+                .arg("-C")
+                .arg(repo.path())
+                .args(&args)
+                .status()
+                .unwrap()
+                .success()
+        );
+    }
+    let root = repo
+        .path()
+        .canonicalize()
+        .unwrap()
+        .to_string_lossy()
+        .trim_start_matches(r"\\?\")
+        .to_owned();
+    // Candidate: change line 2 and line 15 (two hunks), add a new file.
+    let candidate = original
+        .replace("line 2\n", "line 2 changed\n")
+        .replace("line 15\n", "line 15 changed\n");
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "edit notes", "expected_files": ["notes.txt", "extra.txt"]}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "notes.txt", "op": "replace", "content": candidate}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "extra.txt", "op": "create", "content": "brand new\n"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "edited", "self_review": {"findings": []}}}]}),
+        // After a RETURN the resumed conversation carries the earlier results plus the feedback.
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "after feedback", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, _seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn_with_env(
+        dir.path(),
+        &[
+            ("MODBIT_OPENAI_BASE_URL", &base),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+        ],
+    );
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xB0)).await;
+    let g = lease_for(&session);
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xB1),
+            "CreateTask",
+            CreateTask {
+                session_id: Some(session.clone()),
+                goal_text: "Edit the notes".into(),
+                workspace_id: None,
+                execution_profile: String::new(),
+                origin: "cli".into(),
+                workspace_root: root.clone(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let task = Client::result::<TaskCreated>(&ack)
+        .unwrap()
+        .task_id
+        .unwrap();
+    // Review before ReadyForReview is refused; the bundle is still readable.
+    let err = c
+        .command(envelope_fenced(
+            id16(0xB2),
+            "DecideReview",
+            DecideReview {
+                task_id: Some(task.clone()),
+                decision: "ACCEPT".into(),
+                rejected: vec![],
+                note: String::new(),
+                expected_workspace_revision: 0,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "NOT_REVIEWABLE"),
+        "{err:?}"
+    );
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xB3),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 10,
+                max_tool_calls: 0,
+                max_no_progress_turns: 3,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 60).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    // The bundle: two hunks in notes.txt, one new file, plan and self-review evidence.
+    let ack = c
+        .command(envelope(
+            id16(0xB4),
+            "GetReviewBundle",
+            GetReviewBundle {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let b: ReviewBundle = Client::result(&ack).unwrap();
+    assert_eq!(b.task_state, "ReadyForReview");
+    assert_eq!(b.base_commit.len(), 40);
+    let notes = b
+        .files
+        .iter()
+        .find(|f| f.path == "notes.txt")
+        .expect("notes in candidate");
+    assert_eq!(
+        (notes.status.as_str(), notes.hunks.len()),
+        ("M", 2),
+        "{b:?}"
+    );
+    assert!(
+        notes.hunks[0].lines.iter().any(|l| l == "+line 2 changed")
+            && notes.hunks[1].lines.iter().any(|l| l == "+line 15 changed")
+    );
+    let extra = b
+        .files
+        .iter()
+        .find(|f| f.path == "extra.txt")
+        .expect("new file in candidate");
+    assert_eq!((extra.status.as_str(), extra.hunks.len()), ("A", 1));
+    assert!(b.plan_json.contains("edit notes") && b.self_review_json.contains("findings"));
+    assert!(
+        b.verification_runs.iter().any(|v| v.stage == "BASELINE")
+            && b.verification_runs.iter().any(|v| v.stage == "COMPLETION"),
+        "{:?}",
+        b.verification_runs
+    );
+    assert!(
+        b.evidence_links.iter().any(|e| e.starts_with("plan:"))
+            && b.evidence_links
+                .iter()
+                .any(|e| e.starts_with("tool_result:"))
+    );
+    // Code view: revision-bound, changed ranges, stale detection.
+    let ack = c
+        .command(envelope(
+            id16(0xB5),
+            "GetCodeView",
+            GetCodeView {
+                task_id: Some(task.clone()),
+                path: "notes.txt".into(),
+                expected_file_revision: String::new(),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let cv: CodeViewModel = Client::result(&ack).unwrap();
+    assert_eq!(
+        (
+            cv.syntax_language.as_str(),
+            cv.file_revision.as_str(),
+            cv.changed_ranges.as_slice()
+        ),
+        ("text", notes.file_revision.as_str(), &[2u32, 2, 15, 15][..]),
+        "{cv:?}"
+    );
+    assert!(cv.text.contains("line 15 changed") && !cv.stale);
+    let ack = c
+        .command(envelope(
+            id16(0xB6),
+            "GetCodeView",
+            GetCodeView {
+                task_id: Some(task.clone()),
+                path: "notes.txt".into(),
+                expected_file_revision: "0000".into(),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let cv2: CodeViewModel = Client::result(&ack).unwrap();
+    assert!(
+        cv2.stale,
+        "a CodeReference with another file revision is marked stale"
+    );
+    // Stale review is refused; an unknown hunk is refused.
+    let err = c
+        .command(envelope_fenced(
+            id16(0xB7),
+            "DecideReview",
+            DecideReview {
+                task_id: Some(task.clone()),
+                decision: "ACCEPT".into(),
+                rejected: vec![],
+                note: String::new(),
+                expected_workspace_revision: b.workspace_revision + 7,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "STALE_REVIEW"),
+        "{err:?}"
+    );
+    let err = c
+        .command(envelope_fenced(
+            id16(0xB8),
+            "DecideReview",
+            DecideReview {
+                task_id: Some(task.clone()),
+                decision: "ACCEPT".into(),
+                rejected: vec![HunkRef {
+                    path: "notes.txt".into(),
+                    index: 9,
+                }],
+                note: String::new(),
+                expected_workspace_revision: b.workspace_revision,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "UNKNOWN_HUNK"),
+        "{err:?}"
+    );
+    // Reject the second hunk, accept the rest: the file keeps line 15, the new file lands, a commit exists.
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xB9),
+            "DecideReview",
+            DecideReview {
+                task_id: Some(task.clone()),
+                decision: "ACCEPT".into(),
+                rejected: vec![HunkRef {
+                    path: "notes.txt".into(),
+                    index: 1,
+                }],
+                note: "Keep the second region as it was".into(),
+                expected_workspace_revision: b.workspace_revision,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let d: ReviewDecided = Client::result(&ack).unwrap();
+    assert_eq!(
+        (d.task_state.as_str(), d.commit.len(), d.reverted.as_slice()),
+        ("Completed", 40, &["notes.txt#1".to_owned()][..]),
+        "{d:?}"
+    );
+    let expected = original.replace("line 2\n", "line 2 changed\n");
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("notes.txt")).unwrap(),
+        expected
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("extra.txt")).unwrap(),
+        "brand new\n"
+    );
+    let diff = Command::new("git")
+        .arg("-C")
+        .arg(repo.path())
+        .args(["diff", "HEAD~1", "HEAD", "--stat"])
+        .output()
+        .unwrap();
+    let stat = String::from_utf8_lossy(&diff.stdout);
+    assert!(
+        stat.contains("notes.txt")
+            && stat.contains("extra.txt")
+            && stat.contains("2 files changed"),
+        "{stat}"
+    );
+    let clean = Command::new("git")
+        .arg("-C")
+        .arg(repo.path())
+        .args(["status", "--porcelain"])
+        .output()
+        .unwrap();
+    assert!(
+        String::from_utf8_lossy(&clean.stdout)
+            .lines()
+            .all(|l| l.contains(".modbit")),
+        "worktree is clean after the review commit: {}",
+        String::from_utf8_lossy(&clean.stdout)
+    );
+    let msg = Command::new("git")
+        .arg("-C")
+        .arg(repo.path())
+        .args(["log", "-1", "--format=%B"])
+        .output()
+        .unwrap();
+    let msg = String::from_utf8_lossy(&msg.stdout);
+    assert!(
+        msg.contains("Keep the second region") && msg.contains("1 rejected"),
+        "{msg}"
+    );
+    let st = wait_task(&mut c, &task, 5).await;
+    assert_eq!(st.state, "Completed");
+    let evs = task_events(&core, &session, &task).await;
+    let rd = evs
+        .iter()
+        .find(|(_, t, _)| t == "ReviewDecisionRecorded")
+        .map(|(_, _, p)| p.clone())
+        .unwrap();
+    assert_eq!(
+        (
+            rd["decision"].as_str(),
+            rd["provenance"].as_str(),
+            rd["rejected"][0].as_str()
+        ),
+        (Some("ACCEPT"), Some("user_review"), Some("notes.txt#1"))
+    );
+    assert!(evs.iter().any(|(_, t, _)| t == "TaskCompleted"));
+
+    // RETURN: a second task goes back to work with the note queued, and StartTask resumes it as a new attempt.
+    let (base2, _) = scripted_model(vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "o", "expected_files": ["extra.txt"]}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "extra.txt", "op": "replace", "content": "second edit\n"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "s", "self_review": {"findings": []}}}]}),
+    ], None).await;
+    let _ = base2;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xBA),
+            "CreateTask",
+            CreateTask {
+                session_id: Some(session.clone()),
+                goal_text: "Second".into(),
+                workspace_id: None,
+                execution_profile: String::new(),
+                origin: "cli".into(),
+                workspace_root: root.clone(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let task2 = Client::result::<TaskCreated>(&ack)
+        .unwrap()
+        .task_id
+        .unwrap();
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xBB),
+            "StartTask",
+            StartTask {
+                task_id: Some(task2.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 10,
+                max_tool_calls: 0,
+                max_no_progress_turns: 3,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task2, 60).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xBC),
+            "DecideReview",
+            DecideReview {
+                task_id: Some(task2.clone()),
+                decision: "RETURN".into(),
+                rejected: vec![],
+                note: "Please also update notes.txt".into(),
+                expected_workspace_revision: 0,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let d: ReviewDecided = Client::result(&ack).unwrap();
+    assert_eq!((d.task_state.as_str(), d.commit.as_str()), ("Waiting", ""));
+    let st = wait_task(&mut c, &task2, 5).await;
+    assert_eq!(
+        (st.state.as_str(), st.wait_reason.as_str()),
+        ("Waiting", "UserInput")
+    );
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xBD),
+            "StartTask",
+            StartTask {
+                task_id: Some(task2.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 10,
+                max_tool_calls: 0,
+                max_no_progress_turns: 3,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let started: TaskRunStarted = Client::result(&ack).unwrap();
+    assert!(started.resumed);
+    let st = wait_task(&mut c, &task2, 60).await;
+    assert_eq!(
+        st.state, "ReadyForReview",
+        "resumed attempt reaches review again: {st:?}"
+    );
+    let evs2 = task_events(&core, &session, &task2).await;
+    assert_eq!(
+        evs2.iter()
+            .filter(|(a, t, _)| a == "run" && t == "RunCreated")
+            .count(),
+        2,
+        "a fresh attempt after RETURN"
+    );
+    assert!(evs2.iter().any(|(_, t, p)| {
+        t == "TaskInputQueued"
+            && p["text"]
+                .as_str()
+                .unwrap_or_default()
+                .contains("Please also update")
+    }));
+    assert!(evs2.iter().any(|(_, t, _)| t == "TaskReturnedToWork"));
+}

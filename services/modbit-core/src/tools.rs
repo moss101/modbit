@@ -141,7 +141,10 @@ impl ToolHost {
         })
     }
 
-    async fn workspace(&self, root: &str) -> Result<(Arc<Mutex<WorkspaceService>>, PathBuf)> {
+    pub(crate) async fn workspace(
+        &self,
+        root: &str,
+    ) -> Result<(Arc<Mutex<WorkspaceService>>, PathBuf)> {
         let canonical = Path::new(root)
             .canonicalize()
             .with_context(|| format!("workspace root `{root}`"))?;

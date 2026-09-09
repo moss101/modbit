@@ -28,6 +28,25 @@
       .empty { color: var(--muted); font-style: italic; }
       .status { margin-left: auto; color: var(--muted); font-size: 12px; }
       .sr-only { position: absolute; left: -9999px; }
+      input { font: inherit; padding: 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); }
+      .actions { display: flex; gap: 8px; margin-top: 8px; }
+      .review { padding: 16px 20px; }
+      .review-head { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; }
+      .review-head button { margin-left: auto; }
+      .review-body { display: grid; grid-template-columns: 1fr 360px; gap: 20px; }
+      article.file { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+      article.file h3 { margin: 0 0 8px; font-size: 13px; }
+      .hunk { border: 1px solid var(--line); border-radius: 6px; margin-bottom: 8px; overflow: hidden; }
+      .hunk[data-rejected="true"] { opacity: 0.6; border-style: dashed; }
+      .hunk-head { display: flex; justify-content: space-between; padding: 4px 8px; background: var(--bg); font-size: 12px; }
+      .hunk pre { margin: 0; padding: 8px; font: 12px/1.4 ui-monospace, monospace; overflow-x: auto; }
+      .hunk .add { color: var(--ok); }
+      .hunk .del { color: var(--bad); }
+      .hunk .ctx { color: var(--muted); }
+      aside { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+      aside h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin: 12px 0 6px; }
+      aside h3:first-child { margin-top: 0; }
+      pre.small, ul.small { font-size: 11px; max-height: 160px; overflow: auto; }
     </style>
   </head>
   <body>

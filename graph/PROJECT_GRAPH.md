@@ -406,7 +406,7 @@ flowchart LR
 | `M2.6` | COMPLETE | Provider Gateway OpenAI + Anthropic streaming |  |
 | `M2.7` | COMPLETE | Basic Prompt Compiler and one-agent runtime |  |
 | `M2.8` | COMPLETE | Verification engine build/test checks | derived plan recorded before the first run; BASELINE, TARGETED and COMPLETION stages with regression attribution; normalized `TestReport`/`CheckResult` from real runners on the Alpha fixtures; flake rerun protocol; diff invariants DI-1..DI-9 (`64_VERIFICATION_EXECUTION_CONTRACTS.md`, PX-032..034/036/037). |
-| `M2.9` | NOT_STARTED | Trusted Code Review Surface |  |
+| `M2.9` | IMPLEMENTING | Trusted Code Review Surface |  |
 | `M2.10` | NOT_STARTED | MediaEnvelope + Media Pipeline (before any multimodal provider/tool feature) | real PNG/JPEG/text-PDF read through fs.read with provenance, budgets and artifact digests |
 
 ### M3 — Context intelligence

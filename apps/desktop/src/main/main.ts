@@ -91,6 +91,19 @@ function requireGoal(v: unknown): string {
   if (typeof v !== "string" || v.trim().length === 0 || v.length > 20_000) throw new Error("BAD_ARGUMENT: goal must be 1..20000 chars");
   return v.trim();
 }
+function requireTaskId(v: unknown): string {
+  if (typeof v !== "string" || !HEX32.test(v)) throw new Error("BAD_ARGUMENT: task id must be 32 hex chars");
+  return v;
+}
+function optionalWorkspaceRoot(v: unknown): string {
+  if (v === undefined || v === null || v === "") return "";
+  if (typeof v !== "string" || v.length > 4096 || v.includes("\0")) throw new Error("BAD_ARGUMENT: workspace root must be a path");
+  return v;
+}
+function requireRelativePath(v: unknown): string {
+  if (typeof v !== "string" || v.length === 0 || v.length > 4096 || v.startsWith("/") || v.includes("..") || v.includes("\0")) throw new Error("BAD_ARGUMENT: path must be workspace-relative");
+  return v;
+}
 
 // Every handler validates its arguments (REQ-EV-0103: a malformed renderer
 // message is rejected here, never forwarded).
@@ -114,14 +127,63 @@ ipcMain.handle("session:snapshot", async (_e: IpcMainInvokeEvent, sessionId: unk
     tasks: s.tasks.map((t) => ({ taskId: Buffer.from(t.taskId?.value ?? []).toString("hex"), goalText: t.goalText, state: t.state, generation: Number(t.generation), createdAtMs: Number(t.createdAt?.seconds ?? 0n) * 1000 })),
   };
 });
-ipcMain.handle("task:create", async (_e: IpcMainInvokeEvent, sessionId: unknown, goal: unknown, commandIdHex: unknown) => {
+ipcMain.handle("task:create", async (_e: IpcMainInvokeEvent, sessionId: unknown, goal: unknown, commandIdHex: unknown, workspaceRoot: unknown) => {
   const sid = requireSessionId(sessionId);
   const g = requireGoal(goal);
+  const root = optionalWorkspaceRoot(workspaceRoot);
   // The renderer supplies a stable command id so a retry after a crash replays instead of duplicating.
   const cid = typeof commandIdHex === "string" && HEX32.test(commandIdHex) ? new Uint8Array(Buffer.from(commandIdHex, "hex")) : freshId();
   const c = requireClient();
   if (c.leaseGeneration(sid) === undefined) await c.acquireSessionLease(sid, `desktop ${app.getVersion()}`);
-  return c.createTask(sid, g, cid);
+  return c.createTask(sid, g, cid, root);
+});
+ipcMain.handle("task:start", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown) => {
+  const sid = requireSessionId(sessionId);
+  const tid = requireTaskId(taskId);
+  const c = requireClient();
+  if (c.leaseGeneration(sid) === undefined) await c.acquireSessionLease(sid, `desktop ${app.getVersion()}`);
+  return c.startTask(sid, tid);
+});
+// Review surface (docs/20): immutable, revision-bound payloads from the Core.
+ipcMain.handle("review:bundle", async (_e: IpcMainInvokeEvent, taskId: unknown) => {
+  const b = await requireClient().getReviewBundle(requireTaskId(taskId));
+  return {
+    taskId: Buffer.from(b.taskId?.value ?? []).toString("hex"),
+    taskState: b.taskState,
+    workspaceRevision: b.workspaceRevision.toString(),
+    baseCommit: b.baseCommit,
+    workspaceRoot: b.workspaceRoot,
+    files: b.files.map((f) => ({ path: f.path, status: f.status, binary: f.binary, fileRevision: f.fileRevision, oldContentRef: f.oldContentRef, newContentRef: f.newContentRef, hunks: f.hunks.map((h) => ({ index: h.index, header: h.header, lines: h.lines })) })),
+    planJson: b.planJson,
+    selfReviewJson: b.selfReviewJson,
+    verificationRuns: b.verificationRuns.map((v) => ({ id: v.verificationRunId, stage: v.stage, status: v.status, candidateRevision: v.candidateRevision, checks: v.checkIds.map((id, i) => ({ id, status: v.checkStatuses[i] ?? "" })) })),
+    attributions: b.attributions,
+    quarantined: b.quarantined,
+    invariantFindings: b.invariantFindings,
+    receipts: b.receipts,
+    evidenceLinks: b.evidenceLinks,
+  };
+});
+ipcMain.handle("review:codeView", async (_e: IpcMainInvokeEvent, taskId: unknown, path: unknown, expectedFileRevision: unknown) => {
+  const v = await requireClient().getCodeView(requireTaskId(taskId), requireRelativePath(path), typeof expectedFileRevision === "string" ? expectedFileRevision : "");
+  return { workspaceRevision: v.workspaceRevision.toString(), fileRevision: v.fileRevision, path: v.path, contentRef: v.contentRef, syntaxLanguage: v.syntaxLanguage, changedRanges: v.changedRanges, evidenceLinks: v.evidenceLinks, stale: v.stale, text: v.text };
+});
+ipcMain.handle("review:decide", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown, decision: unknown, rejected: unknown, note: unknown, expectedWorkspaceRevision: unknown) => {
+  const sid = requireSessionId(sessionId);
+  const tid = requireTaskId(taskId);
+  if (decision !== "ACCEPT" && decision !== "RETURN") throw new Error("BAD_ARGUMENT: decision must be ACCEPT or RETURN");
+  if (!Array.isArray(rejected) || rejected.length > 10_000) throw new Error("BAD_ARGUMENT: rejected must be a list");
+  const rej = rejected.map((r) => {
+    const x = r as { path?: unknown; index?: unknown };
+    if (typeof x.path !== "string" || typeof x.index !== "number" || !Number.isInteger(x.index) || x.index < 0) throw new Error("BAD_ARGUMENT: rejected hunk must be {path, index}");
+    return { path: requireRelativePath(x.path), index: x.index };
+  });
+  const n = typeof note === "string" && note.length <= 20_000 ? note : "";
+  const rev = typeof expectedWorkspaceRevision === "string" && /^\d+$/.test(expectedWorkspaceRevision) ? BigInt(expectedWorkspaceRevision) : 0n;
+  const c = requireClient();
+  if (c.leaseGeneration(sid) === undefined) await c.acquireSessionLease(sid, `desktop ${app.getVersion()}`);
+  const d = await c.decideReview(sid, tid, decision, rej, n, rev);
+  return { taskState: d.taskState, commit: d.commit, reverted: d.reverted, workspaceRevision: d.workspaceRevision.toString() };
 });
 ipcMain.handle("events:subscribe", (_e: IpcMainInvokeEvent, sessionId: unknown, afterOffset: unknown) => {
   const sid = requireSessionId(sessionId);
