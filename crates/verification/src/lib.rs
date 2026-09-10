@@ -15,6 +15,7 @@ pub mod engine;
 pub mod invariants;
 pub mod plan;
 pub mod report;
+pub mod tiers;
 
 pub use adapters::{RawRun, detect, parse, parse_cargo, parse_junit_xml, parse_vitest_json};
 pub use engine::{

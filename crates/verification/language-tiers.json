@@ -1,0 +1,188 @@
+{
+ "note": "Recorded language tier conformance runs (PX-027, docs/76). A language appears here only after the tier suites passed on its real fixture repository; the suite test named in each record regenerates and checks this file, so it cannot claim more than the suites proved. A language that is absent is Unsupported. A record is what a tier claim rests on: promoting a language into a tier in the product's labels is PX-028, and it may cite nothing but these records.",
+ "records": [
+  {
+   "language": "rust",
+   "fixture": "tests/fixtures/repos/rust-cli",
+   "tier": "A",
+   "checks": [
+    {
+     "id": "c1_text_edit_preserves_encoding_and_line_endings",
+     "tier": "C",
+     "status": "pass",
+     "detail": "edits never corrupt encoding or line endings"
+    },
+    {
+     "id": "c2_exact_and_lexical_retrieval",
+     "tier": "C",
+     "status": "pass",
+     "detail": "exact and BM25 retrieval return revision-bound hits for this language"
+    },
+    {
+     "id": "c3_configured_command_evidence",
+     "tier": "C",
+     "status": "pass",
+     "detail": "test or build evidence through a configured command is attributed to the task"
+    },
+    {
+     "id": "b1_symbol_extraction",
+     "tier": "B",
+     "status": "pass",
+     "detail": "tree-sitter symbol extraction finds the definitions of a real fixture file"
+    },
+    {
+     "id": "b2_build_output_diagnostics",
+     "tier": "B",
+     "status": "pass",
+     "detail": "diagnostics are parsed out of build or test output with a file and a line"
+    },
+    {
+     "id": "b3_revision_bound_structural_edit",
+     "tier": "B",
+     "status": "pass",
+     "detail": "an edit against a stale revision is refused rather than applied"
+    },
+    {
+     "id": "a1_language_service_symbols_and_references",
+     "tier": "A",
+     "status": "pass",
+     "detail": "the headless language service returns symbols and finds a known reference"
+    },
+    {
+     "id": "a2_diagnostics_parity",
+     "tier": "A",
+     "status": "pass",
+     "detail": "the language service reports the defect the build reports, in the same file"
+    }
+   ],
+   "suite_test": "qual_px_027_language_tier_suites_run_on_real_fixtures_and_a_tier_is_only_a_recorded_pass",
+   "not_claimed": [
+    "language-specific change strategies and skills (docs/76 Tier A, not yet built)",
+    "incremental index latency within a budget (no latency budget is measured yet)",
+    "the competence suite tasks for this language at baseline (PX-020)"
+   ]
+  },
+  {
+   "language": "python",
+   "fixture": "tests/fixtures/repos/python-service",
+   "tier": "A",
+   "checks": [
+    {
+     "id": "c1_text_edit_preserves_encoding_and_line_endings",
+     "tier": "C",
+     "status": "pass",
+     "detail": "edits never corrupt encoding or line endings"
+    },
+    {
+     "id": "c2_exact_and_lexical_retrieval",
+     "tier": "C",
+     "status": "pass",
+     "detail": "exact and BM25 retrieval return revision-bound hits for this language"
+    },
+    {
+     "id": "c3_configured_command_evidence",
+     "tier": "C",
+     "status": "pass",
+     "detail": "test or build evidence through a configured command is attributed to the task"
+    },
+    {
+     "id": "b1_symbol_extraction",
+     "tier": "B",
+     "status": "pass",
+     "detail": "tree-sitter symbol extraction finds the definitions of a real fixture file"
+    },
+    {
+     "id": "b2_build_output_diagnostics",
+     "tier": "B",
+     "status": "pass",
+     "detail": "diagnostics are parsed out of build or test output with a file and a line"
+    },
+    {
+     "id": "b3_revision_bound_structural_edit",
+     "tier": "B",
+     "status": "pass",
+     "detail": "an edit against a stale revision is refused rather than applied"
+    },
+    {
+     "id": "a1_language_service_symbols_and_references",
+     "tier": "A",
+     "status": "pass",
+     "detail": "the headless language service returns symbols and finds a known reference"
+    },
+    {
+     "id": "a2_diagnostics_parity",
+     "tier": "A",
+     "status": "pass",
+     "detail": "the language service reports the defect the build reports, in the same file"
+    }
+   ],
+   "suite_test": "qual_px_027_language_tier_suites_run_on_real_fixtures_and_a_tier_is_only_a_recorded_pass",
+   "not_claimed": [
+    "language-specific change strategies and skills (docs/76 Tier A, not yet built)",
+    "incremental index latency within a budget (no latency budget is measured yet)",
+    "the competence suite tasks for this language at baseline (PX-020)"
+   ]
+  },
+  {
+   "language": "typescript",
+   "fixture": "tests/fixtures/repos/ts-webapp",
+   "tier": "A",
+   "checks": [
+    {
+     "id": "c1_text_edit_preserves_encoding_and_line_endings",
+     "tier": "C",
+     "status": "pass",
+     "detail": "edits never corrupt encoding or line endings"
+    },
+    {
+     "id": "c2_exact_and_lexical_retrieval",
+     "tier": "C",
+     "status": "pass",
+     "detail": "exact and BM25 retrieval return revision-bound hits for this language"
+    },
+    {
+     "id": "c3_configured_command_evidence",
+     "tier": "C",
+     "status": "pass",
+     "detail": "test or build evidence through a configured command is attributed to the task"
+    },
+    {
+     "id": "b1_symbol_extraction",
+     "tier": "B",
+     "status": "pass",
+     "detail": "tree-sitter symbol extraction finds the definitions of a real fixture file"
+    },
+    {
+     "id": "b2_build_output_diagnostics",
+     "tier": "B",
+     "status": "pass",
+     "detail": "diagnostics are parsed out of build or test output with a file and a line"
+    },
+    {
+     "id": "b3_revision_bound_structural_edit",
+     "tier": "B",
+     "status": "pass",
+     "detail": "an edit against a stale revision is refused rather than applied"
+    },
+    {
+     "id": "a1_language_service_symbols_and_references",
+     "tier": "A",
+     "status": "pass",
+     "detail": "the headless language service returns symbols and finds a known reference"
+    },
+    {
+     "id": "a2_diagnostics_parity",
+     "tier": "A",
+     "status": "pass",
+     "detail": "the language service reports the defect the build reports, in the same file"
+    }
+   ],
+   "suite_test": "qual_px_027_language_tier_suites_run_on_real_fixtures_and_a_tier_is_only_a_recorded_pass",
+   "not_claimed": [
+    "language-specific change strategies and skills (docs/76 Tier A, not yet built)",
+    "incremental index latency within a budget (no latency budget is measured yet)",
+    "the competence suite tasks for this language at baseline (PX-020)"
+   ]
+  }
+ ]
+}

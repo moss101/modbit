@@ -34,6 +34,32 @@ A tool marked production cannot pass by returning a canned success value.
 | Platform conformance | CI runners for macOS, Windows, Linux | PTY/process, language services, Git, path/symlink policy, secrets, packaging, browser host; results labeled CI_COMPATIBLE, never support (PX-030) |
 | Review isolation | real disposable worktree + sandboxed process under `review_isolated` | permitted scratch write/build/test; denied canonical write, commit/push, secret read, egress, deploy; hidden-reasoning exclusion; cleanup on accept/cancel/kill (EPR-E2E-018, EPR-FI-018) |
 
+## Language tier suites (PX-027)
+
+The tier suites are `crates/verification/src/tiers.rs` and they run in
+`qual_px_027_language_tier_suites_run_on_real_fixtures_and_a_tier_is_only_a_recorded_pass`
+against the fixture repositories of `50_TEST_STRATEGY_REAL_SYSTEM_GATES.md`. A
+tier is every check of that tier and of every tier below it, passing on a real
+repository; a skipped check is not a pass.
+
+| Check | Tier | What it proves |
+|---|---|---|
+| `c1_text_edit_preserves_encoding_and_line_endings` | C | edits never corrupt encoding or line endings |
+| `c2_exact_and_lexical_retrieval` | C | exact and BM25 retrieval return revision-bound hits |
+| `c3_configured_command_evidence` | C | evidence from the configured command is attributed to the task |
+| `b1_symbol_extraction` | B | tree-sitter finds the definitions of a real file |
+| `b2_build_output_diagnostics` | B | failures are parsed out of build or test output and located |
+| `b3_revision_bound_structural_edit` | B | an edit against a stale revision is refused |
+| `a1_language_service_symbols_and_references` | A | the headless service returns symbols and finds a known reference |
+| `a2_diagnostics_parity` | A | the service reports a seeded defect at its line and stops once it is fixed |
+
+Passes are recorded in `crates/verification/language-tiers.json`. The record is
+the only thing a tier claim may rest on: `verify_record` refuses a record that
+claims more than its checks show, the suite refuses a record that claims more
+than the run earned, and every client's language label carries the recorded
+line or says that no suite has run. Promoting a language into a tier in the
+product's labels is PX-028 and may cite nothing but these records.
+
 ## Procedural runtime proof
 
 At least one release-gate task must expose only `exec`, `wait`, and `request_user_input` to the model while the generated isolated program composes `tools.*`. The task must edit files through Change Engine, run tests, inspect Git diff and return evidence. Nested tool calls must be indistinguishable in policy/evidence rigor from direct model tool calls.

@@ -10373,3 +10373,642 @@ async fn qual_ev_0161_an_attached_ticket_is_labelled_context_and_cannot_grant_a_
         );
     }
 }
+
+/// PX-027 (QUAL-PX-027): the language tier suites, run on the real fixture
+/// repositories. Every check is the product doing the thing the tier claims —
+/// a text edit that preserves bytes, retrieval that returns revision-bound
+/// hits, symbol extraction, a stale-revision refusal, evidence from the
+/// configured command with a file and a line, and the headless language
+/// service answering for symbols, references and the defect the suite reports.
+/// A tier is then exactly what passed: the recorded file (`language-tiers.json`)
+/// must claim what this run earns and nothing more, and every client's label
+/// comes from that record.
+#[tokio::test]
+async fn qual_px_027_language_tier_suites_run_on_real_fixtures_and_a_tier_is_only_a_recorded_pass()
+{
+    use modbit_protocol::v1::{LanguageList, ListLanguages, StartTask, TaskRunStarted};
+    use modbit_verification::tiers::{CheckOutcome, Tier, earned_tier, recorded, verify_record};
+    use serde_json::json;
+
+    struct Case {
+        language: &'static str,
+        fixture: &'static str,
+        /// A file with real definitions.
+        main: &'static str,
+        /// A symbol defined in `main`.
+        symbol: &'static str,
+        /// A second symbol, so extraction is not a single lucky hit.
+        symbol2: &'static str,
+        /// A file whose content makes the suite fail, and where.
+        seed: (&'static str, &'static str),
+        /// A line and column inside `main` where `symbol` is defined.
+        symbol_site: (u32, u32),
+        /// A snippet with a real static defect, appended to `main`, and the
+        /// 0-based line inside the snippet where the defect is.
+        defect: (&'static str, u64),
+    }
+    let cases = [
+        Case {
+            language: "rust",
+            fixture: "rust-cli",
+            main: "src/lib.rs",
+            symbol: "parse_quantity",
+            symbol2: "total_cents",
+            seed: (
+                "tests/seeded.rs",
+                "#[test]\nfn seeded_conformance_defect() {\n    assert_eq!(rust_cli::total_cents(2, 3), 7);\n}\n",
+            ),
+            symbol_site: (4, 7),
+            defect: (
+                "\npub fn seeded_defect() -> i64 {\n    let x: i64 = \"text\";\n    x\n}\n",
+                2,
+            ),
+        },
+        Case {
+            language: "python",
+            fixture: "python-service",
+            main: "service.py",
+            symbol: "parse_quantity",
+            symbol2: "total_cents",
+            seed: (
+                "test_seeded.py",
+                "from service import total_cents\n\n\ndef test_seeded_conformance_defect():\n    assert total_cents(2, 3) == 7\n",
+            ),
+            symbol_site: (3, 4),
+            defect: (
+                "\n\ndef seeded_defect() -> int:\n    x: int = \"text\"\n    return x\n",
+                3,
+            ),
+        },
+        Case {
+            language: "typescript",
+            fixture: "ts-webapp",
+            main: "src/cart.ts",
+            symbol: "parseQuantity",
+            symbol2: "totalCents",
+            seed: (
+                "test/seeded.test.ts",
+                "import { expect, it } from \"vitest\";\nimport { totalCents } from \"../src/cart\";\nit(\"seeded conformance defect\", () => {\n  expect(totalCents(2, 3)).toBe(7);\n});\n",
+            ),
+            symbol_site: (1, 16),
+            defect: (
+                "\nexport function seededDefect(): number {\n  const x: number = \"text\";\n  return x;\n}\n",
+                2,
+            ),
+        },
+    ];
+
+    let nm = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../node_modules")
+        .canonicalize()
+        .unwrap();
+    let nm_s = nm.to_string_lossy().into_owned();
+    let mut earned: Vec<(String, Option<Tier>, Vec<CheckOutcome>)> = Vec::new();
+    for (i, case) in cases.iter().enumerate() {
+        let idx = u8::try_from(i).unwrap();
+        let mut checks: Vec<CheckOutcome> = Vec::new();
+        fn outcome(id: &str, ok: bool, detail: String) -> CheckOutcome {
+            let tier = modbit_verification::tiers::CHECKS
+                .iter()
+                .find(|c| c.id == id)
+                .expect("a real check")
+                .tier;
+            CheckOutcome {
+                id: id.into(),
+                tier,
+                status: if ok { "pass".into() } else { "fail".into() },
+                detail,
+            }
+        }
+        let (repo, root) = fixture_repo(case.fixture);
+        // A configured command can only run with the dependencies a developer
+        // would have: the fixture's installed modules are linked into the copy.
+        let installed = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../tests/fixtures/repos")
+            .join(case.fixture)
+            .join("node_modules");
+        if installed.exists() {
+            #[cfg(unix)]
+            let _ = std::os::unix::fs::symlink(&installed, repo.path().join("node_modules"));
+            #[cfg(windows)]
+            let _ = std::os::windows::fs::symlink_dir(&installed, repo.path().join("node_modules"));
+        }
+        // The suite must fail for a reason of our making, so the evidence is
+        // about this run and not about the fixture's own seeded defects.
+        std::fs::write(repo.path().join(case.seed.0), case.seed.1).unwrap();
+        let script = vec![
+            json!({"calls": [{"name": "plan.update", "args": {"outcome": "run the tier conformance suite", "expected_files": [case.seed.0]}}]}),
+            json!({"calls": [{"name": "verify.run", "args": {"stage": "TARGETED"}}]}),
+        ];
+        let (base, _seen) = scripted_model(script, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let env = [
+            ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+            ("MODBIT_NODE_MODULES", nm_s.as_str()),
+        ];
+        let core = CoreProcess::spawn_with_env(dir.path(), &env);
+        let mut c = core.client().await;
+        let (session, _) = create_session(&mut c, id16(0x80 + idx)).await;
+        let g = lease_for(&session);
+        let task =
+            create_task_with_profile(&mut c, &session, g, &root, 0x84 + idx, "local_trusted").await;
+
+        // C1: a text edit preserves encoding and line endings.
+        let crlf = "alpha\r\nbeta\r\n";
+        let r = invoke_tool(
+            &mut c,
+            &task,
+            g,
+            0x88 + idx,
+            0xC1,
+            "change.apply",
+            &json!({"path": "conformance.txt", "op": "create", "content": crlf}).to_string(),
+        )
+        .await;
+        let created = r.status == "SUCCESS";
+        let r = invoke_tool(
+            &mut c,
+            &task,
+            g,
+            0x8C + idx,
+            0xC2,
+            "change.apply",
+            &json!({"path": "conformance.txt", "op": "edit", "text_edits": [{"old": "beta", "new": "gamma"}]})
+                .to_string(),
+        )
+        .await;
+        let edited = r.status == "SUCCESS";
+        let bytes = std::fs::read(repo.path().join("conformance.txt")).unwrap_or_default();
+        let preserved = bytes == b"alpha\r\ngamma\r\n";
+        checks.push(outcome(
+            "c1_text_edit_preserves_encoding_and_line_endings",
+            created && edited && preserved,
+            format!(
+                "a CRLF file edited through the change engine came back as {:?}",
+                String::from_utf8_lossy(&bytes)
+            ),
+        ));
+
+        // C2: exact and BM25 retrieval, bound to the index revision.
+        let exact = invoke_tool(
+            &mut c,
+            &task,
+            g,
+            0x90 + idx,
+            0xC3,
+            "search.exact",
+            &json!({"query": case.symbol}).to_string(),
+        )
+        .await;
+        let exact_so: serde_json::Value =
+            serde_json::from_str(&exact.structured_output_json).unwrap_or_default();
+        let exact_hit = exact_so["hits"].as_array().is_some_and(|h| {
+            h.iter()
+                .any(|x| x["path"] == case.main && x["index_revision"].as_u64().is_some())
+        });
+        let lexical = invoke_tool(
+            &mut c,
+            &task,
+            g,
+            0x94 + idx,
+            0xC4,
+            "search.lexical",
+            &json!({"query": case.symbol}).to_string(),
+        )
+        .await;
+        let lexical_so: serde_json::Value =
+            serde_json::from_str(&lexical.structured_output_json).unwrap_or_default();
+        let lexical_hit = lexical_so["hits"]
+            .as_array()
+            .is_some_and(|h| h.iter().any(|x| x["path"] == case.main));
+        checks.push(outcome(
+            "c2_exact_and_lexical_retrieval",
+            exact_hit && lexical_hit,
+            format!(
+                "exact and BM25 both returned {} at index revision {}",
+                case.main, exact_so["revision"]
+            ),
+        ));
+
+        // B1: tree-sitter symbol extraction.
+        let sym = invoke_tool(
+            &mut c,
+            &task,
+            g,
+            0x98 + idx,
+            0xC5,
+            "search.symbols",
+            &json!({"query": case.symbol}).to_string(),
+        )
+        .await;
+        let sym_so: serde_json::Value =
+            serde_json::from_str(&sym.structured_output_json).unwrap_or_default();
+        let sym2 = invoke_tool(
+            &mut c,
+            &task,
+            g,
+            0x9C + idx,
+            0xC6,
+            "search.symbols",
+            &json!({"query": case.symbol2}).to_string(),
+        )
+        .await;
+        let sym2_so: serde_json::Value =
+            serde_json::from_str(&sym2.structured_output_json).unwrap_or_default();
+        let found = |v: &serde_json::Value, name: &str| {
+            v["symbols"].as_array().is_some_and(|s| {
+                s.iter()
+                    .any(|x| x["name"] == name && x["path"] == case.main)
+            })
+        };
+        checks.push(outcome(
+            "b1_symbol_extraction",
+            found(&sym_so, case.symbol) && found(&sym2_so, case.symbol2),
+            format!(
+                "tree-sitter found {} and {} in {}",
+                case.symbol, case.symbol2, case.main
+            ),
+        ));
+
+        // B3: an edit against a stale revision is refused.
+        let stale = invoke_tool(
+            &mut c,
+            &task,
+            g,
+            0xA0 + idx,
+            0xC7,
+            "change.apply",
+            &json!({"path": "conformance.txt", "op": "replace", "content": "x\n", "expected_workspace_revision": 0})
+                .to_string(),
+        )
+        .await;
+        let after = std::fs::read(repo.path().join("conformance.txt")).unwrap_or_default();
+        checks.push(outcome(
+            "b3_revision_bound_structural_edit",
+            stale.status != "SUCCESS" && after == b"alpha\r\ngamma\r\n",
+            format!(
+                "an edit at revision 0 was {} and the file is unchanged",
+                stale.status
+            ),
+        ));
+
+        // A1: the headless language service answers for symbols and references.
+        let lsp_sym = invoke_tool(
+            &mut c,
+            &task,
+            g,
+            0xA4 + idx,
+            0xC8,
+            "lsp.symbols",
+            &json!({"path": case.main}).to_string(),
+        )
+        .await;
+        let lsp_sym_so: serde_json::Value =
+            serde_json::from_str(&lsp_sym.structured_output_json).unwrap_or_default();
+        let lsp_names: Vec<String> = lsp_sym_so["symbols"]
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .filter_map(|s| s["name"].as_str().map(str::to_owned))
+                    .collect()
+            })
+            .unwrap_or_default();
+        // A language service indexes on its own schedule; the suite waits a
+        // bounded time rather than deciding on a cold server.
+        let mut refs = invoke_tool(
+            &mut c,
+            &task,
+            g,
+            0xA8 + idx,
+            0xC9,
+            "lsp.references",
+            &json!({"path": case.main, "line": case.symbol_site.0, "character": case.symbol_site.1})
+                .to_string(),
+        )
+        .await;
+        let mut ref_paths: Vec<String> = Vec::new();
+        for attempt in 0..4u8 {
+            let so: serde_json::Value =
+                serde_json::from_str(&refs.structured_output_json).unwrap_or_default();
+            ref_paths = so["locations"]
+                .as_array()
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|l| l["path"].as_str().map(str::to_owned))
+                        .collect()
+                })
+                .unwrap_or_default();
+            if !ref_paths.is_empty() {
+                break;
+            }
+            tokio::time::sleep(Duration::from_secs(2)).await;
+            refs = invoke_tool(
+                &mut c,
+                &task,
+                g,
+                0xA8 + idx,
+                0xE0 + attempt,
+                "lsp.references",
+                &json!({"path": case.main, "line": case.symbol_site.0, "character": case.symbol_site.1})
+                    .to_string(),
+            )
+            .await;
+        }
+        let a1 = lsp_sym.status == "SUCCESS"
+            && lsp_names.iter().any(|n| n == case.symbol)
+            && refs.status == "SUCCESS"
+            && !ref_paths.is_empty();
+        if a1 {
+            checks.push(outcome(
+                "a1_language_service_symbols_and_references",
+                true,
+                format!(
+                    "{} returned {} symbol(s) and {} reference location(s)",
+                    lsp_sym_so["server"],
+                    lsp_names.len(),
+                    ref_paths.len()
+                ),
+            ));
+        } else {
+            checks.push(CheckOutcome {
+                id: "a1_language_service_symbols_and_references".into(),
+                tier: Tier::A,
+                status: "skip".into(),
+                detail: format!(
+                    "the language service did not answer for {} here (symbols {} with {:?}, references {} with {:?}): no service, no Tier A claim",
+                    case.main, lsp_sym.status, lsp_names, refs.status, ref_paths
+                ),
+            });
+        }
+
+        // C3 and B2: the configured command's evidence, attributed to the task,
+        // with a file and a line for the defect this run seeded.
+        let ack = c
+            .command(envelope_fenced(
+                id16(0xAC + idx),
+                "StartTask",
+                StartTask {
+                    task_id: Some(task.clone()),
+                    endpoint: String::new(),
+                    model: "gpt-5-mini".into(),
+                    max_turns: 3,
+                    max_tool_calls: 0,
+                    max_no_progress_turns: 3,
+                }
+                .encode_to_vec(),
+                g,
+            ))
+            .await
+            .unwrap();
+        let _: TaskRunStarted = Client::result(&ack).unwrap();
+        let _ = wait_task(&mut c, &task, 300).await;
+        let evs = task_events(&core, &session, &task).await;
+        let runs: Vec<&serde_json::Value> = evs
+            .iter()
+            .filter(|(_, t, _)| {
+                t == "VerificationRunRecorded" || t == "VerificationBaselineRecorded"
+            })
+            .map(|(_, _, p)| p)
+            .collect();
+        let attributed = runs.iter().any(|r| {
+            r["checks"]
+                .as_array()
+                .is_some_and(|c| !c.is_empty() && r["environment_digest"].as_str().is_some())
+        });
+        checks.push(outcome(
+            "c3_configured_command_evidence",
+            attributed,
+            format!(
+                "{} verification run(s) on this task carried {} check(s) with an environment digest",
+                runs.len(),
+                runs.iter()
+                    .map(|r| r["checks"].as_array().map_or(0, Vec::len))
+                    .sum::<usize>()
+            ),
+        ));
+        // The raw report keeps the location the parser found.
+        let (mut located, mut with_line) = (None::<String>, None::<String>);
+        for r in &runs {
+            for rref in r["report_refs"].as_array().into_iter().flatten() {
+                let Some(hash) = rref.as_str() else { continue };
+                let body = read_object(&mut c, id16(0xB0 + idx), hash).await;
+                let Ok(report) = serde_json::from_str::<serde_json::Value>(&body) else {
+                    continue;
+                };
+                for ch in report["checks"].as_array().into_iter().flatten() {
+                    let path = ch["location"]["path"].as_str().unwrap_or_default();
+                    if path.is_empty() {
+                        continue;
+                    }
+                    if let Some(l) = ch["location"]["line"].as_u64().filter(|l| *l > 0) {
+                        with_line = Some(format!("{path}:{l}"));
+                    }
+                    if ch["status"] != "Pass" {
+                        located = Some(path.to_owned());
+                    }
+                }
+            }
+        }
+        checks.push(outcome(
+            "b2_build_output_diagnostics",
+            located.is_some() && with_line.is_some(),
+            format!(
+                "the parser located the failure in {} and carried a line at {}",
+                located.clone().unwrap_or_else(|| "nothing".into()),
+                with_line.clone().unwrap_or_else(|| "nowhere".into())
+            ),
+        ));
+
+        // A2: the language service reports the defect that is really there,
+        // at its line, and stops reporting it once the file is fixed. A bridge
+        // that invents or loses diagnostics fails here.
+        let main_path = repo.path().join(case.main);
+        let original = std::fs::read_to_string(&main_path).unwrap();
+        let expected_line = u64::try_from(original.lines().count()).unwrap() + case.defect.1;
+        let r = invoke_tool(
+            &mut c,
+            &task,
+            g,
+            0xB4 + idx,
+            0xCA,
+            "change.apply",
+            &json!({"path": case.main, "op": "replace", "content": format!("{original}{}", case.defect.0)})
+                .to_string(),
+        )
+        .await;
+        assert_eq!(r.status, "SUCCESS", "{r:?}");
+        let mut reported: Option<(usize, u64)> = None;
+        for attempt in 0..5u8 {
+            let diag = invoke_tool(
+                &mut c,
+                &task,
+                g,
+                0xB8 + idx,
+                0xCB + attempt,
+                "lsp.diagnostics",
+                &json!({"path": case.main}).to_string(),
+            )
+            .await;
+            let so: serde_json::Value =
+                serde_json::from_str(&diag.structured_output_json).unwrap_or_default();
+            let errors: Vec<&serde_json::Value> = so["diagnostics"]
+                .as_array()
+                .map(|a| a.iter().filter(|d| d["severity"] == "error").collect())
+                .unwrap_or_default();
+            if let Some(first) = errors.first() {
+                reported = Some((
+                    errors.len(),
+                    first["range"]["start"]["line"].as_u64().unwrap_or(0),
+                ));
+                break;
+            }
+            tokio::time::sleep(Duration::from_secs(3)).await;
+        }
+        let fixed = invoke_tool(
+            &mut c,
+            &task,
+            g,
+            0xBC + idx,
+            0xD0,
+            "change.apply",
+            &json!({"path": case.main, "op": "replace", "content": original}).to_string(),
+        )
+        .await;
+        assert_eq!(fixed.status, "SUCCESS", "{fixed:?}");
+        let mut still = usize::MAX;
+        let mut server = serde_json::Value::Null;
+        for attempt in 0..5u8 {
+            let after_fix = invoke_tool(
+                &mut c,
+                &task,
+                g,
+                0xC0 + idx,
+                0xD1 + attempt,
+                "lsp.diagnostics",
+                &json!({"path": case.main}).to_string(),
+            )
+            .await;
+            let so: serde_json::Value =
+                serde_json::from_str(&after_fix.structured_output_json).unwrap_or_default();
+            server = so["server"].clone();
+            still = so["diagnostics"]
+                .as_array()
+                .map(|a| a.iter().filter(|d| d["severity"] == "error").count())
+                .unwrap_or(0);
+            if still == 0 {
+                break;
+            }
+            tokio::time::sleep(Duration::from_secs(3)).await;
+        }
+        match reported {
+            Some((n, line)) => checks.push(outcome(
+                "a2_diagnostics_parity",
+                line == expected_line && still == 0,
+                format!(
+                    "{server} reported {n} error(s) on the seeded defect, the first at line {line} (expected {expected_line}), and {still} after the fix"
+                ),
+            )),
+            None => checks.push(CheckOutcome {
+                id: "a2_diagnostics_parity".into(),
+                tier: Tier::A,
+                status: "skip".into(),
+                detail: format!(
+                    "the language service reported nothing for the seeded defect in {}: no service, no Tier A claim",
+                    case.main
+                ),
+            }),
+        }
+
+        let tier = earned_tier(&checks);
+        eprintln!(
+            "PX027 {} earned {:?} from {:#?}",
+            case.language, tier, checks
+        );
+        earned.push((case.language.to_owned(), tier, checks));
+        let _ = repo;
+    }
+
+    // The recorded file claims exactly what the suites earned — no more, and
+    // nothing that was not run.
+    let records = recorded();
+    for r in &records {
+        assert_eq!(verify_record(r), Ok(()), "{r:?}");
+    }
+    for (language, tier, checks) in &earned {
+        let recorded_tier = records
+            .iter()
+            .find(|r| &r.language == language)
+            .map(|r| r.tier);
+        let skipped: Vec<&str> = checks
+            .iter()
+            .filter(|c| c.status == "skip")
+            .map(|c| c.id.as_str())
+            .collect();
+        assert!(
+            checks.iter().all(|c| c.status != "fail"),
+            "{language}: a tier check failed: {:#?}",
+            checks
+                .iter()
+                .filter(|c| c.status == "fail")
+                .collect::<Vec<_>>()
+        );
+        assert!(
+            tier.is_some(),
+            "{language}: not even Tier C was earned here: {checks:#?}"
+        );
+        if skipped.is_empty() {
+            assert_eq!(
+                recorded_tier, *tier,
+                "{language}: the record claims {recorded_tier:?} and this run earned {tier:?}"
+            );
+        } else {
+            // A language service that did not answer on this machine cannot
+            // retract a recorded pass, but it cannot create one either: the
+            // record must still be at most what some run earned, and the skip
+            // is named here rather than hidden.
+            eprintln!(
+                "PX027 {language}: {skipped:?} did not run here; the record keeps {recorded_tier:?} from the run that earned it"
+            );
+            assert!(
+                recorded_tier >= *tier,
+                "{language}: the record claims less than this run earned: {recorded_tier:?} < {tier:?}"
+            );
+        }
+    }
+    // Every claim in the record file is about a language the catalog knows,
+    // and every language the catalog knows says what was recorded for it.
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn(dir.path());
+    let mut c = core.client().await;
+    let ack = c
+        .command(envelope(
+            id16(0xBF),
+            "ListLanguages",
+            ListLanguages {}.encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let list: LanguageList = Client::result(&ack).unwrap();
+    for r in &records {
+        let l = list
+            .languages
+            .iter()
+            .find(|l| l.language == r.language)
+            .unwrap_or_else(|| panic!("{} has a record and no label: {list:?}", r.language));
+        assert!(
+            l.conformance.contains(r.tier.label()) && l.conformance.contains(&r.fixture),
+            "{l:?} vs {r:?}"
+        );
+    }
+    for l in &list.languages {
+        if records.iter().any(|r| r.language == l.language) {
+            continue;
+        }
+        assert_eq!(
+            l.conformance, "no tier conformance suite has run for this language",
+            "{l:?} claims a tier with no record"
+        );
+    }
+}

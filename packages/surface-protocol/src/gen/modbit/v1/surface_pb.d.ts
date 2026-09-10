@@ -2446,6 +2446,15 @@ export declare type LanguageSupportView = Message<"modbit.v1.LanguageSupportView
    * @generated from field: string note = 9;
    */
   note: string;
+
+  /**
+   * What the tier conformance suites recorded for this language (PX-027): the
+   * tier a recorded run earned, or that no suite has run. A tier claim without
+   * a recorded pass is a release blocker (docs/76).
+   *
+   * @generated from field: string conformance = 10;
+   */
+  conformance: string;
 };
 
 /**

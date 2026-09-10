@@ -574,6 +574,10 @@ message LanguageSupportView {
   repeated string not_claimed = 7;  // explicitly not claimed
   repeated string evidence_tests = 8; // named tests behind the proven claims
   string note = 9;
+  // What the tier conformance suites recorded for this language (PX-027): the
+  // tier a recorded run earned, or that no suite has run. A tier claim without
+  // a recorded pass is a release blocker (docs/76).
+  string conformance = 10;
 }
 
 message LanguageList {

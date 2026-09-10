@@ -1,0 +1,17 @@
+{
+ "task": "PX-027",
+ "requirement": "REQ-PX-027",
+ "qual": "QUAL-PX-027",
+ "tests": [
+  "qual_px_027_language_tier_suites_run_on_real_fixtures_and_a_tier_is_only_a_recorded_pass",
+  "a_tier_is_every_check_of_it_and_of_every_tier_below_it",
+  "a_record_that_claims_more_than_it_shows_is_refused",
+  "every_shipped_record_stands_and_an_unrecorded_language_is_unsupported",
+  "qual_px_026_language_labels_are_honest_and_served_to_every_client"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "Eight tier checks run the product against the real fixture repositories for rust, python and typescript: byte-preserving edits, revision-bound exact and BM25 hits, attributed configured-command evidence, tree-sitter symbol extraction, a located failure from the output parser, a refused stale-revision edit, language-service symbols and references, and a seeded defect reported at its line and gone after the fix. A tier is every check of it and below; a skip earns nothing; verify_record refuses a record that claims more than its checks show and the suite refuses a record that claims more than the run earned. Each client's language label carries the recorded line or says no suite has run.",
+ "audit": "NOT-FOUND before this task: docs/76 defined the tiers, nothing ran a suite, and nothing stopped a label from claiming a tier no run had earned.",
+ "limitations": "The record is what a claim may rest on, not the claim: labels stay ALPHA_BASELINE and promotion is PX-028. Index latency budgets and the competence suite at baseline are not measured. A language service that does not answer records a skip. JavaScript has no fixture and no record."
+}

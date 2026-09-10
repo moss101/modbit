@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 664,
-    "docs_bytes": 1037600
+    "root_and_tooling": 666,
+    "docs_bytes": 1039312
   },
   "sections": [
     {
@@ -545,8 +545,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Tool Parity and Capability Conformance — Real Effect Tests",
-      "bytes": 4111,
-      "sha256": "8692fb01100e5c7368cfb73ed06b587e8690e7bc58b2c15c8b98a20f98bc86df"
+      "bytes": 5823,
+      "sha256": "88bbbf4e566359de38eb37832770d571caaeda70dd2d3621743509d1c349ed59"
     },
     {
       "path": "docs/57_SKILL_EVOLUTION_REAL_TESTS.md",
@@ -4032,6 +4032,16 @@
       "sha256": "149fd313352adab868d722d4f4f2438204ce0ffb7a4aa830a437a94e5906a78a"
     },
     {
+      "path": "evidence/m3/PX-027/TASK_CARD.md",
+      "bytes": 3320,
+      "sha256": "80551218b2250b3b64daa2bda84657713abaa0ae789069263f821aabe96e153d"
+    },
+    {
+      "path": "evidence/m3/PX-027/evidence.json",
+      "bytes": 1646,
+      "sha256": "fa3f60a6b21e845f7f329da174f1e476493e3b37418b42b4d1b476e65a3a2f9a"
+    },
+    {
       "path": "evidence/m3/PX-033/TASK_CARD.md",
       "bytes": 2737,
       "sha256": "142f49bb8678a908cf07790bedb2e07c6b745ce61e2c30c6e2f15d230a88a27b"
@@ -4134,12 +4144,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 40904,
-      "sha256": "a4c0b26920a3628d9be374ebba10111da85a76b73a78ecbc45a64c7b7c8587a6"
+      "sha256": "b72699e612b5f6d3e97f4e8ed4988d2634040ce0a112c36a637dac9b0d204967"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1255180,
-      "sha256": "9fdcb010d1e13f6663f951f67ce85be28d496cbb4ac0d72a7aa2d3a2a0a67cc7"
+      "bytes": 1256526,
+      "sha256": "053820844018cb466512517127557e0738a1034a470e71b50a4e53536e4731fe"
     },
     {
       "path": "tools/build_graph.py",

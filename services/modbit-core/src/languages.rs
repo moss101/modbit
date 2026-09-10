@@ -19,6 +19,27 @@ const ALPHA_NOT_CLAIMED: &[&str] = &[
     "language_specific_change_strategies_and_skills",
 ];
 
+/// What the tier suites recorded for a language (PX-027): the record is the
+/// only thing that can put a tier next to a language's name.
+fn conformance(language: &str) -> String {
+    modbit_verification::tiers::recorded()
+        .into_iter()
+        .find(|r| r.language == language)
+        .map_or_else(
+            || "no tier conformance suite has run for this language".to_owned(),
+            |r| {
+                format!(
+                    "{} recorded on {} ({}/{} checks passed, suite `{}`)",
+                    r.tier.label(),
+                    r.fixture,
+                    r.checks.iter().filter(|c| c.passed()).count(),
+                    r.checks.len(),
+                    r.suite_test
+                )
+            },
+        )
+}
+
 fn alpha(language: &str, fixture: &str, evidence: &[&str]) -> wire::LanguageSupportView {
     wire::LanguageSupportView {
         language: language.into(),
@@ -33,6 +54,7 @@ fn alpha(language: &str, fixture: &str, evidence: &[&str]) -> wire::LanguageSupp
         note:
             "Structural intelligence is not claimed until the Tier A suite passes (docs/76 PX-028)."
                 .into(),
+        conformance: conformance(language),
     }
 }
 
@@ -79,6 +101,7 @@ pub(crate) fn catalog() -> Vec<wire::LanguageSupportView> {
             not_claimed: vec!["any structural, semantic or language-service claim".into()],
             evidence_tests: vec![],
             note: "Classified only after its conformance suite passes (docs/76).".into(),
+            conformance: "no tier conformance suite has run for this language".into(),
         },
     ]
 }

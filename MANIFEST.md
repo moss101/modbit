@@ -17,11 +17,11 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | Architecture and subsystems | 10–29 | 20 | 191488 |
 | Implementation specifications | 30–39 | 10 | 80166 |
 | Requirements, tasks and traceability | 40–49 | 10 | 351596 |
-| Verification and testing | 50–69 | 15 | 202032 |
+| Verification and testing | 50–69 | 15 | 203744 |
 | Delivery and operations | 70–79 | 7 | 33831 |
 | Agent process and governance | 80–97 | 18 | 109299 |
 | Live state | 98–99 | 1 | 3983 |
-| **Total docs** | | **89** | **1037600** |
+| **Total docs** | | **89** | **1039312** |
 
 ## Specification files (`docs/`)
 
@@ -81,7 +81,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 53 | `docs/53_PERFORMANCE_AND_BENCHMARK_PLAN.md` | Performance, Context Economics, and Benchmark Plan | verification | 7144 | `a2fd331c6d0c824dcdb04b82766763f748ce44107884985122a12985c1d23d4b` |
 | 54 | `docs/54_FAULT_INJECTION_AND_RECOVERY_CATALOG.md` | Fault Injection and Recovery Catalog | verification | 2266 | `3bb42df3f654adb39d146e74bee48b8cb9043b567027a59ee92aceca3181010f` |
 | 55 | `docs/55_MUTATION_NEGATIVE_AND_CHAOS_TEST_POLICY.md` | Mutation, Negative and Chaos Test Policy | verification | 1995 | `ab51c19d80eded9dba1d000b1af5d390bf3463a6dbf92aba886812db7994dc24` |
-| 56 | `docs/56_TOOL_CAPABILITY_CONFORMANCE.md` | Tool Parity and Capability Conformance — Real Effect Tests | verification | 4111 | `8692fb01100e5c7368cfb73ed06b587e8690e7bc58b2c15c8b98a20f98bc86df` |
+| 56 | `docs/56_TOOL_CAPABILITY_CONFORMANCE.md` | Tool Parity and Capability Conformance — Real Effect Tests | verification | 5823 | `88bbbf4e566359de38eb37832770d571caaeda70dd2d3621743509d1c349ed59` |
 | 57 | `docs/57_SKILL_EVOLUTION_REAL_TESTS.md` | Skill Evolution Real-System Tests | verification | 3466 | `fa5335a1367e464dc7c51cffbc972c803b26781b9e17163c81df25b4c2853f21` |
 | 58 | `docs/58_MULTIMODAL_MEDIA_REAL_TESTS.md` | Multimodal / Media Real-System Tests | verification | 3391 | `f04a81fdf805ecac83242ff96948ad1467acd11308ac767029935efc1e7801d9` |
 | 59 | `docs/59_RELEASE_ZERO_PROOF_SCENARIO.md` | Release Zero — Single Proof Scenario | verification | 3669 | `15fbb005f7a8196b4987468034f8de113dcd15a1ebd3f34dba822075012064fc` |
@@ -756,6 +756,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m3/PX-026/ci-run-34467756882-tests.log` | retained evidence | 65408 | `79c0f8192c5e3083c8fe7c12d39f4caed30c58161e53ee58974467a60e1d7281` |
 | `evidence/m3/PX-026/ci-run-34467756882.json` | retained evidence | 37317 | `5f2418b7d2fca244d450172ef0671b0b08750b52cb7137f8aeb62e09d1f9cfea` |
 | `evidence/m3/PX-026/evidence.json` | retained evidence | 1239 | `149fd313352adab868d722d4f4f2438204ce0ffb7a4aa830a437a94e5906a78a` |
+| `evidence/m3/PX-027/TASK_CARD.md` | retained evidence | 3320 | `80551218b2250b3b64daa2bda84657713abaa0ae789069263f821aabe96e153d` |
+| `evidence/m3/PX-027/evidence.json` | retained evidence | 1646 | `fa3f60a6b21e845f7f329da174f1e476493e3b37418b42b4d1b476e65a3a2f9a` |
 | `evidence/m3/PX-033/TASK_CARD.md` | retained evidence | 2737 | `142f49bb8678a908cf07790bedb2e07c6b745ce61e2c30c6e2f15d230a88a27b` |
 | `evidence/m3/PX-033/ci-run-34466693450-tests.log` | retained evidence | 2406 | `0ad691360e25f1bcce40efe49a56a9cbec52ba964fb8d21b37bf2ccb89d505bd` |
 | `evidence/m3/PX-033/ci-run-34466693450.json` | retained evidence | 37317 | `3d2da0166c2a6b035052bd8ea4b1b2aaf914d4ec198416337d98983d99769ebf` |
@@ -776,8 +778,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m3/PX-040/ci-run-34507573124-tests.log` | retained evidence | 4206 | `a9e2a291c1bc0b8c6332b023ecd1361533d8286c33ba45c5465fcca3c2eacb50` |
 | `evidence/m3/PX-040/ci-run-34507573124.json` | retained evidence | 37317 | `cc7122950bffe169b616acd26ddc066cc491cfb3ea9bc94299350fbd41b06594` |
 | `evidence/m3/PX-040/evidence.json` | retained evidence | 1272 | `dc1c5415da2d653b16d94162aa23478c0d9694a3c0442c91e93c17db2e9e58ec` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 40904 | `a4c0b26920a3628d9be374ebba10111da85a76b73a78ecbc45a64c7b7c8587a6` |
-| `graph/project-graph.json` | project driver graph with live status | 1255180 | `9fdcb010d1e13f6663f951f67ce85be28d496cbb4ac0d72a7aa2d3a2a0a67cc7` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 40904 | `b72699e612b5f6d3e97f4e8ed4988d2634040ce0a112c36a637dac9b0d204967` |
+| `graph/project-graph.json` | project driver graph with live status | 1256526 | `053820844018cb466512517127557e0738a1034a470e71b50a4e53536e4731fe` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 52844 | `13ea31cbf1ace263d36b4cc5ada8b19270a118e30e401114790652375b5c51d1` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 17596 | `5c9b7a782d245223726f860ca583d766929a6f5662b644adebee64d257ad426b` |

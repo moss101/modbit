@@ -28,7 +28,7 @@ One JSON file that answers *what exists, what depends on what, what proves what,
 | Edge type | Count | Meaning |
 |---|---:|---|
 | `in_section` | 89 | doc → section |
-| `references` | 479 | doc → doc (explicit filename mention) |
+| `references` | 480 | doc → doc (explicit filename mention) |
 | `depends_on` | 18 | milestone → milestone it requires COMPLETE first |
 | `part_of` | 78 | milestone_task → milestone |
 | `after` | 188 | work item → required COMPLETE work item, including cross-milestone EPR dependencies |

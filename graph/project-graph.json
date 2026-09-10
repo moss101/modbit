@@ -22293,8 +22293,40 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-027",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "artifact:evidence/m3/PX-027/TASK_CARD.md",
+    "test:qual_px_027_language_tier_suites_run_on_real_fixtures_and_a_tier_is_only_a_recorded_pass",
+    "test:a_record_that_claims_more_than_it_shows_is_refused",
+    "test:every_shipped_record_stands_and_an_unrecorded_language_is_unsupported"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T21:56:32Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: docs/76 defined the tiers; nothing ran a suite or stopped a label from claiming one"
+    },
+    {
+     "at": "2026-09-10T21:56:32Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "crates/verification/src/tiers.rs + language-tiers.json; the eight checks over the real fixtures"
+    },
+    {
+     "at": "2026-09-10T21:56:32Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "every client's language label carries the recorded line; docs/56 lists the checks"
+    },
+    {
+     "at": "2026-09-10T21:56:32Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "rust, python and typescript each earned Tier A on their fixtures; a record can never claim more than a run earned"
+    }
+   ],
+   "status_changed_on": "2026-09-10T21:56:32Z"
   },
   {
    "id": "PX-028",
@@ -26340,6 +26372,11 @@
   {
    "from": "53_PERFORMANCE_AND_BENCHMARK_PLAN.md",
    "to": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
+   "type": "references"
+  },
+  {
+   "from": "56_TOOL_CAPABILITY_CONFORMANCE.md",
+   "to": "50_TEST_STRATEGY_REAL_SYSTEM_GATES.md",
    "type": "references"
   },
   {
