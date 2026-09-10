@@ -88,7 +88,7 @@ flowchart LR
   style M0 fill:#dcfce7,stroke:#16a34a,color:#111827
   style M1 fill:#dcfce7,stroke:#16a34a,color:#111827
   style M2 fill:#dcfce7,stroke:#16a34a,color:#111827
-  style M3 fill:#f3f4f6,stroke:#9ca3af,color:#111827
+  style M3 fill:#fef3c7,stroke:#d97706,color:#111827
   style M4 fill:#f3f4f6,stroke:#9ca3af,color:#111827
   style M5 fill:#f3f4f6,stroke:#9ca3af,color:#111827
   style M6 fill:#f3f4f6,stroke:#9ca3af,color:#111827
@@ -107,7 +107,7 @@ Critical path (reliability spine): **M0 → M1 → M2 → M4**. Do not start bro
 | M0 Repository and authority | COMPLETE | yes | 4 | 1 | 5 | 0 | — | clean clone build + architecture lint |
 | M1 Durable local shell and Core | COMPLETE | yes | 5 | 14 | 19 | 0 | M0 | user creates durable task, kills/restarts app/Core, same task recovers with no fake state. |
 | M2 Real local engineering loop | COMPLETE | yes | 10 | 53 | 63 | 0 | M1 | E2E-001/002/003 with live model and actual test pass. |
-| M3 Context intelligence | NOT_STARTED | yes | 9 | 80 | 0 | 0 | M2 | profile A/B/C benchmark plus retrieval-before-edit visible in task evidence. |
+| M3 Context intelligence | IN_PROGRESS | yes | 9 | 80 | 0 | 0 | M2 | profile A/B/C benchmark plus retrieval-before-edit visible in task evidence. |
 | M4 Durable recovery spine | NOT_STARTED | yes | 6 | 12 | 0 | 0 | M2 | E2E-004/005/006/007/008. |
 | M5 Procedural runtime and skills | NOT_STARTED | yes | 7 | 33 | 0 | 0 | M2 | E2E-011/012; direct and procedural mode yield equivalent receipts/policy behavior. |
 | M6 Subagents/fleet | NOT_STARTED | no | 7 | 51 | 0 | 0 | M2, M4 | E2E-009/010 and user can supervise multiple tasks without raw-log polling. |
@@ -413,7 +413,7 @@ flowchart LR
 
 | Task | Status | Title | Acceptance / note |
 |---|---|---|---|
-| `M3.1` | NOT_STARTED | exact/regex/path index |  |
+| `M3.1` | WIRED | exact/regex/path index |  |
 | `M3.2` | NOT_STARTED | Tantivy BM25 |  |
 | `M3.3` | NOT_STARTED | tree-sitter AST/symbol index |  |
 | `M3.4` | NOT_STARTED | headless LSP diagnostics/symbol bridge |  |

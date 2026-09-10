@@ -113,6 +113,8 @@ pub struct ToolHost {
     pub runtime: ToolRuntime,
     /// Broker, when it started.
     pub execd: Option<Execd>,
+    /// Retrieval indexes per canonical workspace root (M3.1).
+    pub(crate) indexes: Mutex<HashMap<PathBuf, Arc<Mutex<modbit_retrieval::RepositoryIndex>>>>,
     /// One workspace service per approved root, kept so revisions stay monotonic in-process.
     workspaces: Mutex<HashMap<PathBuf, Arc<Mutex<WorkspaceService>>>>,
     state_dir: PathBuf,
@@ -137,6 +139,7 @@ impl ToolHost {
             runtime,
             execd,
             workspaces: Mutex::new(HashMap::new()),
+            indexes: Mutex::new(HashMap::new()),
             state_dir: data_dir.join("workspaces"),
         })
     }
@@ -166,6 +169,25 @@ impl ToolHost {
     ///
     /// `existing` is the projection of a call re-entering the pipeline after
     /// an approval (same `tool_call_id`, same intent hash).
+    /// The retrieval index of a workspace root, built at first use (M3.1).
+    pub(crate) async fn index(
+        &self,
+        canonical: &Path,
+    ) -> Result<Arc<Mutex<modbit_retrieval::RepositoryIndex>>> {
+        let mut map = self.indexes.lock().await;
+        if let Some(i) = map.get(canonical) {
+            return Ok(Arc::clone(i));
+        }
+        let (ws, _) = self.workspace(&canonical.to_string_lossy()).await?;
+        let revision = ws.lock().await.revision().number;
+        let idx = Arc::new(Mutex::new(
+            modbit_retrieval::RepositoryIndex::build(canonical, revision)
+                .map_err(|e| anyhow::anyhow!("{e}"))?,
+        ));
+        map.insert(canonical.to_path_buf(), Arc::clone(&idx));
+        Ok(idx)
+    }
+
     /// The tool surface compiled from support × policy (REQ-EV-0096/0133/0044):
     /// a tool is advertised only when its host consumer exists (the terminal
     /// broker for shell-backed tools), the profile admits it and, given a
@@ -249,6 +271,13 @@ impl ToolHost {
             approval,
             emergency_stopped,
         };
+        let search: Option<Arc<dyn modbit_tools::SearchPort>> = match (&workspace, &root) {
+            (Some(ws), Some(r)) => Some(Arc::new(IndexPort {
+                index: self.index(r).await?,
+                workspace: Arc::clone(ws),
+            })),
+            _ => None,
+        };
         let ctx = InvokeContext {
             task_id,
             execution_profile: execution_profile.to_owned(),
@@ -259,6 +288,7 @@ impl ToolHost {
             sink,
             output_budget_bytes,
             kernel: Some(Arc::new(port)),
+            search,
             tool_call_id: None,
         };
         // REQ-EV-0106: snapshot the write targets so every successful write can
@@ -287,6 +317,11 @@ impl ToolHost {
         {
             let changes = workspace_changes(&result.structured_output);
             let ws = ws.lock().await;
+            // Index freshness (docs/18): the changed paths re-enter the index at the new revision.
+            if let Ok(index) = self.index(root).await {
+                let paths: Vec<String> = changes.iter().map(|c| c.path.clone()).collect();
+                index.lock().await.refresh(&paths, ws.revision().number);
+            }
             let objects = store.lock().await.objects().clone();
             file_events = file_changed_events(
                 &objects,
@@ -833,4 +868,71 @@ pub(crate) fn append_file_events(
         events,
     })?;
     Ok(())
+}
+
+/// Search port over the workspace index: results carry the index revision
+/// and the workspace revision so a stale index is visible, and the index is
+/// rebuilt when the workspace moved without a recorded change set.
+struct IndexPort {
+    index: Arc<Mutex<modbit_retrieval::RepositoryIndex>>,
+    workspace: Arc<Mutex<WorkspaceService>>,
+}
+
+impl modbit_tools::SearchPort for IndexPort {
+    fn search(
+        &self,
+        req: &modbit_tools::SearchRequest,
+    ) -> std::result::Result<serde_json::Value, (String, String)> {
+        let ws_rev = self
+            .workspace
+            .try_lock()
+            .map(|w| w.revision().number)
+            .unwrap_or(0);
+        let mut idx = self.index.try_lock().map_err(|_| {
+            (
+                "INDEX_BUSY".to_owned(),
+                "the index is being refreshed".to_owned(),
+            )
+        })?;
+        if ws_rev > idx.revision() {
+            // Freshness (docs/18): a write without a recorded changed set is not possible
+            // through the tools, but an external edit may have moved the revision.
+            idx.rebuild(ws_rev)
+                .map_err(|e| ("INDEX_REBUILD".to_owned(), e.to_string()))?;
+        }
+        let opts = modbit_retrieval::SearchOptions {
+            case_insensitive: req.case_insensitive,
+            path_glob: req.path_glob.clone(),
+            max_hits: req.max_hits,
+            ..Default::default()
+        };
+        let stats = idx.stats();
+        let body = match req.kind.as_str() {
+            "exact" => serde_json::json!({"hits": idx.search_exact(&req.query, &opts)}),
+            "regex" => serde_json::json!({"hits": idx
+                .search_regex(&req.query, &opts)
+                .map_err(|e| ("BAD_REGEX".to_owned(), e.to_string()))?}),
+            "paths" => serde_json::json!({"paths": idx
+                .find_paths(&req.query, req.max_hits)
+                .map_err(|e| ("BAD_GLOB".to_owned(), e.to_string()))?}),
+            other => {
+                return Err((
+                    "BAD_KIND".to_owned(),
+                    format!("unknown search kind `{other}`"),
+                ));
+            }
+        };
+        let mut v = body;
+        let truncated = v["hits"]
+            .as_array()
+            .is_some_and(|h| h.len() >= req.max_hits)
+            || v["paths"]
+                .as_array()
+                .is_some_and(|h| h.len() >= req.max_hits);
+        v["index_revision"] = serde_json::json!(idx.revision());
+        v["workspace_revision"] = serde_json::json!(ws_rev);
+        v["indexed_files"] = serde_json::json!(stats.searchable);
+        v["truncated"] = serde_json::json!(truncated);
+        Ok(v)
+    }
 }

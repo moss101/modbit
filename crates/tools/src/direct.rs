@@ -693,6 +693,77 @@ async fn run_process(ctx: &InvokeContext, args: &Value, request_id: &str) -> Too
     }
 }
 
+fn search_tool_body(ctx: &InvokeContext, args: &Value, kind: &str) -> ToolOutcome {
+    let Some(port) = &ctx.search else {
+        return ToolOutcome::infra("NO_INDEX", "no workspace index is attached to this task");
+    };
+    let req = crate::pipeline::SearchRequest {
+        kind: kind.into(),
+        query: s(args, "query"),
+        case_insensitive: args
+            .get("case_insensitive")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+        path_glob: args
+            .get("path_glob")
+            .and_then(Value::as_str)
+            .map(str::to_owned),
+        max_hits: args
+            .get("max_hits")
+            .and_then(Value::as_u64)
+            .unwrap_or(100)
+            .clamp(1, 1000) as usize,
+    };
+    if req.query.is_empty() {
+        return ToolOutcome::fail("QUERY_REQUIRED", "query must not be empty");
+    }
+    match port.search(&req) {
+        Ok(v) => ToolOutcome::ok(v),
+        Err((code, msg)) => ToolOutcome::fail(&code, msg),
+    }
+}
+
+const SEARCH_SCHEMA: &str = r#"{"type":"object","properties":{"query":{"type":"string"},"case_insensitive":{"type":"boolean"},"path_glob":{"type":"string"},"max_hits":{"type":"integer","minimum":1,"maximum":1000}},"required":["query"],"additionalProperties":false}"#;
+
+tool!(
+    SearchExact,
+    spec(
+        "search.exact",
+        "Exact text search over the workspace index (ripgrep -F semantics): hits carry path, line, column, byte span, the line and the file revision; bounded per file and in total; results are bound to the index revision (M3.1, docs/18 L0).",
+        EffectClass::ReadOnly,
+        serde_json::from_str(SEARCH_SCHEMA).expect("schema"),
+        &["fs.read"],
+        Idempotency::Idempotent
+    ),
+    |ctx, args| search_tool_body(ctx, &args, "exact")
+);
+
+tool!(
+    SearchRegex,
+    spec(
+        "search.regex",
+        "Regex search over the workspace index (Rust regex syntax, size-limited): same hit shape and bounds as search.exact (M3.1, docs/18 L0).",
+        EffectClass::ReadOnly,
+        serde_json::from_str(SEARCH_SCHEMA).expect("schema"),
+        &["fs.read"],
+        Idempotency::Idempotent
+    ),
+    |ctx, args| search_tool_body(ctx, &args, "regex")
+);
+
+tool!(
+    SearchPaths,
+    spec(
+        "search.paths",
+        "Path search over the workspace index by glob (** aware): indexed, non-generated, non-ignored files with language label and content hash (M3.1, docs/18 L0).",
+        EffectClass::ReadOnly,
+        json!({"type":"object","properties":{"query":{"type":"string"},"max_hits":{"type":"integer","minimum":1,"maximum":1000}},"required":["query"],"additionalProperties":false}),
+        &["fs.read"],
+        Idempotency::Idempotent
+    ),
+    |ctx, args| search_tool_body(ctx, &args, "paths")
+);
+
 /// Wait window for `shell.read` when the process is still running.
 const READ_WAIT_MS: u64 = 250;
 
@@ -1117,6 +1188,9 @@ pub fn register_direct(registry: &mut ToolRegistry) -> Result<()> {
         ShellRead::shared(),
         ShellList::shared(),
         ShellCancel::shared(),
+        SearchExact::shared(),
+        SearchRegex::shared(),
+        SearchPaths::shared(),
         GitStatus::shared(),
         GitDiff::shared(),
         GitWorktreeCreate::shared(),

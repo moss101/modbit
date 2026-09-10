@@ -5503,3 +5503,157 @@ async fn qual_ev_0190_attachments_normalize_to_the_same_canonical_envelope_as_wo
         "{err}"
     );
 }
+
+/// M3.1: the exact/regex/path index behind `search.*` on a real repository:
+/// hits carry path/line/column/span and are bound to the index revision; the
+/// index excludes generated and ignored paths; a write through change.apply
+/// refreshes exactly the changed path at the new workspace revision; results
+/// are bounded; a bad regex is a typed failure.
+#[tokio::test]
+async fn m3_1_exact_regex_path_index_serves_bounded_revision_bound_hits_and_refreshes_on_writes() {
+    let (repo, root) = plain_repo(&[
+        (
+            "src.rs",
+            "fn compute_total() {}\nfn other() { compute_total() }\n",
+        ),
+        ("notes.md", "compute_total docs\n"),
+    ]);
+    std::fs::create_dir_all(repo.path().join("target")).unwrap();
+    std::fs::write(repo.path().join("target/gen.rs"), "compute_total\n").unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn(dir.path());
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xA0)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xA1, "local_trusted").await;
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xA2,
+        0xC1,
+        "search.exact",
+        r#"{"query":"compute_total"}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let hits = so["hits"].as_array().unwrap();
+    let where_: Vec<(String, u64, u64)> = hits
+        .iter()
+        .map(|h| {
+            (
+                h["path"].as_str().unwrap().into(),
+                h["line"].as_u64().unwrap(),
+                h["column"].as_u64().unwrap(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        where_,
+        vec![
+            ("notes.md".into(), 1, 1),
+            ("src.rs".into(), 1, 4),
+            ("src.rs".into(), 2, 14)
+        ],
+        "{so}"
+    );
+    let rev0 = so["index_revision"].as_u64().unwrap();
+    assert_eq!(rev0, so["workspace_revision"].as_u64().unwrap());
+    assert!(hits.iter().all(|h| h["index_revision"] == rev0 && h["content_hash"].as_str().unwrap().len() == 64));
+    assert!(
+        !so["truncated"].as_bool().unwrap() && so["indexed_files"].as_u64().unwrap() == 2,
+        "generated target/ is not indexed: {so}"
+    );
+    // A write refreshes the changed path at the new revision; the hit moves with it.
+    let r = invoke_tool(&mut c, &task, g, 0xA3, 0xC2, "change.apply", r#"{"path":"src.rs","op":"edit","text_edits":[{"old":"fn other() { compute_total() }","new":"fn other() { compute_sum() }"}]}"#).await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xA4,
+        0xC3,
+        "search.exact",
+        r#"{"query":"compute_total"}"#,
+    )
+    .await;
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let paths: Vec<&str> = so["hits"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|h| h["path"].as_str().unwrap())
+        .collect();
+    assert_eq!(paths, vec!["notes.md", "src.rs"], "{so}");
+    assert_eq!(so["index_revision"].as_u64().unwrap(), rev0 + 1);
+    let src_hit = &so["hits"][1];
+    assert_eq!(
+        src_hit["index_revision"].as_u64().unwrap(),
+        rev0 + 1,
+        "the changed file re-entered at the new revision"
+    );
+    assert_eq!(
+        so["hits"][0]["index_revision"].as_u64().unwrap(),
+        rev0,
+        "the untouched file kept its revision"
+    );
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xA5,
+        0xC4,
+        "search.regex",
+        r#"{"query":"fn \\w+\\(\\)","path_glob":"*.rs","max_hits":1}"#,
+    )
+    .await;
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert!(
+        so["hits"].as_array().unwrap().len() == 1 && so["truncated"] == true,
+        "{so}"
+    );
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xA6,
+        0xC5,
+        "search.regex",
+        r#"{"query":"("}"#,
+    )
+    .await;
+    assert_eq!(
+        (r.status.as_str(), r.error_code.as_str()),
+        ("APPLICATION_FAILURE", "BAD_REGEX"),
+        "{r:?}"
+    );
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xA7,
+        0xC6,
+        "search.paths",
+        r#"{"query":"**/*.rs"}"#,
+    )
+    .await;
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(
+        so["paths"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|p| p["path"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        vec!["src.rs"],
+        "{so}"
+    );
+    // The search tools are in the compiled surface of the task.
+    let tools = list_tools(&mut c, 0xA8, Some(task.clone())).await;
+    assert!(
+        ["search.exact", "search.regex", "search.paths"]
+            .iter()
+            .all(|n| tools.iter().any(|t| t.0 == *n))
+    );
+}

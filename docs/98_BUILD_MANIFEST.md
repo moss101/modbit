@@ -7,7 +7,7 @@
 | M0 | repository/CI/protocol generation | COMPLETE | clean clone build + architecture lint |
 | M1 | durable local shell/Core | COMPLETE | create task, kill/restart app+Core, exact recovery |
 | M2 | real local coding loop | COMPLETE | M2.1–M2.10 and 68 backlog tasks proven on hosted CI (macOS/Linux/Windows): real repo edit/test/review, approvals, receipts, headless CLI; the live-model E2E proof waits for provider credentials per DR-M2-001; 43 tasks rescheduled by DR-M2-002 |
-| M3 | context intelligence | NOT_STARTED | fixed-revision retrieval benchmarks + freshness proof |
+| M3 | context intelligence | IN_PROGRESS | M3.1 exact/regex/path index in progress; fixed-revision retrieval benchmarks + freshness proof |
 | M4 | durable recovery spine | NOT_STARTED | kill-point suite, compaction/checkpoint fencing |
 | M5 | procedural runtime/skills | NOT_STARTED | real tools through isolated composition + skill provenance |
 | M6 | subagents/fleet | NOT_STARTED | durable isolated child execution/conflict proof |

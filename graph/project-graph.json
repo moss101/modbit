@@ -1840,8 +1840,29 @@
    "milestone": "M3",
    "order": 0,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "WIRED",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-10T05:42:37Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: NOT-FOUND (fs.glob walked per call; no text search; crates/retrieval empty)"
+    },
+    {
+     "at": "2026-09-10T05:42:37Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "RepositoryIndex in crates/retrieval (git-aware file set, exact/regex/path search, bounded hits, incremental refresh); SearchPort + search.exact/regex/paths tools; Core per-workspace index refreshed on writes"
+    },
+    {
+     "at": "2026-09-10T05:42:37Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "search.* in the compiled tool surface; ToolHost::index built at first use; change.apply/batch refresh changed paths"
+    }
+   ],
+   "status_changed_on": "2026-09-10T05:42:37Z"
   },
   {
    "id": "M3.2",

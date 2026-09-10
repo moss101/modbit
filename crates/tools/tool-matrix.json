@@ -231,6 +231,48 @@
     "shell.exec"
    ],
    "test": "qual_ev_0221_background_handles_survive_client_restart_with_bounded_preview_and_cancel"
+  },
+  {
+   "tool": "search.exact",
+   "family": "search",
+   "source_behaviors": [
+    "Grep -F",
+    "exact search"
+   ],
+   "owner": "Context Engine (retrieval index)",
+   "effect": "ReadOnly",
+   "capabilities": [
+    "fs.read"
+   ],
+   "test": "m3_1_exact_regex_path_index_serves_bounded_revision_bound_hits_and_refreshes_on_writes"
+  },
+  {
+   "tool": "search.regex",
+   "family": "search",
+   "source_behaviors": [
+    "Grep",
+    "ripgrep"
+   ],
+   "owner": "Context Engine (retrieval index)",
+   "effect": "ReadOnly",
+   "capabilities": [
+    "fs.read"
+   ],
+   "test": "m3_1_exact_regex_path_index_serves_bounded_revision_bound_hits_and_refreshes_on_writes"
+  },
+  {
+   "tool": "search.paths",
+   "family": "search",
+   "source_behaviors": [
+    "Glob",
+    "find"
+   ],
+   "owner": "Context Engine (retrieval index)",
+   "effect": "ReadOnly",
+   "capabilities": [
+    "fs.read"
+   ],
+   "test": "m3_1_exact_regex_path_index_serves_bounded_revision_bound_hits_and_refreshes_on_writes"
   }
  ],
  "harness": [

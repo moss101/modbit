@@ -1,0 +1,18 @@
+{
+ "task": "M3.1",
+ "tests": [
+  "exact_regex_and_path_hits_are_bounded_and_revision_bound",
+  "refresh_reindexes_exactly_the_changed_paths_at_the_new_revision",
+  "oversized_files_are_recorded_but_not_searched_and_non_git_roots_walk",
+  "m3_1_exact_regex_path_index_serves_bounded_revision_bound_hits_and_refreshes_on_writes",
+  "qual_ev_0217_compatibility_matrix_covers_every_registered_tool_with_owner_effect_and_test"
+ ],
+ "commits": {
+  "implementation": "HEAD"
+ },
+ "runs": [],
+ "evidence_tier": "release-critical",
+ "acceptance": {
+  "exact/regex/path index": "pending hosted CI"
+ }
+}

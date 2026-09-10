@@ -22,6 +22,27 @@ pub trait ObjectSink: Send + Sync {
     fn put(&self, bytes: &[u8]) -> crate::Result<String>;
 }
 
+/// A search request over the workspace index (docs/18 L0).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SearchRequest {
+    /// `exact` | `regex` | `paths`.
+    pub kind: String,
+    /// Needle, pattern or glob.
+    pub query: String,
+    /// Case-insensitive text search.
+    pub case_insensitive: bool,
+    /// Path glob restricting text hits.
+    pub path_glob: Option<String>,
+    /// Total hit ceiling.
+    pub max_hits: usize,
+}
+
+/// Port to the host's retrieval index; results are JSON the tool bounds.
+pub trait SearchPort: Send + Sync {
+    /// Run the search; `Err` carries a typed code and message.
+    fn search(&self, req: &SearchRequest) -> Result<serde_json::Value, (String, String)>;
+}
+
 /// Where a shell tool runs.
 #[derive(Clone, Debug)]
 pub struct ExecTarget {
@@ -53,6 +74,8 @@ pub struct InvokeContext {
     /// Per-call kernel adapter overriding the runtime's default policy (the
     /// Core binds the task lease, the call's approval and the session state).
     pub kernel: Option<Arc<dyn CapabilityPort>>,
+    /// Workspace search (the retrieval index), when the host provides one (M3.1).
+    pub search: Option<Arc<dyn SearchPort>>,
     /// The call being executed (set by the pipeline; effectors derive their
     /// idempotency keys from it so a new call never replays an old one).
     pub tool_call_id: Option<ToolCallId>,

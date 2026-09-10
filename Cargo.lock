@@ -1277,6 +1277,7 @@ dependencies = [
  "modbit-prompt-compiler",
  "modbit-protocol",
  "modbit-providers",
+ "modbit-retrieval",
  "modbit-terminal",
  "modbit-tools",
  "modbit-verification",
@@ -1469,7 +1470,15 @@ dependencies = [
 name = "modbit-retrieval"
 version = "0.0.0"
 dependencies = [
+ "globset",
+ "hex",
+ "memchr",
  "modbit-domain",
+ "regex",
+ "serde",
+ "sha2",
+ "tempfile",
+ "thiserror 2.0.20",
 ]
 
 [[package]]
