@@ -15040,12 +15040,14 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0250",
    "source": "docs/41",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m3/IMP-EV-0250/TASK_CARD.md",
     "test:qual_ev_0250_0252_0274_paired_context_economics_benchmark_publishes_savings_with_confidence",
     "test:a_paired_report_measures_the_difference_and_says_what_it_cannot",
-    "test:an_unpaired_trial_says_nothing_about_a_difference"
+    "test:an_unpaired_trial_says_nothing_about_a_difference",
+    "commit:895dc60",
+    "run:gha-34538211862"
    ],
    "notes": [
     {
@@ -15071,9 +15073,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "three paired trials: 54% fewer input tokens, three fewer tool calls, the same verified outcome"
+    },
+    {
+     "at": "2026-09-10T22:43:18Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34538211862 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-10T22:43:18Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34538211862; the limitations, including what needs a live provider, are in evidence/m3/IMP-EV-0250/TASK_CARD.md"
     }
    ],
-   "status_changed_on": "2026-09-10T22:34:57Z"
+   "status_changed_on": "2026-09-10T22:43:18Z"
   },
   {
    "id": "IMP-EV-0251",
@@ -15100,12 +15114,14 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0252",
    "source": "docs/41",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m3/IMP-EV-0252/TASK_CARD.md",
     "test:qual_ev_0250_0252_0274_paired_context_economics_benchmark_publishes_savings_with_confidence",
     "test:a_paired_report_measures_the_difference_and_says_what_it_cannot",
-    "test:an_unpaired_trial_says_nothing_about_a_difference"
+    "test:an_unpaired_trial_says_nothing_about_a_difference",
+    "commit:895dc60",
+    "run:gha-34538211862"
    ],
    "notes": [
     {
@@ -15131,9 +15147,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "three paired trials: 54% fewer input tokens, three fewer tool calls, the same verified outcome"
+    },
+    {
+     "at": "2026-09-10T22:43:18Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34538211862 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-10T22:43:18Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34538211862; the limitations, including what needs a live provider, are in evidence/m3/IMP-EV-0252/TASK_CARD.md"
     }
    ],
-   "status_changed_on": "2026-09-10T22:34:57Z"
+   "status_changed_on": "2026-09-10T22:43:18Z"
   },
   {
    "id": "IMP-EV-0253",
@@ -15620,12 +15648,14 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0274",
    "source": "docs/41",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m3/IMP-EV-0274/TASK_CARD.md",
     "test:qual_ev_0250_0252_0274_paired_context_economics_benchmark_publishes_savings_with_confidence",
     "test:a_paired_report_measures_the_difference_and_says_what_it_cannot",
-    "test:an_unpaired_trial_says_nothing_about_a_difference"
+    "test:an_unpaired_trial_says_nothing_about_a_difference",
+    "commit:895dc60",
+    "run:gha-34538211862"
    ],
    "notes": [
     {
@@ -15651,9 +15681,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "three paired trials: 54% fewer input tokens, three fewer tool calls, the same verified outcome"
+    },
+    {
+     "at": "2026-09-10T22:43:19Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34538211862 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-10T22:43:19Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34538211862; the limitations, including what needs a live provider, are in evidence/m3/IMP-EV-0274/TASK_CARD.md"
     }
    ],
-   "status_changed_on": "2026-09-10T22:34:57Z"
+   "status_changed_on": "2026-09-10T22:43:19Z"
   },
   {
    "id": "IMP-EV-0275",
