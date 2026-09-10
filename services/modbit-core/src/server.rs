@@ -268,21 +268,37 @@ fn acquire_singleton_lock(data_dir: &Path) -> Result<()> {
         .truncate(false)
         .open(&lock)
         .with_context(|| format!("opening {}", lock.display()))?;
-    match file.try_lock() {
-        Ok(()) => {}
-        Err(std::fs::TryLockError::WouldBlock) => {
-            let pid = std::fs::read_to_string(&lock)
-                .ok()
-                .and_then(|t| t.trim().parse::<u32>().ok())
-                .unwrap_or(0);
-            anyhow::bail!(
-                "another modbit-core (pid {pid}: {}) owns {}",
-                process_command(pid),
-                data_dir.display()
-            );
-        }
-        Err(std::fs::TryLockError::Error(e)) => {
-            return Err(anyhow::Error::from(e).context("locking core.lock"));
+    let mut attempts = 0;
+    loop {
+        match file.try_lock() {
+            Ok(()) => break,
+            Err(std::fs::TryLockError::WouldBlock) => {
+                let pid = std::fs::read_to_string(&lock)
+                    .ok()
+                    .and_then(|t| t.trim().parse::<u32>().ok())
+                    .unwrap_or(0);
+                let owner = process_command(pid);
+                // A tethered Core whose supervising parent is gone is an orphan
+                // by contract (docs/33): reclaim the profile from it once.
+                if attempts == 0 && orphaned_tethered_core(pid, &owner) {
+                    eprintln!(
+                        "modbit-core: reclaiming the profile from orphaned tethered Core pid {pid}"
+                    );
+                    let _ = std::process::Command::new("kill")
+                        .args(["-9", &pid.to_string()])
+                        .status();
+                    std::thread::sleep(std::time::Duration::from_millis(300));
+                    attempts += 1;
+                    continue;
+                }
+                anyhow::bail!(
+                    "another modbit-core (pid {pid}: {owner}) owns {}",
+                    data_dir.display()
+                );
+            }
+            Err(std::fs::TryLockError::Error(e)) => {
+                return Err(anyhow::Error::from(e).context("locking core.lock"));
+            }
         }
     }
     use std::io::Write;
@@ -294,14 +310,33 @@ fn acquire_singleton_lock(data_dir: &Path) -> Result<()> {
     Ok(())
 }
 
-/// The owner's command line, for the refusal message (diagnosability).
+/// The owner's command line plus parent pid, state, age and the parent's
+/// command, for the refusal message (diagnosability).
 #[cfg(unix)]
 fn process_command(pid: u32) -> String {
-    std::process::Command::new("ps")
-        .args(["-o", "command=", "-p", &pid.to_string()])
-        .output()
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_owned())
-        .unwrap_or_default()
+    let ps = |args: &[&str]| {
+        std::process::Command::new("ps")
+            .args(args)
+            .output()
+            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_owned())
+            .unwrap_or_default()
+    };
+    let own = ps(&["-o", "command=", "-p", &pid.to_string()]);
+    let meta = ps(&["-o", "ppid=,stat=,etime=", "-p", &pid.to_string()]);
+    let ppid = meta.split_whitespace().next().unwrap_or("?").to_owned();
+    let parent = ps(&["-o", "command=", "-p", &ppid]);
+    format!("{own} [ppid={ppid} stat/etime={meta} parent={parent}]")
+}
+
+/// A `--tether-stdin` Core re-parented to pid 1: its supervisor is gone.
+#[cfg(unix)]
+fn orphaned_tethered_core(_pid: u32, owner: &str) -> bool {
+    owner.contains("--tether-stdin") && owner.contains("[ppid=1 ")
+}
+
+#[cfg(not(unix))]
+fn orphaned_tethered_core(_pid: u32, _owner: &str) -> bool {
+    false
 }
 
 /// The owner's command line, for the refusal message (diagnosability).
