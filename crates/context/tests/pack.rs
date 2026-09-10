@@ -14,6 +14,8 @@ fn cand(path: &str, lines: Option<(u32, u32)>, score: f32, text: &str) -> Candid
         critical: false,
         critical_reason: None,
         fresh_in_worktree: false,
+        rehydrated: false,
+        signatures: vec![],
     }
 }
 
@@ -41,7 +43,9 @@ fn budget_is_never_exceeded_critical_entries_go_first_and_omissions_are_summaris
         .iter()
         .map(|e| e.provenance.path.as_str())
         .collect();
-    assert_eq!(paths, ["src/a.rs", "src/c.rs", "src/d.rs"], "{p:?}");
+    // Entries pack up to the budget minus the stub reserve (16 of 60): d.rs
+    // (30 tokens) no longer fits after a.rs + c.rs and becomes a stub.
+    assert_eq!(paths, ["src/a.rs", "src/c.rs"], "{p:?}");
     assert_eq!(p.entries[0].reason, "critical:diagnostic");
     assert_eq!(p.entries[0].freshness, "fresh_in_worktree");
     assert_eq!(p.entries[1].reason, "utility");
@@ -49,10 +53,15 @@ fn budget_is_never_exceeded_critical_entries_go_first_and_omissions_are_summaris
     assert_eq!(p.entries[0].provenance.content_hash.as_deref(), Some("abc"));
     assert_eq!(p.entries[0].provenance.workspace_revision, 7);
     assert_eq!(p.entries[0].provenance.excerpt_hash.len(), 64);
-    assert_eq!(p.token_used, 60);
-    assert_eq!(p.omitted_summary.count, 1);
-    assert_eq!(p.omitted_summary.token_cost, 100);
-    assert_eq!(p.omitted_summary.paths, ["src/b.rs"]);
+    let stub_paths: Vec<&str> = p.stubs.iter().map(|s| s.provenance.path.as_str()).collect();
+    assert_eq!(stub_paths, ["src/d.rs", "src/b.rs"], "{p:?}");
+    assert_eq!(
+        p.token_used,
+        30 + p.stubs.iter().map(|s| s.token_cost).sum::<u32>()
+    );
+    assert_eq!(p.omitted_summary.count, 2);
+    assert_eq!(p.omitted_summary.token_cost, 130);
+    assert_eq!(p.omitted_summary.paths, ["src/d.rs", "src/b.rs"]);
     assert!(p.complete);
     // A critical entry that cannot fit marks the pack incomplete.
     let mut huge = cand("src/z.rs", Some((1, 1)), 1.0, &"z".repeat(4000));
@@ -115,4 +124,60 @@ fn ledger_records_injections_and_marks_use_only_at_the_retrieved_revision() {
     l.record(&p2);
     assert_eq!(l.entries.last().unwrap().pack_ordinal, 2);
     assert!(l.has_record("src/a.rs", 4));
+}
+
+#[test]
+fn left_out_candidates_become_signature_stubs_inside_the_budget_with_hydration_handles() {
+    let mut big = cand("src/big.rs", Some((1, 40)), 0.9, &"x".repeat(2000)); // 500 tokens
+    big.signatures = vec!["fn compute_total L1-10".into(), "struct Cart L12-40".into()];
+    let mut mid = cand("src/mid.rs", None, 0.8, &"m".repeat(400)); // 100 tokens
+    mid.signatures = vec!["fn round L1-3".into()];
+    let small = cand("src/small.rs", Some((1, 2)), 0.7, &"s".repeat(40)); // 10 tokens
+    let p = pack(&[big, mid, small], 40, 9, "q");
+    assert!(p.token_used <= 40, "{p:?}");
+    let entry_paths: Vec<&str> = p
+        .entries
+        .iter()
+        .map(|e| e.provenance.path.as_str())
+        .collect();
+    assert_eq!(entry_paths, ["src/small.rs"]);
+    let stub_paths: Vec<&str> = p.stubs.iter().map(|s| s.provenance.path.as_str()).collect();
+    assert_eq!(
+        stub_paths,
+        ["src/mid.rs", "src/big.rs"],
+        "utility order: {p:?}"
+    );
+    let big = &p.stubs[1];
+    assert_eq!(big.signatures.len(), 2);
+    assert_eq!(big.hydrate, "fs.read src/big.rs");
+    assert_eq!(big.hydrated_token_cost, 500);
+    assert!(big.token_cost < 30 && big.token_cost >= 1, "{big:?}");
+    assert_eq!(big.provenance.workspace_revision, 9);
+    assert_eq!(big.provenance.content_hash.as_deref(), Some("abc"));
+    assert_eq!(big.source_ref, "workspace:src/big.rs");
+    // The stubs are budgeted too: nothing exceeds a tiny budget.
+    let p2 = pack(
+        &[
+            cand("src/small.rs", Some((1, 2)), 0.7, &"s".repeat(40)),
+            cand("src/other.rs", None, 0.5, &"o".repeat(400)),
+        ],
+        6,
+        9,
+        "q",
+    );
+    assert!(p2.entries.is_empty() && p2.token_used <= 6, "{p2:?}");
+    assert!(p2.stubs.iter().all(|s| s.token_cost <= 6), "{p2:?}");
+    // The ledger records stubs as stub entries; hydration marks them used.
+    let mut l = ContextLedger::default();
+    l.record(&p);
+    assert_eq!(l.usage(), (3, 0));
+    assert!(l.entries.iter().any(|e| e.path == "src/big.rs" && e.stub));
+    assert_eq!(l.mark_used("src/big.rs", 9, "call-9", "fs.read"), 1);
+    // Rehydrated bytes are labelled as such.
+    let mut fresh = cand("src/f.rs", None, 0.5, "f");
+    fresh.rehydrated = true;
+    assert_eq!(
+        pack(&[fresh], 100, 1, "q").entries[0].freshness,
+        "rehydrated_from_active_revision"
+    );
 }

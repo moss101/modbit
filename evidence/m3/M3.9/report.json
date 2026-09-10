@@ -1,18 +1,18 @@
 {
   "harness_version": "retrieval-bench-v1",
   "corpus": "modbit repository subset (crates/, services/, apps/cli/, docs/) at the benchmarked commit",
-  "files": 252,
-  "bytes": 2783869,
+  "files": 253,
+  "bytes": 2800740,
   "k": 5,
   "cold_index": {
-    "exact_ms": 34.313542000000005,
-    "lexical_ms": 349.96462499999996,
-    "symbols_ms": 537.971542,
-    "semantic_ms": 729.463708,
-    "graph_ms": 522.624208,
-    "total_ms": 2174.34925
+    "exact_ms": 41.553916,
+    "lexical_ms": 405.108708,
+    "symbols_ms": 635.7525830000001,
+    "semantic_ms": 825.465292,
+    "graph_ms": 619.334584,
+    "total_ms": 2527.2326669999998
   },
-  "incremental_ms": 90.981583,
+  "incremental_ms": 102.201,
   "incremental_path": "services/modbit-core/src/server.rs",
   "profiles": [
     {
@@ -21,8 +21,9 @@
       "mean_precision_at_k": 0.41250002,
       "mean_impact_accuracy": 1.0,
       "mean_steps": 2.125,
-      "mean_latency_ms": 6.5818125,
-      "full_recall_cases": 6
+      "mean_latency_ms": 7.31208875,
+      "full_recall_cases": 6,
+      "mean_context_tokens_at_k": 19558.5
     },
     {
       "profile": "BHybrid",
@@ -30,8 +31,9 @@
       "mean_precision_at_k": 0.28750002,
       "mean_impact_accuracy": 1.0,
       "mean_steps": 4.875,
-      "mean_latency_ms": 11.106728875,
-      "full_recall_cases": 7
+      "mean_latency_ms": 12.579109374999998,
+      "full_recall_cases": 7,
+      "mean_context_tokens_at_k": 40283.25
     },
     {
       "profile": "CStructural",
@@ -39,8 +41,29 @@
       "mean_precision_at_k": 0.28750002,
       "mean_impact_accuracy": 1.0,
       "mean_steps": 9.375,
-      "mean_latency_ms": 11.212510375,
-      "full_recall_cases": 7
+      "mean_latency_ms": 12.9227135,
+      "full_recall_cases": 7,
+      "mean_context_tokens_at_k": 39502.5
+    },
+    {
+      "profile": "LexicalOnly",
+      "mean_recall_at_k": 0.3125,
+      "mean_precision_at_k": 0.21875,
+      "mean_impact_accuracy": 0.0,
+      "mean_steps": 1.0,
+      "mean_latency_ms": 0.30465099999999995,
+      "full_recall_cases": 2,
+      "mean_context_tokens_at_k": 23275.375
+    },
+    {
+      "profile": "SemanticOnly",
+      "mean_recall_at_k": 0.375,
+      "mean_precision_at_k": 0.075,
+      "mean_impact_accuracy": 0.0,
+      "mean_steps": 1.0,
+      "mean_latency_ms": 0.147557375,
+      "full_recall_cases": 3,
+      "mean_context_tokens_at_k": 28854.625
     }
   ],
   "cases": [
@@ -55,7 +78,8 @@
       "impact_accuracy": null,
       "steps": 2,
       "ended_at": "L0Exact",
-      "latency_ms": 9.790583999999999
+      "latency_ms": 10.802792,
+      "context_tokens_at_k": 24289
     },
     {
       "case_id": "l0-symbol-singleton-lock",
@@ -72,7 +96,8 @@
       "impact_accuracy": null,
       "steps": 4,
       "ended_at": "L1Hybrid",
-      "latency_ms": 9.794125000000001
+      "latency_ms": 10.584791,
+      "context_tokens_at_k": 60319
     },
     {
       "case_id": "l0-symbol-singleton-lock",
@@ -89,7 +114,40 @@
       "impact_accuracy": null,
       "steps": 4,
       "ended_at": "L1Hybrid",
-      "latency_ms": 9.766959
+      "latency_ms": 11.686958,
+      "context_tokens_at_k": 60319
+    },
+    {
+      "case_id": "l0-symbol-singleton-lock",
+      "profile": "LexicalOnly",
+      "paths": [
+        "services/modbit-core/src/server.rs"
+      ],
+      "recall_at_k": 1.0,
+      "precision_at_k": 1.0,
+      "impact_accuracy": null,
+      "steps": 1,
+      "ended_at": "L1Hybrid",
+      "latency_ms": 0.165875,
+      "context_tokens_at_k": 24289
+    },
+    {
+      "case_id": "l0-symbol-singleton-lock",
+      "profile": "SemanticOnly",
+      "paths": [
+        "crates/verification/src/invariants.rs",
+        "services/modbit-core/src/server.rs",
+        "services/modbit-core/src/tools.rs",
+        "docs/27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+        "docs/76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md"
+      ],
+      "recall_at_k": 1.0,
+      "precision_at_k": 0.2,
+      "impact_accuracy": null,
+      "steps": 1,
+      "ended_at": "L1Hybrid",
+      "latency_ms": 0.142625,
+      "context_tokens_at_k": 60319
     },
     {
       "case_id": "l0-path-planner",
@@ -103,7 +161,8 @@
       "impact_accuracy": null,
       "steps": 3,
       "ended_at": "L0Exact",
-      "latency_ms": 9.876332999999999
+      "latency_ms": 10.994542,
+      "context_tokens_at_k": 8633
     },
     {
       "case_id": "l0-path-planner",
@@ -120,7 +179,8 @@
       "impact_accuracy": null,
       "steps": 5,
       "ended_at": "L1Hybrid",
-      "latency_ms": 10.130625
+      "latency_ms": 11.413042,
+      "context_tokens_at_k": 18348
     },
     {
       "case_id": "l0-path-planner",
@@ -137,7 +197,38 @@
       "impact_accuracy": null,
       "steps": 5,
       "ended_at": "L1Hybrid",
-      "latency_ms": 10.129375
+      "latency_ms": 12.264000000000001,
+      "context_tokens_at_k": 18348
+    },
+    {
+      "case_id": "l0-path-planner",
+      "profile": "LexicalOnly",
+      "paths": [],
+      "recall_at_k": 0.0,
+      "precision_at_k": 0.0,
+      "impact_accuracy": null,
+      "steps": 1,
+      "ended_at": "L1Hybrid",
+      "latency_ms": 0.087,
+      "context_tokens_at_k": 0
+    },
+    {
+      "case_id": "l0-path-planner",
+      "profile": "SemanticOnly",
+      "paths": [
+        "crates/retrieval/tests/graph.rs",
+        "crates/policy/src/config.rs",
+        "crates/protocol/proto/modbit/v1/surface.proto",
+        "docs/decisions/DR-M2-001-live-provider-proof-pending-credentials.md",
+        "crates/context/tests/pack.rs"
+      ],
+      "recall_at_k": 0.0,
+      "precision_at_k": 0.0,
+      "impact_accuracy": null,
+      "steps": 1,
+      "ended_at": "L1Hybrid",
+      "latency_ms": 0.164709,
+      "context_tokens_at_k": 12262
     },
     {
       "case_id": "l1-core-ready-attach",
@@ -153,7 +244,8 @@
       "impact_accuracy": null,
       "steps": 4,
       "ended_at": "L0Exact",
-      "latency_ms": 9.974916
+      "latency_ms": 11.145666,
+      "context_tokens_at_k": 39690
     },
     {
       "case_id": "l1-core-ready-attach",
@@ -169,7 +261,8 @@
       "impact_accuracy": null,
       "steps": 8,
       "ended_at": "L1Hybrid",
-      "latency_ms": 20.3895
+      "latency_ms": 22.671792,
+      "context_tokens_at_k": 39690
     },
     {
       "case_id": "l1-core-ready-attach",
@@ -185,7 +278,38 @@
       "impact_accuracy": null,
       "steps": 8,
       "ended_at": "L1Hybrid",
-      "latency_ms": 20.67975
+      "latency_ms": 22.339000000000002,
+      "context_tokens_at_k": 39690
+    },
+    {
+      "case_id": "l1-core-ready-attach",
+      "profile": "LexicalOnly",
+      "paths": [],
+      "recall_at_k": 0.0,
+      "precision_at_k": 0.0,
+      "impact_accuracy": null,
+      "steps": 1,
+      "ended_at": "L1Hybrid",
+      "latency_ms": 0.551375,
+      "context_tokens_at_k": 0
+    },
+    {
+      "case_id": "l1-core-ready-attach",
+      "profile": "SemanticOnly",
+      "paths": [
+        "apps/cli/README.md",
+        "docs/28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
+        "docs/39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md",
+        "docs/14_AGENT_RUNTIME_AND_ORCHESTRATION.md",
+        "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+      ],
+      "recall_at_k": 0.0,
+      "precision_at_k": 0.0,
+      "impact_accuracy": null,
+      "steps": 1,
+      "ended_at": "L1Hybrid",
+      "latency_ms": 0.171458,
+      "context_tokens_at_k": 30344
     },
     {
       "case_id": "l1-steering-interrupt",
@@ -196,7 +320,8 @@
       "impact_accuracy": null,
       "steps": 0,
       "ended_at": "L0Exact",
-      "latency_ms": 0.01975
+      "latency_ms": 0.030084,
+      "context_tokens_at_k": 0
     },
     {
       "case_id": "l1-steering-interrupt",
@@ -213,7 +338,8 @@
       "impact_accuracy": null,
       "steps": 2,
       "ended_at": "L1Hybrid",
-      "latency_ms": 0.7011660000000001
+      "latency_ms": 0.771,
+      "context_tokens_at_k": 116718
     },
     {
       "case_id": "l1-steering-interrupt",
@@ -230,7 +356,41 @@
       "impact_accuracy": null,
       "steps": 2,
       "ended_at": "L1Hybrid",
-      "latency_ms": 0.48424999999999996
+      "latency_ms": 0.513041,
+      "context_tokens_at_k": 116718
+    },
+    {
+      "case_id": "l1-steering-interrupt",
+      "profile": "LexicalOnly",
+      "paths": [
+        "services/modbit-core/src/runtime.rs",
+        "services/modbit-core/tests/surface_protocol.rs"
+      ],
+      "recall_at_k": 1.0,
+      "precision_at_k": 0.5,
+      "impact_accuracy": null,
+      "steps": 1,
+      "ended_at": "L1Hybrid",
+      "latency_ms": 0.2935,
+      "context_tokens_at_k": 85365
+    },
+    {
+      "case_id": "l1-steering-interrupt",
+      "profile": "SemanticOnly",
+      "paths": [
+        "crates/providers/src/gateway.rs",
+        "services/modbit-core/src/runtime.rs",
+        "crates/providers/tests/conformance.rs",
+        "docs/27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+        "crates/terminal/src/lib.rs"
+      ],
+      "recall_at_k": 1.0,
+      "precision_at_k": 0.2,
+      "impact_accuracy": null,
+      "steps": 1,
+      "ended_at": "L1Hybrid",
+      "latency_ms": 0.11366699999999999,
+      "context_tokens_at_k": 59451
     },
     {
       "case_id": "l1-pyright-resolution",
@@ -247,7 +407,8 @@
       "impact_accuracy": null,
       "steps": 2,
       "ended_at": "L0Exact",
-      "latency_ms": 2.8028340000000003
+      "latency_ms": 2.968625,
+      "context_tokens_at_k": 9711
     },
     {
       "case_id": "l1-pyright-resolution",
@@ -264,7 +425,8 @@
       "impact_accuracy": null,
       "steps": 5,
       "ended_at": "L1Hybrid",
-      "latency_ms": 6.090666
+      "latency_ms": 6.923667,
+      "context_tokens_at_k": 9711
     },
     {
       "case_id": "l1-pyright-resolution",
@@ -281,7 +443,40 @@
       "impact_accuracy": null,
       "steps": 5,
       "ended_at": "L1Hybrid",
-      "latency_ms": 6.0010829999999995
+      "latency_ms": 6.919459,
+      "context_tokens_at_k": 9711
+    },
+    {
+      "case_id": "l1-pyright-resolution",
+      "profile": "LexicalOnly",
+      "paths": [
+        "services/modbit-core/tests/surface_protocol.rs"
+      ],
+      "recall_at_k": 0.0,
+      "precision_at_k": 0.0,
+      "impact_accuracy": null,
+      "steps": 1,
+      "ended_at": "L1Hybrid",
+      "latency_ms": 0.393833,
+      "context_tokens_at_k": 58738
+    },
+    {
+      "case_id": "l1-pyright-resolution",
+      "profile": "SemanticOnly",
+      "paths": [
+        "crates/diagnostics/src/servers.rs",
+        "crates/diagnostics/tests/servers.rs",
+        "crates/diagnostics/src/lsp.rs",
+        "docs/28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
+        "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md"
+      ],
+      "recall_at_k": 1.0,
+      "precision_at_k": 0.2,
+      "impact_accuracy": null,
+      "steps": 1,
+      "ended_at": "L1Hybrid",
+      "latency_ms": 0.140166,
+      "context_tokens_at_k": 35184
     },
     {
       "case_id": "l2-importers-of-graph",
@@ -298,7 +493,8 @@
       "impact_accuracy": null,
       "steps": 2,
       "ended_at": "L0Exact",
-      "latency_ms": 7.9465
+      "latency_ms": 8.826167,
+      "context_tokens_at_k": 16978
     },
     {
       "case_id": "l2-importers-of-graph",
@@ -315,7 +511,8 @@
       "impact_accuracy": null,
       "steps": 5,
       "ended_at": "L1Hybrid",
-      "latency_ms": 16.473333
+      "latency_ms": 18.289083,
+      "context_tokens_at_k": 16978
     },
     {
       "case_id": "l2-importers-of-graph",
@@ -332,7 +529,43 @@
       "impact_accuracy": null,
       "steps": 11,
       "ended_at": "L2Structural",
-      "latency_ms": 16.521458
+      "latency_ms": 18.498041999999998,
+      "context_tokens_at_k": 15818
+    },
+    {
+      "case_id": "l2-importers-of-graph",
+      "profile": "LexicalOnly",
+      "paths": [
+        "crates/retrieval/tests/graph.rs",
+        "crates/retrieval/src/graph.rs",
+        "crates/retrieval/tests/planner.rs",
+        "crates/retrieval/src/planner.rs"
+      ],
+      "recall_at_k": 0.5,
+      "precision_at_k": 0.25,
+      "impact_accuracy": null,
+      "steps": 1,
+      "ended_at": "L1Hybrid",
+      "latency_ms": 0.2895,
+      "context_tokens_at_k": 15450
+    },
+    {
+      "case_id": "l2-importers-of-graph",
+      "profile": "SemanticOnly",
+      "paths": [
+        "crates/core-runtime/src/harness.rs",
+        "crates/retrieval/src/planner.rs",
+        "docs/86_TASK_CARD_TEMPLATE.md",
+        "docs/93_STATUS_VOCABULARY_AND_LIFECYCLE.md",
+        "docs/60_RELEASE_ZERO_EXPANDED_PROOF.md"
+      ],
+      "recall_at_k": 0.0,
+      "precision_at_k": 0.0,
+      "impact_accuracy": null,
+      "steps": 1,
+      "ended_at": "L1Hybrid",
+      "latency_ms": 0.11558299999999999,
+      "context_tokens_at_k": 13399
     },
     {
       "case_id": "l3-tests-of-pack",
@@ -348,7 +581,8 @@
       "impact_accuracy": 1.0,
       "steps": 2,
       "ended_at": "L0Exact",
-      "latency_ms": 9.3055
+      "latency_ms": 10.515292,
+      "context_tokens_at_k": 38876
     },
     {
       "case_id": "l3-tests-of-pack",
@@ -365,7 +599,8 @@
       "impact_accuracy": 1.0,
       "steps": 5,
       "ended_at": "L1Hybrid",
-      "latency_ms": 19.108625
+      "latency_ms": 22.706375,
+      "context_tokens_at_k": 42211
     },
     {
       "case_id": "l3-tests-of-pack",
@@ -382,7 +617,38 @@
       "impact_accuracy": 1.0,
       "steps": 20,
       "ended_at": "L3Engineering",
-      "latency_ms": 19.263875
+      "latency_ms": 23.088792,
+      "context_tokens_at_k": 41652
+    },
+    {
+      "case_id": "l3-tests-of-pack",
+      "profile": "LexicalOnly",
+      "paths": [],
+      "recall_at_k": 0.0,
+      "precision_at_k": 0.0,
+      "impact_accuracy": 0.0,
+      "steps": 1,
+      "ended_at": "L1Hybrid",
+      "latency_ms": 0.284958,
+      "context_tokens_at_k": 0
+    },
+    {
+      "case_id": "l3-tests-of-pack",
+      "profile": "SemanticOnly",
+      "paths": [
+        "crates/tools/tool-matrix.json",
+        "crates/providers/src/lib.rs",
+        "crates/policy/src/lib.rs",
+        "crates/context/Cargo.toml",
+        "docs/10_PRODUCT_PRD_AND_UX.md"
+      ],
+      "recall_at_k": 0.0,
+      "precision_at_k": 0.0,
+      "impact_accuracy": 0.0,
+      "steps": 1,
+      "ended_at": "L1Hybrid",
+      "latency_ms": 0.169917,
+      "context_tokens_at_k": 6957
     },
     {
       "case_id": "l3-tests-of-index",
@@ -399,7 +665,8 @@
       "impact_accuracy": 1.0,
       "steps": 2,
       "ended_at": "L0Exact",
-      "latency_ms": 2.9380830000000002
+      "latency_ms": 3.213542,
+      "context_tokens_at_k": 18291
     },
     {
       "case_id": "l3-tests-of-index",
@@ -416,7 +683,8 @@
       "impact_accuracy": 1.0,
       "steps": 5,
       "ended_at": "L1Hybrid",
-      "latency_ms": 6.1657910000000005
+      "latency_ms": 7.273125,
+      "context_tokens_at_k": 18291
     },
     {
       "case_id": "l3-tests-of-index",
@@ -433,8 +701,41 @@
       "impact_accuracy": 1.0,
       "steps": 20,
       "ended_at": "L3Engineering",
-      "latency_ms": 6.853332999999999
+      "latency_ms": 8.072416,
+      "context_tokens_at_k": 13764
+    },
+    {
+      "case_id": "l3-tests-of-index",
+      "profile": "LexicalOnly",
+      "paths": [
+        "crates/retrieval/tests/planner.rs"
+      ],
+      "recall_at_k": 0.0,
+      "precision_at_k": 0.0,
+      "impact_accuracy": 0.0,
+      "steps": 1,
+      "ended_at": "L1Hybrid",
+      "latency_ms": 0.37116699999999997,
+      "context_tokens_at_k": 2361
+    },
+    {
+      "case_id": "l3-tests-of-index",
+      "profile": "SemanticOnly",
+      "paths": [
+        "crates/retrieval/tests/planner.rs",
+        "crates/retrieval/src/lexical.rs",
+        "docs/95_EPR_V1_1_DOSSIER_TASK_AND_HANDOFF.md",
+        "docs/90_PR_CHANGE_EVIDENCE_TEMPLATE.md",
+        "crates/retrieval/src/planner.rs"
+      ],
+      "recall_at_k": 0.0,
+      "precision_at_k": 0.0,
+      "impact_accuracy": 0.0,
+      "steps": 1,
+      "ended_at": "L1Hybrid",
+      "latency_ms": 0.162334,
+      "context_tokens_at_k": 12921
     }
   ],
-  "method": "Same corpus and cases for every profile; A = L0 exact/symbol/path only, B = up to L1 (BM25 + hashing-v1 vectors + exact overlay), C = the full L0–L3 planner with graph expansion. Metrics are measured here; the docs/18 token/tool-call/agent-time reduction targets are not claimed by this report (they need a same-model, same-task agent run)."
+  "method": "Same corpus and cases for every profile; A = L0 exact/symbol/path only, B = up to L1 (BM25 + hashing-v1 vectors + exact overlay), C = the full L0–L3 planner with graph expansion; LexicalOnly = BM25 alone and SemanticOnly = hashing-v1 vectors alone (fusion baselines). context_tokens_at_k is the bytes/4 estimate of the whole top-K files. Metrics are measured here; the docs/18 token/tool-call/agent-time reduction targets are not claimed by this report (they need a same-model, same-task agent run)."
 }

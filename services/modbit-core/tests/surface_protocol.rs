@@ -6631,10 +6631,11 @@ async fn m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_rec
     let r = invoke_tool(&mut c, &task, g, 0xC4, 0xB2, "context.ledger", "{}").await;
     assert_eq!(r.status, "SUCCESS", "{r:?}");
     let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let stubs_n = pack["stubs"].as_array().unwrap().len();
     assert_eq!(
         so["injected"].as_u64().unwrap(),
-        entries.len() as u64,
-        "{so}"
+        (entries.len() + stubs_n) as u64,
+        "entries and stubs are injected: {so}"
     );
     assert_eq!(so["used"], 0);
     assert!(so["ledger_ref"].is_string());
@@ -6716,4 +6717,122 @@ async fn m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_rec
     )
     .await;
     assert_eq!(r.error_code, "QUERY_REQUIRED", "{r:?}");
+    // Read-through hydration (REQ-EV-0002/0170): the file is changed on disk
+    // behind the index; the pack carries the current bytes, labelled as
+    // rehydrated, with the current hash — stale bytes never reach the pack.
+    std::fs::write(
+        repo.path().join("src/money.rs"),
+        "pub fn round(cents: u32) -> u32 {\n    cents + 0 // edited outside the tools\n}\n",
+    )
+    .unwrap();
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xCB,
+        0xB9,
+        "context.pack",
+        r#"{"query":"round","token_budget":400}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let money = so["pack"]["entries"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|e| e["provenance"]["path"] == "src/money.rs")
+        .unwrap_or_else(|| panic!("{so}"));
+    assert!(
+        money["text"]
+            .as_str()
+            .unwrap()
+            .contains("edited outside the tools"),
+        "{so}"
+    );
+    assert_eq!(
+        money["freshness"], "rehydrated_from_active_revision",
+        "{so}"
+    );
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xCC,
+        0xBA,
+        "fs.read",
+        r#"{"path":"src/money.rs"}"#,
+    )
+    .await;
+    let read: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(
+        read["content_hash"], money["provenance"]["content_hash"],
+        "{so}"
+    );
+    // Signature-only stubs (REQ-EV-0003/0167): a tight budget turns the
+    // lower-ranked candidates into stubs with a hydration handle; hydrating one
+    // through fs.read is the recorded use and returns the bytes the stub's
+    // provenance names.
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xCD,
+        0xBB,
+        "context.pack",
+        r#"{"query":"compute_total","token_budget":70}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let stubs = so["pack"]["stubs"].as_array().unwrap();
+    assert!(!stubs.is_empty(), "{so}");
+    assert!(so["pack"]["token_used"].as_u64().unwrap() <= 70);
+    let stub = &stubs[0];
+    let stub_path = stub["provenance"]["path"].as_str().unwrap().to_owned();
+    assert_eq!(stub["hydrate"], format!("fs.read {stub_path}"));
+    assert!(
+        stub["hydrated_token_cost"].as_u64().unwrap() >= stub["token_cost"].as_u64().unwrap(),
+        "{stub}"
+    );
+    let r = invoke_tool(&mut c, &task, g, 0xCE, 0xBC, "context.ledger", "{}").await;
+    let before: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let used_before = before["used"].as_u64().unwrap();
+    assert!(
+        before["ledger"]["entries"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|e| e["entry_id"] == stub["entry_id"] && e["stub"] == true),
+        "{before}"
+    );
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xCF,
+        0xBD,
+        "fs.read",
+        &format!(r#"{{"path":"{stub_path}"}}"#),
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let read: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(
+        read["content_hash"], stub["provenance"]["content_hash"],
+        "hydration fidelity: {read}"
+    );
+    let r = invoke_tool(&mut c, &task, g, 0xD0, 0xBE, "context.ledger", "{}").await;
+    let after: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert!(after["used"].as_u64().unwrap() > used_before, "{after}");
+    // The same stub id can appear in an earlier pack (same path and span at
+    // another revision); the latest record is the one this pack injected.
+    let hydrated = after["ledger"]["entries"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .rev()
+        .find(|e| e["entry_id"] == stub["entry_id"])
+        .unwrap();
+    assert_eq!(hydrated["used"]["tool_name"], "fs.read", "{after}");
 }

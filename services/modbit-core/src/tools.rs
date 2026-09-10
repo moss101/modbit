@@ -25,6 +25,7 @@ use modbit_tools::{
     ToolRegistry, ToolRuntime, ToolSpec, ToolStatus,
 };
 use modbit_workspace::WorkspaceService;
+use sha2::Digest;
 use tokio::sync::Mutex;
 
 /// The supervised broker process.
@@ -1425,16 +1426,34 @@ impl modbit_tools::SearchPort for IndexPort {
                         max_level: None,
                     },
                 );
-                let text_of = |p: &str| {
-                    idx.texts()
-                        .find(|(path, _, _)| *path == p)
-                        .map(|(_, t, _)| t.to_owned())
-                };
-                let hash_of = |p: &str| {
-                    idx.texts_with_hash()
+                // Read-through hydration (docs/18 "Index freshness", REQ-EV-0002):
+                // the index ranks, but the bytes that enter a pack are re-read from
+                // the active revision; a mismatch with the index is labelled.
+                let hydrated = |p: &str| -> Option<(String, String, bool)> {
+                    let indexed = idx
+                        .texts_with_hash()
                         .find(|(path, _, _, _)| *path == p)
-                        .map(|(_, _, _, h)| h.to_owned())
+                        .map(|(_, t, _, h)| (t.to_owned(), h.to_owned()));
+                    match std::fs::read(idx.root().join(p)) {
+                        Ok(bytes) => {
+                            let text = String::from_utf8(bytes).ok()?;
+                            let hash = hex::encode(sha2::Sha256::digest(text.as_bytes()));
+                            let rehydrated = indexed.as_ref().is_some_and(|(_, h)| *h != hash);
+                            Some((text, hash, rehydrated))
+                        }
+                        Err(_) => indexed.map(|(t, h)| (t, h, false)),
+                    }
                 };
+                let signatures_of = |p: &str| -> Vec<String> {
+                    symbols
+                        .symbols_in(p)
+                        .iter()
+                        .filter(|s| s.container.is_none())
+                        .take(40)
+                        .map(|s| format!("{} {} L{}-{}", s.kind, s.name, s.line_start, s.line_end))
+                        .collect()
+                };
+
                 let fresh = |p: &str| {
                     !graph
                         .query(&modbit_retrieval::GraphQuery {
@@ -1449,7 +1468,7 @@ impl modbit_tools::SearchPort for IndexPort {
                 let mut cands: Vec<modbit_context::Candidate> = Vec::new();
                 // Task constraints first: the required paths are critical entries.
                 for p in &required {
-                    if let Some(t) = text_of(p) {
+                    if let Some((t, hash, rehydrated)) = hydrated(p) {
                         let (text, lines) = excerpt(&t, None);
                         cands.push(modbit_context::Candidate {
                             path: p.clone(),
@@ -1458,16 +1477,20 @@ impl modbit_tools::SearchPort for IndexPort {
                             score: 1.0,
                             sources: vec!["task_constraint".into()],
                             reasons: vec!["required_path".into()],
-                            content_hash: hash_of(p),
+                            content_hash: Some(hash),
                             text,
                             critical: true,
                             critical_reason: Some("task_constraint".into()),
                             fresh_in_worktree: fresh(p),
+                            rehydrated,
+                            signatures: signatures_of(p),
                         });
                     }
                 }
                 for h in &plan.hits {
-                    let Some(t) = text_of(&h.path) else { continue };
+                    let Some((t, hash, rehydrated)) = hydrated(&h.path) else {
+                        continue;
+                    };
                     let (text, lines) = excerpt(&t, h.lines);
                     let diagnostic = h.reasons.iter().any(|r| r == "diagnostic");
                     cands.push(modbit_context::Candidate {
@@ -1477,11 +1500,13 @@ impl modbit_tools::SearchPort for IndexPort {
                         score: h.score,
                         sources: h.sources.clone(),
                         reasons: h.reasons.clone(),
-                        content_hash: h.content_hash.clone().or_else(|| hash_of(&h.path)),
+                        content_hash: Some(hash),
                         text,
                         critical: diagnostic,
                         critical_reason: diagnostic.then(|| "diagnostic".to_owned()),
                         fresh_in_worktree: fresh(&h.path),
+                        rehydrated,
+                        signatures: signatures_of(&h.path),
                     });
                 }
                 let fingerprint = format!("{}|{}", query, plan.ended_at as u8);

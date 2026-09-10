@@ -48,17 +48,28 @@ pub enum Profile {
     BHybrid,
     /// Modbit structural context engine (L0–L3).
     CStructural,
+    /// BM25 only (a lexical-only baseline for the fusion A/B).
+    LexicalOnly,
+    /// Vectors only (a semantic-only baseline for the fusion A/B).
+    SemanticOnly,
 }
 
 impl Profile {
     /// All profiles, in order.
-    pub const ALL: [Self; 3] = [Self::ABaseline, Self::BHybrid, Self::CStructural];
+    pub const ALL: [Self; 5] = [
+        Self::ABaseline,
+        Self::BHybrid,
+        Self::CStructural,
+        Self::LexicalOnly,
+        Self::SemanticOnly,
+    ];
 
     fn request(self, case: &Case, k: usize) -> PlanRequest {
         let (intent, max_level) = match self {
             Self::ABaseline => ("exact".to_owned(), Some(Level::L0Exact)),
             Self::BHybrid => ("hybrid".to_owned(), Some(Level::L1Hybrid)),
             Self::CStructural => (case.intent.clone(), None),
+            Self::LexicalOnly | Self::SemanticOnly => ("hybrid".to_owned(), Some(Level::L1Hybrid)),
         };
         PlanRequest {
             query: case.query.clone(),
@@ -92,6 +103,9 @@ pub struct CaseResult {
     pub ended_at: Level,
     /// Wall time.
     pub latency_ms: f64,
+    /// Estimated tokens (bytes/4) of the whole files in the top K: the context
+    /// cost of handing the agent those files without packing.
+    pub context_tokens_at_k: u64,
 }
 
 /// Aggregate of one profile.
@@ -111,6 +125,8 @@ pub struct ProfileSummary {
     pub mean_latency_ms: f64,
     /// Cases with every relevant path in the top K.
     pub full_recall_cases: usize,
+    /// Mean estimated context tokens of the top K files.
+    pub mean_context_tokens_at_k: f64,
 }
 
 /// Cold-index times.
@@ -273,17 +289,50 @@ pub fn run(root: &Path, corpus: &str, cases: &[Case], k: usize) -> Result<Report
         for profile in Profile::ALL {
             let req = profile.request(case, k);
             let t = Instant::now();
-            let plan = retrieve(&src, &req);
+            let (ranked, steps, ended_at): (Vec<String>, usize, Level) = match profile {
+                Profile::LexicalOnly => (
+                    lexical
+                        .search(&case.query, k * 3)
+                        .map(|hits| hits.into_iter().map(|h| h.path).collect())
+                        .unwrap_or_default(),
+                    1,
+                    Level::L1Hybrid,
+                ),
+                Profile::SemanticOnly => (
+                    semantic
+                        .search(&case.query, k * 3)
+                        .map(|hits| hits.into_iter().map(|h| h.chunk.path).collect())
+                        .unwrap_or_default(),
+                    1,
+                    Level::L1Hybrid,
+                ),
+                _ => {
+                    let plan = retrieve(&src, &req);
+                    (
+                        plan.hits.iter().map(|h| h.path.clone()).collect(),
+                        plan.steps.len(),
+                        plan.ended_at,
+                    )
+                }
+            };
             let latency_ms = ms(t);
             let mut paths: Vec<String> = Vec::new();
-            for h in &plan.hits {
-                if !paths.contains(&h.path) {
-                    paths.push(h.path.clone());
+            for p in ranked {
+                if !paths.contains(&p) {
+                    paths.push(p);
                 }
                 if paths.len() >= k {
                     break;
                 }
             }
+            let context_tokens_at_k: u64 = paths
+                .iter()
+                .map(|p| {
+                    idx.texts()
+                        .find(|(path, _, _)| path == p)
+                        .map_or(0, |(_, t, _)| t.len().div_ceil(4) as u64)
+                })
+                .sum();
             let found = case.relevant.iter().filter(|p| paths.contains(p)).count();
             let impact = if case.impacted.is_empty() {
                 None
@@ -303,10 +352,11 @@ pub fn run(root: &Path, corpus: &str, cases: &[Case], k: usize) -> Result<Report
                     found as f32 / paths.len() as f32
                 },
                 impact_accuracy: impact,
-                steps: plan.steps.len(),
-                ended_at: plan.ended_at,
+                steps,
+                ended_at,
                 latency_ms,
                 paths,
+                context_tokens_at_k,
             });
         }
     }
@@ -325,6 +375,11 @@ pub fn run(root: &Path, corpus: &str, cases: &[Case], k: usize) -> Result<Report
                 mean_steps: rs.iter().map(|r| r.steps as f32).sum::<f32>() / n,
                 mean_latency_ms: rs.iter().map(|r| r.latency_ms).sum::<f64>() / f64::from(n),
                 full_recall_cases: rs.iter().filter(|r| r.recall_at_k >= 1.0).count(),
+                mean_context_tokens_at_k: rs
+                    .iter()
+                    .map(|r| r.context_tokens_at_k as f64)
+                    .sum::<f64>()
+                    / f64::from(n),
             }
         })
         .collect();
@@ -339,6 +394,6 @@ pub fn run(root: &Path, corpus: &str, cases: &[Case], k: usize) -> Result<Report
         incremental_path,
         profiles,
         cases: results,
-        method: "Same corpus and cases for every profile; A = L0 exact/symbol/path only, B = up to L1 (BM25 + hashing-v1 vectors + exact overlay), C = the full L0–L3 planner with graph expansion. Metrics are measured here; the docs/18 token/tool-call/agent-time reduction targets are not claimed by this report (they need a same-model, same-task agent run).".into(),
+        method: "Same corpus and cases for every profile; A = L0 exact/symbol/path only, B = up to L1 (BM25 + hashing-v1 vectors + exact overlay), C = the full L0–L3 planner with graph expansion; LexicalOnly = BM25 alone and SemanticOnly = hashing-v1 vectors alone (fusion baselines). context_tokens_at_k is the bytes/4 estimate of the whole top-K files. Metrics are measured here; the docs/18 token/tool-call/agent-time reduction targets are not claimed by this report (they need a same-model, same-task agent run).".into(),
     })
 }

@@ -96,8 +96,8 @@ fn harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them() {
         report.incremental_path,
         "services/modbit-core/src/server.rs"
     );
-    assert_eq!(report.cases.len(), cases.len() * 3);
-    assert_eq!(report.profiles.len(), 3);
+    assert_eq!(report.cases.len(), cases.len() * 5);
+    assert_eq!(report.profiles.len(), 5);
     let summary = |p: Profile| {
         report
             .profiles
@@ -116,13 +116,21 @@ fn harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them() {
             Profile::ABaseline => assert_eq!(r.ended_at, modbit_retrieval::Level::L0Exact, "{r:?}"),
             Profile::BHybrid => assert!(r.ended_at <= modbit_retrieval::Level::L1Hybrid, "{r:?}"),
             Profile::CStructural => {}
+            Profile::LexicalOnly | Profile::SemanticOnly => assert_eq!(r.steps, 1),
         }
+        assert!(r.context_tokens_at_k > 0 || r.paths.is_empty(), "{r:?}");
         assert!(r.paths.len() <= 5);
         assert!((0.0..=1.0).contains(&r.recall_at_k) && (0.0..=1.0).contains(&r.precision_at_k));
     }
     // Ground truth the corpus actually holds: the L0 cases are found by every profile.
     for id in ["l0-symbol-singleton-lock", "l0-path-planner"] {
-        for r in report.cases.iter().filter(|r| r.case_id == id) {
+        for r in report.cases.iter().filter(|r| {
+            r.case_id == id
+                && matches!(
+                    r.profile,
+                    Profile::ABaseline | Profile::BHybrid | Profile::CStructural
+                )
+        }) {
             assert_eq!(r.recall_at_k, 1.0, "{r:?}");
         }
     }

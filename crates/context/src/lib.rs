@@ -52,6 +52,38 @@ pub struct Candidate {
     pub critical_reason: Option<String>,
     /// Whether the file has uncommitted changes in the worktree.
     pub fresh_in_worktree: bool,
+    /// The bytes were re-read from the active revision and differed from the
+    /// index (read-through hydration; docs/18 "Index freshness").
+    #[serde(default)]
+    pub rehydrated: bool,
+    /// Symbol signatures of the file (`kind name Lstart-end`), for a stub.
+    #[serde(default)]
+    pub signatures: Vec<String>,
+}
+
+/// A signature-only stub of a candidate that did not fit as an entry: the
+/// handle (`source_ref`, lines) hydrates on request through `fs.read` and
+/// keeps its provenance.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Stub {
+    /// Stable id (sha256 of path, span and `stub`).
+    pub entry_id: String,
+    /// `workspace:<path>`.
+    pub source_ref: String,
+    /// 1-based line range of the stubbed excerpt, when narrower than the file.
+    pub lines: Option<(u32, u32)>,
+    /// Symbol signatures.
+    pub signatures: Vec<String>,
+    /// Provenance.
+    pub provenance: Provenance,
+    /// Score.
+    pub score: f32,
+    /// Estimated tokens of the stub text.
+    pub token_cost: u32,
+    /// Estimated tokens the hydrated excerpt would cost.
+    pub hydrated_token_cost: u32,
+    /// How to hydrate (`fs.read <path>`; the ledger records the use).
+    pub hydrate: String,
 }
 
 /// Where an entry came from.
@@ -122,6 +154,8 @@ pub struct ContextPack {
     pub fingerprint: String,
     /// Entries in pack order.
     pub entries: Vec<Entry>,
+    /// Signature-only stubs for lower-ranked candidates, within the budget.
+    pub stubs: Vec<Stub>,
     /// What was left out.
     pub omitted_summary: OmittedSummary,
     /// Budget.
@@ -143,6 +177,29 @@ fn sha(parts: &[&str]) -> String {
         h.update([0]);
     }
     hex::encode(h.finalize())
+}
+
+fn freshness_of(c: &Candidate) -> String {
+    if c.rehydrated {
+        "rehydrated_from_active_revision".into()
+    } else if c.fresh_in_worktree {
+        "fresh_in_worktree".into()
+    } else {
+        "committed".into()
+    }
+}
+
+/// The text of a stub: the path, lines and symbol signatures.
+fn stub_text(c: &Candidate) -> String {
+    let mut t = match c.lines {
+        Some((a, b)) => format!("{} L{a}-{b}", c.path),
+        None => c.path.clone(),
+    };
+    for sig in &c.signatures {
+        t.push('\n');
+        t.push_str(sig);
+    }
+    t
 }
 
 fn contains(outer: &Candidate, inner: &Candidate) -> bool {
@@ -180,9 +237,15 @@ pub fn pack(
             .then_with(|| ca.path.cmp(&cb.path))
             .then_with(|| ca.lines.cmp(&cb.lines))
     });
+    // A slice of the budget is held back for signature stubs of what does
+    // not fit (REQ-EV-0003): entries pack up to `entry_budget`, stubs then
+    // use whatever is left of the whole budget.
+    let reserve = (token_budget / 8).max(16).min(token_budget / 2);
+    let entry_budget = token_budget - reserve;
     let mut used = 0u32;
     let mut packed: Vec<usize> = Vec::new();
     let mut omitted = OmittedSummary::default();
+    let mut left_out: Vec<usize> = Vec::new();
     for i in order {
         let c = &candidates[i];
         if packed.iter().any(|&p| {
@@ -201,7 +264,8 @@ pub fn pack(
             .collect();
         let refund: u32 = absorbed.iter().map(|&p| cost(&candidates[p])).sum();
         let tc = cost(c);
-        if used - refund + tc > token_budget {
+        if used - refund + tc > entry_budget {
+            left_out.push(i);
             omitted.count += 1;
             omitted.token_cost += tc;
             if c.critical {
@@ -238,11 +302,7 @@ pub fn pack(
                     retrieval_reasons: c.reasons.clone(),
                     excerpt_hash,
                 },
-                freshness: if c.fresh_in_worktree {
-                    "fresh_in_worktree".into()
-                } else {
-                    "committed".into()
-                },
+                freshness: freshness_of(c),
                 reason: if c.critical {
                     format!(
                         "critical:{}",
@@ -257,7 +317,40 @@ pub fn pack(
             }
         })
         .collect();
-    let ids: Vec<&str> = entries.iter().map(|e| e.entry_id.as_str()).collect();
+    // Stubs (docs/18, REQ-EV-0003/0167): the left-out candidates in utility
+    // order as signature-only handles, while they fit in what is left.
+    let mut stubs: Vec<Stub> = Vec::new();
+    for &i in &left_out {
+        let c = &candidates[i];
+        let text = stub_text(c);
+        let tc = estimate_tokens(&text).max(1);
+        if used + tc > token_budget {
+            continue;
+        }
+        used += tc;
+        let excerpt_hash = sha(&[&c.text]);
+        let span = c.span.map_or(String::new(), |(a, b)| format!("{a}-{b}"));
+        stubs.push(Stub {
+            entry_id: sha(&[&c.path, &span, "stub"]),
+            source_ref: format!("workspace:{}", c.path),
+            lines: c.lines,
+            signatures: c.signatures.clone(),
+            provenance: Provenance {
+                path: c.path.clone(),
+                workspace_revision,
+                content_hash: c.content_hash.clone(),
+                sources: c.sources.clone(),
+                retrieval_reasons: c.reasons.clone(),
+                excerpt_hash,
+            },
+            score: c.score,
+            token_cost: tc,
+            hydrated_token_cost: cost(c),
+            hydrate: format!("fs.read {}", c.path),
+        });
+    }
+    let mut ids: Vec<&str> = entries.iter().map(|e| e.entry_id.as_str()).collect();
+    ids.extend(stubs.iter().map(|s| s.entry_id.as_str()));
     ContextPack {
         pack_id: sha(&[
             &[fingerprint, &workspace_revision.to_string()][..],
@@ -267,6 +360,7 @@ pub fn pack(
         workspace_revision,
         fingerprint: fingerprint.to_owned(),
         entries,
+        stubs,
         omitted_summary: omitted.clone(),
         token_budget,
         token_used: used,
@@ -302,6 +396,9 @@ pub struct LedgerEntry {
     pub workspace_revision: u64,
     /// Ordinal of the pack in this ledger.
     pub pack_ordinal: u64,
+    /// Injected as a signature-only stub (hydration is the use).
+    #[serde(default)]
+    pub stub: bool,
     /// The first use, when any.
     pub used: Option<Use>,
 }
@@ -327,6 +424,19 @@ impl ContextLedger {
                 lines: e.lines,
                 workspace_revision: pack.workspace_revision,
                 pack_ordinal: self.packs,
+                stub: false,
+                used: None,
+            });
+        }
+        for st in &pack.stubs {
+            self.entries.push(LedgerEntry {
+                pack_id: pack.pack_id.clone(),
+                entry_id: st.entry_id.clone(),
+                path: st.provenance.path.clone(),
+                lines: st.lines,
+                workspace_revision: pack.workspace_revision,
+                pack_ordinal: self.packs,
+                stub: true,
                 used: None,
             });
         }
