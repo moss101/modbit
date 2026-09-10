@@ -1844,8 +1844,15 @@ async fn fake_openai() -> (
                     frames.push(serde_json::json!({"id":"c2","model":"gpt-5-mini-2026","choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":20,"completion_tokens":1,"prompt_tokens_details":{"cached_tokens":16}}}).to_string());
                 }
                 frames.push("[DONE]".into());
+                // One response per connection: the handler drops the socket
+                // after the terminator, so the response must say the
+                // connection closes. Without it the client keeps the socket in
+                // its idle pool and a later request can be written into a
+                // socket the server has already closed — a transport failure
+                // that ends the agent loop, and one that only shows up on a
+                // loaded machine.
                 let _ = sock
-                    .write_all(b"HTTP/1.1 200 OK\r\ncontent-type: text/event-stream\r\ntransfer-encoding: chunked\r\n\r\n")
+                    .write_all(b"HTTP/1.1 200 OK\r\ncontent-type: text/event-stream\r\nconnection: close\r\ntransfer-encoding: chunked\r\n\r\n")
                     .await;
                 for f in frames {
                     let frame = format!("data: {f}\n\n");
@@ -1854,6 +1861,8 @@ async fn fake_openai() -> (
                         .await;
                 }
                 let _ = sock.write_all(b"0\r\n\r\n").await;
+                let _ = sock.flush().await;
+                let _ = sock.shutdown().await;
             });
         }
     });
