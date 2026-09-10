@@ -282,6 +282,16 @@ pub enum TaskEvent {
         /// New version.
         version: u32,
     },
+    /// `ToolsActivated` (REQ-EV-0134 deferred tool search): the model
+    /// discovered deferred tools and they are projected from the next turn;
+    /// discovery never authorizes (the Capability Kernel decides at invocation).
+    /// No state change.
+    ToolsActivated {
+        /// The query.
+        query: String,
+        /// Tool names activated.
+        tools: Vec<String>,
+    },
     /// `SelfReviewRecorded` (docs/28 PX-019); no state change.
     SelfReviewRecorded {
         /// Object hash of the review JSON.
@@ -348,6 +358,7 @@ impl TaskEvent {
             Self::PlanRecorded { .. } => "PlanRecorded",
             Self::PlanRevised { .. } => "PlanRevised",
             Self::SelfReviewRecorded { .. } => "SelfReviewRecorded",
+            Self::ToolsActivated { .. } => "ToolsActivated",
             Self::HarnessBudgetExhausted { .. } => "HarnessBudgetExhausted",
             Self::NoProgressDetected { .. } => "NoProgressDetected",
             Self::ReviewDecisionRecorded { .. } => "ReviewDecisionRecorded",
@@ -446,6 +457,7 @@ impl Task {
             | TaskEvent::PlanRecorded { .. }
             | TaskEvent::PlanRevised { .. }
             | TaskEvent::SelfReviewRecorded { .. }
+            | TaskEvent::ToolsActivated { .. }
             | TaskEvent::HarnessBudgetExhausted { .. }
             | TaskEvent::NoProgressDetected { .. }
             | TaskEvent::ReviewDecisionRecorded { .. } => {

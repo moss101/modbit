@@ -9375,8 +9375,53 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0070",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:c3a327e",
+    "test:qual_ev_0070_diagnostic_change_window_evaluates_only_the_changed_region",
+    "test:changed_lines_follow_the_new_side_hunks_of_a_unified_diff",
+    "run:gha-34464262601",
+    "artifact:evidence/m3/IMP-EV-0070/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T10:18:28Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: NOT-FOUND (lsp.diagnostics returned the whole file)"
+    },
+    {
+     "at": "2026-09-10T10:18:28Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "per-task diagnostic baselines and window=changed on lsp.diagnostics"
+    },
+    {
+     "at": "2026-09-10T10:18:28Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the tool schema and the Core LanguagePort"
+    },
+    {
+     "at": "2026-09-10T10:18:29Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real pyright on the python-service fixture"
+    },
+    {
+     "at": "2026-09-10T10:18:29Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34464262601 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T10:18:29Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34464262601"
+    }
+   ],
+   "status_changed_on": "2026-09-10T10:18:29Z"
   },
   {
    "id": "IMP-EV-0071",

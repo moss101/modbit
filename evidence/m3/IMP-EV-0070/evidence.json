@@ -2,9 +2,21 @@
  "task": "IMP-EV-0070",
  "requirement": "REQ-EV-0070",
  "qual": "QUAL-EV-0070",
- "tests": ["qual_ev_0070_diagnostic_change_window_evaluates_only_the_changed_region"],
- "batch_commits": [],
- "runs": [],
+ "tests": [
+  "qual_ev_0070_diagnostic_change_window_evaluates_only_the_changed_region"
+ ],
+ "batch_commits": [
+  "c3a327e"
+ ],
+ "runs": [
+  {
+   "id": "gha-34464262601",
+   "kind": "hosted CI on c3a327e",
+   "result": "PASS: all jobs green on macOS, Linux and Windows (real pyright on every platform)",
+   "url": "https://github.com/moss101/modbit/actions/runs/34464262601",
+   "log": "ci-run-34464262601.json, ci-run-34464262601-tests.log"
+  }
+ ],
  "proof": "first look = baseline; window=changed keeps only diagnostics on lines changed since the baseline text, marks new_since_baseline, counts the rest as outside_window_count",
  "audit": "IMPLEMENTED in this batch (was NOT-FOUND)"
 }

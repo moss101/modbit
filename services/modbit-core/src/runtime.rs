@@ -15,7 +15,7 @@ use std::sync::Arc;
 
 use modbit_core_runtime::harness::{
     self, ASK_TOOL, Budgets, COMPLETE_TOOL, HarnessRefusal, HarnessState, PLAN_TOOL, Plan,
-    VERIFY_TOOL, WRITE_TOOLS,
+    TOOL_SEARCH, VERIFY_TOOL, WRITE_TOOLS,
 };
 use modbit_domain::event::{Actor, AggregateType};
 use modbit_domain::run::{OwnerLocation, RunEvent, RunState};
@@ -463,6 +463,15 @@ pub(crate) async fn rebuild(
                     state.resolve_flags_by_plan();
                 }
             }
+            "ToolsActivated" => {
+                for t in payload["tools"].as_array().into_iter().flatten() {
+                    if let Some(n) = t.as_str()
+                        && !state.activated_tools.iter().any(|x| x == n)
+                    {
+                        state.activated_tools.push(n.to_owned());
+                    }
+                }
+            }
             "SelfReviewRecorded" => {
                 state.self_review_clean = payload["unresolved"].as_u64() == Some(0);
             }
@@ -639,17 +648,48 @@ fn projection(
     core: &Core,
     task: &Task,
     lease: Option<&modbit_domain::lease::CapabilityLease>,
+    state: &HarnessState,
 ) -> Vec<ToolProjection> {
-    let mut tools: Vec<ToolProjection> = core
+    let visible = core
         .tools
-        .visible_specs(Some(&task.execution_profile), lease)
-        .into_iter()
-        .map(|s| ToolProjection {
+        .visible_specs(Some(&task.execution_profile), lease);
+    // Deferred tool search (REQ-EV-0134/0177/0229): the stable core is
+    // projected with schemas; deferred tools are named by toolset in the
+    // `tool.search` description and hydrated only once activated.
+    let mut deferred: Vec<(String, String)> = Vec::new();
+    let mut tools: Vec<ToolProjection> = Vec::new();
+    for s in visible {
+        if harness::is_deferred(&s.name) && !state.activated_tools.contains(&s.name) {
+            deferred.push((harness::toolset_of(&s.name).to_owned(), s.name.clone()));
+            continue;
+        }
+        tools.push(ToolProjection {
             name: s.name,
             description: format!("{} [effect: {:?}]", s.description, s.effect_class),
             input_schema: s.input_schema,
-        })
-        .collect();
+        });
+    }
+    deferred.sort();
+    let mut by_set: Vec<(String, Vec<String>)> = Vec::new();
+    for (set, name) in deferred {
+        match by_set.last_mut() {
+            Some((s, names)) if *s == set => names.push(name),
+            _ => by_set.push((set, vec![name])),
+        }
+    }
+    let catalog = by_set
+        .iter()
+        .map(|(set, names)| format!("{set}: {}", names.join(", ")))
+        .collect::<Vec<_>>()
+        .join("; ");
+    tools.push(ToolProjection {
+        name: TOOL_SEARCH.into(),
+        description: format!(
+            "Search the deferred tool catalog by words in a tool's name, toolset or purpose and activate the matches: they are projected with their schemas from the next turn on. Discovery never authorizes — a tool the task's profile or lease denies is not discoverable and stays refused at invocation. Deferred toolsets: {}",
+            if catalog.is_empty() { "none".to_owned() } else { catalog }
+        ),
+        input_schema: serde_json::json!({"type":"object","properties":{"query":{"type":"string"},"activate":{"type":"array","items":{"type":"string"}}},"additionalProperties":false}),
+    });
     tools.push(ToolProjection {
         name: ASK_TOOL.into(),
         description: "Ask the user one typed question only when the change set, the verification or a protected effect depends on the answer; offer concrete options. Never ask what the repository can answer. The run suspends until the answer arrives.".into(),
@@ -712,11 +752,23 @@ async fn run_loop(
         .leases_for_task(&task.task_id)
         .ok()
         .and_then(|l| l.into_iter().next());
-    let tools = projection(&core, &task, lease.as_ref());
+    let mut tools: Vec<ToolProjection>;
     let end = 'outer: loop {
         if cancel.is_cancelled() {
             break LoopEnd::Cancelled;
         }
+        // The projection follows the harness state: deferred tools activated
+        // by `tool.search` appear with their schemas from this turn on.
+        tools = projection(&core, &task, lease.as_ref(), &state);
+        // Deferred tools the task may still call by name (discovery by use):
+        // visible under profile × lease × kernel, not yet projected.
+        let deferred_visible: Vec<String> = core
+            .tools
+            .visible_specs(Some(&task.execution_profile), lease.as_ref())
+            .into_iter()
+            .map(|s| s.name)
+            .filter(|n| harness::is_deferred(n) && !state.activated_tools.contains(n))
+            .collect();
         // Steering at a safe boundary (docs/14 contract 9): inputs queued
         // before this boundary (including before the loop started).
         let mut inputs = std::mem::take(&mut carried);
@@ -1186,6 +1238,28 @@ async fn run_loop(
                 break;
             }
             step_ordinal += 1;
+            // A direct call to a deferred-but-visible tool activates it
+            // (REQ-EV-0134: discovery by use; authority still sits with the
+            // kernel at dispatch).
+            if deferred_visible.contains(&name) && !state.activated_tools.contains(&name) {
+                state.activated_tools.push(name.clone());
+                let mut store = core.store.lock().await;
+                let _ = append(
+                    &mut store,
+                    &core,
+                    lt,
+                    AggregateType::Task,
+                    *task.task_id.as_bytes(),
+                    vec![typed(
+                        "ToolsActivated",
+                        &TaskEvent::ToolsActivated {
+                            query: format!("invoked:{name}"),
+                            tools: vec![name.clone()],
+                        },
+                        actor.clone(),
+                    )],
+                );
+            }
             let (entry, step_type, failure_code) = match name.as_str() {
                 PLAN_TOOL => {
                     let (entry, ok) = handle_plan(
@@ -1208,6 +1282,21 @@ async fn run_loop(
                             Some("INVALID_PLAN".to_owned())
                         },
                     )
+                }
+                TOOL_SEARCH => {
+                    let entry = handle_tool_search(
+                        &core,
+                        &task,
+                        lt,
+                        &actor,
+                        &mut state,
+                        lease.as_ref(),
+                        &call_id,
+                        &arguments_json,
+                    )
+                    .await;
+                    progress = true;
+                    (entry, StepType::Plan, None)
                 }
                 ASK_TOOL => {
                     let (entry, question_id) =
@@ -1262,7 +1351,9 @@ async fn run_loop(
                 }
                 // REQ-EV-0044: a tool outside the compiled surface (unsupported by
                 // the host or not authorized) is refused before any effector.
-                n if !tools.iter().any(|t| t.name == n) => {
+                n if !tools.iter().any(|t| t.name == n)
+                    && !deferred_visible.iter().any(|d| d == n) =>
+                {
                     let entry = TranscriptEntry::ToolResult {
                         call_id: call_id.clone(),
                         name: name.clone(),
@@ -1761,6 +1852,108 @@ async fn run_loop(
                 ],
             );
         }
+    }
+}
+
+/// `tool.search` (REQ-EV-0134/0177/0229): match the query against the
+/// deferred tools the task may see (profile and lease already applied by
+/// `visible_specs`), activate the matches and record `ToolsActivated`.
+#[allow(clippy::too_many_arguments)]
+async fn handle_tool_search(
+    core: &Core,
+    task: &Task,
+    lt: Lineage,
+    actor: &Actor,
+    state: &mut HarnessState,
+    lease: Option<&modbit_domain::lease::CapabilityLease>,
+    call_id: &str,
+    args: &str,
+) -> TranscriptEntry {
+    let v: serde_json::Value = serde_json::from_str(args).unwrap_or_default();
+    let query = v["query"].as_str().unwrap_or_default().to_ascii_lowercase();
+    let explicit: Vec<String> = v["activate"]
+        .as_array()
+        .map(|a| {
+            a.iter()
+                .filter_map(|x| x.as_str().map(str::to_owned))
+                .collect()
+        })
+        .unwrap_or_default();
+    let words: Vec<&str> = query.split_whitespace().collect();
+    let visible = core
+        .tools
+        .visible_specs(Some(&task.execution_profile), lease);
+    let mut matched: Vec<&modbit_tools::ToolSpec> = visible
+        .iter()
+        .filter(|s| harness::is_deferred(&s.name))
+        .filter(|s| {
+            explicit.contains(&s.name)
+                || (!words.is_empty() && {
+                    let hay = format!(
+                        "{} {} {}",
+                        s.name,
+                        harness::toolset_of(&s.name),
+                        s.description
+                    )
+                    .to_ascii_lowercase();
+                    words.iter().any(|w| hay.contains(w))
+                })
+        })
+        .collect();
+    matched.sort_by(|a, b| a.name.cmp(&b.name));
+    matched.truncate(12);
+    let mut activated = Vec::new();
+    for s in &matched {
+        if !state.activated_tools.contains(&s.name) {
+            state.activated_tools.push(s.name.clone());
+            activated.push(s.name.clone());
+        }
+    }
+    if !activated.is_empty() {
+        let mut store = core.store.lock().await;
+        let _ = append(
+            &mut store,
+            core,
+            lt,
+            AggregateType::Task,
+            *task.task_id.as_bytes(),
+            vec![typed(
+                "ToolsActivated",
+                &TaskEvent::ToolsActivated {
+                    query: query.clone(),
+                    tools: activated.clone(),
+                },
+                actor.clone(),
+            )],
+        );
+    }
+    let mut text = String::from("status: SUCCESS\n");
+    if matched.is_empty() {
+        text.push_str("no deferred tool matches the query within this task's profile and lease; discovery cannot widen what the task may use\n");
+    } else {
+        for s in &matched {
+            text.push_str(&format!(
+                "- {} [toolset: {}; effect: {:?}; capabilities: {}]: {}\n",
+                s.name,
+                harness::toolset_of(&s.name),
+                s.effect_class,
+                s.required_capabilities.join(","),
+                s.description
+            ));
+        }
+        text.push_str(&format!(
+            "activated for the next turns: {}\nactivation does not authorize: the Capability Kernel decides every invocation\n",
+            if activated.is_empty() { "(already active)".to_owned() } else { activated.join(", ") }
+        ));
+    }
+    TranscriptEntry::ToolResult {
+        call_id: call_id.into(),
+        name: TOOL_SEARCH.into(),
+        text,
+        failure_signature: None,
+        clears: vec![],
+        wrote: None,
+        progress: true,
     }
 }
 

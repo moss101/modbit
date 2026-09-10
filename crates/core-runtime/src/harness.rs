@@ -88,6 +88,10 @@ pub struct HarnessState {
     /// Open FLAG-class diff-invariant findings (block the SelfReview).
     #[serde(default)]
     pub open_flags: Vec<String>,
+    /// Deferred tools activated by `tool.search` (projected with schemas from
+    /// the next turn on; REQ-EV-0134).
+    #[serde(default)]
+    pub activated_tools: Vec<String>,
     /// Revision of the last COMPLETION run that passed attribution.
     #[serde(default)]
     pub completion_verified_revision: Option<u64>,
@@ -143,6 +147,36 @@ pub const COMPLETE_TOOL: &str = "task.complete";
 pub const VERIFY_TOOL: &str = "verify.run";
 /// Harness tool: a typed question to the user (REQ-EV-0222); the run suspends until answered.
 pub const ASK_TOOL: &str = "user.ask";
+/// Harness tool: search the deferred tool catalog and activate matches for
+/// the next turns (REQ-EV-0134 / 0177 / 0229). Discovery never authorizes.
+pub const TOOL_SEARCH: &str = "tool.search";
+
+/// Tools projected every turn with their schemas (the stable core); every
+/// other host tool is deferred: named in `tool.search`, hydrated with its
+/// schema only after discovery (REQ-EV-0177 lazy tool/schema context).
+pub const CORE_TOOLS: &[&str] = &[
+    "shell.exec",
+    "shell.start",
+    "shell.read",
+    "shell.cancel",
+    "search.retrieve",
+    "search.exact",
+    "context.pack",
+];
+/// Namespaces that are always core.
+pub const CORE_NAMESPACES: &[&str] = &["fs", "change"];
+
+/// The toolset (namespace) of a tool name.
+#[must_use]
+pub fn toolset_of(name: &str) -> &str {
+    name.split('.').next().unwrap_or(name)
+}
+
+/// Whether a host tool is deferred until discovered.
+#[must_use]
+pub fn is_deferred(name: &str) -> bool {
+    !CORE_TOOLS.contains(&name) && !CORE_NAMESPACES.contains(&toolset_of(name))
+}
 
 /// Tool names that write the workspace (need a plan first).
 pub const WRITE_TOOLS: &[&str] = &[

@@ -1,0 +1,13 @@
+{
+ "task": "IMP-EV-0134",
+ "requirement": "REQ-EV-0134",
+ "qual": "QUAL-EV-0134",
+ "tests": [
+  "qual_ev_0134_deferred_tool_search_activates_without_authorizing_and_hydrates_schemas_lazily",
+  "qual_ev_0096_0116_0133_0044_0031_tool_surface_is_compiled_from_support_and_policy"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "the model sees the stable core with schemas plus `tool.search`, whose description names the deferred tools by toolset; a search activates matches and records ToolsActivated (rebuilt after restart); `visible_specs` (profile \u00d7 lease \u00d7 kernel) bounds what is discoverable, so a tool the profile denies is neither named nor activatable, and every invocation still goes through the Capability Kernel; a direct call to a visible deferred tool activates it (discovery by use)",
+ "audit": "IMPLEMENTED in this batch (was NOT-FOUND: every visible tool was projected with its schema on every turn)"
+}

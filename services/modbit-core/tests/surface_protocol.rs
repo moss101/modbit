@@ -6964,3 +6964,175 @@ async fn qual_ev_0070_diagnostic_change_window_evaluates_only_the_changed_region
         "the baseline is the first look, not the latest: {so}"
     );
 }
+
+/// REQ-EV-0134 / 0177 / 0229: the model sees a stable core with schemas plus
+/// `tool.search`; deferred tools are named by toolset only until discovered,
+/// then projected with their schemas from the next turn; discovery cannot
+/// reach a tool the profile denies; the lazy projection is measurably smaller
+/// than the eager catalog; activation survives a Core restart via the event.
+#[tokio::test]
+async fn qual_ev_0134_deferred_tool_search_activates_without_authorizing_and_hydrates_schemas_lazily()
+ {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[("README.md", "# demo\n")]);
+    let script = vec![
+        // One call per turn: the scripted model selects its step by the number
+        // of tool results in the request.
+        json!({"calls": [{"name": "tool.search", "args": {"query": "symbols"}}]}),
+        json!({"calls": [{"name": "tool.search", "args": {"activate": ["git.worktree.create"]}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "o", "expected_files": []}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x34)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x35, "review_isolated").await;
+    let eager = list_tools(&mut c, 0x36, Some(task.clone())).await;
+    assert!(
+        eager.iter().any(|(n, _, _)| n == "lsp.symbols")
+            && !eager.iter().any(|(n, _, _)| n.starts_with("git.worktree")),
+        "the host list under review_isolated: {:?}",
+        eager.iter().map(|t| &t.0).collect::<Vec<_>>()
+    );
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x37),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 10,
+                max_tool_calls: 0,
+                max_no_progress_turns: 5,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 120).await;
+    let bodies = seen.lock().unwrap().clone();
+    let tool_msgs: Vec<String> = bodies
+        .iter()
+        .flat_map(|b| b["messages"].as_array().cloned().unwrap_or_default())
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    assert_eq!(st.state, "ReadyForReview", "{st:?}\n{tool_msgs:#?}");
+    assert!(bodies.len() >= 4, "{}", bodies.len());
+    let names = |b: &serde_json::Value| -> Vec<String> {
+        b["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|t| t["function"]["name"].as_str().unwrap().to_owned())
+            .collect()
+    };
+    let first = names(&bodies[0]);
+    assert!(first.contains(&"tool.search".to_owned()), "{first:?}");
+    assert!(first.contains(&"fs.read".to_owned()) && first.contains(&"search.retrieve".to_owned()));
+    assert!(
+        !first
+            .iter()
+            .any(|n| n.starts_with("lsp.") || n == "search.symbols" || n.starts_with("git.")),
+        "deferred tools are not projected before discovery: {first:?}"
+    );
+    let search_desc = bodies[0]["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|t| t["function"]["name"] == "tool.search")
+        .unwrap()["function"]["description"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    assert!(
+        search_desc.contains("lsp: ") && search_desc.contains("lsp.symbols"),
+        "{search_desc}"
+    );
+    assert!(
+        !search_desc.contains("git.worktree"),
+        "a denied tool is not even named: {search_desc}"
+    );
+    // Turn 2: the discovered tools carry their schemas; the denied one is still absent.
+    let second = names(&bodies[1]);
+    assert!(
+        second.contains(&"lsp.symbols".to_owned()) && second.contains(&"search.symbols".to_owned()),
+        "{second:?}"
+    );
+    assert!(!second.iter().any(|n| n.starts_with("git.")), "{second:?}");
+    let hydrated = bodies[1]["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|t| t["function"]["name"] == "lsp.symbols")
+        .unwrap();
+    assert!(
+        hydrated["function"]["parameters"]["properties"]["path"].is_object(),
+        "{hydrated}"
+    );
+    // The tool results the model saw (across the turns).
+    let results = &tool_msgs;
+    assert!(
+        results.iter().any(|r| r.contains("- lsp.symbols")
+            && r.contains("activated for the next turns")
+            && r.contains("does not authorize")),
+        "{results:?}"
+    );
+    assert!(
+        results
+            .iter()
+            .any(|r| r.contains("no deferred tool matches")),
+        "worktree is denied under review_isolated: {results:?}"
+    );
+    // QUAL-EV-0177: the lazy projection is smaller than the eager catalog in the wire shape.
+    let lazy_bytes = serde_json::to_string(&bodies[0]["tools"]).unwrap().len();
+    let eager_wire: Vec<serde_json::Value> = eager
+        .iter()
+        .map(|(n, schema, d)| json!({"type": "function", "function": {"name": n, "description": d, "parameters": serde_json::from_str::<serde_json::Value>(schema).unwrap()}}))
+        .collect();
+    let eager_bytes = serde_json::to_string(&eager_wire).unwrap().len();
+    eprintln!(
+        "QUAL-EV-0177 projection bytes: lazy={lazy_bytes} ({} tools incl. harness) eager={eager_bytes} ({} host tools)",
+        first.len(),
+        eager.len()
+    );
+    // Measured, not targeted: on this 28-tool catalog the lazy projection is
+    // about a quarter smaller; the saving grows with the catalog because every
+    // deferred tool costs one name instead of a schema.
+    assert!(
+        lazy_bytes < eager_bytes,
+        "lazy {lazy_bytes} < eager {eager_bytes}"
+    );
+    eprintln!(
+        "QUAL-EV-0177 lazy/eager = {:.2}",
+        lazy_bytes as f64 / eager_bytes as f64
+    );
+    // The activation is an event, so it survives a restart of the Core.
+    let evs = task_events(&core, &session, &task).await;
+    let activated: Vec<&serde_json::Value> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "ToolsActivated")
+        .map(|(_, _, p)| p)
+        .collect();
+    assert_eq!(activated.len(), 1, "{evs:#?}");
+    assert!(
+        activated[0]["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|t| t == "lsp.symbols")
+    );
+    let _ = repo;
+}
