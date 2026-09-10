@@ -8404,8 +8404,54 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0035",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:afc01ca",
+    "test:qual_ev_0035_0131_0175_context_inspector_matches_the_prompt_envelope",
+    "test:qual_ev_0169_context_pack_reaches_the_prompt_with_provenance_or_not_at_all",
+    "test:m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use",
+    "run:gha-34508665176",
+    "artifact:evidence/m3/IMP-EV-0035/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T17:37:16Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: IMPLEMENTED in this batch (see card)"
+    },
+    {
+     "at": "2026-09-10T17:37:16Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "GetContextInspector, CLI context show, desktop inspector panel"
+    },
+    {
+     "at": "2026-09-10T17:37:16Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "served by the Core from the ledger and the last ContextCompile step"
+    },
+    {
+     "at": "2026-09-10T17:37:16Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "the inspector is compared with the request the provider received"
+    },
+    {
+     "at": "2026-09-10T17:37:16Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34508665176 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T17:37:16Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34508665176"
+    }
+   ],
+   "status_changed_on": "2026-09-10T17:37:16Z"
   },
   {
    "id": "IMP-EV-0036",
@@ -11119,8 +11165,54 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0131",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:afc01ca",
+    "test:qual_ev_0035_0131_0175_context_inspector_matches_the_prompt_envelope",
+    "test:qual_ev_0169_context_pack_reaches_the_prompt_with_provenance_or_not_at_all",
+    "test:m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use",
+    "run:gha-34508665176",
+    "artifact:evidence/m3/IMP-EV-0131/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T17:37:17Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: IMPLEMENTED in this batch (see card)"
+    },
+    {
+     "at": "2026-09-10T17:37:17Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "GetContextInspector, CLI context show, desktop inspector panel"
+    },
+    {
+     "at": "2026-09-10T17:37:17Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "served by the Core from the ledger and the last ContextCompile step"
+    },
+    {
+     "at": "2026-09-10T17:37:17Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "the inspector is compared with the request the provider received"
+    },
+    {
+     "at": "2026-09-10T17:37:17Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34508665176 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T17:37:17Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34508665176"
+    }
+   ],
+   "status_changed_on": "2026-09-10T17:37:17Z"
   },
   {
    "id": "IMP-EV-0132",
@@ -12729,8 +12821,54 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0175",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:afc01ca",
+    "test:qual_ev_0035_0131_0175_context_inspector_matches_the_prompt_envelope",
+    "test:qual_ev_0169_context_pack_reaches_the_prompt_with_provenance_or_not_at_all",
+    "test:m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use",
+    "run:gha-34508665176",
+    "artifact:evidence/m3/IMP-EV-0175/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T17:37:17Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: IMPLEMENTED in this batch (see card)"
+    },
+    {
+     "at": "2026-09-10T17:37:17Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "GetContextInspector, CLI context show, desktop inspector panel"
+    },
+    {
+     "at": "2026-09-10T17:37:17Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "served by the Core from the ledger and the last ContextCompile step"
+    },
+    {
+     "at": "2026-09-10T17:37:17Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "the inspector is compared with the request the provider received"
+    },
+    {
+     "at": "2026-09-10T17:37:17Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34508665176 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T17:37:17Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34508665176"
+    }
+   ],
+   "status_changed_on": "2026-09-10T17:37:17Z"
   },
   {
    "id": "IMP-EV-0176",

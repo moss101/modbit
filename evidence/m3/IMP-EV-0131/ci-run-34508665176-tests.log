@@ -1,0 +1,9 @@
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T17:34:39.5890483Z test m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T17:34:40.4046314Z test qual_ev_0035_0131_0175_context_inspector_matches_the_prompt_envelope ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T17:34:45.1447413Z test qual_ev_0169_context_pack_reaches_the_prompt_with_provenance_or_not_at_all ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T17:33:41.0876480Z test m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T17:33:41.3375570Z test qual_ev_0035_0131_0175_context_inspector_matches_the_prompt_envelope ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T17:33:45.3832340Z test qual_ev_0169_context_pack_reaches_the_prompt_with_provenance_or_not_at_all ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T17:32:36.4659513Z test m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T17:32:36.6810868Z test qual_ev_0035_0131_0175_context_inspector_matches_the_prompt_envelope ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T17:32:38.9332264Z test qual_ev_0169_context_pack_reaches_the_prompt_with_provenance_or_not_at_all ... ok

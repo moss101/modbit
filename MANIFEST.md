@@ -15,13 +15,13 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 |---|---|---:|---:|
 | Authority and orientation | 00–09 | 8 | 65205 |
 | Architecture and subsystems | 10–29 | 20 | 191488 |
-| Implementation specifications | 30–39 | 10 | 80146 |
+| Implementation specifications | 30–39 | 10 | 80166 |
 | Requirements, tasks and traceability | 40–49 | 10 | 351596 |
 | Verification and testing | 50–69 | 15 | 202032 |
 | Delivery and operations | 70–79 | 7 | 33831 |
 | Agent process and governance | 80–97 | 18 | 109299 |
 | Live state | 98–99 | 1 | 3983 |
-| **Total docs** | | **89** | **1037580** |
+| **Total docs** | | **89** | **1037600** |
 
 ## Specification files (`docs/`)
 
@@ -55,7 +55,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 27 | `docs/27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md` | Execution policy router and verified orchestration | architecture | 57211 | `a95915dd93ad971360748c1fc05874aa4177793e6cfc6f7a8ba9baf3d2c6294b` |
 | 28 | `docs/28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md` | Agent competence: planning, verification and repair | architecture | 12521 | `2dbf6183340ee6a0ba808eef2dd1eea147e41a75dc18e5a3ee77c5bfec117e57` |
 | 29 | `docs/29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md` | Client surfaces and source-control integration | architecture | 7279 | `4e378b45620945efedd7b8db3546d15ad72c247a894cb80cd650fddd70b5dae8` |
-| 30 | `docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md` | Protocol, APIs, and Event Schemas | implementation | 10437 | `562de058295ce3e9b04f0c51c87d642595caeeafbcc54fbddebc2a9de53bcd67` |
+| 30 | `docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md` | Protocol, APIs, and Event Schemas | implementation | 10457 | `d8a30fe55d3040ab4f57d9ceeb0bbf063a932fea3afda0d6cc01afc7fe7302b5` |
 | 31 | `docs/31_DATABASE_AND_STORAGE_SCHEMA.md` | Database and Storage Schema | implementation | 10628 | `538226aff8cf1eddd80fe70daedfe7d4873ef2601fb0ae3a973551810c19d0a8` |
 | 32 | `docs/32_DESKTOP_FRONTEND_IMPLEMENTATION.md` | Desktop Frontend Implementation | implementation | 5827 | `ac322efa1e408d2d7fb3655990d0a0828c269af317ac84d7fc459437123abaac` |
 | 33 | `docs/33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md` | Core and Cloud Backend Implementation | implementation | 7476 | `09beec690bb13005db61c0a2b3ff60594741f49023fc8510ceb4b3e29b199f46` |
@@ -546,13 +546,17 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m3/IMP-EV-0020/ci-run-34462553237.json` | retained evidence | 36717 | `21620a89049f0926b25220a8376fad23a3242504355fa77799fb84fa7fc89106` |
 | `evidence/m3/IMP-EV-0020/evidence.json` | retained evidence | 1068 | `0c87102a16317870f8c58fbfaa5bc17c22b147aafde94a274af1e579fc85005c` |
 | `evidence/m3/IMP-EV-0035/TASK_CARD.md` | retained evidence | 2164 | `b8fa8fd90b791d1a9fa9a371007f755dc6f52b146bdd9442216805b342770b91` |
-| `evidence/m3/IMP-EV-0035/evidence.json` | retained evidence | 1114 | `0360d90aeab7bc5e5d12f8463cfee3d60a3959e40431682a46a158e72692c7a5` |
+| `evidence/m3/IMP-EV-0035/ci-run-34508665176-tests.log` | retained evidence | 1860 | `1cb11888f058bde8d1fcd1b2fe5acb43ad85146b8618f60075ae83bd9782d430` |
+| `evidence/m3/IMP-EV-0035/ci-run-34508665176.json` | retained evidence | 37317 | `94ec526da61db4edd7a749c9a1535bb043d535bd87cbdcb801d87affc4a0b6e4` |
+| `evidence/m3/IMP-EV-0035/evidence.json` | retained evidence | 1478 | `dd1d02e8abeb1cddae89aa1eea359ed7bbe8f3934a284eee0a3d706de28e5e70` |
 | `evidence/m3/IMP-EV-0070/TASK_CARD.md` | retained evidence | 1598 | `815affd431b792e72da2d3dcf4e590cdc344febc86292e2214c9773b981c3beb` |
 | `evidence/m3/IMP-EV-0070/ci-run-34464262601-tests.log` | retained evidence | 1845 | `9ab39942ed54897233aec56290f17bc25062c30162006a6902ad34770227b7c6` |
 | `evidence/m3/IMP-EV-0070/ci-run-34464262601.json` | retained evidence | 36717 | `36ef0dcdf9b2a14fa490c68e8bf945d79b9136638786d577d6d9b0e1a692115b` |
 | `evidence/m3/IMP-EV-0070/evidence.json` | retained evidence | 770 | `d69c1605f9efc1c6f489c8a93f5b878c424b4a5ad74c5b123bb458a356898660` |
 | `evidence/m3/IMP-EV-0131/TASK_CARD.md` | retained evidence | 2143 | `10870093055441c9c677639775bd8d757f7fae7f41c6008a663e4a795d303e4b` |
-| `evidence/m3/IMP-EV-0131/evidence.json` | retained evidence | 1114 | `31755b6c7b7cca612ac5ff8e2c38a636a2603f845cae02a3b27f8d5a31432071` |
+| `evidence/m3/IMP-EV-0131/ci-run-34508665176-tests.log` | retained evidence | 1860 | `1cb11888f058bde8d1fcd1b2fe5acb43ad85146b8618f60075ae83bd9782d430` |
+| `evidence/m3/IMP-EV-0131/ci-run-34508665176.json` | retained evidence | 37317 | `94ec526da61db4edd7a749c9a1535bb043d535bd87cbdcb801d87affc4a0b6e4` |
+| `evidence/m3/IMP-EV-0131/evidence.json` | retained evidence | 1478 | `e0e58db3224bc0450fecee3d1cae3cc8df6e926cd120d398859dbfad31d465d6` |
 | `evidence/m3/IMP-EV-0132/TASK_CARD.md` | retained evidence | 1827 | `62b0ae388684dcc322e21069ce59dd3a386588d1656e07c3abb9c2881a651b53` |
 | `evidence/m3/IMP-EV-0132/ci-run-34466693450-tests.log` | retained evidence | 1206 | `fe570776d32a765b146b39654873957e0403d4dedf503e38cddb381d2eb77c67` |
 | `evidence/m3/IMP-EV-0132/ci-run-34466693450.json` | retained evidence | 37317 | `3d2da0166c2a6b035052bd8ea4b1b2aaf914d4ec198416337d98983d99769ebf` |
@@ -626,7 +630,9 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m3/IMP-EV-0172/ci-run-34462553237.json` | retained evidence | 36717 | `21620a89049f0926b25220a8376fad23a3242504355fa77799fb84fa7fc89106` |
 | `evidence/m3/IMP-EV-0172/evidence.json` | retained evidence | 981 | `2decb4ad544312e9e0f71ee80ad6f945e75de3e04fc7c29772024b2fcdda3a9b` |
 | `evidence/m3/IMP-EV-0175/TASK_CARD.md` | retained evidence | 2102 | `0996daa2160d240340109d9a4ab1b69a5fb3af0e4692b9671f5f6b0a80d61c36` |
-| `evidence/m3/IMP-EV-0175/evidence.json` | retained evidence | 1114 | `fcd22200689acd49ca12cb921c744f8cdabf7d20d58d1aad84fb22b14c8307c2` |
+| `evidence/m3/IMP-EV-0175/ci-run-34508665176-tests.log` | retained evidence | 1860 | `1cb11888f058bde8d1fcd1b2fe5acb43ad85146b8618f60075ae83bd9782d430` |
+| `evidence/m3/IMP-EV-0175/ci-run-34508665176.json` | retained evidence | 37317 | `94ec526da61db4edd7a749c9a1535bb043d535bd87cbdcb801d87affc4a0b6e4` |
+| `evidence/m3/IMP-EV-0175/evidence.json` | retained evidence | 1478 | `b2a9acec3432209cc292bd078a9bde7a48b44816f57e9dbb812fcaf1217fd73f` |
 | `evidence/m3/IMP-EV-0177/TASK_CARD.md` | retained evidence | 1705 | `fe6301f62b1f34a71f8b8b239969c8eba8179b091ad6eda6b9935f75790cf0ee` |
 | `evidence/m3/IMP-EV-0177/ci-run-34466693450-tests.log` | retained evidence | 1314 | `da3268f4ae3f5ec5ae1e0eff9a39e1bf2b95931e50bbc5975c978a54f074c862` |
 | `evidence/m3/IMP-EV-0177/ci-run-34466693450.json` | retained evidence | 37317 | `3d2da0166c2a6b035052bd8ea4b1b2aaf914d4ec198416337d98983d99769ebf` |
@@ -712,8 +718,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m3/PX-040/ci-run-34507573124-tests.log` | retained evidence | 4206 | `a9e2a291c1bc0b8c6332b023ecd1361533d8286c33ba45c5465fcca3c2eacb50` |
 | `evidence/m3/PX-040/ci-run-34507573124.json` | retained evidence | 37317 | `cc7122950bffe169b616acd26ddc066cc491cfb3ea9bc94299350fbd41b06594` |
 | `evidence/m3/PX-040/evidence.json` | retained evidence | 1272 | `dc1c5415da2d653b16d94162aa23478c0d9694a3c0442c91e93c17db2e9e58ec` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 40904 | `feb051d7554a0fe6dee428279cf746325b6dd84453558a64c8dc34885e8c49be` |
-| `graph/project-graph.json` | project driver graph with live status | 1226936 | `ff08d66173343da9ee93e3bffaf147914b843956da000b8f20adc0e90539bcc9` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 40904 | `9d99c142f72d308f641e5ff131c49ce956326cf36db19337aab3c62966ac596c` |
+| `graph/project-graph.json` | project driver graph with live status | 1231283 | `401357916bf2ea1ec6f5335f44f322948548682a87d771851a6c2ba7bd4b3e86` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 52844 | `13ea31cbf1ace263d36b4cc5ada8b19270a118e30e401114790652375b5c51d1` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 17596 | `5c9b7a782d245223726f860ca583d766929a6f5662b644adebee64d257ad426b` |
