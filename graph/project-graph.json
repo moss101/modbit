@@ -9176,8 +9176,40 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0060",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "artifact:evidence/m3/IMP-EV-0060/TASK_CARD.md",
+    "test:qual_ev_0060_0203_the_repository_map_flags_stale_claims_and_never_enters_the_prompt_by_itself",
+    "test:the_map_names_modules_exports_dependencies_and_its_own_sources",
+    "test:a_claim_whose_source_moved_is_stale_and_one_whose_source_is_gone_is_missing"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T21:22:31Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: the indexes knew the facts; nothing turned them into a map or aged it"
+    },
+    {
+     "at": "2026-09-10T21:22:31Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "crates/retrieval/src/knowledge.rs + the knowledge search kind with a per-workspace cache"
+    },
+    {
+     "at": "2026-09-10T21:22:31Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "knowledge.map is a registered read-only tool with its matrix row"
+    },
+    {
+     "at": "2026-09-10T21:22:31Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "a real run edits a described file and the claims from it come back stale with the hashes"
+    }
+   ],
+   "status_changed_on": "2026-09-10T21:22:31Z"
   },
   {
    "id": "IMP-EV-0061",
@@ -14034,8 +14066,39 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0203",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "artifact:evidence/m3/IMP-EV-0203/TASK_CARD.md",
+    "test:qual_ev_0060_0203_the_repository_map_flags_stale_claims_and_never_enters_the_prompt_by_itself",
+    "test:qual_ev_0169_context_pack_reaches_the_prompt_with_provenance_or_not_at_all"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T21:22:31Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: no generated store existed until IMP-EV-0060 made one"
+    },
+    {
+     "at": "2026-09-10T21:22:31Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "the map is not a prompt segment; it reaches a run only as a tool result the task asked for"
+    },
+    {
+     "at": "2026-09-10T21:22:31Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "prompt segments are named and audited"
+    },
+    {
+     "at": "2026-09-10T21:22:31Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "every non-tool message of every request is audited for the map's ref and text"
+    }
+   ],
+   "status_changed_on": "2026-09-10T21:22:31Z"
   },
   {
    "id": "IMP-EV-0204",

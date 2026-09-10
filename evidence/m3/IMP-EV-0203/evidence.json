@@ -1,0 +1,15 @@
+{
+ "task": "IMP-EV-0203",
+ "requirement": "REQ-EV-0203",
+ "qual": "QUAL-EV-0203",
+ "tests": [
+  "qual_ev_0060_0203_the_repository_map_flags_stale_claims_and_never_enters_the_prompt_by_itself",
+  "qual_ev_0169_context_pack_reaches_the_prompt_with_provenance_or_not_at_all",
+  "stable_segments_share_cache_keys_and_projection_changes_are_hashed"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "The prompt is compiled from named segments and the repository map is none of them: it reaches a run only as a tool result the task asked for. The audit checks every non-tool message of every request the provider received for the map's object ref and its text, and the run's first request carries no part of it.",
+ "audit": "NOT-FOUND before this task because no generated store existed; IMP-EV-0060 created one and this holds the line.",
+ "limitations": "No optimization/evolution trace store exists yet (EPR-010..012 own that), so the audit covers the repository knowledge map, the only generated store there is."
+}

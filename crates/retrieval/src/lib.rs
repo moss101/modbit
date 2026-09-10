@@ -17,6 +17,7 @@ pub mod bench;
 pub mod graph;
 pub mod impact;
 pub mod index;
+pub mod knowledge;
 pub mod lexical;
 pub mod planner;
 pub mod semantic;

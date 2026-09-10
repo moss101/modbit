@@ -1003,6 +1003,38 @@ tool!(
 );
 
 tool!(
+    RepositoryKnowledge,
+    spec(
+        "knowledge.map",
+        "The repository knowledge map: what each module holds, exports, imports, is imported by and is tested by, generated from the same indexes retrieval uses. It is a discovery aid and a cache, never authority: the map is written once and kept, and every read checks its claims against the files as they are now, so each comes back marked `fresh`, `stale` (a source changed since the claim was written, with the hashes that moved) or `missing` (a source is gone). Pass `refresh` to write a new map from the current sources. Read the files a claim names before acting on it; a stale claim is not evidence (REQ-EV-0060, docs/18).",
+        EffectClass::ReadOnly,
+        json!({"type":"object","properties":{"module":{"type":"string"},"refresh":{"type":"boolean"}},"additionalProperties":false}),
+        &["fs.read", "git.read"],
+        Idempotency::Idempotent
+    ),
+    |ctx, args| {
+        let Some(port) = &ctx.search else {
+            return ToolOutcome::infra("NO_INDEX", "no workspace index is attached to this task");
+        };
+        let req = crate::pipeline::SearchRequest {
+            kind: "knowledge".into(),
+            query: json!({
+                "module": args.get("module").and_then(Value::as_str).unwrap_or(""),
+                "refresh": args.get("refresh").and_then(Value::as_bool).unwrap_or(false),
+            })
+            .to_string(),
+            case_insensitive: false,
+            path_glob: None,
+            max_hits: 200,
+        };
+        match port.search(&req) {
+            Ok(v) => ToolOutcome::ok(v),
+            Err((code, msg)) => ToolOutcome::fail(&code, msg),
+        }
+    }
+);
+
+tool!(
     ContextPack,
     spec(
         "context.pack",
@@ -1644,6 +1676,7 @@ pub fn register_direct(registry: &mut ToolRegistry) -> Result<()> {
         SearchGraph::shared(),
         SearchImpact::shared(),
         SearchRetrieve::shared(),
+        RepositoryKnowledge::shared(),
         ContextPack::shared(),
         ContextLedger::shared(),
         EvidenceSearch::shared(),

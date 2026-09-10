@@ -10036,3 +10036,149 @@ async fn qual_ev_0174_a_read_only_specialist_builds_the_pack_and_cannot_mutate()
         .sum();
     assert_eq!(e.input_tokens, logged, "{e:?}");
 }
+
+/// REQ-EV-0060 (QUAL-EV-0060) and REQ-EV-0203 (QUAL-EV-0203): the repository
+/// knowledge map is a discovery aid, not authority — a claim whose source
+/// changed after the map was written comes back marked stale with the hashes
+/// that moved — and it never reaches the model on its own: the prompt of a
+/// normal run carries no part of it, and it arrives only when the task asks
+/// for it with a tool call of its own.
+#[tokio::test]
+async fn qual_ev_0060_0203_the_repository_map_flags_stale_claims_and_never_enters_the_prompt_by_itself()
+ {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[
+        (
+            "src/cart.rs",
+            "use crate::money;\npub fn total_cents(q: u32, unit: u32) -> u32 {\n    q * unit\n}\n",
+        ),
+        (
+            "src/money.rs",
+            "pub fn to_cents(x: f64) -> u32 {\n    0\n}\n",
+        ),
+        (
+            "tests/cart.rs",
+            "#[test]\nfn totals() {\n    assert_eq!(1, 1);\n}\n",
+        ),
+    ]);
+    // Turn 1 builds the map, turn 2 edits a file it described, turn 3 asks
+    // again: the same claim must now say it is stale.
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "map the repository", "expected_files": ["src/money.rs"]}}]}),
+        json!({"calls": [{"name": "knowledge.map", "args": {}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "src/money.rs"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "src/money.rs", "op": "replace", "content": "pub fn to_cents(x: f64) -> u32 {\n    (x * 100.0) as u32\n}\npub fn from_cents(c: u32) -> f64 {\n    f64::from(c) / 100.0\n}\n"}}]}),
+        json!({"calls": [{"name": "knowledge.map", "args": {"module": "src"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "mapped", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x75)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x76, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x77),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 10,
+                max_tool_calls: 0,
+                max_no_progress_turns: 5,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 120).await;
+    assert!(!st.loop_alive, "{st:?}");
+    let bodies = seen.lock().unwrap().clone();
+    // The last request carries the whole transcript, so each tool result
+    // appears once (earlier bodies repeat the same ones).
+    let tool_texts: Vec<String> = bodies.last().unwrap()["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .filter_map(|m| m["content"].as_str().map(str::to_owned))
+        .collect();
+    // 1. The first map: it describes the repository and says what it is not.
+    let first = tool_texts
+        .iter()
+        .find(|t| t.contains("\"artifact_hash\""))
+        .unwrap_or_else(|| panic!("the map never reached the agent: {tool_texts:#?}"));
+    assert!(first.contains("never authority"), "{first}");
+    assert!(first.contains("src/cart.rs"), "{first}");
+    assert!(first.contains("total_cents"), "{first}");
+    assert!(first.contains("\"status\":\"fresh\""), "{first}");
+    assert!(!first.contains("\"status\":\"stale\""), "{first}");
+    // 2. After the edit, the claims derived from that file are stale, and the
+    //    map says which source moved.
+    let second = tool_texts
+        .iter()
+        .filter(|t| t.contains("\"artifact_hash\""))
+        .nth(1)
+        .unwrap_or_else(|| panic!("the second map is missing: {tool_texts:#?}"));
+    assert!(second.contains("\"status\":\"stale\""), "{second}");
+    assert!(second.contains("src/money.rs changed ("), "{second}");
+    // The claim about the edited module is the stale one; the map is not
+    // simply marked stale as a whole.
+    let claims: serde_json::Value = {
+        let body = second.split_once("output:\n").map_or("", |(_, b)| b);
+        serde_json::from_str(body).unwrap_or_else(|e| panic!("{e}: {second}"))
+    };
+    let statuses: Vec<&str> = claims["claims"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["status"].as_str().unwrap())
+        .collect();
+    assert!(statuses.contains(&"stale"), "{statuses:?}");
+    assert!(
+        claims["claims"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|c| c["claim"]["module"] == "src"),
+        "the module filter answers about one module"
+    );
+    // 3. REQ-EV-0203: nothing of the map is in the prompt itself. The system
+    //    rules, the workspace rules, the harness state and the context pack
+    //    carry no claim and no artifact ref — it is in the transcript only
+    //    because the task asked for it.
+    let artifact_ref = claims["artifact_ref"].as_str().unwrap().to_owned();
+    for b in &bodies {
+        for m in b["messages"].as_array().unwrap() {
+            if m["role"] == "tool" {
+                continue;
+            }
+            let text = m["content"].as_str().unwrap_or_default();
+            assert!(
+                !text.contains(&artifact_ref),
+                "the map's ref reached a non-tool message: {text}"
+            );
+            assert!(
+                !text.contains("never authority"),
+                "the map's own text reached a non-tool message: {text}"
+            );
+        }
+    }
+    // And the first request of the run — before any tool call — carries none
+    // of it at all.
+    let first_body = serde_json::to_string(&bodies[0]).unwrap();
+    assert!(!first_body.contains("artifact_hash"), "{first_body}");
+    assert!(!first_body.contains("knowledge map"), "{first_body}");
+    let _ = repo;
+}

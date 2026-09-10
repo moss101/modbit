@@ -403,6 +403,22 @@
       "test": "m3_7_retrieval_planner_starts_cheap_escalates_on_short_coverage_and_fuses_with_boosts"
     },
     {
+      "tool": "knowledge.map",
+      "family": "context",
+      "source_behaviors": [
+        "repository wiki",
+        "architecture summary",
+        "codebase map"
+      ],
+      "owner": "Core (retrieval indexes)",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "fs.read",
+        "git.read"
+      ],
+      "test": "qual_ev_0060_0203_the_repository_map_flags_stale_claims_and_never_enters_the_prompt_by_itself"
+    },
+    {
       "tool": "context.pack",
       "family": "context",
       "source_behaviors": [

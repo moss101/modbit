@@ -145,6 +145,11 @@ pub struct ToolHost {
     pub(crate) semantic: Mutex<HashMap<PathBuf, Arc<Mutex<modbit_retrieval::SemanticIndex>>>>,
     /// Evidence graphs per canonical workspace root (M3.6).
     pub(crate) graphs: Mutex<HashMap<PathBuf, Arc<Mutex<modbit_retrieval::EvidenceGraph>>>>,
+    /// The repository knowledge map per canonical workspace root, kept as a
+    /// cache (REQ-EV-0060): it is written once and checked against the files
+    /// on every read, so a claim ages visibly instead of silently.
+    pub(crate) knowledge:
+        Mutex<HashMap<PathBuf, Arc<Mutex<Option<modbit_retrieval::knowledge::KnowledgeArtifact>>>>>,
     /// Diagnostic baselines per task: path → the diagnostics and text first
     /// seen by the task (REQ-EV-0070 Diagnostic Change Window).
     pub(crate) diag_baselines: Mutex<HashMap<TaskId, DiagBaselines>>,
@@ -181,6 +186,7 @@ impl ToolHost {
             symbols: Mutex::new(HashMap::new()),
             semantic: Mutex::new(HashMap::new()),
             graphs: Mutex::new(HashMap::new()),
+            knowledge: Mutex::new(HashMap::new()),
             ledgers: Mutex::new(HashMap::new()),
             diag_baselines: Mutex::new(HashMap::new()),
             language_servers: Arc::new(std::sync::Mutex::new(HashMap::new())),
@@ -333,6 +339,15 @@ impl ToolHost {
         Ok(g)
     }
 
+    /// The cached knowledge map slot of a workspace root.
+    pub(crate) async fn knowledge(
+        &self,
+        canonical: &Path,
+    ) -> Arc<Mutex<Option<modbit_retrieval::knowledge::KnowledgeArtifact>>> {
+        let mut map = self.knowledge.lock().await;
+        Arc::clone(map.entry(canonical.to_path_buf()).or_default())
+    }
+
     /// The tool surface compiled from support × policy (REQ-EV-0096/0133/0044):
     /// a tool is advertised only when its host consumer exists (the terminal
     /// broker for shell-backed tools), the profile admits it and, given a
@@ -426,6 +441,7 @@ impl ToolHost {
                 symbols: self.symbols(r).await?,
                 semantic: self.semantic(r).await?,
                 graph: self.graph(r).await?,
+                knowledge: self.knowledge(r).await,
                 evidence: task_evidence(store, task_id).await,
                 selection: selection_of(store, task_id).await,
                 ledger: self.ledger(task_id).await,
@@ -1214,6 +1230,7 @@ struct IndexPort {
     symbols: Arc<Mutex<modbit_retrieval::SymbolIndex>>,
     semantic: Arc<Mutex<modbit_retrieval::SemanticIndex>>,
     graph: Arc<Mutex<modbit_retrieval::EvidenceGraph>>,
+    knowledge: Arc<Mutex<Option<modbit_retrieval::knowledge::KnowledgeArtifact>>>,
     /// Verification checks of the task's runs as (check id, status).
     evidence: Vec<(String, String)>,
     /// What the user has selected (REQ-EV-0141 / 0160): retrieval prefers it.
@@ -1542,6 +1559,88 @@ impl modbit_tools::SearchPort for IndexPort {
                     },
                 );
                 serde_json::json!({"plan": plan, "hits": plan.hits})
+            }
+            // Repository Knowledge Artifact (REQ-EV-0060): the map is written
+            // once and kept. Every read checks its claims against the files as
+            // they are now, so a claim whose source moved is reported stale
+            // rather than answered as if it were still true. `refresh` writes
+            // a new map from the current sources.
+            "knowledge" => {
+                let args: serde_json::Value = serde_json::from_str(&req.query)
+                    .map_err(|e| ("BAD_QUERY".to_owned(), e.to_string()))?;
+                let module = args["module"].as_str().filter(|m| !m.is_empty());
+                let refresh = args["refresh"].as_bool().unwrap_or(false);
+                let hashes: std::collections::BTreeMap<String, String> = idx
+                    .texts_with_hash()
+                    .map(|(p, _, _, h)| (p.to_owned(), h.to_owned()))
+                    .collect();
+                let mut cached = self.knowledge.try_lock().map_err(|_| {
+                    (
+                        "INDEX_BUSY".to_owned(),
+                        "the knowledge map is being written".to_owned(),
+                    )
+                })?;
+                let built_now = refresh || cached.is_none();
+                if built_now {
+                    let mut graph = self.graph.try_lock().map_err(|_| {
+                        (
+                            "INDEX_BUSY".to_owned(),
+                            "the graph is being refreshed".to_owned(),
+                        )
+                    })?;
+                    if ws_rev > graph.revision() {
+                        *graph = modbit_retrieval::EvidenceGraph::build(
+                            idx.texts(),
+                            recent_commits(idx.root()),
+                            worktree_changed_lines(idx.root()),
+                            ws_rev,
+                        );
+                    }
+                    let paths: Vec<String> = hashes.keys().cloned().collect();
+                    let facts: Vec<modbit_retrieval::knowledge::FileFacts<'_>> = paths
+                        .iter()
+                        .map(|p| {
+                            let view = graph.query(&modbit_retrieval::GraphQuery {
+                                path: p.clone(),
+                                relation: "all".into(),
+                                depth: 1,
+                                max: 50,
+                            });
+                            modbit_retrieval::knowledge::FileFacts {
+                                path: p.as_str(),
+                                content_hash: hashes.get(p).map_or("", String::as_str),
+                                exports: symbols
+                                    .symbols_in(p)
+                                    .iter()
+                                    .filter(|sym| sym.container.is_none())
+                                    .map(|sym| (sym.kind.clone(), sym.name.clone()))
+                                    .collect(),
+                                imports: view.imports.iter().map(|(p, _)| p.clone()).collect(),
+                                tests: view.tests.clone(),
+                            }
+                        })
+                        .collect();
+                    *cached = Some(modbit_retrieval::knowledge::build(ws_rev, &facts));
+                }
+                let artifact = cached.as_ref().expect("just built");
+                let checked = modbit_retrieval::knowledge::check(artifact, &hashes, module);
+                let stale = checked.iter().filter(|c| c.status != "fresh").count();
+                let artifact_ref = self
+                    .objects
+                    .put(serde_json::to_vec(artifact).unwrap_or_default().as_slice())
+                    .map_err(|e| ("OBJECT_STORE".to_owned(), e.to_string()))?;
+                serde_json::json!({
+                    "written_at_revision": artifact.revision,
+                    "workspace_revision": ws_rev,
+                    "written_now": built_now,
+                    "files": artifact.files,
+                    "artifact_hash": artifact.artifact_hash,
+                    "artifact_ref": artifact_ref,
+                    "authority": artifact.authority,
+                    "stale_claims": stale,
+                    "modules": artifact.modules,
+                    "claims": checked,
+                })
             }
             "evidence" => {
                 let args: serde_json::Value = serde_json::from_str(&req.query)
