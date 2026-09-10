@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 576,
-    "docs_bytes": 1037558
+    "root_and_tooling": 578,
+    "docs_bytes": 1037580
   },
   "sections": [
     {
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 10415,
-      "sha256": "191ab0b727670cb020eab81eabb91ca163918fc0afcbd488541bf1281ae73e6c"
+      "bytes": 10437,
+      "sha256": "562de058295ce3e9b04f0c51c87d642595caeeafbcc54fbddebc2a9de53bcd67"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -3690,6 +3690,16 @@
       "path": "evidence/m3/PX-038/evidence.json",
       "bytes": 503,
       "sha256": "2c26d26b39cb9fa19f84671c179068a7709a0216da29f076f6c282832bcde157"
+    },
+    {
+      "path": "evidence/m3/PX-039/TASK_CARD.md",
+      "bytes": 3867,
+      "sha256": "3f69c9719f270edcf74374445342589e63c1f2924d8fa1f2e8759e76e84db5d7"
+    },
+    {
+      "path": "evidence/m3/PX-039/evidence.json",
+      "bytes": 685,
+      "sha256": "54d6ecd908a913917076932f94eb4005c05e3241a133ca4f2293f830ca84f3ef"
     },
     {
       "path": "graph/PROJECT_GRAPH.md",

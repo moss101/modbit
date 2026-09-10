@@ -292,6 +292,17 @@ pub enum TaskEvent {
         /// Tool names activated.
         tools: Vec<String>,
     },
+    /// `ReproductionRecorded` (docs/28 §5, PX-039): what a verification run
+    /// said about the failure the goal reports, or the plan's recorded
+    /// limitation when it could not be reproduced. No state change.
+    ReproductionRecorded {
+        /// `REPRODUCED` | `UNREPRODUCED` | `WAIVED`.
+        status: String,
+        /// The failing checks that reproduce it, when any.
+        failing_checks: Vec<String>,
+        /// Why, for `WAIVED`.
+        note: String,
+    },
     /// `ScopeExpansionRecorded` (docs/28 §3, PX-038): a write outside the
     /// original plan's write set reached a ScopePolicy bound or an
     /// always-ask path; carries the counters and how it was resolved.
@@ -444,6 +455,7 @@ impl TaskEvent {
             Self::PlanRevised { .. } => "PlanRevised",
             Self::SelfReviewRecorded { .. } => "SelfReviewRecorded",
             Self::ToolsActivated { .. } => "ToolsActivated",
+            Self::ReproductionRecorded { .. } => "ReproductionRecorded",
             Self::ScopeExpansionRecorded { .. } => "ScopeExpansionRecorded",
             Self::RetrievalRecorded { .. } => "RetrievalRecorded",
             Self::RepairAttemptRecorded { .. } => "RepairAttemptRecorded",
@@ -548,6 +560,7 @@ impl Task {
             | TaskEvent::PlanRevised { .. }
             | TaskEvent::SelfReviewRecorded { .. }
             | TaskEvent::ToolsActivated { .. }
+            | TaskEvent::ReproductionRecorded { .. }
             | TaskEvent::ScopeExpansionRecorded { .. }
             | TaskEvent::RetrievalRecorded { .. }
             | TaskEvent::RepairAttemptRecorded { .. }

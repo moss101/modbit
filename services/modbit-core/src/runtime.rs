@@ -498,6 +498,7 @@ pub(crate) async fn rebuild(
                     start_revision: payload["start_revision"].as_u64().unwrap_or(0),
                     outcome: None,
                     change_fingerprint: None,
+                    start_fingerprint: None,
                 };
                 state.pending_attempt = Some(a.attempt_ordinal);
                 state.repair_attempts.push(a);
@@ -581,6 +582,9 @@ pub(crate) async fn rebuild(
                 {
                     questions.insert(q.to_owned(), c.to_owned());
                 }
+            }
+            "ReproductionRecorded" => {
+                state.reproduction = payload["status"].as_str().map(str::to_owned);
             }
             "ScopeExpansionRecorded" => {
                 let paths: Vec<String> = payload["paths"]
@@ -835,6 +839,9 @@ async fn run_loop(
     let lt = Lineage::run(core.tenant_id, task.session_id, task.task_id, run_id);
     let (mut transcript, mut state, mut seen_offset, mut carried) =
         rebuild(&core, &task, cfg.budgets).await;
+    // docs/28 §5 (PX-039): a goal that reports a failure must reproduce it
+    // before a fix transaction.
+    state.goal_reports_failure = harness::goal_reports_failure(&task.goal_text);
     let lease = core
         .store
         .lock()
@@ -1541,15 +1548,33 @@ async fn run_loop(
                     (entry, StepType::ToolCall, Some("TOOL_NOT_VISIBLE".into()))
                 }
                 _ => {
-                    match state
-                        .check_tool(&name)
-                        .and_then(|()| {
-                            // docs/28 §3 (PX-016): no silent scope widening — every
-                            // written path must be declared by the current plan.
-                            write_targets(&name, &arguments_json)
-                                .iter()
-                                .try_for_each(|p| state.check_write(p))
-                        })
+                    let planned = state.check_tool(&name).and_then(|()| {
+                        // docs/28 §3 (PX-016): no silent scope widening — every
+                        // written path must be declared by the current plan.
+                        write_targets(&name, &arguments_json)
+                            .iter()
+                            .try_for_each(|p| state.check_write(p))
+                    });
+                    // BASELINE before the first write (docs/64 §1): it is also
+                    // the run that decides whether the reported failure
+                    // reproduces (docs/28 §5, PX-039).
+                    if planned.is_ok()
+                        && WRITE_TOOLS.contains(&name.as_str())
+                        && !state.baseline_recorded
+                    {
+                        let _ = run_verification(
+                            &core,
+                            &task,
+                            lturn,
+                            &actor,
+                            &mut state,
+                            Stage::Baseline,
+                            step_ordinal,
+                        )
+                        .await;
+                        step_ordinal += 1;
+                    }
+                    match planned
                         .and_then(|()| {
                             if unretrieved.0.is_empty() {
                                 Ok(())
@@ -1558,6 +1583,14 @@ async fn run_loop(
                                     paths: unretrieved.0.clone(),
                                     workspace_revision: unretrieved.1,
                                 })
+                            }
+                        })
+                        .and_then(|()| {
+                            // docs/28 §5 (PX-039): reproduction first.
+                            if WRITE_TOOLS.contains(&name.as_str()) {
+                                state.check_reproduction()
+                            } else {
+                                Ok(())
                             }
                         })
                         .and_then(|()| {
@@ -1640,6 +1673,9 @@ async fn run_loop(
                                 HarnessRefusal::ScopeQuestionRequired { .. } => {
                                     "SCOPE_QUESTION_REQUIRED"
                                 }
+                                HarnessRefusal::ReproductionRequired { .. } => {
+                                    "REPRODUCTION_REQUIRED"
+                                }
                                 HarnessRefusal::OpenFailures { .. } => "BUDGET_EXHAUSTED",
                                 _ => "HARNESS",
                             };
@@ -1658,20 +1694,6 @@ async fn run_loop(
                             (entry, StepType::ToolCall, Some(format!("HARNESS_{code}")))
                         }
                         Ok(()) => {
-                            // BASELINE before the first write (docs/64 §1).
-                            if WRITE_TOOLS.contains(&name.as_str()) && !state.baseline_recorded {
-                                let _ = run_verification(
-                                    &core,
-                                    &task,
-                                    lturn,
-                                    &actor,
-                                    &mut state,
-                                    Stage::Baseline,
-                                    step_ordinal,
-                                )
-                                .await;
-                                step_ordinal += 1;
-                            }
                             // Per-transaction diff invariants (docs/64 §4).
                             if (name == "change.apply" || name == "change.batch")
                                 && let Some(refusal) = transaction_invariants(
@@ -1772,6 +1794,30 @@ async fn run_loop(
                                 }
                                 _ => None,
                             };
+                            // docs/28 §5 (PX-039): a failing command or test the
+                            // agent ran reproduces the reported failure too.
+                            if is_check_tool(&name)
+                                && failure.is_some()
+                                && let Some(status) = state.record_reproduction(true)
+                            {
+                                let mut store = core.store.lock().await;
+                                let _ = append(
+                                    &mut store,
+                                    &core,
+                                    lt,
+                                    AggregateType::Task,
+                                    *task.task_id.as_bytes(),
+                                    vec![typed(
+                                        "ReproductionRecorded",
+                                        &TaskEvent::ReproductionRecorded {
+                                            status: status.to_owned(),
+                                            failing_checks: vec![name.clone()],
+                                            note: "a command the agent ran failed".into(),
+                                        },
+                                        actor.clone(),
+                                    )],
+                                );
+                            }
                             (entry, StepType::ToolCall, failure)
                         }
                     }
@@ -2230,13 +2276,23 @@ async fn unretrieved_targets(
     (missing.into_iter().map(|(p, _)| p).collect(), rev)
 }
 
+/// Tools whose result is command or test evidence (docs/14 contract 3).
+fn is_check_tool(name: &str) -> bool {
+    matches!(name, "test.run" | "shell.exec")
+}
+
 /// The workspace's `FileChanged` records after `since` revision, oldest
 /// first: (tool call, path, after hash, op, revision).
-async fn changes_since(
-    core: &Core,
-    root: &str,
-    since: u64,
-) -> Vec<(ToolCallId, String, Option<String>, String, u64)> {
+type ChangeRecord = (
+    ToolCallId,
+    String,
+    Option<String>,
+    Option<String>,
+    String,
+    u64,
+);
+
+async fn changes_since(core: &Core, root: &str, since: u64) -> Vec<ChangeRecord> {
     let store = core.store.lock().await;
     let Ok(events) = store.read_aggregate(&crate::tools::workspace_aggregate_id(root), 0, 100_000)
     else {
@@ -2247,6 +2303,7 @@ async fn changes_since(
         if let Ok(modbit_domain::workspace::WorkspaceEvent::FileChanged {
             tool_call_id,
             path,
+            before_hash,
             after_hash,
             op,
             workspace_revision,
@@ -2256,7 +2313,14 @@ async fn changes_since(
             .and_then(|p| serde_json::from_value(p).map_err(Into::into))
             && workspace_revision > since
         {
-            out.push((tool_call_id, path, after_hash, op, workspace_revision));
+            out.push((
+                tool_call_id,
+                path,
+                before_hash,
+                after_hash,
+                op,
+                workspace_revision,
+            ));
         }
     }
     out
@@ -2267,7 +2331,7 @@ async fn latest_change_revision(core: &Core, root: &str) -> u64 {
     changes_since(core, root, 0)
         .await
         .iter()
-        .map(|c| c.4)
+        .map(|c| c.5)
         .max()
         .unwrap_or(0)
 }
@@ -2482,21 +2546,30 @@ async fn conclude_repair(
     let changes = changes_since(core, &root, start).await;
     let mut material = String::new();
     let mut change_refs: Vec<String> = Vec::new();
-    for (call, path, after, _op, _rev) in &changes {
+    let mut start_material = String::new();
+    for (call, path, before_hash, after, _op, _rev) in &changes {
         material.push_str(&format!("{path}={}\n", after.clone().unwrap_or_default()));
+        start_material.push_str(&format!(
+            "{path}={}\n",
+            before_hash.clone().unwrap_or_default()
+        ));
         let c = call.to_string();
         if !change_refs.contains(&c) {
             change_refs.push(c);
         }
     }
-    let change_fingerprint = if material.is_empty() {
-        String::new()
-    } else {
-        hex::encode(sha2::Sha256::digest(material.as_bytes()))
+    let fp = |m: &str| {
+        if m.is_empty() {
+            String::new()
+        } else {
+            hex::encode(sha2::Sha256::digest(m.as_bytes()))
+        }
     };
+    let change_fingerprint = fp(&material);
+    let start_fingerprint = fp(&start_material);
     let after = state.open_verify_signatures();
     let (ordinal, outcome, escalation) =
-        state.conclude_attempt(before, &after, &change_fingerprint)?;
+        state.conclude_attempt(before, &after, &change_fingerprint, &start_fingerprint)?;
     let failure_signature = state
         .repair_attempts
         .iter()
@@ -2507,7 +2580,7 @@ async fn conclude_repair(
     let mut reverted = false;
     if outcome == "WORSENED" {
         let mut calls: Vec<ToolCallId> = Vec::new();
-        for (call, _, _, _, _) in changes.iter().rev() {
+        for (call, _, _, _, _, _) in changes.iter().rev() {
             if !calls.contains(call) {
                 calls.push(*call);
             }
@@ -2691,6 +2764,9 @@ async fn handle_plan(
                 .ok()
                 .and_then(|v| v["reason"].as_str().map(str::to_owned))
                 .unwrap_or_default();
+            // docs/28 §5 (PX-039): the plan may record that the reported failure
+            // could not be reproduced; the limitation is then explicit, never silent.
+            let waived = state.waive_reproduction(&plan.outcome, &reason);
             let ev = if version == 1 {
                 typed(
                     "PlanRecorded",
@@ -2708,12 +2784,24 @@ async fn handle_plan(
                         plan_ref: plan_ref.clone(),
                         added,
                         removed,
-                        reason,
+                        reason: reason.clone(),
                         version,
                     },
                     actor.clone(),
                 )
             };
+            let mut evs = vec![ev];
+            if waived {
+                evs.push(typed(
+                    "ReproductionRecorded",
+                    &TaskEvent::ReproductionRecorded {
+                        status: "WAIVED".into(),
+                        failing_checks: vec![],
+                        note: reason.clone(),
+                    },
+                    actor.clone(),
+                ));
+            }
             let mut store = core.store.lock().await;
             let _ = append(
                 &mut store,
@@ -2721,7 +2809,7 @@ async fn handle_plan(
                 lt,
                 AggregateType::Task,
                 *task.task_id.as_bytes(),
-                vec![ev],
+                evs,
             );
             (
                 TranscriptEntry::ToolResult {
@@ -2994,7 +3082,7 @@ async fn execute_tool(
             OBSERVATION_CEILING_BYTES,
         );
         // Failure evidence (docs/14 contract 3): commands and tests keep a signature until they pass.
-        let is_check = matches!(name, "test.run" | "shell.exec");
+        let is_check = is_check_tool(name);
         let check_failed = is_check
             && (r.status != ToolStatus::Success
                 || r.structured_output["status"].as_str() == Some("FAILED")
@@ -3038,8 +3126,14 @@ async fn execute_tool(
         if let Some(rev) = r.workspace_revision_after {
             state.candidate_revision = Some(rev);
         }
+        // docs/28 §5: a transaction, a verification, a retrieval record, a plan
+        // revision or a question is progress; browsing is not.
         let progress = r.status == ToolStatus::Success
-            && (wrote.is_some() || is_check || name.starts_with("git.worktree"));
+            && (wrote.is_some()
+                || is_check
+                || name == "fs.read"
+                || name.starts_with("lsp.")
+                || name.starts_with("git.worktree"));
         return TranscriptEntry::ToolResult {
             call_id: call_id.into(),
             name: name.into(),
@@ -3369,6 +3463,39 @@ async fn run_verification(
                 ));
             }
         }
+    }
+    // docs/28 §5 (PX-039): what this run said about the failure the goal
+    // reports — reproduced, or explicitly not.
+    // The run's own failing checks (FLAKY and UNKNOWN never form a signature,
+    // docs/64 §2), not a derived subset: a configured command's failure counts.
+    let failing: Vec<String> = vrun.failure_signatures();
+    if let Some(status) = state.record_reproduction(!failing.is_empty()) {
+        let ev = typed(
+            "ReproductionRecorded",
+            &TaskEvent::ReproductionRecorded {
+                status: status.to_owned(),
+                failing_checks: failing.clone(),
+                note: format!("verification run {}", vrun.verification_run_id),
+            },
+            actor.clone(),
+        );
+        let mut store = core.store.lock().await;
+        let _ = append(
+            &mut store,
+            core,
+            lturn,
+            AggregateType::Task,
+            *task.task_id.as_bytes(),
+            vec![ev],
+        );
+        text.push_str(&format!(
+            "reproduction: {status}{}\n",
+            if failing.is_empty() {
+                String::new()
+            } else {
+                format!(" ({})", failing.join(", "))
+            }
+        ));
     }
     {
         let mut store = core.store.lock().await;

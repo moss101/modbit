@@ -21,7 +21,9 @@ impl Default for Budgets {
         Self {
             max_turns: 60,
             max_tool_calls: 300,
-            max_consecutive_no_progress_turns: 3,
+            // The no-progress bound is the repair policy's, not a second copy.
+            max_consecutive_no_progress_turns: RepairPolicy::default()
+                .max_consecutive_no_progress_turns,
         }
     }
 }
@@ -113,6 +115,13 @@ pub struct HarnessState {
     /// Ordinal of the attempt whose change and verification are pending.
     #[serde(default)]
     pub pending_attempt: Option<u32>,
+    /// Reproduction state when the goal reports a failure (docs/28 §5):
+    /// `REPRODUCED`, `UNREPRODUCED` or `WAIVED` (the plan states the limitation).
+    #[serde(default)]
+    pub reproduction: Option<String>,
+    /// Whether this task's goal reports a failure.
+    #[serde(default)]
+    pub goal_reports_failure: bool,
     /// Revision of the last COMPLETION run that passed attribution.
     #[serde(default)]
     pub completion_verified_revision: Option<u64>,
@@ -131,6 +140,13 @@ pub enum HarnessRefusal {
         path: String,
         /// Plan version the write was checked against.
         plan_version: u32,
+    },
+    /// A fix before the reported failure was reproduced (docs/28 §5, PX-039).
+    ReproductionRequired {
+        /// The goal's reported failure is not reproduced yet.
+        status: String,
+        /// What unblocks it.
+        next: String,
     },
     /// A write outside the original plan's write set that reached a
     /// ScopePolicy bound or an always-ask path (docs/28 §3, PX-038): the
@@ -288,6 +304,11 @@ pub struct RepairPolicy {
     pub max_attempts_per_task: u32,
     /// WORSENED attempts tolerated before escalation.
     pub max_worsened_before_escalation: u32,
+    /// A goal that reports a failure must reproduce it before a fix.
+    pub reproduction_required: bool,
+    /// Turns without a transaction, verification, retrieval, plan revision or
+    /// question before the task needs attention.
+    pub max_consecutive_no_progress_turns: u32,
 }
 
 impl Default for RepairPolicy {
@@ -296,8 +317,44 @@ impl Default for RepairPolicy {
             max_attempts_per_signature: 2,
             max_attempts_per_task: 6,
             max_worsened_before_escalation: 1,
+            reproduction_required: true,
+            max_consecutive_no_progress_turns: 3,
         }
     }
+}
+
+/// Whether the goal reports a failure or defect, so the repair policy's
+/// reproduction-first rule applies (docs/28 §5).
+#[must_use]
+pub fn goal_reports_failure(goal: &str) -> bool {
+    const WORDS: &[&str] = &[
+        "fail",
+        "fails",
+        "failing",
+        "failure",
+        "bug",
+        "defect",
+        "broken",
+        "breaks",
+        "crash",
+        "crashes",
+        "panic",
+        "panics",
+        "error",
+        "errors",
+        "regression",
+        "regressed",
+        "incorrect",
+        "wrong",
+        "does not",
+        "doesn't",
+        "not working",
+        "reject",
+        "rejects",
+        "throws",
+    ];
+    let g = goal.to_ascii_lowercase();
+    WORDS.iter().any(|w| g.contains(w))
 }
 
 /// A recorded repair attempt (docs/28 §5 `RepairAttempt`).
@@ -321,6 +378,9 @@ pub struct RepairAttempt {
     pub outcome: Option<String>,
     /// Fingerprint of the change, once concluded.
     pub change_fingerprint: Option<String>,
+    /// Fingerprint of the state the attempt started from (oscillation check).
+    #[serde(default)]
+    pub start_fingerprint: Option<String>,
 }
 
 /// Normalized equivalence key of a hypothesis: lower-case alphanumeric words,
@@ -479,6 +539,65 @@ impl HarnessState {
         })
     }
 
+    /// docs/28 §5 (PX-039): a goal that reports a failure must reproduce it
+    /// before a fix transaction; an unreproduced failure is never silently
+    /// treated as reproduced — the plan has to state the limitation.
+    pub fn check_reproduction(&self) -> Result<(), HarnessRefusal> {
+        if !self.repair_policy.reproduction_required || !self.goal_reports_failure {
+            return Ok(());
+        }
+        match self.reproduction.as_deref() {
+            Some("REPRODUCED" | "WAIVED") => Ok(()),
+            Some(other) => Err(HarnessRefusal::ReproductionRequired {
+                status: other.to_owned(),
+                next: "run verify.run again with a reproduction command, or revise the plan stating the failure is UNREPRODUCED and why the change is still right".into(),
+            }),
+            // No verification has run yet: the mandatory BASELINE runs before
+            // the first write and decides (docs/64 §1).
+            None if !self.baseline_recorded => Ok(()),
+            None => Err(HarnessRefusal::ReproductionRequired {
+                status: "NOT_ATTEMPTED".into(),
+                next: "run verify.run so the reported failure is reproduced as evidence".into(),
+            }),
+        }
+    }
+
+    /// Record what a verification run said about the reported failure.
+    /// Returns the status when it changed.
+    pub fn record_reproduction(&mut self, any_failing: bool) -> Option<&'static str> {
+        if !self.repair_policy.reproduction_required
+            || !self.goal_reports_failure
+            || matches!(self.reproduction.as_deref(), Some("REPRODUCED" | "WAIVED"))
+        {
+            return None;
+        }
+        let status = if any_failing {
+            "REPRODUCED"
+        } else {
+            "UNREPRODUCED"
+        };
+        if self.reproduction.as_deref() == Some(status) {
+            return None;
+        }
+        self.reproduction = Some(status.to_owned());
+        Some(status)
+    }
+
+    /// The plan states the failure could not be reproduced: the limitation is
+    /// recorded and the fix may proceed (docs/28 §5).
+    pub fn waive_reproduction(&mut self, outcome: &str, reason: &str) -> bool {
+        if self.reproduction.as_deref() != Some("UNREPRODUCED") {
+            return false;
+        }
+        let text = format!("{outcome} {reason}").to_ascii_lowercase();
+        if text.contains("unreproduc") || text.contains("could not reproduce") {
+            self.reproduction = Some("WAIVED".to_owned());
+            true
+        } else {
+            false
+        }
+    }
+
     /// docs/28 §5: after a failed verification a change needs a recorded
     /// repair attempt first.
     pub fn check_repair_gate(&self) -> Result<(), HarnessRefusal> {
@@ -499,6 +618,7 @@ impl HarnessState {
         intended_fix: &str,
         start_revision: u64,
     ) -> Result<&RepairAttempt, RepairEscalation> {
+        // (the attempt's start fingerprint is filled in when it concludes)
         let fp = hypothesis_fingerprint(hypothesis);
         let on_sig: Vec<&RepairAttempt> = self
             .repair_attempts
@@ -544,6 +664,7 @@ impl HarnessState {
             start_revision,
             outcome: None,
             change_fingerprint: None,
+            start_fingerprint: None,
         });
         self.pending_attempt = Some(ordinal);
         Ok(self.repair_attempts.last().expect("pushed"))
@@ -557,6 +678,7 @@ impl HarnessState {
         before: &[String],
         after: &[String],
         change_fingerprint: &str,
+        start_fingerprint: &str,
     ) -> Option<(u32, String, Option<RepairEscalation>)> {
         let ordinal = self.pending_attempt.take()?;
         let idx = self
@@ -576,8 +698,15 @@ impl HarnessState {
             && self.repair_attempts[..idx]
                 .iter()
                 .any(|a| a.change_fingerprint.as_deref() == Some(change_fingerprint));
+        // Oscillation (docs/28 §5): the change puts the workspace back into a
+        // state a previous attempt started from.
+        let oscillating = !change_fingerprint.is_empty()
+            && self.repair_attempts[..idx]
+                .iter()
+                .any(|a| a.start_fingerprint.as_deref() == Some(change_fingerprint));
         self.repair_attempts[idx].outcome = Some(outcome.into());
         self.repair_attempts[idx].change_fingerprint = Some(change_fingerprint.into());
+        self.repair_attempts[idx].start_fingerprint = Some(start_fingerprint.into());
         let worsened = self
             .repair_attempts
             .iter()
@@ -593,6 +722,12 @@ impl HarnessState {
                 failure_signature: target,
                 reason: "the attempt's change is equivalent to a prior attempt's (no progress)"
                     .into(),
+                attempts,
+            })
+        } else if oscillating {
+            Some(RepairEscalation {
+                failure_signature: target,
+                reason: "the attempt reverts a prior attempt's change (oscillation)".into(),
                 attempts,
             })
         } else if worsened > self.repair_policy.max_worsened_before_escalation {
@@ -851,6 +986,7 @@ mod tests {
                 &[sig.into()],
                 &[sig.into(), "verify:other:1".into()],
                 "fp-1",
+                "start-1",
             )
             .unwrap();
         assert_eq!((o, outcome.as_str(), esc.is_none()), (1, "WORSENED", true));
@@ -859,7 +995,7 @@ mod tests {
         h.start_attempt(sig, "Parse before validating", vec![], "y", 5)
             .unwrap();
         let (_, outcome, esc) = h
-            .conclude_attempt(&[sig.into()], &[sig.into()], "fp-1")
+            .conclude_attempt(&[sig.into()], &[sig.into()], "fp-1", "start-2")
             .unwrap();
         assert_eq!(outcome, "UNCHANGED");
         assert!(esc.unwrap().reason.contains("equivalent"));
@@ -871,12 +1007,94 @@ mod tests {
         // RESOLVED when the target is gone and nothing new failed.
         let mut h2 = HarnessState::default();
         h2.start_attempt(sig, "h", vec![], "f", 1).unwrap();
-        let (_, outcome, esc) = h2.conclude_attempt(&[sig.into()], &[], "fp-9").unwrap();
+        let (_, outcome, esc) = h2
+            .conclude_attempt(&[sig.into()], &[], "fp-9", "start-9")
+            .unwrap();
         assert_eq!((outcome.as_str(), esc.is_none()), ("RESOLVED", true));
         assert_eq!(
             hypothesis_fingerprint("The parser accepts zero; reject it"),
             "accepts parser reject zero"
         );
+    }
+
+    #[test]
+    fn repair_policy_defaults_are_versioned_reproduction_gates_fixes_and_oscillation_escalates() {
+        // PX-039: the Alpha defaults live in the versioned policy, and the
+        // no-progress bound is the same number the budgets use.
+        let p = RepairPolicy::default();
+        assert_eq!(
+            (
+                p.max_attempts_per_signature,
+                p.max_attempts_per_task,
+                p.max_worsened_before_escalation,
+                p.reproduction_required,
+                p.max_consecutive_no_progress_turns
+            ),
+            (2, 6, 1, true, 3)
+        );
+        assert_eq!(
+            Budgets::default().max_consecutive_no_progress_turns,
+            p.max_consecutive_no_progress_turns
+        );
+        // Reproduction first: a goal that reports a failure gates the fix.
+        assert!(goal_reports_failure("parse_quantity fails on zero"));
+        assert!(!goal_reports_failure("add a helper for totals"));
+        let mut r = HarnessState {
+            goal_reports_failure: true,
+            ..HarnessState::default()
+        };
+        assert!(
+            r.check_reproduction().is_ok(),
+            "the mandatory baseline has not run yet; it decides"
+        );
+        r.baseline_recorded = true;
+        assert!(matches!(
+            r.check_reproduction(),
+            Err(HarnessRefusal::ReproductionRequired { .. })
+        ));
+        assert_eq!(r.record_reproduction(false), Some("UNREPRODUCED"));
+        assert!(
+            r.check_reproduction().is_err(),
+            "unreproduced is never silently reproduced"
+        );
+        assert!(
+            !r.waive_reproduction("fix it", "because"),
+            "a bare plan does not waive it"
+        );
+        assert!(r.waive_reproduction(
+            "fix it",
+            "the failure is UNREPRODUCED locally; the guard is still right"
+        ));
+        assert!(r.check_reproduction().is_ok());
+        let mut r2 = HarnessState {
+            goal_reports_failure: true,
+            ..HarnessState::default()
+        };
+        assert_eq!(r2.record_reproduction(true), Some("REPRODUCED"));
+        assert!(r2.check_reproduction().is_ok());
+        // Oscillation: a change that returns to a prior attempt's start state.
+        let mut o = HarnessState::default();
+        o.open_failures.push("verify:x:1".into());
+        o.start_attempt("verify:x:1", "first", vec![], "f", 1)
+            .unwrap();
+        o.conclude_attempt(
+            &["verify:x:1".into()],
+            &["verify:x:1".into()],
+            "state-b",
+            "state-a",
+        )
+        .unwrap();
+        o.start_attempt("verify:x:1", "second different", vec![], "f", 2)
+            .unwrap();
+        let (_, _, esc) = o
+            .conclude_attempt(
+                &["verify:x:1".into()],
+                &["verify:x:1".into()],
+                "state-a",
+                "state-b",
+            )
+            .unwrap();
+        assert!(esc.unwrap().reason.contains("oscillation"));
     }
 
     #[test]

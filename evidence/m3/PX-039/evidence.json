@@ -1,0 +1,15 @@
+{
+ "task": "PX-039",
+ "requirement": "REQ-PX-039",
+ "qual": "QUAL-PX-039",
+ "tests": [
+  "qual_px_039_reproduction_first_is_enforced_and_no_progress_turns_escalate",
+  "repair_policy_defaults_are_versioned_reproduction_gates_fixes_and_oscillation_escalates",
+  "qual_px_018_repair_attempts_are_recorded_bounded_reverted_when_worsened_and_escalate_on_equivalence",
+  "m2_7_one_agent_runtime_drives_a_coding_task_to_ready_for_review"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "versioned RepairPolicy defaults, reproduction-first gate with UNREPRODUCED/WAIVED records, oscillation escalation, no-progress detection at the policy's 3 turns",
+ "audit": "IMPLEMENTED in this batch"
+}

@@ -88,7 +88,7 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 1779,
+                  "duration": 1665,
                   "errors": [],
                   "stdout": [],
                   "stderr": [
@@ -99,14 +99,14 @@
                       "text": "[electron] modbit-core: recovery complete: boot_generation=2 events_verified=6 aggregates=3 projections_rebuilt=false sessions=1 tasks=1 in 0ms\n"
                     },
                     {
-                      "text": "[electron] Debugger ending on ws://127.0.0.1:51093/1981c7fd-052f-4123-a21e-1aea14868284\nFor help, see: https://nodejs.org/learn/getting-started/debugging\n"
+                      "text": "[electron] Debugger ending on ws://127.0.0.1:58594/2b1db6fe-430b-4aa8-b89e-95febcb6f3de\nFor help, see: https://nodejs.org/learn/getting-started/debugging\n"
                     },
                     {
-                      "text": "[electron] Debugger ending on ws://127.0.0.1:51097/581027bc-b8a4-43de-b319-84cb21c71e2b\nFor help, see: https://nodejs.org/learn/getting-started/debugging\n"
+                      "text": "[electron] Debugger ending on ws://127.0.0.1:58598/452c46bd-1500-4bd3-b9f9-fc8a43965d94\nFor help, see: https://nodejs.org/learn/getting-started/debugging\n"
                     }
                   ],
                   "retry": 0,
-                  "startTime": "2026-09-10T15:51:05.907Z",
+                  "startTime": "2026-09-10T16:40:06.901Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -135,7 +135,7 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 380,
+                  "duration": 327,
                   "errors": [],
                   "stdout": [],
                   "stderr": [
@@ -146,11 +146,11 @@
                       "text": "[electron] Error occurred in handler for 'session:snapshot': Error: BAD_ARGUMENT: session id must be 32 hex chars\n    at requireSessionId \u001b[90m(/Users/mohsin/projects/modbit/apps/desktop/\u001b[39mdist/main/main.cjs:3849:54\u001b[90m)\u001b[39m\n    at \u001b[90m/Users/mohsin/projects/modbit/apps/desktop/\u001b[39mdist/main/main.cjs:3883:15\n\u001b[90m    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\u001b[39m\n\u001b[90m    at Session.emit (node:events:514:28)\u001b[39m\n"
                     },
                     {
-                      "text": "[electron] Debugger ending on ws://127.0.0.1:51102/2b94f375-cbc9-413b-a76c-ae770c53ca16\nFor help, see: https://nodejs.org/learn/getting-started/debugging\n"
+                      "text": "[electron] Debugger ending on ws://127.0.0.1:58602/16cc088c-d35f-4191-846b-92d733867d6f\nFor help, see: https://nodejs.org/learn/getting-started/debugging\n"
                     }
                   ],
                   "retry": 0,
-                  "startTime": "2026-09-10T15:51:07.701Z",
+                  "startTime": "2026-09-10T16:40:08.578Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -187,12 +187,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 2382,
+                  "duration": 2177,
                   "errors": [],
                   "stdout": [],
                   "stderr": [
                     {
-                      "text": "[electron] Debugger ending on ws://127.0.0.1:51109/89a6e0aa-9e1a-4939-9ae8-86ed7aef2cdb\nFor help, see: https://nodejs.org/learn/getting-started/debugging\n"
+                      "text": "[electron] Debugger ending on ws://127.0.0.1:58607/43bc23f2-7341-4cd1-b5b4-27f90160d07a\nFor help, see: https://nodejs.org/learn/getting-started/debugging\n"
                     },
                     {
                       "text": "[electron] Error occurred in handler for 'review:bundle': ProtocolError: DISCONNECTED: closed by client\n    at _CoreClient.fail \u001b[90m(/Users/mohsin/projects/modbit/apps/desktop/\u001b[39mdist/main/main.cjs:3538:54\u001b[90m)\u001b[39m\n    at _CoreClient.close \u001b[90m(/Users/mohsin/projects/modbit/apps/desktop/\u001b[39mdist/main/main.cjs:3543:10\u001b[90m)\u001b[39m\n    at CoreSupervisor.stop \u001b[90m(/Users/mohsin/projects/modbit/apps/desktop/\u001b[39mdist/main/main.cjs:3748:18\u001b[90m)\u001b[39m\n    at EventEmitter.<anonymous> \u001b[90m(/Users/mohsin/projects/modbit/apps/desktop/\u001b[39mdist/main/main.cjs:4000:14\u001b[90m)\u001b[39m\n\u001b[90m    at EventEmitter.emit (node:events:514:28)\u001b[39m\n    at import_electron.app.emit (/Users/mohsin/projects/modbit/node_modules/\u001b[4m.pnpm\u001b[24m/playwright-core@1.63.0/node_modules/\u001b[4mplaywright-core\u001b[24m/lib/server/electron/loader.js:104:10)\n    at eval (eval at evaluate (:311:30), <anonymous>:1:18)\n    at UtilityScript.evaluate (<anonymous>:313:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44) {\n  code: \u001b[32m'DISCONNECTED'\u001b[39m\n}\n"
@@ -201,11 +201,11 @@
                       "text": "[electron] modbit-core: connection ended: io: Broken pipe (os error 32)\n"
                     },
                     {
-                      "text": "[electron] Debugger ending on ws://127.0.0.1:51120/d3fd1bcd-d7b2-438c-bf29-76f9ad569028\nFor help, see: https://nodejs.org/learn/getting-started/debugging\n"
+                      "text": "[electron] Debugger ending on ws://127.0.0.1:58612/490343b1-8276-49a5-868f-a3aa54345a5d\nFor help, see: https://nodejs.org/learn/getting-started/debugging\n"
                     }
                   ],
                   "retry": 0,
-                  "startTime": "2026-09-10T15:51:08.091Z",
+                  "startTime": "2026-09-10T16:40:08.912Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -223,8 +223,8 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-09-10T15:51:05.726Z",
-    "duration": 4764.749,
+    "startTime": "2026-09-10T16:40:06.733Z",
+    "duration": 4366.767,
     "expected": 3,
     "skipped": 0,
     "unexpected": 0,

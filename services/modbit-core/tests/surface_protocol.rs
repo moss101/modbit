@@ -2179,6 +2179,10 @@ fn coding_script(fs_read_hash: &str) -> Vec<serde_json::Value> {
     vec![
         json!({"text": "Reading the file first.", "calls": [{"name": "fs.read", "args": {"path": "qty.txt"}}]}),
         json!({"text": "Planning.", "calls": [{"name": "plan.update", "args": {"outcome": "reject negative quantities", "expected_files": ["qty.txt"], "verification": ["sh check.sh"], "protected_effects": []}}]}),
+        // Reproduction first (docs/28 §5, PX-039): the reported failure is
+        // reproduced before the fix; this repository has no derivable suite,
+        // so the agent runs the reproduction command itself.
+        json!({"calls": [{"name": "test.run", "args": {"argv": ["sh", "check.sh"], "inherit_env": true}}]}),
         json!({"calls": [{"name": "change.apply", "args": {"path": "qty.txt", "op": "replace", "content": "quantity = 5\n", "expected_content_hash": fs_read_hash}}]}),
         json!({"calls": [{"name": "test.run", "args": {"argv": ["sh", "check.sh"], "inherit_env": true}}]}),
         json!({"text": "The check failed; the file must say validated.", "calls": [{"name": "change.apply", "args": {"path": "qty.txt", "op": "replace", "content": "quantity = 5 # validated: negatives rejected\n"}}]}),
@@ -2388,10 +2392,10 @@ async fn m2_7_one_agent_runtime_drives_a_coding_task_to_ready_for_review() {
     let turns = names("turn");
     assert_eq!(
         turns.iter().filter(|t| **t == "TurnPrepared").count(),
-        7,
+        8,
         "{turns:?}"
     );
-    assert_eq!(turns.iter().filter(|t| **t == "TurnCompleted").count(), 7);
+    assert_eq!(turns.iter().filter(|t| **t == "TurnCompleted").count(), 8);
     assert!(
         turns.contains(&"ContextPackCompiled")
             && turns.contains(&"ToolProjectionSelected")
@@ -2407,11 +2411,11 @@ async fn m2_7_one_agent_runtime_drives_a_coding_task_to_ready_for_review() {
                 .to_owned()
         })
         .collect();
-    assert_eq!(steps.iter().filter(|s| *s == "CONTEXT_COMPILE").count(), 7);
-    assert_eq!(steps.iter().filter(|s| *s == "MODEL_INVOKE").count(), 7);
+    assert_eq!(steps.iter().filter(|s| *s == "CONTEXT_COMPILE").count(), 8);
+    assert_eq!(steps.iter().filter(|s| *s == "MODEL_INVOKE").count(), 8);
     assert_eq!(
         steps.iter().filter(|s| *s == "TOOL_CALL").count(),
-        5,
+        6,
         "{steps:?}"
     );
     assert_eq!(
@@ -2424,19 +2428,21 @@ async fn m2_7_one_agent_runtime_drives_a_coding_task_to_ready_for_review() {
     let calls = names("tool_call");
     assert_eq!(
         calls.iter().filter(|t| **t == "ToolCallSucceeded").count(),
-        5,
+        6,
         "{calls:?}"
     );
-    // The model saw the failure as evidence: the fifth request carries the failed check observation.
+    // The model saw the failure as evidence: the request after each check run
+    // carries the failed check observation.
     let bodies = seen.lock().unwrap().clone();
-    assert_eq!(bodies.len(), 7);
-    let fifth = bodies[4]["messages"].as_array().unwrap();
-    let last_tool = fifth.iter().rev().find(|m| m["role"] == "tool").unwrap();
-    let content = last_tool["content"].as_str().unwrap();
-    assert!(
-        content.contains("status: SUCCESS") && content.contains("\"status\":\"FAILED\""),
-        "{content}"
-    );
+    assert_eq!(bodies.len(), 8);
+    let failed_observations = bodies
+        .iter()
+        .flat_map(|b| b["messages"].as_array().cloned().unwrap_or_default())
+        .filter(|m| m["role"] == "tool")
+        .filter_map(|m| m["content"].as_str().map(str::to_owned))
+        .filter(|c| c.contains("status: SUCCESS") && c.contains("\"status\":\"FAILED\""))
+        .count();
+    assert!(failed_observations > 0, "{bodies:#?}");
     assert!(
         bodies[0]["messages"][0]["content"]
             .as_str()
@@ -2444,13 +2450,21 @@ async fn m2_7_one_agent_runtime_drives_a_coding_task_to_ready_for_review() {
             .contains("plan.update"),
         "system segment is stable"
     );
-    assert!(bodies[6]["messages"].as_array().unwrap().iter().any(|m| {
-        m["role"] == "tool"
-            && m["content"]
-                .as_str()
-                .unwrap_or_default()
-                .contains("\"status\":\"PASSED\"")
-    }));
+    assert!(
+        bodies
+            .last()
+            .and_then(|b| b["messages"].as_array().cloned())
+            .unwrap_or_default()
+            .iter()
+            .any(|m| {
+                m["role"] == "tool"
+                    && m["content"]
+                        .as_str()
+                        .unwrap_or_default()
+                        .contains("\"status\":\"PASSED\"")
+            }),
+        "the passing check is in the transcript before completion"
+    );
     assert!(
         bodies[0]["tools"]
             .as_array()
@@ -7626,6 +7640,22 @@ async fn qual_px_018_repair_attempts_are_recorded_bounded_reverted_when_worsened
                 && t.contains("zero_quantity_is_rejected")),
         "{tool_msgs:#?}"
     );
+    // PX-039: the mandatory baseline reproduced the reported failure before any
+    // fix transaction, and it is recorded.
+    let repro = of("ReproductionRecorded");
+    assert!(
+        repro.iter().any(|r| r["status"] == "REPRODUCED"),
+        "{repro:#?}"
+    );
+    let repro_at = evs
+        .iter()
+        .position(|(_, t, p)| t == "ReproductionRecorded" && p["status"] == "REPRODUCED")
+        .unwrap();
+    let first_lib_write = evs
+        .iter()
+        .position(|(_, t, p)| t == "FileChanged" && p["path"] == "src/lib.rs")
+        .unwrap();
+    assert!(repro_at < first_lib_write, "reproduced before the fix");
     // The attempt was recorded with all its fields before the change ran.
     let recorded = of("RepairAttemptRecorded");
     assert_eq!(recorded.len(), 1, "{recorded:#?}");
@@ -8232,6 +8262,189 @@ async fn qual_px_038_scope_expansion_is_bounded_asks_a_typed_question_and_fails_
             .iter()
             .any(|a| a["reason"].as_str().unwrap().contains("FAIL_CLOSED")),
         "{attention:#?}"
+    );
+    assert!(
+        of(&evs2, "SelfReviewRecorded").is_empty(),
+        "task.complete never ran"
+    );
+    let _ = (repo, repo2);
+}
+
+/// PX-039 repair policy: the Alpha defaults come from the versioned policy; a
+/// goal that reports a failure whose verification reproduces nothing is
+/// UNREPRODUCED, and a fix is refused until the plan states the limitation;
+/// three consecutive turns with no transaction, verification, retrieval, plan
+/// revision or question emit NoProgressDetected and move the task to Needs
+/// Attention.
+#[tokio::test]
+async fn qual_px_039_reproduction_first_is_enforced_and_no_progress_turns_escalate() {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    // ---- a reported failure that nothing reproduces
+    let (repo, root) = plain_repo(&[("app.txt", "value = 1\n")]);
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "fix the wrong value", "expected_files": ["app.txt"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "app.txt"}}]}),
+        // the mandatory baseline runs here and reproduces nothing
+        json!({"calls": [{"name": "change.apply", "args": {"path": "app.txt", "op": "replace", "content": "value = 2\n"}}]}),
+        // refused: the reported failure is UNREPRODUCED
+        json!({"calls": [{"name": "change.apply", "args": {"path": "app.txt", "op": "replace", "content": "value = 2\n"}}]}),
+        // the plan states the limitation
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "fix the wrong value", "expected_files": ["app.txt"], "reason": "the failure is UNREPRODUCED here: this repository has no test runner; the value is wrong by inspection"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "app.txt", "op": "replace", "content": "value = 2\n"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, _seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn_with_env(
+        dir.path(),
+        &[
+            ("MODBIT_OPENAI_BASE_URL", &base),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+        ],
+    );
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x50)).await;
+    let g = lease_for(&session);
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x51),
+            "CreateTask",
+            CreateTask {
+                session_id: Some(session.clone()),
+                goal_text: "app.txt has the wrong value; the check fails".into(),
+                workspace_id: None,
+                execution_profile: String::new(),
+                origin: "cli".into(),
+                workspace_root: root.clone(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let task = Client::result::<TaskCreated>(&ack)
+        .unwrap()
+        .task_id
+        .unwrap();
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x52),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 20,
+                max_tool_calls: 0,
+                // 0 keeps the policy's own bound (3), not a second copy.
+                max_no_progress_turns: 0,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 120).await;
+    let evs = task_events(&core, &session, &task).await;
+    let of = |evs: &Vec<(String, String, serde_json::Value)>, t: &str| {
+        evs.iter()
+            .filter(|(_, x, _)| x == t)
+            .map(|(_, _, p)| p.clone())
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(st.state, "ReadyForReview", "{st:?}\n{evs:#?}");
+    let repro = of(&evs, "ReproductionRecorded");
+    assert_eq!(
+        repro
+            .iter()
+            .map(|r| r["status"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        ["UNREPRODUCED", "WAIVED"],
+        "{repro:#?}"
+    );
+    assert!(
+        repro[1]["note"].as_str().unwrap().contains("UNREPRODUCED"),
+        "{repro:#?}"
+    );
+    // Exactly one write landed: the first attempt was refused, the second waited
+    // for the plan's limitation.
+    let written = of(&evs, "FileChanged");
+    assert_eq!(written.len(), 1, "{written:#?}");
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("app.txt")).unwrap(),
+        "value = 2\n"
+    );
+    assert_eq!(
+        evs.iter()
+            .filter(|(_, t, p)| t == "StepFailed"
+                && p["failure_code"] == "HARNESS_REPRODUCTION_REQUIRED")
+            .count(),
+        2,
+        "both fixes before the plan's limitation were refused: {evs:#?}"
+    );
+    drop(c);
+
+    // ---- three turns without progress
+    let (repo2, root2) = plain_repo(&[("a.txt", "a\n")]);
+    let browse = json!({"calls": [{"name": "search.exact", "args": {"query": "a"}}]});
+    let script2 = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "look around", "expected_files": ["a.txt"]}}]}),
+        browse.clone(),
+        browse.clone(),
+        browse.clone(),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "never reached", "self_review": {"findings": []}}}]}),
+    ];
+    let (base2, _s2) = scripted_model(script2, None).await;
+    let dir2 = tempfile::tempdir().unwrap();
+    let core2 = CoreProcess::spawn_with_env(
+        dir2.path(),
+        &[
+            ("MODBIT_OPENAI_BASE_URL", &base2),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+        ],
+    );
+    let mut c2 = core2.client().await;
+    let (session2, _) = create_session(&mut c2, id16(0x53)).await;
+    let g2 = lease_for(&session2);
+    let task2 =
+        create_task_with_profile(&mut c2, &session2, g2, &root2, 0x54, "local_trusted").await;
+    let ack = c2
+        .command(envelope_fenced(
+            id16(0x55),
+            "StartTask",
+            StartTask {
+                task_id: Some(task2.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 20,
+                max_tool_calls: 0,
+                max_no_progress_turns: 0,
+            }
+            .encode_to_vec(),
+            g2,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st2 = wait_task(&mut c2, &task2, 120).await;
+    let evs2 = task_events(&core2, &session2, &task2).await;
+    assert_eq!(
+        (st2.state.as_str(), st2.wait_reason.as_str()),
+        ("Waiting", "UserInput"),
+        "{st2:?}\n{evs2:#?}"
+    );
+    let np = of(&evs2, "NoProgressDetected");
+    assert_eq!(np.len(), 1, "{np:#?}");
+    assert_eq!(np[0]["turns"], 3, "the policy's Alpha default: {np:#?}");
+    assert!(
+        of(&evs2, "TaskNeedsAttention")
+            .iter()
+            .any(|a| a["reason"].as_str().unwrap().contains("without progress")),
+        "{evs2:#?}"
     );
     assert!(
         of(&evs2, "SelfReviewRecorded").is_empty(),
