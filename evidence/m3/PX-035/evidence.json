@@ -8,8 +8,18 @@
   "precision_and_recall_are_measured_against_the_ground_truth",
   "harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "f9e295e"
+ ],
+ "runs": [
+  {
+   "id": "gha-34506031420",
+   "kind": "hosted CI on f9e295e (contains the commits above)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34506031420",
+   "log": "ci-run-34506031420.json, ci-run-34506031420-tests.log"
+  }
+ ],
  "artifacts": [
   "evidence/m3/M3.9/report.json"
  ],

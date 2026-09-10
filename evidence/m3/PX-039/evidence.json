@@ -8,8 +8,18 @@
   "qual_px_018_repair_attempts_are_recorded_bounded_reverted_when_worsened_and_escalate_on_equivalence",
   "m2_7_one_agent_runtime_drives_a_coding_task_to_ready_for_review"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "3fb720a"
+ ],
+ "runs": [
+  {
+   "id": "gha-34506031420",
+   "kind": "hosted CI on f9e295e (contains the commits above)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34506031420",
+   "log": "ci-run-34506031420.json, ci-run-34506031420-tests.log"
+  }
+ ],
  "proof": "versioned RepairPolicy defaults, reproduction-first gate with UNREPRODUCED/WAIVED records, oscillation escalation, no-progress detection at the policy's 3 turns",
  "audit": "IMPLEMENTED in this batch"
 }

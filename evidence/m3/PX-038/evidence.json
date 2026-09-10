@@ -6,8 +6,18 @@
   "qual_px_038_scope_expansion_is_bounded_asks_a_typed_question_and_fails_closed_headless",
   "qual_px_016_change_strategy_tests_first_one_concern_per_transaction_and_no_silent_scope_widening"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "d9ca8f2"
+ ],
+ "runs": [
+  {
+   "id": "gha-34506031420",
+   "kind": "hosted CI on f9e295e (contains the commits above)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34506031420",
+   "log": "ci-run-34506031420.json, ci-run-34506031420-tests.log"
+  }
+ ],
  "proof": "bounded expansion with a typed question, counters against the original plan, headless FAIL_CLOSED to Needs Attention",
  "audit": "IMPLEMENTED in this batch (was PARTIAL)"
 }

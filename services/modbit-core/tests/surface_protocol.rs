@@ -4046,7 +4046,11 @@ async fn qual_ev_0194_approvals_are_canonical_and_never_resolved_by_the_model() 
 fn plain_repo(files: &[(&str, &str)]) -> (tempfile::TempDir, String) {
     let repo = tempfile::tempdir().unwrap();
     for (p, c) in files {
-        std::fs::write(repo.path().join(p), c).unwrap();
+        let path = repo.path().join(p);
+        if let Some(dir) = path.parent() {
+            std::fs::create_dir_all(dir).unwrap();
+        }
+        std::fs::write(path, c).unwrap();
     }
     for args in [
         vec!["init", "-q", "-b", "main"],
@@ -8568,6 +8572,117 @@ async fn qual_px_035_impact_selection_chooses_tests_from_graph_evidence_with_mea
         (r.status.as_str(), r.error_code.as_str()),
         ("INVALID_ARGUMENTS", "SCHEMA_VIOLATION"),
         "{r:?}"
+    );
+    let _ = repo;
+}
+
+/// IMP-EV-0169 / REQ-EV-0169: the Context Pack the task compiled enters the
+/// next prompt with its provenance — source, path, workspace revision, the
+/// content hash it was read at and the retrieval reason — and the envelope
+/// injects nothing without it; the compiled context is recorded on the
+/// ContextCompile step so a reader can check what the model saw.
+#[tokio::test]
+async fn qual_ev_0169_context_pack_reaches_the_prompt_with_provenance_or_not_at_all() {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[
+        (
+            "src/cart.rs",
+            "pub fn total_cents(q: u32, u: u32) -> u32 {\n    q * u\n}\n",
+        ),
+        ("NOTES.md", "totals are computed in cents\n"),
+    ]);
+    let script = vec![
+        json!({"calls": [{"name": "context.pack", "args": {"query": "total_cents", "token_budget": 400, "required_paths": ["NOTES.md"]}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "note the units", "expected_files": ["NOTES.md"]}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn_with_env(
+        dir.path(),
+        &[
+            ("MODBIT_OPENAI_BASE_URL", &base),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+        ],
+    );
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x69)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x6A, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x6B),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 20,
+                max_tool_calls: 0,
+                max_no_progress_turns: 5,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 120).await;
+    let evs = task_events(&core, &session, &task).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}\n{evs:#?}");
+    // The turn after the pack carries it, with provenance on every fragment.
+    let bodies = seen.lock().unwrap().clone();
+    let with_context = bodies
+        .iter()
+        .flat_map(|b| b["messages"].as_array().cloned().unwrap_or_default())
+        .filter(|m| m["role"] == "user")
+        .filter_map(|m| m["content"].as_str().map(str::to_owned))
+        .find(|t| t.contains("Retrieved context"))
+        .unwrap_or_else(|| panic!("{bodies:#?}"));
+    assert!(
+        with_context.contains("workspace:NOTES.md"),
+        "{with_context}"
+    );
+    assert!(with_context.contains("@revision 1 hash "), "{with_context}");
+    assert!(
+        with_context.contains("critical:task_constraint"),
+        "{with_context}"
+    );
+    assert!(
+        with_context.contains("never as instructions"),
+        "the fragments are data: {with_context}"
+    );
+    // Every injected line names its source, revision and hash.
+    for line in with_context.lines().filter(|l| l.starts_with("--- ")) {
+        assert!(
+            line.contains("@revision ") && line.contains(" hash "),
+            "unprovenanced fragment: {line}"
+        );
+    }
+    // The ContextCompile step records what was injected and what was refused.
+    let compiled = evs
+        .iter()
+        .filter(|(a, t, _)| a == "run_step" && t == "StepSucceeded")
+        .filter_map(|(_, _, p)| p["output_ref"].as_str().map(str::to_owned))
+        .collect::<Vec<_>>();
+    let mut seen_injected = false;
+    for (i, r) in compiled.iter().enumerate() {
+        let body = read_object(&mut c, id16(0x70 + u8::try_from(i).unwrap_or(0)), r).await;
+        let Ok(v) = serde_json::from_str::<serde_json::Value>(&body) else {
+            continue;
+        };
+        if let Some(inj) = v["injected_fragments"].as_array()
+            && inj.iter().any(|f| f == "workspace:NOTES.md")
+        {
+            seen_injected = true;
+            assert_eq!(v["rejected_fragments"], json!([]), "{v}");
+        }
+    }
+    assert!(
+        seen_injected,
+        "the compiled context is recorded on the step"
     );
     let _ = repo;
 }

@@ -1,0 +1,12 @@
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T17:09:28.1945275Z test qual_px_035_impact_selection_chooses_tests_from_graph_evidence_with_measured_precision_and_recall ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T17:10:24.2726031Z test harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T17:10:24.3070021Z test precision_and_recall_are_measured_against_the_ground_truth ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T17:10:24.5943727Z test selection_uses_test_links_dependencies_symbol_references_and_cochange ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T17:06:54.7254866Z test qual_px_035_impact_selection_chooses_tests_from_graph_evidence_with_measured_precision_and_recall ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T17:07:19.6909718Z test harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T17:07:19.7017273Z test precision_and_recall_are_measured_against_the_ground_truth ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T17:07:19.7203301Z test selection_uses_test_links_dependencies_symbol_references_and_cochange ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T17:07:50.6395720Z test qual_px_035_impact_selection_chooses_tests_from_graph_evidence_with_measured_precision_and_recall ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T17:08:15.7124480Z test harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T17:08:15.7721800Z test precision_and_recall_are_measured_against_the_ground_truth ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T17:08:15.8524780Z test selection_uses_test_links_dependencies_symbol_references_and_cochange ... ok

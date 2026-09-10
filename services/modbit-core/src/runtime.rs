@@ -982,6 +982,35 @@ async fn run_loop(
         }
         // ContextCompile step.
         let harness_json = serde_json::to_value(&state).unwrap_or_default();
+        // REQ-EV-0169: the task's latest Context Pack enters the prompt with
+        // its provenance; the envelope refuses any fragment that lacks it.
+        let context_fragments = {
+            let ledger = core.tools.ledger(task.task_id).await;
+            let ledger = ledger.lock().await;
+            ledger
+                .last_pack
+                .as_ref()
+                .map(|p| {
+                    p.entries
+                        .iter()
+                        .map(|e| modbit_prompt_compiler::ContextFragment {
+                            source_ref: e.source_ref.clone(),
+                            path: e.provenance.path.clone(),
+                            workspace_revision: e.provenance.workspace_revision,
+                            content_hash: e.provenance.content_hash.clone().unwrap_or_default(),
+                            retrieval_reason: format!(
+                                "{}; {}",
+                                e.reason,
+                                e.provenance.retrieval_reasons.join(", ")
+                            ),
+                            lines: e.lines,
+                            text: e.text.clone(),
+                            ephemeral: false,
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default()
+        };
         let compiled = modbit_prompt_compiler::compile(modbit_prompt_compiler::PromptInput {
             goal: task.goal_text.clone(),
             workspace_root: task.workspace_root.clone(),
@@ -990,6 +1019,7 @@ async fn run_loop(
             compaction_summary: None,
             harness_state: harness_json.clone(),
             transcript: transcript.clone(),
+            context: context_fragments,
             tools: tools.clone(),
             model_policy: ModelPolicy {
                 endpoint: cfg.endpoint.clone(),
@@ -1006,7 +1036,7 @@ async fn run_loop(
             let store = core.store.lock().await;
             store
                 .objects()
-                .put(serde_json::json!({"harness_state": harness_json, "segment_hashes": compiled.segment_hashes, "tool_projection_hash": compiled.tool_projection_hash}).to_string().as_bytes())
+                .put(serde_json::json!({"harness_state": harness_json, "segment_hashes": compiled.segment_hashes, "tool_projection_hash": compiled.tool_projection_hash, "injected_fragments": compiled.injected_fragments, "rejected_fragments": compiled.rejected_fragments}).to_string().as_bytes())
                 .ok()
         };
         let ctx_step = RunStepId::new();

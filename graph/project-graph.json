@@ -21785,8 +21785,56 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-035",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:f9e295e",
+    "test:qual_px_035_impact_selection_chooses_tests_from_graph_evidence_with_measured_precision_and_recall",
+    "test:selection_uses_test_links_dependencies_symbol_references_and_cochange",
+    "test:precision_and_recall_are_measured_against_the_ground_truth",
+    "test:harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them",
+    "artifact:evidence/m3/M3.9/report.json",
+    "run:gha-34506031420",
+    "artifact:evidence/m3/PX-035/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T17:11:57Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: see card"
+    },
+    {
+     "at": "2026-09-10T17:11:57Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implementation commit(s)"
+    },
+    {
+     "at": "2026-09-10T17:11:57Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the Core runtime, tools and the verification plan"
+    },
+    {
+     "at": "2026-09-10T17:11:57Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real fixtures and the repository corpus"
+    },
+    {
+     "at": "2026-09-10T17:11:58Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34506031420 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T17:11:58Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34506031420"
+    }
+   ],
+   "status_changed_on": "2026-09-10T17:11:58Z"
   },
   {
    "id": "PX-036",
@@ -21967,8 +22015,53 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-038",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "milestone_override": "DR-M2-002: ScopePolicy bounds and ScopeExpansionRecorded need the retrieval-before-edit records of M3 to count against",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:d9ca8f2",
+    "test:qual_px_038_scope_expansion_is_bounded_asks_a_typed_question_and_fails_closed_headless",
+    "test:qual_px_016_change_strategy_tests_first_one_concern_per_transaction_and_no_silent_scope_widening",
+    "run:gha-34506031420",
+    "artifact:evidence/m3/PX-038/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T17:11:58Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: see card"
+    },
+    {
+     "at": "2026-09-10T17:11:58Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implementation commit(s)"
+    },
+    {
+     "at": "2026-09-10T17:11:58Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the Core runtime, tools and the verification plan"
+    },
+    {
+     "at": "2026-09-10T17:11:58Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real fixtures and the repository corpus"
+    },
+    {
+     "at": "2026-09-10T17:11:58Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34506031420 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T17:11:58Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34506031420"
+    }
+   ],
+   "status_changed_on": "2026-09-10T17:11:58Z"
   },
   {
    "id": "PX-039",
@@ -21994,8 +22087,55 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-039",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "milestone_override": "DR-M2-002: reproduction-first and change_fingerprint equivalence build on the RepairAttempt records (PX-018, M3)",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:3fb720a",
+    "test:qual_px_039_reproduction_first_is_enforced_and_no_progress_turns_escalate",
+    "test:repair_policy_defaults_are_versioned_reproduction_gates_fixes_and_oscillation_escalates",
+    "test:qual_px_018_repair_attempts_are_recorded_bounded_reverted_when_worsened_and_escalate_on_equivalence",
+    "test:m2_7_one_agent_runtime_drives_a_coding_task_to_ready_for_review",
+    "run:gha-34506031420",
+    "artifact:evidence/m3/PX-039/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T17:11:58Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: see card"
+    },
+    {
+     "at": "2026-09-10T17:11:58Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implementation commit(s)"
+    },
+    {
+     "at": "2026-09-10T17:11:58Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the Core runtime, tools and the verification plan"
+    },
+    {
+     "at": "2026-09-10T17:11:58Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real fixtures and the repository corpus"
+    },
+    {
+     "at": "2026-09-10T17:11:58Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34506031420 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T17:11:58Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34506031420"
+    }
+   ],
+   "status_changed_on": "2026-09-10T17:11:58Z"
   },
   {
    "id": "PX-040",

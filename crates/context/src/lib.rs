@@ -424,7 +424,7 @@ pub struct ReadRecord {
 }
 
 /// The Context Ledger of one task.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct ContextLedger {
     /// Entries in injection order.
     pub entries: Vec<LedgerEntry>,
@@ -433,12 +433,17 @@ pub struct ContextLedger {
     /// Direct retrievals (reads, language-service queries).
     #[serde(default)]
     pub reads: Vec<ReadRecord>,
+    /// The most recent pack, so the runtime can inject it into the prompt
+    /// with its provenance (REQ-EV-0169).
+    #[serde(default)]
+    pub last_pack: Option<ContextPack>,
 }
 
 impl ContextLedger {
     /// Record every entry of a pack as injected.
     pub fn record(&mut self, pack: &ContextPack) {
         self.packs += 1;
+        self.last_pack = Some(pack.clone());
         for e in &pack.entries {
             self.entries.push(LedgerEntry {
                 pack_id: pack.pack_id.clone(),

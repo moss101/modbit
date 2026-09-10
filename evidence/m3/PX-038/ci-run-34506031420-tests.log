@@ -1,0 +1,6 @@
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T17:09:37.6853855Z test qual_px_016_change_strategy_tests_first_one_concern_per_transaction_and_no_silent_scope_widening ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T17:09:41.2072949Z test qual_px_038_scope_expansion_is_bounded_asks_a_typed_question_and_fails_closed_headless ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T17:06:55.9397384Z test qual_px_016_change_strategy_tests_first_one_concern_per_transaction_and_no_silent_scope_widening ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T17:06:57.0701743Z test qual_px_038_scope_expansion_is_bounded_asks_a_typed_question_and_fails_closed_headless ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T17:07:52.3237770Z test qual_px_016_change_strategy_tests_first_one_concern_per_transaction_and_no_silent_scope_widening ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T17:07:53.6736430Z test qual_px_038_scope_expansion_is_bounded_asks_a_typed_question_and_fails_closed_headless ... ok
