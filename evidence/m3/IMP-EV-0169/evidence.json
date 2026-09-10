@@ -1,0 +1,14 @@
+{
+ "task": "IMP-EV-0169",
+ "requirement": "REQ-EV-0169",
+ "qual": "QUAL-EV-0169",
+ "tests": [
+  "context_fragments_without_provenance_are_refused_not_injected",
+  "qual_ev_0169_context_pack_reaches_the_prompt_with_provenance_or_not_at_all",
+  "m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "the prompt envelope refuses any non-ephemeral fragment without source, path, revision, content hash and retrieval reason; the injected ones are rendered with that provenance and recorded on the ContextCompile step",
+ "audit": "IMPLEMENTED in this batch"
+}
