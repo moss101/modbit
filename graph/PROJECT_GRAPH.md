@@ -58,7 +58,7 @@ One JSON file that answers *what exists, what depends on what, what proves what,
 flowchart LR
   M0["M0<br/>Repository and authority<br/>5/5 done"]
   M1["M1<br/>Durable local shell and Core<br/>19/19 done"]
-  M2["M2<br/>Real local engineering loop<br/>54/105 done"]
+  M2["M2<br/>Real local engineering loop<br/>61/105 done"]
   M3["M3<br/>Context intelligence<br/>0/62 done"]
   M4["M4<br/>Durable recovery spine<br/>0/18 done"]
   M5["M5<br/>Procedural runtime and skills<br/>0/40 done"]
@@ -106,7 +106,7 @@ Critical path (reliability spine): **M0 → M1 → M2 → M4**. Do not start bro
 |---|---|---|---:|---:|---:|---:|---|---|
 | M0 Repository and authority | COMPLETE | yes | 4 | 1 | 5 | 0 | — | clean clone build + architecture lint |
 | M1 Durable local shell and Core | COMPLETE | yes | 5 | 14 | 19 | 0 | M0 | user creates durable task, kills/restarts app/Core, same task recovers with no fake state. |
-| M2 Real local engineering loop | IN_PROGRESS | yes | 10 | 95 | 54 | 0 | M1 | E2E-001/002/003 with live model and actual test pass. |
+| M2 Real local engineering loop | IN_PROGRESS | yes | 10 | 95 | 61 | 0 | M1 | E2E-001/002/003 with live model and actual test pass. |
 | M3 Context intelligence | NOT_STARTED | no | 9 | 53 | 0 | 0 | M2 | profile A/B/C benchmark plus retrieval-before-edit visible in task evidence. |
 | M4 Durable recovery spine | NOT_STARTED | no | 6 | 12 | 0 | 0 | M2 | E2E-004/005/006/007/008. |
 | M5 Procedural runtime and skills | NOT_STARTED | no | 7 | 33 | 0 | 0 | M2 | E2E-011/012; direct and procedural mode yield equivalent receipts/policy behavior. |
@@ -322,9 +322,9 @@ Releases are projections over work items and gates (docs/75). Readiness is compu
 
 | Release | State | Included work items | Complete | Blocked | Required gates | Rule |
 |---|---|---:|---:|---:|---|---|
-| ALPHA: Local coding loop and recovery spine | NOT_READY | 134 | 77 | 0 | none | / ALPHA / Local coding loop and recovery spine / M0, M1, M2, M4 / M2.10 / EPR- / — / — / |
-| BETA: Intelligence, fleet and browser | NOT_READY | 330 | 78 | 0 | none | / BETA / Intelligence, fleet and browser / M0, M1, M2, M3, M4, M5, M6, M7 / — / — / — / — / |
-| RELEASE_ZERO: Full end-to-end proof | NOT_READY | 401 | 78 | 0 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
+| ALPHA: Local coding loop and recovery spine | NOT_READY | 134 | 84 | 0 | none | / ALPHA / Local coding loop and recovery spine / M0, M1, M2, M4 / M2.10 / EPR- / — / — / |
+| BETA: Intelligence, fleet and browser | NOT_READY | 330 | 85 | 0 | none | / BETA / Intelligence, fleet and browser / M0, M1, M2, M3, M4, M5, M6, M7 / — / — / — / — / |
+| RELEASE_ZERO: Full end-to-end proof | NOT_READY | 401 | 85 | 0 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
 
 ## Scoped v1.1 supersessions and source provenance
 

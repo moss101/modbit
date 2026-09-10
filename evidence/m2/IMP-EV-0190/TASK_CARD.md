@@ -29,4 +29,4 @@ Named tests (crate/test-binary :: test name), run by `.github/workflows/ci.yml`:
 ## Evidence
 
 - `evidence.json` in this directory (commits, hosted CI run, test names)
-- CI run json/log copies alongside
+- `ci-run-34437627213.json`, `ci-run-34437627213-tests.log`: hosted CI run 34437627213 on a1f7615, green on macOS, Linux and Windows

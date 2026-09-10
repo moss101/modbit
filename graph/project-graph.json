@@ -11382,8 +11382,59 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0190",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0190_attachments_normalize_to_the_same_canonical_envelope_as_workspace_reads",
+    "test:cli_drives_a_real_core_end_to_end",
+    "test:fleet.spec.ts",
+    "run:gha-34437627213",
+    "commit:448da2a",
+    "commit:a3f660e",
+    "commit:eb503a8",
+    "artifact:evidence/m2/IMP-EV-0190/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0190/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0190/ci-run-34437627213.json",
+    "artifact:evidence/m2/IMP-EV-0190/ci-run-34437627213-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T04:59:57Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: IMPLEMENTED in this batch"
+    },
+    {
+     "at": "2026-09-10T04:59:57Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "M2 backlog batch 2c/2d: an attachment ingested through the API, the desktop (task:attach IPC over the same command) and the CLI (task attach) is normalized by the media pipeline to the same MediaEnvelope a workspace read of "
+    },
+    {
+     "at": "2026-09-10T04:59:57Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the Core surface, tool registry, CLI and desktop; exercised on hosted CI"
+    },
+    {
+     "at": "2026-09-10T04:59:57Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real Core over the socket, real broker, real Electron/CLI processes, scripted provider over real HTTP"
+    },
+    {
+     "at": "2026-09-10T04:59:57Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at a1f7615"
+    },
+    {
+     "at": "2026-09-10T04:59:57Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0190: an attachment ingested through the API, the desktop (task:attach IPC over the same command) and the CLI (task attach) is normalized by the media pipeline to the same MediaEnvelope a workspace read of the same bytes yields (kind, MIME, digests, dimensions, stripped metadata, trust); only the provenan"
+    }
+   ],
+   "status_changed_on": "2026-09-10T04:59:57Z"
   },
   {
    "id": "IMP-EV-0191",
@@ -11397,8 +11448,57 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0191",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0191_steering_policy_interrupts_replaces_coalesces_and_orders",
+    "run:gha-34437627213",
+    "commit:448da2a",
+    "commit:a3f660e",
+    "commit:eb503a8",
+    "artifact:evidence/m2/IMP-EV-0191/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0191/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0191/ci-run-34437627213.json",
+    "artifact:evidence/m2/IMP-EV-0191/ci-run-34437627213-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T04:59:55Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: IMPLEMENTED in this batch (inputs were applied only at boundaries, all as separate messages)"
+    },
+    {
+     "at": "2026-09-10T04:59:55Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "M2 backlog batch 2c/2d: COLLECT c1+c2 reach the model as one message, FOLLOW_UP f1 then f2 as separate turns, a STEER queued mid-stream cuts the stream and the next turn starts from it; TaskSteered order c1\\nc2, f1, f2, s1"
+    },
+    {
+     "at": "2026-09-10T04:59:55Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the Core surface, tool registry, CLI and desktop; exercised on hosted CI"
+    },
+    {
+     "at": "2026-09-10T04:59:55Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real Core over the socket, real broker, real Electron/CLI processes, scripted provider over real HTTP"
+    },
+    {
+     "at": "2026-09-10T04:59:55Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at a1f7615"
+    },
+    {
+     "at": "2026-09-10T04:59:55Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0191: COLLECT c1+c2 reach the model as one message, FOLLOW_UP f1 then f2 as separate turns, a STEER queued mid-stream cuts the stream and the next turn starts from it; TaskSteered order c1\\nc2, f1, f2, s1"
+    }
+   ],
+   "status_changed_on": "2026-09-10T04:59:55Z"
   },
   {
    "id": "IMP-EV-0192",
@@ -11954,8 +12054,58 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0221",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0221_background_handles_survive_client_restart_with_bounded_preview_and_cancel",
+    "test:qual_ev_0271_0027_0135_detach_reattach_from_cursor_exactly_then_cancel_kills_the_real_process",
+    "run:gha-34437627213",
+    "commit:448da2a",
+    "commit:a3f660e",
+    "commit:eb503a8",
+    "artifact:evidence/m2/IMP-EV-0221/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0221/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0221/ci-run-34437627213.json",
+    "artifact:evidence/m2/IMP-EV-0221/ci-run-34437627213-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T04:59:55Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: IMPLEMENTED in this batch (the broker had the sessions; no tool exposed them)"
+    },
+    {
+     "at": "2026-09-10T04:59:55Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "M2 backlog batch 2c/2d: a ticker started in the background is listed, read from a byte cursor as a bounded preview that continues exactly, and cancelled from a fresh client connection; the exit and the full OutputRef are ret"
+    },
+    {
+     "at": "2026-09-10T04:59:55Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the Core surface, tool registry, CLI and desktop; exercised on hosted CI"
+    },
+    {
+     "at": "2026-09-10T04:59:55Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real Core over the socket, real broker, real Electron/CLI processes, scripted provider over real HTTP"
+    },
+    {
+     "at": "2026-09-10T04:59:56Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at a1f7615"
+    },
+    {
+     "at": "2026-09-10T04:59:56Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0221: a ticker started in the background is listed, read from a byte cursor as a bounded preview that continues exactly, and cancelled from a fresh client connection; the exit and the full OutputRef are returned; unknown handles are typed"
+    }
+   ],
+   "status_changed_on": "2026-09-10T04:59:56Z"
   },
   {
    "id": "IMP-EV-0222",
@@ -11968,8 +12118,58 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0222",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0222_px_014_typed_question_suspends_the_run_and_the_answer_resumes_it",
+    "test:qual_px_000_headless_cli_task_lifecycle",
+    "run:gha-34437627213",
+    "commit:448da2a",
+    "commit:a3f660e",
+    "commit:eb503a8",
+    "artifact:evidence/m2/IMP-EV-0222/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0222/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0222/ci-run-34437627213.json",
+    "artifact:evidence/m2/IMP-EV-0222/ci-run-34437627213-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T04:59:56Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: IMPLEMENTED in this batch"
+    },
+    {
+     "at": "2026-09-10T04:59:56Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "M2 backlog batch 2c/2d: a typed question suspends the run with the loop idle; the CLI's task run --wait exits 2 with state=Waiting wait_reason=UserInput; the answer resumes the run and reaches the model as the tool result"
+    },
+    {
+     "at": "2026-09-10T04:59:56Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the Core surface, tool registry, CLI and desktop; exercised on hosted CI"
+    },
+    {
+     "at": "2026-09-10T04:59:56Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real Core over the socket, real broker, real Electron/CLI processes, scripted provider over real HTTP"
+    },
+    {
+     "at": "2026-09-10T04:59:56Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at a1f7615"
+    },
+    {
+     "at": "2026-09-10T04:59:56Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0222: a typed question suspends the run with the loop idle; the CLI's task run --wait exits 2 with state=Waiting wait_reason=UserInput; the answer resumes the run and reaches the model as the tool result"
+    }
+   ],
+   "status_changed_on": "2026-09-10T04:59:56Z"
   },
   {
    "id": "IMP-EV-0223",
@@ -12410,8 +12610,57 @@
    "milestone": "M2",
    "qual": "QUAL-EV-0261",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0261_side_question_answers_from_a_snapshot_without_touching_task_state_or_cursor",
+    "run:gha-34437627213",
+    "commit:448da2a",
+    "commit:a3f660e",
+    "commit:eb503a8",
+    "artifact:evidence/m2/IMP-EV-0261/evidence.json",
+    "artifact:evidence/m2/IMP-EV-0261/TASK_CARD.md",
+    "artifact:evidence/m2/IMP-EV-0261/ci-run-34437627213.json",
+    "artifact:evidence/m2/IMP-EV-0261/ci-run-34437627213-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T04:59:55Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: IMPLEMENTED in this batch"
+    },
+    {
+     "at": "2026-09-10T04:59:55Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "M2 backlog batch 2c/2d: the answer comes back with the route record; task state, loop and log offset are identical before and after; an empty question is refused before any model call"
+    },
+    {
+     "at": "2026-09-10T04:59:55Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the Core surface, tool registry, CLI and desktop; exercised on hosted CI"
+    },
+    {
+     "at": "2026-09-10T04:59:55Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real Core over the socket, real broker, real Electron/CLI processes, scripted provider over real HTTP"
+    },
+    {
+     "at": "2026-09-10T04:59:55Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at a1f7615"
+    },
+    {
+     "at": "2026-09-10T04:59:55Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-EV-0261: the answer comes back with the route record; task state, loop and log offset are identical before and after; an empty question is refused before any model call"
+    }
+   ],
+   "status_changed_on": "2026-09-10T04:59:55Z"
   },
   {
    "id": "IMP-EV-0262",
@@ -18478,8 +18727,58 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-000",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_px_000_headless_cli_task_lifecycle",
+    "test:cli_drives_a_real_core_end_to_end",
+    "run:gha-34437627213",
+    "commit:448da2a",
+    "commit:a3f660e",
+    "commit:eb503a8",
+    "artifact:evidence/m2/PX-000/evidence.json",
+    "artifact:evidence/m2/PX-000/TASK_CARD.md",
+    "artifact:evidence/m2/PX-000/ci-run-34437627213.json",
+    "artifact:evidence/m2/PX-000/ci-run-34437627213-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T04:59:56Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: IMPLEMENTED in this batch on top of the M1.3/M2.x CLI"
+    },
+    {
+     "at": "2026-09-10T04:59:56Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "M2 backlog batch 2c/2d: real Core + CLI on a fixture repo against a scripted model over HTTP: create, run to the question (exit 2), JSON event lines, answer from the shell, approve the protected worktree close from a second "
+    },
+    {
+     "at": "2026-09-10T04:59:56Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the Core surface, tool registry, CLI and desktop; exercised on hosted CI"
+    },
+    {
+     "at": "2026-09-10T04:59:56Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real Core over the socket, real broker, real Electron/CLI processes, scripted provider over real HTTP"
+    },
+    {
+     "at": "2026-09-10T04:59:56Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at a1f7615"
+    },
+    {
+     "at": "2026-09-10T04:59:57Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-PX-000: real Core + CLI on a fixture repo against a scripted model over HTTP: create, run to the question (exit 2), JSON event lines, answer from the shell, approve the protected worktree close from a second shell, ReadyForReview (exit 0), exactly one effect receipt, the stream resumed by cursor across Core"
+    }
+   ],
+   "status_changed_on": "2026-09-10T04:59:57Z"
   },
   {
    "id": "PX-001",
@@ -18751,8 +19050,58 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-014",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0222_px_014_typed_question_suspends_the_run_and_the_answer_resumes_it",
+    "test:m2_7_harness_refuses_unplanned_writes_exhausts_budgets_and_resumes_after_restart",
+    "run:gha-34437627213",
+    "commit:448da2a",
+    "commit:a3f660e",
+    "commit:eb503a8",
+    "artifact:evidence/m2/PX-014/evidence.json",
+    "artifact:evidence/m2/PX-014/TASK_CARD.md",
+    "artifact:evidence/m2/PX-014/ci-run-34437627213.json",
+    "artifact:evidence/m2/PX-014/ci-run-34437627213-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T04:59:56Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (plan gate and plan events since M2.7) + IMPLEMENTED (typed questions and the clarification flag)"
+    },
+    {
+     "at": "2026-09-10T04:59:56Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "M2 backlog batch 2c/2d: ambiguous fixture: exactly one typed question, plan before the first write, a PlanRevised event after the answer; unambiguous fixture: no question; a yes/no question naming an existing file is flagged"
+    },
+    {
+     "at": "2026-09-10T04:59:56Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the Core surface, tool registry, CLI and desktop; exercised on hosted CI"
+    },
+    {
+     "at": "2026-09-10T04:59:56Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real Core over the socket, real broker, real Electron/CLI processes, scripted provider over real HTTP"
+    },
+    {
+     "at": "2026-09-10T04:59:56Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at a1f7615"
+    },
+    {
+     "at": "2026-09-10T04:59:56Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-PX-014: ambiguous fixture: exactly one typed question, plan before the first write, a PlanRevised event after the answer; unambiguous fixture: no question; a yes/no question naming an existing file is flagged CONFIRMS_REPOSITORY_FACT; a write before any plan is refused (M2.7 test)"
+    }
+   ],
+   "status_changed_on": "2026-09-10T04:59:56Z"
   },
   {
    "id": "PX-015",

@@ -8,9 +8,19 @@
  ],
  "batch_commits": [
   "448da2a",
-  "HEAD2"
+  "a3f660e",
+  "eb503a8",
+  "5d69f23"
  ],
- "runs": [],
+ "runs": [
+  {
+   "id": "gha-34437627213",
+   "kind": "hosted CI on a1f7615",
+   "result": "PASS on macOS, Linux and Windows (earlier runs: 34414344673 Windows shell.cancel timeout and macOS E2E lock owner; 34417571219 hung on the CLI lock race, cancelled; 34434373761 Windows cfg compile error)",
+   "url": "https://github.com/moss101/modbit/actions/runs/34437627213",
+   "log": "ci-run-34437627213.json, ci-run-34437627213-tests.log"
+  }
+ ],
  "proof": "a ticker started in the background is listed, read from a byte cursor as a bounded preview that continues exactly, and cancelled from a fresh client connection; the exit and the full OutputRef are returned; unknown handles are typed",
  "audit": "IMPLEMENTED in this batch (the broker had the sessions; no tool exposed them)"
 }
