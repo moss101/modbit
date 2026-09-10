@@ -144,6 +144,21 @@ ipcMain.handle("task:start", async (_e: IpcMainInvokeEvent, sessionId: unknown, 
   if (c.leaseGeneration(sid) === undefined) await c.acquireSessionLease(sid, `desktop ${app.getVersion()}`);
   return c.startTask(sid, tid);
 });
+// REQ-EV-0190: attach a local file to a task. Main reads the bytes (bounded)
+// and the Core normalizes them; the renderer never sees a filesystem.
+const MAX_ATTACHMENT_BYTES = 3 * 1024 * 1024;
+ipcMain.handle("task:attach", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown, filePath: unknown) => {
+  const sid = requireSessionId(sessionId);
+  const tid = requireTaskId(taskId);
+  if (typeof filePath !== "string" || filePath.length === 0 || filePath.length > 4096) throw new Error("BAD_ARGUMENT: file path required");
+  const abs = resolve(filePath);
+  if (!existsSync(abs)) throw new Error("BAD_ARGUMENT: file does not exist");
+  const data = readFileSync(abs);
+  if (data.byteLength === 0 || data.byteLength > MAX_ATTACHMENT_BYTES) throw new Error(`BAD_ARGUMENT: attachment must be 1..${MAX_ATTACHMENT_BYTES} bytes`);
+  const c = requireClient();
+  if (c.leaseGeneration(sid) === undefined) await c.acquireSessionLease(sid, `desktop ${app.getVersion()}`);
+  return c.ingestAttachment(sid, tid, abs.split(/[\\/]/).pop() ?? "attachment", new Uint8Array(data));
+});
 // Review surface (docs/20): immutable, revision-bound payloads from the Core.
 ipcMain.handle("review:bundle", async (_e: IpcMainInvokeEvent, taskId: unknown) => {
   const b = await requireClient().getReviewBundle(requireTaskId(taskId));

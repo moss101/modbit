@@ -1,0 +1,16 @@
+{
+ "task": "PX-014",
+ "requirement": "REQ-PX-014",
+ "qual": "QUAL-PX-014",
+ "tests": [
+  "qual_ev_0222_px_014_typed_question_suspends_the_run_and_the_answer_resumes_it",
+  "m2_7_harness_refuses_unplanned_writes_exhausts_budgets_and_resumes_after_restart"
+ ],
+ "batch_commits": [
+  "448da2a",
+  "HEAD2"
+ ],
+ "runs": [],
+ "proof": "ambiguous fixture: exactly one typed question, plan before the first write, a PlanRevised event after the answer; unambiguous fixture: no question; a yes/no question naming an existing file is flagged CONFIRMS_REPOSITORY_FACT; a write before any plan is refused (M2.7 test)",
+ "audit": "FOUND (plan gate and plan events since M2.7) + IMPLEMENTED (typed questions and the clarification flag)"
+}

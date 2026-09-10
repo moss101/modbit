@@ -1,0 +1,16 @@
+{
+ "task": "IMP-EV-0190",
+ "requirement": "REQ-EV-0190",
+ "qual": "QUAL-EV-0190",
+ "tests": [
+  "qual_ev_0190_attachments_normalize_to_the_same_canonical_envelope_as_workspace_reads",
+  "new task renders from Core ids, fleet reduces Core events, and survives Core kill and app restart",
+  "cli_drives_a_real_core_end_to_end"
+ ],
+ "batch_commits": [
+  "HEAD3"
+ ],
+ "runs": [],
+ "proof": "an attachment ingested through the API, the desktop (task:attach IPC over the same command) and the CLI (task attach) is normalized by the media pipeline to the same MediaEnvelope a workspace read of the same bytes yields (kind, MIME, digests, dimensions, stripped metadata, trust); only the provenance source differs; the log carries digests, the original is retrievable by digest, the same bytes replay, malformed media is a typed refusal",
+ "audit": "IMPLEMENTED in this batch"
+}

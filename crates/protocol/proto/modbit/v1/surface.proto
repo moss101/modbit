@@ -385,6 +385,26 @@ message QuestionResponded {
   bool already_answered = 2;
 }
 
+// REQ-EV-0190: ingest a channel attachment (desktop, CLI, API) through the
+// media pipeline; the result is the same canonical MediaEnvelope a workspace
+// read produces, stored by digest, and an AttachmentIngested event.
+message IngestAttachment {
+  Id task_id = 1;
+  string filename = 2;
+  string channel = 3;             // desktop | cli | api
+  bytes data = 4;                 // bounded by the frame limit (4 MiB)
+}
+
+message AttachmentIngested {
+  string attachment_id = 1;       // sha256 of the bytes
+  string envelope_json = 2;       // the MediaEnvelope
+  string kind = 3;
+  string mime = 4;
+  string content_ref = 5;
+  uint64 offset = 6;              // log offset of the AttachmentIngested event
+  bool replayed = 7;              // the same bytes were ingested before for this task
+}
+
 message GetCapabilityLeases {
   Id task_id = 1;
 }

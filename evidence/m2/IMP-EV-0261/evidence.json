@@ -1,0 +1,15 @@
+{
+ "task": "IMP-EV-0261",
+ "requirement": "REQ-EV-0261",
+ "qual": "QUAL-EV-0261",
+ "tests": [
+  "qual_ev_0261_side_question_answers_from_a_snapshot_without_touching_task_state_or_cursor"
+ ],
+ "batch_commits": [
+  "448da2a",
+  "HEAD2"
+ ],
+ "runs": [],
+ "proof": "the answer comes back with the route record; task state, loop and log offset are identical before and after; an empty question is refused before any model call",
+ "audit": "IMPLEMENTED in this batch"
+}

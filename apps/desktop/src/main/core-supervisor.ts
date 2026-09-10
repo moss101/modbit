@@ -133,10 +133,12 @@ export class CoreSupervisor {
       child.stdin?.end();
       child.stdout?.destroy();
       child.kill();
-      // A Core that ignores SIGTERM (or is wedged) must not survive the desktop.
+      // The Core is crash-safe (every accepted command is durable before its
+      // ack), so a quitting desktop escalates to SIGKILL almost at once: a Core
+      // that outlives the desktop would hold the profile lock against the next one.
       const escalate = setTimeout(() => {
         if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
-      }, 2000);
+      }, 250);
       escalate.unref();
     }
   }

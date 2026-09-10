@@ -1,0 +1,16 @@
+{
+ "task": "IMP-EV-0222",
+ "requirement": "REQ-EV-0222",
+ "qual": "QUAL-EV-0222",
+ "tests": [
+  "qual_ev_0222_px_014_typed_question_suspends_the_run_and_the_answer_resumes_it",
+  "qual_px_000_headless_cli_task_lifecycle"
+ ],
+ "batch_commits": [
+  "448da2a",
+  "HEAD2"
+ ],
+ "runs": [],
+ "proof": "a typed question suspends the run with the loop idle; the CLI's task run --wait exits 2 with state=Waiting wait_reason=UserInput; the answer resumes the run and reaches the model as the tool result",
+ "audit": "IMPLEMENTED in this batch"
+}

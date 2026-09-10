@@ -4055,6 +4055,25 @@ async fn invoke_tool(
     Client::result(&ack).unwrap()
 }
 
+async fn read_object_bytes(c: &mut Client, id: Id, hash: &str) -> Vec<u8> {
+    use modbit_protocol::v1::{ObjectRangeChunk, ReadObjectRange};
+    let ack = c
+        .command(envelope(
+            id,
+            "ReadObjectRange",
+            ReadObjectRange {
+                object_hash: hash.to_owned(),
+                offset: 0,
+                length: 1024 * 1024,
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let chunk: ObjectRangeChunk = Client::result(&ack).unwrap();
+    chunk.data
+}
+
 async fn read_object(c: &mut Client, id: Id, hash: &str) -> String {
     use modbit_protocol::v1::{ObjectRangeChunk, ReadObjectRange};
     let ack = c
@@ -5344,5 +5363,143 @@ async fn qual_ev_0222_px_014_typed_question_suspends_the_run_and_the_answer_resu
         vec!["CONFIRMS_REPOSITORY_FACT".to_owned()],
         "{:?}",
         l.questions
+    );
+}
+
+/// QUAL-EV-0190: an attachment ingested through the API (desktop/CLI use the
+/// same command) is normalized to the very same canonical MediaEnvelope a
+/// workspace read of the same bytes produces: kind, MIME, digests, dimensions,
+/// stripped metadata and trust label are identical; only the provenance
+/// source differs. Bytes never ride on the log; the same bytes replay.
+#[tokio::test]
+async fn qual_ev_0190_attachments_normalize_to_the_same_canonical_envelope_as_workspace_reads() {
+    use modbit_protocol::v1::{AttachmentIngested, IngestAttachment};
+    let fixture = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/fixtures/media/label.png");
+    let bytes = std::fs::read(&fixture).unwrap();
+    let (repo, root) = plain_repo(&[("a.txt", "a\n")]);
+    std::fs::write(repo.path().join("label.png"), &bytes).unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn(dir.path());
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xF0)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xF1, "local_trusted").await;
+    let ingest = IngestAttachment {
+        task_id: Some(task.clone()),
+        filename: "label.png".into(),
+        channel: "api".into(),
+        data: bytes.clone(),
+    }
+    .encode_to_vec();
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xF2),
+            "IngestAttachment",
+            ingest.clone(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let a: AttachmentIngested = Client::result(&ack).unwrap();
+    assert!(
+        !a.replayed && a.kind == "IMAGE" && a.mime == "image/png",
+        "{a:?}"
+    );
+    let env_a: serde_json::Value = serde_json::from_str(&a.envelope_json).unwrap();
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xF3,
+        0xC1,
+        "fs.read",
+        r#"{"path":"label.png"}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let env_w = so["media"].clone();
+    for field in [
+        "kind",
+        "mime",
+        "content_ref",
+        "byte_length",
+        "egress_ref",
+        "width",
+        "height",
+        "trust",
+        "metadata_stripped",
+        "budget",
+        "lineage",
+    ] {
+        assert_eq!(
+            env_a[field], env_w[field],
+            "{field} differs between attachment and workspace read"
+        );
+    }
+    assert_eq!(
+        env_a["provenance"]["original_digest"],
+        env_w["provenance"]["original_digest"]
+    );
+    assert_eq!(env_a["provenance"]["source"], "attachment:api:label.png");
+    assert_eq!(
+        env_a["provenance"]["task_id"]
+            .as_str()
+            .map(|s| s.replace('-', "")),
+        Some(hex::encode(&task.value))
+    );
+    // The log carries the envelope (digests), never the bytes; the original is retrievable by digest.
+    let evs = task_events(&core, &session, &task).await;
+    let ing: Vec<_> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "AttachmentIngested")
+        .collect();
+    assert_eq!(ing.len(), 1);
+    let payload = ing[0].2.to_string();
+    assert!(
+        payload.len() < 4096
+            && payload.contains(&a.content_ref)
+            && payload.contains("\"channel\":\"api\""),
+        "{payload}"
+    );
+    let original = read_object_bytes(&mut c, id16(0xF4), &a.content_ref).await;
+    assert_eq!(
+        original, bytes,
+        "the original bytes are retrievable by digest"
+    );
+    // Same bytes again: replayed, no second event.
+    let ack = c
+        .command(envelope_fenced(id16(0xF5), "IngestAttachment", ingest, g))
+        .await
+        .unwrap();
+    let again: AttachmentIngested = Client::result(&ack).unwrap();
+    assert!(
+        again.replayed && again.offset == a.offset && again.content_ref == a.content_ref,
+        "{again:?}"
+    );
+    assert_eq!(
+        task_events(&core, &session, &task)
+            .await
+            .iter()
+            .filter(|(_, t, _)| t == "AttachmentIngested")
+            .count(),
+        1
+    );
+    // Malformed media is a typed failure, not an event.
+    let bad = IngestAttachment {
+        task_id: Some(task.clone()),
+        filename: "x.png".into(),
+        channel: "api".into(),
+        data: b"\x89PNG\r\n\x1a\ntruncated".to_vec(),
+    }
+    .encode_to_vec();
+    let err = c
+        .command(envelope_fenced(id16(0xF6), "IngestAttachment", bad, g))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "MEDIA_MALFORMED"),
+        "{err}"
     );
 }

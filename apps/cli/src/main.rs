@@ -33,14 +33,15 @@ use std::process::{Command, ExitCode, Stdio};
 use modbit_protocol::client::Client;
 use modbit_protocol::local::{ReadyLine, decode_hex, encode_hex};
 use modbit_protocol::v1::{
-    AcquireSessionLease, ApprovalList, ApprovalResolvedAck, CancelTask, CapabilityLeaseList,
-    ClientKind, CommandEnvelope, CreateSession, CreateTask, DecideReview, EffectReceiptList,
-    EmergencyStop, EmergencyStopped, GetCapabilityLeases, GetEffectReceipts, GetReviewBundle,
-    GetSessionSnapshot, GetTaskStatus, HunkRef, Id, InvokeTool, ListApprovals, ListModels,
-    ListQuestions, ListTools, ModelList, ModelProbed, ProbeModel, QuestionList, QuestionResponded,
-    ResolveApproval, RespondToQuestion, ReviewBundle, ReviewDecided, SessionCreated,
-    SessionLeaseAcquired, SessionSnapshot, StartTask, TaskCancelRequested, TaskCreated,
-    TaskRunStarted, TaskStatus, ToolInvoked, ToolList, UndoPlanView, UndoToolCall,
+    AcquireSessionLease, ApprovalList, ApprovalResolvedAck, AttachmentIngested, CancelTask,
+    CapabilityLeaseList, ClientKind, CommandEnvelope, CreateSession, CreateTask, DecideReview,
+    EffectReceiptList, EmergencyStop, EmergencyStopped, GetCapabilityLeases, GetEffectReceipts,
+    GetReviewBundle, GetSessionSnapshot, GetTaskStatus, HunkRef, Id, IngestAttachment, InvokeTool,
+    ListApprovals, ListModels, ListQuestions, ListTools, ModelList, ModelProbed, ProbeModel,
+    QuestionList, QuestionResponded, ResolveApproval, RespondToQuestion, ReviewBundle,
+    ReviewDecided, SessionCreated, SessionLeaseAcquired, SessionSnapshot, StartTask,
+    TaskCancelRequested, TaskCreated, TaskRunStarted, TaskStatus, ToolInvoked, ToolList,
+    UndoPlanView, UndoToolCall,
 };
 use prost::Message;
 
@@ -58,7 +59,7 @@ fn exit_for_state(state: &str) -> u8 {
     }
 }
 
-const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] [--json] | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
+const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
 
 fn parse_id(hex: &str) -> Result<Id, String> {
     let bytes = decode_hex(hex)
@@ -134,11 +135,59 @@ async fn run(args: Vec<String>) -> Result<(), String> {
         }
     }
     let data_dir = data_dir.ok_or(USAGE)?;
-    let (mut child, ready) = spawn_core(&data_dir)?;
+    let (child, ready) = attach_or_spawn(&data_dir).await?;
     let result = run_command(&ready, rest).await;
-    let _ = child.kill();
-    let _ = child.wait();
+    if let Some(mut child) = child {
+        let _ = child.kill();
+        let _ = child.wait();
+    }
     result
+}
+
+/// Attach to the profile's running Core through its owner-only `core.ready`
+/// file, or spawn one. A spawn that loses the profile lock to a Core that is
+/// just starting retries the attach (REQ-PX-000: concurrent headless clients).
+async fn attach_or_spawn(
+    data_dir: &str,
+) -> Result<(Option<std::process::Child>, ReadyLine), String> {
+    if let Some(r) = attach(data_dir).await {
+        return Ok((None, r));
+    }
+    let mut last = String::new();
+    for _ in 0..25 {
+        match spawn_core(data_dir) {
+            Ok((child, ready)) => return Ok((Some(child), ready)),
+            Err(e) => {
+                last = e;
+                tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+                if let Some(r) = attach(data_dir).await {
+                    return Ok((None, r));
+                }
+            }
+        }
+    }
+    Err(last)
+}
+
+async fn attach(data_dir: &str) -> Option<ReadyLine> {
+    let text = std::fs::read_to_string(std::path::Path::new(data_dir).join("core.ready")).ok()?;
+    let ready = ReadyLine::parse(text.trim())?;
+    let secret = decode_hex(&ready.boot_secret_hex)?;
+    // Prove the Core is alive and ours before using it.
+    match Client::connect(
+        &ready.endpoint,
+        &secret,
+        ClientKind::Cli,
+        env!("CARGO_PKG_VERSION"),
+    )
+    .await
+    {
+        Ok(_) => Some(ready),
+        Err(e) => {
+            eprintln!("modbit-cli: core.ready present but attach failed ({e}); spawning");
+            None
+        }
+    }
 }
 
 async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String> {
@@ -528,6 +577,40 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
             if words.contains(&"--wait") {
                 wait_until_idle(&mut client, &task_id).await?;
             }
+        }
+        ["task", "attach", ..] => {
+            let sid = parse_id(opt("--session").ok_or(USAGE)?)?;
+            let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
+            let file = positionals(&words, 2)
+                .first()
+                .copied()
+                .ok_or(USAGE)?
+                .to_owned();
+            let data = std::fs::read(&file).map_err(|e| format!("reading {file}: {e}"))?;
+            let filename = std::path::Path::new(&file)
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            let lease = acquire_lease(&mut client, &sid).await?;
+            let ack = client
+                .command(envelope_fenced(
+                    "IngestAttachment",
+                    IngestAttachment {
+                        task_id: Some(task_id),
+                        filename,
+                        channel: "cli".into(),
+                        data,
+                    }
+                    .encode_to_vec(),
+                    Some(lease),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let a: AttachmentIngested = Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "attachment {} kind={} mime={} content_ref={} offset={} replayed={}",
+                a.attachment_id, a.kind, a.mime, a.content_ref, a.offset, a.replayed
+            );
         }
         ["question", "list", ..] => {
             let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;

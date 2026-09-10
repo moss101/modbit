@@ -1,0 +1,16 @@
+{
+ "task": "PX-000",
+ "requirement": "REQ-PX-000",
+ "qual": "QUAL-PX-000",
+ "tests": [
+  "qual_px_000_headless_cli_task_lifecycle",
+  "cli_drives_a_real_core_end_to_end"
+ ],
+ "batch_commits": [
+  "448da2a",
+  "HEAD2"
+ ],
+ "runs": [],
+ "proof": "real Core + CLI on a fixture repo against a scripted model over HTTP: create, run to the question (exit 2), JSON event lines, answer from the shell, approve the protected worktree close from a second shell, ReadyForReview (exit 0), exactly one effect receipt, the stream resumed by cursor across Core restarts with identical offsets and no duplicate, exit 3 after cancel, exit 1 on rejection, exit 4 while queued; the CLI manifest carries no provider/workspace/git/policy/tools crate",
+ "audit": "IMPLEMENTED in this batch on top of the M1.3/M2.x CLI"
+}

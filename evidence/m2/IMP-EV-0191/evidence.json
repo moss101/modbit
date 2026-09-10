@@ -1,0 +1,15 @@
+{
+ "task": "IMP-EV-0191",
+ "requirement": "REQ-EV-0191",
+ "qual": "QUAL-EV-0191",
+ "tests": [
+  "qual_ev_0191_steering_policy_interrupts_replaces_coalesces_and_orders"
+ ],
+ "batch_commits": [
+  "448da2a",
+  "HEAD2"
+ ],
+ "runs": [],
+ "proof": "COLLECT c1+c2 reach the model as one message, FOLLOW_UP f1 then f2 as separate turns, a STEER queued mid-stream cuts the stream and the next turn starts from it; TaskSteered order c1\\nc2, f1, f2, s1",
+ "audit": "IMPLEMENTED in this batch (inputs were applied only at boundaries, all as separate messages)"
+}

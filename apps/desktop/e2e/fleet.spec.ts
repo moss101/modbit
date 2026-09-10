@@ -50,6 +50,24 @@ test("new task renders from Core ids, fleet reduces Core events, and survives Co
   await expect(page.getByTestId("column-running").getByTestId("task-card")).toHaveCount(0);
   await expect(page.getByTestId("column-completed").getByTestId("task-card")).toHaveCount(0);
 
+  // REQ-EV-0190: attach a real PNG through the desktop; the Core normalizes it to the
+  // canonical MediaEnvelope (same as a workspace read) and the card reflects the event.
+  const png = resolve(appDir, "..", "..", "tests", "fixtures", "media", "label.png");
+  const attached = await page.evaluate(async ([tid, path]) => {
+    const s = await window.modbit.localState();
+    return window.modbit.attachFile(s.sessionId!, tid!, path!);
+  }, [taskId, png]);
+  expect(attached.kind).toBe("IMAGE");
+  expect(attached.mime).toBe("image/png");
+  expect(attached.contentRef).toMatch(/^[0-9a-f]{64}$/);
+  await expect(card.getByTestId("task-attachments")).toHaveText("1");
+  const attachedAgain = await page.evaluate(async ([tid, path]) => {
+    const s = await window.modbit.localState();
+    return window.modbit.attachFile(s.sessionId!, tid!, path!);
+  }, [taskId, png]);
+  expect(attachedAgain.replayed).toBe(true);
+  await expect(card.getByTestId("task-attachments")).toHaveText("1");
+
   // Degraded state: hard-kill the Core; the banner shows; main respawns; recovery banner shows;
   // the task is still there because the Core persisted it before answering.
   const info = await page.evaluate(() => window.modbit.debugCoreInfo());

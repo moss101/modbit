@@ -243,6 +243,8 @@ function Card({ card, onStart, onReview }: { card: TaskCard; onStart: (id: strin
       <div className="meta">
         state: <span data-testid="task-state">{card.state}</span>
         {card.waitReason ? ` · waiting on ${card.waitReason}` : ""} · gen {card.generation} · local_trusted
+        {" · attachments "}
+        <span data-testid="task-attachments">{card.attachments ?? 0}</span>
       </div>
       {card.nextAction && (
         <div className="meta">

@@ -1586,6 +1586,99 @@ export declare type QuestionResponded = Message<"modbit.v1.QuestionResponded"> &
 export declare const QuestionRespondedSchema: GenMessage<QuestionResponded>;
 
 /**
+ * REQ-EV-0190: ingest a channel attachment (desktop, CLI, API) through the
+ * media pipeline; the result is the same canonical MediaEnvelope a workspace
+ * read produces, stored by digest, and an AttachmentIngested event.
+ *
+ * @generated from message modbit.v1.IngestAttachment
+ */
+export declare type IngestAttachment = Message<"modbit.v1.IngestAttachment"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: string filename = 2;
+   */
+  filename: string;
+
+  /**
+   * desktop | cli | api
+   *
+   * @generated from field: string channel = 3;
+   */
+  channel: string;
+
+  /**
+   * bounded by the frame limit (4 MiB)
+   *
+   * @generated from field: bytes data = 4;
+   */
+  data: Uint8Array;
+};
+
+/**
+ * Describes the message modbit.v1.IngestAttachment.
+ * Use `create(IngestAttachmentSchema)` to create a new message.
+ */
+export declare const IngestAttachmentSchema: GenMessage<IngestAttachment>;
+
+/**
+ * @generated from message modbit.v1.AttachmentIngested
+ */
+export declare type AttachmentIngested = Message<"modbit.v1.AttachmentIngested"> & {
+  /**
+   * sha256 of the bytes
+   *
+   * @generated from field: string attachment_id = 1;
+   */
+  attachmentId: string;
+
+  /**
+   * the MediaEnvelope
+   *
+   * @generated from field: string envelope_json = 2;
+   */
+  envelopeJson: string;
+
+  /**
+   * @generated from field: string kind = 3;
+   */
+  kind: string;
+
+  /**
+   * @generated from field: string mime = 4;
+   */
+  mime: string;
+
+  /**
+   * @generated from field: string content_ref = 5;
+   */
+  contentRef: string;
+
+  /**
+   * log offset of the AttachmentIngested event
+   *
+   * @generated from field: uint64 offset = 6;
+   */
+  offset: bigint;
+
+  /**
+   * the same bytes were ingested before for this task
+   *
+   * @generated from field: bool replayed = 7;
+   */
+  replayed: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.AttachmentIngested.
+ * Use `create(AttachmentIngestedSchema)` to create a new message.
+ */
+export declare const AttachmentIngestedSchema: GenMessage<AttachmentIngested>;
+
+/**
  * @generated from message modbit.v1.GetCapabilityLeases
  */
 export declare type GetCapabilityLeases = Message<"modbit.v1.GetCapabilityLeases"> & {

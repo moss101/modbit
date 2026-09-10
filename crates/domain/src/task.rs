@@ -228,6 +228,19 @@ pub enum TaskEvent {
         /// Policy flags (`CONFIRMS_REPOSITORY_FACT`: the question asks what the repository already answers).
         flags: Vec<String>,
     },
+    /// `AttachmentIngested` (REQ-EV-0190): a channel attachment (desktop, CLI,
+    /// API) normalized through the media pipeline into the same canonical
+    /// `MediaEnvelope` as a workspace read; bytes by digest only. No state change.
+    AttachmentIngested {
+        /// Attachment id (sha256 of the bytes).
+        attachment_id: String,
+        /// Client-supplied file name (label only).
+        filename: String,
+        /// Channel (`desktop` | `cli` | `api` | other).
+        channel: String,
+        /// The canonical envelope (boxed: it is the largest event payload).
+        envelope: Box<crate::media::MediaEnvelope>,
+    },
     /// `UserQuestionAnswered`: the user's typed answer; no state change.
     UserQuestionAnswered {
         /// Question id.
@@ -331,6 +344,7 @@ impl TaskEvent {
             Self::TaskInputQueued { .. } => "TaskInputQueued",
             Self::UserQuestionAsked { .. } => "UserQuestionAsked",
             Self::UserQuestionAnswered { .. } => "UserQuestionAnswered",
+            Self::AttachmentIngested { .. } => "AttachmentIngested",
             Self::PlanRecorded { .. } => "PlanRecorded",
             Self::PlanRevised { .. } => "PlanRevised",
             Self::SelfReviewRecorded { .. } => "SelfReviewRecorded",
@@ -428,6 +442,7 @@ impl Task {
             | TaskEvent::TaskInputQueued { .. }
             | TaskEvent::UserQuestionAsked { .. }
             | TaskEvent::UserQuestionAnswered { .. }
+            | TaskEvent::AttachmentIngested { .. }
             | TaskEvent::PlanRecorded { .. }
             | TaskEvent::PlanRevised { .. }
             | TaskEvent::SelfReviewRecorded { .. }

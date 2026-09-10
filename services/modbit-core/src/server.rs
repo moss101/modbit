@@ -151,24 +151,27 @@ pub async fn run(data_dir: PathBuf) -> Result<()> {
             .with_policy(modbit_providers::OrgModelPolicy::from_env()),
         runtime: crate::runtime::Runtime::default(),
     });
+    let _ = std::fs::remove_file(data_dir.join("core.ready"));
     let listener = Listener::bind(&endpoint)
         .await
         .context("binding local endpoint")?;
-    // Ready line: the only place the secret leaves the process (docs/30).
-    println!(
-        "{}",
-        ReadyLine {
-            endpoint: endpoint.clone(),
-            boot_secret_hex: encode_hex(&boot_secret),
-            protocol: (
-                modbit_protocol::PROTOCOL_VERSION.major,
-                modbit_protocol::PROTOCOL_VERSION.minor
-            )
-        }
-        .render()
-    );
+    // Ready line: to the supervising parent on stdout, and to `core.ready`
+    // (owner-only, 0600) in the profile so a headless client can attach to the
+    // running Core instead of racing it for the profile lock (REQ-PX-000).
+    let ready_line = ReadyLine {
+        endpoint: endpoint.clone(),
+        boot_secret_hex: encode_hex(&boot_secret),
+        protocol: (
+            modbit_protocol::PROTOCOL_VERSION.major,
+            modbit_protocol::PROTOCOL_VERSION.minor,
+        ),
+    }
+    .render();
+    println!("{ready_line}");
     use std::io::Write;
     std::io::stdout().flush().ok();
+    let ready_path = data_dir.join("core.ready");
+    write_owner_only(&ready_path, format!("{ready_line}\n").as_bytes());
     let shutdown = shutdown_signal();
     tokio::pin!(shutdown);
     loop {
@@ -186,53 +189,102 @@ pub async fn run(data_dir: PathBuf) -> Result<()> {
         }
     }
     listener.cleanup();
+    let _ = std::fs::remove_file(&ready_path);
     Ok(())
 }
 
+/// Write `bytes` to `path` readable by the owner only (the boot secret lives there).
+fn write_owner_only(path: &Path, bytes: &[u8]) {
+    let _ = std::fs::remove_file(path);
+    #[cfg(unix)]
+    {
+        use std::io::Write;
+        use std::os::unix::fs::OpenOptionsExt;
+        if let Ok(mut f) = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(path)
+        {
+            let _ = f.write_all(bytes);
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = std::fs::write(path, bytes);
+    }
+}
+
 async fn shutdown_signal() {
-    let _ = tokio::signal::ctrl_c().await;
+    #[cfg(unix)]
+    {
+        let mut term = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("SIGTERM handler");
+        tokio::select! {
+            _ = tokio::signal::ctrl_c() => {}
+            _ = term.recv() => {}
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = tokio::signal::ctrl_c().await;
+    }
 }
 
 fn acquire_singleton_lock(data_dir: &Path) -> Result<()> {
-    // docs/33 step 4: one Core per user profile. A stale lock from a dead
-    // process is reclaimed; a live one refuses startup.
+    // docs/33 step 4: one Core per user profile. The lock is an OS file lock
+    // held for the process lifetime, so two Cores racing for one profile can
+    // never both proceed (a loser would otherwise rebind the shared socket
+    // path); a crashed owner's lock is released by the OS and reclaimed.
     let lock = data_dir.join("core.lock");
-    if let Ok(text) = std::fs::read_to_string(&lock)
-        && let Ok(pid) = text.trim().parse::<u32>()
-        && pid != std::process::id()
-        && process_alive(pid)
-    {
-        anyhow::bail!(
-            "another modbit-core (pid {pid}) owns {}",
-            data_dir.display()
-        );
+    let mut file = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(&lock)
+        .with_context(|| format!("opening {}", lock.display()))?;
+    match file.try_lock() {
+        Ok(()) => {}
+        Err(std::fs::TryLockError::WouldBlock) => {
+            let pid = std::fs::read_to_string(&lock)
+                .ok()
+                .and_then(|t| t.trim().parse::<u32>().ok())
+                .unwrap_or(0);
+            anyhow::bail!(
+                "another modbit-core (pid {pid}: {}) owns {}",
+                process_command(pid),
+                data_dir.display()
+            );
+        }
+        Err(std::fs::TryLockError::Error(e)) => {
+            return Err(anyhow::Error::from(e).context("locking core.lock"));
+        }
     }
-    std::fs::write(&lock, std::process::id().to_string())?;
+    use std::io::Write;
+    file.set_len(0)?;
+    file.write_all(std::process::id().to_string().as_bytes())?;
+    file.flush()?;
+    // Held until exit: dropping the handle would release the lock.
+    std::mem::forget(file);
     Ok(())
 }
 
 #[cfg(unix)]
-fn process_alive(pid: u32) -> bool {
-    if Path::new("/proc").exists() {
-        return Path::new(&format!("/proc/{pid}")).exists();
+/// The owner's command line, for the refusal message (diagnosability).
+fn process_command(pid: u32) -> String {
+    #[cfg(windows)]
+    {
+        return format!("pid {pid}");
     }
-    // Without procfs (macOS): `kill -0` also succeeds for an unreaped zombie,
-    // so consult the process state and treat a zombie as dead.
-    let state = std::process::Command::new("ps")
-        .args(["-o", "stat=", "-p", &pid.to_string()])
-        .output()
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_owned())
-        .unwrap_or_default();
-    !state.is_empty() && !state.starts_with('Z')
-}
-
-#[cfg(windows)]
-fn process_alive(pid: u32) -> bool {
-    std::process::Command::new("tasklist")
-        .args(["/FI", &format!("PID eq {pid}"), "/NH"])
-        .output()
-        .map(|o| String::from_utf8_lossy(&o.stdout).contains(&pid.to_string()))
-        .unwrap_or(false)
+    #[cfg(not(windows))]
+    {
+        std::process::Command::new("ps")
+            .args(["-o", "command=", "-p", &pid.to_string()])
+            .output()
+            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_owned())
+            .unwrap_or_default()
+    }
 }
 
 /// Platform listener.
@@ -384,6 +436,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "AskSideQuestion",
                     "ListQuestions",
                     "RespondToQuestion",
+                    "IngestAttachment",
                 ]
                 .map(String::from)
                 .to_vec(),
@@ -1392,6 +1445,121 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 wire::EmergencyStopped {
                     leases_revoked: revoked,
                     offset,
+                }
+                .encode_to_vec(),
+            )
+        }
+        "IngestAttachment" => {
+            let Ok(p) = wire::IngestAttachment::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "IngestAttachment");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            if p.data.is_empty() {
+                return reject(cid, "BAD_PAYLOAD", "data required");
+            }
+            let task = {
+                let store = core.store.lock().await;
+                match store.task(&task_id) {
+                    Ok(Some(t)) => t,
+                    Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                }
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
+                return ack;
+            }
+            let channel = match p.channel.as_str() {
+                "desktop" | "cli" | "api" => p.channel.clone(),
+                _ => "api".to_owned(),
+            };
+            let filename: String = p
+                .filename
+                .chars()
+                .filter(|c| !c.is_control())
+                .take(255)
+                .collect();
+            let attachment_id = {
+                use sha2::Digest;
+                hex::encode(sha2::Sha256::digest(&p.data))
+            };
+            let mut store = core.store.lock().await;
+            // Same bytes for the same task: replay the recorded ingestion.
+            let prior = store
+                .read_aggregate(task_id.as_bytes(), 0, usize::MAX)
+                .unwrap_or_default()
+                .into_iter()
+                .find_map(|e| {
+                    (e.envelope.event_type == "AttachmentIngested")
+                        .then(|| store.payload(&e.envelope).ok())
+                        .flatten()
+                        .filter(|v| v["attachment_id"] == attachment_id.as_str())
+                        .map(|v| (v, e.offset))
+                });
+            if let Some((v, offset)) = prior {
+                let env_v = v["envelope"].clone();
+                return accept(
+                    cid,
+                    true,
+                    wire::AttachmentIngested {
+                        attachment_id,
+                        envelope_json: env_v.to_string(),
+                        kind: env_v["kind"].as_str().unwrap_or_default().to_owned(),
+                        mime: env_v["mime"].as_str().unwrap_or_default().to_owned(),
+                        content_ref: env_v["content_ref"].as_str().unwrap_or_default().to_owned(),
+                        offset,
+                        replayed: true,
+                    }
+                    .encode_to_vec(),
+                );
+            }
+            let sink = crate::tools::StoreSink(store.objects().clone());
+            let req = modbit_tools::media::ReadRequest {
+                bytes: &p.data,
+                source: &format!("attachment:{channel}:{filename}"),
+                workspace_revision: None,
+                task_id: Some(task_id),
+                pages: None,
+                budget: modbit_tools::media::default_budget(),
+            };
+            let read = match modbit_tools::media::read(&req, &sink) {
+                Ok(m) => m,
+                Err(e) => return reject(cid, e.code, e.message),
+            };
+            let envelope = read.envelope;
+            let actor = Actor::User(core.user_id);
+            let offset = match crate::runtime::append(
+                &mut store,
+                core,
+                crate::runtime::Lineage::task(core.tenant_id, task.session_id, task_id),
+                AggregateType::Task,
+                *task_id.as_bytes(),
+                vec![crate::runtime::typed(
+                    "AttachmentIngested",
+                    &modbit_domain::task::TaskEvent::AttachmentIngested {
+                        attachment_id: attachment_id.clone(),
+                        filename,
+                        channel,
+                        envelope: Box::new(envelope.clone()),
+                    },
+                    actor,
+                )],
+            ) {
+                Ok(o) => o,
+                Err(e) => return reject(cid, "STORE", e.to_string()),
+            };
+            accept(
+                cid,
+                false,
+                wire::AttachmentIngested {
+                    attachment_id,
+                    envelope_json: serde_json::to_string(&envelope).unwrap_or_default(),
+                    kind: format!("{:?}", envelope.kind).to_uppercase(),
+                    mime: envelope.mime.clone(),
+                    content_ref: envelope.content_ref.clone(),
+                    offset,
+                    replayed: false,
                 }
                 .encode_to_vec(),
             )

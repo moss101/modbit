@@ -11,6 +11,8 @@ import { connect, type Socket } from "node:net";
 import { create, fromBinary, toBinary, type MessageInitShape } from "@bufbuild/protobuf";
 import {
   AcquireSessionLeaseSchema,
+  AttachmentIngestedSchema,
+  IngestAttachmentSchema,
   ClientKind,
   CodeViewModelSchema,
   CommandAckSchema,
@@ -262,6 +264,14 @@ export class CoreClient {
     const ack = await this.command("StartTask", payload, undefined, this.leases.get(sessionId));
     const r = fromBinary(TaskRunStartedSchema, ack.result);
     return { runId: hex(r.runId?.value ?? new Uint8Array()), resumed: r.resumed, endpoint: r.endpoint, model: r.model };
+  }
+
+  /** REQ-EV-0190: normalize a channel attachment through the Core's media pipeline (bytes stay in the Core by digest). */
+  async ingestAttachment(sessionId: string, taskId: string, filename: string, data: Uint8Array): Promise<{ attachmentId: string; kind: string; mime: string; contentRef: string; offset: string; replayed: boolean }> {
+    const payload = toBinary(IngestAttachmentSchema, create(IngestAttachmentSchema, { taskId: { value: unhex(taskId) }, filename, channel: "desktop", data }));
+    const ack = await this.command("IngestAttachment", payload, undefined, this.leases.get(sessionId));
+    const r = fromBinary(AttachmentIngestedSchema, ack.result);
+    return { attachmentId: r.attachmentId, kind: r.kind, mime: r.mime, contentRef: r.contentRef, offset: r.offset.toString(), replayed: r.replayed };
   }
 
   async getReviewBundle(taskId: string): Promise<ReviewBundle> {

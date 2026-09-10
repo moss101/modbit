@@ -283,6 +283,27 @@ fn cli_drives_a_real_core_end_to_end() {
     assert!(ok && out.contains("undo applied=true steps=1"), "{all}");
     assert!(!repo.join("made.txt").exists());
 
+    // REQ-EV-0190: a CLI attachment lands as the canonical media envelope.
+    let png = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/fixtures/media/label.png");
+    let (ok, out, all) = cli(
+        &data_dir,
+        &core,
+        &[
+            "task",
+            "attach",
+            "--session",
+            &sid,
+            "--task",
+            &tid,
+            png.to_str().unwrap(),
+        ],
+    );
+    assert!(
+        ok && out.contains("kind=IMAGE mime=image/png") && out.contains("replayed=false"),
+        "{all}"
+    );
+
     // M2.5: the task lease, an approval-gated destructive tool, the receipt chain.
     let (ok, out, all) = cli(&data_dir, &core, &["lease", "list", "--task", &tid]);
     assert!(

@@ -27,3 +27,12 @@ the last `offset` after a disconnect or a Core restart; no event is duplicated.
 options, flags and answers. `question answer --session <id> --task <id>
 --question <id> [--option <id>] [--wait] [free text]` records the answer and
 resumes the run.
+
+## Attaching to a running Core
+
+A Core publishes its ready line (endpoint, boot secret, protocol version) to
+`<data-dir>/core.ready`, readable by the owner only, and removes it on
+shutdown. The CLI attaches to that Core when it is alive and spawns one
+otherwise; a spawn that loses the profile lock to a Core that is just
+starting retries the attach. This is what lets a second shell answer a
+question or approve an effect while `task run --wait` holds the Core.

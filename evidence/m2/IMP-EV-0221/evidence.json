@@ -1,0 +1,16 @@
+{
+ "task": "IMP-EV-0221",
+ "requirement": "REQ-EV-0221",
+ "qual": "QUAL-EV-0221",
+ "tests": [
+  "qual_ev_0221_background_handles_survive_client_restart_with_bounded_preview_and_cancel",
+  "qual_ev_0271_0027_0135_detach_reattach_from_cursor_exactly_then_cancel_kills_the_real_process"
+ ],
+ "batch_commits": [
+  "448da2a",
+  "HEAD2"
+ ],
+ "runs": [],
+ "proof": "a ticker started in the background is listed, read from a byte cursor as a bounded preview that continues exactly, and cancelled from a fresh client connection; the exit and the full OutputRef are returned; unknown handles are typed",
+ "audit": "IMPLEMENTED in this batch (the broker had the sessions; no tool exposed them)"
+}

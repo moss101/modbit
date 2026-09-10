@@ -13,6 +13,7 @@ export interface TaskCard {
   generation: number;
   createdAtMs: number;
   nextAction: string | null;
+  attachments: number;
 }
 
 export interface Snapshot {
@@ -49,7 +50,7 @@ export function fromSnapshot(s: Snapshot): Model {
   m.sessionId = s.sessionId;
   m.cursor = s.lastOffset;
   for (const t of s.tasks) {
-    m.tasks.set(t.taskId, { taskId: t.taskId, goalText: t.goalText, state: normalizeState(t.state), waitReason: waitReasonOf(t.state), generation: t.generation, createdAtMs: t.createdAtMs, nextAction: null });
+    m.tasks.set(t.taskId, { taskId: t.taskId, goalText: t.goalText, state: normalizeState(t.state), waitReason: waitReasonOf(t.state), generation: t.generation, createdAtMs: t.createdAtMs, nextAction: null, attachments: 0 });
   }
   return m;
 }
@@ -88,6 +89,7 @@ export function applyEvent(m: Model, e: Event, taskIdHint?: string): Model {
         generation: 1,
         createdAtMs: e.occurredAtMs,
         nextAction: null,
+        attachments: 0,
       });
       return next;
     }
@@ -127,6 +129,9 @@ export function applyEvent(m: Model, e: Event, taskIdHint?: string): Model {
           break;
         case "TaskCancelled":
           updated.state = "Cancelled";
+          break;
+        case "AttachmentIngested":
+          updated.attachments = (card.attachments ?? 0) + 1;
           break;
         case "TaskNeedsAttention":
           updated.nextAction = String(p["reason"] ?? "Needs attention");
