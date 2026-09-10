@@ -8,9 +8,18 @@
  ],
  "batch_commits": [
   "5d4c142",
-  "HEAD"
+  "84062fd",
+  "fbc7657"
  ],
- "runs": [],
+ "runs": [
+  {
+   "id": "gha-34439622680",
+   "kind": "hosted CI on fbc7657",
+   "result": "PASS on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34439622680",
+   "log": "ci-run-34439622680.json, ci-run-34439622680-tests.log"
+  }
+ ],
  "proof": "a seeded flaky test fails once, is rerun in isolation at the same revision and environment digest and, because its suite is mandatory, must pass three consecutive isolated reruns before it is labelled FLAKY and quarantined for the task and revision (both run references recorded, excluded from failure signatures, shown in Review and the self-review); a FLAKY attribution makes acceptance INCONCLUSIVE (blocks) at COMPLETION",
  "audit": "FOUND + IMPLEMENTED (three-pass rule)"
 }

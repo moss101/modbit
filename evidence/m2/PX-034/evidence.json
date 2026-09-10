@@ -8,9 +8,18 @@
  ],
  "batch_commits": [
   "5d4c142",
-  "84062fd"
+  "84062fd",
+  "fbc7657"
  ],
- "runs": [],
+ "runs": [
+  {
+   "id": "gha-34439622680",
+   "kind": "hosted CI on fbc7657",
+   "result": "PASS on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34439622680",
+   "log": "ci-run-34439622680.json, ci-run-34439622680-tests.log"
+  }
+ ],
  "proof": "the TARGETED run reports failing checks first and does not complete the task; COMPLETION runs twice in the M2.8 test: first refused on a REGRESSION, then clean at the final revision after the fix",
  "audit": "FOUND (M2.8) \u2014 qualification"
 }

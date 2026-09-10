@@ -9,9 +9,18 @@
  ],
  "batch_commits": [
   "5d4c142",
-  "84062fd"
+  "84062fd",
+  "fbc7657"
  ],
- "runs": [],
+ "runs": [
+  {
+   "id": "gha-34439622680",
+   "kind": "hosted CI on fbc7657",
+   "result": "PASS on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34439622680",
+   "log": "ci-run-34439622680.json, ci-run-34439622680-tests.log"
+  }
+ ],
  "proof": "the derived plan is recorded before the BASELINE run; commands carry mandatory flags that attribution enforces (a NEW_FAILING or REGRESSION on a mandatory check blocks acceptance); diff invariants are evaluated per transaction and at COMPLETION; the plan's declared changes are honoured by attribution",
  "audit": "FOUND (M2.8) \u2014 qualification"
 }

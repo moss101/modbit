@@ -19207,8 +19207,58 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-017",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:m2_8_verification_engine_gates_completion_on_real_cargo_fixture",
+    "test:cargo_fixture_baseline_labels_known_failing_quarantines_flaky_and_attributes_regressions",
+    "test:pytest_junit_and_configured_command_adapters",
+    "run:gha-34439622680",
+    "commit:5d4c142",
+    "commit:fbc7657",
+    "artifact:evidence/m2/PX-017/evidence.json",
+    "artifact:evidence/m2/PX-017/TASK_CARD.md",
+    "artifact:evidence/m2/PX-017/ci-run-34439622680.json",
+    "artifact:evidence/m2/PX-017/ci-run-34439622680-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T05:32:50Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (M2.8) — qualification"
+    },
+    {
+     "at": "2026-09-10T05:32:50Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "M2 backlog batch 2e: the derived plan is recorded before the BASELINE run; commands carry mandatory flags that attribution enforces (a NEW_FAILING or REGRESSION on a mandatory check blocks acceptance); diff invariants are"
+    },
+    {
+     "at": "2026-09-10T05:32:51Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired in the agent loop and verification engine; exercised on hosted CI"
+    },
+    {
+     "at": "2026-09-10T05:32:51Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real cargo/vitest/pytest fixtures, real Core over the socket"
+    },
+    {
+     "at": "2026-09-10T05:32:51Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at fbc7657"
+    },
+    {
+     "at": "2026-09-10T05:32:51Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-PX-017: the derived plan is recorded before the BASELINE run; commands carry mandatory flags that attribution enforces (a NEW_FAILING or REGRESSION on a mandatory check blocks acceptance); diff invariants are evaluated per transaction and at COMPLETION; the plan's declared changes are honoured by attributio"
+    }
+   ],
+   "status_changed_on": "2026-09-10T05:32:51Z"
   },
   {
    "id": "PX-018",
@@ -19583,8 +19633,57 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-032",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:m2_8_verification_engine_gates_completion_on_real_cargo_fixture",
+    "test:cargo_fixture_baseline_labels_known_failing_quarantines_flaky_and_attributes_regressions",
+    "run:gha-34439622680",
+    "commit:5d4c142",
+    "commit:fbc7657",
+    "artifact:evidence/m2/PX-032/evidence.json",
+    "artifact:evidence/m2/PX-032/TASK_CARD.md",
+    "artifact:evidence/m2/PX-032/ci-run-34439622680.json",
+    "artifact:evidence/m2/PX-032/ci-run-34439622680-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T05:32:51Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: FOUND (M2.8) — qualification"
+    },
+    {
+     "at": "2026-09-10T05:32:51Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "M2 backlog batch 2e: on the rust-cli fixture the pre-existing failure is KNOWN_FAILING at BASELINE, the test the task breaks is attributed REGRESSION at COMPLETION and blocks acceptance until fixed; a check declared as an"
+    },
+    {
+     "at": "2026-09-10T05:32:51Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired in the agent loop and verification engine; exercised on hosted CI"
+    },
+    {
+     "at": "2026-09-10T05:32:51Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real cargo/vitest/pytest fixtures, real Core over the socket"
+    },
+    {
+     "at": "2026-09-10T05:32:51Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at fbc7657"
+    },
+    {
+     "at": "2026-09-10T05:32:51Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "QUAL-PX-032: on the rust-cli fixture the pre-existing failure is KNOWN_FAILING at BASELINE, the test the task breaks is attributed REGRESSION at COMPLETION and blocks acceptance until fixed; a check declared as an expected change before the run is attributed as declared, not a regression"
+    }
+   ],
+   "status_changed_on": "2026-09-10T05:32:51Z"
   },
   {
    "id": "PX-033",

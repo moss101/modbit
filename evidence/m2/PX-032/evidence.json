@@ -8,9 +8,18 @@
  ],
  "batch_commits": [
   "5d4c142",
-  "84062fd"
+  "84062fd",
+  "fbc7657"
  ],
- "runs": [],
+ "runs": [
+  {
+   "id": "gha-34439622680",
+   "kind": "hosted CI on fbc7657",
+   "result": "PASS on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34439622680",
+   "log": "ci-run-34439622680.json, ci-run-34439622680-tests.log"
+  }
+ ],
  "proof": "on the rust-cli fixture the pre-existing failure is KNOWN_FAILING at BASELINE, the test the task breaks is attributed REGRESSION at COMPLETION and blocks acceptance until fixed; a check declared as an expected change before the run is attributed as declared, not a regression",
  "audit": "FOUND (M2.8) \u2014 qualification"
 }
