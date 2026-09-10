@@ -1,0 +1,16 @@
+{
+ "task": "M3.5",
+ "tests": [
+  "semantic_index_finds_nearest_chunks_and_reembeds_only_changed_files",
+  "m3_5_semantic_chunk_index_serves_nearest_chunks_and_reembeds_only_changed_files",
+  "qual_ev_0217_compatibility_matrix_covers_every_registered_tool_with_owner_effect_and_test"
+ ],
+ "commits": {
+  "implementation": "HEAD"
+ },
+ "runs": [],
+ "evidence_tier": "release-critical",
+ "acceptance": {
+  "USearch embeddings + changed-chunk incremental update": "pending hosted CI"
+ }
+}

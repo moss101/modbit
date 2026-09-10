@@ -23,6 +23,20 @@ pub struct ServerSpec {
     pub init_options: Value,
 }
 
+/// A path without the Windows verbatim prefix (`\\?\`), which node and
+/// `CreateProcess` working directories do not accept.
+#[must_use]
+pub fn plain(path: &Path) -> PathBuf {
+    let s = path.to_string_lossy();
+    if let Some(rest) = s.strip_prefix(r"\\?\UNC\") {
+        PathBuf::from(format!(r"\\{rest}"))
+    } else if let Some(rest) = s.strip_prefix(r"\\?\") {
+        PathBuf::from(rest)
+    } else {
+        path.to_path_buf()
+    }
+}
+
 fn which(name: &str) -> Option<PathBuf> {
     let exe = if cfg!(windows) {
         format!("{name}.exe")
@@ -60,7 +74,10 @@ fn node_modules_with(package: &str, root: &Path, hint: Option<&Path>) -> Option<
             d = p.parent().map(Path::to_path_buf);
         }
     }
-    candidates.into_iter().find(|c| c.join(package).is_dir())
+    candidates
+        .into_iter()
+        .find(|c| c.join(package).is_dir())
+        .map(|c| plain(&c))
 }
 
 /// Resolve the server for `language` (label as in the retrieval index).

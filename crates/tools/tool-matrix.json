@@ -355,6 +355,20 @@
     "fs.read"
    ],
    "test": "m3_4_headless_language_service_bridge_serves_diagnostics_symbols_references_and_definitions"
+  },
+  {
+   "tool": "search.semantic",
+   "family": "search",
+   "source_behaviors": [
+    "semantic search",
+    "embedding retrieval"
+   ],
+   "owner": "Context Engine (retrieval index)",
+   "effect": "ReadOnly",
+   "capabilities": [
+    "fs.read"
+   ],
+   "test": "m3_5_semantic_chunk_index_serves_nearest_chunks_and_reembeds_only_changed_files"
   }
  ],
  "harness": [

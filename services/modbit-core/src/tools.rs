@@ -119,6 +119,8 @@ pub struct ToolHost {
     pub(crate) lexical: Mutex<HashMap<PathBuf, Arc<Mutex<modbit_retrieval::LexicalIndex>>>>,
     /// Symbol indexes per canonical workspace root (M3.3).
     pub(crate) symbols: Mutex<HashMap<PathBuf, Arc<Mutex<modbit_retrieval::SymbolIndex>>>>,
+    /// Semantic chunk indexes per canonical workspace root (M3.5).
+    pub(crate) semantic: Mutex<HashMap<PathBuf, Arc<Mutex<modbit_retrieval::SemanticIndex>>>>,
     /// Headless language servers per (workspace root, language) (M3.4).
     pub(crate) language_servers: LanguageServers,
     /// One workspace service per approved root, kept so revisions stay monotonic in-process.
@@ -148,6 +150,7 @@ impl ToolHost {
             indexes: Mutex::new(HashMap::new()),
             lexical: Mutex::new(HashMap::new()),
             symbols: Mutex::new(HashMap::new()),
+            semantic: Mutex::new(HashMap::new()),
             language_servers: Arc::new(std::sync::Mutex::new(HashMap::new())),
             state_dir: data_dir.join("workspaces"),
         })
@@ -232,6 +235,35 @@ impl ToolHost {
         )));
         map.insert(canonical.to_path_buf(), Arc::clone(&sx));
         Ok(sx)
+    }
+
+    /// The semantic chunk index of a workspace root, built from the exact and
+    /// symbol indexes with the hashing embedder at first use (M3.5).
+    pub(crate) async fn semantic(
+        &self,
+        canonical: &Path,
+    ) -> Result<Arc<Mutex<modbit_retrieval::SemanticIndex>>> {
+        let mut map = self.semantic.lock().await;
+        if let Some(i) = map.get(canonical) {
+            return Ok(Arc::clone(i));
+        }
+        let index = self.index(canonical).await?;
+        let symbols = self.symbols(canonical).await?;
+        let index = index.lock().await;
+        let symbols = symbols.lock().await;
+        let files: Vec<modbit_retrieval::FileSource> = index
+            .texts()
+            .map(|(p, t, _)| (p, t, symbol_spans(&symbols, p)))
+            .collect();
+        let sem = modbit_retrieval::SemanticIndex::build(
+            Box::new(modbit_retrieval::HashingEmbedder::default()),
+            files.into_iter(),
+            index.revision(),
+        )
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
+        let sem = Arc::new(Mutex::new(sem));
+        map.insert(canonical.to_path_buf(), Arc::clone(&sem));
+        Ok(sem)
     }
 
     /// The tool surface compiled from support × policy (REQ-EV-0096/0133/0044):
@@ -322,6 +354,7 @@ impl ToolHost {
                 index: self.index(r).await?,
                 lexical: self.lexical(r).await?,
                 symbols: self.symbols(r).await?,
+                semantic: self.semantic(r).await?,
                 workspace: Arc::clone(ws),
             })),
             _ => None,
@@ -410,6 +443,32 @@ impl ToolHost {
                         })
                         .collect();
                     symbols.lock().await.refresh(&changed, rev);
+                }
+                if let (Ok(semantic), Ok(symbols)) =
+                    (self.semantic(root).await, self.symbols(root).await)
+                {
+                    // docs/18: embedding is queued for changed chunks, then flushed here.
+                    let symbols = symbols.lock().await;
+                    let mut sem = semantic.lock().await;
+                    sem.mark_changed(&paths);
+                    let changed: Vec<ChangedChunkSource> = paths
+                        .iter()
+                        .map(|p| {
+                            let t = index
+                                .texts()
+                                .find(|(path, _, _)| *path == p.as_str())
+                                .map(|(_, t, _)| (t.to_owned(), symbol_spans(&symbols, p)));
+                            (p.clone(), t)
+                        })
+                        .collect();
+                    if let Err(e) = sem.flush(
+                        changed.iter().map(|(p, c)| {
+                            (p.as_str(), c.as_ref().map(|(t, s)| (t.as_str(), s.clone())))
+                        }),
+                        rev,
+                    ) {
+                        eprintln!("modbit-core: semantic index refresh failed: {e}");
+                    }
                 }
             }
             let objects = store.lock().await.objects().clone();
@@ -967,7 +1026,21 @@ struct IndexPort {
     index: Arc<Mutex<modbit_retrieval::RepositoryIndex>>,
     lexical: Arc<Mutex<modbit_retrieval::LexicalIndex>>,
     symbols: Arc<Mutex<modbit_retrieval::SymbolIndex>>,
+    semantic: Arc<Mutex<modbit_retrieval::SemanticIndex>>,
     workspace: Arc<Mutex<WorkspaceService>>,
+}
+
+/// A changed path with its new text and symbol spans (`None` = removed).
+type ChangedChunkSource = (String, Option<(String, Vec<(String, u64, u64)>)>);
+
+/// Symbol byte spans of a path as chunk boundaries (`name`, start, end).
+fn symbol_spans(symbols: &modbit_retrieval::SymbolIndex, path: &str) -> Vec<(String, u64, u64)> {
+    symbols
+        .symbols_in(path)
+        .iter()
+        .filter(|s| s.container.is_none())
+        .map(|s| (s.name.clone(), s.span.0, s.span.1))
+        .collect()
 }
 
 impl modbit_tools::SearchPort for IndexPort {
@@ -998,6 +1071,12 @@ impl modbit_tools::SearchPort for IndexPort {
                 "the index is being refreshed".to_owned(),
             )
         })?;
+        let mut semantic = self.semantic.try_lock().map_err(|_| {
+            (
+                "INDEX_BUSY".to_owned(),
+                "the index is being refreshed".to_owned(),
+            )
+        })?;
         if ws_rev > idx.revision() {
             // Freshness (docs/18): a write without a recorded changed set is not possible
             // through the tools, but an external edit may have moved the revision.
@@ -1006,6 +1085,16 @@ impl modbit_tools::SearchPort for IndexPort {
             *lexical = modbit_retrieval::LexicalIndex::build(idx.texts(), ws_rev)
                 .map_err(|e| ("INDEX_REBUILD".to_owned(), e.to_string()))?;
             *symbols = modbit_retrieval::SymbolIndex::build(idx.texts_with_hash(), ws_rev);
+            let files: Vec<modbit_retrieval::FileSource> = idx
+                .texts()
+                .map(|(p, t, _)| (p, t, symbol_spans(&symbols, p)))
+                .collect();
+            *semantic = modbit_retrieval::SemanticIndex::build(
+                Box::new(modbit_retrieval::HashingEmbedder::default()),
+                files.into_iter(),
+                ws_rev,
+            )
+            .map_err(|e| ("INDEX_REBUILD".to_owned(), e))?;
         }
         let opts = modbit_retrieval::SearchOptions {
             case_insensitive: req.case_insensitive,
@@ -1041,6 +1130,17 @@ impl modbit_tools::SearchPort for IndexPort {
                     max: req.max_hits,
                 };
                 serde_json::json!({"symbols": symbols.query(&sq).map_err(|e| ("BAD_GLOB".to_owned(), e))?})
+            }
+            "semantic" => {
+                let hits = semantic
+                    .search(&req.query, req.max_hits)
+                    .map_err(|e| ("BAD_QUERY".to_owned(), e))?;
+                serde_json::json!({
+                    "hits": hits,
+                    "embedder": semantic.embedder_id(),
+                    "embedding_generation": semantic.generation(),
+                    "stale_paths": semantic.pending(),
+                })
             }
             "paths" => serde_json::json!({"paths": idx
                 .find_paths(&req.query, req.max_hits)

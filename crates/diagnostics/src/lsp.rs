@@ -282,9 +282,9 @@ impl LanguageServer {
         initialization_options: Value,
         timeout: Duration,
     ) -> Result<Self, LspError> {
-        let mut child = Command::new(command)
+        let mut child = Command::new(crate::servers::plain(command))
             .args(args)
-            .current_dir(root)
+            .current_dir(crate::servers::plain(root))
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::null())

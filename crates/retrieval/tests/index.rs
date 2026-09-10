@@ -421,3 +421,90 @@ fn symbol_index_extracts_alpha_language_definitions_and_refreshes() {
             && sx.symbols_in("a.rs")[0].index_revision == 2
     );
 }
+
+/// M3.5: versioned embeddings in a USearch index over symbol chunks; identical
+/// text is the nearest chunk; changed files are queued and only they are
+/// re-embedded at the new generation; the embedder id names the vector space.
+#[test]
+fn semantic_index_finds_nearest_chunks_and_reembeds_only_changed_files() {
+    use modbit_retrieval::{Embedder, HashingEmbedder, SemanticIndex, SymbolIndex};
+    let d = tempfile::tempdir().unwrap();
+    let r = d.path();
+    std::fs::write(r.join("cart.rs"), "pub fn total_cents(quantity: u32, unit: u32) -> u32 {\n    quantity * unit\n}\n\npub fn parse_quantity(input: &str) -> u32 {\n    input.trim().parse().unwrap_or(0)\n}\n").unwrap();
+    std::fs::write(
+        r.join("notes.md"),
+        "shipping notes\nnothing about money here\n",
+    )
+    .unwrap();
+    let idx = RepositoryIndex::build(r, 1).unwrap();
+    let sx = SymbolIndex::build(idx.texts_with_hash(), 1);
+    let spans = |p: &str| {
+        sx.symbols_in(p)
+            .iter()
+            .map(|s| (s.name.clone(), s.span.0, s.span.1))
+            .collect::<Vec<_>>()
+    };
+    let files: Vec<modbit_retrieval::FileSource> =
+        idx.texts().map(|(p, t, _)| (p, t, spans(p))).collect();
+    let mut sem =
+        SemanticIndex::build(Box::new(HashingEmbedder::default()), files.into_iter(), 1).unwrap();
+    assert_eq!(
+        (sem.embedder_id(), sem.generation(), sem.len()),
+        ("hashing-v1", 1, 3)
+    );
+    let e = HashingEmbedder::default();
+    let v = e.embed(&["fn total_cents(quantity, unit)"]);
+    assert!(
+        (v[0].iter().map(|x| x * x).sum::<f32>().sqrt() - 1.0).abs() < 1e-4,
+        "unit vectors"
+    );
+    assert_eq!(e.embed(&["a b"]), e.embed(&["a b"]), "deterministic");
+    let hits = sem.search("total_cents quantity unit", 3).unwrap();
+    assert_eq!(
+        (hits[0].chunk.path.as_str(), hits[0].chunk.label.as_str()),
+        ("cart.rs", "total_cents"),
+        "{hits:?}"
+    );
+    assert!(hits[0].score > hits[1].score);
+    assert_eq!(
+        sem.search("shipping notes", 1).unwrap()[0].chunk.path,
+        "notes.md"
+    );
+    let calls = sem.embed_calls();
+    // Change one file: queued, declared stale, then only it is re-embedded.
+    std::fs::write(r.join("notes.md"), "refund policy for money back\n").unwrap();
+    sem.mark_changed(&["notes.md".into()]);
+    assert_eq!(sem.pending(), vec!["notes.md"]);
+    let text = std::fs::read_to_string(r.join("notes.md")).unwrap();
+    sem.flush([("notes.md", Some((text.as_str(), vec![])))].into_iter(), 2)
+        .unwrap();
+    assert!(sem.pending().is_empty() && sem.generation() == 2);
+    assert_eq!(
+        sem.embed_calls(),
+        calls + 1,
+        "one embedder call for the changed file only"
+    );
+    let hits = sem.search("refund money", 1).unwrap();
+    assert_eq!(
+        (
+            hits[0].chunk.path.as_str(),
+            hits[0].chunk.embedded_at_revision
+        ),
+        ("notes.md", 2)
+    );
+    assert!(
+        sem.search("total_cents", 1).unwrap()[0]
+            .chunk
+            .embedded_at_revision
+            == 1,
+        "untouched chunks keep their revision"
+    );
+    sem.flush([("cart.rs", None)].into_iter(), 3).unwrap();
+    assert_eq!(sem.len(), 1);
+    assert!(
+        sem.search("total_cents", 3)
+            .unwrap()
+            .iter()
+            .all(|h| h.chunk.path != "cart.rs")
+    );
+}

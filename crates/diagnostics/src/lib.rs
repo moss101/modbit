@@ -14,4 +14,4 @@ pub mod lsp;
 pub mod servers;
 
 pub use lsp::{Diagnostic, LanguageServer, Location, LspError, LspSymbol, Position, Range};
-pub use servers::{ServerSpec, resolve_server, resolve_server_in};
+pub use servers::{ServerSpec, plain, resolve_server, resolve_server_in};

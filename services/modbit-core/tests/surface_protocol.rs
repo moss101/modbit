@@ -6043,3 +6043,92 @@ async fn m3_4_headless_language_service_bridge_serves_diagnostics_symbols_refere
         "{r:?}"
     );
 }
+
+/// M3.5: `search.semantic` serves nearest chunks with the embedder id and the
+/// embedding generation; a write re-embeds only the changed file's chunks at
+/// the new generation and nothing stays queued afterwards.
+#[tokio::test]
+async fn m3_5_semantic_chunk_index_serves_nearest_chunks_and_reembeds_only_changed_files() {
+    let (_repo, root) = plain_repo(&[
+        (
+            "cart.rs",
+            "pub fn total_cents(quantity: u32, unit: u32) -> u32 {\n    quantity * unit\n}\n",
+        ),
+        ("notes.md", "shipping notes\n"),
+    ]);
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn(dir.path());
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xE0)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xE1, "local_trusted").await;
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xE2,
+        0xF1,
+        "search.semantic",
+        r#"{"query":"total_cents quantity unit","max_hits":2}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(so["hits"][0]["chunk"]["path"], "cart.rs", "{so}");
+    assert_eq!(so["hits"][0]["chunk"]["label"], "total_cents");
+    assert_eq!(so["embedder"], "hashing-v1");
+    let gen0 = so["embedding_generation"].as_u64().unwrap();
+    assert!(so["stale_paths"].as_array().unwrap().is_empty());
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xE3,
+        0xF2,
+        "change.apply",
+        r#"{"path":"notes.md","op":"replace","content":"refund policy for money back\n"}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xE4,
+        0xF3,
+        "search.semantic",
+        r#"{"query":"refund money","max_hits":2}"#,
+    )
+    .await;
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(so["hits"][0]["chunk"]["path"], "notes.md", "{so}");
+    assert_eq!(
+        so["hits"][0]["chunk"]["embedded_at_revision"]
+            .as_u64()
+            .unwrap(),
+        gen0 + 1
+    );
+    assert_eq!(so["embedding_generation"].as_u64().unwrap(), gen0 + 1);
+    assert!(
+        so["stale_paths"].as_array().unwrap().is_empty(),
+        "flushed on the write"
+    );
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xE5,
+        0xF4,
+        "search.semantic",
+        r#"{"query":"total_cents","max_hits":1}"#,
+    )
+    .await;
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(
+        so["hits"][0]["chunk"]["embedded_at_revision"]
+            .as_u64()
+            .unwrap(),
+        gen0,
+        "the untouched file kept its vectors"
+    );
+}

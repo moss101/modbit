@@ -896,6 +896,19 @@ tool!(
     |ctx, args| lsp_tool_body(ctx, &args, "definition")
 );
 
+tool!(
+    SearchSemantic,
+    spec(
+        "search.semantic",
+        "Nearest chunks by embedding similarity over the workspace (USearch; the shipped embedder is deterministic token hashing, named in the result, not a learned model): chunk path, label, lines, span and score, with the embedding generation and the paths still queued for re-embedding (M3.5, docs/18 L1).",
+        EffectClass::ReadOnly,
+        serde_json::from_str(SEARCH_SCHEMA).expect("schema"),
+        &["fs.read"],
+        Idempotency::Idempotent
+    ),
+    |ctx, args| search_tool_body(ctx, &args, "semantic")
+);
+
 /// Wait window for `shell.read` when the process is still running.
 const READ_WAIT_MS: u64 = 250;
 
@@ -1325,6 +1338,7 @@ pub fn register_direct(registry: &mut ToolRegistry) -> Result<()> {
         SearchPaths::shared(),
         SearchLexical::shared(),
         SearchSymbols::shared(),
+        SearchSemantic::shared(),
         LspDiagnostics::shared(),
         LspSymbols::shared(),
         LspReferences::shared(),
