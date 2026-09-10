@@ -20,8 +20,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | Verification and testing | 50–69 | 15 | 202032 |
 | Delivery and operations | 70–79 | 7 | 33831 |
 | Agent process and governance | 80–97 | 18 | 109299 |
-| Live state | 98–99 | 1 | 3743 |
-| **Total docs** | | **89** | **1037259** |
+| Live state | 98–99 | 1 | 3942 |
+| **Total docs** | | **89** | **1037458** |
 
 ## Specification files (`docs/`)
 
@@ -115,7 +115,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 95 | `docs/95_EPR_V1_1_DOSSIER_TASK_AND_HANDOFF.md` | EPR v1.1 dossier task and handoff | governance | 10525 | `264069b600baf40d1e54d2f89be7e9804a8b77c0dbf3ddb0a9dca41111582413` |
 | 96 | `docs/96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md` | Dossier governance maintenance task and handoff | governance | 9070 | `af650309e48dd7fd60dd6d286c460ed7c3128a2201964078c7f50aea385bfb8c` |
 | 97 | `docs/97_DOSSIER_MAINTENANCE_LOG.md` | Dossier maintenance log | governance | 43736 | `ae48c1832a920977def82d1ba4b7d492d4281c60a3723beaef613d3144c97073` |
-| 98 | `docs/98_BUILD_MANIFEST.md` | Build Manifest | live-state | 3743 | `105eb389571fcc4999d6be1c4808c64ea52be8063896593685a2a3635e1966ef` |
+| 98 | `docs/98_BUILD_MANIFEST.md` | Build Manifest | live-state | 3942 | `ceb45280e3da80ec45f794ce9341d92a30c6a1ebb11867a531870f80e6afeea6` |
 
 ## Root governing files and tooling
 
@@ -520,7 +520,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `tools/dossier_epr.py` | parses additive EPR authority and traceability | 9310 | `4b5e399ee1b4886662294e3780d7f0630195e29c8198256ff7719d5236591a18` |
 | `tools/dossier_px.py` | parses the additive product-extension ledger and phased release rules | 6931 | `0a7dd5bd5872fb1d959c56fd017bd3916062d0f60d1bc51b9abceddc134202e2` |
 | `tools/graph.py` | query/update graph | 36313 | `76f2a79fca3c305205f34573b94118c99511944833e8e602bf0eba7e2ac305cb` |
-| `tools/test_dossier.py` | copied-package integration and negative tests | 32967 | `91285e2acec53dda9312fdfc4ab7af1ba3f4862deca2e2455233ff81804c30c2` |
+| `tools/test_dossier.py` | copied-package integration and negative tests | 33052 | `325773a518630a898fbe0579e2250c4404904beadf1c804f6dc594f39478f42d` |
 
 ## Rename map (V3 flat numbering → V3.1 `docs/`)
 

@@ -8,7 +8,7 @@
   "counts": {
     "docs": 89,
     "root_and_tooling": 400,
-    "docs_bytes": 1037259
+    "docs_bytes": 1037458
   },
   "sections": [
     {
@@ -851,8 +851,8 @@
       "section": "live-state",
       "section_title": "Live state",
       "title": "Build Manifest",
-      "bytes": 3743,
-      "sha256": "105eb389571fcc4999d6be1c4808c64ea52be8063896593685a2a3635e1966ef"
+      "bytes": 3942,
+      "sha256": "ceb45280e3da80ec45f794ce9341d92a30c6a1ebb11867a531870f80e6afeea6"
     }
   ],
   "root_and_tooling": [
@@ -2853,8 +2853,8 @@
     },
     {
       "path": "tools/test_dossier.py",
-      "bytes": 32967,
-      "sha256": "91285e2acec53dda9312fdfc4ab7af1ba3f4862deca2e2455233ff81804c30c2"
+      "bytes": 33052,
+      "sha256": "325773a518630a898fbe0579e2250c4404904beadf1c804f6dc594f39478f42d"
     }
   ],
   "renames_v3_to_v3_1": {
