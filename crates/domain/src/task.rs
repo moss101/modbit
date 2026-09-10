@@ -292,6 +292,21 @@ pub enum TaskEvent {
         /// Tool names activated.
         tools: Vec<String>,
     },
+    /// `RetrievalRecorded` (docs/28 §2, PX-015): the task retrieved a file
+    /// (read, language-service query, or its own write) at a revision and
+    /// content hash — the record an edit of that file needs. No state change.
+    RetrievalRecorded {
+        /// Path.
+        path: String,
+        /// Content hash at the retrieval.
+        content_hash: String,
+        /// Workspace revision.
+        workspace_revision: u64,
+        /// Tool call.
+        tool_call_id: String,
+        /// Tool.
+        tool_name: String,
+    },
     /// `RepairAttemptRecorded` (docs/28 §5, PX-018): recorded before the
     /// attempt's change and verification run; no state change.
     RepairAttemptRecorded {
@@ -411,6 +426,7 @@ impl TaskEvent {
             Self::PlanRevised { .. } => "PlanRevised",
             Self::SelfReviewRecorded { .. } => "SelfReviewRecorded",
             Self::ToolsActivated { .. } => "ToolsActivated",
+            Self::RetrievalRecorded { .. } => "RetrievalRecorded",
             Self::RepairAttemptRecorded { .. } => "RepairAttemptRecorded",
             Self::RepairAttemptConcluded { .. } => "RepairAttemptConcluded",
             Self::RepairEscalated { .. } => "RepairEscalated",
@@ -513,6 +529,7 @@ impl Task {
             | TaskEvent::PlanRevised { .. }
             | TaskEvent::SelfReviewRecorded { .. }
             | TaskEvent::ToolsActivated { .. }
+            | TaskEvent::RetrievalRecorded { .. }
             | TaskEvent::RepairAttemptRecorded { .. }
             | TaskEvent::RepairAttemptConcluded { .. }
             | TaskEvent::RepairEscalated { .. }

@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 560,
-    "docs_bytes": 1037539
+    "root_and_tooling": 564,
+    "docs_bytes": 1037558
   },
   "sections": [
     {
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 10396,
-      "sha256": "6b273bcb4cf6959f36356e6f6852a8d6651301b07964f5e48a763129d0868c10"
+      "bytes": 10415,
+      "sha256": "191ab0b727670cb020eab81eabb91ca163918fc0afcbd488541bf1281ae73e6c"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -3237,6 +3237,16 @@
       "sha256": "ce9aef35ece3a1960ceeb05fd2c7248cf23e226e617c10a03ea8a5db4b527881"
     },
     {
+      "path": "evidence/m3/IMP-EV-0168/TASK_CARD.md",
+      "bytes": 2714,
+      "sha256": "02114e9701217fd7cf53220cf96aba31ee0748b9941d58c339debbc8a843ff66"
+    },
+    {
+      "path": "evidence/m3/IMP-EV-0168/evidence.json",
+      "bytes": 1412,
+      "sha256": "a2c05c08f9e39d6c71e95f0d347321d4b602f086bbc5a65c8c14b27170c3e63c"
+    },
+    {
       "path": "evidence/m3/IMP-EV-0170/TASK_CARD.md",
       "bytes": 1177,
       "sha256": "79f105dcce7f4c8a45923201a4b08022179a09bdd2430520c3d7540d7d9154d2"
@@ -3540,6 +3550,16 @@
       "path": "evidence/m3/M3.9/report.json",
       "bytes": 21903,
       "sha256": "9e665cf9fd1ef52ef3b2203222570f463cfc8d0e45580b8a6e66e68c1400264d"
+    },
+    {
+      "path": "evidence/m3/PX-015/TASK_CARD.md",
+      "bytes": 3241,
+      "sha256": "b6893a497e954894af48364366bca3fa234d8c5e021df75dda6aba46c1f535a8"
+    },
+    {
+      "path": "evidence/m3/PX-015/evidence.json",
+      "bytes": 1725,
+      "sha256": "09f23cdc44e02fc97fed86c455bc4e35e940c330f07150c05b33287cc8892fcb"
     },
     {
       "path": "evidence/m3/PX-016/TASK_CARD.md",

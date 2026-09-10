@@ -459,30 +459,69 @@ impl ToolHost {
             .invoke(&ctx, tool_call_id, tool_name, arguments_json)
             .await;
         let mut result = outcome.result.clone();
-        // Context Ledger (docs/28, M3.8): a successful tool call that reads or
-        // writes a packed path at the revision it was retrieved at is a use.
+        // Context Ledger (docs/28 §2, M3.8): a successful tool call that reads
+        // or writes a packed path at the revision it was retrieved at is a use,
+        // and a read, a language-service query or the task's own write is the
+        // retrieval record an edit of that path needs (PX-015). Records bind to
+        // the bytes: the file's content hash after the call.
+        let mut retrieval_events = Vec::new();
         if result.status == ToolStatus::Success
             && let Some(ws) = &ctx.workspace
         {
             let mut paths = change_targets.clone();
-            if let Ok(v) = serde_json::from_str::<serde_json::Value>(arguments_json)
+            let retrieves = tool_name == "fs.read" || tool_name.starts_with("lsp.");
+            if retrieves
+                && let Ok(v) = serde_json::from_str::<serde_json::Value>(arguments_json)
                 && let Some(p) = v.get("path").and_then(serde_json::Value::as_str)
                 && !paths.iter().any(|x| x == p)
             {
                 paths.push(p.to_owned());
             }
             if !paths.is_empty() {
-                let rev = if change_targets.is_empty() {
-                    ws.lock().await.revision().number
+                let ws = ws.lock().await;
+                let rev = ws.revision().number;
+                let use_rev = if change_targets.is_empty() {
+                    rev
                 } else {
                     pre_revision
                 };
                 let ledger = self.ledger(task_id).await;
                 let mut ledger = ledger.lock().await;
                 for p in &paths {
-                    ledger.mark_used(p, rev, &tool_call_id.to_string(), tool_name);
+                    ledger.mark_used(p, use_rev, &tool_call_id.to_string(), tool_name);
+                    let Some(bytes) = read_workspace_file(&ws, p) else {
+                        continue;
+                    };
+                    let hash = modbit_workspace::content_hash(&bytes);
+                    ledger.record_read(p, rev, Some(&hash), &tool_call_id.to_string(), tool_name);
+                    retrieval_events.push(typed_task_event(
+                        "RetrievalRecorded",
+                        &modbit_domain::task::TaskEvent::RetrievalRecorded {
+                            path: p.clone(),
+                            content_hash: hash,
+                            workspace_revision: rev,
+                            tool_call_id: tool_call_id.to_string(),
+                            tool_name: tool_name.to_owned(),
+                        },
+                        &actor,
+                    ));
                 }
             }
+        }
+        if !retrieval_events.is_empty() {
+            let mut st = store.lock().await;
+            let _ = st.append(AppendRequest {
+                tenant_id,
+                session_id,
+                task_id: Some(task_id),
+                run_id: None,
+                turn_id: None,
+                step_id: None,
+                aggregate_type: AggregateType::Task,
+                aggregate_id: *task_id.as_bytes(),
+                expected_sequence: None,
+                events: retrieval_events,
+            });
         }
         let mut file_events = Vec::new();
         if result.status == ToolStatus::Success
@@ -992,6 +1031,19 @@ fn change_targets(tool_name: &str, arguments_json: &str) -> Vec<String> {
 pub(crate) fn read_workspace_file(ws: &WorkspaceService, path: &str) -> Option<Vec<u8>> {
     let r = ws.resolve(path).ok()?;
     std::fs::read(&r.absolute).ok()
+}
+
+/// A typed Task event as a `NewEvent` (mirrors the runtime's `typed`).
+fn typed_task_event(
+    event_type: &str,
+    payload: &modbit_domain::task::TaskEvent,
+    actor: &modbit_domain::event::Actor,
+) -> NewEvent {
+    NewEvent::new(
+        event_type,
+        serde_json::to_value(payload).unwrap_or_default(),
+        actor.clone(),
+    )
 }
 
 /// The typed change records a write tool reported (`change` or `changes`).

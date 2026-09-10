@@ -120,6 +120,14 @@ pub enum HarnessRefusal {
         /// Plan version the write was checked against.
         plan_version: u32,
     },
+    /// An edit of a file the task has not retrieved at the current workspace
+    /// revision (docs/28 §2, PX-015): retrieve before edit.
+    RetrievalRequired {
+        /// Paths without a current retrieval record.
+        paths: Vec<String>,
+        /// The current workspace revision.
+        workspace_revision: u64,
+    },
     /// A change after a failed verification without a recorded repair attempt
     /// (docs/28 §5, PX-018).
     RepairAttemptRequired {

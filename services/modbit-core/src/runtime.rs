@@ -1319,6 +1319,13 @@ async fn run_loop(
                     )],
                 );
             }
+            // docs/28 §2 (PX-015): an edit of an existing file needs a retrieval
+            // record at the current workspace revision.
+            let unretrieved: (Vec<String>, u64) = if WRITE_TOOLS.contains(&name.as_str()) {
+                unretrieved_targets(&core, &task, &name, &arguments_json).await
+            } else {
+                (vec![], 0)
+            };
             let (entry, step_type, failure_code) = match name.as_str() {
                 PLAN_TOOL => {
                     let (entry, ok) = handle_plan(
@@ -1472,6 +1479,16 @@ async fn run_loop(
                                 .try_for_each(|p| state.check_write(p))
                         })
                         .and_then(|()| {
+                            if unretrieved.0.is_empty() {
+                                Ok(())
+                            } else {
+                                Err(HarnessRefusal::RetrievalRequired {
+                                    paths: unretrieved.0.clone(),
+                                    workspace_revision: unretrieved.1,
+                                })
+                            }
+                        })
+                        .and_then(|()| {
                             // docs/28 §5 (PX-018): after a failed verification a
                             // change needs a recorded repair attempt.
                             if WRITE_TOOLS.contains(&name.as_str()) {
@@ -1496,6 +1513,7 @@ async fn run_loop(
                                 HarnessRefusal::RepairAttemptRequired { .. } => {
                                     "REPAIR_ATTEMPT_REQUIRED"
                                 }
+                                HarnessRefusal::RetrievalRequired { .. } => "RETRIEVAL_REQUIRED",
                                 HarnessRefusal::OpenFailures { .. } => "BUDGET_EXHAUSTED",
                                 _ => "HARNESS",
                             };
@@ -2014,6 +2032,69 @@ async fn run_loop(
             );
         }
     }
+}
+
+/// The existing files a write targets that have no retrieval record at the
+/// current workspace revision, with that revision (docs/28 §2, PX-015).
+async fn unretrieved_targets(
+    core: &Core,
+    task: &Task,
+    tool_name: &str,
+    arguments_json: &str,
+) -> (Vec<String>, u64) {
+    let targets = write_targets(tool_name, arguments_json);
+    let Some(root) = task.workspace_root.as_deref() else {
+        return (vec![], 0);
+    };
+    if targets.is_empty() {
+        return (vec![], 0);
+    }
+    let rev = match core.tools.workspace(root).await {
+        Ok((ws, _)) => ws.lock().await.revision().number,
+        Err(_) => return (vec![], 0),
+    };
+    // A record binds to the bytes on disk now: reading a file and then editing
+    // it elsewhere leaves the record stale (docs/28 §2).
+    let current: Vec<(String, String)> = targets
+        .into_iter()
+        .filter_map(|p| {
+            let abs = std::path::Path::new(root).join(&p);
+            let bytes = std::fs::read(&abs).ok()?;
+            Some((p, modbit_workspace::content_hash(&bytes)))
+        })
+        .collect();
+    if current.is_empty() {
+        return (vec![], rev);
+    }
+    let ledger = core.tools.ledger(task.task_id).await;
+    let mut missing: Vec<(String, String)> = {
+        let ledger = ledger.lock().await;
+        current
+            .into_iter()
+            .filter(|(p, h)| !ledger.has_current_record(p, h))
+            .collect()
+    };
+    // The durable records survive a Core restart even though the in-memory
+    // ledger does not.
+    if !missing.is_empty() {
+        let store = core.store.lock().await;
+        if let Ok(events) = store.read_aggregate(task.task_id.as_bytes(), 0, 100_000) {
+            let mut recorded: Vec<(String, String)> = Vec::new();
+            for e in &events {
+                if e.envelope.event_type == "RetrievalRecorded"
+                    && let Ok(p) = store.payload(&e.envelope)
+                    && let (Some(path), Some(hash)) = (
+                        p["path"].as_str().map(str::to_owned),
+                        p["content_hash"].as_str().map(str::to_owned),
+                    )
+                {
+                    recorded.push((path, hash));
+                }
+            }
+            missing.retain(|m| !recorded.contains(m));
+        }
+    }
+    (missing.into_iter().map(|(p, _)| p).collect(), rev)
 }
 
 /// The workspace's `FileChanged` records after `since` revision, oldest

@@ -399,8 +399,28 @@ pub struct LedgerEntry {
     /// Injected as a signature-only stub (hydration is the use).
     #[serde(default)]
     pub stub: bool,
+    /// Content hash of the file the entry was read at.
+    #[serde(default)]
+    pub content_hash: Option<String>,
     /// The first use, when any.
     pub used: Option<Use>,
+}
+
+/// A direct retrieval of a path (a read or a language-service query) at a
+/// revision: the retrieval record docs/28 §2 requires before an edit.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReadRecord {
+    /// Path.
+    pub path: String,
+    /// Workspace revision at the read.
+    pub workspace_revision: u64,
+    /// Content hash of the file at the read (`None` when unknown).
+    #[serde(default)]
+    pub content_hash: Option<String>,
+    /// Tool call.
+    pub tool_call_id: String,
+    /// Tool (`fs.read`, `lsp.*`, `change.*` for the task's own write).
+    pub tool_name: String,
 }
 
 /// The Context Ledger of one task.
@@ -410,6 +430,9 @@ pub struct ContextLedger {
     pub entries: Vec<LedgerEntry>,
     /// Packs recorded.
     pub packs: u64,
+    /// Direct retrievals (reads, language-service queries).
+    #[serde(default)]
+    pub reads: Vec<ReadRecord>,
 }
 
 impl ContextLedger {
@@ -425,6 +448,7 @@ impl ContextLedger {
                 workspace_revision: pack.workspace_revision,
                 pack_ordinal: self.packs,
                 stub: false,
+                content_hash: e.provenance.content_hash.clone(),
                 used: None,
             });
         }
@@ -437,6 +461,7 @@ impl ContextLedger {
                 workspace_revision: pack.workspace_revision,
                 pack_ordinal: self.packs,
                 stub: true,
+                content_hash: st.provenance.content_hash.clone(),
                 used: None,
             });
         }
@@ -466,12 +491,58 @@ impl ContextLedger {
         n
     }
 
-    /// Whether `path` has a retrieval record at exactly `revision`.
+    /// Record a direct retrieval of `path` at `revision`.
+    pub fn record_read(
+        &mut self,
+        path: &str,
+        revision: u64,
+        content_hash: Option<&str>,
+        tool_call_id: &str,
+        tool_name: &str,
+    ) {
+        self.reads.push(ReadRecord {
+            path: path.to_owned(),
+            workspace_revision: revision,
+            content_hash: content_hash.map(str::to_owned),
+            tool_call_id: tool_call_id.to_owned(),
+            tool_name: tool_name.to_owned(),
+        });
+    }
+
+    /// Whether `path` has a retrieval record for exactly the bytes it holds
+    /// now (`content_hash`): a record of other bytes is stale (docs/28 §2).
+    #[must_use]
+    pub fn has_current_record(&self, path: &str, content_hash: &str) -> bool {
+        self.entries.iter().any(|e| {
+            e.path == path
+                && self
+                    .entries_hash(&e.entry_id)
+                    .is_some_and(|h| h == content_hash)
+        }) || self
+            .reads
+            .iter()
+            .any(|r| r.path == path && r.content_hash.as_deref() == Some(content_hash))
+    }
+
+    /// Content hash a pack entry was read at (kept on the ledger entry).
+    fn entries_hash(&self, entry_id: &str) -> Option<&str> {
+        self.entries
+            .iter()
+            .find(|e| e.entry_id == entry_id)
+            .and_then(|e| e.content_hash.as_deref())
+    }
+
+    /// Whether `path` has a retrieval record (a pack entry or a direct read)
+    /// at exactly `revision` (docs/28 §2: a stale-revision record does not count).
     #[must_use]
     pub fn has_record(&self, path: &str, revision: u64) -> bool {
         self.entries
             .iter()
             .any(|e| e.path == path && e.workspace_revision == revision)
+            || self
+                .reads
+                .iter()
+                .any(|r| r.path == path && r.workspace_revision == revision)
     }
 
     /// (injected, used) counts.

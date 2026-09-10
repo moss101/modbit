@@ -1,0 +1,16 @@
+{
+ "task": "PX-015",
+ "requirement": "REQ-PX-015",
+ "qual": "QUAL-PX-015",
+ "tests": [
+  "qual_px_015_retrieval_before_edit_is_enforced_and_a_stale_record_is_refused",
+  "ledger_records_injections_and_marks_use_only_at_the_retrieved_revision",
+  "left_out_candidates_become_signature_stubs_inside_the_budget_with_hydration_handles",
+  "m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "the runtime refuses HARNESS_RETRIEVAL_REQUIRED before any effector when a write targets an existing file the task has no retrieval record for: a record is an fs.read, an lsp.* query, a Context Pack entry or the task's own write, and it binds to the bytes it was taken at (content hash), so a record whose file was changed behind the task is stale and refused; records are durable TaskEvents (RetrievalRecorded), so the gate still holds after a Core restart when the in-memory ledger is gone",
+ "audit": "IMPLEMENTED in this batch for file-level records (was PARTIAL: the Context Ledger recorded pack entries and their use, but nothing gated an edit). Symbol-level definition/reference retrieval is recorded when the task uses the lsp.* tools on the path; it is not yet required per symbol, and this card does not claim it.",
+ "note": "Interpretation of docs/28 \u00a72 recorded here: the rule is 'no edit to bytes the task has not retrieved'. A record is checked against the file's current content hash rather than against the workspace revision number alone, so a record taken before an unrelated write elsewhere is still valid while a record whose own file changed is refused. The revision is still recorded on every record and reported in the refusal."
+}

@@ -2455,11 +2455,12 @@ async fn m2_7_harness_refuses_unplanned_writes_exhausts_budgets_and_resumes_afte
     let script = vec![
         json!({"calls": [{"name": "change.apply", "args": {"path": "qty.txt", "op": "replace", "content": "x\n"}}]}),
         json!({"calls": [{"name": "plan.update", "args": {"outcome": "o", "expected_files": ["qty.txt"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "qty.txt"}}]}),
         json!({"calls": [{"name": "change.apply", "args": {"path": "qty.txt", "op": "replace", "content": "quantity = 1 # validated\n"}}]}),
         json!({"calls": [{"name": "test.run", "args": {"argv": ["sh", "check.sh"], "inherit_env": true}}]}),
         json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
     ];
-    let (base, seen) = scripted_model(script.clone(), Some(3)).await;
+    let (base, seen) = scripted_model(script.clone(), Some(4)).await;
     let dir = tempfile::tempdir().unwrap();
     let env = [
         ("MODBIT_OPENAI_BASE_URL", base.as_str()),
@@ -2576,7 +2577,7 @@ async fn m2_7_harness_refuses_unplanned_writes_exhausts_budgets_and_resumes_afte
     }
     // Let the stalled fourth request start, then hard-kill the Core.
     let deadline = std::time::Instant::now() + Duration::from_secs(30);
-    while seen.lock().unwrap().len() < 4 {
+    while seen.lock().unwrap().len() < 5 {
         assert!(std::time::Instant::now() < deadline);
         tokio::time::sleep(Duration::from_millis(50)).await;
     }
@@ -2634,7 +2635,7 @@ async fn m2_7_harness_refuses_unplanned_writes_exhausts_budgets_and_resumes_afte
         .iter()
         .filter(|m| m["role"] == "tool")
         .count();
-    assert_eq!(tool_results, 3, "{resumed_first}");
+    assert_eq!(tool_results, 4, "{resumed_first}");
     let evs = task_events(&core2, &session2, &task2).await;
     let applies = evs
         .iter()
@@ -2894,6 +2895,7 @@ async fn m2_8_verification_engine_gates_completion_on_real_cargo_fixture() {
         json!({"calls": [{"name": "fs.read", "args": {"path": "src/lib.rs"}}]}),
         json!({"calls": [{"name": "plan.update", "args": {"outcome": "reject negative quantities", "expected_files": ["src/lib.rs", "tests/quantities.rs"], "verification": ["acceptance_rejects_negative_quantity"]}}]}),
         // Tempting shortcut: weaken the acceptance test. DI-3 denies it (and BASELINE runs first).
+        json!({"calls": [{"name": "fs.read", "args": {"path": "tests/quantities.rs"}}]}),
         json!({"calls": [{"name": "change.apply", "args": {"path": "tests/quantities.rs", "op": "replace", "content": weakened_tests}}]}),
         // Real fix that also breaks formatting.
         json!({"calls": [{"name": "change.apply", "args": {"path": "src/lib.rs", "op": "replace", "content": broken_lib}}]}),
@@ -3218,6 +3220,7 @@ async fn m2_9_review_surface_applies_per_hunk_decisions_and_commits() {
         .replace("line 15\n", "line 15 changed\n");
     let script = vec![
         json!({"calls": [{"name": "plan.update", "args": {"outcome": "edit notes", "expected_files": ["notes.txt", "extra.txt"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "notes.txt"}}]}),
         json!({"calls": [{"name": "change.apply", "args": {"path": "notes.txt", "op": "replace", "content": candidate}}]}),
         json!({"calls": [{"name": "change.apply", "args": {"path": "extra.txt", "op": "create", "content": "brand new\n"}}]}),
         json!({"calls": [{"name": "task.complete", "args": {"summary": "edited", "self_review": {"findings": []}}}]}),
@@ -7267,6 +7270,9 @@ async fn qual_px_016_change_strategy_tests_first_one_concern_per_transaction_and
     let lock = std::fs::read_to_string(repo.path().join("Cargo.lock")).unwrap();
     let script = vec![
         json!({"calls": [{"name": "plan.update", "args": {"outcome": "zero and negative quantities are rejected", "expected_files": ["tests/quantities.rs", "src/lib.rs"], "verification": ["zero_quantity_is_rejected", "acceptance_rejects_negative_quantity"]}}]}),
+        // retrieval before edit (PX-015)
+        json!({"calls": [{"name": "fs.read", "args": {"path": "tests/quantities.rs"}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "src/lib.rs"}}]}),
         // 1. the failing test first
         json!({"calls": [{"name": "change.apply", "args": {"path": "tests/quantities.rs", "op": "replace", "content": with_new_test}}]}),
         json!({"calls": [{"name": "verify.run", "args": {"reason": "the new test must fail first"}}]}),
@@ -7275,6 +7281,8 @@ async fn qual_px_016_change_strategy_tests_first_one_concern_per_transaction_and
         json!({"calls": [{"name": "change.apply", "args": {"path": "src/lib.rs", "op": "replace", "content": fixed_lib}}]}),
         json!({"calls": [{"name": "verify.run", "args": {"reason": "now it passes"}}]}),
         // 3. silent scope widening is refused
+        json!({"calls": [{"name": "fs.read", "args": {"path": "README.md"}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "Cargo.lock"}}]}),
         json!({"calls": [{"name": "change.apply", "args": {"path": "README.md", "op": "replace", "content": "# rust-cli\nquantities must be positive\n"}}]}),
         // 4. an explicit plan revision declares the file, then the write is allowed
         json!({"calls": [{"name": "plan.update", "args": {"outcome": "zero and negative quantities are rejected", "expected_files": ["tests/quantities.rs", "src/lib.rs", "README.md", "Cargo.lock"], "verification": ["zero_quantity_is_rejected"], "reason": "document the rule; touch the lockfile"}}]}),
@@ -7493,6 +7501,8 @@ async fn qual_px_018_repair_attempts_are_recorded_bounded_reverted_when_worsened
     assert_ne!(wrong_lib, lib);
     let script = vec![
         json!({"calls": [{"name": "plan.update", "args": {"outcome": "zero quantities are rejected", "expected_files": ["tests/quantities.rs", "src/lib.rs"], "verification": ["zero_quantity_is_rejected"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "tests/quantities.rs"}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "src/lib.rs"}}]}),
         json!({"calls": [{"name": "change.apply", "args": {"path": "tests/quantities.rs", "op": "replace", "content": with_new_test}}]}),
         json!({"calls": [{"name": "verify.run", "args": {"reason": "the new test fails first"}}]}),
         // A change after the failed verification without an attempt is refused.
@@ -7674,6 +7684,221 @@ async fn qual_px_018_repair_attempts_are_recorded_bounded_reverted_when_worsened
     assert!(
         of("SelfReviewRecorded").is_empty(),
         "task.complete never ran"
+    );
+    let _ = repo;
+}
+
+/// PX-015 / REQ-EV-0168: an edit of an existing file needs a retrieval record
+/// for the bytes on disk — a read, a language-service query, a Context Pack
+/// entry or the task's own write. A blind edit is refused before any effector;
+/// a record whose bytes were changed behind the task is stale and refused; the
+/// records are durable, so they survive a Core restart while the in-memory
+/// ledger does not.
+#[tokio::test]
+async fn qual_px_015_retrieval_before_edit_is_enforced_and_a_stale_record_is_refused() {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[("README.md", "# demo\n"), ("notes.txt", "notes\n")]);
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "edit both files", "expected_files": ["README.md", "notes.txt", "fresh.txt"]}}]}),
+        // 1. blind edit: refused, no effector runs
+        json!({"calls": [{"name": "change.apply", "args": {"path": "README.md", "op": "replace", "content": "# demo\nblind\n"}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "README.md"}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "notes.txt"}}]}),
+        // 2. retrieved: allowed
+        json!({"calls": [{"name": "change.apply", "args": {"path": "README.md", "op": "replace", "content": "# demo\nread first\n"}}]}),
+        // 3. served after the restart: notes.txt changed behind the task, the record is stale
+        json!({"calls": [{"name": "change.apply", "args": {"path": "notes.txt", "op": "replace", "content": "stale write\n"}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "notes.txt"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "notes.txt", "op": "replace", "content": "fresh read\n"}}]}),
+        // 4. a new file needs no record; the task's own write is the record for the next edit
+        json!({"calls": [{"name": "change.apply", "args": {"path": "fresh.txt", "op": "create", "content": "new\n"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "fresh.txt", "op": "replace", "content": "new again\n"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, Some(5)).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x15)).await;
+    let g = lease_for(&session);
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x1D),
+            "CreateTask",
+            CreateTask {
+                session_id: Some(session.clone()),
+                goal_text: "edit the files".into(),
+                workspace_id: None,
+                execution_profile: String::new(),
+                origin: "cli".into(),
+                workspace_root: root.clone(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let task = Client::result::<TaskCreated>(&ack)
+        .unwrap()
+        .task_id
+        .unwrap();
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x1E),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 20,
+                max_tool_calls: 0,
+                max_no_progress_turns: 5,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    // The retrieved README write lands; then the sixth request stalls.
+    let deadline = std::time::Instant::now() + Duration::from_secs(90);
+    while std::fs::read_to_string(repo.path().join("README.md")).unwrap() != "# demo\nread first\n"
+    {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "the retrieved write did not land: {:#?}",
+            seen.lock()
+                .unwrap()
+                .iter()
+                .flat_map(|b| b["messages"].as_array().cloned().unwrap_or_default())
+                .filter(|m| m["role"] == "tool")
+                .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+                .collect::<Vec<_>>()
+        );
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    let deadline = std::time::Instant::now() + Duration::from_secs(60);
+    while seen.lock().unwrap().len() < 6 {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "the stalled request never started"
+        );
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    // Someone else changes notes.txt behind the task, and the Core restarts: the
+    // in-memory ledger is gone, the durable retrieval records are not.
+    drop(c);
+    core.kill();
+    std::fs::write(repo.path().join("notes.txt"), "changed by someone else\n").unwrap();
+    let core2 = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c2 = core2.client().await;
+    let g2 = Some(acquire_lease(&mut c2, id16(0x1F), session.clone(), "resumer").await);
+    let ack = c2
+        .command(envelope_fenced(
+            id16(0x20),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 20,
+                max_tool_calls: 0,
+                max_no_progress_turns: 5,
+            }
+            .encode_to_vec(),
+            g2,
+        ))
+        .await
+        .unwrap();
+    let started: TaskRunStarted = Client::result(&ack).unwrap();
+    assert!(started.resumed);
+    let st = wait_task(&mut c2, &task, 120).await;
+    let evs = task_events(&core2, &session, &task).await;
+    // The last request carries the whole rebuilt transcript once.
+    let tool_msgs: Vec<String> = seen
+        .lock()
+        .unwrap()
+        .last()
+        .and_then(|b| b["messages"].as_array().cloned())
+        .unwrap_or_default()
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    assert_eq!(st.state, "ReadyForReview", "{st:?}\n{tool_msgs:#?}");
+    let refusals: Vec<&String> = tool_msgs
+        .iter()
+        .filter(|t| t.contains("HARNESS_RETRIEVAL_REQUIRED"))
+        .collect();
+    assert_eq!(
+        refusals.len(),
+        2,
+        "the blind and the stale edit: {tool_msgs:#?}"
+    );
+    assert!(refusals[0].contains("README.md"), "{refusals:?}");
+    assert!(refusals[1].contains("notes.txt"), "{refusals:?}");
+    // Only the retrieved writes reached the effector, in order.
+    let written: Vec<&str> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "FileChanged")
+        .map(|(_, _, p)| p["path"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        written,
+        ["README.md", "notes.txt", "fresh.txt", "fresh.txt"],
+        "{written:?}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("notes.txt")).unwrap(),
+        "fresh read\n",
+        "the stale write never landed; the re-read one did"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("fresh.txt")).unwrap(),
+        "new again\n"
+    );
+    // The records are durable and bind to the bytes they were taken at.
+    let recorded = evs
+        .iter()
+        .filter(|(_, t, _)| t == "RetrievalRecorded")
+        .map(|(_, _, p)| {
+            (
+                p["path"].as_str().unwrap().to_owned(),
+                p["tool_name"].as_str().unwrap().to_owned(),
+            )
+        })
+        .collect::<Vec<_>>();
+    assert!(
+        recorded
+            .iter()
+            .any(|(p, t)| p == "notes.txt" && t == "fs.read"),
+        "{recorded:?}"
+    );
+    assert!(
+        recorded
+            .iter()
+            .any(|(p, t)| p == "fresh.txt" && t == "change.apply"),
+        "{recorded:?}"
+    );
+    for (_, _, p) in evs.iter().filter(|(_, t, _)| t == "RetrievalRecorded") {
+        assert_eq!(p["content_hash"].as_str().unwrap().len(), 64, "{p}");
+    }
+    // The ledger of the resumed Core shows the reads it took after the restart.
+    let r = invoke_tool(&mut c2, &task, g2, 0x21, 0x22, "context.ledger", "{}").await;
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert!(
+        so["ledger"]["reads"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|x| x["path"] == "notes.txt" && x["content_hash"].is_string()),
+        "{so}"
     );
     let _ = repo;
 }

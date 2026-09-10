@@ -102,6 +102,14 @@ fn ledger_records_injections_and_marks_use_only_at_the_retrieved_revision() {
     l.record(&p);
     assert_eq!(l.usage(), (2, 0));
     assert!(l.has_record("src/a.rs", 3) && !l.has_record("src/a.rs", 4));
+    // A direct read is a retrieval record at its revision only.
+    l.record_read("src/z.rs", 4, Some("h1"), "call-r", "fs.read");
+    assert!(l.has_record("src/z.rs", 4) && !l.has_record("src/z.rs", 5));
+    assert!(l.has_current_record("src/z.rs", "h1") && !l.has_current_record("src/z.rs", "h2"));
+    assert!(
+        l.has_current_record("src/a.rs", "abc"),
+        "pack entries carry the file hash"
+    );
     assert_eq!(l.mark_used("src/a.rs", 4, "call-1", "fs.read"), 0, "stale");
     assert_eq!(l.mark_used("src/a.rs", 3, "call-2", "fs.read"), 1);
     assert_eq!(
