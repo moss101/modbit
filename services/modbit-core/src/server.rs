@@ -103,7 +103,7 @@ async fn require_lease(
 }
 
 /// Run the daemon until the listener fails or the process is signalled.
-pub async fn run(data_dir: PathBuf) -> Result<()> {
+pub async fn run(data_dir: PathBuf, idle_exit_secs: Option<u64>) -> Result<()> {
     std::fs::create_dir_all(&data_dir)?;
     acquire_singleton_lock(&data_dir)?;
     let mut store = EventStore::open(&data_dir.join("core")).context("opening core store")?;
@@ -174,16 +174,36 @@ pub async fn run(data_dir: PathBuf) -> Result<()> {
     write_owner_only(&ready_path, format!("{ready_line}\n").as_bytes());
     let shutdown = shutdown_signal();
     tokio::pin!(shutdown);
+    // Idle exit (headless clients): a Core spawned by a CLI stays up for later
+    // invocations to attach to, and leaves on its own once no client has been
+    // connected for `idle_exit_secs`.
+    let connections = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let last_activity = Arc::new(std::sync::Mutex::new(std::time::Instant::now()));
+    let mut idle_tick = tokio::time::interval(std::time::Duration::from_secs(1));
     loop {
         tokio::select! {
             accepted = listener.accept() => {
                 let stream = accepted.context("accept")?;
                 let core = Arc::clone(&core);
+                let connections = Arc::clone(&connections);
+                let last_activity = Arc::clone(&last_activity);
+                connections.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
                 tokio::spawn(async move {
                     if let Err(e) = serve_connection(core, stream).await {
                         eprintln!("modbit-core: connection ended: {e}");
                     }
+                    connections.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+                    *last_activity.lock().expect("activity") = std::time::Instant::now();
                 });
+            }
+            _ = idle_tick.tick() => {
+                if let Some(secs) = idle_exit_secs
+                    && connections.load(std::sync::atomic::Ordering::SeqCst) == 0
+                    && last_activity.lock().expect("activity").elapsed().as_secs() >= secs
+                {
+                    eprintln!("modbit-core: idle for {secs}s with no client; exiting");
+                    break;
+                }
             }
             _ = &mut shutdown => break,
         }

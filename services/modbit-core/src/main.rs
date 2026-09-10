@@ -19,17 +19,19 @@ mod undo;
 mod verify;
 
 fn usage() -> &'static str {
-    "usage: modbit-core --data-dir <dir> [--tether-stdin]"
+    "usage: modbit-core --data-dir <dir> [--tether-stdin] [--idle-exit-secs N]"
 }
 
 fn main() -> ExitCode {
     let mut data_dir: Option<PathBuf> = None;
     let mut tether_stdin = false;
+    let mut idle_exit_secs: Option<u64> = None;
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
         match a.as_str() {
             "--data-dir" => data_dir = args.next().map(PathBuf::from),
             "--tether-stdin" => tether_stdin = true,
+            "--idle-exit-secs" => idle_exit_secs = args.next().and_then(|v| v.parse().ok()),
             "-h" | "--help" => {
                 println!("{}", usage());
                 return ExitCode::SUCCESS;
@@ -56,6 +58,21 @@ fn main() -> ExitCode {
             eprintln!("modbit-core: supervising client closed its pipe; exiting");
             std::process::exit(0);
         });
+        // Second tether, independent of pipes: when the supervising parent
+        // dies this process is re-parented, and it must not hold the profile.
+        #[cfg(unix)]
+        {
+            let parent = std::os::unix::process::parent_id();
+            std::thread::spawn(move || {
+                loop {
+                    std::thread::sleep(std::time::Duration::from_millis(500));
+                    if std::os::unix::process::parent_id() != parent {
+                        eprintln!("modbit-core: supervising parent is gone; exiting");
+                        std::process::exit(0);
+                    }
+                }
+            });
+        }
     }
     let rt = match tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -67,7 +84,7 @@ fn main() -> ExitCode {
             return ExitCode::from(1);
         }
     };
-    match rt.block_on(server::run(data_dir)) {
+    match rt.block_on(server::run(data_dir, idle_exit_secs)) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             eprintln!("modbit-core: {e:#}");

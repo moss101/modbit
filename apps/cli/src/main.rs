@@ -100,11 +100,21 @@ fn envelope_fenced(
 
 fn spawn_core(data_dir: &str) -> Result<(std::process::Child, ReadyLine), String> {
     let exe = std::env::var("MODBIT_CORE_BIN").unwrap_or_else(|_| "modbit-core".into());
+    // The Core outlives this invocation so that later ones attach to it; it
+    // exits on its own after 30s without a client. Its stderr goes to the
+    // profile's core.log (inheriting ours would tie it to our caller's pipes).
+    let log = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(std::path::Path::new(data_dir).join("core.log"))
+        .map_err(|e| format!("opening core.log: {e}"))?;
     let mut child = Command::new(&exe)
         .arg("--data-dir")
         .arg(data_dir)
+        .args(["--idle-exit-secs", "30"])
+        .stdin(Stdio::null())
         .stdout(Stdio::piped())
-        .stderr(Stdio::inherit())
+        .stderr(Stdio::from(log))
         .spawn()
         .map_err(|e| format!("spawning `{exe}`: {e} (set MODBIT_CORE_BIN)"))?;
     let stdout = child.stdout.take().expect("piped stdout");
@@ -137,10 +147,8 @@ async fn run(args: Vec<String>) -> Result<(), String> {
     let data_dir = data_dir.ok_or(USAGE)?;
     let (child, ready) = attach_or_spawn(&data_dir).await?;
     let result = run_command(&ready, rest).await;
-    if let Some(mut child) = child {
-        let _ = child.kill();
-        let _ = child.wait();
-    }
+    // A spawned Core is left running for the next invocation (idle exit).
+    drop(child);
     result
 }
 

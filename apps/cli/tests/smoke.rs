@@ -413,13 +413,16 @@ fn cli_drives_a_real_core_end_to_end() {
         "{all}"
     );
 
-    // M2.6: the gateway catalog is served by the Core from its own environment.
+    // M2.6: the gateway catalog is served by the Core from its own environment
+    // (a separate profile: the CLI attaches to a running Core of a profile).
+    let data_dir2 = tmp.path().join("profile-2");
+    std::fs::create_dir_all(&data_dir2).unwrap();
     let out = Command::new(env!("CARGO_BIN_EXE_modbit-cli"))
         .env("MODBIT_CORE_BIN", &core)
         .env("MODBIT_OPENAI_BASE_URL", "http://127.0.0.1:9")
         .env("OPENAI_API_KEY", "")
         .arg("--data-dir")
-        .arg(&data_dir)
+        .arg(&data_dir2)
         .args(["model", "list"])
         .output()
         .unwrap();
