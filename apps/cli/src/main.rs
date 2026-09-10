@@ -98,8 +98,37 @@ fn envelope_fenced(
     }
 }
 
+/// Windows inherits every inheritable handle into a child, not just the stdio
+/// we set: the detached Core would keep our caller's pipes open until it
+/// idle-exits (or forever while it serves), so a caller reading our output
+/// would hang. Clear the inherit flag on our std handles before spawning.
+#[cfg(windows)]
+fn stop_inheriting_std_handles() {
+    use windows_sys::Win32::Foundation::{
+        HANDLE_FLAG_INHERIT, INVALID_HANDLE_VALUE, SetHandleInformation,
+    };
+    use windows_sys::Win32::System::Console::{
+        GetStdHandle, STD_ERROR_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
+    };
+    for which in [STD_INPUT_HANDLE, STD_OUTPUT_HANDLE, STD_ERROR_HANDLE] {
+        // SAFETY: GetStdHandle/SetHandleInformation take and return plain
+        // handles owned by this process; clearing the inherit flag has no
+        // effect on the handle's validity.
+        unsafe {
+            let h = GetStdHandle(which);
+            if !h.is_null() && h != INVALID_HANDLE_VALUE {
+                SetHandleInformation(h, HANDLE_FLAG_INHERIT, 0);
+            }
+        }
+    }
+}
+
+#[cfg(not(windows))]
+fn stop_inheriting_std_handles() {}
+
 fn spawn_core(data_dir: &str) -> Result<(std::process::Child, ReadyLine), String> {
     let exe = std::env::var("MODBIT_CORE_BIN").unwrap_or_else(|_| "modbit-core".into());
+    stop_inheriting_std_handles();
     // The Core outlives this invocation so that later ones attach to it; it
     // exits on its own after 30s without a client. Its stderr goes to the
     // profile's core.log (inheriting ours would tie it to our caller's pipes).
