@@ -1,0 +1,12 @@
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:50:22.8148910Z test harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:50:23.2215570Z test exact_regex_and_path_hits_are_bounded_and_revision_bound ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:50:23.2599570Z test semantic_index_finds_nearest_chunks_and_reembeds_only_changed_files ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:50:23.3827220Z test refresh_reindexes_exactly_the_changed_paths_at_the_new_revision ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:52:37.5967462Z test harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:52:37.6253015Z test refresh_reindexes_exactly_the_changed_paths_at_the_new_revision ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:52:37.6312688Z test semantic_index_finds_nearest_chunks_and_reembeds_only_changed_files ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:52:37.6372419Z test exact_regex_and_path_hits_are_bounded_and_revision_bound ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:59:31.6545656Z test harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:59:31.8660246Z test semantic_index_finds_nearest_chunks_and_reembeds_only_changed_files ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:59:32.2746120Z test exact_regex_and_path_hits_are_bounded_and_revision_bound ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:59:32.3311502Z test refresh_reindexes_exactly_the_changed_paths_at_the_new_revision ... ok

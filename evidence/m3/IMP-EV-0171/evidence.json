@@ -1,0 +1,25 @@
+{
+ "task": "IMP-EV-0171",
+ "requirement": "REQ-EV-0171",
+ "qual": "QUAL-EV-0171",
+ "tests": [
+  "confine_rejects_direct_use_outside_allowed_members",
+  "qual_ev_0217_compatibility_matrix_covers_every_registered_tool_with_owner_effect_and_test"
+ ],
+ "batch_commits": [
+  "1920f3b",
+  "cccb869",
+  "1c36f67"
+ ],
+ "runs": [
+  {
+   "id": "gha-34462553237",
+   "kind": "hosted CI on 1c36f67 (M3.4-M3.9 seal + context batch cccb869)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34462553237",
+   "log": "ci-run-34462553237.json, ci-run-34462553237-tests.log"
+  }
+ ],
+ "proof": "every consumer reaches search through the same port and tools; the architecture lint (CI job) fails on a direct tantivy/usearch/tree-sitter dependency outside modbit-retrieval",
+ "audit": "IMPLEMENTED by DR-M3-001 in this batch (was PARTIAL: ports existed, no guard)"
+}

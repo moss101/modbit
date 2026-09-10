@@ -1,0 +1,6 @@
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:50:22.8651310Z test graph_answers_imports_importers_history_tests_evidence_and_refreshes_per_path ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:50:23.7970010Z test structural_and_engineering_intents_expand_through_the_graph_with_distance_and_diagnostic_boosts ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:52:37.6009982Z test graph_answers_imports_importers_history_tests_evidence_and_refreshes_per_path ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:52:37.7223186Z test structural_and_engineering_intents_expand_through_the_graph_with_distance_and_diagnostic_boosts ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:59:31.6708528Z test graph_answers_imports_importers_history_tests_evidence_and_refreshes_per_path ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:59:32.9584406Z test structural_and_engineering_intents_expand_through_the_graph_with_distance_and_diagnostic_boosts ... ok

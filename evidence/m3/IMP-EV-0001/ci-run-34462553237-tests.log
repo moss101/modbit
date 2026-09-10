@@ -1,0 +1,15 @@
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:49:51.3070790Z test m3_7_retrieval_planner_starts_cheap_escalates_on_short_coverage_and_fuses_with_boosts ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:50:22.8148910Z test harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:50:23.4691700Z test query_features_pick_the_cheapest_level ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:50:23.8007950Z test unknown_wording_starts_hybrid_and_a_miss_escalates_only_while_coverage_is_short ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:50:23.9276200Z test l0_serves_a_known_identifier_without_escalating_and_boosts_the_symbol ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:52:10.5548710Z test m3_7_retrieval_planner_starts_cheap_escalates_on_short_coverage_and_fuses_with_boosts ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:52:37.5967462Z test harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:52:37.6804341Z test query_features_pick_the_cheapest_level ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:52:37.7296421Z test l0_serves_a_known_identifier_without_escalating_and_boosts_the_symbol ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:52:37.7310936Z test unknown_wording_starts_hybrid_and_a_miss_escalates_only_while_coverage_is_short ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:58:41.1240474Z test m3_7_retrieval_planner_starts_cheap_escalates_on_short_coverage_and_fuses_with_boosts ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:59:31.6545656Z test harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:59:32.3608143Z test query_features_pick_the_cheapest_level ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:59:32.8149930Z test unknown_wording_starts_hybrid_and_a_miss_escalates_only_while_coverage_is_short ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:59:32.8511911Z test l0_serves_a_known_identifier_without_escalating_and_boosts_the_symbol ... ok

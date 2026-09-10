@@ -1,0 +1,28 @@
+{
+ "task": "IMP-EV-0005",
+ "requirement": "REQ-EV-0005",
+ "qual": "QUAL-EV-0005",
+ "tests": [
+  "m3_3_tree_sitter_symbol_index_serves_definitions_and_refreshes_on_writes",
+  "symbol_index_extracts_alpha_language_definitions_and_refreshes",
+  "semantic_index_finds_nearest_chunks_and_reembeds_only_changed_files",
+  "m3_6_evidence_graph_serves_imports_history_changed_lines_tests_and_verification_evidence",
+  "m2_8_verification_engine_gates_completion_on_real_cargo_fixture"
+ ],
+ "batch_commits": [
+  "1920f3b",
+  "cccb869",
+  "1c36f67"
+ ],
+ "runs": [
+  {
+   "id": "gha-34462553237",
+   "kind": "hosted CI on 1c36f67 (M3.4-M3.9 seal + context batch cccb869)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34462553237",
+   "log": "ci-run-34462553237.json, ci-run-34462553237-tests.log"
+  }
+ ],
+ "proof": "one Symbol representation from the tree-sitter parse feeds search.symbols, the semantic chunk boundaries, the pack's stub signatures and the attribution of verification checks to test symbols (Rust, TypeScript, Python fixtures)",
+ "audit": "IMPLEMENTED by M3.3/M3.5/M3.6/M3.8 (was NOT-FOUND)"
+}

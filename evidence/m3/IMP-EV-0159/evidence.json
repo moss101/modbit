@@ -1,0 +1,26 @@
+{
+ "task": "IMP-EV-0159",
+ "requirement": "REQ-EV-0159",
+ "qual": "QUAL-EV-0159",
+ "tests": [
+  "l0_serves_a_known_identifier_without_escalating_and_boosts_the_symbol",
+  "m3_7_retrieval_planner_starts_cheap_escalates_on_short_coverage_and_fuses_with_boosts",
+  "m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use"
+ ],
+ "batch_commits": [
+  "1920f3b",
+  "cccb869",
+  "1c36f67"
+ ],
+ "runs": [
+  {
+   "id": "gha-34462553237",
+   "kind": "hosted CI on 1c36f67 (M3.4-M3.9 seal + context batch cccb869)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34462553237",
+   "log": "ci-run-34462553237.json, ci-run-34462553237-tests.log"
+  }
+ ],
+ "proof": "a file changed in the worktree is boosted above unchanged material for the same query and every pack entry names its revision and freshness",
+ "audit": "IMPLEMENTED by M3.7/M3.8 (was NOT-FOUND)"
+}

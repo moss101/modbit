@@ -1,0 +1,25 @@
+{
+ "task": "IMP-EV-0166",
+ "requirement": "REQ-EV-0166",
+ "qual": "QUAL-EV-0166",
+ "tests": [
+  "budget_is_never_exceeded_critical_entries_go_first_and_omissions_are_summarised",
+  "m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use"
+ ],
+ "batch_commits": [
+  "1920f3b",
+  "cccb869",
+  "1c36f67"
+ ],
+ "runs": [
+  {
+   "id": "gha-34462553237",
+   "kind": "hosted CI on 1c36f67 (M3.4-M3.9 seal + context batch cccb869)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34462553237",
+   "log": "ci-run-34462553237.json, ci-run-34462553237-tests.log"
+  }
+ ],
+ "proof": "token_used never exceeds token_budget; required paths and diagnostic-linked entries are packed first; a critical entry that cannot fit marks the pack incomplete instead of being dropped silently",
+ "audit": "IMPLEMENTED by M3.8 (was NOT-FOUND)"
+}

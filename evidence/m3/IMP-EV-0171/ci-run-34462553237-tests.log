@@ -1,0 +1,9 @@
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:50:24.5327730Z test qual_ev_0217_compatibility_matrix_covers_every_registered_tool_with_owner_effect_and_test ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:52:37.8317253Z test qual_ev_0217_compatibility_matrix_covers_every_registered_tool_with_owner_effect_and_test ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:59:33.2333637Z test qual_ev_0217_compatibility_matrix_covers_every_registered_tool_with_owner_effect_and_test ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:49:34.6624090Z test tests::confine_rejects_direct_use_outside_allowed_members ... ok
+rust CI_COMPATIBLE (macos-latest)	Architecture dependency lint (docs/12, docs/81)	2026-09-10T09:50:35.3453590Z architecture-lint: 35 workspace members, 17 forbid rules, 4 confine rules, 0 violation(s)
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:51:57.4009937Z test tests::confine_rejects_direct_use_outside_allowed_members ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Architecture dependency lint (docs/12, docs/81)	2026-09-10T09:52:46.8418971Z architecture-lint: 35 workspace members, 17 forbid rules, 4 confine rules, 0 violation(s)
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:58:05.1066078Z test tests::confine_rejects_direct_use_outside_allowed_members ... ok
+rust CI_COMPATIBLE (windows-latest)	Architecture dependency lint (docs/12, docs/81)	2026-09-10T10:00:01.9212606Z architecture-lint: 35 workspace members, 17 forbid rules, 4 confine rules, 0 violation(s)

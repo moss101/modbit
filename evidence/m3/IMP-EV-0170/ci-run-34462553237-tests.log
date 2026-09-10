@@ -1,0 +1,6 @@
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:49:44.5508570Z test ledger_records_injections_and_marks_use_only_at_the_retrieved_revision ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:49:51.6805380Z test m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:52:07.5133251Z test ledger_records_injections_and_marks_use_only_at_the_retrieved_revision ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:52:10.6331739Z test m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:58:24.3661780Z test ledger_records_injections_and_marks_use_only_at_the_retrieved_revision ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:58:43.1255369Z test m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use ... ok

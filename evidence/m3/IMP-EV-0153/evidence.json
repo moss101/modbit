@@ -1,0 +1,26 @@
+{
+ "task": "IMP-EV-0153",
+ "requirement": "REQ-EV-0153",
+ "qual": "QUAL-EV-0153",
+ "tests": [
+  "semantic_index_finds_nearest_chunks_and_reembeds_only_changed_files",
+  "m3_5_semantic_chunk_index_serves_nearest_chunks_and_reembeds_only_changed_files",
+  "harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them"
+ ],
+ "batch_commits": [
+  "1920f3b",
+  "cccb869",
+  "1c36f67"
+ ],
+ "runs": [
+  {
+   "id": "gha-34462553237",
+   "kind": "hosted CI on 1c36f67 (M3.4-M3.9 seal + context batch cccb869)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34462553237",
+   "log": "ci-run-34462553237.json, ci-run-34462553237-tests.log"
+  }
+ ],
+ "proof": "semantic hits carry the chunk's path, span, hash and the revision it was embedded at, plus the embedder id and generation; the benchmark measures recall@5 and precision for the semantic-only and hybrid profiles on the fixed corpus",
+ "audit": "IMPLEMENTED by M3.5/M3.9 (was NOT-FOUND)"
+}

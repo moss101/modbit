@@ -1,0 +1,28 @@
+{
+ "task": "IMP-EV-0001",
+ "requirement": "REQ-EV-0001",
+ "qual": "QUAL-EV-0001",
+ "tests": [
+  "query_features_pick_the_cheapest_level",
+  "l0_serves_a_known_identifier_without_escalating_and_boosts_the_symbol",
+  "unknown_wording_starts_hybrid_and_a_miss_escalates_only_while_coverage_is_short",
+  "harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them",
+  "m3_7_retrieval_planner_starts_cheap_escalates_on_short_coverage_and_fuses_with_boosts"
+ ],
+ "batch_commits": [
+  "1920f3b",
+  "cccb869",
+  "1c36f67"
+ ],
+ "runs": [
+  {
+   "id": "gha-34462553237",
+   "kind": "hosted CI on 1c36f67 (M3.4-M3.9 seal + context batch cccb869)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34462553237",
+   "log": "ci-run-34462553237.json, ci-run-34462553237-tests.log"
+  }
+ ],
+ "proof": "the planner classifies path/identifier/natural-language/structural/engineering wording, starts at the cheapest level and escalates only while coverage is short; the fixed-revision benchmark (evidence/m3/M3.9/report.json) records per case the level reached, recall@5, latency and the context-token estimate of the top K",
+ "audit": "IMPLEMENTED by M3.7/M3.9 (was NOT-FOUND)"
+}

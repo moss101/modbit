@@ -7052,8 +7052,57 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0001",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:1920f3b",
+    "commit:cccb869",
+    "test:query_features_pick_the_cheapest_level",
+    "test:l0_serves_a_known_identifier_without_escalating_and_boosts_the_symbol",
+    "test:unknown_wording_starts_hybrid_and_a_miss_escalates_only_while_coverage_is_short",
+    "test:harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them",
+    "test:m3_7_retrieval_planner_starts_cheap_escalates_on_short_coverage_and_fuses_with_boosts",
+    "run:gha-34462553237",
+    "artifact:evidence/m3/IMP-EV-0001/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T10:04:56Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED by M3.7/M3.9 (was NOT-FOUND)"
+    },
+    {
+     "at": "2026-09-10T10:04:56Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented by the M3.1-M3.9 substrate and the context batch (see card)"
+    },
+    {
+     "at": "2026-09-10T10:04:56Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through modbit-core tools / the retrieval and context crates"
+    },
+    {
+     "at": "2026-09-10T10:04:56Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real indexes and fixtures"
+    },
+    {
+     "at": "2026-09-10T10:04:56Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34462553237 on 1c36f67 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T10:04:56Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34462553237"
+    }
+   ],
+   "status_changed_on": "2026-09-10T10:04:56Z"
   },
   {
    "id": "IMP-EV-0002",
@@ -7066,8 +7115,53 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0002",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:1920f3b",
+    "commit:cccb869",
+    "test:m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use",
+    "run:gha-34462553237",
+    "artifact:evidence/m3/IMP-EV-0002/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T10:04:56Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED in this batch (cccb869; was PARTIAL: excerpts came from the index text)"
+    },
+    {
+     "at": "2026-09-10T10:04:57Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented by the M3.1-M3.9 substrate and the context batch (see card)"
+    },
+    {
+     "at": "2026-09-10T10:04:57Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through modbit-core tools / the retrieval and context crates"
+    },
+    {
+     "at": "2026-09-10T10:04:57Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real indexes and fixtures"
+    },
+    {
+     "at": "2026-09-10T10:04:57Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34462553237 on 1c36f67 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T10:04:57Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34462553237"
+    }
+   ],
+   "status_changed_on": "2026-09-10T10:04:57Z"
   },
   {
    "id": "IMP-EV-0003",
@@ -7080,8 +7174,54 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0003",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:1920f3b",
+    "commit:cccb869",
+    "test:left_out_candidates_become_signature_stubs_inside_the_budget_with_hydration_handles",
+    "test:m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use",
+    "run:gha-34462553237",
+    "artifact:evidence/m3/IMP-EV-0003/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T10:04:57Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED in this batch (cccb869; was NOT-FOUND)"
+    },
+    {
+     "at": "2026-09-10T10:04:57Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented by the M3.1-M3.9 substrate and the context batch (see card)"
+    },
+    {
+     "at": "2026-09-10T10:04:57Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through modbit-core tools / the retrieval and context crates"
+    },
+    {
+     "at": "2026-09-10T10:04:57Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real indexes and fixtures"
+    },
+    {
+     "at": "2026-09-10T10:04:57Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34462553237 on 1c36f67 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T10:04:57Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34462553237"
+    }
+   ],
+   "status_changed_on": "2026-09-10T10:04:57Z"
   },
   {
    "id": "IMP-EV-0004",
@@ -7094,8 +7234,56 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0004",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:1920f3b",
+    "commit:cccb869",
+    "test:exact_regex_and_path_hits_are_bounded_and_revision_bound",
+    "test:refresh_reindexes_exactly_the_changed_paths_at_the_new_revision",
+    "test:semantic_index_finds_nearest_chunks_and_reembeds_only_changed_files",
+    "test:harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them",
+    "run:gha-34462553237",
+    "artifact:evidence/m3/IMP-EV-0004/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T10:04:57Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED by M3.1/M3.5/M3.9 with per-file content identity (subtree hashing is not needed at the measured scale: incremental refresh of one file is ~90 ms against a ~2 s cold build)"
+    },
+    {
+     "at": "2026-09-10T10:04:57Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented by the M3.1-M3.9 substrate and the context batch (see card)"
+    },
+    {
+     "at": "2026-09-10T10:04:58Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through modbit-core tools / the retrieval and context crates"
+    },
+    {
+     "at": "2026-09-10T10:04:58Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real indexes and fixtures"
+    },
+    {
+     "at": "2026-09-10T10:04:58Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34462553237 on 1c36f67 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T10:04:58Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34462553237"
+    }
+   ],
+   "status_changed_on": "2026-09-10T10:04:58Z"
   },
   {
    "id": "IMP-EV-0005",
@@ -7108,8 +7296,57 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0005",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:1920f3b",
+    "commit:cccb869",
+    "test:m3_3_tree_sitter_symbol_index_serves_definitions_and_refreshes_on_writes",
+    "test:symbol_index_extracts_alpha_language_definitions_and_refreshes",
+    "test:semantic_index_finds_nearest_chunks_and_reembeds_only_changed_files",
+    "test:m3_6_evidence_graph_serves_imports_history_changed_lines_tests_and_verification_evidence",
+    "test:m2_8_verification_engine_gates_completion_on_real_cargo_fixture",
+    "run:gha-34462553237",
+    "artifact:evidence/m3/IMP-EV-0005/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T10:04:58Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED by M3.3/M3.5/M3.6/M3.8 (was NOT-FOUND)"
+    },
+    {
+     "at": "2026-09-10T10:04:58Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented by the M3.1-M3.9 substrate and the context batch (see card)"
+    },
+    {
+     "at": "2026-09-10T10:04:58Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through modbit-core tools / the retrieval and context crates"
+    },
+    {
+     "at": "2026-09-10T10:04:58Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real indexes and fixtures"
+    },
+    {
+     "at": "2026-09-10T10:04:58Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34462553237 on 1c36f67 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T10:04:58Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34462553237"
+    }
+   ],
+   "status_changed_on": "2026-09-10T10:04:58Z"
   },
   {
    "id": "IMP-EV-0006",
@@ -7645,8 +7882,55 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0020",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:1920f3b",
+    "commit:cccb869",
+    "test:m3_4_headless_language_service_bridge_serves_diagnostics_symbols_references_and_definitions",
+    "test:rust_analyzer_reports_a_seeded_type_mismatch_symbols_references_and_definitions",
+    "test:pyright_reports_a_seeded_error_and_resolves_references",
+    "run:gha-34462553237",
+    "artifact:evidence/m3/IMP-EV-0020/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T10:04:58Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED by M3.4 (was NOT-FOUND)"
+    },
+    {
+     "at": "2026-09-10T10:04:58Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented by the M3.1-M3.9 substrate and the context batch (see card)"
+    },
+    {
+     "at": "2026-09-10T10:04:59Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through modbit-core tools / the retrieval and context crates"
+    },
+    {
+     "at": "2026-09-10T10:04:59Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real indexes and fixtures"
+    },
+    {
+     "at": "2026-09-10T10:04:59Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34462553237 on 1c36f67 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T10:04:59Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34462553237"
+    }
+   ],
+   "status_changed_on": "2026-09-10T10:04:59Z"
   },
   {
    "id": "IMP-EV-0021",
@@ -11273,8 +11557,55 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0153",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:1920f3b",
+    "commit:cccb869",
+    "test:semantic_index_finds_nearest_chunks_and_reembeds_only_changed_files",
+    "test:m3_5_semantic_chunk_index_serves_nearest_chunks_and_reembeds_only_changed_files",
+    "test:harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them",
+    "run:gha-34462553237",
+    "artifact:evidence/m3/IMP-EV-0153/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T10:04:59Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED by M3.5/M3.9 (was NOT-FOUND)"
+    },
+    {
+     "at": "2026-09-10T10:04:59Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented by the M3.1-M3.9 substrate and the context batch (see card)"
+    },
+    {
+     "at": "2026-09-10T10:04:59Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through modbit-core tools / the retrieval and context crates"
+    },
+    {
+     "at": "2026-09-10T10:04:59Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real indexes and fixtures"
+    },
+    {
+     "at": "2026-09-10T10:04:59Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34462553237 on 1c36f67 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T10:04:59Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34462553237"
+    }
+   ],
+   "status_changed_on": "2026-09-10T10:04:59Z"
   },
   {
    "id": "IMP-EV-0154",
@@ -11287,8 +11618,54 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0154",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:1920f3b",
+    "commit:cccb869",
+    "test:harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them",
+    "test:m3_7_retrieval_planner_starts_cheap_escalates_on_short_coverage_and_fuses_with_boosts",
+    "run:gha-34462553237",
+    "artifact:evidence/m3/IMP-EV-0154/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T10:04:59Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED by M3.7/M3.9 (was NOT-FOUND)"
+    },
+    {
+     "at": "2026-09-10T10:04:59Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented by the M3.1-M3.9 substrate and the context batch (see card)"
+    },
+    {
+     "at": "2026-09-10T10:05:00Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through modbit-core tools / the retrieval and context crates"
+    },
+    {
+     "at": "2026-09-10T10:05:00Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real indexes and fixtures"
+    },
+    {
+     "at": "2026-09-10T10:05:00Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34462553237 on 1c36f67 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T10:05:00Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34462553237"
+    }
+   ],
+   "status_changed_on": "2026-09-10T10:05:00Z"
   },
   {
    "id": "IMP-EV-0155",
@@ -11301,8 +11678,55 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0155",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:1920f3b",
+    "commit:cccb869",
+    "test:m3_6_evidence_graph_serves_imports_history_changed_lines_tests_and_verification_evidence",
+    "test:graph_answers_imports_importers_history_tests_evidence_and_refreshes_per_path",
+    "test:specifiers_resolve_to_workspace_paths_per_language_convention",
+    "run:gha-34462553237",
+    "artifact:evidence/m3/IMP-EV-0155/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T10:05:00Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED by M3.3/M3.6 (was NOT-FOUND)"
+    },
+    {
+     "at": "2026-09-10T10:05:00Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented by the M3.1-M3.9 substrate and the context batch (see card)"
+    },
+    {
+     "at": "2026-09-10T10:05:00Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through modbit-core tools / the retrieval and context crates"
+    },
+    {
+     "at": "2026-09-10T10:05:00Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real indexes and fixtures"
+    },
+    {
+     "at": "2026-09-10T10:05:00Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34462553237 on 1c36f67 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T10:05:00Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34462553237"
+    }
+   ],
+   "status_changed_on": "2026-09-10T10:05:00Z"
   },
   {
    "id": "IMP-EV-0157",
@@ -11315,8 +11739,55 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0157",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:1920f3b",
+    "commit:cccb869",
+    "test:harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them",
+    "test:m3_6_evidence_graph_serves_imports_history_changed_lines_tests_and_verification_evidence",
+    "test:structural_and_engineering_intents_expand_through_the_graph_with_distance_and_diagnostic_boosts",
+    "run:gha-34462553237",
+    "artifact:evidence/m3/IMP-EV-0157/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T10:05:00Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED by M3.6/M3.7/M3.9 (was NOT-FOUND)"
+    },
+    {
+     "at": "2026-09-10T10:05:01Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented by the M3.1-M3.9 substrate and the context batch (see card)"
+    },
+    {
+     "at": "2026-09-10T10:05:01Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through modbit-core tools / the retrieval and context crates"
+    },
+    {
+     "at": "2026-09-10T10:05:01Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real indexes and fixtures"
+    },
+    {
+     "at": "2026-09-10T10:05:01Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34462553237 on 1c36f67 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T10:05:01Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34462553237"
+    }
+   ],
+   "status_changed_on": "2026-09-10T10:05:01Z"
   },
   {
    "id": "IMP-EV-0158",
@@ -11329,8 +11800,55 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0158",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:1920f3b",
+    "commit:cccb869",
+    "test:log_recent_lists_commits_with_their_paths_newest_first",
+    "test:graph_answers_imports_importers_history_tests_evidence_and_refreshes_per_path",
+    "test:m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use",
+    "run:gha-34462553237",
+    "artifact:evidence/m3/IMP-EV-0158/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T10:05:01Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED by M3.6/M3.8 (was NOT-FOUND)"
+    },
+    {
+     "at": "2026-09-10T10:05:01Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented by the M3.1-M3.9 substrate and the context batch (see card)"
+    },
+    {
+     "at": "2026-09-10T10:05:01Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through modbit-core tools / the retrieval and context crates"
+    },
+    {
+     "at": "2026-09-10T10:05:01Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real indexes and fixtures"
+    },
+    {
+     "at": "2026-09-10T10:05:01Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34462553237 on 1c36f67 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T10:05:01Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34462553237"
+    }
+   ],
+   "status_changed_on": "2026-09-10T10:05:01Z"
   },
   {
    "id": "IMP-EV-0159",
@@ -11343,8 +11861,55 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0159",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:1920f3b",
+    "commit:cccb869",
+    "test:l0_serves_a_known_identifier_without_escalating_and_boosts_the_symbol",
+    "test:m3_7_retrieval_planner_starts_cheap_escalates_on_short_coverage_and_fuses_with_boosts",
+    "test:m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use",
+    "run:gha-34462553237",
+    "artifact:evidence/m3/IMP-EV-0159/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T10:05:02Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED by M3.7/M3.8 (was NOT-FOUND)"
+    },
+    {
+     "at": "2026-09-10T10:05:02Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented by the M3.1-M3.9 substrate and the context batch (see card)"
+    },
+    {
+     "at": "2026-09-10T10:05:02Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through modbit-core tools / the retrieval and context crates"
+    },
+    {
+     "at": "2026-09-10T10:05:02Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real indexes and fixtures"
+    },
+    {
+     "at": "2026-09-10T10:05:02Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34462553237 on 1c36f67 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T10:05:02Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34462553237"
+    }
+   ],
+   "status_changed_on": "2026-09-10T10:05:02Z"
   },
   {
    "id": "IMP-EV-0160",
@@ -11399,8 +11964,54 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0163",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:1920f3b",
+    "commit:cccb869",
+    "test:unknown_wording_starts_hybrid_and_a_miss_escalates_only_while_coverage_is_short",
+    "test:harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them",
+    "run:gha-34462553237",
+    "artifact:evidence/m3/IMP-EV-0163/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T10:05:02Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED by M3.7/M3.9 (was NOT-FOUND)"
+    },
+    {
+     "at": "2026-09-10T10:05:02Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented by the M3.1-M3.9 substrate and the context batch (see card)"
+    },
+    {
+     "at": "2026-09-10T10:05:02Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through modbit-core tools / the retrieval and context crates"
+    },
+    {
+     "at": "2026-09-10T10:05:02Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real indexes and fixtures"
+    },
+    {
+     "at": "2026-09-10T10:05:02Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34462553237 on 1c36f67 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T10:05:03Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34462553237"
+    }
+   ],
+   "status_changed_on": "2026-09-10T10:05:03Z"
   },
   {
    "id": "IMP-EV-0164",
@@ -11413,8 +12024,54 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0164",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:1920f3b",
+    "commit:cccb869",
+    "test:structural_and_engineering_intents_expand_through_the_graph_with_distance_and_diagnostic_boosts",
+    "test:graph_answers_imports_importers_history_tests_evidence_and_refreshes_per_path",
+    "run:gha-34462553237",
+    "artifact:evidence/m3/IMP-EV-0164/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T10:05:03Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED by M3.6/M3.7 (was NOT-FOUND)"
+    },
+    {
+     "at": "2026-09-10T10:05:03Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented by the M3.1-M3.9 substrate and the context batch (see card)"
+    },
+    {
+     "at": "2026-09-10T10:05:03Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through modbit-core tools / the retrieval and context crates"
+    },
+    {
+     "at": "2026-09-10T10:05:03Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real indexes and fixtures"
+    },
+    {
+     "at": "2026-09-10T10:05:03Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34462553237 on 1c36f67 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T10:05:03Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34462553237"
+    }
+   ],
+   "status_changed_on": "2026-09-10T10:05:03Z"
   },
   {
    "id": "IMP-EV-0165",
@@ -11427,8 +12084,54 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0165",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:1920f3b",
+    "commit:cccb869",
+    "test:harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them",
+    "test:l0_serves_a_known_identifier_without_escalating_and_boosts_the_symbol",
+    "run:gha-34462553237",
+    "artifact:evidence/m3/IMP-EV-0165/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T10:05:03Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED by M3.7/M3.9 (was NOT-FOUND)"
+    },
+    {
+     "at": "2026-09-10T10:05:03Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented by the M3.1-M3.9 substrate and the context batch (see card)"
+    },
+    {
+     "at": "2026-09-10T10:05:04Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through modbit-core tools / the retrieval and context crates"
+    },
+    {
+     "at": "2026-09-10T10:05:04Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real indexes and fixtures"
+    },
+    {
+     "at": "2026-09-10T10:05:04Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34462553237 on 1c36f67 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T10:05:04Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34462553237"
+    }
+   ],
+   "status_changed_on": "2026-09-10T10:05:04Z"
   },
   {
    "id": "IMP-EV-0166",
@@ -11441,8 +12144,54 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0166",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:1920f3b",
+    "commit:cccb869",
+    "test:budget_is_never_exceeded_critical_entries_go_first_and_omissions_are_summarised",
+    "test:m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use",
+    "run:gha-34462553237",
+    "artifact:evidence/m3/IMP-EV-0166/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T10:05:04Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED by M3.8 (was NOT-FOUND)"
+    },
+    {
+     "at": "2026-09-10T10:05:04Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented by the M3.1-M3.9 substrate and the context batch (see card)"
+    },
+    {
+     "at": "2026-09-10T10:05:04Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through modbit-core tools / the retrieval and context crates"
+    },
+    {
+     "at": "2026-09-10T10:05:04Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real indexes and fixtures"
+    },
+    {
+     "at": "2026-09-10T10:05:04Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34462553237 on 1c36f67 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T10:05:04Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34462553237"
+    }
+   ],
+   "status_changed_on": "2026-09-10T10:05:04Z"
   },
   {
    "id": "IMP-EV-0167",
@@ -11455,8 +12204,54 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0167",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:1920f3b",
+    "commit:cccb869",
+    "test:left_out_candidates_become_signature_stubs_inside_the_budget_with_hydration_handles",
+    "test:m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use",
+    "run:gha-34462553237",
+    "artifact:evidence/m3/IMP-EV-0167/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T10:05:05Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED in this batch as signature stubs (cccb869; was NOT-FOUND); summary compression of prose is not claimed"
+    },
+    {
+     "at": "2026-09-10T10:05:05Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented by the M3.1-M3.9 substrate and the context batch (see card)"
+    },
+    {
+     "at": "2026-09-10T10:05:05Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through modbit-core tools / the retrieval and context crates"
+    },
+    {
+     "at": "2026-09-10T10:05:05Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real indexes and fixtures"
+    },
+    {
+     "at": "2026-09-10T10:05:05Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34462553237 on 1c36f67 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T10:05:05Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34462553237"
+    }
+   ],
+   "status_changed_on": "2026-09-10T10:05:05Z"
   },
   {
    "id": "IMP-EV-0168",
@@ -11497,8 +12292,54 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0170",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:1920f3b",
+    "commit:cccb869",
+    "test:m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use",
+    "test:ledger_records_injections_and_marks_use_only_at_the_retrieved_revision",
+    "run:gha-34462553237",
+    "artifact:evidence/m3/IMP-EV-0170/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T10:05:05Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED by M3.8 and this batch (was NOT-FOUND)"
+    },
+    {
+     "at": "2026-09-10T10:05:05Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented by the M3.1-M3.9 substrate and the context batch (see card)"
+    },
+    {
+     "at": "2026-09-10T10:05:05Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through modbit-core tools / the retrieval and context crates"
+    },
+    {
+     "at": "2026-09-10T10:05:05Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real indexes and fixtures"
+    },
+    {
+     "at": "2026-09-10T10:05:05Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34462553237 on 1c36f67 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T10:05:06Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34462553237"
+    }
+   ],
+   "status_changed_on": "2026-09-10T10:05:06Z"
   },
   {
    "id": "IMP-EV-0171",
@@ -11511,8 +12352,54 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0171",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:1920f3b",
+    "commit:cccb869",
+    "test:confine_rejects_direct_use_outside_allowed_members",
+    "test:qual_ev_0217_compatibility_matrix_covers_every_registered_tool_with_owner_effect_and_test",
+    "run:gha-34462553237",
+    "artifact:evidence/m3/IMP-EV-0171/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T10:05:06Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED by DR-M3-001 in this batch (was PARTIAL: ports existed, no guard)"
+    },
+    {
+     "at": "2026-09-10T10:05:06Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented by the M3.1-M3.9 substrate and the context batch (see card)"
+    },
+    {
+     "at": "2026-09-10T10:05:06Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through modbit-core tools / the retrieval and context crates"
+    },
+    {
+     "at": "2026-09-10T10:05:06Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real indexes and fixtures"
+    },
+    {
+     "at": "2026-09-10T10:05:06Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34462553237 on 1c36f67 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T10:05:06Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34462553237"
+    }
+   ],
+   "status_changed_on": "2026-09-10T10:05:06Z"
   },
   {
    "id": "IMP-EV-0172",
@@ -11525,8 +12412,55 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0172",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:1920f3b",
+    "commit:cccb869",
+    "test:harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them",
+    "test:m3_5_semantic_chunk_index_serves_nearest_chunks_and_reembeds_only_changed_files",
+    "test:m3_6_evidence_graph_serves_imports_history_changed_lines_tests_and_verification_evidence",
+    "run:gha-34462553237",
+    "artifact:evidence/m3/IMP-EV-0172/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T10:05:06Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED by M3.2–M3.6/M3.9 (was NOT-FOUND)"
+    },
+    {
+     "at": "2026-09-10T10:05:06Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented by the M3.1-M3.9 substrate and the context batch (see card)"
+    },
+    {
+     "at": "2026-09-10T10:05:06Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through modbit-core tools / the retrieval and context crates"
+    },
+    {
+     "at": "2026-09-10T10:05:06Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real indexes and fixtures"
+    },
+    {
+     "at": "2026-09-10T10:05:06Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34462553237 on 1c36f67 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T10:05:06Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34462553237"
+    }
+   ],
+   "status_changed_on": "2026-09-10T10:05:06Z"
   },
   {
    "id": "IMP-EV-0173",
@@ -12948,8 +13882,53 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0249",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:1920f3b",
+    "commit:cccb869",
+    "test:harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them",
+    "run:gha-34462553237",
+    "artifact:evidence/m3/IMP-EV-0249/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T10:05:07Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED by M3.9 (was NOT-FOUND)"
+    },
+    {
+     "at": "2026-09-10T10:05:07Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented by the M3.1-M3.9 substrate and the context batch (see card)"
+    },
+    {
+     "at": "2026-09-10T10:05:07Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through modbit-core tools / the retrieval and context crates"
+    },
+    {
+     "at": "2026-09-10T10:05:07Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real indexes and fixtures"
+    },
+    {
+     "at": "2026-09-10T10:05:07Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34462553237 on 1c36f67 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T10:05:07Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34462553237"
+    }
+   ],
+   "status_changed_on": "2026-09-10T10:05:07Z"
   },
   {
    "id": "IMP-EV-0250",

@@ -1,0 +1,26 @@
+{
+ "task": "IMP-EV-0155",
+ "requirement": "REQ-EV-0155",
+ "qual": "QUAL-EV-0155",
+ "tests": [
+  "m3_6_evidence_graph_serves_imports_history_changed_lines_tests_and_verification_evidence",
+  "graph_answers_imports_importers_history_tests_evidence_and_refreshes_per_path",
+  "specifiers_resolve_to_workspace_paths_per_language_convention"
+ ],
+ "batch_commits": [
+  "1920f3b",
+  "cccb869",
+  "1c36f67"
+ ],
+ "runs": [
+  {
+   "id": "gha-34462553237",
+   "kind": "hosted CI on 1c36f67 (M3.4-M3.9 seal + context batch cccb869)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34462553237",
+   "log": "ci-run-34462553237.json, ci-run-34462553237-tests.log"
+  }
+ ],
+ "proof": "files, symbols and import dependencies are represented; a cross-file query (importers of a path, to depth 3) resolves the structural path in Rust, Python and TypeScript fixtures and in the real repository corpus",
+ "audit": "IMPLEMENTED by M3.3/M3.6 (was NOT-FOUND)"
+}

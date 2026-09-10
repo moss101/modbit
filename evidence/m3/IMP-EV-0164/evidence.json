@@ -1,0 +1,25 @@
+{
+ "task": "IMP-EV-0164",
+ "requirement": "REQ-EV-0164",
+ "qual": "QUAL-EV-0164",
+ "tests": [
+  "structural_and_engineering_intents_expand_through_the_graph_with_distance_and_diagnostic_boosts",
+  "graph_answers_imports_importers_history_tests_evidence_and_refreshes_per_path"
+ ],
+ "batch_commits": [
+  "1920f3b",
+  "cccb869",
+  "1c36f67"
+ ],
+ "runs": [
+  {
+   "id": "gha-34462553237",
+   "kind": "hosted CI on 1c36f67 (M3.4-M3.9 seal + context batch cccb869)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34462553237",
+   "log": "ci-run-34462553237.json, ci-run-34462553237-tests.log"
+  }
+ ],
+ "proof": "expansion from a seed to importers/tests/co-change/evidence is bounded by depth, seed count and the hit ceiling; the planner test caps results at max_hits",
+ "audit": "IMPLEMENTED by M3.6/M3.7 (was NOT-FOUND)"
+}

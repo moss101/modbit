@@ -1,0 +1,25 @@
+{
+ "task": "IMP-EV-0163",
+ "requirement": "REQ-EV-0163",
+ "qual": "QUAL-EV-0163",
+ "tests": [
+  "unknown_wording_starts_hybrid_and_a_miss_escalates_only_while_coverage_is_short",
+  "harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them"
+ ],
+ "batch_commits": [
+  "1920f3b",
+  "cccb869",
+  "1c36f67"
+ ],
+ "runs": [
+  {
+   "id": "gha-34462553237",
+   "kind": "hosted CI on 1c36f67 (M3.4-M3.9 seal + context batch cccb869)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34462553237",
+   "log": "ci-run-34462553237.json, ci-run-34462553237-tests.log"
+  }
+ ],
+ "proof": "a broad request is broken into per-source and per-identifier retrieval steps; the plan records every sub-query with its candidate count and the coverage reached, and the benchmark records the steps per case",
+ "audit": "IMPLEMENTED by M3.7/M3.9 (was NOT-FOUND)"
+}

@@ -1,0 +1,9 @@
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:49:50.9600830Z test m3_6_evidence_graph_serves_imports_history_changed_lines_tests_and_verification_evidence ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:50:22.8620780Z test specifiers_resolve_to_workspace_paths_per_language_convention ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:50:22.8651310Z test graph_answers_imports_importers_history_tests_evidence_and_refreshes_per_path ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:52:10.2505218Z test m3_6_evidence_graph_serves_imports_history_changed_lines_tests_and_verification_evidence ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:52:37.6009982Z test graph_answers_imports_importers_history_tests_evidence_and_refreshes_per_path ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:52:37.6011667Z test specifiers_resolve_to_workspace_paths_per_language_convention ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:58:40.1832015Z test m3_6_evidence_graph_serves_imports_history_changed_lines_tests_and_verification_evidence ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:59:31.6701062Z test specifiers_resolve_to_workspace_paths_per_language_convention ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:59:31.6708528Z test graph_answers_imports_importers_history_tests_evidence_and_refreshes_per_path ... ok

@@ -1,0 +1,26 @@
+{
+ "task": "IMP-EV-0158",
+ "requirement": "REQ-EV-0158",
+ "qual": "QUAL-EV-0158",
+ "tests": [
+  "log_recent_lists_commits_with_their_paths_newest_first",
+  "graph_answers_imports_importers_history_tests_evidence_and_refreshes_per_path",
+  "m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use"
+ ],
+ "batch_commits": [
+  "1920f3b",
+  "cccb869",
+  "1c36f67"
+ ],
+ "runs": [
+  {
+   "id": "gha-34462553237",
+   "kind": "hosted CI on 1c36f67 (M3.4-M3.9 seal + context batch cccb869)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34462553237",
+   "log": "ci-run-34462553237.json, ci-run-34462553237-tests.log"
+  }
+ ],
+ "proof": "history is a subordinate signal (co-change and ownership neighbours rank below the query's own hits) and pack bytes always come from the current worktree, never from a commit \u2014 an old commit cannot override current code truth",
+ "audit": "IMPLEMENTED by M3.6/M3.8 (was NOT-FOUND)"
+}

@@ -1,0 +1,25 @@
+{
+ "task": "IMP-EV-0170",
+ "requirement": "REQ-EV-0170",
+ "qual": "QUAL-EV-0170",
+ "tests": [
+  "m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use",
+  "ledger_records_injections_and_marks_use_only_at_the_retrieved_revision"
+ ],
+ "batch_commits": [
+  "1920f3b",
+  "cccb869",
+  "1c36f67"
+ ],
+ "runs": [
+  {
+   "id": "gha-34462553237",
+   "kind": "hosted CI on 1c36f67 (M3.4-M3.9 seal + context batch cccb869)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34462553237",
+   "log": "ci-run-34462553237.json, ci-run-34462553237-tests.log"
+  }
+ ],
+ "proof": "a stale index excerpt is never labelled current: the pack re-reads and labels it rehydrated; a ledger record at an older revision does not count as a use",
+ "audit": "IMPLEMENTED by M3.8 and this batch (was NOT-FOUND)"
+}

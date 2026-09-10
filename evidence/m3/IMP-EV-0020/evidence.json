@@ -1,0 +1,26 @@
+{
+ "task": "IMP-EV-0020",
+ "requirement": "REQ-EV-0020",
+ "qual": "QUAL-EV-0020",
+ "tests": [
+  "m3_4_headless_language_service_bridge_serves_diagnostics_symbols_references_and_definitions",
+  "rust_analyzer_reports_a_seeded_type_mismatch_symbols_references_and_definitions",
+  "pyright_reports_a_seeded_error_and_resolves_references"
+ ],
+ "batch_commits": [
+  "1920f3b",
+  "cccb869",
+  "1c36f67"
+ ],
+ "runs": [
+  {
+   "id": "gha-34462553237",
+   "kind": "hosted CI on 1c36f67 (M3.4-M3.9 seal + context batch cccb869)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34462553237",
+   "log": "ci-run-34462553237.json, ci-run-34462553237-tests.log"
+  }
+ ],
+ "proof": "diagnostics are fetched on demand after the server's analysis settles (pull when the server offers it); nothing in the runtime injects diagnostics into prompts \u2014 the only path is an explicit tool call, so a high-churn session produces no unsolicited diagnostic traffic",
+ "audit": "IMPLEMENTED by M3.4 (was NOT-FOUND)"
+}

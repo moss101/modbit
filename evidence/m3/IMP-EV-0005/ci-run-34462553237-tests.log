@@ -1,0 +1,15 @@
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:49:49.0593990Z test m3_3_tree_sitter_symbol_index_serves_definitions_and_refreshes_on_writes ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:49:50.8235420Z test m2_8_verification_engine_gates_completion_on_real_cargo_fixture ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:49:50.9600830Z test m3_6_evidence_graph_serves_imports_history_changed_lines_tests_and_verification_evidence ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:50:23.2599570Z test semantic_index_finds_nearest_chunks_and_reembeds_only_changed_files ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:50:23.3350130Z test symbol_index_extracts_alpha_language_definitions_and_refreshes ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:52:09.8736285Z test m3_3_tree_sitter_symbol_index_serves_definitions_and_refreshes_on_writes ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:52:10.2505218Z test m3_6_evidence_graph_serves_imports_history_changed_lines_tests_and_verification_evidence ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:52:10.3159187Z test m2_8_verification_engine_gates_completion_on_real_cargo_fixture ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:52:37.6312688Z test semantic_index_finds_nearest_chunks_and_reembeds_only_changed_files ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:52:37.6321540Z test symbol_index_extracts_alpha_language_definitions_and_refreshes ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:58:35.8973399Z test m3_3_tree_sitter_symbol_index_serves_definitions_and_refreshes_on_writes ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:58:38.3219849Z test m2_8_verification_engine_gates_completion_on_real_cargo_fixture ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:58:40.1832015Z test m3_6_evidence_graph_serves_imports_history_changed_lines_tests_and_verification_evidence ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:59:31.8660246Z test semantic_index_finds_nearest_chunks_and_reembeds_only_changed_files ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:59:31.9550084Z test symbol_index_extracts_alpha_language_definitions_and_refreshes ... ok

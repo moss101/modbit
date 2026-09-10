@@ -1,0 +1,24 @@
+{
+ "task": "IMP-EV-0249",
+ "requirement": "REQ-EV-0249",
+ "qual": "QUAL-EV-0249",
+ "tests": [
+  "harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them"
+ ],
+ "batch_commits": [
+  "1920f3b",
+  "cccb869",
+  "1c36f67"
+ ],
+ "runs": [
+  {
+   "id": "gha-34462553237",
+   "kind": "hosted CI on 1c36f67 (M3.4-M3.9 seal + context batch cccb869)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34462553237",
+   "log": "ci-run-34462553237.json, ci-run-34462553237-tests.log"
+  }
+ ],
+ "proof": "the same frozen cases run with and without the structural engine (profile B hybrid baseline versus profile C) on the same corpus revision; the report states both",
+ "audit": "IMPLEMENTED by M3.9 (was NOT-FOUND)"
+}
