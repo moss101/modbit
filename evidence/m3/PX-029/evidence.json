@@ -8,8 +8,18 @@
   "every_shipped_record_stands_and_an_unrecorded_language_is_unsupported",
   "qual_px_000_headless_cli_task_lifecycle"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "47d06ad"
+ ],
+ "runs": [
+  {
+   "id": "gha-34536897118",
+   "kind": "hosted CI on 47d06ad",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34536897118",
+   "log": "ci-run-34536897118.json, ci-run-34536897118-tests.log"
+  }
+ ],
  "proof": "A Go file and a markdown file in one repository: retrieval indexes both as text and the symbol query makes no claim about the Go file; the Context Inspector carries the language state per entry (language, tier, structural, needs_opt_in, degradation); the Go edit is refused with the language named until the user opts the task in with AllowUnsupportedLanguage, and the change that follows carries language=go and unsupported_language=true on the canonical FileChanged event while the markdown change carries language=markdown and false. A repository with no runner of ours gets evidence only from .modbit/verification.json, and the plan records that it is heuristic.",
  "audit": "PARTIAL before this task: PX-027 recorded which languages have a tier; nothing acted on the answer.",
  "limitations": "The opt-in is per task and per language. An unidentified file is text, not unsupported. The symbol tool filters by the recorded tier, so promotion from C to B is a deliberate act (PX-028). The desktop Review screen does not show the language line yet."

@@ -22401,11 +22401,13 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-029",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m3/PX-029/TASK_CARD.md",
     "test:qual_px_029_an_unsupported_language_degrades_explicitly_and_edits_need_an_opt_in",
-    "test:qual_px_000_headless_cli_task_lifecycle"
+    "test:qual_px_000_headless_cli_task_lifecycle",
+    "commit:47d06ad",
+    "run:gha-34536897118"
    ],
    "notes": [
     {
@@ -22431,9 +22433,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "a Go file and a markdown file in one run: no structural claim, a refused edit, an opt-in, and the provenance on the log"
+    },
+    {
+     "at": "2026-09-10T22:26:46Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34536897118 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-10T22:26:46Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34536897118; limitations in evidence/m3/PX-029/TASK_CARD.md"
     }
    ],
-   "status_changed_on": "2026-09-10T22:19:10Z"
+   "status_changed_on": "2026-09-10T22:26:46Z"
   },
   {
    "id": "PX-030",

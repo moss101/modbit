@@ -1,0 +1,12 @@
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:21:42.1596318Z test qual_px_000_headless_cli_task_lifecycle ... ok
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:21:55.8971609Z test qual_px_029_an_unsupported_language_degrades_explicitly_and_edits
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:22:29.8787545Z test qual_px_027_language_tier_suites_run_on_real_fixtures_and_a_tier_
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:22:52.2932110Z test every_shipped_record_stands_and_an_unrecorded_language_is_unsuppo
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:21:17.3608690Z test qual_px_000_headless_cli_task_lifecycle ... ok
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:21:29.6829690Z test qual_px_029_an_unsupported_language_degrades_explicitly_and_edits_
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:22:02.0407130Z test qual_px_027_language_tier_suites_run_on_real_fixtures_and_a_tier_i
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:22:20.6104970Z test every_shipped_record_stands_and_an_unrecorded_language_is_unsuppor
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:23:23.9673171Z test qual_px_000_headless_cli_task_lifecycle ... ok
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:24:13.7902122Z test qual_px_029_an_unsupported_language_degrades_explicitly_and_edit
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:25:03.0298486Z test qual_px_027_language_tier_suites_run_on_real_fixtures_and_a_tier
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:25:40.6369595Z test every_shipped_record_stands_and_an_unrecorded_language_is_unsupp
