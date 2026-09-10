@@ -1,0 +1,18 @@
+{
+ "task": "M3.8",
+ "tests": [
+  "budget_is_never_exceeded_critical_entries_go_first_and_omissions_are_summarised",
+  "duplicates_collapse_on_span_identity_or_containment",
+  "ledger_records_injections_and_marks_use_only_at_the_retrieved_revision",
+  "m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use",
+  "qual_ev_0217_compatibility_matrix_covers_every_registered_tool_with_owner_effect_and_test"
+ ],
+ "commits": {
+  "implementation": "HEAD"
+ },
+ "runs": [],
+ "evidence_tier": "release-critical",
+ "acceptance": {
+  "Context Pack/token budget/provenance ledger": "pending hosted CI"
+ }
+}

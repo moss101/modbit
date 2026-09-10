@@ -996,6 +996,75 @@ tool!(
     }
 );
 
+tool!(
+    ContextPack,
+    spec(
+        "context.pack",
+        "Compile a Context Pack for a query: planned retrieval (search.retrieve) packed under an explicit token budget — task-constraint paths and diagnostic-linked entries first, then the highest marginal evidence utility, duplicates collapsed by span — with provenance (path, revision, content hash, sources, reasons) and a token cost per entry, an omitted summary, and a durable pack object; every entry is recorded in the task's Context Ledger (M3.8, docs/18 Context Pack).",
+        EffectClass::ReadOnly,
+        json!({"type":"object","properties":{"query":{"type":"string","minLength":1},"intent":{"type":"string","enum":["exact","hybrid","structural","engineering"]},"token_budget":{"type":"integer","minimum":50,"maximum":64000},"max_candidates":{"type":"integer","minimum":1,"maximum":200},"required_paths":{"type":"array","items":{"type":"string"},"maxItems":20}},"required":["query"],"additionalProperties":false}),
+        &["fs.read", "git.read"],
+        Idempotency::Idempotent
+    ),
+    |ctx, args| {
+        let Some(port) = &ctx.search else {
+            return ToolOutcome::infra("NO_INDEX", "no workspace index is attached to this task");
+        };
+        let query = s(&args, "query");
+        if query.trim().is_empty() {
+            return ToolOutcome::fail("QUERY_REQUIRED", "query must not be empty");
+        }
+        let req = crate::pipeline::SearchRequest {
+            kind: "pack".into(),
+            query: json!({
+                "query": query,
+                "intent": args.get("intent").and_then(Value::as_str).unwrap_or(""),
+                "token_budget": args.get("token_budget").and_then(Value::as_u64).unwrap_or(4000).clamp(50, 64000),
+                "required_paths": args.get("required_paths").cloned().unwrap_or_else(|| json!([])),
+            })
+            .to_string(),
+            case_insensitive: false,
+            path_glob: None,
+            max_hits: usize::try_from(
+                args.get("max_candidates").and_then(Value::as_u64).unwrap_or(20).clamp(1, 200)
+            )
+            .unwrap_or(20),
+        };
+        match port.search(&req) {
+            Ok(v) => ToolOutcome::ok(v),
+            Err((code, msg)) => ToolOutcome::fail(&code, msg),
+        }
+    }
+);
+
+tool!(
+    ContextLedger,
+    spec(
+        "context.ledger",
+        "The task's Context Ledger: every entry injected by a Context Pack (path, lines, revision, pack) and whether a later tool call used the path at that revision (M3.8, docs/28).",
+        EffectClass::ReadOnly,
+        json!({"type":"object","properties":{},"additionalProperties":false}),
+        &["fs.read"],
+        Idempotency::Idempotent
+    ),
+    |ctx, _args| {
+        let Some(port) = &ctx.search else {
+            return ToolOutcome::infra("NO_INDEX", "no workspace index is attached to this task");
+        };
+        let req = crate::pipeline::SearchRequest {
+            kind: "ledger".into(),
+            query: String::new(),
+            case_insensitive: false,
+            path_glob: None,
+            max_hits: 1,
+        };
+        match port.search(&req) {
+            Ok(v) => ToolOutcome::ok(v),
+            Err((code, msg)) => ToolOutcome::fail(&code, msg),
+        }
+    }
+);
+
 /// Wait window for `shell.read` when the process is still running.
 const READ_WAIT_MS: u64 = 250;
 
@@ -1428,6 +1497,8 @@ pub fn register_direct(registry: &mut ToolRegistry) -> Result<()> {
         SearchSemantic::shared(),
         SearchGraph::shared(),
         SearchRetrieve::shared(),
+        ContextPack::shared(),
+        ContextLedger::shared(),
         LspDiagnostics::shared(),
         LspSymbols::shared(),
         LspReferences::shared(),

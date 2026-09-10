@@ -6509,3 +6509,205 @@ async fn m3_7_retrieval_planner_starts_cheap_escalates_on_short_coverage_and_fus
     .await;
     assert_eq!(r.error_code, "QUERY_REQUIRED", "{r:?}");
 }
+
+/// M3.8: `context.pack` compiles a budgeted, provenance-complete Context Pack
+/// (required paths first as critical entries, then utility; never over budget;
+/// omissions summarised; durable pack object) and records every entry in the
+/// task's Context Ledger; a later read of a packed path at that revision is a
+/// recorded use, a stale-revision read is not.
+#[tokio::test]
+async fn m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use() {
+    let (repo, root) = plain_repo(&[(
+        "Cargo.toml",
+        "[package]\nname = \"cart\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+    )]);
+    for (p, c) in [
+        (
+            "src/lib.rs",
+            "pub mod money;\n\n/// Total of the cart in cents.\npub fn compute_total(quantity: u32, unit_cents: u32) -> u32 {\n    money::round(quantity * unit_cents)\n}\n",
+        ),
+        (
+            "src/money.rs",
+            "pub fn round(cents: u32) -> u32 {\n    cents\n}\n",
+        ),
+        (
+            "src/main.rs",
+            "use cart::compute_total;\nfn main() {\n    println!(\"{}\", compute_total(2, 150));\n}\n",
+        ),
+        (
+            "README.md",
+            "# cart\nThe cart computes order totals from quantity and unit price.\n",
+        ),
+        ("CONSTRAINTS.md", "Never round totals up.\n"),
+    ] {
+        let path = repo.path().join(p);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, c).unwrap();
+    }
+    for args in [
+        vec!["add", "-A"],
+        vec![
+            "-c",
+            "user.name=ann",
+            "-c",
+            "user.email=a@e",
+            "commit",
+            "-q",
+            "-m",
+            "cart",
+        ],
+    ] {
+        assert!(
+            Command::new("git")
+                .arg("-C")
+                .arg(repo.path())
+                .args(&args)
+                .status()
+                .unwrap()
+                .success()
+        );
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn(dir.path());
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xC0)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xC1, "local_trusted").await;
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xC2,
+        0xB1,
+        "context.pack",
+        r#"{"query":"compute_total","token_budget":60,"required_paths":["CONSTRAINTS.md"]}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let pack = &so["pack"];
+    let budget = pack["token_budget"].as_u64().unwrap();
+    assert_eq!(budget, 60);
+    assert!(pack["token_used"].as_u64().unwrap() <= budget, "{so}");
+    assert_eq!(pack["compiler_version"], "context-pack-v1");
+    assert_eq!(pack["token_estimator"], "bytes/4");
+    let rev0 = pack["workspace_revision"].as_u64().unwrap();
+    let entries = pack["entries"].as_array().unwrap();
+    assert!(!entries.is_empty(), "{so}");
+    assert_eq!(
+        entries[0]["provenance"]["path"], "CONSTRAINTS.md",
+        "task constraint first: {so}"
+    );
+    assert_eq!(entries[0]["reason"], "critical:task_constraint");
+    assert_eq!(entries[0]["source_ref"], "workspace:CONSTRAINTS.md");
+    for e in entries {
+        assert_eq!(
+            e["provenance"]["workspace_revision"].as_u64().unwrap(),
+            rev0
+        );
+        assert!(e["provenance"]["content_hash"].is_string(), "{e}");
+        assert_eq!(e["provenance"]["excerpt_hash"].as_str().unwrap().len(), 64);
+        assert!(e["token_cost"].as_u64().unwrap() >= 1);
+    }
+    assert!(pack["complete"].as_bool().unwrap());
+    assert!(
+        pack["omitted_summary"]["count"].as_u64().unwrap() >= 1,
+        "the budget left something out: {so}"
+    );
+    // The pack is a durable object.
+    let pack_ref = so["pack_ref"].as_str().unwrap();
+    let stored = read_object(&mut c, id16(0xC3), pack_ref).await;
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(&stored).unwrap()["pack_id"],
+        pack["pack_id"]
+    );
+    // Ledger: every entry injected, none used yet.
+    let r = invoke_tool(&mut c, &task, g, 0xC4, 0xB2, "context.ledger", "{}").await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(
+        so["injected"].as_u64().unwrap(),
+        entries.len() as u64,
+        "{so}"
+    );
+    assert_eq!(so["used"], 0);
+    assert!(so["ledger_ref"].is_string());
+    // A read of a packed path at the retrieved revision is a use.
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xC5,
+        0xB3,
+        "fs.read",
+        r#"{"path":"CONSTRAINTS.md"}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let r = invoke_tool(&mut c, &task, g, 0xC6, 0xB4, "context.ledger", "{}").await;
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(so["used"], 1, "{so}");
+    let used_entry = so["ledger"]["entries"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|e| e["path"] == "CONSTRAINTS.md")
+        .unwrap();
+    assert_eq!(used_entry["used"]["tool_name"], "fs.read");
+    assert_eq!(
+        used_entry["used"]["tool_call_id"].as_str().unwrap().len(),
+        36
+    );
+    // A write moves the revision; a later read of another packed path is stale, not a use.
+    let other = entries
+        .iter()
+        .map(|e| e["provenance"]["path"].as_str().unwrap())
+        .find(|p| *p != "CONSTRAINTS.md")
+        .unwrap_or_else(|| panic!("{pack}"));
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xC7,
+        0xB5,
+        "change.apply",
+        r##"{"path":"README.md","op":"replace","content":"# cart\nchanged\n"}"##,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xC8,
+        0xB6,
+        "fs.read",
+        &format!(r#"{{"path":"{other}"}}"#),
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let r = invoke_tool(&mut c, &task, g, 0xC9, 0xB7, "context.ledger", "{}").await;
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let readme_used = so["ledger"]["entries"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|e| e["path"] == "README.md" && e["used"].is_object())
+        .count();
+    assert_eq!(
+        so["used"].as_u64().unwrap(),
+        1 + readme_used as u64,
+        "the stale read of {other} is not a use: {so}"
+    );
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xCA,
+        0xB8,
+        "context.pack",
+        r#"{"query":"   "}"#,
+    )
+    .await;
+    assert_eq!(r.error_code, "QUERY_REQUIRED", "{r:?}");
+}

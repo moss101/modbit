@@ -84,11 +84,16 @@ fn main() -> ExitCode {
             return ExitCode::from(1);
         }
     };
-    match rt.block_on(server::run(data_dir, idle_exit_secs)) {
+    let code = match rt.block_on(server::run(data_dir, idle_exit_secs)) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             eprintln!("modbit-core: {e:#}");
             ExitCode::from(1)
         }
-    }
+    };
+    // A stopping Core must release the profile promptly (docs/33 one Core per
+    // profile): every accepted command is durable before its ack, so nothing
+    // in flight is worth waiting for once the serve loop has ended.
+    rt.shutdown_timeout(std::time::Duration::from_millis(500));
+    code
 }

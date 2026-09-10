@@ -99,11 +99,35 @@ export class CoreSupervisor {
   }
 
   private restartTimer: NodeJS.Timeout | null = null;
+  /** The previous Core, until it has actually exited (it holds the profile lock until then). */
+  private dying: ChildProcess | null = null;
+
+  /**
+   * Wait for the previous Core to exit before spawning the next one: a Core
+   * that is still shutting down owns the profile lock, and a replacement
+   * spawned too early is refused and would only feed the restart loop.
+   */
+  private async reapDying(): Promise<void> {
+    const child = this.dying;
+    this.dying = null;
+    if (!child || child.exitCode !== null || child.signalCode !== null) return;
+    child.kill("SIGKILL");
+    await new Promise<void>((resolve) => {
+      const done = () => {
+        clearTimeout(t);
+        resolve();
+      };
+      const t = setTimeout(done, 2000);
+      child.once("exit", done);
+    });
+  }
 
   private scheduleRestart(reason: string): void {
     if (this.stopped || this.restartTimer) return;
+    process.stderr.write(`modbit-desktop: core restart scheduled: ${reason}\n`);
     if (this.child) {
       this.child.kill();
+      this.dying = this.child;
       this.child = null;
     }
     this.client?.close();
@@ -117,7 +141,7 @@ export class CoreSupervisor {
     this.setStatus({ state: "restarting", reason, restarts: this.restarts, retryInMs });
     this.restartTimer = setTimeout(() => {
       this.restartTimer = null;
-      void this.spawnOnce();
+      void this.reapDying().then(() => (this.stopped ? undefined : this.spawnOnce()));
     }, retryInMs);
   }
 

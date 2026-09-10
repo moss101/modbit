@@ -141,6 +141,27 @@ pub fn uri_of(root: &Path, rel: &str) -> String {
     }
 }
 
+/// A comparable form of a file URI: percent-decoded, forward slashes, no
+/// leading slash before a drive letter, lower-cased drive letter, and
+/// case-folded on Windows. Servers differ in how they spell the same file
+/// (pyright publishes `file:///d%3A/...` for a `file:///D:/...` we opened).
+#[must_use]
+pub fn norm_uri(uri: &str) -> String {
+    let raw = uri.strip_prefix("file://").unwrap_or(uri);
+    let mut d = percent_decode(raw).replace('\\', "/");
+    if d.starts_with('/') && d.as_bytes().get(2) == Some(&b':') {
+        d.remove(0);
+    }
+    if d.as_bytes().get(1) == Some(&b':') {
+        let drive = d[..1].to_ascii_lowercase();
+        d = format!("{drive}{}", &d[1..]);
+    }
+    if cfg!(windows) {
+        d = d.to_lowercase();
+    }
+    d
+}
+
 /// Root-relative path of a `file://` URI (absolute when outside the root).
 #[must_use]
 pub fn path_of(root: &Path, uri: &str) -> String {
@@ -264,7 +285,7 @@ fn reader_loop(
                 .unwrap_or_default();
             diag.lock()
                 .expect("diagnostics")
-                .insert(uri.to_owned(), list);
+                .insert(norm_uri(uri), list);
         }
         if tx.send(v).is_err() {
             return;
@@ -457,7 +478,7 @@ impl LanguageServer {
         rel: &str,
         timeout: Duration,
     ) -> Result<Vec<Diagnostic>, LspError> {
-        let uri = uri_of(&self.root, rel);
+        let uri = norm_uri(&uri_of(&self.root, rel));
         self.diagnostics.lock().expect("d").remove(&uri);
         let started = Instant::now();
         let deadline = started + timeout;
@@ -496,7 +517,11 @@ impl LanguageServer {
                 Ok(v) => {
                     self.answer_if_request(&v);
                     match v["method"].as_str() {
-                        Some("textDocument/publishDiagnostics") if v["params"]["uri"] == uri => {
+                        Some("textDocument/publishDiagnostics")
+                            if v["params"]["uri"]
+                                .as_str()
+                                .is_some_and(|u| norm_uri(u) == uri) =>
+                        {
                             published = true;
                             last_event = Instant::now();
                         }

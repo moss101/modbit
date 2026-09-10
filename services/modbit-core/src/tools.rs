@@ -123,6 +123,8 @@ pub struct ToolHost {
     pub(crate) semantic: Mutex<HashMap<PathBuf, Arc<Mutex<modbit_retrieval::SemanticIndex>>>>,
     /// Evidence graphs per canonical workspace root (M3.6).
     pub(crate) graphs: Mutex<HashMap<PathBuf, Arc<Mutex<modbit_retrieval::EvidenceGraph>>>>,
+    /// Context Ledgers per task (M3.8).
+    pub(crate) ledgers: Mutex<HashMap<TaskId, Arc<Mutex<modbit_context::ContextLedger>>>>,
     /// Headless language servers per (workspace root, language) (M3.4).
     pub(crate) language_servers: LanguageServers,
     /// One workspace service per approved root, kept so revisions stay monotonic in-process.
@@ -154,6 +156,7 @@ impl ToolHost {
             symbols: Mutex::new(HashMap::new()),
             semantic: Mutex::new(HashMap::new()),
             graphs: Mutex::new(HashMap::new()),
+            ledgers: Mutex::new(HashMap::new()),
             language_servers: Arc::new(std::sync::Mutex::new(HashMap::new())),
             state_dir: data_dir.join("workspaces"),
         })
@@ -267,6 +270,18 @@ impl ToolHost {
         let sem = Arc::new(Mutex::new(sem));
         map.insert(canonical.to_path_buf(), Arc::clone(&sem));
         Ok(sem)
+    }
+
+    /// The Context Ledger of a task (M3.8).
+    pub(crate) async fn ledger(
+        &self,
+        task_id: TaskId,
+    ) -> Arc<Mutex<modbit_context::ContextLedger>> {
+        let mut map = self.ledgers.lock().await;
+        Arc::clone(
+            map.entry(task_id)
+                .or_insert_with(|| Arc::new(Mutex::new(modbit_context::ContextLedger::default()))),
+        )
     }
 
     /// The evidence graph of a workspace root, built from the exact index, the
@@ -383,6 +398,8 @@ impl ToolHost {
                 semantic: self.semantic(r).await?,
                 graph: self.graph(r).await?,
                 evidence: task_evidence(store, task_id).await,
+                ledger: self.ledger(task_id).await,
+                objects: store.lock().await.objects().clone(),
                 workspace: Arc::clone(ws),
             })),
             _ => None,
@@ -429,6 +446,31 @@ impl ToolHost {
             .invoke(&ctx, tool_call_id, tool_name, arguments_json)
             .await;
         let mut result = outcome.result.clone();
+        // Context Ledger (docs/28, M3.8): a successful tool call that reads or
+        // writes a packed path at the revision it was retrieved at is a use.
+        if result.status == ToolStatus::Success
+            && let Some(ws) = &ctx.workspace
+        {
+            let mut paths = change_targets.clone();
+            if let Ok(v) = serde_json::from_str::<serde_json::Value>(arguments_json)
+                && let Some(p) = v.get("path").and_then(serde_json::Value::as_str)
+                && !paths.iter().any(|x| x == p)
+            {
+                paths.push(p.to_owned());
+            }
+            if !paths.is_empty() {
+                let rev = if change_targets.is_empty() {
+                    ws.lock().await.revision().number
+                } else {
+                    pre_revision
+                };
+                let ledger = self.ledger(task_id).await;
+                let mut ledger = ledger.lock().await;
+                for p in &paths {
+                    ledger.mark_used(p, rev, &tool_call_id.to_string(), tool_name);
+                }
+            }
+        }
         let mut file_events = Vec::new();
         if result.status == ToolStatus::Success
             && !change_targets.is_empty()
@@ -1083,7 +1125,58 @@ struct IndexPort {
     graph: Arc<Mutex<modbit_retrieval::EvidenceGraph>>,
     /// Verification checks of the task's runs as (check id, status).
     evidence: Vec<(String, String)>,
+    /// The task's Context Ledger (M3.8).
+    ledger: Arc<Mutex<modbit_context::ContextLedger>>,
+    /// Object store for durable packs and ledger snapshots.
+    objects: ObjectStore,
     workspace: Arc<Mutex<WorkspaceService>>,
+}
+
+/// Diagnostic linkage (docs/18): the failing checks of the task's
+/// verification runs, located at the test symbol they name.
+fn failing_check_locations(
+    evidence: &[(String, String)],
+    symbols: &modbit_retrieval::SymbolIndex,
+) -> Vec<(String, u32)> {
+    evidence
+        .iter()
+        .filter(|(_, st)| st == "FAIL")
+        .filter_map(|(id, _)| {
+            let body = id.split_once(':').map_or(id.as_str(), |(_, b)| b);
+            let (path, sym) = body.rsplit_once("::")?;
+            let line = symbols
+                .symbols_in(path)
+                .iter()
+                .find(|s| s.name == sym)
+                .map_or(1, |s| s.line_start);
+            Some((path.to_owned(), line))
+        })
+        .collect()
+}
+
+/// Excerpt of a file for a pack entry: the line range, or the head (bounded).
+fn excerpt(text: &str, lines: Option<(u32, u32)>) -> (String, Option<(u32, u32)>) {
+    const HEAD_LINES: usize = 60;
+    match lines {
+        Some((a, b)) => {
+            let a0 = a.saturating_sub(1) as usize;
+            let out: Vec<&str> = text
+                .lines()
+                .skip(a0)
+                .take((b as usize).saturating_sub(a0).max(1))
+                .collect();
+            (out.join("\n"), Some((a, b)))
+        }
+        None => {
+            let total = text.lines().count();
+            let out: Vec<&str> = text.lines().take(HEAD_LINES).collect();
+            let end = u32::try_from(out.len()).unwrap_or(u32::MAX);
+            (
+                out.join("\n"),
+                (total > HEAD_LINES && end > 0).then_some((1, end)),
+            )
+        }
+    }
 }
 
 /// Recent commits of a root through the real git (empty outside a repository).
@@ -1253,23 +1346,7 @@ impl modbit_tools::SearchPort for IndexPort {
                         ws_rev,
                     );
                 }
-                // Diagnostic linkage (docs/18): the failing checks of the task's
-                // verification runs, located at the test symbol they name.
-                let diagnostics: Vec<(String, u32)> = self
-                    .evidence
-                    .iter()
-                    .filter(|(_, st)| st == "FAIL")
-                    .filter_map(|(id, _)| {
-                        let body = id.split_once(':').map_or(id.as_str(), |(_, b)| b);
-                        let (path, sym) = body.rsplit_once("::")?;
-                        let line = symbols
-                            .symbols_in(path)
-                            .iter()
-                            .find(|s| s.name == sym)
-                            .map_or(1, |s| s.line_start);
-                        Some((path.to_owned(), line))
-                    })
-                    .collect();
+                let diagnostics = failing_check_locations(&self.evidence, &symbols);
                 let plan = modbit_retrieval::planner::retrieve(
                     &modbit_retrieval::Sources {
                         index: &idx,
@@ -1288,6 +1365,146 @@ impl modbit_tools::SearchPort for IndexPort {
                     },
                 );
                 serde_json::json!({"plan": plan, "hits": plan.hits})
+            }
+            "ledger" => {
+                let ledger = self.ledger.try_lock().map_err(|_| {
+                    (
+                        "LEDGER_BUSY".to_owned(),
+                        "the ledger is being updated".to_owned(),
+                    )
+                })?;
+                let (injected, used) = ledger.usage();
+                let snapshot = serde_json::to_vec(&*ledger).unwrap_or_default();
+                let ledger_ref = self.objects.put(&snapshot).ok();
+                serde_json::json!({"ledger": *ledger, "injected": injected, "used": used, "ledger_ref": ledger_ref})
+            }
+            "pack" => {
+                let args: serde_json::Value = serde_json::from_str(&req.query)
+                    .map_err(|e| ("BAD_QUERY".to_owned(), e.to_string()))?;
+                let query = args["query"].as_str().unwrap_or_default().to_owned();
+                let budget =
+                    u32::try_from(args["token_budget"].as_u64().unwrap_or(4000)).unwrap_or(4000);
+                let required: Vec<String> = args["required_paths"]
+                    .as_array()
+                    .map(|a| {
+                        a.iter()
+                            .filter_map(|p| p.as_str().map(str::to_owned))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                let mut graph = self.graph.try_lock().map_err(|_| {
+                    (
+                        "INDEX_BUSY".to_owned(),
+                        "the graph is being refreshed".to_owned(),
+                    )
+                })?;
+                if ws_rev > graph.revision() {
+                    *graph = modbit_retrieval::EvidenceGraph::build(
+                        idx.texts(),
+                        recent_commits(idx.root()),
+                        worktree_changed_lines(idx.root()),
+                        ws_rev,
+                    );
+                }
+                let diagnostics = failing_check_locations(&self.evidence, &symbols);
+                let plan = modbit_retrieval::planner::retrieve(
+                    &modbit_retrieval::Sources {
+                        index: &idx,
+                        lexical: &lexical,
+                        symbols: &symbols,
+                        semantic: &semantic,
+                        graph: &graph,
+                    },
+                    &modbit_retrieval::PlanRequest {
+                        query: query.clone(),
+                        intent: args["intent"].as_str().unwrap_or_default().to_owned(),
+                        max_hits: req.max_hits,
+                        min_paths: 0,
+                        diagnostics,
+                    },
+                );
+                let text_of = |p: &str| {
+                    idx.texts()
+                        .find(|(path, _, _)| *path == p)
+                        .map(|(_, t, _)| t.to_owned())
+                };
+                let hash_of = |p: &str| {
+                    idx.texts_with_hash()
+                        .find(|(path, _, _, _)| *path == p)
+                        .map(|(_, _, _, h)| h.to_owned())
+                };
+                let fresh = |p: &str| {
+                    !graph
+                        .query(&modbit_retrieval::GraphQuery {
+                            path: p.to_owned(),
+                            relation: "changed_lines".into(),
+                            depth: 1,
+                            max: 0,
+                        })
+                        .changed_lines
+                        .is_empty()
+                };
+                let mut cands: Vec<modbit_context::Candidate> = Vec::new();
+                // Task constraints first: the required paths are critical entries.
+                for p in &required {
+                    if let Some(t) = text_of(p) {
+                        let (text, lines) = excerpt(&t, None);
+                        cands.push(modbit_context::Candidate {
+                            path: p.clone(),
+                            lines,
+                            span: None,
+                            score: 1.0,
+                            sources: vec!["task_constraint".into()],
+                            reasons: vec!["required_path".into()],
+                            content_hash: hash_of(p),
+                            text,
+                            critical: true,
+                            critical_reason: Some("task_constraint".into()),
+                            fresh_in_worktree: fresh(p),
+                        });
+                    }
+                }
+                for h in &plan.hits {
+                    let Some(t) = text_of(&h.path) else { continue };
+                    let (text, lines) = excerpt(&t, h.lines);
+                    let diagnostic = h.reasons.iter().any(|r| r == "diagnostic");
+                    cands.push(modbit_context::Candidate {
+                        path: h.path.clone(),
+                        lines,
+                        span: h.span,
+                        score: h.score,
+                        sources: h.sources.clone(),
+                        reasons: h.reasons.clone(),
+                        content_hash: h.content_hash.clone().or_else(|| hash_of(&h.path)),
+                        text,
+                        critical: diagnostic,
+                        critical_reason: diagnostic.then(|| "diagnostic".to_owned()),
+                        fresh_in_worktree: fresh(&h.path),
+                    });
+                }
+                let fingerprint = format!("{}|{}", query, plan.ended_at as u8);
+                let pack = modbit_context::pack(&cands, budget, ws_rev, &fingerprint);
+                let pack_ref = self
+                    .objects
+                    .put(&serde_json::to_vec(&pack).unwrap_or_default())
+                    .ok();
+                let mut ledger = self.ledger.try_lock().map_err(|_| {
+                    (
+                        "LEDGER_BUSY".to_owned(),
+                        "the ledger is being updated".to_owned(),
+                    )
+                })?;
+                ledger.record(&pack);
+                let ledger_ref = self
+                    .objects
+                    .put(&serde_json::to_vec(&*ledger).unwrap_or_default())
+                    .ok();
+                serde_json::json!({
+                    "pack": pack,
+                    "pack_ref": pack_ref,
+                    "ledger_ref": ledger_ref,
+                    "plan": {"started_at": plan.started_at, "ended_at": plan.ended_at, "escalations": plan.escalations, "steps": plan.steps},
+                })
             }
             "graph" => {
                 let mut parts = req.query.splitn(3, '|');

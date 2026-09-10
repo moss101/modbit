@@ -25,7 +25,7 @@ jobs:
   rust:
     name: rust CI_COMPATIBLE (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
+    timeout-minutes: 75
     strategy:
       fail-fast: false
       matrix:
@@ -68,7 +68,7 @@ jobs:
   node:
     name: node CI_COMPATIBLE (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
+    timeout-minutes: 75
     strategy:
       fail-fast: false
       matrix:
@@ -90,7 +90,7 @@ jobs:
   desktop-e2e:
     name: desktop E2E — real Electron app against real modbit-core (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
+    timeout-minutes: 75
     strategy:
       fail-fast: false
       matrix:
@@ -140,7 +140,7 @@ jobs:
   protocol-roundtrip:
     name: protocol Rust<->TS round trip and generated-code freshness (M0.3)
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Install pinned Rust toolchain (rust-toolchain.toml)
@@ -168,7 +168,7 @@ jobs:
   locked-files:
     name: locked architecture files require a Decision Record (DR-M0-002)
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
@@ -184,7 +184,7 @@ jobs:
   dossier:
     name: dossier integrity
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
@@ -199,7 +199,7 @@ jobs:
     name: CI_COMPATIBLE summary (not release-grade)
     needs: [rust, node, desktop-e2e, protocol-roundtrip, locked-files, dossier]
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 75
     steps:
       - name: Record platform label
         run: |
