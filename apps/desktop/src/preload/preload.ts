@@ -82,11 +82,34 @@ export interface ContextInspectorSummary {
   prefixCacheMisses: number;
 }
 
+export interface TaskEconomicsSummary {
+  state: string;
+  verified: boolean;
+  checksPassed: number;
+  checksFailed: number;
+  model: string;
+  modelCalls: number;
+  inputTokens: string;
+  cachedInputTokens: string;
+  outputTokens: string;
+  costUsd: number;
+  pricingKnown: boolean;
+  toolCalls: number;
+  wallMs: string;
+  modelMs: string;
+  toolMs: string;
+  prefixCacheHits: number;
+  prefixCacheMisses: number;
+  compactionEpochs: number;
+  contextTokensInjected: string;
+}
+
 export interface ModbitBridge {
   coreStatus(): Promise<unknown>;
   localState(): Promise<{ sessionId?: string }>;
   languages(): Promise<{ language: string; tier: string; label: string; fixture: string; proven: string[]; provisional: string[]; notClaimed: string[]; note: string }[]>;
   contextInspector(taskId: string): Promise<ContextInspectorSummary>;
+  taskEconomics(taskId: string): Promise<TaskEconomicsSummary>;
   createSession(): Promise<string>;
   sessionSnapshot(sessionId: string): Promise<unknown>;
   createTask(sessionId: string, goal: string, commandIdHex: string, workspaceRoot?: string): Promise<{ taskId: string; offset: bigint; replayed: boolean }>;
@@ -107,6 +130,7 @@ const bridge: ModbitBridge = {
   localState: () => ipcRenderer.invoke("core:localState"),
   languages: () => ipcRenderer.invoke("languages:list"),
   contextInspector: (taskId: string) => ipcRenderer.invoke("context:inspector", taskId),
+  taskEconomics: (taskId: string) => ipcRenderer.invoke("task:economics", taskId),
   createSession: () => ipcRenderer.invoke("session:create"),
   sessionSnapshot: (sessionId) => ipcRenderer.invoke("session:snapshot", sessionId),
   createTask: (sessionId, goal, commandIdHex, workspaceRoot) => ipcRenderer.invoke("task:create", sessionId, goal, commandIdHex, workspaceRoot ?? ""),

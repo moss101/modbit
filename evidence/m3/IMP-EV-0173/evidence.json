@@ -1,0 +1,16 @@
+{
+ "task": "IMP-EV-0173",
+ "requirement": "REQ-EV-0173",
+ "qual": "QUAL-EV-0173",
+ "tests": [
+  "qual_ev_0173_task_economics_report_quality_and_cost_from_the_log",
+  "qual_px_016_change_strategy_tests_first_one_concern_per_transaction_and_no_silent_scope_widening",
+  "qual_ev_0056_0092_0130_compaction_epoch_preserves_facts_survives_restart_and_moves_the_cache_prefix",
+  "qual_ev_0111_0268_context_show_reports_compaction_epochs_and_the_cached_prefix"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "GetTaskEconomics counts a task's economics from the canonical log and reports them next to its quality: the completion run's own verdict (PASSED, NO_CHECKS, FAILED or NOT_RUN), the checks it passed and failed, the regressions it blamed on this change, beside the model calls, tokens (with the provider's cached share), catalog cost, tool calls, wall/model/tool time, prompt-prefix reuse, compaction epochs and injected context tokens. The test checks every count against the events one by one and the cost against the catalog price of the model the calls routed to.",
+ "audit": "PARTIAL before this task: the numbers were all on the log, but nothing put quality and cost in one view.",
+ "limitations": "Cost is a catalog list price with no cache or negotiated discount, and the view says so. One task at a time; the paired baseline comparison belongs to REQ-EV-0250..0254 and REQ-EV-0274."
+}

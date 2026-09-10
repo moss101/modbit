@@ -43,6 +43,9 @@ import {
   type CodeViewModel,
   ContextInspectorViewSchema,
   type ContextInspectorView,
+  GetTaskEconomicsSchema,
+  TaskEconomicsViewSchema,
+  type TaskEconomicsView,
   type LanguageList,
   type CommandAck,
   type RecoveryReport,
@@ -266,6 +269,14 @@ export class CoreClient {
       toBinary(GetContextInspectorSchema, create(GetContextInspectorSchema, { taskId: { value: unhex(taskId) } })),
     );
     return fromBinary(ContextInspectorViewSchema, ack.result);
+  }
+
+  async taskEconomics(taskId: string): Promise<TaskEconomicsView> {
+    const ack = await this.command(
+      "GetTaskEconomics",
+      toBinary(GetTaskEconomicsSchema, create(GetTaskEconomicsSchema, { taskId: { value: unhex(taskId) } })),
+    );
+    return fromBinary(TaskEconomicsViewSchema, ack.result);
   }
 
   async listLanguages(): Promise<LanguageList> {

@@ -478,6 +478,45 @@ message ContextInspectorView {
   uint32 prefix_cache_misses = 21;   // turns that changed it (the first, then each epoch)
 }
 
+// ---- Context efficiency metrics (REQ-EV-0173, docs/18 "Context economy") ----
+
+message GetTaskEconomics {
+  Id task_id = 1;
+}
+
+// What one task cost and what it bought, counted from the canonical log.
+message TaskEconomicsView {
+  string task_id = 1;
+  string state = 2;
+  // Quality: did the work actually verify?
+  bool verified = 3;               // a COMPLETION run passed AND it ran at least one check
+  uint32 checks_passed = 4;
+  uint32 checks_failed = 5;
+  reserved 6;
+  // Economics.
+  uint32 model_calls = 7;
+  uint64 input_tokens = 8;
+  uint64 cached_input_tokens = 9;  // of input_tokens, the part the provider reported cached
+  uint64 output_tokens = 10;
+  double cost_usd = 11;            // catalog list prices, no cache discount applied
+  uint32 tool_calls = 12;
+  uint64 wall_ms = 13;             // first to last event of the task
+  uint64 model_ms = 14;            // time inside model invocations
+  uint64 tool_ms = 15;             // time inside tool calls
+  // Context economy: what the pack, the prefix cache and compaction did.
+  uint32 prefix_cache_hits = 16;
+  uint32 prefix_cache_misses = 17;
+  uint32 compaction_epochs = 18;
+  uint64 compacted_entries = 19;
+  uint64 context_tokens_injected = 20;
+  uint32 pricing_known = 21;       // 1 when the catalog priced every call
+  string model = 22;               // the model the calls routed to
+  // PASSED | NO_CHECKS | FAILED | NOT_RUN — the COMPLETION run's own verdict,
+  // so "verified" is never a claim the run did not make.
+  string verification = 23;
+  uint32 regressions = 24;         // checks the completion run attributed to this change
+}
+
 // ---- PX-026 language support labels (docs/76) ----
 
 message ListLanguages {}

@@ -7514,6 +7514,35 @@ async fn qual_px_016_change_strategy_tests_first_one_concern_per_transaction_and
     let concluded = of("RepairAttemptConcluded");
     assert_eq!(concluded.len(), 1, "{concluded:#?}");
     assert_eq!(concluded[0]["outcome"], "RESOLVED", "{concluded:#?}");
+    // REQ-EV-0173: the same run, priced and scored. A real suite ran here, so
+    // the verdict is the completion run's own, with its checks counted.
+    {
+        use modbit_protocol::v1::{GetTaskEconomics, TaskEconomicsView};
+        let ack = c
+            .command(envelope(
+                id16(0xB7),
+                "GetTaskEconomics",
+                GetTaskEconomics {
+                    task_id: Some(task.clone()),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        let e: TaskEconomicsView = Client::result(&ack).unwrap();
+        assert!(e.model_calls > 0 && e.tool_calls > 0, "{e:?}");
+        assert!(e.input_tokens > 0 && e.cost_usd > 0.0, "{e:?}");
+        // The fixture carries one unrelated failing test, so the completion
+        // run is FAILED even though the change was accepted: the view reports
+        // the run's own verdict and shows that none of it was blamed on this
+        // change.
+        assert!(e.checks_passed >= 5, "{e:?}");
+        assert_eq!(e.checks_failed, 1, "{e:?}");
+        assert_eq!(e.verification, "FAILED", "{e:?}");
+        assert_eq!(e.regressions, 0, "{e:?}");
+        assert!(!e.verified, "{e:?}");
+    }
+
     let _ = repo;
 }
 
@@ -9485,4 +9514,113 @@ async fn qual_ev_0188_a_media_tool_result_reaches_the_model_as_a_split_follow_up
     let logged = serde_json::to_string(&evs).unwrap();
     assert!(!logged.contains("iVBORw0KGgo"), "the log carries no bytes");
     let _ = repo;
+}
+
+/// REQ-EV-0173 (QUAL-EV-0173): the product reports what a task cost and what
+/// it bought in the same view — the verification outcome next to the tokens,
+/// the time, the tool calls and the context economy — and every number is
+/// counted from the canonical log, so it matches the events one by one.
+#[tokio::test]
+async fn qual_ev_0173_task_economics_report_quality_and_cost_from_the_log() {
+    use modbit_protocol::v1::{GetTaskEconomics, StartTask, TaskEconomicsView, TaskRunStarted};
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[("notes.md", "totals are cents\n")]);
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "read the notes", "expected_files": ["notes.md"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "notes.md"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "read", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x66)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x67, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x68),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 8,
+                max_tool_calls: 0,
+                max_no_progress_turns: 4,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 120).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let ack = c
+        .command(envelope(
+            id16(0x69),
+            "GetTaskEconomics",
+            GetTaskEconomics {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let v: TaskEconomicsView = Client::result(&ack).unwrap();
+    let evs = task_events(&core, &session, &task).await;
+    // Every count is the log's own count.
+    let count = |t: &str| evs.iter().filter(|(_, e, _)| e == t).count();
+    assert_eq!(
+        usize::try_from(v.model_calls).unwrap(),
+        count("ModelInvocationStarted")
+    );
+    assert_eq!(
+        usize::try_from(v.tool_calls).unwrap(),
+        count("ToolCallProposed")
+    );
+    let (mut input, mut output) = (0_u64, 0_u64);
+    for (_, t, p) in &evs {
+        if t == "ModelUsageRecorded" {
+            input += p["input_tokens"].as_u64().unwrap_or(0);
+            output += p["output_tokens"].as_u64().unwrap_or(0);
+        }
+    }
+    assert!(input > 0 && output > 0, "{evs:#?}");
+    assert_eq!((v.input_tokens, v.output_tokens), (input, output));
+    assert_eq!(v.state, "ReadyForReview");
+    // Quality is in the same view as the cost.
+    // This fixture has no derivable suite, so the completion run passed with
+    // nothing to run: the view says NO_CHECKS and refuses to call it verified.
+    assert_eq!(v.verification, "NO_CHECKS", "{v:?}");
+    assert!(!v.verified, "nothing ran, so nothing is verified: {v:?}");
+    assert_eq!((v.checks_passed, v.checks_failed, v.regressions), (0, 0, 0));
+    // Cost is the catalog list price for the model the calls routed to.
+    assert_eq!(v.model, "gpt-5-mini", "{v:?}");
+    assert_eq!(v.pricing_known, 1, "{v:?}");
+    let expected = (v.input_tokens as f64 / 1e6) * 0.25 + (v.output_tokens as f64 / 1e6) * 2.0;
+    assert!((v.cost_usd - expected).abs() < 1e-12, "{v:?}");
+    assert!(v.cost_usd > 0.0, "{v:?}");
+    // Time is bounded by the run, not invented.
+    assert!(v.wall_ms > 0, "{v:?}");
+    assert!(v.model_ms <= v.wall_ms, "{v:?}");
+    assert!(v.tool_ms <= v.wall_ms, "{v:?}");
+    // Context economy travels with the rest.
+    assert!(
+        v.context_tokens_injected > 0 || v.compaction_epochs == 0,
+        "{v:?}"
+    );
+    assert_eq!(
+        v.prefix_cache_hits + v.prefix_cache_misses,
+        v.model_calls,
+        "one prefix decision per model call: {v:?}"
+    );
+    assert!(v.prefix_cache_hits > 0, "the prefix was reused: {v:?}");
+    let _ = (repo, seen);
 }

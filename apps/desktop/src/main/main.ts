@@ -111,6 +111,33 @@ ipcMain.handle("core:status", () => supervisor.status);
 ipcMain.handle("core:localState", () => loadLocalState());
 // Context Inspector (REQ-EV-0035 / 0131 / 0175): what the pack selected and
 // excluded, and what the prompt envelope injected.
+// Context efficiency metrics (REQ-EV-0173): quality and economics together.
+ipcMain.handle("task:economics", async (_e: IpcMainInvokeEvent, taskId: unknown) => {
+  const tid = requireTaskId(taskId);
+  const v = await requireClient().taskEconomics(tid);
+  return {
+    state: v.state,
+    verified: v.verified,
+    checksPassed: v.checksPassed,
+    checksFailed: v.checksFailed,
+    model: v.model,
+    modelCalls: v.modelCalls,
+    inputTokens: v.inputTokens.toString(),
+    cachedInputTokens: v.cachedInputTokens.toString(),
+    outputTokens: v.outputTokens.toString(),
+    costUsd: v.costUsd,
+    pricingKnown: v.pricingKnown === 1,
+    toolCalls: v.toolCalls,
+    wallMs: v.wallMs.toString(),
+    modelMs: v.modelMs.toString(),
+    toolMs: v.toolMs.toString(),
+    prefixCacheHits: v.prefixCacheHits,
+    prefixCacheMisses: v.prefixCacheMisses,
+    compactionEpochs: v.compactionEpochs,
+    contextTokensInjected: v.contextTokensInjected.toString(),
+  };
+});
+
 ipcMain.handle("context:inspector", async (_e: IpcMainInvokeEvent, taskId: unknown) => {
   const tid = requireTaskId(taskId);
   const v = await requireClient().contextInspector(tid);

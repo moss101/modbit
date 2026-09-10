@@ -7,7 +7,7 @@
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { applyEvent, columns, emptyModel, fromSnapshot, type Event, type FleetColumn, type Model, type Snapshot, type TaskCard } from "./model.ts";
-import type { ContextInspectorSummary, ModbitBridge, ReviewBundleView } from "../preload/preload.ts";
+import type { ContextInspectorSummary, ModbitBridge, ReviewBundleView, TaskEconomicsSummary } from "../preload/preload.ts";
 
 declare global {
   interface Window {
@@ -60,6 +60,7 @@ function App() {
   const [goal, setGoal] = useState("");
   const [languages, setLanguages] = useState<{ language: string; tier: string; label: string }[]>([]);
   const [inspector, setInspector] = useState<ContextInspectorSummary | null>(null);
+  const [economics, setEconomics] = useState<TaskEconomicsSummary | null>(null);
   const [workspaceRoot, setWorkspaceRoot] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [reviewing, setReviewing] = useState<string | null>(null);
@@ -89,6 +90,11 @@ function App() {
           setInspector(await window.modbit.contextInspector(newest.taskId));
         } catch {
           setInspector(null);
+        }
+        try {
+          setEconomics(await window.modbit.taskEconomics(newest.taskId));
+        } catch {
+          setEconomics(null);
         }
       }
       await window.modbit.subscribe(snap.sessionId, snap.lastOffset);
@@ -221,6 +227,11 @@ function App() {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+      {economics && economics.modelCalls > 0 && (
+        <div className="banner" data-kind="info" data-testid="task-economics">
+          <strong>Economics</strong> — {economics.verified ? "verified" : "not verified"}, {economics.checksPassed}/{economics.checksPassed + economics.checksFailed} check(s) passed; {economics.modelCalls} model call(s) on {economics.model || "no model"}, {economics.inputTokens} in ({economics.cachedInputTokens} cached) and {economics.outputTokens} out{economics.pricingKnown ? `, $${economics.costUsd.toFixed(4)} at catalog list prices` : ", price unknown"}; {economics.toolCalls} tool call(s); {economics.wallMs} ms wall, {economics.modelMs} ms in the model, {economics.toolMs} ms in tools; prompt prefix reused {economics.prefixCacheHits} of {economics.prefixCacheHits + economics.prefixCacheMisses} time(s).
         </div>
       )}
       {languages.length > 0 && (

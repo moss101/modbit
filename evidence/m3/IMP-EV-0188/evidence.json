@@ -10,8 +10,18 @@
   "base64_matches_the_standard_alphabet_and_padding",
   "m2_10_media_reads_carry_digests_not_bytes_and_survive_restart"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "0334b4d"
+ ],
+ "runs": [
+  {
+   "id": "gha-34523951739",
+   "kind": "hosted CI on 0334b4d",
+   "result": "PASS: all jobs green on macOS, Linux and Windows (provider conformance, Core surface suite and the Core unit tests)",
+   "url": "https://github.com/moss101/modbit/actions/runs/34523951739",
+   "log": "ci-run-34523951739.json, ci-run-34523951739-tests.log"
+  }
+ ],
  "proof": "The canonical content part names media by the digest of its egress copy; placement is the adapter's business. A strict OpenAI-compatible endpoint (a local server that answers 400 to media inside a tool message) accepts what the adapter sends: the tool result keeps its call id and its text as a plain string, and the bytes ride in the user message that follows, naming the call. Anthropic takes the same canonical parts embedded in the tool result with no split. The router refuses media the model cannot accept before dispatch, and a real run reading a real PNG proves the whole path with the log holding no bytes.",
  "audit": "NOT-FOUND before this batch: media reads produced an egress copy that nothing could show a model.",
  "limitations": "Images are sent as bytes; other media types are described with their digest instead. Media is attached from tool results only, not from ingested attachments."

@@ -1,0 +1,18 @@
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T20:05:59.2512941Z test runtime::tests::base64_matches_the_standard_alphabet_and_padding
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T20:05:59.2513776Z test runtime::tests::a_model_without_the_modality_sees_the_text_and_n
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T20:05:59.2514370Z test runtime::tests::media_parts_come_from_the_result_and_carry_no_by
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T20:06:01.1279019Z test m2_10_media_reads_carry_digests_not_bytes_and_survive_restart ..
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T20:06:21.6012735Z test qual_ev_0188_a_media_tool_result_reaches_the_model_as_a_split_fo
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T20:07:02.4166092Z test qual_ev_0188_tool_media_is_split_for_strict_endpoints_and_embedd
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T20:04:04.4509861Z test runtime::tests::a_model_without_the_modality_sees_the_text_and_no
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T20:04:04.4510605Z test runtime::tests::base64_matches_the_standard_alphabet_and_padding 
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T20:04:04.4513272Z test runtime::tests::media_parts_come_from_the_result_and_carry_no_byt
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T20:04:05.1007626Z test m2_10_media_reads_carry_digests_not_bytes_and_survive_restart ...
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T20:04:11.3177591Z test qual_ev_0188_a_media_tool_result_reaches_the_model_as_a_split_fol
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T20:04:30.8729896Z test qual_ev_0188_tool_media_is_split_for_strict_endpoints_and_embedde
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T20:05:07.2266610Z test runtime::tests::a_model_without_the_modality_sees_the_text_and_no_
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T20:05:07.2273150Z test runtime::tests::media_parts_come_from_the_result_and_carry_no_byte
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T20:05:07.2274190Z test runtime::tests::base64_matches_the_standard_alphabet_and_padding .
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T20:05:08.1695920Z test m2_10_media_reads_carry_digests_not_bytes_and_survive_restart ... 
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T20:05:18.7434470Z test qual_ev_0188_a_media_tool_result_reaches_the_model_as_a_split_foll
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T20:05:44.5242010Z test qual_ev_0188_tool_media_is_split_for_strict_endpoints_and_embedded

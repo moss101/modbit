@@ -37,12 +37,12 @@ use modbit_protocol::v1::{
     CapabilityLeaseList, ClientKind, CommandEnvelope, ContextInspectorView, CreateSession,
     CreateTask, DecideReview, EffectReceiptList, EmergencyStop, EmergencyStopped,
     GetCapabilityLeases, GetContextInspector, GetEffectReceipts, GetReviewBundle,
-    GetSessionSnapshot, GetTaskStatus, HunkRef, Id, IngestAttachment, InvokeTool, LanguageList,
-    ListApprovals, ListLanguages, ListModels, ListQuestions, ListTools, ModelList, ModelProbed,
-    ProbeModel, QuestionList, QuestionResponded, ResolveApproval, RespondToQuestion, ReviewBundle,
-    ReviewDecided, SessionCreated, SessionLeaseAcquired, SessionSnapshot, StartTask,
-    TaskCancelRequested, TaskCreated, TaskRunStarted, TaskStatus, ToolInvoked, ToolList,
-    UndoPlanView, UndoToolCall,
+    GetSessionSnapshot, GetTaskEconomics, GetTaskStatus, HunkRef, Id, IngestAttachment, InvokeTool,
+    LanguageList, ListApprovals, ListLanguages, ListModels, ListQuestions, ListTools, ModelList,
+    ModelProbed, ProbeModel, QuestionList, QuestionResponded, ResolveApproval, RespondToQuestion,
+    ReviewBundle, ReviewDecided, SessionCreated, SessionLeaseAcquired, SessionSnapshot, StartTask,
+    TaskCancelRequested, TaskCreated, TaskEconomicsView, TaskRunStarted, TaskStatus, ToolInvoked,
+    ToolList, UndoPlanView, UndoToolCall,
 };
 use prost::Message;
 
@@ -60,7 +60,7 @@ fn exit_for_state(state: &str) -> u8 {
     }
 }
 
-const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
+const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task economics --task <id> | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
 
 fn parse_id(hex: &str) -> Result<Id, String> {
     let bytes = decode_hex(hex)
@@ -986,6 +986,56 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                     println!("omitted {p}");
                 }
             }
+        }
+        ["task", "economics", "--task", tid] => {
+            let ack = client
+                .command(envelope(
+                    "GetTaskEconomics",
+                    GetTaskEconomics {
+                        task_id: Some(parse_id(tid)?),
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let v: TaskEconomicsView = Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "task {} state={} verified={} checks_passed={}/{}",
+                &v.task_id[..8.min(v.task_id.len())],
+                v.state,
+                v.verified,
+                v.checks_passed,
+                v.checks_passed + v.checks_failed
+            );
+            println!(
+                "model {} calls={} input_tokens={} cached_input={} output_tokens={} cost_usd={}",
+                if v.model.is_empty() {
+                    "(none)"
+                } else {
+                    v.model.as_str()
+                },
+                v.model_calls,
+                v.input_tokens,
+                v.cached_input_tokens,
+                v.output_tokens,
+                if v.pricing_known == 1 {
+                    format!("{:.6} (catalog list prices, no cache discount)", v.cost_usd)
+                } else {
+                    "unknown (the model is not in a registered catalog)".to_owned()
+                }
+            );
+            println!(
+                "time wall_ms={} model_ms={} tool_ms={} tool_calls={}",
+                v.wall_ms, v.model_ms, v.tool_ms, v.tool_calls
+            );
+            println!(
+                "context injected_tokens={} prefix_cache={}/{} epochs={} compacted_entries={}",
+                v.context_tokens_injected,
+                v.prefix_cache_hits,
+                v.prefix_cache_hits + v.prefix_cache_misses,
+                v.compaction_epochs,
+                v.compacted_entries
+            );
         }
         ["language", "list"] => {
             let ack = client

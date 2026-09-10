@@ -2023,6 +2023,177 @@ export declare type ContextInspectorView = Message<"modbit.v1.ContextInspectorVi
 export declare const ContextInspectorViewSchema: GenMessage<ContextInspectorView>;
 
 /**
+ * @generated from message modbit.v1.GetTaskEconomics
+ */
+export declare type GetTaskEconomics = Message<"modbit.v1.GetTaskEconomics"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.GetTaskEconomics.
+ * Use `create(GetTaskEconomicsSchema)` to create a new message.
+ */
+export declare const GetTaskEconomicsSchema: GenMessage<GetTaskEconomics>;
+
+/**
+ * What one task cost and what it bought, counted from the canonical log.
+ *
+ * @generated from message modbit.v1.TaskEconomicsView
+ */
+export declare type TaskEconomicsView = Message<"modbit.v1.TaskEconomicsView"> & {
+  /**
+   * @generated from field: string task_id = 1;
+   */
+  taskId: string;
+
+  /**
+   * @generated from field: string state = 2;
+   */
+  state: string;
+
+  /**
+   * Quality: did the work actually verify?
+   *
+   * a COMPLETION run passed AND it ran at least one check
+   *
+   * @generated from field: bool verified = 3;
+   */
+  verified: boolean;
+
+  /**
+   * @generated from field: uint32 checks_passed = 4;
+   */
+  checksPassed: number;
+
+  /**
+   * @generated from field: uint32 checks_failed = 5;
+   */
+  checksFailed: number;
+
+  /**
+   * Economics.
+   *
+   * @generated from field: uint32 model_calls = 7;
+   */
+  modelCalls: number;
+
+  /**
+   * @generated from field: uint64 input_tokens = 8;
+   */
+  inputTokens: bigint;
+
+  /**
+   * of input_tokens, the part the provider reported cached
+   *
+   * @generated from field: uint64 cached_input_tokens = 9;
+   */
+  cachedInputTokens: bigint;
+
+  /**
+   * @generated from field: uint64 output_tokens = 10;
+   */
+  outputTokens: bigint;
+
+  /**
+   * catalog list prices, no cache discount applied
+   *
+   * @generated from field: double cost_usd = 11;
+   */
+  costUsd: number;
+
+  /**
+   * @generated from field: uint32 tool_calls = 12;
+   */
+  toolCalls: number;
+
+  /**
+   * first to last event of the task
+   *
+   * @generated from field: uint64 wall_ms = 13;
+   */
+  wallMs: bigint;
+
+  /**
+   * time inside model invocations
+   *
+   * @generated from field: uint64 model_ms = 14;
+   */
+  modelMs: bigint;
+
+  /**
+   * time inside tool calls
+   *
+   * @generated from field: uint64 tool_ms = 15;
+   */
+  toolMs: bigint;
+
+  /**
+   * Context economy: what the pack, the prefix cache and compaction did.
+   *
+   * @generated from field: uint32 prefix_cache_hits = 16;
+   */
+  prefixCacheHits: number;
+
+  /**
+   * @generated from field: uint32 prefix_cache_misses = 17;
+   */
+  prefixCacheMisses: number;
+
+  /**
+   * @generated from field: uint32 compaction_epochs = 18;
+   */
+  compactionEpochs: number;
+
+  /**
+   * @generated from field: uint64 compacted_entries = 19;
+   */
+  compactedEntries: bigint;
+
+  /**
+   * @generated from field: uint64 context_tokens_injected = 20;
+   */
+  contextTokensInjected: bigint;
+
+  /**
+   * 1 when the catalog priced every call
+   *
+   * @generated from field: uint32 pricing_known = 21;
+   */
+  pricingKnown: number;
+
+  /**
+   * the model the calls routed to
+   *
+   * @generated from field: string model = 22;
+   */
+  model: string;
+
+  /**
+   * PASSED | NO_CHECKS | FAILED | NOT_RUN — the COMPLETION run's own verdict,
+   * so "verified" is never a claim the run did not make.
+   *
+   * @generated from field: string verification = 23;
+   */
+  verification: string;
+
+  /**
+   * checks the completion run attributed to this change
+   *
+   * @generated from field: uint32 regressions = 24;
+   */
+  regressions: number;
+};
+
+/**
+ * Describes the message modbit.v1.TaskEconomicsView.
+ * Use `create(TaskEconomicsViewSchema)` to create a new message.
+ */
+export declare const TaskEconomicsViewSchema: GenMessage<TaskEconomicsView>;
+
+/**
  * @generated from message modbit.v1.ListLanguages
  */
 export declare type ListLanguages = Message<"modbit.v1.ListLanguages"> & {
