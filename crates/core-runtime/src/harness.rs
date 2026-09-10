@@ -103,6 +103,14 @@ pub struct HarnessState {
 pub enum HarnessRefusal {
     /// A write before the plan (docs/28 PX-014).
     PlanRequired,
+    /// A write to a path the current plan does not declare (docs/28 §3, PX-016):
+    /// scope is never widened silently — revise the plan first.
+    PlanRevisionRequired {
+        /// The path.
+        path: String,
+        /// Plan version the write was checked against.
+        plan_version: u32,
+    },
     /// Completion proposed without a self-review (docs/28 PX-019).
     SelfReviewRequired,
     /// Completion proposed with unresolved findings.
@@ -178,6 +186,29 @@ pub fn is_deferred(name: &str) -> bool {
     !CORE_TOOLS.contains(&name) && !CORE_NAMESPACES.contains(&toolset_of(name))
 }
 
+/// The workspace paths a write tool call targets, from its arguments.
+#[must_use]
+pub fn write_targets(tool_name: &str, arguments_json: &str) -> Vec<String> {
+    let Ok(v) = serde_json::from_str::<serde_json::Value>(arguments_json) else {
+        return vec![];
+    };
+    match tool_name {
+        "change.apply" => v["path"]
+            .as_str()
+            .map(|p| vec![p.to_owned()])
+            .unwrap_or_default(),
+        "change.batch" => v["ops"]
+            .as_array()
+            .map(|ops| {
+                ops.iter()
+                    .filter_map(|o| o["path"].as_str().map(str::to_owned))
+                    .collect()
+            })
+            .unwrap_or_default(),
+        _ => vec![],
+    }
+}
+
 /// Tool names that write the workspace (need a plan first).
 pub const WRITE_TOOLS: &[&str] = &[
     "change.apply",
@@ -224,6 +255,28 @@ impl HarnessState {
             return Err(HarnessRefusal::PlanRequired);
         }
         Ok(())
+    }
+
+    /// A write must stay inside the current plan's expected files (docs/28
+    /// §3): a path outside it is refused until a `plan.update` declares it
+    /// (the `PlanRevised` event carries the scope delta). An expected entry
+    /// ending in `/` covers a directory.
+    pub fn check_write(&self, path: &str) -> Result<(), HarnessRefusal> {
+        let Some(plan) = &self.plan else {
+            return Err(HarnessRefusal::PlanRequired);
+        };
+        let covered = plan
+            .expected_files
+            .iter()
+            .any(|e| e == path || (e.ends_with('/') && path.starts_with(e.as_str())) || e == "*");
+        if covered {
+            Ok(())
+        } else {
+            Err(HarnessRefusal::PlanRevisionRequired {
+                path: path.to_owned(),
+                plan_version: plan.version,
+            })
+        }
     }
 
     /// Record a plan (first call freezes the original write set).
@@ -384,6 +437,24 @@ mod tests {
         assert_eq!(h.check_tool("change.apply"), Ok(()));
         assert!(!h.note_write("a.rs"));
         assert!(h.note_write("b.rs"));
+        // PX-016: writes outside the current plan are refused until revised.
+        assert!(h.check_write("a.rs").is_ok());
+        assert!(matches!(
+            h.check_write("b.rs"),
+            Err(HarnessRefusal::PlanRevisionRequired { .. })
+        ));
+        let (v, added, _) = h.record_plan(Plan {
+            outcome: "o".into(),
+            expected_files: vec!["a.rs".into(), "b.rs".into(), "docs/".into()],
+            ..Plan::default()
+        });
+        assert_eq!((v, added), (2, vec!["b.rs".to_owned(), "docs/".to_owned()]));
+        assert!(h.check_write("b.rs").is_ok() && h.check_write("docs/x.md").is_ok());
+        assert!(h.check_write("src/z.rs").is_err());
+        assert_eq!(
+            write_targets("change.batch", r#"{"ops":[{"path":"x"},{"path":"y"}]}"#),
+            ["x", "y"]
+        );
         let (v, added, removed) = h.record_plan(Plan {
             outcome: "x".into(),
             expected_files: vec!["b.rs".into()],
@@ -391,7 +462,7 @@ mod tests {
         });
         assert_eq!(
             (v, added, removed),
-            (2, vec!["b.rs".to_owned()], vec!["a.rs".to_owned()])
+            (3, vec![], vec!["a.rs".to_owned(), "docs/".to_owned()])
         );
         assert_eq!(
             h.original_write_set,

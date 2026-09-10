@@ -1,0 +1,15 @@
+{
+ "task": "PX-016",
+ "requirement": "REQ-PX-016",
+ "qual": "QUAL-PX-016",
+ "tests": [
+  "qual_px_016_change_strategy_tests_first_one_concern_per_transaction_and_no_silent_scope_widening",
+  "plan_gates_writes_and_completion_needs_clean_state",
+  "diff_invariants_deny_test_weakening_and_flag_the_rest",
+  "m2_8_verification_engine_gates_completion_on_real_cargo_fixture"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "tests first, one transaction per write, PLAN_REVISION_REQUIRED for silent widening, PlanRevised scope delta, DI-2 flag for a hand-edited lockfile",
+ "audit": "COMPLETED in this batch (was PARTIAL)"
+}

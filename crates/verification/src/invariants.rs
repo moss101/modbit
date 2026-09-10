@@ -190,6 +190,15 @@ pub fn evaluate_file(
                 "generated artifact / lockfile / migration changed by hand without a plan entry"
                     .into(),
         });
+    } else if is_generated(p) && planned {
+        // docs/28 §3 (PX-016): with a plan entry the change is allowed but
+        // flagged — generated files change through their generators.
+        out.push(Violation {
+            id: "DI-2".into(),
+            class: Class::Flag,
+            paths: vec![p.into()],
+            evidence: "generated artifact / lockfile / migration changed by hand (plan entry present; regenerate through its generator or justify in review)".into(),
+        });
     }
     // DI-7 manifests
     if is_manifest(p) && !planned {

@@ -15,7 +15,7 @@ use std::sync::Arc;
 
 use modbit_core_runtime::harness::{
     self, ASK_TOOL, Budgets, COMPLETE_TOOL, HarnessRefusal, HarnessState, PLAN_TOOL, Plan,
-    TOOL_SEARCH, VERIFY_TOOL, WRITE_TOOLS,
+    TOOL_SEARCH, VERIFY_TOOL, WRITE_TOOLS, write_targets,
 };
 use modbit_domain::event::{Actor, AggregateType};
 use modbit_domain::run::{OwnerLocation, RunEvent, RunState};
@@ -1366,16 +1366,28 @@ async fn run_loop(
                     (entry, StepType::ToolCall, Some("TOOL_NOT_VISIBLE".into()))
                 }
                 _ => {
-                    match state.check_tool(&name).and_then(|()| {
-                        state
-                            .check_tool_budget()
-                            .map_err(|x| HarnessRefusal::OpenFailures {
-                                failures: vec![format!("{}:{}/{}", x.budget, x.used, x.limit)],
-                            })
-                    }) {
+                    match state
+                        .check_tool(&name)
+                        .and_then(|()| {
+                            // docs/28 §3 (PX-016): no silent scope widening — every
+                            // written path must be declared by the current plan.
+                            write_targets(&name, &arguments_json)
+                                .iter()
+                                .try_for_each(|p| state.check_write(p))
+                        })
+                        .and_then(|()| {
+                            state
+                                .check_tool_budget()
+                                .map_err(|x| HarnessRefusal::OpenFailures {
+                                    failures: vec![format!("{}:{}/{}", x.budget, x.used, x.limit)],
+                                })
+                        }) {
                         Err(refusal) => {
                             let code = match &refusal {
                                 HarnessRefusal::PlanRequired => "PLAN_REQUIRED",
+                                HarnessRefusal::PlanRevisionRequired { .. } => {
+                                    "PLAN_REVISION_REQUIRED"
+                                }
                                 HarnessRefusal::OpenFailures { .. } => "BUDGET_EXHAUSTED",
                                 _ => "HARNESS",
                             };

@@ -2892,7 +2892,7 @@ async fn m2_8_verification_engine_gates_completion_on_real_cargo_fixture() {
     assert_ne!(weakened_tests, tests_src);
     let script = vec![
         json!({"calls": [{"name": "fs.read", "args": {"path": "src/lib.rs"}}]}),
-        json!({"calls": [{"name": "plan.update", "args": {"outcome": "reject negative quantities", "expected_files": ["src/lib.rs"], "verification": ["acceptance_rejects_negative_quantity"]}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "reject negative quantities", "expected_files": ["src/lib.rs", "tests/quantities.rs"], "verification": ["acceptance_rejects_negative_quantity"]}}]}),
         // Tempting shortcut: weaken the acceptance test. DI-3 denies it (and BASELINE runs first).
         json!({"calls": [{"name": "change.apply", "args": {"path": "tests/quantities.rs", "op": "replace", "content": weakened_tests}}]}),
         // Real fix that also breaks formatting.
@@ -7241,4 +7241,224 @@ async fn qual_px_026_language_labels_are_honest_and_served_to_every_client() {
             assert!(sources.contains(&format!("fn {t}(")), "missing test {t}");
         }
     }
+}
+
+/// PX-016 change strategy on the real rust-cli fixture: the failing test is
+/// written first, then the change; every write is one revision-bound
+/// ChangeTransaction (one FileChanged each); a write outside the plan is
+/// refused until a plan revision declares it (PlanRevised carries the scope
+/// delta); a lockfile edited by hand is flagged (DI-2) even with a plan entry.
+#[tokio::test]
+async fn qual_px_016_change_strategy_tests_first_one_concern_per_transaction_and_no_silent_scope_widening()
+ {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (repo, root) = fixture_repo("rust-cli");
+    let lib = std::fs::read_to_string(repo.path().join("src/lib.rs")).unwrap();
+    let tests_src = std::fs::read_to_string(repo.path().join("tests/quantities.rs")).unwrap();
+    let with_new_test = format!(
+        "{tests_src}\n/// Written first: zero is not a quantity either.\n#[test]\nfn zero_quantity_is_rejected() {{\n    assert!(parse_quantity(\"0\").is_err());\n}}\n"
+    );
+    let fixed_lib = lib.replace(
+        "    Ok(n)\n",
+        "    if n <= 0 {\n        return Err(\"quantity must be positive\".into());\n    }\n    Ok(n)\n",
+    );
+    assert_ne!(fixed_lib, lib);
+    let lock = std::fs::read_to_string(repo.path().join("Cargo.lock")).unwrap();
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "zero and negative quantities are rejected", "expected_files": ["tests/quantities.rs", "src/lib.rs"], "verification": ["zero_quantity_is_rejected", "acceptance_rejects_negative_quantity"]}}]}),
+        // 1. the failing test first
+        json!({"calls": [{"name": "change.apply", "args": {"path": "tests/quantities.rs", "op": "replace", "content": with_new_test}}]}),
+        json!({"calls": [{"name": "verify.run", "args": {"reason": "the new test must fail first"}}]}),
+        // 2. the change, one concern
+        json!({"calls": [{"name": "change.apply", "args": {"path": "src/lib.rs", "op": "replace", "content": fixed_lib}}]}),
+        json!({"calls": [{"name": "verify.run", "args": {"reason": "now it passes"}}]}),
+        // 3. silent scope widening is refused
+        json!({"calls": [{"name": "change.apply", "args": {"path": "README.md", "op": "replace", "content": "# rust-cli\nquantities must be positive\n"}}]}),
+        // 4. an explicit plan revision declares the file, then the write is allowed
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "zero and negative quantities are rejected", "expected_files": ["tests/quantities.rs", "src/lib.rs", "README.md", "Cargo.lock"], "verification": ["zero_quantity_is_rejected"], "reason": "document the rule; touch the lockfile"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "README.md", "op": "replace", "content": "# rust-cli\nquantities must be positive\n"}}]}),
+        // 5. a lockfile edited by hand is flagged even with the plan entry
+        json!({"calls": [{"name": "change.apply", "args": {"path": "Cargo.lock", "op": "replace", "content": format!("{lock}# touched by hand\n")}}]}),
+        // 6. the flag blocks completion until the plan justifies the hand edit (docs/64 §4)
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "zero and negative quantities are rejected", "expected_files": ["tests/quantities.rs", "src/lib.rs", "README.md", "Cargo.lock"], "verification": ["zero_quantity_is_rejected"], "reason": "Cargo.lock: a trailing comment only; no dependency changed, regeneration is a no-op"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn_with_env(
+        dir.path(),
+        &[
+            ("MODBIT_OPENAI_BASE_URL", &base),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+            ("CARGO_TERM_COLOR", "always"),
+        ],
+    );
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x16)).await;
+    let g = lease_for(&session);
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x17),
+            "CreateTask",
+            CreateTask {
+                session_id: Some(session.clone()),
+                goal_text: "Reject zero quantities too.".into(),
+                workspace_id: None,
+                execution_profile: String::new(),
+                origin: "cli".into(),
+                workspace_root: root.clone(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let task = Client::result::<TaskCreated>(&ack)
+        .unwrap()
+        .task_id
+        .unwrap();
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x18),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 20,
+                max_tool_calls: 0,
+                max_no_progress_turns: 5,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 300).await;
+    let evs = task_events(&core, &session, &task).await;
+    let tool_msgs: Vec<String> = seen
+        .lock()
+        .unwrap()
+        .iter()
+        .flat_map(|b| b["messages"].as_array().cloned().unwrap_or_default())
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    assert_eq!(st.state, "ReadyForReview", "{st:?}\n{tool_msgs:#?}");
+    let of = |t: &str| {
+        evs.iter()
+            .filter(|(_, x, _)| x == t)
+            .map(|(_, _, p)| p.clone())
+            .collect::<Vec<_>>()
+    };
+    // Tests first: the TARGETED run after the test write reports the new test failing,
+    // the one after the fix reports it passing.
+    let runs = of("VerificationRunRecorded");
+    let targeted: Vec<&serde_json::Value> =
+        runs.iter().filter(|r| r["stage"] == "TARGETED").collect();
+    assert!(targeted.len() >= 2, "{runs:#?}");
+    let status_in = |r: &serde_json::Value, sym: &str| {
+        r["checks"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .find(|c| {
+                c["check_id"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .ends_with(&format!("::{sym}"))
+            })
+            .map(|c| c["status"].as_str().unwrap_or_default().to_owned())
+    };
+    assert_eq!(
+        status_in(targeted[0], "zero_quantity_is_rejected").as_deref(),
+        Some("FAIL"),
+        "{:?}",
+        targeted[0]
+    );
+    assert_eq!(
+        status_in(targeted[1], "zero_quantity_is_rejected").as_deref(),
+        Some("PASS"),
+        "{:?}",
+        targeted[1]
+    );
+    // One revision-bound ChangeTransaction per write: four FileChanged events, strictly increasing revisions.
+    let changed = of("FileChanged");
+    let paths: Vec<&str> = changed
+        .iter()
+        .map(|e| e["path"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        paths,
+        [
+            "tests/quantities.rs",
+            "src/lib.rs",
+            "README.md",
+            "Cargo.lock"
+        ],
+        "{changed:#?}"
+    );
+    let revs: Vec<u64> = changed
+        .iter()
+        .map(|e| e["workspace_revision"].as_u64().unwrap())
+        .collect();
+    assert!(revs.windows(2).all(|w| w[0] < w[1]), "{revs:?}");
+    assert!(
+        changed
+            .iter()
+            .all(|e| e["previous_revision"].as_u64().unwrap()
+                < e["workspace_revision"].as_u64().unwrap()),
+        "revision-bound: {changed:#?}"
+    );
+    // The silent README write was refused before any effect; the plan revision carries the delta.
+    assert!(
+        tool_msgs
+            .iter()
+            .any(|t| t.contains("HARNESS_PLAN_REVISION_REQUIRED") && t.contains("README.md")),
+        "{tool_msgs:#?}"
+    );
+    let revised = of("PlanRevised");
+    assert_eq!(revised.len(), 2, "{revised:#?}");
+    let added: Vec<&str> = revised[0]["added"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|a| a.as_str().unwrap())
+        .collect();
+    assert!(
+        added.contains(&"README.md") && added.contains(&"Cargo.lock"),
+        "{revised:#?}"
+    );
+    assert_eq!(
+        revised[0]["reason"],
+        "document the rule; touch the lockfile"
+    );
+    assert_eq!(
+        evs.iter()
+            .filter(|(_, t, p)| t == "ToolCallProposed" && p["tool_name"] == "change.apply")
+            .count(),
+        4,
+        "only the four allowed writes reached the effector"
+    );
+    // The hand-edited lockfile is flagged (DI-2 FLAG) even though the plan names it.
+    let di = of("DiffInvariantViolated");
+    assert!(
+        di.iter().any(|v| v["invariant"] == "DI-2"
+            && v["class"] == "FLAG"
+            && v["paths"][0] == "Cargo.lock"),
+        "{di:#?}"
+    );
+    // The open flag refused the first completion; the justifying plan revision cleared it.
+    assert!(
+        tool_msgs
+            .iter()
+            .any(|t| t.contains("COMPLETION_REFUSED") && t.contains("OPEN_FLAGS")),
+        "{tool_msgs:#?}"
+    );
+    assert_eq!(of("SelfReviewRecorded").len(), 2);
+    let _ = repo;
 }

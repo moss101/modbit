@@ -641,17 +641,21 @@ fn diff_invariants_deny_test_weakening_and_flag_the_rest() {
         write_set: Some(vec!["Cargo.toml".into(), "Cargo.lock".into()]),
         ..ctx.clone()
     };
-    assert!(
-        evaluate_diff(
-            &planned,
-            &[ChangedFile {
-                path: "Cargo.lock".into(),
-                old: Some("a".into()),
-                new: Some("b".into())
-            }],
-            Some(3)
-        )
-        .is_empty()
+    // docs/28 §3 (PX-016): with a plan entry the lockfile change is allowed but
+    // flagged — generated files change through their generators.
+    let planned_v = evaluate_diff(
+        &planned,
+        &[ChangedFile {
+            path: "Cargo.lock".into(),
+            old: Some("a".into()),
+            new: Some("b".into()),
+        }],
+        Some(3),
+    );
+    assert_eq!(planned_v.len(), 1, "{planned_v:?}");
+    assert_eq!(
+        (planned_v[0].id.as_str(), planned_v[0].class),
+        ("DI-2", Class::Flag)
     );
     // DI-4 FLAG, DI-5 DENY, DI-8 DENY, DI-9 DENY.
     let v = evaluate_file(
