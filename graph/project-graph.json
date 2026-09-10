@@ -15040,8 +15040,40 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0250",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "artifact:evidence/m3/IMP-EV-0250/TASK_CARD.md",
+    "test:qual_ev_0250_0252_0274_paired_context_economics_benchmark_publishes_savings_with_confidence",
+    "test:a_paired_report_measures_the_difference_and_says_what_it_cannot",
+    "test:an_unpaired_trial_says_nothing_about_a_difference"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T22:34:57Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: retrieval quality and one task's economics existed; nothing compared two configurations on the same work"
+    },
+    {
+     "at": "2026-09-10T22:34:57Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "benchmarks/context-economics: paired trials, bootstrap interval, the two times, the verified outcome"
+    },
+    {
+     "at": "2026-09-10T22:34:57Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "the runner drives the real Core and reads every number back through GetTaskEconomics"
+    },
+    {
+     "at": "2026-09-10T22:34:57Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "three paired trials: 54% fewer input tokens, three fewer tool calls, the same verified outcome"
+    }
+   ],
+   "status_changed_on": "2026-09-10T22:34:57Z"
   },
   {
    "id": "IMP-EV-0251",
@@ -15068,8 +15100,40 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0252",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "artifact:evidence/m3/IMP-EV-0252/TASK_CARD.md",
+    "test:qual_ev_0250_0252_0274_paired_context_economics_benchmark_publishes_savings_with_confidence",
+    "test:a_paired_report_measures_the_difference_and_says_what_it_cannot",
+    "test:an_unpaired_trial_says_nothing_about_a_difference"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T22:34:57Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: retrieval quality and one task's economics existed; nothing compared two configurations on the same work"
+    },
+    {
+     "at": "2026-09-10T22:34:57Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "benchmarks/context-economics: paired trials, bootstrap interval, the two times, the verified outcome"
+    },
+    {
+     "at": "2026-09-10T22:34:57Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "the runner drives the real Core and reads every number back through GetTaskEconomics"
+    },
+    {
+     "at": "2026-09-10T22:34:57Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "three paired trials: 54% fewer input tokens, three fewer tool calls, the same verified outcome"
+    }
+   ],
+   "status_changed_on": "2026-09-10T22:34:57Z"
   },
   {
    "id": "IMP-EV-0253",
@@ -15556,8 +15620,40 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0274",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "artifact:evidence/m3/IMP-EV-0274/TASK_CARD.md",
+    "test:qual_ev_0250_0252_0274_paired_context_economics_benchmark_publishes_savings_with_confidence",
+    "test:a_paired_report_measures_the_difference_and_says_what_it_cannot",
+    "test:an_unpaired_trial_says_nothing_about_a_difference"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T22:34:57Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: retrieval quality and one task's economics existed; nothing compared two configurations on the same work"
+    },
+    {
+     "at": "2026-09-10T22:34:57Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "benchmarks/context-economics: paired trials, bootstrap interval, the two times, the verified outcome"
+    },
+    {
+     "at": "2026-09-10T22:34:57Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "the runner drives the real Core and reads every number back through GetTaskEconomics"
+    },
+    {
+     "at": "2026-09-10T22:34:57Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "three paired trials: 54% fewer input tokens, three fewer tool calls, the same verified outcome"
+    }
+   ],
+   "status_changed_on": "2026-09-10T22:34:57Z"
   },
   {
    "id": "IMP-EV-0275",

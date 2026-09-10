@@ -2111,6 +2111,9 @@ async fn scripted_model_routed(
                                 .contains("Fast Context specialist")
                         })
                     });
+                let prompt_tokens = serde_json::to_string(&body["messages"])
+                    .map(|m| m.len().div_ceil(4))
+                    .unwrap_or(0);
                 seen.lock().unwrap().push(body);
                 if stall_at == Some(results)
                     && !stalled_once.swap(true, std::sync::atomic::Ordering::SeqCst)
@@ -2137,7 +2140,11 @@ async fn scripted_model_routed(
                 } else {
                     "tool_calls"
                 };
-                frames.push(serde_json::json!({"id":"c","model":"scripted-1","choices":[{"index":0,"delta":{},"finish_reason":finish}],"usage":{"prompt_tokens":100,"completion_tokens":10}}).to_string());
+                // A provider reports the size of what it was actually sent, so
+                // a smaller prompt is visibly cheaper (the same bytes/4
+                // estimator the product uses elsewhere).
+                let completion_tokens = reply.to_string().len().div_ceil(4);
+                frames.push(serde_json::json!({"id":"c","model":"scripted-1","choices":[{"index":0,"delta":{},"finish_reason":finish}],"usage":{"prompt_tokens":prompt_tokens,"completion_tokens":completion_tokens}}).to_string());
                 frames.push("[DONE]".into());
                 let _ = sock
                     .write_all(b"HTTP/1.1 200 OK\r\ncontent-type: text/event-stream\r\ntransfer-encoding: chunked\r\n\r\n")
@@ -11261,5 +11268,187 @@ async fn qual_px_029_an_unsupported_language_degrades_explicitly_and_edits_need_
                 .any(|(_, t, p)| t == "VerificationBaselineRecorded"
                     && p["status"].as_str().is_some()),
         "the plan never stated the limitation: {texts:#?}"
+    );
+}
+
+/// REQ-EV-0250 / 0252 / 0274 (QUAL-EV-0250 / 0252 / 0274): the context
+/// economics benchmark. The same task runs under two capability profiles of
+/// the real product — one with the context machinery and one without — on the
+/// same model, in the same environment, three times each, and the paired
+/// report says what the machinery cost and what it saved, with a confidence
+/// interval and the two times the matrix asks for.
+#[tokio::test]
+async fn qual_ev_0250_0252_0274_paired_context_economics_benchmark_publishes_savings_with_confidence()
+ {
+    use modbit_bench_context_economics::{Metric, Trial, metric_of, paired_report};
+    use modbit_protocol::v1::{GetTaskEconomics, StartTask, TaskEconomicsView, TaskRunStarted};
+    use serde_json::json;
+    // A repository big enough that reading it whole costs something.
+    let files: Vec<(String, String)> = (0..6)
+        .map(|i| {
+            (
+                format!("src/module_{i}.rs"),
+                (0..60)
+                    .map(|l| format!("// module {i} line {l}: totals are computed in cents\n"))
+                    .collect::<String>(),
+            )
+        })
+        .collect();
+    let fixture: Vec<(&str, &str)> = files
+        .iter()
+        .map(|(p, c)| (p.as_str(), c.as_str()))
+        .collect();
+    // The task: understand where totals are computed, then finish. The
+    // baseline has to read the modules; the treatment asks for a pack.
+    let baseline_script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "find where totals are computed", "expected_files": ["src/module_0.rs"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "src/module_0.rs"}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "src/module_1.rs"}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "src/module_2.rs"}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "src/module_3.rs"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "read them", "self_review": {"findings": []}}}]}),
+    ];
+    let treatment_script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "find where totals are computed", "expected_files": ["src/module_0.rs"]}}]}),
+        json!({"calls": [{"name": "context.pack", "args": {"query": "totals are computed in cents", "token_budget": 700}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "packed", "self_review": {"findings": []}}}]}),
+    ];
+    let mut trials: Vec<Trial> = Vec::new();
+    for repeat in 0..3u32 {
+        for (variant, script, compaction) in [
+            ("baseline", baseline_script.clone(), "2000000"),
+            ("treatment", treatment_script.clone(), "1500"),
+        ] {
+            let (repo, root) = plain_repo(&fixture);
+            let (base, _seen) = scripted_model(script, None).await;
+            let dir = tempfile::tempdir().unwrap();
+            let env = [
+                ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+                ("OPENAI_API_KEY", ""),
+                ("ANTHROPIC_API_KEY", ""),
+                ("MODBIT_COMPACTION_TOKEN_BUDGET", compaction),
+            ];
+            // Cold time is measured from a fresh Core on a fresh profile: the
+            // index build is inside it, the agent's own time is not.
+            let cold_started = std::time::Instant::now();
+            let core = CoreProcess::spawn_with_env(dir.path(), &env);
+            let mut c = core.client().await;
+            let cmd = u8::try_from(repeat).unwrap() * 8 + u8::from(variant == "treatment") * 4;
+            let (session, _) = create_session(&mut c, id16(0x10 + cmd)).await;
+            let g = lease_for(&session);
+            let task =
+                create_task_with_profile(&mut c, &session, g, &root, 0x11 + cmd, "local_trusted")
+                    .await;
+            let ack = c
+                .command(envelope_fenced(
+                    id16(0x12 + cmd),
+                    "StartTask",
+                    StartTask {
+                        task_id: Some(task.clone()),
+                        endpoint: String::new(),
+                        model: "gpt-5-mini".into(),
+                        max_turns: 12,
+                        max_tool_calls: 0,
+                        max_no_progress_turns: 6,
+                    }
+                    .encode_to_vec(),
+                    g,
+                ))
+                .await
+                .unwrap();
+            let _: TaskRunStarted = Client::result(&ack).unwrap();
+            let st = wait_task(&mut c, &task, 180).await;
+            let cold_ms = u64::try_from(cold_started.elapsed().as_millis()).unwrap_or(u64::MAX);
+            let ack = c
+                .command(envelope(
+                    id16(0x13 + cmd),
+                    "GetTaskEconomics",
+                    GetTaskEconomics {
+                        task_id: Some(task.clone()),
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .unwrap();
+            let e: TaskEconomicsView = Client::result(&ack).unwrap();
+            trials.push(Trial {
+                variant: variant.to_owned(),
+                task: "find-where-totals-are-computed".into(),
+                repeat,
+                input_tokens: e.input_tokens,
+                output_tokens: e.output_tokens,
+                cached_input_tokens: e.cached_input_tokens,
+                tool_calls: e.tool_calls,
+                model_calls: e.model_calls,
+                agent_ms: e.wall_ms,
+                cold_ms,
+                verified: st.state == "ReadyForReview",
+            });
+            let _ = repo;
+        }
+    }
+    let report = paired_report(
+        &trials,
+        "the context machinery: a Context Pack instead of whole-file reads, compaction at 1500 tokens instead of effectively off",
+        &[
+            "the model (a deterministic local server, same script per variant)",
+            "the task and its repository",
+            "the machine and the environment",
+        ],
+        "Three paired trials of one task through the real Core, measured from the canonical log. The model is a deterministic local server that reports the true size of what it was sent. Each variant does what an agent can do with the machinery it has — the treatment asks for a Context Pack, the baseline reads the files it needs — so the numbers measure the machinery under its intended use, not a model's spontaneous behaviour. Two consequences, stated rather than hidden: the product is deterministic here, so the paired trials are identical and the interval has no width; and whether a model left to itself would use retrieval, and how many tool calls it would make (REQ-EV-0251 / 0253), cannot be answered without a live provider.",
+    );
+    eprintln!("BENCH {}", serde_json::to_string_pretty(&report).unwrap());
+    // The report is paired, complete and honest about its method.
+    assert_eq!(report.pairs, 3, "{report:?}");
+    assert!(report.unpaired.is_empty(), "{report:?}");
+    assert_eq!(report.tasks.len(), 1);
+    assert!(
+        report
+            .method
+            .contains("cannot be answered without a live provider"),
+        "{report:?}"
+    );
+    assert!(
+        report.method.contains("the interval has no width"),
+        "a deterministic product says so rather than implying variance: {report:?}"
+    );
+    assert_eq!(report.held_constant.len(), 3);
+    // REQ-EV-0250: input tokens, with the paired distribution and interval.
+    let tokens = metric_of(&report, Metric::InputTokens).unwrap();
+    assert_eq!(tokens.pairs, 3);
+    assert!(
+        tokens.baseline_median > 0.0 && tokens.treatment_median > 0.0,
+        "{tokens:?}"
+    );
+    assert!(
+        tokens.mean_delta < 0.0 && tokens.ci95.1 < 0.0,
+        "the context machinery saved input tokens and the interval says so: {tokens:?}"
+    );
+    assert!(tokens.significant, "{tokens:?}");
+    assert!(
+        tokens.relative.unwrap() < -0.1,
+        "at least a tenth of the prompt: {tokens:?}"
+    );
+    // REQ-EV-0274: the saving is in tool calls too, and both variants reached
+    // the same verified outcome — economics are reported with the outcome.
+    let tools = metric_of(&report, Metric::ToolCalls).unwrap();
+    assert!(tools.mean_delta < 0.0, "{tools:?}");
+    assert_eq!(report.verified.0, report.verified.1, "{report:?}");
+    assert_eq!(report.verified.1, 3, "{report:?}");
+    // REQ-EV-0252: the agent's own time and the cold time are both reported,
+    // and the cold time is the larger of the two.
+    let agent = metric_of(&report, Metric::AgentMs).unwrap();
+    let cold = metric_of(&report, Metric::ColdMs).unwrap();
+    assert!(
+        agent.baseline_median > 0.0 && cold.baseline_median > 0.0,
+        "{agent:?} {cold:?}"
+    );
+    assert!(
+        cold.baseline_median > agent.baseline_median,
+        "cold start includes what the agent's own time does not: {cold:?} {agent:?}"
+    );
+    assert!(
+        cold.treatment_median > agent.treatment_median,
+        "{cold:?} {agent:?}"
     );
 }

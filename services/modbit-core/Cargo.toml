@@ -38,6 +38,7 @@ tokio.workspace = true
 tokio-util.workspace = true
 
 [dev-dependencies]
+modbit-bench-context-economics.workspace = true
 tempfile.workspace = true
 
 [lints]

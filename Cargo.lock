@@ -1576,6 +1576,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "modbit-bench-context-economics"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "modbit-browser"
 version = "0.0.0"
 dependencies = [
@@ -1646,6 +1654,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "hex",
+ "modbit-bench-context-economics",
  "modbit-compaction",
  "modbit-context",
  "modbit-core-runtime",
