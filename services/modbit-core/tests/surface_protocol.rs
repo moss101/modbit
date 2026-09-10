@@ -6307,3 +6307,205 @@ async fn m3_6_evidence_graph_serves_imports_history_changed_lines_tests_and_veri
     .await;
     assert_eq!(r.error_code, "PATH_REQUIRED", "{r:?}");
 }
+
+async fn retrieve_plan(
+    c: &mut Client,
+    task: &Id,
+    g: Option<u64>,
+    a: u8,
+    b: u8,
+    args: &str,
+) -> serde_json::Value {
+    let r = invoke_tool(c, task, g, a, b, "search.retrieve", args).await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    serde_json::from_str(&r.structured_output_json).unwrap()
+}
+
+/// M3.7: `search.retrieve` plans from the query's features — a known identifier
+/// is served at L0 without touching the hybrid indexes, unknown wording starts
+/// at L1, a miss escalates only while coverage is short, a structural intent
+/// expands through the graph — and every result is fused with the boosts named.
+#[tokio::test]
+async fn m3_7_retrieval_planner_starts_cheap_escalates_on_short_coverage_and_fuses_with_boosts() {
+    let (repo, root) = plain_repo(&[(
+        "Cargo.toml",
+        "[package]\nname = \"cart\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+    )]);
+    for (p, c) in [
+        (
+            "src/lib.rs",
+            "pub mod money;\n\n/// Total of the cart in cents.\npub fn compute_total(quantity: u32, unit_cents: u32) -> u32 {\n    money::round(quantity * unit_cents)\n}\n",
+        ),
+        (
+            "src/money.rs",
+            "pub fn round(cents: u32) -> u32 {\n    cents\n}\n",
+        ),
+        (
+            "src/main.rs",
+            "use cart::compute_total;\nfn main() {\n    println!(\"{}\", compute_total(2, 150));\n}\n",
+        ),
+        (
+            "tests/total_test.rs",
+            "use cart::compute_total;\n#[test]\nfn totals_multiply() {\n    assert_eq!(compute_total(2, 150), 300);\n}\n",
+        ),
+        (
+            "README.md",
+            "# cart\nThe shopping cart computes order totals from quantity and unit price.\n",
+        ),
+    ] {
+        let path = repo.path().join(p);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, c).unwrap();
+    }
+    for args in [
+        vec!["add", "-A"],
+        vec![
+            "-c",
+            "user.name=ann",
+            "-c",
+            "user.email=a@e",
+            "commit",
+            "-q",
+            "-m",
+            "cart",
+        ],
+    ] {
+        assert!(
+            Command::new("git")
+                .arg("-C")
+                .arg(repo.path())
+                .args(&args)
+                .status()
+                .unwrap()
+                .success()
+        );
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn(dir.path());
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xF7)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xF8, "local_trusted").await;
+    // L0 for a known identifier: no hybrid step ran.
+    let so = retrieve_plan(&mut c, &task, g, 0xF9, 0xD1, r#"{"query":"compute_total"}"#).await;
+    assert_eq!(so["plan"]["started_at"], "L0Exact", "{so}");
+    assert_eq!(so["plan"]["ended_at"], "L0Exact");
+    assert_eq!(so["plan"]["escalations"], serde_json::json!([]));
+    let sources: Vec<&str> = so["plan"]["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| s["source"].as_str().unwrap())
+        .collect();
+    assert_eq!(sources, ["exact", "symbols"], "{so}");
+    assert_eq!(so["hits"][0]["path"], "src/lib.rs");
+    assert_eq!(so["hits"][0]["lines"], serde_json::json!([4, 6]));
+    assert!(
+        so["hits"][0]["reasons"]
+            .as_array()
+            .unwrap()
+            .contains(&serde_json::json!("exact_symbol")),
+        "{so}"
+    );
+    assert_eq!(so["plan"]["index_revision"], so["index_revision"]);
+    // A worktree edit: the changed file is boosted as fresh with changed lines.
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xFA,
+        0xD2,
+        "change.apply",
+        r#"{"path":"src/money.rs","op":"replace","content":"pub fn round(cents: u32) -> u32 {\n    cents / 1 * 1\n}\n"}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let so = retrieve_plan(&mut c, &task, g, 0xFB, 0xD3, r#"{"query":"round"}"#).await;
+    let money = so["hits"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|h| {
+            h["path"] == "src/money.rs"
+                && h["sources"]
+                    .as_array()
+                    .unwrap()
+                    .contains(&serde_json::json!("symbols"))
+        })
+        .unwrap_or_else(|| panic!("{so}"));
+    let reasons = money["reasons"].as_array().unwrap();
+    assert!(
+        reasons.contains(&serde_json::json!("fresh_in_worktree"))
+            && reasons.contains(&serde_json::json!("changed_lines")),
+        "{so}"
+    );
+    // Unknown wording: L1 with the embedding generation declared; a miss escalates once.
+    let so = retrieve_plan(
+        &mut c,
+        &task,
+        g,
+        0xFC,
+        0xD4,
+        r#"{"query":"how are order totals computed"}"#,
+    )
+    .await;
+    assert_eq!(so["plan"]["started_at"], "L1Hybrid", "{so}");
+    assert!(so["plan"]["embedding_generation"].is_u64());
+    assert!(
+        so["hits"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|h| h["path"] == "README.md"),
+        "{so}"
+    );
+    let so = retrieve_plan(
+        &mut c,
+        &task,
+        g,
+        0xFD,
+        0xD5,
+        r#"{"query":"zzz_nothing_here"}"#,
+    )
+    .await;
+    assert_eq!(so["plan"]["escalations"][0]["from"], "L0Exact", "{so}");
+    assert_eq!(so["plan"]["escalations"][0]["to"], "L1Hybrid");
+    assert_eq!(so["plan"]["ended_at"], "L1Hybrid");
+    // Structural intent: the graph expansion names the caller with its distance.
+    let so = retrieve_plan(
+        &mut c,
+        &task,
+        g,
+        0xFE,
+        0xD6,
+        r#"{"query":"callers of compute_total","max_hits":10}"#,
+    )
+    .await;
+    assert_eq!(so["plan"]["ended_at"], "L2Structural", "{so}");
+    let main = so["hits"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|h| h["path"] == "src/main.rs")
+        .unwrap_or_else(|| panic!("{so}"));
+    assert!(
+        main["reasons"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|r| r.as_str().unwrap().starts_with("dependency_distance:")),
+        "{so}"
+    );
+    assert!(so["hits"].as_array().unwrap().len() <= 10);
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xFF,
+        0xD7,
+        "search.retrieve",
+        r#"{"query":"  "}"#,
+    )
+    .await;
+    assert_eq!(r.error_code, "QUERY_REQUIRED", "{r:?}");
+}

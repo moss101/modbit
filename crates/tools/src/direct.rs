@@ -953,6 +953,49 @@ tool!(
     }
 );
 
+tool!(
+    SearchRetrieve,
+    spec(
+        "search.retrieve",
+        "Planned retrieval: starts at the cheapest level the query supports (L0 exact/symbol/path, L1 BM25+semantic+exact fusion, L2 dependency-graph expansion, L3 Git/tests/runtime evidence) and escalates only while coverage is short; candidates are fused by reciprocal rank with deterministic boosts (exact symbol/path, worktree freshness, changed lines, diagnostic linkage, dependency distance), duplicates collapsed by span (M3.7, docs/18).",
+        EffectClass::ReadOnly,
+        json!({"type":"object","properties":{"query":{"type":"string","minLength":1},"intent":{"type":"string","enum":["exact","hybrid","structural","engineering"]},"max_hits":{"type":"integer","minimum":1,"maximum":200},"min_paths":{"type":"integer","minimum":1,"maximum":50}},"required":["query"],"additionalProperties":false}),
+        &["fs.read", "git.read"],
+        Idempotency::Idempotent
+    ),
+    |ctx, args| {
+        let Some(port) = &ctx.search else {
+            return ToolOutcome::infra("NO_INDEX", "no workspace index is attached to this task");
+        };
+        let query = s(&args, "query");
+        if query.trim().is_empty() {
+            return ToolOutcome::fail("QUERY_REQUIRED", "query must not be empty");
+        }
+        let req = crate::pipeline::SearchRequest {
+            kind: "retrieve".into(),
+            query: json!({
+                "query": query,
+                "intent": args.get("intent").and_then(Value::as_str).unwrap_or(""),
+                "min_paths": args.get("min_paths").and_then(Value::as_u64).unwrap_or(0),
+            })
+            .to_string(),
+            case_insensitive: false,
+            path_glob: None,
+            max_hits: usize::try_from(
+                args.get("max_hits")
+                    .and_then(Value::as_u64)
+                    .unwrap_or(20)
+                    .clamp(1, 200),
+            )
+            .unwrap_or(20),
+        };
+        match port.search(&req) {
+            Ok(v) => ToolOutcome::ok(v),
+            Err((code, msg)) => ToolOutcome::fail(&code, msg),
+        }
+    }
+);
+
 /// Wait window for `shell.read` when the process is still running.
 const READ_WAIT_MS: u64 = 250;
 
@@ -1384,6 +1427,7 @@ pub fn register_direct(registry: &mut ToolRegistry) -> Result<()> {
         SearchSymbols::shared(),
         SearchSemantic::shared(),
         SearchGraph::shared(),
+        SearchRetrieve::shared(),
         LspDiagnostics::shared(),
         LspSymbols::shared(),
         LspReferences::shared(),

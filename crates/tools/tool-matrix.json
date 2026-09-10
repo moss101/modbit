@@ -385,6 +385,22 @@
         "git.read"
       ],
       "test": "m3_6_evidence_graph_serves_imports_history_changed_lines_tests_and_verification_evidence"
+    },
+    {
+      "tool": "search.retrieve",
+      "family": "search",
+      "source_behaviors": [
+        "hybrid retrieval",
+        "context planner",
+        "rerank"
+      ],
+      "owner": "Context Engine (retrieval planner)",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "fs.read",
+        "git.read"
+      ],
+      "test": "m3_7_retrieval_planner_starts_cheap_escalates_on_short_coverage_and_fuses_with_boosts"
     }
   ],
   "harness": [

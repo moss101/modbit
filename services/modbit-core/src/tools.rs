@@ -1236,6 +1236,59 @@ impl modbit_tools::SearchPort for IndexPort {
                     "stale_paths": semantic.pending(),
                 })
             }
+            "retrieve" => {
+                let args: serde_json::Value = serde_json::from_str(&req.query)
+                    .map_err(|e| ("BAD_QUERY".to_owned(), e.to_string()))?;
+                let mut graph = self.graph.try_lock().map_err(|_| {
+                    (
+                        "INDEX_BUSY".to_owned(),
+                        "the graph is being refreshed".to_owned(),
+                    )
+                })?;
+                if ws_rev > graph.revision() {
+                    *graph = modbit_retrieval::EvidenceGraph::build(
+                        idx.texts(),
+                        recent_commits(idx.root()),
+                        worktree_changed_lines(idx.root()),
+                        ws_rev,
+                    );
+                }
+                // Diagnostic linkage (docs/18): the failing checks of the task's
+                // verification runs, located at the test symbol they name.
+                let diagnostics: Vec<(String, u32)> = self
+                    .evidence
+                    .iter()
+                    .filter(|(_, st)| st == "FAIL")
+                    .filter_map(|(id, _)| {
+                        let body = id.split_once(':').map_or(id.as_str(), |(_, b)| b);
+                        let (path, sym) = body.rsplit_once("::")?;
+                        let line = symbols
+                            .symbols_in(path)
+                            .iter()
+                            .find(|s| s.name == sym)
+                            .map_or(1, |s| s.line_start);
+                        Some((path.to_owned(), line))
+                    })
+                    .collect();
+                let plan = modbit_retrieval::planner::retrieve(
+                    &modbit_retrieval::Sources {
+                        index: &idx,
+                        lexical: &lexical,
+                        symbols: &symbols,
+                        semantic: &semantic,
+                        graph: &graph,
+                    },
+                    &modbit_retrieval::PlanRequest {
+                        query: args["query"].as_str().unwrap_or_default().to_owned(),
+                        intent: args["intent"].as_str().unwrap_or_default().to_owned(),
+                        max_hits: req.max_hits,
+                        min_paths: usize::try_from(args["min_paths"].as_u64().unwrap_or(0))
+                            .unwrap_or(0),
+                        diagnostics,
+                    },
+                );
+                serde_json::json!({"plan": plan, "hits": plan.hits})
+            }
             "graph" => {
                 let mut parts = req.query.splitn(3, '|');
                 let path = parts.next().unwrap_or_default().to_owned();

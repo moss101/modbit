@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 418,
+    "root_and_tooling": 420,
     "docs_bytes": 1037499
   },
   "sections": [
@@ -2900,6 +2900,16 @@
       "path": "evidence/m3/M3.6/evidence.json",
       "bytes": 816,
       "sha256": "d4ca374e5b672017ffbca8a7632118a96eaf9efce5037decc09d3a12629079ef"
+    },
+    {
+      "path": "evidence/m3/M3.7/TASK_CARD.md",
+      "bytes": 4106,
+      "sha256": "45eea59bdae09c3935bad5532ef721b65b4f8afca4fbc37670422c16db1202bf"
+    },
+    {
+      "path": "evidence/m3/M3.7/evidence.json",
+      "bytes": 701,
+      "sha256": "30a09db9737ed4fa9b4747973c4cd9c5ced40635643bb29d09e3a2baf318b550"
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
