@@ -292,6 +292,24 @@ pub enum TaskEvent {
         /// Tool names activated.
         tools: Vec<String>,
     },
+    /// `ScopeExpansionRecorded` (docs/28 §3, PX-038): a write outside the
+    /// original plan's write set reached a ScopePolicy bound or an
+    /// always-ask path; carries the counters and how it was resolved.
+    /// No state change.
+    ScopeExpansionRecorded {
+        /// The paths the expansion covers.
+        paths: Vec<String>,
+        /// Distinct files already written outside the original write set.
+        out_of_plan_files: u32,
+        /// Plan revisions so far.
+        plan_revisions: u32,
+        /// Why the expansion needs a decision.
+        reason: String,
+        /// `QUESTION_REQUIRED` | `CONTINUE` | `SPLIT` | `STOP` | `FAIL_CLOSED`.
+        resolution: String,
+        /// The user's answer, when there is one.
+        answer: String,
+    },
     /// `RetrievalRecorded` (docs/28 §2, PX-015): the task retrieved a file
     /// (read, language-service query, or its own write) at a revision and
     /// content hash — the record an edit of that file needs. No state change.
@@ -426,6 +444,7 @@ impl TaskEvent {
             Self::PlanRevised { .. } => "PlanRevised",
             Self::SelfReviewRecorded { .. } => "SelfReviewRecorded",
             Self::ToolsActivated { .. } => "ToolsActivated",
+            Self::ScopeExpansionRecorded { .. } => "ScopeExpansionRecorded",
             Self::RetrievalRecorded { .. } => "RetrievalRecorded",
             Self::RepairAttemptRecorded { .. } => "RepairAttemptRecorded",
             Self::RepairAttemptConcluded { .. } => "RepairAttemptConcluded",
@@ -529,6 +548,7 @@ impl Task {
             | TaskEvent::PlanRevised { .. }
             | TaskEvent::SelfReviewRecorded { .. }
             | TaskEvent::ToolsActivated { .. }
+            | TaskEvent::ScopeExpansionRecorded { .. }
             | TaskEvent::RetrievalRecorded { .. }
             | TaskEvent::RepairAttemptRecorded { .. }
             | TaskEvent::RepairAttemptConcluded { .. }

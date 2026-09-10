@@ -95,6 +95,18 @@ pub struct HarnessState {
     /// Repair policy (docs/28 §5).
     #[serde(default)]
     pub repair_policy: RepairPolicy,
+    /// Scope policy (docs/28 §3).
+    #[serde(default)]
+    pub scope_policy: ScopePolicy,
+    /// Paths a user answer allowed beyond the scope bounds.
+    #[serde(default)]
+    pub scope_unlocked: Vec<String>,
+    /// Paths waiting for the answer to a scope question.
+    #[serde(default)]
+    pub scope_question_pending: Vec<String>,
+    /// The answer to the pending scope question, once it arrives.
+    #[serde(default)]
+    pub scope_answer: Option<String>,
     /// Recorded repair attempts, in order.
     #[serde(default)]
     pub repair_attempts: Vec<RepairAttempt>,
@@ -119,6 +131,19 @@ pub enum HarnessRefusal {
         path: String,
         /// Plan version the write was checked against.
         plan_version: u32,
+    },
+    /// A write outside the original plan's write set that reached a
+    /// ScopePolicy bound or an always-ask path (docs/28 §3, PX-038): the
+    /// expansion needs a typed answer first.
+    ScopeQuestionRequired {
+        /// The path.
+        path: String,
+        /// Why.
+        reason: String,
+        /// Distinct out-of-plan files already written.
+        out_of_plan_files: u32,
+        /// Plan revisions so far.
+        plan_revisions: u32,
     },
     /// An edit of a file the task has not retrieved at the current workspace
     /// revision (docs/28 §2, PX-015): retrieve before edit.
@@ -178,6 +203,78 @@ pub const COMPLETE_TOOL: &str = "task.complete";
 pub const VERIFY_TOOL: &str = "verify.run";
 /// Harness tool: a typed question to the user (REQ-EV-0222); the run suspends until answered.
 pub const ASK_TOOL: &str = "user.ask";
+/// Scope policy (docs/28 §3 "Scope policy"; Alpha defaults, policy-overridable).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ScopePolicy {
+    /// Distinct files written outside the original write set before a question.
+    pub max_out_of_plan_files_without_question: u32,
+    /// Plan revisions before a question.
+    pub max_plan_revisions_without_question: u32,
+    /// Paths that always need a question when they are outside the original
+    /// write set: migrations, CI configuration, lockfiles and dependency
+    /// manifests, security and policy files.
+    pub always_ask_paths: Vec<String>,
+    /// `FAIL_CLOSED` (Needs Attention) or `AUTO_ALLOW` when no user is present.
+    pub headless_resolution: String,
+}
+
+impl Default for ScopePolicy {
+    fn default() -> Self {
+        Self {
+            max_out_of_plan_files_without_question: 2,
+            max_plan_revisions_without_question: 2,
+            always_ask_paths: [
+                "migrations/",
+                ".github/",
+                "Cargo.lock",
+                "Cargo.toml",
+                "package-lock.json",
+                "pnpm-lock.yaml",
+                "yarn.lock",
+                "poetry.lock",
+                "package.json",
+                "pyproject.toml",
+                "SECURITY.md",
+                ".env",
+                "policy/",
+            ]
+            .iter()
+            .map(|s| (*s).to_owned())
+            .collect(),
+            headless_resolution: "FAIL_CLOSED".to_owned(),
+        }
+    }
+}
+
+impl ScopePolicy {
+    /// Whether `path` is an always-ask path: a directory pattern (trailing
+    /// `/`) matches any path under it, anything else matches the file name.
+    #[must_use]
+    pub fn always_ask(&self, path: &str) -> bool {
+        let name = path.rsplit('/').next().unwrap_or(path);
+        self.always_ask_paths.iter().any(|p| {
+            if let Some(dir) = p.strip_suffix('/') {
+                path.starts_with(&format!("{dir}/")) || path.contains(&format!("/{dir}/"))
+            } else {
+                name == p
+            }
+        })
+    }
+}
+
+/// How the user resolved a scope question (docs/28 §3).
+#[must_use]
+pub fn scope_resolution(option_id: &str, text: &str) -> &'static str {
+    let s = format!("{option_id} {text}").to_ascii_lowercase();
+    if s.contains("continue") || s.contains("expand") {
+        "CONTINUE"
+    } else if s.contains("split") || s.contains("follow-up") || s.contains("follow up") {
+        "SPLIT"
+    } else {
+        "STOP"
+    }
+}
+
 /// Harness tool: record a repair attempt before changing code after a failed
 /// verification (docs/28 §5, PX-018).
 pub const REPAIR_TOOL: &str = "repair.attempt";
@@ -525,14 +622,59 @@ impl HarnessState {
             .expected_files
             .iter()
             .any(|e| e == path || (e.ends_with('/') && path.starts_with(e.as_str())) || e == "*");
-        if covered {
-            Ok(())
-        } else {
-            Err(HarnessRefusal::PlanRevisionRequired {
+        if !covered {
+            return Err(HarnessRefusal::PlanRevisionRequired {
                 path: path.to_owned(),
                 plan_version: plan.version,
+            });
+        }
+        // Scope policy (docs/28 §3): the plan may declare it, but expanding
+        // beyond the original write set is bounded, not merely transparent.
+        if self.original_write_set.iter().any(|f| f == path)
+            || self.scope_unlocked.iter().any(|f| f == path)
+        {
+            return Ok(());
+        }
+        let revisions = plan.version.saturating_sub(1);
+        let out_of_plan = u32::try_from(self.out_of_plan_files.len()).unwrap_or(u32::MAX);
+        let mut reasons = Vec::new();
+        if self.scope_policy.always_ask(path) {
+            reasons.push("always_ask_paths match".to_owned());
+        }
+        if out_of_plan >= self.scope_policy.max_out_of_plan_files_without_question {
+            reasons.push(format!(
+                "{out_of_plan} file(s) already written outside the original plan (bound {})",
+                self.scope_policy.max_out_of_plan_files_without_question
+            ));
+        }
+        if revisions > self.scope_policy.max_plan_revisions_without_question {
+            reasons.push(format!(
+                "{revisions} plan revision(s) (bound {})",
+                self.scope_policy.max_plan_revisions_without_question
+            ));
+        }
+        if reasons.is_empty() {
+            Ok(())
+        } else {
+            Err(HarnessRefusal::ScopeQuestionRequired {
+                path: path.to_owned(),
+                reason: reasons.join("; "),
+                out_of_plan_files: out_of_plan,
+                plan_revisions: revisions,
             })
         }
+    }
+
+    /// Counters the scope metric is measured with (docs/63): always against
+    /// the original plan, never against the latest revision.
+    #[must_use]
+    pub fn scope_counters(&self) -> (u32, u32) {
+        (
+            u32::try_from(self.out_of_plan_files.len()).unwrap_or(u32::MAX),
+            self.plan
+                .as_ref()
+                .map_or(0, |p| p.version.saturating_sub(1)),
+        )
     }
 
     /// Record a plan (first call freezes the original write set).

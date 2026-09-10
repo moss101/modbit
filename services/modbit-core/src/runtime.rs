@@ -17,7 +17,8 @@ use sha2::Digest;
 
 use modbit_core_runtime::harness::{
     self, ASK_TOOL, Budgets, COMPLETE_TOOL, HarnessRefusal, HarnessState, PLAN_TOOL, Plan,
-    REPAIR_TOOL, RepairEscalation, TOOL_SEARCH, VERIFY_TOOL, WRITE_TOOLS, write_targets,
+    REPAIR_TOOL, RepairEscalation, TOOL_SEARCH, VERIFY_TOOL, WRITE_TOOLS, scope_resolution,
+    write_targets,
 };
 use modbit_domain::event::{Actor, AggregateType};
 use modbit_domain::run::{OwnerLocation, RunEvent, RunState};
@@ -581,7 +582,38 @@ pub(crate) async fn rebuild(
                     questions.insert(q.to_owned(), c.to_owned());
                 }
             }
+            "ScopeExpansionRecorded" => {
+                let paths: Vec<String> = payload["paths"]
+                    .as_array()
+                    .map(|a| {
+                        a.iter()
+                            .filter_map(|x| x.as_str().map(str::to_owned))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                match payload["resolution"].as_str() {
+                    Some("QUESTION_REQUIRED") => state.scope_question_pending = paths,
+                    Some("CONTINUE") => {
+                        state.scope_question_pending.clear();
+                        for p in paths {
+                            if !state.scope_unlocked.contains(&p) {
+                                state.scope_unlocked.push(p);
+                            }
+                        }
+                    }
+                    _ => state.scope_question_pending.clear(),
+                }
+            }
             "UserQuestionAnswered" => {
+                // A scope question is answered by the user, never by the agent
+                // (docs/28 §3): only a recorded answer unlocks the expansion.
+                if !state.scope_question_pending.is_empty() {
+                    state.scope_answer = Some(format!(
+                        "{} {}",
+                        payload["option_id"].as_str().unwrap_or_default(),
+                        payload["text"].as_str().unwrap_or_default()
+                    ));
+                }
                 // The answer becomes the result of the model's `user.ask` call.
                 if let Some(call_id) = payload["question_id"]
                     .as_str()
@@ -818,6 +850,45 @@ async fn run_loop(
         // The projection follows the harness state: deferred tools activated
         // by `tool.search` appear with their schemas from this turn on.
         tools = projection(&core, &task, lease.as_ref(), &state);
+        // Scope policy (docs/28 §3, PX-038): the user's answer decides whether
+        // the expansion proceeds, and is recorded with the counters it was
+        // measured against — always the original plan's.
+        if !state.scope_question_pending.is_empty()
+            && let Some(answer) = state.scope_answer.take()
+        {
+            let paths = std::mem::take(&mut state.scope_question_pending);
+            let (out_of_plan_files, plan_revisions) = state.scope_counters();
+            let resolution = scope_resolution(&answer, "");
+            {
+                let mut store = core.store.lock().await;
+                let _ = append(
+                    &mut store,
+                    &core,
+                    lt,
+                    AggregateType::Task,
+                    *task.task_id.as_bytes(),
+                    vec![typed(
+                        "ScopeExpansionRecorded",
+                        &TaskEvent::ScopeExpansionRecorded {
+                            paths: paths.clone(),
+                            out_of_plan_files,
+                            plan_revisions,
+                            reason: "answered".to_owned(),
+                            resolution: resolution.to_owned(),
+                            answer: answer.clone(),
+                        },
+                        actor.clone(),
+                    )],
+                );
+            }
+            if resolution == "CONTINUE" {
+                for p in paths {
+                    if !state.scope_unlocked.contains(&p) {
+                        state.scope_unlocked.push(p);
+                    }
+                }
+            }
+        }
         // Deferred tools the task may still call by name (discovery by use):
         // visible under profile × lease × kernel, not yet projected.
         let deferred_visible: Vec<String> = core
@@ -1291,6 +1362,7 @@ async fn run_loop(
         let mut completed = false;
         let mut pending_question: Option<String> = None;
         let mut escalation: Option<RepairEscalation> = None;
+        let mut scope_fail_closed: Option<String> = None;
         let mut step_ordinal = 2u32;
         for (call_id, name, arguments_json) in calls {
             if cancel.is_cancelled() {
@@ -1505,6 +1577,57 @@ async fn run_loop(
                                 })
                         }) {
                         Err(refusal) => {
+                            // Scope policy (docs/28 §3, PX-038): record the
+                            // expansion with its counters; a headless task
+                            // fails closed instead of asking.
+                            if let HarnessRefusal::ScopeQuestionRequired {
+                                path,
+                                reason,
+                                out_of_plan_files,
+                                plan_revisions,
+                            } = &refusal
+                            {
+                                let headless = !matches!(
+                                    task.origin,
+                                    modbit_domain::task::TaskOrigin::Desktop
+                                        | modbit_domain::task::TaskOrigin::IdeAdapter
+                                );
+                                let fails_closed = headless
+                                    && state.scope_policy.headless_resolution == "FAIL_CLOSED";
+                                let resolution = if fails_closed {
+                                    "FAIL_CLOSED"
+                                } else {
+                                    "QUESTION_REQUIRED"
+                                };
+                                let mut store = core.store.lock().await;
+                                let _ = append(
+                                    &mut store,
+                                    &core,
+                                    lt,
+                                    AggregateType::Task,
+                                    *task.task_id.as_bytes(),
+                                    vec![typed(
+                                        "ScopeExpansionRecorded",
+                                        &TaskEvent::ScopeExpansionRecorded {
+                                            paths: vec![path.clone()],
+                                            out_of_plan_files: *out_of_plan_files,
+                                            plan_revisions: *plan_revisions,
+                                            reason: reason.clone(),
+                                            resolution: resolution.to_owned(),
+                                            answer: String::new(),
+                                        },
+                                        actor.clone(),
+                                    )],
+                                );
+                                drop(store);
+                                if fails_closed {
+                                    scope_fail_closed = Some(format!(
+                                        "scope expansion to {path} needs a decision ({reason}); headless resolution is FAIL_CLOSED"
+                                    ));
+                                } else if !state.scope_question_pending.contains(path) {
+                                    state.scope_question_pending.push(path.clone());
+                                }
+                            }
                             let code = match &refusal {
                                 HarnessRefusal::PlanRequired => "PLAN_REQUIRED",
                                 HarnessRefusal::PlanRevisionRequired { .. } => {
@@ -1514,6 +1637,9 @@ async fn run_loop(
                                     "REPAIR_ATTEMPT_REQUIRED"
                                 }
                                 HarnessRefusal::RetrievalRequired { .. } => "RETRIEVAL_REQUIRED",
+                                HarnessRefusal::ScopeQuestionRequired { .. } => {
+                                    "SCOPE_QUESTION_REQUIRED"
+                                }
                                 HarnessRefusal::OpenFailures { .. } => "BUDGET_EXHAUSTED",
                                 _ => "HARNESS",
                             };
@@ -1704,12 +1830,19 @@ async fn run_loop(
                 );
             }
             apply_entry(&mut transcript, &mut state, entry);
-            if completed || pending_question.is_some() || escalation.is_some() {
+            if completed
+                || pending_question.is_some()
+                || escalation.is_some()
+                || scope_fail_closed.is_some()
+            {
                 break;
             }
         }
         if let Some(q) = pending_question {
             break LoopEnd::NeedsInput(q);
+        }
+        if let Some(reason) = scope_fail_closed {
+            break LoopEnd::NeedsAttention(reason);
         }
         if let Some(esc) = escalation {
             break LoopEnd::NeedsAttention(format!(
@@ -3156,6 +3289,14 @@ async fn run_verification(
             let files = crate::verify::changed_files(std::path::Path::new(&root));
             let ctx = invariant_context(state);
             let violations = modbit_verification::evaluate_diff(&ctx, &files, None);
+            // A FLAG whose path the current plan declares has already been
+            // surfaced and justified (docs/64 §4, docs/28 §3): it is recorded
+            // on every stage but blocks completion only until the plan says why.
+            let planned_paths: Vec<String> = state
+                .plan
+                .as_ref()
+                .map(|p| p.expected_files.clone())
+                .unwrap_or_default();
             let mut deny = false;
             for v in &violations {
                 events.push(typed(
@@ -3173,7 +3314,13 @@ async fn run_verification(
                     deny = true;
                 }
                 let f = format!("{} {}", v.id, v.paths.first().cloned().unwrap_or_default());
-                if v.class == Class::Flag && !state.open_flags.contains(&f) {
+                let justified = !v.paths.is_empty()
+                    && v.paths.iter().all(|p| {
+                        planned_paths
+                            .iter()
+                            .any(|e| e == p || (e.ends_with('/') && p.starts_with(e.as_str())))
+                    });
+                if v.class == Class::Flag && !justified && !state.open_flags.contains(&f) {
                     state.open_flags.push(f);
                 }
             }

@@ -2187,6 +2187,24 @@ fn coding_script(fs_read_hash: &str) -> Vec<serde_json::Value> {
     ]
 }
 
+/// Wait until the task reaches `state` (a resumed run may not be alive yet
+/// when `StartTask` returns, so `wait_task` alone can read the stale state).
+async fn wait_for_state(
+    c: &mut Client,
+    task: &Id,
+    state: &str,
+    secs: u64,
+) -> modbit_protocol::v1::TaskStatus {
+    let deadline = std::time::Instant::now() + Duration::from_secs(secs);
+    loop {
+        let st = wait_task(c, task, 1).await;
+        if st.state == state || std::time::Instant::now() > deadline {
+            return st;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+}
+
 async fn wait_task(c: &mut Client, task: &Id, secs: u64) -> modbit_protocol::v1::TaskStatus {
     use modbit_protocol::v1::{GetTaskStatus, TaskStatus};
     let deadline = std::time::Instant::now() + Duration::from_secs(secs);
@@ -7269,7 +7287,7 @@ async fn qual_px_016_change_strategy_tests_first_one_concern_per_transaction_and
     assert_ne!(fixed_lib, lib);
     let lock = std::fs::read_to_string(repo.path().join("Cargo.lock")).unwrap();
     let script = vec![
-        json!({"calls": [{"name": "plan.update", "args": {"outcome": "zero and negative quantities are rejected", "expected_files": ["tests/quantities.rs", "src/lib.rs"], "verification": ["zero_quantity_is_rejected", "acceptance_rejects_negative_quantity"]}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "zero and negative quantities are rejected", "expected_files": ["tests/quantities.rs", "src/lib.rs", "Cargo.lock"], "verification": ["zero_quantity_is_rejected", "acceptance_rejects_negative_quantity"]}}]}),
         // retrieval before edit (PX-015)
         json!({"calls": [{"name": "fs.read", "args": {"path": "tests/quantities.rs"}}]}),
         json!({"calls": [{"name": "fs.read", "args": {"path": "src/lib.rs"}}]}),
@@ -7285,13 +7303,13 @@ async fn qual_px_016_change_strategy_tests_first_one_concern_per_transaction_and
         json!({"calls": [{"name": "fs.read", "args": {"path": "Cargo.lock"}}]}),
         json!({"calls": [{"name": "change.apply", "args": {"path": "README.md", "op": "replace", "content": "# rust-cli\nquantities must be positive\n"}}]}),
         // 4. an explicit plan revision declares the file, then the write is allowed
-        json!({"calls": [{"name": "plan.update", "args": {"outcome": "zero and negative quantities are rejected", "expected_files": ["tests/quantities.rs", "src/lib.rs", "README.md", "Cargo.lock"], "verification": ["zero_quantity_is_rejected"], "reason": "document the rule; touch the lockfile"}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "zero and negative quantities are rejected", "expected_files": ["tests/quantities.rs", "src/lib.rs", "Cargo.lock", "README.md"], "verification": ["zero_quantity_is_rejected"], "reason": "document the rule"}}]}),
         json!({"calls": [{"name": "change.apply", "args": {"path": "README.md", "op": "replace", "content": "# rust-cli\nquantities must be positive\n"}}]}),
         // 5. a lockfile edited by hand is flagged even with the plan entry
         json!({"calls": [{"name": "change.apply", "args": {"path": "Cargo.lock", "op": "replace", "content": format!("{lock}# touched by hand\n")}}]}),
         // 6. the flag blocks completion until the plan justifies the hand edit (docs/64 §4)
         json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
-        json!({"calls": [{"name": "plan.update", "args": {"outcome": "zero and negative quantities are rejected", "expected_files": ["tests/quantities.rs", "src/lib.rs", "README.md", "Cargo.lock"], "verification": ["zero_quantity_is_rejected"], "reason": "Cargo.lock: a trailing comment only; no dependency changed, regeneration is a no-op"}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "zero and negative quantities are rejected", "expected_files": ["tests/quantities.rs", "src/lib.rs", "Cargo.lock", "README.md"], "verification": ["zero_quantity_is_rejected"], "reason": "Cargo.lock: a trailing comment only; no dependency changed, regeneration is a no-op"}}]}),
         json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
     ];
     let (base, seen) = scripted_model(script, None).await;
@@ -7349,15 +7367,26 @@ async fn qual_px_016_change_strategy_tests_first_one_concern_per_transaction_and
     let _: TaskRunStarted = Client::result(&ack).unwrap();
     let st = wait_task(&mut c, &task, 300).await;
     let evs = task_events(&core, &session, &task).await;
+    // The last request carries the whole transcript once.
     let tool_msgs: Vec<String> = seen
         .lock()
         .unwrap()
+        .last()
+        .and_then(|b| b["messages"].as_array().cloned())
+        .unwrap_or_default()
         .iter()
-        .flat_map(|b| b["messages"].as_array().cloned().unwrap_or_default())
         .filter(|m| m["role"] == "tool")
         .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
         .collect();
-    assert_eq!(st.state, "ReadyForReview", "{st:?}\n{tool_msgs:#?}");
+    assert_eq!(
+        st.state,
+        "ReadyForReview",
+        "{st:?}\n{tool_msgs:#?}\n{:#?}",
+        evs.iter()
+            .filter(|(_, t, _)| t != "StepScheduled" && t != "StepStarted" && t != "StepSucceeded")
+            .map(|(_, t, p)| format!("{t} {}", p.get("failure_code").cloned().unwrap_or_default()))
+            .collect::<Vec<_>>()
+    );
     let of = |t: &str| {
         evs.iter()
             .filter(|(_, x, _)| x == t)
@@ -7438,14 +7467,8 @@ async fn qual_px_016_change_strategy_tests_first_one_concern_per_transaction_and
         .iter()
         .map(|a| a.as_str().unwrap())
         .collect();
-    assert!(
-        added.contains(&"README.md") && added.contains(&"Cargo.lock"),
-        "{revised:#?}"
-    );
-    assert_eq!(
-        revised[0]["reason"],
-        "document the rule; touch the lockfile"
-    );
+    assert_eq!(added, ["README.md"], "{revised:#?}");
+    assert_eq!(revised[0]["reason"], "document the rule");
     assert_eq!(
         evs.iter()
             .filter(|(_, t, p)| t == "ToolCallProposed" && p["tool_name"] == "change.apply")
@@ -7569,11 +7592,14 @@ async fn qual_px_018_repair_attempts_are_recorded_bounded_reverted_when_worsened
     let _: TaskRunStarted = Client::result(&ack).unwrap();
     let st = wait_task(&mut c, &task, 300).await;
     let evs = task_events(&core, &session, &task).await;
+    // The last request carries the whole transcript once.
     let tool_msgs: Vec<String> = seen
         .lock()
         .unwrap()
+        .last()
+        .and_then(|b| b["messages"].as_array().cloned())
+        .unwrap_or_default()
         .iter()
-        .flat_map(|b| b["messages"].as_array().cloned().unwrap_or_default())
         .filter(|m| m["role"] == "tool")
         .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
         .collect();
@@ -7818,7 +7844,7 @@ async fn qual_px_015_retrieval_before_edit_is_enforced_and_a_stale_record_is_ref
         .unwrap();
     let started: TaskRunStarted = Client::result(&ack).unwrap();
     assert!(started.resumed);
-    let st = wait_task(&mut c2, &task, 120).await;
+    let st = wait_for_state(&mut c2, &task, "ReadyForReview", 120).await;
     let evs = task_events(&core2, &session, &task).await;
     // The last request carries the whole rebuilt transcript once.
     let tool_msgs: Vec<String> = seen
@@ -7901,4 +7927,315 @@ async fn qual_px_015_retrieval_before_edit_is_enforced_and_a_stale_record_is_ref
         "{so}"
     );
     let _ = repo;
+}
+
+/// PX-038 scope policy: the first plan freezes the original write set; a
+/// revision carries its delta and reason; an always-ask path outside that set
+/// is refused until a typed question is answered (the agent cannot answer its
+/// own question); the answer is recorded with the counters measured against
+/// the original plan; a headless task fails closed to Needs Attention when a
+/// bound is reached.
+#[tokio::test]
+async fn qual_px_038_scope_expansion_is_bounded_asks_a_typed_question_and_fails_closed_headless() {
+    use modbit_protocol::v1::{
+        ListQuestions, QuestionList, QuestionResponded, RespondToQuestion, StartTask,
+        TaskRunStarted,
+    };
+    use serde_json::json;
+    // ---- interactive task: an always-ask path needs an answer
+    let (repo, root) = plain_repo(&[("a.txt", "a\n"), ("pnpm-lock.yaml", "lockfileVersion: 9\n")]);
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "edit a", "expected_files": ["a.txt"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "a.txt"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "a.txt", "op": "replace", "content": "a edited\n"}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "edit a", "expected_files": ["a.txt", "pnpm-lock.yaml"], "reason": "the lockfile needs a bump"}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "pnpm-lock.yaml"}}]}),
+        // refused: an always-ask path outside the original write set
+        json!({"calls": [{"name": "change.apply", "args": {"path": "pnpm-lock.yaml", "op": "replace", "content": "lockfileVersion: 9\n# bumped\n"}}]}),
+        // retrying without an answer changes nothing
+        json!({"calls": [{"name": "change.apply", "args": {"path": "pnpm-lock.yaml", "op": "replace", "content": "lockfileVersion: 9\n# bumped\n"}}]}),
+        json!({"calls": [{"name": "user.ask", "args": {"question": "The lockfile is outside the original plan. Continue, split it into a follow-up task, or stop?", "options": [{"id": "continue", "label": "continue with the expansion"}, {"id": "split", "label": "split into a follow-up task"}, {"id": "stop", "label": "stop"}], "reason": "change_set"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "pnpm-lock.yaml", "op": "replace", "content": "lockfileVersion: 9\n# bumped\n"}}]}),
+        // The hand-edited lockfile is flagged (DI-2, PX-016); the plan justifies it.
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "edit a", "expected_files": ["a.txt", "pnpm-lock.yaml"], "reason": "pnpm-lock.yaml: a comment only, no dependency changed"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn_with_env(
+        dir.path(),
+        &[
+            ("MODBIT_OPENAI_BASE_URL", &base),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+        ],
+    );
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x38)).await;
+    let g = lease_for(&session);
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x39),
+            "CreateTask",
+            CreateTask {
+                session_id: Some(session.clone()),
+                goal_text: "edit a and bump the lockfile".into(),
+                workspace_id: None,
+                execution_profile: String::new(),
+                origin: "desktop".into(),
+                workspace_root: root.clone(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let task = Client::result::<TaskCreated>(&ack)
+        .unwrap()
+        .task_id
+        .unwrap();
+    let start = StartTask {
+        task_id: Some(task.clone()),
+        endpoint: String::new(),
+        model: "gpt-5-mini".into(),
+        max_turns: 20,
+        max_tool_calls: 0,
+        max_no_progress_turns: 5,
+    }
+    .encode_to_vec();
+    let ack = c
+        .command(envelope_fenced(id16(0x3A), "StartTask", start.clone(), g))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 120).await;
+    let evs = task_events(&core, &session, &task).await;
+    assert_eq!(
+        (st.state.as_str(), st.wait_reason.as_str()),
+        ("Waiting", "UserInput"),
+        "the run suspends on the question: {st:?}\n{evs:#?}"
+    );
+    let of = |evs: &Vec<(String, String, serde_json::Value)>, t: &str| {
+        evs.iter()
+            .filter(|(_, x, _)| x == t)
+            .map(|(_, _, p)| p.clone())
+            .collect::<Vec<_>>()
+    };
+    // The first plan froze the write set; the revision carries its delta and reason.
+    let revised = of(&evs, "PlanRevised");
+    assert_eq!(revised.len(), 1, "{revised:#?}");
+    assert_eq!(revised[0]["added"], json!(["pnpm-lock.yaml"]));
+    assert_eq!(revised[0]["reason"], "the lockfile needs a bump");
+    // Two refusals, one ScopeExpansionRecorded per refused attempt, none applied.
+    let expansions = of(&evs, "ScopeExpansionRecorded");
+    assert_eq!(expansions.len(), 2, "{expansions:#?}");
+    for e in &expansions {
+        assert_eq!(e["resolution"], "QUESTION_REQUIRED", "{e}");
+        assert_eq!(e["paths"], json!(["pnpm-lock.yaml"]));
+        assert!(
+            e["reason"].as_str().unwrap().contains("always_ask_paths"),
+            "{e}"
+        );
+        assert_eq!(e["out_of_plan_files"], 0);
+        assert_eq!(e["plan_revisions"], 1);
+        assert_eq!(e["answer"], "");
+    }
+    assert_eq!(
+        of(&evs, "FileChanged")
+            .iter()
+            .filter(|f| f["path"] == "pnpm-lock.yaml")
+            .count(),
+        0,
+        "nothing was written before the answer"
+    );
+    // The user answers: continue.
+    let ack = c
+        .command(envelope(
+            id16(0x3B),
+            "ListQuestions",
+            ListQuestions {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let l: QuestionList = Client::result(&ack).unwrap();
+    let q = &l.questions[0];
+    assert_eq!(
+        q.options.iter().map(|o| o.id.as_str()).collect::<Vec<_>>(),
+        ["continue", "split", "stop"]
+    );
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x3C),
+            "RespondToQuestion",
+            RespondToQuestion {
+                task_id: Some(task.clone()),
+                question_id: q.question_id.clone(),
+                option_id: "continue".into(),
+                text: String::new(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: QuestionResponded = Client::result(&ack).unwrap();
+    let ack = c
+        .command(envelope_fenced(id16(0x3D), "StartTask", start, g))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_for_state(&mut c, &task, "ReadyForReview", 120).await;
+    let evs = task_events(&core, &session, &task).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}\n{evs:#?}");
+    let expansions = of(&evs, "ScopeExpansionRecorded");
+    let answered = expansions
+        .iter()
+        .find(|e| e["resolution"] == "CONTINUE")
+        .unwrap_or_else(|| panic!("{expansions:#?}"));
+    assert_eq!(answered["paths"], json!(["pnpm-lock.yaml"]));
+    assert!(
+        answered["answer"].as_str().unwrap().contains("continue"),
+        "{answered}"
+    );
+    assert_eq!(
+        answered["out_of_plan_files"], 0,
+        "counters against the original plan"
+    );
+    assert_eq!(answered["plan_revisions"], 1);
+    assert_eq!(
+        of(&evs, "FileChanged")
+            .iter()
+            .filter(|f| f["path"] == "pnpm-lock.yaml")
+            .count(),
+        1,
+        "the answered expansion was applied once"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("pnpm-lock.yaml")).unwrap(),
+        "lockfileVersion: 9\n# bumped\n"
+    );
+    let _ = seen;
+    drop(c);
+
+    // ---- headless task: the out-of-plan bound fails closed
+    let (repo2, root2) = plain_repo(&[
+        ("a.txt", "a\n"),
+        ("b.txt", "b\n"),
+        ("c.txt", "c\n"),
+        ("d.txt", "d\n"),
+    ]);
+    let plan = |files: Vec<&str>, reason: &str| json!({"calls": [{"name": "plan.update", "args": {"outcome": "edit files", "expected_files": files, "reason": reason}}]});
+    let read = |p: &str| json!({"calls": [{"name": "fs.read", "args": {"path": p}}]});
+    let write = |p: &str| json!({"calls": [{"name": "change.apply", "args": {"path": p, "op": "replace", "content": "edited\n"}}]});
+    let script2 = vec![
+        plan(vec!["a.txt"], "original"),
+        read("a.txt"),
+        write("a.txt"),
+        plan(vec!["a.txt", "b.txt"], "b too"),
+        read("b.txt"),
+        write("b.txt"),
+        plan(vec!["a.txt", "b.txt", "c.txt"], "c too"),
+        read("c.txt"),
+        write("c.txt"),
+        plan(vec!["a.txt", "b.txt", "c.txt", "d.txt"], "d too"),
+        write("d.txt"),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "never reached", "self_review": {"findings": []}}}]}),
+    ];
+    let (base2, _seen2) = scripted_model(script2, None).await;
+    let dir2 = tempfile::tempdir().unwrap();
+    let core2 = CoreProcess::spawn_with_env(
+        dir2.path(),
+        &[
+            ("MODBIT_OPENAI_BASE_URL", &base2),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+        ],
+    );
+    let mut c2 = core2.client().await;
+    let (session2, _) = create_session(&mut c2, id16(0x3E)).await;
+    let g2 = lease_for(&session2);
+    let ack = c2
+        .command(envelope_fenced(
+            id16(0x3F),
+            "CreateTask",
+            CreateTask {
+                session_id: Some(session2.clone()),
+                goal_text: "edit several files".into(),
+                workspace_id: None,
+                execution_profile: String::new(),
+                origin: "cli".into(),
+                workspace_root: root2.clone(),
+            }
+            .encode_to_vec(),
+            g2,
+        ))
+        .await
+        .unwrap();
+    let task2 = Client::result::<TaskCreated>(&ack)
+        .unwrap()
+        .task_id
+        .unwrap();
+    let ack = c2
+        .command(envelope_fenced(
+            id16(0x40),
+            "StartTask",
+            StartTask {
+                task_id: Some(task2.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 30,
+                max_tool_calls: 0,
+                max_no_progress_turns: 5,
+            }
+            .encode_to_vec(),
+            g2,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st2 = wait_task(&mut c2, &task2, 180).await;
+    let evs2 = task_events(&core2, &session2, &task2).await;
+    assert_eq!(
+        (st2.state.as_str(), st2.wait_reason.as_str()),
+        ("Waiting", "UserInput"),
+        "{st2:?}\n{evs2:#?}"
+    );
+    // b.txt and c.txt were inside the bound; d.txt reached it and failed closed.
+    let written: Vec<&str> = evs2
+        .iter()
+        .filter(|(_, t, _)| t == "FileChanged")
+        .map(|(_, _, p)| p["path"].as_str().unwrap())
+        .collect();
+    assert_eq!(written, ["a.txt", "b.txt", "c.txt"], "{written:?}");
+    let expansions2 = of(&evs2, "ScopeExpansionRecorded");
+    assert_eq!(expansions2.len(), 1, "{expansions2:#?}");
+    assert_eq!(
+        expansions2[0]["resolution"], "FAIL_CLOSED",
+        "{expansions2:#?}"
+    );
+    assert_eq!(expansions2[0]["paths"], json!(["d.txt"]));
+    assert_eq!(expansions2[0]["out_of_plan_files"], 2);
+    assert_eq!(expansions2[0]["plan_revisions"], 3);
+    assert!(
+        expansions2[0]["reason"]
+            .as_str()
+            .unwrap()
+            .contains("outside the original plan"),
+        "{expansions2:#?}"
+    );
+    let attention = of(&evs2, "TaskNeedsAttention");
+    assert!(
+        attention
+            .iter()
+            .any(|a| a["reason"].as_str().unwrap().contains("FAIL_CLOSED")),
+        "{attention:#?}"
+    );
+    assert!(
+        of(&evs2, "SelfReviewRecorded").is_empty(),
+        "task.complete never ran"
+    );
+    let _ = (repo, repo2);
 }
