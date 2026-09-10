@@ -20818,8 +20818,55 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-016",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "milestone_override": "DR-M2-002: the change strategy contract (test-first, one concern per transaction) needs the Context Engine's retrieval records (M3.7) it is measured with",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:1678e10",
+    "test:qual_px_016_change_strategy_tests_first_one_concern_per_transaction_and_no_silent_scope_widening",
+    "test:plan_gates_writes_and_completion_needs_clean_state",
+    "test:diff_invariants_deny_test_weakening_and_flag_the_rest",
+    "test:m2_8_verification_engine_gates_completion_on_real_cargo_fixture",
+    "run:gha-34469269565",
+    "artifact:evidence/m3/PX-016/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T11:20:58Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: PARTIAL (see card)"
+    },
+    {
+     "at": "2026-09-10T11:20:58Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "check_write / write_targets, DI-2 flag with a plan entry"
+    },
+    {
+     "at": "2026-09-10T11:20:58Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "harness gate before any effector; invariants at the transaction"
+    },
+    {
+     "at": "2026-09-10T11:20:58Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "scripted model on the real rust-cli fixture; harness and invariant unit tests"
+    },
+    {
+     "at": "2026-09-10T11:20:58Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34469269565 on 1678e10 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T11:20:58Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34469269565"
+    }
+   ],
+   "status_changed_on": "2026-09-10T11:20:58Z"
   },
   {
    "id": "PX-017",

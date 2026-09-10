@@ -15,13 +15,13 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 |---|---|---:|---:|
 | Authority and orientation | 00–09 | 8 | 65205 |
 | Architecture and subsystems | 10–29 | 20 | 191488 |
-| Implementation specifications | 30–39 | 10 | 80081 |
+| Implementation specifications | 30–39 | 10 | 80105 |
 | Requirements, tasks and traceability | 40–49 | 10 | 351596 |
 | Verification and testing | 50–69 | 15 | 202032 |
 | Delivery and operations | 70–79 | 7 | 33831 |
 | Agent process and governance | 80–97 | 18 | 109299 |
 | Live state | 98–99 | 1 | 3983 |
-| **Total docs** | | **89** | **1037515** |
+| **Total docs** | | **89** | **1037539** |
 
 ## Specification files (`docs/`)
 
@@ -55,7 +55,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 27 | `docs/27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md` | Execution policy router and verified orchestration | architecture | 57211 | `a95915dd93ad971360748c1fc05874aa4177793e6cfc6f7a8ba9baf3d2c6294b` |
 | 28 | `docs/28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md` | Agent competence: planning, verification and repair | architecture | 12521 | `2dbf6183340ee6a0ba808eef2dd1eea147e41a75dc18e5a3ee77c5bfec117e57` |
 | 29 | `docs/29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md` | Client surfaces and source-control integration | architecture | 7279 | `4e378b45620945efedd7b8db3546d15ad72c247a894cb80cd650fddd70b5dae8` |
-| 30 | `docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md` | Protocol, APIs, and Event Schemas | implementation | 10372 | `594b61dea6ec924d75ef75fcc5c102cd977db9047b5d6be8bc8287b6af63efd0` |
+| 30 | `docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md` | Protocol, APIs, and Event Schemas | implementation | 10396 | `6b273bcb4cf6959f36356e6f6852a8d6651301b07964f5e48a763129d0868c10` |
 | 31 | `docs/31_DATABASE_AND_STORAGE_SCHEMA.md` | Database and Storage Schema | implementation | 10628 | `538226aff8cf1eddd80fe70daedfe7d4873ef2601fb0ae3a973551810c19d0a8` |
 | 32 | `docs/32_DESKTOP_FRONTEND_IMPLEMENTATION.md` | Desktop Frontend Implementation | implementation | 5827 | `ac322efa1e408d2d7fb3655990d0a0828c269af317ac84d7fc459437123abaac` |
 | 33 | `docs/33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md` | Core and Cloud Backend Implementation | implementation | 7476 | `09beec690bb13005db61c0a2b3ff60594741f49023fc8510ceb4b3e29b199f46` |
@@ -655,7 +655,9 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m3/M3.9/evidence.json` | retained evidence | 1013 | `ca3d936ee57026d51f12a615cf69e73a3f37550fe3ed78ffc5be17473d090396` |
 | `evidence/m3/M3.9/report.json` | retained evidence | 21903 | `9e665cf9fd1ef52ef3b2203222570f463cfc8d0e45580b8a6e66e68c1400264d` |
 | `evidence/m3/PX-016/TASK_CARD.md` | retained evidence | 2762 | `6a54b9fb08551320ae1889b36ff78dcdc721cd0afc898cff076200c18a2a89f1` |
-| `evidence/m3/PX-016/evidence.json` | retained evidence | 622 | `23f119b3fdb070c2858d7ab05ab0b23a0c8ad2c4144879ef65a6ff519515e8db` |
+| `evidence/m3/PX-016/ci-run-34469269565-tests.log` | retained evidence | 2430 | `b7046bffb729567ce56b951431295e858687f53554bec52745bbabf978674660` |
+| `evidence/m3/PX-016/ci-run-34469269565.json` | retained evidence | 37317 | `5208d78eda32115305b861e8f7bfb6635dc06ba13cc8d7e55edaabdc2b157bae` |
+| `evidence/m3/PX-016/evidence.json` | retained evidence | 912 | `c120cf94ab4f58c6388cf0e739f45f07acc24707ea218011715a12649f92a095` |
 | `evidence/m3/PX-026/TASK_CARD.md` | retained evidence | 3189 | `4615db25a626df74741f3e6de545ecd751addac484f128f8856ed33bd6464e4d` |
 | `evidence/m3/PX-026/ci-run-34467756882-tests.log` | retained evidence | 65408 | `79c0f8192c5e3083c8fe7c12d39f4caed30c58161e53ee58974467a60e1d7281` |
 | `evidence/m3/PX-026/ci-run-34467756882.json` | retained evidence | 37317 | `5f2418b7d2fca244d450172ef0671b0b08750b52cb7137f8aeb62e09d1f9cfea` |
@@ -664,8 +666,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m3/PX-033/ci-run-34466693450-tests.log` | retained evidence | 2406 | `0ad691360e25f1bcce40efe49a56a9cbec52ba964fb8d21b37bf2ccb89d505bd` |
 | `evidence/m3/PX-033/ci-run-34466693450.json` | retained evidence | 37317 | `3d2da0166c2a6b035052bd8ea4b1b2aaf914d4ec198416337d98983d99769ebf` |
 | `evidence/m3/PX-033/evidence.json` | retained evidence | 1064 | `cd720b31c4bbf9b26a79876154ef5ec2611ad9fae461f943129e22d6b965c56a` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 40904 | `90aff8f3cb49ac914ac7f8d13c37c052c1b3cce4021ba272320ed3bd1f47e064` |
-| `graph/project-graph.json` | project driver graph with live status | 1207406 | `738133a5debc6735d26b6149262f91b0bf0d68cd87f85d21671bac6dfa07142a` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 40904 | `998ddd0c7d10de146dbbf5f43c887a4ac5c441ae4de8fcfeb8ae43d0fcf3b6f0` |
+| `graph/project-graph.json` | project driver graph with live status | 1208900 | `e0c683f22ccd8b27ebc58103561fd588eb350a49396eade9a8fa945d0ffa51c4` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 52844 | `13ea31cbf1ace263d36b4cc5ada8b19270a118e30e401114790652375b5c51d1` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 17596 | `5c9b7a782d245223726f860ca583d766929a6f5662b644adebee64d257ad426b` |

@@ -8,8 +8,18 @@
   "diff_invariants_deny_test_weakening_and_flag_the_rest",
   "m2_8_verification_engine_gates_completion_on_real_cargo_fixture"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "1678e10"
+ ],
+ "runs": [
+  {
+   "id": "gha-34469269565",
+   "kind": "hosted CI on 1678e10",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34469269565",
+   "log": "ci-run-34469269565.json, ci-run-34469269565-tests.log"
+  }
+ ],
  "proof": "tests first, one transaction per write, PLAN_REVISION_REQUIRED for silent widening, PlanRevised scope delta, DI-2 flag for a hand-edited lockfile",
  "audit": "COMPLETED in this batch (was PARTIAL)"
 }

@@ -1,0 +1,12 @@
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T11:05:40.8388030Z test m2_8_verification_engine_gates_completion_on_real_cargo_fixture ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T11:05:52.8576850Z test qual_px_016_change_strategy_tests_first_one_concern_per_transaction_and_no_silent_scope_widening ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T11:05:52.8809670Z test harness::tests::plan_gates_writes_and_completion_needs_clean_state ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T11:06:20.0024880Z test diff_invariants_deny_test_weakening_and_flag_the_rest ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T11:07:13.2607760Z test m2_8_verification_engine_gates_completion_on_real_cargo_fixture ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T11:07:30.3888845Z test qual_px_016_change_strategy_tests_first_one_concern_per_transaction_and_no_silent_scope_widening ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T11:07:30.4024354Z test harness::tests::plan_gates_writes_and_completion_needs_clean_state ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T11:08:12.6779142Z test diff_invariants_deny_test_weakening_and_flag_the_rest ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T11:05:14.2239940Z test m2_8_verification_engine_gates_completion_on_real_cargo_fixture ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T11:05:20.3435918Z test qual_px_016_change_strategy_tests_first_one_concern_per_transaction_and_no_silent_scope_widening ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T11:05:21.0862411Z test harness::tests::plan_gates_writes_and_completion_needs_clean_state ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T11:05:48.9950744Z test diff_invariants_deny_test_weakening_and_flag_the_rest ... ok
