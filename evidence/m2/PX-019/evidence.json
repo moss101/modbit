@@ -8,9 +8,8 @@
   "qual_ev_0096_0116_0133_0044_0031_tool_surface_is_compiled_from_support_and_policy"
  ],
  "batch_commits": [
-  "5d4c142",
-  "84062fd",
-  "fbc7657"
+  "9d343f7",
+  "01490ad"
  ],
  "runs": [
   {
@@ -19,6 +18,13 @@
    "result": "PASS on macOS, Linux and Windows",
    "url": "https://github.com/moss101/modbit/actions/runs/34439622680",
    "log": "ci-run-34439622680.json, ci-run-34439622680-tests.log"
+  },
+  {
+   "id": "gha-34471234251",
+   "kind": "hosted CI on 01490ad",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34471234251",
+   "log": "ci-run-34471234251.json, ci-run-34471234251-tests.log"
   }
  ],
  "proof": "two SelfReviewRecorded events in the M2.8 test: the first proposal is refused by the gate on a REGRESSION although the agent claimed done, the second accepted after the fix; a proposal without a plan is refused (plan gate)",

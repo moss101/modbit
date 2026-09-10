@@ -8,9 +8,8 @@
   "qual_ev_0071_secret_in_patch_is_denied_with_evidence"
  ],
  "batch_commits": [
-  "5d4c142",
-  "84062fd",
-  "fbc7657"
+  "1fac234",
+  "1678e10"
  ],
  "runs": [
   {
@@ -19,6 +18,13 @@
    "result": "PASS on macOS, Linux and Windows",
    "url": "https://github.com/moss101/modbit/actions/runs/34439622680",
    "log": "ci-run-34439622680.json, ci-run-34439622680-tests.log"
+  },
+  {
+   "id": "gha-34471234251",
+   "kind": "hosted CI on 01490ad",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34471234251",
+   "log": "ci-run-34471234251.json, ci-run-34471234251-tests.log"
   }
  ],
  "proof": "skip markers, removed assertions and rewrites of acceptance-named tests are DENY (DI-3) with DiffInvariantViolated on the log and the write refused before any effect; hand-edited lockfiles and manifests without a plan entry are DENY (DI-2/DI-7); debug leftovers and formatting churn are FLAGs; credentials DENY (DI-5)",

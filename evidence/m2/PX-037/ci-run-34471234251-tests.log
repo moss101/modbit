@@ -1,0 +1,9 @@
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-10T11:27:05.9857990Z test m2_8_verification_engine_gates_completion_on_real_cargo_fixture ... ok
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-10T11:27:33.7837320Z test diff_invariants_deny_test_weakening_and_flag_the_rest ... ok
+rust CI_COMPATIBLE (macos-latest)	UNKNOWN STEP	2026-09-10T11:27:33.7851250Z test qual_ev_0071_secret_in_patch_is_denied_with_evidence ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-10T11:27:26.9854664Z test m2_8_verification_engine_gates_completion_on_real_cargo_fixture ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-10T11:27:55.1191437Z test diff_invariants_deny_test_weakening_and_flag_the_rest ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	UNKNOWN STEP	2026-09-10T11:27:55.1304232Z test qual_ev_0071_secret_in_patch_is_denied_with_evidence ... ok
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-10T11:29:16.4077287Z test m2_8_verification_engine_gates_completion_on_real_cargo_fixture ... ok
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-10T11:30:44.4676412Z test diff_invariants_deny_test_weakening_and_flag_the_rest ... ok
+rust CI_COMPATIBLE (windows-latest)	UNKNOWN STEP	2026-09-10T11:30:44.4705557Z test qual_ev_0071_secret_in_patch_is_denied_with_evidence ... ok

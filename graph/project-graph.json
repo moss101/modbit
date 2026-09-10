@@ -20965,8 +20965,55 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-018",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "milestone_override": "DR-M2-002: RepairAttempt records need the retrieval/evidence ledger of M3; the M2 loop keeps failure signatures and no-progress detection",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:01490ad",
+    "test:qual_px_018_repair_attempts_are_recorded_bounded_reverted_when_worsened_and_escalate_on_equivalence",
+    "test:repair_loop_records_attempts_and_escalates_on_equivalence_bounds_and_worsening",
+    "test:m2_8_verification_engine_gates_completion_on_real_cargo_fixture",
+    "test:qual_px_016_change_strategy_tests_first_one_concern_per_transaction_and_no_silent_scope_widening",
+    "run:gha-34471234251",
+    "artifact:evidence/m3/PX-018/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T15:44:16Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: NOT-FOUND (no attempt records, bounds or revert)"
+    },
+    {
+     "at": "2026-09-10T15:44:16Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "repair.attempt tool, RepairPolicy, attempt records, WORSENED revert, escalation"
+    },
+    {
+     "at": "2026-09-10T15:44:16Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "harness gate before any effector; conclusion after every TARGETED run; events rebuilt after restart"
+    },
+    {
+     "at": "2026-09-10T15:44:16Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "scripted model on the real rust-cli fixture plus harness unit tests"
+    },
+    {
+     "at": "2026-09-10T15:44:17Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34471234251 on 01490ad green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T15:44:17Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34471234251"
+    }
+   ],
+   "status_changed_on": "2026-09-10T15:44:17Z"
   },
   {
    "id": "PX-019",
@@ -20990,8 +21037,56 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-019",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "milestone_override": "DR-M2-002: proven on the M2.7/M2.8 substrate; scheduled with its prerequisite PX-018 (M3) to keep the dependency order",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:9d343f7",
+    "commit:01490ad",
+    "test:m2_8_verification_engine_gates_completion_on_real_cargo_fixture",
+    "test:m2_7_one_agent_runtime_drives_a_coding_task_to_ready_for_review",
+    "test:qual_ev_0096_0116_0133_0044_0031_tool_surface_is_compiled_from_support_and_policy",
+    "run:gha-34439622680",
+    "run:gha-34471234251",
+    "artifact:evidence/m2/PX-019/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T15:44:17Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: IMPLEMENTED by M2.7/M2.8/M2.9 (card under evidence/m2)"
+    },
+    {
+     "at": "2026-09-10T15:44:17Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implementation and re-proof commits"
+    },
+    {
+     "at": "2026-09-10T15:44:17Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired in the Core runtime and the change engine"
+    },
+    {
+     "at": "2026-09-10T15:44:17Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real fixture runs"
+    },
+    {
+     "at": "2026-09-10T15:44:17Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux, Windows (original and re-proof runs)"
+    },
+    {
+     "at": "2026-09-10T15:44:17Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed once the prerequisites were COMPLETE"
+    }
+   ],
+   "status_changed_on": "2026-09-10T15:44:17Z"
   },
   {
    "id": "PX-020",
@@ -21703,8 +21798,56 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-037",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "milestone_override": "DR-M2-002: proven on the M2.8 substrate; scheduled with its prerequisite PX-016 (M3) to keep the dependency order",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:1fac234",
+    "commit:1678e10",
+    "test:diff_invariants_deny_test_weakening_and_flag_the_rest",
+    "test:m2_8_verification_engine_gates_completion_on_real_cargo_fixture",
+    "test:qual_ev_0071_secret_in_patch_is_denied_with_evidence",
+    "run:gha-34439622680",
+    "run:gha-34471234251",
+    "artifact:evidence/m2/PX-037/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T15:44:17Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: IMPLEMENTED by M2.7/M2.8/M2.9 (card under evidence/m2)"
+    },
+    {
+     "at": "2026-09-10T15:44:17Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implementation and re-proof commits"
+    },
+    {
+     "at": "2026-09-10T15:44:17Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired in the Core runtime and the change engine"
+    },
+    {
+     "at": "2026-09-10T15:44:17Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real fixture runs"
+    },
+    {
+     "at": "2026-09-10T15:44:17Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux, Windows (original and re-proof runs)"
+    },
+    {
+     "at": "2026-09-10T15:44:17Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed once the prerequisites were COMPLETE"
+    }
+   ],
+   "status_changed_on": "2026-09-10T15:44:17Z"
   },
   {
    "id": "PX-038",

@@ -8,8 +8,18 @@
   "m2_8_verification_engine_gates_completion_on_real_cargo_fixture",
   "qual_px_016_change_strategy_tests_first_one_concern_per_transaction_and_no_silent_scope_widening"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "01490ad"
+ ],
+ "runs": [
+  {
+   "id": "gha-34471234251",
+   "kind": "hosted CI on 01490ad",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34471234251",
+   "log": "ci-run-34471234251.json, ci-run-34471234251-tests.log"
+  }
+ ],
  "proof": "RepairAttempt recorded before the change; change refused without it; WORSENED concluded, fingerprinted and reverted; equivalent hypothesis escalates to Needs Attention with history; policy bounds enforced",
  "audit": "IMPLEMENTED in this batch (was NOT-FOUND)"
 }
