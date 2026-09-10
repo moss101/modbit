@@ -25,8 +25,9 @@ pub mod registry;
 
 pub use modbit_domain::toolcall::EffectClass;
 pub use pipeline::{
-    InvokeContext, LanguageRequest, LanguageServicePort, ObjectSink, PipelineOutcome, SearchPort,
-    SearchRequest, StageRecord, ToolCallResult, ToolRuntime, ToolStatus, arguments_hash,
+    ArtifactSource, InvokeContext, LanguageRequest, LanguageServicePort, ObjectSink,
+    PipelineOutcome, SearchPort, SearchRequest, StageRecord, ToolCallResult, ToolRuntime,
+    ToolStatus, arguments_hash,
 };
 pub use policy::{CapabilityPort, PolicyDecision, PolicyRequest, ProfilePolicy};
 pub use registry::{Idempotency, Tool, ToolOutcome, ToolRegistry, ToolSpec};

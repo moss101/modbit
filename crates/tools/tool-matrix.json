@@ -460,6 +460,20 @@
         "git.read"
       ],
       "test": "qual_px_035_impact_selection_chooses_tests_from_graph_evidence_with_measured_precision_and_recall"
+    },
+    {
+      "tool": "artifact.range",
+      "family": "file",
+      "source_behaviors": [
+        "paged tool output",
+        "OutputRef paging"
+      ],
+      "owner": "Core (object store)",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "fs.read"
+      ],
+      "test": "qual_px_040_harness_contracts_bound_observations_page_results_and_fail_closed_headless"
     }
   ],
   "harness": [

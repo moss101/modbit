@@ -8686,3 +8686,207 @@ async fn qual_ev_0169_context_pack_reaches_the_prompt_with_provenance_or_not_at_
     );
     let _ = repo;
 }
+
+/// PX-040 harness contracts (docs/14): a large command result reaches the
+/// model bounded, with the omitted range declared and a pageable result_ref
+/// that `artifact.range` reads back; the Context Pack carries harness_state
+/// with the plan, budgets, scope counters and candidate revision; a missing
+/// runner is recorded as a plan limitation; and a question in a headless task
+/// fails closed to Waiting with Needs Attention instead of hanging.
+#[tokio::test]
+async fn qual_px_040_harness_contracts_bound_observations_page_results_and_fail_closed_headless() {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[("a.txt", "a\n")]);
+    // A command whose output is far past the inline ceiling.
+    std::fs::write(
+        repo.path().join("noisy.sh"),
+        "#!/bin/sh\ni=0\nwhile [ $i -lt 900 ]; do echo \"line $i: 0123456789012345678901234567890123456789\"; i=$((i+1)); done\n",
+    )
+    .unwrap();
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "look at the noisy output", "expected_files": ["a.txt"], "verification": ["sh noisy.sh"]}}]}),
+        json!({"calls": [{"name": "test.run", "args": {"argv": ["sh", "noisy.sh"], "inherit_env": true}}]}),
+        json!({"calls": [{"name": "user.ask", "args": {"question": "The runner is missing. Configure one, or continue without test evidence?", "options": [{"id": "configure", "label": "configure a runner"}, {"id": "continue", "label": "continue with the limitation"}], "reason": "verification"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "never reached", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn_with_env(
+        dir.path(),
+        &[
+            ("MODBIT_OPENAI_BASE_URL", &base),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+        ],
+    );
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x40)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x44, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x45),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 20,
+                max_tool_calls: 0,
+                max_no_progress_turns: 5,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 120).await;
+    let evs = task_events(&core, &session, &task).await;
+    // Contract 10 (headless resolution): the question suspends the run and the
+    // task needs attention; it never blocks forever and never self-answers.
+    assert_eq!(
+        (
+            st.state.as_str(),
+            st.wait_reason.as_str(),
+            st.run_state.as_str(),
+            st.loop_alive
+        ),
+        ("Waiting", "UserInput", "Suspended", false),
+        "{st:?}\n{evs:#?}"
+    );
+    assert!(
+        evs.iter().any(|(_, t, p)| t == "TaskNeedsAttention"
+            && p["reason"].as_str().unwrap().contains("question pending")),
+        "{evs:#?}"
+    );
+    assert!(
+        evs.iter().any(|(_, t, _)| t == "UserQuestionAsked"),
+        "{evs:#?}"
+    );
+    assert!(
+        !evs.iter().any(|(_, t, _)| t == "UserQuestionAnswered"),
+        "the agent never answers its own question"
+    );
+    assert!(
+        evs.iter().all(|(_, t, _)| t != "SelfReviewRecorded"),
+        "completion never ran"
+    );
+    // Contract 2 (bounded observations): the large result is truncated with the
+    // omitted range declared and a pageable ref.
+    let bodies = seen.lock().unwrap().clone();
+    let observation = bodies
+        .iter()
+        .flat_map(|b| b["messages"].as_array().cloned().unwrap_or_default())
+        .filter(|m| m["role"] == "tool")
+        .filter_map(|m| m["content"].as_str().map(str::to_owned))
+        .find(|t| t.contains("bytes_total:") && t.contains("omitted:"))
+        .unwrap_or_else(|| panic!("{bodies:#?}"));
+    let total: usize = observation
+        .lines()
+        .find_map(|l| l.strip_prefix("bytes_total: "))
+        .unwrap()
+        .parse()
+        .unwrap();
+    assert!(total > 16 * 1024, "{observation}");
+    assert!(observation.contains("omitted: 16384..") && observation.contains("artifact.range"));
+    let result_ref = observation
+        .split("result_ref ")
+        .nth(1)
+        .unwrap()
+        .split(|c: char| !c.is_ascii_hexdigit())
+        .next()
+        .unwrap()
+        .to_owned();
+    assert_eq!(result_ref.len(), 64, "{observation}");
+    // The rest is readable through the tool the observation names.
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0x46,
+        0x47,
+        "artifact.range",
+        &json!({"ref": result_ref, "offset": 16384, "max_bytes": 4096}).to_string(),
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let page: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(page["offset"], 16384);
+    // The stored result holds at least everything the observation counted (it
+    // is the whole tool result, the observation only its text).
+    let stored_total = page["bytes_total"].as_u64().unwrap() as usize;
+    assert!(
+        stored_total >= total,
+        "stored {stored_total} < observed {total}"
+    );
+    assert!(
+        page["bytes_read"].as_u64().unwrap() > 0 && page["eof"] == false,
+        "{page}"
+    );
+    assert!(
+        page["content"].as_str().unwrap().contains("line "),
+        "{page}"
+    );
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0x48,
+        0x49,
+        "artifact.range",
+        &json!({"ref": result_ref, "offset": stored_total as u64 - 10, "max_bytes": 4096})
+            .to_string(),
+    )
+    .await;
+    let last: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(last["eof"], true, "{last}");
+    // Contract 4 (harness_state in the Context Pack) and the plan limitation
+    // for the missing runner.
+    let refs: Vec<String> = evs
+        .iter()
+        .filter(|(a, t, _)| a == "run_step" && t == "StepSucceeded")
+        .filter_map(|(_, _, p)| p["output_ref"].as_str().map(str::to_owned))
+        .collect();
+    let mut saw_state = false;
+    for (i, r) in refs.iter().enumerate() {
+        let body = read_object(&mut c, id16(0x50 + u8::try_from(i).unwrap_or(0)), r).await;
+        let Ok(v) = serde_json::from_str::<serde_json::Value>(&body) else {
+            continue;
+        };
+        if let Some(h) = v.get("harness_state")
+            && h["plan"].is_object()
+        {
+            saw_state = true;
+            assert!(h["budgets"]["max_turns"].as_u64().unwrap() > 0, "{h}");
+            assert!(h["open_failures"].is_array(), "{h}");
+            assert!(h["out_of_plan_files"].is_array(), "{h}");
+            assert!(h["quarantined"].is_array(), "{h}");
+            assert!(
+                h["scope_policy"]["max_out_of_plan_files_without_question"].is_u64(),
+                "{h}"
+            );
+            assert!(h["repair_policy"]["max_attempts_per_task"].is_u64(), "{h}");
+        }
+    }
+    assert!(saw_state, "harness_state travels with the Context Pack");
+    let baseline = evs
+        .iter()
+        .find(|(_, t, _)| t == "VerificationBaselineRecorded")
+        .map(|(_, _, p)| p.clone());
+    if let Some(b) = baseline
+        && let Some(plan_ref) = b["plan_ref"].as_str()
+    {
+        let plan = read_object(&mut c, id16(0x60), plan_ref).await;
+        let plan: serde_json::Value = serde_json::from_str(&plan).unwrap();
+        let limitations = plan["limitations"].as_array().unwrap();
+        assert!(
+            limitations
+                .iter()
+                .any(|l| l.as_str().unwrap().contains("no configured runner")),
+            "the missing runner is recorded: {plan}"
+        );
+    }
+    let _ = repo;
+}

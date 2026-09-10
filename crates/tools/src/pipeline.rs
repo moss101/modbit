@@ -15,6 +15,19 @@ use tokio::sync::Mutex;
 use crate::policy::{CapabilityPort, PolicyDecision, PolicyRequest};
 use crate::registry::{ToolOutcome, ToolRegistry};
 
+/// Reading back a stored result by range, so a bounded observation can be
+/// paged instead of silently truncated (docs/14 harness contract 2).
+pub trait ArtifactSource: Send + Sync {
+    /// Bytes of `hash` from `offset`, at most `max_bytes`, with the total
+    /// size; `Err` carries a typed code and message.
+    fn range(
+        &self,
+        hash: &str,
+        offset: u64,
+        max_bytes: usize,
+    ) -> Result<(Vec<u8>, u64), (String, String)>;
+}
+
 /// Where large results go (content-addressed; the event store's object
 /// directory in the Core).
 pub trait ObjectSink: Send + Sync {
@@ -100,6 +113,8 @@ pub struct InvokeContext {
     pub search: Option<Arc<dyn SearchPort>>,
     /// Headless language services, when the host provides them (M3.4).
     pub language: Option<Arc<dyn LanguageServicePort>>,
+    /// Reads stored results back by range (`artifact.range`).
+    pub artifacts: Option<Arc<dyn ArtifactSource>>,
     /// The call being executed (set by the pipeline; effectors derive their
     /// idempotency keys from it so a new call never replays an old one).
     pub tool_call_id: Option<ToolCallId>,

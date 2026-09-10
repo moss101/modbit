@@ -1166,6 +1166,51 @@ tool!(
     }
 );
 
+tool!(
+    ArtifactRange,
+    spec(
+        "artifact.range",
+        "Read a stored result back by byte range: bounded observations declare what they omitted and this pages the rest, so nothing is silently truncated (docs/14 harness contract 2). Takes the `result_ref` or any object hash the runtime showed you.",
+        EffectClass::ReadOnly,
+        json!({"type":"object","properties":{"ref":{"type":"string","minLength":64,"maxLength":64},"offset":{"type":"integer","minimum":0},"max_bytes":{"type":"integer","minimum":1,"maximum":65536}},"required":["ref"],"additionalProperties":false}),
+        &["fs.read"],
+        Idempotency::Idempotent
+    ),
+    |ctx, args| {
+        let Some(port) = &ctx.artifacts else {
+            return ToolOutcome::infra(
+                "NO_ARTIFACTS",
+                "no artifact store is attached to this task",
+            );
+        };
+        let hash = s(&args, "ref");
+        let offset = args.get("offset").and_then(Value::as_u64).unwrap_or(0);
+        let max = usize::try_from(
+            args.get("max_bytes")
+                .and_then(Value::as_u64)
+                .unwrap_or(8192)
+                .clamp(1, 65536),
+        )
+        .unwrap_or(8192);
+        match port.range(&hash, offset, max) {
+            Ok((bytes, total)) => {
+                let read = bytes.len() as u64;
+                let text = String::from_utf8_lossy(&bytes).into_owned();
+                ToolOutcome::ok(json!({
+                    "ref": hash,
+                    "offset": offset,
+                    "bytes_read": read,
+                    "bytes_total": total,
+                    "next_offset": offset + read,
+                    "eof": offset + read >= total,
+                    "content": text,
+                }))
+            }
+            Err((code, msg)) => ToolOutcome::fail(&code, msg),
+        }
+    }
+);
+
 /// Wait window for `shell.read` when the process is still running.
 const READ_WAIT_MS: u64 = 250;
 
@@ -1602,6 +1647,7 @@ pub fn register_direct(registry: &mut ToolRegistry) -> Result<()> {
         ContextPack::shared(),
         ContextLedger::shared(),
         EvidenceSearch::shared(),
+        ArtifactRange::shared(),
         LspDiagnostics::shared(),
         LspSymbols::shared(),
         LspReferences::shared(),

@@ -79,6 +79,7 @@ fn fixture(exec: Option<ExecTarget>) -> Fixture {
         kernel: None,
         search: None,
         language: None,
+        artifacts: None,
         tool_call_id: None,
     };
     let mut registry = ToolRegistry::new();
@@ -196,6 +197,7 @@ async fn qual_ev_0239_0080_denial_is_monotonic_and_argument_text_cannot_bypass_p
         kernel: None,
         search: None,
         language: None,
+        artifacts: None,
         tool_call_id: None,
     };
     let o = f

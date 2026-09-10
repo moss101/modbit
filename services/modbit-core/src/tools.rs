@@ -98,6 +98,27 @@ pub fn spawn_execd(data_dir: &Path) -> Result<Execd> {
     Ok(Execd { child, target })
 }
 
+/// The event store's object directory as the artifact source (`artifact.range`).
+struct StoreArtifacts(ObjectStore);
+
+impl modbit_tools::ArtifactSource for StoreArtifacts {
+    fn range(
+        &self,
+        hash: &str,
+        offset: u64,
+        max_bytes: usize,
+    ) -> std::result::Result<(Vec<u8>, u64), (String, String)> {
+        let bytes = self
+            .0
+            .get(hash)
+            .map_err(|e| ("NO_SUCH_ARTIFACT".to_owned(), e.to_string()))?;
+        let total = bytes.len() as u64;
+        let start = usize::try_from(offset.min(total)).unwrap_or(0);
+        let end = (start + max_bytes).min(bytes.len());
+        Ok((bytes[start..end].to_vec(), total))
+    }
+}
+
 /// The event store's object directory as the OutputRef sink.
 pub struct StoreSink(pub ObjectStore);
 impl ObjectSink for StoreSink {
@@ -388,6 +409,9 @@ impl ToolHost {
             None => (None, None),
         };
         let sink: Arc<dyn ObjectSink> = Arc::new(StoreSink(store.lock().await.objects().clone()));
+        let artifacts: Option<Arc<dyn modbit_tools::ArtifactSource>> = Some(Arc::new(
+            StoreArtifacts(store.lock().await.objects().clone()),
+        ));
         let lease_id = lease.as_ref().map(|l| l.lease_id);
         let port = KernelPort {
             kernel: CapabilityKernel::default(),
@@ -438,6 +462,7 @@ impl ToolHost {
             kernel: Some(Arc::new(port)),
             search,
             language,
+            artifacts,
             tool_call_id: None,
         };
         // REQ-EV-0106: snapshot the write targets so every successful write can
