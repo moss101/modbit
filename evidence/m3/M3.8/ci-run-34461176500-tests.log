@@ -1,0 +1,15 @@
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:33:58.2864671Z test duplicates_collapse_on_span_identity_or_containment ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:33:58.2865887Z test ledger_records_injections_and_marks_use_only_at_the_retrieved_revision ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:33:58.2866740Z test budget_is_never_exceeded_critical_entries_go_first_and_omissions_are_summarised ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:34:03.4669020Z test m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:34:27.6252410Z test qual_ev_0217_compatibility_matrix_covers_every_registered_tool_with_owner_effect_and_test ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:41:31.7918738Z test duplicates_collapse_on_span_identity_or_containment ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:41:31.7919660Z test ledger_records_injections_and_marks_use_only_at_the_retrieved_revision ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:41:31.7920540Z test budget_is_never_exceeded_critical_entries_go_first_and_omissions_are_summarised ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:41:47.7790345Z test m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:42:46.4503748Z test qual_ev_0217_compatibility_matrix_covers_every_registered_tool_with_owner_effect_and_test ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:36:00.0715840Z test ledger_records_injections_and_marks_use_only_at_the_retrieved_revision ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:36:00.0716620Z test duplicates_collapse_on_span_identity_or_containment ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:36:00.0717360Z test budget_is_never_exceeded_critical_entries_go_first_and_omissions_are_summarised ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:36:05.9892190Z test m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:36:31.7192650Z test qual_ev_0217_compatibility_matrix_covers_every_registered_tool_with_owner_effect_and_test ... ok

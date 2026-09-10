@@ -1,0 +1,9 @@
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:34:03.0532249Z test m3_5_semantic_chunk_index_serves_nearest_chunks_and_reembeds_only_changed_files ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:34:27.3822704Z test semantic_index_finds_nearest_chunks_and_reembeds_only_changed_files ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:34:27.6252410Z test qual_ev_0217_compatibility_matrix_covers_every_registered_tool_with_owner_effect_and_test ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:41:44.1039058Z test m3_5_semantic_chunk_index_serves_nearest_chunks_and_reembeds_only_changed_files ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:42:45.2179015Z test semantic_index_finds_nearest_chunks_and_reembeds_only_changed_files ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:42:46.4503748Z test qual_ev_0217_compatibility_matrix_covers_every_registered_tool_with_owner_effect_and_test ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:36:05.3072620Z test m3_5_semantic_chunk_index_serves_nearest_chunks_and_reembeds_only_changed_files ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:36:31.2863400Z test semantic_index_finds_nearest_chunks_and_reembeds_only_changed_files ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:36:31.7192650Z test qual_ev_0217_compatibility_matrix_covers_every_registered_tool_with_owner_effect_and_test ... ok

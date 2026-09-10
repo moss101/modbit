@@ -9,11 +9,25 @@
   "qual_ev_0217_compatibility_matrix_covers_every_registered_tool_with_owner_effect_and_test"
  ],
  "commits": {
-  "implementation": "HEAD"
+  "implementation": "038e07d",
+  "all": [
+   "038e07d",
+   "1920f3b"
+  ],
+  "note": "038e07d implementation (planner + fusion, search.retrieve); 1920f3b ranks graph expansion below primary hits after the M3.9 harness exposed the regression",
+  "seal_run_head": "1920f3b"
  },
- "runs": [],
+ "runs": [
+  {
+   "id": "gha-34461176500",
+   "kind": "hosted CI on 1920f3b (contains every commit above)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34461176500",
+   "log": "ci-run-34461176500.json, ci-run-34461176500-tests.log"
+  }
+ ],
  "evidence_tier": "release-critical",
  "acceptance": {
-  "L0-L3 retrieval planner + fusion": "pending hosted CI"
+  "L0-L3 retrieval planner + fusion": "PASS on hosted CI run 34461176500 (macOS, Linux, Windows)"
  }
 }

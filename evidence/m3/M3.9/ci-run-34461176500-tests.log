@@ -1,0 +1,9 @@
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:34:03.3035920Z test m3_7_retrieval_planner_starts_cheap_escalates_on_short_coverage_and_fuses_with_boosts ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:34:27.3044173Z test harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:34:27.4913327Z test structural_and_engineering_intents_expand_through_the_graph_with_distance_and_diagnostic_boosts ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:41:46.2761223Z test m3_7_retrieval_planner_starts_cheap_escalates_on_short_coverage_and_fuses_with_boosts ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:42:44.9811590Z test harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:42:46.0857219Z test structural_and_engineering_intents_expand_through_the_graph_with_distance_and_diagnostic_boosts ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:36:05.7724710Z test m3_7_retrieval_planner_starts_cheap_escalates_on_short_coverage_and_fuses_with_boosts ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:36:31.1360750Z test harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T09:36:31.4970620Z test structural_and_engineering_intents_expand_through_the_graph_with_distance_and_diagnostic_boosts ... ok

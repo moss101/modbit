@@ -2019,8 +2019,19 @@
    "milestone": "M3",
    "order": 3,
    "source": "docs/43",
-   "status": "WIRED",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "test:m3_4_headless_language_service_bridge_serves_diagnostics_symbols_references_and_definitions",
+    "test:rust_analyzer_reports_a_seeded_type_mismatch_symbols_references_and_definitions",
+    "test:typescript_language_server_reports_a_seeded_type_error_and_resolves_definitions",
+    "test:pyright_reports_a_seeded_error_and_resolves_references",
+    "test:unsupported_language_is_reported_unavailable_not_faked",
+    "commit:7607e32",
+    "commit:f521a53",
+    "commit:21a292c",
+    "run:gha-34461176500",
+    "artifact:evidence/m3/M3.4/TASK_CARD.md"
+   ],
    "notes": [
     {
      "at": "2026-09-10T06:47:37Z",
@@ -2039,9 +2050,27 @@
      "from": "IMPLEMENTING",
      "to": "WIRED",
      "note": "lsp.* in the compiled tool surface; results bound to file hash and workspace revision; unavailability typed"
+    },
+    {
+     "at": "2026-09-10T09:45:50Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real rust-analyzer, typescript-language-server and pyright over the fixtures; Core lsp.* tools"
+    },
+    {
+     "at": "2026-09-10T09:45:50Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34461176500 green on macOS, Linux, Windows (Windows needed the verbatim-prefix and URI normalisation fixes)"
+    },
+    {
+     "at": "2026-09-10T09:45:50Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34461176500"
     }
    ],
-   "status_changed_on": "2026-09-10T06:47:37Z"
+   "status_changed_on": "2026-09-10T09:45:50Z"
   },
   {
    "id": "M3.5",
@@ -2051,8 +2080,53 @@
    "milestone": "M3",
    "order": 4,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:semantic_index_finds_nearest_chunks_and_reembeds_only_changed_files",
+    "test:m3_5_semantic_chunk_index_serves_nearest_chunks_and_reembeds_only_changed_files",
+    "commit:f521a53",
+    "run:gha-34461176500",
+    "artifact:evidence/m3/M3.5/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T09:45:50Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: NOT-FOUND (see card)"
+    },
+    {
+     "at": "2026-09-10T09:45:50Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "usearch hashing-v1 embedder, chunking, changed-chunk flush, search.semantic"
+    },
+    {
+     "at": "2026-09-10T09:45:50Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired into modbit-core tools and the tool matrix"
+    },
+    {
+     "at": "2026-09-10T09:45:50Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real indexes/fixtures"
+    },
+    {
+     "at": "2026-09-10T09:45:50Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34461176500 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T09:45:50Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34461176500"
+    }
+   ],
+   "status_changed_on": "2026-09-10T09:45:50Z"
   },
   {
    "id": "M3.6",
@@ -2062,8 +2136,58 @@
    "milestone": "M3",
    "order": 5,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:graph_answers_imports_importers_history_tests_evidence_and_refreshes_per_path",
+    "test:import_specifiers_come_from_the_real_parse_of_each_language",
+    "test:specifiers_resolve_to_workspace_paths_per_language_convention",
+    "test:changed_lines_follow_the_new_side_hunks_of_a_unified_diff",
+    "test:log_recent_lists_commits_with_their_paths_newest_first",
+    "test:m3_6_evidence_graph_serves_imports_history_changed_lines_tests_and_verification_evidence",
+    "test:m2_8_verification_engine_gates_completion_on_real_cargo_fixture",
+    "commit:63537e0",
+    "run:gha-34461176500",
+    "artifact:evidence/m3/M3.6/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T09:45:51Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: NOT-FOUND (see card)"
+    },
+    {
+     "at": "2026-09-10T09:45:51Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "evidence graph (imports, git history, changed lines, tests, run evidence), search.graph"
+    },
+    {
+     "at": "2026-09-10T09:45:51Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired into modbit-core tools and the tool matrix"
+    },
+    {
+     "at": "2026-09-10T09:45:51Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real indexes/fixtures"
+    },
+    {
+     "at": "2026-09-10T09:45:51Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34461176500 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T09:45:51Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34461176500"
+    }
+   ],
+   "status_changed_on": "2026-09-10T09:45:51Z"
   },
   {
    "id": "M3.7",
@@ -2073,8 +2197,57 @@
    "milestone": "M3",
    "order": 6,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:query_features_pick_the_cheapest_level",
+    "test:l0_serves_a_known_identifier_without_escalating_and_boosts_the_symbol",
+    "test:unknown_wording_starts_hybrid_and_a_miss_escalates_only_while_coverage_is_short",
+    "test:structural_and_engineering_intents_expand_through_the_graph_with_distance_and_diagnostic_boosts",
+    "test:m3_7_retrieval_planner_starts_cheap_escalates_on_short_coverage_and_fuses_with_boosts",
+    "commit:038e07d",
+    "commit:1920f3b",
+    "run:gha-34461176500",
+    "artifact:evidence/m3/M3.7/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T09:45:51Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: NOT-FOUND (see card)"
+    },
+    {
+     "at": "2026-09-10T09:45:51Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "L0-L3 planner with reciprocal-rank fusion and deterministic boosts, search.retrieve"
+    },
+    {
+     "at": "2026-09-10T09:45:51Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired into modbit-core tools and the tool matrix"
+    },
+    {
+     "at": "2026-09-10T09:45:51Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real indexes/fixtures"
+    },
+    {
+     "at": "2026-09-10T09:45:51Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34461176500 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T09:45:51Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34461176500"
+    }
+   ],
+   "status_changed_on": "2026-09-10T09:45:51Z"
   },
   {
    "id": "M3.8",
@@ -2084,8 +2257,55 @@
    "milestone": "M3",
    "order": 7,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:budget_is_never_exceeded_critical_entries_go_first_and_omissions_are_summarised",
+    "test:duplicates_collapse_on_span_identity_or_containment",
+    "test:ledger_records_injections_and_marks_use_only_at_the_retrieved_revision",
+    "test:m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use",
+    "commit:21a292c",
+    "run:gha-34461176500",
+    "artifact:evidence/m3/M3.8/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T09:45:51Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: NOT-FOUND (see card)"
+    },
+    {
+     "at": "2026-09-10T09:45:51Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "context crate packer (budget, critical first, utility, dedupe, omitted summary, provenance) and Context Ledger; context.pack/context.ledger"
+    },
+    {
+     "at": "2026-09-10T09:45:51Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired into modbit-core tools and the tool matrix"
+    },
+    {
+     "at": "2026-09-10T09:45:52Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real indexes/fixtures"
+    },
+    {
+     "at": "2026-09-10T09:45:52Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34461176500 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T09:45:52Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34461176500"
+    }
+   ],
+   "status_changed_on": "2026-09-10T09:45:52Z"
   },
   {
    "id": "M3.9",
@@ -2095,8 +2315,53 @@
    "milestone": "M3",
    "order": 8,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them",
+    "artifact:evidence/m3/M3.9/report.json",
+    "commit:1920f3b",
+    "run:gha-34461176500",
+    "artifact:evidence/m3/M3.9/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T09:45:52Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: NOT-FOUND (see card)"
+    },
+    {
+     "at": "2026-09-10T09:45:52Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "benchmark harness over a real corpus with profiles A/B/C, report.json"
+    },
+    {
+     "at": "2026-09-10T09:45:52Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired into modbit-core tools and the tool matrix"
+    },
+    {
+     "at": "2026-09-10T09:45:52Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real indexes/fixtures"
+    },
+    {
+     "at": "2026-09-10T09:45:52Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34461176500 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T09:45:52Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34461176500"
+    }
+   ],
+   "status_changed_on": "2026-09-10T09:45:52Z"
   },
   {
    "id": "M4.1",

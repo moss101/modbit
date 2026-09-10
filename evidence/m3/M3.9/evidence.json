@@ -6,12 +6,27 @@
   "m3_7_retrieval_planner_starts_cheap_escalates_on_short_coverage_and_fuses_with_boosts"
  ],
  "commits": {
-  "implementation": "HEAD"
+  "implementation": "1920f3b",
+  "all": [
+   "1920f3b"
+  ],
+  "note": "1920f3b implementation (bench harness, cases fixture, report.json)",
+  "seal_run_head": "1920f3b"
  },
- "runs": [],
- "artifacts": ["evidence/m3/M3.9/report.json"],
+ "runs": [
+  {
+   "id": "gha-34461176500",
+   "kind": "hosted CI on 1920f3b (contains every commit above)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34461176500",
+   "log": "ci-run-34461176500.json, ci-run-34461176500-tests.log"
+  }
+ ],
+ "artifacts": [
+  "evidence/m3/M3.9/report.json"
+ ],
  "evidence_tier": "release-critical",
  "acceptance": {
-  "retrieval benchmark harness": "pending hosted CI"
+  "retrieval benchmark harness": "PASS on hosted CI run 34461176500 (macOS, Linux, Windows)"
  }
 }
