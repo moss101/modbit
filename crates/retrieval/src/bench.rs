@@ -146,6 +146,25 @@ pub struct IndexTimes {
     pub total_ms: f64,
 }
 
+/// Impact-selection measurement for one case (PX-035, docs/64 §6).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct ImpactResult {
+    /// Case.
+    pub case_id: String,
+    /// The changed file the selection was computed for.
+    pub changed: String,
+    /// Tests the selector chose.
+    pub selected: Vec<String>,
+    /// The evidence kinds behind them.
+    pub reasons: Vec<String>,
+    /// Ground truth: the tests the full suite says cover the change.
+    pub truth: Vec<String>,
+    /// Precision against the ground truth.
+    pub precision: f32,
+    /// Recall against the ground truth.
+    pub recall: f32,
+}
+
 /// The report.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Report {
@@ -169,6 +188,12 @@ pub struct Report {
     pub profiles: Vec<ProfileSummary>,
     /// Per-case results.
     pub cases: Vec<CaseResult>,
+    /// Impact-selection measurements for the cases that carry ground truth.
+    pub impact: Vec<ImpactResult>,
+    /// Mean impact precision and recall.
+    pub impact_precision: f32,
+    /// Mean impact recall.
+    pub impact_recall: f32,
     /// Method note.
     pub method: String,
 }
@@ -360,6 +385,38 @@ pub fn run(root: &Path, corpus: &str, cases: &[Case], k: usize) -> Result<Report
             });
         }
     }
+    // PX-035: impact selection measured against the cases' ground truth.
+    let mut impact = Vec::new();
+    for case in cases.iter().filter(|c| !c.impacted.is_empty()) {
+        let Some(changed) = case.relevant.first().cloned() else {
+            continue;
+        };
+        let sel = crate::impact::select_impacted(
+            &idx,
+            &symbols,
+            &graph,
+            std::slice::from_ref(&changed),
+            2,
+            k * 4,
+        );
+        let selected: Vec<String> = sel.tests.iter().map(|t| t.path.clone()).collect();
+        let mut reasons: Vec<String> = sel.tests.iter().flat_map(|t| t.reasons.clone()).collect();
+        reasons.sort();
+        reasons.dedup();
+        let (precision, recall) = crate::impact::precision_recall(&selected, &case.impacted);
+        impact.push(ImpactResult {
+            case_id: case.id.clone(),
+            changed,
+            selected,
+            reasons,
+            truth: case.impacted.clone(),
+            precision,
+            recall,
+        });
+    }
+    let n_impact = impact.len().max(1) as f32;
+    let impact_precision = impact.iter().map(|i| i.precision).sum::<f32>() / n_impact;
+    let impact_recall = impact.iter().map(|i| i.recall).sum::<f32>() / n_impact;
     let profiles = Profile::ALL
         .iter()
         .map(|&profile| {
@@ -394,6 +451,9 @@ pub fn run(root: &Path, corpus: &str, cases: &[Case], k: usize) -> Result<Report
         incremental_path,
         profiles,
         cases: results,
-        method: "Same corpus and cases for every profile; A = L0 exact/symbol/path only, B = up to L1 (BM25 + hashing-v1 vectors + exact overlay), C = the full L0–L3 planner with graph expansion; LexicalOnly = BM25 alone and SemanticOnly = hashing-v1 vectors alone (fusion baselines). context_tokens_at_k is the bytes/4 estimate of the whole top-K files. Metrics are measured here; the docs/18 token/tool-call/agent-time reduction targets are not claimed by this report (they need a same-model, same-task agent run).".into(),
+        impact,
+        impact_precision,
+        impact_recall,
+        method: "Impact selection (PX-035) is measured against each case's ground truth and is heuristic: it never replaces the mandatory COMPLETION run. Same corpus and cases for every profile; A = L0 exact/symbol/path only, B = up to L1 (BM25 + hashing-v1 vectors + exact overlay), C = the full L0–L3 planner with graph expansion; LexicalOnly = BM25 alone and SemanticOnly = hashing-v1 vectors alone (fusion baselines). context_tokens_at_k is the bytes/4 estimate of the whole top-K files. Metrics are measured here; the docs/18 token/tool-call/agent-time reduction targets are not claimed by this report (they need a same-model, same-task agent run).".into(),
     })
 }

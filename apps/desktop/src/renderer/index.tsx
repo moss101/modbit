@@ -101,6 +101,9 @@ function App() {
       setCore(s);
       if (s.state === "restarting") wasRestarting.current = true;
       if (s.state === "connected") {
+        // PX-026: the language labels are read once the Core is connected,
+        // whether that happened before this screen mounted or after.
+        void window.modbit.languages().then(setLanguages).catch(() => {});
         if (wasRestarting.current) {
           wasRestarting.current = false;
           setRecovered(`Core reconnected after restart ${s.restarts}`);

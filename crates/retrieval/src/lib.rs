@@ -15,6 +15,7 @@
 
 pub mod bench;
 pub mod graph;
+pub mod impact;
 pub mod index;
 pub mod lexical;
 pub mod planner;
@@ -22,6 +23,7 @@ pub mod semantic;
 pub mod symbols;
 
 pub use graph::{CommitRecord, EvidenceGraph, GraphQuery, GraphView};
+pub use impact::{ImpactSelection, ImpactedTest, precision_recall, select_impacted};
 pub use index::{Hit, IndexError, IndexStats, PathHit, RepositoryIndex, SearchOptions};
 pub use lexical::{ChangedDoc, LexicalHit, LexicalIndex};
 pub use planner::{FusedHit, Level, PlanRequest, PlanResult, Sources};

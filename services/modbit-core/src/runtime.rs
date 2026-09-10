@@ -3174,7 +3174,12 @@ async fn verification_plan(
         .as_ref()
         .map(|p| p.verification.clone())
         .unwrap_or_default();
-    let plan = modbit_verification::derive(root.unwrap_or(std::path::Path::new(".")), &named, &[]);
+    let mut plan =
+        modbit_verification::derive(root.unwrap_or(std::path::Path::new(".")), &named, &[]);
+    // docs/64 §6 (PX-035): targeting a run by impact evidence is heuristic and
+    // the plan says so; only the COMPLETION run supports acceptance.
+    plan.limitations
+        .push(modbit_retrieval::impact::HEURISTIC_LIMITATION.to_owned());
     let plan_ref = {
         let store = core.store.lock().await;
         store

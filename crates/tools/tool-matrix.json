@@ -445,6 +445,21 @@
         "fs.read"
       ],
       "test": "qual_ev_0134_deferred_tool_search_activates_without_authorizing_and_hydrates_schemas_lazily"
+    },
+    {
+      "tool": "search.impact",
+      "family": "search",
+      "source_behaviors": [
+        "impacted tests",
+        "test selection"
+      ],
+      "owner": "Context Engine (impact selection)",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "fs.read",
+        "git.read"
+      ],
+      "test": "qual_px_035_impact_selection_chooses_tests_from_graph_evidence_with_measured_precision_and_recall"
     }
   ],
   "harness": [

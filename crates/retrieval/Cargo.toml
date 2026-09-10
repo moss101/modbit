@@ -46,4 +46,5 @@ capabilities = [
   { id = "retrieval.evidence_graph", requirements = ["REQ-EV-0157", "REQ-EV-0158"] },
   { id = "retrieval.planner_fusion", requirements = ["REQ-EV-0154", "REQ-EV-0163", "REQ-EV-0164", "REQ-EV-0165"] },
   { id = "retrieval.benchmark_harness", requirements = ["REQ-EV-0153", "REQ-EV-0154"] },
+  { id = "retrieval.impact_selection", requirements = ["REQ-EV-0157", "REQ-PX-035"] },
 ]

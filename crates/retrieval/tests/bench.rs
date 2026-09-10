@@ -152,6 +152,19 @@ fn harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them() {
         nl(Profile::BHybrid) > nl(Profile::ABaseline),
         "B {b:?} A {a:?}"
     );
+    // PX-035: impact selection is measured against the cases' ground truth.
+    assert_eq!(report.impact.len(), 2, "{:?}", report.impact);
+    for i in &report.impact {
+        assert!(!i.selected.is_empty(), "{i:?}");
+        assert!(i.selected.iter().all(|p| p.contains("test")), "{i:?}");
+        assert!(!i.reasons.is_empty(), "{i:?}");
+        assert!((0.0..=1.0).contains(&i.precision) && (0.0..=1.0).contains(&i.recall));
+    }
+    assert!(report.impact_recall > 0.0, "{:?}", report.impact);
+    eprintln!(
+        "PX-035 impact precision={:.2} recall={:.2}",
+        report.impact_precision, report.impact_recall
+    );
     // The report serialises and names its method honestly.
     let json = serde_json::to_string_pretty(&report).unwrap();
     assert!(json.contains("not claimed by this report"));

@@ -1116,6 +1116,56 @@ tool!(
     }
 );
 
+tool!(
+    SearchImpact,
+    spec(
+        "search.impact",
+        "Which tests a change could break: chosen from the evidence graph — test links, import dependencies, symbol references and Git co-change — within a bounded depth, each with the evidence that selected it. Heuristic by contract: it narrows a TARGETED run, it never replaces the mandatory COMPLETION run (PX-035, docs/64 §6).",
+        EffectClass::ReadOnly,
+        json!({"type":"object","properties":{"paths":{"type":"array","items":{"type":"string"},"minItems":1},"depth":{"type":"integer","minimum":1,"maximum":3},"max_hits":{"type":"integer","minimum":1,"maximum":200}},"required":["paths"],"additionalProperties":false}),
+        &["fs.read", "git.read"],
+        Idempotency::Idempotent
+    ),
+    |ctx, args| {
+        let Some(port) = &ctx.search else {
+            return ToolOutcome::infra("NO_INDEX", "no workspace index is attached to this task");
+        };
+        let paths: Vec<String> = args
+            .get("paths")
+            .and_then(Value::as_array)
+            .map(|a| {
+                a.iter()
+                    .filter_map(|p| p.as_str().map(str::to_owned))
+                    .collect()
+            })
+            .unwrap_or_default();
+        if paths.is_empty() {
+            return ToolOutcome::fail("PATHS_REQUIRED", "at least one changed path is required");
+        }
+        let req = crate::pipeline::SearchRequest {
+            kind: "impact".into(),
+            query: json!({
+                "paths": paths,
+                "depth": args.get("depth").and_then(Value::as_u64).unwrap_or(2),
+            })
+            .to_string(),
+            case_insensitive: false,
+            path_glob: None,
+            max_hits: usize::try_from(
+                args.get("max_hits")
+                    .and_then(Value::as_u64)
+                    .unwrap_or(50)
+                    .clamp(1, 200),
+            )
+            .unwrap_or(50),
+        };
+        match port.search(&req) {
+            Ok(v) => ToolOutcome::ok(v),
+            Err((code, msg)) => ToolOutcome::fail(&code, msg),
+        }
+    }
+);
+
 /// Wait window for `shell.read` when the process is still running.
 const READ_WAIT_MS: u64 = 250;
 
@@ -1547,6 +1597,7 @@ pub fn register_direct(registry: &mut ToolRegistry) -> Result<()> {
         SearchSymbols::shared(),
         SearchSemantic::shared(),
         SearchGraph::shared(),
+        SearchImpact::shared(),
         SearchRetrieve::shared(),
         ContextPack::shared(),
         ContextLedger::shared(),

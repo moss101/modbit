@@ -1642,6 +1642,42 @@ impl modbit_tools::SearchPort for IndexPort {
                     "plan": {"started_at": plan.started_at, "ended_at": plan.ended_at, "escalations": plan.escalations, "steps": plan.steps},
                 })
             }
+            "impact" => {
+                let args: serde_json::Value = serde_json::from_str(&req.query)
+                    .map_err(|e| ("BAD_QUERY".to_owned(), e.to_string()))?;
+                let paths: Vec<String> = args["paths"]
+                    .as_array()
+                    .map(|a| {
+                        a.iter()
+                            .filter_map(|p| p.as_str().map(str::to_owned))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                let depth = u32::try_from(args["depth"].as_u64().unwrap_or(2)).unwrap_or(2);
+                let mut graph = self.graph.try_lock().map_err(|_| {
+                    (
+                        "INDEX_BUSY".to_owned(),
+                        "the graph is being refreshed".to_owned(),
+                    )
+                })?;
+                if ws_rev > graph.revision() {
+                    *graph = modbit_retrieval::EvidenceGraph::build(
+                        idx.texts(),
+                        recent_commits(idx.root()),
+                        worktree_changed_lines(idx.root()),
+                        ws_rev,
+                    );
+                }
+                let selection = modbit_retrieval::select_impacted(
+                    &idx,
+                    &symbols,
+                    &graph,
+                    &paths,
+                    depth,
+                    req.max_hits,
+                );
+                serde_json::json!({"selection": selection})
+            }
             "graph" => {
                 let mut parts = req.query.splitn(3, '|');
                 let path = parts.next().unwrap_or_default().to_owned();

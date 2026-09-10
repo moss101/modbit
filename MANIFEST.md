@@ -665,7 +665,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m3/M3.9/ci-run-34461176500-tests.log` | retained evidence | 1944 | `058be90dcb5bc7da540f25975c3958389c86aff1f04193898dac02300865deaa` |
 | `evidence/m3/M3.9/ci-run-34461176500.json` | retained evidence | 36717 | `ca2e3fb22dd9789c70d00592226ac739aba339118b7fbcbaa0b2869e2d9f226b` |
 | `evidence/m3/M3.9/evidence.json` | retained evidence | 1013 | `ca3d936ee57026d51f12a615cf69e73a3f37550fe3ed78ffc5be17473d090396` |
-| `evidence/m3/M3.9/report.json` | retained evidence | 21903 | `9e665cf9fd1ef52ef3b2203222570f463cfc8d0e45580b8a6e66e68c1400264d` |
+| `evidence/m3/M3.9/report.json` | retained evidence | 23092 | `5f37997802d678ab54adb91c49acd926120c65e1f4f2ad54fdd998c71102db23` |
 | `evidence/m3/PX-015/TASK_CARD.md` | retained evidence | 3241 | `b6893a497e954894af48364366bca3fa234d8c5e021df75dda6aba46c1f535a8` |
 | `evidence/m3/PX-015/ci-run-34498383277-tests.log` | retained evidence | 2517 | `a8f2d7e88e7e9aece42af677d8fd6dba6178cc4543e53ff3e2c609d983808895` |
 | `evidence/m3/PX-015/ci-run-34498383277.json` | retained evidence | 37317 | `16c39bba70461d51e17f499c99673d31287afbb21f7329a51eae7d166968f36e` |
@@ -686,6 +686,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m3/PX-033/ci-run-34466693450-tests.log` | retained evidence | 2406 | `0ad691360e25f1bcce40efe49a56a9cbec52ba964fb8d21b37bf2ccb89d505bd` |
 | `evidence/m3/PX-033/ci-run-34466693450.json` | retained evidence | 37317 | `3d2da0166c2a6b035052bd8ea4b1b2aaf914d4ec198416337d98983d99769ebf` |
 | `evidence/m3/PX-033/evidence.json` | retained evidence | 1064 | `cd720b31c4bbf9b26a79876154ef5ec2611ad9fae461f943129e22d6b965c56a` |
+| `evidence/m3/PX-035/TASK_CARD.md` | retained evidence | 3172 | `377c1b7311212a813c15a3a9054e592f33162b5e862eba157439f8b2e79c78c9` |
+| `evidence/m3/PX-035/evidence.json` | retained evidence | 733 | `c5ee396b607e74a6d5fd2cd105ce1827390d3d315ff680b8de6bae26e6dfed95` |
 | `evidence/m3/PX-038/TASK_CARD.md` | retained evidence | 3573 | `48cfc0e7710c822a6ad91fe7a7eff6f59625cabea668760b81419623d1d67d44` |
 | `evidence/m3/PX-038/evidence.json` | retained evidence | 503 | `2c26d26b39cb9fa19f84671c179068a7709a0216da29f076f6c282832bcde157` |
 | `evidence/m3/PX-039/TASK_CARD.md` | retained evidence | 3867 | `3f69c9719f270edcf74374445342589e63c1f2924d8fa1f2e8759e76e84db5d7` |

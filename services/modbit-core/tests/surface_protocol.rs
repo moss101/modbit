@@ -8452,3 +8452,122 @@ async fn qual_px_039_reproduction_first_is_enforced_and_no_progress_turns_escala
     );
     let _ = (repo, repo2);
 }
+
+/// PX-035: the impact selector chooses tests from the evidence graph — test
+/// links, import dependencies, symbol references and Git co-change — within a
+/// bounded depth, names the evidence behind each one, states that targeting is
+/// heuristic, and its precision and recall against the fixture's full-suite
+/// ground truth are recorded.
+#[tokio::test]
+async fn qual_px_035_impact_selection_chooses_tests_from_graph_evidence_with_measured_precision_and_recall()
+ {
+    let (repo, root) = fixture_repo("rust-cli");
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn(dir.path());
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x35)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x36, "local_trusted").await;
+    // A change to the library selects the suite that covers it.
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0x37,
+        0x41,
+        "search.impact",
+        r#"{"paths":["src/lib.rs"],"depth":2}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let sel = &so["selection"];
+    assert_eq!(sel["changed"], serde_json::json!(["src/lib.rs"]));
+    assert_eq!(sel["depth"], 2);
+    assert!(
+        sel["limitation"].as_str().unwrap().contains("heuristic"),
+        "{so}"
+    );
+    let selected: Vec<String> = sel["tests"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|t| t["path"].as_str().unwrap().to_owned())
+        .collect();
+    assert!(
+        selected.contains(&"tests/quantities.rs".to_owned()),
+        "the suite that covers the change: {so}"
+    );
+    let picked = sel["tests"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|t| t["path"] == "tests/quantities.rs")
+        .unwrap();
+    let reasons: Vec<&str> = picked["reasons"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|x| x.as_str().unwrap())
+        .collect();
+    assert!(
+        reasons
+            .iter()
+            .any(|r| ["test_link", "dependency", "symbol_reference", "cochange"].contains(r)),
+        "{picked}"
+    );
+    assert!(
+        sel["symbols"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|s| s == "parse_quantity"),
+        "{so}"
+    );
+    // Ground truth: the fixture's whole suite lives in tests/quantities.rs, so
+    // the selection is measured against it (recall must be 1.0 — a selector
+    // that omits a covering test fails).
+    let truth = ["tests/quantities.rs".to_owned()];
+    let hits = selected.iter().filter(|s| truth.contains(s)).count() as f32;
+    let precision = hits / selected.len() as f32;
+    let recall = hits / truth.len() as f32;
+    eprintln!(
+        "PX-035 impact selection on rust-cli: precision={precision:.2} recall={recall:.2} selected={selected:?}"
+    );
+    assert_eq!(recall, 1.0, "{selected:?}");
+    assert!(precision > 0.0);
+    // Changing a test file selects that file itself.
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0x38,
+        0x42,
+        "search.impact",
+        r#"{"paths":["tests/quantities.rs"]}"#,
+    )
+    .await;
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let first = &so["selection"]["tests"][0];
+    assert_eq!(first["path"], "tests/quantities.rs", "{so}");
+    assert_eq!(first["reasons"][0], "changed");
+    assert_eq!(first["distance"], 0);
+    // A selection with no changed path is refused by the tool schema before
+    // any index work.
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0x39,
+        0x43,
+        "search.impact",
+        r#"{"paths":[]}"#,
+    )
+    .await;
+    assert_eq!(
+        (r.status.as_str(), r.error_code.as_str()),
+        ("INVALID_ARGUMENTS", "SCHEMA_VIOLATION"),
+        "{r:?}"
+    );
+    let _ = repo;
+}

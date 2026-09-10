@@ -1,0 +1,18 @@
+{
+ "task": "PX-035",
+ "requirement": "REQ-PX-035",
+ "qual": "QUAL-PX-035",
+ "tests": [
+  "qual_px_035_impact_selection_chooses_tests_from_graph_evidence_with_measured_precision_and_recall",
+  "selection_uses_test_links_dependencies_symbol_references_and_cochange",
+  "precision_and_recall_are_measured_against_the_ground_truth",
+  "harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "artifacts": [
+  "evidence/m3/M3.9/report.json"
+ ],
+ "proof": "impact selection from test links, dependencies, symbol references and co-change with recorded precision and recall; heuristic limitation stated in every selection and verification plan",
+ "audit": "IMPLEMENTED in this batch"
+}
