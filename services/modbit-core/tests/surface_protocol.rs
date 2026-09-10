@@ -5657,3 +5657,90 @@ async fn m3_1_exact_regex_path_index_serves_bounded_revision_bound_hits_and_refr
             .all(|n| tools.iter().any(|t| t.0 == *n))
     );
 }
+
+/// M3.2: `search.lexical` ranks files by BM25 over the same indexed file set
+/// as the exact index, bound to the index revision, and a write refreshes the
+/// changed file's document.
+#[tokio::test]
+async fn m3_2_bm25_lexical_index_ranks_files_and_refreshes_on_writes() {
+    let (_repo, root) = plain_repo(&[
+        (
+            "dense.rs",
+            "fn compute_total() { compute_total_inner(); }\nfn compute_total_inner() {}\n",
+        ),
+        ("sparse.md", "one mention of compute_total\n"),
+        ("none.txt", "unrelated\n"),
+    ]);
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn(dir.path());
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xB0)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xB1, "local_trusted").await;
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xB2,
+        0xC1,
+        "search.lexical",
+        r#"{"query":"compute total"}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let paths: Vec<&str> = so["hits"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|h| h["path"].as_str().unwrap())
+        .collect();
+    assert_eq!(paths, vec!["dense.rs", "sparse.md"], "{so}");
+    assert!(so["hits"][0]["score"].as_f64().unwrap() > so["hits"][1]["score"].as_f64().unwrap());
+    let rev0 = so["index_revision"].as_u64().unwrap();
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xB3,
+        0xC2,
+        "change.apply",
+        r#"{"path":"sparse.md","op":"replace","content":"nothing here now\n"}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xB4,
+        0xC3,
+        "search.lexical",
+        r#"{"query":"compute total"}"#,
+    )
+    .await;
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let paths: Vec<&str> = so["hits"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|h| h["path"].as_str().unwrap())
+        .collect();
+    assert_eq!(paths, vec!["dense.rs"], "{so}");
+    assert_eq!(so["index_revision"].as_u64().unwrap(), rev0 + 1);
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xB5,
+        0xC4,
+        "search.lexical",
+        r#"{"query":"nothing"}"#,
+    )
+    .await;
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(
+        so["hits"][0]["path"], "sparse.md",
+        "the rewritten file is searchable at once: {so}"
+    );
+}

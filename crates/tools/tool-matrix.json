@@ -273,6 +273,20 @@
     "fs.read"
    ],
    "test": "m3_1_exact_regex_path_index_serves_bounded_revision_bound_hits_and_refreshes_on_writes"
+  },
+  {
+   "tool": "search.lexical",
+   "family": "search",
+   "source_behaviors": [
+    "keyword search",
+    "BM25"
+   ],
+   "owner": "Context Engine (retrieval index)",
+   "effect": "ReadOnly",
+   "capabilities": [
+    "fs.read"
+   ],
+   "test": "m3_2_bm25_lexical_index_ranks_files_and_refreshes_on_writes"
   }
  ],
  "harness": [

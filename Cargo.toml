@@ -92,6 +92,7 @@ uuid = { version = "1.26.0", features = ["v7", "serde"] }
 cargo_metadata = "0.23.1"
 globset = "0.4.20"
 regex = "1.13"
+tantivy = "0.25"
 memchr = "2.8"
 portable-pty = "0.9.0"
 prost = "0.14.4"

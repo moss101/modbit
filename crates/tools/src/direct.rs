@@ -764,6 +764,19 @@ tool!(
     |ctx, args| search_tool_body(ctx, &args, "paths")
 );
 
+tool!(
+    SearchLexical,
+    spec(
+        "search.lexical",
+        "BM25 lexical search over the workspace index (Tantivy; terms AND-ed, identifiers split on non-alphanumerics): ranked files with scores, bound to the index revision (M3.2, docs/18 L1).",
+        EffectClass::ReadOnly,
+        serde_json::from_str(SEARCH_SCHEMA).expect("schema"),
+        &["fs.read"],
+        Idempotency::Idempotent
+    ),
+    |ctx, args| search_tool_body(ctx, &args, "lexical")
+);
+
 /// Wait window for `shell.read` when the process is still running.
 const READ_WAIT_MS: u64 = 250;
 
@@ -1191,6 +1204,7 @@ pub fn register_direct(registry: &mut ToolRegistry) -> Result<()> {
         SearchExact::shared(),
         SearchRegex::shared(),
         SearchPaths::shared(),
+        SearchLexical::shared(),
         GitStatus::shared(),
         GitDiff::shared(),
         GitWorktreeCreate::shared(),

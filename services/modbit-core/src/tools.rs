@@ -115,6 +115,8 @@ pub struct ToolHost {
     pub execd: Option<Execd>,
     /// Retrieval indexes per canonical workspace root (M3.1).
     pub(crate) indexes: Mutex<HashMap<PathBuf, Arc<Mutex<modbit_retrieval::RepositoryIndex>>>>,
+    /// BM25 indexes per canonical workspace root (M3.2).
+    pub(crate) lexical: Mutex<HashMap<PathBuf, Arc<Mutex<modbit_retrieval::LexicalIndex>>>>,
     /// One workspace service per approved root, kept so revisions stay monotonic in-process.
     workspaces: Mutex<HashMap<PathBuf, Arc<Mutex<WorkspaceService>>>>,
     state_dir: PathBuf,
@@ -140,6 +142,7 @@ impl ToolHost {
             execd,
             workspaces: Mutex::new(HashMap::new()),
             indexes: Mutex::new(HashMap::new()),
+            lexical: Mutex::new(HashMap::new()),
             state_dir: data_dir.join("workspaces"),
         })
     }
@@ -186,6 +189,24 @@ impl ToolHost {
         ));
         map.insert(canonical.to_path_buf(), Arc::clone(&idx));
         Ok(idx)
+    }
+
+    /// The BM25 index of a workspace root, built from the exact index at first use (M3.2).
+    pub(crate) async fn lexical(
+        &self,
+        canonical: &Path,
+    ) -> Result<Arc<Mutex<modbit_retrieval::LexicalIndex>>> {
+        let mut map = self.lexical.lock().await;
+        if let Some(i) = map.get(canonical) {
+            return Ok(Arc::clone(i));
+        }
+        let index = self.index(canonical).await?;
+        let index = index.lock().await;
+        let lx = modbit_retrieval::LexicalIndex::build(index.texts(), index.revision())
+            .map_err(|e| anyhow::anyhow!("{e}"))?;
+        let lx = Arc::new(Mutex::new(lx));
+        map.insert(canonical.to_path_buf(), Arc::clone(&lx));
+        Ok(lx)
     }
 
     /// The tool surface compiled from support × policy (REQ-EV-0096/0133/0044):
@@ -274,6 +295,7 @@ impl ToolHost {
         let search: Option<Arc<dyn modbit_tools::SearchPort>> = match (&workspace, &root) {
             (Some(ws), Some(r)) => Some(Arc::new(IndexPort {
                 index: self.index(r).await?,
+                lexical: self.lexical(r).await?,
                 workspace: Arc::clone(ws),
             })),
             _ => None,
@@ -320,7 +342,24 @@ impl ToolHost {
             // Index freshness (docs/18): the changed paths re-enter the index at the new revision.
             if let Ok(index) = self.index(root).await {
                 let paths: Vec<String> = changes.iter().map(|c| c.path.clone()).collect();
-                index.lock().await.refresh(&paths, ws.revision().number);
+                let rev = ws.revision().number;
+                let mut index = index.lock().await;
+                index.refresh(&paths, rev);
+                if let Ok(lexical) = self.lexical(root).await {
+                    let changed: Vec<modbit_retrieval::ChangedDoc> = paths
+                        .iter()
+                        .map(|p| {
+                            let t = index
+                                .texts()
+                                .find(|(path, _, _)| *path == p.as_str())
+                                .map(|(_, t, l)| (t.to_owned(), l.map(str::to_owned)));
+                            (p.clone(), t)
+                        })
+                        .collect();
+                    if let Err(e) = lexical.lock().await.refresh(&changed, rev) {
+                        eprintln!("modbit-core: lexical index refresh failed: {e}");
+                    }
+                }
             }
             let objects = store.lock().await.objects().clone();
             file_events = file_changed_events(
@@ -875,6 +914,7 @@ pub(crate) fn append_file_events(
 /// rebuilt when the workspace moved without a recorded change set.
 struct IndexPort {
     index: Arc<Mutex<modbit_retrieval::RepositoryIndex>>,
+    lexical: Arc<Mutex<modbit_retrieval::LexicalIndex>>,
     workspace: Arc<Mutex<WorkspaceService>>,
 }
 
@@ -894,10 +934,18 @@ impl modbit_tools::SearchPort for IndexPort {
                 "the index is being refreshed".to_owned(),
             )
         })?;
+        let mut lexical = self.lexical.try_lock().map_err(|_| {
+            (
+                "INDEX_BUSY".to_owned(),
+                "the index is being refreshed".to_owned(),
+            )
+        })?;
         if ws_rev > idx.revision() {
             // Freshness (docs/18): a write without a recorded changed set is not possible
             // through the tools, but an external edit may have moved the revision.
             idx.rebuild(ws_rev)
+                .map_err(|e| ("INDEX_REBUILD".to_owned(), e.to_string()))?;
+            *lexical = modbit_retrieval::LexicalIndex::build(idx.texts(), ws_rev)
                 .map_err(|e| ("INDEX_REBUILD".to_owned(), e.to_string()))?;
         }
         let opts = modbit_retrieval::SearchOptions {
@@ -912,6 +960,9 @@ impl modbit_tools::SearchPort for IndexPort {
             "regex" => serde_json::json!({"hits": idx
                 .search_regex(&req.query, &opts)
                 .map_err(|e| ("BAD_REGEX".to_owned(), e.to_string()))?}),
+            "lexical" => serde_json::json!({"hits": lexical
+                .search(&req.query, req.max_hits)
+                .map_err(|e| ("BAD_QUERY".to_owned(), e.to_string()))?}),
             "paths" => serde_json::json!({"paths": idx
                 .find_paths(&req.query, req.max_hits)
                 .map_err(|e| ("BAD_GLOB".to_owned(), e.to_string()))?}),

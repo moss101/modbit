@@ -228,3 +228,54 @@ fn oversized_files_are_recorded_but_not_searched_and_non_git_roots_walk() {
         Some("python")
     );
 }
+
+/// M3.2: BM25 ranks the file with the denser matches first, AND-s terms,
+/// splits identifiers, is bounded, and refreshes per changed path.
+#[test]
+fn bm25_lexical_index_ranks_refreshes_and_bounds() {
+    use modbit_retrieval::LexicalIndex;
+    let d = repo();
+    let idx = RepositoryIndex::build(d.path(), 1).unwrap();
+    let mut lx = LexicalIndex::build(idx.texts(), 1).unwrap();
+    assert_eq!(lx.len(), 4);
+    let hits = lx.search("compute_total", 10).unwrap();
+    assert_eq!(hits[0].path, "src/lib.rs", "{hits:?}");
+    assert!(hits.iter().all(|h| h.index_revision == 1) && hits.len() == 3);
+    assert!(hits[0].score > hits[2].score);
+    assert_eq!(
+        lx.search("compute overflow", 10)
+            .unwrap()
+            .iter()
+            .map(|h| h.path.as_str())
+            .collect::<Vec<_>>(),
+        vec!["src/lib.rs"],
+        "terms are AND-ed"
+    );
+    assert_eq!(lx.search("compute_total", 1).unwrap().len(), 1);
+    assert!(lx.search("nothing_matches_here", 10).unwrap().is_empty());
+    assert!(
+        lx.search("((", 10).unwrap().is_empty(),
+        "lenient parse, never a panic"
+    );
+    lx.refresh(
+        &[
+            (
+                "src/lib.rs".into(),
+                Some(("pub fn compute_sum() {}\n".into(), Some("rust".into()))),
+            ),
+            ("README.md".into(), None),
+        ],
+        2,
+    )
+    .unwrap();
+    let hits = lx.search("compute_total", 10).unwrap();
+    assert_eq!(
+        hits.iter()
+            .map(|h| (h.path.as_str(), h.index_revision))
+            .collect::<Vec<_>>(),
+        vec![("src/main.rs", 1)],
+        "{hits:?}"
+    );
+    assert_eq!(lx.search("compute_sum", 10).unwrap()[0].index_revision, 2);
+    assert_eq!((lx.len(), lx.revision()), (3, 2));
+}

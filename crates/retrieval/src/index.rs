@@ -223,6 +223,15 @@ impl RepositoryIndex {
         self.files.get(path)
     }
 
+    /// Searchable files as (path, text, language) for downstream indexes.
+    pub fn texts(&self) -> impl Iterator<Item = (&str, &str, Option<&str>)> {
+        self.files.values().filter_map(|f| {
+            f.text
+                .as_deref()
+                .map(|t| (f.path.as_str(), t, f.language.as_deref()))
+        })
+    }
+
     /// Exact substring search (ripgrep `-F` semantics).
     pub fn search_exact(&self, needle: &str, opts: &SearchOptions) -> Vec<Hit> {
         if needle.is_empty() {

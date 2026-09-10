@@ -12,6 +12,7 @@ modbit-domain.workspace = true
 globset.workspace = true
 memchr.workspace = true
 regex.workspace = true
+tantivy.workspace = true
 serde.workspace = true
 sha2.workspace = true
 hex.workspace = true
@@ -32,4 +33,5 @@ owner = "context-engine"
 canonical = []
 capabilities = [
   { id = "retrieval.exact_regex_path_index", requirements = ["REQ-EV-0004", "REQ-EV-0159"] },
+  { id = "retrieval.bm25_lexical_index", requirements = ["REQ-EV-0154", "REQ-EV-0159"] },
 ]
