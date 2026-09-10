@@ -8,8 +8,18 @@
   "a_later_epoch_carries_the_facts_and_handles_of_the_one_before_it",
   "qual_ev_0056_0092_0130_compaction_epoch_preserves_facts_survives_restart_and_moves_the_cache_prefix"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "15527a3"
+ ],
+ "runs": [
+  {
+   "id": "gha-34521495533",
+   "kind": "hosted CI on 15527a3",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows (the compaction crate suite, the Core surface suite and the headless CLI suite all ran)",
+   "url": "https://github.com/moss101/modbit/actions/runs/34521495533",
+   "log": "ci-run-34521495533.json, ci-run-34521495533-tests.log"
+  }
+ ],
  "proof": "Every epoch writes a manifest that records the source head offset it saw, the number of entries it summarised, the task generation and compiler version it was computed under, the facts it kept verbatim with their kind and origin, the handles that recover the dropped material, the projection and its token cost, and a hash over those fields. The three tiers are explicit: the freshest entries stay verbatim (hot), the labelled facts stay in the projection (warm), and everything else is reachable through the handles and the canonical log (cold). Fidelity is measured, not asserted by eye: `fidelity()` re-derives the critical set from the source and scores the manifest against it.",
  "audit": "NOT-FOUND before this batch.",
  "limitations": "`fidelity()` shares `compact()`'s labelling heuristic, so it measures whether labelled facts survived compaction, not whether the labels catch everything a reader would call critical."

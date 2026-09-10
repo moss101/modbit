@@ -8,8 +8,18 @@
   "a_stale_or_out_of_order_compaction_result_is_refused",
   "a_later_epoch_carries_the_facts_and_handles_of_the_one_before_it"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "15527a3"
+ ],
+ "runs": [
+  {
+   "id": "gha-34521495533",
+   "kind": "hosted CI on 15527a3",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows (the compaction crate suite, the Core surface suite and the headless CLI suite all ran)",
+   "url": "https://github.com/moss101/modbit/actions/runs/34521495533",
+   "log": "ci-run-34521495533.json, ci-run-34521495533-tests.log"
+  }
+ ],
  "proof": "When the model-visible transcript passes the token budget the run opens an epoch: the older entries are replaced by a projection, the epoch is appended to the canonical log as ContextEpochOpened with the manifest's object ref and hash, and the log itself is untouched \u2014 the run's truth is exactly what it was. The epoch number is monotonic, rebuilt from the log at run start, and an epoch that is not the successor of the installed one is refused. The real-system test drives a task whose transcript compacts nine times, checks the epoch payloads and the manifest object, and shows the model saw the projection instead of the entries.",
  "audit": "NOT-FOUND before this batch: nothing compacted the model-visible transcript; a long run grew its prompt until the model refused it.",
  "limitations": "Session fork and revert commands do not exist yet, so the guard's generation branch is proven at the unit level and against the task aggregate generation the runtime supplies (any fork, revert or later task event moves it). What is proven on the real system is the head branch: the manifest the run installed is refused when offered after the log advanced."

@@ -7,8 +7,18 @@
   "qual_ev_0111_0268_context_show_reports_compaction_epochs_and_the_cached_prefix",
   "stable_segments_share_cache_keys_and_projection_changes_are_hashed"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "15527a3"
+ ],
+ "runs": [
+  {
+   "id": "gha-34521495533",
+   "kind": "hosted CI on 15527a3",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows (the compaction crate suite, the Core surface suite and the headless CLI suite all ran)",
+   "url": "https://github.com/moss101/modbit/actions/runs/34521495533",
+   "log": "ci-run-34521495533.json, ci-run-34521495533-tests.log"
+  }
+ ],
  "proof": "The cacheable prefix is the first three prompt segments \u2014 system rules, workspace rules and the compaction epoch \u2014 so it is stable within an epoch and changes at the boundary, and the pack that changes every turn sits behind it. Every model invocation records the key it routed on, so hits and misses are counted from the log rather than estimated: the inspector reports them and the CLI prints them. On a real run the report is exact \u2014 one miss for the first turn and one per epoch, hits on every turn in between \u2014 and the test checks the inspector's numbers against the keys in the log.",
  "audit": "PARTIAL before this batch: `modbit-prompt-compiler` already hashed four stable segments and derived a cache key from the first three, but segment 2 was always the same placeholder and nothing reported hits or misses.",
  "limitations": "This is a per-run report from the product, not a standing benchmark suite: nothing yet tracks cache economics across runs or prices them."

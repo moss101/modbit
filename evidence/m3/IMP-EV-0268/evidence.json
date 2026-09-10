@@ -8,8 +8,18 @@
   "stable_segments_share_cache_keys_and_projection_changes_are_hashed",
   "a_stale_or_out_of_order_compaction_result_is_refused"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "15527a3"
+ ],
+ "runs": [
+  {
+   "id": "gha-34521495533",
+   "kind": "hosted CI on 15527a3",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows (the compaction crate suite, the Core surface suite and the headless CLI suite all ran)",
+   "url": "https://github.com/moss101/modbit/actions/runs/34521495533",
+   "log": "ci-run-34521495533.json, ci-run-34521495533-tests.log"
+  }
+ ],
  "proof": "Prompt assembly puts the compaction epoch in the stable prefix and the volatile context pack after it, so compaction \u2014 the one thing that must invalidate the cache \u2014 is exactly what moves the key, and nothing else does. Measured on a real run: the number of distinct prefixes equals the number of epochs plus one, the number of transitions equals the number of epochs, and the prefix never changes inside an epoch. Stale context after a fork or revert is refused by the same guard that governs installation: a manifest computed under a different task generation cannot install.",
  "audit": "PARTIAL before this batch (see IMP-EV-0111): the segment layout existed, the epoch that moves it did not.",
  "limitations": "Cache hits and misses are counted from this product's own log, not measured against a provider's cache accounting; fork and revert commands do not exist yet, so their invalidation is proven through the generation guard rather than through a fork."

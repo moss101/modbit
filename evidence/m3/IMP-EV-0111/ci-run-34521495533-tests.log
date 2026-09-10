@@ -1,0 +1,18 @@
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T19:41:10.1404051Z test qual_ev_0111_0268_context_show_reports_compaction_epochs_and_the_cached_pr
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T19:41:13.1250919Z test a_later_epoch_carries_the_facts_and_handles_of_the_one_before_it ... ok
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T19:41:13.1252888Z test a_stale_or_out_of_order_compaction_result_is_refused ... ok
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T19:41:13.1253677Z test compaction_preserves_labelled_facts_and_keeps_the_rest_recoverable ... ok
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T19:41:13.1294006Z test a_critical_fact_corpus_meets_the_fidelity_threshold ... ok
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T19:41:50.0856519Z test qual_ev_0056_0092_0130_compaction_epoch_preserves_facts_survives_restart_a
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T19:38:59.6328130Z test qual_ev_0111_0268_context_show_reports_compaction_epochs_and_the_cached_pref
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T19:39:02.6859540Z test a_later_epoch_carries_the_facts_and_handles_of_the_one_before_it ... ok
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T19:39:02.6860760Z test a_stale_or_out_of_order_compaction_result_is_refused ... ok
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T19:39:02.6863210Z test compaction_preserves_labelled_facts_and_keeps_the_rest_recoverable ... ok
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T19:39:02.6895280Z test a_critical_fact_corpus_meets_the_fidelity_threshold ... ok
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T19:39:09.2608630Z test qual_ev_0056_0092_0130_compaction_epoch_preserves_facts_survives_restart_and
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T19:39:01.3189513Z test qual_ev_0111_0268_context_show_reports_compaction_epochs_and_the_cached_pre
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T19:39:04.0004757Z test a_later_epoch_carries_the_facts_and_handles_of_the_one_before_it ... ok
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T19:39:04.0014677Z test a_stale_or_out_of_order_compaction_result_is_refused ... ok
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T19:39:04.0015558Z test compaction_preserves_labelled_facts_and_keeps_the_rest_recoverable ... ok
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T19:39:04.0050248Z test a_critical_fact_corpus_meets_the_fidelity_threshold ... ok
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T19:39:08.9541198Z test qual_ev_0056_0092_0130_compaction_epoch_preserves_facts_survives_restart_an

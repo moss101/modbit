@@ -7,8 +7,18 @@
   "compaction_preserves_labelled_facts_and_keeps_the_rest_recoverable",
   "qual_ev_0111_0268_context_show_reports_compaction_epochs_and_the_cached_prefix"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "15527a3"
+ ],
+ "runs": [
+  {
+   "id": "gha-34521495533",
+   "kind": "hosted CI on 15527a3",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows (the compaction crate suite, the Core surface suite and the headless CLI suite all ran)",
+   "url": "https://github.com/moss101/modbit/actions/runs/34521495533",
+   "log": "ci-run-34521495533.json, ci-run-34521495533-tests.log"
+  }
+ ],
  "proof": "Compaction changes what the model sees and nothing else. The canonical events stay in the log in full, the dropped material stays addressable through the object refs the manifest lists, and `artifact.range` reads any of it back \u2014 the projection says so in its own text. After nine epochs the Core is killed and restarted: the log replays to the same epochs, the manifest objects are still readable, the last manifest's hash matches the event's, and its projection is the text the model was given before the restart.",
  "audit": "NOT-FOUND before this batch.",
  "limitations": "The rebuild is proven by replaying the log into a fresh Core and comparing the epoch events and the installed manifest; it does not resume the suspended run and re-issue a model request."

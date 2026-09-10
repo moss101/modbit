@@ -8980,13 +8980,15 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0056",
    "source": "docs/41",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m3/IMP-EV-0056/TASK_CARD.md",
     "test:qual_ev_0056_0092_0130_compaction_epoch_preserves_facts_survives_restart_and_moves_the_cache_prefix",
     "test:compaction_preserves_labelled_facts_and_keeps_the_rest_recoverable",
     "test:a_stale_or_out_of_order_compaction_result_is_refused",
-    "test:a_later_epoch_carries_the_facts_and_handles_of_the_one_before_it"
+    "test:a_later_epoch_carries_the_facts_and_handles_of_the_one_before_it",
+    "commit:15527a3",
+    "run:gha-34521495533"
    ],
    "notes": [
     {
@@ -9012,9 +9014,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "a real run compacts nine times; the log is untouched and the epochs replay after a restart"
+    },
+    {
+     "at": "2026-09-10T19:44:58Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34521495533 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-10T19:44:58Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34521495533; limitations recorded in evidence/m3/IMP-EV-0056/TASK_CARD.md"
     }
    ],
-   "status_changed_on": "2026-09-10T18:41:35Z"
+   "status_changed_on": "2026-09-10T19:44:58Z"
   },
   {
    "id": "IMP-EV-0057",
@@ -9027,13 +9041,15 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0057",
    "source": "docs/41",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m3/IMP-EV-0057/TASK_CARD.md",
     "test:compaction_preserves_labelled_facts_and_keeps_the_rest_recoverable",
     "test:a_critical_fact_corpus_meets_the_fidelity_threshold",
     "test:a_later_epoch_carries_the_facts_and_handles_of_the_one_before_it",
-    "test:qual_ev_0056_0092_0130_compaction_epoch_preserves_facts_survives_restart_and_moves_the_cache_prefix"
+    "test:qual_ev_0056_0092_0130_compaction_epoch_preserves_facts_survives_restart_and_moves_the_cache_prefix",
+    "commit:15527a3",
+    "run:gha-34521495533"
    ],
    "notes": [
     {
@@ -9059,9 +9075,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "manifest records head, entries, facts, handles and projection; fidelity is measured"
+    },
+    {
+     "at": "2026-09-10T19:44:58Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34521495533 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-10T19:44:58Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34521495533; limitations recorded in evidence/m3/IMP-EV-0057/TASK_CARD.md"
     }
    ],
-   "status_changed_on": "2026-09-10T18:41:35Z"
+   "status_changed_on": "2026-09-10T19:44:58Z"
   },
   {
    "id": "IMP-EV-0058",
@@ -9074,12 +9102,14 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0058",
    "source": "docs/41",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m3/IMP-EV-0058/TASK_CARD.md",
     "test:a_stale_or_out_of_order_compaction_result_is_refused",
     "test:qual_ev_0056_0092_0130_compaction_epoch_preserves_facts_survives_restart_and_moves_the_cache_prefix",
-    "test:compaction_preserves_labelled_facts_and_keeps_the_rest_recoverable"
+    "test:compaction_preserves_labelled_facts_and_keeps_the_rest_recoverable",
+    "commit:15527a3",
+    "run:gha-34521495533"
    ],
    "notes": [
     {
@@ -9105,9 +9135,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "the manifest the run installed is refused once the real log advanced past its head"
+    },
+    {
+     "at": "2026-09-10T19:44:58Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34521495533 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-10T19:44:58Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34521495533; limitations recorded in evidence/m3/IMP-EV-0058/TASK_CARD.md"
     }
    ],
-   "status_changed_on": "2026-09-10T18:41:35Z"
+   "status_changed_on": "2026-09-10T19:44:58Z"
   },
   {
    "id": "IMP-EV-0059",
@@ -10054,12 +10096,14 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0092",
    "source": "docs/41",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m3/IMP-EV-0092/TASK_CARD.md",
     "test:qual_ev_0056_0092_0130_compaction_epoch_preserves_facts_survives_restart_and_moves_the_cache_prefix",
     "test:compaction_preserves_labelled_facts_and_keeps_the_rest_recoverable",
-    "test:qual_ev_0111_0268_context_show_reports_compaction_epochs_and_the_cached_prefix"
+    "test:qual_ev_0111_0268_context_show_reports_compaction_epochs_and_the_cached_prefix",
+    "commit:15527a3",
+    "run:gha-34521495533"
    ],
    "notes": [
     {
@@ -10085,9 +10129,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "Core killed and restarted after nine epochs: same events, same manifests, same projection"
+    },
+    {
+     "at": "2026-09-10T19:44:58Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34521495533 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-10T19:44:58Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34521495533; limitations recorded in evidence/m3/IMP-EV-0092/TASK_CARD.md"
     }
    ],
-   "status_changed_on": "2026-09-10T18:41:35Z"
+   "status_changed_on": "2026-09-10T19:44:58Z"
   },
   {
    "id": "IMP-EV-0093",
@@ -10751,12 +10807,14 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0111",
    "source": "docs/41",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m3/IMP-EV-0111/TASK_CARD.md",
     "test:qual_ev_0056_0092_0130_compaction_epoch_preserves_facts_survives_restart_and_moves_the_cache_prefix",
     "test:qual_ev_0111_0268_context_show_reports_compaction_epochs_and_the_cached_prefix",
-    "test:stable_segments_share_cache_keys_and_projection_changes_are_hashed"
+    "test:stable_segments_share_cache_keys_and_projection_changes_are_hashed",
+    "commit:15527a3",
+    "run:gha-34521495533"
    ],
    "notes": [
     {
@@ -10782,9 +10840,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "cache hits and misses counted from the log and reported by the inspector and the CLI"
+    },
+    {
+     "at": "2026-09-10T19:44:58Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34521495533 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-10T19:44:58Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34521495533; limitations recorded in evidence/m3/IMP-EV-0111/TASK_CARD.md"
     }
    ],
-   "status_changed_on": "2026-09-10T18:41:36Z"
+   "status_changed_on": "2026-09-10T19:44:58Z"
   },
   {
    "id": "IMP-EV-0112",
@@ -11313,13 +11383,15 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0130",
    "source": "docs/41",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m3/IMP-EV-0130/TASK_CARD.md",
     "test:a_critical_fact_corpus_meets_the_fidelity_threshold",
     "test:a_later_epoch_carries_the_facts_and_handles_of_the_one_before_it",
     "test:compaction_preserves_labelled_facts_and_keeps_the_rest_recoverable",
-    "test:qual_ev_0056_0092_0130_compaction_epoch_preserves_facts_survives_restart_and_moves_the_cache_prefix"
+    "test:qual_ev_0056_0092_0130_compaction_epoch_preserves_facts_survives_restart_and_moves_the_cache_prefix",
+    "commit:15527a3",
+    "run:gha-34521495533"
    ],
    "notes": [
     {
@@ -11345,9 +11417,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "twelve labelled facts survive compaction; the projection shows at least 90% of them"
+    },
+    {
+     "at": "2026-09-10T19:44:58Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34521495533 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-10T19:44:58Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34521495533; limitations recorded in evidence/m3/IMP-EV-0130/TASK_CARD.md"
     }
    ],
-   "status_changed_on": "2026-09-10T18:41:36Z"
+   "status_changed_on": "2026-09-10T19:44:58Z"
   },
   {
    "id": "IMP-EV-0131",
@@ -14844,13 +14928,15 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0268",
    "source": "docs/41",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m3/IMP-EV-0268/TASK_CARD.md",
     "test:qual_ev_0056_0092_0130_compaction_epoch_preserves_facts_survives_restart_and_moves_the_cache_prefix",
     "test:qual_ev_0111_0268_context_show_reports_compaction_epochs_and_the_cached_prefix",
     "test:stable_segments_share_cache_keys_and_projection_changes_are_hashed",
-    "test:a_stale_or_out_of_order_compaction_result_is_refused"
+    "test:a_stale_or_out_of_order_compaction_result_is_refused",
+    "commit:15527a3",
+    "run:gha-34521495533"
    ],
    "notes": [
     {
@@ -14876,9 +14962,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "the epoch is the only thing that moves the cacheable prefix; distinct prefixes == epochs + 1"
+    },
+    {
+     "at": "2026-09-10T19:44:58Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34521495533 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-10T19:44:58Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34521495533; limitations recorded in evidence/m3/IMP-EV-0268/TASK_CARD.md"
     }
    ],
-   "status_changed_on": "2026-09-10T18:41:36Z"
+   "status_changed_on": "2026-09-10T19:44:58Z"
   },
   {
    "id": "IMP-EV-0269",

@@ -7,8 +7,18 @@
   "qual_ev_0056_0092_0130_compaction_epoch_preserves_facts_survives_restart_and_moves_the_cache_prefix",
   "compaction_preserves_labelled_facts_and_keeps_the_rest_recoverable"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "15527a3"
+ ],
+ "runs": [
+  {
+   "id": "gha-34521495533",
+   "kind": "hosted CI on 15527a3",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows (the compaction crate suite, the Core surface suite and the headless CLI suite all ran)",
+   "url": "https://github.com/moss101/modbit/actions/runs/34521495533",
+   "log": "ci-run-34521495533.json, ci-run-34521495533-tests.log"
+  }
+ ],
  "proof": "A compaction result installs only while its source is still current. `accept` refuses three ways: the store head advanced past the range the compaction summarised, the task generation changed (fork, revert or any later task event), or the epoch is not the successor of the installed one. The runtime snapshots the generation and head before compacting, re-reads both after, and refuses rather than installs on a mismatch. The real-system test takes the manifest the run actually installed, shows it was acceptable at the head it saw, and shows the same manifest refused once the log has moved on and refused again when its epoch is already installed. Under pressure the fallback is the synchronous bounded compaction the run loop performs, budgeted by MODBIT_COMPACTION_TOKEN_BUDGET (default 12000 tokens) with a projection target of a quarter of it.",
  "audit": "NOT-FOUND before this batch.",
  "limitations": "Compaction runs synchronously in the run loop \u2014 the bounded fallback docs/19 requires. There is no background compaction worker yet, so in production today the guard fires only on a generation change or a repeated epoch; the head branch is proven against the real store and the real manifest rather than against a live race."
