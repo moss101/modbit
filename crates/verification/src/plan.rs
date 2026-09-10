@@ -113,7 +113,9 @@ pub fn derive(
             id: "suite:pytest".into(),
             family: RunnerFamily::Pytest,
             argv: vec![
-                "python3".into(),
+                // Hosted Windows runners and most Windows installs expose
+                // `python`, not `python3`.
+                if cfg!(windows) { "python" } else { "python3" }.into(),
                 "-m".into(),
                 "pytest".into(),
                 "-q".into(),

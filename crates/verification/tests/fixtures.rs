@@ -833,3 +833,98 @@ fn qual_ev_0071_secret_in_patch_is_denied_with_evidence() {
         .is_empty()
     );
 }
+
+/// PX-033 on the python-service fixture: a real pytest run yields a
+/// STRUCTURED report with stable check ids, per-check status, location, error
+/// class and message fingerprint and a raw OutputRef; the failure signature
+/// of a seeded failure is identical across two runs at the same revision.
+#[tokio::test]
+async fn pytest_fixture_produces_structured_reports_with_stable_failure_signatures_when_pytest_is_installed()
+ {
+    let python = if cfg!(windows) { "python" } else { "python3" };
+    let have = std::process::Command::new(python)
+        .args(["-m", "pytest", "--version"])
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false);
+    if !have {
+        eprintln!("skipped: pytest not installed ({python} -m pip install pytest)");
+        return;
+    }
+    let (_tmp, root) = fixture_copy("python-service");
+    // Seed one failure next to the two passing tests.
+    let test_file = root.join("test_service.py");
+    let mut src = std::fs::read_to_string(&test_file).unwrap();
+    src.push_str("\n\ndef test_seeded_failure():\n    assert total_cents(2, 3) == 7\n");
+    std::fs::write(&test_file, src).unwrap();
+    let plan = derive(&root, &[], &[]);
+    let cmd = plan
+        .commands
+        .iter()
+        .find(|c| c.id == "suite:pytest")
+        .expect("pytest detected from pytest.ini");
+    assert_eq!(cmd.family, RunnerFamily::Pytest);
+    let sink = MemSink::default();
+    let engine = VerificationEngine::new(&ProcessRunner, &sink, VerificationPolicy::default());
+    let env = flaky_env(root.as_path());
+    let mut signatures = Vec::new();
+    for run in ["run-1", "run-2"] {
+        let (result, _q) = engine
+            .run_stage(
+                &plan,
+                "plan-1",
+                run,
+                Stage::Baseline,
+                &root,
+                "rev-0",
+                &env,
+                &["python".into()],
+            )
+            .await;
+        let suite = result
+            .reports
+            .iter()
+            .find(|r| r.runner.family == RunnerFamily::Pytest)
+            .unwrap_or_else(|| panic!("{:?}", result.reports));
+        assert_eq!(suite.parser.confidence, Confidence::Structured, "{suite:?}");
+        assert!(
+            !sink.0.lock().unwrap().is_empty(),
+            "the raw log is stored as an artifact"
+        );
+        let checks = result.checks();
+        assert!(checks.len() >= 3, "{checks:?}");
+        for c in &checks {
+            assert!(c.check_id.starts_with("pytest:"), "{c:?}");
+            assert!(
+                c.location
+                    .path
+                    .as_deref()
+                    .is_some_and(|p| p.ends_with("test_service.py")),
+                "{c:?}"
+            );
+            assert!(c.location.symbol.is_some(), "{c:?}");
+        }
+        let fail = checks
+            .iter()
+            .find(|c| c.location.symbol.as_deref() == Some("test_seeded_failure"))
+            .unwrap_or_else(|| panic!("{checks:?}"));
+        assert_eq!(fail.status, CheckStatus::Fail);
+        assert!(
+            fail.error_class.is_some() && fail.message_fingerprint.is_some(),
+            "{fail:?}"
+        );
+        assert_eq!(
+            checks
+                .iter()
+                .find(|c| c.location.symbol.as_deref() == Some("test_total_and_format"))
+                .map(|c| c.status),
+            Some(CheckStatus::Pass)
+        );
+        signatures.push(result.failure_signatures());
+    }
+    assert_eq!(
+        signatures[0], signatures[1],
+        "identical at the same revision"
+    );
+    assert_eq!(signatures[0].len(), 1, "{signatures:?}");
+}

@@ -48,6 +48,10 @@ jobs:
           cache: pnpm
       - name: Install workspace packages (the ts-webapp fixture's vitest, docs/50)
         run: pnpm install --frozen-lockfile
+      - name: Install pytest (the python-service fixture's runner, PX-033)
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then python -m pip install --quiet pytest==8.4.2; else python3 -m pip install --quiet --user pytest==8.4.2 || python3 -m pip install --quiet --break-system-packages pytest==8.4.2; fi
       - name: Format
         run: cargo fmt --all --check
       - name: Clippy

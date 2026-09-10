@@ -1,0 +1,15 @@
+{
+ "task": "PX-033",
+ "requirement": "REQ-PX-033",
+ "qual": "QUAL-PX-033",
+ "tests": [
+  "pytest_fixture_produces_structured_reports_with_stable_failure_signatures_when_pytest_is_installed",
+  "vitest_fixture_parses_structured_reports_when_vitest_is_installed",
+  "pytest_junit_and_configured_command_adapters",
+  "m2_8_verification_engine_gates_completion_on_real_cargo_fixture"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "real pytest run on python-service: STRUCTURED report, stable pytest: check ids with location/error class/fingerprint, raw log artifact, identical failure signatures across two runs at one revision; cargo and vitest proven by M2.8 tests",
+ "audit": "COMPLETED in this batch with the real pytest run (was PARTIAL)"
+}
