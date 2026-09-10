@@ -111,6 +111,21 @@ pub struct DiffFile {
     pub deletions: Option<u64>,
 }
 
+/// One commit of the recent history with the paths it touched (M3.6).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CommitInfo {
+    /// Full sha.
+    pub sha: String,
+    /// Author name.
+    pub author: String,
+    /// Author date (ISO 8601).
+    pub date: String,
+    /// Subject line.
+    pub subject: String,
+    /// Root-relative paths touched.
+    pub files: Vec<String>,
+}
+
 /// A typed diff.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Diff {
@@ -375,6 +390,45 @@ impl Repo {
             files,
             unified,
         })
+    }
+
+    /// Recent commits (newest first) with the paths each touched, for the
+    /// evidence graph's change history and co-change edges (M3.6).
+    pub fn log_recent(&self, max: usize) -> Result<Vec<CommitInfo>> {
+        let text = run(
+            &self.dir,
+            &[
+                "log",
+                &format!("--max-count={}", max.max(1)),
+                "--name-only",
+                "--format=%x1e%H%x1f%an%x1f%aI%x1f%s",
+            ],
+        )?;
+        let mut out = Vec::new();
+        for rec in text.split('\u{1e}').filter(|r| !r.trim().is_empty()) {
+            let mut lines = rec.lines();
+            let Some(head) = lines.next() else { continue };
+            let mut f = head.split('\u{1f}');
+            let sha = f.next().unwrap_or_default().trim().to_owned();
+            let author = f.next().unwrap_or_default().to_owned();
+            let date = f.next().unwrap_or_default().to_owned();
+            let subject = f.next().unwrap_or_default().to_owned();
+            let files: Vec<String> = lines
+                .map(str::trim)
+                .filter(|l| !l.is_empty())
+                .map(|l| l.replace('\\', "/"))
+                .collect();
+            if !sha.is_empty() {
+                out.push(CommitInfo {
+                    sha,
+                    author,
+                    date,
+                    subject,
+                    files,
+                });
+            }
+        }
+        Ok(out)
     }
 
     /// Merge base.

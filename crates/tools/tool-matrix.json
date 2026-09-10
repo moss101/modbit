@@ -1,440 +1,456 @@
 {
- "version": 1,
- "note": "REQ-EV-0217 compatibility matrix: source behaviors map to canonical Modbit tools, never to source names. Registered tools must each have a row whose effect equals the registered effect class and whose test exists in the repository.",
- "registered": [
-  {
-   "tool": "fs.list",
-   "family": "file",
-   "source_behaviors": [
-    "ls",
-    "Glob (directory listing)",
-    "list_dir"
-   ],
-   "owner": "Workspace File Service",
-   "effect": "ReadOnly",
-   "capabilities": [
-    "fs.read"
-   ],
-   "test": "fs_change_and_git_tools_run_against_the_real_substrate_with_revision_binding"
-  },
-  {
-   "tool": "fs.read",
-   "family": "file",
-   "source_behaviors": [
-    "Read",
-    "cat",
-    "view_file",
-    "media read"
-   ],
-   "owner": "Workspace File Service",
-   "effect": "ReadOnly",
-   "capabilities": [
-    "fs.read"
-   ],
-   "test": "fs_read_returns_media_envelopes_through_the_registry"
-  },
-  {
-   "tool": "fs.stat",
-   "family": "file",
-   "source_behaviors": [
-    "stat"
-   ],
-   "owner": "Workspace File Service",
-   "effect": "ReadOnly",
-   "capabilities": [
-    "fs.read"
-   ],
-   "test": "fs_change_and_git_tools_run_against_the_real_substrate_with_revision_binding"
-  },
-  {
-   "tool": "fs.glob",
-   "family": "search",
-   "source_behaviors": [
-    "Glob",
-    "find",
-    "Grep (path filter)"
-   ],
-   "owner": "Workspace File Service",
-   "effect": "ReadOnly",
-   "capabilities": [
-    "fs.read"
-   ],
-   "test": "fs_change_and_git_tools_run_against_the_real_substrate_with_revision_binding"
-  },
-  {
-   "tool": "change.apply",
-   "family": "file",
-   "source_behaviors": [
-    "Edit",
-    "Write",
-    "str_replace_editor",
-    "apply_patch"
-   ],
-   "owner": "Change Engine",
-   "effect": "ReversibleWrite",
-   "capabilities": [
-    "fs.write"
-   ],
-   "test": "qual_ev_0015_ambiguous_target_fails_and_leaves_the_worktree_unchanged"
-  },
-  {
-   "tool": "change.batch",
-   "family": "file",
-   "source_behaviors": [
-    "MultiEdit",
-    "multi-file patch"
-   ],
-   "owner": "Change Engine",
-   "effect": "ReversibleWrite",
-   "capabilities": [
-    "fs.write"
-   ],
-   "test": "qual_ev_0016_failed_step_rolls_back_earlier_steps_and_reports_the_step"
-  },
-  {
-   "tool": "git.status",
-   "family": "task",
-   "source_behaviors": [
-    "git status"
-   ],
-   "owner": "Worktree Manager",
-   "effect": "ReadOnly",
-   "capabilities": [
-    "git.read"
-   ],
-   "test": "fs_change_and_git_tools_run_against_the_real_substrate_with_revision_binding"
-  },
-  {
-   "tool": "git.diff",
-   "family": "task",
-   "source_behaviors": [
-    "git diff"
-   ],
-   "owner": "Worktree Manager",
-   "effect": "ReadOnly",
-   "capabilities": [
-    "git.read"
-   ],
-   "test": "fs_change_and_git_tools_run_against_the_real_substrate_with_revision_binding"
-  },
-  {
-   "tool": "git.worktree.create",
-   "family": "task",
-   "source_behaviors": [
-    "EnterWorktree",
-    "git worktree add"
-   ],
-   "owner": "Worktree Manager",
-   "effect": "ReversibleWrite",
-   "capabilities": [
-    "git.worktree"
-   ],
-   "test": "qual_ev_0125_0124_worktrees_isolate_parallel_writes_and_carry_lineage"
-  },
-  {
-   "tool": "git.worktree.close",
-   "family": "task",
-   "source_behaviors": [
-    "ExitWorktree",
-    "git worktree remove"
-   ],
-   "owner": "Worktree Manager",
-   "effect": "Destructive",
-   "capabilities": [
-    "git.worktree"
-   ],
-   "test": "m2_5_capability_kernel_gates_destructive_tools_behind_intent_bound_approvals"
-  },
-  {
-   "tool": "shell.exec",
-   "family": "shell",
-   "source_behaviors": [
-    "Bash",
-    "run_command",
-    "exec"
-   ],
-   "owner": "Terminal Broker",
-   "effect": "ReversibleWrite",
-   "capabilities": [
-    "shell.exec"
-   ],
-   "test": "shell_exec_and_test_run_go_through_the_real_broker"
-  },
-  {
-   "tool": "test.run",
-   "family": "shell",
-   "source_behaviors": [
-    "run tests",
-    "verification command"
-   ],
-   "owner": "Terminal Broker / Verification Plane",
-   "effect": "ReversibleWrite",
-   "capabilities": [
-    "shell.exec"
-   ],
-   "test": "shell_exec_and_test_run_go_through_the_real_broker"
-  },
-  {
-   "tool": "shell.start",
-   "family": "shell",
-   "source_behaviors": [
-    "Bash run_in_background",
-    "background job"
-   ],
-   "owner": "Terminal Broker",
-   "effect": "ReversibleWrite",
-   "capabilities": [
-    "shell.exec"
-   ],
-   "test": "qual_ev_0221_background_handles_survive_client_restart_with_bounded_preview_and_cancel"
-  },
-  {
-   "tool": "shell.read",
-   "family": "shell",
-   "source_behaviors": [
-    "TaskOutput",
-    "BashOutput",
-    "tail"
-   ],
-   "owner": "Terminal Broker",
-   "effect": "ReadOnly",
-   "capabilities": [
-    "shell.exec"
-   ],
-   "test": "qual_ev_0221_background_handles_survive_client_restart_with_bounded_preview_and_cancel"
-  },
-  {
-   "tool": "shell.list",
-   "family": "shell",
-   "source_behaviors": [
-    "/tasks",
-    "jobs"
-   ],
-   "owner": "Terminal Broker",
-   "effect": "ReadOnly",
-   "capabilities": [
-    "shell.exec"
-   ],
-   "test": "qual_ev_0221_background_handles_survive_client_restart_with_bounded_preview_and_cancel"
-  },
-  {
-   "tool": "shell.cancel",
-   "family": "shell",
-   "source_behaviors": [
-    "TaskStop",
-    "KillShell",
-    "kill"
-   ],
-   "owner": "Terminal Broker",
-   "effect": "ReversibleWrite",
-   "capabilities": [
-    "shell.exec"
-   ],
-   "test": "qual_ev_0221_background_handles_survive_client_restart_with_bounded_preview_and_cancel"
-  },
-  {
-   "tool": "search.exact",
-   "family": "search",
-   "source_behaviors": [
-    "Grep -F",
-    "exact search"
-   ],
-   "owner": "Context Engine (retrieval index)",
-   "effect": "ReadOnly",
-   "capabilities": [
-    "fs.read"
-   ],
-   "test": "m3_1_exact_regex_path_index_serves_bounded_revision_bound_hits_and_refreshes_on_writes"
-  },
-  {
-   "tool": "search.regex",
-   "family": "search",
-   "source_behaviors": [
-    "Grep",
-    "ripgrep"
-   ],
-   "owner": "Context Engine (retrieval index)",
-   "effect": "ReadOnly",
-   "capabilities": [
-    "fs.read"
-   ],
-   "test": "m3_1_exact_regex_path_index_serves_bounded_revision_bound_hits_and_refreshes_on_writes"
-  },
-  {
-   "tool": "search.paths",
-   "family": "search",
-   "source_behaviors": [
-    "Glob",
-    "find"
-   ],
-   "owner": "Context Engine (retrieval index)",
-   "effect": "ReadOnly",
-   "capabilities": [
-    "fs.read"
-   ],
-   "test": "m3_1_exact_regex_path_index_serves_bounded_revision_bound_hits_and_refreshes_on_writes"
-  },
-  {
-   "tool": "search.lexical",
-   "family": "search",
-   "source_behaviors": [
-    "keyword search",
-    "BM25"
-   ],
-   "owner": "Context Engine (retrieval index)",
-   "effect": "ReadOnly",
-   "capabilities": [
-    "fs.read"
-   ],
-   "test": "m3_2_bm25_lexical_index_ranks_files_and_refreshes_on_writes"
-  },
-  {
-   "tool": "search.symbols",
-   "family": "search",
-   "source_behaviors": [
-    "go to definition",
-    "symbol search",
-    "outline"
-   ],
-   "owner": "Context Engine (retrieval index)",
-   "effect": "ReadOnly",
-   "capabilities": [
-    "fs.read"
-   ],
-   "test": "m3_3_tree_sitter_symbol_index_serves_definitions_and_refreshes_on_writes"
-  },
-  {
-   "tool": "lsp.diagnostics",
-   "family": "file",
-   "source_behaviors": [
-    "language-service diagnostics",
-    "tsc/pyright/rust-analyzer errors"
-   ],
-   "owner": "Diagnostics Adapter (headless language services)",
-   "effect": "ReadOnly",
-   "capabilities": [
-    "fs.read"
-   ],
-   "test": "m3_4_headless_language_service_bridge_serves_diagnostics_symbols_references_and_definitions"
-  },
-  {
-   "tool": "lsp.symbols",
-   "family": "file",
-   "source_behaviors": [
-    "document outline"
-   ],
-   "owner": "Diagnostics Adapter (headless language services)",
-   "effect": "ReadOnly",
-   "capabilities": [
-    "fs.read"
-   ],
-   "test": "m3_4_headless_language_service_bridge_serves_diagnostics_symbols_references_and_definitions"
-  },
-  {
-   "tool": "lsp.references",
-   "family": "file",
-   "source_behaviors": [
-    "find references"
-   ],
-   "owner": "Diagnostics Adapter (headless language services)",
-   "effect": "ReadOnly",
-   "capabilities": [
-    "fs.read"
-   ],
-   "test": "m3_4_headless_language_service_bridge_serves_diagnostics_symbols_references_and_definitions"
-  },
-  {
-   "tool": "lsp.definition",
-   "family": "file",
-   "source_behaviors": [
-    "go to definition"
-   ],
-   "owner": "Diagnostics Adapter (headless language services)",
-   "effect": "ReadOnly",
-   "capabilities": [
-    "fs.read"
-   ],
-   "test": "m3_4_headless_language_service_bridge_serves_diagnostics_symbols_references_and_definitions"
-  },
-  {
-   "tool": "search.semantic",
-   "family": "search",
-   "source_behaviors": [
-    "semantic search",
-    "embedding retrieval"
-   ],
-   "owner": "Context Engine (retrieval index)",
-   "effect": "ReadOnly",
-   "capabilities": [
-    "fs.read"
-   ],
-   "test": "m3_5_semantic_chunk_index_serves_nearest_chunks_and_reembeds_only_changed_files"
-  }
- ],
- "harness": [
-  {
-   "tool": "plan.update",
-   "family": "plan",
-   "source_behaviors": [
-    "TodoWrite",
-    "plan mode"
-   ],
-   "owner": "core-runtime harness",
-   "effect": "ReadOnly",
-   "test": "m2_7_harness_refuses_unplanned_writes_exhausts_budgets_and_resumes_after_restart"
-  },
-  {
-   "tool": "task.complete",
-   "family": "task",
-   "source_behaviors": [
-    "final answer",
-    "attempt_completion"
-   ],
-   "owner": "core-runtime harness",
-   "effect": "ReadOnly",
-   "test": "m2_8_verification_engine_gates_completion_on_real_cargo_fixture"
-  },
-  {
-   "tool": "verify.run",
-   "family": "task",
-   "source_behaviors": [
-    "run tests before done"
-   ],
-   "owner": "Verification Plane",
-   "effect": "ReadOnly",
-   "test": "m2_8_verification_engine_gates_completion_on_real_cargo_fixture"
-  }
- ],
- "families_without_registered_tool": [
-  {
-   "family": "web",
-   "source_behaviors": [
-    "WebFetch",
-    "WebSearch"
-   ],
-   "status": "DEFERRED (no browser/network consumer yet; REQ-EV-0088/0147)"
-  },
-  {
-   "family": "user-question",
-   "source_behaviors": [
-    "AskUserQuestion"
-   ],
-   "status": "PLANNED (REQ-EV-0222 structured AskUserQuestion)"
-  },
-  {
-   "family": "agent",
-   "source_behaviors": [
-    "Task/Agent spawn"
-   ],
-   "status": "DEFERRED (M3 multi-agent)"
-  },
-  {
-   "family": "media",
-   "source_behaviors": [
-    "image read",
-    "PDF read"
-   ],
-   "status": "SERVED by fs.read (MediaEnvelope, M2.10)"
-  }
- ]
+  "version": 1,
+  "note": "REQ-EV-0217 compatibility matrix: source behaviors map to canonical Modbit tools, never to source names. Registered tools must each have a row whose effect equals the registered effect class and whose test exists in the repository.",
+  "registered": [
+    {
+      "tool": "fs.list",
+      "family": "file",
+      "source_behaviors": [
+        "ls",
+        "Glob (directory listing)",
+        "list_dir"
+      ],
+      "owner": "Workspace File Service",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "fs.read"
+      ],
+      "test": "fs_change_and_git_tools_run_against_the_real_substrate_with_revision_binding"
+    },
+    {
+      "tool": "fs.read",
+      "family": "file",
+      "source_behaviors": [
+        "Read",
+        "cat",
+        "view_file",
+        "media read"
+      ],
+      "owner": "Workspace File Service",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "fs.read"
+      ],
+      "test": "fs_read_returns_media_envelopes_through_the_registry"
+    },
+    {
+      "tool": "fs.stat",
+      "family": "file",
+      "source_behaviors": [
+        "stat"
+      ],
+      "owner": "Workspace File Service",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "fs.read"
+      ],
+      "test": "fs_change_and_git_tools_run_against_the_real_substrate_with_revision_binding"
+    },
+    {
+      "tool": "fs.glob",
+      "family": "search",
+      "source_behaviors": [
+        "Glob",
+        "find",
+        "Grep (path filter)"
+      ],
+      "owner": "Workspace File Service",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "fs.read"
+      ],
+      "test": "fs_change_and_git_tools_run_against_the_real_substrate_with_revision_binding"
+    },
+    {
+      "tool": "change.apply",
+      "family": "file",
+      "source_behaviors": [
+        "Edit",
+        "Write",
+        "str_replace_editor",
+        "apply_patch"
+      ],
+      "owner": "Change Engine",
+      "effect": "ReversibleWrite",
+      "capabilities": [
+        "fs.write"
+      ],
+      "test": "qual_ev_0015_ambiguous_target_fails_and_leaves_the_worktree_unchanged"
+    },
+    {
+      "tool": "change.batch",
+      "family": "file",
+      "source_behaviors": [
+        "MultiEdit",
+        "multi-file patch"
+      ],
+      "owner": "Change Engine",
+      "effect": "ReversibleWrite",
+      "capabilities": [
+        "fs.write"
+      ],
+      "test": "qual_ev_0016_failed_step_rolls_back_earlier_steps_and_reports_the_step"
+    },
+    {
+      "tool": "git.status",
+      "family": "task",
+      "source_behaviors": [
+        "git status"
+      ],
+      "owner": "Worktree Manager",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "git.read"
+      ],
+      "test": "fs_change_and_git_tools_run_against_the_real_substrate_with_revision_binding"
+    },
+    {
+      "tool": "git.diff",
+      "family": "task",
+      "source_behaviors": [
+        "git diff"
+      ],
+      "owner": "Worktree Manager",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "git.read"
+      ],
+      "test": "fs_change_and_git_tools_run_against_the_real_substrate_with_revision_binding"
+    },
+    {
+      "tool": "git.worktree.create",
+      "family": "task",
+      "source_behaviors": [
+        "EnterWorktree",
+        "git worktree add"
+      ],
+      "owner": "Worktree Manager",
+      "effect": "ReversibleWrite",
+      "capabilities": [
+        "git.worktree"
+      ],
+      "test": "qual_ev_0125_0124_worktrees_isolate_parallel_writes_and_carry_lineage"
+    },
+    {
+      "tool": "git.worktree.close",
+      "family": "task",
+      "source_behaviors": [
+        "ExitWorktree",
+        "git worktree remove"
+      ],
+      "owner": "Worktree Manager",
+      "effect": "Destructive",
+      "capabilities": [
+        "git.worktree"
+      ],
+      "test": "m2_5_capability_kernel_gates_destructive_tools_behind_intent_bound_approvals"
+    },
+    {
+      "tool": "shell.exec",
+      "family": "shell",
+      "source_behaviors": [
+        "Bash",
+        "run_command",
+        "exec"
+      ],
+      "owner": "Terminal Broker",
+      "effect": "ReversibleWrite",
+      "capabilities": [
+        "shell.exec"
+      ],
+      "test": "shell_exec_and_test_run_go_through_the_real_broker"
+    },
+    {
+      "tool": "test.run",
+      "family": "shell",
+      "source_behaviors": [
+        "run tests",
+        "verification command"
+      ],
+      "owner": "Terminal Broker / Verification Plane",
+      "effect": "ReversibleWrite",
+      "capabilities": [
+        "shell.exec"
+      ],
+      "test": "shell_exec_and_test_run_go_through_the_real_broker"
+    },
+    {
+      "tool": "shell.start",
+      "family": "shell",
+      "source_behaviors": [
+        "Bash run_in_background",
+        "background job"
+      ],
+      "owner": "Terminal Broker",
+      "effect": "ReversibleWrite",
+      "capabilities": [
+        "shell.exec"
+      ],
+      "test": "qual_ev_0221_background_handles_survive_client_restart_with_bounded_preview_and_cancel"
+    },
+    {
+      "tool": "shell.read",
+      "family": "shell",
+      "source_behaviors": [
+        "TaskOutput",
+        "BashOutput",
+        "tail"
+      ],
+      "owner": "Terminal Broker",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "shell.exec"
+      ],
+      "test": "qual_ev_0221_background_handles_survive_client_restart_with_bounded_preview_and_cancel"
+    },
+    {
+      "tool": "shell.list",
+      "family": "shell",
+      "source_behaviors": [
+        "/tasks",
+        "jobs"
+      ],
+      "owner": "Terminal Broker",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "shell.exec"
+      ],
+      "test": "qual_ev_0221_background_handles_survive_client_restart_with_bounded_preview_and_cancel"
+    },
+    {
+      "tool": "shell.cancel",
+      "family": "shell",
+      "source_behaviors": [
+        "TaskStop",
+        "KillShell",
+        "kill"
+      ],
+      "owner": "Terminal Broker",
+      "effect": "ReversibleWrite",
+      "capabilities": [
+        "shell.exec"
+      ],
+      "test": "qual_ev_0221_background_handles_survive_client_restart_with_bounded_preview_and_cancel"
+    },
+    {
+      "tool": "search.exact",
+      "family": "search",
+      "source_behaviors": [
+        "Grep -F",
+        "exact search"
+      ],
+      "owner": "Context Engine (retrieval index)",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "fs.read"
+      ],
+      "test": "m3_1_exact_regex_path_index_serves_bounded_revision_bound_hits_and_refreshes_on_writes"
+    },
+    {
+      "tool": "search.regex",
+      "family": "search",
+      "source_behaviors": [
+        "Grep",
+        "ripgrep"
+      ],
+      "owner": "Context Engine (retrieval index)",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "fs.read"
+      ],
+      "test": "m3_1_exact_regex_path_index_serves_bounded_revision_bound_hits_and_refreshes_on_writes"
+    },
+    {
+      "tool": "search.paths",
+      "family": "search",
+      "source_behaviors": [
+        "Glob",
+        "find"
+      ],
+      "owner": "Context Engine (retrieval index)",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "fs.read"
+      ],
+      "test": "m3_1_exact_regex_path_index_serves_bounded_revision_bound_hits_and_refreshes_on_writes"
+    },
+    {
+      "tool": "search.lexical",
+      "family": "search",
+      "source_behaviors": [
+        "keyword search",
+        "BM25"
+      ],
+      "owner": "Context Engine (retrieval index)",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "fs.read"
+      ],
+      "test": "m3_2_bm25_lexical_index_ranks_files_and_refreshes_on_writes"
+    },
+    {
+      "tool": "search.symbols",
+      "family": "search",
+      "source_behaviors": [
+        "go to definition",
+        "symbol search",
+        "outline"
+      ],
+      "owner": "Context Engine (retrieval index)",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "fs.read"
+      ],
+      "test": "m3_3_tree_sitter_symbol_index_serves_definitions_and_refreshes_on_writes"
+    },
+    {
+      "tool": "lsp.diagnostics",
+      "family": "file",
+      "source_behaviors": [
+        "language-service diagnostics",
+        "tsc/pyright/rust-analyzer errors"
+      ],
+      "owner": "Diagnostics Adapter (headless language services)",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "fs.read"
+      ],
+      "test": "m3_4_headless_language_service_bridge_serves_diagnostics_symbols_references_and_definitions"
+    },
+    {
+      "tool": "lsp.symbols",
+      "family": "file",
+      "source_behaviors": [
+        "document outline"
+      ],
+      "owner": "Diagnostics Adapter (headless language services)",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "fs.read"
+      ],
+      "test": "m3_4_headless_language_service_bridge_serves_diagnostics_symbols_references_and_definitions"
+    },
+    {
+      "tool": "lsp.references",
+      "family": "file",
+      "source_behaviors": [
+        "find references"
+      ],
+      "owner": "Diagnostics Adapter (headless language services)",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "fs.read"
+      ],
+      "test": "m3_4_headless_language_service_bridge_serves_diagnostics_symbols_references_and_definitions"
+    },
+    {
+      "tool": "lsp.definition",
+      "family": "file",
+      "source_behaviors": [
+        "go to definition"
+      ],
+      "owner": "Diagnostics Adapter (headless language services)",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "fs.read"
+      ],
+      "test": "m3_4_headless_language_service_bridge_serves_diagnostics_symbols_references_and_definitions"
+    },
+    {
+      "tool": "search.semantic",
+      "family": "search",
+      "source_behaviors": [
+        "semantic search",
+        "embedding retrieval"
+      ],
+      "owner": "Context Engine (retrieval index)",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "fs.read"
+      ],
+      "test": "m3_5_semantic_chunk_index_serves_nearest_chunks_and_reembeds_only_changed_files"
+    },
+    {
+      "tool": "search.graph",
+      "family": "search",
+      "source_behaviors": [
+        "dependency graph",
+        "git blame/log context",
+        "impacted tests"
+      ],
+      "owner": "Context Engine (retrieval index)",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "fs.read",
+        "git.read"
+      ],
+      "test": "m3_6_evidence_graph_serves_imports_history_changed_lines_tests_and_verification_evidence"
+    }
+  ],
+  "harness": [
+    {
+      "tool": "plan.update",
+      "family": "plan",
+      "source_behaviors": [
+        "TodoWrite",
+        "plan mode"
+      ],
+      "owner": "core-runtime harness",
+      "effect": "ReadOnly",
+      "test": "m2_7_harness_refuses_unplanned_writes_exhausts_budgets_and_resumes_after_restart"
+    },
+    {
+      "tool": "task.complete",
+      "family": "task",
+      "source_behaviors": [
+        "final answer",
+        "attempt_completion"
+      ],
+      "owner": "core-runtime harness",
+      "effect": "ReadOnly",
+      "test": "m2_8_verification_engine_gates_completion_on_real_cargo_fixture"
+    },
+    {
+      "tool": "verify.run",
+      "family": "task",
+      "source_behaviors": [
+        "run tests before done"
+      ],
+      "owner": "Verification Plane",
+      "effect": "ReadOnly",
+      "test": "m2_8_verification_engine_gates_completion_on_real_cargo_fixture"
+    }
+  ],
+  "families_without_registered_tool": [
+    {
+      "family": "web",
+      "source_behaviors": [
+        "WebFetch",
+        "WebSearch"
+      ],
+      "status": "DEFERRED (no browser/network consumer yet; REQ-EV-0088/0147)"
+    },
+    {
+      "family": "user-question",
+      "source_behaviors": [
+        "AskUserQuestion"
+      ],
+      "status": "PLANNED (REQ-EV-0222 structured AskUserQuestion)"
+    },
+    {
+      "family": "agent",
+      "source_behaviors": [
+        "Task/Agent spawn"
+      ],
+      "status": "DEFERRED (M3 multi-agent)"
+    },
+    {
+      "family": "media",
+      "source_behaviors": [
+        "image read",
+        "PDF read"
+      ],
+      "status": "SERVED by fs.read (MediaEnvelope, M2.10)"
+    }
+  ]
 }

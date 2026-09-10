@@ -209,3 +209,42 @@ fn non_repository_and_bad_revisions_are_typed_errors() {
         Err(modbit_git::Error::Git { .. })
     ));
 }
+
+/// M3.6: recent history with touched paths, newest first.
+#[test]
+fn log_recent_lists_commits_with_their_paths_newest_first() {
+    let (_dir, repo) = seed();
+    write(&repo.dir().join("b.txt"), "b\n");
+    write(&repo.dir().join("sub/c.txt"), "c\n");
+    for args in [
+        vec!["add", "-A"],
+        vec![
+            "-c",
+            "user.name=ann",
+            "-c",
+            "user.email=a@e",
+            "commit",
+            "-q",
+            "-m",
+            "second",
+        ],
+    ] {
+        assert!(
+            std::process::Command::new("git")
+                .arg("-C")
+                .arg(repo.dir())
+                .args(&args)
+                .status()
+                .unwrap()
+                .success()
+        );
+    }
+    let log = repo.log_recent(10).unwrap();
+    assert!(log.len() >= 2, "{log:?}");
+    assert_eq!(log[0].subject, "second");
+    assert_eq!(log[0].author, "ann");
+    assert_eq!(log[0].files, ["b.txt", "sub/c.txt"]);
+    assert_eq!(log[0].sha.len(), 40);
+    assert!(log[0].date.starts_with("20"));
+    assert_eq!(repo.log_recent(1).unwrap().len(), 1);
+}

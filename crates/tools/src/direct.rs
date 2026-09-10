@@ -909,6 +909,50 @@ tool!(
     |ctx, args| search_tool_body(ctx, &args, "semantic")
 );
 
+tool!(
+    SearchGraph,
+    spec(
+        "search.graph",
+        "Evidence graph of a workspace path: imports and importers (to depth 3), files changed together and their authors in the recent history, the file's own recent commits, changed line ranges in the worktree, the test files that reach it and the verification checks attributed to it, all at the graph revision (M3.6, docs/18 L2/L3).",
+        EffectClass::ReadOnly,
+        json!({"type":"object","properties":{"path":{"type":"string"},"relation":{"type":"string","enum":["all","imports","importers","cochange","owners","commits","changed_lines","tests","evidence"]},"depth":{"type":"integer","minimum":1,"maximum":3},"max_hits":{"type":"integer","minimum":1,"maximum":500}},"required":["path"],"additionalProperties":false}),
+        &["fs.read", "git.read"],
+        Idempotency::Idempotent
+    ),
+    |ctx, args| {
+        let Some(port) = &ctx.search else {
+            return ToolOutcome::infra("NO_INDEX", "no workspace index is attached to this task");
+        };
+        let path = s(&args, "path");
+        if path.is_empty() {
+            return ToolOutcome::fail("PATH_REQUIRED", "path must not be empty");
+        }
+        let req = crate::pipeline::SearchRequest {
+            kind: "graph".into(),
+            query: format!(
+                "{path}|{}|{}",
+                args.get("relation")
+                    .and_then(Value::as_str)
+                    .unwrap_or("all"),
+                args.get("depth").and_then(Value::as_u64).unwrap_or(1)
+            ),
+            case_insensitive: false,
+            path_glob: None,
+            max_hits: usize::try_from(
+                args.get("max_hits")
+                    .and_then(Value::as_u64)
+                    .unwrap_or(50)
+                    .clamp(1, 500),
+            )
+            .unwrap_or(50),
+        };
+        match port.search(&req) {
+            Ok(v) => ToolOutcome::ok(v),
+            Err((code, msg)) => ToolOutcome::fail(&code, msg),
+        }
+    }
+);
+
 /// Wait window for `shell.read` when the process is still running.
 const READ_WAIT_MS: u64 = 250;
 
@@ -1339,6 +1383,7 @@ pub fn register_direct(registry: &mut ToolRegistry) -> Result<()> {
         SearchLexical::shared(),
         SearchSymbols::shared(),
         SearchSemantic::shared(),
+        SearchGraph::shared(),
         LspDiagnostics::shared(),
         LspSymbols::shared(),
         LspReferences::shared(),

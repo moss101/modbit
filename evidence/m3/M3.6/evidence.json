@@ -1,0 +1,21 @@
+{
+ "task": "M3.6",
+ "tests": [
+  "import_specifiers_come_from_the_real_parse_of_each_language",
+  "specifiers_resolve_to_workspace_paths_per_language_convention",
+  "changed_lines_follow_the_new_side_hunks_of_a_unified_diff",
+  "graph_answers_imports_importers_history_tests_evidence_and_refreshes_per_path",
+  "log_recent_lists_commits_with_their_paths_newest_first",
+  "m3_6_evidence_graph_serves_imports_history_changed_lines_tests_and_verification_evidence",
+  "m2_8_verification_engine_gates_completion_on_real_cargo_fixture",
+  "qual_ev_0217_compatibility_matrix_covers_every_registered_tool_with_owner_effect_and_test"
+ ],
+ "commits": {
+  "implementation": "HEAD"
+ },
+ "runs": [],
+ "evidence_tier": "release-critical",
+ "acceptance": {
+  "dependency/Git/test/runtime evidence graph": "pending hosted CI"
+ }
+}

@@ -121,6 +121,8 @@ pub struct ToolHost {
     pub(crate) symbols: Mutex<HashMap<PathBuf, Arc<Mutex<modbit_retrieval::SymbolIndex>>>>,
     /// Semantic chunk indexes per canonical workspace root (M3.5).
     pub(crate) semantic: Mutex<HashMap<PathBuf, Arc<Mutex<modbit_retrieval::SemanticIndex>>>>,
+    /// Evidence graphs per canonical workspace root (M3.6).
+    pub(crate) graphs: Mutex<HashMap<PathBuf, Arc<Mutex<modbit_retrieval::EvidenceGraph>>>>,
     /// Headless language servers per (workspace root, language) (M3.4).
     pub(crate) language_servers: LanguageServers,
     /// One workspace service per approved root, kept so revisions stay monotonic in-process.
@@ -151,6 +153,7 @@ impl ToolHost {
             lexical: Mutex::new(HashMap::new()),
             symbols: Mutex::new(HashMap::new()),
             semantic: Mutex::new(HashMap::new()),
+            graphs: Mutex::new(HashMap::new()),
             language_servers: Arc::new(std::sync::Mutex::new(HashMap::new())),
             state_dir: data_dir.join("workspaces"),
         })
@@ -266,6 +269,29 @@ impl ToolHost {
         Ok(sem)
     }
 
+    /// The evidence graph of a workspace root, built from the exact index, the
+    /// recent Git history and the worktree diff at first use (M3.6).
+    pub(crate) async fn graph(
+        &self,
+        canonical: &Path,
+    ) -> Result<Arc<Mutex<modbit_retrieval::EvidenceGraph>>> {
+        let mut map = self.graphs.lock().await;
+        if let Some(g) = map.get(canonical) {
+            return Ok(Arc::clone(g));
+        }
+        let index = self.index(canonical).await?;
+        let index = index.lock().await;
+        let g = modbit_retrieval::EvidenceGraph::build(
+            index.texts(),
+            recent_commits(canonical),
+            worktree_changed_lines(canonical),
+            index.revision(),
+        );
+        let g = Arc::new(Mutex::new(g));
+        map.insert(canonical.to_path_buf(), Arc::clone(&g));
+        Ok(g)
+    }
+
     /// The tool surface compiled from support × policy (REQ-EV-0096/0133/0044):
     /// a tool is advertised only when its host consumer exists (the terminal
     /// broker for shell-backed tools), the profile admits it and, given a
@@ -355,6 +381,8 @@ impl ToolHost {
                 lexical: self.lexical(r).await?,
                 symbols: self.symbols(r).await?,
                 semantic: self.semantic(r).await?,
+                graph: self.graph(r).await?,
+                evidence: task_evidence(store, task_id).await,
                 workspace: Arc::clone(ws),
             })),
             _ => None,
@@ -461,6 +489,31 @@ impl ToolHost {
                             (p.clone(), t)
                         })
                         .collect();
+                    if let Ok(graph) = self.graph(root).await {
+                        // docs/18: import edges of the changed paths and the worktree's
+                        // changed lines re-enter the graph at the new revision.
+                        let changed: Vec<modbit_retrieval::ChangedDoc> = paths
+                            .iter()
+                            .map(|p| {
+                                let t = index
+                                    .texts()
+                                    .find(|(path, _, _)| *path == p.as_str())
+                                    .map(|(_, t, l)| (t.to_owned(), l.map(str::to_owned)));
+                                (p.clone(), t)
+                            })
+                            .collect();
+                        graph.lock().await.refresh(
+                            changed.iter().map(|(p, c)| {
+                                (
+                                    p.as_str(),
+                                    c.as_ref().map(|(t, l)| (t.as_str(), l.as_deref())),
+                                )
+                            }),
+                            worktree_changed_lines(root),
+                            None,
+                            rev,
+                        );
+                    }
                     if let Err(e) = sem.flush(
                         changed.iter().map(|(p, c)| {
                             (p.as_str(), c.as_ref().map(|(t, s)| (t.as_str(), s.clone())))
@@ -1027,7 +1080,48 @@ struct IndexPort {
     lexical: Arc<Mutex<modbit_retrieval::LexicalIndex>>,
     symbols: Arc<Mutex<modbit_retrieval::SymbolIndex>>,
     semantic: Arc<Mutex<modbit_retrieval::SemanticIndex>>,
+    graph: Arc<Mutex<modbit_retrieval::EvidenceGraph>>,
+    /// Verification checks of the task's runs as (check id, status).
+    evidence: Vec<(String, String)>,
     workspace: Arc<Mutex<WorkspaceService>>,
+}
+
+/// Recent commits of a root through the real git (empty outside a repository).
+fn recent_commits(root: &Path) -> Vec<modbit_retrieval::CommitRecord> {
+    modbit_git::Repo::open(root)
+        .and_then(|r| r.log_recent(200))
+        .map(|v| {
+            v.into_iter()
+                .map(|c| modbit_retrieval::CommitRecord {
+                    sha: c.sha,
+                    author: c.author,
+                    date: c.date,
+                    subject: c.subject,
+                    files: c.files,
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// Changed line ranges of the worktree versus HEAD (empty outside a repository).
+fn worktree_changed_lines(root: &Path) -> modbit_retrieval::graph::ChangedLines {
+    modbit_git::Repo::open(root)
+        .and_then(|r| r.diff_worktree())
+        .map(|d| modbit_retrieval::graph::changed_lines_from_unified(&d.unified))
+        .unwrap_or_default()
+}
+
+/// The (check id, status) pairs of every verification run of the task.
+async fn task_evidence(store: &Mutex<EventStore>, task_id: TaskId) -> Vec<(String, String)> {
+    let store = store.lock().await;
+    let mut out = Vec::new();
+    for run in store.runs_for_task(&task_id).unwrap_or_default() {
+        for vr in store.verification_runs(&run.run_id).unwrap_or_default() {
+            out.extend(vr.checks.iter().cloned());
+        }
+    }
+    out
 }
 
 /// A changed path with its new text and symbol spans (`None` = removed).
@@ -1141,6 +1235,53 @@ impl modbit_tools::SearchPort for IndexPort {
                     "embedding_generation": semantic.generation(),
                     "stale_paths": semantic.pending(),
                 })
+            }
+            "graph" => {
+                let mut parts = req.query.splitn(3, '|');
+                let path = parts.next().unwrap_or_default().to_owned();
+                let relation = parts.next().unwrap_or("all").to_owned();
+                let depth: u32 = parts.next().and_then(|d| d.parse().ok()).unwrap_or(1);
+                let mut graph = self.graph.try_lock().map_err(|_| {
+                    (
+                        "INDEX_BUSY".to_owned(),
+                        "the graph is being refreshed".to_owned(),
+                    )
+                })?;
+                if ws_rev > graph.revision() {
+                    *graph = modbit_retrieval::EvidenceGraph::build(
+                        idx.texts(),
+                        recent_commits(idx.root()),
+                        worktree_changed_lines(idx.root()),
+                        ws_rev,
+                    );
+                }
+                // Runtime evidence (docs/18): a verification check whose id names a
+                // test symbol of this path is attributed to the path.
+                let names: Vec<&str> = symbols
+                    .symbols_in(&path)
+                    .iter()
+                    .map(|s| s.name.as_str())
+                    .collect();
+                let attributed: Vec<(String, String, String)> = self
+                    .evidence
+                    .iter()
+                    .filter(|(id, _)| {
+                        let tail = id.rsplit("::").next().unwrap_or(id);
+                        let tail = tail.rsplit(" > ").next().unwrap_or(tail).trim();
+                        names.contains(&tail)
+                    })
+                    .map(|(id, st)| (path.clone(), id.clone(), st.clone()))
+                    .collect();
+                if !attributed.is_empty() {
+                    graph.set_evidence(attributed);
+                }
+                let view = graph.query(&modbit_retrieval::GraphQuery {
+                    path,
+                    relation,
+                    depth,
+                    max: req.max_hits,
+                });
+                serde_json::json!({"graph": view})
             }
             "paths" => serde_json::json!({"paths": idx
                 .find_paths(&req.query, req.max_hits)

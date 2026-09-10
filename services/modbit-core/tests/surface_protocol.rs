@@ -3132,6 +3132,26 @@ async fn m2_8_verification_engine_gates_completion_on_real_cargo_fixture() {
         evs.iter()
             .any(|(a, t, _)| a == "run_step" && t == "StepScheduled")
     );
+    // M3.6: the verification checks of the task's runs are attributed to the
+    // test file whose symbols they name (runtime evidence in the graph).
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xA7,
+        0xA8,
+        "search.graph",
+        r#"{"path":"tests/quantities.rs","relation":"evidence"}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let ev = so["graph"]["evidence"].as_array().unwrap();
+    assert!(
+        ev.iter()
+            .any(|e| e[0].as_str().unwrap().ends_with("::formats_totals")),
+        "{so}"
+    );
     let _ = repo;
 }
 
@@ -6131,4 +6151,159 @@ async fn m3_5_semantic_chunk_index_serves_nearest_chunks_and_reembeds_only_chang
         gen0,
         "the untouched file kept its vectors"
     );
+}
+
+/// M3.6: `search.graph` serves import/importer edges from the real parse,
+/// co-change and ownership from the real Git history, test mappings and the
+/// worktree's changed lines; a write refreshes the graph at the new revision.
+#[tokio::test]
+async fn m3_6_evidence_graph_serves_imports_history_changed_lines_tests_and_verification_evidence()
+{
+    let (repo, root) = plain_repo(&[(
+        "Cargo.toml",
+        "[package]\nname = \"mylib\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+    )]);
+    for (p, c) in [
+        ("src/lib.rs", "pub mod util;\npub mod net;\n"),
+        (
+            "src/util.rs",
+            "use crate::net::Sock;\npub fn f() -> Sock {\n    Sock\n}\n",
+        ),
+        ("src/net.rs", "pub struct Sock;\n"),
+        (
+            "tests/util_test.rs",
+            "use mylib::util::f;\n#[test]\nfn works() {\n    let _ = f();\n}\n",
+        ),
+    ] {
+        let path = repo.path().join(p);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, c).unwrap();
+    }
+    for args in [
+        vec!["add", "-A"],
+        vec![
+            "-c",
+            "user.name=ann",
+            "-c",
+            "user.email=a@e",
+            "commit",
+            "-q",
+            "-m",
+            "crate",
+        ],
+    ] {
+        assert!(
+            Command::new("git")
+                .arg("-C")
+                .arg(repo.path())
+                .args(&args)
+                .status()
+                .unwrap()
+                .success()
+        );
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn(dir.path());
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xF0)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xF1, "local_trusted").await;
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xF2,
+        0xE1,
+        "search.graph",
+        r#"{"path":"src/util.rs","relation":"all","depth":2}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let v = &so["graph"];
+    let rev0 = v["revision"].as_u64().unwrap();
+    assert_eq!(v["imports"], serde_json::json!([["src/net.rs", 1]]), "{so}");
+    assert_eq!(
+        v["importers"],
+        serde_json::json!([["src/lib.rs", 1], ["tests/util_test.rs", 1]])
+    );
+    assert_eq!(
+        v["cochange"],
+        serde_json::json!([
+            ["src/lib.rs", 1],
+            ["src/net.rs", 1],
+            ["tests/util_test.rs", 1]
+        ])
+    );
+    assert_eq!(v["owners"], serde_json::json!([["ann", 1]]));
+    assert_eq!(v["commits"][0]["subject"], "crate");
+    assert_eq!(v["commits"][0]["author"], "ann");
+    assert_eq!(v["tests"], serde_json::json!(["tests/util_test.rs"]));
+    assert_eq!(v["changed_lines"], serde_json::json!([]));
+    assert_eq!(v["evidence"], serde_json::json!([]));
+    // A write: the changed lines show up and the graph moved to the new revision.
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xF3,
+        0xE2,
+        "change.apply",
+        r#"{"path":"src/util.rs","op":"replace","content":"pub fn f() -> u32 {\n    1\n}\n"}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xF4,
+        0xE3,
+        "search.graph",
+        r#"{"path":"src/util.rs","relation":"all"}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let v = &so["graph"];
+    assert!(v["revision"].as_u64().unwrap() > rev0, "{so}");
+    assert_eq!(
+        v["imports"],
+        serde_json::json!([]),
+        "the net import is gone: {so}"
+    );
+    assert_eq!(v["changed_lines"], serde_json::json!([[1, 3]]), "{so}");
+    assert_eq!(
+        v["importers"],
+        serde_json::json!([["src/lib.rs", 1], ["tests/util_test.rs", 1]])
+    );
+    // Relation filters and an unknown path.
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xF5,
+        0xE4,
+        "search.graph",
+        r#"{"path":"src/net.rs","relation":"tests"}"#,
+    )
+    .await;
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(
+        so["graph"]["tests"],
+        serde_json::json!([]),
+        "util no longer reaches net: {so}"
+    );
+    assert_eq!(so["graph"]["imports"], serde_json::json!([]));
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xF6,
+        0xE5,
+        "search.graph",
+        r#"{"path":"","relation":"all"}"#,
+    )
+    .await;
+    assert_eq!(r.error_code, "PATH_REQUIRED", "{r:?}");
 }
