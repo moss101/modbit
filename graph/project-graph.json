@@ -12399,8 +12399,54 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0168",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:ece9080",
+    "test:qual_px_015_retrieval_before_edit_is_enforced_and_a_stale_record_is_refused",
+    "test:qual_px_016_change_strategy_tests_first_one_concern_per_transaction_and_no_silent_scope_widening",
+    "test:qual_px_018_repair_attempts_are_recorded_bounded_reverted_when_worsened_and_escalate_on_equivalence",
+    "run:gha-34498383277",
+    "artifact:evidence/m3/IMP-EV-0168/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T16:10:34Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: see card"
+    },
+    {
+     "at": "2026-09-10T16:10:34Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "retrieval records bound to content hashes, durable task events, write gate"
+    },
+    {
+     "at": "2026-09-10T16:10:34Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "gate in the runtime before any effector; records written by the tool host"
+    },
+    {
+     "at": "2026-09-10T16:10:34Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "scripted runs on real fixtures plus context unit tests"
+    },
+    {
+     "at": "2026-09-10T16:10:34Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34498383277 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T16:10:34Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34498383277"
+    }
+   ],
+   "status_changed_on": "2026-09-10T16:10:34Z"
   },
   {
    "id": "IMP-EV-0169",
@@ -20791,8 +20837,56 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-015",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:ece9080",
+    "commit:c89f54a",
+    "test:qual_px_015_retrieval_before_edit_is_enforced_and_a_stale_record_is_refused",
+    "test:ledger_records_injections_and_marks_use_only_at_the_retrieved_revision",
+    "test:left_out_candidates_become_signature_stubs_inside_the_budget_with_hydration_handles",
+    "test:m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use",
+    "run:gha-34498383277",
+    "artifact:evidence/m3/PX-015/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T16:10:34Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: see card"
+    },
+    {
+     "at": "2026-09-10T16:10:34Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "retrieval records bound to content hashes, durable task events, write gate"
+    },
+    {
+     "at": "2026-09-10T16:10:34Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "gate in the runtime before any effector; records written by the tool host"
+    },
+    {
+     "at": "2026-09-10T16:10:34Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "scripted runs on real fixtures plus context unit tests"
+    },
+    {
+     "at": "2026-09-10T16:10:34Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34498383277 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T16:10:34Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34498383277"
+    }
+   ],
+   "status_changed_on": "2026-09-10T16:10:34Z"
   },
   {
    "id": "PX-016",

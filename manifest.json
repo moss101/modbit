@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 572,
+    "root_and_tooling": 576,
     "docs_bytes": 1037558
   },
   "sections": [
@@ -3262,9 +3262,19 @@
       "sha256": "02114e9701217fd7cf53220cf96aba31ee0748b9941d58c339debbc8a843ff66"
     },
     {
+      "path": "evidence/m3/IMP-EV-0168/ci-run-34498383277-tests.log",
+      "bytes": 2007,
+      "sha256": "3020c6e11a914d02eba6a6cdcf64fff7435bd797f3a8e8d78f47c69365fd32cd"
+    },
+    {
+      "path": "evidence/m3/IMP-EV-0168/ci-run-34498383277.json",
+      "bytes": 37317,
+      "sha256": "16c39bba70461d51e17f499c99673d31287afbb21f7329a51eae7d166968f36e"
+    },
+    {
       "path": "evidence/m3/IMP-EV-0168/evidence.json",
-      "bytes": 1412,
-      "sha256": "a2c05c08f9e39d6c71e95f0d347321d4b602f086bbc5a65c8c14b27170c3e63c"
+      "bytes": 1747,
+      "sha256": "b4db381f8ce33aff65d40d4a76dd444880c8f1a224a0e1d43df04196c7ff7258"
     },
     {
       "path": "evidence/m3/IMP-EV-0170/TASK_CARD.md",
@@ -3577,9 +3587,19 @@
       "sha256": "b6893a497e954894af48364366bca3fa234d8c5e021df75dda6aba46c1f535a8"
     },
     {
+      "path": "evidence/m3/PX-015/ci-run-34498383277-tests.log",
+      "bytes": 2517,
+      "sha256": "a8f2d7e88e7e9aece42af677d8fd6dba6178cc4543e53ff3e2c609d983808895"
+    },
+    {
+      "path": "evidence/m3/PX-015/ci-run-34498383277.json",
+      "bytes": 37317,
+      "sha256": "16c39bba70461d51e17f499c99673d31287afbb21f7329a51eae7d166968f36e"
+    },
+    {
       "path": "evidence/m3/PX-015/evidence.json",
-      "bytes": 1725,
-      "sha256": "09f23cdc44e02fc97fed86c455bc4e35e940c330f07150c05b33287cc8892fcb"
+      "bytes": 2073,
+      "sha256": "11c4acd953047fb1837d7716584d3261ad0e16cd33f6ba0f6f1187969680764f"
     },
     {
       "path": "evidence/m3/PX-016/TASK_CARD.md",
@@ -3674,12 +3694,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 40904,
-      "sha256": "c8080292e39975618ac26d7838d8118071a5fc0406ead0918231439152aaf53f"
+      "sha256": "2b66f767accdd753d4412c455304f936f6fb18ff81e497143f99891c272dcc12"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1216435,
-      "sha256": "7f8e438c10ca86694881c92387d5bbc21a685b2833955318d9f1c6134e7ff6fc"
+      "bytes": 1219458,
+      "sha256": "0a28759c2d63718458a6f0a05aab1b518d440d9bda37d9c89c55e9460ba64405"
     },
     {
       "path": "tools/build_graph.py",

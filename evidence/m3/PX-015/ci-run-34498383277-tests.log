@@ -1,0 +1,12 @@
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T15:53:37.1266560Z test ledger_records_injections_and_marks_use_only_at_the_retrieved_revision ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T15:53:37.1268750Z test left_out_candidates_become_signature_stubs_inside_the_budget_with_hydration_handles ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T15:53:44.8015720Z test m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T15:53:53.0771900Z test qual_px_015_retrieval_before_edit_is_enforced_and_a_stale_record_is_refused ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T15:54:45.4386138Z test ledger_records_injections_and_marks_use_only_at_the_retrieved_revision ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T15:54:45.4387280Z test left_out_candidates_become_signature_stubs_inside_the_budget_with_hydration_handles ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T15:55:02.5398617Z test m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T15:55:16.1099459Z test qual_px_015_retrieval_before_edit_is_enforced_and_a_stale_record_is_refused ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T15:53:05.9283846Z test ledger_records_injections_and_marks_use_only_at_the_retrieved_revision ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T15:53:05.9284818Z test left_out_candidates_become_signature_stubs_inside_the_budget_with_hydration_handles ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T15:53:09.3441228Z test m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T15:53:14.1202876Z test qual_px_015_retrieval_before_edit_is_enforced_and_a_stale_record_is_refused ... ok
