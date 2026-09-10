@@ -15188,12 +15188,14 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0254",
    "source": "docs/41",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m3/IMP-EV-0254/TASK_CARD.md",
     "test:the_structural_profile_is_compared_with_the_hybrid_baseline_case_by_case",
     "test:harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them",
-    "test:m3_7_retrieval_planner_starts_cheap_escalates_on_short_coverage_and_fuses_with_boosts"
+    "test:m3_7_retrieval_planner_starts_cheap_escalates_on_short_coverage_and_fuses_with_boosts",
+    "commit:715a214",
+    "run:gha-34539689255"
    ],
    "notes": [
     {
@@ -15219,9 +15221,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "finding: better than exact-only (+0.875 recall), no better than hybrid (8 ties) and 2.25 more steps"
+    },
+    {
+     "at": "2026-09-10T23:01:49Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34539689255 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-10T23:01:49Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34539689255; the finding and its limits are in evidence/m3/IMP-EV-0254/TASK_CARD.md"
     }
    ],
-   "status_changed_on": "2026-09-10T22:53:45Z"
+   "status_changed_on": "2026-09-10T23:01:49Z"
   },
   {
    "id": "IMP-EV-0255",

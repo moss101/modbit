@@ -1,0 +1,9 @@
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:56:15.1744663Z test the_structural_profile_is_compared_with_the_hybrid_baseline_case_
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:56:22.8699130Z test m3_7_retrieval_planner_starts_cheap_escalates_on_short_coverage_a
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:57:28.9552543Z test harness_measures_the_three_profiles_on_a_real_corpus_and_reports_
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:56:01.1216040Z test the_structural_profile_is_compared_with_the_hybrid_baseline_case_b
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:56:09.4677980Z test m3_7_retrieval_planner_starts_cheap_escalates_on_short_coverage_an
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:57:25.0706250Z test harness_measures_the_three_profiles_on_a_real_corpus_and_reports_t
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:57:59.7583343Z test the_structural_profile_is_compared_with_the_hybrid_baseline_case
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:58:25.9781822Z test m3_7_retrieval_planner_starts_cheap_escalates_on_short_coverage_
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T23:00:23.6437973Z test harness_measures_the_three_profiles_on_a_real_corpus_and_reports
