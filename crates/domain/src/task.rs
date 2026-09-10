@@ -292,6 +292,58 @@ pub enum TaskEvent {
         /// Tool names activated.
         tools: Vec<String>,
     },
+    /// `RepairAttemptRecorded` (docs/28 §5, PX-018): recorded before the
+    /// attempt's change and verification run; no state change.
+    RepairAttemptRecorded {
+        /// 1-based ordinal within the task.
+        attempt_ordinal: u32,
+        /// The open failure signature the attempt targets.
+        failure_signature: String,
+        /// One-sentence hypothesis.
+        hypothesis: String,
+        /// Normalized fingerprint of the hypothesis (equivalence key).
+        hypothesis_fingerprint: String,
+        /// What the agent read or ran.
+        evidence_refs: Vec<String>,
+        /// Files/symbols and the change intent.
+        intended_fix: String,
+        /// Object hash of the attempt JSON.
+        attempt_ref: String,
+        /// Workspace revision when the attempt started.
+        start_revision: u64,
+    },
+    /// `RepairAttemptConcluded` (docs/28 §5): the verification result and
+    /// outcome of a recorded attempt; a WORSENED attempt is reverted through
+    /// the Change Engine unless justified. No state change.
+    RepairAttemptConcluded {
+        /// Ordinal.
+        attempt_ordinal: u32,
+        /// Signature.
+        failure_signature: String,
+        /// `RESOLVED` | `PARTIAL` | `UNCHANGED` | `WORSENED`.
+        outcome: String,
+        /// Candidate revision the verification ran at.
+        verification_revision: String,
+        /// The change tool calls of the attempt.
+        change_refs: Vec<String>,
+        /// Normalized fingerprint of the attempt's change (paths and content hashes).
+        change_fingerprint: String,
+        /// Whether a WORSENED change was reverted.
+        reverted: bool,
+    },
+    /// `RepairEscalated` (docs/28 §5): the loop refused to run an attempt
+    /// (equivalent hypothesis, bound exhausted, oscillation) and the task
+    /// needs attention with its attempt history. No state change.
+    RepairEscalated {
+        /// Signature.
+        failure_signature: String,
+        /// Why.
+        reason: String,
+        /// Attempts so far on that signature.
+        attempts: u32,
+        /// Object hash of the attempt history JSON.
+        history_ref: String,
+    },
     /// `SelfReviewRecorded` (docs/28 PX-019); no state change.
     SelfReviewRecorded {
         /// Object hash of the review JSON.
@@ -359,6 +411,9 @@ impl TaskEvent {
             Self::PlanRevised { .. } => "PlanRevised",
             Self::SelfReviewRecorded { .. } => "SelfReviewRecorded",
             Self::ToolsActivated { .. } => "ToolsActivated",
+            Self::RepairAttemptRecorded { .. } => "RepairAttemptRecorded",
+            Self::RepairAttemptConcluded { .. } => "RepairAttemptConcluded",
+            Self::RepairEscalated { .. } => "RepairEscalated",
             Self::HarnessBudgetExhausted { .. } => "HarnessBudgetExhausted",
             Self::NoProgressDetected { .. } => "NoProgressDetected",
             Self::ReviewDecisionRecorded { .. } => "ReviewDecisionRecorded",
@@ -458,6 +513,9 @@ impl Task {
             | TaskEvent::PlanRevised { .. }
             | TaskEvent::SelfReviewRecorded { .. }
             | TaskEvent::ToolsActivated { .. }
+            | TaskEvent::RepairAttemptRecorded { .. }
+            | TaskEvent::RepairAttemptConcluded { .. }
+            | TaskEvent::RepairEscalated { .. }
             | TaskEvent::HarnessBudgetExhausted { .. }
             | TaskEvent::NoProgressDetected { .. }
             | TaskEvent::ReviewDecisionRecorded { .. } => {

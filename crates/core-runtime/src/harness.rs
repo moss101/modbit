@@ -92,6 +92,15 @@ pub struct HarnessState {
     /// the next turn on; REQ-EV-0134).
     #[serde(default)]
     pub activated_tools: Vec<String>,
+    /// Repair policy (docs/28 §5).
+    #[serde(default)]
+    pub repair_policy: RepairPolicy,
+    /// Recorded repair attempts, in order.
+    #[serde(default)]
+    pub repair_attempts: Vec<RepairAttempt>,
+    /// Ordinal of the attempt whose change and verification are pending.
+    #[serde(default)]
+    pub pending_attempt: Option<u32>,
     /// Revision of the last COMPLETION run that passed attribution.
     #[serde(default)]
     pub completion_verified_revision: Option<u64>,
@@ -110,6 +119,12 @@ pub enum HarnessRefusal {
         path: String,
         /// Plan version the write was checked against.
         plan_version: u32,
+    },
+    /// A change after a failed verification without a recorded repair attempt
+    /// (docs/28 §5, PX-018).
+    RepairAttemptRequired {
+        /// The open verification failure signatures.
+        signatures: Vec<String>,
     },
     /// Completion proposed without a self-review (docs/28 PX-019).
     SelfReviewRequired,
@@ -155,6 +170,86 @@ pub const COMPLETE_TOOL: &str = "task.complete";
 pub const VERIFY_TOOL: &str = "verify.run";
 /// Harness tool: a typed question to the user (REQ-EV-0222); the run suspends until answered.
 pub const ASK_TOOL: &str = "user.ask";
+/// Harness tool: record a repair attempt before changing code after a failed
+/// verification (docs/28 §5, PX-018).
+pub const REPAIR_TOOL: &str = "repair.attempt";
+
+/// Repair policy (docs/28 §5 "Repair policy"; Alpha defaults, policy-overridable).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RepairPolicy {
+    /// Attempts per failure signature.
+    pub max_attempts_per_signature: u32,
+    /// Attempts per task.
+    pub max_attempts_per_task: u32,
+    /// WORSENED attempts tolerated before escalation.
+    pub max_worsened_before_escalation: u32,
+}
+
+impl Default for RepairPolicy {
+    fn default() -> Self {
+        Self {
+            max_attempts_per_signature: 2,
+            max_attempts_per_task: 6,
+            max_worsened_before_escalation: 1,
+        }
+    }
+}
+
+/// A recorded repair attempt (docs/28 §5 `RepairAttempt`).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RepairAttempt {
+    /// 1-based ordinal within the task.
+    pub attempt_ordinal: u32,
+    /// The open failure signature (`verify:<check_id>:<hash>`).
+    pub failure_signature: String,
+    /// Hypothesis as given.
+    pub hypothesis: String,
+    /// Normalized fingerprint of the hypothesis.
+    pub hypothesis_fingerprint: String,
+    /// Evidence the agent cited.
+    pub evidence_refs: Vec<String>,
+    /// Intended fix.
+    pub intended_fix: String,
+    /// Workspace revision when the attempt started.
+    pub start_revision: u64,
+    /// `RESOLVED` | `PARTIAL` | `UNCHANGED` | `WORSENED` once concluded.
+    pub outcome: Option<String>,
+    /// Fingerprint of the change, once concluded.
+    pub change_fingerprint: Option<String>,
+}
+
+/// Normalized equivalence key of a hypothesis: lower-case alphanumeric words,
+/// stop words dropped, sorted and de-duplicated.
+#[must_use]
+pub fn hypothesis_fingerprint(text: &str) -> String {
+    const STOP: &[&str] = &[
+        "the", "a", "an", "is", "are", "to", "of", "in", "on", "and", "or", "it", "that", "this",
+        "be", "by", "for", "with", "as", "at", "so", "we", "i", "should", "must", "then",
+        "because", "since", "when", "if", "not", "no", "will", "can", "which", "its", "from",
+        "into", "than", "also", "but", "still",
+    ];
+    let mut words: Vec<String> = text
+        .split(|c: char| !c.is_ascii_alphanumeric())
+        .filter(|w| !w.is_empty())
+        .map(str::to_ascii_lowercase)
+        .filter(|w| !STOP.contains(&w.as_str()))
+        .collect();
+    words.sort();
+    words.dedup();
+    words.join(" ")
+}
+
+/// Why the repair loop refused to run an attempt.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RepairEscalation {
+    /// Signature.
+    pub failure_signature: String,
+    /// Reason.
+    pub reason: String,
+    /// Attempts on the signature so far.
+    pub attempts: u32,
+}
+
 /// Harness tool: search the deferred tool catalog and activate matches for
 /// the next turns (REQ-EV-0134 / 0177 / 0229). Discovery never authorizes.
 pub const TOOL_SEARCH: &str = "tool.search";
@@ -255,6 +350,159 @@ impl HarnessState {
             return Err(HarnessRefusal::PlanRequired);
         }
         Ok(())
+    }
+
+    /// Open verification failure signatures (`verify:` entries).
+    #[must_use]
+    pub fn open_verify_signatures(&self) -> Vec<String> {
+        self.open_failures
+            .iter()
+            .filter(|f| f.starts_with("verify:"))
+            .cloned()
+            .collect()
+    }
+
+    /// Resolve a check id or a full signature to an open signature.
+    #[must_use]
+    pub fn resolve_signature(&self, given: &str) -> Option<String> {
+        let g = given.trim();
+        self.open_verify_signatures().into_iter().find(|s| {
+            s == g
+                || s == &format!("verify:{g}")
+                || s.strip_prefix("verify:")
+                    .is_some_and(|rest| rest.starts_with(&format!("{g}:")))
+        })
+    }
+
+    /// docs/28 §5: after a failed verification a change needs a recorded
+    /// repair attempt first.
+    pub fn check_repair_gate(&self) -> Result<(), HarnessRefusal> {
+        let open = self.open_verify_signatures();
+        if !open.is_empty() && self.pending_attempt.is_none() {
+            return Err(HarnessRefusal::RepairAttemptRequired { signatures: open });
+        }
+        Ok(())
+    }
+
+    /// Record a new attempt or refuse it with the escalation reason (docs/28 §5:
+    /// equivalent hypothesis, per-signature bound, per-task bound).
+    pub fn start_attempt(
+        &mut self,
+        failure_signature: &str,
+        hypothesis: &str,
+        evidence_refs: Vec<String>,
+        intended_fix: &str,
+        start_revision: u64,
+    ) -> Result<&RepairAttempt, RepairEscalation> {
+        let fp = hypothesis_fingerprint(hypothesis);
+        let on_sig: Vec<&RepairAttempt> = self
+            .repair_attempts
+            .iter()
+            .filter(|a| a.failure_signature == failure_signature)
+            .collect();
+        let attempts = on_sig.len() as u32;
+        if on_sig.iter().any(|a| a.hypothesis_fingerprint == fp) {
+            return Err(RepairEscalation {
+                failure_signature: failure_signature.into(),
+                reason: "equivalent hypothesis already attempted for this failure signature".into(),
+                attempts,
+            });
+        }
+        if attempts >= self.repair_policy.max_attempts_per_signature {
+            return Err(RepairEscalation {
+                failure_signature: failure_signature.into(),
+                reason: format!(
+                    "max_attempts_per_signature ({}) exhausted",
+                    self.repair_policy.max_attempts_per_signature
+                ),
+                attempts,
+            });
+        }
+        if self.repair_attempts.len() as u32 >= self.repair_policy.max_attempts_per_task {
+            return Err(RepairEscalation {
+                failure_signature: failure_signature.into(),
+                reason: format!(
+                    "max_attempts_per_task ({}) exhausted",
+                    self.repair_policy.max_attempts_per_task
+                ),
+                attempts,
+            });
+        }
+        let ordinal = self.repair_attempts.len() as u32 + 1;
+        self.repair_attempts.push(RepairAttempt {
+            attempt_ordinal: ordinal,
+            failure_signature: failure_signature.into(),
+            hypothesis: hypothesis.into(),
+            hypothesis_fingerprint: fp,
+            evidence_refs,
+            intended_fix: intended_fix.into(),
+            start_revision,
+            outcome: None,
+            change_fingerprint: None,
+        });
+        self.pending_attempt = Some(ordinal);
+        Ok(self.repair_attempts.last().expect("pushed"))
+    }
+
+    /// Conclude the pending attempt from the verification signatures before
+    /// and after it. Returns the outcome and, when the loop must stop, the
+    /// escalation (oscillation / equivalent change, too many WORSENED).
+    pub fn conclude_attempt(
+        &mut self,
+        before: &[String],
+        after: &[String],
+        change_fingerprint: &str,
+    ) -> Option<(u32, String, Option<RepairEscalation>)> {
+        let ordinal = self.pending_attempt.take()?;
+        let idx = self
+            .repair_attempts
+            .iter()
+            .position(|a| a.attempt_ordinal == ordinal)?;
+        let target = self.repair_attempts[idx].failure_signature.clone();
+        let target_gone = !after.contains(&target);
+        let new_failures = after.iter().any(|s| !before.contains(s));
+        let outcome = match (target_gone, new_failures) {
+            (true, false) => "RESOLVED",
+            (true, true) => "PARTIAL",
+            (false, false) => "UNCHANGED",
+            (false, true) => "WORSENED",
+        };
+        let equivalent_change = !change_fingerprint.is_empty()
+            && self.repair_attempts[..idx]
+                .iter()
+                .any(|a| a.change_fingerprint.as_deref() == Some(change_fingerprint));
+        self.repair_attempts[idx].outcome = Some(outcome.into());
+        self.repair_attempts[idx].change_fingerprint = Some(change_fingerprint.into());
+        let worsened = self
+            .repair_attempts
+            .iter()
+            .filter(|a| a.outcome.as_deref() == Some("WORSENED"))
+            .count() as u32;
+        let attempts = self
+            .repair_attempts
+            .iter()
+            .filter(|a| a.failure_signature == target)
+            .count() as u32;
+        let escalation = if equivalent_change {
+            Some(RepairEscalation {
+                failure_signature: target,
+                reason: "the attempt's change is equivalent to a prior attempt's (no progress)"
+                    .into(),
+                attempts,
+            })
+        } else if worsened > self.repair_policy.max_worsened_before_escalation {
+            Some(RepairEscalation {
+                failure_signature: target,
+                reason: format!(
+                    "{worsened} WORSENED attempts exceed max_worsened_before_escalation ({})",
+                    self.repair_policy.max_worsened_before_escalation
+                ),
+                attempts,
+            })
+        } else {
+            None
+        };
+        Some((ordinal, outcome.into(), escalation))
     }
 
     /// A write must stay inside the current plan's expected files (docs/28
@@ -419,6 +667,67 @@ pub fn observe(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn repair_loop_records_attempts_and_escalates_on_equivalence_bounds_and_worsening() {
+        let mut h = HarnessState::default();
+        h.open_failures.push("verify:cargo:t.rs::a:abcd".into());
+        assert!(matches!(
+            h.check_repair_gate(),
+            Err(HarnessRefusal::RepairAttemptRequired { .. })
+        ));
+        assert_eq!(
+            h.resolve_signature("cargo:t.rs::a").as_deref(),
+            Some("verify:cargo:t.rs::a:abcd")
+        );
+        assert_eq!(h.resolve_signature("other"), None);
+        let sig = "verify:cargo:t.rs::a:abcd";
+        let a = h
+            .start_attempt(sig, "Reject the zero quantity", vec![], "guard", 3)
+            .unwrap();
+        assert_eq!((a.attempt_ordinal, a.start_revision), (1, 3));
+        assert!(
+            h.check_repair_gate().is_ok(),
+            "pending attempt admits the change"
+        );
+        // Equivalent wording is refused.
+        let e = h
+            .start_attempt(sig, "reject zero quantity!", vec![], "x", 4)
+            .unwrap_err();
+        assert!(e.reason.contains("equivalent"));
+        // WORSENED: the target stays and a new failure appears.
+        let (o, outcome, esc) = h
+            .conclude_attempt(
+                &[sig.into()],
+                &[sig.into(), "verify:other:1".into()],
+                "fp-1",
+            )
+            .unwrap();
+        assert_eq!((o, outcome.as_str(), esc.is_none()), (1, "WORSENED", true));
+        assert!(h.pending_attempt.is_none());
+        // Second attempt, different hypothesis; an equivalent change escalates.
+        h.start_attempt(sig, "Parse before validating", vec![], "y", 5)
+            .unwrap();
+        let (_, outcome, esc) = h
+            .conclude_attempt(&[sig.into()], &[sig.into()], "fp-1")
+            .unwrap();
+        assert_eq!(outcome, "UNCHANGED");
+        assert!(esc.unwrap().reason.contains("equivalent"));
+        // The per-signature bound (2) is exhausted.
+        let e = h
+            .start_attempt(sig, "Something new", vec![], "z", 6)
+            .unwrap_err();
+        assert!(e.reason.contains("max_attempts_per_signature"), "{e:?}");
+        // RESOLVED when the target is gone and nothing new failed.
+        let mut h2 = HarnessState::default();
+        h2.start_attempt(sig, "h", vec![], "f", 1).unwrap();
+        let (_, outcome, esc) = h2.conclude_attempt(&[sig.into()], &[], "fp-9").unwrap();
+        assert_eq!((outcome.as_str(), esc.is_none()), ("RESOLVED", true));
+        assert_eq!(
+            hypothesis_fingerprint("The parser accepts zero; reject it"),
+            "accepts parser reject zero"
+        );
+    }
 
     #[test]
     fn plan_gates_writes_and_completion_needs_clean_state() {

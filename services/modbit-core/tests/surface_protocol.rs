@@ -7270,7 +7270,8 @@ async fn qual_px_016_change_strategy_tests_first_one_concern_per_transaction_and
         // 1. the failing test first
         json!({"calls": [{"name": "change.apply", "args": {"path": "tests/quantities.rs", "op": "replace", "content": with_new_test}}]}),
         json!({"calls": [{"name": "verify.run", "args": {"reason": "the new test must fail first"}}]}),
-        // 2. the change, one concern
+        // 2. the repair attempt is recorded (PX-018), then the change, one concern
+        json!({"calls": [{"name": "repair.attempt", "args": {"check_id": "cargo:tests/quantities.rs::zero_quantity_is_rejected", "hypothesis": "parse_quantity accepts zero; guard n <= 0", "evidence_refs": ["verify.run"], "intended_fix": "src/lib.rs parse_quantity"}}]}),
         json!({"calls": [{"name": "change.apply", "args": {"path": "src/lib.rs", "op": "replace", "content": fixed_lib}}]}),
         json!({"calls": [{"name": "verify.run", "args": {"reason": "now it passes"}}]}),
         // 3. silent scope widening is refused
@@ -7460,5 +7461,219 @@ async fn qual_px_016_change_strategy_tests_first_one_concern_per_transaction_and
         "{tool_msgs:#?}"
     );
     assert_eq!(of("SelfReviewRecorded").len(), 2);
+    // PX-018: the recorded attempt concluded RESOLVED on the second TARGETED run.
+    let concluded = of("RepairAttemptConcluded");
+    assert_eq!(concluded.len(), 1, "{concluded:#?}");
+    assert_eq!(concluded[0]["outcome"], "RESOLVED", "{concluded:#?}");
+    let _ = repo;
+}
+
+/// PX-018 on the real rust-cli fixture: after a failed verification a change
+/// without a RepairAttempt is refused; the attempt records signature,
+/// hypothesis, evidence and intended fix before the change; a WORSENED
+/// attempt is concluded with its change fingerprint and reverted through the
+/// Change Engine; an equivalent hypothesis for the same failure escalates to
+/// Needs Attention with the attempt history.
+#[tokio::test]
+async fn qual_px_018_repair_attempts_are_recorded_bounded_reverted_when_worsened_and_escalate_on_equivalence()
+ {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (repo, root) = fixture_repo("rust-cli");
+    let lib = std::fs::read_to_string(repo.path().join("src/lib.rs")).unwrap();
+    let tests_src = std::fs::read_to_string(repo.path().join("tests/quantities.rs")).unwrap();
+    let with_new_test = format!(
+        "{tests_src}\n#[test]\nfn zero_quantity_is_rejected() {{\n    assert!(parse_quantity(\"0\").is_err());\n}}\n"
+    );
+    // A wrong change: it does not touch zero and it breaks formatting.
+    let wrong_lib = lib.replace(
+        "format!(\"{}.{:02}\", cents / 100, cents % 100)",
+        "format!(\"{}.{:03}\", cents / 100, cents % 100)",
+    );
+    assert_ne!(wrong_lib, lib);
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "zero quantities are rejected", "expected_files": ["tests/quantities.rs", "src/lib.rs"], "verification": ["zero_quantity_is_rejected"]}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "tests/quantities.rs", "op": "replace", "content": with_new_test}}]}),
+        json!({"calls": [{"name": "verify.run", "args": {"reason": "the new test fails first"}}]}),
+        // A change after the failed verification without an attempt is refused.
+        json!({"calls": [{"name": "change.apply", "args": {"path": "src/lib.rs", "op": "replace", "content": wrong_lib}}]}),
+        json!({"calls": [{"name": "repair.attempt", "args": {"check_id": "cargo:tests/quantities.rs::zero_quantity_is_rejected", "hypothesis": "parse_quantity accepts zero; the guard must reject n <= 0", "evidence_refs": ["fs.read src/lib.rs", "verify.run vr-1"], "intended_fix": "src/lib.rs parse_quantity: add the guard"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "src/lib.rs", "op": "replace", "content": wrong_lib}}]}),
+        json!({"calls": [{"name": "verify.run", "args": {"reason": "check the fix"}}]}),
+        // The same hypothesis again: escalation, not another run.
+        json!({"calls": [{"name": "repair.attempt", "args": {"check_id": "cargo:tests/quantities.rs::zero_quantity_is_rejected", "hypothesis": "The guard must reject n <= 0 because parse_quantity accepts zero", "evidence_refs": [], "intended_fix": "same"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "never reached", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn_with_env(
+        dir.path(),
+        &[
+            ("MODBIT_OPENAI_BASE_URL", &base),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+            ("CARGO_TERM_COLOR", "always"),
+        ],
+    );
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x19)).await;
+    let g = lease_for(&session);
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x1A),
+            "CreateTask",
+            CreateTask {
+                session_id: Some(session.clone()),
+                goal_text: "parse_quantity accepts zero; it must be rejected.".into(),
+                workspace_id: None,
+                execution_profile: String::new(),
+                origin: "cli".into(),
+                workspace_root: root.clone(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let task = Client::result::<TaskCreated>(&ack)
+        .unwrap()
+        .task_id
+        .unwrap();
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x1B),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 20,
+                max_tool_calls: 0,
+                max_no_progress_turns: 5,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 300).await;
+    let evs = task_events(&core, &session, &task).await;
+    let tool_msgs: Vec<String> = seen
+        .lock()
+        .unwrap()
+        .iter()
+        .flat_map(|b| b["messages"].as_array().cloned().unwrap_or_default())
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    assert_eq!(
+        (
+            st.state.as_str(),
+            st.wait_reason.as_str(),
+            st.run_state.as_str()
+        ),
+        ("Waiting", "UserInput", "Suspended"),
+        "{st:?}\n{tool_msgs:#?}"
+    );
+    let of = |t: &str| {
+        evs.iter()
+            .filter(|(_, x, _)| x == t)
+            .map(|(_, _, p)| p.clone())
+            .collect::<Vec<_>>()
+    };
+    // The unrecorded change was refused before any effector.
+    assert!(
+        tool_msgs
+            .iter()
+            .any(|t| t.contains("HARNESS_REPAIR_ATTEMPT_REQUIRED")
+                && t.contains("zero_quantity_is_rejected")),
+        "{tool_msgs:#?}"
+    );
+    // The attempt was recorded with all its fields before the change ran.
+    let recorded = of("RepairAttemptRecorded");
+    assert_eq!(recorded.len(), 1, "{recorded:#?}");
+    let a = &recorded[0];
+    assert_eq!(a["attempt_ordinal"], 1);
+    assert!(
+        a["failure_signature"]
+            .as_str()
+            .unwrap()
+            .starts_with("verify:cargo:tests/quantities.rs::zero_quantity_is_rejected:"),
+        "{a}"
+    );
+    assert_eq!(
+        a["hypothesis"],
+        "parse_quantity accepts zero; the guard must reject n <= 0"
+    );
+    assert_eq!(
+        a["evidence_refs"],
+        json!(["fs.read src/lib.rs", "verify.run vr-1"])
+    );
+    assert!(
+        a["hypothesis_fingerprint"]
+            .as_str()
+            .unwrap()
+            .contains("zero")
+    );
+    assert!(a["attempt_ref"].as_str().unwrap().len() == 64);
+    let recorded_offset = evs
+        .iter()
+        .position(|(_, t, _)| t == "RepairAttemptRecorded")
+        .unwrap();
+    let lib_write_offset = evs
+        .iter()
+        .enumerate()
+        .filter(|(_, (_, t, p))| t == "FileChanged" && p["path"] == "src/lib.rs")
+        .map(|(i, _)| i)
+        .next()
+        .unwrap();
+    assert!(
+        recorded_offset < lib_write_offset,
+        "recorded before the change"
+    );
+    // Concluded WORSENED (the target stayed, formats_totals broke), fingerprinted and reverted.
+    let concluded = of("RepairAttemptConcluded");
+    assert_eq!(concluded.len(), 1, "{concluded:#?}");
+    let cc = &concluded[0];
+    assert_eq!(cc["outcome"], "WORSENED", "{cc}");
+    assert_eq!(cc["reverted"], true, "{cc}");
+    assert!(!cc["change_refs"].as_array().unwrap().is_empty());
+    assert_eq!(cc["change_fingerprint"].as_str().unwrap().len(), 64);
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("src/lib.rs")).unwrap(),
+        lib,
+        "the worsening change was reverted on disk"
+    );
+    assert!(
+        of("FileChanged")
+            .iter()
+            .any(|e| e["path"] == "src/lib.rs" && e["op"].as_str().unwrap().starts_with("undo")),
+        "{:#?}",
+        of("FileChanged")
+    );
+    // The equivalent hypothesis escalated: RepairEscalated with the history, task Needs Attention.
+    let esc = of("RepairEscalated");
+    assert_eq!(esc.len(), 1, "{esc:#?}");
+    assert!(
+        esc[0]["reason"].as_str().unwrap().contains("equivalent"),
+        "{esc:#?}"
+    );
+    assert_eq!(esc[0]["attempts"], 1);
+    assert_eq!(esc[0]["history_ref"].as_str().unwrap().len(), 64);
+    let history = read_object(&mut c, id16(0x1C), esc[0]["history_ref"].as_str().unwrap()).await;
+    let history: serde_json::Value = serde_json::from_str(&history).unwrap();
+    assert_eq!(history[0]["outcome"], "WORSENED", "{history}");
+    let attention = of("TaskNeedsAttention");
+    assert!(
+        attention
+            .iter()
+            .any(|a| a["reason"].as_str().unwrap().contains("repair escalated")),
+        "{attention:#?}"
+    );
+    assert!(
+        of("SelfReviewRecorded").is_empty(),
+        "task.complete never ran"
+    );
     let _ = repo;
 }

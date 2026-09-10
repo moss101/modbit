@@ -1,0 +1,15 @@
+{
+ "task": "PX-018",
+ "requirement": "REQ-PX-018",
+ "qual": "QUAL-PX-018",
+ "tests": [
+  "qual_px_018_repair_attempts_are_recorded_bounded_reverted_when_worsened_and_escalate_on_equivalence",
+  "repair_loop_records_attempts_and_escalates_on_equivalence_bounds_and_worsening",
+  "m2_8_verification_engine_gates_completion_on_real_cargo_fixture",
+  "qual_px_016_change_strategy_tests_first_one_concern_per_transaction_and_no_silent_scope_widening"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "RepairAttempt recorded before the change; change refused without it; WORSENED concluded, fingerprinted and reverted; equivalent hypothesis escalates to Needs Attention with history; policy bounds enforced",
+ "audit": "IMPLEMENTED in this batch (was NOT-FOUND)"
+}

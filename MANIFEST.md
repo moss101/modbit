@@ -658,6 +658,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m3/PX-016/ci-run-34469269565-tests.log` | retained evidence | 2430 | `b7046bffb729567ce56b951431295e858687f53554bec52745bbabf978674660` |
 | `evidence/m3/PX-016/ci-run-34469269565.json` | retained evidence | 37317 | `5208d78eda32115305b861e8f7bfb6635dc06ba13cc8d7e55edaabdc2b157bae` |
 | `evidence/m3/PX-016/evidence.json` | retained evidence | 912 | `c120cf94ab4f58c6388cf0e739f45f07acc24707ea218011715a12649f92a095` |
+| `evidence/m3/PX-018/TASK_CARD.md` | retained evidence | 3548 | `9d67374911c7a0f6784378bda07dff0773cd8b74a4f39b1ca1e3d53f59ed548d` |
+| `evidence/m3/PX-018/evidence.json` | retained evidence | 759 | `f39682537f89f10cb534e1ee0972daf9236941eb71830964f36a6345598eb1e8` |
 | `evidence/m3/PX-026/TASK_CARD.md` | retained evidence | 3189 | `4615db25a626df74741f3e6de545ecd751addac484f128f8856ed33bd6464e4d` |
 | `evidence/m3/PX-026/ci-run-34467756882-tests.log` | retained evidence | 65408 | `79c0f8192c5e3083c8fe7c12d39f4caed30c58161e53ee58974467a60e1d7281` |
 | `evidence/m3/PX-026/ci-run-34467756882.json` | retained evidence | 37317 | `5f2418b7d2fca244d450172ef0671b0b08750b52cb7137f8aeb62e09d1f9cfea` |

@@ -13,9 +13,11 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use sha2::Digest;
+
 use modbit_core_runtime::harness::{
     self, ASK_TOOL, Budgets, COMPLETE_TOOL, HarnessRefusal, HarnessState, PLAN_TOOL, Plan,
-    TOOL_SEARCH, VERIFY_TOOL, WRITE_TOOLS, write_targets,
+    REPAIR_TOOL, RepairEscalation, TOOL_SEARCH, VERIFY_TOOL, WRITE_TOOLS, write_targets,
 };
 use modbit_domain::event::{Actor, AggregateType};
 use modbit_domain::run::{OwnerLocation, RunEvent, RunState};
@@ -92,6 +94,8 @@ enum LoopEnd {
     ReadyForReview,
     /// A typed question is pending (REQ-EV-0222): the run suspends, never hangs.
     NeedsInput(String),
+    /// The repair loop escalated (docs/28 §5): the task needs attention with its history.
+    NeedsAttention(String),
     Cancelled,
     BudgetExhausted(harness::Exhausted),
     ProviderFailed(String, String),
@@ -463,6 +467,55 @@ pub(crate) async fn rebuild(
                     state.resolve_flags_by_plan();
                 }
             }
+            "RepairAttemptRecorded" => {
+                let a = harness::RepairAttempt {
+                    attempt_ordinal: payload["attempt_ordinal"].as_u64().unwrap_or(0) as u32,
+                    failure_signature: payload["failure_signature"]
+                        .as_str()
+                        .unwrap_or_default()
+                        .to_owned(),
+                    hypothesis: payload["hypothesis"]
+                        .as_str()
+                        .unwrap_or_default()
+                        .to_owned(),
+                    hypothesis_fingerprint: payload["hypothesis_fingerprint"]
+                        .as_str()
+                        .unwrap_or_default()
+                        .to_owned(),
+                    evidence_refs: payload["evidence_refs"]
+                        .as_array()
+                        .map(|a| {
+                            a.iter()
+                                .filter_map(|x| x.as_str().map(str::to_owned))
+                                .collect()
+                        })
+                        .unwrap_or_default(),
+                    intended_fix: payload["intended_fix"]
+                        .as_str()
+                        .unwrap_or_default()
+                        .to_owned(),
+                    start_revision: payload["start_revision"].as_u64().unwrap_or(0),
+                    outcome: None,
+                    change_fingerprint: None,
+                };
+                state.pending_attempt = Some(a.attempt_ordinal);
+                state.repair_attempts.push(a);
+            }
+            "RepairAttemptConcluded" => {
+                let o = payload["attempt_ordinal"].as_u64().unwrap_or(0) as u32;
+                if let Some(a) = state
+                    .repair_attempts
+                    .iter_mut()
+                    .find(|a| a.attempt_ordinal == o)
+                {
+                    a.outcome = payload["outcome"].as_str().map(str::to_owned);
+                    a.change_fingerprint =
+                        payload["change_fingerprint"].as_str().map(str::to_owned);
+                }
+                if state.pending_attempt == Some(o) {
+                    state.pending_attempt = None;
+                }
+            }
             "ToolsActivated" => {
                 for t in payload["tools"].as_array().into_iter().flatten() {
                     if let Some(n) = t.as_str()
@@ -704,6 +757,11 @@ fn projection(
         name: COMPLETE_TOOL.into(),
         description: "Propose completion with a self-review: summary, findings (unresolved ones block completion), verification evidence.".into(),
         input_schema: serde_json::json!({"type":"object","properties":{"summary":{"type":"string"},"self_review":{"type":"object","properties":{"findings":{"type":"array","items":{"type":"object","properties":{"text":{"type":"string"},"resolved":{"type":"boolean"}},"required":["text","resolved"]}},"verification":{"type":"array","items":{"type":"string"}}},"required":["findings"]}},"required":["summary","self_review"]}),
+    });
+    tools.push(ToolProjection {
+        name: REPAIR_TOOL.into(),
+        description: "Record a repair attempt before changing code after a failed verification: the failing check (check_id), a one-sentence hypothesis, the evidence you read or ran, and the intended fix. A change after a failed verification without a recorded attempt is refused; an equivalent hypothesis for the same failure, or the policy's attempt bounds, escalate the task to Needs Attention with the attempt history; a WORSENED attempt is reverted (docs/28 §5).".into(),
+        input_schema: serde_json::json!({"type":"object","properties":{"check_id":{"type":"string"},"failure_signature":{"type":"string"},"hypothesis":{"type":"string","minLength":1},"evidence_refs":{"type":"array","items":{"type":"string"}},"intended_fix":{"type":"string"}},"required":["hypothesis"]}),
     });
     tools.push(ToolProjection {
         name: VERIFY_TOOL.into(),
@@ -1232,6 +1290,7 @@ async fn run_loop(
         let mut progress = false;
         let mut completed = false;
         let mut pending_question: Option<String> = None;
+        let mut escalation: Option<RepairEscalation> = None;
         let mut step_ordinal = 2u32;
         for (call_id, name, arguments_json) in calls {
             if cancel.is_cancelled() {
@@ -1298,6 +1357,28 @@ async fn run_loop(
                     progress = true;
                     (entry, StepType::Plan, None)
                 }
+                REPAIR_TOOL => {
+                    let (entry, esc) = handle_repair(
+                        &core,
+                        &task,
+                        lt,
+                        &actor,
+                        &mut state,
+                        &call_id,
+                        &arguments_json,
+                    )
+                    .await;
+                    progress = true;
+                    let failed = esc.is_some();
+                    if esc.is_some() {
+                        escalation = esc;
+                    }
+                    (
+                        entry,
+                        StepType::Plan,
+                        failed.then(|| "REPAIR_ESCALATED".to_owned()),
+                    )
+                }
                 ASK_TOOL => {
                     let (entry, question_id) =
                         handle_ask(&core, &task, lturn, &actor, &call_id, &arguments_json).await;
@@ -1311,9 +1392,24 @@ async fn run_loop(
                     }
                 }
                 VERIFY_TOOL => {
+                    let before = state.open_verify_signatures();
                     let (entry, ok, rev) =
                         handle_verify(&core, &task, lturn, &actor, &mut state, &call_id).await;
                     progress = true;
+                    if state.pending_attempt.is_some()
+                        && let Some(esc) = conclude_repair(
+                            &core,
+                            &task,
+                            lt,
+                            &actor,
+                            &mut state,
+                            &before,
+                            rev.clone(),
+                        )
+                        .await
+                    {
+                        escalation = Some(esc);
+                    }
                     (
                         entry,
                         StepType::Verification {
@@ -1376,6 +1472,15 @@ async fn run_loop(
                                 .try_for_each(|p| state.check_write(p))
                         })
                         .and_then(|()| {
+                            // docs/28 §5 (PX-018): after a failed verification a
+                            // change needs a recorded repair attempt.
+                            if WRITE_TOOLS.contains(&name.as_str()) {
+                                state.check_repair_gate()
+                            } else {
+                                Ok(())
+                            }
+                        })
+                        .and_then(|()| {
                             state
                                 .check_tool_budget()
                                 .map_err(|x| HarnessRefusal::OpenFailures {
@@ -1387,6 +1492,9 @@ async fn run_loop(
                                 HarnessRefusal::PlanRequired => "PLAN_REQUIRED",
                                 HarnessRefusal::PlanRevisionRequired { .. } => {
                                     "PLAN_REVISION_REQUIRED"
+                                }
+                                HarnessRefusal::RepairAttemptRequired { .. } => {
+                                    "REPAIR_ATTEMPT_REQUIRED"
                                 }
                                 HarnessRefusal::OpenFailures { .. } => "BUDGET_EXHAUSTED",
                                 _ => "HARNESS",
@@ -1578,12 +1686,18 @@ async fn run_loop(
                 );
             }
             apply_entry(&mut transcript, &mut state, entry);
-            if completed || pending_question.is_some() {
+            if completed || pending_question.is_some() || escalation.is_some() {
                 break;
             }
         }
         if let Some(q) = pending_question {
             break LoopEnd::NeedsInput(q);
+        }
+        if let Some(esc) = escalation {
+            break LoopEnd::NeedsAttention(format!(
+                "repair escalated for {}: {} ({} attempt(s))",
+                esc.failure_signature, esc.reason, esc.attempts
+            ));
         }
         if cancel.is_cancelled() {
             let mut store = core.store.lock().await;
@@ -1785,6 +1899,41 @@ async fn run_loop(
                 ],
             );
         }
+        LoopEnd::NeedsAttention(reason) => {
+            let _ = append(
+                &mut store,
+                &core,
+                lt,
+                AggregateType::Run,
+                *run_id.as_bytes(),
+                vec![typed(
+                    "RunSuspended",
+                    &RunEvent::RunSuspended,
+                    actor.clone(),
+                )],
+            );
+            let _ = append(
+                &mut store,
+                &core,
+                lt,
+                AggregateType::Task,
+                *task.task_id.as_bytes(),
+                vec![
+                    typed(
+                        "TaskWaiting",
+                        &TaskEvent::TaskWaiting {
+                            reason: WaitReason::UserInput,
+                        },
+                        actor.clone(),
+                    ),
+                    typed(
+                        "TaskNeedsAttention",
+                        &TaskEvent::TaskNeedsAttention { reason },
+                        actor.clone(),
+                    ),
+                ],
+            );
+        }
         LoopEnd::NoProgress(turns) => {
             let _ = append(
                 &mut store,
@@ -1865,6 +2014,340 @@ async fn run_loop(
             );
         }
     }
+}
+
+/// The workspace's `FileChanged` records after `since` revision, oldest
+/// first: (tool call, path, after hash, op, revision).
+async fn changes_since(
+    core: &Core,
+    root: &str,
+    since: u64,
+) -> Vec<(ToolCallId, String, Option<String>, String, u64)> {
+    let store = core.store.lock().await;
+    let Ok(events) = store.read_aggregate(&crate::tools::workspace_aggregate_id(root), 0, 100_000)
+    else {
+        return vec![];
+    };
+    let mut out = Vec::new();
+    for e in &events {
+        if let Ok(modbit_domain::workspace::WorkspaceEvent::FileChanged {
+            tool_call_id,
+            path,
+            after_hash,
+            op,
+            workspace_revision,
+            ..
+        }) = store
+            .payload(&e.envelope)
+            .and_then(|p| serde_json::from_value(p).map_err(Into::into))
+            && workspace_revision > since
+        {
+            out.push((tool_call_id, path, after_hash, op, workspace_revision));
+        }
+    }
+    out
+}
+
+/// Latest workspace revision recorded by a `FileChanged` (0 when none).
+async fn latest_change_revision(core: &Core, root: &str) -> u64 {
+    changes_since(core, root, 0)
+        .await
+        .iter()
+        .map(|c| c.4)
+        .max()
+        .unwrap_or(0)
+}
+
+/// `repair.attempt` (docs/28 §5, PX-018): record the attempt before the
+/// change, or escalate.
+async fn handle_repair(
+    core: &Core,
+    task: &Task,
+    lt: Lineage,
+    actor: &Actor,
+    state: &mut HarnessState,
+    call_id: &str,
+    args: &str,
+) -> (TranscriptEntry, Option<RepairEscalation>) {
+    let v: serde_json::Value = serde_json::from_str(args).unwrap_or_default();
+    let given = v["failure_signature"]
+        .as_str()
+        .or_else(|| v["check_id"].as_str())
+        .unwrap_or_default();
+    let hypothesis = v["hypothesis"]
+        .as_str()
+        .unwrap_or_default()
+        .trim()
+        .to_owned();
+    let evidence_refs: Vec<String> = v["evidence_refs"]
+        .as_array()
+        .map(|a| {
+            a.iter()
+                .filter_map(|x| x.as_str().map(str::to_owned))
+                .collect()
+        })
+        .unwrap_or_default();
+    let intended_fix = v["intended_fix"].as_str().unwrap_or_default().to_owned();
+    let refuse = |code: &str, msg: String| TranscriptEntry::ToolResult {
+        call_id: call_id.into(),
+        name: REPAIR_TOOL.into(),
+        text: format!("status: REFUSED\nerror_code: {code}\nerror: {msg}"),
+        failure_signature: None,
+        clears: vec![],
+        wrote: None,
+        progress: false,
+    };
+    if hypothesis.is_empty() {
+        return (
+            refuse("INVALID_ARGUMENTS", "hypothesis is required".into()),
+            None,
+        );
+    }
+    let Some(sig) = state.resolve_signature(given) else {
+        return (
+            refuse(
+                "NO_SUCH_OPEN_FAILURE",
+                format!(
+                    "`{given}` is not an open verification failure; open: {}",
+                    state.open_verify_signatures().join(", ")
+                ),
+            ),
+            None,
+        );
+    };
+    let root = task.workspace_root.clone().unwrap_or_default();
+    let start_revision = latest_change_revision(core, &root).await;
+    match state.start_attempt(
+        &sig,
+        &hypothesis,
+        evidence_refs.clone(),
+        &intended_fix,
+        start_revision,
+    ) {
+        Ok(a) => {
+            let a = a.clone();
+            let attempt_ref = {
+                let store = core.store.lock().await;
+                store
+                    .objects()
+                    .put(serde_json::to_vec(&a).unwrap_or_default().as_slice())
+                    .unwrap_or_default()
+            };
+            let mut store = core.store.lock().await;
+            let _ = append(
+                &mut store,
+                core,
+                lt,
+                AggregateType::Task,
+                *task.task_id.as_bytes(),
+                vec![typed(
+                    "RepairAttemptRecorded",
+                    &TaskEvent::RepairAttemptRecorded {
+                        attempt_ordinal: a.attempt_ordinal,
+                        failure_signature: a.failure_signature.clone(),
+                        hypothesis: a.hypothesis.clone(),
+                        hypothesis_fingerprint: a.hypothesis_fingerprint.clone(),
+                        evidence_refs: a.evidence_refs.clone(),
+                        intended_fix: a.intended_fix.clone(),
+                        attempt_ref: attempt_ref.clone(),
+                        start_revision: a.start_revision,
+                    },
+                    actor.clone(),
+                )],
+            );
+            (
+                TranscriptEntry::ToolResult {
+                    call_id: call_id.into(),
+                    name: REPAIR_TOOL.into(),
+                    text: format!(
+                        "status: SUCCESS\nrepair attempt {} recorded for {} (ref {attempt_ref}); make the change, then verify.run concludes it\nattempts on this failure: {}/{}; on this task: {}/{}",
+                        a.attempt_ordinal,
+                        a.failure_signature,
+                        state
+                            .repair_attempts
+                            .iter()
+                            .filter(|x| x.failure_signature == a.failure_signature)
+                            .count(),
+                        state.repair_policy.max_attempts_per_signature,
+                        state.repair_attempts.len(),
+                        state.repair_policy.max_attempts_per_task
+                    ),
+                    failure_signature: None,
+                    clears: vec![],
+                    wrote: None,
+                    progress: true,
+                },
+                None,
+            )
+        }
+        Err(esc) => {
+            let history_ref = record_escalation(core, task, lt, actor, state, &esc).await;
+            (
+                TranscriptEntry::ToolResult {
+                    call_id: call_id.into(),
+                    name: REPAIR_TOOL.into(),
+                    text: format!(
+                        "status: REFUSED\nerror_code: REPAIR_ESCALATED\nerror: {} — the task moves to Needs Attention with the attempt history (ref {history_ref})",
+                        esc.reason
+                    ),
+                    failure_signature: None,
+                    clears: vec![],
+                    wrote: None,
+                    progress: false,
+                },
+                Some(esc),
+            )
+        }
+    }
+}
+
+/// Record `RepairEscalated` with the attempt history as an object.
+async fn record_escalation(
+    core: &Core,
+    task: &Task,
+    lt: Lineage,
+    actor: &Actor,
+    state: &HarnessState,
+    esc: &RepairEscalation,
+) -> String {
+    let history_ref = {
+        let store = core.store.lock().await;
+        store
+            .objects()
+            .put(
+                serde_json::to_vec(&state.repair_attempts)
+                    .unwrap_or_default()
+                    .as_slice(),
+            )
+            .unwrap_or_default()
+    };
+    let mut store = core.store.lock().await;
+    let _ = append(
+        &mut store,
+        core,
+        lt,
+        AggregateType::Task,
+        *task.task_id.as_bytes(),
+        vec![typed(
+            "RepairEscalated",
+            &TaskEvent::RepairEscalated {
+                failure_signature: esc.failure_signature.clone(),
+                reason: esc.reason.clone(),
+                attempts: esc.attempts,
+                history_ref: history_ref.clone(),
+            },
+            actor.clone(),
+        )],
+    );
+    history_ref
+}
+
+/// Conclude the pending repair attempt after a verification run: outcome
+/// from the signatures before and after, the change fingerprint from the
+/// attempt's `FileChanged` records, a WORSENED change reverted through the
+/// Change Engine, and the escalations of docs/28 §5.
+async fn conclude_repair(
+    core: &Arc<Core>,
+    task: &Task,
+    lt: Lineage,
+    actor: &Actor,
+    state: &mut HarnessState,
+    before: &[String],
+    verification_revision: String,
+) -> Option<RepairEscalation> {
+    let root = task.workspace_root.clone().unwrap_or_default();
+    let start = state
+        .pending_attempt
+        .and_then(|o| {
+            state
+                .repair_attempts
+                .iter()
+                .find(|a| a.attempt_ordinal == o)
+        })
+        .map_or(0, |a| a.start_revision);
+    let changes = changes_since(core, &root, start).await;
+    let mut material = String::new();
+    let mut change_refs: Vec<String> = Vec::new();
+    for (call, path, after, _op, _rev) in &changes {
+        material.push_str(&format!("{path}={}\n", after.clone().unwrap_or_default()));
+        let c = call.to_string();
+        if !change_refs.contains(&c) {
+            change_refs.push(c);
+        }
+    }
+    let change_fingerprint = if material.is_empty() {
+        String::new()
+    } else {
+        hex::encode(sha2::Sha256::digest(material.as_bytes()))
+    };
+    let after = state.open_verify_signatures();
+    let (ordinal, outcome, escalation) =
+        state.conclude_attempt(before, &after, &change_fingerprint)?;
+    let failure_signature = state
+        .repair_attempts
+        .iter()
+        .find(|a| a.attempt_ordinal == ordinal)
+        .map(|a| a.failure_signature.clone())
+        .unwrap_or_default();
+    // WORSENED: revert the attempt's changes, latest first (docs/28 §5).
+    let mut reverted = false;
+    if outcome == "WORSENED" {
+        let mut calls: Vec<ToolCallId> = Vec::new();
+        for (call, _, _, _, _) in changes.iter().rev() {
+            if !calls.contains(call) {
+                calls.push(*call);
+            }
+        }
+        let mut all_ok = !calls.is_empty();
+        for call in calls {
+            match crate::undo::plan(core, &root, call).await {
+                Ok(plan) => {
+                    match crate::undo::apply(
+                        core,
+                        core.tenant_id,
+                        task.session_id,
+                        task.task_id,
+                        &root,
+                        &plan,
+                    )
+                    .await
+                    {
+                        Ok((ok, _, _)) => all_ok &= ok,
+                        Err(_) => all_ok = false,
+                    }
+                }
+                Err(_) => all_ok = false,
+            }
+        }
+        reverted = all_ok;
+    }
+    {
+        let mut store = core.store.lock().await;
+        let _ = append(
+            &mut store,
+            core,
+            lt,
+            AggregateType::Task,
+            *task.task_id.as_bytes(),
+            vec![typed(
+                "RepairAttemptConcluded",
+                &TaskEvent::RepairAttemptConcluded {
+                    attempt_ordinal: ordinal,
+                    failure_signature,
+                    outcome: outcome.clone(),
+                    verification_revision,
+                    change_refs,
+                    change_fingerprint,
+                    reverted,
+                },
+                actor.clone(),
+            )],
+        );
+    }
+    if let Some(esc) = &escalation {
+        record_escalation(core, task, lt, actor, state, esc).await;
+    }
+    escalation
 }
 
 /// `tool.search` (REQ-EV-0134/0177/0229): match the query against the

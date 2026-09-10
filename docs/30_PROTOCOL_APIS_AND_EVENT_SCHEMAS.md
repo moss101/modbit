@@ -97,7 +97,7 @@ CommandEnvelope {
 `WorkspaceRevisionAdvanced, FileChanged, GitStateChanged, TerminalCreated, TerminalOutputAdvanced, ProcessExited, SandboxLeaseAcquired, SandboxLost, BrowserSessionCreated, BrowserStateAdvanced, BrowserControlTransferred`.
 
 ### Competence
-`PlanRecorded, PlanRevised, RepairAttemptRecorded, RepairEscalated, SelfReviewRecorded, ScopeExpansionRecorded, NoProgressDetected, HarnessBudgetExhausted, ToolsActivated` (`28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md`, `14_AGENT_RUNTIME_AND_ORCHESTRATION.md`) and the verification execution events `VerificationBaselineRecorded, VerificationRunRecorded, FlakyCheckQuarantined, RegressionAttributed, DiffInvariantViolated` (`64_VERIFICATION_EXECUTION_CONTRACTS.md`). Payloads bind run, candidate revision, environment digest and, where applicable, check ids, invariant ids and scope counters; raw reports are content-addressed artifacts.
+`PlanRecorded, PlanRevised, RepairAttemptRecorded, RepairAttemptConcluded, RepairEscalated, SelfReviewRecorded, ScopeExpansionRecorded, NoProgressDetected, HarnessBudgetExhausted, ToolsActivated` (`28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md`, `14_AGENT_RUNTIME_AND_ORCHESTRATION.md`) and the verification execution events `VerificationBaselineRecorded, VerificationRunRecorded, FlakyCheckQuarantined, RegressionAttributed, DiffInvariantViolated` (`64_VERIFICATION_EXECUTION_CONTRACTS.md`). Payloads bind run, candidate revision, environment digest and, where applicable, check ids, invariant ids and scope counters; raw reports are content-addressed artifacts.
 
 ### Durability
 `CheckpointStarted, CheckpointCommitted, CheckpointRejectedStale, CompactionStarted, CompactionCommitted, CompactionRejectedStale, MemoryItemPromoted, MemoryItemSuperseded`.
