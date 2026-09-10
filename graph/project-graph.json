@@ -21119,8 +21119,59 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-026",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "milestone_override": "DR-M2-002: exact and BM25 retrieval are M3.7",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:b014339",
+    "test:qual_px_026_language_labels_are_honest_and_served_to_every_client",
+    "test:cli_drives_a_real_core_end_to_end",
+    "test:edits_preserve_crlf_and_refuse_non_utf8",
+    "test:vitest_fixture_parses_structured_reports_when_vitest_is_installed",
+    "test:pytest_fixture_produces_structured_reports_with_stable_failure_signatures_when_pytest_is_installed",
+    "test:m2_8_verification_engine_gates_completion_on_real_cargo_fixture",
+    "test:m3_1_exact_regex_path_index_serves_bounded_revision_bound_hits_and_refreshes_on_writes",
+    "test:m3_2_bm25_lexical_index_ranks_files_and_refreshes_on_writes",
+    "run:gha-34467756882",
+    "artifact:evidence/m3/PX-026/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T11:02:15Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: PARTIAL (see card)"
+    },
+    {
+     "at": "2026-09-10T11:02:15Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "ListLanguages catalog, CLI/desktop labels, workspace LineEnding preservation"
+    },
+    {
+     "at": "2026-09-10T11:02:15Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "served by the Core, printed by the CLI, shown by the desktop"
+    },
+    {
+     "at": "2026-09-10T11:02:16Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on the three Alpha fixtures and the workspace"
+    },
+    {
+     "at": "2026-09-10T11:02:16Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34467756882 on b014339 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T11:02:16Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34467756882"
+    }
+   ],
+   "status_changed_on": "2026-09-10T11:02:16Z"
   },
   {
    "id": "PX-027",

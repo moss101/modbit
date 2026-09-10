@@ -12,8 +12,18 @@
   "m3_1_exact_regex_path_index_serves_bounded_revision_bound_hits_and_refreshes_on_writes",
   "m3_2_bm25_lexical_index_ranks_files_and_refreshes_on_writes"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "b014339"
+ ],
+ "runs": [
+  {
+   "id": "gha-34467756882",
+   "kind": "hosted CI on b014339",
+   "result": "PASS: all jobs green on macOS, Linux and Windows (desktop E2E shows the language label)",
+   "url": "https://github.com/moss101/modbit/actions/runs/34467756882",
+   "log": "ci-run-34467756882.json, ci-run-34467756882-tests.log"
+  }
+ ],
  "proof": "honest ALPHA_BASELINE labels served by ListLanguages to CLI and desktop; proven/provisional/not-claimed lists; line endings and encoding preserved by the workspace",
  "audit": "COMPLETED in this batch (was PARTIAL)"
 }
