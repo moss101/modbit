@@ -7,8 +7,18 @@
   "duplicates_collapse_on_span_identity_or_containment",
   "qual_ev_0035_0131_0175_context_inspector_matches_the_prompt_envelope"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "f293456"
+ ],
+ "runs": [
+  {
+   "id": "gha-34527863467",
+   "kind": "hosted CI on f293456",
+   "result": "PASS: all jobs green on macOS, Linux and Windows (the desktop review surface runs in the same run)",
+   "url": "https://github.com/moss101/modbit/actions/runs/34527863467",
+   "log": "ci-run-34527863467.json, ci-run-34527863467-tests.log"
+  }
+ ],
  "proof": "A selection recorded through SetTaskSelection is a durable task event; every Context Pack afterwards treats the selected paths as critical task constraints with the source `selection` and a reason naming the surface, the Context Inspector reports the selection itself, the model is told what is selected, and the write gate is untouched: the run's write to the selected file is still refused because the plan does not declare it.",
  "audit": "NOT-FOUND before this task: no client could tell a task what the user was looking at.",
  "limitations": "One selection per task, no history; a selected symbol is shown but does not narrow the excerpt; no editor plugin reports an active file yet."

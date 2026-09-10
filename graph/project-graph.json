@@ -3,7 +3,7 @@
  "product": "Modbit",
  "edition": "V3.3 EPR v1.1",
  "authority_date": "2026-09-05",
- "generated_on": "2026-09-10",
+ "generated_on": "2026-09-11",
  "generator": "tools/build_graph.py",
  "status_vocabulary": [
   "NOT_STARTED",
@@ -11853,12 +11853,14 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0141",
    "source": "docs/41",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m3/IMP-EV-0141/TASK_CARD.md",
     "test:qual_ev_0141_0160_a_selection_steers_retrieval_is_visible_and_grants_no_write",
     "test:duplicates_collapse_on_span_identity_or_containment",
-    "test:qual_ev_0035_0131_0175_context_inspector_matches_the_prompt_envelope"
+    "test:qual_ev_0035_0131_0175_context_inspector_matches_the_prompt_envelope",
+    "commit:f293456",
+    "run:gha-34527863467"
    ],
    "notes": [
     {
@@ -11884,9 +11886,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "a real run: the selection steers the pack, shows in the inspector, and the write to the selected file is still refused"
+    },
+    {
+     "at": "2026-09-10T21:02:37Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34527863467 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-10T21:02:37Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34527863467; limitations in evidence/m3/IMP-EV-0141/TASK_CARD.md"
     }
    ],
-   "status_changed_on": "2026-09-10T20:40:35Z"
+   "status_changed_on": "2026-09-10T21:02:37Z"
   },
   {
    "id": "IMP-EV-0142",
@@ -12460,12 +12474,14 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0160",
    "source": "docs/41",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m3/IMP-EV-0160/TASK_CARD.md",
     "test:qual_ev_0141_0160_a_selection_steers_retrieval_is_visible_and_grants_no_write",
     "test:duplicates_collapse_on_span_identity_or_containment",
-    "test:qual_ev_0035_0131_0175_context_inspector_matches_the_prompt_envelope"
+    "test:qual_ev_0035_0131_0175_context_inspector_matches_the_prompt_envelope",
+    "commit:f293456",
+    "run:gha-34527863467"
    ],
    "notes": [
     {
@@ -12491,9 +12507,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "a real run: the selection steers the pack, shows in the inspector, and the write to the selected file is still refused"
+    },
+    {
+     "at": "2026-09-10T21:02:37Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34527863467 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-10T21:02:37Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34527863467; limitations in evidence/m3/IMP-EV-0160/TASK_CARD.md"
     }
    ],
-   "status_changed_on": "2026-09-10T20:40:35Z"
+   "status_changed_on": "2026-09-10T21:02:37Z"
   },
   {
    "id": "IMP-EV-0161",
