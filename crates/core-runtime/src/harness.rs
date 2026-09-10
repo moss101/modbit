@@ -419,6 +419,35 @@ pub struct RepairEscalation {
 /// the next turns (REQ-EV-0134 / 0177 / 0229). Discovery never authorizes.
 pub const TOOL_SEARCH: &str = "tool.search";
 
+/// Fast Context specialist (REQ-EV-0174, docs/18 "Retrieval specialist"): a
+/// bounded read-only sub-run that builds a Context Pack for a question. It is
+/// projected to the agent like any harness tool; the specialist itself never
+/// sees a tool that can change anything.
+pub const CONTEXT_TOOL: &str = "context.fast";
+
+/// The only tools a Fast Context specialist may see. Every one is read-only,
+/// and the specialist's dispatcher refuses anything outside this list even if
+/// the projection were wrong.
+pub const CONTEXT_SPECIALIST_TOOLS: [&str; 11] = [
+    "search.exact",
+    "search.regex",
+    "search.paths",
+    "search.lexical",
+    "search.symbols",
+    "search.semantic",
+    "search.graph",
+    "search.retrieve",
+    "search.impact",
+    "context.pack",
+    "fs.read",
+];
+
+/// Whether a Fast Context specialist may invoke `name`.
+#[must_use]
+pub fn specialist_may_invoke(name: &str) -> bool {
+    CONTEXT_SPECIALIST_TOOLS.contains(&name)
+}
+
 /// Tools projected every turn with their schemas (the stable core); every
 /// other host tool is deferred: named in `tool.search`, hydrated with its
 /// schema only after discovery (REQ-EV-0177 lazy tool/schema context).

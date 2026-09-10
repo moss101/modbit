@@ -2035,12 +2035,27 @@ async fn scripted_model(
     String,
     std::sync::Arc<std::sync::Mutex<Vec<serde_json::Value>>>,
 ) {
+    scripted_model_routed(script, vec![], stall_at).await
+}
+
+/// The same server with a second persona: a request whose system message
+/// introduces the Fast Context specialist is answered from `specialist`, so a
+/// sub-run can be scripted separately from the agent that called it.
+async fn scripted_model_routed(
+    script: Vec<serde_json::Value>,
+    specialist: Vec<serde_json::Value>,
+    stall_at: Option<usize>,
+) -> (
+    String,
+    std::sync::Arc<std::sync::Mutex<Vec<serde_json::Value>>>,
+) {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
     let seen = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
     let seen2 = std::sync::Arc::clone(&seen);
     let script = std::sync::Arc::new(script);
+    let specialist = std::sync::Arc::new(specialist);
     let stalled_once = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
     tokio::spawn(async move {
         loop {
@@ -2049,6 +2064,7 @@ async fn scripted_model(
             };
             let seen = std::sync::Arc::clone(&seen2);
             let script = std::sync::Arc::clone(&script);
+            let specialist = std::sync::Arc::clone(&specialist);
             let stalled_once = std::sync::Arc::clone(&stalled_once);
             tokio::spawn(async move {
                 let mut buf = Vec::new();
@@ -2086,6 +2102,15 @@ async fn scripted_model(
                     .as_array()
                     .map(|m| m.iter().filter(|x| x["role"] == "tool").count())
                     .unwrap_or(0);
+                let for_specialist = !specialist.is_empty()
+                    && body["messages"].as_array().is_some_and(|m| {
+                        m.iter().any(|x| {
+                            x["content"]
+                                .as_str()
+                                .unwrap_or_default()
+                                .contains("Fast Context specialist")
+                        })
+                    });
                 seen.lock().unwrap().push(body);
                 if stall_at == Some(results)
                     && !stalled_once.swap(true, std::sync::atomic::Ordering::SeqCst)
@@ -2093,9 +2118,12 @@ async fn scripted_model(
                     tokio::time::sleep(Duration::from_secs(600)).await;
                     return;
                 }
-                let reply = script.get(results).cloned().unwrap_or_else(
-                    || serde_json::json!({"text": "I have nothing further to do."}),
-                );
+                let reply = if for_specialist { &specialist } else { &script }
+                    .get(results)
+                    .cloned()
+                    .unwrap_or_else(
+                        || serde_json::json!({"text": "I have nothing further to do."}),
+                    );
                 let mut frames: Vec<String> = Vec::new();
                 if let Some(t) = reply["text"].as_str() {
                     frames.push(serde_json::json!({"id":"c","model":"scripted-1","choices":[{"index":0,"delta":{"content":t},"finish_reason":null}]}).to_string());
@@ -9813,4 +9841,198 @@ async fn qual_ev_0141_0160_a_selection_steers_retrieval_is_visible_and_grants_no
         40,
         "the selected file is untouched"
     );
+}
+
+/// REQ-EV-0174 (QUAL-EV-0174): the Fast Context specialist is a bounded
+/// read-only sub-run. It sees retrieval tools only, its attempt to use a
+/// mutating tool is refused before anything runs, and what it hands back is a
+/// real Context Pack with the provenance of every entry — the same pack the
+/// task's ledger and the Context Inspector then report.
+#[tokio::test]
+async fn qual_ev_0174_a_read_only_specialist_builds_the_pack_and_cannot_mutate() {
+    use modbit_protocol::v1::{
+        ContextInspectorView, GetContextInspector, StartTask, TaskRunStarted,
+    };
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[
+        (
+            "src/cart.rs",
+            "pub fn total_cents(q: u32, unit: u32) -> u32 {\n    q * unit\n}\n",
+        ),
+        ("NOTES.md", "totals are computed in cents\n"),
+    ]);
+    // The specialist's own script: it first reaches for a mutating tool (which
+    // it may not have), then does its job.
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "understand totals", "expected_files": ["NOTES.md"]}}]}),
+        json!({"calls": [{"name": "context.fast", "args": {"query": "where are totals computed?", "token_budget": 600, "max_turns": 3}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "NOTES.md", "op": "replace", "content": "totals are computed in cents\nchecked\n"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "understood", "self_review": {"findings": []}}}]}),
+    ];
+    // The scripted server answers by tool-result count, and the specialist's
+    // own turns share that counter, so its calls are scripted here too.
+    let (base, seen) = scripted_model_routed(
+        script.clone(),
+        vec![
+            // the specialist's first turn: a tool it must not have
+            json!({"calls": [{"name": "change.apply", "args": {"path": "src/cart.rs", "op": "replace", "content": "// specialist was here\n"}}]}),
+            // its second turn: the job
+            json!({"calls": [{"name": "context.pack", "args": {"query": "total_cents", "token_budget": 600, "required_paths": ["src/cart.rs"]}}]}),
+        ],
+        None,
+    )
+    .await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x70)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x71, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x72),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 10,
+                max_tool_calls: 0,
+                max_no_progress_turns: 5,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 120).await;
+    assert!(!st.loop_alive, "{st:?}");
+    let bodies = seen.lock().unwrap().clone();
+    // 1. The specialist was given retrieval tools and nothing else.
+    let specialist_request = bodies
+        .iter()
+        .find(|b| {
+            b["messages"].as_array().unwrap().iter().any(|m| {
+                m["content"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .contains("Fast Context specialist")
+            })
+        })
+        .unwrap_or_else(|| panic!("the specialist never ran: {bodies:#?}"));
+    let offered: Vec<&str> = specialist_request["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|t| t["function"]["name"].as_str().unwrap())
+        .collect();
+    assert!(offered.contains(&"context.pack"), "{offered:?}");
+    assert!(
+        offered.iter().any(|t| t.starts_with("search.")),
+        "{offered:?}"
+    );
+    for forbidden in [
+        "change.apply",
+        "change.batch",
+        "shell.exec",
+        "git.commit",
+        "task.complete",
+        "user.ask",
+        "context.fast",
+    ] {
+        assert!(
+            !offered.contains(&forbidden),
+            "the specialist was offered {forbidden}: {offered:?}"
+        );
+    }
+    // 2. It asked for a mutating tool anyway and was refused before it ran.
+    let specialist_result = bodies
+        .iter()
+        .flat_map(|b| b["messages"].as_array().cloned().unwrap_or_default())
+        .filter(|m| m["role"] == "tool")
+        .filter_map(|m| m["content"].as_str().map(str::to_owned))
+        .find(|t| t.contains("SPECIALIST_READ_ONLY") || t.contains("refused: change.apply"))
+        .unwrap_or_else(|| panic!("the refusal never happened: {bodies:#?}"));
+    assert!(
+        specialist_result.contains("retrieval tools only"),
+        "{specialist_result}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("src/cart.rs")).unwrap(),
+        "pub fn total_cents(q: u32, unit: u32) -> u32 {\n    q * unit\n}\n",
+        "the specialist changed nothing"
+    );
+    // 3. What came back to the agent is a real pack, and the ledger has it.
+    let handoff = bodies
+        .iter()
+        .flat_map(|b| b["messages"].as_array().cloned().unwrap_or_default())
+        .filter(|m| m["role"] == "tool")
+        .filter_map(|m| m["content"].as_str().map(str::to_owned))
+        .find(|t| t.contains("pack_ref:"))
+        .unwrap_or_else(|| panic!("no pack reached the agent: {bodies:#?}"));
+    assert!(handoff.contains("src/cart.rs"), "{handoff}");
+    assert!(handoff.contains("status: SUCCESS"), "{handoff}");
+    let ack = c
+        .command(envelope(
+            id16(0x73),
+            "GetContextInspector",
+            GetContextInspector {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let v: ContextInspectorView = Client::result(&ack).unwrap();
+    let entry = v
+        .entries
+        .iter()
+        .find(|e| e.path == "src/cart.rs")
+        .unwrap_or_else(|| panic!("{v:?}"));
+    // QUAL-EV-0174: provenance-complete — path, revision, hash and a reason.
+    assert_eq!(entry.content_hash.len(), 64, "{entry:?}");
+    assert!(entry.workspace_revision > 0, "{entry:?}");
+    assert!(
+        !entry.reason.is_empty() && !entry.sources.is_empty(),
+        "{entry:?}"
+    );
+    // 4. The specialist's own turns are on the canonical log under its actor,
+    //    so its cost is the task's cost.
+    let evs = task_events(&core, &session, &task).await;
+    let specialist_turns = evs
+        .iter()
+        .filter(|(_, t, p)| t == "ModelUsageRecorded" && p["route"]["role"] == "context-specialist")
+        .count();
+    assert!(
+        specialist_turns >= 2,
+        "the specialist's turns are on the log: {:#?}",
+        evs.iter()
+            .filter(|(_, t, _)| t == "ModelUsageRecorded")
+            .collect::<Vec<_>>()
+    );
+    // Its tokens are the task's tokens: the economics view counts them.
+    let ack = c
+        .command(envelope(
+            id16(0x74),
+            "GetTaskEconomics",
+            modbit_protocol::v1::GetTaskEconomics {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let e: modbit_protocol::v1::TaskEconomicsView = Client::result(&ack).unwrap();
+    let logged: u64 = evs
+        .iter()
+        .filter(|(_, t, _)| t == "ModelUsageRecorded")
+        .map(|(_, _, p)| p["input_tokens"].as_u64().unwrap_or(0))
+        .sum();
+    assert_eq!(e.input_tokens, logged, "{e:?}");
 }

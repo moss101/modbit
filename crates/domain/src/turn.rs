@@ -223,8 +223,13 @@ impl Turn {
                 self.model_route = Some(model_route.clone());
                 Some(Streaming)
             }
+            // Usage is an accounting fact, not a phase: it is recorded while
+            // the turn streams, and also while it executes, because a tool the
+            // turn dispatched can itself call a model (REQ-EV-0174: the Fast
+            // Context specialist's tokens belong to the turn that asked for
+            // them). It is never a state change.
             TurnEvent::ModelUsageRecorded { .. } => {
-                if self.state != Streaming {
+                if !matches!(self.state, Streaming | Executing) {
                     return Err(invalid(self.state, "ModelUsageRecorded"));
                 }
                 None

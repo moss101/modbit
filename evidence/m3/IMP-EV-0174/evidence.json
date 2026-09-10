@@ -1,0 +1,15 @@
+{
+ "task": "IMP-EV-0174",
+ "requirement": "REQ-EV-0174",
+ "qual": "QUAL-EV-0174",
+ "tests": [
+  "qual_ev_0174_a_read_only_specialist_builds_the_pack_and_cannot_mutate",
+  "qual_ev_0173_task_economics_report_quality_and_cost_from_the_log",
+  "m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "context.fast hands one context question to a bounded read-only sub-run. It is offered retrieval tools only, and its authority is decided at dispatch: a name outside CONTEXT_SPECIALIST_TOOLS is refused before any tool runs. In a real run it asks for change.apply, is refused, changes nothing on disk, and returns a Context Pack whose entries carry path, revision, content hash, reason and sources. Its model calls are ContextCompile steps under the actor context-specialist and its tokens are recorded on the calling turn, so the task's economics include them.",
+ "audit": "NOT-FOUND before this task: nothing could take a context question off the agent's own turn budget.",
+ "limitations": "Synchronous inside the caller's tool call; bounded by turns and the pack budget, not by a clock; no memory between calls."
+}

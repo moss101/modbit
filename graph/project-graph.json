@@ -13194,8 +13194,40 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0174",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "artifact:evidence/m3/IMP-EV-0174/TASK_CARD.md",
+    "test:qual_ev_0174_a_read_only_specialist_builds_the_pack_and_cannot_mutate",
+    "test:qual_ev_0173_task_economics_report_quality_and_cost_from_the_log",
+    "test:m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T20:59:35Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: the agent could pack for itself, but every search cost it a turn of its own context"
+    },
+    {
+     "at": "2026-09-10T20:59:35Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "context.fast: a bounded read-only sub-run in services/modbit-core/src/subagent.rs with a dispatch-time allowlist"
+    },
+    {
+     "at": "2026-09-10T20:59:35Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "projected to the agent; its steps and tokens are on the log under the context-specialist actor"
+    },
+    {
+     "at": "2026-09-10T20:59:35Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "a real run: retrieval tools only, a refused change.apply, an unchanged file and a provenance-complete pack"
+    }
+   ],
+   "status_changed_on": "2026-09-10T20:59:35Z"
   },
   {
    "id": "IMP-EV-0175",

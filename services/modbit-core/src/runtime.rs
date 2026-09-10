@@ -16,8 +16,8 @@ use std::sync::Arc;
 use sha2::Digest;
 
 use modbit_core_runtime::harness::{
-    self, ASK_TOOL, Budgets, COMPLETE_TOOL, HarnessRefusal, HarnessState, PLAN_TOOL, Plan,
-    REPAIR_TOOL, RepairEscalation, TOOL_SEARCH, VERIFY_TOOL, WRITE_TOOLS, scope_resolution,
+    self, ASK_TOOL, Budgets, COMPLETE_TOOL, CONTEXT_TOOL, HarnessRefusal, HarnessState, PLAN_TOOL,
+    Plan, REPAIR_TOOL, RepairEscalation, TOOL_SEARCH, VERIFY_TOOL, WRITE_TOOLS, scope_resolution,
     write_targets,
 };
 use modbit_domain::event::{Actor, AggregateType};
@@ -391,6 +391,19 @@ pub(crate) struct Lineage {
 }
 
 impl Lineage {
+    /// The same lineage, inside one step.
+    pub(crate) fn with_step(self, step: RunStepId) -> Self {
+        Self {
+            step: Some(step),
+            ..self
+        }
+    }
+
+    /// The turn this lineage is inside, when it is inside one.
+    pub(crate) fn turn_id(self) -> Option<TurnId> {
+        self.turn
+    }
+
     pub(crate) fn task(tenant: TenantId, session: SessionId, task: TaskId) -> Self {
         Self {
             tenant,
@@ -942,6 +955,14 @@ fn projection(
             if catalog.is_empty() { "none".to_owned() } else { catalog }
         ),
         input_schema: serde_json::json!({"type":"object","properties":{"query":{"type":"string"},"activate":{"type":"array","items":{"type":"string"}}},"additionalProperties":false}),
+    });
+    tools.push(ToolProjection {
+        name: CONTEXT_TOOL.into(),
+        description: format!(
+            "Hand one context question to a bounded read-only retrieval specialist and get back the Context Pack it built, with the provenance of every entry. Use it when finding the right files would cost you several turns. The specialist sees retrieval tools only ({}), spends at most a few turns, and can change nothing.",
+            harness::CONTEXT_SPECIALIST_TOOLS.join(", ")
+        ),
+        input_schema: serde_json::json!({"type":"object","properties":{"query":{"type":"string"},"token_budget":{"type":"integer","minimum":100},"max_turns":{"type":"integer","minimum":1,"maximum":6}},"required":["query"],"additionalProperties":false}),
     });
     tools.push(ToolProjection {
         name: ASK_TOOL.into(),
@@ -1694,6 +1715,87 @@ async fn run_loop(
                             Some("INVALID_PLAN".to_owned())
                         },
                     )
+                }
+                CONTEXT_TOOL => {
+                    // REQ-EV-0174: a bounded read-only specialist builds the
+                    // pack. Its work is on the log under its own actor, and it
+                    // is refused anything that is not retrieval.
+                    let a: serde_json::Value =
+                        serde_json::from_str(&arguments_json).unwrap_or_default();
+                    let q = a["query"].as_str().unwrap_or_default().to_owned();
+                    let entry = if q.trim().is_empty() {
+                        TranscriptEntry::ToolResult {
+                            call_id: call_id.clone(),
+                            name: name.clone(),
+                            text: "status: INVALID_ARGUMENTS\nerror: query required".into(),
+                            failure_signature: None,
+                            clears: vec![],
+                            wrote: None,
+                            progress: false,
+                            media: vec![],
+                        }
+                    } else {
+                        let budget = u32::try_from(a["token_budget"].as_u64().unwrap_or(4000))
+                            .unwrap_or(4000)
+                            .clamp(100, 32_000);
+                        let turns = u32::try_from(a["max_turns"].as_u64().unwrap_or(3))
+                            .unwrap_or(3)
+                            .clamp(1, 6);
+                        let r = crate::subagent::run(
+                            &core,
+                            &task,
+                            lturn,
+                            &crate::subagent::Ask {
+                                query: &q,
+                                token_budget: budget,
+                                max_turns: turns,
+                                endpoint: &cfg.endpoint,
+                                model: &cfg.model,
+                            },
+                            &cancel,
+                        )
+                        .await;
+                        let mut text = format!(
+                            "status: {}\n{}\nturns: {}\ntool_calls: {}\n",
+                            if r.pack_ref.is_empty() {
+                                "NO_PACK"
+                            } else {
+                                "SUCCESS"
+                            },
+                            r.note,
+                            r.turns,
+                            r.tool_calls
+                        );
+                        if !r.pack_ref.is_empty() {
+                            text.push_str(&format!(
+                                "pack_id: {}\npack_ref: {}\ntokens: {}\ncomplete: {}\nentries:\n{}\nthe pack is in this task's Context Ledger with the provenance of every entry; read any entry with artifact.range on pack_ref\n",
+                                r.pack_id,
+                                r.pack_ref,
+                                r.token_used,
+                                r.complete,
+                                r.entries
+                                    .iter()
+                                    .map(|e| format!("- {e}"))
+                                    .collect::<Vec<_>>()
+                                    .join("\n")
+                            ));
+                        }
+                        for refused in &r.refused {
+                            text.push_str(&format!("refused: {refused}\n"));
+                        }
+                        TranscriptEntry::ToolResult {
+                            call_id: call_id.clone(),
+                            name: name.clone(),
+                            text,
+                            failure_signature: None,
+                            clears: vec![],
+                            wrote: None,
+                            progress: !r.pack_ref.is_empty(),
+                            media: vec![],
+                        }
+                    };
+                    progress = true;
+                    (entry, StepType::ContextCompile, None)
                 }
                 TOOL_SEARCH => {
                     let entry = handle_tool_search(
