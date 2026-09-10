@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 387,
+    "root_and_tooling": 388,
     "docs_bytes": 1037259
   },
   "sections": [
@@ -905,6 +905,11 @@
       "path": "docs/decisions/DR-M2-001-live-provider-proof-pending-credentials.md",
       "bytes": 3090,
       "sha256": "4d881fa130b7b2a896f7b238924d0e796cc707b58f07e8ed07d606d165049a83"
+    },
+    {
+      "path": "docs/decisions/DR-M2-002-reschedule-m2-tasks-needing-later-substrate.md",
+      "bytes": 4238,
+      "sha256": "fd230f414f555a7d3ac5235f5ed5d45377ab678bd0216b1ae1ff6204f62a0a70"
     },
     {
       "path": "docs/decisions/README.md",
@@ -2748,18 +2753,18 @@
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 40927,
-      "sha256": "54570e06d1c4f6e858721c1f5416918c758315341abebaed0d8d602536048f72"
+      "bytes": 40926,
+      "sha256": "877f2b8b031293582b5f842028dbe50ca9b09c88e031fc7e284321635d25f67d"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1145436,
-      "sha256": "d627b11de89fac8439871dfa2d05047077e6fc71d266444af2d5093ac2d46762"
+      "bytes": 1148635,
+      "sha256": "fcb40622572d38ea7b2465e56e4e3766ffffee37c244e2958d8ecb5243cea0fe"
     },
     {
       "path": "tools/build_graph.py",
-      "bytes": 46807,
-      "sha256": "b013ef376845b2152e88f07abc7152522c4240662943fa6042413fc0a1626d45"
+      "bytes": 52844,
+      "sha256": "13ea31cbf1ace263d36b4cc5ada8b19270a118e30e401114790652375b5c51d1"
     },
     {
       "path": "tools/build_manifest.py",
@@ -2788,8 +2793,8 @@
     },
     {
       "path": "tools/test_dossier.py",
-      "bytes": 32728,
-      "sha256": "310c798327439c0ad77d77f9c2f8d849311c2e5e88519a1d9f784c89a269be48"
+      "bytes": 32967,
+      "sha256": "91285e2acec53dda9312fdfc4ab7af1ba3f4862deca2e2455233ff81804c30c2"
     }
   ],
   "renames_v3_to_v3_1": {

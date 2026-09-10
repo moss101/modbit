@@ -131,6 +131,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `docs/decisions/DR-M0-005-reschedule-runtime-dependent-m0-governance-tasks.md` | source patch provenance | 2912 | `7b76feae285e44195b47d33981d5167f73dfc718eebc49d289d6c473c2949fe0` |
 | `docs/decisions/DR-M1-006-reschedule-m1-tasks-needing-later-runtime.md` | source patch provenance | 2722 | `f69bb610648eae11c9773485671ebb123c44c58422b0e678668978d2f760f991` |
 | `docs/decisions/DR-M2-001-live-provider-proof-pending-credentials.md` | source patch provenance | 3090 | `4d881fa130b7b2a896f7b238924d0e796cc707b58f07e8ed07d606d165049a83` |
+| `docs/decisions/DR-M2-002-reschedule-m2-tasks-needing-later-substrate.md` | source patch provenance | 4238 | `fd230f414f555a7d3ac5235f5ed5d45377ab678bd0216b1ae1ff6204f62a0a70` |
 | `docs/decisions/README.md` | source patch provenance | 2312 | `b6b31751298aa4b6aa6f2de1c659882e19e310301d1428caba7658023967a4a2` |
 | `evidence/dossier-epr-v1.1/baseline.json` | retained evidence | 11128 | `ae11c9be07272788d2957bff45bc1333f879e121d2b5205ebc01ce780ec62543` |
 | `evidence/dossier-epr-v1.1/tests.log` | retained evidence | 2071 | `2f4bbebb6db1f0f0c6802f8dee65e5d6aa7933db6d1bda28a8acd70aa9bd88b3` |
@@ -499,15 +500,15 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m2/PX-036/evidence.json` | retained evidence | 801 | `06047612c224d5eeaf0f2c17b10257cff60e75a33fbf02542b825804831543c0` |
 | `evidence/m2/PX-037/TASK_CARD.md` | retained evidence | 2037 | `850e27805cb4917a99630b03d4b70cf9826e45bb50fe4876c4195d8d3780be30` |
 | `evidence/m2/PX-037/evidence.json` | retained evidence | 716 | `77468c3828340a611cf892bcb8cb25ee45916021068856abce217f7b508eac71` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 40927 | `54570e06d1c4f6e858721c1f5416918c758315341abebaed0d8d602536048f72` |
-| `graph/project-graph.json` | project driver graph with live status | 1145436 | `d627b11de89fac8439871dfa2d05047077e6fc71d266444af2d5093ac2d46762` |
-| `tools/build_graph.py` | regenerates graph structure from docs | 46807 | `b013ef376845b2152e88f07abc7152522c4240662943fa6042413fc0a1626d45` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 40926 | `877f2b8b031293582b5f842028dbe50ca9b09c88e031fc7e284321635d25f67d` |
+| `graph/project-graph.json` | project driver graph with live status | 1148635 | `fcb40622572d38ea7b2465e56e4e3766ffffee37c244e2958d8ecb5243cea0fe` |
+| `tools/build_graph.py` | regenerates graph structure from docs | 52844 | `13ea31cbf1ace263d36b4cc5ada8b19270a118e30e401114790652375b5c51d1` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 17596 | `5c9b7a782d245223726f860ca583d766929a6f5662b644adebee64d257ad426b` |
 | `tools/dossier_epr.py` | parses additive EPR authority and traceability | 9310 | `4b5e399ee1b4886662294e3780d7f0630195e29c8198256ff7719d5236591a18` |
 | `tools/dossier_px.py` | parses the additive product-extension ledger and phased release rules | 6931 | `0a7dd5bd5872fb1d959c56fd017bd3916062d0f60d1bc51b9abceddc134202e2` |
 | `tools/graph.py` | query/update graph | 36313 | `76f2a79fca3c305205f34573b94118c99511944833e8e602bf0eba7e2ac305cb` |
-| `tools/test_dossier.py` | copied-package integration and negative tests | 32728 | `310c798327439c0ad77d77f9c2f8d849311c2e5e88519a1d9f784c89a269be48` |
+| `tools/test_dossier.py` | copied-package integration and negative tests | 32967 | `91285e2acec53dda9312fdfc4ab7af1ba3f4862deca2e2455233ff81804c30c2` |
 
 ## Rename map (V3 flat numbering → V3.1 `docs/`)
 

@@ -114,7 +114,9 @@ class DossierTests(unittest.TestCase):
         self.run_tool("build_graph", ok=False, contains="dependency cycle")
 
     def test_implicit_milestone_cycle_is_rejected(self):
-        self.edit(TASKS, "| M2 | 1 | EPR-014,EPR-016 |", "| M2 | 1 | M3.9 |")
+        # EPR-004 is scheduled in M3 by DR-M2-002; M10 is the milestone that
+        # depends on M3, so a prerequisite in M10 cycles.
+        self.edit(TASKS, "| M2 | 1 | EPR-014,EPR-016 |", "| M2 | 1 | M10.1 |")
         self.run_tool("build_graph", ok=False, contains="dependency cycle")
 
     def test_gate_missing_task_is_rejected(self):
@@ -552,9 +554,12 @@ class DossierTests(unittest.TestCase):
         for needle in ("IMP-EV-0107", "M2.8", "QUAL-PX-033", "PX-E2E-033", "verification", "DR-PX-2026-09-05-006"):
             self.assertIn(needle, out)
         self.assertIn("DR-PX-2026-09-05", self.run_tool("graph", "show", "DR-PX-2026-09-05-006"))
-        # The override is load-bearing: without it the M2 repair loop (PX-033) would depend on an M6 task.
-        self.edit("tools/build_graph.py", '"IMP-EV-0107": ("M2",', '"IMP-EV-9107": ("M2",')
-        self.run_tool("build_graph", ok=False, contains="dependency cycle")
+        # DR-M2-002 moved PX-033 to M3; IMP-EV-0107 stays scheduled ahead of it in M2 by
+        # its own override, and the graph records both reasons.
+        self.assertEqual(nodes["PX-033"]["milestone"], "M3")
+        self.assertIn("DR-M2-002", nodes["PX-033"]["milestone_override"])
+        self.assertIn(("PX-033", "M3"), scheduled)
+        self.assertIn("PX-033", alpha)
 
 
 if __name__ == "__main__":

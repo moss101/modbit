@@ -61,6 +61,49 @@ PX6_FIRST_ROW = 32
 # IMP-EV milestones derive from OWNER_MAP; the entries below are the recorded exceptions, each justified by a Decision Record.
 # Docs 40/41/42 stay byte-identical; the override is stored on the node as `milestone_override` (docs/74).
 MILESTONE_OVERRIDES = {
+    # DR-M2-002: thirty-nine M2-labelled tasks whose qualifications need M3–M10 substrate.
+    "IMP-EV-0070": ("M3", "DR-M2-002: the diagnostic change window needs the Context Engine's diagnostics adapter and repository index (M3)"),
+    "IMP-EV-0132": ("M3", "DR-M2-002: searchable transcript/tool evidence needs the session index of M3"),
+    "IMP-EV-0134": ("M3", "DR-M2-002: deferred tool search needs a large catalog (MCP/skills) and the context economy of M3"),
+    "IMP-EV-0177": ("M3", "DR-M2-002: lazy tool/schema context is a Context Economy benchmark (M3)"),
+    "IMP-EV-0229": ("M3", "DR-M2-002: toolsets/capability grouping needs the catalog and lazy activation of M3"),
+    "IMP-EV-0188": ("M3", "DR-M2-002: provider media split needs the multimodal provider path that follows the M3 context pack"),
+    "IMP-EV-0021": ("M8", "DR-M2-002: environment source hierarchy needs the isolated execution backend (M8)"),
+    "IMP-EV-0062": ("M8", "DR-M2-002: environment snapshot/revision needs the isolated execution backend (M8)"),
+    "IMP-EV-0063": ("M8", "DR-M2-002: environment handoff bundle is the local→cloud handoff (M8)"),
+    "IMP-EV-0146": ("M8", "DR-M2-002: blueprints/environment snapshots need the isolated execution backend (M8)"),
+    "IMP-EV-0176": ("M8", "DR-M2-002: workspace capsule is the local→cloud handoff (M8)"),
+    "IMP-EV-0040": ("M9", "DR-M2-002: device policy/machine authority is security hardening (M9)"),
+    "IMP-EV-0041": ("M9", "DR-M2-002: policy generation and hot revalidation are security hardening (M9)"),
+    "IMP-EV-0043": ("M6", "DR-M2-002: ProtocolCapabilitySet needs the external adapters and fleet clients of M6"),
+    "IMP-EV-0088": ("M7", "DR-M2-002: semantic UI risk classification needs the live browser surface (M7)"),
+    "IMP-EV-0147": ("M7", "DR-M2-002: browser/E2E evidence needs the live browser surface (M7)"),
+    "IMP-EV-0265": ("M6", "DR-M2-002: Q&A → plan → visual review ceremony needs the fleet/attention UX of M6"),
+    "IMP-EV-0212": ("M10", "DR-M2-002: the docs/example runner is a release-hardening gate (M10)"),
+    "IMP-EV-0029": ("M9", "DR-M2-002: capability-based routing follows the EPR baseline evidence (EPR-000) and lands with the router (M9)"),
+    "IMP-EV-0030": ("M9", "DR-M2-002: specialist model chains follow the router (M9)"),
+    "PX-001": ("M6", "DR-M2-002: the thin-client conformance suite lands with the external adapters (M6) on the M2 CLI/desktop clients"),
+    "PX-016": ("M3", "DR-M2-002: the change strategy contract (test-first, one concern per transaction) needs the Context Engine's retrieval records (M3.7) it is measured with"),
+    "PX-018": ("M3", "DR-M2-002: RepairAttempt records need the retrieval/evidence ledger of M3; the M2 loop keeps failure signatures and no-progress detection"),
+    "PX-022": ("M3", "DR-M2-002: onboarding timing needs a live provider test model (DR-M2-001 credentials)"),
+    "PX-026": ("M3", "DR-M2-002: exact and BM25 retrieval are M3.7"),
+    "PX-033": ("M3", "DR-M2-002: real pytest evidence lands with the python-service fixture of the M3 language baseline (PX-026); cargo and vitest reports are proven in M2.8"),
+    "PX-038": ("M3", "DR-M2-002: ScopePolicy bounds and ScopeExpansionRecorded need the retrieval-before-edit records of M3 to count against"),
+    "PX-039": ("M3", "DR-M2-002: reproduction-first and change_fingerprint equivalence build on the RepairAttempt records (PX-018, M3)"),
+    "PX-040": ("M3", "DR-M2-002: the harness_state Context Pack section is compiled by the M3 Context Pack Compiler"),
+    "PX-019": ("M3", "DR-M2-002: proven on the M2.7/M2.8 substrate; scheduled with its prerequisite PX-018 (M3) to keep the dependency order"),
+    "PX-034": ("M3", "DR-M2-002: proven on the M2.8 substrate; scheduled with its prerequisite PX-033 (M3) to keep the dependency order"),
+    "PX-036": ("M3", "DR-M2-002: proven on the M2.8 substrate; scheduled with its prerequisite PX-033 (M3) to keep the dependency order"),
+    "PX-037": ("M3", "DR-M2-002: proven on the M2.8 substrate; scheduled with its prerequisite PX-016 (M3) to keep the dependency order"),
+    "EPR-000": ("M3", "DR-M2-002: the direct baseline measurement needs the live provider proof (DR-M2-001) and the M3 benchmark harness"),
+    "EPR-001": ("M3", "DR-M2-002: router machinery follows the EPR-000 baseline evidence; scheduled in M3 ahead of the M4/M5 EPR tasks that depend on it"),
+    "EPR-002": ("M3", "DR-M2-002: router machinery follows the EPR-000 baseline evidence; scheduled in M3 ahead of the M4/M5 EPR tasks that depend on it"),
+    "EPR-003": ("M3", "DR-M2-002: router machinery follows the EPR-000 baseline evidence; scheduled in M3 ahead of the M4/M5 EPR tasks that depend on it"),
+    "EPR-004": ("M3", "DR-M2-002: router machinery follows the EPR-000 baseline evidence; scheduled in M3 ahead of the M4/M5 EPR tasks that depend on it"),
+    "EPR-005": ("M3", "DR-M2-002: router machinery follows the EPR-000 baseline evidence; scheduled in M3 ahead of the M4/M5 EPR tasks that depend on it"),
+    "EPR-014": ("M3", "DR-M2-002: router machinery follows the EPR-000 baseline evidence; scheduled in M3 ahead of the M4/M5 EPR tasks that depend on it"),
+    "EPR-015": ("M3", "DR-M2-002: router machinery follows the EPR-000 baseline evidence; scheduled in M3 ahead of the M4/M5 EPR tasks that depend on it"),
+    "EPR-016": ("M3", "DR-M2-002: router machinery follows the EPR-000 baseline evidence; scheduled in M3 ahead of the M4/M5 EPR tasks that depend on it"),
     "IMP-EV-0107": ("M2", "DR-PX-2026-09-05-006: bounded failure evidence is a prerequisite of the M2 repair loop (PX-018, PX-033, PX-039); scheduled ahead of its owner label's default milestone"),
     "IMP-EV-0242": ("M4", "DR-M0-005: QUAL-EV-0242 (restart loses no durable truth while the hook process resets) needs the durable store, hook bus and kill-point recovery suite of M1/M4; scheduled after its owner label's default milestone"),
     # DR-M1-006: twelve M1-labelled tasks whose qualifications need M2–M6 runtime.
@@ -678,6 +721,15 @@ def build(previous=None):
         elif e["type"] == "owned_by":
             owner_of[e["from"]] = e["to"]
     px_release = {t["id"]: t["release"] for t in ptasks}
+    # MILESTONE_OVERRIDES for PX/EPR tasks (their default milestone is the ledger row).
+    for n in nodes:
+        if n["type"] == "imp_task" and n["id"] in MILESTONE_OVERRIDES and "milestone_override" not in n:
+            ms, reason = MILESTONE_OVERRIDES[n["id"]]
+            if n.get("milestone") != ms:
+                n["milestone"], n["milestone_override"] = ms, reason
+                for e in edges:
+                    if e["from"] == n["id"] and e["type"] == "scheduled_in":
+                        e["to"] = ms
     work_items = [n for n in nodes if n["type"] in ("milestone_task", "imp_task")]
     for order, rule in enumerate(px.release_rules(DOCS)):
         add({"id": rule["id"], "type": "release", "title": rule["title"], "order": order, "rule": rule["rule"],
