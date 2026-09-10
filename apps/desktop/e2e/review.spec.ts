@@ -72,6 +72,8 @@ test("review surface: per-hunk decision commits exactly the user's choice and su
   const candidate = original.replace("line 2\n", "line 2 changed\n").replace("line 15\n", "line 15 changed\n");
   const { server, url } = await scriptedModel([
     { calls: [{ name: "plan.update", args: { outcome: "edit notes", expected_files: ["notes.txt"] } }] },
+    // Retrieve before edit (PX-015): the Core refuses a write to a file the task has not read.
+    { calls: [{ name: "fs.read", args: { path: "notes.txt" } }] },
     { calls: [{ name: "change.apply", args: { path: "notes.txt", op: "replace", content: candidate } }] },
     { calls: [{ name: "task.complete", args: { summary: "edited", self_review: { findings: [] } } }] },
   ]);
