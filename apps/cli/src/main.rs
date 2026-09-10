@@ -924,6 +924,23 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 .await
                 .map_err(|e| e.to_string())?;
             let v: ContextInspectorView = Client::result(&ack).map_err(|e| e.to_string())?;
+            // The compaction and prompt-cache line stands on its own: a task
+            // can have compacted its transcript without a pack of its own.
+            if v.compaction_epochs > 0 || v.prefix_cache_misses > 0 {
+                println!(
+                    "compaction: epoch={} epochs={} compacted_entries={} manifest={} cache_hits={} cache_misses={}",
+                    v.compaction_epoch,
+                    v.compaction_epochs,
+                    v.compacted_entries,
+                    if v.manifest_ref.is_empty() {
+                        "none".to_owned()
+                    } else {
+                        v.manifest_ref[..12.min(v.manifest_ref.len())].to_owned()
+                    },
+                    v.prefix_cache_hits,
+                    v.prefix_cache_misses
+                );
+            }
             if v.pack_id.is_empty() {
                 println!("context pack: none compiled for this task yet");
             } else {

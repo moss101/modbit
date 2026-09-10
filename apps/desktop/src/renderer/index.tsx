@@ -200,6 +200,11 @@ function App() {
         <div className="banner" data-kind="info" data-testid="context-inspector">
           <strong>Context</strong> — {inspector.entries.filter((e) => e.injected).length} of {inspector.entries.length} fragment(s) injected, {inspector.tokenUsed}/{inspector.tokenBudget} tokens, {inspector.omittedCount} omitted
           {inspector.rejectedRefs.length > 0 ? `, ${inspector.rejectedRefs.length} refused for missing provenance` : ""}.
+          {inspector.compactionEpochs > 0 && (
+            <div data-testid="context-compaction">
+              <strong>Compaction</strong> — epoch {inspector.compactionEpoch} of {inspector.compactionEpochs}, {String(inspector.compactedEntries)} earlier entr{Number(inspector.compactedEntries) === 1 ? "y" : "ies"} summarised and still in the log; prompt prefix reused on {inspector.prefixCacheHits} turn(s), rebuilt on {inspector.prefixCacheMisses}.
+            </div>
+          )}
           <ul>
             {inspector.entries.map((e) => (
               <li key={e.entryId} data-testid="context-entry">

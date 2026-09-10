@@ -467,6 +467,15 @@ message ContextInspectorView {
   repeated string injected_refs = 13;
   repeated string rejected_refs = 14;
   uint64 injected_tokens = 15;
+  // Compaction epochs and the prompt-cache prefix they move (docs/19;
+  // REQ-EV-0056 / 0092 / 0111 / 0268). The manifest is a stored object: read
+  // it with ReadObject to see the facts an epoch preserved.
+  uint32 compaction_epoch = 16;      // installed epoch; 0 = nothing compacted yet
+  uint32 compaction_epochs = 17;     // epochs opened on this task
+  uint64 compacted_entries = 18;     // transcript entries summarised away
+  string manifest_ref = 19;          // the installed epoch's manifest
+  uint32 prefix_cache_hits = 20;     // turns that reused the previous stable prefix
+  uint32 prefix_cache_misses = 21;   // turns that changed it (the first, then each epoch)
 }
 
 // ---- PX-026 language support labels (docs/76) ----

@@ -23,6 +23,7 @@ modbit-git.workspace = true
 modbit-verification.workspace = true
 modbit-retrieval.workspace = true
 modbit-context.workspace = true
+modbit-compaction.workspace = true
 modbit-diagnostics.workspace = true
 prost.workspace = true
 prost-types.workspace = true

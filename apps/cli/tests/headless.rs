@@ -272,7 +272,10 @@ fn qual_px_000_headless_cli_task_lifecycle() {
         };
         let sid2 = sid.clone();
         std::thread::spawn(move || {
-            for _ in 0..600 {
+            // Patient enough for a loaded machine: the run reaches the
+            // protected effect only after a question, two model turns and a
+            // change, and this test shares the machine with the others.
+            for _ in 0..1_800 {
                 let (_, out, _) = cli2.run(&["approval", "list", "--session", &sid2]);
                 if let Some(id) = out
                     .lines()
@@ -424,4 +427,123 @@ fn qual_px_000_headless_cli_task_lifecycle() {
             "thin client must not depend on {forbidden}"
         );
     }
+}
+
+/// REQ-EV-0111 / 0268 (and the reporting half of REQ-EV-0056 / 0092): the
+/// product tells a user what compaction did — which epoch is installed, how
+/// many transcript entries it summarised away, the manifest that holds them
+/// and how often the run reused its cached prompt prefix instead of rebuilding
+/// it. Run for real: a fixture repository, a scripted model and a token budget
+/// small enough that the transcript is compacted while the task runs.
+#[test]
+fn qual_ev_0111_0268_context_show_reports_compaction_epochs_and_the_cached_prefix() {
+    let core = core_bin();
+    let tmp = tempfile::tempdir().unwrap();
+    let data_dir = tmp.path().join("profile");
+    std::fs::create_dir_all(&data_dir).unwrap();
+    let repo = tmp.path().join("repo");
+    std::fs::create_dir_all(&repo).unwrap();
+    std::fs::write(
+        repo.join("big.txt"),
+        "filler line for the transcript\n".repeat(400),
+    )
+    .unwrap();
+    git(&repo, &["init", "-q", "-b", "main"]);
+    git(&repo, &["add", "-A"]);
+    git(
+        &repo,
+        &[
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@e",
+            "commit",
+            "-q",
+            "-m",
+            "base",
+        ],
+    );
+    let repo_str = repo
+        .canonicalize()
+        .unwrap()
+        .to_string_lossy()
+        .trim_start_matches(r"\\?\")
+        .to_owned();
+    let read = serde_json::json!({"calls": [{"name": "fs.read", "args": {"path": "big.txt"}}]});
+    let script = vec![
+        serde_json::json!({"calls": [{"name": "plan.update", "args": {"outcome": "read the big file", "expected_files": ["big.txt"]}}]}),
+        read.clone(),
+        read.clone(),
+        read.clone(),
+        read.clone(),
+        serde_json::json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    let base = scripted_model(script);
+    let cli = Cli {
+        data_dir: data_dir.clone(),
+        core: core.clone(),
+        env: vec![
+            ("MODBIT_OPENAI_BASE_URL".into(), base.clone()),
+            ("OPENAI_API_KEY".into(), String::new()),
+            ("ANTHROPIC_API_KEY".into(), String::new()),
+            ("MODBIT_COMPACTION_TOKEN_BUDGET".into(), "1500".into()),
+        ],
+    };
+    let (code, out, err) = cli.run(&["session", "create"]);
+    assert_eq!(code, 0, "{err}");
+    let sid = out.trim().strip_prefix("session ").unwrap().to_owned();
+    let (code, out, err) = cli.run(&[
+        "task",
+        "create",
+        "--session",
+        &sid,
+        "--workspace",
+        &repo_str,
+        "read",
+        "the",
+        "big",
+        "file",
+    ]);
+    assert_eq!(code, 0, "{err}");
+    let tid = out.trim().strip_prefix("task ").unwrap().to_owned();
+    let (code, out, err) = cli.run(&[
+        "task",
+        "run",
+        "--session",
+        &sid,
+        "--task",
+        &tid,
+        "--endpoint",
+        "openai",
+        "--model",
+        "gpt-5",
+        "--wait",
+    ]);
+    // 0 = finished, 2 = the run stopped for input; either way it compacted.
+    assert!(code == 0 || code == 2, "{code}: {out}{err}");
+    let (code, out, err) = cli.run(&["context", "show", &tid]);
+    assert_eq!(code, 0, "{err}");
+    let line = out
+        .lines()
+        .find(|l| l.starts_with("compaction: "))
+        .unwrap_or_else(|| panic!("no compaction report: {out}"));
+    let field = |k: &str| -> String {
+        line.split_whitespace()
+            .find_map(|w| w.strip_prefix(k))
+            .unwrap_or_else(|| panic!("{k} missing from {line}"))
+            .to_owned()
+    };
+    assert!(field("epoch=").parse::<u32>().unwrap() >= 1, "{line}");
+    assert!(field("epochs=").parse::<u32>().unwrap() >= 1, "{line}");
+    assert!(
+        field("compacted_entries=").parse::<u64>().unwrap() >= 2,
+        "{line}"
+    );
+    assert_ne!(field("manifest="), "none", "{line}");
+    // The prefix was rebuilt at least once (the first turn) and every epoch,
+    // and reused on the turns in between.
+    let hits: u32 = field("cache_hits=").parse().unwrap();
+    let misses: u32 = field("cache_misses=").parse().unwrap();
+    assert!(misses >= 2, "{line}");
+    assert!(hits >= 1, "the prefix is reused between epochs: {line}");
 }

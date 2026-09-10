@@ -21,6 +21,15 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::ContextInspector
         v.injected_refs = injected;
         v.rejected_refs = rejected;
     }
+    // What compaction did to the transcript, and what that cost the prompt
+    // cache (docs/19; REQ-EV-0111 / 0268).
+    let economy = epochs_and_cache(core, task_id).await;
+    v.compaction_epoch = economy.epoch;
+    v.compaction_epochs = economy.epochs;
+    v.compacted_entries = economy.compacted_entries;
+    v.manifest_ref = economy.manifest_ref;
+    v.prefix_cache_hits = economy.hits;
+    v.prefix_cache_misses = economy.misses;
     let Some(pack) = ledger.last_pack.as_ref() else {
         return v;
     };
@@ -84,6 +93,62 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::ContextInspector
         });
     }
     v
+}
+
+/// The compaction epochs of a task and the prompt-cache economics of the
+/// prefix they move.
+#[derive(Default)]
+struct Economy {
+    epoch: u32,
+    epochs: u32,
+    compacted_entries: u64,
+    manifest_ref: String,
+    hits: u32,
+    misses: u32,
+}
+
+/// Counted from the log, never estimated: every epoch the task opened, and
+/// every model invocation's cache key in order. A turn is a hit when it routed
+/// on the same stable prefix as the turn before it.
+async fn epochs_and_cache(core: &Core, task_id: TaskId) -> Economy {
+    let mut out = Economy::default();
+    let store = core.store.lock().await;
+    let Ok(Some(task)) = store.task(&task_id) else {
+        return out;
+    };
+    let Ok(events) = store.read_session(&task.session_id, 0, 200_000) else {
+        return out;
+    };
+    let mut last_key: Option<String> = None;
+    for e in &events {
+        if e.envelope.task_id != Some(task_id) {
+            continue;
+        }
+        let Ok(p) = store.payload(&e.envelope) else {
+            continue;
+        };
+        match e.envelope.event_type.as_str() {
+            "ContextEpochOpened" => {
+                out.epochs += 1;
+                out.epoch = u32::try_from(p["epoch"].as_u64().unwrap_or(0)).unwrap_or(u32::MAX);
+                out.compacted_entries += p["source_entries"].as_u64().unwrap_or(0);
+                out.manifest_ref = p["manifest_ref"].as_str().unwrap_or_default().to_owned();
+            }
+            "ModelInvocationStarted" => {
+                let Some(key) = p["model_route"]["cache_key"].as_str() else {
+                    continue;
+                };
+                if last_key.as_deref() == Some(key) {
+                    out.hits += 1;
+                } else {
+                    out.misses += 1;
+                }
+                last_key = Some(key.to_owned());
+            }
+            _ => {}
+        }
+    }
+    out
 }
 
 /// The last ContextCompile step's record: (context pack id, injected, rejected).

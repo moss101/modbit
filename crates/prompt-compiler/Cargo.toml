@@ -25,4 +25,7 @@ workspace = true
 [package.metadata.modbit]
 owner = "context-engine"
 canonical = []
-capabilities = [{ id = "prompt.compile", requirements = ["REQ-EV-0044"] }]
+capabilities = [
+  { id = "prompt.compile", requirements = ["REQ-EV-0044"] },
+  { id = "prompt.cache_key", requirements = ["REQ-EV-0111", "REQ-EV-0268"] },
+]

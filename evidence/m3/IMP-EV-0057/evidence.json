@@ -1,0 +1,16 @@
+{
+ "task": "IMP-EV-0057",
+ "requirement": "REQ-EV-0057",
+ "qual": "QUAL-EV-0057",
+ "tests": [
+  "compaction_preserves_labelled_facts_and_keeps_the_rest_recoverable",
+  "a_critical_fact_corpus_meets_the_fidelity_threshold",
+  "a_later_epoch_carries_the_facts_and_handles_of_the_one_before_it",
+  "qual_ev_0056_0092_0130_compaction_epoch_preserves_facts_survives_restart_and_moves_the_cache_prefix"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "Every epoch writes a manifest that records the source head offset it saw, the number of entries it summarised, the task generation and compiler version it was computed under, the facts it kept verbatim with their kind and origin, the handles that recover the dropped material, the projection and its token cost, and a hash over those fields. The three tiers are explicit: the freshest entries stay verbatim (hot), the labelled facts stay in the projection (warm), and everything else is reachable through the handles and the canonical log (cold). Fidelity is measured, not asserted by eye: `fidelity()` re-derives the critical set from the source and scores the manifest against it.",
+ "audit": "NOT-FOUND before this batch.",
+ "limitations": "`fidelity()` shares `compact()`'s labelling heuristic, so it measures whether labelled facts survived compaction, not whether the labels catch everything a reader would call critical."
+}

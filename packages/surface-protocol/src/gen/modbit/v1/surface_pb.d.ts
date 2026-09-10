@@ -1968,6 +1968,52 @@ export declare type ContextInspectorView = Message<"modbit.v1.ContextInspectorVi
    * @generated from field: uint64 injected_tokens = 15;
    */
   injectedTokens: bigint;
+
+  /**
+   * Compaction epochs and the prompt-cache prefix they move (docs/19;
+   * REQ-EV-0056 / 0092 / 0111 / 0268). The manifest is a stored object: read
+   * it with ReadObject to see the facts an epoch preserved.
+   *
+   * installed epoch; 0 = nothing compacted yet
+   *
+   * @generated from field: uint32 compaction_epoch = 16;
+   */
+  compactionEpoch: number;
+
+  /**
+   * epochs opened on this task
+   *
+   * @generated from field: uint32 compaction_epochs = 17;
+   */
+  compactionEpochs: number;
+
+  /**
+   * transcript entries summarised away
+   *
+   * @generated from field: uint64 compacted_entries = 18;
+   */
+  compactedEntries: bigint;
+
+  /**
+   * the installed epoch's manifest
+   *
+   * @generated from field: string manifest_ref = 19;
+   */
+  manifestRef: string;
+
+  /**
+   * turns that reused the previous stable prefix
+   *
+   * @generated from field: uint32 prefix_cache_hits = 20;
+   */
+  prefixCacheHits: number;
+
+  /**
+   * turns that changed it (the first, then each epoch)
+   *
+   * @generated from field: uint32 prefix_cache_misses = 21;
+   */
+  prefixCacheMisses: number;
 };
 
 /**

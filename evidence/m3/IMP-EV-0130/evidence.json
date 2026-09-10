@@ -1,0 +1,16 @@
+{
+ "task": "IMP-EV-0130",
+ "requirement": "REQ-EV-0130",
+ "qual": "QUAL-EV-0130",
+ "tests": [
+  "a_critical_fact_corpus_meets_the_fidelity_threshold",
+  "a_later_epoch_carries_the_facts_and_handles_of_the_one_before_it",
+  "compaction_preserves_labelled_facts_and_keeps_the_rest_recoverable",
+  "qual_ev_0056_0092_0130_compaction_epoch_preserves_facts_survives_restart_and_moves_the_cache_prefix"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "Instructions, plan decisions, approvals and open failure signatures are kept verbatim; everything else becomes a counted summary plus the handles that recover it. A later epoch carries the earlier epoch's facts and handles forward, so a second compaction cannot drop what the first one saved. Fidelity is measured on a corpus of twelve labelled facts among sixteen entries: every labelled fact survives into the manifest (1.0) and at least 90% reach the projection under a realistic budget, while a deliberately tight budget shows the manifest still holding what the projection had to omit.",
+ "audit": "NOT-FOUND before this batch.",
+ "limitations": "The corpus is a constructed one that exercises each label; there is no recorded transcript corpus from real sessions yet."
+}

@@ -9,6 +9,9 @@ publish.workspace = true
 
 [dependencies]
 modbit-domain.workspace = true
+serde.workspace = true
+sha2.workspace = true
+hex.workspace = true
 
 [lints]
 workspace = true
@@ -18,6 +21,10 @@ workspace = true
 # systems this crate is THE implementation of (at most one member per system);
 # capabilities: production capabilities with their requirement ids (none yet).
 [package.metadata.modbit]
-owner = "durability"
+owner = "context-engine"
 canonical = ["compaction-epochs"]
-capabilities = []
+capabilities = [
+  { id = "compaction.epochs", requirements = ["REQ-EV-0056", "REQ-EV-0057", "REQ-EV-0130"] },
+  { id = "compaction.stale_result_guard", requirements = ["REQ-EV-0058"] },
+  { id = "compaction.recoverable_projection", requirements = ["REQ-EV-0092"] },
+]

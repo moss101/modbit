@@ -9040,3 +9040,321 @@ async fn qual_ev_0035_0131_0175_context_inspector_matches_the_prompt_envelope() 
     }
     let _ = repo;
 }
+
+/// Compaction epochs (REQ-EV-0056 / 0057 / 0058 / 0092 / 0130 / 0111 / 0268):
+/// when the model-visible transcript passes its budget the older entries
+/// become one epoch projection that keeps the instructions, decisions and
+/// handles; the canonical log is untouched, so a Core restart rebuilds exactly
+/// the compacted context; the cacheable prefix changes only at the epoch
+/// boundary and the inspector reports how often it was reused; and the
+/// manifest that installed at one head is refused once the log has moved.
+#[tokio::test]
+async fn qual_ev_0056_0092_0130_compaction_epoch_preserves_facts_survives_restart_and_moves_the_cache_prefix()
+ {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[("big.txt", &"filler line for the transcript\n".repeat(400))]);
+    let read = json!({"calls": [{"name": "fs.read", "args": {"path": "big.txt"}}]});
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "read the big file a few times", "expected_files": ["big.txt"]}}]}),
+        read.clone(),
+        read.clone(),
+        read.clone(),
+        read.clone(),
+        read.clone(),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        // A small budget so a real run compacts within a few turns.
+        ("MODBIT_COMPACTION_TOKEN_BUDGET", "1500"),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x56)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x57, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x58),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 12,
+                max_tool_calls: 0,
+                max_no_progress_turns: 5,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 120).await;
+    let evs = task_events(&core, &session, &task).await;
+    // The run ends on its own terms (the scripted model keys its next step on
+    // the number of tool results it sees, which compaction deliberately
+    // reduces, so it replays reads until a budget stops it).
+    assert!(
+        matches!(st.state.as_str(), "ReadyForReview" | "Waiting"),
+        "{st:?}\n{evs:#?}"
+    );
+    assert!(!st.loop_alive, "{st:?}");
+    // An epoch opened, with a manifest that keeps the instruction, the plan
+    // decision and the handles.
+    let epochs: Vec<&serde_json::Value> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "ContextEpochOpened")
+        .map(|(_, _, p)| p)
+        .collect();
+    assert!(
+        !epochs.is_empty(),
+        "the transcript passed the budget: {evs:#?}"
+    );
+    let e = epochs[0];
+    assert_eq!(e["epoch"], 1);
+    assert!(e["source_entries"].as_u64().unwrap() >= 2, "{e}");
+    assert_eq!(e["manifest_hash"].as_str().unwrap().len(), 64);
+    let manifest = read_object(&mut c, id16(0x59), e["manifest_ref"].as_str().unwrap()).await;
+    let manifest: serde_json::Value = serde_json::from_str(&manifest).unwrap();
+    assert_eq!(manifest["manifest_hash"], e["manifest_hash"]);
+    assert_eq!(
+        manifest["compiler_version"],
+        modbit_prompt_compiler::COMPILER_VERSION
+    );
+    let kinds: Vec<&str> = manifest["preserved"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|f| f["kind"].as_str().unwrap())
+        .collect();
+    assert!(kinds.contains(&"decision"), "the plan survives: {manifest}");
+    assert!(kinds.contains(&"handle"), "the refs survive: {manifest}");
+    assert!(
+        !manifest["resources"].as_array().unwrap().is_empty(),
+        "the dropped results stay reachable: {manifest}"
+    );
+    assert!(manifest["projection_tokens"].as_u64().unwrap() > 0);
+    // The model saw the projection instead of the compacted entries.
+    let bodies = seen.lock().unwrap().clone();
+    let epoch_idx = bodies
+        .iter()
+        .position(|b| {
+            b["messages"].as_array().unwrap().iter().any(|m| {
+                m["content"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .contains("Compaction epoch 1")
+            })
+        })
+        .unwrap_or_else(|| panic!("no request carried the epoch: {bodies:#?}"));
+    assert!(epoch_idx > 0, "the first request cannot be a compacted one");
+    let epoch_message = bodies[epoch_idx]["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|m| m["content"].as_str())
+        .find(|t| t.contains("Compaction epoch 1"))
+        .unwrap();
+    assert!(
+        epoch_message.contains("canonical log keeps them in full"),
+        "{epoch_message}"
+    );
+    assert!(epoch_message.contains("artifact.range"), "{epoch_message}");
+    // Compaction is real and bounds the transcript: from the first epoch on
+    // the model sees the same handful of entries however many turns run, and
+    // more entries were summarised away than it still sees.
+    let counts: Vec<usize> = bodies
+        .iter()
+        .map(|b| b["messages"].as_array().unwrap().len())
+        .collect();
+    assert!(
+        counts[epoch_idx..].iter().all(|c| *c <= counts[epoch_idx]),
+        "the transcript stays bounded after the epoch: {counts:?}"
+    );
+    assert!(
+        bodies.len() > counts[epoch_idx],
+        "the run outran the transcript it shows: {counts:?}"
+    );
+    let sizes: Vec<usize> = bodies
+        .iter()
+        .map(|b| serde_json::to_string(&b["messages"]).unwrap().len())
+        .collect();
+    assert!(
+        *sizes.last().unwrap() <= sizes[epoch_idx] * 12 / 10,
+        "the transcript stays bounded in bytes too: {sizes:?}"
+    );
+    let summarised: u64 = epochs
+        .iter()
+        .map(|e| e["source_entries"].as_u64().unwrap_or(0))
+        .sum();
+    assert!(
+        summarised > *counts.last().unwrap() as u64,
+        "more was compacted away than the model still sees: {summarised} vs {counts:?}"
+    );
+    // REQ-EV-0111 / 0268: the cacheable prefix is stable within an epoch and
+    // changes at the boundary (segment 2 is the compaction epoch).
+    let mut epoch_segments = Vec::new();
+    for (i, r) in evs
+        .iter()
+        .filter(|(a, t, _)| a == "run_step" && t == "StepSucceeded")
+        .filter_map(|(_, _, p)| p["output_ref"].as_str().map(str::to_owned))
+        .enumerate()
+    {
+        let body = read_object(
+            &mut c,
+            id16(0x5A_u8.wrapping_add(u8::try_from(i).unwrap_or(0))),
+            &r,
+        )
+        .await;
+        if let Ok(v) = serde_json::from_str::<serde_json::Value>(&body)
+            && let Some(seg) = v["segment_hashes"][2].as_str()
+        {
+            epoch_segments.push(seg.to_owned());
+        }
+    }
+    assert!(epoch_segments.len() >= 3, "{epoch_segments:?}");
+    // The prefix changes exactly once per epoch and never inside one: the
+    // number of distinct values and the number of transitions both equal the
+    // number of epochs plus the pre-compaction prefix.
+    let distinct: std::collections::BTreeSet<&String> = epoch_segments.iter().collect();
+    assert_eq!(
+        distinct.len(),
+        epochs.len() + 1,
+        "one prefix per epoch plus the pre-compaction one: {epoch_segments:?}"
+    );
+    let transitions = epoch_segments.windows(2).filter(|w| w[0] != w[1]).count();
+    assert_eq!(
+        transitions,
+        epochs.len(),
+        "the prefix is stable within an epoch: {epoch_segments:?}"
+    );
+    assert_ne!(epoch_segments.first(), epoch_segments.last());
+    // The same property read from the other end: the prompt cache key the run
+    // routed on (segments 0..3, so the epoch is in it) is reused turn after
+    // turn and misses exactly once per epoch.
+    let keys: Vec<String> = evs
+        .iter()
+        .filter(|(a, t, _)| a == "turn" && t == "ModelInvocationStarted")
+        .filter_map(|(_, _, p)| p["model_route"]["cache_key"].as_str().map(str::to_owned))
+        .collect();
+    assert!(keys.len() >= 3, "{keys:?}");
+    let misses = keys.windows(2).filter(|w| w[0] != w[1]).count();
+    assert_eq!(misses, epochs.len(), "one cache miss per epoch: {keys:?}");
+    assert!(
+        keys.len() - 1 - misses > 0,
+        "the prefix is reused between epochs: {keys:?}"
+    );
+    // REQ-EV-0092: a restart rebuilds exactly the compacted context — the
+    // manifests are still readable and the last one is what the model saw.
+    let last_epoch = epochs.last().unwrap();
+    let last_projection = bodies
+        .iter()
+        .rev()
+        .flat_map(|b| b["messages"].as_array().cloned().unwrap_or_default())
+        .filter_map(|m| m["content"].as_str().map(str::to_owned))
+        .find(|t| t.contains("Compaction epoch "))
+        .unwrap();
+    drop(c);
+    core.kill();
+    let core2 = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c2 = core2.client().await;
+    let evs2 = task_events(&core2, &session, &task).await;
+    assert_eq!(
+        evs2.iter()
+            .filter(|(_, t, _)| t == "ContextEpochOpened")
+            .count(),
+        epochs.len(),
+        "the log is unchanged by the restart"
+    );
+    let rebuilt = read_object(
+        &mut c2,
+        id16(0x60),
+        last_epoch["manifest_ref"].as_str().unwrap(),
+    )
+    .await;
+    let rebuilt: serde_json::Value = serde_json::from_str(&rebuilt).unwrap();
+    assert_eq!(rebuilt["manifest_hash"], last_epoch["manifest_hash"]);
+    // QUAL-EV-0058 on the real system: this is the manifest the run installed,
+    // and offering it now — after the log moved on — is refused. It installed
+    // only because it was current when it was computed.
+    {
+        use modbit_compaction::{RejectedCompaction, accept};
+        let m: modbit_compaction::CompactionManifest =
+            serde_json::from_value(rebuilt.clone()).unwrap();
+        assert!(
+            accept(
+                &m,
+                m.previous_epoch,
+                m.task_generation,
+                m.source_head_offset
+            )
+            .is_ok(),
+            "{m:?}"
+        );
+        let head_now = wait_task(&mut c2, &task, 5).await.last_offset;
+        assert!(head_now > m.source_head_offset, "{head_now} vs {m:?}");
+        assert_eq!(
+            accept(&m, m.previous_epoch, m.task_generation, head_now),
+            Err(RejectedCompaction::SourceAdvanced {
+                saw: m.source_head_offset,
+                now: head_now
+            }),
+            "a compaction computed against an older head cannot install"
+        );
+        assert_eq!(
+            accept(&m, Some(m.epoch), m.task_generation, m.source_head_offset),
+            Err(RejectedCompaction::NotSuccessor {
+                installed: m.epoch,
+                offered: m.epoch
+            }),
+            "and an epoch never installs twice"
+        );
+    }
+    assert!(
+        last_projection.contains(rebuilt["projection"].as_str().unwrap()),
+        "the rebuilt projection is the one the model saw"
+    );
+    let r = invoke_tool(&mut c2, &task, g, 0x5F, 0x61, "context.ledger", "{}").await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    // And the product reports the same economics the log carries: the
+    // inspector is the user-visible cached-prefix hit/miss report.
+    let ack = c2
+        .command(envelope(
+            id16(0x62),
+            "GetContextInspector",
+            modbit_protocol::v1::GetContextInspector {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let v: modbit_protocol::v1::ContextInspectorView = Client::result(&ack).unwrap();
+    assert_eq!(usize::try_from(v.compaction_epochs).unwrap(), epochs.len());
+    assert_eq!(
+        u64::from(v.compaction_epoch),
+        last_epoch["epoch"].as_u64().unwrap()
+    );
+    assert_eq!(v.manifest_ref, last_epoch["manifest_ref"].as_str().unwrap());
+    assert_eq!(v.compacted_entries, summarised);
+    // The first turn has no prefix to reuse, so the report counts one miss
+    // more than the transitions between turns.
+    assert_eq!(
+        usize::try_from(v.prefix_cache_misses).unwrap(),
+        misses + 1,
+        "{keys:?}"
+    );
+    assert_eq!(
+        usize::try_from(v.prefix_cache_hits).unwrap(),
+        keys.len() - misses - 1,
+        "{keys:?}"
+    );
+    let _ = repo;
+}

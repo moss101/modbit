@@ -73,6 +73,13 @@ export interface ContextInspectorSummary {
   omittedCount: number;
   omittedPaths: string[];
   entries: ContextInspectorEntry[];
+  // Compaction epochs and what they cost the prompt cache (docs/19).
+  compactionEpoch: number;
+  compactionEpochs: number;
+  compactedEntries: string;
+  manifestRef: string;
+  prefixCacheHits: number;
+  prefixCacheMisses: number;
 }
 
 export interface ModbitBridge {

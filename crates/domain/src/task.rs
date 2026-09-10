@@ -292,6 +292,25 @@ pub enum TaskEvent {
         /// Tool names activated.
         tools: Vec<String>,
     },
+    /// `ContextEpochOpened` (docs/19 "Compaction epochs", REQ-EV-0056):
+    /// the model-visible transcript before `source_head_offset` is replaced by
+    /// the epoch's projection. The canonical log is untouched. No state change.
+    ContextEpochOpened {
+        /// Monotonic epoch number.
+        epoch: u32,
+        /// The previous epoch, when any.
+        previous_epoch: Option<u32>,
+        /// Store offset the compacted range ended at.
+        source_head_offset: u64,
+        /// Transcript entries the epoch summarised.
+        source_entries: u32,
+        /// Object hash of the manifest.
+        manifest_ref: String,
+        /// Hash of the manifest's fields, for a client that reads it back.
+        manifest_hash: String,
+        /// Estimated tokens of the projection.
+        projection_tokens: u32,
+    },
     /// `ReproductionRecorded` (docs/28 §5, PX-039): what a verification run
     /// said about the failure the goal reports, or the plan's recorded
     /// limitation when it could not be reproduced. No state change.
@@ -455,6 +474,7 @@ impl TaskEvent {
             Self::PlanRevised { .. } => "PlanRevised",
             Self::SelfReviewRecorded { .. } => "SelfReviewRecorded",
             Self::ToolsActivated { .. } => "ToolsActivated",
+            Self::ContextEpochOpened { .. } => "ContextEpochOpened",
             Self::ReproductionRecorded { .. } => "ReproductionRecorded",
             Self::ScopeExpansionRecorded { .. } => "ScopeExpansionRecorded",
             Self::RetrievalRecorded { .. } => "RetrievalRecorded",
@@ -560,6 +580,7 @@ impl Task {
             | TaskEvent::PlanRevised { .. }
             | TaskEvent::SelfReviewRecorded { .. }
             | TaskEvent::ToolsActivated { .. }
+            | TaskEvent::ContextEpochOpened { .. }
             | TaskEvent::ReproductionRecorded { .. }
             | TaskEvent::ScopeExpansionRecorded { .. }
             | TaskEvent::RetrievalRecorded { .. }

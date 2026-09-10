@@ -125,6 +125,12 @@ ipcMain.handle("context:inspector", async (_e: IpcMainInvokeEvent, taskId: unkno
     rejectedRefs: v.rejectedRefs,
     omittedCount: v.omittedCount,
     omittedPaths: v.omittedPaths,
+    compactionEpoch: v.compactionEpoch,
+    compactionEpochs: v.compactionEpochs,
+    compactedEntries: v.compactedEntries.toString(),
+    manifestRef: v.manifestRef,
+    prefixCacheHits: v.prefixCacheHits,
+    prefixCacheMisses: v.prefixCacheMisses,
     entries: v.entries.map((e) => ({
       entryId: e.entryId,
       sourceRef: e.sourceRef,

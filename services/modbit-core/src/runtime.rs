@@ -583,6 +583,18 @@ pub(crate) async fn rebuild(
                     questions.insert(q.to_owned(), c.to_owned());
                 }
             }
+            "ContextEpochOpened" => {
+                // docs/19: the model-visible transcript before the epoch is
+                // replaced by its projection; the log itself is untouched, so
+                // the rebuilt context is exactly what the model last saw.
+                let n = usize::try_from(payload["source_entries"].as_u64().unwrap_or(0))
+                    .unwrap_or(usize::MAX);
+                if n >= transcript.len() {
+                    transcript.clear();
+                } else {
+                    transcript.drain(..n);
+                }
+            }
             "ReproductionRecorded" => {
                 state.reproduction = payload["status"].as_str().map(str::to_owned);
             }
@@ -842,6 +854,8 @@ async fn run_loop(
     // docs/28 §5 (PX-039): a goal that reports a failure must reproduce it
     // before a fix transaction.
     state.goal_reports_failure = harness::goal_reports_failure(&task.goal_text);
+    // docs/19 (REQ-EV-0056/0092/0130): the epoch rebuilt from the log, if any.
+    let mut epoch: Option<modbit_compaction::CompactionManifest> = epoch_of(&core, &task).await;
     let lease = core
         .store
         .lock()
@@ -980,6 +994,53 @@ async fn run_loop(
                 break LoopEnd::ProviderFailed("STORE".into(), "append failed".into());
             }
         }
+        // Compaction epochs (docs/19): when the model-visible transcript passes
+        // the budget, the older entries become one epoch projection. The
+        // canonical log is untouched and every dropped result stays reachable
+        // by its ref.
+        if let Some((manifest, kept)) = maybe_compact(
+            &core,
+            &task,
+            &transcript,
+            epoch.as_ref(),
+            compaction_budget(),
+        )
+        .await
+        {
+            let manifest_ref = {
+                let store = core.store.lock().await;
+                store
+                    .objects()
+                    .put(serde_json::to_vec(&manifest).unwrap_or_default().as_slice())
+                    .unwrap_or_default()
+            };
+            {
+                let mut store = core.store.lock().await;
+                let _ = append(
+                    &mut store,
+                    &core,
+                    lt,
+                    AggregateType::Task,
+                    *task.task_id.as_bytes(),
+                    vec![typed(
+                        "ContextEpochOpened",
+                        &TaskEvent::ContextEpochOpened {
+                            epoch: manifest.epoch,
+                            previous_epoch: manifest.previous_epoch,
+                            source_head_offset: manifest.source_head_offset,
+                            source_entries: u32::try_from(manifest.source_entries)
+                                .unwrap_or(u32::MAX),
+                            manifest_ref: manifest_ref.clone(),
+                            manifest_hash: manifest.manifest_hash.clone(),
+                            projection_tokens: manifest.projection_tokens,
+                        },
+                        actor.clone(),
+                    )],
+                );
+            }
+            epoch = Some(manifest);
+            transcript = kept;
+        }
         // ContextCompile step.
         let harness_json = serde_json::to_value(&state).unwrap_or_default();
         // REQ-EV-0169: the task's latest Context Pack enters the prompt with
@@ -1016,7 +1077,7 @@ async fn run_loop(
             workspace_root: task.workspace_root.clone(),
             execution_profile: task.execution_profile.clone(),
             workspace_rules: vec![],
-            compaction_summary: None,
+            compaction_summary: epoch.as_ref().map(|m| m.projection.clone()),
             harness_state: harness_json.clone(),
             transcript: transcript.clone(),
             context: context_fragments,
@@ -2304,6 +2365,129 @@ async fn unretrieved_targets(
         }
     }
     (missing.into_iter().map(|(p, _)| p).collect(), rev)
+}
+
+/// The model-visible transcript budget before a compaction epoch opens
+/// (docs/19). `MODBIT_COMPACTION_TOKEN_BUDGET` overrides it for tests and
+/// for a deployment with a smaller context window.
+fn compaction_budget() -> u32 {
+    std::env::var("MODBIT_COMPACTION_TOKEN_BUDGET")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .filter(|v| *v > 0)
+        .unwrap_or(12_000)
+}
+
+/// Entries kept out of a compaction: the freshest turns stay verbatim.
+const COMPACTION_KEEP_TAIL: usize = 4;
+
+/// The manifest of the installed epoch, rebuilt from the log: the projection
+/// the model sees and the facts the next epoch carries forward.
+async fn epoch_of(core: &Core, task: &Task) -> Option<modbit_compaction::CompactionManifest> {
+    let store = core.store.lock().await;
+    let events = store
+        .read_aggregate(task.task_id.as_bytes(), 0, 100_000)
+        .ok()?;
+    let mut out = None;
+    for e in &events {
+        if e.envelope.event_type != "ContextEpochOpened" {
+            continue;
+        }
+        let Ok(p) = store.payload(&e.envelope) else {
+            continue;
+        };
+        if let Some(m) = p["manifest_ref"]
+            .as_str()
+            .and_then(|r| store.objects().get(r).ok())
+            .and_then(|b| serde_json::from_slice::<modbit_compaction::CompactionManifest>(&b).ok())
+        {
+            out = Some(m);
+        }
+    }
+    out
+}
+
+/// Compact the transcript when it passes the budget: returns the manifest and
+/// the entries that stay verbatim. `None` when nothing needs compacting or a
+/// concurrent write moved the log (the stale guard refuses the result).
+async fn maybe_compact(
+    core: &Core,
+    task: &Task,
+    transcript: &[Message],
+    installed: Option<&modbit_compaction::CompactionManifest>,
+    budget: u32,
+) -> Option<(modbit_compaction::CompactionManifest, Vec<Message>)> {
+    let tokens: u32 = transcript
+        .iter()
+        .map(|m| modbit_compaction::estimate_tokens(&message_text(m)))
+        .sum();
+    if tokens <= budget || transcript.len() <= COMPACTION_KEEP_TAIL + 1 {
+        return None;
+    }
+    let cut = transcript.len() - COMPACTION_KEEP_TAIL;
+    let source: Vec<modbit_compaction::SourceEntry> = transcript[..cut]
+        .iter()
+        .map(|m| modbit_compaction::SourceEntry {
+            role: format!("{:?}", m.role).to_lowercase(),
+            name: String::new(),
+            text: message_text(m),
+            failure_signature: None,
+        })
+        .collect();
+    let (generation, head) = {
+        let store = core.store.lock().await;
+        let generation = store
+            .task(&task.task_id)
+            .ok()
+            .flatten()
+            .map_or(0, |t| t.generation);
+        (generation, store.last_offset().unwrap_or(0))
+    };
+    let manifest = modbit_compaction::compact(&modbit_compaction::CompactionRequest {
+        entries: &source,
+        previous: installed,
+        task_generation: generation,
+        source_head_offset: head,
+        compiler_version: modbit_prompt_compiler::COMPILER_VERSION,
+        target_tokens: budget / 4,
+    });
+    // docs/19: the result installs only while its source is still current.
+    let (generation_now, head_now) = {
+        let store = core.store.lock().await;
+        let g = store
+            .task(&task.task_id)
+            .ok()
+            .flatten()
+            .map_or(0, |t| t.generation);
+        (g, store.last_offset().unwrap_or(0))
+    };
+    if let Err(rejected) = modbit_compaction::accept(
+        &manifest,
+        installed.map(|m| m.epoch),
+        generation_now,
+        head_now,
+    ) {
+        eprintln!("modbit-core: compaction refused: {rejected:?}");
+        return None;
+    }
+    Some((manifest, transcript[cut..].to_vec()))
+}
+
+/// The text of a message, for the token estimate and the compaction source.
+fn message_text(m: &Message) -> String {
+    m.parts
+        .iter()
+        .map(|p| match p {
+            ContentPart::Text { text } => text.clone(),
+            ContentPart::ToolCall {
+                name,
+                arguments_json,
+                ..
+            } => format!("{name} {arguments_json}"),
+            ContentPart::ToolResult { content, .. } => content.clone(),
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// Tools whose result is command or test evidence (docs/14 contract 3).
