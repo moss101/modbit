@@ -63,6 +63,8 @@ const BATCH: usize = 256;
 
 /// Largest object range served in one frame (REQ-EV-0108).
 const MAX_OBJECT_CHUNK: u64 = 1024 * 1024;
+/// An attached engineering document is context, not a corpus (REQ-EV-0161).
+const MAX_CONTEXT_DOCUMENT_BYTES: usize = 256 * 1024;
 
 /// Fencing (docs/13, docs/33): a mutating command must present the session's
 /// current lease generation in `expected_generation`.
@@ -487,6 +489,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "GetContextInspector",
                     "GetTaskEconomics",
                     "SetTaskSelection",
+                    "AttachContextDocument",
                     "ProbeModel",
                     "StartTask",
                     "CancelTask",
@@ -1083,6 +1086,91 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                             task_id: Some(wire_id(task_id.as_bytes())),
                             sequence,
                             offset,
+                        }
+                        .encode_to_vec(),
+                    )
+                }
+                Err(e) => reject(cid, error_code(&e), e.to_string()),
+            }
+        }
+        "AttachContextDocument" => {
+            let Ok(p) = wire::AttachContextDocument::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "AttachContextDocument");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            if p.source.trim().is_empty() || p.text.trim().is_empty() {
+                return reject(cid, "BAD_PAYLOAD", "source and text required");
+            }
+            if p.text.len() > MAX_CONTEXT_DOCUMENT_BYTES {
+                return reject(
+                    cid,
+                    "DOCUMENT_TOO_LARGE",
+                    format!("at most {MAX_CONTEXT_DOCUMENT_BYTES} bytes"),
+                );
+            }
+            let session_id = {
+                let store = core.store.lock().await;
+                match store.task(&task_id) {
+                    Ok(Some(t)) => t.session_id,
+                    Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                }
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
+                return ack;
+            }
+            let (document_id, content_ref) = {
+                use sha2::Digest;
+                let store = core.store.lock().await;
+                let hash = hex::encode(sha2::Sha256::digest(p.text.as_bytes()));
+                let stored = match store.objects().put(p.text.as_bytes()) {
+                    Ok(r) => r,
+                    Err(e) => return reject(cid, "OBJECT_STORE", e.to_string()),
+                };
+                (hash, stored)
+            };
+            let req = AppendRequest {
+                tenant_id: core.tenant_id,
+                session_id,
+                task_id: Some(task_id),
+                run_id: None,
+                turn_id: None,
+                step_id: None,
+                aggregate_type: AggregateType::Task,
+                aggregate_id: *task_id.as_bytes(),
+                expected_sequence: None,
+                events: vec![typed(
+                    "ContextDocumentAttached",
+                    &TaskEvent::ContextDocumentAttached {
+                        document_id: document_id.clone(),
+                        source: p.source.clone(),
+                        title: p.title.clone(),
+                        content_ref: content_ref.clone(),
+                        byte_length: p.text.len() as u64,
+                        trust: "UNTRUSTED_EXTERNAL_CONTENT".into(),
+                    },
+                    actor,
+                )],
+            };
+            let mut store = core.store.lock().await;
+            match store.execute_command(record("AttachContextDocument"), req) {
+                Ok(outcome) => {
+                    let (events, replayed) = split(outcome);
+                    let offset = events.last().map_or(0, |e| e.offset);
+                    if !replayed {
+                        core.last_offset.send_replace(offset);
+                    }
+                    accept(
+                        cid,
+                        replayed,
+                        wire::ContextDocumentAttached {
+                            document_id,
+                            content_ref,
+                            offset,
+                            trust: "UNTRUSTED_EXTERNAL_CONTENT".into(),
+                            replayed,
                         }
                         .encode_to_vec(),
                     )

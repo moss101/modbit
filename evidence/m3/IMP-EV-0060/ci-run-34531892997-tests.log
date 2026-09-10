@@ -1,0 +1,15 @@
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T21:25:16.0388770Z test qual_ev_0060_0203_the_repository_map_flags_stale_claims_and_never_
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T21:25:20.1404170Z test qual_ev_0169_context_pack_reaches_the_prompt_with_provenance_or_no
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T21:25:52.0870490Z test the_map_names_modules_exports_dependencies_and_its_own_sources ...
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T21:25:52.0871250Z test a_claim_whose_source_moved_is_stale_and_one_whose_source_is_gone_i
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T21:25:52.4830380Z test qual_ev_0217_compatibility_matrix_covers_every_registered_tool_wit
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T21:27:21.0711479Z test qual_ev_0060_0203_the_repository_map_flags_stale_claims_and_neve
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T21:27:26.1060123Z test qual_ev_0169_context_pack_reaches_the_prompt_with_provenance_or_
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T21:28:29.4988588Z test the_map_names_modules_exports_dependencies_and_its_own_sources .
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T21:28:29.4989466Z test a_claim_whose_source_moved_is_stale_and_one_whose_source_is_gone
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T21:28:30.2982386Z test qual_ev_0217_compatibility_matrix_covers_every_registered_tool_w
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T21:24:58.1262007Z test qual_ev_0060_0203_the_repository_map_flags_stale_claims_and_never
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T21:25:01.2036397Z test qual_ev_0169_context_pack_reaches_the_prompt_with_provenance_or_n
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T21:25:33.2432962Z test the_map_names_modules_exports_dependencies_and_its_own_sources ..
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T21:25:33.2434077Z test a_claim_whose_source_moved_is_stale_and_one_whose_source_is_gone_
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T21:25:33.4524983Z test qual_ev_0217_compatibility_matrix_covers_every_registered_tool_wi

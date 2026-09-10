@@ -311,6 +311,25 @@ pub enum TaskEvent {
         /// Estimated tokens of the projection.
         projection_tokens: u32,
     },
+    /// `ContextDocumentAttached` (REQ-EV-0161, docs/18 "Connected engineering
+    /// context"): an approved spec, issue or design document the user brought
+    /// into the task. It enters retrieval as labelled, provenance-carrying
+    /// context and nothing more: external text is data, and no sentence inside
+    /// it can grant a tool, widen a lease or change a policy. No state change.
+    ContextDocumentAttached {
+        /// sha256 of the text.
+        document_id: String,
+        /// Where it came from, as the user named it (`issue:PROJ-1`, a URL).
+        source: String,
+        /// Human title.
+        title: String,
+        /// Object hash of the text.
+        content_ref: String,
+        /// Size of the text in bytes.
+        byte_length: u64,
+        /// Always `UNTRUSTED_EXTERNAL_CONTENT`: the label travels with it.
+        trust: String,
+    },
     /// `SelectionRecorded` (REQ-EV-0141 / 0160, docs/18 "Workspace context
     /// bridge"): what the user currently has selected — files, a line range, a
     /// symbol, review hunks — so retrieval can prefer it and every client can
@@ -489,6 +508,7 @@ impl TaskEvent {
             Self::AttachmentIngested { .. } => "AttachmentIngested",
             Self::PlanRecorded { .. } => "PlanRecorded",
             Self::PlanRevised { .. } => "PlanRevised",
+            Self::ContextDocumentAttached { .. } => "ContextDocumentAttached",
             Self::SelectionRecorded { .. } => "SelectionRecorded",
             Self::SelfReviewRecorded { .. } => "SelfReviewRecorded",
             Self::ToolsActivated { .. } => "ToolsActivated",
@@ -601,6 +621,7 @@ impl Task {
             | TaskEvent::ContextEpochOpened { .. }
             | TaskEvent::ReproductionRecorded { .. }
             | TaskEvent::SelectionRecorded { .. }
+            | TaskEvent::ContextDocumentAttached { .. }
             | TaskEvent::ScopeExpansionRecorded { .. }
             | TaskEvent::RetrievalRecorded { .. }
             | TaskEvent::RepairAttemptRecorded { .. }

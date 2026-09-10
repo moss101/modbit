@@ -483,6 +483,25 @@ message ContextInspectorView {
   repeated string selection_review_hunks = 25;
 }
 
+// ---- Connected engineering context (REQ-EV-0161, docs/18) ----
+
+// An approved spec, issue or design document brought into a task. It becomes
+// labelled context with provenance; it grants nothing.
+message AttachContextDocument {
+  Id task_id = 1;
+  string source = 2;   // issue:PROJ-1 | spec:... | a URL, as the user names it
+  string title = 3;
+  string text = 4;     // the document, already fetched by the client
+}
+
+message ContextDocumentAttached {
+  string document_id = 1;   // sha256 of the text
+  string content_ref = 2;
+  uint64 offset = 3;
+  string trust = 4;         // UNTRUSTED_EXTERNAL_CONTENT
+  bool replayed = 5;
+}
+
 // ---- Workspace context bridge (REQ-EV-0141 / 0160, docs/18) ----
 
 // What the user currently has selected. Context, never authority: a selection

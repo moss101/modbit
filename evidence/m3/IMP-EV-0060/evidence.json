@@ -8,8 +8,18 @@
   "a_claim_whose_source_moved_is_stale_and_one_whose_source_is_gone_is_missing",
   "qual_ev_0217_compatibility_matrix_covers_every_registered_tool_with_owner_effect_and_test"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "891cdb6"
+ ],
+ "runs": [
+  {
+   "id": "gha-34531892997",
+   "kind": "hosted CI on 891cdb6",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34531892997",
+   "log": "ci-run-34531892997.json, ci-run-34531892997-tests.log"
+  }
+ ],
  "proof": "knowledge.map generates a repository map from the retrieval indexes where every claim names the files it came from with their hashes. It is kept as a cache and checked on every read: after the agent edits a file the map described, the claims derived from that file come back stale naming the hashes that moved, while claims about untouched modules stay fresh. The payload carries the sentence that it is a discovery aid, never authority.",
  "audit": "NOT-FOUND before this task: the indexes knew the facts, nothing turned them into a map or aged it.",
  "limitations": "Claims are structural, not semantic; a module is a directory; freshness is per source file; the map is rebuilt only on request."

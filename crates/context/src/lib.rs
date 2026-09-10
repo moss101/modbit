@@ -59,6 +59,11 @@ pub struct Candidate {
     /// Symbol signatures of the file (`kind name Lstart-end`), for a stub.
     #[serde(default)]
     pub signatures: Vec<String>,
+    /// How to name this source when it is not a workspace file — an attached
+    /// engineering document, for instance (REQ-EV-0161). Empty means the file
+    /// at `path` in the workspace.
+    #[serde(default)]
+    pub source_ref: String,
 }
 
 /// A signature-only stub of a candidate that did not fit as an entry: the
@@ -368,7 +373,11 @@ pub fn pack(
             let span = c.span.map_or(String::new(), |(a, b)| format!("{a}-{b}"));
             Entry {
                 entry_id: sha(&[&c.path, &span, &excerpt_hash]),
-                source_ref: format!("workspace:{}", c.path),
+                source_ref: if c.source_ref.is_empty() {
+                    format!("workspace:{}", c.path)
+                } else {
+                    c.source_ref.clone()
+                },
                 lines: c.lines,
                 span: c.span,
                 provenance: Provenance {

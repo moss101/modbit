@@ -16,6 +16,7 @@ fn cand(path: &str, lines: Option<(u32, u32)>, score: f32, text: &str) -> Candid
         fresh_in_worktree: false,
         rehydrated: false,
         signatures: vec![],
+        source_ref: String::new(),
     }
 }
 

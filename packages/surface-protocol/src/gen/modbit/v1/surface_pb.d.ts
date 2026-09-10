@@ -2045,6 +2045,84 @@ export declare type ContextInspectorView = Message<"modbit.v1.ContextInspectorVi
 export declare const ContextInspectorViewSchema: GenMessage<ContextInspectorView>;
 
 /**
+ * An approved spec, issue or design document brought into a task. It becomes
+ * labelled context with provenance; it grants nothing.
+ *
+ * @generated from message modbit.v1.AttachContextDocument
+ */
+export declare type AttachContextDocument = Message<"modbit.v1.AttachContextDocument"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * issue:PROJ-1 | spec:... | a URL, as the user names it
+   *
+   * @generated from field: string source = 2;
+   */
+  source: string;
+
+  /**
+   * @generated from field: string title = 3;
+   */
+  title: string;
+
+  /**
+   * the document, already fetched by the client
+   *
+   * @generated from field: string text = 4;
+   */
+  text: string;
+};
+
+/**
+ * Describes the message modbit.v1.AttachContextDocument.
+ * Use `create(AttachContextDocumentSchema)` to create a new message.
+ */
+export declare const AttachContextDocumentSchema: GenMessage<AttachContextDocument>;
+
+/**
+ * @generated from message modbit.v1.ContextDocumentAttached
+ */
+export declare type ContextDocumentAttached = Message<"modbit.v1.ContextDocumentAttached"> & {
+  /**
+   * sha256 of the text
+   *
+   * @generated from field: string document_id = 1;
+   */
+  documentId: string;
+
+  /**
+   * @generated from field: string content_ref = 2;
+   */
+  contentRef: string;
+
+  /**
+   * @generated from field: uint64 offset = 3;
+   */
+  offset: bigint;
+
+  /**
+   * UNTRUSTED_EXTERNAL_CONTENT
+   *
+   * @generated from field: string trust = 4;
+   */
+  trust: string;
+
+  /**
+   * @generated from field: bool replayed = 5;
+   */
+  replayed: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.ContextDocumentAttached.
+ * Use `create(ContextDocumentAttachedSchema)` to create a new message.
+ */
+export declare const ContextDocumentAttachedSchema: GenMessage<ContextDocumentAttached>;
+
+/**
  * What the user currently has selected. Context, never authority: a selection
  * grants no tool and no write, it only tells retrieval what to prefer.
  *

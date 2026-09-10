@@ -9176,12 +9176,14 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0060",
    "source": "docs/41",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m3/IMP-EV-0060/TASK_CARD.md",
     "test:qual_ev_0060_0203_the_repository_map_flags_stale_claims_and_never_enters_the_prompt_by_itself",
     "test:the_map_names_modules_exports_dependencies_and_its_own_sources",
-    "test:a_claim_whose_source_moved_is_stale_and_one_whose_source_is_gone_is_missing"
+    "test:a_claim_whose_source_moved_is_stale_and_one_whose_source_is_gone_is_missing",
+    "commit:891cdb6",
+    "run:gha-34531892997"
    ],
    "notes": [
     {
@@ -9207,9 +9209,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "a real run edits a described file and the claims from it come back stale with the hashes"
+    },
+    {
+     "at": "2026-09-10T21:30:15Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34531892997 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-10T21:30:15Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34531892997; limitations in evidence/m3/IMP-EV-0060/TASK_CARD.md"
     }
    ],
-   "status_changed_on": "2026-09-10T21:22:31Z"
+   "status_changed_on": "2026-09-10T21:30:15Z"
   },
   {
    "id": "IMP-EV-0061",
@@ -12566,8 +12580,39 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0161",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "artifact:evidence/m3/IMP-EV-0161/TASK_CARD.md",
+    "test:qual_ev_0161_an_attached_ticket_is_labelled_context_and_cannot_grant_a_tool",
+    "test:qual_ev_0169_context_pack_reaches_the_prompt_with_provenance_or_not_at_all"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T21:35:12Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: media attachments existed; engineering documents had no way into context"
+    },
+    {
+     "at": "2026-09-10T21:35:12Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "AttachContextDocument + ContextDocumentAttached; connector candidates in the pack with a trust label"
+    },
+    {
+     "at": "2026-09-10T21:35:12Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "served by the Core under the session lease and attachable from the CLI"
+    },
+    {
+     "at": "2026-09-10T21:35:12Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "a hostile ticket enters as labelled context and grants nothing: tool refused, write refused, lease unchanged"
+    }
+   ],
+   "status_changed_on": "2026-09-10T21:35:12Z"
   },
   {
    "id": "IMP-EV-0162",
@@ -14066,11 +14111,13 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0203",
    "source": "docs/41",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m3/IMP-EV-0203/TASK_CARD.md",
     "test:qual_ev_0060_0203_the_repository_map_flags_stale_claims_and_never_enters_the_prompt_by_itself",
-    "test:qual_ev_0169_context_pack_reaches_the_prompt_with_provenance_or_not_at_all"
+    "test:qual_ev_0169_context_pack_reaches_the_prompt_with_provenance_or_not_at_all",
+    "commit:891cdb6",
+    "run:gha-34531892997"
    ],
    "notes": [
     {
@@ -14096,9 +14143,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "every non-tool message of every request is audited for the map's ref and text"
+    },
+    {
+     "at": "2026-09-10T21:30:15Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34531892997 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-10T21:30:15Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34531892997; limitations in evidence/m3/IMP-EV-0203/TASK_CARD.md"
     }
    ],
-   "status_changed_on": "2026-09-10T21:22:31Z"
+   "status_changed_on": "2026-09-10T21:30:15Z"
   },
   {
    "id": "IMP-EV-0204",

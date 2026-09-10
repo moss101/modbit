@@ -33,17 +33,17 @@ use std::process::{Command, ExitCode, Stdio};
 use modbit_protocol::client::Client;
 use modbit_protocol::local::{ReadyLine, decode_hex, encode_hex};
 use modbit_protocol::v1::{
-    AcquireSessionLease, ApprovalList, ApprovalResolvedAck, AttachmentIngested, CancelTask,
-    CapabilityLeaseList, ClientKind, CommandEnvelope, ContextInspectorView, CreateSession,
-    CreateTask, DecideReview, EffectReceiptList, EmergencyStop, EmergencyStopped,
-    GetCapabilityLeases, GetContextInspector, GetEffectReceipts, GetReviewBundle,
-    GetSessionSnapshot, GetTaskEconomics, GetTaskStatus, HunkRef, Id, IngestAttachment, InvokeTool,
-    LanguageList, ListApprovals, ListLanguages, ListModels, ListQuestions, ListTools, ModelList,
-    ModelProbed, ProbeModel, QuestionList, QuestionResponded, ResolveApproval, RespondToQuestion,
-    ReviewBundle, ReviewDecided, SessionCreated, SessionLeaseAcquired, SessionSnapshot,
-    SetTaskSelection, StartTask, TaskCancelRequested, TaskCreated, TaskEconomicsView,
-    TaskRunStarted, TaskSelectionRecorded, TaskStatus, ToolInvoked, ToolList, UndoPlanView,
-    UndoToolCall,
+    AcquireSessionLease, ApprovalList, ApprovalResolvedAck, AttachContextDocument,
+    AttachmentIngested, CancelTask, CapabilityLeaseList, ClientKind, CommandEnvelope,
+    ContextDocumentAttached, ContextInspectorView, CreateSession, CreateTask, DecideReview,
+    EffectReceiptList, EmergencyStop, EmergencyStopped, GetCapabilityLeases, GetContextInspector,
+    GetEffectReceipts, GetReviewBundle, GetSessionSnapshot, GetTaskEconomics, GetTaskStatus,
+    HunkRef, Id, IngestAttachment, InvokeTool, LanguageList, ListApprovals, ListLanguages,
+    ListModels, ListQuestions, ListTools, ModelList, ModelProbed, ProbeModel, QuestionList,
+    QuestionResponded, ResolveApproval, RespondToQuestion, ReviewBundle, ReviewDecided,
+    SessionCreated, SessionLeaseAcquired, SessionSnapshot, SetTaskSelection, StartTask,
+    TaskCancelRequested, TaskCreated, TaskEconomicsView, TaskRunStarted, TaskSelectionRecorded,
+    TaskStatus, ToolInvoked, ToolList, UndoPlanView, UndoToolCall,
 };
 use prost::Message;
 
@@ -61,7 +61,7 @@ fn exit_for_state(state: &str) -> u8 {
     }
 }
 
-const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task economics --task <id> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
+const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task economics --task <id> | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
 
 fn parse_id(hex: &str) -> Result<Id, String> {
     let bytes = decode_hex(hex)
@@ -1049,6 +1049,57 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                     hunks.join(",")
                 },
                 source
+            );
+        }
+        ["task", "attach-context", rest @ ..] => {
+            // task attach-context --session <id> --task <id> --source <s>
+            //                     [--title t] <file>
+            let (mut session, mut task): (Option<&str>, Option<&str>) = (None, None);
+            let (mut source, mut title) = (String::new(), String::new());
+            let mut file: Option<&str> = None;
+            let mut it = rest.iter();
+            while let Some(a) = it.next() {
+                match *a {
+                    "--session" => session = it.next().copied(),
+                    "--task" => task = it.next().copied(),
+                    "--source" => source = (*it.next().unwrap_or(&"")).to_owned(),
+                    "--title" => title = (*it.next().unwrap_or(&"")).to_owned(),
+                    other if other.starts_with("--") => {
+                        return Err(format!("unknown flag `{other}`"));
+                    }
+                    other => file = Some(other),
+                }
+            }
+            let task_id = parse_id(task.ok_or("--task required")?)?;
+            let sid = parse_id(session.ok_or("--session required")?)?;
+            if source.trim().is_empty() {
+                return Err("--source required (issue:PROJ-1, a URL, a spec path)".into());
+            }
+            let path = file.ok_or("a file to attach is required")?;
+            let text = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
+            let generation = acquire_lease(&mut client, &sid).await?;
+            let ack = client
+                .command(envelope_fenced(
+                    "AttachContextDocument",
+                    AttachContextDocument {
+                        task_id: Some(task_id),
+                        source: source.clone(),
+                        title: title.clone(),
+                        text,
+                    }
+                    .encode_to_vec(),
+                    Some(generation),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let r: ContextDocumentAttached = Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "context document {} source={} trust={} ref={} offset={}",
+                &r.document_id[..12.min(r.document_id.len())],
+                source,
+                r.trust,
+                &r.content_ref[..12.min(r.content_ref.len())],
+                r.offset
             );
         }
         ["task", "economics", "--task", tid] => {
