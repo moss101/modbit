@@ -200,6 +200,7 @@ pub(crate) async fn run(
         };
         let (mut text, mut calls) = (String::new(), Vec::new());
         let mut usage = modbit_providers::Usage::default();
+        let mut usage_reported = false;
         let mut events = stream.events;
         while let Some(ev) = events.recv().await {
             match ev {
@@ -209,7 +210,10 @@ pub(crate) async fn run(
                     name,
                     arguments_json,
                 } => calls.push((call_id, name, arguments_json)),
-                ModelEvent::Usage { usage: u } => usage = u,
+                ModelEvent::Usage { usage: u } => {
+                    usage = u;
+                    usage_reported = true;
+                }
                 ModelEvent::Error { code, message, .. } => {
                     out.note = format!("the specialist's model failed: {code} {message}");
                 }
@@ -259,6 +263,7 @@ pub(crate) async fn run(
                         input_tokens: usage.input_tokens,
                         output_tokens: usage.output_tokens,
                         cached_input_tokens: usage.cached_input_tokens,
+                        reported: usage_reported,
                         route: serde_json::json!({
                             "endpoint": endpoint,
                             "model": model,

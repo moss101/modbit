@@ -104,6 +104,28 @@ pub enum SessionEvent {
         /// Reason.
         reason: String,
     },
+    /// `OutcomeBaselinePublished` (REQ-EPR-000, docs/27 §22): a fixed-revision
+    /// verified-outcome baseline of the direct path was sealed and stored. The
+    /// event carries what pins it; the numbers are in the bundle. No state
+    /// change.
+    OutcomeBaselinePublished {
+        /// Digest of the bundle's content.
+        bundle_digest: String,
+        /// Object hash of the bundle.
+        bundle_ref: String,
+        /// Repository revision the tasks ran against.
+        repository_revision: String,
+        /// Build identity of the Core that produced it.
+        build_digest: String,
+        /// Environment identity.
+        environment_digest: String,
+        /// Tasks in the bundle.
+        tasks: u32,
+        /// Of those, the ones that reached a verified outcome.
+        verified_tasks: u32,
+        /// Of those, the ones whose cost is not fully known.
+        tasks_with_unknown_usage: u32,
+    },
 }
 
 impl SessionEvent {
@@ -118,6 +140,7 @@ impl SessionEvent {
             Self::SessionFocusChanged { .. } => "SessionFocusChanged",
             Self::SessionLeaseAcquired { .. } => "SessionLeaseAcquired",
             Self::EmergencyStopActivated { .. } => "EmergencyStopActivated",
+            Self::OutcomeBaselinePublished { .. } => "OutcomeBaselinePublished",
         }
     }
 }
@@ -169,6 +192,18 @@ impl Session {
                     from: format!("{:?}", self.state),
                     to: "SessionCreated".into(),
                 });
+            }
+            // A baseline is a record of what happened, so publishing one
+            // changes nothing about the session (REQ-EPR-000).
+            SessionEvent::OutcomeBaselinePublished { .. } => {
+                if self.state.is_terminal() {
+                    return Err(crate::InvalidTransition {
+                        aggregate: "Session",
+                        from: format!("{:?}", self.state),
+                        to: "OutcomeBaselinePublished".into(),
+                    });
+                }
+                None
             }
             SessionEvent::SessionSuspended => Some(SessionState::Suspended),
             SessionEvent::SessionResumed => Some(SessionState::Active),

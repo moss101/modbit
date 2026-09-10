@@ -9,6 +9,13 @@ publish.workspace = true
 
 [dependencies]
 modbit-domain.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+hex.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
 
 [lints]
 workspace = true
@@ -20,4 +27,6 @@ workspace = true
 [package.metadata.modbit]
 owner = "observability"
 canonical = []
-capabilities = []
+capabilities = [
+  { id = "observability.verified_outcome_baseline", requirements = ["REQ-EPR-000"] },
+]

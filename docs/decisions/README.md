@@ -52,3 +52,7 @@ change of mind is a new record that names the old one in `supersedes`.
 | DR-M0-004 | Module registration metadata and the canonical single-owner system list | accepted | 2026-09-08 | none |
 | DR-M0-005 | Reschedule IMP-EV-0242 to M4 and PX-030 to M10 | accepted | 2026-09-09 | none |
 | DR-M1-006 | Reschedule twelve M1 tasks whose qualifications need M2–M6 runtime | accepted | 2026-09-09 | none |
+| DR-M2-001 | Provider Gateway seals on the wire-faithful conformance suite; the live production-endpoint proof waits for credentials | accepted | 2026-09-09 | none |
+| DR-M2-002 | Reschedule forty-three M2-labelled tasks whose qualifications need M3–M10 substrate | accepted | 2026-09-10 | none |
+| DR-M3-001 | Confine the search-stack dependencies to the retrieval crate | accepted | 2026-09-10 | none |
+| DR-M3-002 | The EPR direct baseline seals on the wire-faithful path; the production-endpoint run of EPR-E2E-000 waits for credentials | accepted | 2026-09-11 | none |

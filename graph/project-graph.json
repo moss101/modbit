@@ -19850,8 +19850,41 @@
    "task_card": "docs/49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md#epr-000",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller or executor present",
    "milestone_override": "DR-M2-002: the direct baseline measurement needs the live provider proof (DR-M2-001) and the M3 benchmark harness",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "artifact:evidence/m3/EPR-000/TASK_CARD.md",
+    "artifact:docs/decisions/DR-M3-002-epr-baseline-live-provider-proof.md",
+    "test:qual_epr_000_the_direct_path_is_instrumented_and_published_as_a_fixed_revision_baseline",
+    "test:unknown_cost_stays_unknown_and_is_counted",
+    "test:a_bundle_is_pinned_sealed_and_honest_about_what_it_does_not_know"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T23:26:10Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: the log carried invocations, retries, cache units, verification and interventions; nothing published a baseline and a dropped invocation left no usage record"
+    },
+    {
+     "at": "2026-09-10T23:26:10Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "crates/observability baseline bundle; PublishOutcomeBaseline; unknown usage recorded on cancel, failure and interrupt"
+    },
+    {
+     "at": "2026-09-10T23:26:10Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "served by the Core under the session lease, published as an event and an object, printed by the CLI"
+    },
+    {
+     "at": "2026-09-10T23:26:10Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "a real edit/build/test/review task and a cancelled attempt whose cost stays unknown; DR-M3-002 defers the production-endpoint run"
+    }
+   ],
+   "status_changed_on": "2026-09-10T23:26:10Z"
   },
   {
    "id": "EPR-001",

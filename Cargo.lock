@@ -1673,6 +1673,7 @@ dependencies = [
  "modbit-domain",
  "modbit-event-store",
  "modbit-git",
+ "modbit-observability",
  "modbit-policy",
  "modbit-prompt-compiler",
  "modbit-protocol",
@@ -1797,7 +1798,11 @@ dependencies = [
 name = "modbit-observability"
 version = "0.0.0"
 dependencies = [
+ "hex",
  "modbit-domain",
+ "serde",
+ "serde_json",
+ "sha2",
 ]
 
 [[package]]

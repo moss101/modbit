@@ -1452,7 +1452,10 @@ async fn run_loop(
         };
         let mut text = String::new();
         let mut calls: Vec<(String, String, String)> = Vec::new();
+        // Usage is unknown until the provider reports it: a stream that drops
+        // or is cancelled leaves the cost unknown, never zero (docs/38).
         let mut usage = modbit_providers::Usage::default();
+        let mut usage_reported = false;
         let mut error: Option<(String, String)> = None;
         let mut events = stream.events;
         // A STEER queued while the model streams interrupts the stream
@@ -1470,7 +1473,10 @@ async fn run_loop(
                             name,
                             arguments_json,
                         } => calls.push((call_id, name, arguments_json)),
-                        ModelEvent::Usage { usage: u } => usage = u,
+                        ModelEvent::Usage { usage: u } => {
+                            usage = u;
+                            usage_reported = true;
+                        }
                         ModelEvent::Completed { .. } => {}
                         ModelEvent::Error { code, message, .. } => error = Some((code, message)),
                         _ => {}
@@ -1521,6 +1527,24 @@ async fn run_loop(
                     actor.clone(),
                 )],
             );
+            let _ = append(
+                &mut store,
+                &core,
+                lturn,
+                AggregateType::Turn,
+                *turn_id.as_bytes(),
+                vec![typed(
+                    "ModelUsageRecorded",
+                    &TurnEvent::ModelUsageRecorded {
+                        input_tokens: usage.input_tokens,
+                        output_tokens: usage.output_tokens,
+                        cached_input_tokens: usage.cached_input_tokens,
+                        route: serde_json::Value::Null,
+                        reported: usage_reported,
+                    },
+                    actor.clone(),
+                )],
+            );
             drop(store);
             // Nothing from the interrupted response is applied; the boundary
             // applies the steer and the next turn starts from it.
@@ -1533,6 +1557,27 @@ async fn run_loop(
             .unwrap_or_default();
         if cancel.is_cancelled() {
             let mut store = core.store.lock().await;
+            // A cancelled attempt still cost something the provider never told
+            // us: it is recorded as unknown, never dropped and never zero
+            // (docs/38, EPR-FI-000).
+            let _ = append(
+                &mut store,
+                &core,
+                lturn,
+                AggregateType::Turn,
+                *turn_id.as_bytes(),
+                vec![typed(
+                    "ModelUsageRecorded",
+                    &TurnEvent::ModelUsageRecorded {
+                        input_tokens: usage.input_tokens,
+                        output_tokens: usage.output_tokens,
+                        cached_input_tokens: usage.cached_input_tokens,
+                        route: route_record.clone(),
+                        reported: usage_reported,
+                    },
+                    actor.clone(),
+                )],
+            );
             let _ = append(
                 &mut store,
                 &core,
@@ -1564,6 +1609,25 @@ async fn run_loop(
         }
         if let Some((code, message)) = error {
             let mut store = core.store.lock().await;
+            // A failed attempt is accounted the same way: unknown, not free.
+            let _ = append(
+                &mut store,
+                &core,
+                lturn,
+                AggregateType::Turn,
+                *turn_id.as_bytes(),
+                vec![typed(
+                    "ModelUsageRecorded",
+                    &TurnEvent::ModelUsageRecorded {
+                        input_tokens: usage.input_tokens,
+                        output_tokens: usage.output_tokens,
+                        cached_input_tokens: usage.cached_input_tokens,
+                        route: route_record.clone(),
+                        reported: usage_reported,
+                    },
+                    actor.clone(),
+                )],
+            );
             let _ = append(
                 &mut store,
                 &core,
@@ -1631,6 +1695,7 @@ async fn run_loop(
                             output_tokens: usage.output_tokens,
                             cached_input_tokens: usage.cached_input_tokens,
                             route: route_record,
+                            reported: usage_reported,
                         },
                         actor.clone(),
                     ),

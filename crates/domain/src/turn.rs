@@ -119,6 +119,13 @@ pub enum TurnEvent {
         cached_input_tokens: u64,
         /// Route record JSON (requested vs resolved, REQ-EV-0112).
         route: serde_json::Value,
+        /// Whether the provider actually reported usage for this invocation.
+        /// A stream that dropped or was cancelled before its usage frame
+        /// leaves this false, and the numbers above are what was seen so far,
+        /// not the cost: unknown is never zero (docs/38 "Shared serialization
+        /// and validation", REQ-EPR-000).
+        #[serde(default)]
+        reported: bool,
     },
     /// `ModelInvocationCompleted` (Streaming → Executing when actions were requested, else Verifying).
     ModelInvocationCompleted {

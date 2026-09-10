@@ -2053,6 +2053,86 @@ export declare type ContextInspectorView = Message<"modbit.v1.ContextInspectorVi
 export declare const ContextInspectorViewSchema: GenMessage<ContextInspectorView>;
 
 /**
+ * Publish a fixed-revision baseline of the direct path for this session: what
+ * each task cost and whether it was verified, pinned to the build, the
+ * repository revision and the environment that produced it.
+ *
+ * @generated from message modbit.v1.PublishOutcomeBaseline
+ */
+export declare type PublishOutcomeBaseline = Message<"modbit.v1.PublishOutcomeBaseline"> & {
+  /**
+   * @generated from field: modbit.v1.Id session_id = 1;
+   */
+  sessionId?: Id | undefined;
+
+  /**
+   * as the caller pins it (a Git revision)
+   *
+   * @generated from field: string repository_revision = 2;
+   */
+  repositoryRevision: string;
+};
+
+/**
+ * Describes the message modbit.v1.PublishOutcomeBaseline.
+ * Use `create(PublishOutcomeBaselineSchema)` to create a new message.
+ */
+export declare const PublishOutcomeBaselineSchema: GenMessage<PublishOutcomeBaseline>;
+
+/**
+ * @generated from message modbit.v1.OutcomeBaselinePublished
+ */
+export declare type OutcomeBaselinePublished = Message<"modbit.v1.OutcomeBaselinePublished"> & {
+  /**
+   * @generated from field: string bundle_digest = 1;
+   */
+  bundleDigest: string;
+
+  /**
+   * object hash; read it with ReadObjectRange
+   *
+   * @generated from field: string bundle_ref = 2;
+   */
+  bundleRef: string;
+
+  /**
+   * @generated from field: uint32 tasks = 3;
+   */
+  tasks: number;
+
+  /**
+   * @generated from field: uint32 verified_tasks = 4;
+   */
+  verifiedTasks: number;
+
+  /**
+   * @generated from field: uint32 tasks_with_unknown_usage = 5;
+   */
+  tasksWithUnknownUsage: number;
+
+  /**
+   * @generated from field: string build_digest = 6;
+   */
+  buildDigest: string;
+
+  /**
+   * @generated from field: string environment_digest = 7;
+   */
+  environmentDigest: string;
+
+  /**
+   * @generated from field: uint64 offset = 8;
+   */
+  offset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.OutcomeBaselinePublished.
+ * Use `create(OutcomeBaselinePublishedSchema)` to create a new message.
+ */
+export declare const OutcomeBaselinePublishedSchema: GenMessage<OutcomeBaselinePublished>;
+
+/**
  * Allow this task to edit files in languages the product claims no tier for.
  * Without it those edits are refused; with it they carry the provenance.
  *

@@ -486,6 +486,27 @@ message ContextInspectorView {
   repeated string selection_review_hunks = 25;
 }
 
+// ---- Verified-outcome baseline (REQ-EPR-000, docs/27) ----
+
+// Publish a fixed-revision baseline of the direct path for this session: what
+// each task cost and whether it was verified, pinned to the build, the
+// repository revision and the environment that produced it.
+message PublishOutcomeBaseline {
+  Id session_id = 1;
+  string repository_revision = 2;  // as the caller pins it (a Git revision)
+}
+
+message OutcomeBaselinePublished {
+  string bundle_digest = 1;
+  string bundle_ref = 2;           // object hash; read it with ReadObjectRange
+  uint32 tasks = 3;
+  uint32 verified_tasks = 4;
+  uint32 tasks_with_unknown_usage = 5;
+  string build_digest = 6;
+  string environment_digest = 7;
+  uint64 offset = 8;
+}
+
 // ---- Language degradation (REQ-PX-029, docs/76) ----
 
 // Allow this task to edit files in languages the product claims no tier for.

@@ -491,6 +491,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "SetTaskSelection",
                     "AttachContextDocument",
                     "AllowUnsupportedLanguage",
+                    "PublishOutcomeBaseline",
                     "ProbeModel",
                     "StartTask",
                     "CancelTask",
@@ -1089,6 +1090,87 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                             offset,
                         }
                         .encode_to_vec(),
+                    )
+                }
+                Err(e) => reject(cid, error_code(&e), e.to_string()),
+            }
+        }
+        "PublishOutcomeBaseline" => {
+            let Ok(p) = wire::PublishOutcomeBaseline::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "PublishOutcomeBaseline");
+            };
+            let Some(session_id) = p
+                .session_id
+                .as_ref()
+                .and_then(id16)
+                .map(SessionId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "session_id required");
+            };
+            {
+                let store = core.store.lock().await;
+                match store.session(&session_id) {
+                    Ok(Some(_)) => {}
+                    Ok(None) => return reject(cid, "UNKNOWN_SESSION", session_id.to_string()),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                }
+            }
+            if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
+                return ack;
+            }
+            let bundle =
+                crate::baseline::assemble(core, session_id, p.repository_revision.trim()).await;
+            let bundle_ref = {
+                let store = core.store.lock().await;
+                match store
+                    .objects()
+                    .put(serde_json::to_vec(&bundle).unwrap_or_default().as_slice())
+                {
+                    Ok(r) => r,
+                    Err(e) => return reject(cid, "OBJECT_STORE", e.to_string()),
+                }
+            };
+            // The baseline is itself an event: what was published, when, and
+            // over which revision (docs/27 §22 — a baseline is a record, not a
+            // report someone kept).
+            let req = AppendRequest {
+                tenant_id: core.tenant_id,
+                session_id,
+                task_id: None,
+                run_id: None,
+                turn_id: None,
+                step_id: None,
+                aggregate_type: AggregateType::Session,
+                aggregate_id: *session_id.as_bytes(),
+                expected_sequence: None,
+                events: vec![typed(
+                    "OutcomeBaselinePublished",
+                    &modbit_domain::session::SessionEvent::OutcomeBaselinePublished {
+                        bundle_digest: bundle.bundle_digest.clone(),
+                        bundle_ref: bundle_ref.clone(),
+                        repository_revision: bundle.repository_revision.clone(),
+                        build_digest: bundle.build_digest.clone(),
+                        environment_digest: bundle.environment_digest.clone(),
+                        tasks: u32::try_from(bundle.tasks.len()).unwrap_or(u32::MAX),
+                        verified_tasks: u32::try_from(bundle.verified_tasks).unwrap_or(u32::MAX),
+                        tasks_with_unknown_usage: u32::try_from(bundle.tasks_with_unknown_usage)
+                            .unwrap_or(u32::MAX),
+                    },
+                    actor,
+                )],
+            };
+            let mut store = core.store.lock().await;
+            match store.execute_command(record("PublishOutcomeBaseline"), req) {
+                Ok(outcome) => {
+                    let (events, replayed) = split(outcome);
+                    let offset = events.last().map_or(0, |e| e.offset);
+                    if !replayed {
+                        core.last_offset.send_replace(offset);
+                    }
+                    accept(
+                        cid,
+                        replayed,
+                        crate::baseline::published(&bundle, bundle_ref, offset).encode_to_vec(),
                     )
                 }
                 Err(e) => reject(cid, error_code(&e), e.to_string()),

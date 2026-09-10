@@ -11452,3 +11452,251 @@ async fn qual_ev_0250_0252_0274_paired_context_economics_benchmark_publishes_sav
         "{cold:?} {agent:?}"
     );
 }
+
+/// EPR-000 (QUAL-EPR-000 / EPR-E2E-000 / EPR-FI-000): the direct single-model
+/// path, instrumented and published as a fixed-revision baseline. One task
+/// edits a real Git repository, runs its build and test evidence and is
+/// accepted in review; a second task's provider stream is cancelled mid-flight.
+/// The baseline pins the build, the repository revision and the environment,
+/// and carries per task the outcome, the cost, the retries, the cache units
+/// and what the user had to do — with the cancelled attempt's cost recorded as
+/// unknown rather than as zero, and no effect repeated.
+#[tokio::test]
+async fn qual_epr_000_the_direct_path_is_instrumented_and_published_as_a_fixed_revision_baseline() {
+    use modbit_observability::baseline::BaselineBundle;
+    use modbit_protocol::v1::{
+        CancelTask, DecideReview, OutcomeBaselinePublished, PublishOutcomeBaseline, ReviewDecided,
+        StartTask, TaskCancelRequested, TaskRunStarted,
+    };
+    use serde_json::json;
+    let (repo, root) = fixture_repo("rust-cli");
+    let lib = std::fs::read_to_string(repo.path().join("src/lib.rs")).unwrap();
+    let fixed = lib.replace(
+        "    Ok(n)\n",
+        "    if n < 0 {\n        return Err(\"negative quantity\".into());\n    }\n    Ok(n)\n",
+    );
+    assert_ne!(fixed, lib);
+    let revision = String::from_utf8(
+        Command::new("git")
+            .arg("-C")
+            .arg(repo.path())
+            .args(["rev-parse", "HEAD"])
+            .output()
+            .unwrap()
+            .stdout,
+    )
+    .unwrap()
+    .trim()
+    .to_owned();
+    // A real coding task: read, plan, edit, verify, complete.
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "reject negative quantities", "expected_files": ["src/lib.rs"], "verification": ["acceptance_rejects_negative_quantity"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "src/lib.rs"}}]}),
+        json!({"calls": [{"name": "verify.run", "args": {"stage": "TARGETED"}}]}),
+        json!({"calls": [{"name": "repair.attempt", "args": {"failure_signature": "cargo:tests/quantities.rs::acceptance_rejects_negative_quantity", "hypothesis": "parse_quantity accepts negatives", "intended_fix": "reject them"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "src/lib.rs", "op": "replace", "content": fixed}}]}),
+        json!({"calls": [{"name": "verify.run", "args": {"stage": "TARGETED"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "negatives rejected", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, _seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x20)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x21, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x22),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 12,
+                max_tool_calls: 0,
+                max_no_progress_turns: 6,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 300).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    // Review: the user accepts the change, which is an intervention the
+    // baseline counts.
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x23),
+            "DecideReview",
+            DecideReview {
+                task_id: Some(task.clone()),
+                decision: "ACCEPT".into(),
+                rejected: vec![],
+                note: "looks right".into(),
+                expected_workspace_revision: 0,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let decided: ReviewDecided = Client::result(&ack).unwrap();
+    assert!(!decided.commit.is_empty(), "{decided:?}");
+    // A second task whose provider never answers: the attempt is cancelled
+    // while it is in flight.
+    let (stalling, _seen2) = scripted_model(vec![], Some(0)).await;
+    drop(c);
+    core.kill();
+    let core2 = CoreProcess::spawn_with_env(
+        dir.path(),
+        &[
+            ("MODBIT_OPENAI_BASE_URL", stalling.as_str()),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+        ],
+    );
+    let mut c = core2.client().await;
+    let g = lease_for(&session);
+    let cancelled =
+        create_task_with_profile(&mut c, &session, g, &root, 0x24, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x25),
+            "StartTask",
+            StartTask {
+                task_id: Some(cancelled.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 4,
+                max_tool_calls: 0,
+                max_no_progress_turns: 4,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    // Wait until the invocation is really in flight, then cancel it.
+    let deadline = std::time::Instant::now() + Duration::from_secs(30);
+    loop {
+        let evs = task_events(&core2, &session, &cancelled).await;
+        if evs.iter().any(|(_, t, _)| t == "ModelInvocationStarted") {
+            break;
+        }
+        assert!(std::time::Instant::now() < deadline, "{evs:#?}");
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x26),
+            "CancelTask",
+            CancelTask {
+                task_id: Some(cancelled.clone()),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let r: TaskCancelRequested = Client::result(&ack).unwrap();
+    assert!(r.was_running, "{r:?}");
+    let st = wait_task(&mut c, &cancelled, 60).await;
+    assert!(!st.loop_alive, "{st:?}");
+    // Publish the baseline over both tasks, pinned to the revision.
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x27),
+            "PublishOutcomeBaseline",
+            PublishOutcomeBaseline {
+                session_id: Some(session.clone()),
+                repository_revision: revision.clone(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let published: OutcomeBaselinePublished = Client::result(&ack).unwrap();
+    assert_eq!(published.tasks, 2, "{published:?}");
+    // The fixture carries one unrelated failing test, so the completion run is
+    // FAILED and no task is verified: the baseline records the verdict the run
+    // gave, not the one the task hoped for.
+    assert_eq!(published.verified_tasks, 0, "{published:?}");
+    assert_eq!(published.tasks_with_unknown_usage, 1, "{published:?}");
+    assert_eq!(published.bundle_digest.len(), 64);
+    assert_eq!(published.build_digest.len(), 64);
+    assert_eq!(published.environment_digest.len(), 64);
+    // The bundle is a stored object, and it says what it is.
+    let body = read_object(&mut c, id16(0x28), &published.bundle_ref).await;
+    let bundle: BaselineBundle = serde_json::from_str(&body).unwrap();
+    assert_eq!(bundle.bundle_digest, published.bundle_digest);
+    assert_eq!(
+        modbit_observability::baseline::bundle_digest(&bundle),
+        bundle.bundle_digest,
+        "the digest covers the content"
+    );
+    assert_eq!(bundle.repository_revision, revision);
+    assert_eq!(bundle.schema_version, 1);
+    assert!(
+        bundle.note.contains("Unknown cost stays unknown"),
+        "{bundle:?}"
+    );
+    // The finished task: verified, with its cost, its retries, its cache units
+    // and the review the user did.
+    let done = bundle
+        .tasks
+        .iter()
+        .find(|t| t.task_id == hex::encode(&task.value))
+        .unwrap_or_else(|| panic!("{bundle:?}"));
+    assert_eq!(done.verification, "FAILED", "{done:?}");
+    assert!(!done.verified, "{done:?}");
+    assert!(done.checks.0 > 0 && done.checks.1 == 1, "{done:?}");
+    assert_eq!(
+        done.state, "Completed",
+        "the user accepted the change: {done:?}"
+    );
+    assert!(done.model_calls > 0 && done.tool_calls > 0, "{done:?}");
+    assert_eq!(done.usage.unreported_invocations, 0, "{done:?}");
+    assert!(done.usage.complete(), "{done:?}");
+    assert!(done.usage.input_tokens.unwrap_or(0) > 0, "{done:?}");
+    assert_eq!(
+        done.cache_units.0 + done.cache_units.1,
+        done.model_calls,
+        "one cache unit per invocation: {done:?}"
+    );
+    assert!(
+        done.wall_ms > 0 && done.model_ms > 0 && done.tool_ms > 0,
+        "{done:?}"
+    );
+    assert_eq!(done.interventions.review_decisions, 1, "{done:?}");
+    assert!(done.interventions.any(), "{done:?}");
+    assert_eq!(done.model, "gpt-5-mini", "{done:?}");
+    assert_eq!(done.goal_digest.len(), 64);
+    // EPR-FI-000: the cancelled attempt's cost is unknown, not zero, and the
+    // task changed nothing.
+    let dropped = bundle
+        .tasks
+        .iter()
+        .find(|t| t.task_id == hex::encode(&cancelled.value))
+        .unwrap_or_else(|| panic!("{bundle:?}"));
+    assert!(!dropped.verified, "{dropped:?}");
+    assert!(dropped.usage.unreported_invocations >= 1, "{dropped:?}");
+    assert!(!dropped.usage.complete(), "{dropped:?}");
+    assert_eq!(
+        dropped.usage.input_tokens, None,
+        "unknown is not zero: {dropped:?}"
+    );
+    assert_eq!(dropped.tool_calls, 0, "{dropped:?}");
+    // The accepted change is on disk exactly once.
+    let after = std::fs::read_to_string(repo.path().join("src/lib.rs")).unwrap();
+    assert_eq!(after.matches("negative quantity").count(), 1, "{after}");
+}

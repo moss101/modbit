@@ -39,12 +39,12 @@ use modbit_protocol::v1::{
     DecideReview, EffectReceiptList, EmergencyStop, EmergencyStopped, GetCapabilityLeases,
     GetContextInspector, GetEffectReceipts, GetReviewBundle, GetSessionSnapshot, GetTaskEconomics,
     GetTaskStatus, HunkRef, Id, IngestAttachment, InvokeTool, LanguageList, ListApprovals,
-    ListLanguages, ListModels, ListQuestions, ListTools, ModelList, ModelProbed, ProbeModel,
-    QuestionList, QuestionResponded, ResolveApproval, RespondToQuestion, ReviewBundle,
-    ReviewDecided, SessionCreated, SessionLeaseAcquired, SessionSnapshot, SetTaskSelection,
-    StartTask, TaskCancelRequested, TaskCreated, TaskEconomicsView, TaskRunStarted,
-    TaskSelectionRecorded, TaskStatus, ToolInvoked, ToolList, UndoPlanView, UndoToolCall,
-    UnsupportedLanguageAllowed,
+    ListLanguages, ListModels, ListQuestions, ListTools, ModelList, ModelProbed,
+    OutcomeBaselinePublished, ProbeModel, PublishOutcomeBaseline, QuestionList, QuestionResponded,
+    ResolveApproval, RespondToQuestion, ReviewBundle, ReviewDecided, SessionCreated,
+    SessionLeaseAcquired, SessionSnapshot, SetTaskSelection, StartTask, TaskCancelRequested,
+    TaskCreated, TaskEconomicsView, TaskRunStarted, TaskSelectionRecorded, TaskStatus, ToolInvoked,
+    ToolList, UndoPlanView, UndoToolCall, UnsupportedLanguageAllowed,
 };
 use prost::Message;
 
@@ -62,7 +62,7 @@ fn exit_for_state(state: &str) -> u8 {
     }
 }
 
-const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task economics --task <id> | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
+const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task economics --task <id> | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
 
 fn parse_id(hex: &str) -> Result<Id, String> {
     let bytes = decode_hex(hex)
@@ -1065,6 +1065,44 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                     hunks.join(",")
                 },
                 source
+            );
+        }
+        ["baseline", "publish", rest @ ..] => {
+            // baseline publish --session <id> [--revision <rev>]
+            let (mut session, mut revision): (Option<&str>, String) = (None, String::new());
+            let mut it = rest.iter();
+            while let Some(a) = it.next() {
+                match *a {
+                    "--session" => session = it.next().copied(),
+                    "--revision" => revision = (*it.next().unwrap_or(&"")).to_owned(),
+                    other => return Err(format!("unknown flag `{other}`")),
+                }
+            }
+            let sid = parse_id(session.ok_or("--session required")?)?;
+            let generation = acquire_lease(&mut client, &sid).await?;
+            let ack = client
+                .command(envelope_fenced(
+                    "PublishOutcomeBaseline",
+                    PublishOutcomeBaseline {
+                        session_id: Some(sid),
+                        repository_revision: revision,
+                    }
+                    .encode_to_vec(),
+                    Some(generation),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let r: OutcomeBaselinePublished = Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "baseline {} tasks={} verified={} unknown_usage={} build={} environment={} ref={} offset={}",
+                &r.bundle_digest[..12.min(r.bundle_digest.len())],
+                r.tasks,
+                r.verified_tasks,
+                r.tasks_with_unknown_usage,
+                &r.build_digest[..12.min(r.build_digest.len())],
+                &r.environment_digest[..12.min(r.environment_digest.len())],
+                &r.bundle_ref[..12.min(r.bundle_ref.len())],
+                r.offset
             );
         }
         ["task", "allow-language", rest @ ..] => {

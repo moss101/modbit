@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 690,
+    "root_and_tooling": 693,
     "docs_bytes": 1039312
   },
   "sections": [
@@ -917,9 +917,14 @@
       "sha256": "532b877ad071c02734609d5a85230a6f78cdde862b2eab71650e401f16077299"
     },
     {
+      "path": "docs/decisions/DR-M3-002-epr-baseline-live-provider-proof.md",
+      "bytes": 4858,
+      "sha256": "058af4b42034e0b7a46d15909aa15f1406941e082751da14ca7c9a91b9ad7ec1"
+    },
+    {
       "path": "docs/decisions/README.md",
-      "bytes": 2312,
-      "sha256": "b6b31751298aa4b6aa6f2de1c659882e19e310301d1428caba7658023967a4a2"
+      "bytes": 2889,
+      "sha256": "b52e0f5a2828057f75a64decf5b281484735cc00192996847aac6e9058d4aa6c"
     },
     {
       "path": "evidence/dossier-epr-v1.1/baseline.json",
@@ -2857,6 +2862,16 @@
       "sha256": "31e188b3d387f3ccf181c6663e7d9234f93b087db89147d204b15468007498f1"
     },
     {
+      "path": "evidence/m3/EPR-000/TASK_CARD.md",
+      "bytes": 3848,
+      "sha256": "2f47dd9c97768fb3d2eeb4aac79224ae0a2ba8ab33146d5d0b8cf547efe5bf29"
+    },
+    {
+      "path": "evidence/m3/EPR-000/evidence.json",
+      "bytes": 1749,
+      "sha256": "7e9eb8d12f63235c433e7a626f452ba73e14a54b5d65c760d181a11142a4fa55"
+    },
+    {
       "path": "evidence/m3/IMP-EV-0001/TASK_CARD.md",
       "bytes": 1652,
       "sha256": "fc790704555fa43553234da82ddef7054723f6a3d7e42a70668248bdbd3ccca3"
@@ -4263,13 +4278,13 @@
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 40904,
-      "sha256": "fba4523117879c3aa6e886e363f5e49ec00a40eaafa5805ffdeaf5e08a6ed7f0"
+      "bytes": 40906,
+      "sha256": "ae1c402f0ad8cce39fabf804116b7a9da51ec6d0aae7c526b4771709b35d3c26"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1265614,
-      "sha256": "01ecee85322e31e22f152f959f1397494b19efcfec952c3918aace3901da7546"
+      "bytes": 1267022,
+      "sha256": "4c785b40d82d41f4bdbbe8d05b2cad7c94fb4434eee53c4bca21e6b301232804"
     },
     {
       "path": "tools/build_graph.py",

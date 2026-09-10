@@ -219,7 +219,7 @@ EPR requirements extend the preserved EV ledger under DR-EPR-2026-09-05-v1.1; v1
 
 ```mermaid
 flowchart LR
-  EPR_000["EPR-000<br/>Preserve and measure the direct baseline<br/>NOT_STARTED"]
+  EPR_000["EPR-000<br/>Preserve and measure the direct baseline<br/>REAL_TESTING"]
   EPR_001["EPR-001<br/>Version routing contracts and durable Run state<br/>NOT_STARTED"]
   EPR_002["EPR-002<br/>Extend the Model Registry with current role bindings<br/>NOT_STARTED"]
   EPR_003["EPR-003<br/>Bootstrap and calibrate the Request Profiler<br/>NOT_STARTED"]
@@ -283,7 +283,7 @@ flowchart LR
 
 | Task | Milestone / phase | Status | Owner | Prerequisites | Requirement / qualification |
 |---|---|---|---|---|---|
-| EPR-000 | M3 / 0 | NOT_STARTED | model-gateway | M2.9 | REQ-EPR-000 / QUAL-EPR-000 |
+| EPR-000 | M3 / 0 | REAL_TESTING | model-gateway | M2.9 | REQ-EPR-000 / QUAL-EPR-000 |
 | EPR-001 | M3 / 1 | NOT_STARTED | domain-events | EPR-000 | REQ-EPR-001 / QUAL-EPR-001 |
 | EPR-002 | M3 / 1 | NOT_STARTED | model-gateway | EPR-001 | REQ-EPR-002 / QUAL-EPR-002 |
 | EPR-003 | M3 / 1 | NOT_STARTED | model-gateway | EPR-002 | REQ-EPR-003 / QUAL-EPR-003 |
