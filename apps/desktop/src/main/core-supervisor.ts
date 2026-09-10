@@ -49,7 +49,11 @@ export class CoreSupervisor {
     this.events.status(s);
   }
 
+  /** Incremented by every restart; a spawn that finishes after a newer one started stands down. */
+  private spawnGeneration = 0;
+
   private async spawnOnce(): Promise<void> {
+    const generation = ++this.spawnGeneration;
     this.setStatus({ state: "starting", restarts: this.restarts });
     // stdin is the lifetime tether: the Core exits when this process goes away,
     // so a killed or crashed desktop never leaves a Core holding the profile lock.
@@ -77,6 +81,11 @@ export class CoreSupervisor {
       return null;
     });
     if (!ready) return;
+    if (generation !== this.spawnGeneration) {
+      // A newer restart superseded this spawn while it was starting.
+      child.kill("SIGKILL");
+      return;
+    }
     try {
       const client = await CoreClient.connect(ready, ClientKind.DESKTOP, this.build);
       this.client = client;
@@ -125,24 +134,30 @@ export class CoreSupervisor {
   private scheduleRestart(reason: string): void {
     if (this.stopped || this.restartTimer) return;
     process.stderr.write(`modbit-desktop: core restart scheduled: ${reason}\n`);
-    if (this.child) {
-      this.child.kill();
-      this.dying = this.child;
-      this.child = null;
-    }
-    this.client?.close();
-    this.client = null;
     this.restarts += 1;
     if (this.restarts > 20) {
       this.setStatus({ state: "failed", reason, restarts: this.restarts });
       return;
     }
+    // Claim the restart slot first: closing the client below fires onClose
+    // synchronously, which re-enters here and must find the slot taken (two
+    // slots spawned two Cores, the loser of the profile lock exited, and
+    // the restart loop chased a Core it no longer tracked).
     const retryInMs = Math.min(5000, 250 * 2 ** Math.min(this.restarts, 5));
-    this.setStatus({ state: "restarting", reason, restarts: this.restarts, retryInMs });
+    this.spawnGeneration += 1;
     this.restartTimer = setTimeout(() => {
       this.restartTimer = null;
       void this.reapDying().then(() => (this.stopped ? undefined : this.spawnOnce()));
     }, retryInMs);
+    if (this.child) {
+      this.child.kill();
+      this.dying = this.child;
+      this.child = null;
+    }
+    const client = this.client;
+    this.client = null;
+    client?.close();
+    this.setStatus({ state: "restarting", reason, restarts: this.restarts, retryInMs });
   }
 
   stop(): void {
