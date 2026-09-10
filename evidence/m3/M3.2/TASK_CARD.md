@@ -39,4 +39,4 @@ Snippets/positions from BM25 (exact search provides spans), on-disk index persis
 ## Evidence
 
 - `evidence.json` in this directory (commits, hosted CI run, test names)
-- CI run json/log copies alongside
+- `ci-run-34443247904.json`, `ci-run-34443247904-tests.log`: hosted CI run 34443247904 on e1b4634, green on macOS, Linux and Windows

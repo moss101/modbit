@@ -39,4 +39,4 @@ References/usages and cross-file resolution (headless LSP, M3.4), the dependency
 ## Evidence
 
 - `evidence.json` in this directory (commits, hosted CI run, test names)
-- CI run json/log copies alongside
+- `ci-run-34444133255.json`, `ci-run-34444133255-tests.log`: hosted CI run 34444133255 on 06b5702, green on macOS, Linux and Windows

@@ -516,12 +516,16 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m3/M3.1/ci-run-34442392803-tests.log` | retained evidence | 59566 | `f4915fcacb8c1af4e218f6d0b2dc839242ce068c2e3ce5b1f004443fa193a32d` |
 | `evidence/m3/M3.1/ci-run-34442392803.json` | retained evidence | 36682 | `02672015d974336fd27a6bb5a10c7dc08855d284c9bef7558e148c055d9cc329` |
 | `evidence/m3/M3.1/evidence.json` | retained evidence | 923 | `7e9916c1d7fc8c1cedd895df9d216760c8489592d7fcd0a161f7924dec71b017` |
-| `evidence/m3/M3.2/TASK_CARD.md` | retained evidence | 2517 | `ea167bc9dc81c865fe4d5ca1df1c2645128cc1efedaee89f835ea48113b7e31d` |
-| `evidence/m3/M3.2/evidence.json` | retained evidence | 400 | `104ea34bea0b390729c365a39974af95b26bd518854348868f2472b8b63d4164` |
-| `evidence/m3/M3.3/TASK_CARD.md` | retained evidence | 2739 | `45438f103475db5ccc1610c3a270ad4662ce9baacb4eb3db71c51bff465a7b1e` |
-| `evidence/m3/M3.3/evidence.json` | retained evidence | 446 | `b01a9a6a55b106d90b0c6c11569d057c5e99385555757076be5aae218d77e809` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 40918 | `7831eafdd5dcb1e28c6f0a6470d9da5dac17e44661fe10694debe08acd2094ae` |
-| `graph/project-graph.json` | project driver graph with live status | 1155368 | `96fb504518471a3db8113dd9ce98230ae17d90f4b4bd013704a4d2be7dfddb4b` |
+| `evidence/m3/M3.2/TASK_CARD.md` | retained evidence | 2615 | `0c254064cd9d205d74c959174786ab77aa03604f437375d638a52df584774382` |
+| `evidence/m3/M3.2/ci-run-34443247904-tests.log` | retained evidence | 58907 | `5ec7eeaea73cdf0ec5df4404d77645956159ae9c2a77fb07d5a945705182e734` |
+| `evidence/m3/M3.2/ci-run-34443247904.json` | retained evidence | 36682 | `d606062199e073b30e6ba1679d895b0e14fb6f221fd817cdae2a27d3f25447e5` |
+| `evidence/m3/M3.2/evidence.json` | retained evidence | 650 | `7bae805146d689ba30cca5c38a971a67ce4176a14ee12ca0a3d81a7ca4e5da81` |
+| `evidence/m3/M3.3/TASK_CARD.md` | retained evidence | 2837 | `a98fdcdf50450fcd7c8d94ba4c4d6e9b6d379a140c458c98a8a46f180152ab56` |
+| `evidence/m3/M3.3/ci-run-34444133255-tests.log` | retained evidence | 60130 | `ff3687b3f4e13765020a818e846ee4e642cc9ec7e7a75e2cdf7faeb39b0ae052` |
+| `evidence/m3/M3.3/ci-run-34444133255.json` | retained evidence | 36682 | `67b61a1a52165779ea2da8691f3953fcfc74a2ebb69ea56fdadc28d2db8187f4` |
+| `evidence/m3/M3.3/evidence.json` | retained evidence | 696 | `e39b0490bc0fac81a9dd5875dddf92bf0ebc80c5610677c6ab6ca9fc3f389269` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 40918 | `a6c30e1695d9a8465b66501af4f8afe9ece3a866b68c3be1b0d8ea6890afd936` |
+| `graph/project-graph.json` | project driver graph with live status | 1157973 | `c81853ba5e71e9d9ece64c42c2f6bb0e501623f680dfa80f6ead3eb0c95fc0c5` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 52844 | `13ea31cbf1ace263d36b4cc5ada8b19270a118e30e401114790652375b5c51d1` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 17596 | `5c9b7a782d245223726f860ca583d766929a6f5662b644adebee64d257ad426b` |

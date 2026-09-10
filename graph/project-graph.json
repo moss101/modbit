@@ -1901,8 +1901,17 @@
    "milestone": "M3",
    "order": 1,
    "source": "docs/43",
-   "status": "WIRED",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "test:bm25_lexical_index_ranks_refreshes_and_bounds",
+    "test:m3_2_bm25_lexical_index_ranks_files_and_refreshes_on_writes",
+    "run:gha-34443247904",
+    "commit:e1b4634",
+    "artifact:evidence/m3/M3.2/evidence.json",
+    "artifact:evidence/m3/M3.2/TASK_CARD.md",
+    "artifact:evidence/m3/M3.2/ci-run-34443247904.json",
+    "artifact:evidence/m3/M3.2/ci-run-34443247904-tests.log"
+   ],
    "notes": [
     {
      "at": "2026-09-10T06:15:52Z",
@@ -1921,9 +1930,27 @@
      "from": "IMPLEMENTING",
      "to": "WIRED",
      "note": "search.lexical in the compiled tool surface; IndexPort serves BM25 hits bound to the index revision"
+    },
+    {
+     "at": "2026-09-10T06:46:19Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real Tantivy index over real files; real Core over the socket"
+    },
+    {
+     "at": "2026-09-10T06:46:20Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at e1b4634"
+    },
+    {
+     "at": "2026-09-10T06:46:20Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Tantivy BM25: ranked revision-bound hits, per-write refresh, search.lexical"
     }
    ],
-   "status_changed_on": "2026-09-10T06:15:52Z"
+   "status_changed_on": "2026-09-10T06:46:20Z"
   },
   {
    "id": "M3.3",
@@ -1933,8 +1960,56 @@
    "milestone": "M3",
    "order": 2,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:symbol_index_extracts_alpha_language_definitions_and_refreshes",
+    "test:m3_3_tree_sitter_symbol_index_serves_definitions_and_refreshes_on_writes",
+    "run:gha-34444133255",
+    "commit:06b5702",
+    "artifact:evidence/m3/M3.3/evidence.json",
+    "artifact:evidence/m3/M3.3/TASK_CARD.md",
+    "artifact:evidence/m3/M3.3/ci-run-34444133255.json",
+    "artifact:evidence/m3/M3.3/ci-run-34444133255-tests.log"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T06:46:20Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: NOT-FOUND (no parser or symbol index)"
+    },
+    {
+     "at": "2026-09-10T06:46:20Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "SymbolIndex with the real tree-sitter grammars (rust, typescript/tsx, javascript, python); search.symbols; Core per-workspace symbol index (06b5702)"
+    },
+    {
+     "at": "2026-09-10T06:46:20Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "search.symbols in the compiled tool surface; refreshed per changed path"
+    },
+    {
+     "at": "2026-09-10T06:46:20Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real grammars over real files; real Core over the socket"
+    },
+    {
+     "at": "2026-09-10T06:46:20Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 06b5702"
+    },
+    {
+     "at": "2026-09-10T06:46:20Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "tree-sitter AST/symbol index for the Alpha languages; typed definitions bound to file hash and index revision"
+    }
+   ],
+   "status_changed_on": "2026-09-10T06:46:20Z"
   },
   {
    "id": "M3.4",

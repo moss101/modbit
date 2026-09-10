@@ -6,11 +6,19 @@
   "qual_ev_0217_compatibility_matrix_covers_every_registered_tool_with_owner_effect_and_test"
  ],
  "commits": {
-  "implementation": "HEAD"
+  "implementation": "e1b4634"
  },
- "runs": [],
+ "runs": [
+  {
+   "id": "gha-34443247904",
+   "kind": "hosted CI on e1b4634",
+   "result": "PASS on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34443247904",
+   "log": "ci-run-34443247904.json, ci-run-34443247904-tests.log"
+  }
+ ],
  "evidence_tier": "release-critical",
  "acceptance": {
-  "Tantivy BM25": "pending hosted CI"
+  "Tantivy BM25": "PASS"
  }
 }
