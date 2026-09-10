@@ -270,21 +270,20 @@ fn acquire_singleton_lock(data_dir: &Path) -> Result<()> {
     Ok(())
 }
 
-#[cfg(unix)]
 /// The owner's command line, for the refusal message (diagnosability).
+#[cfg(unix)]
 fn process_command(pid: u32) -> String {
-    #[cfg(windows)]
-    {
-        return format!("pid {pid}");
-    }
-    #[cfg(not(windows))]
-    {
-        std::process::Command::new("ps")
-            .args(["-o", "command=", "-p", &pid.to_string()])
-            .output()
-            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_owned())
-            .unwrap_or_default()
-    }
+    std::process::Command::new("ps")
+        .args(["-o", "command=", "-p", &pid.to_string()])
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_owned())
+        .unwrap_or_default()
+}
+
+/// The owner's command line, for the refusal message (diagnosability).
+#[cfg(not(unix))]
+fn process_command(pid: u32) -> String {
+    format!("pid {pid}")
 }
 
 /// Platform listener.
