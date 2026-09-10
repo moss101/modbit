@@ -831,6 +831,11 @@ fn lsp_tool_body(ctx: &InvokeContext, args: &Value, kind: &str) -> ToolOutcome {
         path: s(args, "path"),
         line: args.get("line").and_then(Value::as_u64).unwrap_or(0) as u32,
         character: args.get("character").and_then(Value::as_u64).unwrap_or(0) as u32,
+        window: args
+            .get("window")
+            .and_then(Value::as_str)
+            .unwrap_or("all")
+            .to_owned(),
     };
     if req.path.is_empty() {
         return ToolOutcome::fail("PATH_REQUIRED", "path must not be empty");
@@ -842,15 +847,16 @@ fn lsp_tool_body(ctx: &InvokeContext, args: &Value, kind: &str) -> ToolOutcome {
 }
 
 const LSP_PATH_SCHEMA: &str = r#"{"type":"object","properties":{"path":{"type":"string"}},"required":["path"],"additionalProperties":false}"#;
+const LSP_DIAG_SCHEMA: &str = r#"{"type":"object","properties":{"path":{"type":"string"},"window":{"type":"string","enum":["all","changed"]}},"required":["path"],"additionalProperties":false}"#;
 const LSP_POS_SCHEMA: &str = r#"{"type":"object","properties":{"path":{"type":"string"},"line":{"type":"integer","minimum":0},"character":{"type":"integer","minimum":0}},"required":["path","line","character"],"additionalProperties":false}"#;
 
 tool!(
     LspDiagnostics,
     spec(
         "lsp.diagnostics",
-        "Diagnostics of a file from the headless language server of its language (rust-analyzer, typescript-language-server, pyright): normalized severity, code, range and message, bound to the file revision; an unavailable server is a typed failure, never a guess (M3.4, docs/18, docs/76).",
+        "Diagnostics of a file from the headless language server of its language (rust-analyzer, typescript-language-server, pyright): normalized severity, code, range and message, bound to the file revision; an unavailable server is a typed failure, never a guess (M3.4, docs/18, docs/76). The first call for a path in a task captures its baseline; window=changed evaluates only the lines changed since that baseline and marks what is new (Diagnostic Change Window, REQ-EV-0070).",
         EffectClass::ReadOnly,
-        serde_json::from_str(LSP_PATH_SCHEMA).expect("schema"),
+        serde_json::from_str(LSP_DIAG_SCHEMA).expect("schema"),
         &["fs.read"],
         Idempotency::Idempotent
     ),

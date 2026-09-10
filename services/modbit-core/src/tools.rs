@@ -124,6 +124,9 @@ pub struct ToolHost {
     pub(crate) semantic: Mutex<HashMap<PathBuf, Arc<Mutex<modbit_retrieval::SemanticIndex>>>>,
     /// Evidence graphs per canonical workspace root (M3.6).
     pub(crate) graphs: Mutex<HashMap<PathBuf, Arc<Mutex<modbit_retrieval::EvidenceGraph>>>>,
+    /// Diagnostic baselines per task: path → the diagnostics and text first
+    /// seen by the task (REQ-EV-0070 Diagnostic Change Window).
+    pub(crate) diag_baselines: Mutex<HashMap<TaskId, DiagBaselines>>,
     /// Context Ledgers per task (M3.8).
     pub(crate) ledgers: Mutex<HashMap<TaskId, Arc<Mutex<modbit_context::ContextLedger>>>>,
     /// Headless language servers per (workspace root, language) (M3.4).
@@ -158,6 +161,7 @@ impl ToolHost {
             semantic: Mutex::new(HashMap::new()),
             graphs: Mutex::new(HashMap::new()),
             ledgers: Mutex::new(HashMap::new()),
+            diag_baselines: Mutex::new(HashMap::new()),
             language_servers: Arc::new(std::sync::Mutex::new(HashMap::new())),
             state_dir: data_dir.join("workspaces"),
         })
@@ -411,6 +415,10 @@ impl ToolHost {
                 root: r.clone(),
                 servers: Arc::clone(&self.language_servers),
                 workspace: Arc::clone(ws),
+                baselines: {
+                    let mut map = self.diag_baselines.lock().await;
+                    Arc::clone(map.entry(task_id).or_default())
+                },
             })),
             _ => None,
         };
@@ -1618,10 +1626,32 @@ type LanguageServers = Arc<
 /// Headless language-service port (M3.4): one real server per workspace and
 /// language, started at first use; each request re-syncs the file from the
 /// workspace (policy-checked) so results are bound to its current revision.
+/// A path's diagnostics and text the first time a task looked at it.
+#[derive(Clone, Debug)]
+pub(crate) struct DiagBaseline {
+    workspace_revision: u64,
+    content_hash: String,
+    text: String,
+    diagnostics: Vec<modbit_diagnostics::Diagnostic>,
+}
+
+/// Baselines of one task, by path.
+pub(crate) type DiagBaselines = Arc<std::sync::Mutex<HashMap<String, DiagBaseline>>>;
+
 struct LanguagePort {
     root: PathBuf,
     servers: LanguageServers,
     workspace: Arc<Mutex<WorkspaceService>>,
+    baselines: DiagBaselines,
+}
+
+fn diag_fingerprint(d: &modbit_diagnostics::Diagnostic) -> String {
+    format!(
+        "{}|{}|{}",
+        d.severity,
+        d.code.clone().unwrap_or_default(),
+        d.message
+    )
 }
 
 impl LanguagePort {
@@ -1700,7 +1730,61 @@ impl modbit_tools::LanguageServicePort for LanguagePort {
         };
         let body = match req.kind.as_str() {
             "diagnostics" => {
-                serde_json::json!({"diagnostics": s.diagnostics(&req.path, t).map_err(|e| ("LANGUAGE_SERVICE".to_owned(), e.to_string()))?})
+                let list = s
+                    .diagnostics(&req.path, t)
+                    .map_err(|e| ("LANGUAGE_SERVICE".to_owned(), e.to_string()))?;
+                // Diagnostic Change Window (REQ-EV-0070): the first look at a
+                // path in this task is its baseline; `window=changed` keeps only
+                // the diagnostics on lines changed since that baseline text and
+                // names which of them are new against the baseline.
+                let mut baselines = self.baselines.lock().expect("baselines");
+                let baseline = baselines
+                    .entry(req.path.clone())
+                    .or_insert_with(|| DiagBaseline {
+                        workspace_revision: ws_rev,
+                        content_hash: content_hash.clone(),
+                        text: text.clone(),
+                        diagnostics: list.clone(),
+                    })
+                    .clone();
+                if req.window == "changed" {
+                    let diff = unified_diff(&req.path, &baseline.text, &text);
+                    let ranges: Vec<(u32, u32)> =
+                        modbit_retrieval::graph::changed_lines_from_unified(&diff)
+                            .remove(&req.path)
+                            .unwrap_or_default();
+                    let in_window = |d: &modbit_diagnostics::Diagnostic| {
+                        // LSP lines are zero-based; ranges are 1-based inclusive.
+                        let (a, b) = (d.range.start.line + 1, d.range.end.line + 1);
+                        ranges.iter().any(|(s, e)| a <= *e && b >= *s)
+                    };
+                    let base_fps: std::collections::HashSet<String> =
+                        baseline.diagnostics.iter().map(diag_fingerprint).collect();
+                    let windowed: Vec<&modbit_diagnostics::Diagnostic> =
+                        list.iter().filter(|d| in_window(d)).collect();
+                    let new_since_baseline: Vec<&modbit_diagnostics::Diagnostic> = windowed
+                        .iter()
+                        .copied()
+                        .filter(|d| !base_fps.contains(&diag_fingerprint(d)))
+                        .collect();
+                    serde_json::json!({
+                        "diagnostics": windowed,
+                        "new_since_baseline": new_since_baseline,
+                        "outside_window_count": list.len() - windowed.len(),
+                        "window": {
+                            "kind": "changed",
+                            "ranges": ranges,
+                            "baseline_revision": baseline.workspace_revision,
+                            "baseline_content_hash": baseline.content_hash,
+                            "baseline_count": baseline.diagnostics.len(),
+                        },
+                    })
+                } else {
+                    serde_json::json!({
+                        "diagnostics": list,
+                        "window": {"kind": "all", "baseline_revision": baseline.workspace_revision, "baseline_count": baseline.diagnostics.len()},
+                    })
+                }
             }
             "symbols" => {
                 serde_json::json!({"symbols": s.document_symbols(&req.path, t).map_err(|e| ("LANGUAGE_SERVICE".to_owned(), e.to_string()))?})

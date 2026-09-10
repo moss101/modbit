@@ -54,6 +54,9 @@ pub struct LanguageRequest {
     pub line: u32,
     /// Zero-based UTF-16 column (references/definition).
     pub character: u32,
+    /// Diagnostics window: `all` (default) or `changed` — only the lines
+    /// changed since the task's baseline for the path (REQ-EV-0070).
+    pub window: String,
 }
 
 /// Port to the host's headless language servers; results are JSON.

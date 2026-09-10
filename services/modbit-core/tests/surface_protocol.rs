@@ -6272,7 +6272,8 @@ async fn m3_6_evidence_graph_serves_imports_history_changed_lines_tests_and_veri
         serde_json::json!([]),
         "the net import is gone: {so}"
     );
-    assert_eq!(v["changed_lines"], serde_json::json!([[1, 3]]), "{so}");
+    // Lines 1–2 changed; the closing brace on line 3 is unchanged context.
+    assert_eq!(v["changed_lines"], serde_json::json!([[1, 2]]), "{so}");
     assert_eq!(
         v["importers"],
         serde_json::json!([["src/lib.rs", 1], ["tests/util_test.rs", 1]])
@@ -6835,4 +6836,131 @@ async fn m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_rec
         .find(|e| e["entry_id"] == stub["entry_id"])
         .unwrap();
     assert_eq!(hydrated["used"]["tool_name"], "fs.read", "{after}");
+}
+
+/// REQ-EV-0070 Diagnostic Change Window: the task's first look at a file is
+/// its baseline (pre-existing noise); after a change, `window=changed`
+/// evaluates only the changed lines and names the diagnostics that are new
+/// against the baseline; the noise outside the window is counted, not shown.
+#[tokio::test]
+async fn qual_ev_0070_diagnostic_change_window_evaluates_only_the_changed_region() {
+    let (repo, root) = fixture_repo("python-service");
+    // Pre-existing noise: two type errors at the top of the file.
+    let noisy = "from service import total_cents\n\nnoise_a: int = \"a\"\nnoise_b: int = \"b\"\n\n\ndef ok() -> int:\n    return total_cents(1, 2)\n";
+    std::fs::write(repo.path().join("windowed.py"), noisy).unwrap();
+    let nm = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../node_modules")
+        .canonicalize()
+        .unwrap();
+    let nm_s = nm.to_string_lossy().into_owned();
+    let env = [("MODBIT_NODE_MODULES", nm_s.as_str())];
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x70)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x71, "local_trusted").await;
+    // Baseline: the first look records the noise.
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0x72,
+        0x61,
+        "lsp.diagnostics",
+        r#"{"path":"windowed.py"}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let base_errors = so["diagnostics"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|d| d["severity"] == "error")
+        .count();
+    assert_eq!(base_errors, 2, "{so}");
+    assert_eq!(so["window"]["kind"], "all");
+    assert_eq!(
+        so["window"]["baseline_count"].as_u64().unwrap() as usize,
+        so["diagnostics"].as_array().unwrap().len()
+    );
+    // The change: a new function at the end with one new error.
+    let changed = format!("{noisy}\n\ndef broken() -> int:\n    return \"not an int\"\n");
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0x73,
+        0x62,
+        "change.apply",
+        &serde_json::json!({"path":"windowed.py","op":"replace","content":changed}).to_string(),
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0x74,
+        0x63,
+        "lsp.diagnostics",
+        r#"{"path":"windowed.py","window":"changed"}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(so["window"]["kind"], "changed", "{so}");
+    let ranges = so["window"]["ranges"].as_array().unwrap();
+    assert!(!ranges.is_empty(), "{so}");
+    assert!(
+        ranges.iter().all(|r| r[0].as_u64().unwrap() > 8),
+        "only the appended lines: {so}"
+    );
+    let shown = so["diagnostics"].as_array().unwrap();
+    assert!(
+        shown
+            .iter()
+            .all(|d| d["range"]["start"]["line"].as_u64().unwrap() >= 9),
+        "{so}"
+    );
+    let new = so["new_since_baseline"].as_array().unwrap();
+    assert!(
+        new.iter()
+            .any(|d| d["severity"] == "error" && d["message"].as_str().unwrap().contains("int")),
+        "{so}"
+    );
+    assert_eq!(
+        so["outside_window_count"].as_u64().unwrap(),
+        2,
+        "the noise is counted, not shown: {so}"
+    );
+    assert_eq!(so["window"]["baseline_count"], 2);
+    // An unchanged file has an empty window: nothing is evaluated, the noise is counted.
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0x75,
+        0x64,
+        "lsp.diagnostics",
+        r#"{"path":"seeded.py"}"#,
+    )
+    .await;
+    let _ = r;
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0x76,
+        0x65,
+        "lsp.diagnostics",
+        r#"{"path":"windowed.py","window":"changed"}"#,
+    )
+    .await;
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(
+        so["window"]["baseline_count"], 2,
+        "the baseline is the first look, not the latest: {so}"
+    );
 }

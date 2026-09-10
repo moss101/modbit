@@ -519,28 +519,53 @@ impl EvidenceGraph {
     }
 }
 
-/// Changed line ranges per file from a unified diff (new-side hunks).
+/// Changed line ranges per file from a unified diff: the new-side lines that
+/// were added, plus the position of each deletion (1-based, inclusive),
+/// merged into ranges — context lines are not changed lines.
 #[must_use]
 pub fn changed_lines_from_unified(unified: &str) -> ChangedLines {
     let mut out: ChangedLines = BTreeMap::new();
     let mut current: Option<String> = None;
+    let mut new_line: u32 = 0;
+    let mut in_hunk = false;
+    let push = |out: &mut ChangedLines, cur: &str, line: u32| {
+        let v = out.entry(cur.to_owned()).or_default();
+        match v.last_mut() {
+            Some((_, e)) if *e + 1 >= line && line >= *e => *e = line.max(*e),
+            Some((s, e)) if *s <= line && line <= *e => {}
+            _ => v.push((line, line)),
+        }
+    };
     for line in unified.lines() {
-        if let Some(p) = line.strip_prefix("+++ ") {
+        if line.starts_with("diff ") {
+            in_hunk = false;
+            current = None;
+        } else if let Some(p) = line.strip_prefix("+++ ") {
             let p = p.trim_start_matches("b/");
             current = (p != "/dev/null").then(|| p.to_owned());
-        } else if let Some(rest) = line.strip_prefix("@@ ")
-            && let Some(cur) = &current
-            && let Some(plus) = rest.split_whitespace().nth(1)
-            && let Some(plus) = plus.strip_prefix('+')
-        {
-            let mut it = plus.split(',');
-            let start: u32 = it.next().and_then(|s| s.parse().ok()).unwrap_or(0);
-            let count: u32 = it.next().and_then(|s| s.parse().ok()).unwrap_or(1);
-            if count > 0 {
-                out.entry(cur.clone())
-                    .or_default()
-                    .push((start, start + count - 1));
+            in_hunk = false;
+        } else if !in_hunk && line.starts_with("--- ") {
+            // old-side header
+        } else if let Some(rest) = line.strip_prefix("@@ ") {
+            in_hunk = true;
+            new_line = rest
+                .split_whitespace()
+                .nth(1)
+                .and_then(|plus| plus.strip_prefix('+'))
+                .and_then(|plus| plus.split(',').next())
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(0);
+        } else if in_hunk && let Some(cur) = current.clone() {
+            if line.starts_with('+') {
+                push(&mut out, &cur, new_line);
+                new_line += 1;
+            } else if line.starts_with('-') {
+                // A deletion touches the position where the lines were.
+                push(&mut out, &cur, new_line.max(1));
+            } else if line.starts_with(' ') || line.is_empty() {
+                new_line += 1;
             }
+            // `\ No newline at end of file` markers carry no line.
         }
     }
     out

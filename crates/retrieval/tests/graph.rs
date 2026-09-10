@@ -92,9 +92,13 @@ fn specifiers_resolve_to_workspace_paths_per_language_convention() {
 
 #[test]
 fn changed_lines_follow_the_new_side_hunks_of_a_unified_diff() {
-    let diff = "diff --git a/src/a.rs b/src/a.rs\n--- a/src/a.rs\n+++ b/src/a.rs\n@@ -1,3 +1,4 @@\n x\n+y\n@@ -10 +11,2 @@\n+z\n+w\ndiff --git a/gone.rs b/gone.rs\n--- a/gone.rs\n+++ /dev/null\n@@ -1 +0,0 @@\n-q\n";
+    let diff = "diff --git a/src/a.rs b/src/a.rs\n--- a/src/a.rs\n+++ b/src/a.rs\n@@ -1,3 +1,4 @@\n x\n+y\n x\n x\n@@ -10 +11,2 @@\n+z\n+w\ndiff --git a/gone.rs b/gone.rs\n--- a/gone.rs\n+++ /dev/null\n@@ -1 +0,0 @@\n-q\n";
     let lines = changed_lines_from_unified(diff);
-    assert_eq!(lines.get("src/a.rs").unwrap(), &vec![(1, 4), (11, 12)]);
+    assert_eq!(
+        lines.get("src/a.rs").unwrap(),
+        &vec![(2, 2), (11, 12)],
+        "only the added lines, not the hunk context: {lines:?}"
+    );
     assert!(!lines.contains_key("gone.rs"), "{lines:?}");
 }
 
