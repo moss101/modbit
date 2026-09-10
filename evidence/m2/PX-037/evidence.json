@@ -1,0 +1,17 @@
+{
+ "task": "PX-037",
+ "requirement": "REQ-PX-037",
+ "qual": "QUAL-PX-037",
+ "tests": [
+  "diff_invariants_deny_test_weakening_and_flag_the_rest",
+  "m2_8_verification_engine_gates_completion_on_real_cargo_fixture",
+  "qual_ev_0071_secret_in_patch_is_denied_with_evidence"
+ ],
+ "batch_commits": [
+  "5d4c142",
+  "84062fd"
+ ],
+ "runs": [],
+ "proof": "skip markers, removed assertions and rewrites of acceptance-named tests are DENY (DI-3) with DiffInvariantViolated on the log and the write refused before any effect; hand-edited lockfiles and manifests without a plan entry are DENY (DI-2/DI-7); debug leftovers and formatting churn are FLAGs; credentials DENY (DI-5)",
+ "audit": "FOUND (M2.8) \u2014 qualification"
+}

@@ -1,0 +1,16 @@
+{
+ "task": "PX-036",
+ "requirement": "REQ-PX-036",
+ "qual": "QUAL-PX-036",
+ "tests": [
+  "cargo_fixture_baseline_labels_known_failing_quarantines_flaky_and_attributes_regressions",
+  "m2_8_verification_engine_gates_completion_on_real_cargo_fixture"
+ ],
+ "batch_commits": [
+  "5d4c142",
+  "HEAD"
+ ],
+ "runs": [],
+ "proof": "a seeded flaky test fails once, is rerun in isolation at the same revision and environment digest and, because its suite is mandatory, must pass three consecutive isolated reruns before it is labelled FLAKY and quarantined for the task and revision (both run references recorded, excluded from failure signatures, shown in Review and the self-review); a FLAKY attribution makes acceptance INCONCLUSIVE (blocks) at COMPLETION",
+ "audit": "FOUND + IMPLEMENTED (three-pass rule)"
+}

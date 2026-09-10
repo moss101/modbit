@@ -1,0 +1,16 @@
+{
+ "task": "PX-034",
+ "requirement": "REQ-PX-034",
+ "qual": "QUAL-PX-034",
+ "tests": [
+  "m2_8_verification_engine_gates_completion_on_real_cargo_fixture",
+  "m2_7_one_agent_runtime_drives_a_coding_task_to_ready_for_review"
+ ],
+ "batch_commits": [
+  "5d4c142",
+  "84062fd"
+ ],
+ "runs": [],
+ "proof": "the TARGETED run reports failing checks first and does not complete the task; COMPLETION runs twice in the M2.8 test: first refused on a REGRESSION, then clean at the final revision after the fix",
+ "audit": "FOUND (M2.8) \u2014 qualification"
+}

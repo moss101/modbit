@@ -135,6 +135,23 @@ async fn cargo_fixture_baseline_labels_known_failing_quarantines_flaky_and_attri
         )
         .await;
     assert_eq!(baseline.stage, Stage::Baseline);
+    // PX-036: the suite is mandatory, so the flaky check needed three consecutive
+    // isolated passes (the first rerun plus two more) before quarantine.
+    assert_eq!(
+        baseline
+            .reports
+            .iter()
+            .filter(|r| r.stage == Stage::Rerun)
+            .count(),
+        3,
+        "{:?}",
+        baseline
+            .reports
+            .iter()
+            .map(|r| (&r.report_id, r.stage))
+            .collect::<Vec<_>>()
+    );
+
     let suite = baseline
         .reports
         .iter()

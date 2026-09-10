@@ -395,29 +395,79 @@ impl<'a> VerificationEngine<'a> {
                         ),
                     )
                     .await;
-                for f in &failed {
-                    if rerun
-                        .checks
-                        .iter()
-                        .any(|c| c.check_id == f.check_id && c.status == CheckStatus::Pass)
-                    {
-                        if let Some(c) = reports[i]
+                let passed_once: Vec<CheckResult> = failed
+                    .iter()
+                    .filter(|f| {
+                        rerun
                             .checks
-                            .iter_mut()
-                            .find(|c| c.check_id == f.check_id)
-                        {
-                            c.status = CheckStatus::Flaky;
+                            .iter()
+                            .any(|c| c.check_id == f.check_id && c.status == CheckStatus::Pass)
+                    })
+                    .cloned()
+                    .collect();
+                let mut extra_reruns = Vec::new();
+                let mut accepted: Vec<(String, String)> = Vec::new();
+                for f in &passed_once {
+                    let mut last_rid = rid.clone();
+                    let mut consistent = true;
+                    // A mandatory check needs `mandatory_flaky_passes` consecutive
+                    // isolated passes before it may be quarantined (docs/64 §3);
+                    // one more failure keeps it a real failure.
+                    if cmd.mandatory {
+                        for k in 1..self.policy.mandatory_flaky_passes.max(1) {
+                            let one = [f];
+                            let argv = Self::rerun_argv(cmd, &one);
+                            let krid = format!("{vrun_id}-rerun-{i}-{k}");
+                            let again = self
+                                .run_command(
+                                    cmd,
+                                    argv,
+                                    root,
+                                    env,
+                                    self.policy.targeted_run_budget_ms,
+                                    (
+                                        &krid,
+                                        &format!("{vrun_id}-rerun"),
+                                        Stage::Rerun,
+                                        candidate_revision,
+                                        &envd,
+                                    ),
+                                )
+                                .await;
+                            let pass = again
+                                .checks
+                                .iter()
+                                .any(|c| c.check_id == f.check_id && c.status == CheckStatus::Pass);
+                            extra_reruns.push(again);
+                            if !pass {
+                                consistent = false;
+                                break;
+                            }
+                            last_rid = krid;
                         }
-                        quarantines.push(Quarantine {
-                            check_id: f.check_id.clone(),
-                            first_run_id: vrun_id.clone(),
-                            rerun_id: rid.clone(),
-                            candidate_revision: candidate_revision.to_owned(),
-                        });
                     }
+                    if consistent {
+                        accepted.push((f.check_id.clone(), last_rid));
+                    }
+                }
+                for (check_id, last_rid) in accepted {
+                    if let Some(c) = reports[i]
+                        .checks
+                        .iter_mut()
+                        .find(|c| c.check_id == check_id)
+                    {
+                        c.status = CheckStatus::Flaky;
+                    }
+                    quarantines.push(Quarantine {
+                        check_id,
+                        first_run_id: vrun_id.clone(),
+                        rerun_id: last_rid,
+                        candidate_revision: candidate_revision.to_owned(),
+                    });
                 }
                 reports[i].finalize();
                 reports.push(rerun);
+                reports.extend(extra_reruns);
             }
         }
         let status = overall(&reports);

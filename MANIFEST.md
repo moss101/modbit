@@ -487,6 +487,18 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m2/PX-014/ci-run-34437627213-tests.log` | retained evidence | 89460 | `77b0b9b704403e2e4fd814a458eadc5f940ec7fd82bab290882c5c184148d640` |
 | `evidence/m2/PX-014/ci-run-34437627213.json` | retained evidence | 36682 | `9080da190811d409f4b3d1310407f3a70fd6be7a11e2d26418b49f4f7e6d6a8f` |
 | `evidence/m2/PX-014/evidence.json` | retained evidence | 1182 | `6e3035d3ce3ab41c0f58671e7dd9986d1d352ef1cd8f630c02821850e79f4994` |
+| `evidence/m2/PX-017/TASK_CARD.md` | retained evidence | 1744 | `82551d63add3e61e4f71f4e7fd52edff3fb94951743b9a2c43cdc4037ef9f04a` |
+| `evidence/m2/PX-017/evidence.json` | retained evidence | 727 | `b00f1bab5feeef768559c4255988a44aceb302f604ecb2e5c0510e504b819c89` |
+| `evidence/m2/PX-019/TASK_CARD.md` | retained evidence | 1726 | `ffc45ce718ab97c9f742d43fb6964e2ecd5e487d1de1f6e7c3bd14ebc182a847` |
+| `evidence/m2/PX-019/evidence.json` | retained evidence | 665 | `5ef04286e54ba0395e59bf925087c040b1ab6f72ab6e163e9b896e9c09b85bc8` |
+| `evidence/m2/PX-032/TASK_CARD.md` | retained evidence | 1841 | `d40a8b994c0d0fcf885af5265d4eb25de105afe6583b7b73de1c4696eadebd4d` |
+| `evidence/m2/PX-032/evidence.json` | retained evidence | 651 | `1c38438aab910ff576ed19dd1d215bd3e68446921c7b65e2478395772faaab1c` |
+| `evidence/m2/PX-034/TASK_CARD.md` | retained evidence | 1777 | `c179a0786420508507f53885f00c8eb29066ccf5306d855af5613f2bbaaa88cc` |
+| `evidence/m2/PX-034/evidence.json` | retained evidence | 546 | `627aa2391bddeda3b9786eaea20491989753a72f8c8efcef1153cfd8652c6362` |
+| `evidence/m2/PX-036/TASK_CARD.md` | retained evidence | 2089 | `494609510411d366bd28974041caac99e3487baf2ec9daf68aef82e0f221aee3` |
+| `evidence/m2/PX-036/evidence.json` | retained evidence | 801 | `06047612c224d5eeaf0f2c17b10257cff60e75a33fbf02542b825804831543c0` |
+| `evidence/m2/PX-037/TASK_CARD.md` | retained evidence | 2037 | `850e27805cb4917a99630b03d4b70cf9826e45bb50fe4876c4195d8d3780be30` |
+| `evidence/m2/PX-037/evidence.json` | retained evidence | 716 | `77468c3828340a611cf892bcb8cb25ee45916021068856abce217f7b508eac71` |
 | `graph/PROJECT_GRAPH.md` | human view of the graph | 40927 | `54570e06d1c4f6e858721c1f5416918c758315341abebaed0d8d602536048f72` |
 | `graph/project-graph.json` | project driver graph with live status | 1145436 | `d627b11de89fac8439871dfa2d05047077e6fc71d266444af2d5093ac2d46762` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 46807 | `b013ef376845b2152e88f07abc7152522c4240662943fa6042413fc0a1626d45` |

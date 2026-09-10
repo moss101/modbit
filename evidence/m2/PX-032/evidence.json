@@ -1,0 +1,16 @@
+{
+ "task": "PX-032",
+ "requirement": "REQ-PX-032",
+ "qual": "QUAL-PX-032",
+ "tests": [
+  "m2_8_verification_engine_gates_completion_on_real_cargo_fixture",
+  "cargo_fixture_baseline_labels_known_failing_quarantines_flaky_and_attributes_regressions"
+ ],
+ "batch_commits": [
+  "5d4c142",
+  "84062fd"
+ ],
+ "runs": [],
+ "proof": "on the rust-cli fixture the pre-existing failure is KNOWN_FAILING at BASELINE, the test the task breaks is attributed REGRESSION at COMPLETION and blocks acceptance until fixed; a check declared as an expected change before the run is attributed as declared, not a regression",
+ "audit": "FOUND (M2.8) \u2014 qualification"
+}

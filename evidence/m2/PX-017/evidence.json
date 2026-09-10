@@ -1,0 +1,17 @@
+{
+ "task": "PX-017",
+ "requirement": "REQ-PX-017",
+ "qual": "QUAL-PX-017",
+ "tests": [
+  "m2_8_verification_engine_gates_completion_on_real_cargo_fixture",
+  "cargo_fixture_baseline_labels_known_failing_quarantines_flaky_and_attributes_regressions",
+  "pytest_junit_and_configured_command_adapters"
+ ],
+ "batch_commits": [
+  "5d4c142",
+  "84062fd"
+ ],
+ "runs": [],
+ "proof": "the derived plan is recorded before the BASELINE run; commands carry mandatory flags that attribution enforces (a NEW_FAILING or REGRESSION on a mandatory check blocks acceptance); diff invariants are evaluated per transaction and at COMPLETION; the plan's declared changes are honoured by attribution",
+ "audit": "FOUND (M2.8) \u2014 qualification"
+}
