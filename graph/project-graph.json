@@ -1840,8 +1840,19 @@
    "milestone": "M3",
    "order": 0,
    "source": "docs/43",
-   "status": "WIRED",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "test:exact_regex_and_path_hits_are_bounded_and_revision_bound",
+    "test:refresh_reindexes_exactly_the_changed_paths_at_the_new_revision",
+    "test:oversized_files_are_recorded_but_not_searched_and_non_git_roots_walk",
+    "test:m3_1_exact_regex_path_index_serves_bounded_revision_bound_hits_and_refreshes_on_writes",
+    "run:gha-34442392803",
+    "commit:6893b2e",
+    "artifact:evidence/m3/M3.1/evidence.json",
+    "artifact:evidence/m3/M3.1/TASK_CARD.md",
+    "artifact:evidence/m3/M3.1/ci-run-34442392803.json",
+    "artifact:evidence/m3/M3.1/ci-run-34442392803-tests.log"
+   ],
    "notes": [
     {
      "at": "2026-09-10T05:42:37Z",
@@ -1860,9 +1871,27 @@
      "from": "IMPLEMENTING",
      "to": "WIRED",
      "note": "search.* in the compiled tool surface; ToolHost::index built at first use; change.apply/batch refresh changed paths"
+    },
+    {
+     "at": "2026-09-10T06:15:51Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real git repositories on disk; real Core over the socket"
+    },
+    {
+     "at": "2026-09-10T06:15:51Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 6893b2e"
+    },
+    {
+     "at": "2026-09-10T06:15:52Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "exact/regex/path index: git-aware file set, bounded revision-bound hits, per-write refresh, search.exact/regex/paths"
     }
    ],
-   "status_changed_on": "2026-09-10T05:42:37Z"
+   "status_changed_on": "2026-09-10T06:15:52Z"
   },
   {
    "id": "M3.2",
@@ -1872,8 +1901,29 @@
    "milestone": "M3",
    "order": 1,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "WIRED",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-10T06:15:52Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: NOT-FOUND (no lexical index; Tantivy not a dependency)"
+    },
+    {
+     "at": "2026-09-10T06:15:52Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "LexicalIndex (Tantivy 0.25 in RAM) built from the exact index; search.lexical; Core per-workspace lexical index refreshed per changed path (e1b4634)"
+    },
+    {
+     "at": "2026-09-10T06:15:52Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "search.lexical in the compiled tool surface; IndexPort serves BM25 hits bound to the index revision"
+    }
+   ],
+   "status_changed_on": "2026-09-10T06:15:52Z"
   },
   {
    "id": "M3.3",

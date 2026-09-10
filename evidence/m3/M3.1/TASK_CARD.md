@@ -40,4 +40,4 @@ BM25 (M3.2), AST/symbol index (M3.3), LSP (M3.4), embeddings (M3.5), the retriev
 ## Evidence
 
 - `evidence.json` in this directory (commits, hosted CI run, test names)
-- CI run json/log copies alongside
+- `ci-run-34442392803.json`, `ci-run-34442392803-tests.log`: hosted CI run 34442392803 on 6893b2e, green on macOS, Linux and Windows

@@ -8,11 +8,19 @@
   "qual_ev_0217_compatibility_matrix_covers_every_registered_tool_with_owner_effect_and_test"
  ],
  "commits": {
-  "implementation": "HEAD"
+  "implementation": "6893b2e"
  },
- "runs": [],
+ "runs": [
+  {
+   "id": "gha-34442392803",
+   "kind": "hosted CI on 6893b2e",
+   "result": "PASS on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34442392803",
+   "log": "ci-run-34442392803.json, ci-run-34442392803-tests.log"
+  }
+ ],
  "evidence_tier": "release-critical",
  "acceptance": {
-  "exact/regex/path index": "pending hosted CI"
+  "exact/regex/path index": "PASS (git-aware index, bounded revision-bound hits, refresh on writes, search.* tools)"
  }
 }
