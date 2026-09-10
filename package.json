@@ -14,6 +14,9 @@
   },
   "devDependencies": {
     "@types/node": "26.5.0",
-    "typescript": "7.0.2"
+    "pyright": "1.1.407",
+    "typescript": "7.0.2",
+    "typescript-language-server": "4.4.0",
+    "typescript-tsserver": "npm:typescript@5.9.3"
   }
 }

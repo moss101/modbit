@@ -819,6 +819,83 @@ tool!(
     }
 );
 
+fn lsp_tool_body(ctx: &InvokeContext, args: &Value, kind: &str) -> ToolOutcome {
+    let Some(port) = &ctx.language else {
+        return ToolOutcome::infra(
+            "NO_LANGUAGE_SERVICE",
+            "no language service is attached to this task",
+        );
+    };
+    let req = crate::pipeline::LanguageRequest {
+        kind: kind.into(),
+        path: s(args, "path"),
+        line: args.get("line").and_then(Value::as_u64).unwrap_or(0) as u32,
+        character: args.get("character").and_then(Value::as_u64).unwrap_or(0) as u32,
+    };
+    if req.path.is_empty() {
+        return ToolOutcome::fail("PATH_REQUIRED", "path must not be empty");
+    }
+    match port.query(&req) {
+        Ok(v) => ToolOutcome::ok(v),
+        Err((code, msg)) => ToolOutcome::fail(&code, msg),
+    }
+}
+
+const LSP_PATH_SCHEMA: &str = r#"{"type":"object","properties":{"path":{"type":"string"}},"required":["path"],"additionalProperties":false}"#;
+const LSP_POS_SCHEMA: &str = r#"{"type":"object","properties":{"path":{"type":"string"},"line":{"type":"integer","minimum":0},"character":{"type":"integer","minimum":0}},"required":["path","line","character"],"additionalProperties":false}"#;
+
+tool!(
+    LspDiagnostics,
+    spec(
+        "lsp.diagnostics",
+        "Diagnostics of a file from the headless language server of its language (rust-analyzer, typescript-language-server, pyright): normalized severity, code, range and message, bound to the file revision; an unavailable server is a typed failure, never a guess (M3.4, docs/18, docs/76).",
+        EffectClass::ReadOnly,
+        serde_json::from_str(LSP_PATH_SCHEMA).expect("schema"),
+        &["fs.read"],
+        Idempotency::Idempotent
+    ),
+    |ctx, args| lsp_tool_body(ctx, &args, "diagnostics")
+);
+
+tool!(
+    LspSymbols,
+    spec(
+        "lsp.symbols",
+        "Document symbols of a file from its headless language server (M3.4).",
+        EffectClass::ReadOnly,
+        serde_json::from_str(LSP_PATH_SCHEMA).expect("schema"),
+        &["fs.read"],
+        Idempotency::Idempotent
+    ),
+    |ctx, args| lsp_tool_body(ctx, &args, "symbols")
+);
+
+tool!(
+    LspReferences,
+    spec(
+        "lsp.references",
+        "References of the symbol at a zero-based line/character, from its headless language server, declaration included (M3.4).",
+        EffectClass::ReadOnly,
+        serde_json::from_str(LSP_POS_SCHEMA).expect("schema"),
+        &["fs.read"],
+        Idempotency::Idempotent
+    ),
+    |ctx, args| lsp_tool_body(ctx, &args, "references")
+);
+
+tool!(
+    LspDefinition,
+    spec(
+        "lsp.definition",
+        "Definition of the symbol at a zero-based line/character, from its headless language server (M3.4).",
+        EffectClass::ReadOnly,
+        serde_json::from_str(LSP_POS_SCHEMA).expect("schema"),
+        &["fs.read"],
+        Idempotency::Idempotent
+    ),
+    |ctx, args| lsp_tool_body(ctx, &args, "definition")
+);
+
 /// Wait window for `shell.read` when the process is still running.
 const READ_WAIT_MS: u64 = 250;
 
@@ -1248,6 +1325,10 @@ pub fn register_direct(registry: &mut ToolRegistry) -> Result<()> {
         SearchPaths::shared(),
         SearchLexical::shared(),
         SearchSymbols::shared(),
+        LspDiagnostics::shared(),
+        LspSymbols::shared(),
+        LspReferences::shared(),
+        LspDefinition::shared(),
         GitStatus::shared(),
         GitDiff::shared(),
         GitWorktreeCreate::shared(),

@@ -1,0 +1,19 @@
+{
+ "task": "M3.4",
+ "tests": [
+  "rust_analyzer_reports_a_seeded_type_mismatch_symbols_references_and_definitions",
+  "typescript_language_server_reports_a_seeded_type_error_and_resolves_definitions",
+  "pyright_reports_a_seeded_error_and_resolves_references",
+  "unsupported_language_is_reported_unavailable_not_faked",
+  "m3_4_headless_language_service_bridge_serves_diagnostics_symbols_references_and_definitions",
+  "qual_ev_0217_compatibility_matrix_covers_every_registered_tool_with_owner_effect_and_test"
+ ],
+ "commits": {
+  "implementation": "HEAD"
+ },
+ "runs": [],
+ "evidence_tier": "release-critical",
+ "acceptance": {
+  "headless LSP diagnostics/symbol bridge": "pending hosted CI"
+ }
+}

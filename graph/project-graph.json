@@ -2019,8 +2019,29 @@
    "milestone": "M3",
    "order": 3,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "WIRED",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-10T06:47:37Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Existing-code audit: NOT-FOUND (empty diagnostics crate; no language servers)"
+    },
+    {
+     "at": "2026-09-10T06:47:37Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "LSP client + server registry (rust-analyzer, typescript-language-server with TypeScript 5 tsserver, pyright); lsp.diagnostics/symbols/references/definition tools; Core per-workspace servers"
+    },
+    {
+     "at": "2026-09-10T06:47:37Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "lsp.* in the compiled tool surface; results bound to file hash and workspace revision; unavailability typed"
+    }
+   ],
+   "status_changed_on": "2026-09-10T06:47:37Z"
   },
   {
    "id": "M3.5",

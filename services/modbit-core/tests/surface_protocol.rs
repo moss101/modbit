@@ -5899,3 +5899,147 @@ async fn m3_3_tree_sitter_symbol_index_serves_definitions_and_refreshes_on_write
         "{so}"
     );
 }
+
+/// M3.4: the headless language-service bridge through the tools on a real
+/// fixture: pyright diagnostics for a seeded error (with the file revision),
+/// document symbols, references and a definition; an unsupported language is
+/// a typed refusal, never a guess. The node servers come from the repository's
+/// node_modules (the Core resolves them from the workspace tree or its own).
+#[tokio::test]
+async fn m3_4_headless_language_service_bridge_serves_diagnostics_symbols_references_and_definitions()
+ {
+    let (repo, root) = fixture_repo("python-service");
+    std::fs::write(
+        repo.path().join("seeded.py"),
+        "from service import total_cents\n\nx: int = \"text\"\ny = total_cents(1, 2)\n",
+    )
+    .unwrap();
+    // Point the Core at the repository's node_modules for pyright.
+    let nm = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../node_modules")
+        .canonicalize()
+        .unwrap();
+    let nm_s = nm.to_string_lossy().into_owned();
+    let env = [("MODBIT_NODE_MODULES", nm_s.as_str())];
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xD0)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xD1, "local_trusted").await;
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xD2,
+        0xE1,
+        "lsp.diagnostics",
+        r#"{"path":"seeded.py"}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let d = so["diagnostics"].as_array().unwrap();
+    assert!(
+        d.iter()
+            .any(|x| x["severity"] == "error" && x["range"]["start"]["line"] == 2),
+        "{so}"
+    );
+    assert_eq!(
+        (so["server"].as_str(), so["language"].as_str()),
+        (Some("pyright"), Some("python"))
+    );
+    assert_eq!(so["content_hash"].as_str().unwrap().len(), 64);
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xD3,
+        0xE2,
+        "lsp.symbols",
+        r#"{"path":"service.py"}"#,
+    )
+    .await;
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let names: Vec<&str> = so["symbols"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| s["name"].as_str().unwrap())
+        .collect();
+    assert!(
+        names.contains(&"parse_quantity") && names.contains(&"total_cents"),
+        "{names:?}"
+    );
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xD4,
+        0xE3,
+        "lsp.references",
+        r#"{"path":"seeded.py","line":3,"character":6}"#,
+    )
+    .await;
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let paths: Vec<&str> = so["locations"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|l| l["path"].as_str().unwrap())
+        .collect();
+    assert!(
+        paths.contains(&"service.py") && paths.contains(&"seeded.py"),
+        "{so}"
+    );
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xD5,
+        0xE4,
+        "lsp.definition",
+        r#"{"path":"seeded.py","line":3,"character":6}"#,
+    )
+    .await;
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(so["locations"][0]["path"], "service.py", "{so}");
+    // A fixed seed no longer reports the error at the new revision.
+    let r = invoke_tool(&mut c, &task, g, 0xD6, 0xE5, "change.apply", r#"{"path":"seeded.py","op":"replace","content":"from service import total_cents\n\nx: int = 3\ny = total_cents(1, 2)\n"}"#).await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xD7,
+        0xE6,
+        "lsp.diagnostics",
+        r#"{"path":"seeded.py"}"#,
+    )
+    .await;
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert!(
+        so["diagnostics"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|x| x["severity"] != "error"),
+        "{so}"
+    );
+    std::fs::write(repo.path().join("main.go"), "package main\n").unwrap();
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xD8,
+        0xE7,
+        "lsp.diagnostics",
+        r#"{"path":"main.go"}"#,
+    )
+    .await;
+    assert_eq!(
+        (r.status.as_str(), r.error_code.as_str()),
+        ("APPLICATION_FAILURE", "LANGUAGE_SERVICE_UNAVAILABLE"),
+        "{r:?}"
+    );
+}

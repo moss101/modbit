@@ -416,7 +416,7 @@ flowchart LR
 | `M3.1` | COMPLETE | exact/regex/path index |  |
 | `M3.2` | COMPLETE | Tantivy BM25 |  |
 | `M3.3` | COMPLETE | tree-sitter AST/symbol index |  |
-| `M3.4` | NOT_STARTED | headless LSP diagnostics/symbol bridge |  |
+| `M3.4` | WIRED | headless LSP diagnostics/symbol bridge |  |
 | `M3.5` | NOT_STARTED | USearch embeddings + changed-chunk incremental update |  |
 | `M3.6` | NOT_STARTED | dependency/Git/test/runtime evidence graph |  |
 | `M3.7` | NOT_STARTED | L0-L3 retrieval planner + fusion |  |

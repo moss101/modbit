@@ -43,6 +43,25 @@ pub trait SearchPort: Send + Sync {
     fn search(&self, req: &SearchRequest) -> Result<serde_json::Value, (String, String)>;
 }
 
+/// A language-service request (docs/18 "Semantic language services").
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LanguageRequest {
+    /// `diagnostics` | `symbols` | `references` | `definition`.
+    pub kind: String,
+    /// Root-relative path.
+    pub path: String,
+    /// Zero-based line (references/definition).
+    pub line: u32,
+    /// Zero-based UTF-16 column (references/definition).
+    pub character: u32,
+}
+
+/// Port to the host's headless language servers; results are JSON.
+pub trait LanguageServicePort: Send + Sync {
+    /// Run the request; `Err` carries a typed code and message.
+    fn query(&self, req: &LanguageRequest) -> Result<serde_json::Value, (String, String)>;
+}
+
 /// Where a shell tool runs.
 #[derive(Clone, Debug)]
 pub struct ExecTarget {
@@ -76,6 +95,8 @@ pub struct InvokeContext {
     pub kernel: Option<Arc<dyn CapabilityPort>>,
     /// Workspace search (the retrieval index), when the host provides one (M3.1).
     pub search: Option<Arc<dyn SearchPort>>,
+    /// Headless language services, when the host provides them (M3.4).
+    pub language: Option<Arc<dyn LanguageServicePort>>,
     /// The call being executed (set by the pipeline; effectors derive their
     /// idempotency keys from it so a new call never replays an old one).
     pub tool_call_id: Option<ToolCallId>,

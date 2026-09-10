@@ -1525,6 +1525,7 @@ dependencies = [
  "anyhow",
  "hex",
  "modbit-core-runtime",
+ "modbit-diagnostics",
  "modbit-domain",
  "modbit-event-store",
  "modbit-git",
@@ -1567,6 +1568,10 @@ name = "modbit-diagnostics"
 version = "0.0.0"
 dependencies = [
  "modbit-domain",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.20",
 ]
 
 [[package]]

@@ -233,6 +233,7 @@ async fn fs_read_returns_media_envelopes_through_the_registry() {
         output_budget_bytes: 64 * 1024,
         kernel: None,
         search: None,
+        language: None,
         tool_call_id: None,
     };
     let mut registry = ToolRegistry::new();

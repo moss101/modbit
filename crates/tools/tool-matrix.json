@@ -302,6 +302,59 @@
     "fs.read"
    ],
    "test": "m3_3_tree_sitter_symbol_index_serves_definitions_and_refreshes_on_writes"
+  },
+  {
+   "tool": "lsp.diagnostics",
+   "family": "file",
+   "source_behaviors": [
+    "language-service diagnostics",
+    "tsc/pyright/rust-analyzer errors"
+   ],
+   "owner": "Diagnostics Adapter (headless language services)",
+   "effect": "ReadOnly",
+   "capabilities": [
+    "fs.read"
+   ],
+   "test": "m3_4_headless_language_service_bridge_serves_diagnostics_symbols_references_and_definitions"
+  },
+  {
+   "tool": "lsp.symbols",
+   "family": "file",
+   "source_behaviors": [
+    "document outline"
+   ],
+   "owner": "Diagnostics Adapter (headless language services)",
+   "effect": "ReadOnly",
+   "capabilities": [
+    "fs.read"
+   ],
+   "test": "m3_4_headless_language_service_bridge_serves_diagnostics_symbols_references_and_definitions"
+  },
+  {
+   "tool": "lsp.references",
+   "family": "file",
+   "source_behaviors": [
+    "find references"
+   ],
+   "owner": "Diagnostics Adapter (headless language services)",
+   "effect": "ReadOnly",
+   "capabilities": [
+    "fs.read"
+   ],
+   "test": "m3_4_headless_language_service_bridge_serves_diagnostics_symbols_references_and_definitions"
+  },
+  {
+   "tool": "lsp.definition",
+   "family": "file",
+   "source_behaviors": [
+    "go to definition"
+   ],
+   "owner": "Diagnostics Adapter (headless language services)",
+   "effect": "ReadOnly",
+   "capabilities": [
+    "fs.read"
+   ],
+   "test": "m3_4_headless_language_service_bridge_serves_diagnostics_symbols_references_and_definitions"
   }
  ],
  "harness": [
