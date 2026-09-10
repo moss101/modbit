@@ -11853,8 +11853,40 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0141",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "artifact:evidence/m3/IMP-EV-0141/TASK_CARD.md",
+    "test:qual_ev_0141_0160_a_selection_steers_retrieval_is_visible_and_grants_no_write",
+    "test:duplicates_collapse_on_span_identity_or_containment",
+    "test:qual_ev_0035_0131_0175_context_inspector_matches_the_prompt_envelope"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T20:40:35Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: no client could tell a task what the user was looking at (see card)"
+    },
+    {
+     "at": "2026-09-10T20:40:35Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "SetTaskSelection + SelectionRecorded; selection as a pack task constraint; inspector and prompt report it"
+    },
+    {
+     "at": "2026-09-10T20:40:35Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "desktop review hunks, CLI task select, and the Core enforcing that a selection grants nothing"
+    },
+    {
+     "at": "2026-09-10T20:40:35Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "a real run: the selection steers the pack, shows in the inspector, and the write to the selected file is still refused"
+    }
+   ],
+   "status_changed_on": "2026-09-10T20:40:35Z"
   },
   {
    "id": "IMP-EV-0142",
@@ -12428,8 +12460,40 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0160",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "artifact:evidence/m3/IMP-EV-0160/TASK_CARD.md",
+    "test:qual_ev_0141_0160_a_selection_steers_retrieval_is_visible_and_grants_no_write",
+    "test:duplicates_collapse_on_span_identity_or_containment",
+    "test:qual_ev_0035_0131_0175_context_inspector_matches_the_prompt_envelope"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T20:40:35Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: no client could tell a task what the user was looking at (see card)"
+    },
+    {
+     "at": "2026-09-10T20:40:35Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "SetTaskSelection + SelectionRecorded; selection as a pack task constraint; inspector and prompt report it"
+    },
+    {
+     "at": "2026-09-10T20:40:35Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "desktop review hunks, CLI task select, and the Core enforcing that a selection grants nothing"
+    },
+    {
+     "at": "2026-09-10T20:40:35Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "a real run: the selection steers the pack, shows in the inspector, and the write to the selected file is still refused"
+    }
+   ],
+   "status_changed_on": "2026-09-10T20:40:35Z"
   },
   {
    "id": "IMP-EV-0161",
@@ -13071,11 +13135,13 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0173",
    "source": "docs/41",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m3/IMP-EV-0173/TASK_CARD.md",
     "test:qual_ev_0173_task_economics_report_quality_and_cost_from_the_log",
-    "test:qual_ev_0111_0268_context_show_reports_compaction_epochs_and_the_cached_prefix"
+    "test:qual_ev_0111_0268_context_show_reports_compaction_epochs_and_the_cached_prefix",
+    "commit:ebf4b86",
+    "run:gha-34525447727"
    ],
    "notes": [
     {
@@ -13101,9 +13167,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "every count is checked against the events, the cost against the catalog price of the routed model"
+    },
+    {
+     "at": "2026-09-10T20:31:18Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34525447727 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-10T20:31:18Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34525447727; limitations in evidence/m3/IMP-EV-0173/TASK_CARD.md"
     }
    ],
-   "status_changed_on": "2026-09-10T20:08:40Z"
+   "status_changed_on": "2026-09-10T20:31:18Z"
   },
   {
    "id": "IMP-EV-0174",

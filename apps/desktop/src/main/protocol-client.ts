@@ -44,6 +44,8 @@ import {
   ContextInspectorViewSchema,
   type ContextInspectorView,
   GetTaskEconomicsSchema,
+  SetTaskSelectionSchema,
+  TaskSelectionRecordedSchema,
   TaskEconomicsViewSchema,
   type TaskEconomicsView,
   type LanguageList,
@@ -269,6 +271,20 @@ export class CoreClient {
       toBinary(GetContextInspectorSchema, create(GetContextInspectorSchema, { taskId: { value: unhex(taskId) } })),
     );
     return fromBinary(ContextInspectorViewSchema, ack.result);
+  }
+
+  async setTaskSelection(
+    sessionId: string,
+    taskId: string,
+    sel: { paths: string[]; symbol: string; lineStart: number; lineEnd: number; reviewHunks: string[]; source: string },
+  ): Promise<{ offset: string }> {
+    const payload = toBinary(
+      SetTaskSelectionSchema,
+      create(SetTaskSelectionSchema, { taskId: { value: unhex(taskId) }, ...sel }),
+    );
+    const ack = await this.command("SetTaskSelection", payload, undefined, this.leases.get(sessionId));
+    const r = fromBinary(TaskSelectionRecordedSchema, ack.result);
+    return { offset: r.offset.toString() };
   }
 
   async taskEconomics(taskId: string): Promise<TaskEconomicsView> {

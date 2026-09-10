@@ -1,0 +1,15 @@
+{
+ "task": "IMP-EV-0141",
+ "requirement": "REQ-EV-0141",
+ "qual": "QUAL-EV-0141",
+ "tests": [
+  "qual_ev_0141_0160_a_selection_steers_retrieval_is_visible_and_grants_no_write",
+  "duplicates_collapse_on_span_identity_or_containment",
+  "qual_ev_0035_0131_0175_context_inspector_matches_the_prompt_envelope"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "A selection recorded through SetTaskSelection is a durable task event; every Context Pack afterwards treats the selected paths as critical task constraints with the source `selection` and a reason naming the surface, the Context Inspector reports the selection itself, the model is told what is selected, and the write gate is untouched: the run's write to the selected file is still refused because the plan does not declare it.",
+ "audit": "NOT-FOUND before this task: no client could tell a task what the user was looking at.",
+ "limitations": "One selection per task, no history; a selected symbol is shown but does not narrow the excerpt; no editor plugin reports an active file yet."
+}

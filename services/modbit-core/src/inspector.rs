@@ -21,6 +21,13 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::ContextInspector
         v.injected_refs = injected;
         v.rejected_refs = rejected;
     }
+    // What the user has selected (REQ-EV-0141 / 0160): the same selection
+    // retrieval prefers, so a client can see why an entry is in the pack.
+    let selection = crate::tools::selection_of(&core.store, task_id).await;
+    v.selection_paths = selection.paths.clone();
+    v.selection_symbol = selection.symbol.clone().unwrap_or_default();
+    v.selection_source = selection.source.clone();
+    v.selection_review_hunks = selection.review_hunks.clone();
     // What compaction did to the transcript, and what that cost the prompt
     // cache (docs/19; REQ-EV-0111 / 0268).
     let economy = epochs_and_cache(core, task_id).await;

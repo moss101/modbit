@@ -213,6 +213,49 @@ fn contains(outer: &Candidate, inner: &Candidate) -> bool {
     }
 }
 
+/// What one packed entry inherited from the spans it absorbed.
+#[derive(Clone, Debug, Default)]
+struct Merged {
+    sources: Vec<String>,
+    reasons: Vec<String>,
+    critical_reason: Option<String>,
+}
+
+impl Merged {
+    fn absorb(&mut self, c: &Candidate) {
+        for s in &c.sources {
+            if !self.sources.contains(s) {
+                self.sources.push(s.clone());
+            }
+        }
+        for r in &c.reasons {
+            if !self.reasons.contains(r) {
+                self.reasons.push(r.clone());
+            }
+        }
+        if c.critical && self.critical_reason.is_none() {
+            self.critical_reason = Some(
+                c.critical_reason
+                    .clone()
+                    .unwrap_or_else(|| "unspecified".into()),
+            );
+        }
+    }
+
+    fn take(&mut self, other: Self) {
+        for s in other.sources {
+            if !self.sources.contains(&s) {
+                self.sources.push(s);
+            }
+        }
+        for r in other.reasons {
+            if !self.reasons.contains(&r) {
+                self.reasons.push(r);
+            }
+        }
+        self.critical_reason = self.critical_reason.take().or(other.critical_reason);
+    }
+}
 /// Pack candidates under `token_budget` (docs/18: critical first, then the
 /// highest marginal evidence utility; duplicates collapse on span identity
 /// or containment).
@@ -246,13 +289,19 @@ pub fn pack(
     let mut packed: Vec<usize> = Vec::new();
     let mut omitted = OmittedSummary::default();
     let mut left_out: Vec<usize> = Vec::new();
+    // Absorption must not lose provenance: when one span swallows another, the
+    // survivor inherits the other's sources, reasons and critical mark, so a
+    // selected range covered by a wider retrieval hit still reads as selected.
+    let mut merged: std::collections::HashMap<usize, Merged> = std::collections::HashMap::new();
     for i in order {
         let c = &candidates[i];
-        if packed.iter().any(|&p| {
+        if let Some(&p) = packed.iter().find(|&&p| {
             contains(&candidates[p], c)
                 || (candidates[p].path == c.path && candidates[p].lines == c.lines)
         }) {
             omitted.duplicates += 1;
+            let entry = merged.entry(p).or_default();
+            entry.absorb(c);
             continue;
         }
         // A wider span absorbs the narrower packed entries it contains (their
@@ -277,6 +326,14 @@ pub fn pack(
             continue;
         }
         if !absorbed.is_empty() {
+            let mut carried = Merged::default();
+            for &p in &absorbed {
+                carried.absorb(&candidates[p]);
+                if let Some(m) = merged.remove(&p) {
+                    carried.take(m);
+                }
+            }
+            merged.entry(i).or_default().take(carried);
             packed.retain(|p| !absorbed.contains(p));
             omitted.duplicates += absorbed.len();
         }
@@ -287,6 +344,26 @@ pub fn pack(
         .iter()
         .map(|&i| {
             let c = &candidates[i];
+            let m = merged.get(&i);
+            let mut sources = c.sources.clone();
+            let mut reasons = c.reasons.clone();
+            if let Some(m) = m {
+                for s in &m.sources {
+                    if !sources.contains(s) {
+                        sources.push(s.clone());
+                    }
+                }
+                for r in &m.reasons {
+                    if !reasons.contains(r) {
+                        reasons.push(r.clone());
+                    }
+                }
+            }
+            let critical = c.critical || m.is_some_and(|m| m.critical_reason.is_some());
+            let critical_reason = c
+                .critical_reason
+                .clone()
+                .or_else(|| m.and_then(|m| m.critical_reason.clone()));
             let excerpt_hash = sha(&[&c.text]);
             let span = c.span.map_or(String::new(), |(a, b)| format!("{a}-{b}"));
             Entry {
@@ -298,15 +375,15 @@ pub fn pack(
                     path: c.path.clone(),
                     workspace_revision,
                     content_hash: c.content_hash.clone(),
-                    sources: c.sources.clone(),
-                    retrieval_reasons: c.reasons.clone(),
+                    sources,
+                    retrieval_reasons: reasons,
                     excerpt_hash,
                 },
                 freshness: freshness_of(c),
-                reason: if c.critical {
+                reason: if critical {
                     format!(
                         "critical:{}",
-                        c.critical_reason.as_deref().unwrap_or("unspecified")
+                        critical_reason.as_deref().unwrap_or("unspecified")
                     )
                 } else {
                     "utility".into()

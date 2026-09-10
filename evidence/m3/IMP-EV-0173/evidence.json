@@ -8,8 +8,18 @@
   "qual_ev_0056_0092_0130_compaction_epoch_preserves_facts_survives_restart_and_moves_the_cache_prefix",
   "qual_ev_0111_0268_context_show_reports_compaction_epochs_and_the_cached_prefix"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "ebf4b86"
+ ],
+ "runs": [
+  {
+   "id": "gha-34525447727",
+   "kind": "hosted CI on ebf4b86",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34525447727",
+   "log": "ci-run-34525447727.json, ci-run-34525447727-tests.log"
+  }
+ ],
  "proof": "GetTaskEconomics counts a task's economics from the canonical log and reports them next to its quality: the completion run's own verdict (PASSED, NO_CHECKS, FAILED or NOT_RUN), the checks it passed and failed, the regressions it blamed on this change, beside the model calls, tokens (with the provider's cached share), catalog cost, tool calls, wall/model/tool time, prompt-prefix reuse, compaction epochs and injected context tokens. The test checks every count against the events one by one and the cost against the catalog price of the model the calls routed to.",
  "audit": "PARTIAL before this task: the numbers were all on the log, but nothing put quality and cost in one view.",
  "limitations": "Cost is a catalog list price with no cache or negotiated discount, and the view says so. One task at a time; the paired baseline comparison belongs to REQ-EV-0250..0254 and REQ-EV-0274."

@@ -40,9 +40,10 @@ use modbit_protocol::v1::{
     GetSessionSnapshot, GetTaskEconomics, GetTaskStatus, HunkRef, Id, IngestAttachment, InvokeTool,
     LanguageList, ListApprovals, ListLanguages, ListModels, ListQuestions, ListTools, ModelList,
     ModelProbed, ProbeModel, QuestionList, QuestionResponded, ResolveApproval, RespondToQuestion,
-    ReviewBundle, ReviewDecided, SessionCreated, SessionLeaseAcquired, SessionSnapshot, StartTask,
-    TaskCancelRequested, TaskCreated, TaskEconomicsView, TaskRunStarted, TaskStatus, ToolInvoked,
-    ToolList, UndoPlanView, UndoToolCall,
+    ReviewBundle, ReviewDecided, SessionCreated, SessionLeaseAcquired, SessionSnapshot,
+    SetTaskSelection, StartTask, TaskCancelRequested, TaskCreated, TaskEconomicsView,
+    TaskRunStarted, TaskSelectionRecorded, TaskStatus, ToolInvoked, ToolList, UndoPlanView,
+    UndoToolCall,
 };
 use prost::Message;
 
@@ -60,7 +61,7 @@ fn exit_for_state(state: &str) -> u8 {
     }
 }
 
-const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task economics --task <id> | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
+const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task economics --task <id> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
 
 fn parse_id(hex: &str) -> Result<Id, String> {
     let bytes = decode_hex(hex)
@@ -986,6 +987,69 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                     println!("omitted {p}");
                 }
             }
+        }
+        ["task", "select", rest @ ..] => {
+            // task select --task <id> [--path p]... [--lines a:b] [--symbol s]
+            //             [--hunk path#index]... [--source review|editor|cli]
+            let (mut task, mut session): (Option<&str>, Option<&str>) = (None, None);
+            let (mut paths, mut hunks) = (Vec::new(), Vec::new());
+            let (mut symbol, mut source) = (String::new(), "cli".to_owned());
+            let (mut line_start, mut line_end) = (0_u32, 0_u32);
+            let mut it = rest.iter();
+            while let Some(a) = it.next() {
+                match *a {
+                    "--task" => task = it.next().copied(),
+                    "--session" => session = it.next().copied(),
+                    "--path" => paths.push((*it.next().unwrap_or(&"")).to_owned()),
+                    "--hunk" => hunks.push((*it.next().unwrap_or(&"")).to_owned()),
+                    "--symbol" => symbol = (*it.next().unwrap_or(&"")).to_owned(),
+                    "--source" => source = (*it.next().unwrap_or(&"cli")).to_owned(),
+                    "--lines" => {
+                        let v = *it.next().unwrap_or(&"");
+                        let (a, b) = v.split_once(':').ok_or("--lines takes start:end")?;
+                        line_start = a.parse().map_err(|_| "bad --lines start")?;
+                        line_end = b.parse().map_err(|_| "bad --lines end")?;
+                    }
+                    other => return Err(format!("unknown flag `{other}`")),
+                }
+            }
+            let task_id = parse_id(task.ok_or("--task required")?)?;
+            let sid = parse_id(session.ok_or("--session required")?)?;
+            let generation = acquire_lease(&mut client, &sid).await?;
+            let ack = client
+                .command(envelope_fenced(
+                    "SetTaskSelection",
+                    SetTaskSelection {
+                        task_id: Some(task_id),
+                        paths: paths.clone(),
+                        symbol: symbol.clone(),
+                        line_start,
+                        line_end,
+                        review_hunks: hunks.clone(),
+                        source: source.clone(),
+                    }
+                    .encode_to_vec(),
+                    Some(generation),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let r: TaskSelectionRecorded = Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "selection recorded offset={} paths={} symbol={} hunks={} source={}",
+                r.offset,
+                if paths.is_empty() {
+                    "-".to_owned()
+                } else {
+                    paths.join(",")
+                },
+                if symbol.is_empty() { "-" } else { &symbol },
+                if hunks.is_empty() {
+                    "-".to_owned()
+                } else {
+                    hunks.join(",")
+                },
+                source
+            );
         }
         ["task", "economics", "--task", tid] => {
             let ack = client

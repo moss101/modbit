@@ -2014,6 +2014,28 @@ export declare type ContextInspectorView = Message<"modbit.v1.ContextInspectorVi
    * @generated from field: uint32 prefix_cache_misses = 21;
    */
   prefixCacheMisses: number;
+
+  /**
+   * The selection retrieval is preferring (REQ-EV-0141 / 0160).
+   *
+   * @generated from field: repeated string selection_paths = 22;
+   */
+  selectionPaths: string[];
+
+  /**
+   * @generated from field: string selection_symbol = 23;
+   */
+  selectionSymbol: string;
+
+  /**
+   * @generated from field: string selection_source = 24;
+   */
+  selectionSource: string;
+
+  /**
+   * @generated from field: repeated string selection_review_hunks = 25;
+   */
+  selectionReviewHunks: string[];
 };
 
 /**
@@ -2021,6 +2043,81 @@ export declare type ContextInspectorView = Message<"modbit.v1.ContextInspectorVi
  * Use `create(ContextInspectorViewSchema)` to create a new message.
  */
 export declare const ContextInspectorViewSchema: GenMessage<ContextInspectorView>;
+
+/**
+ * What the user currently has selected. Context, never authority: a selection
+ * grants no tool and no write, it only tells retrieval what to prefer.
+ *
+ * @generated from message modbit.v1.SetTaskSelection
+ */
+export declare type SetTaskSelection = Message<"modbit.v1.SetTaskSelection"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * root-relative
+   *
+   * @generated from field: repeated string paths = 2;
+   */
+  paths: string[];
+
+  /**
+   * optional symbol name
+   *
+   * @generated from field: string symbol = 3;
+   */
+  symbol: string;
+
+  /**
+   * 1-based, 0 = whole file
+   *
+   * @generated from field: uint32 line_start = 4;
+   */
+  lineStart: number;
+
+  /**
+   * @generated from field: uint32 line_end = 5;
+   */
+  lineEnd: number;
+
+  /**
+   * path#index
+   *
+   * @generated from field: repeated string review_hunks = 6;
+   */
+  reviewHunks: string[];
+
+  /**
+   * review | editor | cli | desktop
+   *
+   * @generated from field: string source = 7;
+   */
+  source: string;
+};
+
+/**
+ * Describes the message modbit.v1.SetTaskSelection.
+ * Use `create(SetTaskSelectionSchema)` to create a new message.
+ */
+export declare const SetTaskSelectionSchema: GenMessage<SetTaskSelection>;
+
+/**
+ * @generated from message modbit.v1.TaskSelectionRecorded
+ */
+export declare type TaskSelectionRecorded = Message<"modbit.v1.TaskSelectionRecorded"> & {
+  /**
+   * @generated from field: uint64 offset = 1;
+   */
+  offset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.TaskSelectionRecorded.
+ * Use `create(TaskSelectionRecordedSchema)` to create a new message.
+ */
+export declare const TaskSelectionRecordedSchema: GenMessage<TaskSelectionRecorded>;
 
 /**
  * @generated from message modbit.v1.GetTaskEconomics

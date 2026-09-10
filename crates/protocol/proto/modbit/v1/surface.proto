@@ -476,6 +476,29 @@ message ContextInspectorView {
   string manifest_ref = 19;          // the installed epoch's manifest
   uint32 prefix_cache_hits = 20;     // turns that reused the previous stable prefix
   uint32 prefix_cache_misses = 21;   // turns that changed it (the first, then each epoch)
+  // The selection retrieval is preferring (REQ-EV-0141 / 0160).
+  repeated string selection_paths = 22;
+  string selection_symbol = 23;
+  string selection_source = 24;
+  repeated string selection_review_hunks = 25;
+}
+
+// ---- Workspace context bridge (REQ-EV-0141 / 0160, docs/18) ----
+
+// What the user currently has selected. Context, never authority: a selection
+// grants no tool and no write, it only tells retrieval what to prefer.
+message SetTaskSelection {
+  Id task_id = 1;
+  repeated string paths = 2;      // root-relative
+  string symbol = 3;              // optional symbol name
+  uint32 line_start = 4;          // 1-based, 0 = whole file
+  uint32 line_end = 5;
+  repeated string review_hunks = 6;  // path#index
+  string source = 7;              // review | editor | cli | desktop
+}
+
+message TaskSelectionRecorded {
+  uint64 offset = 1;
 }
 
 // ---- Context efficiency metrics (REQ-EV-0173, docs/18 "Context economy") ----

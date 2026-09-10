@@ -1200,7 +1200,20 @@ async fn run_loop(
             .gateway
             .capability(&cfg.endpoint, &cfg.model)
             .is_some_and(|c| c.vision);
-        let harness_json = serde_json::to_value(&state).unwrap_or_default();
+        let mut harness_json = serde_json::to_value(&state).unwrap_or_default();
+        // REQ-EV-0141 / 0160: the model is told what the user is looking at.
+        // A selection is context, not authority: the write gate is unchanged.
+        let selection = crate::tools::selection_of(&core.store, task.task_id).await;
+        if !selection.is_empty() {
+            harness_json["selection"] = serde_json::json!({
+                "paths": selection.paths,
+                "symbol": selection.symbol,
+                "lines": selection.lines.map(|(a, b)| [a, b]),
+                "review_hunks": selection.review_hunks,
+                "source": selection.source,
+                "note": "what the user has selected; retrieval prefers it. It grants no tool and no write.",
+            });
+        }
         // REQ-EV-0169: the task's latest Context Pack enters the prompt with
         // its provenance; the envelope refuses any fragment that lacks it.
         let context_fragments = {

@@ -1,0 +1,9 @@
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T20:18:53.0431368Z test qual_ev_0111_0268_context_show_reports_compaction_epochs_and_the_
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T20:19:01.7756593Z test qual_ev_0173_task_economics_report_quality_and_cost_from_the_log 
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T20:19:05.8097975Z test qual_px_016_change_strategy_tests_first_one_concern_per_transacti
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T20:19:32.4988270Z test qual_ev_0111_0268_context_show_reports_compaction_epochs_and_the_c
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T20:19:49.6994820Z test qual_ev_0173_task_economics_report_quality_and_cost_from_the_log .
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T20:19:57.9906350Z test qual_px_016_change_strategy_tests_first_one_concern_per_transactio
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T20:21:20.2632389Z test qual_ev_0111_0268_context_show_reports_compaction_epochs_and_the
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T20:22:45.5485391Z test qual_ev_0173_task_economics_report_quality_and_cost_from_the_log
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T20:23:08.7876298Z test qual_px_016_change_strategy_tests_first_one_concern_per_transact

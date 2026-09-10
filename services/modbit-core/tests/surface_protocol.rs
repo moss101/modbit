@@ -9624,3 +9624,193 @@ async fn qual_ev_0173_task_economics_report_quality_and_cost_from_the_log() {
     assert!(v.prefix_cache_hits > 0, "the prefix was reused: {v:?}");
     let _ = (repo, seen);
 }
+
+/// REQ-EV-0141 / 0160 (QUAL-EV-0141 / 0160): what the user has selected — a
+/// file, a line range, a review hunk — becomes a task constraint that
+/// retrieval prefers and every client can see, and it grants nothing: the
+/// selected file is still refused to a write the plan does not declare.
+#[tokio::test]
+async fn qual_ev_0141_0160_a_selection_steers_retrieval_is_visible_and_grants_no_write() {
+    use modbit_protocol::v1::{
+        ContextInspectorView, GetContextInspector, SetTaskSelection, StartTask, TaskRunStarted,
+        TaskSelectionRecorded,
+    };
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[
+        (
+            "src/cart.rs",
+            &(1..=40)
+                .map(|i| format!("// cart line {i}\n"))
+                .collect::<String>(),
+        ),
+        ("src/other.rs", "pub fn untouched() {}\n"),
+        ("NOTES.md", "totals are computed in cents\n"),
+    ]);
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "look at the cart", "expected_files": ["NOTES.md"]}}]}),
+        json!({"calls": [{"name": "context.pack", "args": {"query": "totals", "token_budget": 900}}]}),
+        // The selection is not authority: this write is outside the plan.
+        json!({"calls": [{"name": "change.apply", "args": {"path": "src/cart.rs", "op": "replace", "content": "// rewritten\n"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "looked", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x6A)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x6B, "local_trusted").await;
+    // A selection with a line range and a review hunk, before the run starts.
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x6C),
+            "SetTaskSelection",
+            SetTaskSelection {
+                task_id: Some(task.clone()),
+                paths: vec!["src/cart.rs".into()],
+                symbol: "total_cents".into(),
+                line_start: 5,
+                line_end: 9,
+                review_hunks: vec!["NOTES.md#0".into()],
+                source: "review".into(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let r: TaskSelectionRecorded = Client::result(&ack).unwrap();
+    assert!(r.offset > 0);
+    // A selection needs something selected.
+    let bad = c
+        .command(envelope_fenced(
+            id16(0x6D),
+            "SetTaskSelection",
+            SetTaskSelection {
+                task_id: Some(task.clone()),
+                source: "cli".into(),
+                ..Default::default()
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(bad, ClientError::Rejected { ref code, .. } if code == "BAD_PAYLOAD"),
+        "{bad:?}"
+    );
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x6E),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 8,
+                max_tool_calls: 0,
+                max_no_progress_turns: 4,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 120).await;
+    let evs = task_events(&core, &session, &task).await;
+    assert!(!st.loop_alive, "{st:?}");
+    // QUAL-EV-0160: the selection reached the pack as a critical entry with
+    // its own reason, and the inspector shows the selection itself.
+    let ack = c
+        .command(envelope(
+            id16(0x6F),
+            "GetContextInspector",
+            GetContextInspector {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let v: ContextInspectorView = Client::result(&ack).unwrap();
+    assert_eq!(v.selection_paths, vec!["src/cart.rs".to_owned()], "{v:?}");
+    assert_eq!(v.selection_symbol, "total_cents", "{v:?}");
+    assert_eq!(v.selection_source, "review", "{v:?}");
+    assert_eq!(
+        v.selection_review_hunks,
+        vec!["NOTES.md#0".to_owned()],
+        "{v:?}"
+    );
+    let selected = v
+        .entries
+        .iter()
+        .find(|e| e.path == "src/cart.rs")
+        .unwrap_or_else(|| panic!("the selection is not in the pack: {v:?}"));
+    assert_eq!(selected.reason, "critical:selection", "{selected:?}");
+    assert!(
+        selected
+            .retrieval_reasons
+            .iter()
+            .any(|r| r.contains("selected in the review")),
+        "{selected:?}"
+    );
+    assert!(
+        selected.sources.iter().any(|s| s == "selection"),
+        "{selected:?}"
+    );
+    // The entry covers the selected range. A wider retrieval hit may absorb
+    // it — the pack keeps the wider text — but the entry still says it is the
+    // selection, and both sources are named.
+    assert!(
+        selected.line_start <= 5 && selected.line_end >= 9,
+        "{selected:?}"
+    );
+    // The review hunk's file came along as a selected path too.
+    assert!(
+        v.entries.iter().any(|e| e.path == "NOTES.md"),
+        "the hunk's file is selected as well: {v:?}"
+    );
+    let bodies = seen.lock().unwrap().clone();
+    // The model is told what is selected, in the harness state it already sees.
+    let harness_msg = bodies
+        .iter()
+        .flat_map(|b| b["messages"].as_array().cloned().unwrap_or_default())
+        .filter_map(|m| m["content"].as_str().map(str::to_owned))
+        .find(|t| t.contains("\"selection\""))
+        .unwrap_or_else(|| panic!("the prompt never mentioned the selection"));
+    assert!(harness_msg.contains("src/cart.rs"), "{harness_msg}");
+    assert!(
+        harness_msg.contains("grants no tool and no write"),
+        "{harness_msg}"
+    );
+    // QUAL-EV-0141: the selection changed no source. The write to the selected
+    // file was refused because the plan does not declare it.
+    let refusals: Vec<&serde_json::Value> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "ToolCallFailed" || t == "ToolCallRefused")
+        .map(|(_, _, p)| p)
+        .collect();
+    let refusal_text = bodies
+        .iter()
+        .flat_map(|b| b["messages"].as_array().cloned().unwrap_or_default())
+        .filter(|m| m["role"] == "tool")
+        .filter_map(|m| m["content"].as_str().map(str::to_owned))
+        .find(|t| t.contains("HARNESS_PLAN_REVISION_REQUIRED"))
+        .unwrap_or_else(|| panic!("the out-of-plan write was not refused: {refusals:?}"));
+    assert!(refusal_text.contains("src/cart.rs"), "{refusal_text}");
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("src/cart.rs"))
+            .unwrap()
+            .lines()
+            .count(),
+        40,
+        "the selected file is untouched"
+    );
+}

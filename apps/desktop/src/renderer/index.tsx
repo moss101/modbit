@@ -333,6 +333,10 @@ function Review({ taskId, sessionId, onClose }: { taskId: string; sessionId: str
   const [bundle, setBundle] = useState<ReviewBundleView | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [rejected, setRejected] = useState<Set<string>>(new Set());
+  // REQ-EV-0141: hunks the reviewer marks as context. This changes what
+  // retrieval prefers and nothing else — it cannot edit or accept anything.
+  const [context, setContext] = useState<Set<string>>(new Set());
+  const [selectionError, setSelectionError] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<string | null>(null);
@@ -354,6 +358,23 @@ function Review({ taskId, sessionId, onClose }: { taskId: string; sessionId: str
       else n.add(key);
       return n;
     });
+  const toggleContext = async (key: string) => {
+    const next = new Set(context);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    setContext(next);
+    const hunks = Array.from(next);
+    try {
+      setSelectionError(null);
+      await window.modbit.setTaskSelection(sessionId, taskId, {
+        paths: Array.from(new Set(hunks.map((k) => k.split("#")[0] ?? k))),
+        reviewHunks: hunks,
+        source: "review",
+      });
+    } catch (e) {
+      setSelectionError((e as Error).message);
+    }
+  };
   const decide = async (decision: "ACCEPT" | "RETURN") => {
     if (!bundle || busy) return;
     setBusy(true);
@@ -372,11 +393,21 @@ function Review({ taskId, sessionId, onClose }: { taskId: string; sessionId: str
     }
   };
   const hunkCount = bundle ? bundle.files.reduce((n, f) => n + f.hunks.length, 0) : 0;
+  const selectionNote = selectionError
+    ? `selection not recorded: ${selectionError}`
+    : context.size > 0
+      ? `${context.size} hunk(s) given to retrieval as context`
+      : null;
   return (
     <section className="review" data-testid="review" aria-label="Review">
       <div className="review-head">
         <h2 style={{ margin: 0 }}>Review</h2>
         <span className="meta" data-testid="review-meta">
+          {selectionNote && (
+            <span className="meta" data-testid="review-selection">
+              {selectionNote}
+            </span>
+          )}
           {bundle ? `task ${taskId.slice(0, 8)} · ${bundle.taskState} · workspace revision ${bundle.workspaceRevision} · base ${bundle.baseCommit.slice(0, 8)} · ${bundle.files.length} file(s), ${hunkCount} hunk(s), ${bundle.receipts} receipt(s)` : "loading from the Core…"}
         </span>
         <button type="button" data-testid="review-close" onClick={onClose}>
@@ -412,6 +443,9 @@ function Review({ taskId, sessionId, onClose }: { taskId: string; sessionId: str
                         <code>{h.header}</code>
                         <label>
                           <input type="checkbox" data-testid="hunk-reject" checked={isRejected} onChange={() => toggle(key)} disabled={result !== null} /> reject
+                        </label>
+                        <label title="Give this hunk to retrieval as context. It cannot change any file.">
+                          <input type="checkbox" data-testid="hunk-context" checked={context.has(key)} onChange={() => void toggleContext(key)} disabled={result !== null} /> context
                         </label>
                       </div>
                       <pre>

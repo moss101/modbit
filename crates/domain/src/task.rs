@@ -311,6 +311,23 @@ pub enum TaskEvent {
         /// Estimated tokens of the projection.
         projection_tokens: u32,
     },
+    /// `SelectionRecorded` (REQ-EV-0141 / 0160, docs/18 "Workspace context
+    /// bridge"): what the user currently has selected — files, a line range, a
+    /// symbol, review hunks — so retrieval can prefer it and every client can
+    /// show it. Selection is context, never authority: it grants no tool and
+    /// no write. No state change.
+    SelectionRecorded {
+        /// Root-relative paths.
+        paths: Vec<String>,
+        /// Symbol name, when the selection is a symbol.
+        symbol: Option<String>,
+        /// 1-based inclusive line range inside the first path.
+        lines: Option<(u32, u32)>,
+        /// Review hunks as `path#index`.
+        review_hunks: Vec<String>,
+        /// `review` | `editor` | `cli` | `desktop`.
+        source: String,
+    },
     /// `ReproductionRecorded` (docs/28 §5, PX-039): what a verification run
     /// said about the failure the goal reports, or the plan's recorded
     /// limitation when it could not be reproduced. No state change.
@@ -472,6 +489,7 @@ impl TaskEvent {
             Self::AttachmentIngested { .. } => "AttachmentIngested",
             Self::PlanRecorded { .. } => "PlanRecorded",
             Self::PlanRevised { .. } => "PlanRevised",
+            Self::SelectionRecorded { .. } => "SelectionRecorded",
             Self::SelfReviewRecorded { .. } => "SelfReviewRecorded",
             Self::ToolsActivated { .. } => "ToolsActivated",
             Self::ContextEpochOpened { .. } => "ContextEpochOpened",
@@ -582,6 +600,7 @@ impl Task {
             | TaskEvent::ToolsActivated { .. }
             | TaskEvent::ContextEpochOpened { .. }
             | TaskEvent::ReproductionRecorded { .. }
+            | TaskEvent::SelectionRecorded { .. }
             | TaskEvent::ScopeExpansionRecorded { .. }
             | TaskEvent::RetrievalRecorded { .. }
             | TaskEvent::RepairAttemptRecorded { .. }

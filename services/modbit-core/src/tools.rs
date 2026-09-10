@@ -427,6 +427,7 @@ impl ToolHost {
                 semantic: self.semantic(r).await?,
                 graph: self.graph(r).await?,
                 evidence: task_evidence(store, task_id).await,
+                selection: selection_of(store, task_id).await,
                 ledger: self.ledger(task_id).await,
                 objects: store.lock().await.objects().clone(),
                 store: Arc::clone(store),
@@ -1215,6 +1216,8 @@ struct IndexPort {
     graph: Arc<Mutex<modbit_retrieval::EvidenceGraph>>,
     /// Verification checks of the task's runs as (check id, status).
     evidence: Vec<(String, String)>,
+    /// What the user has selected (REQ-EV-0141 / 0160): retrieval prefers it.
+    selection: Selection,
     /// The task's Context Ledger (M3.8).
     ledger: Arc<Mutex<modbit_context::ContextLedger>>,
     /// Object store for durable packs and ledger snapshots.
@@ -1308,6 +1311,84 @@ async fn task_evidence(store: &Mutex<EventStore>, task_id: TaskId) -> Vec<(Strin
         for vr in store.verification_runs(&run.run_id).unwrap_or_default() {
             out.extend(vr.checks.iter().cloned());
         }
+    }
+    out
+}
+
+/// The task's current selection (REQ-EV-0141 / 0160): the paths, symbol and
+/// review hunks the user last pointed at. Read from the log, so it survives a
+/// restart and is the same for every client.
+#[derive(Clone, Debug, Default)]
+pub struct Selection {
+    /// Root-relative paths.
+    pub paths: Vec<String>,
+    /// Symbol name.
+    pub symbol: Option<String>,
+    /// 1-based inclusive line range in the first path.
+    pub lines: Option<(u32, u32)>,
+    /// Review hunks as `path#index`.
+    pub review_hunks: Vec<String>,
+    /// Where it came from.
+    pub source: String,
+}
+
+impl Selection {
+    /// Whether anything is selected.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.paths.is_empty() && self.symbol.is_none() && self.review_hunks.is_empty()
+    }
+
+    /// The paths a selection points at, review hunks included (`path#index`).
+    #[must_use]
+    pub fn selected_paths(&self) -> Vec<String> {
+        let mut out = self.paths.clone();
+        for h in &self.review_hunks {
+            let path = h.split('#').next().unwrap_or_default().to_owned();
+            if !path.is_empty() && !out.contains(&path) {
+                out.push(path);
+            }
+        }
+        out
+    }
+}
+
+/// The last selection recorded for a task, if any.
+pub async fn selection_of(store: &Mutex<EventStore>, task_id: TaskId) -> Selection {
+    let store = store.lock().await;
+    let mut out = Selection::default();
+    let Ok(events) = store.read_aggregate(task_id.as_bytes(), 0, 100_000) else {
+        return out;
+    };
+    for e in &events {
+        if e.envelope.event_type != "SelectionRecorded" {
+            continue;
+        }
+        let Ok(p) = store.payload(&e.envelope) else {
+            continue;
+        };
+        let strings = |k: &str| -> Vec<String> {
+            p[k].as_array()
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|x| x.as_str().map(str::to_owned))
+                        .collect()
+                })
+                .unwrap_or_default()
+        };
+        out = Selection {
+            paths: strings("paths"),
+            symbol: p["symbol"].as_str().map(str::to_owned),
+            lines: match (p["lines"][0].as_u64(), p["lines"][1].as_u64()) {
+                (Some(a), Some(b)) => Some((
+                    u32::try_from(a).unwrap_or(1),
+                    u32::try_from(b).unwrap_or(u32::MAX),
+                )),
+                _ => None,
+            },
+            review_hunks: strings("review_hunks"),
+            source: p["source"].as_str().unwrap_or_default().to_owned(),
+        };
     }
     out
 }
@@ -1520,7 +1601,7 @@ impl modbit_tools::SearchPort for IndexPort {
                 let query = args["query"].as_str().unwrap_or_default().to_owned();
                 let budget =
                     u32::try_from(args["token_budget"].as_u64().unwrap_or(4000)).unwrap_or(4000);
-                let required: Vec<String> = args["required_paths"]
+                let mut required: Vec<String> = args["required_paths"]
                     .as_array()
                     .map(|a| {
                         a.iter()
@@ -1528,6 +1609,15 @@ impl modbit_tools::SearchPort for IndexPort {
                             .collect()
                     })
                     .unwrap_or_default();
+                // REQ-EV-0141 / 0160: what the user has selected is a task
+                // constraint, whatever the model asked for. Selection is
+                // context only — it never grants a tool or a write.
+                let selected = self.selection.selected_paths();
+                for p in &selected {
+                    if !required.contains(p) {
+                        required.push(p.clone());
+                    }
+                }
                 let mut graph = self.graph.try_lock().map_err(|_| {
                     (
                         "INDEX_BUSY".to_owned(),
@@ -1600,21 +1690,51 @@ impl modbit_tools::SearchPort for IndexPort {
                         .is_empty()
                 };
                 let mut cands: Vec<modbit_context::Candidate> = Vec::new();
-                // Task constraints first: the required paths are critical entries.
+                // Task constraints first: the required paths are critical
+                // entries, and a selected one says so in its own words.
                 for p in &required {
                     if let Some((t, hash, rehydrated)) = hydrated(p) {
-                        let (text, lines) = excerpt(&t, None);
+                        let chosen = selected.contains(p);
+                        // A line range selects that range; everything else
+                        // enters whole.
+                        let span = self
+                            .selection
+                            .lines
+                            .filter(|_| chosen && self.selection.paths.first() == Some(p));
+                        let (text, lines) = match span {
+                            Some((a, b)) => excerpt(&t, Some((a, b))),
+                            None => excerpt(&t, None),
+                        };
                         cands.push(modbit_context::Candidate {
                             path: p.clone(),
                             lines,
                             span: None,
                             score: 1.0,
-                            sources: vec!["task_constraint".into()],
-                            reasons: vec!["required_path".into()],
+                            sources: vec![if chosen {
+                                "selection".into()
+                            } else {
+                                "task_constraint".to_owned()
+                            }],
+                            reasons: vec![if chosen {
+                                format!(
+                                    "selected in the {} surface",
+                                    if self.selection.source.is_empty() {
+                                        "client"
+                                    } else {
+                                        self.selection.source.as_str()
+                                    }
+                                )
+                            } else {
+                                "required_path".to_owned()
+                            }],
                             content_hash: Some(hash),
                             text,
                             critical: true,
-                            critical_reason: Some("task_constraint".into()),
+                            critical_reason: Some(if chosen {
+                                "selection".into()
+                            } else {
+                                "task_constraint".to_owned()
+                            }),
                             fresh_in_worktree: fresh(p),
                             rehydrated,
                             signatures: signatures_of(p),

@@ -110,6 +110,11 @@ export interface ModbitBridge {
   languages(): Promise<{ language: string; tier: string; label: string; fixture: string; proven: string[]; provisional: string[]; notClaimed: string[]; note: string }[]>;
   contextInspector(taskId: string): Promise<ContextInspectorSummary>;
   taskEconomics(taskId: string): Promise<TaskEconomicsSummary>;
+  setTaskSelection(
+    sessionId: string,
+    taskId: string,
+    selection: { paths: string[]; symbol?: string; lineStart?: number; lineEnd?: number; reviewHunks: string[]; source: string },
+  ): Promise<{ offset: string }>;
   createSession(): Promise<string>;
   sessionSnapshot(sessionId: string): Promise<unknown>;
   createTask(sessionId: string, goal: string, commandIdHex: string, workspaceRoot?: string): Promise<{ taskId: string; offset: bigint; replayed: boolean }>;
@@ -131,6 +136,7 @@ const bridge: ModbitBridge = {
   languages: () => ipcRenderer.invoke("languages:list"),
   contextInspector: (taskId: string) => ipcRenderer.invoke("context:inspector", taskId),
   taskEconomics: (taskId: string) => ipcRenderer.invoke("task:economics", taskId),
+  setTaskSelection: (sessionId: string, taskId: string, selection: unknown) => ipcRenderer.invoke("task:select", sessionId, taskId, selection),
   createSession: () => ipcRenderer.invoke("session:create"),
   sessionSnapshot: (sessionId) => ipcRenderer.invoke("session:snapshot", sessionId),
   createTask: (sessionId, goal, commandIdHex, workspaceRoot) => ipcRenderer.invoke("task:create", sessionId, goal, commandIdHex, workspaceRoot ?? ""),

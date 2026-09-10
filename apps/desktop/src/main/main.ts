@@ -111,6 +111,29 @@ ipcMain.handle("core:status", () => supervisor.status);
 ipcMain.handle("core:localState", () => loadLocalState());
 // Context Inspector (REQ-EV-0035 / 0131 / 0175): what the pack selected and
 // excluded, and what the prompt envelope injected.
+// Workspace context bridge (REQ-EV-0141 / 0160): what the reviewer has
+// selected becomes context. Selection grants nothing; the Core enforces that.
+ipcMain.handle(
+  "task:select",
+  async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown, selection: unknown) => {
+    const sid = requireSessionId(sessionId);
+    const tid = requireTaskId(taskId);
+    const s = selection as { paths?: unknown; symbol?: unknown; lineStart?: unknown; lineEnd?: unknown; reviewHunks?: unknown; source?: unknown };
+    const strings = (v: unknown): string[] =>
+      Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && x.length > 0 && x.length <= 4096) : [];
+    const num = (v: unknown): number => (typeof v === "number" && Number.isInteger(v) && v >= 0 && v < 1_000_000 ? v : 0);
+    const source = typeof s.source === "string" && ["review", "editor", "cli", "desktop"].includes(s.source) ? s.source : "desktop";
+    return requireClient().setTaskSelection(sid, tid, {
+      paths: strings(s.paths),
+      symbol: typeof s.symbol === "string" && s.symbol.length <= 512 ? s.symbol : "",
+      lineStart: num(s.lineStart),
+      lineEnd: num(s.lineEnd),
+      reviewHunks: strings(s.reviewHunks),
+      source,
+    });
+  },
+);
+
 // Context efficiency metrics (REQ-EV-0173): quality and economics together.
 ipcMain.handle("task:economics", async (_e: IpcMainInvokeEvent, taskId: unknown) => {
   const tid = requireTaskId(taskId);

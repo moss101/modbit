@@ -486,6 +486,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "ListLanguages",
                     "GetContextInspector",
                     "GetTaskEconomics",
+                    "SetTaskSelection",
                     "ProbeModel",
                     "StartTask",
                     "CancelTask",
@@ -1084,6 +1085,87 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                             offset,
                         }
                         .encode_to_vec(),
+                    )
+                }
+                Err(e) => reject(cid, error_code(&e), e.to_string()),
+            }
+        }
+        "SetTaskSelection" => {
+            let Ok(p) = wire::SetTaskSelection::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "SetTaskSelection");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            if p.paths.is_empty() && p.symbol.is_empty() && p.review_hunks.is_empty() {
+                return reject(
+                    cid,
+                    "BAD_PAYLOAD",
+                    "a selection needs a path, a symbol or a review hunk",
+                );
+            }
+            if p.paths.iter().any(|x| x.trim().is_empty()) {
+                return reject(cid, "BAD_PAYLOAD", "empty path in selection");
+            }
+            if p.line_end != 0 && p.line_start > p.line_end {
+                return reject(cid, "BAD_PAYLOAD", "line_start must not exceed line_end");
+            }
+            let source = match p.source.as_str() {
+                "" => "cli".to_owned(),
+                "review" | "editor" | "cli" | "desktop" => p.source.clone(),
+                other => {
+                    return reject(
+                        cid,
+                        "BAD_PAYLOAD",
+                        format!("unknown selection source `{other}`"),
+                    );
+                }
+            };
+            let session_id = {
+                let store = core.store.lock().await;
+                match store.task(&task_id) {
+                    Ok(Some(t)) => t.session_id,
+                    Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                }
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
+                return ack;
+            }
+            let req = AppendRequest {
+                tenant_id: core.tenant_id,
+                session_id,
+                task_id: Some(task_id),
+                run_id: None,
+                turn_id: None,
+                step_id: None,
+                aggregate_type: AggregateType::Task,
+                aggregate_id: *task_id.as_bytes(),
+                expected_sequence: None,
+                events: vec![typed(
+                    "SelectionRecorded",
+                    &TaskEvent::SelectionRecorded {
+                        paths: p.paths.clone(),
+                        symbol: (!p.symbol.is_empty()).then(|| p.symbol.clone()),
+                        lines: (p.line_end != 0).then_some((p.line_start.max(1), p.line_end)),
+                        review_hunks: p.review_hunks.clone(),
+                        source,
+                    },
+                    actor,
+                )],
+            };
+            let mut store = core.store.lock().await;
+            match store.execute_command(record("SetTaskSelection"), req) {
+                Ok(outcome) => {
+                    let (events, replayed) = split(outcome);
+                    let offset = events.last().map_or(0, |e| e.offset);
+                    if !replayed {
+                        core.last_offset.send_replace(offset);
+                    }
+                    accept(
+                        cid,
+                        replayed,
+                        wire::TaskSelectionRecorded { offset }.encode_to_vec(),
                     )
                 }
                 Err(e) => reject(cid, error_code(&e), e.to_string()),
