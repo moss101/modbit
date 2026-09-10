@@ -1,0 +1,440 @@
+{
+  "harness_version": "retrieval-bench-v1",
+  "corpus": "modbit repository subset (crates/, services/, apps/cli/, docs/) at the benchmarked commit",
+  "files": 252,
+  "bytes": 2783869,
+  "k": 5,
+  "cold_index": {
+    "exact_ms": 34.313542000000005,
+    "lexical_ms": 349.96462499999996,
+    "symbols_ms": 537.971542,
+    "semantic_ms": 729.463708,
+    "graph_ms": 522.624208,
+    "total_ms": 2174.34925
+  },
+  "incremental_ms": 90.981583,
+  "incremental_path": "services/modbit-core/src/server.rs",
+  "profiles": [
+    {
+      "profile": "ABaseline",
+      "mean_recall_at_k": 0.8125,
+      "mean_precision_at_k": 0.41250002,
+      "mean_impact_accuracy": 1.0,
+      "mean_steps": 2.125,
+      "mean_latency_ms": 6.5818125,
+      "full_recall_cases": 6
+    },
+    {
+      "profile": "BHybrid",
+      "mean_recall_at_k": 0.9375,
+      "mean_precision_at_k": 0.28750002,
+      "mean_impact_accuracy": 1.0,
+      "mean_steps": 4.875,
+      "mean_latency_ms": 11.106728875,
+      "full_recall_cases": 7
+    },
+    {
+      "profile": "CStructural",
+      "mean_recall_at_k": 0.9375,
+      "mean_precision_at_k": 0.28750002,
+      "mean_impact_accuracy": 1.0,
+      "mean_steps": 9.375,
+      "mean_latency_ms": 11.212510375,
+      "full_recall_cases": 7
+    }
+  ],
+  "cases": [
+    {
+      "case_id": "l0-symbol-singleton-lock",
+      "profile": "ABaseline",
+      "paths": [
+        "services/modbit-core/src/server.rs"
+      ],
+      "recall_at_k": 1.0,
+      "precision_at_k": 1.0,
+      "impact_accuracy": null,
+      "steps": 2,
+      "ended_at": "L0Exact",
+      "latency_ms": 9.790583999999999
+    },
+    {
+      "case_id": "l0-symbol-singleton-lock",
+      "profile": "BHybrid",
+      "paths": [
+        "services/modbit-core/src/server.rs",
+        "crates/verification/src/invariants.rs",
+        "services/modbit-core/src/tools.rs",
+        "docs/27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+        "docs/76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md"
+      ],
+      "recall_at_k": 1.0,
+      "precision_at_k": 0.2,
+      "impact_accuracy": null,
+      "steps": 4,
+      "ended_at": "L1Hybrid",
+      "latency_ms": 9.794125000000001
+    },
+    {
+      "case_id": "l0-symbol-singleton-lock",
+      "profile": "CStructural",
+      "paths": [
+        "services/modbit-core/src/server.rs",
+        "crates/verification/src/invariants.rs",
+        "services/modbit-core/src/tools.rs",
+        "docs/27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
+        "docs/76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md"
+      ],
+      "recall_at_k": 1.0,
+      "precision_at_k": 0.2,
+      "impact_accuracy": null,
+      "steps": 4,
+      "ended_at": "L1Hybrid",
+      "latency_ms": 9.766959
+    },
+    {
+      "case_id": "l0-path-planner",
+      "profile": "ABaseline",
+      "paths": [
+        "crates/retrieval/src/planner.rs",
+        "crates/retrieval/tests/planner.rs"
+      ],
+      "recall_at_k": 1.0,
+      "precision_at_k": 0.5,
+      "impact_accuracy": null,
+      "steps": 3,
+      "ended_at": "L0Exact",
+      "latency_ms": 9.876332999999999
+    },
+    {
+      "case_id": "l0-path-planner",
+      "profile": "BHybrid",
+      "paths": [
+        "crates/retrieval/src/planner.rs",
+        "crates/retrieval/tests/planner.rs",
+        "crates/retrieval/tests/graph.rs",
+        "crates/policy/src/config.rs",
+        "crates/protocol/proto/modbit/v1/surface.proto"
+      ],
+      "recall_at_k": 1.0,
+      "precision_at_k": 0.2,
+      "impact_accuracy": null,
+      "steps": 5,
+      "ended_at": "L1Hybrid",
+      "latency_ms": 10.130625
+    },
+    {
+      "case_id": "l0-path-planner",
+      "profile": "CStructural",
+      "paths": [
+        "crates/retrieval/src/planner.rs",
+        "crates/retrieval/tests/planner.rs",
+        "crates/retrieval/tests/graph.rs",
+        "crates/policy/src/config.rs",
+        "crates/protocol/proto/modbit/v1/surface.proto"
+      ],
+      "recall_at_k": 1.0,
+      "precision_at_k": 0.2,
+      "impact_accuracy": null,
+      "steps": 5,
+      "ended_at": "L1Hybrid",
+      "latency_ms": 10.129375
+    },
+    {
+      "case_id": "l1-core-ready-attach",
+      "profile": "ABaseline",
+      "paths": [
+        "apps/cli/README.md",
+        "apps/cli/src/main.rs",
+        "apps/cli/tests/headless.rs",
+        "services/modbit-core/src/server.rs"
+      ],
+      "recall_at_k": 1.0,
+      "precision_at_k": 0.5,
+      "impact_accuracy": null,
+      "steps": 4,
+      "ended_at": "L0Exact",
+      "latency_ms": 9.974916
+    },
+    {
+      "case_id": "l1-core-ready-attach",
+      "profile": "BHybrid",
+      "paths": [
+        "apps/cli/README.md",
+        "apps/cli/src/main.rs",
+        "apps/cli/tests/headless.rs",
+        "services/modbit-core/src/server.rs"
+      ],
+      "recall_at_k": 1.0,
+      "precision_at_k": 0.5,
+      "impact_accuracy": null,
+      "steps": 8,
+      "ended_at": "L1Hybrid",
+      "latency_ms": 20.3895
+    },
+    {
+      "case_id": "l1-core-ready-attach",
+      "profile": "CStructural",
+      "paths": [
+        "apps/cli/README.md",
+        "apps/cli/src/main.rs",
+        "apps/cli/tests/headless.rs",
+        "services/modbit-core/src/server.rs"
+      ],
+      "recall_at_k": 1.0,
+      "precision_at_k": 0.5,
+      "impact_accuracy": null,
+      "steps": 8,
+      "ended_at": "L1Hybrid",
+      "latency_ms": 20.67975
+    },
+    {
+      "case_id": "l1-steering-interrupt",
+      "profile": "ABaseline",
+      "paths": [],
+      "recall_at_k": 0.0,
+      "precision_at_k": 0.0,
+      "impact_accuracy": null,
+      "steps": 0,
+      "ended_at": "L0Exact",
+      "latency_ms": 0.01975
+    },
+    {
+      "case_id": "l1-steering-interrupt",
+      "profile": "BHybrid",
+      "paths": [
+        "crates/providers/src/gateway.rs",
+        "services/modbit-core/src/runtime.rs",
+        "services/modbit-core/tests/surface_protocol.rs",
+        "crates/providers/tests/conformance.rs",
+        "docs/27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md"
+      ],
+      "recall_at_k": 1.0,
+      "precision_at_k": 0.2,
+      "impact_accuracy": null,
+      "steps": 2,
+      "ended_at": "L1Hybrid",
+      "latency_ms": 0.7011660000000001
+    },
+    {
+      "case_id": "l1-steering-interrupt",
+      "profile": "CStructural",
+      "paths": [
+        "crates/providers/src/gateway.rs",
+        "services/modbit-core/src/runtime.rs",
+        "services/modbit-core/tests/surface_protocol.rs",
+        "crates/providers/tests/conformance.rs",
+        "docs/27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md"
+      ],
+      "recall_at_k": 1.0,
+      "precision_at_k": 0.2,
+      "impact_accuracy": null,
+      "steps": 2,
+      "ended_at": "L1Hybrid",
+      "latency_ms": 0.48424999999999996
+    },
+    {
+      "case_id": "l1-pyright-resolution",
+      "profile": "ABaseline",
+      "paths": [
+        "crates/diagnostics/tests/servers.rs",
+        "crates/diagnostics/src/servers.rs",
+        "crates/diagnostics/tests/dump.rs",
+        "crates/retrieval/src/index.rs",
+        "crates/retrieval/tests/bench.rs"
+      ],
+      "recall_at_k": 1.0,
+      "precision_at_k": 0.2,
+      "impact_accuracy": null,
+      "steps": 2,
+      "ended_at": "L0Exact",
+      "latency_ms": 2.8028340000000003
+    },
+    {
+      "case_id": "l1-pyright-resolution",
+      "profile": "BHybrid",
+      "paths": [
+        "crates/diagnostics/tests/servers.rs",
+        "crates/diagnostics/src/servers.rs",
+        "crates/diagnostics/tests/dump.rs",
+        "crates/retrieval/src/index.rs",
+        "crates/retrieval/tests/bench.rs"
+      ],
+      "recall_at_k": 1.0,
+      "precision_at_k": 0.2,
+      "impact_accuracy": null,
+      "steps": 5,
+      "ended_at": "L1Hybrid",
+      "latency_ms": 6.090666
+    },
+    {
+      "case_id": "l1-pyright-resolution",
+      "profile": "CStructural",
+      "paths": [
+        "crates/diagnostics/tests/servers.rs",
+        "crates/diagnostics/src/servers.rs",
+        "crates/diagnostics/tests/dump.rs",
+        "crates/retrieval/src/index.rs",
+        "crates/retrieval/tests/bench.rs"
+      ],
+      "recall_at_k": 1.0,
+      "precision_at_k": 0.2,
+      "impact_accuracy": null,
+      "steps": 5,
+      "ended_at": "L1Hybrid",
+      "latency_ms": 6.0010829999999995
+    },
+    {
+      "case_id": "l2-importers-of-graph",
+      "profile": "ABaseline",
+      "paths": [
+        "crates/retrieval/src/graph.rs",
+        "crates/retrieval/src/bench.rs",
+        "crates/retrieval/src/lib.rs",
+        "crates/retrieval/src/planner.rs",
+        "crates/retrieval/tests/graph.rs"
+      ],
+      "recall_at_k": 0.5,
+      "precision_at_k": 0.2,
+      "impact_accuracy": null,
+      "steps": 2,
+      "ended_at": "L0Exact",
+      "latency_ms": 7.9465
+    },
+    {
+      "case_id": "l2-importers-of-graph",
+      "profile": "BHybrid",
+      "paths": [
+        "crates/retrieval/src/graph.rs",
+        "crates/retrieval/src/bench.rs",
+        "crates/retrieval/src/lib.rs",
+        "crates/retrieval/src/planner.rs",
+        "crates/retrieval/tests/graph.rs"
+      ],
+      "recall_at_k": 0.5,
+      "precision_at_k": 0.2,
+      "impact_accuracy": null,
+      "steps": 5,
+      "ended_at": "L1Hybrid",
+      "latency_ms": 16.473333
+    },
+    {
+      "case_id": "l2-importers-of-graph",
+      "profile": "CStructural",
+      "paths": [
+        "crates/retrieval/src/graph.rs",
+        "crates/retrieval/tests/graph.rs",
+        "crates/retrieval/src/planner.rs",
+        "crates/retrieval/tests/planner.rs",
+        "crates/retrieval/src/lib.rs"
+      ],
+      "recall_at_k": 0.5,
+      "precision_at_k": 0.2,
+      "impact_accuracy": null,
+      "steps": 11,
+      "ended_at": "L2Structural",
+      "latency_ms": 16.521458
+    },
+    {
+      "case_id": "l3-tests-of-pack",
+      "profile": "ABaseline",
+      "paths": [
+        "crates/context/src/lib.rs",
+        "crates/context/tests/pack.rs",
+        "crates/tools/src/direct.rs",
+        "services/modbit-core/src/tools.rs"
+      ],
+      "recall_at_k": 1.0,
+      "precision_at_k": 0.5,
+      "impact_accuracy": 1.0,
+      "steps": 2,
+      "ended_at": "L0Exact",
+      "latency_ms": 9.3055
+    },
+    {
+      "case_id": "l3-tests-of-pack",
+      "profile": "BHybrid",
+      "paths": [
+        "crates/context/src/lib.rs",
+        "crates/context/tests/pack.rs",
+        "crates/tools/src/direct.rs",
+        "services/modbit-core/src/tools.rs",
+        "crates/tools/tool-matrix.json"
+      ],
+      "recall_at_k": 1.0,
+      "precision_at_k": 0.4,
+      "impact_accuracy": 1.0,
+      "steps": 5,
+      "ended_at": "L1Hybrid",
+      "latency_ms": 19.108625
+    },
+    {
+      "case_id": "l3-tests-of-pack",
+      "profile": "CStructural",
+      "paths": [
+        "crates/context/src/lib.rs",
+        "crates/context/tests/pack.rs",
+        "crates/tools/src/direct.rs",
+        "services/modbit-core/src/tools.rs",
+        "crates/tools/tests/media.rs"
+      ],
+      "recall_at_k": 1.0,
+      "precision_at_k": 0.4,
+      "impact_accuracy": 1.0,
+      "steps": 20,
+      "ended_at": "L3Engineering",
+      "latency_ms": 19.263875
+    },
+    {
+      "case_id": "l3-tests-of-index",
+      "profile": "ABaseline",
+      "paths": [
+        "crates/retrieval/src/index.rs",
+        "crates/retrieval/src/bench.rs",
+        "crates/retrieval/src/lib.rs",
+        "crates/retrieval/src/planner.rs",
+        "crates/retrieval/tests/index.rs"
+      ],
+      "recall_at_k": 1.0,
+      "precision_at_k": 0.4,
+      "impact_accuracy": 1.0,
+      "steps": 2,
+      "ended_at": "L0Exact",
+      "latency_ms": 2.9380830000000002
+    },
+    {
+      "case_id": "l3-tests-of-index",
+      "profile": "BHybrid",
+      "paths": [
+        "crates/retrieval/src/index.rs",
+        "crates/retrieval/src/bench.rs",
+        "crates/retrieval/src/lib.rs",
+        "crates/retrieval/src/planner.rs",
+        "crates/retrieval/tests/index.rs"
+      ],
+      "recall_at_k": 1.0,
+      "precision_at_k": 0.4,
+      "impact_accuracy": 1.0,
+      "steps": 5,
+      "ended_at": "L1Hybrid",
+      "latency_ms": 6.1657910000000005
+    },
+    {
+      "case_id": "l3-tests-of-index",
+      "profile": "CStructural",
+      "paths": [
+        "crates/retrieval/tests/planner.rs",
+        "crates/retrieval/src/index.rs",
+        "crates/retrieval/tests/graph.rs",
+        "crates/retrieval/tests/index.rs",
+        "crates/retrieval/tests/bench.rs"
+      ],
+      "recall_at_k": 1.0,
+      "precision_at_k": 0.4,
+      "impact_accuracy": 1.0,
+      "steps": 20,
+      "ended_at": "L3Engineering",
+      "latency_ms": 6.853332999999999
+    }
+  ],
+  "method": "Same corpus and cases for every profile; A = L0 exact/symbol/path only, B = up to L1 (BM25 + hashing-v1 vectors + exact overlay), C = the full L0–L3 planner with graph expansion. Metrics are measured here; the docs/18 token/tool-call/agent-time reduction targets are not claimed by this report (they need a same-model, same-task agent run)."
+}

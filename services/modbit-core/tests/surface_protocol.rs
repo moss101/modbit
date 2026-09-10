@@ -6486,14 +6486,20 @@ async fn m3_7_retrieval_planner_starts_cheap_escalates_on_short_coverage_and_fus
         .as_array()
         .unwrap()
         .iter()
-        .find(|h| h["path"] == "src/main.rs")
+        .find(|h| {
+            h["path"] == "src/main.rs"
+                && h["reasons"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|r| r.as_str().unwrap().starts_with("dependency_distance:"))
+        })
         .unwrap_or_else(|| panic!("{so}"));
     assert!(
-        main["reasons"]
+        main["sources"]
             .as_array()
             .unwrap()
-            .iter()
-            .any(|r| r.as_str().unwrap().starts_with("dependency_distance:")),
+            .contains(&serde_json::json!("graph.importers")),
         "{so}"
     );
     assert!(so["hits"].as_array().unwrap().len() <= 10);

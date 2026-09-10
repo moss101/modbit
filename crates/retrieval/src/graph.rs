@@ -239,6 +239,17 @@ pub fn resolve_import(
                         c.push(format!("src/{p}/mod.rs"));
                     }
                     c.push("src/lib.rs".to_owned());
+                    // A workspace sibling crate: `<name>` or `modbit_<name>` under
+                    // crates/<name-with-dashes>/src (module file, then the root).
+                    let bare = segs[0].strip_prefix("modbit_").unwrap_or(segs[0]);
+                    for dir in [segs[0].replace('_', "-"), bare.replace('_', "-")] {
+                        for n in (2..=segs.len().min(3)).rev() {
+                            let p = segs[1..n].join("/");
+                            c.push(format!("crates/{dir}/src/{p}.rs"));
+                            c.push(format!("crates/{dir}/src/{p}/mod.rs"));
+                        }
+                        c.push(format!("crates/{dir}/src/lib.rs"));
+                    }
                 }
                 c
             }

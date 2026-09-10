@@ -20,6 +20,7 @@ tree-sitter-javascript.workspace = true
 tree-sitter-python.workspace = true
 usearch.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 sha2.workspace = true
 hex.workspace = true
 thiserror.workspace = true
@@ -44,4 +45,5 @@ capabilities = [
   { id = "retrieval.semantic_chunk_index", requirements = ["REQ-EV-0153", "REQ-EV-0159"] },
   { id = "retrieval.evidence_graph", requirements = ["REQ-EV-0157", "REQ-EV-0158"] },
   { id = "retrieval.planner_fusion", requirements = ["REQ-EV-0154", "REQ-EV-0163", "REQ-EV-0164", "REQ-EV-0165"] },
+  { id = "retrieval.benchmark_harness", requirements = ["REQ-EV-0153", "REQ-EV-0154"] },
 ]

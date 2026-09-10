@@ -122,6 +122,7 @@ fn req(q: &str) -> PlanRequest {
         max_hits: 20,
         min_paths: 0,
         diagnostics: vec![],
+        max_level: None,
     }
 }
 
@@ -255,14 +256,17 @@ fn structural_and_engineering_intents_expand_through_the_graph_with_distance_and
         "{:?}",
         r.steps
     );
-    let main = r.hits.iter().find(|h| h.path == "src/main.rs").unwrap();
+    let main = r
+        .hits
+        .iter()
+        .find(|h| h.path == "src/main.rs" && h.sources.iter().any(|s| s == "graph.importers"))
+        .unwrap_or_else(|| panic!("{:?}", r.hits));
     assert!(
         main.reasons
             .iter()
             .any(|x| x.starts_with("dependency_distance:")),
         "{main:?}"
     );
-    assert!(main.sources.iter().any(|s| s == "graph.importers"));
     let mut r3 = req("which tests changed recently for compute_total");
     r3.diagnostics = vec![("src/money.rs".into(), 1)];
     let r = retrieve(&src, &r3);

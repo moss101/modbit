@@ -1,0 +1,48 @@
+{
+  "corpus": "modbit repository subset (crates/, services/, apps/cli/, docs/) at the benchmarked commit",
+  "k": 5,
+  "cases": [
+    {
+      "id": "l0-symbol-singleton-lock",
+      "query": "acquire_singleton_lock",
+      "relevant": ["services/modbit-core/src/server.rs"]
+    },
+    {
+      "id": "l0-path-planner",
+      "query": "planner.rs",
+      "relevant": ["crates/retrieval/src/planner.rs"]
+    },
+    {
+      "id": "l1-core-ready-attach",
+      "query": "how does the CLI attach to a running core through the core.ready file",
+      "relevant": ["apps/cli/src/main.rs", "services/modbit-core/src/server.rs"]
+    },
+    {
+      "id": "l1-steering-interrupt",
+      "query": "steering policy interrupts an in-flight model stream",
+      "relevant": ["services/modbit-core/src/runtime.rs"]
+    },
+    {
+      "id": "l1-pyright-resolution",
+      "query": "where is the pyright language server resolved from node_modules",
+      "relevant": ["crates/diagnostics/src/servers.rs"]
+    },
+    {
+      "id": "l2-importers-of-graph",
+      "query": "importers of EvidenceGraph",
+      "relevant": ["crates/retrieval/src/graph.rs", "services/modbit-core/src/tools.rs"]
+    },
+    {
+      "id": "l3-tests-of-pack",
+      "query": "which tests cover ContextLedger",
+      "relevant": ["crates/context/src/lib.rs", "crates/context/tests/pack.rs"],
+      "impacted": ["crates/context/tests/pack.rs"]
+    },
+    {
+      "id": "l3-tests-of-index",
+      "query": "which tests cover RepositoryIndex changed lines",
+      "relevant": ["crates/retrieval/src/index.rs", "crates/retrieval/tests/index.rs"],
+      "impacted": ["crates/retrieval/tests/index.rs"]
+    }
+  ]
+}

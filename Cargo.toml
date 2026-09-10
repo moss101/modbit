@@ -118,7 +118,9 @@ tempfile = "3.27.0"
 toml = "1.1.5"
 
 [workspace.lints.rust]
-unsafe_code = "forbid"
+# Denied, not forbidden: the one sanctioned exception is the Windows handle
+# inheritance fix in apps/cli (a `#[allow(unsafe_code)]` with a SAFETY note).
+unsafe_code = "deny"
 missing_docs = "warn"
 unused_crate_dependencies = "allow"
 

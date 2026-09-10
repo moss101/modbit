@@ -103,6 +103,7 @@ fn envelope_fenced(
 /// idle-exits (or forever while it serves), so a caller reading our output
 /// would hang. Clear the inherit flag on our std handles before spawning.
 #[cfg(windows)]
+#[allow(unsafe_code)]
 fn stop_inheriting_std_handles() {
     use windows_sys::Win32::Foundation::{
         HANDLE_FLAG_INHERIT, INVALID_HANDLE_VALUE, SetHandleInformation,

@@ -72,6 +72,8 @@ pub struct PlanRequest {
     pub min_paths: usize,
     /// Diagnostic locations (path, 1-based line) to link.
     pub diagnostics: Vec<(String, u32)>,
+    /// Highest level the plan may reach (benchmark profiles); `None` = L3.
+    pub max_level: Option<Level>,
 }
 
 /// One executed step.
@@ -312,6 +314,8 @@ struct Candidate {
 }
 
 const RRF_K: f32 = 60.0;
+/// Graph-expansion candidates start this many ranks below the primary lists.
+const EXPANSION_RANK_OFFSET: usize = 20;
 
 struct Fused {
     hit: FusedHit,
@@ -407,9 +411,11 @@ fn fuse(
                 h.score += 0.03;
                 h.reasons.push("diagnostic".into());
             }
-            // Dependency distance.
+            // Dependency distance: a neighbour of a seed is evidence, but never
+            // outranks a hit the query itself produced (benchmark M3.9: the
+            // expansion must not flood the top K).
             if let Some(d) = f.distance {
-                h.score += 0.02 / d.max(1) as f32;
+                h.score += 0.004 / d.max(1) as f32;
                 h.reasons.push(format!("dependency_distance:{d}"));
             }
             f.hit
@@ -438,7 +444,8 @@ pub fn retrieve(src: &Sources<'_>, req: &PlanRequest) -> PlanResult {
     let max = if req.max_hits == 0 { 20 } else { req.max_hits };
     let min_paths = if req.min_paths == 0 { 3 } else { req.min_paths }.min(max);
     let f = features(&req.query);
-    let start = start_level(&f, &req.intent);
+    let ceiling = req.max_level.unwrap_or(Level::L3Engineering);
+    let start = start_level(&f, &req.intent).min(ceiling);
     let mut res = PlanResult {
         query: req.query.clone(),
         features: f.clone(),
@@ -472,6 +479,9 @@ pub fn retrieve(src: &Sources<'_>, req: &PlanRequest) -> PlanResult {
         // needs seeds; L3 only by intent.
         let insufficient = res.coverage_paths < min_paths;
         let Some(next) = level.next() else { break };
+        if next > ceiling {
+            break;
+        }
         let allowed = match next {
             Level::L0Exact => false,
             Level::L1Hybrid => insufficient,
@@ -708,7 +718,8 @@ fn run_level(
                             span: None,
                             content_hash: None,
                             source: format!("graph.{rel}"),
-                            rank: i,
+                            // Expansion ranks below the primary lists.
+                            rank: i + EXPANSION_RANK_OFFSET,
                             level,
                             distance: Some(d.max(1)),
                         });

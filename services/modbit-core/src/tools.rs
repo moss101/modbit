@@ -1362,6 +1362,7 @@ impl modbit_tools::SearchPort for IndexPort {
                         min_paths: usize::try_from(args["min_paths"].as_u64().unwrap_or(0))
                             .unwrap_or(0),
                         diagnostics,
+                        max_level: None,
                     },
                 );
                 serde_json::json!({"plan": plan, "hits": plan.hits})
@@ -1421,6 +1422,7 @@ impl modbit_tools::SearchPort for IndexPort {
                         max_hits: req.max_hits,
                         min_paths: 0,
                         diagnostics,
+                        max_level: None,
                     },
                 );
                 let text_of = |p: &str| {
