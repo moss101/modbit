@@ -180,9 +180,13 @@ pub async fn run(data_dir: PathBuf, idle_exit_secs: Option<u64>) -> Result<()> {
     let connections = Arc::new(std::sync::atomic::AtomicUsize::new(0));
     let last_activity = Arc::new(std::sync::Mutex::new(std::time::Instant::now()));
     let mut idle_tick = tokio::time::interval(std::time::Duration::from_secs(1));
+    // One accept future lives across ticks: the Windows named-pipe accept is
+    // not cancel-safe (its instance is consumed before the connect completes).
+    let mut accept = Box::pin(listener.accept());
     loop {
         tokio::select! {
-            accepted = listener.accept() => {
+            accepted = &mut accept => {
+                accept = Box::pin(listener.accept());
                 let stream = accepted.context("accept")?;
                 let core = Arc::clone(&core);
                 let connections = Arc::clone(&connections);
