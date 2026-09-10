@@ -18,6 +18,13 @@
    "result": "PASS on macOS, Linux and Windows",
    "url": "https://github.com/moss101/modbit/actions/runs/34439622680",
    "log": "ci-run-34439622680.json, ci-run-34439622680-tests.log"
+  },
+  {
+   "id": "gha-34469269565",
+   "kind": "hosted CI on 1678e10 (re-proof after the prerequisite PX-033 sealed; ladder walked in M3)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34469269565",
+   "log": "ci-run-34469269565.json, ci-run-34469269565-tests.log"
   }
  ],
  "proof": "a seeded flaky test fails once, is rerun in isolation at the same revision and environment digest and, because its suite is mandatory, must pass three consecutive isolated reruns before it is labelled FLAKY and quarantined for the task and revision (both run references recorded, excluded from failure signatures, shown in Review and the self-review); a FLAKY attribution makes acceptance INCONCLUSIVE (blocks) at COMPLETION",

@@ -18,6 +18,13 @@
    "result": "PASS on macOS, Linux and Windows",
    "url": "https://github.com/moss101/modbit/actions/runs/34439622680",
    "log": "ci-run-34439622680.json, ci-run-34439622680-tests.log"
+  },
+  {
+   "id": "gha-34469269565",
+   "kind": "hosted CI on 1678e10 (re-proof after the prerequisite PX-033 sealed; ladder walked in M3)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34469269565",
+   "log": "ci-run-34469269565.json, ci-run-34469269565-tests.log"
   }
  ],
  "proof": "the TARGETED run reports failing checks first and does not complete the task; COMPLETION runs twice in the M2.8 test: first refused on a REGRESSION, then clean at the final revision after the fix",

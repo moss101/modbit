@@ -1,0 +1,6 @@
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T11:05:40.8388030Z test m2_8_verification_engine_gates_completion_on_real_cargo_fixture ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T11:06:22.0425420Z test cargo_fixture_baseline_labels_known_failing_quarantines_flaky_and_attributes_regressions ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T11:07:13.2607760Z test m2_8_verification_engine_gates_completion_on_real_cargo_fixture ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T11:08:15.2849214Z test cargo_fixture_baseline_labels_known_failing_quarantines_flaky_and_attributes_regressions ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T11:05:14.2239940Z test m2_8_verification_engine_gates_completion_on_real_cargo_fixture ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T11:05:49.9919004Z test cargo_fixture_baseline_labels_known_failing_quarantines_flaky_and_attributes_regressions ... ok

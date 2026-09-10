@@ -21518,8 +21518,61 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-034",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "milestone_override": "DR-M2-002: proven on the M2.8 substrate; scheduled with its prerequisite PX-033 (M3) to keep the dependency order",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:m2_8_verification_engine_gates_completion_on_real_cargo_fixture",
+    "test:m2_7_one_agent_runtime_drives_a_coding_task_to_ready_for_review",
+    "run:gha-34439622680",
+    "run:gha-34469269565",
+    "artifact:evidence/m2/PX-034/TASK_CARD.md",
+    "commit:9d343f7",
+    "commit:1678e10"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T11:27:01Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: IMPLEMENTED by M2.8 (see card under evidence/m2)"
+    },
+    {
+     "at": "2026-09-10T11:27:01Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "verification engine stages and flake protocol (M2.8)"
+    },
+    {
+     "at": "2026-09-10T11:27:01Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired in the Core runtime verification stages"
+    },
+    {
+     "at": "2026-09-10T11:27:01Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real cargo fixture runs"
+    },
+    {
+     "at": "2026-09-10T11:27:01Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux, Windows (original and re-proof runs)"
+    },
+    {
+     "at": "2026-09-10T11:27:01Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed once the prerequisite PX-033 was COMPLETE"
+    },
+    {
+     "at": "2026-09-10T11:28:22Z",
+     "from": "COMPLETE",
+     "to": "COMPLETE",
+     "note": "commits: M2.8 implementation and the re-proof"
+    }
+   ],
+   "status_changed_on": "2026-09-10T11:28:22Z"
   },
   {
    "id": "PX-035",
@@ -21569,8 +21622,61 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-036",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "milestone_override": "DR-M2-002: proven on the M2.8 substrate; scheduled with its prerequisite PX-033 (M3) to keep the dependency order",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:cargo_fixture_baseline_labels_known_failing_quarantines_flaky_and_attributes_regressions",
+    "test:m2_8_verification_engine_gates_completion_on_real_cargo_fixture",
+    "run:gha-34439622680",
+    "run:gha-34469269565",
+    "artifact:evidence/m2/PX-036/TASK_CARD.md",
+    "commit:9d343f7",
+    "commit:1678e10"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T11:27:01Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: IMPLEMENTED by M2.8 (see card under evidence/m2)"
+    },
+    {
+     "at": "2026-09-10T11:27:01Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "verification engine stages and flake protocol (M2.8)"
+    },
+    {
+     "at": "2026-09-10T11:27:01Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired in the Core runtime verification stages"
+    },
+    {
+     "at": "2026-09-10T11:27:01Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real cargo fixture runs"
+    },
+    {
+     "at": "2026-09-10T11:27:01Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux, Windows (original and re-proof runs)"
+    },
+    {
+     "at": "2026-09-10T11:27:01Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed once the prerequisite PX-033 was COMPLETE"
+    },
+    {
+     "at": "2026-09-10T11:28:34Z",
+     "from": "COMPLETE",
+     "to": "COMPLETE",
+     "note": "commits: M2.8 implementation and the re-proof"
+    }
+   ],
+   "status_changed_on": "2026-09-10T11:28:34Z"
   },
   {
    "id": "PX-037",
