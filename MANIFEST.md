@@ -709,9 +709,11 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m3/PX-039/ci-run-34506031420.json` | retained evidence | 37317 | `2dda872217d637cc239830d540966e7ceea26638695b761005ae8130ead05733` |
 | `evidence/m3/PX-039/evidence.json` | retained evidence | 1004 | `63485b51f7968937de279637c1971fed433e6745b1b6899c4bca1e466a33e6bb` |
 | `evidence/m3/PX-040/TASK_CARD.md` | retained evidence | 3796 | `b7ea1b6f7622e27c76dbc8d3f0537eb8288bc9e9aa59fff2bc34e884980cfa51` |
-| `evidence/m3/PX-040/evidence.json` | retained evidence | 982 | `b272759ed67e637df4dd57cf0ea8728d71968451b2a0034e6f1717b1454e3706` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 40904 | `392a03d54badf0f359365f03fa0e1b420513aeac85bff2b4a5c3589c4d823737` |
-| `graph/project-graph.json` | project driver graph with live status | 1225178 | `23a231beebdc3b3d7db138606e614b7ad9c8ce9ebe6bd393a7761e379a6854c0` |
+| `evidence/m3/PX-040/ci-run-34507573124-tests.log` | retained evidence | 4206 | `a9e2a291c1bc0b8c6332b023ecd1361533d8286c33ba45c5465fcca3c2eacb50` |
+| `evidence/m3/PX-040/ci-run-34507573124.json` | retained evidence | 37317 | `cc7122950bffe169b616acd26ddc066cc491cfb3ea9bc94299350fbd41b06594` |
+| `evidence/m3/PX-040/evidence.json` | retained evidence | 1272 | `dc1c5415da2d653b16d94162aa23478c0d9694a3c0442c91e93c17db2e9e58ec` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 40904 | `feb051d7554a0fe6dee428279cf746325b6dd84453558a64c8dc34885e8c49be` |
+| `graph/project-graph.json` | project driver graph with live status | 1226936 | `ff08d66173343da9ee93e3bffaf147914b843956da000b8f20adc0e90539bcc9` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 52844 | `13ea31cbf1ace263d36b4cc5ada8b19270a118e30e401114790652375b5c51d1` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 17596 | `5c9b7a782d245223726f860ca583d766929a6f5662b644adebee64d257ad426b` |

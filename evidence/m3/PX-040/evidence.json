@@ -11,8 +11,18 @@
   "qual_ev_0222_px_014_typed_question_suspends_the_run_and_the_answer_resumes_it",
   "observations_declare_truncation"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "aa25676"
+ ],
+ "runs": [
+  {
+   "id": "gha-34507573124",
+   "kind": "hosted CI on aa25676",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34507573124",
+   "log": "ci-run-34507573124.json, ci-run-34507573124-tests.log"
+  }
+ ],
  "proof": "bounded observation with a declared omitted range and a pageable result_ref read back by artifact.range; harness_state in the Context Pack; missing runner recorded as a plan limitation; headless question fails closed to Waiting with Needs Attention",
  "audit": "COMPLETED in this batch (the observation promised a paging tool that did not exist)"
 }

@@ -22208,8 +22208,58 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-040",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "milestone_override": "DR-M2-002: the harness_state Context Pack section is compiled by the M3 Context Pack Compiler",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:aa25676",
+    "test:qual_px_040_harness_contracts_bound_observations_page_results_and_fail_closed_headless",
+    "test:m2_7_one_agent_runtime_drives_a_coding_task_to_ready_for_review",
+    "test:m2_7_harness_refuses_unplanned_writes_exhausts_budgets_and_resumes_after_restart",
+    "test:m2_8_verification_engine_gates_completion_on_real_cargo_fixture",
+    "test:m2_7_steering_and_cancellation_apply_at_safe_boundaries",
+    "test:qual_ev_0222_px_014_typed_question_suspends_the_run_and_the_answer_resumes_it",
+    "test:observations_declare_truncation",
+    "run:gha-34507573124",
+    "artifact:evidence/m3/PX-040/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T17:31:36Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: COMPLETED in this batch (see card)"
+    },
+    {
+     "at": "2026-09-10T17:31:36Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "artifact.range makes the bounded observation's paging promise real"
+    },
+    {
+     "at": "2026-09-10T17:31:36Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "ArtifactSource over the event store's object directory; tool projected to the model"
+    },
+    {
+     "at": "2026-09-10T17:31:36Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "the eleven contracts across the harness tests and the new integration test"
+    },
+    {
+     "at": "2026-09-10T17:31:37Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34507573124 green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T17:31:37Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34507573124"
+    }
+   ],
+   "status_changed_on": "2026-09-10T17:31:37Z"
   },
   {
    "id": "QUAL-PX-000",
