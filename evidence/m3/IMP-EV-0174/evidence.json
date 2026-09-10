@@ -7,8 +7,18 @@
   "qual_ev_0173_task_economics_report_quality_and_cost_from_the_log",
   "m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "228ccf9"
+ ],
+ "runs": [
+  {
+   "id": "gha-34529846682",
+   "kind": "hosted CI on 228ccf9",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34529846682",
+   "log": "ci-run-34529846682.json, ci-run-34529846682-tests.log"
+  }
+ ],
  "proof": "context.fast hands one context question to a bounded read-only sub-run. It is offered retrieval tools only, and its authority is decided at dispatch: a name outside CONTEXT_SPECIALIST_TOOLS is refused before any tool runs. In a real run it asks for change.apply, is refused, changes nothing on disk, and returns a Context Pack whose entries carry path, revision, content hash, reason and sources. Its model calls are ContextCompile steps under the actor context-specialist and its tokens are recorded on the calling turn, so the task's economics include them.",
  "audit": "NOT-FOUND before this task: nothing could take a context question off the agent's own turn budget.",
  "limitations": "Synchronous inside the caller's tool call; bounded by turns and the pack budget, not by a clock; no memory between calls."

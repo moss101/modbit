@@ -13222,12 +13222,14 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0174",
    "source": "docs/41",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m3/IMP-EV-0174/TASK_CARD.md",
     "test:qual_ev_0174_a_read_only_specialist_builds_the_pack_and_cannot_mutate",
     "test:qual_ev_0173_task_economics_report_quality_and_cost_from_the_log",
-    "test:m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use"
+    "test:m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use",
+    "commit:228ccf9",
+    "run:gha-34529846682"
    ],
    "notes": [
     {
@@ -13253,9 +13255,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "a real run: retrieval tools only, a refused change.apply, an unchanged file and a provenance-complete pack"
+    },
+    {
+     "at": "2026-09-10T21:12:53Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34529846682 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-10T21:12:53Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34529846682; limitations in evidence/m3/IMP-EV-0174/TASK_CARD.md"
     }
    ],
-   "status_changed_on": "2026-09-10T20:59:35Z"
+   "status_changed_on": "2026-09-10T21:12:53Z"
   },
   {
    "id": "IMP-EV-0175",

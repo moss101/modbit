@@ -1,0 +1,9 @@
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T21:04:39.3550480Z test m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledge
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T21:04:44.2376340Z test qual_ev_0173_task_economics_report_quality_and_cost_from_the_log .
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T21:04:45.0830440Z test qual_ev_0174_a_read_only_specialist_builds_the_pack_and_cannot_mut
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T21:09:07.8977763Z test m3_8_context_pack_packs_under_budget_with_provenance_and_the_led
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T21:09:25.4314041Z test qual_ev_0173_task_economics_report_quality_and_cost_from_the_log
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T21:09:27.8090248Z test qual_ev_0174_a_read_only_specialist_builds_the_pack_and_cannot_m
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T21:03:54.0923618Z test m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledg
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T21:03:57.5771276Z test qual_ev_0173_task_economics_report_quality_and_cost_from_the_log 
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T21:03:58.2940320Z test qual_ev_0174_a_read_only_specialist_builds_the_pack_and_cannot_mu
