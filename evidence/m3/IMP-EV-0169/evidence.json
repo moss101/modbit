@@ -7,8 +7,18 @@
   "qual_ev_0169_context_pack_reaches_the_prompt_with_provenance_or_not_at_all",
   "m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "ffb08a5"
+ ],
+ "runs": [
+  {
+   "id": "gha-34506879307",
+   "kind": "hosted CI on ffb08a5",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34506879307",
+   "log": "ci-run-34506879307.json, ci-run-34506879307-tests.log"
+  }
+ ],
  "proof": "the prompt envelope refuses any non-ephemeral fragment without source, path, revision, content hash and retrieval reason; the injected ones are rendered with that provenance and recorded on the ContextCompile step",
  "audit": "IMPLEMENTED in this batch"
 }
