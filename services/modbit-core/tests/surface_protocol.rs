@@ -5744,3 +5744,158 @@ async fn m3_2_bm25_lexical_index_ranks_files_and_refreshes_on_writes() {
         "the rewritten file is searchable at once: {so}"
     );
 }
+
+/// M3.3: `search.symbols` serves tree-sitter definitions for the Alpha
+/// languages with kind, container, lines, span and revisions, and a write
+/// refreshes the changed file's symbols.
+#[tokio::test]
+async fn m3_3_tree_sitter_symbol_index_serves_definitions_and_refreshes_on_writes() {
+    let (_repo, root) = plain_repo(&[
+        (
+            "cart.rs",
+            "pub struct Cart;\nimpl Cart {\n    pub fn total(&self) -> u32 { 1 }\n}\n",
+        ),
+        (
+            "cart.py",
+            "class Cart:\n    def total(self):\n        return 1\n",
+        ),
+        (
+            "cart.ts",
+            "export class Cart { total(): number { return 1 } }\n",
+        ),
+    ]);
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn(dir.path());
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xC0)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xC1, "local_trusted").await;
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xC2,
+        0xD1,
+        "search.symbols",
+        r#"{"query":"total"}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let got: Vec<(String, String, String, String)> = so["symbols"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| {
+            (
+                s["path"].as_str().unwrap().into(),
+                s["kind"].as_str().unwrap().into(),
+                s["container"].as_str().unwrap_or("").into(),
+                s["language"].as_str().unwrap().into(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        got,
+        vec![
+            (
+                "cart.py".into(),
+                "function".into(),
+                "Cart".into(),
+                "python".into()
+            ),
+            (
+                "cart.rs".into(),
+                "function".into(),
+                "Cart".into(),
+                "rust".into()
+            ),
+            (
+                "cart.ts".into(),
+                "method".into(),
+                "Cart".into(),
+                "typescript".into()
+            )
+        ],
+        "{so}"
+    );
+    let rev0 = so["index_revision"].as_u64().unwrap();
+    assert!(
+        so["symbols"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|s| s["index_revision"] == rev0
+                && s["line_start"].as_u64().unwrap() >= 1
+                && s["content_hash"].as_str().unwrap().len() == 64)
+    );
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xC3,
+        0xD2,
+        "search.symbols",
+        r#"{"query":"Ca","prefix":true,"kind":"class"}"#,
+    )
+    .await;
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(
+        so["symbols"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|s| s["path"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        vec!["cart.py", "cart.ts"],
+        "{so}"
+    );
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xC4,
+        0xD3,
+        "change.apply",
+        r#"{"path":"cart.rs","op":"replace","content":"pub fn subtotal() -> u32 { 1 }\n"}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xC5,
+        0xD4,
+        "search.symbols",
+        r#"{"query":"total"}"#,
+    )
+    .await;
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(
+        so["symbols"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|s| s["path"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        vec!["cart.py", "cart.ts"],
+        "{so}"
+    );
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xC6,
+        0xD5,
+        "search.symbols",
+        r#"{"query":"subtotal"}"#,
+    )
+    .await;
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(
+        so["symbols"][0]["index_revision"].as_u64().unwrap(),
+        rev0 + 1,
+        "{so}"
+    );
+}

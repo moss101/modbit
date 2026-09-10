@@ -1,0 +1,16 @@
+{
+ "task": "M3.3",
+ "tests": [
+  "symbol_index_extracts_alpha_language_definitions_and_refreshes",
+  "m3_3_tree_sitter_symbol_index_serves_definitions_and_refreshes_on_writes",
+  "qual_ev_0217_compatibility_matrix_covers_every_registered_tool_with_owner_effect_and_test"
+ ],
+ "commits": {
+  "implementation": "HEAD"
+ },
+ "runs": [],
+ "evidence_tier": "release-critical",
+ "acceptance": {
+  "tree-sitter AST/symbol index": "pending hosted CI"
+ }
+}

@@ -287,6 +287,21 @@
     "fs.read"
    ],
    "test": "m3_2_bm25_lexical_index_ranks_files_and_refreshes_on_writes"
+  },
+  {
+   "tool": "search.symbols",
+   "family": "search",
+   "source_behaviors": [
+    "go to definition",
+    "symbol search",
+    "outline"
+   ],
+   "owner": "Context Engine (retrieval index)",
+   "effect": "ReadOnly",
+   "capabilities": [
+    "fs.read"
+   ],
+   "test": "m3_3_tree_sitter_symbol_index_serves_definitions_and_refreshes_on_writes"
   }
  ],
  "harness": [

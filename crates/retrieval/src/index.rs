@@ -223,6 +223,20 @@ impl RepositoryIndex {
         self.files.get(path)
     }
 
+    /// Searchable files as (path, text, language, content_hash) for the symbol index.
+    pub fn texts_with_hash(&self) -> impl Iterator<Item = (&str, &str, Option<&str>, &str)> {
+        self.files.values().filter_map(|f| {
+            f.text.as_deref().map(|t| {
+                (
+                    f.path.as_str(),
+                    t,
+                    f.language.as_deref(),
+                    f.content_hash.as_str(),
+                )
+            })
+        })
+    }
+
     /// Searchable files as (path, text, language) for downstream indexes.
     pub fn texts(&self) -> impl Iterator<Item = (&str, &str, Option<&str>)> {
         self.files.values().filter_map(|f| {

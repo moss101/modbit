@@ -13,6 +13,11 @@ globset.workspace = true
 memchr.workspace = true
 regex.workspace = true
 tantivy.workspace = true
+tree-sitter.workspace = true
+tree-sitter-rust.workspace = true
+tree-sitter-typescript.workspace = true
+tree-sitter-javascript.workspace = true
+tree-sitter-python.workspace = true
 serde.workspace = true
 sha2.workspace = true
 hex.workspace = true
@@ -34,4 +39,5 @@ canonical = []
 capabilities = [
   { id = "retrieval.exact_regex_path_index", requirements = ["REQ-EV-0004", "REQ-EV-0159"] },
   { id = "retrieval.bm25_lexical_index", requirements = ["REQ-EV-0154", "REQ-EV-0159"] },
+  { id = "retrieval.ast_symbol_index", requirements = ["REQ-EV-0005", "REQ-EV-0155"] },
 ]

@@ -117,6 +117,8 @@ pub struct ToolHost {
     pub(crate) indexes: Mutex<HashMap<PathBuf, Arc<Mutex<modbit_retrieval::RepositoryIndex>>>>,
     /// BM25 indexes per canonical workspace root (M3.2).
     pub(crate) lexical: Mutex<HashMap<PathBuf, Arc<Mutex<modbit_retrieval::LexicalIndex>>>>,
+    /// Symbol indexes per canonical workspace root (M3.3).
+    pub(crate) symbols: Mutex<HashMap<PathBuf, Arc<Mutex<modbit_retrieval::SymbolIndex>>>>,
     /// One workspace service per approved root, kept so revisions stay monotonic in-process.
     workspaces: Mutex<HashMap<PathBuf, Arc<Mutex<WorkspaceService>>>>,
     state_dir: PathBuf,
@@ -143,6 +145,7 @@ impl ToolHost {
             workspaces: Mutex::new(HashMap::new()),
             indexes: Mutex::new(HashMap::new()),
             lexical: Mutex::new(HashMap::new()),
+            symbols: Mutex::new(HashMap::new()),
             state_dir: data_dir.join("workspaces"),
         })
     }
@@ -207,6 +210,25 @@ impl ToolHost {
         let lx = Arc::new(Mutex::new(lx));
         map.insert(canonical.to_path_buf(), Arc::clone(&lx));
         Ok(lx)
+    }
+
+    /// The symbol index of a workspace root, built from the exact index at first use (M3.3).
+    pub(crate) async fn symbols(
+        &self,
+        canonical: &Path,
+    ) -> Result<Arc<Mutex<modbit_retrieval::SymbolIndex>>> {
+        let mut map = self.symbols.lock().await;
+        if let Some(i) = map.get(canonical) {
+            return Ok(Arc::clone(i));
+        }
+        let index = self.index(canonical).await?;
+        let index = index.lock().await;
+        let sx = Arc::new(Mutex::new(modbit_retrieval::SymbolIndex::build(
+            index.texts_with_hash(),
+            index.revision(),
+        )));
+        map.insert(canonical.to_path_buf(), Arc::clone(&sx));
+        Ok(sx)
     }
 
     /// The tool surface compiled from support × policy (REQ-EV-0096/0133/0044):
@@ -296,6 +318,7 @@ impl ToolHost {
             (Some(ws), Some(r)) => Some(Arc::new(IndexPort {
                 index: self.index(r).await?,
                 lexical: self.lexical(r).await?,
+                symbols: self.symbols(r).await?,
                 workspace: Arc::clone(ws),
             })),
             _ => None,
@@ -359,6 +382,21 @@ impl ToolHost {
                     if let Err(e) = lexical.lock().await.refresh(&changed, rev) {
                         eprintln!("modbit-core: lexical index refresh failed: {e}");
                     }
+                }
+                if let Ok(symbols) = self.symbols(root).await {
+                    let changed: Vec<modbit_retrieval::ChangedSymbols> = paths
+                        .iter()
+                        .map(|p| {
+                            let t = index
+                                .texts_with_hash()
+                                .find(|(path, _, _, _)| *path == p.as_str())
+                                .map(|(_, t, l, h)| {
+                                    (t.to_owned(), l.map(str::to_owned), h.to_owned())
+                                });
+                            (p.clone(), t)
+                        })
+                        .collect();
+                    symbols.lock().await.refresh(&changed, rev);
                 }
             }
             let objects = store.lock().await.objects().clone();
@@ -915,6 +953,7 @@ pub(crate) fn append_file_events(
 struct IndexPort {
     index: Arc<Mutex<modbit_retrieval::RepositoryIndex>>,
     lexical: Arc<Mutex<modbit_retrieval::LexicalIndex>>,
+    symbols: Arc<Mutex<modbit_retrieval::SymbolIndex>>,
     workspace: Arc<Mutex<WorkspaceService>>,
 }
 
@@ -940,6 +979,12 @@ impl modbit_tools::SearchPort for IndexPort {
                 "the index is being refreshed".to_owned(),
             )
         })?;
+        let mut symbols = self.symbols.try_lock().map_err(|_| {
+            (
+                "INDEX_BUSY".to_owned(),
+                "the index is being refreshed".to_owned(),
+            )
+        })?;
         if ws_rev > idx.revision() {
             // Freshness (docs/18): a write without a recorded changed set is not possible
             // through the tools, but an external edit may have moved the revision.
@@ -947,6 +992,7 @@ impl modbit_tools::SearchPort for IndexPort {
                 .map_err(|e| ("INDEX_REBUILD".to_owned(), e.to_string()))?;
             *lexical = modbit_retrieval::LexicalIndex::build(idx.texts(), ws_rev)
                 .map_err(|e| ("INDEX_REBUILD".to_owned(), e.to_string()))?;
+            *symbols = modbit_retrieval::SymbolIndex::build(idx.texts_with_hash(), ws_rev);
         }
         let opts = modbit_retrieval::SearchOptions {
             case_insensitive: req.case_insensitive,
@@ -963,6 +1009,26 @@ impl modbit_tools::SearchPort for IndexPort {
             "lexical" => serde_json::json!({"hits": lexical
                 .search(&req.query, req.max_hits)
                 .map_err(|e| ("BAD_QUERY".to_owned(), e.to_string()))?}),
+            "symbols" => {
+                // `kind:<k> ` and `prefix:` markers are set by the tool.
+                let mut q = req.query.as_str();
+                let mut kind = None;
+                if let Some(rest) = q.strip_prefix("kind:") {
+                    let (k, r) = rest.split_once(' ').unwrap_or((rest, ""));
+                    kind = Some(k.to_owned());
+                    q = r;
+                }
+                let prefix = q.starts_with("prefix:");
+                let name = q.strip_prefix("prefix:").unwrap_or(q).to_owned();
+                let sq = modbit_retrieval::SymbolQuery {
+                    name: (!name.is_empty()).then_some(name),
+                    prefix,
+                    kind,
+                    path_glob: req.path_glob.clone(),
+                    max: req.max_hits,
+                };
+                serde_json::json!({"symbols": symbols.query(&sq).map_err(|e| ("BAD_GLOB".to_owned(), e))?})
+            }
             "paths" => serde_json::json!({"paths": idx
                 .find_paths(&req.query, req.max_hits)
                 .map_err(|e| ("BAD_GLOB".to_owned(), e.to_string()))?}),
@@ -978,6 +1044,9 @@ impl modbit_tools::SearchPort for IndexPort {
             .as_array()
             .is_some_and(|h| h.len() >= req.max_hits)
             || v["paths"]
+                .as_array()
+                .is_some_and(|h| h.len() >= req.max_hits)
+            || v["symbols"]
                 .as_array()
                 .is_some_and(|h| h.len() >= req.max_hits);
         v["index_revision"] = serde_json::json!(idx.revision());

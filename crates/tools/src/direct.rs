@@ -777,6 +777,48 @@ tool!(
     |ctx, args| search_tool_body(ctx, &args, "lexical")
 );
 
+tool!(
+    SearchSymbols,
+    spec(
+        "search.symbols",
+        "Symbol definitions from the tree-sitter index (TypeScript/JavaScript, Python, Rust): query by exact name or prefix, optional kind and path glob; each symbol carries kind, container, line range, byte span, file revision and index revision (M3.3, docs/18 L0/L2).",
+        EffectClass::ReadOnly,
+        json!({"type":"object","properties":{"query":{"type":"string"},"prefix":{"type":"boolean"},"kind":{"type":"string"},"path_glob":{"type":"string"},"max_hits":{"type":"integer","minimum":1,"maximum":1000}},"required":["query"],"additionalProperties":false}),
+        &["fs.read"],
+        Idempotency::Idempotent
+    ),
+    |ctx, args| {
+        let Some(port) = &ctx.search else {
+            return ToolOutcome::infra("NO_INDEX", "no workspace index is attached to this task");
+        };
+        let mut req = crate::pipeline::SearchRequest {
+            kind: "symbols".into(),
+            query: s(&args, "query"),
+            case_insensitive: false,
+            path_glob: args
+                .get("path_glob")
+                .and_then(Value::as_str)
+                .map(str::to_owned),
+            max_hits: args
+                .get("max_hits")
+                .and_then(Value::as_u64)
+                .unwrap_or(100)
+                .clamp(1, 1000) as usize,
+        };
+        // The symbol kind and prefix flag ride in the query as `kind:` / `prefix:` markers.
+        if args.get("prefix").and_then(Value::as_bool).unwrap_or(false) {
+            req.query = format!("prefix:{}", req.query);
+        }
+        if let Some(k) = args.get("kind").and_then(Value::as_str) {
+            req.query = format!("kind:{k} {}", req.query);
+        }
+        match port.search(&req) {
+            Ok(v) => ToolOutcome::ok(v),
+            Err((code, msg)) => ToolOutcome::fail(&code, msg),
+        }
+    }
+);
+
 /// Wait window for `shell.read` when the process is still running.
 const READ_WAIT_MS: u64 = 250;
 
@@ -1205,6 +1247,7 @@ pub fn register_direct(registry: &mut ToolRegistry) -> Result<()> {
         SearchRegex::shared(),
         SearchPaths::shared(),
         SearchLexical::shared(),
+        SearchSymbols::shared(),
         GitStatus::shared(),
         GitDiff::shared(),
         GitWorktreeCreate::shared(),

@@ -516,6 +516,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m3/M3.1/evidence.json` | retained evidence | 591 | `108ed7b08f218812f3ce7b2a724b7f3d916e61c087ddf0e236691fe75f3999a9` |
 | `evidence/m3/M3.2/TASK_CARD.md` | retained evidence | 2517 | `ea167bc9dc81c865fe4d5ca1df1c2645128cc1efedaee89f835ea48113b7e31d` |
 | `evidence/m3/M3.2/evidence.json` | retained evidence | 400 | `104ea34bea0b390729c365a39974af95b26bd518854348868f2472b8b63d4164` |
+| `evidence/m3/M3.3/TASK_CARD.md` | retained evidence | 2739 | `45438f103475db5ccc1610c3a270ad4662ce9baacb4eb3db71c51bff465a7b1e` |
+| `evidence/m3/M3.3/evidence.json` | retained evidence | 446 | `b01a9a6a55b106d90b0c6c11569d057c5e99385555757076be5aae218d77e809` |
 | `graph/PROJECT_GRAPH.md` | human view of the graph | 40921 | `35cc4cbc92be9618f95d722585c4b5bfc4c2458b3a72ee58799b030b0e123141` |
 | `graph/project-graph.json` | project driver graph with live status | 1153478 | `75fd535caecc6f3af90e7bbebdd1dc158bbf0ff3ffd0000c4e5ed038674bb952` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 52844 | `13ea31cbf1ace263d36b4cc5ada8b19270a118e30e401114790652375b5c51d1` |

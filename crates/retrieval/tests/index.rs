@@ -279,3 +279,145 @@ fn bm25_lexical_index_ranks_refreshes_and_bounds() {
     assert_eq!(lx.search("compute_sum", 10).unwrap()[0].index_revision, 2);
     assert_eq!((lx.len(), lx.revision()), (3, 2));
 }
+
+/// M3.3: tree-sitter definitions for the Alpha languages with kinds,
+/// containers, line ranges and spans; unsupported languages yield nothing;
+/// refresh per path.
+#[test]
+fn symbol_index_extracts_alpha_language_definitions_and_refreshes() {
+    use modbit_retrieval::{SymbolIndex, SymbolQuery};
+    let d = tempfile::tempdir().unwrap();
+    let r = d.path();
+    std::fs::write(r.join("a.rs"), "pub struct Cart { items: u32 }\nimpl Cart {\n    pub fn total(&self) -> u32 { self.items }\n}\npub trait Priced { fn price(&self) -> u32; }\nconst LIMIT: u32 = 3;\nenum Kind { A }\nfn helper() {}\n").unwrap();
+    std::fs::write(r.join("b.ts"), "export interface Item { id: string }\nexport class Cart {\n  total(): number { return 1 }\n}\nexport function helper(x: number) { return x }\ntype Id = string;\nenum Color { Red }\nconst LIMIT = 3;\nfunction inner() { const local = 1; }\n").unwrap();
+    std::fs::write(
+        r.join("c.py"),
+        "class Cart:\n    def total(self):\n        return 1\n\ndef helper():\n    pass\n",
+    )
+    .unwrap();
+    std::fs::write(
+        r.join("d.js"),
+        "class Cart { total() { return 1 } }\nfunction helper() {}\n",
+    )
+    .unwrap();
+    std::fs::write(r.join("e.go"), "func Helper() {}\n").unwrap();
+    let idx = RepositoryIndex::build(r, 1).unwrap();
+    let mut sx = SymbolIndex::build(idx.texts_with_hash(), 1);
+    fn names(sx: &SymbolIndex, path: &str) -> Vec<String> {
+        sx.symbols_in(path)
+            .iter()
+            .map(|s| {
+                format!(
+                    "{}:{}{}",
+                    s.kind,
+                    s.name,
+                    s.container
+                        .as_ref()
+                        .map(|c| format!("@{c}"))
+                        .unwrap_or_default()
+                )
+            })
+            .collect()
+    }
+    assert_eq!(
+        names(&sx, "a.rs"),
+        vec![
+            "struct:Cart",
+            "impl:Cart",
+            "function:total@Cart",
+            "trait:Priced",
+            "function:price@Priced",
+            "const:LIMIT",
+            "enum:Kind",
+            "function:helper"
+        ]
+    );
+    assert_eq!(
+        names(&sx, "b.ts"),
+        vec![
+            "interface:Item",
+            "class:Cart",
+            "method:total@Cart",
+            "function:helper",
+            "type:Id",
+            "enum:Color",
+            "variable:LIMIT",
+            "function:inner"
+        ],
+        "{:?}",
+        names(&sx, "b.ts")
+    );
+    assert_eq!(
+        names(&sx, "c.py"),
+        vec!["class:Cart", "function:total@Cart", "function:helper"]
+    );
+    assert_eq!(
+        names(&sx, "d.js"),
+        vec!["class:Cart", "method:total@Cart", "function:helper"]
+    );
+    assert!(
+        sx.symbols_in("e.go").is_empty(),
+        "no structural claim without a grammar"
+    );
+    let total = sx
+        .symbols_in("a.rs")
+        .iter()
+        .find(|s| s.name == "total")
+        .unwrap();
+    assert_eq!(
+        (total.line_start, total.line_end, total.language.as_str()),
+        (3, 3, "rust")
+    );
+    assert_eq!(
+        &std::fs::read_to_string(r.join("a.rs")).unwrap()
+            [total.span.0 as usize..total.span.1 as usize],
+        "pub fn total(&self) -> u32 { self.items }"
+    );
+    assert_eq!(total.content_hash, idx.file("a.rs").unwrap().content_hash);
+    let q = SymbolQuery {
+        name: Some("total".into()),
+        ..Default::default()
+    };
+    assert_eq!(
+        sx.query(&q)
+            .unwrap()
+            .iter()
+            .map(|s| s.path.as_str())
+            .collect::<Vec<_>>(),
+        vec!["a.rs", "b.ts", "c.py", "d.js"]
+    );
+    let q = SymbolQuery {
+        name: Some("hel".into()),
+        prefix: true,
+        kind: Some("function".into()),
+        path_glob: Some("*.rs".into()),
+        max: 10,
+    };
+    assert_eq!(sx.query(&q).unwrap().len(), 1);
+    assert_eq!(
+        sx.query(&SymbolQuery {
+            max: 2,
+            ..Default::default()
+        })
+        .unwrap()
+        .len(),
+        2,
+        "bounded"
+    );
+    sx.refresh(
+        &[
+            (
+                "a.rs".into(),
+                Some(("fn only() {}\n".into(), Some("rust".into()), "h2".into())),
+            ),
+            ("c.py".into(), None),
+        ],
+        2,
+    );
+    assert_eq!(names(&sx, "a.rs"), vec!["function:only"]);
+    assert!(
+        sx.symbols_in("c.py").is_empty()
+            && sx.revision() == 2
+            && sx.symbols_in("a.rs")[0].index_revision == 2
+    );
+}
