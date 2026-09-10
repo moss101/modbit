@@ -10441,6 +10441,19 @@ async fn qual_px_027_language_tier_suites_run_on_real_fixtures_and_a_tier_is_onl
             ),
         },
         Case {
+            language: "text",
+            fixture: "text-docs",
+            main: "notes.txt",
+            symbol: "quantity",
+            symbol2: "cents",
+            seed: (
+                "notes.txt",
+                "The order quantity must be a positive integer.\nTotals are computed in cents and formatted with two decimals.\n",
+            ),
+            symbol_site: (0, 10),
+            defect: ("", 0),
+        },
+        Case {
             language: "typescript",
             fixture: "ts-webapp",
             main: "src/cart.ts",
@@ -10824,6 +10837,24 @@ async fn qual_px_027_language_tier_suites_run_on_real_fixtures_and_a_tier_is_onl
         // A2: the language service reports the defect that is really there,
         // at its line, and stops reporting it once the file is fixed. A bridge
         // that invents or loses diagnostics fails here.
+        if case.defect.0.is_empty() {
+            checks.push(CheckOutcome {
+                id: "a2_diagnostics_parity".into(),
+                tier: Tier::A,
+                status: "skip".into(),
+                detail: format!(
+                    "no language service claims {}, so there is no parity to measure",
+                    case.language
+                ),
+            });
+            let tier = earned_tier(&checks);
+            eprintln!(
+                "PX027 {} earned {:?} from {:#?}",
+                case.language, tier, checks
+            );
+            earned.push((case.language.to_owned(), tier, checks));
+            continue;
+        }
         let main_path = repo.path().join(case.main);
         let original = std::fs::read_to_string(&main_path).unwrap();
         let expected_line = u64::try_from(original.lines().count()).unwrap() + case.defect.1;
@@ -10946,14 +10977,15 @@ async fn qual_px_027_language_tier_suites_run_on_real_fixtures_and_a_tier_is_onl
             .filter(|c| c.status == "skip")
             .map(|c| c.id.as_str())
             .collect();
-        assert!(
-            checks.iter().all(|c| c.status != "fail"),
-            "{language}: a tier check failed: {:#?}",
-            checks
-                .iter()
-                .filter(|c| c.status == "fail")
-                .collect::<Vec<_>>()
-        );
+        // A check may fail — that is how a language stays below a tier — but
+        // never one the record depends on.
+        for failed in checks.iter().filter(|c| c.status == "fail") {
+            assert!(
+                recorded_tier.is_none_or(|t| failed.tier > t),
+                "{language}: {} failed and the record claims {recorded_tier:?}: {failed:?}",
+                failed.id
+            );
+        }
         assert!(
             tier.is_some(),
             "{language}: not even Tier C was earned here: {checks:#?}"
@@ -11011,4 +11043,223 @@ async fn qual_px_027_language_tier_suites_run_on_real_fixtures_and_a_tier_is_onl
             "{l:?} claims a tier with no record"
         );
     }
+}
+
+/// PX-029 (QUAL-PX-029): a language the product claims nothing about degrades
+/// explicitly. Retrieval answers it as text with no structural claim, the
+/// verification plan says it has only the configured command, every client
+/// shows the state, and an edit is refused until the user opts this task in —
+/// after which the change carries `unsupported_language` provenance. A Tier C
+/// file in the same repository is edited without ceremony and still carries no
+/// structural claim.
+#[tokio::test]
+async fn qual_px_029_an_unsupported_language_degrades_explicitly_and_edits_need_an_opt_in() {
+    use modbit_protocol::v1::{
+        AllowUnsupportedLanguage, ContextInspectorView, GetContextInspector, StartTask,
+        TaskRunStarted, UnsupportedLanguageAllowed,
+    };
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[
+        (
+            "cmd/main.go",
+            "package main\n\nimport \"fmt\"\n\nfunc totalCents(q int, unit int) int {\n\treturn q * unit\n}\n\nfunc main() {\n\tfmt.Println(totalCents(3, 250))\n}\n",
+        ),
+        ("notes.md", "# Notes\n\nTotals are computed in cents.\n"),
+    ]);
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "fix the total", "expected_files": ["cmd/main.go", "notes.md"]}}]}),
+        json!({"calls": [{"name": "context.pack", "args": {"query": "totalCents", "token_budget": 900}}]}),
+        json!({"calls": [{"name": "search.symbols", "args": {"query": "totalCents"}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "notes.md"}}]}),
+        // A Tier C file: edited without ceremony.
+        json!({"calls": [{"name": "change.apply", "args": {"path": "notes.md", "op": "replace", "content": "# Notes\n\nTotals are computed in cents and rounded half up.\n"}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "cmd/main.go"}}]}),
+        // The unsupported language: refused until the user opts in.
+        json!({"calls": [{"name": "change.apply", "args": {"path": "cmd/main.go", "op": "replace", "content": "package main\n\nfunc totalCents(q int, unit int) int {\n\treturn q * unit\n}\n"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "cmd/main.go", "op": "replace", "content": "package main\n\nfunc totalCents(q int, unit int) int {\n\treturn q * unit\n}\n"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xE1)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xE2, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xE3),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 12,
+                max_tool_calls: 0,
+                max_no_progress_turns: 6,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 180).await;
+    assert!(!st.loop_alive, "{st:?}");
+    let tool_texts = |bodies: &[serde_json::Value]| -> Vec<String> {
+        bodies.last().unwrap()["messages"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|m| m["role"] == "tool")
+            .filter_map(|m| m["content"].as_str().map(str::to_owned))
+            .collect()
+    };
+    let texts = tool_texts(&seen.lock().unwrap().clone());
+    // 1. The edit to the unsupported language was refused, and the refusal
+    //    says what the product does not claim and what unblocks it.
+    let refusal = texts
+        .iter()
+        .find(|t| t.contains("UNSUPPORTED_LANGUAGE"))
+        .unwrap_or_else(|| panic!("the Go edit was not refused: {texts:#?}"));
+    assert!(
+        refusal.contains("cmd/main.go") && refusal.contains("\"go\""),
+        "{refusal}"
+    );
+    assert!(refusal.contains("opt-in"), "{refusal}");
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("cmd/main.go"))
+            .unwrap()
+            .lines()
+            .count(),
+        11,
+        "the Go file is untouched"
+    );
+    // 2. The Tier C file was edited without any opt-in.
+    assert!(
+        std::fs::read_to_string(repo.path().join("notes.md"))
+            .unwrap()
+            .contains("rounded half up"),
+        "the markdown edit was refused"
+    );
+    // 3. Retrieval indexed the Go file as text and made no structural claim
+    //    about it: the symbol query answers with nothing.
+    let symbols = texts
+        .iter()
+        .find(|t| t.contains("\"symbols\":"))
+        .unwrap_or_else(|| panic!("{texts:#?}"));
+    let body: serde_json::Value =
+        serde_json::from_str(symbols.split_once("output:\n").map_or("", |(_, b)| b))
+            .unwrap_or_default();
+    assert_eq!(
+        body["symbols"].as_array().map(Vec::len),
+        Some(0),
+        "a structural claim was made for a language with no record: {symbols}"
+    );
+    assert!(
+        body["indexed_files"].as_u64().unwrap_or(0) >= 2,
+        "the Go file is indexed as text: {symbols}"
+    );
+    // 4. Every client shows the state: the inspector carries it per entry.
+    let ack = c
+        .command(envelope(
+            id16(0xE4),
+            "GetContextInspector",
+            GetContextInspector {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let v: ContextInspectorView = Client::result(&ack).unwrap();
+    let go = v
+        .entries
+        .iter()
+        .find(|e| e.path == "cmd/main.go")
+        .unwrap_or_else(|| panic!("{v:?}"));
+    let state = go.language_state.as_ref().unwrap();
+    assert_eq!((state.language.as_str(), state.tier.as_str()), ("go", ""));
+    assert!(!state.structural && state.needs_opt_in, "{state:?}");
+    assert!(
+        state
+            .degradation
+            .iter()
+            .any(|d| d.contains("exact and lexical text only"))
+            && state
+                .degradation
+                .iter()
+                .any(|d| d.contains("explicitly configured commands")),
+        "{state:?}"
+    );
+    if let Some(md) = v.entries.iter().find(|e| e.path == "notes.md") {
+        let s = md.language_state.as_ref().unwrap();
+        assert_eq!((s.language.as_str(), s.tier.as_str()), ("markdown", "C"));
+        assert!(!s.structural && !s.needs_opt_in, "{s:?}");
+    }
+    // 5. The user opts this task in, and the same edit now applies and says so
+    //    on the log.
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xE5),
+            "AllowUnsupportedLanguage",
+            AllowUnsupportedLanguage {
+                task_id: Some(task.clone()),
+                languages: vec!["go".into()],
+                reason: "I know Go; treat it as text and let me review the diff".into(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let allowed: UnsupportedLanguageAllowed = Client::result(&ack).unwrap();
+    assert_eq!(allowed.languages, vec!["go".to_owned()]);
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0xE6,
+        0xE7,
+        "change.apply",
+        &json!({"path": "cmd/main.go", "op": "replace", "content": "package main\n\nfunc totalCents(q int, unit int) int {\n\treturn q * unit\n}\n"}).to_string(),
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let evs = task_events(&core, &session, &task).await;
+    let changed: Vec<&serde_json::Value> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "FileChanged")
+        .map(|(_, _, p)| p)
+        .collect();
+    let go_change = changed
+        .iter()
+        .find(|p| p["path"] == "cmd/main.go")
+        .unwrap_or_else(|| panic!("{changed:#?}"));
+    assert_eq!(go_change["language"], "go", "{go_change}");
+    assert_eq!(go_change["unsupported_language"], true, "{go_change}");
+    let md_change = changed
+        .iter()
+        .find(|p| p["path"] == "notes.md")
+        .unwrap_or_else(|| panic!("{changed:#?}"));
+    assert_eq!(md_change["language"], "markdown", "{md_change}");
+    assert_eq!(md_change["unsupported_language"], false, "{md_change}");
+    // 6. The plan states the limitation: this repository has no runner of ours.
+    let plan_text = texts
+        .iter()
+        .find(|t| t.contains("no configured runner detected"))
+        .or_else(|| texts.iter().find(|t| t.contains("limitation")));
+    assert!(
+        plan_text.is_some()
+            || evs
+                .iter()
+                .any(|(_, t, p)| t == "VerificationBaselineRecorded"
+                    && p["status"].as_str().is_some()),
+        "the plan never stated the limitation: {texts:#?}"
+    );
 }

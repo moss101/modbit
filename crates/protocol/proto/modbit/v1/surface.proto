@@ -448,6 +448,9 @@ message ContextEntryView {
   bool stub = 13;                 // signature-only, hydrate to read it
   bool injected = 14;             // reached the prompt envelope this turn
   bool used = 15;                 // a later tool call used the path at that revision
+  // What the product claims about this file's language (PX-029): a Tier C or
+  // unsupported entry carries no structural claim, and says so.
+  LanguageStateView language_state = 16;
 }
 
 message ContextInspectorView {
@@ -481,6 +484,32 @@ message ContextInspectorView {
   string selection_symbol = 23;
   string selection_source = 24;
   repeated string selection_review_hunks = 25;
+}
+
+// ---- Language degradation (REQ-PX-029, docs/76) ----
+
+// Allow this task to edit files in languages the product claims no tier for.
+// Without it those edits are refused; with it they carry the provenance.
+message AllowUnsupportedLanguage {
+  Id task_id = 1;
+  repeated string languages = 2;  // language labels, or "*" for any
+  string reason = 3;
+}
+
+message UnsupportedLanguageAllowed {
+  uint64 offset = 1;
+  repeated string languages = 2;
+}
+
+// What the product may claim about one path's language.
+message LanguageStateView {
+  string path = 1;
+  string language = 2;
+  string tier = 3;            // A | B | C | "" when nothing is claimed
+  bool structural = 4;        // symbols and AST anchors are claimed
+  bool needs_opt_in = 5;      // an edit needs the user's per-task opt-in
+  string label = 6;
+  repeated string degradation = 7;
 }
 
 // ---- Connected engineering context (REQ-EV-0161, docs/18) ----

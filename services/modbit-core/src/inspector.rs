@@ -75,6 +75,7 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::ContextInspector
             stub: false,
             injected,
             used: used_of(&e.entry_id),
+            language_state: Some(language_state(&e.provenance.path)),
         });
         if injected {
             v.injected_tokens += u64::from(e.token_cost);
@@ -97,9 +98,25 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::ContextInspector
             stub: true,
             injected: false,
             used: used_of(&st.entry_id),
+            language_state: Some(language_state(&st.provenance.path)),
         });
     }
     v
+}
+
+/// What the product claims about one path's language (PX-029), as clients
+/// show it.
+fn language_state(path: &str) -> wire::LanguageStateView {
+    let s = crate::tools::state_of(path);
+    wire::LanguageStateView {
+        path: path.to_owned(),
+        language: s.language,
+        tier: s.tier.map(|t| format!("{t:?}")).unwrap_or_default(),
+        structural: s.structural,
+        needs_opt_in: s.needs_opt_in,
+        label: s.label,
+        degradation: s.degradation,
+    }
 }
 
 /// The compaction epochs of a task and the prompt-cache economics of the

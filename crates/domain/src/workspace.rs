@@ -34,6 +34,16 @@ pub enum WorkspaceEvent {
         workspace_revision: u64,
         /// Workspace revision before the change.
         previous_revision: u64,
+        /// The language state of the file at the time of the change
+        /// (PX-029): the language label, and `unsupported_language` when the
+        /// product claims no tier for it. Empty on events written before the
+        /// language state existed.
+        #[serde(default)]
+        language: String,
+        /// Whether this edit was made under an explicit per-task opt-in
+        /// because the product claims nothing about the language (docs/76).
+        #[serde(default)]
+        unsupported_language: bool,
     },
 }
 

@@ -72,6 +72,10 @@ pub struct HarnessState {
     pub self_review_clean: bool,
     /// Steering inputs applied so far.
     pub steers: u32,
+    /// Languages the user allowed this task to edit although the product
+    /// claims no tier for them (PX-029).
+    #[serde(default)]
+    pub unsupported_language_opt_in: Vec<String>,
     /// BASELINE verification recorded (docs/64 §1); writes wait for it.
     #[serde(default)]
     pub baseline_recorded: bool,
@@ -160,6 +164,18 @@ pub enum HarnessRefusal {
         out_of_plan_files: u32,
         /// Plan revisions so far.
         plan_revisions: u32,
+    },
+    /// An edit of a file in a language the product claims nothing about,
+    /// without the user's per-task opt-in (docs/76 "Degradation path",
+    /// PX-029): the product does not edit what it cannot reason about unless
+    /// the user says so, and then the edit carries that provenance.
+    UnsupportedLanguage {
+        /// The path.
+        path: String,
+        /// The language, or `unknown` when the path says nothing.
+        language: String,
+        /// What the product does not claim here.
+        degradation: Vec<String>,
     },
     /// An edit of a file the task has not retrieved at the current workspace
     /// revision (docs/28 §2, PX-015): retrieve before edit.
@@ -776,6 +792,16 @@ impl HarnessState {
 
     /// A write must stay inside the current plan's expected files (docs/28
     /// §3): a path outside it is refused until a `plan.update` declares it
+    /// Whether this task may edit a file in `language` (PX-029): a language
+    /// the product claims a tier for is editable; one it claims nothing about
+    /// needs the user's per-task opt-in.
+    #[must_use]
+    pub fn may_edit_language(&self, language: &str) -> bool {
+        self.unsupported_language_opt_in
+            .iter()
+            .any(|l| l == language || l == "*")
+    }
+
     /// (the `PlanRevised` event carries the scope delta). An expected entry
     /// ending in `/` covers a directory.
     pub fn check_write(&self, path: &str) -> Result<(), HarnessRefusal> {

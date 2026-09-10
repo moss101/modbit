@@ -1,0 +1,13 @@
+{
+  "commands": [
+    {
+      "id": "notes",
+      "argv": [
+        "node",
+        "-e",
+        "const fs=require('node:fs');const t=fs.readFileSync('notes.txt','utf8');const c=JSON.parse(fs.readFileSync('catalog.json','utf8'));if(!t.includes('quantity')){console.error('notes.txt: the quantity note is missing');process.exit(1)}if(!c.items.every(i=>Number.isInteger(i.unit_cents))){console.error('catalog.json: unit_cents must be whole cents');process.exit(1)}console.log('notes and catalog agree')"
+      ],
+      "mandatory": true
+    }
+  ]
+}

@@ -625,6 +625,15 @@ pub(crate) async fn rebuild(
                     transcript.drain(..n);
                 }
             }
+            "UnsupportedLanguageOptInRecorded" => {
+                for l in payload["languages"].as_array().into_iter().flatten() {
+                    if let Some(l) = l.as_str()
+                        && !state.unsupported_language_opt_in.iter().any(|x| x == l)
+                    {
+                        state.unsupported_language_opt_in.push(l.to_owned());
+                    }
+                }
+            }
             "ReproductionRecorded" => {
                 state.reproduction = payload["status"].as_str().map(str::to_owned);
             }
@@ -1918,6 +1927,17 @@ async fn run_loop(
                     (entry, StepType::ToolCall, Some("TOOL_NOT_VISIBLE".into()))
                 }
                 _ => {
+                    // PX-029: an edit in a language the product claims nothing about is
+                    // refused until the user opts this task in; the plan gate still applies on
+                    // top of it.
+                    let unsupported: Vec<(String, modbit_verification::tiers::LanguageState)> =
+                        write_targets(&name, &arguments_json)
+                            .iter()
+                            .map(|p| (p.clone(), crate::tools::state_of(p)))
+                            .filter(|(_, s)| {
+                                s.needs_opt_in && !state.may_edit_language(&s.language)
+                            })
+                            .collect();
                     let planned = state.check_tool(&name).and_then(|()| {
                         // docs/28 §3 (PX-016): no silent scope widening — every
                         // written path must be declared by the current plan.
@@ -1945,6 +1965,14 @@ async fn run_loop(
                         step_ordinal += 1;
                     }
                     match planned
+                        .and_then(|()| match unsupported.first() {
+                            Some((path, st)) => Err(HarnessRefusal::UnsupportedLanguage {
+                                path: path.clone(),
+                                language: st.language.clone(),
+                                degradation: st.degradation.clone(),
+                            }),
+                            None => Ok(()),
+                        })
                         .and_then(|()| {
                             if unretrieved.0.is_empty() {
                                 Ok(())
@@ -2040,6 +2068,9 @@ async fn run_loop(
                                     "REPAIR_ATTEMPT_REQUIRED"
                                 }
                                 HarnessRefusal::RetrievalRequired { .. } => "RETRIEVAL_REQUIRED",
+                                HarnessRefusal::UnsupportedLanguage { .. } => {
+                                    "UNSUPPORTED_LANGUAGE"
+                                }
                                 HarnessRefusal::ScopeQuestionRequired { .. } => {
                                     "SCOPE_QUESTION_REQUIRED"
                                 }

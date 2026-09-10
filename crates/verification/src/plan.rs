@@ -42,6 +42,43 @@ pub struct VerificationPlan {
     pub limitations: Vec<String>,
 }
 
+/// The checks a repository declares for itself in `.modbit/verification.json`
+/// (PX-029): `{"commands": [{"id", "argv", "mandatory"?, "reporter_file"?}]}`.
+/// Ids are namespaced so a declaration cannot impersonate a detected runner.
+#[must_use]
+pub fn configured_commands(root: &Path) -> Vec<CheckCommand> {
+    let Ok(text) = std::fs::read_to_string(root.join(".modbit/verification.json")) else {
+        return vec![];
+    };
+    let Ok(v) = serde_json::from_str::<serde_json::Value>(&text) else {
+        return vec![];
+    };
+    v["commands"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|c| {
+            let argv: Vec<String> = c["argv"]
+                .as_array()?
+                .iter()
+                .filter_map(|a| a.as_str().map(str::to_owned))
+                .collect();
+            if argv.is_empty() {
+                return None;
+            }
+            let id = c["id"].as_str().filter(|i| !i.is_empty())?;
+            Some(CheckCommand {
+                id: format!("configured:{id}"),
+                family: RunnerFamily::ConfiguredCommand,
+                argv,
+                mandatory: c["mandatory"].as_bool().unwrap_or(true),
+                reporter_file: c["reporter_file"].as_str().map(str::to_owned),
+            })
+        })
+        .take(8)
+        .collect()
+}
+
 /// Derive the plan from a workspace root.
 #[must_use]
 pub fn derive(
@@ -124,6 +161,18 @@ pub fn derive(
             mandatory: true,
             reporter_file: Some(".modbit-pytest.xml".into()),
         });
+    }
+    // A repository can declare its own checks (docs/64 "Adapters", PX-029):
+    // this is how a language with no runner of ours gets evidence at all, and
+    // the plan says the evidence is heuristic because it is exit-code based.
+    for c in configured_commands(root) {
+        if !commands.iter().any(|x| x.id == c.id) {
+            limitations.push(format!(
+                "`{}` is a repository-configured command; its evidence is HEURISTIC (exit code and output)",
+                c.id
+            ));
+            commands.push(c);
+        }
     }
     for c in extra_commands {
         if !commands.iter().any(|x| x.id == c.id) {

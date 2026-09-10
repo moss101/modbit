@@ -279,3 +279,95 @@ pub fn tier_of(language: &str) -> Option<Tier> {
         .find(|r| r.language == language && verify_record(r).is_ok())
         .map(|r| r.tier)
 }
+
+/// What the product may claim about one file's language, and how it degrades
+/// when it may claim nothing (PX-029, docs/76 "Degradation path").
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LanguageState {
+    /// The language label, or `unknown` when the path says nothing.
+    pub language: String,
+    /// The recorded tier, when a suite earned one.
+    pub tier: Option<Tier>,
+    /// Whether structural claims (symbols, AST anchors) are allowed here.
+    pub structural: bool,
+    /// Whether an edit needs the user's explicit per-task opt-in.
+    pub needs_opt_in: bool,
+    /// What every client shows for this file.
+    pub label: String,
+    /// What the product does instead of what it cannot claim.
+    pub degradation: Vec<String>,
+}
+
+/// The state of a language: its recorded tier decides what may be claimed. A
+/// language with no record is Unsupported however many grammars exist for it.
+#[must_use]
+pub fn state_of(language: Option<&str>) -> LanguageState {
+    let language = language.unwrap_or("unknown").to_owned();
+    match tier_of(&language) {
+        Some(tier @ (Tier::A | Tier::B)) => LanguageState {
+            language,
+            tier: Some(tier),
+            structural: true,
+            needs_opt_in: false,
+            label: tier.label().to_owned(),
+            degradation: vec![],
+        },
+        Some(Tier::C) => LanguageState {
+            language,
+            tier: Some(Tier::C),
+            structural: false,
+            needs_opt_in: false,
+            label: Tier::C.label().to_owned(),
+            degradation: vec![
+                "retrieval is exact and lexical text only; no structural or semantic claim".into(),
+                "verification uses only explicitly configured commands".into(),
+            ],
+        },
+        None => LanguageState {
+            label: format!(
+                "Unsupported: no tier conformance suite has passed for {language}"
+            ),
+            language,
+            tier: None,
+            structural: false,
+            needs_opt_in: true,
+            degradation: vec![
+                "retrieval is exact and lexical text only; no structural or semantic claim".into(),
+                "verification uses only explicitly configured commands".into(),
+                "an edit needs the user's explicit per-task opt-in and carries unsupported_language provenance".into(),
+            ],
+        },
+    }
+}
+
+/// Text and data formats are text, and the `text` record is what says the
+/// product handles them safely: markdown, JSON, TOML, YAML and plain text get
+/// Tier C from that record rather than from a guess about their contents.
+#[must_use]
+pub fn text_format(language: Option<&str>) -> bool {
+    matches!(
+        language,
+        Some("markdown" | "json" | "toml" | "yaml" | "text" | "csv" | "html" | "css" | "sql")
+    )
+}
+
+/// The state of a path: its extension gives the language, the records give the
+/// tier, and a text or data format is answered by the `text` record.
+///
+/// A file whose language cannot be identified is text too: the product makes
+/// no claim about it and never had one to lose. The opt-in exists for the
+/// other case — a language a reader would expect the product to understand,
+/// with no suite behind it.
+#[must_use]
+pub fn state_of_path(path: &str, language: Option<&str>) -> LanguageState {
+    if language.is_none() || text_format(language) {
+        let mut state = state_of(Some("text"));
+        state.language = language.unwrap_or("text").to_owned();
+        if language.is_none() {
+            state.label = format!("{} (the file's language is not identified)", state.label);
+        }
+        return state;
+    }
+    let _ = path;
+    state_of(language)
+}

@@ -1,0 +1,2 @@
+The order quantity must be a positive integer.
+Totals are computed in cents and formatted with two decimals.

@@ -9,8 +9,18 @@
   "every_shipped_record_stands_and_an_unrecorded_language_is_unsupported",
   "qual_px_026_language_labels_are_honest_and_served_to_every_client"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "bd1cf3a"
+ ],
+ "runs": [
+  {
+   "id": "gha-34534984211",
+   "kind": "hosted CI on bd1cf3a",
+   "result": "PASS: all jobs green on macOS, Linux and Windows (the tier suites ran on the real fixtures on every platform)",
+   "url": "https://github.com/moss101/modbit/actions/runs/34534984211",
+   "log": "ci-run-34534984211.json, ci-run-34534984211-tests.log"
+  }
+ ],
  "proof": "Eight tier checks run the product against the real fixture repositories for rust, python and typescript: byte-preserving edits, revision-bound exact and BM25 hits, attributed configured-command evidence, tree-sitter symbol extraction, a located failure from the output parser, a refused stale-revision edit, language-service symbols and references, and a seeded defect reported at its line and gone after the fix. A tier is every check of it and below; a skip earns nothing; verify_record refuses a record that claims more than its checks show and the suite refuses a record that claims more than the run earned. Each client's language label carries the recorded line or says no suite has run.",
  "audit": "NOT-FOUND before this task: docs/76 defined the tiers, nothing ran a suite, and nothing stopped a label from claiming a tier no run had earned.",
  "limitations": "The record is what a claim may rest on, not the claim: labels stay ALPHA_BASELINE and promotion is PX-028. Index latency budgets and the competence suite at baseline are not measured. A language service that does not answer records a skip. JavaScript has no fixture and no record."

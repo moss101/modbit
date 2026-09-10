@@ -12580,11 +12580,13 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0161",
    "source": "docs/41",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m3/IMP-EV-0161/TASK_CARD.md",
     "test:qual_ev_0161_an_attached_ticket_is_labelled_context_and_cannot_grant_a_tool",
-    "test:qual_ev_0169_context_pack_reaches_the_prompt_with_provenance_or_not_at_all"
+    "test:qual_ev_0169_context_pack_reaches_the_prompt_with_provenance_or_not_at_all",
+    "commit:7bfc474",
+    "run:gha-34533043139"
    ],
    "notes": [
     {
@@ -12610,9 +12612,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "a hostile ticket enters as labelled context and grants nothing: tool refused, write refused, lease unchanged"
+    },
+    {
+     "at": "2026-09-10T21:58:35Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34533043139 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-10T21:58:35Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34533043139; limitations in evidence/m3/IMP-EV-0161/TASK_CARD.md"
     }
    ],
-   "status_changed_on": "2026-09-10T21:35:12Z"
+   "status_changed_on": "2026-09-10T21:58:35Z"
   },
   {
    "id": "IMP-EV-0162",
@@ -22293,12 +22307,14 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-027",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m3/PX-027/TASK_CARD.md",
     "test:qual_px_027_language_tier_suites_run_on_real_fixtures_and_a_tier_is_only_a_recorded_pass",
     "test:a_record_that_claims_more_than_it_shows_is_refused",
-    "test:every_shipped_record_stands_and_an_unrecorded_language_is_unsupported"
+    "test:every_shipped_record_stands_and_an_unrecorded_language_is_unsupported",
+    "commit:bd1cf3a",
+    "run:gha-34534984211"
    ],
    "notes": [
     {
@@ -22324,9 +22340,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "rust, python and typescript each earned Tier A on their fixtures; a record can never claim more than a run earned"
+    },
+    {
+     "at": "2026-09-10T22:19:10Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34534984211 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-10T22:19:10Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34534984211; limitations in evidence/m3/PX-027/TASK_CARD.md"
     }
    ],
-   "status_changed_on": "2026-09-10T21:56:32Z"
+   "status_changed_on": "2026-09-10T22:19:10Z"
   },
   {
    "id": "PX-028",
@@ -22373,8 +22401,39 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-029",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "artifact:evidence/m3/PX-029/TASK_CARD.md",
+    "test:qual_px_029_an_unsupported_language_degrades_explicitly_and_edits_need_an_opt_in",
+    "test:qual_px_000_headless_cli_task_lifecycle"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T22:19:10Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: PX-027 recorded which languages have a tier; nothing acted on the answer"
+    },
+    {
+     "at": "2026-09-10T22:19:10Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "language state from the records; the unsupported-language edit gate; configured commands from .modbit/verification.json"
+    },
+    {
+     "at": "2026-09-10T22:19:10Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "the Core refuses, the log carries the provenance, the inspector and the CLI show the state"
+    },
+    {
+     "at": "2026-09-10T22:19:10Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "a Go file and a markdown file in one run: no structural claim, a refused edit, an opt-in, and the provenance on the log"
+    }
+   ],
+   "status_changed_on": "2026-09-10T22:19:10Z"
   },
   {
    "id": "PX-030",

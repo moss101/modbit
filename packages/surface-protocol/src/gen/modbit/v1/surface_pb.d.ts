@@ -1878,6 +1878,14 @@ export declare type ContextEntryView = Message<"modbit.v1.ContextEntryView"> & {
    * @generated from field: bool used = 15;
    */
   used: boolean;
+
+  /**
+   * What the product claims about this file's language (PX-029): a Tier C or
+   * unsupported entry carries no structural claim, and says so.
+   *
+   * @generated from field: modbit.v1.LanguageStateView language_state = 16;
+   */
+  languageState?: LanguageStateView | undefined;
 };
 
 /**
@@ -2043,6 +2051,112 @@ export declare type ContextInspectorView = Message<"modbit.v1.ContextInspectorVi
  * Use `create(ContextInspectorViewSchema)` to create a new message.
  */
 export declare const ContextInspectorViewSchema: GenMessage<ContextInspectorView>;
+
+/**
+ * Allow this task to edit files in languages the product claims no tier for.
+ * Without it those edits are refused; with it they carry the provenance.
+ *
+ * @generated from message modbit.v1.AllowUnsupportedLanguage
+ */
+export declare type AllowUnsupportedLanguage = Message<"modbit.v1.AllowUnsupportedLanguage"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * language labels, or "*" for any
+   *
+   * @generated from field: repeated string languages = 2;
+   */
+  languages: string[];
+
+  /**
+   * @generated from field: string reason = 3;
+   */
+  reason: string;
+};
+
+/**
+ * Describes the message modbit.v1.AllowUnsupportedLanguage.
+ * Use `create(AllowUnsupportedLanguageSchema)` to create a new message.
+ */
+export declare const AllowUnsupportedLanguageSchema: GenMessage<AllowUnsupportedLanguage>;
+
+/**
+ * @generated from message modbit.v1.UnsupportedLanguageAllowed
+ */
+export declare type UnsupportedLanguageAllowed = Message<"modbit.v1.UnsupportedLanguageAllowed"> & {
+  /**
+   * @generated from field: uint64 offset = 1;
+   */
+  offset: bigint;
+
+  /**
+   * @generated from field: repeated string languages = 2;
+   */
+  languages: string[];
+};
+
+/**
+ * Describes the message modbit.v1.UnsupportedLanguageAllowed.
+ * Use `create(UnsupportedLanguageAllowedSchema)` to create a new message.
+ */
+export declare const UnsupportedLanguageAllowedSchema: GenMessage<UnsupportedLanguageAllowed>;
+
+/**
+ * What the product may claim about one path's language.
+ *
+ * @generated from message modbit.v1.LanguageStateView
+ */
+export declare type LanguageStateView = Message<"modbit.v1.LanguageStateView"> & {
+  /**
+   * @generated from field: string path = 1;
+   */
+  path: string;
+
+  /**
+   * @generated from field: string language = 2;
+   */
+  language: string;
+
+  /**
+   * A | B | C | "" when nothing is claimed
+   *
+   * @generated from field: string tier = 3;
+   */
+  tier: string;
+
+  /**
+   * symbols and AST anchors are claimed
+   *
+   * @generated from field: bool structural = 4;
+   */
+  structural: boolean;
+
+  /**
+   * an edit needs the user's per-task opt-in
+   *
+   * @generated from field: bool needs_opt_in = 5;
+   */
+  needsOptIn: boolean;
+
+  /**
+   * @generated from field: string label = 6;
+   */
+  label: string;
+
+  /**
+   * @generated from field: repeated string degradation = 7;
+   */
+  degradation: string[];
+};
+
+/**
+ * Describes the message modbit.v1.LanguageStateView.
+ * Use `create(LanguageStateViewSchema)` to create a new message.
+ */
+export declare const LanguageStateViewSchema: GenMessage<LanguageStateView>;
 
 /**
  * An approved spec, issue or design document brought into a task. It becomes

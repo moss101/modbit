@@ -7,8 +7,18 @@
   "qual_ev_0169_context_pack_reaches_the_prompt_with_provenance_or_not_at_all",
   "m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "7bfc474"
+ ],
+ "runs": [
+  {
+   "id": "gha-34533043139",
+   "kind": "hosted CI on 7bfc474",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34533043139",
+   "log": "ci-run-34533043139.json, ci-run-34533043139-tests.log"
+  }
+ ],
  "proof": "An approved document is stored by digest, recorded on the task's log with the trust label UNTRUSTED_EXTERNAL_CONTENT, and becomes a retrieval candidate whose pack entry carries the source the user named, the content hash and a reason saying it is untrusted external content, data and never instructions. A real run proves the injection cannot grant anything: the ticket claims new authority, the tool it names is not on the compiled surface and is refused before dispatch, the write is refused for want of a plan, the file is unchanged, and the capability lease is identical before and after.",
  "audit": "NOT-FOUND before this task: media attachments existed, engineering documents had no way into context.",
  "limitations": "Modbit fetches nothing (the client brings the text); no connectors and no refresh; 256 KiB bound; documents enter whole rather than chunked."

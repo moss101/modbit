@@ -311,6 +311,16 @@ pub enum TaskEvent {
         /// Estimated tokens of the projection.
         projection_tokens: u32,
     },
+    /// `UnsupportedLanguageOptInRecorded` (REQ-PX-029, docs/76 "Degradation
+    /// path"): the user allowed this task to edit files in languages the
+    /// product makes no claim about. Without it those edits are refused; with
+    /// it they carry `unsupported_language` provenance. No state change.
+    UnsupportedLanguageOptInRecorded {
+        /// Language labels the user allowed (`go`, `java`, `unknown`, …).
+        languages: Vec<String>,
+        /// Why, in the user's words.
+        reason: String,
+    },
     /// `ContextDocumentAttached` (REQ-EV-0161, docs/18 "Connected engineering
     /// context"): an approved spec, issue or design document the user brought
     /// into the task. It enters retrieval as labelled, provenance-carrying
@@ -508,6 +518,7 @@ impl TaskEvent {
             Self::AttachmentIngested { .. } => "AttachmentIngested",
             Self::PlanRecorded { .. } => "PlanRecorded",
             Self::PlanRevised { .. } => "PlanRevised",
+            Self::UnsupportedLanguageOptInRecorded { .. } => "UnsupportedLanguageOptInRecorded",
             Self::ContextDocumentAttached { .. } => "ContextDocumentAttached",
             Self::SelectionRecorded { .. } => "SelectionRecorded",
             Self::SelfReviewRecorded { .. } => "SelfReviewRecorded",
@@ -622,6 +633,7 @@ impl Task {
             | TaskEvent::ReproductionRecorded { .. }
             | TaskEvent::SelectionRecorded { .. }
             | TaskEvent::ContextDocumentAttached { .. }
+            | TaskEvent::UnsupportedLanguageOptInRecorded { .. }
             | TaskEvent::ScopeExpansionRecorded { .. }
             | TaskEvent::RetrievalRecorded { .. }
             | TaskEvent::RepairAttemptRecorded { .. }

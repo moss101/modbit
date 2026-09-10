@@ -1,0 +1,6 @@
+{
+  "items": [
+    { "sku": "A-1", "unit_cents": 250 },
+    { "sku": "B-2", "unit_cents": 1999 }
+  ]
+}

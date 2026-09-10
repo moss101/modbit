@@ -91,6 +91,31 @@ pub(crate) fn catalog() -> Vec<wire::LanguageSupportView> {
                 "edits_preserve_crlf_and_refuse_non_utf8",
             ],
         ),
+        // Text and data formats are a language the product does make a claim
+        // about, and the claim is Tier C: safe text edits, exact and lexical
+        // retrieval, and evidence only from commands the repository configures
+        // (PX-027 record, docs/76).
+        wire::LanguageSupportView {
+            language: "text".into(),
+            tier: "TIER_C".into(),
+            label: "Tier C — text-safe support: safe revision-bound edits, exact and BM25 retrieval, evidence only from configured commands".into(),
+            fixture: "tests/fixtures/repos/text-docs".into(),
+            proven: vec![
+                "revision_bound_edits_with_preserved_encoding_and_line_endings".into(),
+                "exact_and_bm25_retrieval".into(),
+                "configured_command_evidence (.modbit/verification.json)".into(),
+            ],
+            provisional: vec![],
+            not_claimed: vec![
+                "structural symbols or AST anchors".into(),
+                "diagnostics: text and data formats have no language service here".into(),
+            ],
+            evidence_tests: vec![
+                "qual_px_027_language_tier_suites_run_on_real_fixtures_and_a_tier_is_only_a_recorded_pass".into(),
+            ],
+            note: "Markdown, JSON, TOML, YAML and plain text are answered by this record.".into(),
+            conformance: conformance("text"),
+        },
         wire::LanguageSupportView {
             language: "*".into(),
             tier: "UNSUPPORTED".into(),

@@ -1,0 +1,15 @@
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:02:59.7319391Z test qual_px_026_language_labels_are_honest_and_served_to_every_clien
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:03:48.4440680Z test qual_px_027_language_tier_suites_run_on_real_fixtures_and_a_tier
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:04:27.5687443Z test a_record_that_claims_more_than_it_shows_is_refused ... ok
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:04:27.5688025Z test a_tier_is_every_check_of_it_and_of_every_tier_below_it ... ok
+rust CI_COMPATIBLE (windows-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:04:27.5695479Z test every_shipped_record_stands_and_an_unrecorded_language_is_unsupp
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:01:14.8317190Z test qual_px_026_language_labels_are_honest_and_served_to_every_client 
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:01:46.7267280Z test qual_px_027_language_tier_suites_run_on_real_fixtures_and_a_tier_i
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:02:18.8032700Z test a_record_that_claims_more_than_it_shows_is_refused ... ok
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:02:18.8034240Z test a_tier_is_every_check_of_it_and_of_every_tier_below_it ... ok
+rust CI_COMPATIBLE (macos-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:02:18.8037540Z test every_shipped_record_stands_and_an_unrecorded_language_is_unsuppor
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T21:59:54.4437856Z test qual_px_026_language_labels_are_honest_and_served_to_every_client
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:00:21.4244146Z test qual_px_027_language_tier_suites_run_on_real_fixtures_and_a_tier_
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:00:41.4491934Z test a_record_that_claims_more_than_it_shows_is_refused ... ok
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:00:41.4492635Z test a_tier_is_every_check_of_it_and_of_every_tier_below_it ... ok
+rust CI_COMPATIBLE (ubuntu-latest) Test (includes real cargo-metadata forbidden-edge test) 2026-09-10T22:00:41.4493473Z test every_shipped_record_stands_and_an_unrecorded_language_is_unsuppo

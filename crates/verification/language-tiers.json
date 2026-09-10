@@ -183,6 +183,37 @@
     "incremental index latency within a budget (no latency budget is measured yet)",
     "the competence suite tasks for this language at baseline (PX-020)"
    ]
+  },
+  {
+   "language": "text",
+   "fixture": "tests/fixtures/repos/text-docs",
+   "tier": "C",
+   "checks": [
+    {
+     "id": "c1_text_edit_preserves_encoding_and_line_endings",
+     "tier": "C",
+     "status": "pass",
+     "detail": "edits never corrupt encoding or line endings"
+    },
+    {
+     "id": "c2_exact_and_lexical_retrieval",
+     "tier": "C",
+     "status": "pass",
+     "detail": "exact and BM25 retrieval return revision-bound hits for this language"
+    },
+    {
+     "id": "c3_configured_command_evidence",
+     "tier": "C",
+     "status": "pass",
+     "detail": "test or build evidence through a configured command is attributed to the task"
+    }
+   ],
+   "suite_test": "qual_px_027_language_tier_suites_run_on_real_fixtures_and_a_tier_is_only_a_recorded_pass",
+   "not_claimed": [
+    "structural symbols or AST anchors for text and data formats (Tier B and above)",
+    "any diagnostics: a text repository has no language service and none is claimed",
+    "evidence beyond the commands the repository configures in .modbit/verification.json"
+   ]
   }
  ]
 }

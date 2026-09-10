@@ -1181,12 +1181,23 @@ pub(crate) fn file_changed_events(
                 diff_ref,
                 workspace_revision: c.workspace_revision.number,
                 previous_revision: previous,
+                language: state_of(&c.path).language.clone(),
+                unsupported_language: state_of(&c.path).needs_opt_in,
             },
             Actor::Core("tool-host".into()),
         ));
         previous = c.workspace_revision.number;
     }
     events
+}
+
+/// What the product may claim about a path's language (PX-029, docs/76): the
+/// extension gives the language, the recorded tier decides the rest.
+pub fn state_of(path: &str) -> modbit_verification::tiers::LanguageState {
+    modbit_verification::tiers::state_of_path(
+        path,
+        modbit_retrieval::index::language_of(path).as_deref(),
+    )
 }
 
 /// Unified diff (3 lines of context, `a/` `b/` headers) between two texts.
@@ -1563,7 +1574,30 @@ impl modbit_tools::SearchPort for IndexPort {
                     path_glob: req.path_glob.clone(),
                     max: req.max_hits,
                 };
-                serde_json::json!({"symbols": symbols.query(&sq).map_err(|e| ("BAD_GLOB".to_owned(), e))?})
+                // PX-029: a grammar is not a classification. A file whose
+                // language has no recorded structural tier is answered as
+                // text, with the reason, rather than with symbols we do not
+                // claim to understand.
+                let all = symbols.query(&sq).map_err(|e| ("BAD_GLOB".to_owned(), e))?;
+                let mut degraded: Vec<serde_json::Value> = Vec::new();
+                let kept: Vec<_> = all
+                    .into_iter()
+                    .filter(|sym| {
+                        let st = state_of(&sym.path);
+                        if !st.structural {
+                            let entry = serde_json::json!({
+                                "path": sym.path,
+                                "language": st.language,
+                                "reason": st.label,
+                            });
+                            if !degraded.contains(&entry) {
+                                degraded.push(entry);
+                            }
+                        }
+                        st.structural
+                    })
+                    .collect();
+                serde_json::json!({"symbols": kept, "text_only": degraded})
             }
             "semantic" => {
                 let hits = semantic
@@ -1822,6 +1856,9 @@ impl modbit_tools::SearchPort for IndexPort {
                     }
                 };
                 let signatures_of = |p: &str| -> Vec<String> {
+                    if !state_of(p).structural {
+                        return vec![];
+                    }
                     symbols
                         .symbols_in(p)
                         .iter()
