@@ -11134,8 +11134,53 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0132",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:e5ff94e",
+    "test:evidence_search_scopes_by_tenant_run_and_step",
+    "test:qual_ev_0134_deferred_tool_search_activates_without_authorizing_and_hydrates_schemas_lazily",
+    "run:gha-34466693450",
+    "artifact:evidence/m3/IMP-EV-0132/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T10:44:46Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED in this batch (was NOT-FOUND)"
+    },
+    {
+     "at": "2026-09-10T10:44:46Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented (see card)"
+    },
+    {
+     "at": "2026-09-10T10:44:46Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the Core, tools and clients as the card states"
+    },
+    {
+     "at": "2026-09-10T10:44:46Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real fixtures and stores"
+    },
+    {
+     "at": "2026-09-10T10:44:46Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34466693450 on 4fc91ae green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T10:44:46Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34466693450"
+    }
+   ],
+   "status_changed_on": "2026-09-10T10:44:46Z"
   },
   {
    "id": "IMP-EV-0133",
@@ -11211,8 +11256,53 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0134",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:dc7c8da",
+    "test:qual_ev_0134_deferred_tool_search_activates_without_authorizing_and_hydrates_schemas_lazily",
+    "test:qual_ev_0096_0116_0133_0044_0031_tool_surface_is_compiled_from_support_and_policy",
+    "run:gha-34466693450",
+    "artifact:evidence/m3/IMP-EV-0134/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T10:44:46Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED in this batch (was NOT-FOUND: every visible tool was projected with its schema on every turn)"
+    },
+    {
+     "at": "2026-09-10T10:44:46Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented (see card)"
+    },
+    {
+     "at": "2026-09-10T10:44:46Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the Core, tools and clients as the card states"
+    },
+    {
+     "at": "2026-09-10T10:44:46Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real fixtures and stores"
+    },
+    {
+     "at": "2026-09-10T10:44:46Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34466693450 on 4fc91ae green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T10:44:46Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34466693450"
+    }
+   ],
+   "status_changed_on": "2026-09-10T10:44:46Z"
   },
   {
    "id": "IMP-EV-0135",
@@ -12577,8 +12667,53 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0177",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:dc7c8da",
+    "test:qual_ev_0134_deferred_tool_search_activates_without_authorizing_and_hydrates_schemas_lazily",
+    "test:qual_ev_0096_0116_0133_0044_0031_tool_surface_is_compiled_from_support_and_policy",
+    "run:gha-34466693450",
+    "artifact:evidence/m3/IMP-EV-0177/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T10:44:46Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED in this batch for the Core's own catalog (was NOT-FOUND); there is no MCP catalog yet — the benchmark is the Core's 28 host tools, and the measured saving is stated, not the docs target"
+    },
+    {
+     "at": "2026-09-10T10:44:47Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented (see card)"
+    },
+    {
+     "at": "2026-09-10T10:44:47Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the Core, tools and clients as the card states"
+    },
+    {
+     "at": "2026-09-10T10:44:47Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real fixtures and stores"
+    },
+    {
+     "at": "2026-09-10T10:44:47Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34466693450 on 4fc91ae green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T10:44:47Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34466693450"
+    }
+   ],
+   "status_changed_on": "2026-09-10T10:44:47Z"
   },
   {
    "id": "IMP-EV-0178",
@@ -13654,8 +13789,53 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0229",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:dc7c8da",
+    "test:qual_ev_0134_deferred_tool_search_activates_without_authorizing_and_hydrates_schemas_lazily",
+    "test:qual_ev_0096_0116_0133_0044_0031_tool_surface_is_compiled_from_support_and_policy",
+    "run:gha-34466693450",
+    "artifact:evidence/m3/IMP-EV-0229/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T10:44:47Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED in this batch (was PARTIAL: tool families existed in the matrix but not in projection)"
+    },
+    {
+     "at": "2026-09-10T10:44:47Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented (see card)"
+    },
+    {
+     "at": "2026-09-10T10:44:47Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the Core, tools and clients as the card states"
+    },
+    {
+     "at": "2026-09-10T10:44:47Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real fixtures and stores"
+    },
+    {
+     "at": "2026-09-10T10:44:47Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34466693450 on 4fc91ae green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T10:44:47Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34466693450"
+    }
+   ],
+   "status_changed_on": "2026-09-10T10:44:47Z"
   },
   {
    "id": "IMP-EV-0230",
@@ -21166,8 +21346,55 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-033",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "milestone_override": "DR-M2-002: real pytest evidence lands with the python-service fixture of the M3 language baseline (PX-026); cargo and vitest reports are proven in M2.8",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:4fc91ae",
+    "test:pytest_fixture_produces_structured_reports_with_stable_failure_signatures_when_pytest_is_installed",
+    "test:vitest_fixture_parses_structured_reports_when_vitest_is_installed",
+    "test:pytest_junit_and_configured_command_adapters",
+    "test:m2_8_verification_engine_gates_completion_on_real_cargo_fixture",
+    "run:gha-34466693450",
+    "artifact:evidence/m3/PX-033/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T10:44:47Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "COMPLETED in this batch with the real pytest run (was PARTIAL)"
+    },
+    {
+     "at": "2026-09-10T10:44:47Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented (see card)"
+    },
+    {
+     "at": "2026-09-10T10:44:48Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the Core, tools and clients as the card states"
+    },
+    {
+     "at": "2026-09-10T10:44:48Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "named tests on real fixtures and stores"
+    },
+    {
+     "at": "2026-09-10T10:44:48Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34466693450 on 4fc91ae green on macOS, Linux, Windows"
+    },
+    {
+     "at": "2026-09-10T10:44:48Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34466693450"
+    }
+   ],
+   "status_changed_on": "2026-09-10T10:44:48Z"
   },
   {
    "id": "PX-034",

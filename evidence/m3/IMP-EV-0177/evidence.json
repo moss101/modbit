@@ -6,8 +6,18 @@
   "qual_ev_0134_deferred_tool_search_activates_without_authorizing_and_hydrates_schemas_lazily",
   "qual_ev_0096_0116_0133_0044_0031_tool_surface_is_compiled_from_support_and_policy"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "dc7c8da"
+ ],
+ "runs": [
+  {
+   "id": "gha-34466693450",
+   "kind": "hosted CI on 4fc91ae (contains the commits above)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34466693450",
+   "log": "ci-run-34466693450.json, ci-run-34466693450-tests.log"
+  }
+ ],
  "proof": "measured on the 28-tool host catalog under review_isolated: the lazy first-turn projection is 10678 bytes (18 tools incl. harness) against 14253 bytes eager (28 tools) in the provider wire shape \u2014 about 25% smaller; after discovery lsp.symbols is projected with its parameters schema (the test asserts the schema is present only after activation)",
  "audit": "IMPLEMENTED in this batch for the Core's own catalog (was NOT-FOUND); there is no MCP catalog yet \u2014 the benchmark is the Core's 28 host tools, and the measured saving is stated, not the docs target"
 }

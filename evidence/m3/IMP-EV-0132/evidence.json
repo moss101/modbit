@@ -6,8 +6,18 @@
   "evidence_search_scopes_by_tenant_run_and_step",
   "qual_ev_0134_deferred_tool_search_activates_without_authorizing_and_hydrates_schemas_lazily"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "e5ff94e"
+ ],
+ "runs": [
+  {
+   "id": "gha-34466693450",
+   "kind": "hosted CI on 4fc91ae (contains the commits above)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34466693450",
+   "log": "ci-run-34466693450.json, ci-run-34466693450-tests.log"
+  }
+ ],
  "proof": "tenant-scoped evidence search over events, tool calls and checks with run/step/tool-call ids",
  "audit": "IMPLEMENTED in this batch (was NOT-FOUND)"
 }

@@ -1,0 +1,12 @@
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T10:35:26.3390393Z test m2_8_verification_engine_gates_completion_on_real_cargo_fixture ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T10:35:53.6521204Z test pytest_junit_and_configured_command_adapters ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T10:35:55.3192371Z test pytest_fixture_produces_structured_reports_with_stable_failure_signatures_when_pytest_is_installed ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T10:35:55.9891685Z test vitest_fixture_parses_structured_reports_when_vitest_is_installed ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T10:37:13.2687575Z test m2_8_verification_engine_gates_completion_on_real_cargo_fixture ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T10:38:07.1346151Z test pytest_junit_and_configured_command_adapters ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T10:38:10.4190961Z test pytest_fixture_produces_structured_reports_with_stable_failure_signatures_when_pytest_is_installed ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T10:38:10.8573545Z test vitest_fixture_parses_structured_reports_when_vitest_is_installed ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T10:36:35.9652090Z test m2_8_verification_engine_gates_completion_on_real_cargo_fixture ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T10:37:14.0217220Z test pytest_junit_and_configured_command_adapters ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T10:37:16.6940590Z test pytest_fixture_produces_structured_reports_with_stable_failure_signatures_when_pytest_is_installed ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T10:37:17.1437670Z test vitest_fixture_parses_structured_reports_when_vitest_is_installed ... ok

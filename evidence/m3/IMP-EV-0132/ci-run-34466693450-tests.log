@@ -1,0 +1,6 @@
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T10:35:28.7268140Z test qual_ev_0134_deferred_tool_search_activates_without_authorizing_and_hydrates_schemas_lazily ... ok
+rust CI_COMPATIBLE (ubuntu-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T10:35:40.6066271Z test evidence_search_scopes_by_tenant_run_and_step ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T10:37:20.7182866Z test qual_ev_0134_deferred_tool_search_activates_without_authorizing_and_hydrates_schemas_lazily ... ok
+rust CI_COMPATIBLE (windows-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T10:37:42.7876919Z test evidence_search_scopes_by_tenant_run_and_step ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T10:36:41.2326700Z test qual_ev_0134_deferred_tool_search_activates_without_authorizing_and_hydrates_schemas_lazily ... ok
+rust CI_COMPATIBLE (macos-latest)	Test (includes real cargo-metadata forbidden-edge test)	2026-09-10T10:36:58.7267900Z test evidence_search_scopes_by_tenant_run_and_step ... ok

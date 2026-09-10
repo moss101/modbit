@@ -6,8 +6,18 @@
   "qual_ev_0134_deferred_tool_search_activates_without_authorizing_and_hydrates_schemas_lazily",
   "qual_ev_0096_0116_0133_0044_0031_tool_surface_is_compiled_from_support_and_policy"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "dc7c8da"
+ ],
+ "runs": [
+  {
+   "id": "gha-34466693450",
+   "kind": "hosted CI on 4fc91ae (contains the commits above)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34466693450",
+   "log": "ci-run-34466693450.json, ci-run-34466693450-tests.log"
+  }
+ ],
  "proof": "toolsets group the deferred catalog for projection only; enabling by discovery cannot expose a denied tool because discovery searches `visible_specs`, which already applies the execution profile, the lease and the kernel \u2014 under review_isolated an explicit activate of git.worktree.create returns no match and the git toolset never appears in a projection",
  "audit": "IMPLEMENTED in this batch (was PARTIAL: tool families existed in the matrix but not in projection)"
 }

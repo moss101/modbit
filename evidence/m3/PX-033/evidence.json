@@ -8,8 +8,18 @@
   "pytest_junit_and_configured_command_adapters",
   "m2_8_verification_engine_gates_completion_on_real_cargo_fixture"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "4fc91ae"
+ ],
+ "runs": [
+  {
+   "id": "gha-34466693450",
+   "kind": "hosted CI on 4fc91ae (contains the commits above)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34466693450",
+   "log": "ci-run-34466693450.json, ci-run-34466693450-tests.log"
+  }
+ ],
  "proof": "real pytest run on python-service: STRUCTURED report, stable pytest: check ids with location/error class/fingerprint, raw log artifact, identical failure signatures across two runs at one revision; cargo and vitest proven by M2.8 tests",
  "audit": "COMPLETED in this batch with the real pytest run (was PARTIAL)"
 }
