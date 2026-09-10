@@ -62,6 +62,18 @@ pub enum Role {
     Tool,
 }
 
+/// Media bytes on their way to a provider. The canonical model names media by
+/// digest; this carries the one copy the dispatch needs and never prints or
+/// serializes it (docs/25: bytes live in the object store, not in the log).
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MediaPayload(pub String);
+
+impl fmt::Debug for MediaPayload {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "MediaPayload(<{} base64 chars redacted>)", self.0.len())
+    }
+}
+
 /// One content part.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
@@ -89,6 +101,39 @@ pub enum ContentPart {
         /// Whether the tool failed.
         is_error: bool,
     },
+    /// Media the model may look at (REQ-EV-0188). Provider-neutral: it names
+    /// the egress copy by digest and says what it is; each adapter decides
+    /// where its API accepts it, and a provider that refuses media inside a
+    /// tool result gets the same media as a split follow-up message instead.
+    Media {
+        /// Object hash of the egress copy (metadata already stripped).
+        source_ref: String,
+        /// MIME type of those bytes, e.g. `image/png`.
+        mime: String,
+        /// What it is, in words. Survives when a provider cannot take bytes.
+        alt: String,
+        /// The tool call this media answers, when it came from a tool result.
+        call_id: Option<String>,
+        /// The bytes, base64, for this dispatch only.
+        data_base64: MediaPayload,
+    },
+}
+
+impl ContentPart {
+    /// The input modality this part needs from the model (`image`, `pdf`, …).
+    #[must_use]
+    pub fn modality(&self) -> Option<&'static str> {
+        let Self::Media { mime, .. } = self else {
+            return None;
+        };
+        Some(match mime.split('/').next().unwrap_or_default() {
+            "image" => "image",
+            "audio" => "audio",
+            "video" => "video",
+            _ if mime == "application/pdf" => "pdf",
+            _ => "file",
+        })
+    }
 }
 
 /// One message.

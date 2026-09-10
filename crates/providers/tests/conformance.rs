@@ -1106,3 +1106,301 @@ async fn qual_ev_0031_org_policy_blocks_the_provider_despite_the_request() {
     let gw = ProviderGateway::new(vec![ep]).with_policy(OrgModelPolicy::parse("block=anthropic/*"));
     assert!(gw.route(&req, &Requirements::default()).is_ok());
 }
+
+/// A strict OpenAI-compatible endpoint: the Chat Completions API takes a
+/// string in a `tool` message and image parts only on a `user` message. This
+/// server enforces exactly that and answers 400 otherwise, so the adapter's
+/// media placement is proven against a refusal, not against a guess.
+async fn strict_openai() -> FakeProvider {
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let seen = Arc::new(Mutex::new(Vec::new()));
+    let client_gone = Arc::new(Mutex::new(false));
+    let s2 = Arc::clone(&seen);
+    tokio::spawn(async move {
+        loop {
+            let Ok((mut sock, _)) = listener.accept().await else {
+                return;
+            };
+            let seen = Arc::clone(&s2);
+            tokio::spawn(async move {
+                let mut buf = Vec::new();
+                let mut tmp = [0u8; 4096];
+                let (head_end, body_len) = loop {
+                    let n = sock.read(&mut tmp).await.unwrap_or(0);
+                    if n == 0 {
+                        return;
+                    }
+                    buf.extend_from_slice(&tmp[..n]);
+                    if let Some(i) = buf.windows(4).position(|w| w == b"\r\n\r\n") {
+                        let head = String::from_utf8_lossy(&buf[..i]).to_string();
+                        let len = head
+                            .lines()
+                            .find_map(|l| {
+                                let (k, v) = l.split_once(':')?;
+                                (k.eq_ignore_ascii_case("content-length"))
+                                    .then(|| v.trim().parse::<usize>().ok())
+                                    .flatten()
+                            })
+                            .unwrap_or(0);
+                        break (i + 4, len);
+                    }
+                };
+                while buf.len() < head_end + body_len {
+                    let n = sock.read(&mut tmp).await.unwrap_or(0);
+                    if n == 0 {
+                        break;
+                    }
+                    buf.extend_from_slice(&tmp[..n]);
+                }
+                let body: Value = serde_json::from_slice(&buf[head_end..]).unwrap_or(Value::Null);
+                seen.lock().unwrap().push(Seen {
+                    path: "/v1/chat/completions".into(),
+                    headers: vec![],
+                    body: body.clone(),
+                });
+                let refusal = body["messages"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .find_map(|m| {
+                        let role = m["role"].as_str().unwrap_or_default();
+                        if role == "tool" && !m["content"].is_string() {
+                            return Some("tool message content must be a string");
+                        }
+                        let has_image = m["content"]
+                            .as_array()
+                            .into_iter()
+                            .flatten()
+                            .any(|b| b["type"] == "image_url");
+                        (has_image && role != "user")
+                            .then_some("image parts are only allowed on a user message")
+                    });
+                if let Some(message) = refusal {
+                    let payload =
+                        json!({"error": {"message": message, "type": "invalid_request_error"}})
+                            .to_string();
+                    let _ = sock
+                        .write_all(
+                            format!(
+                                "HTTP/1.1 400 Bad Request\r\ncontent-type: application/json\r\ncontent-length: {}\r\n\r\n{payload}",
+                                payload.len()
+                            )
+                            .as_bytes(),
+                        )
+                        .await;
+                    return;
+                }
+                write_frames(&mut sock, openai_text_stream(&["looks like a label"])).await;
+            });
+        }
+    });
+    FakeProvider {
+        base_url: format!("http://127.0.0.1:{port}"),
+        seen,
+        client_gone,
+    }
+}
+
+fn vision_model(name: &str, modalities: &[&str]) -> ModelCapability {
+    ModelCapability {
+        vision: modalities.contains(&"image"),
+        input_modalities: modalities.iter().map(|m| (*m).to_owned()).collect(),
+        ..model(name, true)
+    }
+}
+
+fn media_part(call_id: Option<&str>, mime: &str) -> ContentPart {
+    ContentPart::Media {
+        source_ref: "b".repeat(64),
+        mime: mime.into(),
+        alt: "a photo of a shipping label".into(),
+        call_id: call_id.map(str::to_owned),
+        data_base64: modbit_providers::MediaPayload("aGVsbG8=".into()),
+    }
+}
+
+/// QUAL-EV-0188: a strict OpenAI-compatible endpoint rejects media embedded in
+/// a tool result and accepts the split follow-up the adapter produces; the
+/// Anthropic transport takes the same canonical parts without a split; and the
+/// router refuses media a model cannot accept before anything is dispatched.
+#[tokio::test]
+async fn qual_ev_0188_tool_media_is_split_for_strict_endpoints_and_embedded_where_it_is_accepted() {
+    let server = strict_openai().await;
+    let gw = ProviderGateway::new(vec![Endpoint {
+        name: "ep".into(),
+        kind: ProviderKind::OpenAi,
+        base_url: server.base_url.clone(),
+        credential: SecretHandle::None,
+        models: vec![
+            vision_model("m-vision", &["text", "image"]),
+            vision_model("m-text", &["text"]),
+        ],
+        max_retries: 0,
+    }]);
+    let tool_message = Message {
+        role: Role::Tool,
+        parts: vec![
+            ContentPart::ToolResult {
+                call_id: "call_1".into(),
+                content: "{\"media\":{\"mime\":\"image/png\"}}".into(),
+                is_error: false,
+            },
+            media_part(Some("call_1"), "image/png"),
+        ],
+    };
+    // 1. The canonical request never says where the media goes.
+    let req = request(
+        "ep",
+        "m-vision",
+        vec![
+            Message::text(Role::User, "what does the label say?"),
+            tool_message.clone(),
+        ],
+        true,
+        2_000,
+    );
+    // 2. The strict endpoint accepts what the OpenAI adapter sends.
+    let events = collect(
+        gw.stream(
+            req.clone(),
+            &Requirements::default(),
+            CancellationToken::new(),
+        )
+        .unwrap(),
+    )
+    .await;
+    assert!(
+        text_of(&events).contains("label"),
+        "the strict endpoint accepted the request: {events:?}"
+    );
+    let body = server.seen.lock().unwrap().last().unwrap().body.clone();
+    let messages = body["messages"].as_array().unwrap().clone();
+    let tool_index = messages
+        .iter()
+        .position(|m| m["role"] == "tool")
+        .expect("the tool result kept its own message");
+    assert_eq!(messages[tool_index]["tool_call_id"], "call_1");
+    let content = messages[tool_index]["content"].as_str().unwrap();
+    assert!(content.starts_with("{\"media\""), "{content}");
+    assert!(
+        content.contains("attachment(s) for this call follow"),
+        "{content}"
+    );
+    let follow_up = &messages[tool_index + 1];
+    assert_eq!(follow_up["role"], "user", "{follow_up}");
+    let blocks = follow_up["content"].as_array().unwrap();
+    assert!(
+        blocks[0]["text"].as_str().unwrap().contains("call_1"),
+        "the follow-up names the call it answers: {follow_up}"
+    );
+    assert_eq!(blocks[1]["type"], "image_url");
+    assert_eq!(
+        blocks[1]["image_url"]["url"],
+        "data:image/png;base64,aGVsbG8="
+    );
+    // 3. The same endpoint refuses the embedded form, so the split is not
+    //    decoration: this is the request the adapter did not send.
+    let embedded = json!({"model": "m-vision", "stream": true, "messages": [
+        {"role": "tool", "tool_call_id": "call_1", "content": [
+            {"type": "text", "text": "{}"},
+            {"type": "image_url", "image_url": {"url": "data:image/png;base64,aGVsbG8="}}
+        ]}
+    ]});
+    let (status, payload) = post_json(&server.base_url, &embedded).await;
+    assert_eq!(status, 400, "{payload}");
+    assert!(payload.contains("must be a string"), "{payload}");
+    // 4. Anthropic takes the media inside the tool result itself: same parts,
+    //    different placement, no extra message.
+    let anth = modbit_providers::anthropic::request_body(&request(
+        "ep",
+        "m-vision",
+        vec![tool_message],
+        false,
+        2_000,
+    ));
+    let msgs = anth["messages"].as_array().unwrap();
+    assert_eq!(msgs.len(), 1, "{anth}");
+    let result_block = &msgs[0]["content"][0];
+    assert_eq!(result_block["type"], "tool_result");
+    assert_eq!(result_block["tool_use_id"], "call_1");
+    let inner = result_block["content"].as_array().unwrap();
+    assert_eq!(inner[1]["type"], "image");
+    assert_eq!(inner[1]["source"]["media_type"], "image/png");
+    assert_eq!(inner[1]["source"]["data"], "aGVsbG8=");
+    // 5. The router refuses media the model cannot take, before dispatch.
+    let text_only = request(
+        "ep",
+        "m-text",
+        vec![Message {
+            role: Role::User,
+            parts: vec![media_part(None, "image/png")],
+        }],
+        false,
+        2_000,
+    );
+    assert_eq!(
+        gw.route(&text_only, &Requirements::default()).unwrap_err(),
+        RouteError::CapabilityMismatch {
+            model: "m-text".into(),
+            capability: "vision".into()
+        }
+    );
+    let pdf = request(
+        "ep",
+        "m-vision",
+        vec![Message {
+            role: Role::User,
+            parts: vec![media_part(None, "application/pdf")],
+        }],
+        false,
+        2_000,
+    );
+    assert_eq!(
+        gw.route(&pdf, &Requirements::default()).unwrap_err(),
+        RouteError::CapabilityMismatch {
+            model: "m-vision".into(),
+            capability: "input_modality:pdf".into()
+        }
+    );
+    // 6. The bytes never print: a leaked request in a log or a panic message
+    //    must not carry the payload.
+    let debug = format!("{:?}", media_part(None, "image/png"));
+    assert!(!debug.contains("aGVsbG8="), "{debug}");
+    assert!(debug.contains("redacted"), "{debug}");
+}
+
+/// Post a JSON body and return `(status, body)`.
+async fn post_json(base_url: &str, body: &Value) -> (u16, String) {
+    let addr = base_url.trim_start_matches("http://").to_owned();
+    let mut sock = tokio::net::TcpStream::connect(addr).await.unwrap();
+    let payload = body.to_string();
+    sock.write_all(
+        format!(
+            "POST /v1/chat/completions HTTP/1.1\r\nhost: local\r\ncontent-type: application/json\r\ncontent-length: {}\r\n\r\n{payload}",
+            payload.len()
+        )
+        .as_bytes(),
+    )
+    .await
+    .unwrap();
+    let mut out = Vec::new();
+    let mut tmp = [0u8; 4096];
+    loop {
+        let n = sock.read(&mut tmp).await.unwrap_or(0);
+        if n == 0 {
+            break;
+        }
+        out.extend_from_slice(&tmp[..n]);
+        if out.windows(4).any(|w| w == b"\r\n\r\n") && out.len() > 80 {
+            break;
+        }
+    }
+    let text = String::from_utf8_lossy(&out).to_string();
+    let status = text
+        .split(' ')
+        .nth(1)
+        .and_then(|s| s.parse::<u16>().ok())
+        .unwrap_or(0);
+    (status, text)
+}

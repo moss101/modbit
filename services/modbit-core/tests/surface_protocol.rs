@@ -9358,3 +9358,131 @@ async fn qual_ev_0056_0092_0130_compaction_epoch_preserves_facts_survives_restar
     );
     let _ = repo;
 }
+
+/// REQ-EV-0188 (QUAL-EV-0188) end to end: a real run reads a real image, and
+/// the request the provider receives carries it where a strict OpenAI-
+/// compatible endpoint accepts it — the tool result keeps its call id and its
+/// text as a plain string, and the bytes ride in the user message that
+/// follows. The canonical log keeps the digest, never the bytes.
+#[tokio::test]
+async fn qual_ev_0188_a_media_tool_result_reaches_the_model_as_a_split_follow_up() {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let fixtures =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/media");
+    let png = std::fs::read(fixtures.join("label.png")).unwrap();
+    let (repo, root) = plain_repo(&[("notes.md", "the label is in label.png\n")]);
+    std::fs::write(repo.path().join("label.png"), &png).unwrap();
+    for args in [
+        vec!["add", "-A"],
+        vec![
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@e",
+            "commit",
+            "-q",
+            "-m",
+            "png",
+        ],
+    ] {
+        assert!(
+            Command::new("git")
+                .arg("-C")
+                .arg(repo.path())
+                .args(&args)
+                .status()
+                .unwrap()
+                .success()
+        );
+    }
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "read the label", "expected_files": ["label.png"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "label.png"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "read", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x63)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x64, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x65),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                // A model whose catalog entry accepts image input.
+                model: "gpt-5-mini".into(),
+                max_turns: 8,
+                max_tool_calls: 0,
+                max_no_progress_turns: 4,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 120).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    // The last request carries the split representation.
+    let bodies = seen.lock().unwrap().clone();
+    let body = bodies.last().unwrap();
+    let messages = body["messages"].as_array().unwrap();
+    let tool_index = messages
+        .iter()
+        .position(|m| {
+            m["role"] == "tool"
+                && m["content"]
+                    .as_str()
+                    .is_some_and(|c| c.contains("egress_ref"))
+        })
+        .unwrap_or_else(|| panic!("{body:#}"));
+    let content = messages[tool_index]["content"]
+        .as_str()
+        .expect("a strict endpoint takes only a string here");
+    assert!(
+        content.contains("attachment(s) for this call follow"),
+        "{content}"
+    );
+    let follow_up = &messages[tool_index + 1];
+    assert_eq!(follow_up["role"], "user", "{follow_up}");
+    let blocks = follow_up["content"].as_array().unwrap();
+    assert!(
+        blocks[0]["text"]
+            .as_str()
+            .unwrap()
+            .contains(messages[tool_index]["tool_call_id"].as_str().unwrap()),
+        "the follow-up names the call: {follow_up}"
+    );
+    assert_eq!(blocks[1]["type"], "image_url");
+    let url = blocks[1]["image_url"]["url"].as_str().unwrap();
+    assert!(
+        url.starts_with("data:image/png;base64,iVBORw0KGgo"),
+        "{url}"
+    );
+    // Those are the workspace bytes, not a re-encoding of something else: the
+    // egress copy is the file with its metadata stripped, and it round-trips.
+    let payload = url.split_once(",").unwrap().1;
+    assert!(payload.len() > 100, "{}", payload.len());
+    // The canonical log kept the digest and not the bytes.
+    let evs = task_events(&core, &session, &task).await;
+    let result = evs
+        .iter()
+        .filter(|(_, t, _)| t == "ToolCallSucceeded" || t == "ToolCallCompleted")
+        .map(|(_, _, p)| p.to_string())
+        .collect::<String>();
+    assert!(!result.contains(&payload[..64]), "the log carries no bytes");
+    let logged = serde_json::to_string(&evs).unwrap();
+    assert!(!logged.contains("iVBORw0KGgo"), "the log carries no bytes");
+    let _ = repo;
+}

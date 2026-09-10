@@ -4,6 +4,18 @@ use serde_json::{Value, json};
 
 use crate::contract::{ContentPart, ModelEvent, ModelRequest, Role, Usage, stop};
 
+/// One media block in this transport's shape. Images are native; anything
+/// else is described in words rather than guessed into a format the API does
+/// not document (the description keeps the digest, so the model can ask for
+/// the bytes through `artifact.range`).
+fn media_block(mime: &str, alt: &str, data: &crate::contract::MediaPayload) -> Value {
+    if mime.starts_with("image/") {
+        json!({"type": "image", "source": {"type": "base64", "media_type": mime, "data": data.0}})
+    } else {
+        json!({"type": "text", "text": format!("[attachment {mime}: {alt}] (not sent as bytes: this transport takes images)")})
+    }
+}
+
 /// Build the request body. System messages become the top-level `system`.
 #[must_use]
 pub fn request_body(req: &ModelRequest) -> Value {
@@ -25,19 +37,54 @@ pub fn request_body(req: &ModelRequest) -> Value {
                 // Tool results are user-role content blocks on this transport
                 // (docs/25 "Provider media normalization": placement may change,
                 // call identity never does).
+                // This transport takes media inside the tool result itself, so
+                // nothing is split here (REQ-EV-0188: placement is the
+                // adapter's business, semantics are not).
+                let media_for = |id: Option<&str>| -> Vec<Value> {
+                    m.parts
+                        .iter()
+                        .filter_map(|p| match p {
+                            ContentPart::Media {
+                                mime,
+                                alt,
+                                call_id,
+                                data_base64,
+                                ..
+                            } if call_id.as_deref() == id => {
+                                Some(media_block(mime, alt, data_base64))
+                            }
+                            _ => None,
+                        })
+                        .collect()
+                };
                 let blocks: Vec<Value> = m
                     .parts
                     .iter()
-                    .map(|p| match p {
-                        ContentPart::Text { text } => json!({"type": "text", "text": text}),
+                    .flat_map(|p| match p {
+                        ContentPart::Text { text } => {
+                            vec![json!({"type": "text", "text": text})]
+                        }
                         ContentPart::ToolResult {
                             call_id,
                             content,
                             is_error,
-                        } => json!({"type": "tool_result", "tool_use_id": call_id, "content": content, "is_error": is_error}),
-                        ContentPart::ToolCall { .. } => Value::Null,
+                        } => {
+                            let mut content_blocks =
+                                vec![json!({"type": "text", "text": content})];
+                            content_blocks.extend(media_for(Some(call_id.as_str())));
+                            vec![json!({"type": "tool_result", "tool_use_id": call_id, "content": content_blocks, "is_error": is_error})]
+                        }
+                        // Media that belongs to no tool call rides in the
+                        // message itself.
+                        ContentPart::Media {
+                            mime,
+                            alt,
+                            call_id: None,
+                            data_base64,
+                            ..
+                        } => vec![media_block(mime, alt, data_base64)],
+                        ContentPart::Media { .. } | ContentPart::ToolCall { .. } => vec![],
                     })
-                    .filter(|v| !v.is_null())
                     .collect();
                 messages.push(json!({"role": "user", "content": blocks}));
             }
@@ -52,7 +99,7 @@ pub fn request_body(req: &ModelRequest) -> Value {
                             name,
                             arguments_json,
                         } => json!({"type": "tool_use", "id": call_id, "name": name, "input": serde_json::from_str::<Value>(arguments_json).unwrap_or(json!({}))}),
-                        ContentPart::ToolResult { .. } => Value::Null,
+                        ContentPart::ToolResult { .. } | ContentPart::Media { .. } => Value::Null,
                     })
                     .filter(|v| !v.is_null())
                     .collect();

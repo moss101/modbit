@@ -287,6 +287,32 @@ impl ProviderGateway {
         &self.policy
     }
 
+    /// What one endpoint's catalog says about a model, when it lists it.
+    #[must_use]
+    pub fn capability(&self, endpoint: &str, model: &str) -> Option<ModelCapability> {
+        self.endpoints
+            .get(endpoint)?
+            .models
+            .iter()
+            .find(|m| m.model == model)
+            .cloned()
+    }
+
+    /// Input modalities the request itself carries, deduplicated.
+    fn media_modalities(req: &ModelRequest) -> Vec<String> {
+        let mut out: Vec<String> = Vec::new();
+        for m in &req.messages {
+            for p in &m.parts {
+                if let Some(modality) = p.modality()
+                    && !out.iter().any(|x| x == modality)
+                {
+                    out.push(modality.to_owned());
+                }
+            }
+        }
+        out
+    }
+
     /// Resolve the route: organization policy, endpoint, model and capability checks (no network).
     pub fn route(
         &self,
@@ -321,10 +347,14 @@ impl ProviderGateway {
             model: cap.model.clone(),
             capability: capability.into(),
         };
+        // The request decides what it needs: media in the messages requires the
+        // matching input modality (and vision for images) whether or not the
+        // caller asked for it (REQ-EV-0188 / 0189).
+        let carried = Self::media_modalities(req);
         if (needs.tools || !req.tool_projection.is_empty()) && !cap.tools {
             return Err(mismatch("tools"));
         }
-        if needs.vision && !cap.vision {
+        if (needs.vision || carried.iter().any(|m| m == "image")) && !cap.vision {
             return Err(mismatch("vision"));
         }
         if (needs.structured_output || req.response_format.as_deref() == Some("json_object"))
@@ -332,7 +362,7 @@ impl ProviderGateway {
         {
             return Err(mismatch("structured_output"));
         }
-        for m in &needs.input_modalities {
+        for m in needs.input_modalities.iter().chain(carried.iter()) {
             if !cap.input_modalities.iter().any(|x| x == m) {
                 return Err(mismatch(&format!("input_modality:{m}")));
             }

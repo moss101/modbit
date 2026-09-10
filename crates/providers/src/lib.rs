@@ -22,8 +22,8 @@ pub mod openai;
 pub mod sse;
 
 pub use contract::{
-    ContentPart, Message, ModelEvent, ModelPolicy, ModelRequest, ProviderKind, Role, SecretHandle,
-    ToolProjection, Usage, stop,
+    ContentPart, MediaPayload, Message, ModelEvent, ModelPolicy, ModelRequest, ProviderKind, Role,
+    SecretHandle, ToolProjection, Usage, stop,
 };
 pub use gateway::{
     Endpoint, EndpointHealth, ModelCapability, ModelStream, OrgModelPolicy, ProviderGateway,

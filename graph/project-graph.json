@@ -13377,8 +13377,40 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0188",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "artifact:evidence/m3/IMP-EV-0188/TASK_CARD.md",
+    "test:qual_ev_0188_tool_media_is_split_for_strict_endpoints_and_embedded_where_it_is_accepted",
+    "test:qual_ev_0188_a_media_tool_result_reaches_the_model_as_a_split_follow_up",
+    "test:m2_10_media_reads_carry_digests_not_bytes_and_survive_restart"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T20:01:42Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: media reads produced an egress copy nothing could show a model (see card)"
+    },
+    {
+     "at": "2026-09-10T20:01:42Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "ContentPart::Media, OpenAI split placement, Anthropic embedded placement, modality-derived routing"
+    },
+    {
+     "at": "2026-09-10T20:01:42Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "the runtime attaches media from tool results and hydrates it only for a model that accepts the modality"
+    },
+    {
+     "at": "2026-09-10T20:01:42Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "a strict endpoint refuses the embedded form and accepts the split one; a real run reads a real PNG"
+    }
+   ],
+   "status_changed_on": "2026-09-10T20:01:42Z"
   },
   {
    "id": "IMP-EV-0189",
