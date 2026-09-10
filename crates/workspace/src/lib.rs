@@ -26,8 +26,8 @@ pub mod service;
 pub use paths::{PathPolicy, ResolvedPath};
 pub use revision::WorkspaceRevision;
 pub use service::{
-    ApplyPatch, ChangeOp, ChangeOpKind, Edit, EntryKind, FileRead, FileStat, MatchTier, TextEdit,
-    WorkspaceChange, WorkspaceService, WritePrecondition, content_hash, locate,
+    ApplyPatch, ChangeOp, ChangeOpKind, Edit, EntryKind, FileRead, FileStat, LineEnding, MatchTier,
+    TextEdit, WorkspaceChange, WorkspaceService, WritePrecondition, content_hash, locate,
 };
 
 /// Errors of the file service.

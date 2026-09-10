@@ -58,6 +58,7 @@ function App() {
   const [recovered, setRecovered] = useState<string | null>(null);
   const [recovery, setRecovery] = useState<RecoveryInfo | null>(null);
   const [goal, setGoal] = useState("");
+  const [languages, setLanguages] = useState<{ language: string; tier: string; label: string }[]>([]);
   const [workspaceRoot, setWorkspaceRoot] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [reviewing, setReviewing] = useState<string | null>(null);
@@ -112,7 +113,10 @@ function App() {
     });
     void window.modbit.coreStatus().then((s) => {
       setCore(s as CoreStatus);
-      if ((s as CoreStatus).state === "connected") void load();
+      if ((s as CoreStatus).state === "connected") {
+        void load();
+        void window.modbit.languages().then(setLanguages).catch(() => {});
+      }
     });
     return () => {
       offEvent();
@@ -179,6 +183,11 @@ function App() {
           {core.state === "connected" ? `Core connected (pid ${core.pid})` : core.state === "restarting" ? `Core restarting…` : core.state === "failed" ? "Core failed" : "Core starting…"}
         </span>
       </header>
+      {languages.length > 0 && (
+        <div className="banner" data-kind="info" data-testid="language-labels" title={languages.map((l) => `${l.language}: ${l.label}`).join("\n")}>
+          <strong>Languages</strong> — {languages.filter((l) => l.tier === "ALPHA_BASELINE").map((l) => l.language).join(", ")} at the Alpha baseline (Tier C plus compile and test evidence; structural intelligence not yet claimed); everything else unsupported.
+        </div>
+      )}
       {core.state === "restarting" && (
         <div className="banner" data-kind="restarting" role="status" data-testid="banner-restarting">
           <strong>Core restarting</strong> — {core.reason}. Showing the last persisted state; retrying in {Math.round(core.retryInMs / 1000)}s. Nothing shown here is new progress.

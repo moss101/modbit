@@ -426,6 +426,22 @@ fn cli_drives_a_real_core_end_to_end() {
         .args(["model", "list"])
         .output()
         .unwrap();
+    // PX-026: the CLI shows the honest language labels.
+    let langs = Command::new(env!("CARGO_BIN_EXE_modbit-cli"))
+        .env("MODBIT_CORE_BIN", &core)
+        .args(["--data-dir"])
+        .arg(&data_dir2)
+        .args(["language", "list"])
+        .output()
+        .unwrap();
+    let langs_out = String::from_utf8_lossy(&langs.stdout);
+    assert!(langs.status.success(), "{langs:?}");
+    assert!(
+        langs_out.contains("language python tier=ALPHA_BASELINE")
+            && langs_out.contains("language rust tier=ALPHA_BASELINE")
+            && langs_out.contains("language * tier=UNSUPPORTED"),
+        "{langs_out}"
+    );
     let text = String::from_utf8_lossy(&out.stdout).to_string();
     assert!(
         out.status.success()

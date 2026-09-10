@@ -36,3 +36,7 @@ shutdown. The CLI attaches to that Core when it is alive and spawns one
 otherwise; a spawn that loses the profile lock to a Core that is just
 starting retries the attach. This is what lets a second shell answer a
 question or approve an effect while `task run --wait` holds the Core.
+
+## Language labels (PX-026)
+
+`modbit --data-dir <dir> language list` prints what the product claims per language today (docs/76): the three Alpha candidates are labelled `ALPHA_BASELINE` (Tier C plus compile and test evidence) with the provisional context-engine capabilities and the not-yet-claimed Tier A listed explicitly; everything else is `UNSUPPORTED`.

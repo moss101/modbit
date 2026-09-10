@@ -1769,6 +1769,108 @@ export declare type CapabilityLeaseList = Message<"modbit.v1.CapabilityLeaseList
 export declare const CapabilityLeaseListSchema: GenMessage<CapabilityLeaseList>;
 
 /**
+ * @generated from message modbit.v1.ListLanguages
+ */
+export declare type ListLanguages = Message<"modbit.v1.ListLanguages"> & {
+};
+
+/**
+ * Describes the message modbit.v1.ListLanguages.
+ * Use `create(ListLanguagesSchema)` to create a new message.
+ */
+export declare const ListLanguagesSchema: GenMessage<ListLanguages>;
+
+/**
+ * What the product claims for a language today, and what it does not.
+ *
+ * @generated from message modbit.v1.LanguageSupportView
+ */
+export declare type LanguageSupportView = Message<"modbit.v1.LanguageSupportView"> & {
+  /**
+   * typescript | javascript | python | rust | *
+   *
+   * @generated from field: string language = 1;
+   */
+  language: string;
+
+  /**
+   * ALPHA_BASELINE | UNSUPPORTED (Tier A/B/C arrive with PX-027/028)
+   *
+   * @generated from field: string tier = 2;
+   */
+  tier: string;
+
+  /**
+   * human label shown by every client
+   *
+   * @generated from field: string label = 3;
+   */
+  label: string;
+
+  /**
+   * the real fixture repository the claims are proven on
+   *
+   * @generated from field: string fixture = 4;
+   */
+  fixture: string;
+
+  /**
+   * capabilities proven at this tier
+   *
+   * @generated from field: repeated string proven = 5;
+   */
+  proven: string[];
+
+  /**
+   * available but not yet a tier claim
+   *
+   * @generated from field: repeated string provisional = 6;
+   */
+  provisional: string[];
+
+  /**
+   * explicitly not claimed
+   *
+   * @generated from field: repeated string not_claimed = 7;
+   */
+  notClaimed: string[];
+
+  /**
+   * named tests behind the proven claims
+   *
+   * @generated from field: repeated string evidence_tests = 8;
+   */
+  evidenceTests: string[];
+
+  /**
+   * @generated from field: string note = 9;
+   */
+  note: string;
+};
+
+/**
+ * Describes the message modbit.v1.LanguageSupportView.
+ * Use `create(LanguageSupportViewSchema)` to create a new message.
+ */
+export declare const LanguageSupportViewSchema: GenMessage<LanguageSupportView>;
+
+/**
+ * @generated from message modbit.v1.LanguageList
+ */
+export declare type LanguageList = Message<"modbit.v1.LanguageList"> & {
+  /**
+   * @generated from field: repeated modbit.v1.LanguageSupportView languages = 1;
+   */
+  languages: LanguageSupportView[];
+};
+
+/**
+ * Describes the message modbit.v1.LanguageList.
+ * Use `create(LanguageListSchema)` to create a new message.
+ */
+export declare const LanguageListSchema: GenMessage<LanguageList>;
+
+/**
  * @generated from message modbit.v1.ListModels
  */
 export declare type ListModels = Message<"modbit.v1.ListModels"> & {

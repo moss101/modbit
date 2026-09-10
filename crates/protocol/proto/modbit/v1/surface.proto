@@ -425,6 +425,27 @@ message CapabilityLeaseList {
   repeated CapabilityLeaseView leases = 1;
 }
 
+// ---- PX-026 language support labels (docs/76) ----
+
+message ListLanguages {}
+
+// What the product claims for a language today, and what it does not.
+message LanguageSupportView {
+  string language = 1;              // typescript | javascript | python | rust | *
+  string tier = 2;                  // ALPHA_BASELINE | UNSUPPORTED (Tier A/B/C arrive with PX-027/028)
+  string label = 3;                 // human label shown by every client
+  string fixture = 4;               // the real fixture repository the claims are proven on
+  repeated string proven = 5;       // capabilities proven at this tier
+  repeated string provisional = 6;  // available but not yet a tier claim
+  repeated string not_claimed = 7;  // explicitly not claimed
+  repeated string evidence_tests = 8; // named tests behind the proven claims
+  string note = 9;
+}
+
+message LanguageList {
+  repeated LanguageSupportView languages = 1;
+}
+
 // ---- M2.6 Provider Gateway (docs/15) ----
 
 message ListModels {}

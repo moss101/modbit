@@ -7182,3 +7182,63 @@ async fn qual_ev_0134_deferred_tool_search_activates_without_authorizing_and_hyd
     assert_eq!(so2["scope"]["step_id"], step_id);
     let _ = repo;
 }
+
+/// PX-026: every client can show honest language labels — the three Alpha
+/// candidates at the Alpha baseline with proven, provisional and not-claimed
+/// capabilities named; anything else unsupported.
+#[tokio::test]
+async fn qual_px_026_language_labels_are_honest_and_served_to_every_client() {
+    use modbit_protocol::v1::{LanguageList, ListLanguages};
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn(dir.path());
+    let mut c = core.client().await;
+    let ack = c
+        .command(envelope(
+            id16(0x26),
+            "ListLanguages",
+            ListLanguages {}.encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let l: LanguageList = Client::result(&ack).unwrap();
+    let by = |name: &str| l.languages.iter().find(|x| x.language == name).cloned();
+    for lang in ["typescript", "javascript", "python", "rust"] {
+        let v = by(lang).unwrap_or_else(|| panic!("{lang}: {:?}", l.languages));
+        assert_eq!(v.tier, "ALPHA_BASELINE", "{v:?}");
+        assert!(
+            v.label.contains("Alpha baseline") && v.label.contains("Tier C"),
+            "{v:?}"
+        );
+        assert!(
+            v.proven
+                .iter()
+                .any(|p| p.contains("compile_and_test_evidence")),
+            "{v:?}"
+        );
+        assert!(
+            v.provisional.iter().any(|p| p.contains("language_service")),
+            "{v:?}"
+        );
+        assert!(v.not_claimed.iter().any(|p| p.contains("tier_a")), "{v:?}");
+        assert!(v.fixture.starts_with("tests/fixtures/repos/"), "{v:?}");
+        assert!(!v.evidence_tests.is_empty(), "{v:?}");
+    }
+    let other = by("*").unwrap();
+    assert_eq!(other.tier, "UNSUPPORTED");
+    assert!(other.not_claimed.iter().any(|p| p.contains("structural")));
+    // The cited evidence tests exist in this repository.
+    let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut sources = String::new();
+    for f in [
+        "crates/verification/tests/fixtures.rs",
+        "crates/workspace/tests/real_fs.rs",
+        "services/modbit-core/tests/surface_protocol.rs",
+    ] {
+        sources.push_str(&std::fs::read_to_string(repo.join(f)).unwrap());
+    }
+    for v in &l.languages {
+        for t in &v.evidence_tests {
+            assert!(sources.contains(&format!("fn {t}(")), "missing test {t}");
+        }
+    }
+}

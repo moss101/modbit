@@ -9,6 +9,7 @@
 use std::path::PathBuf;
 use std::process::ExitCode;
 
+mod languages;
 mod probe;
 mod review;
 mod runtime;

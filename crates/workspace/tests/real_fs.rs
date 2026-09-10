@@ -550,3 +550,62 @@ fn qual_ev_0016_failed_step_rolls_back_earlier_steps_and_reports_the_step() {
     );
     assert!(!root.path().join("README.md").exists());
 }
+
+/// PX-026 Tier C conformance (docs/76): edits and replacements never corrupt
+/// a file's line endings, and a non-UTF-8 file refuses a text edit.
+#[test]
+fn edits_preserve_crlf_and_refuse_non_utf8() {
+    use modbit_workspace::{LineEnding, TextEdit};
+    let (root, state) = setup();
+    std::fs::write(root.path().join("win.txt"), "alpha\r\nbeta\r\ngamma\r\n").unwrap();
+    std::fs::write(root.path().join("bin.dat"), [0xff, 0xfe, 0x00, b'x']).unwrap();
+    let mut ws = WorkspaceService::open(root.path(), state.path(), &[]).unwrap();
+    // An LF snippet spliced into a CRLF file takes CRLF.
+    ws.edit_by_match(
+        "win.txt",
+        &[TextEdit {
+            old: "beta".into(),
+            new: "beta\nbeta2".into(),
+        }],
+        WritePrecondition::default(),
+    )
+    .unwrap();
+    let after = std::fs::read_to_string(root.path().join("win.txt")).unwrap();
+    assert_eq!(after, "alpha\r\nbeta\r\nbeta2\r\ngamma\r\n");
+    assert_eq!(LineEnding::of(&after), LineEnding::Crlf);
+    // A whole-file replacement written with LF keeps the file's CRLF style.
+    ws.atomic_replace("win.txt", b"one\ntwo\n", WritePrecondition::default())
+        .unwrap();
+    assert_eq!(
+        std::fs::read_to_string(root.path().join("win.txt")).unwrap(),
+        "one\r\ntwo\r\n"
+    );
+    // An LF file stays LF even when the replacement carries CRLF.
+    ws.atomic_replace(
+        "README.md",
+        b"# demo\r\nmore\r\n",
+        WritePrecondition::default(),
+    )
+    .unwrap();
+    assert_eq!(
+        std::fs::read_to_string(root.path().join("README.md")).unwrap(),
+        "# demo\nmore\n"
+    );
+    // Non-UTF-8 bytes are never edited as text.
+    let err = ws
+        .edit_by_match(
+            "bin.dat",
+            &[TextEdit {
+                old: "x".into(),
+                new: "y".into(),
+            }],
+            WritePrecondition::default(),
+        )
+        .unwrap_err();
+    assert!(err.to_string().contains("UTF-8"), "{err}");
+    assert_eq!(
+        std::fs::read(root.path().join("bin.dat")).unwrap(),
+        [0xff, 0xfe, 0x00, b'x']
+    );
+    assert_eq!(LineEnding::of("a\r\nb\n"), LineEnding::Undecided);
+}

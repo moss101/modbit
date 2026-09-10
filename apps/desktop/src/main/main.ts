@@ -109,6 +109,11 @@ function requireRelativePath(v: unknown): string {
 // message is rejected here, never forwarded).
 ipcMain.handle("core:status", () => supervisor.status);
 ipcMain.handle("core:localState", () => loadLocalState());
+// PX-026: honest language labels in every client (docs/76).
+ipcMain.handle("languages:list", async () => {
+  const r = await requireClient().listLanguages();
+  return r.languages.map((l) => ({ language: l.language, tier: l.tier, label: l.label, fixture: l.fixture, proven: l.proven, provisional: l.provisional, notClaimed: l.notClaimed, note: l.note }));
+});
 ipcMain.handle("session:create", async () => {
   const c = requireClient();
   const r = await c.createSession(freshId());

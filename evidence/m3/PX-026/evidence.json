@@ -1,0 +1,19 @@
+{
+ "task": "PX-026",
+ "requirement": "REQ-PX-026",
+ "qual": "QUAL-PX-026",
+ "tests": [
+  "qual_px_026_language_labels_are_honest_and_served_to_every_client",
+  "cli_drives_a_real_core_end_to_end",
+  "edits_preserve_crlf_and_refuse_non_utf8",
+  "vitest_fixture_parses_structured_reports_when_vitest_is_installed",
+  "pytest_fixture_produces_structured_reports_with_stable_failure_signatures_when_pytest_is_installed",
+  "m2_8_verification_engine_gates_completion_on_real_cargo_fixture",
+  "m3_1_exact_regex_path_index_serves_bounded_revision_bound_hits_and_refreshes_on_writes",
+  "m3_2_bm25_lexical_index_ranks_files_and_refreshes_on_writes"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "honest ALPHA_BASELINE labels served by ListLanguages to CLI and desktop; proven/provisional/not-claimed lists; line endings and encoding preserved by the workspace",
+ "audit": "COMPLETED in this batch (was PARTIAL)"
+}

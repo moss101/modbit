@@ -483,6 +483,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "GetEffectReceipts",
                     "GetCapabilityLeases",
                     "ListModels",
+                    "ListLanguages",
                     "ProbeModel",
                     "StartTask",
                     "CancelTask",
@@ -1864,6 +1865,10 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 ),
                 Err(e) => reject(cid, error_code(&e), e.to_string()),
             }
+        }
+        "ListLanguages" => {
+            let languages = crate::languages::catalog();
+            accept(cid, false, wire::LanguageList { languages }.encode_to_vec())
         }
         "ListModels" => {
             let gw = &core.gateway;

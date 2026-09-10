@@ -500,6 +500,23 @@ impl WorkspaceService {
     ) -> Result<WorkspaceChange> {
         let r = self.policy.check(path)?;
         let before = self.check_precondition(&r, path, &pre)?;
+        // Tier C conformance (docs/76): replacing a text file keeps its
+        // consistent line-ending style when the new text is plain UTF-8 text
+        // in the other style (a whole-file flip would corrupt the diff).
+        let preserved: Option<Vec<u8>> = match (
+            std::fs::read(&r.absolute)
+                .ok()
+                .and_then(|b| String::from_utf8(b).ok()),
+            std::str::from_utf8(bytes).ok(),
+        ) {
+            (Some(old), Some(new)) => {
+                let style = LineEnding::of(&old);
+                let fixed = style.apply(new);
+                (fixed.as_bytes() != bytes).then(|| fixed.into_bytes())
+            }
+            _ => None,
+        };
+        let bytes: &[u8] = preserved.as_deref().unwrap_or(bytes);
         write_atomic(&self.tmp_for(&r.absolute), &r.absolute, bytes)?;
         self.commit(&r, "atomic_replace", before, Some(content_hash(bytes)))
     }
@@ -623,6 +640,7 @@ impl WorkspaceService {
             detail: "edit needs UTF-8 text".into(),
         })?;
         let mut tiers = Vec::with_capacity(edits.len());
+        let style = LineEnding::of(&content);
         for (i, e) in edits.iter().enumerate() {
             let (start, end, tier) =
                 locate(&content, &e.old, path).map_err(|cause| Error::StepFailed {
@@ -632,7 +650,9 @@ impl WorkspaceService {
                     restored: vec![],
                     unrestored: vec![],
                 })?;
-            content.replace_range(start..end, &e.new);
+            // Tier C conformance (docs/76): an edit never corrupts the file's
+            // line endings — inserted text takes the file's consistent style.
+            content.replace_range(start..end, &style.apply(&e.new));
             tiers.push(tier);
         }
         write_atomic(&self.tmp_for(&r.absolute), &r.absolute, content.as_bytes())?;
@@ -709,5 +729,41 @@ impl WorkspaceService {
             }
         }
         Ok(changes)
+    }
+}
+
+/// The consistent line-ending style of a text, if it has one.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LineEnding {
+    /// Every newline is `\r\n`.
+    Crlf,
+    /// Every newline is a bare `\n`.
+    Lf,
+    /// No newline, or a mix: nothing is normalised.
+    Undecided,
+}
+
+impl LineEnding {
+    /// Classify a text.
+    #[must_use]
+    pub fn of(text: &str) -> Self {
+        let crlf = text.matches("\r\n").count();
+        let lf = text.matches('\n').count() - crlf;
+        match (crlf, lf) {
+            (0, 0) => Self::Undecided,
+            (_, 0) => Self::Crlf,
+            (0, _) => Self::Lf,
+            _ => Self::Undecided,
+        }
+    }
+
+    /// Rewrite `text`'s newlines into this style (no-op when undecided).
+    #[must_use]
+    pub fn apply(self, text: &str) -> String {
+        match self {
+            Self::Crlf => text.replace("\r\n", "\n").replace('\n', "\r\n"),
+            Self::Lf => text.replace("\r\n", "\n"),
+            Self::Undecided => text.to_owned(),
+        }
     }
 }

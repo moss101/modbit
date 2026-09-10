@@ -70,6 +70,9 @@ test("new task renders from Core ids, fleet reduces Core events, and survives Co
 
   // Degraded state: hard-kill the Core; the banner shows; main respawns; recovery banner shows;
   // the task is still there because the Core persisted it before answering.
+  // PX-026: the honest language labels are visible in the desktop.
+  await expect(page.getByTestId("language-labels")).toContainText("Alpha baseline", { timeout: 15_000 });
+  await expect(page.getByTestId("language-labels")).toContainText("python");
   const info = await page.evaluate(() => window.modbit.debugCoreInfo());
   expect(info?.pid).toBeGreaterThan(0);
   process.kill(info!.pid, "SIGKILL");

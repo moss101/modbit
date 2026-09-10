@@ -37,9 +37,9 @@ use modbit_protocol::v1::{
     CapabilityLeaseList, ClientKind, CommandEnvelope, CreateSession, CreateTask, DecideReview,
     EffectReceiptList, EmergencyStop, EmergencyStopped, GetCapabilityLeases, GetEffectReceipts,
     GetReviewBundle, GetSessionSnapshot, GetTaskStatus, HunkRef, Id, IngestAttachment, InvokeTool,
-    ListApprovals, ListModels, ListQuestions, ListTools, ModelList, ModelProbed, ProbeModel,
-    QuestionList, QuestionResponded, ResolveApproval, RespondToQuestion, ReviewBundle,
-    ReviewDecided, SessionCreated, SessionLeaseAcquired, SessionSnapshot, StartTask,
+    LanguageList, ListApprovals, ListLanguages, ListModels, ListQuestions, ListTools, ModelList,
+    ModelProbed, ProbeModel, QuestionList, QuestionResponded, ResolveApproval, RespondToQuestion,
+    ReviewBundle, ReviewDecided, SessionCreated, SessionLeaseAcquired, SessionSnapshot, StartTask,
     TaskCancelRequested, TaskCreated, TaskRunStarted, TaskStatus, ToolInvoked, ToolList,
     UndoPlanView, UndoToolCall,
 };
@@ -910,6 +910,29 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 r.reverted.join(","),
                 r.workspace_revision
             );
+        }
+        ["language", "list"] => {
+            let ack = client
+                .command(envelope("ListLanguages", ListLanguages {}.encode_to_vec()))
+                .await
+                .map_err(|e| e.to_string())?;
+            let r: LanguageList = Client::result(&ack).map_err(|e| e.to_string())?;
+            for l in r.languages {
+                println!(
+                    "language {} tier={} label={:?} fixture={} proven={} provisional={} not_claimed={}",
+                    l.language,
+                    l.tier,
+                    l.label,
+                    if l.fixture.is_empty() {
+                        "-"
+                    } else {
+                        &l.fixture
+                    },
+                    l.proven.join(","),
+                    l.provisional.join(","),
+                    l.not_claimed.join(",")
+                );
+            }
         }
         ["model", "list"] => {
             let ack = client

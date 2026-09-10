@@ -25,6 +25,8 @@ import {
   GetRecoveryReportSchema,
   GetReviewBundleSchema,
   GetSessionSnapshotSchema,
+  LanguageListSchema,
+  ListLanguagesSchema,
   IdSchema,
   RecoveryReportSchema,
   ReviewBundleSchema,
@@ -38,6 +40,7 @@ import {
   TaskCreatedSchema,
   TaskRunStartedSchema,
   type CodeViewModel,
+  type LanguageList,
   type CommandAck,
   type RecoveryReport,
   type ReviewBundle,
@@ -252,6 +255,11 @@ export class CoreClient {
   async getSessionSnapshot(sessionId: string): Promise<SessionSnapshot> {
     const ack = await this.command("GetSessionSnapshot", toBinary(GetSessionSnapshotSchema, create(GetSessionSnapshotSchema, { sessionId: { value: unhex(sessionId) } })));
     return fromBinary(SessionSnapshotSchema, ack.result);
+  }
+
+  async listLanguages(): Promise<LanguageList> {
+    const ack = await this.command("ListLanguages", toBinary(ListLanguagesSchema, create(ListLanguagesSchema, {})));
+    return fromBinary(LanguageListSchema, ack.result);
   }
 
   async getRecoveryReport(): Promise<RecoveryReport> {
