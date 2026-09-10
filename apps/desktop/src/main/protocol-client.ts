@@ -24,6 +24,7 @@ import {
   GetCodeViewSchema,
   GetRecoveryReportSchema,
   GetReviewBundleSchema,
+  GetContextInspectorSchema,
   GetSessionSnapshotSchema,
   LanguageListSchema,
   ListLanguagesSchema,
@@ -40,6 +41,8 @@ import {
   TaskCreatedSchema,
   TaskRunStartedSchema,
   type CodeViewModel,
+  ContextInspectorViewSchema,
+  type ContextInspectorView,
   type LanguageList,
   type CommandAck,
   type RecoveryReport,
@@ -255,6 +258,14 @@ export class CoreClient {
   async getSessionSnapshot(sessionId: string): Promise<SessionSnapshot> {
     const ack = await this.command("GetSessionSnapshot", toBinary(GetSessionSnapshotSchema, create(GetSessionSnapshotSchema, { sessionId: { value: unhex(sessionId) } })));
     return fromBinary(SessionSnapshotSchema, ack.result);
+  }
+
+  async contextInspector(taskId: string): Promise<ContextInspectorView> {
+    const ack = await this.command(
+      "GetContextInspector",
+      toBinary(GetContextInspectorSchema, create(GetContextInspectorSchema, { taskId: { value: unhex(taskId) } })),
+    );
+    return fromBinary(ContextInspectorViewSchema, ack.result);
   }
 
   async listLanguages(): Promise<LanguageList> {

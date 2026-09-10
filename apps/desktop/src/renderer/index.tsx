@@ -7,7 +7,7 @@
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { applyEvent, columns, emptyModel, fromSnapshot, type Event, type FleetColumn, type Model, type Snapshot, type TaskCard } from "./model.ts";
-import type { ModbitBridge, ReviewBundleView } from "../preload/preload.ts";
+import type { ContextInspectorSummary, ModbitBridge, ReviewBundleView } from "../preload/preload.ts";
 
 declare global {
   interface Window {
@@ -59,6 +59,7 @@ function App() {
   const [recovery, setRecovery] = useState<RecoveryInfo | null>(null);
   const [goal, setGoal] = useState("");
   const [languages, setLanguages] = useState<{ language: string; tier: string; label: string }[]>([]);
+  const [inspector, setInspector] = useState<ContextInspectorSummary | null>(null);
   const [workspaceRoot, setWorkspaceRoot] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [reviewing, setReviewing] = useState<string | null>(null);
@@ -81,6 +82,15 @@ function App() {
       const m = fromSnapshot(snap);
       setModel(m);
       setScreen(m.tasks.size === 0 ? "empty" : "populated");
+      // Context Inspector for the newest task, when it has compiled a pack.
+      const newest = [...m.tasks.values()].sort((a, b) => b.createdAtMs - a.createdAtMs)[0];
+      if (newest) {
+        try {
+          setInspector(await window.modbit.contextInspector(newest.taskId));
+        } catch {
+          setInspector(null);
+        }
+      }
       await window.modbit.subscribe(snap.sessionId, snap.lastOffset);
     } catch (e) {
       setError((e as Error).message);
@@ -186,6 +196,28 @@ function App() {
           {core.state === "connected" ? `Core connected (pid ${core.pid})` : core.state === "restarting" ? `Core restarting…` : core.state === "failed" ? "Core failed" : "Core starting…"}
         </span>
       </header>
+      {inspector && inspector.packId !== "" && (
+        <div className="banner" data-kind="info" data-testid="context-inspector">
+          <strong>Context</strong> — {inspector.entries.filter((e) => e.injected).length} of {inspector.entries.length} fragment(s) injected, {inspector.tokenUsed}/{inspector.tokenBudget} tokens, {inspector.omittedCount} omitted
+          {inspector.rejectedRefs.length > 0 ? `, ${inspector.rejectedRefs.length} refused for missing provenance` : ""}.
+          <ul>
+            {inspector.entries.map((e) => (
+              <li key={e.entryId} data-testid="context-entry">
+                {e.sourceRef}
+                {e.lineEnd > 0 ? ` L${e.lineStart}-${e.lineEnd}` : ""} — {e.reason}; {e.freshness}; {e.tokenCost} tokens
+                {e.injected ? "; injected" : "; not injected"}
+                {e.used ? "; used" : ""}
+                {e.stub ? "; stub" : ""}
+              </li>
+            ))}
+            {inspector.omittedPaths.map((p) => (
+              <li key={p} data-testid="context-omitted">
+                {p} — omitted for the token budget
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {languages.length > 0 && (
         <div className="banner" data-kind="info" data-testid="language-labels" title={languages.map((l) => `${l.language}: ${l.label}`).join("\n")}>
           <strong>Languages</strong> — {languages.filter((l) => l.tier === "ALPHA_BASELINE").map((l) => l.language).join(", ")} at the Alpha baseline (Tier C plus compile and test evidence; structural intelligence not yet claimed); everything else unsupported.

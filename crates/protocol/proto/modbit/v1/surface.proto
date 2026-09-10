@@ -425,6 +425,50 @@ message CapabilityLeaseList {
   repeated CapabilityLeaseView leases = 1;
 }
 
+// ---- Context Inspector (REQ-EV-0035 / 0131 / 0175, docs/18) ----
+
+message GetContextInspector {
+  Id task_id = 1;
+}
+
+// One fragment the Context Pack selected, as the clients show it.
+message ContextEntryView {
+  string entry_id = 1;
+  string source_ref = 2;
+  string path = 3;
+  uint32 line_start = 4;          // 0 = whole file
+  uint32 line_end = 5;
+  string reason = 6;              // critical:<why> | utility
+  repeated string retrieval_reasons = 7;
+  repeated string sources = 8;    // exact | lexical | semantic | graph.* | task_constraint
+  string freshness = 9;           // committed | fresh_in_worktree | rehydrated_from_active_revision
+  uint32 token_cost = 10;
+  string content_hash = 11;
+  uint64 workspace_revision = 12;
+  bool stub = 13;                 // signature-only, hydrate to read it
+  bool injected = 14;             // reached the prompt envelope this turn
+  bool used = 15;                 // a later tool call used the path at that revision
+}
+
+message ContextInspectorView {
+  string pack_id = 1;
+  uint64 workspace_revision = 2;
+  uint32 token_budget = 3;
+  uint32 token_used = 4;
+  bool complete = 5;              // every critical entry fit
+  repeated ContextEntryView entries = 6;
+  uint32 omitted_count = 7;
+  uint32 omitted_tokens = 8;
+  repeated string omitted_paths = 9;
+  string compiler_version = 10;
+  string token_estimator = 11;
+  // What the prompt envelope did with them on the last compiled turn.
+  string context_pack_id = 12;
+  repeated string injected_refs = 13;
+  repeated string rejected_refs = 14;
+  uint64 injected_tokens = 15;
+}
+
 // ---- PX-026 language support labels (docs/76) ----
 
 message ListLanguages {}

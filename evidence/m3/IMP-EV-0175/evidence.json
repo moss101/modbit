@@ -1,0 +1,14 @@
+{
+ "task": "IMP-EV-0175",
+ "requirement": "REQ-EV-0175",
+ "qual": "QUAL-EV-0175",
+ "tests": [
+  "qual_ev_0035_0131_0175_context_inspector_matches_the_prompt_envelope",
+  "qual_ev_0169_context_pack_reaches_the_prompt_with_provenance_or_not_at_all",
+  "m3_8_context_pack_packs_under_budget_with_provenance_and_the_ledger_records_use"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "GetContextInspector serves the task's pack from the Context Ledger and the last ContextCompile step: every entry carries its source ref, path, line range, reason, retrieval reasons, sources, freshness, token cost, content hash and revision, whether the prompt envelope injected it and whether a later tool call used it; stubs and omitted paths are listed with their token cost; the view's injected refs and token total are the envelope's own (the test also checks them against the request the provider received), and a fragment the envelope refused for missing provenance is reported as refused",
+ "audit": "IMPLEMENTED in this batch (M3.8 built the pack, IMP-EV-0169 the envelope validation; nothing exposed either to a client)"
+}

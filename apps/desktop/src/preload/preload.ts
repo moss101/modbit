@@ -46,10 +46,40 @@ export interface CodeView {
   text: string;
 }
 
+export interface ContextInspectorEntry {
+  entryId: string;
+  sourceRef: string;
+  path: string;
+  lineStart: number;
+  lineEnd: number;
+  reason: string;
+  sources: string[];
+  freshness: string;
+  tokenCost: number;
+  injected: boolean;
+  used: boolean;
+  stub: boolean;
+}
+
+export interface ContextInspectorSummary {
+  packId: string;
+  workspaceRevision: string;
+  tokenBudget: number;
+  tokenUsed: number;
+  complete: boolean;
+  injectedTokens: string;
+  injectedRefs: string[];
+  rejectedRefs: string[];
+  omittedCount: number;
+  omittedPaths: string[];
+  entries: ContextInspectorEntry[];
+}
+
 export interface ModbitBridge {
   coreStatus(): Promise<unknown>;
   localState(): Promise<{ sessionId?: string }>;
   languages(): Promise<{ language: string; tier: string; label: string; fixture: string; proven: string[]; provisional: string[]; notClaimed: string[]; note: string }[]>;
+  contextInspector(taskId: string): Promise<ContextInspectorSummary>;
   createSession(): Promise<string>;
   sessionSnapshot(sessionId: string): Promise<unknown>;
   createTask(sessionId: string, goal: string, commandIdHex: string, workspaceRoot?: string): Promise<{ taskId: string; offset: bigint; replayed: boolean }>;
@@ -69,6 +99,7 @@ const bridge: ModbitBridge = {
   coreStatus: () => ipcRenderer.invoke("core:status"),
   localState: () => ipcRenderer.invoke("core:localState"),
   languages: () => ipcRenderer.invoke("languages:list"),
+  contextInspector: (taskId: string) => ipcRenderer.invoke("context:inspector", taskId),
   createSession: () => ipcRenderer.invoke("session:create"),
   sessionSnapshot: (sessionId) => ipcRenderer.invoke("session:snapshot", sessionId),
   createTask: (sessionId, goal, commandIdHex, workspaceRoot) => ipcRenderer.invoke("task:create", sessionId, goal, commandIdHex, workspaceRoot ?? ""),

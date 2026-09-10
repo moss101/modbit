@@ -8890,3 +8890,153 @@ async fn qual_px_040_harness_contracts_bound_observations_page_results_and_fail_
     }
     let _ = repo;
 }
+
+/// IMP-EV-0035 / 0131 / 0175 (Context Inspector): every client can see what
+/// the Context Pack selected and excluded, with the reason, source, revision,
+/// freshness and token cost of each entry — and the inspector's ids and totals
+/// are the prompt envelope's, not a second story.
+#[tokio::test]
+async fn qual_ev_0035_0131_0175_context_inspector_matches_the_prompt_envelope() {
+    use modbit_protocol::v1::{
+        ContextInspectorView, GetContextInspector, StartTask, TaskRunStarted,
+    };
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[
+        (
+            "src/cart.rs",
+            "pub fn total_cents(q: u32, u: u32) -> u32 {\n    q * u\n}\n",
+        ),
+        ("NOTES.md", "totals are computed in cents\n"),
+        ("BIG.md", &"filler line about totals\n".repeat(80)),
+    ]);
+    let script = vec![
+        json!({"calls": [{"name": "context.pack", "args": {"query": "total_cents", "token_budget": 120, "required_paths": ["NOTES.md"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "NOTES.md"}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "note the units", "expected_files": ["NOTES.md"]}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn_with_env(
+        dir.path(),
+        &[
+            ("MODBIT_OPENAI_BASE_URL", &base),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+        ],
+    );
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x31)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x32, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x33),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 20,
+                max_tool_calls: 0,
+                max_no_progress_turns: 5,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 120).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let ack = c
+        .command(envelope(
+            id16(0x34),
+            "GetContextInspector",
+            GetContextInspector {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let v: ContextInspectorView = Client::result(&ack).unwrap();
+    // Composition, budget and estimator (IMP-EV-0131).
+    assert!(!v.pack_id.is_empty(), "{v:?}");
+    assert_eq!(v.token_budget, 120);
+    assert!(v.token_used <= v.token_budget, "{v:?}");
+    assert_eq!(v.token_estimator, "bytes/4");
+    assert!(v.complete, "{v:?}");
+    assert!(v.workspace_revision > 0);
+    // Selection with reasons, sources, freshness and cost (IMP-EV-0035).
+    let notes = v
+        .entries
+        .iter()
+        .find(|e| e.path == "NOTES.md")
+        .unwrap_or_else(|| panic!("{v:?}"));
+    assert_eq!(notes.reason, "critical:task_constraint");
+    assert!(
+        notes.sources.iter().any(|s| s == "task_constraint"),
+        "{notes:?}"
+    );
+    assert_eq!(notes.freshness, "committed");
+    assert!(notes.token_cost > 0 && notes.content_hash.len() == 64);
+    assert!(notes.injected, "the entry reached the envelope: {v:?}");
+    assert!(notes.used, "the later fs.read used it: {v:?}");
+    // Exclusions are visible (IMP-EV-0175): something was left out or stubbed
+    // under this budget, and the inspector says which.
+    assert!(
+        v.omitted_count > 0 || v.entries.iter().any(|e| e.stub),
+        "the budget excluded something and the inspector shows it: {v:?}"
+    );
+    if v.omitted_count > 0 {
+        assert!(!v.omitted_paths.is_empty(), "{v:?}");
+        assert!(v.omitted_tokens > 0, "{v:?}");
+    }
+    // The inspector's ids are the envelope's ids (IMP-EV-0175 / 0131).
+    assert!(!v.injected_refs.is_empty(), "{v:?}");
+    assert!(
+        v.rejected_refs.is_empty(),
+        "nothing lacked provenance: {v:?}"
+    );
+    let injected_entries: Vec<&str> = v
+        .entries
+        .iter()
+        .filter(|e| e.injected)
+        .map(|e| e.source_ref.as_str())
+        .collect();
+    for r in &v.injected_refs {
+        assert!(
+            injected_entries.contains(&r.as_str()),
+            "{r} missing from the entries: {v:?}"
+        );
+    }
+    let injected_tokens: u64 = v
+        .entries
+        .iter()
+        .filter(|e| e.injected)
+        .map(|e| u64::from(e.token_cost))
+        .sum();
+    assert_eq!(v.injected_tokens, injected_tokens, "{v:?}");
+    // And they are the refs the model actually saw in the request.
+    let bodies = seen.lock().unwrap().clone();
+    let context_message = bodies
+        .iter()
+        .flat_map(|b| b["messages"].as_array().cloned().unwrap_or_default())
+        .filter_map(|m| m["content"].as_str().map(str::to_owned))
+        .find(|t| t.contains("Retrieved context"))
+        .unwrap_or_else(|| panic!("{bodies:#?}"));
+    for r in &v.injected_refs {
+        assert!(
+            context_message.contains(r.as_str()),
+            "{r} was not in the prompt"
+        );
+    }
+    for r in &v.omitted_paths {
+        assert!(
+            !context_message.contains(&format!("workspace:{r}")),
+            "an omitted path reached the prompt: {r}"
+        );
+    }
+    let _ = repo;
+}

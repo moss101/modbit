@@ -109,6 +109,38 @@ function requireRelativePath(v: unknown): string {
 // message is rejected here, never forwarded).
 ipcMain.handle("core:status", () => supervisor.status);
 ipcMain.handle("core:localState", () => loadLocalState());
+// Context Inspector (REQ-EV-0035 / 0131 / 0175): what the pack selected and
+// excluded, and what the prompt envelope injected.
+ipcMain.handle("context:inspector", async (_e: IpcMainInvokeEvent, taskId: unknown) => {
+  const tid = requireTaskId(taskId);
+  const v = await requireClient().contextInspector(tid);
+  return {
+    packId: v.packId,
+    workspaceRevision: v.workspaceRevision.toString(),
+    tokenBudget: v.tokenBudget,
+    tokenUsed: v.tokenUsed,
+    complete: v.complete,
+    injectedTokens: v.injectedTokens.toString(),
+    injectedRefs: v.injectedRefs,
+    rejectedRefs: v.rejectedRefs,
+    omittedCount: v.omittedCount,
+    omittedPaths: v.omittedPaths,
+    entries: v.entries.map((e) => ({
+      entryId: e.entryId,
+      sourceRef: e.sourceRef,
+      path: e.path,
+      lineStart: e.lineStart,
+      lineEnd: e.lineEnd,
+      reason: e.reason,
+      sources: e.sources,
+      freshness: e.freshness,
+      tokenCost: e.tokenCost,
+      injected: e.injected,
+      used: e.used,
+      stub: e.stub,
+    })),
+  };
+});
 // PX-026: honest language labels in every client (docs/76).
 ipcMain.handle("languages:list", async () => {
   const r = await requireClient().listLanguages();

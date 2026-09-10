@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 592,
+    "root_and_tooling": 598,
     "docs_bytes": 1037580
   },
   "sections": [
@@ -2977,6 +2977,16 @@
       "sha256": "0c87102a16317870f8c58fbfaa5bc17c22b147aafde94a274af1e579fc85005c"
     },
     {
+      "path": "evidence/m3/IMP-EV-0035/TASK_CARD.md",
+      "bytes": 2164,
+      "sha256": "b8fa8fd90b791d1a9fa9a371007f755dc6f52b146bdd9442216805b342770b91"
+    },
+    {
+      "path": "evidence/m3/IMP-EV-0035/evidence.json",
+      "bytes": 1114,
+      "sha256": "0360d90aeab7bc5e5d12f8463cfee3d60a3959e40431682a46a158e72692c7a5"
+    },
+    {
       "path": "evidence/m3/IMP-EV-0070/TASK_CARD.md",
       "bytes": 1598,
       "sha256": "815affd431b792e72da2d3dcf4e590cdc344febc86292e2214c9773b981c3beb"
@@ -2995,6 +3005,16 @@
       "path": "evidence/m3/IMP-EV-0070/evidence.json",
       "bytes": 770,
       "sha256": "d69c1605f9efc1c6f489c8a93f5b878c424b4a5ad74c5b123bb458a356898660"
+    },
+    {
+      "path": "evidence/m3/IMP-EV-0131/TASK_CARD.md",
+      "bytes": 2143,
+      "sha256": "10870093055441c9c677639775bd8d757f7fae7f41c6008a663e4a795d303e4b"
+    },
+    {
+      "path": "evidence/m3/IMP-EV-0131/evidence.json",
+      "bytes": 1114,
+      "sha256": "31755b6c7b7cca612ac5ff8e2c38a636a2603f845cae02a3b27f8d5a31432071"
     },
     {
       "path": "evidence/m3/IMP-EV-0132/TASK_CARD.md",
@@ -3355,6 +3375,16 @@
       "path": "evidence/m3/IMP-EV-0172/evidence.json",
       "bytes": 981,
       "sha256": "2decb4ad544312e9e0f71ee80ad6f945e75de3e04fc7c29772024b2fcdda3a9b"
+    },
+    {
+      "path": "evidence/m3/IMP-EV-0175/TASK_CARD.md",
+      "bytes": 2102,
+      "sha256": "0996daa2160d240340109d9a4ab1b69a5fb3af0e4692b9671f5f6b0a80d61c36"
+    },
+    {
+      "path": "evidence/m3/IMP-EV-0175/evidence.json",
+      "bytes": 1114,
+      "sha256": "fcd22200689acd49ca12cb921c744f8cdabf7d20d58d1aad84fb22b14c8307c2"
     },
     {
       "path": "evidence/m3/IMP-EV-0177/TASK_CARD.md",

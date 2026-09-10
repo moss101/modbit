@@ -34,12 +34,13 @@ use modbit_protocol::client::Client;
 use modbit_protocol::local::{ReadyLine, decode_hex, encode_hex};
 use modbit_protocol::v1::{
     AcquireSessionLease, ApprovalList, ApprovalResolvedAck, AttachmentIngested, CancelTask,
-    CapabilityLeaseList, ClientKind, CommandEnvelope, CreateSession, CreateTask, DecideReview,
-    EffectReceiptList, EmergencyStop, EmergencyStopped, GetCapabilityLeases, GetEffectReceipts,
-    GetReviewBundle, GetSessionSnapshot, GetTaskStatus, HunkRef, Id, IngestAttachment, InvokeTool,
-    LanguageList, ListApprovals, ListLanguages, ListModels, ListQuestions, ListTools, ModelList,
-    ModelProbed, ProbeModel, QuestionList, QuestionResponded, ResolveApproval, RespondToQuestion,
-    ReviewBundle, ReviewDecided, SessionCreated, SessionLeaseAcquired, SessionSnapshot, StartTask,
+    CapabilityLeaseList, ClientKind, CommandEnvelope, ContextInspectorView, CreateSession,
+    CreateTask, DecideReview, EffectReceiptList, EmergencyStop, EmergencyStopped,
+    GetCapabilityLeases, GetContextInspector, GetEffectReceipts, GetReviewBundle,
+    GetSessionSnapshot, GetTaskStatus, HunkRef, Id, IngestAttachment, InvokeTool, LanguageList,
+    ListApprovals, ListLanguages, ListModels, ListQuestions, ListTools, ModelList, ModelProbed,
+    ProbeModel, QuestionList, QuestionResponded, ResolveApproval, RespondToQuestion, ReviewBundle,
+    ReviewDecided, SessionCreated, SessionLeaseAcquired, SessionSnapshot, StartTask,
     TaskCancelRequested, TaskCreated, TaskRunStarted, TaskStatus, ToolInvoked, ToolList,
     UndoPlanView, UndoToolCall,
 };
@@ -59,7 +60,7 @@ fn exit_for_state(state: &str) -> u8 {
     }
 }
 
-const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
+const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
 
 fn parse_id(hex: &str) -> Result<Id, String> {
     let bytes = decode_hex(hex)
@@ -910,6 +911,64 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 r.reverted.join(","),
                 r.workspace_revision
             );
+        }
+        ["context", "show", task] => {
+            let ack = client
+                .command(envelope(
+                    "GetContextInspector",
+                    GetContextInspector {
+                        task_id: Some(parse_id(task)?),
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let v: ContextInspectorView = Client::result(&ack).map_err(|e| e.to_string())?;
+            if v.pack_id.is_empty() {
+                println!("context pack: none compiled for this task yet");
+            } else {
+                println!(
+                    "context pack {} revision={} tokens={}/{} complete={} omitted={} ({} tokens) estimator={}",
+                    &v.pack_id[..12.min(v.pack_id.len())],
+                    v.workspace_revision,
+                    v.token_used,
+                    v.token_budget,
+                    v.complete,
+                    v.omitted_count,
+                    v.omitted_tokens,
+                    v.token_estimator
+                );
+                println!(
+                    "prompt envelope: pack={} injected={} refused={} injected_tokens={}",
+                    &v.context_pack_id[..12.min(v.context_pack_id.len())],
+                    v.injected_refs.len(),
+                    v.rejected_refs.len(),
+                    v.injected_tokens
+                );
+                for e in &v.entries {
+                    println!(
+                        "entry {} {}{} reason={:?} sources={} freshness={} tokens={} revision={} injected={} used={}{}",
+                        &e.entry_id[..8.min(e.entry_id.len())],
+                        e.source_ref,
+                        if e.line_end > 0 {
+                            format!(" L{}-{}", e.line_start, e.line_end)
+                        } else {
+                            String::new()
+                        },
+                        e.reason,
+                        e.sources.join(","),
+                        e.freshness,
+                        e.token_cost,
+                        e.workspace_revision,
+                        e.injected,
+                        e.used,
+                        if e.stub { " [stub]" } else { "" }
+                    );
+                }
+                for p in &v.omitted_paths {
+                    println!("omitted {p}");
+                }
+            }
         }
         ["language", "list"] => {
             let ack = client

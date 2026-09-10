@@ -1769,6 +1769,214 @@ export declare type CapabilityLeaseList = Message<"modbit.v1.CapabilityLeaseList
 export declare const CapabilityLeaseListSchema: GenMessage<CapabilityLeaseList>;
 
 /**
+ * @generated from message modbit.v1.GetContextInspector
+ */
+export declare type GetContextInspector = Message<"modbit.v1.GetContextInspector"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.GetContextInspector.
+ * Use `create(GetContextInspectorSchema)` to create a new message.
+ */
+export declare const GetContextInspectorSchema: GenMessage<GetContextInspector>;
+
+/**
+ * One fragment the Context Pack selected, as the clients show it.
+ *
+ * @generated from message modbit.v1.ContextEntryView
+ */
+export declare type ContextEntryView = Message<"modbit.v1.ContextEntryView"> & {
+  /**
+   * @generated from field: string entry_id = 1;
+   */
+  entryId: string;
+
+  /**
+   * @generated from field: string source_ref = 2;
+   */
+  sourceRef: string;
+
+  /**
+   * @generated from field: string path = 3;
+   */
+  path: string;
+
+  /**
+   * 0 = whole file
+   *
+   * @generated from field: uint32 line_start = 4;
+   */
+  lineStart: number;
+
+  /**
+   * @generated from field: uint32 line_end = 5;
+   */
+  lineEnd: number;
+
+  /**
+   * critical:<why> | utility
+   *
+   * @generated from field: string reason = 6;
+   */
+  reason: string;
+
+  /**
+   * @generated from field: repeated string retrieval_reasons = 7;
+   */
+  retrievalReasons: string[];
+
+  /**
+   * exact | lexical | semantic | graph.* | task_constraint
+   *
+   * @generated from field: repeated string sources = 8;
+   */
+  sources: string[];
+
+  /**
+   * committed | fresh_in_worktree | rehydrated_from_active_revision
+   *
+   * @generated from field: string freshness = 9;
+   */
+  freshness: string;
+
+  /**
+   * @generated from field: uint32 token_cost = 10;
+   */
+  tokenCost: number;
+
+  /**
+   * @generated from field: string content_hash = 11;
+   */
+  contentHash: string;
+
+  /**
+   * @generated from field: uint64 workspace_revision = 12;
+   */
+  workspaceRevision: bigint;
+
+  /**
+   * signature-only, hydrate to read it
+   *
+   * @generated from field: bool stub = 13;
+   */
+  stub: boolean;
+
+  /**
+   * reached the prompt envelope this turn
+   *
+   * @generated from field: bool injected = 14;
+   */
+  injected: boolean;
+
+  /**
+   * a later tool call used the path at that revision
+   *
+   * @generated from field: bool used = 15;
+   */
+  used: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.ContextEntryView.
+ * Use `create(ContextEntryViewSchema)` to create a new message.
+ */
+export declare const ContextEntryViewSchema: GenMessage<ContextEntryView>;
+
+/**
+ * @generated from message modbit.v1.ContextInspectorView
+ */
+export declare type ContextInspectorView = Message<"modbit.v1.ContextInspectorView"> & {
+  /**
+   * @generated from field: string pack_id = 1;
+   */
+  packId: string;
+
+  /**
+   * @generated from field: uint64 workspace_revision = 2;
+   */
+  workspaceRevision: bigint;
+
+  /**
+   * @generated from field: uint32 token_budget = 3;
+   */
+  tokenBudget: number;
+
+  /**
+   * @generated from field: uint32 token_used = 4;
+   */
+  tokenUsed: number;
+
+  /**
+   * every critical entry fit
+   *
+   * @generated from field: bool complete = 5;
+   */
+  complete: boolean;
+
+  /**
+   * @generated from field: repeated modbit.v1.ContextEntryView entries = 6;
+   */
+  entries: ContextEntryView[];
+
+  /**
+   * @generated from field: uint32 omitted_count = 7;
+   */
+  omittedCount: number;
+
+  /**
+   * @generated from field: uint32 omitted_tokens = 8;
+   */
+  omittedTokens: number;
+
+  /**
+   * @generated from field: repeated string omitted_paths = 9;
+   */
+  omittedPaths: string[];
+
+  /**
+   * @generated from field: string compiler_version = 10;
+   */
+  compilerVersion: string;
+
+  /**
+   * @generated from field: string token_estimator = 11;
+   */
+  tokenEstimator: string;
+
+  /**
+   * What the prompt envelope did with them on the last compiled turn.
+   *
+   * @generated from field: string context_pack_id = 12;
+   */
+  contextPackId: string;
+
+  /**
+   * @generated from field: repeated string injected_refs = 13;
+   */
+  injectedRefs: string[];
+
+  /**
+   * @generated from field: repeated string rejected_refs = 14;
+   */
+  rejectedRefs: string[];
+
+  /**
+   * @generated from field: uint64 injected_tokens = 15;
+   */
+  injectedTokens: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.ContextInspectorView.
+ * Use `create(ContextInspectorViewSchema)` to create a new message.
+ */
+export declare const ContextInspectorViewSchema: GenMessage<ContextInspectorView>;
+
+/**
  * @generated from message modbit.v1.ListLanguages
  */
 export declare type ListLanguages = Message<"modbit.v1.ListLanguages"> & {
