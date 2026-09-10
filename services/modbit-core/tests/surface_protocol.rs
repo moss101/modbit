@@ -7134,5 +7134,51 @@ async fn qual_ev_0134_deferred_tool_search_activates_without_authorizing_and_hyd
             .iter()
             .any(|t| t == "lsp.symbols")
     );
+    // REQ-EV-0132: the run's evidence is searchable by run and step.
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0x38,
+        0x39,
+        "evidence.search",
+        r#"{"query":"lsp.symbols","max_hits":50}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let hits = so["hits"].as_array().unwrap();
+    assert!(!hits.is_empty(), "{so}");
+    assert!(
+        hits.iter()
+            .any(|h| h["event_type"] == "ToolsActivated" && h["run_id"].is_string()),
+        "{so}"
+    );
+    let step_hit = hits
+        .iter()
+        .find(|h| h["step_id"].is_string() && h["kind"] == "step")
+        .unwrap_or_else(|| panic!("a step-scoped hit: {so}"));
+    let step_id = step_hit["step_id"].as_str().unwrap().to_owned();
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0x3A,
+        0x3B,
+        "evidence.search",
+        &format!(r#"{{"query":"lsp.symbols","step_id":"{step_id}"}}"#),
+    )
+    .await;
+    let so2: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert!(
+        so2["hits"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|h| h["step_id"] == step_id),
+        "{so2}"
+    );
+    assert!(!so2["hits"].as_array().unwrap().is_empty());
+    assert_eq!(so2["scope"]["step_id"], step_id);
     let _ = repo;
 }

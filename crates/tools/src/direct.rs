@@ -1071,6 +1071,51 @@ tool!(
     }
 );
 
+tool!(
+    EvidenceSearch,
+    spec(
+        "evidence.search",
+        "Search this task's (or session's) recorded evidence — events and their payloads (messages, tool calls, steps, file changes, errors, checkpoints), tool-call rows and verification checks — by words; hits name the run, step and tool call they belong to. Scoped to the tenant and task; never crosses tenants (REQ-EV-0132).",
+        EffectClass::ReadOnly,
+        json!({"type":"object","properties":{"query":{"type":"string","minLength":1},"scope":{"type":"string","enum":["task","session"]},"run_id":{"type":"string"},"step_id":{"type":"string"},"kinds":{"type":"array","items":{"type":"string","enum":["message","tool","step","file","error","checkpoint","check","event"]}},"max_hits":{"type":"integer","minimum":1,"maximum":500}},"required":["query"],"additionalProperties":false}),
+        &["fs.read"],
+        Idempotency::Idempotent
+    ),
+    |ctx, args| {
+        let Some(port) = &ctx.search else {
+            return ToolOutcome::infra("NO_INDEX", "no workspace index is attached to this task");
+        };
+        let query = s(&args, "query");
+        if query.trim().is_empty() {
+            return ToolOutcome::fail("QUERY_REQUIRED", "query must not be empty");
+        }
+        let req = crate::pipeline::SearchRequest {
+            kind: "evidence".into(),
+            query: json!({
+                "query": query,
+                "scope": args.get("scope").and_then(Value::as_str).unwrap_or("task"),
+                "run_id": args.get("run_id").cloned().unwrap_or(Value::Null),
+                "step_id": args.get("step_id").cloned().unwrap_or(Value::Null),
+                "kinds": args.get("kinds").cloned().unwrap_or_else(|| json!([])),
+            })
+            .to_string(),
+            case_insensitive: true,
+            path_glob: None,
+            max_hits: usize::try_from(
+                args.get("max_hits")
+                    .and_then(Value::as_u64)
+                    .unwrap_or(50)
+                    .clamp(1, 500),
+            )
+            .unwrap_or(50),
+        };
+        match port.search(&req) {
+            Ok(v) => ToolOutcome::ok(v),
+            Err((code, msg)) => ToolOutcome::fail(&code, msg),
+        }
+    }
+);
+
 /// Wait window for `shell.read` when the process is still running.
 const READ_WAIT_MS: u64 = 250;
 
@@ -1505,6 +1550,7 @@ pub fn register_direct(registry: &mut ToolRegistry) -> Result<()> {
         SearchRetrieve::shared(),
         ContextPack::shared(),
         ContextLedger::shared(),
+        EvidenceSearch::shared(),
         LspDiagnostics::shared(),
         LspSymbols::shared(),
         LspReferences::shared(),

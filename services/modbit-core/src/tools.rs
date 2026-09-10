@@ -15,7 +15,7 @@ use modbit_domain::approval::{Approval, ApprovalEvent};
 use modbit_domain::event::{Actor, AggregateType};
 use modbit_domain::lease::CapabilityLease;
 use modbit_domain::toolcall::{EffectReceipt, ToolCall, ToolCallEvent, ToolCallState};
-use modbit_domain::{ApprovalId, SessionId, TaskId, TenantId, ToolCallId};
+use modbit_domain::{ApprovalId, RunId, RunStepId, SessionId, TaskId, TenantId, ToolCallId};
 use modbit_event_store::{AppendRequest, EventStore, NewEvent, ObjectStore};
 use modbit_policy::{CapabilityKernel, KernelDecision, KernelRequest};
 use modbit_protocol::local::{ReadyLine, decode_hex};
@@ -361,7 +361,7 @@ impl ToolHost {
 
     pub async fn invoke(
         &self,
-        store: &Mutex<EventStore>,
+        store: &Arc<Mutex<EventStore>>,
         call: InvokeRequest<'_>,
     ) -> Result<Invoked> {
         let InvokeRequest {
@@ -405,6 +405,10 @@ impl ToolHost {
                 evidence: task_evidence(store, task_id).await,
                 ledger: self.ledger(task_id).await,
                 objects: store.lock().await.objects().clone(),
+                store: Arc::clone(store),
+                tenant_id,
+                session_id,
+                task_id,
                 workspace: Arc::clone(ws),
             })),
             _ => None,
@@ -1138,6 +1142,11 @@ struct IndexPort {
     ledger: Arc<Mutex<modbit_context::ContextLedger>>,
     /// Object store for durable packs and ledger snapshots.
     objects: ObjectStore,
+    /// The event store, for evidence search (REQ-EV-0132).
+    store: Arc<Mutex<EventStore>>,
+    tenant_id: TenantId,
+    session_id: SessionId,
+    task_id: TaskId,
     workspace: Arc<Mutex<WorkspaceService>>,
 }
 
@@ -1375,6 +1384,46 @@ impl modbit_tools::SearchPort for IndexPort {
                     },
                 );
                 serde_json::json!({"plan": plan, "hits": plan.hits})
+            }
+            "evidence" => {
+                let args: serde_json::Value = serde_json::from_str(&req.query)
+                    .map_err(|e| ("BAD_QUERY".to_owned(), e.to_string()))?;
+                let store = self.store.try_lock().map_err(|_| {
+                    (
+                        "STORE_BUSY".to_owned(),
+                        "the event store is busy; retry".to_owned(),
+                    )
+                })?;
+                let parse16 = |v: &serde_json::Value| -> Option<[u8; 16]> {
+                    let s = v.as_str()?.replace('-', "");
+                    let bytes = hex::decode(s).ok()?;
+                    <[u8; 16]>::try_from(bytes.as_slice()).ok()
+                };
+                let scope = modbit_event_store::EvidenceScope {
+                    session_id: (args["scope"].as_str() == Some("session"))
+                        .then_some(self.session_id),
+                    task_id: (args["scope"].as_str() != Some("session")).then_some(self.task_id),
+                    run_id: parse16(&args["run_id"]).map(RunId::from_bytes),
+                    step_id: parse16(&args["step_id"]).map(RunStepId::from_bytes),
+                };
+                let kinds: Vec<String> = args["kinds"]
+                    .as_array()
+                    .map(|a| {
+                        a.iter()
+                            .filter_map(|k| k.as_str().map(str::to_owned))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                let hits = store
+                    .search_evidence(
+                        &self.tenant_id,
+                        &scope,
+                        args["query"].as_str().unwrap_or_default(),
+                        &kinds,
+                        req.max_hits,
+                    )
+                    .map_err(|e| ("STORE".to_owned(), e.to_string()))?;
+                serde_json::json!({"hits": hits, "scope": {"tenant": self.tenant_id.to_string(), "session_id": scope.session_id.map(|s| s.to_string()), "task_id": scope.task_id.map(|t| t.to_string()), "run_id": scope.run_id.map(|r| r.to_string()), "step_id": scope.step_id.map(|s| s.to_string())}})
             }
             "ledger" => {
                 let ledger = self.ledger.try_lock().map_err(|_| {

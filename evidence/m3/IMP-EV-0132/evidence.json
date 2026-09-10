@@ -1,0 +1,13 @@
+{
+ "task": "IMP-EV-0132",
+ "requirement": "REQ-EV-0132",
+ "qual": "QUAL-EV-0132",
+ "tests": [
+  "evidence_search_scopes_by_tenant_run_and_step",
+  "qual_ev_0134_deferred_tool_search_activates_without_authorizing_and_hydrates_schemas_lazily"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "tenant-scoped evidence search over events, tool calls and checks with run/step/tool-call ids",
+ "audit": "IMPLEMENTED in this batch (was NOT-FOUND)"
+}

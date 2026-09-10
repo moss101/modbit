@@ -3,7 +3,9 @@
 use std::path::{Path, PathBuf};
 
 use modbit_domain::event::{Actor, AggregateType, EventEnvelope, PayloadRef};
-use modbit_domain::{EventId, RunId, RunStepId, SessionId, TaskId, TenantId, Timestamp, TurnId};
+use modbit_domain::{
+    EventId, RunId, RunStepId, SessionId, TaskId, TenantId, Timestamp, ToolCallId, TurnId,
+};
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params};
 use sha2::{Digest, Sha256};
 
@@ -19,6 +21,42 @@ pub struct StoredEvent {
     pub offset: u64,
     /// The envelope.
     pub envelope: EventEnvelope,
+}
+
+/// Scope of an evidence search (REQ-EV-0132); every field narrows.
+#[derive(Clone, Debug, Default)]
+pub struct EvidenceScope {
+    /// Session.
+    pub session_id: Option<SessionId>,
+    /// Task.
+    pub task_id: Option<TaskId>,
+    /// Run.
+    pub run_id: Option<RunId>,
+    /// Step.
+    pub step_id: Option<RunStepId>,
+}
+
+/// One evidence hit: an event, a tool call, a step or a check that matched.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct EvidenceHit {
+    /// `message` | `tool` | `step` | `file` | `error` | `checkpoint` | `check` | `event`.
+    pub kind: String,
+    /// Store offset (events) or 0.
+    pub offset: u64,
+    /// Event type or row kind.
+    pub event_type: String,
+    /// Task.
+    pub task_id: Option<String>,
+    /// Run.
+    pub run_id: Option<String>,
+    /// Step.
+    pub step_id: Option<String>,
+    /// Tool call, when the hit is one.
+    pub tool_call_id: Option<String>,
+    /// Bounded excerpt around the match.
+    pub snippet: String,
+    /// When (ms), when known.
+    pub occurred_at: Option<i64>,
 }
 
 /// One event to append. Lineage ids are copied onto the envelope.
@@ -545,6 +583,205 @@ impl EventStore {
             row_to_event,
         )?;
         rows.map(|r| r.map_err(Error::from)).collect()
+    }
+
+    /// Search the tenant's evidence — event types and payloads (inline or
+    /// small objects), tool calls, run steps and verification checks — for
+    /// the query's words within `scope` (REQ-EV-0132). Never crosses the
+    /// tenant: the scope ids are only honoured for events the tenant owns.
+    pub fn search_evidence(
+        &self,
+        tenant_id: &TenantId,
+        scope: &EvidenceScope,
+        query: &str,
+        kinds: &[String],
+        limit: usize,
+    ) -> Result<Vec<EvidenceHit>> {
+        let words: Vec<String> = query
+            .split_whitespace()
+            .map(str::to_ascii_lowercase)
+            .filter(|w| !w.is_empty())
+            .collect();
+        if words.is_empty() {
+            return Ok(vec![]);
+        }
+        let limit = limit.clamp(1, 500);
+        let wants = |k: &str| kinds.is_empty() || kinds.iter().any(|x| x == k);
+        let mut sql = format!("SELECT {COLUMNS} FROM events WHERE tenant_id = ?1");
+        let mut args: Vec<rusqlite::types::Value> =
+            vec![rusqlite::types::Value::Blob(tenant_id.as_bytes().to_vec())];
+        if let Some(sid) = &scope.session_id {
+            args.push(rusqlite::types::Value::Blob(sid.as_bytes().to_vec()));
+            sql.push_str(&format!(" AND session_id = ?{}", args.len()));
+        }
+        if let Some(t) = &scope.task_id {
+            args.push(rusqlite::types::Value::Blob(t.as_bytes().to_vec()));
+            sql.push_str(&format!(" AND task_id = ?{}", args.len()));
+        }
+        if let Some(r) = &scope.run_id {
+            args.push(rusqlite::types::Value::Blob(r.as_bytes().to_vec()));
+            sql.push_str(&format!(" AND run_id = ?{}", args.len()));
+        }
+        if let Some(st) = &scope.step_id {
+            args.push(rusqlite::types::Value::Blob(st.as_bytes().to_vec()));
+            sql.push_str(&format!(" AND step_id = ?{}", args.len()));
+        }
+        sql.push_str(" ORDER BY offset DESC LIMIT 4000");
+        let mut stmt = self.conn.prepare(&sql)?;
+        let rows = stmt.query_map(rusqlite::params_from_iter(args.iter()), row_to_event)?;
+        let matches = |text: &str| -> Option<usize> {
+            let lower = text.to_ascii_lowercase();
+            words.iter().filter_map(|w| lower.find(w.as_str())).min()
+        };
+        let snippet = |text: &str, at: usize| -> String {
+            let start = text[..at]
+                .char_indices()
+                .rev()
+                .nth(80)
+                .map_or(0, |(i, _)| i);
+            let end = text[at..]
+                .char_indices()
+                .nth(160)
+                .map_or(text.len(), |(i, _)| at + i);
+            text[start..end].replace('\n', " ")
+        };
+        let mut out: Vec<EvidenceHit> = Vec::new();
+        let mut task_ids: Vec<TaskId> = Vec::new();
+        for ev in rows {
+            let ev = ev?;
+            let env = &ev.envelope;
+            if let Some(t) = env.task_id
+                && !task_ids.contains(&t)
+            {
+                task_ids.push(t);
+            }
+            let kind = match env.event_type.as_str() {
+                t if t.contains("Failed")
+                    || t.contains("Regression")
+                    || t.contains("Invariant")
+                    || t.contains("Exhausted") =>
+                {
+                    "error"
+                }
+                t if t.starts_with("ToolCall") => "tool",
+                t if t.starts_with("Step") => "step",
+                t if t.contains("Checkpoint") => "checkpoint",
+                t if t.starts_with("Model") || t.contains("Input") || t.contains("Question") => {
+                    "message"
+                }
+                "FileChanged" => "file",
+                _ => "event",
+            };
+            if !wants(kind) {
+                continue;
+            }
+            let payload = self.payload(&ev.envelope).unwrap_or_default();
+            // Referenced objects (tool results, step outputs, transcript
+            // messages) are part of the evidence: small ones are searched too.
+            let mut text = format!("{} {}", env.event_type, payload);
+            if let Some(obj) = payload.as_object() {
+                for (k, v) in obj.iter().filter(|(k, _)| k.ends_with("_ref")).take(3) {
+                    if let Some(h) = v.as_str()
+                        && h.len() == 64
+                        && let Ok(bytes) = self.objects().get(h)
+                        && bytes.len() <= 64 * 1024
+                    {
+                        text.push_str(&format!(" [{k}] {}", String::from_utf8_lossy(&bytes)));
+                    }
+                }
+            }
+            if let Some(at) = matches(&text) {
+                out.push(EvidenceHit {
+                    kind: kind.into(),
+                    offset: ev.offset,
+                    event_type: env.event_type.clone(),
+                    task_id: env.task_id.map(|t| t.to_string()),
+                    run_id: env.run_id.map(|r| r.to_string()),
+                    step_id: env.step_id.map(|s| s.to_string()),
+                    tool_call_id: (env.aggregate_type == AggregateType::ToolCall)
+                        .then(|| ToolCallId::from_bytes(env.aggregate_id).to_string()),
+                    snippet: snippet(&text, at),
+                    occurred_at: Some(env.occurred_at.millis()),
+                });
+                if out.len() >= limit {
+                    return Ok(out);
+                }
+            }
+        }
+        // Tool-call and check rows of the tenant's tasks in scope.
+        if wants("tool") {
+            for t in &task_ids {
+                let mut st = self.conn.prepare_cached(
+                    "SELECT tool_call_id, tool_name, status, policy_decision, step_id, completed_at FROM tool_calls WHERE task_id = ?1 ORDER BY completed_at DESC LIMIT 500",
+                )?;
+                let rows = st.query_map(params![t.as_bytes().as_slice()], |r| {
+                    Ok((
+                        r.get::<_, Vec<u8>>(0)?,
+                        r.get::<_, String>(1)?,
+                        r.get::<_, String>(2)?,
+                        r.get::<_, Option<String>>(3)?,
+                        r.get::<_, Option<Vec<u8>>>(4)?,
+                        r.get::<_, Option<i64>>(5)?,
+                    ))
+                })?;
+                for row in rows {
+                    let (id, name, status, decision, step, at) = row?;
+                    let text =
+                        format!("tool_call {name} {status} {}", decision.unwrap_or_default());
+                    if let Some(atm) = matches(&text) {
+                        let arr = |b: &[u8]| <[u8; 16]>::try_from(b).ok();
+                        out.push(EvidenceHit {
+                            kind: "tool".into(),
+                            offset: 0,
+                            event_type: "tool_call".into(),
+                            task_id: Some(t.to_string()),
+                            run_id: None,
+                            step_id: step
+                                .as_deref()
+                                .and_then(arr)
+                                .map(|a| RunStepId::from_bytes(a).to_string()),
+                            tool_call_id: arr(&id).map(|a| ToolCallId::from_bytes(a).to_string()),
+                            snippet: snippet(&text, atm),
+                            occurred_at: at,
+                        });
+                        if out.len() >= limit {
+                            return Ok(out);
+                        }
+                    }
+                }
+            }
+        }
+        if wants("check") {
+            for t in &task_ids {
+                for run in self.runs_for_task(t).unwrap_or_default() {
+                    if scope.run_id.is_some_and(|r| r != run.run_id) {
+                        continue;
+                    }
+                    for vr in self.verification_runs(&run.run_id).unwrap_or_default() {
+                        for (check_id, status) in &vr.checks {
+                            let text = format!("check {check_id} {status} stage {}", vr.stage);
+                            if let Some(atm) = matches(&text) {
+                                out.push(EvidenceHit {
+                                    kind: "check".into(),
+                                    offset: 0,
+                                    event_type: "check_result".into(),
+                                    task_id: Some(t.to_string()),
+                                    run_id: Some(run.run_id.to_string()),
+                                    step_id: None,
+                                    tool_call_id: None,
+                                    snippet: snippet(&text, atm),
+                                    occurred_at: None,
+                                });
+                                if out.len() >= limit {
+                                    return Ok(out);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Ok(out)
     }
 
     /// Highest offset in the store (`0` when empty).

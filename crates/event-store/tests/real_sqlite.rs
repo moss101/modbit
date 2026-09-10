@@ -362,3 +362,151 @@ fn qual_ev_0011_blob_addressed_payloads_survive_reopen_and_digest_mismatch_fails
     );
     assert!(store.payload(&stored[0].envelope).is_err());
 }
+
+/// REQ-EV-0132: evidence search answers by run/step and never crosses the
+/// tenant, whatever scope ids are given.
+#[test]
+fn evidence_search_scopes_by_tenant_run_and_step() {
+    use modbit_domain::ids::{RunId, RunStepId, TenantId};
+    use modbit_event_store::EvidenceScope;
+    let dir = tempfile::tempdir().unwrap();
+    let mut store = EventStore::open(dir.path()).unwrap();
+    let session = SessionId::new();
+    let task = TaskId::new();
+    let run_a = RunId::new();
+    let run_b = RunId::new();
+    let step = RunStepId::new();
+    let tenant = TenantId::from_bytes([7; 16]);
+    let other = TenantId::from_bytes([9; 16]);
+    let mk = |tenant: TenantId,
+              run: RunId,
+              step: Option<RunStepId>,
+              agg: [u8; 16],
+              events: Vec<NewEvent>| AppendRequest {
+        tenant_id: tenant,
+        session_id: session,
+        task_id: Some(task),
+        run_id: Some(run),
+        turn_id: None,
+        step_id: step,
+        aggregate_type: AggregateType::Checkpoint,
+        aggregate_id: agg,
+        expected_sequence: Some(0),
+        events,
+    };
+    store
+        .append(mk(
+            tenant,
+            run_a,
+            Some(step),
+            [1; 16],
+            vec![ev(
+                "StepFailed",
+                json!({"failure_code": "COMPILE_ERROR", "note": "widget parser broke"}),
+            )],
+        ))
+        .unwrap();
+    store
+        .append(mk(
+            tenant,
+            run_b,
+            None,
+            [2; 16],
+            vec![ev("FileChanged", json!({"path": "src/widget.rs"}))],
+        ))
+        .unwrap();
+    store
+        .append(mk(
+            other,
+            run_a,
+            Some(step),
+            [3; 16],
+            vec![ev(
+                "StepFailed",
+                json!({"failure_code": "COMPILE_ERROR", "note": "widget in another tenant"}),
+            )],
+        ))
+        .unwrap();
+    let all = store
+        .search_evidence(&tenant, &EvidenceScope::default(), "widget", &[], 50)
+        .unwrap();
+    assert_eq!(all.len(), 2, "{all:?}");
+    assert!(all.iter().all(|h| !h.snippet.contains("another tenant")));
+    let kinds: Vec<&str> = all.iter().map(|h| h.kind.as_str()).collect();
+    assert!(
+        kinds.contains(&"error") && kinds.contains(&"file"),
+        "{kinds:?}"
+    );
+    // By run.
+    let by_run = store
+        .search_evidence(
+            &tenant,
+            &EvidenceScope {
+                run_id: Some(run_b),
+                ..Default::default()
+            },
+            "widget",
+            &[],
+            50,
+        )
+        .unwrap();
+    assert_eq!(by_run.len(), 1);
+    assert_eq!(by_run[0].event_type, "FileChanged");
+    assert_eq!(
+        by_run[0].run_id.as_deref(),
+        Some(run_b.to_string().as_str())
+    );
+    // By step.
+    let by_step = store
+        .search_evidence(
+            &tenant,
+            &EvidenceScope {
+                step_id: Some(step),
+                ..Default::default()
+            },
+            "compile_error",
+            &[],
+            50,
+        )
+        .unwrap();
+    assert_eq!(by_step.len(), 1, "{by_step:?}");
+    assert_eq!(
+        by_step[0].step_id.as_deref(),
+        Some(step.to_string().as_str())
+    );
+    // The other tenant sees only its own, even with the same run and step ids.
+    let theirs = store
+        .search_evidence(
+            &other,
+            &EvidenceScope {
+                run_id: Some(run_a),
+                step_id: Some(step),
+                ..Default::default()
+            },
+            "widget",
+            &[],
+            50,
+        )
+        .unwrap();
+    assert_eq!(theirs.len(), 1);
+    assert!(theirs[0].snippet.contains("another tenant"));
+    // Kind filter and a miss.
+    assert!(
+        store
+            .search_evidence(
+                &tenant,
+                &EvidenceScope::default(),
+                "widget",
+                &["checkpoint".into()],
+                50
+            )
+            .unwrap()
+            .is_empty()
+    );
+    assert!(
+        store
+            .search_evidence(&tenant, &EvidenceScope::default(), "nothing_here", &[], 50)
+            .unwrap()
+            .is_empty()
+    );
+}

@@ -40,7 +40,7 @@ use tokio::sync::{Mutex, watch};
 
 /// Shared Core state for M1.3.
 pub struct Core {
-    pub(crate) store: Mutex<EventStore>,
+    pub(crate) store: Arc<Mutex<EventStore>>,
     /// Latest committed store offset; subscribers wake on change.
     pub(crate) last_offset: watch::Sender<u64>,
     boot_secret: Vec<u8>,
@@ -139,7 +139,7 @@ pub async fn run(data_dir: PathBuf, idle_exit_secs: Option<u64>) -> Result<()> {
     let endpoint = Endpoint::for_dir(&data_dir, &nonce).context("choosing local endpoint")?;
     let (tx, _) = watch::channel(start);
     let core = Arc::new(Core {
-        store: Mutex::new(store),
+        store: Arc::new(Mutex::new(store)),
         last_offset: tx,
         boot_secret: boot_secret.clone(),
         tenant_id: TenantId::from_bytes([0xA1; 16]),
