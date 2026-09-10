@@ -421,13 +421,50 @@ fn fuse(
             f.hit
         })
         .collect();
+    // Two tiers, because a rank offset is not the same promise: a candidate the
+    // query itself produced ranks above one that is only a neighbour of a seed,
+    // whatever their scores. The structural-advantage experiment found the
+    // difference — expansion filling the top K and pushing the answer out
+    // (REQ-EV-0254).
+    let direct = |h: &FusedHit| h.sources.iter().any(|s| !s.starts_with("graph."));
     out.sort_by(|a, b| {
-        b.score
-            .partial_cmp(&a.score)
-            .unwrap_or(std::cmp::Ordering::Equal)
+        direct(b)
+            .cmp(&direct(a))
+            .then_with(|| {
+                b.score
+                    .partial_cmp(&a.score)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
             .then(a.path.cmp(&b.path))
             .then(a.span.cmp(&b.span))
     });
+    out
+}
+
+/// Cut the fused list to `max` without letting either kind of evidence crowd
+/// the other out: the direct hits fill the list first, and the expansion keeps
+/// a small reserved tail so a caller or a dependent still surfaces on a
+/// repository where the text matches are many (M3.7 and the structural
+/// experiment of REQ-EV-0254 pull in opposite directions; this is the line
+/// between them).
+fn cut(hits: Vec<FusedHit>, max: usize) -> Vec<FusedHit> {
+    if hits.len() <= max {
+        return hits;
+    }
+    let is_direct = |h: &FusedHit| h.sources.iter().any(|s| !s.starts_with("graph."));
+    let expansion: Vec<FusedHit> = hits.iter().filter(|h| !is_direct(h)).cloned().collect();
+    if expansion.is_empty() {
+        let mut out = hits;
+        out.truncate(max);
+        return out;
+    }
+    let reserve = expansion.len().min(2).min(max / 3);
+    let mut out: Vec<FusedHit> = hits
+        .into_iter()
+        .filter(is_direct)
+        .take(max.saturating_sub(reserve))
+        .collect();
+    out.extend(expansion.into_iter().take(max.saturating_sub(out.len())));
     out
 }
 
@@ -468,7 +505,7 @@ pub fn retrieve(src: &Sources<'_>, req: &PlanRequest) -> PlanResult {
             run_level(src, req, lvl, max, &mut cands, &mut res);
         }
         res.hits = fuse(&cands, &req.query, src.graph, &req.diagnostics);
-        res.hits.truncate(max);
+        res.hits = cut(res.hits, max);
         res.coverage_paths = unique_paths(&res.hits);
         if lvl < level {
             lvl = lvl.next().unwrap_or(lvl);

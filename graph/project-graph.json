@@ -15188,8 +15188,40 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0254",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "artifact:evidence/m3/IMP-EV-0254/TASK_CARD.md",
+    "test:the_structural_profile_is_compared_with_the_hybrid_baseline_case_by_case",
+    "test:harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them",
+    "test:m3_7_retrieval_planner_starts_cheap_escalates_on_short_coverage_and_fuses_with_boosts"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-10T22:53:45Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing-code audit: M3.9 compared profile means; nothing tested the hypothesis case by case"
+    },
+    {
+     "at": "2026-09-10T22:53:45Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "benchmarks/retrieval: per-case comparison of two profiles with wins, losses, ties and an interval"
+    },
+    {
+     "at": "2026-09-10T22:53:45Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "runs over the real corpus harness; the ranking defect it found is fixed in the planner"
+    },
+    {
+     "at": "2026-09-10T22:53:45Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "finding: better than exact-only (+0.875 recall), no better than hybrid (8 ties) and 2.25 more steps"
+    }
+   ],
+   "status_changed_on": "2026-09-10T22:53:45Z"
   },
   {
    "id": "IMP-EV-0255",

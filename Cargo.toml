@@ -24,6 +24,7 @@ members = [
     "crates/procedural-runtime",
     "crates/context",
     "benchmarks/context-economics",
+    "benchmarks/retrieval",
     "crates/retrieval",
     "crates/workspace",
     "crates/git",
@@ -72,6 +73,7 @@ modbit-tools = { path = "crates/tools" }
 modbit-procedural-runtime = { path = "crates/procedural-runtime" }
 modbit-context = { path = "crates/context" }
 modbit-bench-context-economics = { path = "benchmarks/context-economics" }
+modbit-bench-retrieval = { path = "benchmarks/retrieval" }
 modbit-retrieval = { path = "crates/retrieval" }
 modbit-workspace = { path = "crates/workspace" }
 modbit-git = { path = "crates/git" }

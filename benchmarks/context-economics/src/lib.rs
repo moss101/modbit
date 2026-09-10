@@ -2,6 +2,10 @@
 //! trials of one task under two configurations of the product, and the
 //! statistics that say whether the difference is worth anything.
 //!
+//! It also holds the small statistics the other benchmarks share — a median, a
+//! mean and a deterministic bootstrap interval — so one definition of each
+//! exists.
+//!
 //! Pairing is the point. Each trial of the treatment has a partner in the
 //! baseline that ran the same task, on the same model, in the same
 //! environment, so the difference between them is the product's machinery and
@@ -120,7 +124,11 @@ pub struct PairedReport {
     pub unpaired: Vec<String>,
 }
 
-fn median(mut v: Vec<f64>) -> f64 {
+/// The middle value of a sample (the mean of the two middle values when the
+/// sample is even). Shared with the other benchmarks so one definition of a
+/// median exists (docs/81).
+#[must_use]
+pub fn median(mut v: Vec<f64>) -> f64 {
     if v.is_empty() {
         return 0.0;
     }
@@ -133,16 +141,21 @@ fn median(mut v: Vec<f64>) -> f64 {
     }
 }
 
-fn mean(v: &[f64]) -> f64 {
+/// The arithmetic mean of a sample.
+#[must_use]
+pub fn mean(v: &[f64]) -> f64 {
     if v.is_empty() {
         return 0.0;
     }
     v.iter().sum::<f64>() / v.len() as f64
 }
 
-/// A deterministic bootstrap: resampling with a fixed generator, so the same
-/// trials always produce the same interval and a reader can rerun it.
-fn bootstrap_ci95(deltas: &[f64]) -> (f64, f64) {
+/// A deterministic bootstrap 95% interval for the mean of paired deltas:
+/// resampling with a fixed generator, so the same trials always produce the
+/// same interval and a reader can rerun it. Fewer than two pairs gives no
+/// interval at all rather than a fabricated one.
+#[must_use]
+pub fn bootstrap_ci95(deltas: &[f64]) -> (f64, f64) {
     if deltas.len() < 2 {
         return (f64::NAN, f64::NAN);
     }

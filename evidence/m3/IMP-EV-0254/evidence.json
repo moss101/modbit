@@ -1,0 +1,17 @@
+{
+ "task": "IMP-EV-0254",
+ "requirement": "REQ-EV-0254",
+ "qual": "QUAL-EV-0254",
+ "tests": [
+  "the_structural_profile_is_compared_with_the_hybrid_baseline_case_by_case",
+  "harness_measures_the_three_profiles_on_a_real_corpus_and_reports_them",
+  "m3_7_retrieval_planner_starts_cheap_escalates_on_short_coverage_and_fuses_with_boosts",
+  "a_paired_report_measures_the_difference_and_says_what_it_cannot"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "Profiles A, B and C run over the same cases on a real corpus and are compared case by case: baseline value, treatment value, delta, then wins, losses, ties, mean and median delta and a bootstrap interval. The experiment found a real ranking defect on its first run (graph expansion displacing the answer) which is fixed by ranking direct hits above expansion-only ones while reserving a small tail for expansion.",
+ "finding": "Against profile A the structural profile improves recall by 0.875 (7 wins, 0 losses, interval [0.625, 1.000]). Against profile B it does not: recall identical on all eight cases, precision within noise, 2.25 more retrieval steps on average (interval [0.75, 4.50]), and a smaller top-K context whose interval crosses zero. The hypothesis is not supported over hybrid retrieval on this corpus.",
+ "audit": "PARTIAL before this task: M3.9 compared profile means; nothing tested the hypothesis case by case.",
+ "limitations": "The corpus is this repository, eight cases, one revision; the measures are retrieval quality and cost, not task outcome, which needs PX-020 and a live provider."
+}

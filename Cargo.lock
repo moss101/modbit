@@ -1584,6 +1584,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "modbit-bench-retrieval"
+version = "0.0.0"
+dependencies = [
+ "modbit-bench-context-economics",
+ "modbit-retrieval",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "modbit-browser"
 version = "0.0.0"
 dependencies = [
