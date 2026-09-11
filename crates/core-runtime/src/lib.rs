@@ -6,13 +6,20 @@
 //! gate on writes, the completion handshake, failure signatures and bounded
 //! observations with declared truncation. The Core's runtime loop
 //! (`services/modbit-core/src/runtime.rs`) drives them against the real
-//! gateway, tool host and event store. Scheduler, WorkGraph and plan
-//! admission arrive with their own scheduled tasks.
+//! gateway, tool host and event store. Scheduler and WorkGraph arrive with
+//! their own scheduled tasks.
+//!
+//! M3 EPR-014 ships `admission`: the one place a conditional plan is validated
+//! before anything dispatches, and the one place a slot is allowed to
+//! activate. EPR-004 compiles plans and EPR-005 executes them; both go through
+//! this interface rather than repeating its rules.
 
 #![forbid(unsafe_code)]
 
+pub mod admission;
 pub mod harness;
 
+pub use admission::{Activation, Admission, Refused, RunLedger, admit_activation, admit_plan};
 pub use harness::{
     Budgets, Exhausted, HarnessRefusal, HarnessState, Observation, Plan, failure_signature, observe,
 };

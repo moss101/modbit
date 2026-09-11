@@ -228,6 +228,12 @@ pub struct LegacyDecode {
     /// The shape it was decoded from (`ExecutionPlan`, `QualityGateResult`,
     /// `CriticResult`).
     pub source_shape: String,
+    /// The template label the legacy record carried (`DIRECT`, `CASCADE`,
+    /// `CRITIQUE`). It is kept because provenance must be explicit, and it
+    /// authorizes nothing: a decoded plan admits only the leg the legacy
+    /// record actually described.
+    #[serde(default)]
+    pub template_label: String,
     /// The version that shape carried.
     pub source_version: u32,
     /// Fields that had no equivalent and are recorded as unknown rather than
@@ -633,6 +639,7 @@ pub fn decode_legacy(
     let mut provenance = provenance;
     provenance.legacy_decode = Some(LegacyDecode {
         source_shape: "ExecutionPlan".into(),
+        template_label: legacy.template.clone(),
         source_version: legacy.version,
         unknown_fields: vec![
             "quality_lcb".into(),

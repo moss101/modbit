@@ -223,7 +223,7 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                         for s in &plan.slots {
                             tx.execute(
                                 "INSERT OR REPLACE INTO routing_slots (plan_id, slot_id, predecessor, trigger, max_activations, endpoint, model, role, timeout_ms, max_output_tokens, max_retries, reserved_minor, activations)
-                                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, COALESCE((SELECT activations FROM routing_slots WHERE plan_id = ?1 AND slot_id = ?2), 0))",
+                                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, (SELECT count(*) FROM routing_activations WHERE plan_id = ?1 AND slot_id = ?2))",
                                 params![
                                     plan_id,
                                     &s.slot_id,
@@ -267,9 +267,46 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                             provider_request_id.clone(),
                         ],
                     )?;
+                }
+                RunEvent::RoutingPlanAdmitted {
+                    plan_id,
+                    validation_digest,
+                    reserved_minor,
+                    currency,
+                    scale,
+                    lease_generation,
+                } => {
                     tx.execute(
-                        "UPDATE routing_slots SET activations = activations + 1 WHERE plan_id = ?1 AND slot_id = ?2 AND ?3 = 1",
-                        params![plan_id, slot_id, i64::from(*attempt == 1)],
+                        "INSERT OR REPLACE INTO routing_admissions (plan_id, validation_digest, reserved_minor, currency, scale, lease_generation, admitted_at)
+                         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                        params![
+                            plan_id,
+                            validation_digest,
+                            *reserved_minor as i64,
+                            currency,
+                            i64::from(*scale),
+                            *lease_generation as i64,
+                            at.millis(),
+                        ],
+                    )?;
+                }
+                RunEvent::SlotActivated {
+                    plan_id,
+                    slot_id,
+                    activation,
+                    reserved_minor,
+                } => {
+                    tx.execute(
+                        "INSERT OR REPLACE INTO routing_activations (plan_id, slot_id, activation, reserved_minor, activated_at)
+                         VALUES (?1, ?2, ?3, ?4, COALESCE((SELECT activated_at FROM routing_activations WHERE plan_id = ?1 AND slot_id = ?2 AND activation = ?3), ?5))",
+                        params![plan_id, slot_id, activation, *reserved_minor as i64, at.millis()],
+                    )?;
+                    // A slot is bounded by its activations, so the count is
+                    // the number of activation rows and never a running total
+                    // a replay could double.
+                    tx.execute(
+                        "UPDATE routing_slots SET activations = (SELECT count(*) FROM routing_activations WHERE plan_id = ?1 AND slot_id = ?2) WHERE plan_id = ?1 AND slot_id = ?2",
+                        params![plan_id, slot_id],
                     )?;
                 }
                 RunEvent::FlakyCheckQuarantined {
@@ -1214,11 +1251,13 @@ pub struct RoutingAttemptRow {
     pub provider_request_id: Option<String>,
 }
 
-/// Routing plans compiled for an agent run, oldest first.
+/// Routing plans compiled for an agent run, oldest epoch first. The epoch is
+/// what decides which plan is current, so it orders them: a plan compiled
+/// earlier in wall-clock time can still be the newer one.
 pub fn load_routing_plans(tx: &rusqlite::Connection, run: &RunId) -> Result<Vec<RoutingPlanRow>> {
     let mut stmt = tx.prepare(
         "SELECT plan_id, schema_version, routing_epoch, lease_generation, content_digest, plan_ref, total_budget_minor, total_budget_currency, total_budget_scale, legacy_source
-         FROM routing_plans WHERE run_id = ?1 ORDER BY created_at, routing_epoch",
+         FROM routing_plans WHERE run_id = ?1 ORDER BY routing_epoch, created_at",
     )?;
     let rows = stmt
         .query_map(params![run.as_bytes().as_slice()], |r| {
@@ -1298,6 +1337,74 @@ pub fn load_routing_attempts(
         .collect::<std::result::Result<Vec<_>, _>>()?)
 }
 
+/// What admission decided about a plan (REQ-EPR-014).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RoutingAdmissionRow {
+    /// Digest of exactly what was validated.
+    pub validation_digest: String,
+    /// Money reserved, in minor units of `currency` at `scale`.
+    pub reserved_minor: u64,
+    /// Currency.
+    pub currency: String,
+    /// Scale.
+    pub scale: u8,
+    /// The lease generation that admitted the plan.
+    pub lease_generation: u64,
+}
+
+/// One recorded activation of one slot.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RoutingActivationRow {
+    /// Slot.
+    pub slot_id: String,
+    /// Ordinal within the slot.
+    pub activation: u32,
+    /// Money the activation reserved.
+    pub reserved_minor: u64,
+}
+
+/// The admission of a plan, when it has one.
+pub fn load_routing_admission(
+    tx: &rusqlite::Connection,
+    plan_id: &str,
+) -> Result<Option<RoutingAdmissionRow>> {
+    let mut stmt = tx.prepare(
+        "SELECT validation_digest, reserved_minor, currency, scale, lease_generation FROM routing_admissions WHERE plan_id = ?1",
+    )?;
+    Ok(stmt
+        .query_map(params![plan_id], |r| {
+            Ok(RoutingAdmissionRow {
+                validation_digest: r.get(0)?,
+                reserved_minor: u64::try_from(r.get::<_, i64>(1)?).unwrap_or_default(),
+                currency: r.get(2)?,
+                scale: u8::try_from(r.get::<_, i64>(3)?).unwrap_or_default(),
+                lease_generation: u64::try_from(r.get::<_, i64>(4)?).unwrap_or_default(),
+            })
+        })?
+        .collect::<std::result::Result<Vec<_>, _>>()?
+        .into_iter()
+        .next())
+}
+
+/// The activations recorded against a plan, in slot then ordinal order.
+pub fn load_routing_activations(
+    tx: &rusqlite::Connection,
+    plan_id: &str,
+) -> Result<Vec<RoutingActivationRow>> {
+    let mut stmt = tx.prepare(
+        "SELECT slot_id, activation, reserved_minor FROM routing_activations WHERE plan_id = ?1 ORDER BY slot_id, activation",
+    )?;
+    Ok(stmt
+        .query_map(params![plan_id], |r| {
+            Ok(RoutingActivationRow {
+                slot_id: r.get(0)?,
+                activation: u32::try_from(r.get::<_, i64>(1)?).unwrap_or_default(),
+                reserved_minor: u64::try_from(r.get::<_, i64>(2)?).unwrap_or_default(),
+            })
+        })?
+        .collect::<std::result::Result<Vec<_>, _>>()?)
+}
+
 /// Quarantined checks of an agent run.
 pub fn load_flaky_checks(
     tx: &rusqlite::Connection,
@@ -1315,6 +1422,8 @@ pub fn load_flaky_checks(
 /// Truncate the projection tables and replay every event from offset 0.
 pub fn rebuild(tx: &Transaction<'_>, objects: &crate::ObjectStore) -> Result<u64> {
     for t in [
+        "routing_activations",
+        "routing_admissions",
         "routing_attempts",
         "routing_slots",
         "routing_plans",

@@ -233,7 +233,7 @@ flowchart LR
   EPR_011["EPR-011<br/>Build isolated counterfactual replay<br/>NOT_STARTED"]
   EPR_012["EPR-012<br/>Jointly evaluate conditional parameters and promote policy<br/>NOT_STARTED"]
   EPR_013["EPR-013<br/>Qualify model × Skill outcome statistics<br/>NOT_STARTED"]
-  EPR_014["EPR-014<br/>Conditional plan migration and slot admission<br/>NOT_STARTED"]
+  EPR_014["EPR-014<br/>Conditional plan migration and slot admission<br/>REAL_TESTING"]
   EPR_015["EPR-015<br/>Versioned Outcome Statistics materialization<br/>NOT_STARTED"]
   EPR_016["EPR-016<br/>Confidence-adjusted feasibility and cold start<br/>NOT_STARTED"]
   EPR_017["EPR-017<br/>Separate assurance classification and acceptance<br/>NOT_STARTED"]
@@ -297,7 +297,7 @@ flowchart LR
 | EPR-011 | M9 / 5 | NOT_STARTED | eval-bench | EPR-007, EPR-010, M9.3 | REQ-EPR-011 / QUAL-EPR-011 |
 | EPR-012 | M10 / 5 | NOT_STARTED | eval-bench | EPR-011, EPR-009, EPR-019, M10.1 | REQ-EPR-012 / QUAL-EPR-012 |
 | EPR-013 | M10 / 6 | NOT_STARTED | skills | EPR-012, M5.7 | REQ-EPR-013 / QUAL-EPR-013 |
-| EPR-014 | M3 / 1 | NOT_STARTED | core-runtime | EPR-001 | REQ-EPR-014 / QUAL-EPR-014 |
+| EPR-014 | M3 / 1 | REAL_TESTING | core-runtime | EPR-001 | REQ-EPR-014 / QUAL-EPR-014 |
 | EPR-015 | M3 / 1 | NOT_STARTED | eval-bench | EPR-002 | REQ-EPR-015 / QUAL-EPR-015 |
 | EPR-016 | M3 / 1 | NOT_STARTED | model-gateway | EPR-003, EPR-015 | REQ-EPR-016 / QUAL-EPR-016 |
 | EPR-017 | M4 / 2-3 | NOT_STARTED | verification | EPR-008, M4.6 | REQ-EPR-017 / QUAL-EPR-017 |

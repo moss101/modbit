@@ -20313,8 +20313,41 @@
    "task_card": "docs/49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md#epr-014",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller or executor present",
    "milestone_override": "DR-M2-002: router machinery follows the EPR-000 baseline evidence; scheduled in M3 ahead of the M4/M5 EPR tasks that depend on it",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "commit:a5ce474",
+    "artifact:evidence/m3/EPR-014/TASK_CARD.md",
+    "test:qual_epr_014_a_conditional_plan_is_admitted_whole_and_its_activation_is_exact",
+    "test:admission_refuses_before_anything_dispatches",
+    "test:a_legacy_template_label_authorizes_no_slot"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-11T00:30:43Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing code audit: EPR-001 persists plans, slots and attempts, but nothing validates a plan before dispatch, nothing bounds a slot by activations and no client can submit a plan at all"
+    },
+    {
+     "at": "2026-09-11T00:30:43Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "crates/core-runtime/src/admission.rs is the shared validator and admission interface; migration V8 adds routing_admissions and routing_activations; RunEvent::RoutingPlanAdmitted and SlotActivated project inside the append transaction; AdmitRoutingPlan is the fenced Core entry point"
+    },
+    {
+     "at": "2026-09-11T00:30:43Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "every run admits its own direct plan through admit_plan and activates its single slot through admit_activation, so the interface EPR-004 and EPR-005 will use is the one the product already runs"
+    },
+    {
+     "at": "2026-09-11T00:39:22Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "local gates green: cargo test --workspace, clippy --workspace --all-targets -D warnings, both architecture lints, and the cross-language round trip of the admission view"
+    }
+   ],
+   "status_changed_on": "2026-09-11T00:39:22Z"
   },
   {
    "id": "EPR-015",

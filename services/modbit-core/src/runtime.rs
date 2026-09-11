@@ -15,6 +15,7 @@ use std::sync::Arc;
 
 use sha2::Digest;
 
+use modbit_core_runtime::admission;
 use modbit_core_runtime::harness::{
     self, ASK_TOOL, Budgets, COMPLETE_TOOL, CONTEXT_TOOL, HarnessRefusal, HarnessState, PLAN_TOOL,
     Plan, REPAIR_TOOL, RepairEscalation, TOOL_SEARCH, VERIFY_TOOL, WRITE_TOOLS, scope_resolution,
@@ -173,15 +174,17 @@ impl Runtime {
                                 actor.clone(),
                             ),
                             typed("RunStarted", &RunEvent::RunStarted, actor.clone()),
-                            direct_plan_event(
-                                core,
-                                &task,
-                                run_id,
-                                lease_generation,
-                                &cfg,
-                                actor.clone(),
-                            ),
-                        ],
+                        ]
+                        .into_iter()
+                        .chain(direct_plan_events(
+                            core,
+                            &task,
+                            run_id,
+                            lease_generation,
+                            &cfg,
+                            &actor,
+                        )?)
+                        .collect(),
                     )
                     .map_err(|e| ("STORE".into(), e))?;
                     (run_id, false)
@@ -230,15 +233,17 @@ impl Runtime {
                                         actor.clone(),
                                     ),
                                     typed("RunStarted", &RunEvent::RunStarted, actor.clone()),
-                                    direct_plan_event(
-                                        core,
-                                        &task,
-                                        run_id,
-                                        lease_generation,
-                                        &cfg,
-                                        actor.clone(),
-                                    ),
-                                ],
+                                ]
+                                .into_iter()
+                                .chain(direct_plan_events(
+                                    core,
+                                    &task,
+                                    run_id,
+                                    lease_generation,
+                                    &cfg,
+                                    &actor,
+                                )?)
+                                .collect(),
                             )
                             .map_err(|e| ("STORE".into(), e))?;
                             drop(store);
@@ -432,7 +437,7 @@ impl Lineage {
             step: None,
         }
     }
-    fn run(tenant: TenantId, session: SessionId, task: TaskId, run: RunId) -> Self {
+    pub(crate) fn run(tenant: TenantId, session: SessionId, task: TaskId, run: RunId) -> Self {
         Self {
             run: Some(run),
             ..Self::task(tenant, session, task)
@@ -450,17 +455,23 @@ pub(crate) fn typed<E: serde::Serialize>(event_type: &str, e: &E, actor: Actor) 
     ev
 }
 
-/// The direct path this run dispatches on, as a routing plan (REQ-EPR-001).
+/// The direct path this run dispatches on, as an admitted routing plan
+/// (REQ-EPR-001, REQ-EPR-014).
+///
 /// Recording it changes no dispatch: it writes down what the direct path
-/// already does, in the shape a compiled plan will later take.
-fn direct_plan_event(
+/// already does, in the shape a compiled plan will later take. It goes through
+/// the same admission every compiled plan will, because nothing dispatches
+/// from a plan that has not been admitted, and the run activates its single
+/// slot once — a resumed run recovers that activation rather than opening a
+/// second one.
+fn direct_plan_events(
     core: &Core,
     task: &Task,
     run_id: RunId,
     lease_generation: u64,
     cfg: &StartConfig,
-    actor: Actor,
-) -> NewEvent {
+    actor: &Actor,
+) -> std::result::Result<Vec<NewEvent>, (String, String)> {
     let plan = modbit_domain::routing::ConditionalExecutionPlan::direct(
         core.tenant_id,
         task.session_id,
@@ -477,15 +488,50 @@ fn direct_plan_event(
             max_turns: cfg.budgets.max_turns,
         },
     );
-    let plan_ref = modbit_domain::routing::plan_digest(&plan);
-    typed(
-        "RoutingPlanCompiled",
-        &RunEvent::RoutingPlanCompiled {
-            plan: Box::new(plan),
-            plan_ref,
-        },
-        actor,
+    let admission = admission::admit_plan(&plan, core.tenant_id, plan.routing_epoch)
+        .map_err(|r| (r.code().to_owned(), format!("{r:?}")))?;
+    let ledger = admission::RunLedger::empty(&plan.total_budget.currency, plan.total_budget.scale);
+    let activation = admission::admit_activation(
+        &plan,
+        &ledger,
+        modbit_domain::routing::DIRECT_SLOT,
+        modbit_domain::routing::Trigger::Initial,
     )
+    .map_err(|r| (r.code().to_owned(), format!("{r:?}")))?;
+    let plan_ref = modbit_domain::routing::plan_digest(&plan);
+    let plan_id = plan.plan_id.clone();
+    Ok(vec![
+        typed(
+            "RoutingPlanCompiled",
+            &RunEvent::RoutingPlanCompiled {
+                plan: Box::new(plan),
+                plan_ref,
+            },
+            actor.clone(),
+        ),
+        typed(
+            "RoutingPlanAdmitted",
+            &RunEvent::RoutingPlanAdmitted {
+                plan_id: plan_id.clone(),
+                validation_digest: admission.validation_digest,
+                reserved_minor: admission.reserved.minor_units,
+                currency: admission.reserved.currency,
+                scale: admission.reserved.scale,
+                lease_generation,
+            },
+            actor.clone(),
+        ),
+        typed(
+            "SlotActivated",
+            &RunEvent::SlotActivated {
+                plan_id,
+                slot_id: activation.slot_id,
+                activation: activation.activation,
+                reserved_minor: activation.reserved.minor_units,
+            },
+            actor.clone(),
+        ),
+    ])
 }
 
 /// One attempt of the direct plan's only slot, recorded from what happened:

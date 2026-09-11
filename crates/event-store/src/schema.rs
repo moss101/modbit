@@ -334,6 +334,31 @@ CREATE TABLE IF NOT EXISTS routing_attempts (
 CREATE INDEX IF NOT EXISTS routing_attempts_plan ON routing_attempts (plan_id, started_at);
 "#;
 
+/// V8 (REQ-EPR-014): what admission decided. The plan a run was admitted with,
+/// the digest of exactly what was validated and the money it reserved; and one
+/// row per slot activation, which is what bounds a slot rather than the count
+/// of attempts inside it.
+pub const V8_ADMISSION: &str = r#"
+CREATE TABLE IF NOT EXISTS routing_admissions (
+  plan_id           TEXT PRIMARY KEY NOT NULL,
+  validation_digest TEXT NOT NULL,
+  reserved_minor    INTEGER NOT NULL,
+  currency          TEXT NOT NULL,
+  scale             INTEGER NOT NULL,
+  lease_generation  INTEGER NOT NULL,
+  admitted_at       INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS routing_activations (
+  plan_id        TEXT NOT NULL,
+  slot_id        TEXT NOT NULL,
+  activation     INTEGER NOT NULL,
+  reserved_minor INTEGER NOT NULL,
+  activated_at   INTEGER NOT NULL,
+  PRIMARY KEY (plan_id, slot_id, activation)
+);
+CREATE INDEX IF NOT EXISTS routing_activations_plan ON routing_activations (plan_id, activated_at);
+"#;
+
 /// All migrations in order. Never edit an entry once shipped; append a new one.
 pub const MIGRATIONS: &[Migration] = &[
     Migration {
@@ -377,6 +402,12 @@ pub const MIGRATIONS: &[Migration] = &[
         name: "routing_plans_slots_attempts",
         up: V7_ROUTING,
         rollback: "Additive derivable tables. Rollback = drop `routing_plans`, `routing_slots`, `routing_attempts` and rebuild projections; no event is touched.",
+    },
+    Migration {
+        version: 8,
+        name: "routing_admissions_activations",
+        up: V8_ADMISSION,
+        rollback: "Additive derivable tables. Rollback = drop `routing_admissions` and `routing_activations` and rebuild projections; no event is touched.",
     },
 ];
 

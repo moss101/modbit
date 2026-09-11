@@ -1,0 +1,21 @@
+{
+ "task": "EPR-014",
+ "requirement": "REQ-EPR-014",
+ "qual": "QUAL-EPR-014",
+ "tests": [
+  "qual_epr_014_a_conditional_plan_is_admitted_whole_and_its_activation_is_exact",
+  "a_plan_is_admitted_whole_with_the_digest_of_what_was_validated",
+  "admission_refuses_before_anything_dispatches",
+  "a_legacy_template_label_authorizes_no_slot",
+  "the_runtime_activates_slots_and_never_adds_one",
+  "no_slot_receives_a_new_budget_and_a_restart_recovers_its_activation",
+  "migrates_the_committed_m1_1_fixture_and_derives_projections",
+  "a_database_from_before_the_routing_tables_upgrades_and_derives_them",
+  "a_crash_during_the_routing_migration_leaves_a_recoverable_database"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "A real task through Core: its direct plan is admitted, its single slot activates once, and a hard kill while the next invocation is stalled recovers exactly that activation with its reservation unchanged. A two-slot conditional plan submitted under the session lease is admitted whole with the digest of what was validated and the sum of its slots plus the verification reserve; resubmitting it is a stale generation, a cyclic plan is refused for its cycle, a foreign-tenant plan is refused as foreign, and an unfenced caller is refused the command. After every refusal the admitted plan still stands.",
+ "audit": "PARTIAL before this task: EPR-001 persisted plans, slots and attempts, but nothing validated a plan before dispatch, nothing bounded a slot by activations, and no client could submit a plan.",
+ "limitations": "Nothing activates a continuation yet (EPR-005/006). Reservations bound each activation but nothing settles them, because an attempt has no price yet. The admission command carries the plan as the JSON of the versioned domain contract rather than a second protobuf mirror."
+}

@@ -43,6 +43,7 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::RoutingPlanView 
         return wire::RoutingPlanView::default();
     };
     let attempts = store.routing_attempts(&plan.plan_id).unwrap_or_default();
+    let admission = admission_view(&store, &plan.plan_id);
     wire::RoutingPlanView {
         plan_id: plan.plan_id.clone(),
         schema_version: plan.schema_version,
@@ -88,7 +89,37 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::RoutingPlanView 
             })
             .collect(),
         not_claimed: NOT_CLAIMED.iter().map(|s| (*s).to_owned()).collect(),
+        admission,
     }
+}
+
+/// What admission decided about a plan, with the activations it has so far.
+fn admission_view(
+    store: &modbit_event_store::EventStore,
+    plan_id: &str,
+) -> Option<wire::RoutingAdmissionView> {
+    let row = store.routing_admission(plan_id).ok().flatten()?;
+    Some(wire::RoutingAdmissionView {
+        admitted: true,
+        plan_id: plan_id.to_owned(),
+        validation_digest: row.validation_digest,
+        reserved_minor: row.reserved_minor,
+        currency: row.currency,
+        scale: u32::from(row.scale),
+        routing_epoch: 0,
+        refusal_code: String::new(),
+        refusal_detail: String::new(),
+        activations: store
+            .routing_activations(plan_id)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|a| wire::RoutingActivationView {
+                slot_id: a.slot_id,
+                activation: a.activation,
+                reserved_minor: a.reserved_minor,
+            })
+            .collect(),
+    })
 }
 
 /// The path label a plan earned, from the slots that actually ran.
@@ -107,5 +138,127 @@ fn path_label(
         [] => String::new(),
         ["solver"] => "DIRECT".to_owned(),
         _ => roles.join("+").to_uppercase(),
+    }
+}
+
+/// Admit a conditional plan for the task's current run (REQ-EPR-014).
+///
+/// The plan is validated whole before anything can dispatch from it, and it is
+/// recorded with the digest of exactly what was validated and the money it
+/// reserves. A plan compiled in an epoch that is not newer than the admitted
+/// one is refused rather than installed over it, and a legacy template label
+/// authorizes nothing.
+pub(crate) async fn admit(
+    core: &Core,
+    task_id: TaskId,
+    plan_json: &str,
+) -> wire::RoutingAdmissionView {
+    use modbit_domain::routing::ConditionalExecutionPlan;
+    let refuse = |code: &str, detail: String| wire::RoutingAdmissionView {
+        admitted: false,
+        refusal_code: code.to_owned(),
+        refusal_detail: detail,
+        ..Default::default()
+    };
+    let plan: ConditionalExecutionPlan = match serde_json::from_str(plan_json) {
+        Ok(p) => p,
+        Err(e) => return refuse("BAD_PLAN", e.to_string()),
+    };
+    let Some(session_id) = core
+        .store
+        .lock()
+        .await
+        .task(&task_id)
+        .ok()
+        .flatten()
+        .map(|t| t.session_id)
+    else {
+        return refuse("UNKNOWN_TASK", task_id.to_string());
+    };
+    let mut store = core.store.lock().await;
+    let Some(run) = store
+        .runs_for_task(&task_id)
+        .ok()
+        .and_then(|runs| runs.into_iter().next_back())
+    else {
+        return refuse("NO_RUN", "the task has no run to admit a plan for".into());
+    };
+    if plan.run_id != run.run_id {
+        return refuse(
+            "WRONG_RUN",
+            format!(
+                "the plan names run {} and the task's run is {}",
+                plan.run_id, run.run_id
+            ),
+        );
+    }
+    // A plan installs only over an older epoch, so admitting one twice is a
+    // stale generation rather than a second installation.
+    let next_epoch = store
+        .routing_plans(&run.run_id)
+        .unwrap_or_default()
+        .iter()
+        .map(|p| p.routing_epoch)
+        .max()
+        .map_or(0, |e| e + 1);
+    let admission =
+        match modbit_core_runtime::admission::admit_plan(&plan, core.tenant_id, next_epoch) {
+            Ok(a) => a,
+            Err(r) => return refuse(r.code(), format!("{r:?}")),
+        };
+    let plan_id = plan.plan_id.clone();
+    let plan_ref = modbit_domain::routing::plan_digest(&plan);
+    let events = vec![
+        crate::runtime::typed(
+            "RoutingPlanCompiled",
+            &modbit_domain::run::RunEvent::RoutingPlanCompiled {
+                plan: Box::new(plan),
+                plan_ref,
+            },
+            modbit_domain::event::Actor::Core("admission".into()),
+        ),
+        crate::runtime::typed(
+            "RoutingPlanAdmitted",
+            &modbit_domain::run::RunEvent::RoutingPlanAdmitted {
+                plan_id: plan_id.clone(),
+                validation_digest: admission.validation_digest.clone(),
+                reserved_minor: admission.reserved.minor_units,
+                currency: admission.reserved.currency.clone(),
+                scale: admission.reserved.scale,
+                lease_generation: admission.lease_generation,
+            },
+            modbit_domain::event::Actor::Core("admission".into()),
+        ),
+    ];
+    if let Err(e) = crate::runtime::append(
+        &mut store,
+        core,
+        crate::runtime::Lineage::run(core.tenant_id, session_id, task_id, run.run_id),
+        modbit_domain::event::AggregateType::Run,
+        *run.run_id.as_bytes(),
+        events,
+    ) {
+        return refuse("STORE", e.to_string());
+    }
+    wire::RoutingAdmissionView {
+        admitted: true,
+        plan_id: plan_id.clone(),
+        validation_digest: admission.validation_digest,
+        reserved_minor: admission.reserved.minor_units,
+        currency: admission.reserved.currency,
+        scale: u32::from(admission.reserved.scale),
+        routing_epoch: admission.routing_epoch,
+        refusal_code: String::new(),
+        refusal_detail: String::new(),
+        activations: store
+            .routing_activations(&plan_id)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|a| wire::RoutingActivationView {
+                slot_id: a.slot_id,
+                activation: a.activation,
+                reserved_minor: a.reserved_minor,
+            })
+            .collect(),
     }
 }

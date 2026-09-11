@@ -180,6 +180,22 @@ pub fn samples() -> Vec<Sample> {
             },
         ],
         not_claimed: vec!["unknown cost stays unknown".into()],
+        admission: Some(RoutingAdmissionView {
+            admitted: true,
+            plan_id: "direct:11111111111111111111111111111111".into(),
+            validation_digest: "c".repeat(64),
+            reserved_minor: 0,
+            currency: "USD".into(),
+            scale: 2,
+            routing_epoch: 0,
+            refusal_code: String::new(),
+            refusal_detail: String::new(),
+            activations: vec![RoutingActivationView {
+                slot_id: "initial".into(),
+                activation: 1,
+                reserved_minor: 0,
+            }],
+        }),
     };
     let hello = Hello {
         protocol_version: Some(modbit_protocol::PROTOCOL_VERSION),
@@ -276,7 +292,17 @@ pub fn samples() -> Vec<Sample> {
                         "providerRequestId": ""
                     }
                 ],
-                "notClaimed": ["unknown cost stays unknown"]
+                "notClaimed": ["unknown cost stays unknown"],
+                "admission": {
+                    "admitted": true,
+                    "planId": "direct:11111111111111111111111111111111",
+                    "validationDigest": "c".repeat(64),
+                    "reservedMinor": "0", "currency": "USD", "scale": 2,
+                    "routingEpoch": "0", "refusalCode": "", "refusalDetail": "",
+                    "activations": [{
+                        "slotId": "initial", "activation": 1, "reservedMinor": "0"
+                    }]
+                }
             }),
             decode: reencode::<RoutingPlanView>,
         },

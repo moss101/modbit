@@ -540,6 +540,23 @@ impl EventStore {
         crate::projections::load_routing_attempts(&self.conn, plan_id)
     }
 
+    /// What admission decided about a plan (REQ-EPR-014).
+    pub fn routing_admission(
+        &self,
+        plan_id: &str,
+    ) -> Result<Option<crate::projections::RoutingAdmissionRow>> {
+        crate::projections::load_routing_admission(&self.conn, plan_id)
+    }
+
+    /// The activations recorded against a plan: what bounds a slot, and what a
+    /// restart must recover rather than repeat.
+    pub fn routing_activations(
+        &self,
+        plan_id: &str,
+    ) -> Result<Vec<crate::projections::RoutingActivationRow>> {
+        crate::projections::load_routing_activations(&self.conn, plan_id)
+    }
+
     /// Quarantined checks of an agent run: (check_id, first_run_id, rerun_id).
     pub fn flaky_checks(&self, run: &RunId) -> Result<Vec<(String, String, String)>> {
         crate::projections::load_flaky_checks(&self.conn, run)

@@ -11924,3 +11924,282 @@ async fn qual_epr_001_the_routing_state_of_a_run_is_durable_versioned_and_redact
     assert_ne!(recovered.plan_id, v.plan_id, "each run has its own plan");
     core.kill();
 }
+
+/// QUAL-EPR-014 / EPR-E2E-014 / EPR-FI-014: a conditional plan is admitted
+/// through authenticated Core admission, validated whole before anything can
+/// dispatch from it, and its activation survives a kill exactly once.
+///
+/// The run the task starts already goes through the same admission: it admits
+/// its own direct plan and activates its single slot, so what a compiled plan
+/// will use is what the product already runs.
+#[tokio::test]
+async fn qual_epr_014_a_conditional_plan_is_admitted_whole_and_its_activation_is_exact() {
+    use modbit_domain::routing::{
+        Budget, ConditionalExecutionPlan, Money, Provenance, ROUTING_SCHEMA_VERSION, Slot, Trigger,
+    };
+    use modbit_protocol::v1::{
+        AdmitRoutingPlan, GetRoutingPlan, RoutingAdmissionView, RoutingPlanView, StartTask,
+        TaskRunStarted,
+    };
+    use serde_json::json;
+    let (_repo, root) = plain_repo(&[("total.py", "def total(q, unit):\n    return q * unit\n")]);
+    let script = vec![
+        json!({"calls": [{"name": "fs.read", "args": {"path": "total.py"}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "total.py"}}]}),
+    ];
+    // The second invocation stalls, so the run is still in flight when it is
+    // killed: its plan and its one activation are already committed.
+    let (base, _seen) = scripted_model(script, Some(1)).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", "sk-test-admission"),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xD1)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xD2, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xD3),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 12,
+                max_tool_calls: 0,
+                max_no_progress_turns: 6,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    async fn routing(c: &mut Client, task: Id, id: u8) -> RoutingPlanView {
+        let ack = c
+            .command(envelope(
+                id16(id),
+                "GetRoutingPlan",
+                GetRoutingPlan {
+                    task_id: Some(task),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    }
+    // Wait until the run has recorded its first attempt inside the activation.
+    let deadline = std::time::Instant::now() + Duration::from_secs(60);
+    let mut v = RoutingPlanView::default();
+    while std::time::Instant::now() < deadline {
+        v = routing(&mut c, task.clone(), 0xD4).await;
+        if !v.attempts.is_empty() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    // 1. The run's own plan was admitted, and the admission records the digest
+    //    of what was validated and what it reserves.
+    let a = v.admission.as_ref().unwrap_or_else(|| panic!("{v:?}"));
+    assert!(a.admitted, "{a:?}");
+    assert_eq!(a.plan_id, v.plan_id);
+    assert_eq!(a.validation_digest.len(), 64, "{a:?}");
+    assert_eq!(
+        (a.reserved_minor, a.currency.as_str(), a.scale),
+        (0, "USD", 2),
+        "the direct path reserves nothing because it has no cost model: {a:?}"
+    );
+    // 2. It activated its single slot exactly once.
+    assert_eq!(a.activations.len(), 1, "{a:?}");
+    assert_eq!(
+        (
+            a.activations[0].slot_id.as_str(),
+            a.activations[0].activation
+        ),
+        ("initial", 1)
+    );
+    assert_eq!(v.slots[0].activations, 1, "{v:?}");
+
+    // 3. A killed run recovers exactly that activation, with its reservation
+    //    unchanged: the plan, the admission and the activation are one write.
+    core.kill();
+    core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let after = routing(&mut c, task.clone(), 0xD5).await;
+    let b = after.admission.as_ref().unwrap();
+    assert_eq!(b.activations, a.activations, "one exact activation");
+    assert_eq!(b.validation_digest, a.validation_digest);
+    assert_eq!(after.slots[0].activations, 1, "never a second activation");
+
+    // 4. A conditional plan is submitted through authenticated admission.
+    let run_id = modbit_domain::RunId::parse(
+        after
+            .plan_id
+            .strip_prefix("direct:")
+            .unwrap_or_else(|| panic!("{after:?}")),
+    )
+    .expect("the direct plan names its run");
+    // The Core's tenant, the one `create_session` above ran under.
+    let tenant = modbit_domain::TenantId::from_bytes([0xA1; 16]);
+    let usd = |m: u64| Money {
+        minor_units: m,
+        currency: "USD".into(),
+        scale: 2,
+    };
+    let slot = |id: &str, pred: Option<&str>, trigger: Trigger, reserved: u64| Slot {
+        slot_id: id.into(),
+        predecessor: pred.map(str::to_owned),
+        trigger,
+        max_activations: 1,
+        endpoint: "openai".into(),
+        model: "gpt-5-mini".into(),
+        role: if pred.is_some() { "reviewer" } else { "solver" }.into(),
+        budget: Budget {
+            timeout_ms: 120_000,
+            max_output_tokens: 4096,
+            max_retries: 0,
+            reserved: usd(reserved),
+        },
+    };
+    let conditional = |epoch: u64, slots: Vec<Slot>| {
+        ConditionalExecutionPlan {
+            schema_version: ROUTING_SCHEMA_VERSION,
+            plan_id: format!("plan-{epoch}"),
+            tenant_id: tenant,
+            session_id: modbit_domain::SessionId::from_bytes(
+                session.value.clone().try_into().unwrap(),
+            ),
+            task_id: modbit_domain::TaskId::from_bytes(task.value.clone().try_into().unwrap()),
+            run_id,
+            routing_epoch: epoch,
+            lease_generation: g.unwrap_or(0),
+            created_at_ms: 1_700_000_000_000,
+            provenance: Provenance {
+                policy_version: "policy-1".into(),
+                registry_generation: "registry-1".into(),
+                profiler_version: "profiler-1".into(),
+                statistics_version: "stats-1".into(),
+                compiler_version: "compiler-2".into(),
+                gate_version: "gate-1".into(),
+                risk_version: "risk-1".into(),
+                legacy_decode: None,
+            },
+            input_digest: "e".repeat(64),
+            slots,
+            max_total_attempts: 4,
+            max_revisions: 1,
+            verification_reserve: usd(100),
+            total_budget: usd(1000),
+            content_digest: String::new(),
+        }
+        .sealed()
+    };
+    async fn admit(
+        c: &mut Client,
+        task: Id,
+        id: u8,
+        g: Option<u64>,
+        plan: &ConditionalExecutionPlan,
+    ) -> RoutingAdmissionView {
+        let ack = c
+            .command(envelope_fenced(
+                id16(id),
+                "AdmitRoutingPlan",
+                AdmitRoutingPlan {
+                    task_id: Some(task),
+                    plan_json: serde_json::to_string(plan).unwrap(),
+                }
+                .encode_to_vec(),
+                g,
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    }
+    let good = conditional(
+        1,
+        vec![
+            slot("initial", None, Trigger::Initial, 200),
+            slot("reviewer", Some("initial"), Trigger::ReviewRequired, 300),
+        ],
+    );
+    let admitted = admit(&mut c, task.clone(), 0xD6, g, &good).await;
+    assert!(admitted.admitted, "{admitted:?}");
+    assert_eq!(admitted.plan_id, "plan-1");
+    assert_eq!(admitted.reserved_minor, 600, "slots plus verification");
+    assert_eq!(admitted.routing_epoch, 1);
+    assert_eq!(admitted.validation_digest.len(), 64);
+    // The admitted plan is what a client now reads back, with both slots and
+    // no activation of its own yet.
+    let installed = routing(&mut c, task.clone(), 0xD7).await;
+    assert_eq!(installed.plan_id, "plan-1", "{installed:?}");
+    assert_eq!(installed.slots.len(), 2, "{installed:?}");
+    assert!(
+        installed.slots.iter().all(|s| s.activations == 0),
+        "{installed:?}"
+    );
+    assert_eq!(
+        installed.admission.as_ref().unwrap().reserved_minor,
+        600,
+        "{installed:?}"
+    );
+
+    // 5. The refusals, each before anything is installed.
+    let same_epoch = admit(&mut c, task.clone(), 0xD8, g, &good).await;
+    assert!(!same_epoch.admitted, "{same_epoch:?}");
+    assert_eq!(same_epoch.refusal_code, "PLAN_INVALID", "{same_epoch:?}");
+    assert!(
+        same_epoch.refusal_detail.contains("StaleGeneration"),
+        "a plan never installs over an epoch that is not older: {same_epoch:?}"
+    );
+    let cyclic = conditional(
+        2,
+        vec![
+            slot("initial", None, Trigger::Initial, 100),
+            slot("a", Some("b"), Trigger::QualityRejected, 100),
+            slot("b", Some("a"), Trigger::LegFailed, 100),
+        ],
+    );
+    let r = admit(&mut c, task.clone(), 0xD9, g, &cyclic).await;
+    assert_eq!(r.refusal_code, "PLAN_INVALID", "{r:?}");
+    assert!(r.refusal_detail.contains("cycle"), "{r:?}");
+    let mut foreign = conditional(
+        2,
+        vec![slot("initial", None, Trigger::Initial, 100)],
+    );
+    foreign.tenant_id = modbit_domain::TenantId::new();
+    let r = admit(&mut c, task.clone(), 0xDA, g, &foreign.sealed()).await;
+    assert_eq!(r.refusal_code, "PLAN_INVALID", "{r:?}");
+    assert!(r.refusal_detail.contains("ForeignTenant"), "{r:?}");
+    // An unfenced caller cannot install a plan at all.
+    let err = c
+        .command(envelope(
+            id16(0xDB),
+            "AdmitRoutingPlan",
+            AdmitRoutingPlan {
+                task_id: Some(task.clone()),
+                plan_json: serde_json::to_string(&conditional(
+                    2,
+                    vec![slot("initial", None, Trigger::Initial, 100)],
+                ))
+                .unwrap(),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap_err();
+    assert!(
+        format!("{err:?}").contains("LEASE_REQUIRED"),
+        "admission must be fenced by the session lease: {err:?}"
+    );
+    // And nothing any refusal touched is installed: the admitted plan stands.
+    let still = routing(&mut c, task.clone(), 0xDC).await;
+    assert_eq!(still.plan_id, "plan-1", "{still:?}");
+    assert_eq!(still.admission.as_ref().unwrap().reserved_minor, 600);
+    core.kill();
+}

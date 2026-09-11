@@ -164,6 +164,37 @@ pub enum RunEvent {
         /// Object hash of the same plan, for clients that read it by ref.
         plan_ref: String,
     },
+    /// `RoutingPlanAdmitted` (REQ-EPR-014, docs/38 §5.2): a plan passed
+    /// admission — validated whole, with the digest of what was validated and
+    /// the money it reserves. Nothing dispatches from a plan with no
+    /// admission. No state change.
+    RoutingPlanAdmitted {
+        /// Plan.
+        plan_id: String,
+        /// Digest of exactly what admission validated.
+        validation_digest: String,
+        /// Money reserved across every slot plus the verification reserve.
+        reserved_minor: u64,
+        /// Currency of that reservation.
+        currency: String,
+        /// Scale of that reservation.
+        scale: u8,
+        /// The lease generation that admitted it.
+        lease_generation: u64,
+    },
+    /// One activation of one slot (REQ-EPR-014). A slot is bounded by its
+    /// activations, not by the attempts inside them, and a restart recovers
+    /// the activation it already had rather than opening a second one.
+    SlotActivated {
+        /// Plan.
+        plan_id: String,
+        /// Slot.
+        slot_id: String,
+        /// Ordinal within the slot, 1-based.
+        activation: u32,
+        /// Money this activation reserves.
+        reserved_minor: u64,
+    },
     /// `RoutingAttemptRecorded` (REQ-EPR-001, docs/38
     /// "CompleteAccountingAndAttribution"): one attempt against one slot,
     /// including the ones that failed, retried or were cancelled. Usage that
@@ -255,6 +286,8 @@ impl RunEvent {
             Self::VerificationBaselineRecorded { .. } => "VerificationBaselineRecorded",
             Self::VerificationRunRecorded { .. } => "VerificationRunRecorded",
             Self::RoutingPlanCompiled { .. } => "RoutingPlanCompiled",
+            Self::RoutingPlanAdmitted { .. } => "RoutingPlanAdmitted",
+            Self::SlotActivated { .. } => "SlotActivated",
             Self::RoutingAttemptRecorded { .. } => "RoutingAttemptRecorded",
             Self::FlakyCheckQuarantined { .. } => "FlakyCheckQuarantined",
             Self::RegressionAttributed { .. } => "RegressionAttributed",
@@ -333,6 +366,8 @@ impl Run {
             RunEvent::VerificationBaselineRecorded { .. }
             | RunEvent::VerificationRunRecorded { .. }
             | RunEvent::RoutingPlanCompiled { .. }
+            | RunEvent::RoutingPlanAdmitted { .. }
+            | RunEvent::SlotActivated { .. }
             | RunEvent::RoutingAttemptRecorded { .. }
             | RunEvent::FlakyCheckQuarantined { .. }
             | RunEvent::RegressionAttributed { .. }

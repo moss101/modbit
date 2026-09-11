@@ -488,6 +488,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "ListLanguages",
                     "GetContextInspector",
                     "GetRoutingPlan",
+                    "AdmitRoutingPlan",
                     "GetTaskEconomics",
                     "SetTaskSelection",
                     "AttachContextDocument",
@@ -2213,6 +2214,27 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 return reject(cid, "BAD_PAYLOAD", "task_id required");
             };
             let view = crate::routing::view(core, task_id).await;
+            accept(cid, false, view.encode_to_vec())
+        }
+        "AdmitRoutingPlan" => {
+            let Ok(p) = wire::AdmitRoutingPlan::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "AdmitRoutingPlan");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let session_id = match core.store.lock().await.task(&task_id) {
+                Ok(Some(t)) => t.session_id,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            // Admission is a write against the run, so it is fenced by the
+            // session lease like any other: a stale generation never installs
+            // a plan.
+            if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
+                return ack;
+            }
+            let view = crate::routing::admit(core, task_id, &p.plan_json).await;
             accept(cid, false, view.encode_to_vec())
         }
         "ListLanguages" => {

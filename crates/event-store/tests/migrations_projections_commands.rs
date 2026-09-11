@@ -60,8 +60,8 @@ fn migrates_the_committed_m1_1_fixture_and_derives_projections() {
     std::fs::copy(fixture(), dir.path().join("core.db")).unwrap();
     let (store, report) = EventStore::open_with_report(dir.path()).unwrap();
     assert_eq!(report.from_version, 1);
-    assert_eq!(report.to_version, 7);
-    assert_eq!(report.applied, vec![2, 3, 4, 5, 6, 7]);
+    assert_eq!(report.to_version, 8);
+    assert_eq!(report.applied, vec![2, 3, 4, 5, 6, 7, 8]);
     // Events untouched (docs/31: migration preserves existing event ids).
     let task = TaskId::from_bytes([0xC3; 16]);
     assert_eq!(store.verify_aggregate(task.as_bytes()).unwrap(), 3);
@@ -82,12 +82,12 @@ fn migrates_the_committed_m1_1_fixture_and_derives_projections() {
     // Reopening is a no-op migration.
     let (_, report) = EventStore::open_with_report(dir.path()).unwrap();
     assert!(report.applied.is_empty());
-    assert_eq!(report.from_version, 7);
+    assert_eq!(report.from_version, 8);
     let conn = rusqlite::Connection::open(dir.path().join("core.db")).unwrap();
     let n: i64 = conn
         .query_row("SELECT count(*) FROM schema_migrations", [], |r| r.get(0))
         .unwrap();
-    assert_eq!(n, 7);
+    assert_eq!(n, 8);
 }
 
 #[test]
@@ -107,20 +107,20 @@ fn applied_migration_checksum_drift_and_newer_schema_are_refused() {
     let dir = tempfile::tempdir().unwrap();
     EventStore::open(dir.path()).unwrap();
     let conn = rusqlite::Connection::open(dir.path().join("core.db")).unwrap();
-    conn.execute("INSERT INTO schema_migrations (version, name, checksum, applied_at) VALUES (9, 'future', 'x', 0)", []).unwrap();
+    conn.execute("INSERT INTO schema_migrations (version, name, checksum, applied_at) VALUES (99, 'future', 'x', 0)", []).unwrap();
     drop(conn);
     let err = EventStore::open(dir.path()).unwrap_err();
     assert!(
         matches!(
             err,
             Error::SchemaTooNew {
-                found: 9,
-                supported: 7
+                found: 99,
+                supported: 8
             }
         ),
         "{err}"
     );
-    assert_eq!(modbit_event_store::migrations::rollback_plans().len(), 7);
+    assert_eq!(modbit_event_store::migrations::rollback_plans().len(), 8);
 }
 
 #[test]
@@ -419,7 +419,7 @@ fn concurrent_openers_of_a_fresh_database_all_succeed_and_migrate_once() {
     let n: i64 = conn
         .query_row("SELECT count(*) FROM schema_migrations", [], |r| r.get(0))
         .unwrap();
-    assert_eq!(n, 7);
+    assert_eq!(n, 8);
 }
 
 #[test]

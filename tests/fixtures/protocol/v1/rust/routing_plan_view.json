@@ -1,5 +1,23 @@
 {
   "expected": {
+    "admission": {
+      "activations": [
+        {
+          "activation": 1,
+          "reservedMinor": "0",
+          "slotId": "initial"
+        }
+      ],
+      "admitted": true,
+      "currency": "USD",
+      "planId": "direct:11111111111111111111111111111111",
+      "refusalCode": "",
+      "refusalDetail": "",
+      "reservedMinor": "0",
+      "routingEpoch": "0",
+      "scale": 2,
+      "validationDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
     "attempts": [
       {
         "attempt": 1,

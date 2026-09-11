@@ -228,6 +228,26 @@ fn append_plan_and_attempts(
                     },
                 ),
                 typed(
+                    "RoutingPlanAdmitted",
+                    &RunEvent::RoutingPlanAdmitted {
+                        plan_id: p.plan_id.clone(),
+                        validation_digest: modbit_domain::routing::plan_digest(p),
+                        reserved_minor: 500,
+                        currency: "USD".into(),
+                        scale: 2,
+                        lease_generation: 1,
+                    },
+                ),
+                typed(
+                    "SlotActivated",
+                    &RunEvent::SlotActivated {
+                        plan_id: p.plan_id.clone(),
+                        slot_id: "initial".into(),
+                        activation: 1,
+                        reserved_minor: 200,
+                    },
+                ),
+                typed(
                     "RoutingAttemptRecorded",
                     &RunEvent::RoutingAttemptRecorded {
                         plan_id: p.plan_id.clone(),
@@ -391,10 +411,16 @@ fn a_plan_its_slots_and_its_attempts_are_durable_and_rebuildable() {
 /// were, which is the point — the routing state has to come back from them.
 fn make_pre_routing(dir: &std::path::Path) {
     let conn = rusqlite::Connection::open(dir.join("core.db")).unwrap();
-    for t in ["routing_attempts", "routing_slots", "routing_plans"] {
+    for t in [
+        "routing_activations",
+        "routing_admissions",
+        "routing_attempts",
+        "routing_slots",
+        "routing_plans",
+    ] {
         conn.execute(&format!("DROP TABLE {t}"), []).unwrap();
     }
-    conn.execute("DELETE FROM schema_migrations WHERE version = 7", [])
+    conn.execute("DELETE FROM schema_migrations WHERE version >= 7", [])
         .unwrap();
 }
 
@@ -421,8 +447,8 @@ fn a_database_from_before_the_routing_tables_upgrades_and_derives_them() {
 
     make_pre_routing(dir.path());
     let (store, report) = EventStore::open_with_report(dir.path()).unwrap();
-    assert_eq!((report.from_version, report.to_version), (6, 7));
-    assert_eq!(report.applied, vec![7]);
+    assert_eq!((report.from_version, report.to_version), (6, 8));
+    assert_eq!(report.applied, vec![7, 8]);
     assert_eq!(
         store.last_offset().unwrap(),
         events,
@@ -498,7 +524,7 @@ fn a_crash_during_the_routing_migration_leaves_a_recoverable_database() {
     let (store, report) = EventStore::open_with_report(dir.path()).unwrap();
     assert_eq!(
         (report.from_version, report.to_version),
-        (6, 7),
+        (6, 8),
         "the killed migration committed nothing"
     );
     assert_eq!(

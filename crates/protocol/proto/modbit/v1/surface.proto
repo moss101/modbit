@@ -874,4 +874,35 @@ message RoutingPlanView {
   repeated RoutingSlotView slots = 12;
   repeated RoutingAttemptView attempts = 13;
   repeated string not_claimed = 14; // what this record does not claim
+  RoutingAdmissionView admission = 15; // what admission decided (REQ-EPR-014)
+}
+
+// ---- Plan admission (REQ-EPR-014, docs/38 §5.2) ----
+//
+// A conditional plan is validated whole before anything dispatches from it.
+// The plan travels as the JSON of the versioned domain contract, so there is
+// one definition of it rather than two that can drift.
+
+message AdmitRoutingPlan {
+  Id task_id = 1;
+  string plan_json = 2;            // a serialized ConditionalExecutionPlan (schema 2)
+}
+
+message RoutingAdmissionView {
+  bool admitted = 1;
+  string plan_id = 2;
+  string validation_digest = 3;    // digest of exactly what was validated
+  uint64 reserved_minor = 4;       // slots plus the verification reserve
+  string currency = 5;
+  uint32 scale = 6;
+  uint64 routing_epoch = 7;
+  string refusal_code = 8;         // empty when admitted
+  string refusal_detail = 9;
+  repeated RoutingActivationView activations = 10;
+}
+
+message RoutingActivationView {
+  string slot_id = 1;
+  uint32 activation = 2;
+  uint64 reserved_minor = 3;
 }

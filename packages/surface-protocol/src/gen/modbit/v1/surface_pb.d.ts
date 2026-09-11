@@ -3789,6 +3789,13 @@ export declare type RoutingPlanView = Message<"modbit.v1.RoutingPlanView"> & {
    * @generated from field: repeated string not_claimed = 14;
    */
   notClaimed: string[];
+
+  /**
+   * what admission decided (REQ-EPR-014)
+   *
+   * @generated from field: modbit.v1.RoutingAdmissionView admission = 15;
+   */
+  admission?: RoutingAdmissionView | undefined;
 };
 
 /**
@@ -3796,6 +3803,122 @@ export declare type RoutingPlanView = Message<"modbit.v1.RoutingPlanView"> & {
  * Use `create(RoutingPlanViewSchema)` to create a new message.
  */
 export declare const RoutingPlanViewSchema: GenMessage<RoutingPlanView>;
+
+/**
+ * @generated from message modbit.v1.AdmitRoutingPlan
+ */
+export declare type AdmitRoutingPlan = Message<"modbit.v1.AdmitRoutingPlan"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * a serialized ConditionalExecutionPlan (schema 2)
+   *
+   * @generated from field: string plan_json = 2;
+   */
+  planJson: string;
+};
+
+/**
+ * Describes the message modbit.v1.AdmitRoutingPlan.
+ * Use `create(AdmitRoutingPlanSchema)` to create a new message.
+ */
+export declare const AdmitRoutingPlanSchema: GenMessage<AdmitRoutingPlan>;
+
+/**
+ * @generated from message modbit.v1.RoutingAdmissionView
+ */
+export declare type RoutingAdmissionView = Message<"modbit.v1.RoutingAdmissionView"> & {
+  /**
+   * @generated from field: bool admitted = 1;
+   */
+  admitted: boolean;
+
+  /**
+   * @generated from field: string plan_id = 2;
+   */
+  planId: string;
+
+  /**
+   * digest of exactly what was validated
+   *
+   * @generated from field: string validation_digest = 3;
+   */
+  validationDigest: string;
+
+  /**
+   * slots plus the verification reserve
+   *
+   * @generated from field: uint64 reserved_minor = 4;
+   */
+  reservedMinor: bigint;
+
+  /**
+   * @generated from field: string currency = 5;
+   */
+  currency: string;
+
+  /**
+   * @generated from field: uint32 scale = 6;
+   */
+  scale: number;
+
+  /**
+   * @generated from field: uint64 routing_epoch = 7;
+   */
+  routingEpoch: bigint;
+
+  /**
+   * empty when admitted
+   *
+   * @generated from field: string refusal_code = 8;
+   */
+  refusalCode: string;
+
+  /**
+   * @generated from field: string refusal_detail = 9;
+   */
+  refusalDetail: string;
+
+  /**
+   * @generated from field: repeated modbit.v1.RoutingActivationView activations = 10;
+   */
+  activations: RoutingActivationView[];
+};
+
+/**
+ * Describes the message modbit.v1.RoutingAdmissionView.
+ * Use `create(RoutingAdmissionViewSchema)` to create a new message.
+ */
+export declare const RoutingAdmissionViewSchema: GenMessage<RoutingAdmissionView>;
+
+/**
+ * @generated from message modbit.v1.RoutingActivationView
+ */
+export declare type RoutingActivationView = Message<"modbit.v1.RoutingActivationView"> & {
+  /**
+   * @generated from field: string slot_id = 1;
+   */
+  slotId: string;
+
+  /**
+   * @generated from field: uint32 activation = 2;
+   */
+  activation: number;
+
+  /**
+   * @generated from field: uint64 reserved_minor = 3;
+   */
+  reservedMinor: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.RoutingActivationView.
+ * Use `create(RoutingActivationViewSchema)` to create a new message.
+ */
+export declare const RoutingActivationViewSchema: GenMessage<RoutingActivationView>;
 
 /**
  * Command acknowledgement.
