@@ -4342,6 +4342,191 @@ export declare type StatAggregateView = Message<"modbit.v1.StatAggregateView"> &
 export declare const StatAggregateViewSchema: GenMessage<StatAggregateView>;
 
 /**
+ * @generated from message modbit.v1.CompileRoutingPlan
+ */
+export declare type CompileRoutingPlan = Message<"modbit.v1.CompileRoutingPlan"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * manual pin: only plans opened by this binding are considered
+   *
+   * @generated from field: string pin_endpoint = 2;
+   */
+  pinEndpoint: string;
+
+  /**
+   * @generated from field: string pin_model = 3;
+   */
+  pinModel: string;
+
+  /**
+   * the request's spending cap; 0 = the registry's auto floor ceiling
+   *
+   * @generated from field: uint64 request_cap_minor = 4;
+   */
+  requestCapMinor: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.CompileRoutingPlan.
+ * Use `create(CompileRoutingPlanSchema)` to create a new message.
+ */
+export declare const CompileRoutingPlanSchema: GenMessage<CompileRoutingPlan>;
+
+/**
+ * @generated from message modbit.v1.RoutingCandidateView
+ */
+export declare type RoutingCandidateView = Message<"modbit.v1.RoutingCandidateView"> & {
+  /**
+   * @generated from field: string plan_id = 1;
+   */
+  planId: string;
+
+  /**
+   * "endpoint/model" per slot, in order
+   *
+   * @generated from field: repeated string bindings = 2;
+   */
+  bindings: string[];
+
+  /**
+   * @generated from field: uint64 worst_case_cost_minor = 3;
+   */
+  worstCaseCostMinor: bigint;
+
+  /**
+   * @generated from field: uint64 expected_cost_minor = 4;
+   */
+  expectedCostMinor: bigint;
+
+  /**
+   * @generated from field: uint32 quality_lcb_bp = 5;
+   */
+  qualityLcbBp: number;
+
+  /**
+   * @generated from field: bool confident = 6;
+   */
+  confident: boolean;
+
+  /**
+   * @generated from field: repeated string missing_evidence = 7;
+   */
+  missingEvidence: string[];
+
+  /**
+   * @generated from field: bool hard_eligible = 8;
+   */
+  hardEligible: boolean;
+
+  /**
+   * @generated from field: string ineligible_reason = 9;
+   */
+  ineligibleReason: string;
+};
+
+/**
+ * Describes the message modbit.v1.RoutingCandidateView.
+ * Use `create(RoutingCandidateViewSchema)` to create a new message.
+ */
+export declare const RoutingCandidateViewSchema: GenMessage<RoutingCandidateView>;
+
+/**
+ * @generated from message modbit.v1.RoutingCompileView
+ */
+export declare type RoutingCompileView = Message<"modbit.v1.RoutingCompileView"> & {
+  /**
+   * @generated from field: bool compiled = 1;
+   */
+  compiled: boolean;
+
+  /**
+   * @generated from field: string plan_id = 2;
+   */
+  planId: string;
+
+  /**
+   * @generated from field: string content_digest = 3;
+   */
+  contentDigest: string;
+
+  /**
+   * identical inputs give an identical digest
+   *
+   * @generated from field: string input_digest = 4;
+   */
+  inputDigest: string;
+
+  /**
+   * FEASIBLE | QUALITY_FLOOR_INFEASIBLE
+   *
+   * @generated from field: string selection_code = 5;
+   */
+  selectionCode: string;
+
+  /**
+   * @generated from field: bool target_met = 6;
+   */
+  targetMet: boolean;
+
+  /**
+   * @generated from field: string registry_generation = 7;
+   */
+  registryGeneration: string;
+
+  /**
+   * @generated from field: string stats_version = 8;
+   */
+  statsVersion: string;
+
+  /**
+   * @generated from field: string thresholds_version = 9;
+   */
+  thresholdsVersion: string;
+
+  /**
+   * @generated from field: string compiler_version = 10;
+   */
+  compilerVersion: string;
+
+  /**
+   * @generated from field: repeated modbit.v1.RoutingCandidateView candidates = 11;
+   */
+  candidates: RoutingCandidateView[];
+
+  /**
+   * "plan: reason"
+   *
+   * @generated from field: repeated string exclusions = 12;
+   */
+  exclusions: string[];
+
+  /**
+   * @generated from field: modbit.v1.RoutingAdmissionView admission = 13;
+   */
+  admission?: RoutingAdmissionView | undefined;
+
+  /**
+   * @generated from field: string refusal_code = 14;
+   */
+  refusalCode: string;
+
+  /**
+   * @generated from field: string refusal_detail = 15;
+   */
+  refusalDetail: string;
+};
+
+/**
+ * Describes the message modbit.v1.RoutingCompileView.
+ * Use `create(RoutingCompileViewSchema)` to create a new message.
+ */
+export declare const RoutingCompileViewSchema: GenMessage<RoutingCompileView>;
+
+/**
  * Command acknowledgement.
  *
  * @generated from enum modbit.v1.CommandStatus

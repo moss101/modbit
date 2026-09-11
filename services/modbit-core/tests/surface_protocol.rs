@@ -13072,3 +13072,306 @@ async fn qual_epr_016_feasibility_is_measured_at_admission_under_pinned_versions
         ("QUALITY_FLOOR_INFEASIBLE", false)
     );
 }
+
+/// QUAL-EPR-004 / EPR-E2E-004 / EPR-FI-004: the compiler is driven through a
+/// production Core command with the actual signed registry and the session's
+/// pinned statistics; identical inputs produce identical plans and digests;
+/// every candidate is reported with the reason it was or was not chosen; and
+/// what cannot be prevalidated never dispatches, including a gate asking for
+/// a topology the plan does not contain.
+#[tokio::test]
+async fn qual_epr_004_the_compiler_runs_through_core_and_identical_inputs_give_identical_plans() {
+    use ed25519_dalek::{Signer, SigningKey};
+    use modbit_protocol::v1::{
+        ActivateModelRegistry, CompileRoutingPlan, GetRoutingPlan, ModelRegistryView,
+        RoutingCompileView, RoutingPlanView, StartTask, TaskRunStarted,
+    };
+    use modbit_providers::registry::{
+        Economics, Governance, Latency, QualityFloor, REGISTRY_SCHEMA_VERSION, RegistryDocument,
+        RegistryEntry, SignedRegistry,
+    };
+    use serde_json::json;
+    let key = SigningKey::from_bytes(&[17u8; 32]);
+    let key_hex = hex::encode(key.verifying_key().to_bytes());
+    let now = modbit_domain::Timestamp::now().0;
+    let entry =
+        |model: &str, roles: &[&str], input_price: u64, output_price: u64, residency: &str| {
+            RegistryEntry {
+                endpoint: "openai".into(),
+                provider: "openai".into(),
+                family: "gpt-5".into(),
+                model: model.into(),
+                roles: roles.iter().map(|r| (*r).to_owned()).collect(),
+                input_modalities: vec!["text".into()],
+                context_tokens: 400_000,
+                max_output_tokens: 64_000,
+                tools: true,
+                vision: false,
+                reasoning: true,
+                structured_output: true,
+                economics: Economics {
+                    input_per_mtok_minor: input_price,
+                    output_per_mtok_minor: output_price,
+                    currency: "USD".into(),
+                    scale: 2,
+                },
+                latency: Latency {
+                    p50_ms: 900,
+                    p95_ms: 4_200,
+                },
+                governance: Governance {
+                    data_residency: residency.into(),
+                    retains_prompts: false,
+                    allowed_profiles: vec![],
+                },
+                revoked: false,
+            }
+        };
+    let document = RegistryDocument {
+        schema_version: REGISTRY_SCHEMA_VERSION,
+        registry_generation: "registry-compile-e2e".into(),
+        stats_version: "stats-1".into(),
+        issued_at_ms: now - 60_000,
+        expires_at_ms: now + 86_400_000,
+        quality_floors: vec![QualityFloor {
+            mode: "auto".into(),
+            min_quality: 0.72,
+            max_cost_minor: 5_000,
+            currency: "USD".into(),
+            scale: 2,
+        }],
+        entries: vec![
+            entry("gpt-5-mini", &["solver"], 25, 200, "us"),
+            entry("gpt-5", &["solver", "reviewer"], 125, 1_000, "us"),
+        ],
+    };
+    let signed = {
+        let json = serde_json::to_string(&document).unwrap();
+        serde_json::to_string(&SignedRegistry {
+            key_id: "ops".into(),
+            signature_hex: hex::encode(key.sign(json.as_bytes()).to_bytes()),
+            document_json: json,
+        })
+        .unwrap()
+    };
+    // A repository with a configured check: assurance is available, so
+    // continuations can be enumerated.
+    let (_repo, root) = plain_repo(&[
+        ("total.py", "def total(q, unit):\n    return q * unit\n"),
+        (
+            ".modbit/verification.json",
+            "{\"commands\": [{\"id\": \"configured:py\", \"argv\": [\"python3\", \"-c\", \"print(1)\"]}]}",
+        ),
+    ]);
+    let script = vec![
+        json!({"calls": [{"name": "fs.read", "args": {"path": "total.py"}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "total.py"}}]}),
+    ];
+    // The run stalls on its second invocation so it is still alive while the
+    // plan is compiled for it.
+    let (base, _seen) = scripted_model(script, Some(1)).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_REGISTRY_KEYS", &format!("ops:{key_hex}")),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x71)).await;
+    let g = lease_for(&session);
+    let ack = c
+        .command(envelope(
+            id16(0x72),
+            "ActivateModelRegistry",
+            ActivateModelRegistry {
+                signed_json: signed.clone(),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let r: ModelRegistryView = Client::result(&ack).unwrap();
+    assert!(r.active, "{r:?}");
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x73, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x74),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 6,
+                max_tool_calls: 0,
+                max_no_progress_turns: 6,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    async fn compile(
+        c: &mut Client,
+        task: Id,
+        id: u8,
+        g: Option<u64>,
+        pin: Option<(&str, &str)>,
+        cap: u64,
+    ) -> RoutingCompileView {
+        let ack = c
+            .command(envelope_fenced(
+                id16(id),
+                "CompileRoutingPlan",
+                CompileRoutingPlan {
+                    task_id: Some(task),
+                    pin_endpoint: pin.map(|p| p.0.to_owned()).unwrap_or_default(),
+                    pin_model: pin.map(|p| p.1.to_owned()).unwrap_or_default(),
+                    request_cap_minor: cap,
+                }
+                .encode_to_vec(),
+                g,
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    }
+    // 1. Compiled from the actual signed registry and the pinned inputs.
+    let a = compile(&mut c, task.clone(), 0x75, g, None, 0).await;
+    assert!(a.compiled, "{a:?}");
+    assert_eq!(a.registry_generation, "registry-compile-e2e");
+    assert_eq!(a.compiler_version, "compiler-2");
+    assert_eq!(a.thresholds_version, "registry-compile-e2e");
+    assert_eq!(
+        a.stats_version, "none",
+        "no snapshot is materialized: cold start"
+    );
+    assert_eq!(a.input_digest.len(), 64);
+    assert_eq!(a.content_digest.len(), 64);
+    // Cold start: nothing is feasible; the best hard-eligible plan runs with
+    // the target not claimed, and every candidate says why.
+    assert_eq!(a.selection_code, "QUALITY_FLOOR_INFEASIBLE", "{a:?}");
+    assert!(!a.target_met);
+    assert!(a.candidates.len() >= 3, "{:?}", a.candidates);
+    assert!(
+        a.candidates.iter().all(|k| k.hard_eligible),
+        "{:?}",
+        a.candidates
+    );
+    assert!(
+        a.candidates
+            .iter()
+            .any(|k| k.bindings == vec!["openai/gpt-5-mini".to_owned(), "openai/gpt-5".to_owned()]),
+        "a continuation is enumerated when assurance is available: {:?}",
+        a.candidates
+    );
+    assert!(
+        a.candidates
+            .iter()
+            .all(|k| !k.confident && !k.missing_evidence.is_empty()),
+        "{:?}",
+        a.candidates
+    );
+    assert!(
+        a.exclusions.iter().all(|e| e.contains("no observation")),
+        "{:?}",
+        a.exclusions
+    );
+    let adm = a.admission.as_ref().unwrap_or_else(|| panic!("{a:?}"));
+    assert!(adm.admitted && !adm.target_met);
+    assert_eq!(adm.feasibility, "QUALITY_FLOOR_INFEASIBLE");
+    // 2. Identical inputs produce an identical plan and digest — the plan id,
+    //    the content digest and the input digest are all the same, at the
+    //    next epoch.
+    let b = compile(&mut c, task.clone(), 0x76, g, None, 0).await;
+    assert!(b.compiled, "{b:?}");
+    assert_eq!(b.input_digest, a.input_digest);
+    assert_eq!(b.plan_id, a.plan_id);
+    assert_eq!(b.candidates, a.candidates);
+    // (The epoch is part of the plan, so the content digest differs by
+    // exactly that: the plan was reinstalled in a newer epoch, not changed.)
+    let v: RoutingPlanView = {
+        let ack = c
+            .command(envelope(
+                id16(0x77),
+                "GetRoutingPlan",
+                GetRoutingPlan {
+                    task_id: Some(task.clone()),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    };
+    assert_eq!(v.plan_id, b.plan_id);
+    assert_eq!(v.routing_epoch, 2, "{v:?}");
+    assert_eq!(v.schema_version, 2);
+    // 3. A manual pin narrows the openers and keeps policy: only plans opened
+    //    by the pin are considered, and the others are excluded by name.
+    let p = compile(&mut c, task.clone(), 0x78, g, Some(("openai", "gpt-5")), 0).await;
+    assert!(p.compiled, "{p:?}");
+    assert!(
+        p.candidates.iter().all(|k| k.bindings[0] == "openai/gpt-5"),
+        "{:?}",
+        p.candidates
+    );
+    assert!(
+        p.exclusions
+            .iter()
+            .any(|e| e.contains("not the manual pin")),
+        "{:?}",
+        p.exclusions
+    );
+    let p = compile(&mut c, task.clone(), 0x79, g, Some(("openai", "gpt-4o")), 0).await;
+    assert_eq!(p.refusal_code, "PIN_NOT_ELIGIBLE", "{p:?}");
+    // 4. An insufficient cap compiles nothing, and the plan in force stays.
+    let n = compile(&mut c, task.clone(), 0x7A, g, None, 1).await;
+    assert!(!n.compiled, "{n:?}");
+    assert_eq!(n.refusal_code, "NO_ELIGIBLE_BINDING", "{n:?}");
+    assert!(
+        n.refusal_detail.contains("exceeds the request cap 1"),
+        "every candidate is named with its worst case against the cap: {n:?}"
+    );
+    let v: RoutingPlanView = {
+        let ack = c
+            .command(envelope(
+                id16(0x7B),
+                "GetRoutingPlan",
+                GetRoutingPlan {
+                    task_id: Some(task.clone()),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    };
+    assert!(
+        v.plan_id.starts_with("compiled:") && v.routing_epoch == 3,
+        "the plan in force is the last one compiled, at epoch 3, not a refused one: {v:?}"
+    );
+    // 5. The runtime cannot synthesize a topology: a continuation the plan
+    //    does not declare is refused by admission, not activated.
+    let plan_json = task_events(&core, &session, &task)
+        .await
+        .into_iter()
+        .rev()
+        .find(|(_, t, _)| t == "RoutingPlanCompiled")
+        .map(|(_, _, p)| p["plan"].clone())
+        .unwrap();
+    let plan: modbit_domain::routing::ConditionalExecutionPlan =
+        serde_json::from_value(plan_json).unwrap();
+    let ledger = modbit_core_runtime::admission::RunLedger::empty("USD", 2);
+    let err = modbit_core_runtime::admission::admit_activation(
+        &plan,
+        &ledger,
+        "reviewer",
+        modbit_domain::routing::Trigger::ReviewRequired,
+    )
+    .unwrap_err();
+    assert_eq!(err.code(), "REQUIRED_CONTINUATION_UNAVAILABLE");
+    core.kill();
+}

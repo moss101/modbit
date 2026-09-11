@@ -489,6 +489,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "GetContextInspector",
                     "GetRoutingPlan",
                     "AdmitRoutingPlan",
+                    "CompileRoutingPlan",
                     "ActivateModelRegistry",
                     "GetModelRegistry",
                     "MaterializeOutcomeStatistics",
@@ -2291,6 +2292,28 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 return reject(cid, "BAD_PAYLOAD", "session_id required");
             };
             let view = crate::statistics::get(core, session_id, &p.stats_version).await;
+            accept(cid, false, view.encode_to_vec())
+        }
+        "CompileRoutingPlan" => {
+            let Ok(p) = wire::CompileRoutingPlan::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "CompileRoutingPlan");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let session_id = match core.store.lock().await.task(&task_id) {
+                Ok(Some(t)) => t.session_id,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            // Compiling installs a plan on the run, so it is fenced like any
+            // other write.
+            if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
+                return ack;
+            }
+            let pin = (!p.pin_endpoint.is_empty() && !p.pin_model.is_empty())
+                .then(|| (p.pin_endpoint.clone(), p.pin_model.clone()));
+            let view = crate::routing::compile(core, task_id, pin, p.request_cap_minor).await;
             accept(cid, false, view.encode_to_vec())
         }
         "ListLanguages" => {

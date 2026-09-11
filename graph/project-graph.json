@@ -20146,8 +20146,41 @@
    "task_card": "docs/49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md#epr-004",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller or executor present",
    "milestone_override": "DR-M2-002: router machinery follows the EPR-000 baseline evidence; scheduled in M3 ahead of the M4/M5 EPR tasks that depend on it",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "commit:79b2c8b",
+    "artifact:evidence/m3/EPR-004/TASK_CARD.md",
+    "test:qual_epr_004_the_compiler_runs_through_core_and_identical_inputs_give_identical_plans",
+    "test:nothing_dispatches_from_what_cannot_be_prevalidated",
+    "artifact:tests/fixtures/routing/golden/cold_start.json"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-11T03:00:43Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing code audit: admission validates a plan it is given and feasibility measures it, but nothing enumerates the plans a request could run from the registry; the direct plan is the only plan the product compiles"
+    },
+    {
+     "at": "2026-09-11T03:00:43Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "crates/providers/src/compiler.rs enumerates bounded one- and two-slot plans from live solver bindings, prevalidates each against residency, profile, capability, currency, cap and the plan validator, prices the worst case and the expected complete cost from the registry's economics, and selects by feasibility then expected cost; a manual pin narrows the openers and keeps policy"
+    },
+    {
+     "at": "2026-09-11T03:04:50Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "CompileRoutingPlan drives the compiler through Core with the active signed registry, the session's pinned statistics, the registry's auto floor and the workspace's verification plan for assurance, and admits the selected plan through the same admission every plan goes through"
+    },
+    {
+     "at": "2026-09-11T03:04:50Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "local gates pending the workspace run"
+    }
+   ],
+   "status_changed_on": "2026-09-11T03:04:50Z"
   },
   {
    "id": "EPR-005",
@@ -20557,13 +20590,16 @@
    "task_card": "docs/49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md#epr-016",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller or executor present",
    "milestone_override": "DR-M2-002: router machinery follows the EPR-000 baseline evidence; scheduled in M3 ahead of the M4/M5 EPR tasks that depend on it",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "commit:0540d62",
     "artifact:evidence/m3/EPR-016/TASK_CARD.md",
     "test:qual_epr_016_feasibility_is_measured_at_admission_under_pinned_versions",
     "test:a_high_mean_with_a_weak_bound_fails_cheap_eligibility",
-    "test:an_empty_feasible_set_is_said_exactly_and_never_claims_the_target"
+    "test:an_empty_feasible_set_is_said_exactly_and_never_claims_the_target",
+    "run:34556230085",
+    "artifact:evidence/m3/EPR-016/ci-run-34556230085.json",
+    "commit:79b2c8b"
    ],
    "notes": [
     {
@@ -20589,9 +20625,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "local gates pending the workspace run"
+    },
+    {
+     "at": "2026-09-11T03:00:43Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 79b2c8b: feasibility measured at admission under pinned versions, and every selection rule and mutation"
+    },
+    {
+     "at": "2026-09-11T03:00:43Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "plans qualify on the lower bound with a sample threshold; the cheapest feasible wins; an empty feasible set is said exactly and never claims the target"
     }
    ],
-   "status_changed_on": "2026-09-11T02:41:17Z"
+   "status_changed_on": "2026-09-11T03:00:43Z"
   },
   {
    "id": "EPR-017",

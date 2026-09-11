@@ -402,6 +402,7 @@ pub(crate) fn feasibility_of(
     let candidate = Candidate {
         plan_id: plan.plan_id.clone(),
         worst_case_cost_minor: worst_case,
+        expected_cost_minor: worst_case,
         quality: quality.clone(),
         // Admission already validated the plan against its own cap; budget
         // and policy hold by construction here.
@@ -424,5 +425,250 @@ pub(crate) fn feasibility_of(
             },
             |e| e.reason.clone(),
         ),
+    }
+}
+
+/// Compile the plan for a task's current run (REQ-EPR-004) from the active
+/// signed registry, the session's latest statistics snapshot and the mode
+/// floor, and admit what the compiler selected.
+///
+/// Everything the compiler sees is pinned: the registry by its generation and
+/// document digest, the statistics by their version, the thresholds by the
+/// registry generation that carries the floor. Identical inputs produce an
+/// identical plan, and the answer carries every candidate with the reason it
+/// was or was not chosen.
+pub(crate) async fn compile(
+    core: &Core,
+    task_id: TaskId,
+    pin: Option<(String, String)>,
+    request_cap_minor: u64,
+) -> wire::RoutingCompileView {
+    use modbit_bench_outcome_statistics::MIN_CONFIDENT_SAMPLES;
+    use modbit_providers::compiler::{CompileInput, Evidence};
+    use modbit_providers::feasibility::{LegEvidence, Thresholds};
+    let refuse = |code: &str, detail: String| wire::RoutingCompileView {
+        compiled: false,
+        refusal_code: code.to_owned(),
+        refusal_detail: detail,
+        ..Default::default()
+    };
+    let Some(registry) = core.gateway.registry() else {
+        return refuse(
+            "NO_ACTIVE_REGISTRY",
+            "no signed registry is active; the direct path is the only plan the product compiles without one".into(),
+        );
+    };
+    let Some(floor) = registry
+        .document
+        .quality_floors
+        .iter()
+        .find(|f| f.mode == "auto")
+        .cloned()
+    else {
+        return refuse(
+            "NO_MODE_FLOOR",
+            "the active registry defines no auto floor".into(),
+        );
+    };
+    let task = match core.store.lock().await.task(&task_id) {
+        Ok(Some(t)) => t,
+        Ok(None) => return refuse("UNKNOWN_TASK", task_id.to_string()),
+        Err(e) => return refuse("STORE", e.to_string()),
+    };
+    let mut store = core.store.lock().await;
+    let Some(run) = store
+        .runs_for_task(&task_id)
+        .ok()
+        .and_then(|runs| runs.into_iter().next_back())
+    else {
+        return refuse("NO_RUN", "the task has no run to compile a plan for".into());
+    };
+    let next_epoch = store
+        .routing_plans(&run.run_id)
+        .unwrap_or_default()
+        .iter()
+        .map(|p| p.routing_epoch)
+        .max()
+        .map_or(0, |e| e + 1);
+    // The statistics the registry pins, when this session has materialized
+    // them; otherwise no evidence, which the compiler treats as cold start.
+    let snapshot = crate::statistics::latest_snapshot(&store, task.session_id).map(|(s, _)| s);
+    let evidence = match snapshot.as_ref() {
+        Some(s) => Evidence {
+            stats_version: s.stats_version.clone(),
+            legs: s
+                .aggregates
+                .iter()
+                .map(|a| LegEvidence {
+                    key_id: a.key_id.clone(),
+                    lcb: a.interval.0,
+                    mean: a.mean,
+                    samples: a.samples,
+                })
+                .collect(),
+        },
+        None => Evidence {
+            stats_version: "none".into(),
+            legs: vec![],
+        },
+    };
+    let thresholds = Thresholds {
+        mode: floor.mode.clone(),
+        tau: floor.min_quality,
+        delta: 0.05,
+        min_samples: MIN_CONFIDENT_SAMPLES,
+        switch_cost_minor: 0,
+        thresholds_version: registry.generation().to_owned(),
+    };
+    let cap = if request_cap_minor == 0 {
+        floor.max_cost_minor
+    } else {
+        request_cap_minor
+    };
+    let money = |m: u64| modbit_domain::routing::Money {
+        minor_units: m,
+        currency: floor.currency.clone(),
+        scale: floor.scale,
+    };
+    // Assurance: a continuation can only be triggered by a gate with real
+    // checks behind it, which the workspace's verification plan decides.
+    let assurance_available = task.workspace_root.as_deref().is_some_and(|root| {
+        let root = std::path::Path::new(root);
+        let plan = modbit_verification::plan::derive(
+            root,
+            &[],
+            &modbit_verification::plan::configured_commands(root),
+        );
+        !plan.commands.is_empty()
+    });
+    let input = CompileInput {
+        registry: &registry,
+        evidence: &evidence,
+        thresholds: &thresholds,
+        scope: modbit_domain::routing::PlanScope {
+            tenant_id: core.tenant_id,
+            session_id: task.session_id,
+            task_id,
+            run_id: run.run_id,
+            created_at_ms: task.created_at.0,
+        },
+        lease_generation: run.kernel_lease_generation,
+        routing_epoch: next_epoch,
+        needs: modbit_providers::registry::Needs {
+            tools: true,
+            ..Default::default()
+        },
+        execution_profile: task.execution_profile.clone(),
+        allowed_residencies: vec![],
+        request_cap: money(cap),
+        verification_reserve: money(cap / 10),
+        assurance_available,
+        manual_pin: pin,
+        harness: crate::baseline::build_digest(),
+        policy_version: core.gateway.policy().version(),
+        // The profiler is in shadow (REQ-EPR-003): it informs nothing yet, and
+        // the plan says so rather than borrowing its version.
+        profiler_version: "none".into(),
+        gate_version: "gate-1".into(),
+        risk_version: "none".into(),
+        expected_input_tokens: 40_000,
+    };
+    let compiled = match modbit_providers::compiler::compile(&input) {
+        Ok(c) => c,
+        Err(r) => return refuse(r.code(), format!("{r:?}")),
+    };
+    // Admit what was compiled through the same door every plan goes through.
+    let admission = match modbit_core_runtime::admission::admit_plan(
+        &compiled.plan,
+        core.tenant_id,
+        next_epoch,
+    ) {
+        Ok(a) => a,
+        Err(r) => return refuse(r.code(), format!("{r:?}")),
+    };
+    let feasibility = FeasibilityRecord {
+        code: compiled.selection.code.clone(),
+        lcb_bp: bp(compiled.selection.selected_lcb),
+        stats_version: evidence.stats_version.clone(),
+        thresholds_version: thresholds.thresholds_version.clone(),
+        target_met: compiled.selection.target_met,
+        detail: String::new(),
+    };
+    let plan_id = compiled.plan.plan_id.clone();
+    let plan_ref = modbit_domain::routing::plan_digest(&compiled.plan);
+    let content_digest = compiled.plan.content_digest.clone();
+    let actor = modbit_domain::event::Actor::Core("compiler".into());
+    let events = vec![
+        crate::runtime::typed(
+            "RoutingPlanCompiled",
+            &modbit_domain::run::RunEvent::RoutingPlanCompiled {
+                plan: Box::new(compiled.plan.clone()),
+                plan_ref,
+            },
+            actor.clone(),
+        ),
+        crate::runtime::typed(
+            "RoutingPlanAdmitted",
+            &modbit_domain::run::RunEvent::RoutingPlanAdmitted {
+                plan_id: plan_id.clone(),
+                validation_digest: admission.validation_digest.clone(),
+                reserved_minor: admission.reserved.minor_units,
+                currency: admission.reserved.currency.clone(),
+                scale: admission.reserved.scale,
+                lease_generation: admission.lease_generation,
+                feasibility: feasibility.code.clone(),
+                quality_lcb_bp: feasibility.lcb_bp,
+                stats_version: feasibility.stats_version.clone(),
+                thresholds_version: feasibility.thresholds_version.clone(),
+                target_met: feasibility.target_met,
+            },
+            actor,
+        ),
+    ];
+    if let Err(e) = crate::runtime::append(
+        &mut store,
+        core,
+        crate::runtime::Lineage::run(core.tenant_id, task.session_id, task_id, run.run_id),
+        modbit_domain::event::AggregateType::Run,
+        *run.run_id.as_bytes(),
+        events,
+    ) {
+        return refuse("STORE", e.to_string());
+    }
+    wire::RoutingCompileView {
+        compiled: true,
+        plan_id: plan_id.clone(),
+        content_digest,
+        input_digest: compiled.input_digest,
+        selection_code: compiled.selection.code,
+        target_met: compiled.selection.target_met,
+        registry_generation: registry.generation().to_owned(),
+        stats_version: evidence.stats_version,
+        thresholds_version: thresholds.thresholds_version,
+        compiler_version: modbit_providers::compiler::COMPILER_VERSION.into(),
+        candidates: compiled
+            .candidates
+            .iter()
+            .map(|c| wire::RoutingCandidateView {
+                plan_id: c.plan_id.clone(),
+                bindings: c.bindings.clone(),
+                worst_case_cost_minor: c.worst_case_cost_minor,
+                expected_cost_minor: c.expected_cost_minor,
+                quality_lcb_bp: bp(c.quality.lcb),
+                confident: c.quality.confident,
+                missing_evidence: c.quality.missing.clone(),
+                hard_eligible: c.hard_eligible,
+                ineligible_reason: c.ineligible_reason.clone(),
+            })
+            .collect(),
+        exclusions: compiled
+            .selection
+            .exclusions
+            .iter()
+            .map(|e| format!("{}: {}", e.plan_id, e.reason))
+            .collect(),
+        admission: admission_view(&store, &plan_id),
+        refusal_code: String::new(),
+        refusal_detail: String::new(),
     }
 }

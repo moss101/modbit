@@ -1,0 +1,32 @@
+{
+  "candidates": [
+    {
+      "bindings": [
+        "openai/gpt-5-pro"
+      ],
+      "confident": true,
+      "expected_cost_minor": 210,
+      "hard_eligible": true,
+      "ineligible_reason": "",
+      "lcb": 0.93,
+      "plan_id": "compiled:12262eacfacb41a69cdf8e90",
+      "worst_case_cost_minor": 210
+    }
+  ],
+  "code": "FEASIBLE",
+  "exclusions": [
+    "openai/gpt-5-mini: not the manual pin openai/gpt-5-pro",
+    "openai/gpt-5: not the manual pin openai/gpt-5-pro"
+  ],
+  "provenance": {
+    "compiler_version": "compiler-2",
+    "registry_generation": "registry-compile-1",
+    "statistics_version": "stats-7"
+  },
+  "selected": "compiled:12262eacfacb41a69cdf8e90",
+  "slots": [
+    "initial:openai/gpt-5-pro:Initial"
+  ],
+  "target_met": true,
+  "total_budget_minor": 5000
+}

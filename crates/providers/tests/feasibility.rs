@@ -31,6 +31,7 @@ fn candidate(id: &str, cost: u64, quality: PlanQuality) -> Candidate {
     Candidate {
         plan_id: id.into(),
         worst_case_cost_minor: cost,
+        expected_cost_minor: cost,
         quality,
         hard_eligible: true,
         ineligible_reason: String::new(),

@@ -1,0 +1,22 @@
+{
+ "task": "EPR-004",
+ "requirement": "REQ-EPR-004",
+ "qual": "QUAL-EPR-004",
+ "tests": [
+  "qual_epr_004_the_compiler_runs_through_core_and_identical_inputs_give_identical_plans",
+  "identical_inputs_produce_identical_plans_and_the_golden_cold_start",
+  "feasibility_then_lowest_expected_complete_cost_decides",
+  "nothing_dispatches_from_what_cannot_be_prevalidated"
+ ],
+ "golden_corpus": [
+  "tests/fixtures/routing/golden/cold_start.json",
+  "tests/fixtures/routing/golden/feasible_selection.json",
+  "tests/fixtures/routing/golden/manual_pin.json",
+  "tests/fixtures/routing/golden/no_assurance.json"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "Through Core with a signed registry and a repository that declares a check, the compiler enumerates single-slot and continuation plans, prevalidates all of them, selects the best hard-eligible plan at cold start as QUALITY_FLOOR_INFEASIBLE with every candidate's missing evidence named, produces the same plan id, input digest and candidates for identical inputs, narrows to a manual pin and refuses an ineligible one, compiles nothing under a cap that fits no plan while the plan in force stays, and admission refuses a continuation the plan does not declare. Synthetic registries prove stale statistics, insufficient cap, price overflow, disallowed residency, unavailable assurance and a revoked pin are refused or excluded with reasons, and that expected cost prefers a mini-plus-continuation plan over a plain stronger solver.",
+ "audit": "PARTIAL before this task: admission and feasibility existed, but nothing enumerated the plans a request could run; the direct plan was the only compiled plan.",
+ "limitations": "Nothing executes a compiled plan yet (EPR-005/006). Reviewer and reviser slots are not enumerated until EPR-018 enforces reviewer isolation, so the reviewer canonical-write injection has nothing to inject into. expected_input_tokens (40000) and delta (0.05) are fixed in Core and part of the digest. gate_version is gate-1 and risk_version is none because no gate or risk model exists yet."
+}

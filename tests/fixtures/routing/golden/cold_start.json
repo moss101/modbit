@@ -1,0 +1,99 @@
+{
+  "candidates": [
+    {
+      "bindings": [
+        "openai/gpt-5-mini"
+      ],
+      "confident": false,
+      "expected_cost_minor": 102,
+      "hard_eligible": true,
+      "ineligible_reason": "",
+      "lcb": 0.0,
+      "plan_id": "compiled:b225d1e3f0a05496546bd749",
+      "worst_case_cost_minor": 102
+    },
+    {
+      "bindings": [
+        "openai/gpt-5-mini",
+        "openai/gpt-5"
+      ],
+      "confident": false,
+      "expected_cost_minor": 112,
+      "hard_eligible": true,
+      "ineligible_reason": "",
+      "lcb": 0.0,
+      "plan_id": "compiled:fe4f8865dcffefec3b263a75",
+      "worst_case_cost_minor": 112
+    },
+    {
+      "bindings": [
+        "openai/gpt-5-mini",
+        "openai/gpt-5-pro"
+      ],
+      "confident": false,
+      "expected_cost_minor": 212,
+      "hard_eligible": true,
+      "ineligible_reason": "",
+      "lcb": 0.0,
+      "plan_id": "compiled:73d290f0b496a7d795da4571",
+      "worst_case_cost_minor": 212
+    },
+    {
+      "bindings": [
+        "openai/gpt-5"
+      ],
+      "confident": false,
+      "expected_cost_minor": 110,
+      "hard_eligible": true,
+      "ineligible_reason": "",
+      "lcb": 0.0,
+      "plan_id": "compiled:fbe3811d3aad0c5b4843cae9",
+      "worst_case_cost_minor": 110
+    },
+    {
+      "bindings": [
+        "openai/gpt-5",
+        "openai/gpt-5-pro"
+      ],
+      "confident": false,
+      "expected_cost_minor": 220,
+      "hard_eligible": true,
+      "ineligible_reason": "",
+      "lcb": 0.0,
+      "plan_id": "compiled:30988ecff3ae7b092354c181",
+      "worst_case_cost_minor": 220
+    },
+    {
+      "bindings": [
+        "openai/gpt-5-pro"
+      ],
+      "confident": false,
+      "expected_cost_minor": 210,
+      "hard_eligible": true,
+      "ineligible_reason": "",
+      "lcb": 0.0,
+      "plan_id": "compiled:eb35083f7c20d8fc118b4b3c",
+      "worst_case_cost_minor": 210
+    }
+  ],
+  "code": "QUALITY_FLOOR_INFEASIBLE",
+  "exclusions": [
+    "compiled:b225d1e3f0a05496546bd749: no observation for solver|gpt-5-mini|none|build-1",
+    "compiled:fe4f8865dcffefec3b263a75: no observation for solver|gpt-5-mini|none|build-1, escalation|gpt-5-mini|gpt-5|acceptance|workspace|configured",
+    "compiled:73d290f0b496a7d795da4571: no observation for solver|gpt-5-mini|none|build-1, escalation|gpt-5-mini|gpt-5-pro|acceptance|workspace|configured",
+    "compiled:fbe3811d3aad0c5b4843cae9: no observation for solver|gpt-5|none|build-1",
+    "compiled:30988ecff3ae7b092354c181: no observation for solver|gpt-5|none|build-1, escalation|gpt-5|gpt-5-pro|acceptance|workspace|configured",
+    "compiled:eb35083f7c20d8fc118b4b3c: no observation for solver|gpt-5-pro|none|build-1"
+  ],
+  "provenance": {
+    "compiler_version": "compiler-2",
+    "registry_generation": "registry-compile-1",
+    "statistics_version": "stats-7"
+  },
+  "selected": "compiled:b225d1e3f0a05496546bd749",
+  "slots": [
+    "initial:openai/gpt-5-mini:Initial"
+  ],
+  "target_met": false,
+  "total_budget_minor": 5000
+}

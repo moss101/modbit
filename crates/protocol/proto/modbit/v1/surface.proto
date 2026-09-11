@@ -1001,3 +1001,48 @@ message StatAggregateView {
   uint64 mean_wall_ms = 10;
   bool low_confidence = 11;          // below the sample threshold: a prior, not evidence
 }
+
+// ---- Plan compilation (REQ-EPR-004, docs/38 §5) ----
+//
+// Compile the bounded conditional plan for a task's current run from the
+// active signed registry, the session's pinned statistics and the mode floor,
+// prevalidate every candidate before anything dispatches, and admit the one
+// that feasibility and then expected complete cost select. Nothing here is a
+// template: a label is earned by what runs.
+
+message CompileRoutingPlan {
+  Id task_id = 1;
+  string pin_endpoint = 2;         // manual pin: only plans opened by this binding are considered
+  string pin_model = 3;
+  uint64 request_cap_minor = 4;    // the request's spending cap; 0 = the registry's auto floor ceiling
+}
+
+message RoutingCandidateView {
+  string plan_id = 1;
+  repeated string bindings = 2;    // "endpoint/model" per slot, in order
+  uint64 worst_case_cost_minor = 3;
+  uint64 expected_cost_minor = 4;
+  uint32 quality_lcb_bp = 5;
+  bool confident = 6;
+  repeated string missing_evidence = 7;
+  bool hard_eligible = 8;
+  string ineligible_reason = 9;
+}
+
+message RoutingCompileView {
+  bool compiled = 1;
+  string plan_id = 2;
+  string content_digest = 3;
+  string input_digest = 4;         // identical inputs give an identical digest
+  string selection_code = 5;       // FEASIBLE | QUALITY_FLOOR_INFEASIBLE
+  bool target_met = 6;
+  string registry_generation = 7;
+  string stats_version = 8;
+  string thresholds_version = 9;
+  string compiler_version = 10;
+  repeated RoutingCandidateView candidates = 11;
+  repeated string exclusions = 12; // "plan: reason"
+  RoutingAdmissionView admission = 13;
+  string refusal_code = 14;
+  string refusal_detail = 15;
+}

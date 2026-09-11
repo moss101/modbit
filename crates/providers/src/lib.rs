@@ -16,6 +16,7 @@
 #![forbid(unsafe_code)]
 
 pub mod anthropic;
+pub mod compiler;
 pub mod contract;
 pub mod feasibility;
 pub mod gateway;

@@ -196,6 +196,19 @@ pub struct OrgModelPolicy {
 }
 
 impl OrgModelPolicy {
+    /// A version a plan can pin: a digest of the policy's exact content, so
+    /// the same policy always names itself the same way and a changed one
+    /// never passes for it.
+    #[must_use]
+    pub fn version(&self) -> String {
+        use sha2::{Digest, Sha256};
+        let mut h = Sha256::new();
+        h.update(self.block.join(",").as_bytes());
+        h.update([0]);
+        h.update(self.require_endpoints.join(",").as_bytes());
+        format!("policy-{}", &hex::encode(h.finalize())[..16])
+    }
+
     /// Parse `MODBIT_MODEL_POLICY`: `block=anthropic/*,openai/gpt-5-mini;require=openai`.
     #[must_use]
     pub fn parse(spec: &str) -> Self {

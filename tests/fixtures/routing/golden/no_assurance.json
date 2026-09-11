@@ -1,0 +1,57 @@
+{
+  "candidates": [
+    {
+      "bindings": [
+        "openai/gpt-5-mini"
+      ],
+      "confident": false,
+      "expected_cost_minor": 102,
+      "hard_eligible": true,
+      "ineligible_reason": "",
+      "lcb": 0.0,
+      "plan_id": "compiled:0f4cf9eef382b5f74ec11e5f",
+      "worst_case_cost_minor": 102
+    },
+    {
+      "bindings": [
+        "openai/gpt-5"
+      ],
+      "confident": false,
+      "expected_cost_minor": 110,
+      "hard_eligible": true,
+      "ineligible_reason": "",
+      "lcb": 0.0,
+      "plan_id": "compiled:afd53e321196fa7e24c640a8",
+      "worst_case_cost_minor": 110
+    },
+    {
+      "bindings": [
+        "openai/gpt-5-pro"
+      ],
+      "confident": false,
+      "expected_cost_minor": 210,
+      "hard_eligible": true,
+      "ineligible_reason": "",
+      "lcb": 0.0,
+      "plan_id": "compiled:d152c7e747dc5a7a6a58c5df",
+      "worst_case_cost_minor": 210
+    }
+  ],
+  "code": "QUALITY_FLOOR_INFEASIBLE",
+  "exclusions": [
+    "compiled:0f4cf9eef382b5f74ec11e5f: no observation for solver|gpt-5-mini|none|build-1",
+    "compiled:afd53e321196fa7e24c640a8: no observation for solver|gpt-5|none|build-1",
+    "compiled:d152c7e747dc5a7a6a58c5df: no observation for solver|gpt-5-pro|none|build-1"
+  ],
+  "provenance": {
+    "compiler_version": "compiler-2",
+    "registry_generation": "registry-compile-1",
+    "statistics_version": "stats-7"
+  },
+  "selected": "compiled:0f4cf9eef382b5f74ec11e5f",
+  "slots": [
+    "initial:openai/gpt-5-mini:Initial"
+  ],
+  "target_met": false,
+  "total_budget_minor": 5000
+}

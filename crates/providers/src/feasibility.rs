@@ -132,8 +132,13 @@ pub struct Candidate {
     /// Plan.
     pub plan_id: String,
     /// Worst-case complete cost: every slot's reservation plus the
-    /// verification reserve, in minor units.
+    /// verification reserve, in minor units. This is what the cap is checked
+    /// against, because it is what the plan may actually spend.
     pub worst_case_cost_minor: u64,
+    /// Expected complete cost: the initial leg plus each continuation
+    /// weighted by the lower bound of its being needed, in minor units. This
+    /// is what plans are ranked by, and it is never below the initial leg.
+    pub expected_cost_minor: u64,
     /// What it can be expected to do.
     pub quality: PlanQuality,
     /// Whether budget and policy allow it at all. A plan that is not hard
@@ -228,8 +233,9 @@ pub fn select(candidates: &[Candidate], t: &Thresholds, current: Option<&str>) -
         }
     }
     feasible.sort_by(|a, b| {
-        a.worst_case_cost_minor
-            .cmp(&b.worst_case_cost_minor)
+        a.expected_cost_minor
+            .cmp(&b.expected_cost_minor)
+            .then_with(|| a.worst_case_cost_minor.cmp(&b.worst_case_cost_minor))
             .then_with(|| b.quality.lcb.total_cmp(&a.quality.lcb))
             .then_with(|| a.plan_id.cmp(&b.plan_id))
     });
@@ -258,8 +264,8 @@ pub fn select(candidates: &[Candidate], t: &Thresholds, current: Option<&str>) -
                 exclusions.push(Exclusion {
                     plan_id: f.plan_id.clone(),
                     reason: format!(
-                        "feasible, but {} minor units is not the lowest expected complete cost",
-                        f.worst_case_cost_minor
+                        "feasible, but an expected {} minor units is not the lowest expected complete cost",
+                        f.expected_cost_minor
                     ),
                 });
             }
@@ -284,7 +290,7 @@ pub fn select(candidates: &[Candidate], t: &Thresholds, current: Option<&str>) -
         b.quality
             .lcb
             .total_cmp(&a.quality.lcb)
-            .then_with(|| a.worst_case_cost_minor.cmp(&b.worst_case_cost_minor))
+            .then_with(|| a.expected_cost_minor.cmp(&b.expected_cost_minor))
             .then_with(|| a.plan_id.cmp(&b.plan_id))
     });
     match eligible.first() {
