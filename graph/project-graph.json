@@ -22851,12 +22851,15 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-022",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "milestone_override": "DR-M2-002: onboarding timing needs a live provider test model (DR-M2-001 credentials)",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "commit:213a89f",
     "artifact:evidence/m3/PX-022/TASK_CARD.md",
     "test:qual_px_022_provider_setup_and_repository_trust_are_enforced_by_the_core",
-    "artifact:docs/decisions/DR-M3-003-benchmark-and-conformance-live-model-halves.md"
+    "artifact:docs/decisions/DR-M3-003-benchmark-and-conformance-live-model-halves.md",
+    "run:34568027155",
+    "commit:26583a5",
+    "artifact:evidence/m3/PX-022/ci-run-34568027155.json"
    ],
    "notes": [
     {
@@ -22882,9 +22885,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "three fresh profiles: median 1.2 s to the Review on an Apple M5 Pro against the wire-faithful provider; the live-model measurement is deferred by DR-M3-003"
+    },
+    {
+     "at": "2026-09-11T06:06:52Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34568027155 green on macOS, Linux and Windows: the Playwright onboarding flow on three fresh profiles and the Core half (qual_px_022) pass; the credential is absent from every file under the profile"
+    },
+    {
+     "at": "2026-09-11T06:06:52Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on hosted CI run 34568027155; task card and evidence.json record the measurement (median 1.2 s against the 300 s budget on the wire-faithful provider; live-model half deferred by DR-M3-003)"
     }
    ],
-   "status_changed_on": "2026-09-11T05:52:47Z"
+   "status_changed_on": "2026-09-11T06:06:52Z"
   },
   {
    "id": "PX-023",

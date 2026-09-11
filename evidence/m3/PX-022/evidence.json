@@ -7,8 +7,12 @@
   "onboarding: an invalid key, an unreachable endpoint and a missing repository each name their cause; a profile without a provider cannot start a task",
   "qual_px_022_provider_setup_and_repository_trust_are_enforced_by_the_core"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "26583a5"
+ ],
+ "runs": [
+  "34568027155"
+ ],
  "decision_record": "docs/decisions/DR-M3-003-benchmark-and-conformance-live-model-halves.md",
  "metrics": {
   "hardware": "Apple M5 Pro, Darwin arm64",
@@ -24,5 +28,19 @@
  },
  "proof": "Three fresh profiles of the real Electron app against the real Core and the wire-faithful provider go from first launch through provider setup with a live test call, scoped repository trust and a starter task to the Review open on a one-hunk diff with a COMPLETION run, median 1.2 s. A profile without a provider cannot start a task (NO_PROVIDER); an invalid key, an unreachable endpoint and a missing repository each name their cause; the same task starts once the provider is confirmed. At the Core the rules hold over the wire and the credential is absent from every file under the profile.",
  "audit": "ABSENT before: no welcome, no provider setup (keys came from the environment only), no repository trust anywhere in the product, no starter tasks.",
- "limitations": "The measurement is against the wire-faithful provider; the live-model measurement is deferred by DR-M3-003. Reference hardware is the machine named. A path field stands in for a native folder picker. Trust is per session as docs/39 scopes it."
+ "limitations": "The measurement is against the wire-faithful provider; the live-model measurement is deferred by DR-M3-003. Reference hardware is the machine named. A path field stands in for a native folder picker. Trust is per session as docs/39 scopes it.",
+ "ci": {
+  "run_id": "34568027155",
+  "conclusion": "success",
+  "head_sha": "26583a51e619a13ee37fd1f3335848232770f267",
+  "jobs": [
+   "rust CI_COMPATIBLE (macos-latest)",
+   "rust CI_COMPATIBLE (ubuntu-latest)",
+   "rust CI_COMPATIBLE (windows-latest)",
+   "desktop E2E \u2014 real Electron app against real modbit-core (macos-latest)",
+   "desktop E2E \u2014 real Electron app against real modbit-core (ubuntu-latest)",
+   "desktop E2E \u2014 real Electron app against real modbit-core (windows-latest)"
+  ],
+  "json": "evidence/m3/PX-022/ci-run-34568027155.json"
+ }
 }

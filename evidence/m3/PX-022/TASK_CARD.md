@@ -45,4 +45,4 @@ Apple M5 Pro, Darwin arm64, three fresh profiles: samples 1.17 s, 1.18 s, 1.23 s
 ## Evidence
 
 - `evidence.json` in this directory (commits, hosted CI run, test names)
-- CI run json copy alongside
+- commit `26583a5`; hosted CI run 34568027155 green on macOS, Linux and Windows (`ci-run-34568027155.json`)
