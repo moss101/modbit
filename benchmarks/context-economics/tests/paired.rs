@@ -1,7 +1,9 @@
 //! The paired statistics of the context economics benchmark (REQ-EV-0250):
 //! what pairing means, what the interval says, and what an unpaired trial
 //! contributes (nothing).
-use modbit_bench_context_economics::{Metric, Trial, metric_of, paired_report};
+use modbit_bench_context_economics::{
+    Metric, SeenPrompt, Trial, metric_of, normalized_tool_calls, paired_report, prompt_parity,
+};
 
 fn trial(variant: &str, task: &str, repeat: u32, tokens: u64, tools: u32, ms: u64) -> Trial {
     Trial {
@@ -12,6 +14,7 @@ fn trial(variant: &str, task: &str, repeat: u32, tokens: u64, tools: u32, ms: u6
         output_tokens: tokens / 10,
         cached_input_tokens: 0,
         tool_calls: tools,
+        normalized_tool_calls: tools.saturating_sub(1),
         model_calls: tools + 1,
         agent_ms: ms,
         cold_ms: ms + 500,
@@ -110,4 +113,77 @@ fn an_unpaired_trial_says_nothing_about_a_difference() {
     let tokens = metric_of(&report, Metric::InputTokens).unwrap();
     assert!(tokens.ci95.0.is_nan() && !tokens.significant, "{tokens:?}");
     assert_eq!(tokens.mean_delta, -300.0);
+}
+
+/// REQ-EV-0251: protocol calls are not work, a batch is its operations, and
+/// a read, a search, a pack or a shell command are one unit each whatever
+/// they are named — so counts compare across variants with different tools.
+#[test]
+fn tool_calls_are_normalized_across_tool_families() {
+    let baseline = vec![
+        ("plan.update".to_owned(), 1),
+        ("fs.read".to_owned(), 1),
+        ("fs.read".to_owned(), 1),
+        ("fs.read".to_owned(), 1),
+        ("search.exact".to_owned(), 1),
+        ("change.batch".to_owned(), 3),
+        ("task.complete".to_owned(), 1),
+    ];
+    let treatment = vec![
+        ("plan.update".to_owned(), 1),
+        ("context.pack".to_owned(), 1),
+        ("change.apply".to_owned(), 1),
+        ("change.apply".to_owned(), 1),
+        ("change.apply".to_owned(), 1),
+        ("task.complete".to_owned(), 1),
+    ];
+    // Baseline: three reads, one search, three batched edits = 7; the plan
+    // and the completion handshake are not counted.
+    assert_eq!(normalized_tool_calls(&baseline), 7);
+    // Treatment: one pack and three edits = 4, the same work in fewer calls.
+    assert_eq!(normalized_tool_calls(&treatment), 4);
+    // The raw counts would have told a different story (7 vs 6): the batch
+    // hides work and the protocol calls pad both sides.
+    assert_eq!((baseline.len(), treatment.len()), (7, 6));
+    assert_eq!(normalized_tool_calls(&[]), 0);
+    assert_eq!(normalized_tool_calls(&[("change.batch".to_owned(), 0)]), 1);
+}
+
+/// REQ-EV-0253: the variants must be asked the same thing. Only the
+/// capability profile may differ, and a prompt that steers the agent toward
+/// the machinery under test invalidates the comparison.
+#[test]
+fn a_benchmark_is_unbiased_only_when_its_prompts_are_identical_and_force_nothing() {
+    let prompt = |tools: &[&str]| SeenPrompt {
+        system: "You are working in a repository. Use the tools you have.".into(),
+        request: "find where totals are computed".into(),
+        tools: tools.iter().map(|t| (*t).to_owned()).collect(),
+    };
+    let same = prompt_parity(
+        &prompt(&["fs.read", "search.exact"]),
+        &prompt(&["fs.read", "search.exact", "context.pack"]),
+    );
+    assert!(same.identical_system && same.identical_request);
+    assert_eq!(same.capability_difference, vec!["context.pack".to_owned()]);
+    assert!(same.forcing_instructions.is_empty());
+    assert!(same.unbiased, "{same:?}");
+    // A treatment prompt that tells the agent what to use is steering.
+    let mut steered = prompt(&["fs.read", "context.pack"]);
+    steered
+        .system
+        .push_str(" You must use the context.pack tool before reading anything.");
+    let biased = prompt_parity(&prompt(&["fs.read"]), &steered);
+    assert!(!biased.identical_system);
+    assert!(
+        biased
+            .forcing_instructions
+            .iter()
+            .any(|f| f.starts_with("treatment:")),
+        "{biased:?}"
+    );
+    assert!(!biased.unbiased);
+    // A different request is a different task, not a variant of the same one.
+    let mut other = prompt(&["fs.read"]);
+    other.request = "find where discounts are applied".into();
+    assert!(!prompt_parity(&prompt(&["fs.read"]), &other).unbiased);
 }

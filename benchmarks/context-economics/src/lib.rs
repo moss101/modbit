@@ -29,8 +29,12 @@ pub struct Trial {
     pub output_tokens: u64,
     /// Of the input tokens, the part the provider reported as cached.
     pub cached_input_tokens: u64,
-    /// Tool calls the run made.
+    /// Tool calls the run made, as the log counts them.
     pub tool_calls: u32,
+    /// Tool calls normalized across tool families (REQ-EV-0251): protocol
+    /// calls left out, a batch counted as its operations.
+    #[serde(default)]
+    pub normalized_tool_calls: u32,
     /// Model invocations.
     pub model_calls: u32,
     /// Wall time of the agent's work, excluding index building.
@@ -49,6 +53,8 @@ pub enum Metric {
     InputTokens,
     /// Tool calls.
     ToolCalls,
+    /// Normalized tool calls.
+    NormalizedToolCalls,
     /// Agent time.
     AgentMs,
     /// Cold time to first use.
@@ -62,6 +68,7 @@ impl Metric {
         match self {
             Self::InputTokens => t.input_tokens as f64,
             Self::ToolCalls => f64::from(t.tool_calls),
+            Self::NormalizedToolCalls => f64::from(t.normalized_tool_calls),
             Self::AgentMs => t.agent_ms as f64,
             Self::ColdMs => t.cold_ms as f64,
         }
@@ -73,6 +80,7 @@ impl Metric {
         match self {
             Self::InputTokens => "input_tokens",
             Self::ToolCalls => "tool_calls",
+            Self::NormalizedToolCalls => "normalized_tool_calls",
             Self::AgentMs => "agent_ms",
             Self::ColdMs => "cold_ms",
         }
@@ -122,6 +130,10 @@ pub struct PairedReport {
     pub method: String,
     /// Trials that had no partner, by variant and task.
     pub unpaired: Vec<String>,
+    /// Whether the variants were asked the same thing (REQ-EV-0253), when
+    /// the harness recorded what each saw.
+    #[serde(default)]
+    pub prompt_parity: Option<PromptParity>,
 }
 
 /// The middle value of a sample (the mean of the two middle values when the
@@ -213,6 +225,7 @@ pub fn paired_report(
     let metrics = [
         Metric::InputTokens,
         Metric::ToolCalls,
+        Metric::NormalizedToolCalls,
         Metric::AgentMs,
         Metric::ColdMs,
     ]
@@ -256,6 +269,7 @@ pub fn paired_report(
         held_constant: held_constant.iter().map(|s| (*s).to_owned()).collect(),
         method: method.to_owned(),
         unpaired,
+        prompt_parity: None,
     }
 }
 
@@ -263,4 +277,148 @@ pub fn paired_report(
 #[must_use]
 pub fn metric_of(report: &PairedReport, metric: Metric) -> Option<&PairedMetric> {
     report.metrics.iter().find(|m| m.metric == metric)
+}
+
+/// Tool calls that are the protocol of a run rather than its work: the plan
+/// gate, the completion handshake, repair bookkeeping and questions to the
+/// user. They are the same under every variant and say nothing about how
+/// much the agent had to do, so a normalized count leaves them out
+/// (REQ-EV-0251).
+pub const PROTOCOL_TOOLS: &[&str] = &[
+    "plan.update",
+    "task.complete",
+    "repair.attempt",
+    "user.ask",
+    "tool.search",
+];
+
+/// Count a run's tool calls in a way that compares across variants that
+/// expose different tool families (REQ-EV-0251): protocol calls are left
+/// out, a batch counts as the operations it carried, and every other call —
+/// a read, a search, a pack, a shell command, an edit — counts as one unit of
+/// work whatever it is named.
+///
+/// `calls` are `(tool name, operations)` pairs, where `operations` is the
+/// number of operations a batch carried and `1` for everything else.
+#[must_use]
+pub fn normalized_tool_calls(calls: &[(String, u32)]) -> u32 {
+    calls
+        .iter()
+        .filter(|(name, _)| !PROTOCOL_TOOLS.contains(&name.as_str()))
+        .map(|(name, ops)| {
+            if name == "change.batch" {
+                (*ops).max(1)
+            } else {
+                1
+            }
+        })
+        .sum()
+}
+
+/// Whether two variants of a benchmark were asked the same thing
+/// (REQ-EV-0253): the prompts an agent saw must be identical except for the
+/// capability profile it had, so a treatment is never steered toward the
+/// machinery under test by its instructions.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PromptParity {
+    /// The system prompt is byte-identical across variants.
+    pub identical_system: bool,
+    /// The user's request is byte-identical across variants.
+    pub identical_request: bool,
+    /// Tool names one variant had and the other did not: the capability
+    /// profile, which is the only thing allowed to differ.
+    pub capability_difference: Vec<String>,
+    /// Instructions that would force the treatment's hand, found in either
+    /// variant's prompts. Any entry here invalidates the comparison.
+    pub forcing_instructions: Vec<String>,
+    /// Whether the comparison is unbiased: identical prompts, and no forcing.
+    pub unbiased: bool,
+}
+
+/// Phrases that would tell an agent which tools to use. A benchmark prompt
+/// that contains one is steering, not measuring.
+pub const FORCING_PHRASES: &[&str] = &[
+    "you must use",
+    "always use",
+    "use the context.pack",
+    "call context.pack",
+    "use retrieval",
+    "do not read files",
+    "never read",
+    "prefer the context pack",
+];
+
+/// One request as the model saw it: the system prompt, the user request and
+/// the tools it was offered.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SeenPrompt {
+    /// System prompt text.
+    pub system: String,
+    /// The first user message.
+    pub request: String,
+    /// Tool names offered.
+    pub tools: Vec<String>,
+}
+
+impl SeenPrompt {
+    /// The same prompt with the workspace's location replaced by a
+    /// placeholder: every trial runs in its own copy of the repository, and
+    /// where that copy lives is not an instruction.
+    #[must_use]
+    pub fn with_workspace_placeholder(&self, root: &str) -> Self {
+        let canonical = std::path::Path::new(root)
+            .canonicalize()
+            .map(|p| p.to_string_lossy().into_owned())
+            .unwrap_or_else(|_| root.to_owned());
+        let scrub = |t: &str| {
+            t.replace(&canonical, "<workspace>")
+                .replace(root, "<workspace>")
+        };
+        Self {
+            system: scrub(&self.system),
+            request: scrub(&self.request),
+            tools: self.tools.clone(),
+        }
+    }
+}
+
+/// Compare the first prompt of each variant.
+#[must_use]
+pub fn prompt_parity(baseline: &SeenPrompt, treatment: &SeenPrompt) -> PromptParity {
+    let mut capability_difference: Vec<String> = baseline
+        .tools
+        .iter()
+        .filter(|t| !treatment.tools.contains(t))
+        .chain(
+            treatment
+                .tools
+                .iter()
+                .filter(|t| !baseline.tools.contains(t)),
+        )
+        .cloned()
+        .collect();
+    capability_difference.sort();
+    capability_difference.dedup();
+    let mut forcing = Vec::new();
+    for (label, p) in [("baseline", baseline), ("treatment", treatment)] {
+        for text in [&p.system, &p.request] {
+            let lower = text.to_ascii_lowercase();
+            for phrase in FORCING_PHRASES {
+                if lower.contains(phrase) {
+                    forcing.push(format!("{label}: \"{phrase}\""));
+                }
+            }
+        }
+    }
+    forcing.sort();
+    forcing.dedup();
+    let identical_system = baseline.system == treatment.system;
+    let identical_request = baseline.request == treatment.request;
+    PromptParity {
+        identical_system,
+        identical_request,
+        capability_difference,
+        unbiased: identical_system && identical_request && forcing.is_empty(),
+        forcing_instructions: forcing,
+    }
 }

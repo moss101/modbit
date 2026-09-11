@@ -15100,8 +15100,40 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0251",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "commit:e0379fd",
+    "artifact:evidence/m3/IMP-EV-0251/TASK_CARD.md",
+    "test:qual_ev_0250_0252_0274_paired_context_economics_benchmark_publishes_savings_with_confidence",
+    "artifact:docs/decisions/DR-M3-003-benchmark-and-conformance-live-model-halves.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-11T04:51:04Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: the paired benchmark counted raw tool calls and checked nothing about what each variant was asked"
+    },
+    {
+     "at": "2026-09-11T04:51:04Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "benchmarks/context-economics: normalized_tool_calls and prompt_parity, carried by the paired report"
+    },
+    {
+     "at": "2026-09-11T04:51:04Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "the real benchmark through Core records the calls and the prompts each variant actually saw"
+    },
+    {
+     "at": "2026-09-11T04:51:04Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "harness half proven on the wire-faithful provider; live-model half deferred by DR-M3-003"
+    }
+   ],
+   "status_changed_on": "2026-09-11T04:51:04Z"
   },
   {
    "id": "IMP-EV-0252",
@@ -15174,8 +15206,40 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0253",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "commit:e0379fd",
+    "artifact:evidence/m3/IMP-EV-0253/TASK_CARD.md",
+    "test:qual_ev_0250_0252_0274_paired_context_economics_benchmark_publishes_savings_with_confidence",
+    "artifact:docs/decisions/DR-M3-003-benchmark-and-conformance-live-model-halves.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-11T04:51:04Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: the paired benchmark counted raw tool calls and checked nothing about what each variant was asked"
+    },
+    {
+     "at": "2026-09-11T04:51:04Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "benchmarks/context-economics: normalized_tool_calls and prompt_parity, carried by the paired report"
+    },
+    {
+     "at": "2026-09-11T04:51:04Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "the real benchmark through Core records the calls and the prompts each variant actually saw"
+    },
+    {
+     "at": "2026-09-11T04:51:04Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "harness half proven on the wire-faithful provider; live-model half deferred by DR-M3-003"
+    }
+   ],
+   "status_changed_on": "2026-09-11T04:51:04Z"
   },
   {
    "id": "IMP-EV-0254",
@@ -22633,8 +22697,18 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-020",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "BLOCKED",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-11T04:51:11Z",
+     "from": "NOT_STARTED",
+     "to": "BLOCKED",
+     "note": "DR-M3-003: the competence baseline has no offline half; running the public and internal suites on a scripted server would invent a baseline. Waits for provider credentials and .github/workflows/live-providers.yml"
+    }
+   ],
+   "status_changed_on": "2026-09-11T04:51:11Z",
+   "blocked_from": "NOT_STARTED"
   },
   {
    "id": "PX-021",

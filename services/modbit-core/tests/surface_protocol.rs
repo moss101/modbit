@@ -11362,7 +11362,9 @@ async fn qual_px_029_an_unsupported_language_degrades_explicitly_and_edits_need_
 #[tokio::test]
 async fn qual_ev_0250_0252_0274_paired_context_economics_benchmark_publishes_savings_with_confidence()
  {
-    use modbit_bench_context_economics::{Metric, Trial, metric_of, paired_report};
+    use modbit_bench_context_economics::{
+        Metric, SeenPrompt, Trial, metric_of, normalized_tool_calls, paired_report, prompt_parity,
+    };
     use modbit_protocol::v1::{GetTaskEconomics, StartTask, TaskEconomicsView, TaskRunStarted};
     use serde_json::json;
     // A repository big enough that reading it whole costs something.
@@ -11396,13 +11398,17 @@ async fn qual_ev_0250_0252_0274_paired_context_economics_benchmark_publishes_sav
         json!({"calls": [{"name": "task.complete", "args": {"summary": "packed", "self_review": {"findings": []}}}]}),
     ];
     let mut trials: Vec<Trial> = Vec::new();
+    // What each variant's agent actually saw and did, from the requests the
+    // model server received (REQ-EV-0251 / 0253).
+    let mut seen_prompts: std::collections::BTreeMap<String, SeenPrompt> =
+        std::collections::BTreeMap::new();
     for repeat in 0..3u32 {
         for (variant, script, compaction) in [
             ("baseline", baseline_script.clone(), "2000000"),
             ("treatment", treatment_script.clone(), "1500"),
         ] {
             let (repo, root) = plain_repo(&fixture);
-            let (base, _seen) = scripted_model(script, None).await;
+            let (base, seen) = scripted_model(script, None).await;
             let dir = tempfile::tempdir().unwrap();
             let env = [
                 ("MODBIT_OPENAI_BASE_URL", base.as_str()),
@@ -11453,6 +11459,58 @@ async fn qual_ev_0250_0252_0274_paired_context_economics_benchmark_publishes_sav
                 .await
                 .unwrap();
             let e: TaskEconomicsView = Client::result(&ack).unwrap();
+            // The calls the agent made, by name, from the last request body
+            // (bodies are cumulative), normalized across tool families.
+            let bodies = seen.lock().unwrap().clone();
+            let last = bodies.last().cloned().unwrap_or_default();
+            let calls: Vec<(String, u32)> = last["messages"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter(|m| m["role"] == "assistant")
+                .flat_map(|m| m["tool_calls"].as_array().cloned().unwrap_or_default())
+                .map(|tc| {
+                    let name = tc["function"]["name"]
+                        .as_str()
+                        .unwrap_or_default()
+                        .to_owned();
+                    let ops = if name == "change.batch" {
+                        serde_json::from_str::<serde_json::Value>(
+                            tc["function"]["arguments"].as_str().unwrap_or("{}"),
+                        )
+                        .ok()
+                        .and_then(|a| a["ops"].as_array().map(Vec::len))
+                        .unwrap_or(1) as u32
+                    } else {
+                        1
+                    };
+                    (name, ops)
+                })
+                .collect();
+            let first = bodies.first().cloned().unwrap_or_default();
+            let text_of = |role: &str| {
+                first["messages"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .find(|m| m["role"] == role)
+                    .and_then(|m| m["content"].as_str())
+                    .unwrap_or_default()
+                    .to_owned()
+            };
+            seen_prompts.entry(variant.to_owned()).or_insert(
+                SeenPrompt {
+                    system: text_of("system"),
+                    request: text_of("user"),
+                    tools: first["tools"]
+                        .as_array()
+                        .into_iter()
+                        .flatten()
+                        .filter_map(|t| t["function"]["name"].as_str().map(str::to_owned))
+                        .collect(),
+                }
+                .with_workspace_placeholder(&root),
+            );
             trials.push(Trial {
                 variant: variant.to_owned(),
                 task: "find-where-totals-are-computed".into(),
@@ -11461,6 +11519,7 @@ async fn qual_ev_0250_0252_0274_paired_context_economics_benchmark_publishes_sav
                 output_tokens: e.output_tokens,
                 cached_input_tokens: e.cached_input_tokens,
                 tool_calls: e.tool_calls,
+                normalized_tool_calls: normalized_tool_calls(&calls),
                 model_calls: e.model_calls,
                 agent_ms: e.wall_ms,
                 cold_ms,
@@ -11469,7 +11528,7 @@ async fn qual_ev_0250_0252_0274_paired_context_economics_benchmark_publishes_sav
             let _ = repo;
         }
     }
-    let report = paired_report(
+    let mut report = paired_report(
         &trials,
         "the context machinery: a Context Pack instead of whole-file reads, compaction at 1500 tokens instead of effectively off",
         &[
@@ -11478,6 +11537,50 @@ async fn qual_ev_0250_0252_0274_paired_context_economics_benchmark_publishes_sav
             "the machine and the environment",
         ],
         "Three paired trials of one task through the real Core, measured from the canonical log. The model is a deterministic local server that reports the true size of what it was sent. Each variant does what an agent can do with the machinery it has — the treatment asks for a Context Pack, the baseline reads the files it needs — so the numbers measure the machinery under its intended use, not a model's spontaneous behaviour. Two consequences, stated rather than hidden: the product is deterministic here, so the paired trials are identical and the interval has no width; and whether a model left to itself would use retrieval, and how many tool calls it would make (REQ-EV-0251 / 0253), cannot be answered without a live provider.",
+    );
+    // REQ-EV-0253: the variants were asked the same thing. The harness never
+    // wrote a different prompt for the treatment, and nothing it sent tells
+    // the agent which tools to use; the only thing allowed to differ is the
+    // capability profile, which here is the same in both.
+    let parity = prompt_parity(&seen_prompts["baseline"], &seen_prompts["treatment"]);
+    assert!(
+        parity.identical_system && parity.identical_request,
+        "{parity:?}\nbaseline request:\n{}\ntreatment request:\n{}",
+        seen_prompts["baseline"].request,
+        seen_prompts["treatment"].request
+    );
+    assert!(parity.forcing_instructions.is_empty(), "{parity:?}");
+    assert!(parity.unbiased, "{parity:?}");
+    assert!(
+        parity.capability_difference.is_empty(),
+        "both variants had the same tools; the scripts differ in what they did with them: {parity:?}"
+    );
+    assert!(
+        seen_prompts["baseline"]
+            .tools
+            .contains(&"context.pack".to_owned()),
+        "the baseline was free to use retrieval and chose not to: {:?}",
+        seen_prompts["baseline"].tools
+    );
+    report.prompt_parity = Some(parity);
+    // REQ-EV-0251: the normalized count is the work, not the protocol. Both
+    // variants made a plan and a completion call; those are not counted.
+    let normalized = metric_of(&report, Metric::NormalizedToolCalls).unwrap();
+    let raw = metric_of(&report, Metric::ToolCalls).unwrap();
+    assert_eq!(normalized.pairs, 3);
+    // The log's own count already leaves harness tools out, so the two agree
+    // here; they part company when a batch carries several operations.
+    assert!(
+        (normalized.baseline_median - raw.baseline_median).abs() < f64::EPSILON,
+        "{normalized:?} vs {raw:?}"
+    );
+    assert!(
+        (normalized.baseline_median - 4.0).abs() < f64::EPSILON,
+        "four reads of work in the baseline: {normalized:?}"
+    );
+    assert!(
+        (normalized.treatment_median - 1.0).abs() < f64::EPSILON,
+        "one pack of work in the treatment: {normalized:?}"
     );
     eprintln!("BENCH {}", serde_json::to_string_pretty(&report).unwrap());
     // The report is paired, complete and honest about its method.
@@ -13700,11 +13803,18 @@ async fn qual_epr_005_new_runs_go_through_the_compiled_initial_leg_and_keep_the_
         .iter()
         .find(|(_, t, _)| t == "VerificationResidueRecorded")
         .unwrap_or_else(|| panic!("{events:#?}"));
-    assert_eq!(
-        residue.2["paths"],
-        json!(["__pycache__/probe.pyc"]),
-        "{}",
-        residue.2
+    // The probe file, plus whatever bytecode the platform's python3 wrote
+    // (it does on some platforms and not others): all of it is residue.
+    let paths: Vec<String> = residue.2["paths"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|p| p.as_str().map(str::to_owned))
+        .collect();
+    assert!(
+        paths.contains(&"__pycache__/probe.pyc".to_owned())
+            && paths.iter().all(|p| p.starts_with("__pycache__/")),
+        "{paths:?}"
     );
     assert!(
         !events.iter().any(|(_, t, _)| t == "DiffInvariantViolated"),

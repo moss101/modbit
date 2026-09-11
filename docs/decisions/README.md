@@ -56,3 +56,4 @@ change of mind is a new record that names the old one in `supersedes`.
 | DR-M2-002 | Reschedule forty-three M2-labelled tasks whose qualifications need M3–M10 substrate | accepted | 2026-09-10 | none |
 | DR-M3-001 | Confine the search-stack dependencies to the retrieval crate | accepted | 2026-09-10 | none |
 | DR-M3-002 | The EPR direct baseline seals on the wire-faithful path; the production-endpoint run of EPR-E2E-000 waits for credentials | accepted | 2026-09-11 | none |
+| DR-M3-003 | Benchmark method and conformance tasks seal on their harness halves; the live-model halves wait for credentials | accepted | 2026-09-11 | none |
