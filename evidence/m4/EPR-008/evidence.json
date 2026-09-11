@@ -13,10 +13,37 @@
   "later_facts_strengthen_and_never_weaken"
  ],
  "batch_commits": [
-  "1f91757"
+  "1f91757",
+  "432a41c",
+  "8436195"
  ],
- "runs": [],
+ "runs": [
+  {
+   "id": "gha-34637382928",
+   "kind": "hosted CI on 8436195",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34637382928",
+   "log": "ci-run-34637382928.json"
+  }
+ ],
  "proof": "A real task on an auth module and a migration with a passing check derives CRITICAL/HIGH_ASSURANCE with review and human required, persisted beside the PASSED run, a weakening repository layer ignored and named; under the unattended profile the completion is refused ASSURANCE_HUMAN_REQUIRED and nothing is synthesized; the 23-case corpus pins every rule and forged advisories change nothing.",
  "audit": "PARTIAL before: the envelope had no assurance section, protected paths were a literal, risk_version was none.",
- "limitations": "Independent model review (EPR-006/018) and the Acceptance Gate (EPR-017) are later tasks; today the user's review discharges the obligations."
+ "limitations": "Independent model review (EPR-006/018) and the Acceptance Gate (EPR-017) are later tasks; today the user's review discharges the obligations.",
+ "ci": "https://github.com/moss101/modbit/actions/runs/34637382928 (green on macOS, Linux and Windows at 8436195)",
+ "ci_history": [
+  {
+   "id": "gha-34635211773",
+   "kind": "hosted CI on 1f91757",
+   "result": "FAIL: Windows rust job \u2014 plain_repo still let Git for Windows rewrite line endings (the autocrlf setting had landed in another fixture); fixed in 432a41c",
+   "url": "https://github.com/moss101/modbit/actions/runs/34635211773",
+   "fix": "432a41c"
+  },
+  {
+   "id": "gha-34636145068",
+   "kind": "hosted CI on 432a41c",
+   "result": "FAIL: dossier integrity only (evidence records pre-filled without a manifest rebuild); every platform job green; fixed in 8436195",
+   "url": "https://github.com/moss101/modbit/actions/runs/34636145068",
+   "fix": "8436195"
+  }
+ ]
 }

@@ -350,8 +350,11 @@ class DossierTests(unittest.TestCase):
 
     def test_gate_attestation_and_gated_rollup(self):
         before = (self.root / "graph/project-graph.json").read_bytes()
-        self.run_tool("graph", "attest", "EPR-GATE-A", "--evidence", "run:fixture-gate", ok=False, contains="required tasks not COMPLETE")
-        self.run_tool("graph", "attest", "EPR-GATE-A", ok=False, contains="at least one --evidence")
+        # A gate whose required tasks are still open (the isolated-review
+        # path lands with M5/M9); the conditional-correctness gate's tasks
+        # all sealed with M4, so it can no longer stand in for "not COMPLETE".
+        self.run_tool("graph", "attest", "EPR-GATE-E", "--evidence", "run:fixture-gate", ok=False, contains="required tasks not COMPLETE")
+        self.run_tool("graph", "attest", "EPR-GATE-E", ok=False, contains="at least one --evidence")
         self.run_tool("graph", "attest", "EPR-006", "--evidence", "run:fixture-gate", ok=False, contains="release gates only")
         self.assertEqual(before, (self.root / "graph/project-graph.json").read_bytes())
         out = self.run_tool("graph", "gates")

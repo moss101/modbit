@@ -7,9 +7,36 @@
  ],
  "batch_commits": [
   "426d478",
-  "1f91757"
+  "1f91757",
+  "432a41c",
+  "8436195"
  ],
- "runs": [],
+ "runs": [
+  {
+   "id": "gha-34637382928",
+   "kind": "hosted CI on 8436195",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34637382928",
+   "log": "ci-run-34637382928.json"
+  }
+ ],
  "proof": "The BranchCarryoverCapsule read back over the wire names the plan, the user's decision, exactly the two retrieval records the fork's bytes still match (not the one the write made stale), the dropped pending approval and the worktree hashes; the fork's model sees the decisions in harness_state.",
- "audit": "NOT-FOUND before (0077/0122) / PARTIAL before (0123: restore without preconditions or preview)."
+ "audit": "NOT-FOUND before (0077/0122) / PARTIAL before (0123: restore without preconditions or preview).",
+ "ci": "https://github.com/moss101/modbit/actions/runs/34637382928 (green on macOS, Linux and Windows at 8436195)",
+ "ci_history": [
+  {
+   "id": "gha-34635211773",
+   "kind": "hosted CI on 1f91757",
+   "result": "FAIL: Windows rust job \u2014 plain_repo still let Git for Windows rewrite line endings (the autocrlf setting had landed in another fixture); fixed in 432a41c",
+   "url": "https://github.com/moss101/modbit/actions/runs/34635211773",
+   "fix": "432a41c"
+  },
+  {
+   "id": "gha-34636145068",
+   "kind": "hosted CI on 432a41c",
+   "result": "FAIL: dossier integrity only (evidence records pre-filled without a manifest rebuild); every platform job green; fixed in 8436195",
+   "url": "https://github.com/moss101/modbit/actions/runs/34636145068",
+   "fix": "8436195"
+  }
+ ]
 }

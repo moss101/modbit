@@ -13,10 +13,37 @@
   "m2_9_review_surface_applies_per_hunk_decisions_and_commits"
  ],
  "batch_commits": [
-  "1f91757"
+  "1f91757",
+  "432a41c",
+  "8436195"
  ],
- "runs": [],
+ "runs": [
+  {
+   "id": "gha-34637382928",
+   "kind": "hosted CI on 8436195",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34637382928",
+   "log": "ci-run-34637382928.json"
+  }
+ ],
  "proof": "Complete current evidence accepts a low-risk candidate at the completion run and again at the user's accept across a restart with the same refs; the same passing evidence on an auth surface stays INCONCLUSIVE naming the review and human obligations until the user's decision; a regression the baseline did not have rejects; a worktree moved after the completion run refuses the accept with nothing recorded.",
  "audit": "PARTIAL before: the harness decided completion with no typed gate result, no required-assurance input and no revision check at accept.",
- "limitations": "The independent model reviewer and its slot are EPR-006/018 (M5); security and API evidence kinds have no runner yet."
+ "limitations": "The independent model reviewer and its slot are EPR-006/018 (M5); security and API evidence kinds have no runner yet.",
+ "ci": "https://github.com/moss101/modbit/actions/runs/34637382928 (green on macOS, Linux and Windows at 8436195)",
+ "ci_history": [
+  {
+   "id": "gha-34635211773",
+   "kind": "hosted CI on 1f91757",
+   "result": "FAIL: Windows rust job \u2014 plain_repo still let Git for Windows rewrite line endings (the autocrlf setting had landed in another fixture); fixed in 432a41c",
+   "url": "https://github.com/moss101/modbit/actions/runs/34635211773",
+   "fix": "432a41c"
+  },
+  {
+   "id": "gha-34636145068",
+   "kind": "hosted CI on 432a41c",
+   "result": "FAIL: dossier integrity only (evidence records pre-filled without a manifest rebuild); every platform job green; fixed in 8436195",
+   "url": "https://github.com/moss101/modbit/actions/runs/34636145068",
+   "fix": "8436195"
+  }
+ ]
 }

@@ -10243,8 +10243,53 @@
    "milestone": "M4",
    "qual": "QUAL-EV-0077",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/m4/IMP-EV-0077/TASK_CARD.md",
+    "commit:426d478",
+    "test:qual_ev_0077_0122_a_fork_carries_decisions_and_evidence_but_no_stale_pending_effect",
+    "test:carry_labels_round_trip",
+    "run:34637382928"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-11T19:24:08Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "NOT-FOUND before: SessionBranched had no producer; checkpoints restored in place, never forked"
+    },
+    {
+     "at": "2026-09-11T19:24:08Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 426d478"
+    },
+    {
+     "at": "2026-09-11T19:24:09Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring in 426d478 (see card)"
+    },
+    {
+     "at": "2026-09-11T19:24:09Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification (see card)"
+    },
+    {
+     "at": "2026-09-11T19:24:09Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "green on hosted CI (macOS, Linux, Windows) at 8436195"
+    },
+    {
+     "at": "2026-09-11T19:24:09Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
+    }
+   ],
+   "status_changed_on": "2026-09-11T19:24:09Z"
   },
   {
    "id": "IMP-EV-0078",
@@ -11676,8 +11721,52 @@
    "milestone": "M4",
    "qual": "QUAL-EV-0122",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/m4/IMP-EV-0122/TASK_CARD.md",
+    "commit:426d478",
+    "test:qual_ev_0077_0122_a_fork_carries_decisions_and_evidence_but_no_stale_pending_effect",
+    "run:34637382928"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-11T19:24:09Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "NOT-FOUND before: no carryover capsule"
+    },
+    {
+     "at": "2026-09-11T19:24:09Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 426d478"
+    },
+    {
+     "at": "2026-09-11T19:24:09Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring in 426d478 (see card)"
+    },
+    {
+     "at": "2026-09-11T19:24:09Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification (see card)"
+    },
+    {
+     "at": "2026-09-11T19:24:09Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "green on hosted CI (macOS, Linux, Windows) at 8436195"
+    },
+    {
+     "at": "2026-09-11T19:24:09Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
+    }
+   ],
+   "status_changed_on": "2026-09-11T19:24:09Z"
   },
   {
    "id": "IMP-EV-0123",
@@ -11691,8 +11780,53 @@
    "milestone": "M4",
    "qual": "QUAL-EV-0123",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/m4/IMP-EV-0123/TASK_CARD.md",
+    "commit:426d478",
+    "test:qual_ev_0123_rewind_preview_is_non_mutating_and_revert_honours_optimistic_hashes",
+    "test:a_rewind_plan_names_every_action_and_nothing_else",
+    "run:34637382928"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-11T19:24:09Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "PARTIAL before: restore without preconditions or preview; no session tree"
+    },
+    {
+     "at": "2026-09-11T19:24:09Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 426d478"
+    },
+    {
+     "at": "2026-09-11T19:24:09Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring in 426d478 (see card)"
+    },
+    {
+     "at": "2026-09-11T19:24:09Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification (see card)"
+    },
+    {
+     "at": "2026-09-11T19:24:09Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "green on hosted CI (macOS, Linux, Windows) at 8436195"
+    },
+    {
+     "at": "2026-09-11T19:24:09Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
+    }
+   ],
+   "status_changed_on": "2026-09-11T19:24:09Z"
   },
   {
    "id": "IMP-EV-0124",
@@ -20987,8 +21121,54 @@
    ],
    "task_card": "docs/49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md#epr-008",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller or executor present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/m4/EPR-008/TASK_CARD.md",
+    "commit:1f91757",
+    "test:qual_epr_008_factual_risk_stays_strict_despite_passing_tests_and_stops_safely_unattended",
+    "test:qual_epr_008_fault_corpus_pins_every_rule_and_no_signal_lowers_assurance",
+    "test:epr_fi_008_a_stronger_layer_moves_every_case_up_or_keeps_it",
+    "run:34637382928"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-11T19:24:10Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "PARTIAL before: the envelope had no assurance section, protected paths were a literal, risk_version was none"
+    },
+    {
+     "at": "2026-09-11T19:24:10Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 1f91757"
+    },
+    {
+     "at": "2026-09-11T19:24:10Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring in 1f91757 (see card)"
+    },
+    {
+     "at": "2026-09-11T19:24:10Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification (see card)"
+    },
+    {
+     "at": "2026-09-11T19:24:10Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "green on hosted CI (macOS, Linux, Windows) at 8436195"
+    },
+    {
+     "at": "2026-09-11T19:24:10Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
+    }
+   ],
+   "status_changed_on": "2026-09-11T19:24:10Z"
   },
   {
    "id": "EPR-009",
@@ -21013,8 +21193,54 @@
    ],
    "task_card": "docs/49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md#epr-009",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller or executor present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/m4/EPR-009/TASK_CARD.md",
+    "commit:1f91757",
+    "test:qual_epr_009_routes_reevaluate_at_boundaries_on_cache_economics_and_survive_restart",
+    "test:qual_epr_009_a_route_switches_only_to_a_feasible_alternative_that_beats_the_switch_cost",
+    "test:a_nominally_cheaper_model_loses_after_a_cache_miss",
+    "run:34637382928"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-11T19:24:10Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "PARTIAL before: switch cost hardcoded to zero, no incumbent passed to selection, no cache prices, no re-evaluation after a run started, no session routing state"
+    },
+    {
+     "at": "2026-09-11T19:24:10Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 1f91757"
+    },
+    {
+     "at": "2026-09-11T19:24:10Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring in 1f91757 (see card)"
+    },
+    {
+     "at": "2026-09-11T19:24:10Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification (see card)"
+    },
+    {
+     "at": "2026-09-11T19:24:11Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "green on hosted CI (macOS, Linux, Windows) at 8436195"
+    },
+    {
+     "at": "2026-09-11T19:24:11Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
+    }
+   ],
+   "status_changed_on": "2026-09-11T19:24:11Z"
   },
   {
    "id": "EPR-010",
@@ -21366,8 +21592,54 @@
    ],
    "task_card": "docs/49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md#epr-017",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller or executor present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/m4/EPR-017/TASK_CARD.md",
+    "commit:1f91757",
+    "test:qual_epr_017_acceptance_is_evidence_at_the_revision_and_never_erases_a_human_obligation",
+    "test:passing_tests_never_erase_a_review_or_human_obligation",
+    "test:stale_missing_or_incomplete_evidence_cannot_accept",
+    "run:34637382928"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-11T19:24:10Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "PARTIAL before: the harness decided completion with no typed gate result, no required-assurance input and no revision check at accept"
+    },
+    {
+     "at": "2026-09-11T19:24:10Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 1f91757"
+    },
+    {
+     "at": "2026-09-11T19:24:10Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring in 1f91757 (see card)"
+    },
+    {
+     "at": "2026-09-11T19:24:10Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification (see card)"
+    },
+    {
+     "at": "2026-09-11T19:24:10Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "green on hosted CI (macOS, Linux, Windows) at 8436195"
+    },
+    {
+     "at": "2026-09-11T19:24:10Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
+    }
+   ],
+   "status_changed_on": "2026-09-11T19:24:10Z"
   },
   {
    "id": "EPR-018",

@@ -12,11 +12,38 @@
   "identical_inputs_produce_identical_plans_and_the_golden_cold_start"
  ],
  "batch_commits": [
-  "1f91757"
+  "1f91757",
+  "432a41c",
+  "8436195"
  ],
- "runs": [],
+ "runs": [
+  {
+   "id": "gha-34637382928",
+   "kind": "hosted CI on 8436195",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34637382928",
+   "log": "ci-run-34637382928.json"
+  }
+ ],
  "decision_record": "docs/decisions/DR-M3-002-epr-baseline-live-provider-proof.md",
  "proof": "Routes are re-evaluated at the task boundary with the session's warm prefix and at every compaction epoch cold, each decision recorded with both totals and the itemized switch cost; with nothing confidence-feasible the route in force stays and says so; everything survives a hard kill; a stale-epoch plan is refused; the production compiler keeps a warm incumbent and switches a cold one when the alternative is feasible.",
  "audit": "PARTIAL before: switch cost hardcoded to zero, no incumbent passed to selection, no cache prices in the registry, no re-evaluation after a run started, no session routing state.",
- "limitations": "Live-provider half deferred (DR-M3-002); an end-to-end switch needs thirty attributable outcomes per binding; provider/quality/mode boundaries wait for EPR-006/007."
+ "limitations": "Live-provider half deferred (DR-M3-002); an end-to-end switch needs thirty attributable outcomes per binding; provider/quality/mode boundaries wait for EPR-006/007.",
+ "ci": "https://github.com/moss101/modbit/actions/runs/34637382928 (green on macOS, Linux and Windows at 8436195)",
+ "ci_history": [
+  {
+   "id": "gha-34635211773",
+   "kind": "hosted CI on 1f91757",
+   "result": "FAIL: Windows rust job \u2014 plain_repo still let Git for Windows rewrite line endings (the autocrlf setting had landed in another fixture); fixed in 432a41c",
+   "url": "https://github.com/moss101/modbit/actions/runs/34635211773",
+   "fix": "432a41c"
+  },
+  {
+   "id": "gha-34636145068",
+   "kind": "hosted CI on 432a41c",
+   "result": "FAIL: dossier integrity only (evidence records pre-filled without a manifest rebuild); every platform job green; fixed in 8436195",
+   "url": "https://github.com/moss101/modbit/actions/runs/34636145068",
+   "fix": "8436195"
+  }
+ ]
 }

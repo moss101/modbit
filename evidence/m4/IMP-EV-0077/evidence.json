@@ -8,9 +8,19 @@
  ],
  "batch_commits": [
   "426d478",
-  "1f91757"
+  "1f91757",
+  "432a41c",
+  "8436195"
  ],
- "runs": [],
+ "runs": [
+  {
+   "id": "gha-34637382928",
+   "kind": "hosted CI on 8436195",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34637382928",
+   "log": "ci-run-34637382928.json"
+  }
+ ],
  "proof": "A fork is a new task with its own git worktree at the checkpoint's content and its own revision lineage; writing in the fork moves nothing in the source; the source keeps its pending approval and its destructive effect never runs; the fork starts with no pending call or approval.",
  "audit": "NOT-FOUND before (0077/0122) / PARTIAL before (0123: restore without preconditions or preview).",
  "ci_history": [
@@ -20,6 +30,21 @@
    "result": "FAIL: Windows rust job \u2014 the fork worktree was checked out with CRLF (Git for Windows autocrlf) so no carried evidence matched; fixed forward in 1f91757 (ChangeOpKind::ReplaceExact for byte-exact restores; test repositories set core.autocrlf=false as Repo::init does)",
    "url": "https://github.com/moss101/modbit/actions/runs/34600243131",
    "fix": "1f91757"
+  },
+  {
+   "id": "gha-34635211773",
+   "kind": "hosted CI on 1f91757",
+   "result": "FAIL: Windows rust job \u2014 plain_repo still let Git for Windows rewrite line endings (the autocrlf setting had landed in another fixture); fixed in 432a41c",
+   "url": "https://github.com/moss101/modbit/actions/runs/34635211773",
+   "fix": "432a41c"
+  },
+  {
+   "id": "gha-34636145068",
+   "kind": "hosted CI on 432a41c",
+   "result": "FAIL: dossier integrity only (evidence records pre-filled without a manifest rebuild); every platform job green; fixed in 8436195",
+   "url": "https://github.com/moss101/modbit/actions/runs/34636145068",
+   "fix": "8436195"
   }
- ]
+ ],
+ "ci": "https://github.com/moss101/modbit/actions/runs/34637382928 (green on macOS, Linux and Windows at 8436195)"
 }
