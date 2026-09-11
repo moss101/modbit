@@ -130,6 +130,57 @@ pub fn samples() -> Vec<Sample> {
         offset: 4096,
         data: "héllo\n".as_bytes().to_vec(),
     };
+    // REQ-EPR-001: the routing state as a client reads it. It carries an
+    // attempt whose provider reported nothing, so both languages have to agree
+    // that unknown usage is a flag and not a zero.
+    let routing = RoutingPlanView {
+        plan_id: "direct:11111111111111111111111111111111".into(),
+        schema_version: 2,
+        routing_epoch: 0,
+        lease_generation: 3,
+        content_digest: "a".repeat(64),
+        plan_ref: "b".repeat(64),
+        total_budget_minor: 0,
+        currency: "USD".into(),
+        scale: 2,
+        legacy_source: String::new(),
+        path_label: "DIRECT".into(),
+        slots: vec![RoutingSlotView {
+            slot_id: "initial".into(),
+            predecessor: String::new(),
+            trigger: "INITIAL".into(),
+            max_activations: 1,
+            activations: 1,
+            endpoint: "openai".into(),
+            model: "gpt-5-mini".into(),
+            role: "solver".into(),
+            timeout_ms: 120_000,
+            max_output_tokens: 4096,
+            max_retries: 0,
+            reserved_minor: 0,
+        }],
+        attempts: vec![
+            RoutingAttemptView {
+                slot_id: "initial".into(),
+                attempt: 1,
+                outcome: "SUCCEEDED".into(),
+                usage_known: true,
+                input_tokens: 9_007_199_254_740_993, // > 2^53: 64-bit in TypeScript
+                output_tokens: 374,
+                provider_request_id: "req_01HZ".into(),
+            },
+            RoutingAttemptView {
+                slot_id: "initial".into(),
+                attempt: 2,
+                outcome: "CANCELLED".into(),
+                usage_known: false,
+                input_tokens: 0,
+                output_tokens: 0,
+                provider_request_id: String::new(),
+            },
+        ],
+        not_claimed: vec!["unknown cost stays unknown".into()],
+    };
     let hello = Hello {
         protocol_version: Some(modbit_protocol::PROTOCOL_VERSION),
         client_kind: ClientKind::Cli as i32,
@@ -196,6 +247,38 @@ pub fn samples() -> Vec<Sample> {
                 "offset": "4096", "data": hex("héllo\n".as_bytes())
             }),
             decode: reencode::<OutputRefReadResponse>,
+        },
+        Sample {
+            name: "routing_plan_view",
+            type_name: "modbit.v1.RoutingPlanView",
+            bytes: routing.encode_to_vec(),
+            expected: json!({
+                "planId": "direct:11111111111111111111111111111111",
+                "schemaVersion": 2, "routingEpoch": "0", "leaseGeneration": "3",
+                "contentDigest": "a".repeat(64), "planRef": "b".repeat(64),
+                "totalBudgetMinor": "0", "currency": "USD", "scale": 2,
+                "legacySource": "", "pathLabel": "DIRECT",
+                "slots": [{
+                    "slotId": "initial", "predecessor": "", "trigger": "INITIAL",
+                    "maxActivations": 1, "activations": 1, "endpoint": "openai",
+                    "model": "gpt-5-mini", "role": "solver", "timeoutMs": "120000",
+                    "maxOutputTokens": 4096, "maxRetries": 0, "reservedMinor": "0"
+                }],
+                "attempts": [
+                    {
+                        "slotId": "initial", "attempt": 1, "outcome": "SUCCEEDED",
+                        "usageKnown": true, "inputTokens": "9007199254740993",
+                        "outputTokens": "374", "providerRequestId": "req_01HZ"
+                    },
+                    {
+                        "slotId": "initial", "attempt": 2, "outcome": "CANCELLED",
+                        "usageKnown": false, "inputTokens": "0", "outputTokens": "0",
+                        "providerRequestId": ""
+                    }
+                ],
+                "notClaimed": ["unknown cost stays unknown"]
+            }),
+            decode: reencode::<RoutingPlanView>,
         },
         Sample {
             name: "hello",

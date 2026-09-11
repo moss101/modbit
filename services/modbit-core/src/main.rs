@@ -15,6 +15,7 @@ mod inspector;
 mod languages;
 mod probe;
 mod review;
+mod routing;
 mod runtime;
 mod server;
 mod side;

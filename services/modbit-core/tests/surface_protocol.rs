@@ -1844,15 +1844,8 @@ async fn fake_openai() -> (
                     frames.push(serde_json::json!({"id":"c2","model":"gpt-5-mini-2026","choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":20,"completion_tokens":1,"prompt_tokens_details":{"cached_tokens":16}}}).to_string());
                 }
                 frames.push("[DONE]".into());
-                // One response per connection: the handler drops the socket
-                // after the terminator, so the response must say the
-                // connection closes. Without it the client keeps the socket in
-                // its idle pool and a later request can be written into a
-                // socket the server has already closed — a transport failure
-                // that ends the agent loop, and one that only shows up on a
-                // loaded machine.
                 let _ = sock
-                    .write_all(b"HTTP/1.1 200 OK\r\ncontent-type: text/event-stream\r\nconnection: close\r\ntransfer-encoding: chunked\r\n\r\n")
+                    .write_all(RESPONSE_HEAD.replace("{id}", "req_probe").as_bytes())
                     .await;
                 for f in frames {
                     let frame = format!("data: {f}\n\n");
@@ -2037,6 +2030,18 @@ async fn m2_6_provider_gateway_streams_through_the_core_over_real_http() {
 /// Scripted OpenAI-compatible model for the runtime proof: the reply is
 /// chosen from the number of tool results already in the conversation, so the
 /// same script drives fresh runs and resumed runs identically.
+/// The response head both fake providers answer with.
+///
+/// One response per connection: each handler drops its socket after the
+/// terminator, so the response must say the connection closes. Without it the
+/// client keeps the socket in its idle pool and a later request can be written
+/// into a socket the server has already closed — a transport failure that ends
+/// the agent loop, and one that only shows up on a loaded machine.
+///
+/// `{id}` is the provider's own request id, the header a real provider returns
+/// and the handle its logs use.
+const RESPONSE_HEAD: &str = "HTTP/1.1 200 OK\r\ncontent-type: text/event-stream\r\nx-request-id: {id}\r\nconnection: close\r\ntransfer-encoding: chunked\r\n\r\n";
+
 async fn scripted_model(
     script: Vec<serde_json::Value>,
     stall_at: Option<usize>,
@@ -2156,7 +2161,11 @@ async fn scripted_model_routed(
                 frames.push(serde_json::json!({"id":"c","model":"scripted-1","choices":[{"index":0,"delta":{},"finish_reason":finish}],"usage":{"prompt_tokens":prompt_tokens,"completion_tokens":completion_tokens}}).to_string());
                 frames.push("[DONE]".into());
                 let _ = sock
-                    .write_all(b"HTTP/1.1 200 OK\r\ncontent-type: text/event-stream\r\ntransfer-encoding: chunked\r\n\r\n")
+                    .write_all(
+                        RESPONSE_HEAD
+                            .replace("{id}", &format!("req_scripted_{results}"))
+                            .as_bytes(),
+                    )
                     .await;
                 for f in frames {
                     let frame = format!("data: {f}\n\n");
@@ -2165,6 +2174,8 @@ async fn scripted_model_routed(
                         .await;
                 }
                 let _ = sock.write_all(b"0\r\n\r\n").await;
+                let _ = sock.flush().await;
+                let _ = sock.shutdown().await;
             });
         }
     });
@@ -11709,4 +11720,207 @@ async fn qual_epr_000_the_direct_path_is_instrumented_and_published_as_a_fixed_r
     // The accepted change is on disk exactly once.
     let after = std::fs::read_to_string(repo.path().join("src/lib.rs")).unwrap();
     assert_eq!(after.matches("negative quantity").count(), 1, "{after}");
+}
+
+/// QUAL-EPR-001 / EPR-E2E-001: the routing state of a real run is durable,
+/// versioned, derived from the log, and safe to show a client.
+///
+/// The direct path is recorded as the degenerate plan it is: one solver slot,
+/// activated once, with every model invocation an attempt inside it. A hard
+/// kill between the plan and the attempts cannot split them, because both are
+/// written in the append transaction, and what comes back after the restart is
+/// what was there before it. Nothing in the view is a secret: a slot names its
+/// endpoint, never its URL and never its credential.
+#[tokio::test]
+async fn qual_epr_001_the_routing_state_of_a_run_is_durable_versioned_and_redacted() {
+    use modbit_protocol::v1::{RoutingPlanView, StartTask, TaskRunStarted};
+    use serde_json::json;
+    const KEY: &str = "sk-test-never-leaves-the-core-42";
+    let (repo, root) = plain_repo(&[("total.py", "def total(q, unit):\n    return q * unit\n")]);
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "document the units", "expected_files": ["total.py"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "total.py"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "total.py", "op": "replace", "content": "def total(q, unit):\n    \"\"\"unit is in minor units.\"\"\"\n    return q * unit\n"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "documented", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, _seen) = scripted_model(script, None).await;
+    let host = base.trim_start_matches("http://").to_owned();
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", KEY),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xC1)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xC2, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xC3),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 12,
+                max_tool_calls: 0,
+                max_no_progress_turns: 6,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 180).await;
+    assert!(!st.loop_alive, "{st:?}");
+    assert!(
+        std::fs::read_to_string(repo.path().join("total.py"))
+            .unwrap()
+            .contains("minor units")
+    );
+
+    async fn plan_of(c: &mut Client, task: Id, id: u8) -> modbit_protocol::v1::RoutingPlanView {
+        use modbit_protocol::v1::{GetRoutingPlan, RoutingPlanView};
+        let ack = c
+            .command(envelope(
+                id16(id),
+                "GetRoutingPlan",
+                GetRoutingPlan {
+                    task_id: Some(task),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        let v: RoutingPlanView = Client::result(&ack).unwrap();
+        v
+    }
+    let v = plan_of(&mut c, task.clone(), 0xC4).await;
+    // 1. The plan is the direct path, written in the versioned contract.
+    assert_eq!(v.schema_version, 2, "{v:?}");
+    assert!(v.plan_id.starts_with("direct:"), "{v:?}");
+    assert_eq!(v.routing_epoch, 0, "any compiled plan is newer: {v:?}");
+    assert_eq!(v.content_digest.len(), 64, "sealed by its content: {v:?}");
+    assert_eq!(v.plan_ref.len(), 64, "{v:?}");
+    assert_eq!(v.path_label, "DIRECT", "derived from what ran: {v:?}");
+    assert_eq!(
+        (v.total_budget_minor, v.currency.as_str(), v.scale),
+        (0, "USD", 2),
+        "unbudgeted, not free: {v:?}"
+    );
+    assert!(v.legacy_source.is_empty(), "{v:?}");
+    assert!(!v.not_claimed.is_empty(), "{v:?}");
+    // 2. One solver slot, activated once, whatever the run's turn count.
+    assert_eq!(v.slots.len(), 1, "{v:?}");
+    let slot = &v.slots[0];
+    assert_eq!(
+        (
+            slot.slot_id.as_str(),
+            slot.trigger.as_str(),
+            slot.role.as_str(),
+            slot.predecessor.as_str()
+        ),
+        ("initial", "INITIAL", "solver", "")
+    );
+    assert_eq!((slot.max_activations, slot.activations), (1, 1), "{slot:?}");
+    assert_eq!(
+        (slot.endpoint.as_str(), slot.model.as_str()),
+        ("openai", "gpt-5-mini")
+    );
+    assert_eq!(slot.reserved_minor, 0, "{slot:?}");
+    assert!(
+        slot.timeout_ms > 0 && slot.max_output_tokens > 0,
+        "{slot:?}"
+    );
+    // 3. Every model invocation is an attempt, with the provider's own id and
+    //    the usage it actually reported.
+    assert!(v.attempts.len() >= 4, "one attempt per invocation: {v:?}");
+    for (i, a) in v.attempts.iter().enumerate() {
+        assert_eq!(a.slot_id, "initial", "{a:?}");
+        assert_eq!(a.attempt as usize, i + 1, "attempts are ordered: {v:?}");
+        assert_eq!(a.outcome, "SUCCEEDED", "{a:?}");
+        assert!(a.usage_known, "{a:?}");
+        assert!(a.input_tokens > 0, "{a:?}");
+        assert!(
+            a.provider_request_id.starts_with("req_scripted_"),
+            "the provider's own request id is kept: {a:?}"
+        );
+    }
+    // 4. Nothing secret reaches a client: not the credential, not the URL.
+    let wire = v.encode_to_vec();
+    let text = String::from_utf8_lossy(&wire).to_string();
+    assert!(!text.contains(KEY), "the credential reached a client");
+    assert!(!text.contains(&host), "the endpoint URL reached a client");
+    assert!(!text.contains("http"), "{text}");
+
+    // 5. A hard kill cannot split the plan from its attempts, and the restart
+    //    recovers exactly what was recorded.
+    core.kill();
+    core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let after = plan_of(&mut c, task.clone(), 0xC5).await;
+    assert_eq!(after, v, "the routing state changed across a hard kill");
+
+    // 6. A run killed in flight keeps what it had committed: the plan is there
+    //    with the attempts that completed, and never an attempt without it.
+    let (stalling, _seen2) = scripted_model(
+        vec![
+            json!({"calls": [{"name": "fs.read", "args": {"path": "total.py"}}]}),
+            json!({"calls": [{"name": "fs.read", "args": {"path": "total.py"}}]}),
+        ],
+        Some(1),
+    )
+    .await;
+    core.kill();
+    let env2 = [
+        ("MODBIT_OPENAI_BASE_URL", stalling.as_str()),
+        ("OPENAI_API_KEY", KEY),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    core = CoreProcess::spawn_with_env(dir.path(), &env2);
+    let mut c = core.client().await;
+    let task2 = create_task_with_profile(&mut c, &session, g, &root, 0xC6, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xC7),
+            "StartTask",
+            StartTask {
+                task_id: Some(task2.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 12,
+                max_tool_calls: 0,
+                max_no_progress_turns: 6,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    // Wait until the first invocation is recorded, then kill mid-flight.
+    let deadline = std::time::Instant::now() + Duration::from_secs(60);
+    let mut mid = RoutingPlanView::default();
+    while std::time::Instant::now() < deadline {
+        mid = plan_of(&mut c, task2.clone(), 0xC8).await;
+        if !mid.attempts.is_empty() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    assert_eq!(mid.attempts.len(), 1, "{mid:?}");
+    core.kill();
+    core = CoreProcess::spawn_with_env(dir.path(), &env2);
+    let mut c = core.client().await;
+    let recovered = plan_of(&mut c, task2.clone(), 0xC9).await;
+    assert_eq!(
+        recovered, mid,
+        "the plan and the attempt it already had must survive the kill together"
+    );
+    assert!(recovered.plan_id.starts_with("direct:"), "{recovered:?}");
+    assert_ne!(recovered.plan_id, v.plan_id, "each run has its own plan");
+    core.kill();
 }

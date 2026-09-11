@@ -526,6 +526,20 @@ impl EventStore {
         crate::projections::load_verification_runs(&self.conn, run)
     }
 
+    /// Routing plans compiled for an agent run, with their slots (REQ-EPR-001).
+    pub fn routing_plans(&self, run: &RunId) -> Result<Vec<crate::projections::RoutingPlanRow>> {
+        crate::projections::load_routing_plans(&self.conn, run)
+    }
+
+    /// Attempts recorded against a routing plan, including the ones that
+    /// failed and the ones whose cost the provider never reported.
+    pub fn routing_attempts(
+        &self,
+        plan_id: &str,
+    ) -> Result<Vec<crate::projections::RoutingAttemptRow>> {
+        crate::projections::load_routing_attempts(&self.conn, plan_id)
+    }
+
     /// Quarantined checks of an agent run: (check_id, first_run_id, rerun_id).
     pub fn flaky_checks(&self, run: &RunId) -> Result<Vec<(String, String, String)>> {
         crate::projections::load_flaky_checks(&self.conn, run)

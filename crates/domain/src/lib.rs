@@ -17,6 +17,7 @@ pub mod event;
 pub mod ids;
 pub mod lease;
 pub mod media;
+pub mod routing;
 pub mod run;
 pub mod session;
 pub mod state;

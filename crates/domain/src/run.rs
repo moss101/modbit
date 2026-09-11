@@ -153,6 +153,39 @@ pub enum RunEvent {
         /// Check summaries.
         checks: Vec<CheckSummary>,
     },
+    /// `RoutingPlanCompiled` (REQ-EPR-001, docs/38): a conditional execution
+    /// plan was compiled for this run and stored. The event carries what
+    /// identifies and pins it; the plan itself is the object. No state change.
+    RoutingPlanCompiled {
+        /// The plan itself: a routing decision is a decision, so it is on the
+        /// log rather than only in a side store (boxed: it is the largest run
+        /// payload).
+        plan: Box<crate::routing::ConditionalExecutionPlan>,
+        /// Object hash of the same plan, for clients that read it by ref.
+        plan_ref: String,
+    },
+    /// `RoutingAttemptRecorded` (REQ-EPR-001, docs/38
+    /// "CompleteAccountingAndAttribution"): one attempt against one slot,
+    /// including the ones that failed, retried or were cancelled. Usage that
+    /// the provider never reported stays unknown. No state change.
+    RoutingAttemptRecorded {
+        /// Plan the slot belongs to.
+        plan_id: String,
+        /// Slot.
+        slot_id: String,
+        /// Attempt ordinal within the slot, starting at 1.
+        attempt: u32,
+        /// `SUCCEEDED` | `FAILED` | `CANCELLED` | `TIMED_OUT`.
+        outcome: String,
+        /// Whether the provider reported usage for this attempt.
+        usage_known: bool,
+        /// Input tokens, when reported.
+        input_tokens: Option<u64>,
+        /// Output tokens, when reported.
+        output_tokens: Option<u64>,
+        /// The provider's own request id, when it gave one.
+        provider_request_id: Option<String>,
+    },
     /// `FlakyCheckQuarantined` (docs/64 §3); no state change.
     FlakyCheckQuarantined {
         /// Check.
@@ -221,6 +254,8 @@ impl RunEvent {
             Self::RunCancelled => "RunCancelled",
             Self::VerificationBaselineRecorded { .. } => "VerificationBaselineRecorded",
             Self::VerificationRunRecorded { .. } => "VerificationRunRecorded",
+            Self::RoutingPlanCompiled { .. } => "RoutingPlanCompiled",
+            Self::RoutingAttemptRecorded { .. } => "RoutingAttemptRecorded",
             Self::FlakyCheckQuarantined { .. } => "FlakyCheckQuarantined",
             Self::RegressionAttributed { .. } => "RegressionAttributed",
             Self::DiffInvariantViolated { .. } => "DiffInvariantViolated",
@@ -297,6 +332,8 @@ impl Run {
             RunEvent::RunCancelled => Cancelled,
             RunEvent::VerificationBaselineRecorded { .. }
             | RunEvent::VerificationRunRecorded { .. }
+            | RunEvent::RoutingPlanCompiled { .. }
+            | RunEvent::RoutingAttemptRecorded { .. }
             | RunEvent::FlakyCheckQuarantined { .. }
             | RunEvent::RegressionAttributed { .. }
             | RunEvent::DiffInvariantViolated { .. } => {

@@ -3560,6 +3560,244 @@ export declare type ReviewDecided = Message<"modbit.v1.ReviewDecided"> & {
 export declare const ReviewDecidedSchema: GenMessage<ReviewDecided>;
 
 /**
+ * @generated from message modbit.v1.GetRoutingPlan
+ */
+export declare type GetRoutingPlan = Message<"modbit.v1.GetRoutingPlan"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.GetRoutingPlan.
+ * Use `create(GetRoutingPlanSchema)` to create a new message.
+ */
+export declare const GetRoutingPlanSchema: GenMessage<GetRoutingPlan>;
+
+/**
+ * @generated from message modbit.v1.RoutingSlotView
+ */
+export declare type RoutingSlotView = Message<"modbit.v1.RoutingSlotView"> & {
+  /**
+   * @generated from field: string slot_id = 1;
+   */
+  slotId: string;
+
+  /**
+   * empty for the initial slot
+   *
+   * @generated from field: string predecessor = 2;
+   */
+  predecessor: string;
+
+  /**
+   * INITIAL | QUALITY_REJECTED | REVIEW_REQUIRED | LEG_FAILED
+   *
+   * @generated from field: string trigger = 3;
+   */
+  trigger: string;
+
+  /**
+   * @generated from field: uint32 max_activations = 4;
+   */
+  maxActivations: number;
+
+  /**
+   * @generated from field: uint32 activations = 5;
+   */
+  activations: number;
+
+  /**
+   * the endpoint's name, never its URL or its credential
+   *
+   * @generated from field: string endpoint = 6;
+   */
+  endpoint: string;
+
+  /**
+   * @generated from field: string model = 7;
+   */
+  model: string;
+
+  /**
+   * solver | reviewer | reviser
+   *
+   * @generated from field: string role = 8;
+   */
+  role: string;
+
+  /**
+   * @generated from field: uint64 timeout_ms = 9;
+   */
+  timeoutMs: bigint;
+
+  /**
+   * @generated from field: uint32 max_output_tokens = 10;
+   */
+  maxOutputTokens: number;
+
+  /**
+   * @generated from field: uint32 max_retries = 11;
+   */
+  maxRetries: number;
+
+  /**
+   * money in minor units of the plan's currency
+   *
+   * @generated from field: uint64 reserved_minor = 12;
+   */
+  reservedMinor: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.RoutingSlotView.
+ * Use `create(RoutingSlotViewSchema)` to create a new message.
+ */
+export declare const RoutingSlotViewSchema: GenMessage<RoutingSlotView>;
+
+/**
+ * @generated from message modbit.v1.RoutingAttemptView
+ */
+export declare type RoutingAttemptView = Message<"modbit.v1.RoutingAttemptView"> & {
+  /**
+   * @generated from field: string slot_id = 1;
+   */
+  slotId: string;
+
+  /**
+   * @generated from field: uint32 attempt = 2;
+   */
+  attempt: number;
+
+  /**
+   * SUCCEEDED | FAILED | CANCELLED | INTERRUPTED
+   *
+   * @generated from field: string outcome = 3;
+   */
+  outcome: string;
+
+  /**
+   * false: the provider reported nothing, and the tokens below say nothing
+   *
+   * @generated from field: bool usage_known = 4;
+   */
+  usageKnown: boolean;
+
+  /**
+   * @generated from field: uint64 input_tokens = 5;
+   */
+  inputTokens: bigint;
+
+  /**
+   * @generated from field: uint64 output_tokens = 6;
+   */
+  outputTokens: bigint;
+
+  /**
+   * the provider's own id, when it returned one
+   *
+   * @generated from field: string provider_request_id = 7;
+   */
+  providerRequestId: string;
+};
+
+/**
+ * Describes the message modbit.v1.RoutingAttemptView.
+ * Use `create(RoutingAttemptViewSchema)` to create a new message.
+ */
+export declare const RoutingAttemptViewSchema: GenMessage<RoutingAttemptView>;
+
+/**
+ * @generated from message modbit.v1.RoutingPlanView
+ */
+export declare type RoutingPlanView = Message<"modbit.v1.RoutingPlanView"> & {
+  /**
+   * @generated from field: string plan_id = 1;
+   */
+  planId: string;
+
+  /**
+   * @generated from field: uint32 schema_version = 2;
+   */
+  schemaVersion: number;
+
+  /**
+   * @generated from field: uint64 routing_epoch = 3;
+   */
+  routingEpoch: bigint;
+
+  /**
+   * @generated from field: uint64 lease_generation = 4;
+   */
+  leaseGeneration: bigint;
+
+  /**
+   * the plan is sealed by its own content
+   *
+   * @generated from field: string content_digest = 5;
+   */
+  contentDigest: string;
+
+  /**
+   * @generated from field: string plan_ref = 6;
+   */
+  planRef: string;
+
+  /**
+   * @generated from field: uint64 total_budget_minor = 7;
+   */
+  totalBudgetMinor: bigint;
+
+  /**
+   * @generated from field: string currency = 8;
+   */
+  currency: string;
+
+  /**
+   * @generated from field: uint32 scale = 9;
+   */
+  scale: number;
+
+  /**
+   * the legacy shape it was decoded from, when it was
+   *
+   * @generated from field: string legacy_source = 10;
+   */
+  legacySource: string;
+
+  /**
+   * DIRECT — derived from what ran, never a template
+   *
+   * @generated from field: string path_label = 11;
+   */
+  pathLabel: string;
+
+  /**
+   * @generated from field: repeated modbit.v1.RoutingSlotView slots = 12;
+   */
+  slots: RoutingSlotView[];
+
+  /**
+   * @generated from field: repeated modbit.v1.RoutingAttemptView attempts = 13;
+   */
+  attempts: RoutingAttemptView[];
+
+  /**
+   * what this record does not claim
+   *
+   * @generated from field: repeated string not_claimed = 14;
+   */
+  notClaimed: string[];
+};
+
+/**
+ * Describes the message modbit.v1.RoutingPlanView.
+ * Use `create(RoutingPlanViewSchema)` to create a new message.
+ */
+export declare const RoutingPlanViewSchema: GenMessage<RoutingPlanView>;
+
+/**
  * Command acknowledgement.
  *
  * @generated from enum modbit.v1.CommandStatus

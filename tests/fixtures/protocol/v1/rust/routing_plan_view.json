@@ -1,0 +1,55 @@
+{
+  "expected": {
+    "attempts": [
+      {
+        "attempt": 1,
+        "inputTokens": "9007199254740993",
+        "outcome": "SUCCEEDED",
+        "outputTokens": "374",
+        "providerRequestId": "req_01HZ",
+        "slotId": "initial",
+        "usageKnown": true
+      },
+      {
+        "attempt": 2,
+        "inputTokens": "0",
+        "outcome": "CANCELLED",
+        "outputTokens": "0",
+        "providerRequestId": "",
+        "slotId": "initial",
+        "usageKnown": false
+      }
+    ],
+    "contentDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "currency": "USD",
+    "leaseGeneration": "3",
+    "legacySource": "",
+    "notClaimed": [
+      "unknown cost stays unknown"
+    ],
+    "pathLabel": "DIRECT",
+    "planId": "direct:11111111111111111111111111111111",
+    "planRef": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "routingEpoch": "0",
+    "scale": 2,
+    "schemaVersion": 2,
+    "slots": [
+      {
+        "activations": 1,
+        "endpoint": "openai",
+        "maxActivations": 1,
+        "maxOutputTokens": 4096,
+        "maxRetries": 0,
+        "model": "gpt-5-mini",
+        "predecessor": "",
+        "reservedMinor": "0",
+        "role": "solver",
+        "slotId": "initial",
+        "timeoutMs": "120000",
+        "trigger": "INITIAL"
+      }
+    ],
+    "totalBudgetMinor": "0"
+  },
+  "type": "modbit.v1.RoutingPlanView"
+}

@@ -184,6 +184,94 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                         at,
                     )?;
                 }
+                // Routing state lives in the same store as everything else
+                // (REQ-EPR-001): the plan, its slots and every attempt made
+                // against them, written in the append transaction so a kill
+                // can never leave the log and the projection disagreeing.
+                RunEvent::RoutingPlanCompiled { plan, plan_ref } => {
+                    let (plan_id, content_digest) = (&plan.plan_id, &plan.content_digest);
+                    let (routing_epoch, lease_generation) =
+                        (plan.routing_epoch, plan.lease_generation);
+                    let legacy_source = plan
+                        .provenance
+                        .legacy_decode
+                        .as_ref()
+                        .map(|d| d.source_shape.clone());
+                    {
+                        tx.execute(
+                            "INSERT OR REPLACE INTO routing_plans (plan_id, tenant_id, session_id, task_id, run_id, schema_version, routing_epoch, lease_generation, created_at, input_digest, content_digest, plan_ref, total_budget_minor, total_budget_currency, total_budget_scale, legacy_source)
+                             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+                            params![
+                                plan_id,
+                                plan.tenant_id.as_bytes().as_slice(),
+                                plan.session_id.as_bytes().as_slice(),
+                                plan.task_id.as_bytes().as_slice(),
+                                rid.as_bytes().as_slice(),
+                                plan.schema_version,
+                                routing_epoch as i64,
+                                lease_generation as i64,
+                                plan.created_at_ms,
+                                &plan.input_digest,
+                                content_digest,
+                                plan_ref,
+                                plan.total_budget.minor_units as i64,
+                                &plan.total_budget.currency,
+                                i64::from(plan.total_budget.scale),
+                                legacy_source,
+                            ],
+                        )?;
+                        for s in &plan.slots {
+                            tx.execute(
+                                "INSERT OR REPLACE INTO routing_slots (plan_id, slot_id, predecessor, trigger, max_activations, endpoint, model, role, timeout_ms, max_output_tokens, max_retries, reserved_minor, activations)
+                                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, COALESCE((SELECT activations FROM routing_slots WHERE plan_id = ?1 AND slot_id = ?2), 0))",
+                                params![
+                                    plan_id,
+                                    &s.slot_id,
+                                    s.predecessor.clone(),
+                                    serde_json::to_string(&s.trigger)?.trim_matches('"'),
+                                    s.max_activations,
+                                    &s.endpoint,
+                                    &s.model,
+                                    &s.role,
+                                    s.budget.timeout_ms as i64,
+                                    s.budget.max_output_tokens,
+                                    s.budget.max_retries,
+                                    s.budget.reserved.minor_units as i64,
+                                ],
+                            )?;
+                        }
+                    }
+                }
+                RunEvent::RoutingAttemptRecorded {
+                    plan_id,
+                    slot_id,
+                    attempt,
+                    outcome,
+                    usage_known,
+                    input_tokens,
+                    output_tokens,
+                    provider_request_id,
+                } => {
+                    tx.execute(
+                        "INSERT OR REPLACE INTO routing_attempts (plan_id, slot_id, attempt, started_at, ended_at, outcome, usage_known, input_tokens, output_tokens, provider_request_id)
+                         VALUES (?1, ?2, ?3, COALESCE((SELECT started_at FROM routing_attempts WHERE plan_id = ?1 AND slot_id = ?2 AND attempt = ?3), ?4), ?4, ?5, ?6, ?7, ?8, ?9)",
+                        params![
+                            plan_id,
+                            slot_id,
+                            attempt,
+                            at.millis(),
+                            outcome,
+                            i64::from(*usage_known),
+                            input_tokens.map(|v| v as i64),
+                            output_tokens.map(|v| v as i64),
+                            provider_request_id.clone(),
+                        ],
+                    )?;
+                    tx.execute(
+                        "UPDATE routing_slots SET activations = activations + 1 WHERE plan_id = ?1 AND slot_id = ?2 AND ?3 = 1",
+                        params![plan_id, slot_id, i64::from(*attempt == 1)],
+                    )?;
+                }
                 RunEvent::FlakyCheckQuarantined {
                     check_id,
                     first_run_id,
@@ -1055,6 +1143,161 @@ pub fn load_verification_runs(
     Ok(out)
 }
 
+/// One row of the routing plan projection (REQ-EPR-001), with its slots.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RoutingPlanRow {
+    /// Plan id.
+    pub plan_id: String,
+    /// Contract version the plan was written at.
+    pub schema_version: u32,
+    /// Routing epoch within the run.
+    pub routing_epoch: u64,
+    /// Lease generation that compiled it.
+    pub lease_generation: u64,
+    /// Digest over the plan's content.
+    pub content_digest: String,
+    /// Object ref of the stored plan.
+    pub plan_ref: String,
+    /// Total budget as (minor units, currency, scale).
+    pub total_budget: (u64, String, u8),
+    /// The legacy shape it was decoded from, when it was.
+    pub legacy_source: Option<String>,
+    /// Slots, in slot-id order.
+    pub slots: Vec<RoutingSlotRow>,
+}
+
+/// One slot of a routing plan, as the projection holds it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RoutingSlotRow {
+    /// Slot id, unique within the plan.
+    pub slot_id: String,
+    /// The slot this one continues from, if any.
+    pub predecessor: Option<String>,
+    /// What activates it.
+    pub trigger: String,
+    /// How many times it may activate.
+    pub max_activations: u32,
+    /// How many times it has.
+    pub activations: u32,
+    /// Endpoint name (never its URL or its credential).
+    pub endpoint: String,
+    /// Model.
+    pub model: String,
+    /// Role the slot plays.
+    pub role: String,
+    /// Per-attempt timeout.
+    pub timeout_ms: u64,
+    /// Per-attempt output ceiling.
+    pub max_output_tokens: u32,
+    /// Per-attempt retries.
+    pub max_retries: u32,
+    /// Money reserved for the slot, in the plan's currency and scale.
+    pub reserved_minor: u64,
+}
+
+/// One attempt recorded against a slot.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RoutingAttemptRow {
+    /// Slot the attempt ran in.
+    pub slot_id: String,
+    /// Attempt ordinal within the slot.
+    pub attempt: u32,
+    /// What it did.
+    pub outcome: String,
+    /// Whether the provider reported usage at all.
+    pub usage_known: bool,
+    /// Input tokens, when reported.
+    pub input_tokens: Option<u64>,
+    /// Output tokens, when reported.
+    pub output_tokens: Option<u64>,
+    /// The provider's own request id, when it gave one.
+    pub provider_request_id: Option<String>,
+}
+
+/// Routing plans compiled for an agent run, oldest first.
+pub fn load_routing_plans(tx: &rusqlite::Connection, run: &RunId) -> Result<Vec<RoutingPlanRow>> {
+    let mut stmt = tx.prepare(
+        "SELECT plan_id, schema_version, routing_epoch, lease_generation, content_digest, plan_ref, total_budget_minor, total_budget_currency, total_budget_scale, legacy_source
+         FROM routing_plans WHERE run_id = ?1 ORDER BY created_at, routing_epoch",
+    )?;
+    let rows = stmt
+        .query_map(params![run.as_bytes().as_slice()], |r| {
+            Ok(RoutingPlanRow {
+                plan_id: r.get(0)?,
+                schema_version: u32::try_from(r.get::<_, i64>(1)?).unwrap_or_default(),
+                routing_epoch: u64::try_from(r.get::<_, i64>(2)?).unwrap_or_default(),
+                lease_generation: u64::try_from(r.get::<_, i64>(3)?).unwrap_or_default(),
+                content_digest: r.get(4)?,
+                plan_ref: r.get(5)?,
+                total_budget: (
+                    u64::try_from(r.get::<_, i64>(6)?).unwrap_or_default(),
+                    r.get(7)?,
+                    u8::try_from(r.get::<_, i64>(8)?).unwrap_or_default(),
+                ),
+                legacy_source: r.get(9)?,
+                slots: vec![],
+            })
+        })?
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+    let mut out = Vec::new();
+    for mut row in rows {
+        let mut ss = tx.prepare(
+            "SELECT slot_id, predecessor, trigger, max_activations, activations, endpoint, model, role, timeout_ms, max_output_tokens, max_retries, reserved_minor
+             FROM routing_slots WHERE plan_id = ?1 ORDER BY slot_id",
+        )?;
+        row.slots = ss
+            .query_map(params![row.plan_id], |r| {
+                Ok(RoutingSlotRow {
+                    slot_id: r.get(0)?,
+                    predecessor: r.get(1)?,
+                    trigger: r.get(2)?,
+                    max_activations: u32::try_from(r.get::<_, i64>(3)?).unwrap_or_default(),
+                    activations: u32::try_from(r.get::<_, i64>(4)?).unwrap_or_default(),
+                    endpoint: r.get(5)?,
+                    model: r.get(6)?,
+                    role: r.get(7)?,
+                    timeout_ms: u64::try_from(r.get::<_, i64>(8)?).unwrap_or_default(),
+                    max_output_tokens: u32::try_from(r.get::<_, i64>(9)?).unwrap_or_default(),
+                    max_retries: u32::try_from(r.get::<_, i64>(10)?).unwrap_or_default(),
+                    reserved_minor: u64::try_from(r.get::<_, i64>(11)?).unwrap_or_default(),
+                })
+            })?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        out.push(row);
+    }
+    Ok(out)
+}
+
+/// Attempts recorded against one plan, in slot then attempt order. Attempts
+/// that failed or were cancelled are rows like any other: the record is of
+/// what happened, not of what worked.
+pub fn load_routing_attempts(
+    tx: &rusqlite::Connection,
+    plan_id: &str,
+) -> Result<Vec<RoutingAttemptRow>> {
+    let mut stmt = tx.prepare(
+        "SELECT slot_id, attempt, outcome, usage_known, input_tokens, output_tokens, provider_request_id
+         FROM routing_attempts WHERE plan_id = ?1 ORDER BY slot_id, attempt",
+    )?;
+    Ok(stmt
+        .query_map(params![plan_id], |r| {
+            Ok(RoutingAttemptRow {
+                slot_id: r.get(0)?,
+                attempt: u32::try_from(r.get::<_, i64>(1)?).unwrap_or_default(),
+                outcome: r.get(2)?,
+                usage_known: r.get::<_, i64>(3)? == 1,
+                input_tokens: r
+                    .get::<_, Option<i64>>(4)?
+                    .and_then(|v| u64::try_from(v).ok()),
+                output_tokens: r
+                    .get::<_, Option<i64>>(5)?
+                    .and_then(|v| u64::try_from(v).ok()),
+                provider_request_id: r.get(6)?,
+            })
+        })?
+        .collect::<std::result::Result<Vec<_>, _>>()?)
+}
+
 /// Quarantined checks of an agent run.
 pub fn load_flaky_checks(
     tx: &rusqlite::Connection,
@@ -1072,6 +1315,9 @@ pub fn load_flaky_checks(
 /// Truncate the projection tables and replay every event from offset 0.
 pub fn rebuild(tx: &Transaction<'_>, objects: &crate::ObjectStore) -> Result<u64> {
     for t in [
+        "routing_attempts",
+        "routing_slots",
+        "routing_plans",
         "check_results",
         "verification_runs",
         "flaky_checks",

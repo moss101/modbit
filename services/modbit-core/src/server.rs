@@ -487,6 +487,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "ListModels",
                     "ListLanguages",
                     "GetContextInspector",
+                    "GetRoutingPlan",
                     "GetTaskEconomics",
                     "SetTaskSelection",
                     "AttachContextDocument",
@@ -2202,6 +2203,16 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 return reject(cid, "BAD_PAYLOAD", "task_id required");
             };
             let view = crate::inspector::view(core, task_id).await;
+            accept(cid, false, view.encode_to_vec())
+        }
+        "GetRoutingPlan" => {
+            let Ok(p) = wire::GetRoutingPlan::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "GetRoutingPlan");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let view = crate::routing::view(core, task_id).await;
             accept(cid, false, view.encode_to_vec())
         }
         "ListLanguages" => {

@@ -26,11 +26,12 @@ import { file_modbit_v1_envelope } from "./gen/modbit/v1/envelope_pb.js";
 import { file_modbit_v1_tool } from "./gen/modbit/v1/tool_pb.js";
 import { file_modbit_v1_output_ref } from "./gen/modbit/v1/output_ref_pb.js";
 import { file_modbit_v1_negotiation } from "./gen/modbit/v1/negotiation_pb.js";
+import { file_modbit_v1_surface } from "./gen/modbit/v1/surface_pb.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixtures = join(here, "../../../tests/fixtures/protocol/v1");
 const messagesByType = new Map<string, DescMessage>(
-  [file_modbit_v1_domain, file_modbit_v1_envelope, file_modbit_v1_tool, file_modbit_v1_output_ref, file_modbit_v1_negotiation]
+  [file_modbit_v1_domain, file_modbit_v1_envelope, file_modbit_v1_tool, file_modbit_v1_output_ref, file_modbit_v1_negotiation, file_modbit_v1_surface]
     .flatMap((f) => f.messages)
     .map((m) => [m.typeName, m]),
 );
@@ -58,7 +59,9 @@ function normalizeItem(f: DescField, v: unknown): Plain {
     if (typeName === "modbit.v1.Id") return hex(m["value"] as Uint8Array);
     if (typeName === "google.protobuf.Timestamp") return { seconds: String(m["seconds"]), nanos: Number(m["nanos"]) };
     if (typeName === "modbit.v1.ProtocolVersion") return { major: Number(m["major"]), minor: Number(m["minor"]) };
-    throw new Error(`unhandled message type ${typeName}`);
+    // Any other nested message is described by its own descriptor, so it
+    // normalizes the same way the top-level one does.
+    return normalize(f.message!, v as Message);
   }
   if (f.fieldKind === "enum" || (f.fieldKind === "list" && f.listKind === "enum")) {
     const name = f.enum!.values.find((e) => e.number === v)?.name;
@@ -86,7 +89,7 @@ function denormalizeItem(f: DescField, v: Plain): unknown {
       return create(desc, { seconds: BigInt(t.seconds), nanos: t.nanos });
     }
     if (desc.typeName === "modbit.v1.ProtocolVersion") return create(desc, v as { major: number; minor: number });
-    throw new Error(`unhandled message type ${desc.typeName}`);
+    return denormalize(desc, v as Record<string, Plain>);
   }
   if (f.fieldKind === "enum" || (f.fieldKind === "list" && f.listKind === "enum")) {
     const e = f.enum!.values.find((x) => x.name === v);

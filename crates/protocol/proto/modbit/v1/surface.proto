@@ -822,3 +822,56 @@ message ReviewDecided {
   uint64 workspace_revision = 4;
   uint64 offset = 5;
 }
+
+// ---- Routing state (REQ-EPR-001, docs/27 and docs/38) ----
+//
+// The durable state of how a run was routed. On the direct path this is the
+// degenerate plan the product already executes: one solver slot, no branches.
+// No credential and no endpoint URL ever appears here — a slot names its
+// endpoint, and nothing more.
+
+message GetRoutingPlan {
+  Id task_id = 1;
+}
+
+message RoutingSlotView {
+  string slot_id = 1;
+  string predecessor = 2;          // empty for the initial slot
+  string trigger = 3;              // INITIAL | QUALITY_REJECTED | REVIEW_REQUIRED | LEG_FAILED
+  uint32 max_activations = 4;
+  uint32 activations = 5;
+  string endpoint = 6;             // the endpoint's name, never its URL or its credential
+  string model = 7;
+  string role = 8;                 // solver | reviewer | reviser
+  uint64 timeout_ms = 9;
+  uint32 max_output_tokens = 10;
+  uint32 max_retries = 11;
+  uint64 reserved_minor = 12;      // money in minor units of the plan's currency
+}
+
+message RoutingAttemptView {
+  string slot_id = 1;
+  uint32 attempt = 2;
+  string outcome = 3;              // SUCCEEDED | FAILED | CANCELLED | INTERRUPTED
+  bool usage_known = 4;            // false: the provider reported nothing, and the tokens below say nothing
+  uint64 input_tokens = 5;
+  uint64 output_tokens = 6;
+  string provider_request_id = 7;  // the provider's own id, when it returned one
+}
+
+message RoutingPlanView {
+  string plan_id = 1;
+  uint32 schema_version = 2;
+  uint64 routing_epoch = 3;
+  uint64 lease_generation = 4;
+  string content_digest = 5;       // the plan is sealed by its own content
+  string plan_ref = 6;
+  uint64 total_budget_minor = 7;
+  string currency = 8;
+  uint32 scale = 9;
+  string legacy_source = 10;       // the legacy shape it was decoded from, when it was
+  string path_label = 11;          // DIRECT — derived from what ran, never a template
+  repeated RoutingSlotView slots = 12;
+  repeated RoutingAttemptView attempts = 13;
+  repeated string not_claimed = 14; // what this record does not claim
+}

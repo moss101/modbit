@@ -278,6 +278,62 @@ CREATE TABLE IF NOT EXISTS flaky_checks (
 CREATE INDEX IF NOT EXISTS flaky_checks_run ON flaky_checks (run_id);
 "#;
 
+/// Version 7 (EPR-001): the durable routing state — the compiled plan, its
+/// slots and every attempt made against them. Derivable from the events, so a
+/// rollback drops the tables and rebuilds.
+pub const V7_ROUTING: &str = r#"
+CREATE TABLE IF NOT EXISTS routing_plans (
+  plan_id            TEXT PRIMARY KEY NOT NULL,
+  tenant_id          BLOB NOT NULL,
+  session_id         BLOB NOT NULL,
+  task_id            BLOB NOT NULL,
+  run_id             BLOB NOT NULL,
+  schema_version     INTEGER NOT NULL,
+  routing_epoch      INTEGER NOT NULL,
+  lease_generation   INTEGER NOT NULL,
+  created_at         INTEGER NOT NULL,
+  input_digest       TEXT NOT NULL,
+  content_digest     TEXT NOT NULL,
+  plan_ref           TEXT NOT NULL,
+  total_budget_minor INTEGER NOT NULL,
+  total_budget_currency TEXT NOT NULL,
+  total_budget_scale INTEGER NOT NULL,
+  legacy_source      TEXT,
+  UNIQUE (run_id, routing_epoch)
+);
+CREATE INDEX IF NOT EXISTS routing_plans_task ON routing_plans (task_id, created_at);
+CREATE TABLE IF NOT EXISTS routing_slots (
+  plan_id          TEXT NOT NULL REFERENCES routing_plans(plan_id),
+  slot_id          TEXT NOT NULL,
+  predecessor      TEXT,
+  trigger          TEXT NOT NULL,
+  max_activations  INTEGER NOT NULL,
+  endpoint         TEXT NOT NULL,
+  model            TEXT NOT NULL,
+  role             TEXT NOT NULL,
+  timeout_ms       INTEGER NOT NULL,
+  max_output_tokens INTEGER NOT NULL,
+  max_retries      INTEGER NOT NULL,
+  reserved_minor   INTEGER NOT NULL,
+  activations      INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (plan_id, slot_id)
+);
+CREATE TABLE IF NOT EXISTS routing_attempts (
+  plan_id        TEXT NOT NULL,
+  slot_id        TEXT NOT NULL,
+  attempt        INTEGER NOT NULL,
+  started_at     INTEGER NOT NULL,
+  ended_at       INTEGER,
+  outcome        TEXT NOT NULL,
+  usage_known    INTEGER NOT NULL,
+  input_tokens   INTEGER,
+  output_tokens  INTEGER,
+  provider_request_id TEXT,
+  PRIMARY KEY (plan_id, slot_id, attempt)
+);
+CREATE INDEX IF NOT EXISTS routing_attempts_plan ON routing_attempts (plan_id, started_at);
+"#;
+
 /// All migrations in order. Never edit an entry once shipped; append a new one.
 pub const MIGRATIONS: &[Migration] = &[
     Migration {
@@ -315,6 +371,12 @@ pub const MIGRATIONS: &[Migration] = &[
         name: "verification_runs_checks_flaky",
         up: V6_VERIFICATION,
         rollback: "Additive derivable tables. Rollback = drop `verification_runs`, `check_results`, `flaky_checks` and rebuild projections; no event is touched.",
+    },
+    Migration {
+        version: 7,
+        name: "routing_plans_slots_attempts",
+        up: V7_ROUTING,
+        rollback: "Additive derivable tables. Rollback = drop `routing_plans`, `routing_slots`, `routing_attempts` and rebuild projections; no event is touched.",
     },
 ];
 

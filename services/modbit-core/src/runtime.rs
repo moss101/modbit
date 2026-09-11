@@ -44,6 +44,8 @@ use crate::server::Core;
 const OBSERVATION_CEILING_BYTES: usize = 16 * 1024;
 /// Model stream timeout per invocation.
 const MODEL_TIMEOUT_MS: u64 = 120_000;
+/// Output ceiling per invocation.
+const MAX_OUTPUT_TOKENS: u32 = 4096;
 
 /// How a task is run.
 #[derive(Clone, Debug)]
@@ -171,6 +173,14 @@ impl Runtime {
                                 actor.clone(),
                             ),
                             typed("RunStarted", &RunEvent::RunStarted, actor.clone()),
+                            direct_plan_event(
+                                core,
+                                &task,
+                                run_id,
+                                lease_generation,
+                                &cfg,
+                                actor.clone(),
+                            ),
                         ],
                     )
                     .map_err(|e| ("STORE".into(), e))?;
@@ -220,6 +230,14 @@ impl Runtime {
                                         actor.clone(),
                                     ),
                                     typed("RunStarted", &RunEvent::RunStarted, actor.clone()),
+                                    direct_plan_event(
+                                        core,
+                                        &task,
+                                        run_id,
+                                        lease_generation,
+                                        &cfg,
+                                        actor.clone(),
+                                    ),
                                 ],
                             )
                             .map_err(|e| ("STORE".into(), e))?;
@@ -430,6 +448,72 @@ pub(crate) fn typed<E: serde::Serialize>(event_type: &str, e: &E, actor: Actor) 
     );
     ev.occurred_at = Some(Timestamp::now());
     ev
+}
+
+/// The direct path this run dispatches on, as a routing plan (REQ-EPR-001).
+/// Recording it changes no dispatch: it writes down what the direct path
+/// already does, in the shape a compiled plan will later take.
+fn direct_plan_event(
+    core: &Core,
+    task: &Task,
+    run_id: RunId,
+    lease_generation: u64,
+    cfg: &StartConfig,
+    actor: Actor,
+) -> NewEvent {
+    let plan = modbit_domain::routing::ConditionalExecutionPlan::direct(
+        core.tenant_id,
+        task.session_id,
+        task.task_id,
+        run_id,
+        lease_generation,
+        Timestamp::now().0,
+        &modbit_domain::routing::DirectPath {
+            endpoint: &cfg.endpoint,
+            model: &cfg.model,
+            timeout_ms: MODEL_TIMEOUT_MS,
+            max_output_tokens: MAX_OUTPUT_TOKENS,
+            max_retries: 0,
+            max_turns: cfg.budgets.max_turns,
+        },
+    );
+    let plan_ref = modbit_domain::routing::plan_digest(&plan);
+    typed(
+        "RoutingPlanCompiled",
+        &RunEvent::RoutingPlanCompiled {
+            plan: Box::new(plan),
+            plan_ref,
+        },
+        actor,
+    )
+}
+
+/// One attempt of the direct plan's only slot, recorded from what happened:
+/// an attempt whose provider reported no usage is unknown, never zero
+/// (REQ-EPR-001, and the EPR-000 rule that unknown cost stays unknown).
+fn routing_attempt_event(
+    run_id: RunId,
+    attempt: u32,
+    outcome: &str,
+    usage: &modbit_providers::Usage,
+    usage_reported: bool,
+    provider_request_id: Option<String>,
+    actor: Actor,
+) -> NewEvent {
+    typed(
+        "RoutingAttemptRecorded",
+        &RunEvent::RoutingAttemptRecorded {
+            plan_id: modbit_domain::routing::direct_plan_id(run_id),
+            slot_id: modbit_domain::routing::DIRECT_SLOT.to_owned(),
+            attempt,
+            outcome: outcome.to_owned(),
+            usage_known: usage_reported,
+            input_tokens: usage_reported.then_some(usage.input_tokens),
+            output_tokens: usage_reported.then_some(usage.output_tokens),
+            provider_request_id,
+        },
+        actor,
+    )
 }
 
 pub(crate) fn append(
@@ -1294,7 +1378,7 @@ async fn run_loop(
                 reasoning_effort: None,
                 service_tier: None,
             },
-            max_output_tokens: 4096,
+            max_output_tokens: MAX_OUTPUT_TOKENS,
             timeout_ms: MODEL_TIMEOUT_MS,
         });
         let mut request = compiled.request;
@@ -1450,6 +1534,15 @@ async fn run_loop(
                 break LoopEnd::ProviderFailed("ROUTE_REFUSED".into(), e.to_string());
             }
         };
+        // The provider's own request id, when it gave one: read from the live
+        // route record, so an interrupted attempt carries it too.
+        let provider_request_id = || {
+            stream
+                .route
+                .lock()
+                .ok()
+                .and_then(|r| r.provider_request_id.clone())
+        };
         let mut text = String::new();
         let mut calls: Vec<(String, String, String)> = Vec::new();
         // Usage is unknown until the provider reports it: a stream that drops
@@ -1545,6 +1638,22 @@ async fn run_loop(
                     actor.clone(),
                 )],
             );
+            let _ = append(
+                &mut store,
+                &core,
+                lt,
+                AggregateType::Run,
+                *run_id.as_bytes(),
+                vec![routing_attempt_event(
+                    run_id,
+                    ordinal,
+                    "INTERRUPTED",
+                    &usage,
+                    usage_reported,
+                    provider_request_id(),
+                    actor.clone(),
+                )],
+            );
             drop(store);
             // Nothing from the interrupted response is applied; the boundary
             // applies the steer and the next turn starts from it.
@@ -1575,6 +1684,22 @@ async fn run_loop(
                         route: route_record.clone(),
                         reported: usage_reported,
                     },
+                    actor.clone(),
+                )],
+            );
+            let _ = append(
+                &mut store,
+                &core,
+                lt,
+                AggregateType::Run,
+                *run_id.as_bytes(),
+                vec![routing_attempt_event(
+                    run_id,
+                    ordinal,
+                    "CANCELLED",
+                    &usage,
+                    usage_reported,
+                    provider_request_id(),
                     actor.clone(),
                 )],
             );
@@ -1625,6 +1750,22 @@ async fn run_loop(
                         route: route_record.clone(),
                         reported: usage_reported,
                     },
+                    actor.clone(),
+                )],
+            );
+            let _ = append(
+                &mut store,
+                &core,
+                lt,
+                AggregateType::Run,
+                *run_id.as_bytes(),
+                vec![routing_attempt_event(
+                    run_id,
+                    ordinal,
+                    "FAILED",
+                    &usage,
+                    usage_reported,
+                    provider_request_id(),
                     actor.clone(),
                 )],
             );
@@ -1708,6 +1849,23 @@ async fn run_loop(
                     ),
                 ],
             );
+            let _ = append(
+                &mut store,
+                &core,
+                lt,
+                AggregateType::Run,
+                *run_id.as_bytes(),
+                vec![routing_attempt_event(
+                    run_id,
+                    ordinal,
+                    "SUCCEEDED",
+                    &usage,
+                    usage_reported,
+                    provider_request_id(),
+                    actor.clone(),
+                )],
+            );
+
             let _ = append(
                 &mut store,
                 &core,

@@ -154,6 +154,9 @@ pub struct RouteRecord {
     pub reason: String,
     /// Retries performed before the first token.
     pub retries: u32,
+    /// The provider's own request id, when it returned one: the handle its
+    /// support and its logs use, which ours cannot substitute for.
+    pub provider_request_id: Option<String>,
 }
 
 /// The gateway.
@@ -381,6 +384,7 @@ impl ProviderGateway {
             requested_service_tier: req.model_policy.service_tier.clone(),
             resolved_model: None,
             resolved_service_tier: None,
+            provider_request_id: None,
             reason: format!(
                 "policy endpoint `{}` serves `{}`; capabilities satisfied",
                 ep.name, cap.model
@@ -573,6 +577,16 @@ impl ProviderGateway {
             }
         };
         let status = resp.status();
+        // Both families answer with their own request id, under different
+        // header names; a response without one leaves the field unknown.
+        if let Some(id) = ["x-request-id", "request-id", "cf-ray"]
+            .into_iter()
+            .find_map(|h| resp.headers().get(h))
+            .and_then(|v| v.to_str().ok())
+            .filter(|v| !v.is_empty())
+        {
+            route.lock().expect("route").provider_request_id = Some(id.to_owned());
+        }
         if !status.is_success() {
             let text = resp.text().await.unwrap_or_default();
             let message = redact(&format!(
