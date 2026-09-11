@@ -12466,3 +12466,171 @@ async fn qual_epr_002_a_signed_registry_activates_at_runtime_and_a_revocation_st
     );
     core.kill();
 }
+
+/// QUAL-EPR-015 / EPR-E2E-015 / EPR-FI-015: outcome statistics are
+/// materialized from what the product already recorded, pinned by their own
+/// version, reloaded unchanged after a restart, and honest about how little a
+/// handful of observations proves.
+#[tokio::test]
+async fn qual_epr_015_statistics_are_materialized_from_attributable_outcomes_and_reload() {
+    use modbit_protocol::v1::{
+        GetOutcomeStatistics, MaterializeOutcomeStatistics, OutcomeBaselinePublished,
+        OutcomeStatisticsView, PublishOutcomeBaseline, StartTask, TaskRunStarted,
+    };
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[("total.py", "def total(q, unit):\n    return q * unit\n")]);
+    let revision = String::from_utf8(
+        Command::new("git")
+            .arg("-C")
+            .arg(repo.path())
+            .args(["rev-parse", "HEAD"])
+            .output()
+            .unwrap()
+            .stdout,
+    )
+    .unwrap()
+    .trim()
+    .to_owned();
+    let script = vec![
+        json!({"calls": [{"name": "fs.read", "args": {"path": "total.py"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "read it", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, _seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xB1)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xB2, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xB3),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 6,
+                max_tool_calls: 0,
+                max_no_progress_turns: 6,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 180).await;
+    assert!(!st.loop_alive, "{st:?}");
+
+    async fn stats(c: &mut Client, session: Id, id: u8, version: &str) -> OutcomeStatisticsView {
+        let ack = c
+            .command(envelope(
+                id16(id),
+                "GetOutcomeStatistics",
+                GetOutcomeStatistics {
+                    session_id: Some(session),
+                    stats_version: version.to_owned(),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    }
+    async fn materialize(
+        c: &mut Client,
+        session: Id,
+        id: u8,
+        g: Option<u64>,
+        version: &str,
+    ) -> OutcomeStatisticsView {
+        let ack = c
+            .command(envelope_fenced(
+                id16(id),
+                "MaterializeOutcomeStatistics",
+                MaterializeOutcomeStatistics {
+                    session_id: Some(session),
+                    stats_version: version.to_owned(),
+                }
+                .encode_to_vec(),
+                g,
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    }
+    // 1. Statistics are derived from observations, never invented: with no
+    //    baseline published there is nothing to materialize.
+    let v = materialize(&mut c, session.clone(), 0xB4, g, "stats-1").await;
+    assert_eq!(v.refusal_code, "STATS_NO_SOURCE", "{v:?}");
+    assert_eq!(
+        stats(&mut c, session.clone(), 0xB5, "").await.refusal_code,
+        "STATS_NOT_FOUND"
+    );
+    // 2. Publish the baseline this session actually produced, then materialize.
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xB6),
+            "PublishOutcomeBaseline",
+            PublishOutcomeBaseline {
+                session_id: Some(session.clone()),
+                repository_revision: revision.clone(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let published: OutcomeBaselinePublished = Client::result(&ack).unwrap();
+    assert_eq!(published.tasks, 1, "{published:?}");
+    let v = materialize(&mut c, session.clone(), 0xB7, g, "stats-1").await;
+    assert!(v.materialized, "{v:?}");
+    assert_eq!(v.stats_version, "stats-1");
+    assert_eq!(v.snapshot_digest.len(), 64);
+    assert_eq!(v.samples, 1, "{v:?}");
+    // It says what it was derived from, and from which versions.
+    assert_eq!(v.source_digests, vec![published.bundle_digest.clone()]);
+    assert!(
+        v.source_versions
+            .iter()
+            .any(|s| s == &format!("repository_revision={revision}")),
+        "{v:?}"
+    );
+    assert!(v.note.contains("Observations, not predictions"), "{v:?}");
+    // 3. One observation is a prior, not evidence.
+    let a = v.aggregates.first().unwrap_or_else(|| panic!("{v:?}"));
+    assert!(a.key_id.starts_with("solver|gpt-5-mini|none|"), "{a:?}");
+    assert_eq!(a.samples, 1);
+    assert!(a.low_confidence, "{a:?}");
+    assert!(a.interval_high - a.interval_low > 0.5, "{a:?}");
+    // The cost nobody reported is unknown, not zero.
+    assert!(!a.cost_known && a.unknown_cost_samples == 1, "{a:?}");
+    // 4. Materializing again over the same outcomes counts them once, and the
+    //    snapshot is addressed by its own content.
+    let again = materialize(&mut c, session.clone(), 0xB8, g, "stats-1").await;
+    assert_eq!(again.samples, 1, "a replayed outcome is one outcome");
+    assert_eq!(again.snapshot_digest, v.snapshot_digest, "{again:?}");
+    // 5. A reader pins the version it wants, and a different one is refused.
+    let pinned = stats(&mut c, session.clone(), 0xB9, "stats-1").await;
+    assert!(pinned.materialized, "{pinned:?}");
+    assert_eq!(pinned.snapshot_digest, v.snapshot_digest);
+    let wrong = stats(&mut c, session.clone(), 0xBA, "stats-2").await;
+    assert_eq!(wrong.refusal_code, "STATS_STALE", "{wrong:?}");
+    // 6. It survives a restart: the snapshot is an artifact and an event, not
+    //    something a process was holding.
+    core.kill();
+    core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let after = stats(&mut c, session.clone(), 0xBB, "stats-1").await;
+    assert_eq!(after.snapshot_digest, v.snapshot_digest, "{after:?}");
+    assert_eq!(after.samples, v.samples);
+    assert_eq!(after.aggregates.len(), v.aggregates.len());
+    assert_eq!(after.source_digests, v.source_digests);
+    core.kill();
+}

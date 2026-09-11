@@ -1,0 +1,28 @@
+[package]
+name = "modbit-bench-outcome-statistics"
+description = "Modbit outcome statistics: immutable versioned snapshots of attributable outcomes, joined by a pinned stats_version"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+hex.workspace = true
+modbit-observability.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+
+[dev-dependencies]
+
+[lints]
+workspace = true
+
+# Module registration parsed by `architecture-lint modules` (M0.4, docs/45, docs/81).
+[package.metadata.modbit]
+owner = "eval-bench"
+canonical = []
+capabilities = [
+  { id = "stats.materialize", requirements = ["REQ-EPR-015"] },
+]

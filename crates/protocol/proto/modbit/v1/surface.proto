@@ -952,3 +952,46 @@ message RegistryBindingView {
 }
 
 message GetModelRegistry {}
+
+// ---- Outcome statistics (REQ-EPR-015, docs/27 §21) ----
+//
+// Observations, not predictions, and a separate version from the registry so
+// that changing one cannot rewrite the other.
+
+message MaterializeOutcomeStatistics {
+  Id session_id = 1;
+  string stats_version = 2;
+}
+
+message GetOutcomeStatistics {
+  Id session_id = 1;
+  string stats_version = 2;          // empty: the most recent snapshot
+}
+
+message OutcomeStatisticsView {
+  bool materialized = 1;
+  string stats_version = 2;
+  string snapshot_digest = 3;
+  string snapshot_ref = 4;
+  repeated string source_digests = 5;  // the baseline bundles it came from
+  repeated string source_versions = 6; // "name=value": build, revision, registry generation
+  uint32 samples = 7;
+  repeated StatAggregateView aggregates = 8;
+  string note = 9;
+  string refusal_code = 10;
+  string refusal_detail = 11;
+}
+
+message StatAggregateView {
+  string key_id = 1;
+  uint32 samples = 2;
+  uint32 successes = 3;
+  double mean = 4;
+  double interval_low = 5;
+  double interval_high = 6;
+  uint64 mean_cost_minor = 7;
+  bool cost_known = 8;               // false: no observation had a reported cost
+  uint32 unknown_cost_samples = 9;
+  uint64 mean_wall_ms = 10;
+  bool low_confidence = 11;          // below the sample threshold: a prior, not evidence
+}

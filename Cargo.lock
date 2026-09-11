@@ -1711,6 +1711,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "modbit-bench-outcome-statistics"
+version = "0.0.0"
+dependencies = [
+ "hex",
+ "modbit-observability",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+]
+
+[[package]]
 name = "modbit-bench-retrieval"
 version = "0.0.0"
 dependencies = [
@@ -1794,6 +1805,7 @@ dependencies = [
  "ed25519-dalek",
  "hex",
  "modbit-bench-context-economics",
+ "modbit-bench-outcome-statistics",
  "modbit-compaction",
  "modbit-context",
  "modbit-core-runtime",

@@ -427,6 +427,18 @@ impl Lineage {
         self.turn
     }
 
+    /// Lineage of a record that belongs to the session and to nothing narrower.
+    pub(crate) fn session(tenant: TenantId, session: SessionId) -> Self {
+        Self {
+            tenant,
+            session,
+            task: None,
+            run: None,
+            turn: None,
+            step: None,
+        }
+    }
+
     pub(crate) fn task(tenant: TenantId, session: SessionId, task: TaskId) -> Self {
         Self {
             tenant,

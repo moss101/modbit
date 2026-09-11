@@ -4121,6 +4121,190 @@ export declare type GetModelRegistry = Message<"modbit.v1.GetModelRegistry"> & {
 export declare const GetModelRegistrySchema: GenMessage<GetModelRegistry>;
 
 /**
+ * @generated from message modbit.v1.MaterializeOutcomeStatistics
+ */
+export declare type MaterializeOutcomeStatistics = Message<"modbit.v1.MaterializeOutcomeStatistics"> & {
+  /**
+   * @generated from field: modbit.v1.Id session_id = 1;
+   */
+  sessionId?: Id | undefined;
+
+  /**
+   * @generated from field: string stats_version = 2;
+   */
+  statsVersion: string;
+};
+
+/**
+ * Describes the message modbit.v1.MaterializeOutcomeStatistics.
+ * Use `create(MaterializeOutcomeStatisticsSchema)` to create a new message.
+ */
+export declare const MaterializeOutcomeStatisticsSchema: GenMessage<MaterializeOutcomeStatistics>;
+
+/**
+ * @generated from message modbit.v1.GetOutcomeStatistics
+ */
+export declare type GetOutcomeStatistics = Message<"modbit.v1.GetOutcomeStatistics"> & {
+  /**
+   * @generated from field: modbit.v1.Id session_id = 1;
+   */
+  sessionId?: Id | undefined;
+
+  /**
+   * empty: the most recent snapshot
+   *
+   * @generated from field: string stats_version = 2;
+   */
+  statsVersion: string;
+};
+
+/**
+ * Describes the message modbit.v1.GetOutcomeStatistics.
+ * Use `create(GetOutcomeStatisticsSchema)` to create a new message.
+ */
+export declare const GetOutcomeStatisticsSchema: GenMessage<GetOutcomeStatistics>;
+
+/**
+ * @generated from message modbit.v1.OutcomeStatisticsView
+ */
+export declare type OutcomeStatisticsView = Message<"modbit.v1.OutcomeStatisticsView"> & {
+  /**
+   * @generated from field: bool materialized = 1;
+   */
+  materialized: boolean;
+
+  /**
+   * @generated from field: string stats_version = 2;
+   */
+  statsVersion: string;
+
+  /**
+   * @generated from field: string snapshot_digest = 3;
+   */
+  snapshotDigest: string;
+
+  /**
+   * @generated from field: string snapshot_ref = 4;
+   */
+  snapshotRef: string;
+
+  /**
+   * the baseline bundles it came from
+   *
+   * @generated from field: repeated string source_digests = 5;
+   */
+  sourceDigests: string[];
+
+  /**
+   * "name=value": build, revision, registry generation
+   *
+   * @generated from field: repeated string source_versions = 6;
+   */
+  sourceVersions: string[];
+
+  /**
+   * @generated from field: uint32 samples = 7;
+   */
+  samples: number;
+
+  /**
+   * @generated from field: repeated modbit.v1.StatAggregateView aggregates = 8;
+   */
+  aggregates: StatAggregateView[];
+
+  /**
+   * @generated from field: string note = 9;
+   */
+  note: string;
+
+  /**
+   * @generated from field: string refusal_code = 10;
+   */
+  refusalCode: string;
+
+  /**
+   * @generated from field: string refusal_detail = 11;
+   */
+  refusalDetail: string;
+};
+
+/**
+ * Describes the message modbit.v1.OutcomeStatisticsView.
+ * Use `create(OutcomeStatisticsViewSchema)` to create a new message.
+ */
+export declare const OutcomeStatisticsViewSchema: GenMessage<OutcomeStatisticsView>;
+
+/**
+ * @generated from message modbit.v1.StatAggregateView
+ */
+export declare type StatAggregateView = Message<"modbit.v1.StatAggregateView"> & {
+  /**
+   * @generated from field: string key_id = 1;
+   */
+  keyId: string;
+
+  /**
+   * @generated from field: uint32 samples = 2;
+   */
+  samples: number;
+
+  /**
+   * @generated from field: uint32 successes = 3;
+   */
+  successes: number;
+
+  /**
+   * @generated from field: double mean = 4;
+   */
+  mean: number;
+
+  /**
+   * @generated from field: double interval_low = 5;
+   */
+  intervalLow: number;
+
+  /**
+   * @generated from field: double interval_high = 6;
+   */
+  intervalHigh: number;
+
+  /**
+   * @generated from field: uint64 mean_cost_minor = 7;
+   */
+  meanCostMinor: bigint;
+
+  /**
+   * false: no observation had a reported cost
+   *
+   * @generated from field: bool cost_known = 8;
+   */
+  costKnown: boolean;
+
+  /**
+   * @generated from field: uint32 unknown_cost_samples = 9;
+   */
+  unknownCostSamples: number;
+
+  /**
+   * @generated from field: uint64 mean_wall_ms = 10;
+   */
+  meanWallMs: bigint;
+
+  /**
+   * below the sample threshold: a prior, not evidence
+   *
+   * @generated from field: bool low_confidence = 11;
+   */
+  lowConfidence: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.StatAggregateView.
+ * Use `create(StatAggregateViewSchema)` to create a new message.
+ */
+export declare const StatAggregateViewSchema: GenMessage<StatAggregateView>;
+
+/**
  * Command acknowledgement.
  *
  * @generated from enum modbit.v1.CommandStatus

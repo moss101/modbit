@@ -491,6 +491,8 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "AdmitRoutingPlan",
                     "ActivateModelRegistry",
                     "GetModelRegistry",
+                    "MaterializeOutcomeStatistics",
+                    "GetOutcomeStatistics",
                     "GetTaskEconomics",
                     "SetTaskSelection",
                     "AttachContextDocument",
@@ -2248,6 +2250,47 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
         }
         "GetModelRegistry" => {
             let view = crate::model_registry::current(core);
+            accept(cid, false, view.encode_to_vec())
+        }
+        "MaterializeOutcomeStatistics" => {
+            let Ok(p) = wire::MaterializeOutcomeStatistics::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "MaterializeOutcomeStatistics");
+            };
+            let Some(session_id) = p
+                .session_id
+                .as_ref()
+                .and_then(id16)
+                .map(SessionId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "session_id required");
+            };
+            {
+                let store = core.store.lock().await;
+                match store.session(&session_id) {
+                    Ok(Some(_)) => {}
+                    Ok(None) => return reject(cid, "UNKNOWN_SESSION", session_id.to_string()),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                }
+            }
+            if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
+                return ack;
+            }
+            let view = crate::statistics::materialize(core, session_id, &p.stats_version).await;
+            accept(cid, false, view.encode_to_vec())
+        }
+        "GetOutcomeStatistics" => {
+            let Ok(p) = wire::GetOutcomeStatistics::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "GetOutcomeStatistics");
+            };
+            let Some(session_id) = p
+                .session_id
+                .as_ref()
+                .and_then(id16)
+                .map(SessionId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "session_id required");
+            };
+            let view = crate::statistics::get(core, session_id, &p.stats_version).await;
             accept(cid, false, view.encode_to_vec())
         }
         "ListLanguages" => {

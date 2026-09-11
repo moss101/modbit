@@ -104,6 +104,26 @@ pub enum SessionEvent {
         /// Reason.
         reason: String,
     },
+    /// `OutcomeStatisticsMaterialized` (REQ-EPR-015, docs/27 §21): an
+    /// immutable statistics snapshot was derived from published baselines and
+    /// stored. The event carries what pins it and what it was derived from;
+    /// the observations are in the artifact. No state change.
+    OutcomeStatisticsMaterialized {
+        /// The version a compiler pins.
+        stats_version: String,
+        /// Digest of the snapshot's content.
+        snapshot_digest: String,
+        /// Object hash of the snapshot.
+        snapshot_ref: String,
+        /// Baseline bundle digests it was derived from.
+        source_digests: Vec<String>,
+        /// Observations counted, after deduplication.
+        samples: u32,
+        /// Keys the snapshot holds.
+        keys: u32,
+        /// Of those, the ones below the sample threshold.
+        low_confidence_keys: u32,
+    },
     /// `OutcomeBaselinePublished` (REQ-EPR-000, docs/27 §22): a fixed-revision
     /// verified-outcome baseline of the direct path was sealed and stored. The
     /// event carries what pins it; the numbers are in the bundle. No state
@@ -141,6 +161,7 @@ impl SessionEvent {
             Self::SessionLeaseAcquired { .. } => "SessionLeaseAcquired",
             Self::EmergencyStopActivated { .. } => "EmergencyStopActivated",
             Self::OutcomeBaselinePublished { .. } => "OutcomeBaselinePublished",
+            Self::OutcomeStatisticsMaterialized { .. } => "OutcomeStatisticsMaterialized",
         }
     }
 }
@@ -193,14 +214,16 @@ impl Session {
                     to: "SessionCreated".into(),
                 });
             }
-            // A baseline is a record of what happened, so publishing one
-            // changes nothing about the session (REQ-EPR-000).
-            SessionEvent::OutcomeBaselinePublished { .. } => {
+            // A baseline and a statistics snapshot are both records of what
+            // happened, so publishing one changes nothing about the session
+            // (REQ-EPR-000, REQ-EPR-015).
+            SessionEvent::OutcomeBaselinePublished { .. }
+            | SessionEvent::OutcomeStatisticsMaterialized { .. } => {
                 if self.state.is_terminal() {
                     return Err(crate::InvalidTransition {
                         aggregate: "Session",
                         from: format!("{:?}", self.state),
-                        to: "OutcomeBaselinePublished".into(),
+                        to: event.event_type().into(),
                     });
                 }
                 None

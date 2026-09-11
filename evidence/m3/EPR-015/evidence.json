@@ -1,0 +1,18 @@
+{
+ "task": "EPR-015",
+ "requirement": "REQ-EPR-015",
+ "qual": "QUAL-EPR-015",
+ "tests": [
+  "qual_epr_015_statistics_are_materialized_from_attributable_outcomes_and_reload",
+  "counts_are_derived_and_the_same_outcome_counts_once",
+  "a_sparse_key_stays_low_confidence_and_qualifies_nothing",
+  "a_snapshot_refuses_what_it_cannot_stand_behind",
+  "the_registry_and_the_statistics_are_joined_independently",
+  "baseline_outcomes_become_attributable_samples"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "A real task runs through Core, the session's baseline is published, and a snapshot is materialized from it carrying the bundle digests and the build, repository revision, environment and registry generation it came from. Materializing again counts the same outcomes once and yields the same digest. One observation is reported as a low-confidence prior with an interval wider than half the range, and its unreported cost stays unknown. A reader pinning another version is refused as stale, and the snapshot returns unchanged after a kill and restart.",
+ "audit": "ABSENT before this task: baselines existed but nothing aggregated them; no keyed dataset, no stats_version snapshot, no join interface.",
+ "limitations": "Only the solver key has a producer; escalation, reviewer and revision keys are defined and validated but wait for EPR-005/006/007. Baseline-derived samples carry skill=none and harness=<build digest> because the direct path runs no Skill. Cost is unknown per EPR-000 and is reported as unknown rather than averaged as zero. Snapshots are per session."
+}

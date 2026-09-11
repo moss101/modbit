@@ -20,6 +20,7 @@ mod routing;
 mod runtime;
 mod server;
 mod side;
+mod statistics;
 mod subagent;
 mod tools;
 mod undo;

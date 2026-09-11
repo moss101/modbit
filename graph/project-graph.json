@@ -19998,13 +19998,16 @@
    "task_card": "docs/49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md#epr-002",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller or executor present",
    "milestone_override": "DR-M2-002: router machinery follows the EPR-000 baseline evidence; scheduled in M3 ahead of the M4/M5 EPR tasks that depend on it",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "commit:245763a",
     "artifact:evidence/m3/EPR-002/TASK_CARD.md",
     "test:qual_epr_002_a_signed_registry_activates_at_runtime_and_a_revocation_stops_dispatch",
     "test:ingestion_refuses_empirical_workflow_outcomes",
-    "test:a_revoked_model_is_refused_at_dispatch_and_says_so"
+    "test:a_revoked_model_is_refused_at_dispatch_and_says_so",
+    "run:34548714162",
+    "artifact:evidence/m3/EPR-002/ci-run-34548714162.json",
+    "commit:c069092"
    ],
    "notes": [
     {
@@ -20030,9 +20033,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "local gates green: cargo test --workspace, fmt --check, clippy --workspace --all-targets -D warnings"
+    },
+    {
+     "at": "2026-09-11T01:10:55Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at c069092: activation over the wire, every refusal, and the mid-run revocation"
+    },
+    {
+     "at": "2026-09-11T01:10:55Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "a signed versioned registry activated at runtime, holding current facts and no empirical outcome; the production-endpoint half stays deferred by DR-M3-002"
     }
    ],
-   "status_changed_on": "2026-09-11T00:57:18Z"
+   "status_changed_on": "2026-09-11T01:10:55Z"
   },
   {
    "id": "EPR-003",
@@ -20420,8 +20435,41 @@
    "task_card": "docs/49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md#epr-015",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller or executor present",
    "milestone_override": "DR-M2-002: router machinery follows the EPR-000 baseline evidence; scheduled in M3 ahead of the M4/M5 EPR tasks that depend on it",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "commit:c069092",
+    "artifact:evidence/m3/EPR-015/TASK_CARD.md",
+    "test:qual_epr_015_statistics_are_materialized_from_attributable_outcomes_and_reload",
+    "test:a_sparse_key_stays_low_confidence_and_qualifies_nothing",
+    "test:a_snapshot_refuses_what_it_cannot_stand_behind"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-11T01:11:05Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing code audit: EPR-000 publishes baseline bundles of attributable outcomes, but nothing aggregates them; there is no keyed dataset, no stats_version and no way for a compiler to join observations"
+    },
+    {
+     "at": "2026-09-11T01:11:05Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "benchmarks/outcome-statistics materializes immutable snapshots: exact solver, joint escalation, reviewer-family and revision-finding keys, counts derived from deduplicated samples, Wilson intervals and a low-confidence flag below the sample threshold"
+    },
+    {
+     "at": "2026-09-11T01:11:05Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Core materializes a snapshot from the baseline bundles already on the log, stores it in the object store, records SessionEvent::OutcomeStatisticsMaterialized, and serves it back through GetOutcomeStatistics pinned by version and tenant"
+    },
+    {
+     "at": "2026-09-11T01:12:37Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "local gates green: cargo test --workspace, fmt --check, clippy --workspace --all-targets -D warnings, both architecture lints"
+    }
+   ],
+   "status_changed_on": "2026-09-11T01:12:37Z"
   },
   {
    "id": "EPR-016",
