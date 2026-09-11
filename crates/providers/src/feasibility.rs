@@ -293,6 +293,32 @@ pub fn select(candidates: &[Candidate], t: &Thresholds, current: Option<&str>) -
             .then_with(|| a.expected_cost_minor.cmp(&b.expected_cost_minor))
             .then_with(|| a.plan_id.cmp(&b.plan_id))
     });
+    // REQ-EPR-009 (docs/27 §7.6): a route switches only to a
+    // confidence-feasible alternative. With none, the plan in force stays
+    // in force when it is still eligible; the fallback picks a plan only
+    // when there is nothing to keep.
+    let kept = current.and_then(|cur| eligible.iter().find(|c| c.plan_id == cur).copied());
+    if let Some(cur) = kept {
+        for f in &eligible {
+            if f.plan_id != cur.plan_id && !exclusions.iter().any(|e| e.plan_id == f.plan_id) {
+                exclusions.push(Exclusion {
+                    plan_id: f.plan_id.clone(),
+                    reason: "not confidence-feasible; the plan in force is kept".into(),
+                });
+            }
+        }
+        return Selection {
+            selected: Some(cur.plan_id.clone()),
+            code: "QUALITY_FLOOR_INFEASIBLE".into(),
+            feasible: vec![],
+            exclusions,
+            selected_lcb: cur.quality.lcb,
+            tau: t.tau,
+            target_met: false,
+            feasibility_version: FEASIBILITY_VERSION.into(),
+            thresholds_version: t.thresholds_version.clone(),
+        };
+    }
     match eligible.first() {
         Some(best) => Selection {
             selected: Some(best.plan_id.clone()),

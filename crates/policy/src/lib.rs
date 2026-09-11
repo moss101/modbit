@@ -8,10 +8,16 @@
 //! Capability Kernel: leases, the admin PolicyEnvelope, approval binding and
 //! the emergency stop. Protected paths live in `modbit-workspace`.
 
+pub mod assurance;
 pub mod config;
 pub mod kernel;
 pub mod ledger;
 
+pub use assurance::{
+    Advisory, AssuranceLayer, AssuranceLevel, AssurancePolicy, CandidateFacts, ChangeKind,
+    ChangedPath, ProtectedSurface, RealizedRisk, RequestedEffect, RiskLevel, RiskReason,
+    SurfaceKind, derive_realized_risk, strengthen_only,
+};
 pub use config::{Authority, Layer, Permission, Provenance, Resolved, ResolvedConfig, resolve};
 pub use kernel::{
     CapabilityKernel, KernelDecision, KernelRequest, PolicyEnvelope, default_lease_for_profile,

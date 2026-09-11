@@ -40,6 +40,9 @@ fn entry(model: &str, roles: &[&str], tools: bool) -> RegistryEntry {
             output_per_mtok_minor: 200,
             currency: "USD".into(),
             scale: 2,
+            cached_input_per_mtok_minor: None,
+            cache_write_per_mtok_minor: None,
+            cache_ttl_ms: None,
         },
         latency: Latency {
             p50_ms: 900,

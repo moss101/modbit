@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 777,
-    "docs_bytes": 1056594
+    "root_and_tooling": 783,
+    "docs_bytes": 1062442
   },
   "sections": [
     {
@@ -248,8 +248,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Security, Policy, Capabilities, Secrets, and Effect Ledger",
-      "bytes": 5169,
-      "sha256": "f9f908c35490defc63d706e8748f8b3f1a0b707820f3a3b80da61268a8225500"
+      "bytes": 8725,
+      "sha256": "4ee252f2d0f2192c45f142b4fd07e7bc1d9f2334436678fa445d420ea87c1e10"
     },
     {
       "path": "docs/24_CLOUD_CONTROL_PLANE_AND_SYNC.md",
@@ -284,8 +284,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Execution policy router and verified orchestration",
-      "bytes": 57211,
-      "sha256": "a95915dd93ad971360748c1fc05874aa4177793e6cfc6f7a8ba9baf3d2c6294b"
+      "bytes": 58907,
+      "sha256": "a410b9c288c72b59b50eeb9a32bc49a774a9aa37b807b46249d1a0089de978bd"
     },
     {
       "path": "docs/28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 11097,
-      "sha256": "bf95979a7fdc68812c7f60ed5319b4859334f1632d71ab478c5512c0403b1cb7"
+      "bytes": 11693,
+      "sha256": "9a88c098ca1da1b255ae50b0df4d09793acb58b44149d79ada6cd4c8846af1cb"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -4470,6 +4470,36 @@
       "path": "evidence/m3/PX-040/evidence.json",
       "bytes": 1272,
       "sha256": "dc1c5415da2d653b16d94162aa23478c0d9694a3c0442c91e93c17db2e9e58ec"
+    },
+    {
+      "path": "evidence/m4/EPR-008/TASK_CARD.md",
+      "bytes": 6472,
+      "sha256": "d98dc125e091ada448b4b3ed8da7beb3e6b8abd430c7563223dd89d17477566d"
+    },
+    {
+      "path": "evidence/m4/EPR-008/evidence.json",
+      "bytes": 1324,
+      "sha256": "5e47470d6f9aac332040d9dc951af0d4653944e6537d5f29c4244a44c083ac22"
+    },
+    {
+      "path": "evidence/m4/EPR-009/TASK_CARD.md",
+      "bytes": 7666,
+      "sha256": "f07a2659cf99c4696c0216ce1ed277314d4160e71106e7771d99f53976c55570"
+    },
+    {
+      "path": "evidence/m4/EPR-009/evidence.json",
+      "bytes": 1520,
+      "sha256": "013024836622e44c1ca34c25cb0d24059657aef14576c8352c222f4944b8ca97"
+    },
+    {
+      "path": "evidence/m4/EPR-017/TASK_CARD.md",
+      "bytes": 6922,
+      "sha256": "f189d668219d9389aeb73e7cf2dcb43edda9ac1c422b02a6c1c6529b2dedd612"
+    },
+    {
+      "path": "evidence/m4/EPR-017/evidence.json",
+      "bytes": 1338,
+      "sha256": "cc89e1a57f16ceec3526aea1cad4c3e6a57df746ecb527d3268a455ce6769e1e"
     },
     {
       "path": "evidence/m4/IMP-EV-0012/TASK_CARD.md",

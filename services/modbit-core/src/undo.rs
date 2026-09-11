@@ -136,7 +136,7 @@ pub(crate) async fn apply(
         let kind = match (s.action.as_str(), restore) {
             ("delete", _) => ChangeOpKind::Delete,
             ("restore", Some(b)) => ChangeOpKind::Create(b),
-            ("replace", Some(b)) => ChangeOpKind::Replace(b),
+            ("replace", Some(b)) => ChangeOpKind::ReplaceExact(b),
             (a, _) => anyhow::bail!("undo step {a} on {} has no content to restore", s.path),
         };
         ops.push(ChangeOp {

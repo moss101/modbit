@@ -305,6 +305,95 @@ pub enum RunEvent {
         /// Where it was evaluated: TRANSACTION | COMPLETION.
         stage: String,
     },
+    /// `RealizedRiskDerived` (REQ-EPR-008, docs/27 §9.3): the factual,
+    /// policy-owned risk of the candidate at the COMPLETION run, persisted
+    /// separately from test correctness and from any gate verdict. No
+    /// state change.
+    RealizedRiskDerived {
+        /// The completion run it was derived beside.
+        verification_run_id: String,
+        /// Object hash of the `RealizedRisk` record.
+        realized_risk_ref: String,
+        /// Candidate revision.
+        candidate_revision: u64,
+        /// LOW | MEDIUM | HIGH | CRITICAL.
+        level: String,
+        /// FAST | STANDARD | GOVERNED | HIGH_ASSURANCE.
+        minimum_assurance: String,
+        /// Independent review required.
+        independent_review_required: bool,
+        /// Human decision required.
+        human_required: bool,
+        /// Reason codes with their surface, `CODE[:SURFACE]`.
+        reasons: Vec<String>,
+        /// Policy version.
+        policy_version: String,
+        /// Rules version.
+        rules_version: String,
+        /// Forbidden effects the candidate requested.
+        forbidden_effects_requested: Vec<String>,
+    },
+    /// `RouteReevaluated` (REQ-EPR-009, docs/27 §7.6 and §16): at a
+    /// boundary — a new task, a compaction epoch — the route in force was
+    /// compared with its alternatives on cache economics and confidence
+    /// feasibility. `SWITCH` means a new transaction was compiled and
+    /// admitted under a new routing epoch on the same run; `STAY` and
+    /// `INITIAL` change nothing. No state change.
+    RouteReevaluated {
+        /// `TASK` | `COMPACTION` | `PROVIDER` | `QUALITY` | `MODE`.
+        boundary: String,
+        /// The routing epoch in force after the decision.
+        route_epoch: u64,
+        /// The binding in force before, `endpoint/model`; empty at a fresh start.
+        current: String,
+        /// The binding in force after.
+        chosen: String,
+        /// `INITIAL` | `STAY` | `SWITCH`.
+        decision: String,
+        /// Why (the economics or the feasibility reason).
+        reason: String,
+        /// Staying, remaining demand at the current prices, minor units.
+        stay_minor: u64,
+        /// Switching to the chosen alternative, switch cost included.
+        switch_minor: u64,
+        /// The itemized switch cost the thresholds carried (JSON).
+        switch_cost: serde_json::Value,
+        /// The cache state consulted (JSON), when any.
+        cache_state: Option<serde_json::Value>,
+        /// The plan in force after the decision.
+        plan_id: String,
+        /// Economics rules version.
+        economics_version: String,
+    },
+    /// `AcceptanceGateEvaluated` (REQ-EPR-017, docs/27 §9.4): whether the
+    /// evidence at the candidate revision satisfies the required assurance,
+    /// decided independently of the risk classification. No state change.
+    AcceptanceGateEvaluated {
+        /// The completion run the evidence came from, when any.
+        verification_run_id: String,
+        /// Object hash of the `AcceptanceGateResult`.
+        gate_ref: String,
+        /// Gate rules version.
+        gate_version: String,
+        /// Candidate revision.
+        candidate_revision: u64,
+        /// ACCEPT | REJECT | INCONCLUSIVE.
+        verdict: String,
+        /// Required assurance level label.
+        required_assurance: String,
+        /// Independent review required.
+        independent_review_required: bool,
+        /// Human required.
+        human_required: bool,
+        /// Missing evidence kinds.
+        missing_evidence: Vec<String>,
+        /// Reject reasons.
+        reject_reasons: Vec<String>,
+        /// The risk record consumed.
+        realized_risk_ref: String,
+        /// What triggered the evaluation: `COMPLETION_RUN` | `REVIEW_DECISION`.
+        trigger: String,
+    },
 }
 
 /// One check as recorded on the log (the full CheckResult lives in the report object).
@@ -349,6 +438,9 @@ impl RunEvent {
             Self::FlakyCheckQuarantined { .. } => "FlakyCheckQuarantined",
             Self::RegressionAttributed { .. } => "RegressionAttributed",
             Self::DiffInvariantViolated { .. } => "DiffInvariantViolated",
+            Self::RealizedRiskDerived { .. } => "RealizedRiskDerived",
+            Self::AcceptanceGateEvaluated { .. } => "AcceptanceGateEvaluated",
+            Self::RouteReevaluated { .. } => "RouteReevaluated",
         }
     }
 }
@@ -430,7 +522,9 @@ impl Run {
             | RunEvent::RunFenced { .. }
             | RunEvent::FlakyCheckQuarantined { .. }
             | RunEvent::RegressionAttributed { .. }
-            | RunEvent::DiffInvariantViolated { .. } => {
+            | RunEvent::DiffInvariantViolated { .. }
+            | RunEvent::RealizedRiskDerived { .. }
+            | RunEvent::RouteReevaluated { .. } => {
                 if self.state.is_terminal() {
                     return Err(crate::InvalidTransition {
                         aggregate: "Run",
@@ -438,6 +532,13 @@ impl Run {
                         to: event.event_type().into(),
                     });
                 }
+                self.generation += 1;
+                return Ok(());
+            }
+            // The gate is re-evaluated at the review decision, after the
+            // run that produced the candidate has completed: an audit record
+            // about the run's candidate, valid in every state.
+            RunEvent::AcceptanceGateEvaluated { .. } => {
                 self.generation += 1;
                 return Ok(());
             }

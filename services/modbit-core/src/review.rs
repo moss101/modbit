@@ -434,6 +434,52 @@ pub async fn decide(
             ));
         }
     }
+    // REQ-EPR-017 (docs/27 §9.4): an accept is the human decision the
+    // gate may be waiting for — and only that. The gate is evaluated at
+    // this revision with the decision counted as evidence; unless every
+    // other required evidence is present, current and passing, the accept
+    // is refused with what is missing. Correct tests never erase this
+    // step; this step never erases failed or stale tests.
+    let gate_at_accept = if decision == "ACCEPT" {
+        let (policy, _) =
+            crate::assurance::policy_for(&core.assurance_policy, std::path::Path::new(&cand.root));
+        let store = core.store.lock().await;
+        let (gate, gate_ref) = crate::gate::evaluate(
+            &store,
+            &task,
+            &policy,
+            current_revision,
+            &[],
+            &[modbit_verification::ReviewEvidence {
+                decision: "ACCEPT".into(),
+                candidate_revision: current_revision,
+                provenance: "user_review".into(),
+                reference: "this decision".into(),
+            }],
+        );
+        if gate.verdict != modbit_verification::Verdict::Accept {
+            return Err((
+                "ACCEPTANCE_NOT_MET".into(),
+                format!(
+                    "the acceptance gate is {} at revision {current_revision}: {}{}",
+                    gate.verdict.label(),
+                    if gate.reject_reasons.is_empty() {
+                        String::new()
+                    } else {
+                        format!("rejected ({}) ", gate.reject_reasons.join("; "))
+                    },
+                    if gate.missing_evidence.is_empty() {
+                        String::new()
+                    } else {
+                        format!("missing {}", gate.missing_evidence.join(", "))
+                    }
+                ),
+            ));
+        }
+        Some((gate, gate_ref))
+    } else {
+        None
+    };
     let mut accepted = Vec::new();
     let mut rejected = Vec::new();
     let mut reverted = Vec::new();
@@ -587,7 +633,37 @@ pub async fn decide(
                 events,
             })
             .map_err(|e| ("STORE".to_owned(), e.to_string()))?;
-        stored.last().map(|e| e.offset).unwrap_or(0)
+        let mut offset = stored.last().map(|e| e.offset).unwrap_or(0);
+        // The gate's ACCEPT, with the human decision now on the log as its
+        // evidence, recorded on the run it decided for.
+        if let Some((gate, gate_ref)) = gate_at_accept
+            && let Some(run) = store
+                .runs_for_task(&task.task_id)
+                .ok()
+                .and_then(|r| r.into_iter().next())
+        {
+            let ev = typed(
+                "AcceptanceGateEvaluated",
+                &crate::gate::event(&gate, &gate_ref, "", "REVIEW_DECISION"),
+                actor.clone(),
+            );
+            if let Ok(st) = store.append(AppendRequest {
+                tenant_id: core.tenant_id,
+                session_id: task.session_id,
+                task_id: Some(task.task_id),
+                run_id: Some(run.run_id),
+                turn_id: None,
+                step_id: None,
+                aggregate_type: AggregateType::Run,
+                aggregate_id: *run.run_id.as_bytes(),
+                expected_sequence: None,
+                events: vec![ev],
+            }) && let Some(last) = st.last()
+            {
+                offset = last.offset;
+            }
+        }
+        offset
     };
     core.last_offset.send_replace(offset);
     let task_state = if decision == "ACCEPT" {

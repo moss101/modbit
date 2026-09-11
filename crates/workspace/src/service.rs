@@ -117,6 +117,10 @@ pub enum ChangeOpKind {
     Create(Vec<u8>),
     /// Replace whole content.
     Replace(Vec<u8>),
+    /// Replace whole content with exactly these bytes: no line-ending
+    /// preservation. For restores from content-addressed objects
+    /// (checkpoints, forks, undo), where the bytes are the truth.
+    ReplaceExact(Vec<u8>),
     /// Ordered text edits through the match ladder.
     Edit(Vec<TextEdit>),
     /// Delete.
@@ -521,6 +525,20 @@ impl WorkspaceService {
         self.commit(&r, "atomic_replace", before, Some(content_hash(bytes)))
     }
 
+    /// `atomic_replace` without line-ending preservation: the bytes land
+    /// exactly as given (a checkpoint's or an undo's recorded content).
+    pub fn atomic_replace_exact(
+        &mut self,
+        path: &str,
+        bytes: &[u8],
+        pre: WritePrecondition,
+    ) -> Result<WorkspaceChange> {
+        let r = self.policy.check(path)?;
+        let before = self.check_precondition(&r, path, &pre)?;
+        write_atomic(&self.tmp_for(&r.absolute), &r.absolute, bytes)?;
+        self.commit(&r, "atomic_replace", before, Some(content_hash(bytes)))
+    }
+
     /// `apply_patch`: ordered non-overlapping byte-range edits against the
     /// current content, validated as a whole before anything is written.
     pub fn apply_patch(
@@ -693,6 +711,9 @@ impl WorkspaceService {
             let result = match &op.kind {
                 ChangeOpKind::Create(b) => self.create(&op.path, b, op.pre.clone()),
                 ChangeOpKind::Replace(b) => self.atomic_replace(&op.path, b, op.pre.clone()),
+                ChangeOpKind::ReplaceExact(b) => {
+                    self.atomic_replace_exact(&op.path, b, op.pre.clone())
+                }
                 ChangeOpKind::Edit(edits) => self
                     .edit_by_match(&op.path, edits, op.pre.clone())
                     .map(|(c, _)| c),

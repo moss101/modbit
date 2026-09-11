@@ -49,6 +49,9 @@ pub struct PolicyEnvelope {
     pub approval_effects: BTreeSet<EffectClass>,
     /// Profiles that can never wait for an approval (unattended).
     pub no_approval_profiles: BTreeSet<String>,
+    /// The assurance section (REQ-EPR-008): minimum assurance, protected
+    /// surfaces, review and human conditions, forbidden effects.
+    pub assurance: crate::assurance::AssurancePolicy,
 }
 
 impl Default for PolicyEnvelope {
@@ -97,6 +100,7 @@ impl Default for PolicyEnvelope {
             .into_iter()
             .collect(),
             no_approval_profiles: [PROFILE_LOCAL_AUTONOMOUS.to_owned()].into_iter().collect(),
+            assurance: crate::assurance::AssurancePolicy::default(),
         }
     }
 }

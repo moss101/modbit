@@ -94,6 +94,11 @@ pub struct CompileInput<'a> {
     pub risk_version: String,
     /// Tokens the initial leg is expected to read, for the worst-case price.
     pub expected_input_tokens: u64,
+    /// The binding in force when this compile re-evaluates a route at a
+    /// boundary (REQ-EPR-009): the candidate opening with it is kept
+    /// unless a cheaper feasible one saves at least the thresholds' switch
+    /// cost. `None` at a fresh start (nothing to switch from).
+    pub current_binding: Option<(String, String)>,
 }
 
 /// One candidate the compiler considered, with everything a reader needs to
@@ -296,20 +301,38 @@ pub fn compile(input: &CompileInput<'_>) -> Result<Compiled, CompileRefused> {
             reserve: input.verification_reserve.minor_units,
         });
     }
-    let input_digest = digest(&[
+    let thresholds_json = serde_json::to_string(input.thresholds).unwrap_or_default();
+    let needs = format!("{:?}", input.needs);
+    let residencies = input.allowed_residencies.join(",");
+    let cap = format!("{:?}", input.request_cap);
+    let reserve = format!("{:?}", input.verification_reserve);
+    let assurance = input.assurance_available.to_string();
+    let pin = format!("{:?}", input.manual_pin);
+    let expected = input.expected_input_tokens.to_string();
+    let mut parts: Vec<&str> = vec![
         &registry.document_digest,
         &input.evidence.stats_version,
-        &serde_json::to_string(input.thresholds).unwrap_or_default(),
-        &format!("{:?}", input.needs),
+        &thresholds_json,
+        &needs,
         &input.execution_profile,
-        &input.allowed_residencies.join(","),
-        &format!("{:?}", input.request_cap),
-        &format!("{:?}", input.verification_reserve),
-        &input.assurance_available.to_string(),
-        &format!("{:?}", input.manual_pin),
+        &residencies,
+        &cap,
+        &reserve,
+        &assurance,
+        &pin,
         &input.harness,
-        &input.expected_input_tokens.to_string(),
-    ]);
+        &expected,
+    ];
+    // Only a re-evaluation carries a binding in force; a fresh compile
+    // digests exactly as before the field existed.
+    let current = input
+        .current_binding
+        .as_ref()
+        .map(|(e, m)| format!("current:{e}/{m}"));
+    if let Some(c) = &current {
+        parts.push(c);
+    }
+    let input_digest = digest(&parts);
     let zero = Money::zero(&input.request_cap.currency, input.request_cap.scale);
     let money = |m: u64| Money {
         minor_units: m,
@@ -549,7 +572,18 @@ pub fn compile(input: &CompileInput<'_>) -> Result<Compiled, CompileRefused> {
             ));
         }
     }
-    // 3. Feasibility first, then lowest expected complete cost.
+    // 3. Feasibility first, then lowest expected complete cost; at a
+    //    re-evaluation the plan opening with the binding in force is the
+    //    incumbent (docs/27 §7.6: switch only when the saving clears the
+    //    switch cost).
+    let incumbent: Option<String> = input.current_binding.as_ref().and_then(|(e, m)| {
+        let label = format!("{e}/{m}");
+        candidates
+            .iter()
+            .filter(|(_, c)| c.bindings.first() == Some(&label))
+            .map(|(_, c)| c.plan_id.clone())
+            .next()
+    });
     let selection = select(
         &candidates
             .iter()
@@ -563,7 +597,7 @@ pub fn compile(input: &CompileInput<'_>) -> Result<Compiled, CompileRefused> {
             })
             .collect::<Vec<_>>(),
         input.thresholds,
-        None,
+        incumbent.as_deref(),
     );
     let Some(chosen) = selection.selected.as_ref() else {
         let mut all = exclusions;

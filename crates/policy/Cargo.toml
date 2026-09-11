@@ -29,4 +29,5 @@ capabilities = [
   { id = "kernel.decide", requirements = ["REQ-EV-0080", "REQ-EV-0045", "REQ-EV-0091", "REQ-EV-0093"] },
   { id = "kernel.approval", requirements = ["REQ-EV-0080"] },
   { id = "ledger.receipts", requirements = ["REQ-EV-0080"] },
+  { id = "assurance.realized_risk", requirements = ["REQ-EPR-008"] },
 ]

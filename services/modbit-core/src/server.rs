@@ -58,6 +58,9 @@ pub struct Core {
     pub(crate) runtime: crate::runtime::Runtime,
     /// The profile directory (fork worktrees live under `worktrees/`).
     pub(crate) data_dir: PathBuf,
+    /// The assurance policy this Core runs under (REQ-EPR-008): the base
+    /// strengthened by the organization layer, never weakened.
+    pub(crate) assurance_policy: modbit_policy::AssurancePolicy,
 }
 
 /// Bounded number of events per subscription batch (REQ-EV-0108).
@@ -159,6 +162,15 @@ pub async fn run(data_dir: PathBuf, idle_exit_secs: Option<u64>) -> Result<()> {
             .with_policy(modbit_providers::OrgModelPolicy::from_env()),
         runtime: crate::runtime::Runtime::default(),
         data_dir: data_dir.clone(),
+        assurance_policy: {
+            let (policy, ignored) = crate::assurance::org_policy().context("assurance policy")?;
+            for i in &ignored {
+                eprintln!(
+                    "modbit-core: MODBIT_POLICY_FILE cannot weaken the base policy; ignored: {i}"
+                );
+            }
+            policy
+        },
     });
     let _ = std::fs::remove_file(data_dir.join("core.ready"));
     let listener = Listener::bind(&endpoint)
@@ -2355,6 +2367,62 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 ),
                 Err(e) => reject(cid, "CHECKPOINT", e.to_string()),
             }
+        }
+        "GetRoutingSessionState" => {
+            let Ok(p) = wire::GetRoutingSessionState::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "GetRoutingSessionState");
+            };
+            let Some(session_id) = p
+                .session_id
+                .as_ref()
+                .and_then(id16)
+                .map(SessionId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "session_id required");
+            };
+            let store = core.store.lock().await;
+            match crate::routing::session_state(&store, session_id) {
+                Some(v) => accept(cid, false, v.encode_to_vec()),
+                None => reject(cid, "UNKNOWN_SESSION", session_id.to_string()),
+            }
+        }
+        "GetTaskAssurance" => {
+            let Ok(p) = wire::GetTaskAssurance::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "GetTaskAssurance");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let store = core.store.lock().await;
+            let task = match store.task(&task_id) {
+                Ok(Some(t)) => t,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            let (policy, notes) = crate::assurance::policy_for(
+                &core.assurance_policy,
+                Path::new(task.workspace_root.as_deref().unwrap_or(".")),
+            );
+            let latest = crate::assurance::latest(&store, &task);
+            let gate = crate::gate::latest(&store, &task);
+            accept(
+                cid,
+                false,
+                wire::TaskAssuranceView {
+                    task_id: Some(wire_id(task_id.as_bytes())),
+                    derived: latest.is_some(),
+                    realized_risk: latest
+                        .as_ref()
+                        .map(|(r, rref, _)| crate::assurance::view(r, rref)),
+                    derived_at_offset: latest.as_ref().map(|(_, _, o)| *o).unwrap_or(0),
+                    policy_version: policy.version(),
+                    policy_notes: notes,
+                    acceptance: gate
+                        .as_ref()
+                        .map(|(g, gref, off, trig)| crate::gate::view(g, gref, *off, trig)),
+                }
+                .encode_to_vec(),
+            )
         }
         "PreviewRewind" => {
             let Ok(p) = wire::PreviewRewind::decode(env.payload.as_slice()) else {

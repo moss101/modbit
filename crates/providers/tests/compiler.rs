@@ -38,6 +38,9 @@ fn entry(model: &str, roles: &[&str], input_price: u64, output_price: u64) -> Re
             output_per_mtok_minor: output_price,
             currency: "USD".into(),
             scale: 2,
+            cached_input_per_mtok_minor: None,
+            cache_write_per_mtok_minor: None,
+            cache_ttl_ms: None,
         },
         latency: Latency {
             p50_ms: 900,
@@ -154,6 +157,7 @@ fn input<'a>(
         gate_version: "gate-1".into(),
         risk_version: "risk-1".into(),
         expected_input_tokens: 40_000,
+        current_binding: None,
     }
 }
 
@@ -403,4 +407,117 @@ fn nothing_dispatches_from_what_cannot_be_prevalidated() {
             .iter()
             .all(|s| s.trigger == Trigger::Initial || s.trigger == Trigger::QualityRejected)
     );
+}
+
+/// REQ-EPR-009 (docs/27 §7.6): at a re-evaluation the plan opening with the
+/// binding in force is the incumbent. With both solvers confidence-feasible,
+/// a warm cached prefix makes staying on the dearer model cheaper than
+/// switching once the re-prefill and the cache write are counted, so the
+/// incumbent is kept; the same comparison with the prefix cold flips to the
+/// cheaper model. With nothing confidence-feasible, the incumbent stays
+/// whatever the economics say: a switch needs a feasible alternative.
+#[test]
+fn qual_epr_009_a_route_switches_only_to_a_feasible_alternative_that_beats_the_switch_cost() {
+    use modbit_providers::economics::{CacheState, RemainingDemand, compare};
+    let mut mid = entry("gpt-5", &["solver", "reviewer"], 1_000, 3_000);
+    mid.economics.cached_input_per_mtok_minor = Some(100);
+    mid.economics.cache_ttl_ms = Some(300_000);
+    let mut mini = entry("gpt-5-mini", &["solver"], 700, 2_100);
+    mini.economics.cache_write_per_mtok_minor = Some(100);
+    let r = registry_with(vec![mini.clone(), mid.clone()]);
+    let feasible = Evidence {
+        stats_version: "stats-7".into(),
+        legs: vec![
+            leg("solver|gpt-5-mini|none|build-1", 0.80, 0.86, 150),
+            leg("solver|gpt-5|none|build-1", 0.85, 0.90, 150),
+        ],
+    };
+    // The compiler's basis: one leg at the expected prompt size and the
+    // 4096-token output ceiling.
+    let demand = RemainingDemand {
+        input_tokens_per_call: 40_000,
+        output_tokens_per_call: 4_096,
+        calls: 1,
+    };
+    let warm = CacheState {
+        endpoint: "openai".into(),
+        model: "gpt-5".into(),
+        cached_prefix_tokens: 36_000,
+        last_used_at_ms: 1_000,
+        prefix_key: "k".into(),
+    };
+    // Warm: staying on gpt-5 is cheaper; the threshold carries the switch cost.
+    let economics_warm = compare(&mid, &mini, Some(&warm), 2_000, demand, 0, 500);
+    assert_eq!(economics_warm.decision, "STAY", "{economics_warm:?}");
+    let mut t = thresholds();
+    t.switch_cost_minor = economics_warm.switch_cost.total_minor;
+    let mut i = input(&r, &feasible, &t);
+    i.current_binding = Some(("openai".into(), "gpt-5".into()));
+    i.assurance_available = false;
+    let kept = compile(&i).expect("compiled");
+    assert_eq!(kept.selection.code, "FEASIBLE");
+    assert_eq!(
+        kept.plan.initial_slot().unwrap().model,
+        "gpt-5",
+        "{:?}",
+        kept.selection
+    );
+    assert!(
+        kept.selection
+            .exclusions
+            .iter()
+            .any(|e| e.reason.contains("below the switch cost")),
+        "{:?}",
+        kept.selection.exclusions
+    );
+    // Cold (the prefix expired): the cheaper feasible model wins.
+    let economics_cold = compare(&mid, &mini, Some(&warm), 2_000 + 600_000, demand, 0, 500);
+    assert_eq!(economics_cold.decision, "SWITCH", "{economics_cold:?}");
+    let mut t2 = thresholds();
+    t2.switch_cost_minor = economics_cold.switch_cost.total_minor;
+    let mut i2 = input(&r, &feasible, &t2);
+    i2.current_binding = Some(("openai".into(), "gpt-5".into()));
+    i2.assurance_available = false;
+    let switched = compile(&i2).expect("compiled");
+    assert_eq!(
+        switched.plan.initial_slot().unwrap().model,
+        "gpt-5-mini",
+        "{:?}",
+        switched.selection
+    );
+    // A fresh compile with no incumbent is byte-identical to before the
+    // field existed: the plan ids do not move.
+    let fresh_a = compile(&input(&r, &feasible, &t2)).expect("compiled");
+    let fresh_b = compile(&input(&r, &feasible, &t2)).expect("compiled");
+    assert_eq!(fresh_a.plan.plan_id, fresh_b.plan.plan_id);
+    // Cold start: nothing is confidence-feasible; the incumbent stays even
+    // though the alternative is nominally cheaper.
+    let none = no_evidence();
+    let mut i3 = input(&r, &none, &t2);
+    i3.current_binding = Some(("openai".into(), "gpt-5".into()));
+    i3.assurance_available = false;
+    let stayed = compile(&i3).expect("compiled");
+    assert_eq!(stayed.selection.code, "QUALITY_FLOOR_INFEASIBLE");
+    assert_eq!(
+        stayed.plan.initial_slot().unwrap().model,
+        "gpt-5",
+        "{:?}",
+        stayed.selection
+    );
+    assert!(!stayed.selection.target_met);
+    assert!(
+        stayed
+            .selection
+            .exclusions
+            .iter()
+            .any(|e| e.plan_id != stayed.plan.plan_id && e.reason.contains("no observation")),
+        "the alternative is excluded for want of evidence, not chosen for its price: {:?}",
+        stayed.selection.exclusions
+    );
+    // And with no incumbent at cold start, the fallback picks the best by
+    // lower bound and cost, as before.
+    let mut i4 = input(&r, &none, &t2);
+    i4.assurance_available = false;
+    let fallback = compile(&i4).expect("compiled");
+    assert_eq!(fallback.plan.initial_slot().unwrap().model, "gpt-5-mini");
 }

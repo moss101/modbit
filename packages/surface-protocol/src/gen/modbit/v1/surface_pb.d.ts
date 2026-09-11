@@ -5535,6 +5535,578 @@ export declare type CheckpointRestoreResult = Message<"modbit.v1.CheckpointResto
 export declare const CheckpointRestoreResultSchema: GenMessage<CheckpointRestoreResult>;
 
 /**
+ * @generated from message modbit.v1.GetRoutingSessionState
+ */
+export declare type GetRoutingSessionState = Message<"modbit.v1.GetRoutingSessionState"> & {
+  /**
+   * @generated from field: modbit.v1.Id session_id = 1;
+   */
+  sessionId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.GetRoutingSessionState.
+ * Use `create(GetRoutingSessionStateSchema)` to create a new message.
+ */
+export declare const GetRoutingSessionStateSchema: GenMessage<GetRoutingSessionState>;
+
+/**
+ * @generated from message modbit.v1.RouteDecisionView
+ */
+export declare type RouteDecisionView = Message<"modbit.v1.RouteDecisionView"> & {
+  /**
+   * TASK | COMPACTION | PROVIDER | QUALITY | MODE
+   *
+   * @generated from field: string boundary = 1;
+   */
+  boundary: string;
+
+  /**
+   * @generated from field: uint64 route_epoch = 2;
+   */
+  routeEpoch: bigint;
+
+  /**
+   * endpoint/model in force before; "" at a fresh start
+   *
+   * @generated from field: string current = 3;
+   */
+  current: string;
+
+  /**
+   * endpoint/model in force after
+   *
+   * @generated from field: string chosen = 4;
+   */
+  chosen: string;
+
+  /**
+   * INITIAL | STAY | SWITCH
+   *
+   * @generated from field: string decision = 5;
+   */
+  decision: string;
+
+  /**
+   * @generated from field: string reason = 6;
+   */
+  reason: string;
+
+  /**
+   * @generated from field: uint64 stay_minor = 7;
+   */
+  stayMinor: bigint;
+
+  /**
+   * @generated from field: uint64 switch_minor = 8;
+   */
+  switchMinor: bigint;
+
+  /**
+   * the itemized total
+   *
+   * @generated from field: uint64 switch_cost_minor = 9;
+   */
+  switchCostMinor: bigint;
+
+  /**
+   * the itemized switch cost
+   *
+   * @generated from field: string switch_cost_json = 10;
+   */
+  switchCostJson: string;
+
+  /**
+   * the cache state consulted, "" when none
+   *
+   * @generated from field: string cache_state_json = 11;
+   */
+  cacheStateJson: string;
+
+  /**
+   * @generated from field: string plan_id = 12;
+   */
+  planId: string;
+
+  /**
+   * @generated from field: uint64 offset = 13;
+   */
+  offset: bigint;
+
+  /**
+   * @generated from field: modbit.v1.Id run_id = 14;
+   */
+  runId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.RouteDecisionView.
+ * Use `create(RouteDecisionViewSchema)` to create a new message.
+ */
+export declare const RouteDecisionViewSchema: GenMessage<RouteDecisionView>;
+
+/**
+ * @generated from message modbit.v1.CacheStateView
+ */
+export declare type CacheStateView = Message<"modbit.v1.CacheStateView"> & {
+  /**
+   * @generated from field: string endpoint = 1;
+   */
+  endpoint: string;
+
+  /**
+   * @generated from field: string model = 2;
+   */
+  model: string;
+
+  /**
+   * @generated from field: uint64 cached_prefix_tokens = 3;
+   */
+  cachedPrefixTokens: bigint;
+
+  /**
+   * @generated from field: int64 last_used_at_ms = 4;
+   */
+  lastUsedAtMs: bigint;
+
+  /**
+   * @generated from field: string prefix_key = 5;
+   */
+  prefixKey: string;
+};
+
+/**
+ * Describes the message modbit.v1.CacheStateView.
+ * Use `create(CacheStateViewSchema)` to create a new message.
+ */
+export declare const CacheStateViewSchema: GenMessage<CacheStateView>;
+
+/**
+ * docs/27 §16.1 RoutingSessionState: a projection of the log, not a store.
+ *
+ * @generated from message modbit.v1.RoutingSessionStateView
+ */
+export declare type RoutingSessionStateView = Message<"modbit.v1.RoutingSessionStateView"> & {
+  /**
+   * @generated from field: modbit.v1.Id session_id = 1;
+   */
+  sessionId?: Id | undefined;
+
+  /**
+   * @generated from field: string active_endpoint = 2;
+   */
+  activeEndpoint: string;
+
+  /**
+   * @generated from field: string active_model = 3;
+   */
+  activeModel: string;
+
+  /**
+   * @generated from field: string active_plan_id = 4;
+   */
+  activePlanId: string;
+
+  /**
+   * one per run: endpoint/model[ -> endpoint/model]
+   *
+   * @generated from field: repeated string executed_path_labels = 5;
+   */
+  executedPathLabels: string[];
+
+  /**
+   * absent until a provider reported usage
+   *
+   * @generated from field: modbit.v1.CacheStateView cache_state = 6;
+   */
+  cacheState?: CacheStateView | undefined;
+
+  /**
+   * @generated from field: string last_profile_ref = 7;
+   */
+  lastProfileRef: string;
+
+  /**
+   * @generated from field: int64 last_route_at_ms = 8;
+   */
+  lastRouteAtMs: bigint;
+
+  /**
+   * the highest routing epoch admitted in the session
+   *
+   * @generated from field: uint64 route_epoch = 9;
+   */
+  routeEpoch: bigint;
+
+  /**
+   * @generated from field: uint64 branch_generation = 10;
+   */
+  branchGeneration: bigint;
+
+  /**
+   * @generated from field: repeated modbit.v1.RouteDecisionView decisions = 11;
+   */
+  decisions: RouteDecisionView[];
+};
+
+/**
+ * Describes the message modbit.v1.RoutingSessionStateView.
+ * Use `create(RoutingSessionStateViewSchema)` to create a new message.
+ */
+export declare const RoutingSessionStateViewSchema: GenMessage<RoutingSessionStateView>;
+
+/**
+ * The realized risk derived at a task's latest COMPLETION run, and the
+ * policy version it was derived under.
+ *
+ * @generated from message modbit.v1.GetTaskAssurance
+ */
+export declare type GetTaskAssurance = Message<"modbit.v1.GetTaskAssurance"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.GetTaskAssurance.
+ * Use `create(GetTaskAssuranceSchema)` to create a new message.
+ */
+export declare const GetTaskAssuranceSchema: GenMessage<GetTaskAssurance>;
+
+/**
+ * @generated from message modbit.v1.RiskReasonView
+ */
+export declare type RiskReasonView = Message<"modbit.v1.RiskReasonView"> & {
+  /**
+   * PROTECTED_SURFACE | BLAST_RADIUS | UNEXPECTED_SCOPE | SPARSE_COVERAGE | EXTERNAL_EFFECT | FORBIDDEN_EFFECT
+   *
+   * @generated from field: string code = 1;
+   */
+  code: string;
+
+  /**
+   * AUTH | SECRET | CI_CD | ... for PROTECTED_SURFACE
+   *
+   * @generated from field: string surface = 2;
+   */
+  surface: string;
+
+  /**
+   * the level this reason alone implies
+   *
+   * @generated from field: string level = 3;
+   */
+  level: string;
+
+  /**
+   * @generated from field: repeated string paths = 4;
+   */
+  paths: string[];
+
+  /**
+   * @generated from field: string detail = 5;
+   */
+  detail: string;
+};
+
+/**
+ * Describes the message modbit.v1.RiskReasonView.
+ * Use `create(RiskReasonViewSchema)` to create a new message.
+ */
+export declare const RiskReasonViewSchema: GenMessage<RiskReasonView>;
+
+/**
+ * @generated from message modbit.v1.RealizedRiskView
+ */
+export declare type RealizedRiskView = Message<"modbit.v1.RealizedRiskView"> & {
+  /**
+   * object hash of the record
+   *
+   * @generated from field: string realized_risk_ref = 1;
+   */
+  realizedRiskRef: string;
+
+  /**
+   * @generated from field: uint32 schema_version = 2;
+   */
+  schemaVersion: number;
+
+  /**
+   * @generated from field: string rules_version = 3;
+   */
+  rulesVersion: string;
+
+  /**
+   * @generated from field: string policy_version = 4;
+   */
+  policyVersion: string;
+
+  /**
+   * @generated from field: uint64 candidate_revision = 5;
+   */
+  candidateRevision: bigint;
+
+  /**
+   * LOW | MEDIUM | HIGH | CRITICAL
+   *
+   * @generated from field: string level = 6;
+   */
+  level: string;
+
+  /**
+   * FAST | STANDARD | GOVERNED | HIGH_ASSURANCE
+   *
+   * @generated from field: string minimum_assurance = 7;
+   */
+  minimumAssurance: string;
+
+  /**
+   * @generated from field: bool independent_review_required = 8;
+   */
+  independentReviewRequired: boolean;
+
+  /**
+   * @generated from field: bool human_required = 9;
+   */
+  humanRequired: boolean;
+
+  /**
+   * @generated from field: repeated modbit.v1.RiskReasonView reasons = 10;
+   */
+  reasons: RiskReasonView[];
+
+  /**
+   * @generated from field: repeated string forbidden_effects_requested = 11;
+   */
+  forbiddenEffectsRequested: string[];
+
+  /**
+   * @generated from field: repeated string evidence_refs = 12;
+   */
+  evidenceRefs: string[];
+
+  /**
+   * @generated from field: string facts_digest = 13;
+   */
+  factsDigest: string;
+};
+
+/**
+ * Describes the message modbit.v1.RealizedRiskView.
+ * Use `create(RealizedRiskViewSchema)` to create a new message.
+ */
+export declare const RealizedRiskViewSchema: GenMessage<RealizedRiskView>;
+
+/**
+ * @generated from message modbit.v1.GateEvidenceView
+ */
+export declare type GateEvidenceView = Message<"modbit.v1.GateEvidenceView"> & {
+  /**
+   * build | typecheck | lint | tests | security | api_compatibility | invariants | effects | realized_risk | independent_review | human_decision | check:<id>
+   *
+   * @generated from field: string kind = 1;
+   */
+  kind: string;
+
+  /**
+   * PASS | FAIL | MISSING | STALE | INCOMPLETE
+   *
+   * @generated from field: string status = 2;
+   */
+  status: string;
+
+  /**
+   * @generated from field: bool required = 3;
+   */
+  required: boolean;
+
+  /**
+   * @generated from field: string detail = 4;
+   */
+  detail: string;
+
+  /**
+   * @generated from field: repeated string refs = 5;
+   */
+  refs: string[];
+};
+
+/**
+ * Describes the message modbit.v1.GateEvidenceView.
+ * Use `create(GateEvidenceViewSchema)` to create a new message.
+ */
+export declare const GateEvidenceViewSchema: GenMessage<GateEvidenceView>;
+
+/**
+ * The Acceptance Gate's result (REQ-EPR-017; docs/27 §9.4): whether the
+ * evidence at the candidate revision satisfies the required assurance.
+ *
+ * @generated from message modbit.v1.AcceptanceGateView
+ */
+export declare type AcceptanceGateView = Message<"modbit.v1.AcceptanceGateView"> & {
+  /**
+   * object hash of the AcceptanceGateResult
+   *
+   * @generated from field: string gate_ref = 1;
+   */
+  gateRef: string;
+
+  /**
+   * @generated from field: string gate_version = 2;
+   */
+  gateVersion: string;
+
+  /**
+   * @generated from field: uint64 candidate_revision = 3;
+   */
+  candidateRevision: bigint;
+
+  /**
+   * ACCEPT | REJECT | INCONCLUSIVE
+   *
+   * @generated from field: string verdict = 4;
+   */
+  verdict: string;
+
+  /**
+   * @generated from field: string required_assurance = 5;
+   */
+  requiredAssurance: string;
+
+  /**
+   * @generated from field: bool independent_review_required = 6;
+   */
+  independentReviewRequired: boolean;
+
+  /**
+   * @generated from field: bool human_required = 7;
+   */
+  humanRequired: boolean;
+
+  /**
+   * @generated from field: repeated string missing_evidence = 8;
+   */
+  missingEvidence: string[];
+
+  /**
+   * @generated from field: repeated string reject_reasons = 9;
+   */
+  rejectReasons: string[];
+
+  /**
+   * @generated from field: repeated modbit.v1.GateEvidenceView evidence = 10;
+   */
+  evidence: GateEvidenceView[];
+
+  /**
+   * @generated from field: repeated string evidence_refs = 11;
+   */
+  evidenceRefs: string[];
+
+  /**
+   * @generated from field: string realized_risk_ref = 12;
+   */
+  realizedRiskRef: string;
+
+  /**
+   * @generated from field: string policy_version = 13;
+   */
+  policyVersion: string;
+
+  /**
+   * @generated from field: string risk_version = 14;
+   */
+  riskVersion: string;
+
+  /**
+   * @generated from field: string plan_id = 15;
+   */
+  planId: string;
+
+  /**
+   * @generated from field: string leg_id = 16;
+   */
+  legId: string;
+
+  /**
+   * COMPLETION_RUN | REVIEW_DECISION
+   *
+   * @generated from field: string trigger = 17;
+   */
+  trigger: string;
+
+  /**
+   * where AcceptanceGateEvaluated is on the log
+   *
+   * @generated from field: uint64 at_offset = 18;
+   */
+  atOffset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.AcceptanceGateView.
+ * Use `create(AcceptanceGateViewSchema)` to create a new message.
+ */
+export declare const AcceptanceGateViewSchema: GenMessage<AcceptanceGateView>;
+
+/**
+ * @generated from message modbit.v1.TaskAssuranceView
+ */
+export declare type TaskAssuranceView = Message<"modbit.v1.TaskAssuranceView"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * false until a COMPLETION run derived it
+   *
+   * @generated from field: bool derived = 2;
+   */
+  derived: boolean;
+
+  /**
+   * @generated from field: modbit.v1.RealizedRiskView realized_risk = 3;
+   */
+  realizedRisk?: RealizedRiskView | undefined;
+
+  /**
+   * where RealizedRiskDerived is on the log
+   *
+   * @generated from field: uint64 derived_at_offset = 4;
+   */
+  derivedAtOffset: bigint;
+
+  /**
+   * the policy the task is judged under now
+   *
+   * @generated from field: string policy_version = 5;
+   */
+  policyVersion: string;
+
+  /**
+   * repository-layer entries that were ignored (cannot weaken)
+   *
+   * @generated from field: repeated string policy_notes = 6;
+   */
+  policyNotes: string[];
+
+  /**
+   * the latest gate result, absent until one exists
+   *
+   * @generated from field: modbit.v1.AcceptanceGateView acceptance = 7;
+   */
+  acceptance?: AcceptanceGateView | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.TaskAssuranceView.
+ * Use `create(TaskAssuranceViewSchema)` to create a new message.
+ */
+export declare const TaskAssuranceViewSchema: GenMessage<TaskAssuranceView>;
+
+/**
  * Fork a new task from one of a task's checkpoints. The fork gets its own
  * git worktree (a branch at the checkpoint's HEAD with the checkpoint's
  * dirty state materialized), its own revision lineage, and a

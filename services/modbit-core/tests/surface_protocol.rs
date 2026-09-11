@@ -1049,6 +1049,10 @@ async fn m2_4_invoke_tool_runs_direct_tools_through_registry_policy_and_event_lo
     std::fs::write(repo.path().join(".env"), "SECRET=1\n").unwrap();
     for args in [
         vec!["init", "-q", "-b", "main"],
+        // Bytes as written: no line-ending rewriting on checkout (Git for
+        // Windows defaults autocrlf=true), so a worktree of this repository
+        // holds the same bytes the test wrote.
+        vec!["config", "core.autocrlf", "false"],
         vec!["add", "-A"],
         vec![
             "-c",
@@ -2137,19 +2141,33 @@ async fn scripted_model_paced(
     String,
     std::sync::Arc<std::sync::Mutex<Vec<serde_json::Value>>>,
 ) {
-    scripted_model_reactive(script, specialist, stall_at, delay_at, vec![]).await
+    scripted_model_reactive(script, specialist, stall_at, delay_at, vec![], false).await
 }
 
 /// The same server with reactions: when the latest tool result in a request
 /// contains `needle`, the reply is the paired step instead of the indexed one
 /// (a model reading what its last call reported; the kill-point suite uses
 /// it to retry a write whose outcome came back unknown and absent).
+/// The same server reporting a warm prompt cache: from the second request
+/// on, three quarters of the prompt tokens come back as cached (the shape
+/// OpenAI reports in `prompt_tokens_details.cached_tokens`), so the Core's
+/// cache economics have real metadata to work from.
+async fn scripted_model_cached(
+    script: Vec<serde_json::Value>,
+) -> (
+    String,
+    std::sync::Arc<std::sync::Mutex<Vec<serde_json::Value>>>,
+) {
+    scripted_model_reactive(script, vec![], None, None, vec![], true).await
+}
+
 async fn scripted_model_reactive(
     script: Vec<serde_json::Value>,
     specialist: Vec<serde_json::Value>,
     stall_at: Option<usize>,
     delay_at: Option<(usize, Duration)>,
     rules: Vec<(String, serde_json::Value)>,
+    cached_report: bool,
 ) -> (
     String,
     std::sync::Arc<std::sync::Mutex<Vec<serde_json::Value>>>,
@@ -2268,7 +2286,12 @@ async fn scripted_model_reactive(
                 // a smaller prompt is visibly cheaper (the same bytes/4
                 // estimator the product uses elsewhere).
                 let completion_tokens = reply.to_string().len().div_ceil(4);
-                frames.push(serde_json::json!({"id":"c","model":"scripted-1","choices":[{"index":0,"delta":{},"finish_reason":finish}],"usage":{"prompt_tokens":prompt_tokens,"completion_tokens":completion_tokens}}).to_string());
+                let cached_tokens = if cached_report && results > 0 {
+                    prompt_tokens * 3 / 4
+                } else {
+                    0
+                };
+                frames.push(serde_json::json!({"id":"c","model":"scripted-1","choices":[{"index":0,"delta":{},"finish_reason":finish}],"usage":{"prompt_tokens":prompt_tokens,"completion_tokens":completion_tokens,"prompt_tokens_details":{"cached_tokens":cached_tokens}}}).to_string());
                 frames.push("[DONE]".into());
                 let _ = sock
                     .write_all(
@@ -5287,13 +5310,18 @@ async fn qual_ev_0191_steering_policy_interrupts_replaces_coalesces_and_orders()
         first.iter().any(|t| t == "[COLLECT] c1\nc2"),
         "COLLECT coalesces into one message: {first:?}"
     );
+    // The second follow-up waits for the next boundary: it is in no user
+    // message of the first request (the workspace root in the harness
+    // state is a random temp name, so the match is on the typed line).
     assert!(
-        first.iter().any(|t| t == "[FOLLOW_UP] f1") && !first.iter().any(|t| t.contains("f2")),
+        first.iter().any(|t| t == "[FOLLOW_UP] f1")
+            && !first.iter().any(|t| t.contains("[FOLLOW_UP] f2")),
         "FOLLOW_UP one per boundary: {first:?}"
     );
     let second = user_texts(&bodies[1]);
     assert!(
-        second.iter().any(|t| t == "[FOLLOW_UP] f2") && !first.iter().any(|t| t.contains("f2")),
+        second.iter().any(|t| t == "[FOLLOW_UP] f2")
+            && !first.iter().any(|t| t.contains("[FOLLOW_UP] f2")),
         "the carried follow-up lands at the next boundary, as its own turn: {second:?}"
     );
     let third = user_texts(&bodies[2]);
@@ -12509,6 +12537,9 @@ async fn qual_epr_002_a_signed_registry_activates_at_runtime_and_a_revocation_st
             output_per_mtok_minor: if model == "gpt-5-mini" { 200 } else { 1_000 },
             currency: "USD".into(),
             scale: 2,
+            cached_input_per_mtok_minor: None,
+            cache_write_per_mtok_minor: None,
+            cache_ttl_ms: None,
         },
         latency: Latency {
             p50_ms: 900,
@@ -13117,6 +13148,9 @@ async fn qual_epr_016_feasibility_is_measured_at_admission_under_pinned_versions
             output_per_mtok_minor: 200,
             currency: "USD".into(),
             scale: 2,
+            cached_input_per_mtok_minor: None,
+            cache_write_per_mtok_minor: None,
+            cache_ttl_ms: None,
         },
         latency: Latency {
             p50_ms: 900,
@@ -13441,6 +13475,9 @@ async fn qual_epr_004_the_compiler_runs_through_core_and_identical_inputs_give_i
                     output_per_mtok_minor: output_price,
                     currency: "USD".into(),
                     scale: 2,
+                    cached_input_per_mtok_minor: None,
+                    cache_write_per_mtok_minor: None,
+                    cache_ttl_ms: None,
                 },
                 latency: Latency {
                     p50_ms: 900,
@@ -13744,6 +13781,9 @@ async fn qual_epr_005_new_runs_go_through_the_compiled_initial_leg_and_keep_the_
             output_per_mtok_minor: output_price,
             currency: "USD".into(),
             scale: 2,
+            cached_input_per_mtok_minor: None,
+            cache_write_per_mtok_minor: None,
+            cache_ttl_ms: None,
         },
         latency: Latency {
             p50_ms: 900,
@@ -16299,7 +16339,7 @@ async fn kill_point_round(boundary: &str) -> KillRound {
         "note.txt: absent".to_owned(),
         json!({"calls": [{"name": "change.apply", "args": {"path": "note.txt", "op": "create", "content": "hello\n"}}]}),
     )];
-    let (base, _seen) = scripted_model_reactive(script, vec![], None, None, rules).await;
+    let (base, _seen) = scripted_model_reactive(script, vec![], None, None, rules, false).await;
     let dir = tempfile::tempdir().unwrap();
     let (var, spec) = match boundary.split_once(':') {
         Some(("before", rest)) => ("MODBIT_FAULT_KILL_BEFORE_EVENT", rest.to_owned()),
@@ -17600,9 +17640,16 @@ async fn qual_ev_0077_0122_a_fork_carries_decisions_and_evidence_but_no_stale_pe
     );
     assert_eq!(f.branch_generation, 1);
     assert!(f.branch.starts_with("modbit/fork-"), "{f:?}");
+    let profile = dir
+        .path()
+        .canonicalize()
+        .unwrap()
+        .to_string_lossy()
+        .trim_start_matches(r"\\?\")
+        .to_owned();
     assert!(
-        std::path::Path::new(&f.worktree).starts_with(dir.path().canonicalize().unwrap()),
-        "the worktree lives under the profile, never inside the source repository: {}",
+        f.worktree.starts_with(&profile) && !f.worktree.starts_with(&root),
+        "the worktree lives under the profile, never inside the source repository: {} (profile {profile})",
         f.worktree
     );
     assert_eq!(
@@ -17961,5 +18008,1037 @@ async fn qual_ev_0123_rewind_preview_is_non_mutating_and_revert_honours_optimist
     assert!(
         tree.branches.is_empty(),
         "a revert of the same task opens no branch"
+    );
+}
+
+async fn task_assurance(c: &mut Client, task: &Id) -> modbit_protocol::v1::TaskAssuranceView {
+    use modbit_protocol::v1::GetTaskAssurance;
+    let ack = c
+        .command(envelope(
+            Id {
+                value: (0..16).map(|_| rand::random::<u8>()).collect(),
+            },
+            "GetTaskAssurance",
+            GetTaskAssurance {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    Client::result(&ack).unwrap()
+}
+
+/// QUAL-EPR-008 / EPR-E2E-008 (REQ-EPR-008; docs/27 §9.3, docs/38): real
+/// protected fixtures changed through the production path. A task edits
+/// an auth module and adds a migration, its check passes, it completes:
+/// the COMPLETION run derives the factual risk — CRITICAL, HIGH_ASSURANCE,
+/// independent review and a human decision required, the reasons naming
+/// the surfaces — persists it on the log beside the passing check, and the
+/// task goes to the user's review with the obligation standing. A
+/// repository policy layer that tries to lower the minimum is ignored and
+/// named. EPR-FI-008: the same change under the unattended profile, which
+/// can never wait for a human, is a safe stop (COMPLETION_REFUSED with
+/// ASSURANCE_HUMAN_REQUIRED) — nothing is synthesized in the human's
+/// place; and the policy version is what the routing plan was compiled
+/// under.
+#[tokio::test]
+async fn qual_epr_008_factual_risk_stays_strict_despite_passing_tests_and_stops_safely_unattended()
+{
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let files: [(&str, &str); 4] = [
+        (
+            "src/auth/login.py",
+            "def login(u, p):\n    return u == 'a'\n",
+        ),
+        ("db/migrations/001_init.sql", "create table t (id int);\n"),
+        (
+            "tests/test_login.py",
+            "def test_login():\n    assert True\n",
+        ),
+        ("check.sh", "grep -q 'validated' src/auth/login.py\n"),
+    ];
+    let (repo, root) = plain_repo(&files);
+    // A repository layer that would weaken the policy: ignored, and named.
+    std::fs::create_dir_all(repo.path().join(".modbit")).unwrap();
+    std::fs::write(
+        repo.path().join(".modbit/policy.json"),
+        r#"{"minimum_assurance": "FAST", "human_required_at": "CRITICAL", "review_required_at": "CRITICAL"}"#,
+    )
+    .unwrap();
+    assert!(
+        Command::new("git")
+            .arg("-C")
+            .arg(repo.path())
+            .args(["add", "-A"])
+            .status()
+            .unwrap()
+            .success()
+    );
+    assert!(
+        Command::new("git")
+            .arg("-C")
+            .arg(repo.path())
+            .args([
+                "-c",
+                "user.name=t",
+                "-c",
+                "user.email=t@e",
+                "commit",
+                "-q",
+                "-m",
+                "policy"
+            ])
+            .status()
+            .unwrap()
+            .success()
+    );
+    let hash = sha256_of(files[0].1.as_bytes());
+    let script = |summary: &str| {
+        vec![
+            json!({"calls": [{"name": "plan.update", "args": {"outcome": "validate the login and add the migration", "expected_files": ["src/auth/login.py", "db/migrations/002_add.sql"], "verification": ["sh check.sh"]}}]}),
+            json!({"calls": [{"name": "fs.read", "args": {"path": "src/auth/login.py"}}]}),
+            json!({"calls": [{"name": "change.apply", "args": {"path": "src/auth/login.py", "op": "replace", "content": "def login(u, p):\n    # validated\n    return u == 'a' and p\n", "expected_content_hash": hash}}]}),
+            json!({"calls": [{"name": "change.apply", "args": {"path": "db/migrations/002_add.sql", "op": "create", "content": "alter table t add column name text;\n"}}]}),
+            // A migration written by hand is flagged (DI-2); the plan revision
+            // justifies it (docs/28 §3) — the flag is review's business, the
+            // risk is policy's.
+            json!({"calls": [{"name": "plan.update", "args": {"outcome": "validate the login and add the migration", "expected_files": ["src/auth/login.py", "db/migrations/002_add.sql"], "verification": ["sh check.sh"], "reason": "the migration is authored by hand: there is no generator in this repository"}}]}),
+            json!({"calls": [{"name": "test.run", "args": {"argv": ["sh", "check.sh"], "inherit_env": true}}]}),
+            json!({"calls": [{"name": "task.complete", "args": {"summary": summary, "self_review": {"findings": []}, "verification": ["sh check.sh"]}}]}),
+        ]
+    };
+    let (base, seen) = scripted_model(script("validated login, migration added"), None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x08)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x09, "local_trusted").await;
+    let start = |t: &Id, id: u8| {
+        envelope_fenced(
+            id16(id),
+            "StartTask",
+            StartTask {
+                task_id: Some(t.clone()),
+                endpoint: "openai".into(),
+                model: "gpt-5".into(),
+                max_turns: 0,
+                max_tool_calls: 0,
+                max_no_progress_turns: 0,
+            }
+            .encode_to_vec(),
+            g,
+        )
+    };
+    // Before any completion: nothing derived, the policy version known, the
+    // weakening layer named.
+    let before = task_assurance(&mut c, &task).await;
+    assert!(!before.derived);
+    assert!(
+        before.policy_version.starts_with("assurance-"),
+        "{before:?}"
+    );
+    assert!(
+        before
+            .policy_notes
+            .iter()
+            .any(|n| n.contains("minimum_assurance FAST below STANDARD")),
+        "{before:?}"
+    );
+    let _: TaskRunStarted = Client::result(&c.command(start(&task, 0x0A)).await.unwrap()).unwrap();
+    let st = wait_for_state(&mut c, &task, "ReadyForReview", 90).await;
+    let bodies = seen.lock().unwrap().clone();
+    assert_eq!(
+        st.state,
+        "ReadyForReview",
+        "{st:?}\n{}",
+        serde_json::to_string_pretty(&bodies.last().unwrap()["messages"]).unwrap()
+    );
+    // The check passed; the risk is what the surfaces say, not what the
+    // passing check or the repository layer would like.
+    let a = task_assurance(&mut c, &task).await;
+    assert!(a.derived, "{a:?}");
+    let r = a.realized_risk.clone().unwrap();
+    assert_eq!(r.level, "CRITICAL", "{r:?}");
+    assert_eq!(r.minimum_assurance, "HIGH_ASSURANCE", "{r:?}");
+    assert!(r.independent_review_required && r.human_required, "{r:?}");
+    let surfaces: Vec<(&str, &str)> = r
+        .reasons
+        .iter()
+        .filter(|x| x.code == "PROTECTED_SURFACE")
+        .map(|x| (x.surface.as_str(), x.paths[0].as_str()))
+        .collect();
+    assert!(surfaces.contains(&("AUTH", "src/auth/login.py")), "{r:?}");
+    assert!(
+        surfaces.contains(&("MIGRATION", "db/migrations/002_add.sql")),
+        "{r:?}"
+    );
+    assert!(
+        r.reasons.iter().all(|x| x.code != "UNEXPECTED_SCOPE"),
+        "the plan declared both paths: {r:?}"
+    );
+    assert_eq!(r.rules_version, "risk-rules-1");
+    assert_eq!(r.policy_version, a.policy_version);
+    assert!(r.forbidden_effects_requested.is_empty());
+    assert!(r.evidence_refs.iter().any(|e| e.starts_with("facts:")));
+    // On the log: derived beside the passing COMPLETION run, separately.
+    let evs = task_events(&core, &session, &task).await;
+    let derived: Vec<&serde_json::Value> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "RealizedRiskDerived")
+        .map(|(_, _, p)| p)
+        .collect();
+    assert_eq!(derived.len(), 1, "{evs:?}");
+    assert_eq!(derived[0]["level"], "CRITICAL");
+    assert_eq!(derived[0]["human_required"], true);
+    assert!(
+        derived[0]["reasons"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|x| x == "PROTECTED_SURFACE:AUTH")
+    );
+    assert!(
+        evs.iter()
+            .any(|(_, t, p)| t == "VerificationRunRecorded" && p["status"] == "PASSED"),
+        "the check passed and the risk stayed CRITICAL: {evs:?}"
+    );
+    // The routing plan was compiled under this policy version.
+    let plan = evs
+        .iter()
+        .find(|(_, t, _)| t == "RoutingPlanAdmitted" || t == "RoutingPlanCompiled")
+        .map(|(_, _, p)| p.clone());
+    if let Some(p) = plan {
+        let rv = p["risk_version"].as_str().unwrap_or_default().to_owned();
+        assert!(
+            rv.is_empty() || rv.contains(&a.policy_version),
+            "plan risk_version {rv} vs policy {}",
+            a.policy_version
+        );
+    }
+    drop(c);
+
+    // EPR-FI-008: the same change from a profile that cannot wait for a
+    // human is a safe stop, not an acceptance and not an invented approver.
+    let (repo2, root2) = plain_repo(&files);
+    let _ = repo2;
+    let (base2, seen2) = scripted_model(script("unattended"), None).await;
+    let dir2 = tempfile::tempdir().unwrap();
+    let env2 = [
+        ("MODBIT_OPENAI_BASE_URL", base2.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core2 = CoreProcess::spawn_with_env(dir2.path(), &env2);
+    let mut c2 = core2.client().await;
+    let (session2, _) = create_session(&mut c2, id16(0x0B)).await;
+    let g2 = lease_for(&session2);
+    let task2 =
+        create_task_with_profile(&mut c2, &session2, g2, &root2, 0x0C, "local_autonomous").await;
+    let start2 = envelope_fenced(
+        id16(0x0D),
+        "StartTask",
+        StartTask {
+            task_id: Some(task2.clone()),
+            endpoint: "openai".into(),
+            model: "gpt-5".into(),
+            max_turns: 12,
+            max_tool_calls: 0,
+            max_no_progress_turns: 2,
+        }
+        .encode_to_vec(),
+        g2,
+    );
+    let _: TaskRunStarted = Client::result(&c2.command(start2).await.unwrap()).unwrap();
+    let st = wait_task(&mut c2, &task2, 90).await;
+    assert_ne!(
+        st.state, "ReadyForReview",
+        "an unattended profile never proposes a CRITICAL candidate for acceptance: {st:?}"
+    );
+    assert_eq!(st.state, "Waiting", "{st:?}");
+    let bodies2 = seen2.lock().unwrap().clone();
+    let all = serde_json::to_string(&bodies2).unwrap();
+    assert!(all.contains("COMPLETION_REFUSED"), "{all}");
+    assert!(all.contains("ASSURANCE_HUMAN_REQUIRED"), "{all}");
+    // The model was told, in its observation and in its harness state.
+    assert!(
+        all.contains("realized risk is CRITICAL and requires a human decision"),
+        "{all}"
+    );
+    assert!(
+        all.contains("\\\"realized_risk\\\""),
+        "the harness state carries the risk: {all}"
+    );
+    let a2 = task_assurance(&mut c2, &task2).await;
+    assert!(
+        a2.derived && a2.realized_risk.as_ref().unwrap().human_required,
+        "{a2:?}"
+    );
+    let evs2 = task_events(&core2, &session2, &task2).await;
+    assert!(
+        !evs2.iter().any(|(_, t, _)| t == "TaskReadyForReview"),
+        "{evs2:?}"
+    );
+    assert!(
+        !evs2.iter().any(|(_, t, _)| t == "ApprovalRequested"),
+        "no approval was invented in the human's place: {evs2:?}"
+    );
+}
+
+async fn decide_review(
+    c: &mut Client,
+    task: &Id,
+    g: Option<u64>,
+    id: u8,
+    decision: &str,
+) -> Result<modbit_protocol::v1::ReviewDecided, ClientError> {
+    use modbit_protocol::v1::DecideReview;
+    let ack = c
+        .command(envelope_fenced(
+            id16(id),
+            "DecideReview",
+            DecideReview {
+                task_id: Some(task.clone()),
+                decision: decision.into(),
+                rejected: vec![],
+                note: String::new(),
+                expected_workspace_revision: 0,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await?;
+    Ok(Client::result(&ack).unwrap())
+}
+
+/// QUAL-EPR-017 / EPR-E2E-017 (REQ-EPR-017; docs/27 §9.4, docs/38): the
+/// Acceptance Gate consumes the policy-owned realized risk and decides,
+/// independently, whether the evidence at the exact candidate revision
+/// satisfies the required assurance. Complete current evidence on a
+/// low-risk candidate accepts; the same passing evidence on a critical
+/// surface stays INCONCLUSIVE with the review and human obligations named,
+/// until the user's review decision — the human proof — lets it accept; a
+/// deterministic failure rejects; gate and risk versions and refs survive
+/// a restart. EPR-FI-017: stale evidence (the worktree moved after the
+/// completion run) refuses the accept; a candidate the gate has not
+/// accepted never completes and opens no branch.
+#[tokio::test]
+async fn qual_epr_017_acceptance_is_evidence_at_the_revision_and_never_erases_a_human_obligation() {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let start = |t: &Id, id: u8, g: Option<u64>| {
+        envelope_fenced(
+            id16(id),
+            "StartTask",
+            StartTask {
+                task_id: Some(t.clone()),
+                endpoint: "openai".into(),
+                model: "gpt-5".into(),
+                max_turns: 0,
+                max_tool_calls: 0,
+                max_no_progress_turns: 2,
+            }
+            .encode_to_vec(),
+            g,
+        )
+    };
+
+    // (a) A low-risk candidate with complete current evidence: ACCEPT at
+    //     the completion run, the same after a restart, completed by the
+    //     user's accept.
+    let (repo, root) = git_repo_with_failing_check();
+    let hash = sha256_of(&std::fs::read(repo.path().join("qty.txt")).unwrap());
+    let (base, _seen) = scripted_model(coding_script(&hash), None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x17)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x18, "local_trusted").await;
+    let _: TaskRunStarted =
+        Client::result(&c.command(start(&task, 0x19, g)).await.unwrap()).unwrap();
+    let st = wait_for_state(&mut c, &task, "ReadyForReview", 90).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let a = task_assurance(&mut c, &task).await;
+    let gate = a.acceptance.clone().unwrap();
+    assert_eq!(gate.verdict, "ACCEPT", "{gate:?}");
+    assert_eq!(gate.trigger, "COMPLETION_RUN");
+    assert_eq!(gate.gate_version, "gate-1");
+    assert_eq!(gate.risk_version, "risk-rules-1");
+    assert_eq!(
+        gate.realized_risk_ref,
+        a.realized_risk.as_ref().unwrap().realized_risk_ref
+    );
+    assert!(
+        gate.missing_evidence.is_empty() && gate.reject_reasons.is_empty(),
+        "{gate:?}"
+    );
+    assert!(
+        gate.evidence
+            .iter()
+            .any(|e| e.kind == "tests" && e.status == "PASS"),
+        "{gate:?}"
+    );
+    assert!(
+        gate.evidence
+            .iter()
+            .any(|e| e.kind == "invariants" && e.status == "PASS"),
+        "{gate:?}"
+    );
+    assert!(!gate.human_required && !gate.independent_review_required);
+    assert!(
+        !gate.plan_id.is_empty() && gate.leg_id == "initial",
+        "the gate names the plan and leg it decided for: {gate:?}"
+    );
+    // Across a restart, the same refs and versions.
+    drop(c);
+    core.kill();
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let a2 = task_assurance(&mut c, &task).await;
+    assert_eq!(a2.acceptance.as_ref().unwrap().gate_ref, gate.gate_ref);
+    assert_eq!(a2.acceptance.as_ref().unwrap().at_offset, gate.at_offset);
+    assert_eq!(
+        a2.realized_risk.as_ref().unwrap().realized_risk_ref,
+        a.realized_risk.as_ref().unwrap().realized_risk_ref
+    );
+    let d = decide_review(&mut c, &task, g, 0x1A, "ACCEPT")
+        .await
+        .unwrap();
+    assert_eq!(d.task_state, "Completed", "{d:?}");
+    let a3 = task_assurance(&mut c, &task).await;
+    let g3 = a3.acceptance.unwrap();
+    assert_eq!(
+        (g3.verdict.as_str(), g3.trigger.as_str()),
+        ("ACCEPT", "REVIEW_DECISION"),
+        "{g3:?}"
+    );
+    assert!(g3.at_offset > gate.at_offset);
+    let evs = task_events(&core, &session, &task).await;
+    let gates: Vec<&serde_json::Value> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "AcceptanceGateEvaluated")
+        .map(|(_, _, p)| p)
+        .collect();
+    assert_eq!(gates.len(), 2, "{evs:?}");
+    assert_eq!(gates[0]["trigger"], "COMPLETION_RUN");
+    assert_eq!(gates[1]["trigger"], "REVIEW_DECISION");
+    assert_eq!(gates[0]["realized_risk_ref"], gates[1]["realized_risk_ref"]);
+    drop(c);
+
+    // (b) The same passing evidence on a critical surface: INCONCLUSIVE with
+    //     the obligations named; the human's review discharges them.
+    let auth_files: [(&str, &str); 3] = [
+        (
+            "src/auth/login.py",
+            "def login(u, p):\n    return u == 'a'\n",
+        ),
+        (
+            "tests/test_login.py",
+            "def test_login():\n    assert True\n",
+        ),
+        ("check.sh", "grep -q 'validated' src/auth/login.py\n"),
+    ];
+    let (_repo_b, root_b) = plain_repo(&auth_files);
+    let hash_b = sha256_of(auth_files[0].1.as_bytes());
+    let script_b = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "validate the login", "expected_files": ["src/auth/login.py"], "verification": ["sh check.sh"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "src/auth/login.py"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "src/auth/login.py", "op": "replace", "content": "def login(u, p):\n    # validated\n    return u == 'a' and p\n", "expected_content_hash": hash_b}}]}),
+        json!({"calls": [{"name": "test.run", "args": {"argv": ["sh", "check.sh"], "inherit_env": true}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "validated", "self_review": {"findings": []}, "verification": ["sh check.sh"]}}]}),
+    ];
+    let (base_b, _) = scripted_model(script_b, None).await;
+    let dir_b = tempfile::tempdir().unwrap();
+    let env_b = [
+        ("MODBIT_OPENAI_BASE_URL", base_b.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core_b = CoreProcess::spawn_with_env(dir_b.path(), &env_b);
+    let mut cb = core_b.client().await;
+    let (session_b, _) = create_session(&mut cb, id16(0x1B)).await;
+    let gb = lease_for(&session_b);
+    let task_b =
+        create_task_with_profile(&mut cb, &session_b, gb, &root_b, 0x1C, "local_trusted").await;
+    let _: TaskRunStarted =
+        Client::result(&cb.command(start(&task_b, 0x1D, gb)).await.unwrap()).unwrap();
+    let st = wait_for_state(&mut cb, &task_b, "ReadyForReview", 90).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let ab = task_assurance(&mut cb, &task_b).await;
+    let gb1 = ab.acceptance.clone().unwrap();
+    assert_eq!(gb1.verdict, "INCONCLUSIVE", "{gb1:?}");
+    assert_eq!(gb1.required_assurance, "HIGH_ASSURANCE");
+    assert!(gb1.human_required && gb1.independent_review_required);
+    assert_eq!(
+        gb1.missing_evidence,
+        vec!["independent_review", "human_decision"],
+        "{gb1:?}"
+    );
+    assert!(
+        gb1.evidence
+            .iter()
+            .any(|e| e.kind == "tests" && e.status == "PASS"),
+        "passing tests do not erase the obligations: {gb1:?}"
+    );
+    assert!(gb1.reject_reasons.is_empty());
+    let d = decide_review(&mut cb, &task_b, gb, 0x1E, "ACCEPT")
+        .await
+        .unwrap();
+    assert_eq!(d.task_state, "Completed", "{d:?}");
+    let gb2 = task_assurance(&mut cb, &task_b).await.acceptance.unwrap();
+    assert_eq!(
+        (gb2.verdict.as_str(), gb2.trigger.as_str()),
+        ("ACCEPT", "REVIEW_DECISION"),
+        "{gb2:?}"
+    );
+    assert!(
+        gb2.evidence
+            .iter()
+            .any(|e| e.kind == "human_decision" && e.status == "PASS"),
+        "{gb2:?}"
+    );
+    assert!(
+        gb2.evidence
+            .iter()
+            .any(|e| e.kind == "independent_review" && e.status == "PASS"),
+        "{gb2:?}"
+    );
+    assert_eq!(gb2.realized_risk_ref, gb1.realized_risk_ref);
+    drop(cb);
+
+    // (c) A deterministic failure the model never ran itself: the completion
+    //     run fails and the gate rejects; the task is never proposed.
+    let (_repo_c, root_c) = plain_repo(&[
+        ("total.py", "def total(q, unit):\n    return q * unit\n"),
+        (
+            "tests/test_total.py",
+            "def test_total():\n    assert True\n",
+        ),
+        ("check.sh", "grep -q 'unit$' total.py\n"),
+        (
+            ".modbit/verification.json",
+            "{\"commands\": [{\"id\": \"gate\", \"argv\": [\"sh\", \"check.sh\"]}]}",
+        ),
+    ]);
+    let hash_c = sha256_of(b"def total(q, unit):\n    return q * unit\n");
+    let script_c = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "tidy", "expected_files": ["total.py"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "total.py"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "total.py", "op": "replace", "content": "def total(q, unit):\n    return q * unit  # tidy\n", "expected_content_hash": hash_c}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "tidied", "self_review": {"findings": []}}}]}),
+    ];
+    let (base_c, seen_c) = scripted_model(script_c, None).await;
+    let dir_c = tempfile::tempdir().unwrap();
+    let env_c = [
+        ("MODBIT_OPENAI_BASE_URL", base_c.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core_c = CoreProcess::spawn_with_env(dir_c.path(), &env_c);
+    let mut cc = core_c.client().await;
+    let (session_c, _) = create_session(&mut cc, id16(0x1F)).await;
+    let gc = lease_for(&session_c);
+    let task_c =
+        create_task_with_profile(&mut cc, &session_c, gc, &root_c, 0x20, "local_trusted").await;
+    let _: TaskRunStarted =
+        Client::result(&cc.command(start(&task_c, 0x21, gc)).await.unwrap()).unwrap();
+    let st = wait_task(&mut cc, &task_c, 90).await;
+    assert_ne!(st.state, "ReadyForReview", "{st:?}");
+    let ac = task_assurance(&mut cc, &task_c).await;
+    let gc1 = ac.acceptance.clone().unwrap();
+    assert_eq!(gc1.verdict, "REJECT", "{gc1:?}");
+    assert!(
+        gc1.reject_reasons.iter().any(|r| r.contains("failed")),
+        "{gc1:?}"
+    );
+    assert!(
+        gc1.evidence
+            .iter()
+            .any(|e| e.kind == "tests" && e.status == "FAIL"),
+        "{gc1:?}"
+    );
+    // The model's next turn carries the verdict in its harness state, and
+    // the refusal names the regression the gate rejected on.
+    let all_c = serde_json::to_string(&seen_c.lock().unwrap().clone()).unwrap();
+    assert!(all_c.contains("REGRESSION"), "{all_c}");
+    assert!(
+        all_c.contains("acceptance") && all_c.contains("REJECT"),
+        "{all_c}"
+    );
+    let evs_c = task_events(&core_c, &session_c, &task_c).await;
+    assert!(
+        !evs_c
+            .iter()
+            .any(|(_, t, _)| t == "TaskReadyForReview" || t == "TaskCompleted")
+    );
+    drop(cc);
+
+    // (d) EPR-FI-017: the worktree moves after the completion run; the
+    //     evidence is stale and the accept is refused — no completion.
+    let (repo_d, root_d) = git_repo_with_failing_check();
+    let hash_d = sha256_of(&std::fs::read(repo_d.path().join("qty.txt")).unwrap());
+    let (base_d, _) = scripted_model(coding_script(&hash_d), None).await;
+    let dir_d = tempfile::tempdir().unwrap();
+    let env_d = [
+        ("MODBIT_OPENAI_BASE_URL", base_d.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core_d = CoreProcess::spawn_with_env(dir_d.path(), &env_d);
+    let mut cd = core_d.client().await;
+    let (session_d, _) = create_session(&mut cd, id16(0x22)).await;
+    let gd = lease_for(&session_d);
+    let task_d =
+        create_task_with_profile(&mut cd, &session_d, gd, &root_d, 0x23, "local_trusted").await;
+    let _: TaskRunStarted =
+        Client::result(&cd.command(start(&task_d, 0x24, gd)).await.unwrap()).unwrap();
+    let st = wait_for_state(&mut cd, &task_d, "ReadyForReview", 90).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    // A direct write moves the workspace past the revision the gate judged.
+    let r = invoke_tool(
+        &mut cd,
+        &task_d,
+        gd,
+        0x25,
+        0x26,
+        "change.apply",
+        r#"{"path":"qty.txt","op":"replace","content":"quantity = 7 # validated, then moved\n"}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let err = decide_review(&mut cd, &task_d, gd, 0x27, "ACCEPT")
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "ACCEPTANCE_NOT_MET"),
+        "{err:?}"
+    );
+    assert!(
+        format!("{err:?}").contains("INCONCLUSIVE") && format!("{err:?}").contains("tests"),
+        "{err:?}"
+    );
+    let st = status_now(&mut cd, &task_d).await;
+    assert_eq!(
+        st.state, "ReadyForReview",
+        "no completion without accepted evidence: {st:?}"
+    );
+    let evs_d = task_events(&core_d, &session_d, &task_d).await;
+    assert!(
+        !evs_d
+            .iter()
+            .any(|(_, t, _)| t == "TaskCompleted" || t == "ReviewDecisionRecorded"),
+        "{evs_d:?}"
+    );
+    let tree = session_tree(&mut cd, &session_d).await;
+    assert!(
+        tree.branches.is_empty(),
+        "no branch generation from a refused accept"
+    );
+}
+
+async fn routing_session_state(
+    c: &mut Client,
+    session: &Id,
+) -> modbit_protocol::v1::RoutingSessionStateView {
+    use modbit_protocol::v1::GetRoutingSessionState;
+    let ack = c
+        .command(envelope(
+            Id {
+                value: (0..16).map(|_| rand::random::<u8>()).collect(),
+            },
+            "GetRoutingSessionState",
+            GetRoutingSessionState {
+                session_id: Some(session.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    Client::result(&ack).unwrap()
+}
+
+/// QUAL-EPR-009 / EPR-E2E-009, the offline half (REQ-EPR-009; docs/27 §7.6,
+/// §16, docs/38): the session's routing state — the binding in force, its
+/// plan and epoch, the warm prefix the provider reported — is a projection
+/// of the log, and every boundary re-evaluates the route on cache
+/// economics: the task boundary with the previous auto run's warm prefix
+/// as the incumbent's asset, the compaction boundary with the prefix gone.
+/// With nothing confidence-feasible the route in force stays, and the
+/// decision says so beside the economics. A manual pin is the user's choice
+/// for its task, never an incumbent a later auto route inherits. A hard
+/// kill after the boundary loses nothing: the decisions, the epoch, the
+/// plan and its attempts read back the same. EPR-FI-009: a plan under a
+/// superseded epoch is refused admission; a switch (proven at the compiler
+/// with confidence-feasible evidence) opens a new transaction on the same
+/// run, never a new run.
+#[tokio::test]
+async fn qual_epr_009_routes_reevaluate_at_boundaries_on_cache_economics_and_survive_restart() {
+    use ed25519_dalek::{Signer, SigningKey};
+    use modbit_protocol::v1::{GetRoutingPlan, RoutingPlanView, StartTask, TaskRunStarted};
+    use modbit_providers::registry::{
+        Economics, Governance, Latency, QualityFloor, REGISTRY_SCHEMA_VERSION, RegistryDocument,
+        RegistryEntry, SignedRegistry,
+    };
+    use serde_json::json;
+    let key = SigningKey::from_bytes(&[23u8; 32]);
+    let key_hex = hex::encode(key.verifying_key().to_bytes());
+    let now = modbit_domain::Timestamp::now().0;
+    let entry =
+        |model: &str, input: u64, cached: Option<u64>, output: u64, p50: u64| RegistryEntry {
+            endpoint: "openai".into(),
+            provider: "openai".into(),
+            family: "gpt-5".into(),
+            model: model.into(),
+            roles: vec!["solver".into(), "reviewer".into()],
+            input_modalities: vec!["text".into()],
+            context_tokens: 400_000,
+            max_output_tokens: 64_000,
+            tools: true,
+            vision: false,
+            reasoning: true,
+            structured_output: true,
+            economics: Economics {
+                input_per_mtok_minor: input,
+                output_per_mtok_minor: output,
+                currency: "USD".into(),
+                scale: 2,
+                cached_input_per_mtok_minor: cached,
+                cache_write_per_mtok_minor: Some(input / 4),
+                cache_ttl_ms: Some(300_000),
+            },
+            latency: Latency {
+                p50_ms: p50,
+                p95_ms: p50 * 3,
+            },
+            governance: Governance {
+                data_residency: "us".into(),
+                retains_prompts: false,
+                allowed_profiles: vec![],
+            },
+            revoked: false,
+        };
+    let document = RegistryDocument {
+        schema_version: REGISTRY_SCHEMA_VERSION,
+        registry_generation: "registry-epochs".into(),
+        stats_version: "stats-1".into(),
+        issued_at_ms: now - 60_000,
+        expires_at_ms: now + 86_400_000,
+        quality_floors: vec![QualityFloor {
+            mode: "auto".into(),
+            min_quality: 0.72,
+            max_cost_minor: 5_000,
+            currency: "USD".into(),
+            scale: 2,
+        }],
+        entries: vec![
+            entry("gpt-5-mini", 200, Some(20), 800, 400),
+            entry("gpt-5", 1_000, Some(100), 3_000, 900),
+        ],
+    };
+    let signed = {
+        let json = serde_json::to_string(&document).unwrap();
+        serde_json::to_string(&SignedRegistry {
+            key_id: "ops".into(),
+            signature_hex: hex::encode(key.sign(json.as_bytes()).to_bytes()),
+            document_json: json,
+        })
+        .unwrap()
+    };
+    // A transcript that grows past the compaction budget: reads of a big file.
+    let (_repo, root) = plain_repo(&[("big.txt", &"filler line for the transcript\n".repeat(400))]);
+    let read = json!({"calls": [{"name": "fs.read", "args": {"path": "big.txt"}}]});
+    let script = |reads: usize| {
+        let mut s = vec![
+            json!({"calls": [{"name": "plan.update", "args": {"outcome": "read the big file", "expected_files": ["big.txt"]}}]}),
+        ];
+        for _ in 0..reads {
+            s.push(read.clone());
+        }
+        s.push(json!({"calls": [{"name": "task.complete", "args": {"summary": "read", "self_review": {"findings": []}}}]}));
+        s
+    };
+    // Two provider scripts: a short one that completes (no compaction), and
+    // a long one whose reads cross the compaction budget — the scripted
+    // server counts tool results to pick its step, so a compacted transcript
+    // never reaches its `task.complete`; those runs end on their turn
+    // budget, which is fine: the boundaries they crossed are on the log.
+    let (base_short, _seen_short) = scripted_model_cached(script(2)).await;
+    let (base_long, _seen_long) = scripted_model_cached(script(7)).await;
+    let dir = tempfile::tempdir().unwrap();
+    let keys = format!("ops:{key_hex}");
+    let env_short: Vec<(&str, &str)> = vec![
+        ("MODBIT_OPENAI_BASE_URL", base_short.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_REGISTRY_KEYS", keys.as_str()),
+        ("MODBIT_COMPACTION_TOKEN_BUDGET", "16000"),
+    ];
+    let env_long: Vec<(&str, &str)> = vec![
+        ("MODBIT_OPENAI_BASE_URL", base_long.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_REGISTRY_KEYS", keys.as_str()),
+        ("MODBIT_COMPACTION_TOKEN_BUDGET", "16000"),
+    ];
+    let spawn = |e: &Vec<(&str, &str)>| CoreProcess::spawn_with_env(dir.path(), e);
+    async fn activate(c: &mut Client, id: u8, signed: &str) {
+        use modbit_protocol::v1::{ActivateModelRegistry, ModelRegistryView};
+        let ack = c
+            .command(envelope(
+                id16(id),
+                "ActivateModelRegistry",
+                ActivateModelRegistry {
+                    signed_json: signed.to_owned(),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        let r: ModelRegistryView = Client::result(&ack).unwrap();
+        assert!(r.active, "{r:?}");
+    }
+    let mut core = spawn(&env_short);
+    let mut c = core.client().await;
+    activate(&mut c, 0x90, &signed).await;
+    let (session, _) = create_session(&mut c, id16(0x91)).await;
+    let g = lease_for(&session);
+    let start = |t: &Id, id: u8, model: &str| {
+        envelope_fenced(
+            id16(id),
+            "StartTask",
+            StartTask {
+                task_id: Some(t.clone()),
+                endpoint: String::new(),
+                model: model.into(),
+                max_turns: 14,
+                max_tool_calls: 0,
+                max_no_progress_turns: 8,
+            }
+            .encode_to_vec(),
+            g,
+        )
+    };
+    let decisions = |s: &modbit_protocol::v1::RoutingSessionStateView, boundary: &str| {
+        s.decisions
+            .iter()
+            .filter(|d| d.boundary == boundary)
+            .cloned()
+            .collect::<Vec<_>>()
+    };
+    // Run 1, auto, a fresh session: INITIAL — no route in force. The
+    // provider reports a warm prefix on every call after the first, so the
+    // session leaves the run with a cache state on the chosen binding.
+    let task1 = create_task_with_profile(&mut c, &session, g, &root, 0x92, "local_trusted").await;
+    let _: TaskRunStarted =
+        Client::result(&c.command(start(&task1, 0x93, "")).await.unwrap()).unwrap();
+    let st = wait_for_state(&mut c, &task1, "ReadyForReview", 180).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let s1 = routing_session_state(&mut c, &session).await;
+    assert_eq!(
+        (s1.active_endpoint.as_str(), s1.active_model.as_str()),
+        ("openai", "gpt-5-mini"),
+        "{s1:?}"
+    );
+    assert!(s1.active_plan_id.starts_with("compiled:"), "{s1:?}");
+    let cache = s1
+        .cache_state
+        .clone()
+        .expect("the provider reported a cached prefix");
+    assert_eq!(cache.model, "gpt-5-mini");
+    assert!(cache.cached_prefix_tokens > 0, "{cache:?}");
+    assert!(!cache.prefix_key.is_empty());
+    let d1 = decisions(&s1, "TASK");
+    assert_eq!(d1.len(), 1, "{d1:?}");
+    assert_eq!(
+        (
+            d1[0].decision.as_str(),
+            d1[0].current.as_str(),
+            d1[0].chosen.as_str()
+        ),
+        ("INITIAL", "", "openai/gpt-5-mini")
+    );
+    // The long script from here: the same session, the registry activated
+    // again (activation is process-local by design), the route state durable.
+    drop(c);
+    core.kill();
+    let mut core = spawn(&env_long);
+    let mut c = core.client().await;
+    activate(&mut c, 0x9C, &signed).await;
+    // Run 2, auto: the task boundary re-evaluates with the incumbent and its
+    // warm prefix; nothing is confidence-feasible at cold start, so the route
+    // in force stays — and the economics are on record, prefix warm.
+    let task2 = create_task_with_profile(&mut c, &session, g, &root, 0x94, "local_trusted").await;
+    let _: TaskRunStarted =
+        Client::result(&c.command(start(&task2, 0x95, "")).await.unwrap()).unwrap();
+    let st = wait_task(&mut c, &task2, 180).await;
+    assert!(!st.loop_alive, "{st:?}");
+    let s2 = routing_session_state(&mut c, &session).await;
+    let task_decision = decisions(&s2, "TASK").into_iter().next_back().unwrap();
+    assert_eq!(task_decision.decision, "STAY", "{task_decision:?}");
+    assert_eq!(task_decision.current, "openai/gpt-5-mini");
+    assert_eq!(task_decision.chosen, "openai/gpt-5-mini");
+    assert!(
+        task_decision.stay_minor > 0 && task_decision.switch_minor > 0,
+        "{task_decision:?}"
+    );
+    assert!(
+        !task_decision.cache_state_json.is_empty(),
+        "the warm prefix was consulted: {task_decision:?}"
+    );
+    let sc: serde_json::Value = serde_json::from_str(&task_decision.switch_cost_json).unwrap();
+    assert_eq!(sc["prefix_warm"], true, "{sc}");
+    assert!(
+        sc["re_prefill_minor"].as_u64().unwrap() > 0,
+        "switching would re-prefill the prefix: {sc}"
+    );
+    assert!(
+        task_decision.reason.contains("confidence-feasible"),
+        "{task_decision:?}"
+    );
+    // The compaction boundary inside run 2: the prefix is gone, the
+    // comparison is cold, and the route still stays for want of a feasible
+    // alternative — recorded on the same run under the same epoch.
+    let cds = decisions(&s2, "COMPACTION");
+    assert!(
+        !cds.is_empty(),
+        "no compaction boundary was crossed: {s2:?}"
+    );
+    let cd = &cds[0];
+    assert_eq!(cd.decision, "STAY", "{cd:?}");
+    assert_eq!(cd.current, "openai/gpt-5-mini");
+    assert!(
+        cd.cache_state_json.is_empty(),
+        "the compaction left no prefix to consult: {cd:?}"
+    );
+    let sc2: serde_json::Value = serde_json::from_str(&cd.switch_cost_json).unwrap();
+    assert_eq!(sc2["prefix_warm"], false, "{sc2}");
+    assert_eq!(sc2["re_prefill_minor"], 0, "{sc2}");
+    assert!(cd.stay_minor > 0 && cd.switch_minor > 0, "{cd:?}");
+    assert!(cd.reason.contains("confidence-feasible"), "{cd:?}");
+    assert_eq!(cd.run_id, task_decision.run_id);
+    assert_eq!(cd.route_epoch, task_decision.route_epoch);
+    assert_eq!(
+        s2.executed_path_labels,
+        vec![
+            "openai/gpt-5-mini".to_owned(),
+            "openai/gpt-5-mini".to_owned()
+        ]
+    );
+    let plan_before: RoutingPlanView = {
+        let ack = c
+            .command(envelope(
+                id16(0x96),
+                "GetRoutingPlan",
+                GetRoutingPlan {
+                    task_id: Some(task2.clone()),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    };
+    assert_eq!(plan_before.plan_id, cd.plan_id);
+    assert!(plan_before.attempts.len() >= 7, "{plan_before:?}");
+    // Run 3, pinned by hand to the dearer model: the user's choice for this
+    // task, recorded as such, and not an incumbent auto inherits — run 4 in
+    // auto re-evaluates against the previous auto route.
+    let task3 = create_task_with_profile(&mut c, &session, g, &root, 0x98, "local_trusted").await;
+    let _: TaskRunStarted =
+        Client::result(&c.command(start(&task3, 0x99, "gpt-5")).await.unwrap()).unwrap();
+    let st = wait_task(&mut c, &task3, 180).await;
+    assert!(!st.loop_alive, "{st:?}");
+    let s3 = routing_session_state(&mut c, &session).await;
+    assert_eq!(
+        s3.active_model, "gpt-5",
+        "the pinned route is in force for its task: {s3:?}"
+    );
+    let d3 = decisions(&s3, "TASK").into_iter().next_back().unwrap();
+    assert_eq!(d3.decision, "INITIAL");
+    assert!(d3.reason.starts_with("manual pin"), "{d3:?}");
+    let task4 = create_task_with_profile(&mut c, &session, g, &root, 0x9A, "local_trusted").await;
+    let _: TaskRunStarted =
+        Client::result(&c.command(start(&task4, 0x9B, "")).await.unwrap()).unwrap();
+    let st = wait_task(&mut c, &task4, 180).await;
+    assert!(!st.loop_alive, "{st:?}");
+    let s4 = routing_session_state(&mut c, &session).await;
+    let d4 = decisions(&s4, "TASK").into_iter().next_back().unwrap();
+    assert_eq!(
+        (
+            d4.decision.as_str(),
+            d4.current.as_str(),
+            d4.chosen.as_str()
+        ),
+        ("STAY", "openai/gpt-5-mini", "openai/gpt-5-mini"),
+        "{d4:?}"
+    );
+    // A hard kill: everything about the route survives, byte for byte.
+    drop(c);
+    core.kill();
+    let core2 = spawn(&env_long);
+    let mut c2 = core2.client().await;
+    let s5 = routing_session_state(&mut c2, &session).await;
+    assert_eq!(s5.decisions, s4.decisions);
+    assert_eq!(s5.route_epoch, s4.route_epoch);
+    assert_eq!(s5.active_plan_id, s4.active_plan_id);
+    assert_eq!(s5.cache_state, s4.cache_state);
+    assert_eq!(s5.executed_path_labels.len(), 4);
+    let plan_after: RoutingPlanView = {
+        let ack = c2
+            .command(envelope(
+                id16(0x97),
+                "GetRoutingPlan",
+                GetRoutingPlan {
+                    task_id: Some(task2.clone()),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    };
+    assert_eq!(plan_after.plan_id, plan_before.plan_id);
+    assert_eq!(plan_after.attempts.len(), plan_before.attempts.len());
+    assert_eq!(plan_after.slots, plan_before.slots);
+    assert_eq!(plan_after.admission, plan_before.admission);
+    // EPR-FI-009: a plan carrying a superseded routing epoch is refused
+    // admission by the same door every plan goes through.
+    let stale = modbit_domain::routing::ConditionalExecutionPlan::direct(
+        modbit_domain::TenantId::from_bytes([0xA1; 16]),
+        modbit_domain::SessionId::from_bytes(session.value.clone().try_into().unwrap()),
+        modbit_domain::TaskId::from_bytes(task2.value.clone().try_into().unwrap()),
+        modbit_domain::RunId::new(),
+        g.unwrap_or(0),
+        now,
+        &modbit_domain::routing::DirectPath {
+            endpoint: "openai",
+            model: "gpt-5",
+            timeout_ms: 60_000,
+            max_output_tokens: 4_096,
+            max_retries: 1,
+            max_turns: 8,
+        },
+    );
+    let refused = modbit_core_runtime::admission::admit_plan(
+        &stale,
+        modbit_domain::TenantId::from_bytes([0xA1; 16]),
+        stale.routing_epoch + 1,
+    );
+    assert!(
+        refused.is_err(),
+        "a plan under a superseded epoch admits nothing"
     );
 }

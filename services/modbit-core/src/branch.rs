@@ -327,7 +327,7 @@ pub(crate) async fn fork(
             ops.push(ChangeOp {
                 path: path.clone(),
                 kind: if existing.is_some() {
-                    ChangeOpKind::Replace(content.clone())
+                    ChangeOpKind::ReplaceExact(content.clone())
                 } else {
                     ChangeOpKind::Create(content.clone())
                 },

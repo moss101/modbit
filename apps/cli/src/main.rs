@@ -38,15 +38,16 @@ use modbit_protocol::v1::{
     CheckpointRestoreResult, ClientKind, CommandEnvelope, ContextDocumentAttached,
     ContextInspectorView, CreateSession, CreateTask, DecideReview, EffectReceiptList,
     EmergencyStop, EmergencyStopped, FileHash, ForkTask, GetCapabilityLeases, GetContextInspector,
-    GetEffectReceipts, GetReviewBundle, GetSessionSnapshot, GetSessionTree, GetTaskEconomics,
-    GetTaskStatus, HunkRef, Id, IngestAttachment, InvokeTool, LanguageList, ListApprovals,
-    ListLanguages, ListModels, ListQuestions, ListTools, ModelList, ModelProbed,
-    OutcomeBaselinePublished, PreviewRewind, ProbeModel, PublishOutcomeBaseline, QuestionList,
-    QuestionResponded, ResolveApproval, RespondToQuestion, RestoreCheckpoint, ReviewBundle,
-    ReviewDecided, RewindPreview, SessionCreated, SessionLeaseAcquired, SessionSnapshot,
-    SessionTreeView, SetTaskSelection, StartTask, TaskCancelRequested, TaskCreated,
-    TaskEconomicsView, TaskForked, TaskRunStarted, TaskSelectionRecorded, TaskStatus, ToolInvoked,
-    ToolList, UndoPlanView, UndoToolCall, UnsupportedLanguageAllowed,
+    GetEffectReceipts, GetReviewBundle, GetRoutingSessionState, GetSessionSnapshot, GetSessionTree,
+    GetTaskAssurance, GetTaskEconomics, GetTaskStatus, HunkRef, Id, IngestAttachment, InvokeTool,
+    LanguageList, ListApprovals, ListLanguages, ListModels, ListQuestions, ListTools, ModelList,
+    ModelProbed, OutcomeBaselinePublished, PreviewRewind, ProbeModel, PublishOutcomeBaseline,
+    QuestionList, QuestionResponded, ResolveApproval, RespondToQuestion, RestoreCheckpoint,
+    ReviewBundle, ReviewDecided, RewindPreview, RoutingSessionStateView, SessionCreated,
+    SessionLeaseAcquired, SessionSnapshot, SessionTreeView, SetTaskSelection, StartTask,
+    TaskAssuranceView, TaskCancelRequested, TaskCreated, TaskEconomicsView, TaskForked,
+    TaskRunStarted, TaskSelectionRecorded, TaskStatus, ToolInvoked, ToolList, UndoPlanView,
+    UndoToolCall, UnsupportedLanguageAllowed,
 };
 use prost::Message;
 
@@ -64,7 +65,7 @@ fn exit_for_state(state: &str) -> u8 {
     }
 }
 
-const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id>] [--apply --session <id>] | session tree --session <id> | task economics --task <id> | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
+const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id>] [--apply --session <id>] | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
 
 fn parse_id(hex: &str) -> Result<Id, String> {
     let bytes = decode_hex(hex)
@@ -1337,6 +1338,61 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 println!("(preview only; add --apply --session <id> to restore)");
             }
         }
+        ["session", "route", "--session", sid] => {
+            let ack = client
+                .command(envelope(
+                    "GetRoutingSessionState",
+                    GetRoutingSessionState {
+                        session_id: Some(parse_id(sid)?),
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let s: RoutingSessionStateView = Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "route active={}/{} plan={} route_epoch={} branch_generation={} last_route_at_ms={}",
+                s.active_endpoint,
+                s.active_model,
+                s.active_plan_id,
+                s.route_epoch,
+                s.branch_generation,
+                s.last_route_at_ms
+            );
+            match &s.cache_state {
+                Some(cs) => println!(
+                    "cache {}/{} cached_prefix_tokens={} last_used_at_ms={} prefix_key={}",
+                    cs.endpoint,
+                    cs.model,
+                    cs.cached_prefix_tokens,
+                    cs.last_used_at_ms,
+                    cs.prefix_key
+                ),
+                None => println!("cache (no usage reported yet)"),
+            }
+            for (i, path) in s.executed_path_labels.iter().enumerate() {
+                println!("run {} path {}", i + 1, path);
+            }
+            for d in &s.decisions {
+                println!(
+                    "decision {} epoch={} {} -> {} {} stay={} switch={} switch_cost={} offset={}: {}",
+                    d.boundary,
+                    d.route_epoch,
+                    if d.current.is_empty() {
+                        "-"
+                    } else {
+                        d.current.as_str()
+                    },
+                    d.chosen,
+                    d.decision,
+                    d.stay_minor,
+                    d.switch_minor,
+                    d.switch_cost_minor,
+                    d.offset,
+                    d.reason
+                );
+            }
+        }
         ["session", "tree", "--session", sid] => {
             let ack = client
                 .command(envelope(
@@ -1394,6 +1450,84 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                     "branch generation={} kind={} offset={} {}",
                     b.branch_generation, b.kind, b.offset, b.reason
                 );
+            }
+        }
+        ["task", "assurance", "--task", tid] => {
+            let ack = client
+                .command(envelope(
+                    "GetTaskAssurance",
+                    GetTaskAssurance {
+                        task_id: Some(parse_id(tid)?),
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let a: TaskAssuranceView = Client::result(&ack).map_err(|e| e.to_string())?;
+            println!("policy {}", a.policy_version);
+            for n in &a.policy_notes {
+                println!("  note: {n}");
+            }
+            match a.realized_risk {
+                Some(r) if a.derived => {
+                    println!(
+                        "realized_risk {} minimum_assurance={} review_required={} human_required={} revision={} rules={} ref={} offset={}",
+                        r.level,
+                        r.minimum_assurance,
+                        r.independent_review_required,
+                        r.human_required,
+                        r.candidate_revision,
+                        r.rules_version,
+                        r.realized_risk_ref,
+                        a.derived_at_offset
+                    );
+                    for x in &r.reasons {
+                        println!(
+                            "  {} {}{} [{}] {}",
+                            x.code,
+                            x.surface,
+                            if x.surface.is_empty() { "" } else { " " },
+                            x.level,
+                            x.detail
+                        );
+                    }
+                    for f in &r.forbidden_effects_requested {
+                        println!("  forbidden effect requested: {f}");
+                    }
+                }
+                _ => println!("realized_risk (not derived yet: no COMPLETION run)"),
+            }
+            match a.acceptance {
+                Some(gt) => {
+                    println!(
+                        "acceptance_gate {} required_assurance={} review_required={} human_required={} revision={} gate={} trigger={} ref={} offset={}",
+                        gt.verdict,
+                        gt.required_assurance,
+                        gt.independent_review_required,
+                        gt.human_required,
+                        gt.candidate_revision,
+                        gt.gate_version,
+                        gt.trigger,
+                        gt.gate_ref,
+                        gt.at_offset
+                    );
+                    for e in &gt.evidence {
+                        println!(
+                            "  {:<20} {:<10} {}{}",
+                            e.kind,
+                            e.status,
+                            e.detail,
+                            if e.required { "" } else { " (optional)" }
+                        );
+                    }
+                    if !gt.missing_evidence.is_empty() {
+                        println!("  missing: {}", gt.missing_evidence.join(", "));
+                    }
+                    for r in &gt.reject_reasons {
+                        println!("  rejected: {r}");
+                    }
+                }
+                None => println!("acceptance_gate (not evaluated yet: no COMPLETION run)"),
             }
         }
         ["task", "economics", "--task", tid] => {

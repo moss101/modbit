@@ -137,6 +137,16 @@ pub struct Economics {
     pub currency: String,
     /// Scale.
     pub scale: u8,
+    /// Price of cached input per million tokens (REQ-EPR-009); absent =
+    /// no cache discount.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cached_input_per_mtok_minor: Option<u64>,
+    /// Price of writing a cache prefix per million tokens; absent = free.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cache_write_per_mtok_minor: Option<u64>,
+    /// Cache lifetime in milliseconds; absent = the provider default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cache_ttl_ms: Option<u64>,
 }
 
 /// Current latency, as the provider or the operator measures it. These are

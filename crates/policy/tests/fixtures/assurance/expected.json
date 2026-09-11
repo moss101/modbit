@@ -1,0 +1,598 @@
+{
+  "auth_module": {
+    "candidate_revision": 4,
+    "evidence_refs": [
+      "facts:013859e2e4179e7205a895278a0567035e17042710c6867f2f04cf4f246fe577",
+      "advisory_ignored:{\"learned_risk\":0.01,\"confidence\":0.99,\"checks_passed\":true}"
+    ],
+    "facts_digest": "013859e2e4179e7205a895278a0567035e17042710c6867f2f04cf4f246fe577",
+    "forbidden_effects_requested": [],
+    "human_required": true,
+    "independent_review_required": true,
+    "level": "CRITICAL",
+    "minimum_assurance": "HIGH_ASSURANCE",
+    "policy_version": "assurance-8531202d7bf6dd6d",
+    "realized_risk_version": "risk-rules-1",
+    "reasons": [
+      {
+        "code": "PROTECTED_SURFACE",
+        "detail": "AUTH surface: src/auth/login.py",
+        "level": "CRITICAL",
+        "paths": [
+          "src/auth/login.py"
+        ],
+        "surface": "AUTH"
+      }
+    ],
+    "schema_version": 1
+  },
+  "blast_radius_files_medium": {
+    "candidate_revision": 16,
+    "evidence_refs": [
+      "facts:398702d569f691f360d345f70080c04be81cfe33eaa4226a56a9603f9be68135"
+    ],
+    "facts_digest": "398702d569f691f360d345f70080c04be81cfe33eaa4226a56a9603f9be68135",
+    "forbidden_effects_requested": [],
+    "human_required": false,
+    "independent_review_required": false,
+    "level": "MEDIUM",
+    "minimum_assurance": "STANDARD",
+    "policy_version": "assurance-8531202d7bf6dd6d",
+    "realized_risk_version": "risk-rules-1",
+    "reasons": [
+      {
+        "code": "BLAST_RADIUS",
+        "detail": "10 files changed",
+        "level": "MEDIUM",
+        "paths": [],
+        "surface": null
+      }
+    ],
+    "schema_version": 1
+  },
+  "blast_radius_lines_high": {
+    "candidate_revision": 17,
+    "evidence_refs": [
+      "facts:157ba33120ebf2213ffb0eaa1be3bc73d64385fa813fa901b4bf27bc882366d2"
+    ],
+    "facts_digest": "157ba33120ebf2213ffb0eaa1be3bc73d64385fa813fa901b4bf27bc882366d2",
+    "forbidden_effects_requested": [],
+    "human_required": false,
+    "independent_review_required": true,
+    "level": "HIGH",
+    "minimum_assurance": "GOVERNED",
+    "policy_version": "assurance-8531202d7bf6dd6d",
+    "realized_risk_version": "risk-rules-1",
+    "reasons": [
+      {
+        "code": "BLAST_RADIUS",
+        "detail": "2 files, 901 lines changed",
+        "level": "HIGH",
+        "paths": [],
+        "surface": null
+      }
+    ],
+    "schema_version": 1
+  },
+  "ci_workflow": {
+    "candidate_revision": 6,
+    "evidence_refs": [
+      "facts:27ecd725b2b32c1f8a71ef889c54ddb6dcbf3b1ce2363ee503c651339b1759da"
+    ],
+    "facts_digest": "27ecd725b2b32c1f8a71ef889c54ddb6dcbf3b1ce2363ee503c651339b1759da",
+    "forbidden_effects_requested": [],
+    "human_required": false,
+    "independent_review_required": true,
+    "level": "HIGH",
+    "minimum_assurance": "GOVERNED",
+    "policy_version": "assurance-8531202d7bf6dd6d",
+    "realized_risk_version": "risk-rules-1",
+    "reasons": [
+      {
+        "code": "PROTECTED_SURFACE",
+        "detail": "CI_CD surface: .github/workflows/ci.yml",
+        "level": "HIGH",
+        "paths": [
+          ".github/workflows/ci.yml"
+        ],
+        "surface": "CI_CD"
+      }
+    ],
+    "schema_version": 1
+  },
+  "deleted_source": {
+    "candidate_revision": 21,
+    "evidence_refs": [
+      "facts:f334305689be8510ec3f9b8e77a6cf066a607c3b417547bbdaa0021a6494c589"
+    ],
+    "facts_digest": "f334305689be8510ec3f9b8e77a6cf066a607c3b417547bbdaa0021a6494c589",
+    "forbidden_effects_requested": [],
+    "human_required": false,
+    "independent_review_required": false,
+    "level": "LOW",
+    "minimum_assurance": "STANDARD",
+    "policy_version": "assurance-8531202d7bf6dd6d",
+    "realized_risk_version": "risk-rules-1",
+    "reasons": [],
+    "schema_version": 1
+  },
+  "dependency_manifest": {
+    "candidate_revision": 10,
+    "evidence_refs": [
+      "facts:e4cfdb429b7d1696f61ff442e2ef6552af2839bd79a5bc677e26f1974e018e34"
+    ],
+    "facts_digest": "e4cfdb429b7d1696f61ff442e2ef6552af2839bd79a5bc677e26f1974e018e34",
+    "forbidden_effects_requested": [],
+    "human_required": false,
+    "independent_review_required": false,
+    "level": "MEDIUM",
+    "minimum_assurance": "STANDARD",
+    "policy_version": "assurance-8531202d7bf6dd6d",
+    "realized_risk_version": "risk-rules-1",
+    "reasons": [
+      {
+        "code": "PROTECTED_SURFACE",
+        "detail": "DEPENDENCY surface: Cargo.toml",
+        "level": "MEDIUM",
+        "paths": [
+          "Cargo.toml"
+        ],
+        "surface": "DEPENDENCY"
+      }
+    ],
+    "schema_version": 1
+  },
+  "deploy_script": {
+    "candidate_revision": 8,
+    "evidence_refs": [
+      "facts:e86820d3404a14c3d50b20e5d9b10b8add697f8b3b6c0281d72f67f007e17e57"
+    ],
+    "facts_digest": "e86820d3404a14c3d50b20e5d9b10b8add697f8b3b6c0281d72f67f007e17e57",
+    "forbidden_effects_requested": [],
+    "human_required": true,
+    "independent_review_required": true,
+    "level": "CRITICAL",
+    "minimum_assurance": "HIGH_ASSURANCE",
+    "policy_version": "assurance-8531202d7bf6dd6d",
+    "realized_risk_version": "risk-rules-1",
+    "reasons": [
+      {
+        "code": "PROTECTED_SURFACE",
+        "detail": "DEPLOY surface: deploy/rollout.sh",
+        "level": "CRITICAL",
+        "paths": [
+          "deploy/rollout.sh"
+        ],
+        "surface": "DEPLOY"
+      }
+    ],
+    "schema_version": 1
+  },
+  "destructive_effect_denied": {
+    "candidate_revision": 19,
+    "evidence_refs": [
+      "facts:47f4d0b981ae3361e04496fd3a361afb27dd72ba3bebd9220c53e75dd3f235fd"
+    ],
+    "facts_digest": "47f4d0b981ae3361e04496fd3a361afb27dd72ba3bebd9220c53e75dd3f235fd",
+    "forbidden_effects_requested": [],
+    "human_required": false,
+    "independent_review_required": true,
+    "level": "HIGH",
+    "minimum_assurance": "GOVERNED",
+    "policy_version": "assurance-8531202d7bf6dd6d",
+    "realized_risk_version": "risk-rules-1",
+    "reasons": [
+      {
+        "code": "EXTERNAL_EFFECT",
+        "detail": "Destructive effect requested (git.worktree.close), not approved",
+        "level": "HIGH",
+        "paths": [
+          "git.worktree.close"
+        ],
+        "surface": null
+      }
+    ],
+    "schema_version": 1
+  },
+  "docs_only": {
+    "candidate_revision": 3,
+    "evidence_refs": [
+      "facts:cfe1408933eb81578d89cae098b7c5e28292f89970e2d4395a975c46f2addd28"
+    ],
+    "facts_digest": "cfe1408933eb81578d89cae098b7c5e28292f89970e2d4395a975c46f2addd28",
+    "forbidden_effects_requested": [],
+    "human_required": false,
+    "independent_review_required": false,
+    "level": "LOW",
+    "minimum_assurance": "STANDARD",
+    "policy_version": "assurance-8531202d7bf6dd6d",
+    "realized_risk_version": "risk-rules-1",
+    "reasons": [],
+    "schema_version": 1
+  },
+  "everything_at_once": {
+    "candidate_revision": 23,
+    "evidence_refs": [
+      "facts:bf49a99330c28821c2c83829e6bdbf8a147580abafa2967f8b1ee717e1005bc0",
+      "advisory_ignored:{\"learned_risk\":0.0,\"confidence\":1.0,\"checks_passed\":true}"
+    ],
+    "facts_digest": "bf49a99330c28821c2c83829e6bdbf8a147580abafa2967f8b1ee717e1005bc0",
+    "forbidden_effects_requested": [],
+    "human_required": true,
+    "independent_review_required": true,
+    "level": "CRITICAL",
+    "minimum_assurance": "HIGH_ASSURANCE",
+    "policy_version": "assurance-8531202d7bf6dd6d",
+    "realized_risk_version": "risk-rules-1",
+    "reasons": [
+      {
+        "code": "EXTERNAL_EFFECT",
+        "detail": "ExternalSideEffect effect requested (git.push), approved",
+        "level": "HIGH",
+        "paths": [
+          "git.push"
+        ],
+        "surface": null
+      },
+      {
+        "code": "PROTECTED_SURFACE",
+        "detail": "CI_CD surface: .github/workflows/ci.yml",
+        "level": "HIGH",
+        "paths": [
+          ".github/workflows/ci.yml"
+        ],
+        "surface": "CI_CD"
+      },
+      {
+        "code": "PROTECTED_SURFACE",
+        "detail": "LOCKFILE surface: Cargo.lock",
+        "level": "MEDIUM",
+        "paths": [
+          "Cargo.lock"
+        ],
+        "surface": "LOCKFILE"
+      },
+      {
+        "code": "PROTECTED_SURFACE",
+        "detail": "AUTH surface: src/auth/login.py",
+        "level": "CRITICAL",
+        "paths": [
+          "src/auth/login.py"
+        ],
+        "surface": "AUTH"
+      },
+      {
+        "code": "SPARSE_COVERAGE",
+        "detail": "source changed without a test change",
+        "level": "MEDIUM",
+        "paths": [
+          "src/auth/login.py",
+          "src/x.rs"
+        ],
+        "surface": null
+      },
+      {
+        "code": "UNEXPECTED_SCOPE",
+        "detail": "3 path(s) outside the plan's write set",
+        "level": "HIGH",
+        "paths": [
+          "Cargo.lock",
+          ".github/workflows/ci.yml",
+          "src/x.rs"
+        ],
+        "surface": null
+      }
+    ],
+    "schema_version": 1
+  },
+  "external_effect_approved": {
+    "candidate_revision": 18,
+    "evidence_refs": [
+      "facts:6ab94f6ed21f40e6bd464f14dc4e1f7ab107e51f907a0bdd5e773a0497cd57d8"
+    ],
+    "facts_digest": "6ab94f6ed21f40e6bd464f14dc4e1f7ab107e51f907a0bdd5e773a0497cd57d8",
+    "forbidden_effects_requested": [],
+    "human_required": false,
+    "independent_review_required": true,
+    "level": "HIGH",
+    "minimum_assurance": "GOVERNED",
+    "policy_version": "assurance-8531202d7bf6dd6d",
+    "realized_risk_version": "risk-rules-1",
+    "reasons": [
+      {
+        "code": "EXTERNAL_EFFECT",
+        "detail": "ExternalSideEffect effect requested (git.push), approved",
+        "level": "HIGH",
+        "paths": [
+          "git.push"
+        ],
+        "surface": null
+      }
+    ],
+    "schema_version": 1
+  },
+  "lockfile": {
+    "candidate_revision": 11,
+    "evidence_refs": [
+      "facts:0761c71c7f8dca669188c1799d8275c84a5bb14343f086dc58f4e995548b9f2f"
+    ],
+    "facts_digest": "0761c71c7f8dca669188c1799d8275c84a5bb14343f086dc58f4e995548b9f2f",
+    "forbidden_effects_requested": [],
+    "human_required": false,
+    "independent_review_required": true,
+    "level": "MEDIUM",
+    "minimum_assurance": "GOVERNED",
+    "policy_version": "assurance-8531202d7bf6dd6d",
+    "realized_risk_version": "risk-rules-1",
+    "reasons": [
+      {
+        "code": "PROTECTED_SURFACE",
+        "detail": "LOCKFILE surface: Cargo.lock",
+        "level": "MEDIUM",
+        "paths": [
+          "Cargo.lock"
+        ],
+        "surface": "LOCKFILE"
+      }
+    ],
+    "schema_version": 1
+  },
+  "migration": {
+    "candidate_revision": 9,
+    "evidence_refs": [
+      "facts:47e0f952505c1af1cfc6f92e9c903dd80315df0b1adbc92107f4a602f6d6f92d"
+    ],
+    "facts_digest": "47e0f952505c1af1cfc6f92e9c903dd80315df0b1adbc92107f4a602f6d6f92d",
+    "forbidden_effects_requested": [],
+    "human_required": false,
+    "independent_review_required": true,
+    "level": "HIGH",
+    "minimum_assurance": "GOVERNED",
+    "policy_version": "assurance-8531202d7bf6dd6d",
+    "realized_risk_version": "risk-rules-1",
+    "reasons": [
+      {
+        "code": "PROTECTED_SURFACE",
+        "detail": "MIGRATION surface: db/migrations/002_add.sql",
+        "level": "HIGH",
+        "paths": [
+          "db/migrations/002_add.sql"
+        ],
+        "surface": "MIGRATION"
+      }
+    ],
+    "schema_version": 1
+  },
+  "no_plan": {
+    "candidate_revision": 15,
+    "evidence_refs": [
+      "facts:b85adc29d86d99e38eaee8a8f367bc87a13b7e824bad559c6beda92912a31053"
+    ],
+    "facts_digest": "b85adc29d86d99e38eaee8a8f367bc87a13b7e824bad559c6beda92912a31053",
+    "forbidden_effects_requested": [],
+    "human_required": false,
+    "independent_review_required": false,
+    "level": "LOW",
+    "minimum_assurance": "STANDARD",
+    "policy_version": "assurance-8531202d7bf6dd6d",
+    "realized_risk_version": "risk-rules-1",
+    "reasons": [],
+    "schema_version": 1
+  },
+  "plain_source_with_test": {
+    "candidate_revision": 1,
+    "evidence_refs": [
+      "facts:1c0d09ce3c031d6570d6c774cfd9adb20b2216081f98145eee9d517996cf5322"
+    ],
+    "facts_digest": "1c0d09ce3c031d6570d6c774cfd9adb20b2216081f98145eee9d517996cf5322",
+    "forbidden_effects_requested": [],
+    "human_required": false,
+    "independent_review_required": false,
+    "level": "LOW",
+    "minimum_assurance": "STANDARD",
+    "policy_version": "assurance-8531202d7bf6dd6d",
+    "realized_risk_version": "risk-rules-1",
+    "reasons": [],
+    "schema_version": 1
+  },
+  "plain_source_without_test": {
+    "candidate_revision": 2,
+    "evidence_refs": [
+      "facts:ebe5eee5b4d5fdc845e28e86ddafe9e23771f8b4732137f08b6913a7b325d0b4"
+    ],
+    "facts_digest": "ebe5eee5b4d5fdc845e28e86ddafe9e23771f8b4732137f08b6913a7b325d0b4",
+    "forbidden_effects_requested": [],
+    "human_required": false,
+    "independent_review_required": false,
+    "level": "MEDIUM",
+    "minimum_assurance": "STANDARD",
+    "policy_version": "assurance-8531202d7bf6dd6d",
+    "realized_risk_version": "risk-rules-1",
+    "reasons": [
+      {
+        "code": "SPARSE_COVERAGE",
+        "detail": "source changed without a test change",
+        "level": "MEDIUM",
+        "paths": [
+          "src/lib.rs"
+        ],
+        "surface": null
+      }
+    ],
+    "schema_version": 1
+  },
+  "policy_dir": {
+    "candidate_revision": 12,
+    "evidence_refs": [
+      "facts:5ad2d99acaccbeff45cd3a5b389fa38b4f97b326b6c0874812723c4ccb828bab"
+    ],
+    "facts_digest": "5ad2d99acaccbeff45cd3a5b389fa38b4f97b326b6c0874812723c4ccb828bab",
+    "forbidden_effects_requested": [],
+    "human_required": false,
+    "independent_review_required": true,
+    "level": "HIGH",
+    "minimum_assurance": "GOVERNED",
+    "policy_version": "assurance-8531202d7bf6dd6d",
+    "realized_risk_version": "risk-rules-1",
+    "reasons": [
+      {
+        "code": "PROTECTED_SURFACE",
+        "detail": "POLICY surface: .modbit/verification.json",
+        "level": "HIGH",
+        "paths": [
+          ".modbit/verification.json"
+        ],
+        "surface": "POLICY"
+      }
+    ],
+    "schema_version": 1
+  },
+  "reversible_effect_only": {
+    "candidate_revision": 20,
+    "evidence_refs": [
+      "facts:1480c41b9518c5cef95adffc15da8bd4e9eb0ec05779e6ab87b1ab5e93d5c31a"
+    ],
+    "facts_digest": "1480c41b9518c5cef95adffc15da8bd4e9eb0ec05779e6ab87b1ab5e93d5c31a",
+    "forbidden_effects_requested": [],
+    "human_required": false,
+    "independent_review_required": false,
+    "level": "LOW",
+    "minimum_assurance": "STANDARD",
+    "policy_version": "assurance-8531202d7bf6dd6d",
+    "realized_risk_version": "risk-rules-1",
+    "reasons": [],
+    "schema_version": 1
+  },
+  "secret_file": {
+    "candidate_revision": 5,
+    "evidence_refs": [
+      "facts:904c5ef2f47ee9c368d08a10a3ad04914e917711c9657f49887cf8c8381f4bf9"
+    ],
+    "facts_digest": "904c5ef2f47ee9c368d08a10a3ad04914e917711c9657f49887cf8c8381f4bf9",
+    "forbidden_effects_requested": [],
+    "human_required": true,
+    "independent_review_required": true,
+    "level": "CRITICAL",
+    "minimum_assurance": "HIGH_ASSURANCE",
+    "policy_version": "assurance-8531202d7bf6dd6d",
+    "realized_risk_version": "risk-rules-1",
+    "reasons": [
+      {
+        "code": "PROTECTED_SURFACE",
+        "detail": "SECRET surface: config/prod.env",
+        "level": "CRITICAL",
+        "paths": [
+          "config/prod.env"
+        ],
+        "surface": "SECRET"
+      }
+    ],
+    "schema_version": 1
+  },
+  "terraform": {
+    "candidate_revision": 7,
+    "evidence_refs": [
+      "facts:79b4c6a8628bf6d45bcc1d974991f8702a8e033062ba38940f66a0fd7be266ba"
+    ],
+    "facts_digest": "79b4c6a8628bf6d45bcc1d974991f8702a8e033062ba38940f66a0fd7be266ba",
+    "forbidden_effects_requested": [],
+    "human_required": false,
+    "independent_review_required": true,
+    "level": "HIGH",
+    "minimum_assurance": "GOVERNED",
+    "policy_version": "assurance-8531202d7bf6dd6d",
+    "realized_risk_version": "risk-rules-1",
+    "reasons": [
+      {
+        "code": "PROTECTED_SURFACE",
+        "detail": "INFRASTRUCTURE surface: infra/main.tf",
+        "level": "HIGH",
+        "paths": [
+          "infra/main.tf"
+        ],
+        "surface": "INFRASTRUCTURE"
+      }
+    ],
+    "schema_version": 1
+  },
+  "unexpected_scope_many": {
+    "candidate_revision": 14,
+    "evidence_refs": [
+      "facts:4e67d5a13ca93d13356264614d1f4babb92461a0e312821eed6038f8a18b9136"
+    ],
+    "facts_digest": "4e67d5a13ca93d13356264614d1f4babb92461a0e312821eed6038f8a18b9136",
+    "forbidden_effects_requested": [],
+    "human_required": false,
+    "independent_review_required": true,
+    "level": "HIGH",
+    "minimum_assurance": "GOVERNED",
+    "policy_version": "assurance-8531202d7bf6dd6d",
+    "realized_risk_version": "risk-rules-1",
+    "reasons": [
+      {
+        "code": "UNEXPECTED_SCOPE",
+        "detail": "3 path(s) outside the plan's write set",
+        "level": "HIGH",
+        "paths": [
+          "src/b.rs",
+          "src/c.rs",
+          "src/d.rs"
+        ],
+        "surface": null
+      }
+    ],
+    "schema_version": 1
+  },
+  "unexpected_scope_one": {
+    "candidate_revision": 13,
+    "evidence_refs": [
+      "facts:c8294ea5e9682e6f4b438a5eb630b05e22224f7a530ab96f52f4ddf9bd3413c1"
+    ],
+    "facts_digest": "c8294ea5e9682e6f4b438a5eb630b05e22224f7a530ab96f52f4ddf9bd3413c1",
+    "forbidden_effects_requested": [],
+    "human_required": false,
+    "independent_review_required": true,
+    "level": "MEDIUM",
+    "minimum_assurance": "GOVERNED",
+    "policy_version": "assurance-8531202d7bf6dd6d",
+    "realized_risk_version": "risk-rules-1",
+    "reasons": [
+      {
+        "code": "UNEXPECTED_SCOPE",
+        "detail": "1 path(s) outside the plan's write set",
+        "level": "MEDIUM",
+        "paths": [
+          "src/b.rs"
+        ],
+        "surface": null
+      }
+    ],
+    "schema_version": 1
+  },
+  "windows_paths": {
+    "candidate_revision": 22,
+    "evidence_refs": [
+      "facts:5b0f961016acec1dbdf9bb615d7e5d84ca3d7d40f950444c01d102b46f455140"
+    ],
+    "facts_digest": "5b0f961016acec1dbdf9bb615d7e5d84ca3d7d40f950444c01d102b46f455140",
+    "forbidden_effects_requested": [],
+    "human_required": true,
+    "independent_review_required": true,
+    "level": "CRITICAL",
+    "minimum_assurance": "HIGH_ASSURANCE",
+    "policy_version": "assurance-8531202d7bf6dd6d",
+    "realized_risk_version": "risk-rules-1",
+    "reasons": [
+      {
+        "code": "PROTECTED_SURFACE",
+        "detail": "AUTH surface: src\\auth\\session.rs",
+        "level": "CRITICAL",
+        "paths": [
+          "src\\auth\\session.rs"
+        ],
+        "surface": "AUTH"
+      }
+    ],
+    "schema_version": 1
+  }
+}

@@ -1,0 +1,20 @@
+{
+ "task": "EPR-008",
+ "requirement": "REQ-EPR-008",
+ "qual": "QUAL-EPR-008",
+ "tests": [
+  "qual_epr_008_factual_risk_stays_strict_despite_passing_tests_and_stops_safely_unattended",
+  "qual_epr_008_fault_corpus_pins_every_rule_and_no_signal_lowers_assurance",
+  "epr_fi_008_a_stronger_layer_moves_every_case_up_or_keeps_it",
+  "surfaces_match_prefixes_segments_suffixes_and_basenames",
+  "a_plain_change_is_low_and_passing_tests_or_confidence_change_nothing",
+  "a_critical_surface_needs_a_human_whatever_else_is_true",
+  "layers_only_strengthen",
+  "later_facts_strengthen_and_never_weaken"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "A real task on an auth module and a migration with a passing check derives CRITICAL/HIGH_ASSURANCE with review and human required, persisted beside the PASSED run, a weakening repository layer ignored and named; under the unattended profile the completion is refused ASSURANCE_HUMAN_REQUIRED and nothing is synthesized; the 23-case corpus pins every rule and forged advisories change nothing.",
+ "audit": "PARTIAL before: the envelope had no assurance section, protected paths were a literal, risk_version was none.",
+ "limitations": "Independent model review (EPR-006/018) and the Acceptance Gate (EPR-017) are later tasks; today the user's review discharges the obligations."
+}

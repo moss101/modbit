@@ -409,6 +409,11 @@ impl ToolHost {
     ///
     /// `existing` is the projection of a call re-entering the pipeline after
     /// an approval (same `tool_call_id`, same intent hash).
+    /// The admin PolicyEnvelope the kernel decides under (docs/23).
+    pub(crate) fn envelope(&self) -> modbit_policy::PolicyEnvelope {
+        CapabilityKernel::default().envelope().clone()
+    }
+
     /// The retrieval index of a workspace root, built at first use (M3.1).
     pub(crate) async fn index(
         &self,

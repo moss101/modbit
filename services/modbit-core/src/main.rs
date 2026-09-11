@@ -9,10 +9,12 @@
 use std::path::PathBuf;
 use std::process::ExitCode;
 
+mod assurance;
 mod baseline;
 mod branch;
 mod checkpoint;
 mod economics;
+mod gate;
 mod inspector;
 mod languages;
 mod model_registry;

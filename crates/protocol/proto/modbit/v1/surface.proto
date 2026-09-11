@@ -1268,6 +1268,125 @@ message CheckpointRestoreResult {
   uint32 preconditions_checked = 11;
 }
 
+// ---- Routing session state and epochs (REQ-EPR-009; docs/27 §7.6, §16) ----
+
+message GetRoutingSessionState {
+  Id session_id = 1;
+}
+
+message RouteDecisionView {
+  string boundary = 1;             // TASK | COMPACTION | PROVIDER | QUALITY | MODE
+  uint64 route_epoch = 2;
+  string current = 3;              // endpoint/model in force before; "" at a fresh start
+  string chosen = 4;               // endpoint/model in force after
+  string decision = 5;             // INITIAL | STAY | SWITCH
+  string reason = 6;
+  uint64 stay_minor = 7;
+  uint64 switch_minor = 8;
+  uint64 switch_cost_minor = 9;    // the itemized total
+  string switch_cost_json = 10;    // the itemized switch cost
+  string cache_state_json = 11;    // the cache state consulted, "" when none
+  string plan_id = 12;
+  uint64 offset = 13;
+  Id run_id = 14;
+}
+
+message CacheStateView {
+  string endpoint = 1;
+  string model = 2;
+  uint64 cached_prefix_tokens = 3;
+  int64 last_used_at_ms = 4;
+  string prefix_key = 5;
+}
+
+// docs/27 §16.1 RoutingSessionState: a projection of the log, not a store.
+message RoutingSessionStateView {
+  Id session_id = 1;
+  string active_endpoint = 2;
+  string active_model = 3;
+  string active_plan_id = 4;
+  repeated string executed_path_labels = 5; // one per run: endpoint/model[ -> endpoint/model]
+  CacheStateView cache_state = 6;  // absent until a provider reported usage
+  string last_profile_ref = 7;
+  int64 last_route_at_ms = 8;
+  uint64 route_epoch = 9;          // the highest routing epoch admitted in the session
+  uint64 branch_generation = 10;
+  repeated RouteDecisionView decisions = 11;
+}
+
+// ---- Factual assurance (REQ-EPR-008; docs/27 §9.3, docs/38) ----
+
+// The realized risk derived at a task's latest COMPLETION run, and the
+// policy version it was derived under.
+message GetTaskAssurance {
+  Id task_id = 1;
+}
+
+message RiskReasonView {
+  string code = 1;                 // PROTECTED_SURFACE | BLAST_RADIUS | UNEXPECTED_SCOPE | SPARSE_COVERAGE | EXTERNAL_EFFECT | FORBIDDEN_EFFECT
+  string surface = 2;              // AUTH | SECRET | CI_CD | ... for PROTECTED_SURFACE
+  string level = 3;                // the level this reason alone implies
+  repeated string paths = 4;
+  string detail = 5;
+}
+
+message RealizedRiskView {
+  string realized_risk_ref = 1;    // object hash of the record
+  uint32 schema_version = 2;
+  string rules_version = 3;
+  string policy_version = 4;
+  uint64 candidate_revision = 5;
+  string level = 6;                // LOW | MEDIUM | HIGH | CRITICAL
+  string minimum_assurance = 7;    // FAST | STANDARD | GOVERNED | HIGH_ASSURANCE
+  bool independent_review_required = 8;
+  bool human_required = 9;
+  repeated RiskReasonView reasons = 10;
+  repeated string forbidden_effects_requested = 11;
+  repeated string evidence_refs = 12;
+  string facts_digest = 13;
+}
+
+message GateEvidenceView {
+  string kind = 1;                 // build | typecheck | lint | tests | security | api_compatibility | invariants | effects | realized_risk | independent_review | human_decision | check:<id>
+  string status = 2;               // PASS | FAIL | MISSING | STALE | INCOMPLETE
+  bool required = 3;
+  string detail = 4;
+  repeated string refs = 5;
+}
+
+// The Acceptance Gate's result (REQ-EPR-017; docs/27 §9.4): whether the
+// evidence at the candidate revision satisfies the required assurance.
+message AcceptanceGateView {
+  string gate_ref = 1;             // object hash of the AcceptanceGateResult
+  string gate_version = 2;
+  uint64 candidate_revision = 3;
+  string verdict = 4;              // ACCEPT | REJECT | INCONCLUSIVE
+  string required_assurance = 5;
+  bool independent_review_required = 6;
+  bool human_required = 7;
+  repeated string missing_evidence = 8;
+  repeated string reject_reasons = 9;
+  repeated GateEvidenceView evidence = 10;
+  repeated string evidence_refs = 11;
+  string realized_risk_ref = 12;
+  string policy_version = 13;
+  string risk_version = 14;
+  string plan_id = 15;
+  string leg_id = 16;
+  string trigger = 17;             // COMPLETION_RUN | REVIEW_DECISION
+  uint64 at_offset = 18;           // where AcceptanceGateEvaluated is on the log
+}
+
+message TaskAssuranceView {
+  Id task_id = 1;
+  bool derived = 2;                // false until a COMPLETION run derived it
+  RealizedRiskView realized_risk = 3;
+  uint64 derived_at_offset = 4;    // where RealizedRiskDerived is on the log
+  string policy_version = 5;       // the policy the task is judged under now
+  repeated string policy_notes = 6; // repository-layer entries that were ignored (cannot weaken)
+  AcceptanceGateView acceptance = 7; // the latest gate result, absent until one exists
+}
+
 // ---- Session branching: fork, rewind preview, session tree (REQ-EV-0077 / 0122 / 0123; docs/19) ----
 
 // Fork a new task from one of a task's checkpoints. The fork gets its own

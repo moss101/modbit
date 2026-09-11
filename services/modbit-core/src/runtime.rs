@@ -744,9 +744,56 @@ fn route_new_run(
         .pinned
         .then(|| (cfg.endpoint.clone(), cfg.model.clone()));
     let (plan, mut events) = if core.gateway.registry().is_some() {
-        let c =
-            crate::routing::compile_for_run(core, store, task, run_id, lease_generation, pin, 0)?;
-        let events = crate::routing::compiled_events(&c, actor.clone());
+        // REQ-EPR-009, the task boundary: the session's route in force and
+        // its warm prefix are the incumbent; a cheaper feasible alternative
+        // replaces it only when the saving clears the switch cost.
+        let context = if pin.is_some() {
+            None
+        } else {
+            crate::routing::session_route_context(store, task.session_id, true)
+        };
+        let c = crate::routing::compile_for_run(
+            core,
+            store,
+            task,
+            run_id,
+            lease_generation,
+            pin,
+            0,
+            context.as_ref(),
+        )?;
+        let mut events = crate::routing::compiled_events(&c, actor.clone());
+        let chosen = c
+            .compiled
+            .plan
+            .initial_slot()
+            .map(|s| format!("{}/{}", s.endpoint, s.model))
+            .unwrap_or_default();
+        let (decision, reason) = match &context {
+            None => (
+                "INITIAL",
+                if cfg.pinned {
+                    "manual pin: the route is the user's choice for this task".to_owned()
+                } else {
+                    "no auto route in force for this session".to_owned()
+                },
+            ),
+            Some(ctx) if format!("{}/{}", ctx.endpoint, ctx.model) == chosen => {
+                ("STAY", crate::routing::decision_reason(&c, "STAY"))
+            }
+            Some(_) => ("SWITCH", crate::routing::decision_reason(&c, "SWITCH")),
+        };
+        events.push(crate::routing::reevaluated_event(
+            "TASK",
+            c.compiled.plan.routing_epoch,
+            context.as_ref(),
+            &chosen,
+            decision,
+            reason,
+            Some(&c.switch),
+            &c.compiled.plan.plan_id,
+            actor.clone(),
+        ));
         (c.compiled.plan, events)
     } else {
         let plan = modbit_domain::routing::ConditionalExecutionPlan::direct(
@@ -842,6 +889,181 @@ fn route_new_run(
     })
 }
 
+/// Re-evaluate the route in force at a boundary inside a run (REQ-EPR-009).
+/// With a registry active and no manual pin, a plan is compiled with the
+/// current binding as the incumbent and the warm prefix left behind (a
+/// compaction rewrote it); a cheaper confidence-feasible alternative that
+/// clears the switch cost opens a new transaction — compiled, admitted
+/// under the next routing epoch, its initial slot activated — on this run,
+/// and the loop continues on it. Every decision is on the log.
+async fn reroute_at_boundary(
+    core: &Core,
+    task: &Task,
+    run_id: RunId,
+    cfg: &mut StartConfig,
+    boundary: &str,
+    actor: &Actor,
+) {
+    if core.gateway.registry().is_none() {
+        return;
+    }
+    let lt = Lineage::run(core.tenant_id, task.session_id, task.task_id, run_id)
+        .fenced(cfg.lease_generation);
+    let mut store = core.store.lock().await;
+    let epoch_now = store
+        .routing_plans(&run_id)
+        .unwrap_or_default()
+        .iter()
+        .map(|p| p.routing_epoch)
+        .max()
+        .unwrap_or(0);
+    let context = crate::routing::RouteContext {
+        endpoint: cfg.endpoint.clone(),
+        model: cfg.model.clone(),
+        // The compaction replaced the transcript prefix: nothing of the
+        // provider's cache survives it, whatever the session last reported.
+        cache: None,
+        plan_id: cfg.plan_id.clone(),
+    };
+    if cfg.pinned {
+        let _ = append(
+            &mut store,
+            core,
+            lt,
+            AggregateType::Run,
+            *run_id.as_bytes(),
+            vec![crate::routing::reevaluated_event(
+                boundary,
+                epoch_now,
+                Some(&context),
+                &format!("{}/{}", cfg.endpoint, cfg.model),
+                "STAY",
+                "manual pin: the route is the user's choice".into(),
+                None,
+                &cfg.plan_id,
+                actor.clone(),
+            )],
+        );
+        return;
+    }
+    let compiled = crate::routing::compile_for_run(
+        core,
+        &store,
+        task,
+        run_id,
+        cfg.lease_generation,
+        None,
+        0,
+        Some(&context),
+    );
+    let c = match compiled {
+        Ok(c) => c,
+        Err((code, detail)) => {
+            let _ = append(
+                &mut store,
+                core,
+                lt,
+                AggregateType::Run,
+                *run_id.as_bytes(),
+                vec![crate::routing::reevaluated_event(
+                    boundary,
+                    epoch_now,
+                    Some(&context),
+                    &format!("{}/{}", cfg.endpoint, cfg.model),
+                    "STAY",
+                    format!(
+                        "no plan compiled at the boundary ({code}: {detail}); the route in force stands"
+                    ),
+                    None,
+                    &cfg.plan_id,
+                    actor.clone(),
+                )],
+            );
+            return;
+        }
+    };
+    let chosen = c
+        .compiled
+        .plan
+        .initial_slot()
+        .map(|s| format!("{}/{}", s.endpoint, s.model))
+        .unwrap_or_default();
+    let current = format!("{}/{}", cfg.endpoint, cfg.model);
+    if chosen == current {
+        let _ = append(
+            &mut store,
+            core,
+            lt,
+            AggregateType::Run,
+            *run_id.as_bytes(),
+            vec![crate::routing::reevaluated_event(
+                boundary,
+                epoch_now,
+                Some(&context),
+                &chosen,
+                "STAY",
+                crate::routing::decision_reason(&c, "STAY"),
+                Some(&c.switch),
+                &cfg.plan_id,
+                actor.clone(),
+            )],
+        );
+        return;
+    }
+    // A switch: the new transaction, admitted and activated through the
+    // same doors as any plan; the old one is superseded by its epoch.
+    let plan = c.compiled.plan.clone();
+    let Some(initial) = plan.initial_slot() else {
+        return;
+    };
+    let ledger = admission::RunLedger::empty(&plan.total_budget.currency, plan.total_budget.scale);
+    let Ok(activation) = admission::admit_activation(
+        &plan,
+        &ledger,
+        &initial.slot_id,
+        modbit_domain::routing::Trigger::Initial,
+    ) else {
+        return;
+    };
+    let mut events = crate::routing::compiled_events(&c, actor.clone());
+    events.push(typed(
+        "SlotActivated",
+        &RunEvent::SlotActivated {
+            plan_id: plan.plan_id.clone(),
+            slot_id: activation.slot_id.clone(),
+            activation: activation.activation,
+            reserved_minor: activation.reserved.minor_units,
+        },
+        actor.clone(),
+    ));
+    events.push(crate::routing::reevaluated_event(
+        boundary,
+        plan.routing_epoch,
+        Some(&context),
+        &chosen,
+        "SWITCH",
+        crate::routing::decision_reason(&c, "SWITCH"),
+        Some(&c.switch),
+        &plan.plan_id,
+        actor.clone(),
+    ));
+    if append(
+        &mut store,
+        core,
+        lt,
+        AggregateType::Run,
+        *run_id.as_bytes(),
+        events,
+    )
+    .is_ok()
+    {
+        cfg.plan_id = plan.plan_id.clone();
+        cfg.slot_id = initial.slot_id.clone();
+        cfg.endpoint = initial.endpoint.clone();
+        cfg.model = initial.model.clone();
+    }
+}
+
 /// The route a resumed run continues on: the plan it already has, and the
 /// binding of the slot it was activated in. A run from before plans were
 /// recorded continues on its start configuration.
@@ -850,11 +1072,15 @@ fn recover_route(
     run_id: RunId,
     cfg: &StartConfig,
 ) -> (String, String, String, String) {
+    // The plan in force is the one admitted under the highest routing
+    // epoch (REQ-EPR-009): a switch at a boundary opened a new transaction
+    // on this run, and a resumed run continues on it, never on the one it
+    // left.
     let plan = store
         .routing_plans(&run_id)
         .unwrap_or_default()
         .into_iter()
-        .next_back();
+        .max_by_key(|p| p.routing_epoch);
     match plan {
         Some(p) => {
             let slot = store
@@ -1565,7 +1791,7 @@ async fn run_loop(
     core: Arc<Core>,
     task: Task,
     run_id: RunId,
-    cfg: StartConfig,
+    mut cfg: StartConfig,
     cancel: CancellationToken,
 ) {
     let actor = Actor::Agent(format!("solver:{}", task.task_id));
@@ -1575,6 +1801,18 @@ async fn run_loop(
         .fenced(cfg.lease_generation);
     let (mut transcript, mut state, mut seen_offset, mut carried) =
         rebuild(&core, &task, cfg.budgets).await;
+    // REQ-EPR-008: the protected surfaces the run's write gate honours come
+    // from the assurance policy this task is judged under.
+    state.protected_paths = Some({
+        let root = task
+            .workspace_root
+            .as_deref()
+            .map(std::path::Path::new)
+            .unwrap_or_else(|| std::path::Path::new("."));
+        crate::assurance::policy_for(&core.assurance_policy, root)
+            .0
+            .question_required_patterns()
+    });
     // docs/28 §5 (PX-039): a goal that reports a failure must reproduce it
     // before a fix transaction.
     state.goal_reports_failure = harness::goal_reports_failure(&task.goal_text);
@@ -1789,6 +2027,7 @@ async fn run_loop(
                 // the prefix it summarised are still current; under hard pressure
                 // a bounded synchronous compaction takes over. The canonical log
                 // is untouched and every dropped result stays reachable by its ref.
+                let epoch_before = epoch.as_ref().map(|m| m.epoch);
                 compaction_step(
                     &core,
                     &task,
@@ -1799,6 +2038,15 @@ async fn run_loop(
                     &mut compaction_worker,
                 )
                 .await;
+                // REQ-EPR-009: a compaction epoch is a re-evaluation boundary
+                // (docs/27 §7.6, §16.2). The prefix the provider cached is gone
+                // with the summarised entries, so the route in force is
+                // compared with its alternatives on cold economics; a switch
+                // opens a new transaction under a new routing epoch on this
+                // same run, and nothing else changes topology.
+                if epoch.as_ref().map(|m| m.epoch) != epoch_before {
+                    reroute_at_boundary(&core, &task, run_id, &mut cfg, "COMPACTION", &actor).await;
+                }
                 // ContextCompile step.
                 // REQ-EV-0188: media reaches the model only when the routed model
                 // accepts that input; otherwise the result text stands on its own.
@@ -4807,7 +5055,33 @@ async fn handle_complete(
         }
         let (_entry, ok, _rev) =
             run_verification(core, task, lt, actor, state, Stage::Completion, 0).await;
-        if ok {
+        // REQ-EPR-008 (docs/27 §9.2): a candidate that policy says needs a
+        // human decision cannot be proposed for acceptance from a profile
+        // that can never wait for one; the run stops, safely, and says why.
+        // Nothing is synthesized in the human's place.
+        let human_required = state
+            .realized_risk
+            .as_ref()
+            .and_then(|r| r["human_required"].as_bool())
+            .unwrap_or(false);
+        let unattended = core
+            .tools
+            .envelope()
+            .no_approval_profiles
+            .contains(&task.execution_profile);
+        if ok && human_required && unattended {
+            Err(HarnessRefusal::CompletionBlocked {
+                reasons: vec![format!(
+                    "ASSURANCE_HUMAN_REQUIRED: the candidate's realized risk is {} and requires a human decision; execution profile `{}` cannot wait for one",
+                    state
+                        .realized_risk
+                        .as_ref()
+                        .and_then(|r| r["level"].as_str())
+                        .unwrap_or("?"),
+                    task.execution_profile
+                )],
+            })
+        } else if ok {
             Ok(())
         } else {
             Err(HarnessRefusal::CompletionBlocked {
@@ -5196,6 +5470,16 @@ async fn run_verification(
     stage: Stage,
     ordinal: u32,
 ) -> (TranscriptEntry, bool, String) {
+    // The candidate revision is the workspace's: the last write's when the
+    // run wrote, the workspace's current one when it did not (a run that
+    // changed nothing is still verified at a definite revision, and the
+    // acceptance gate compares it with the revision a review is taken at).
+    if state.candidate_revision.is_none()
+        && let Some(root) = task.workspace_root.as_deref()
+        && let Ok((ws, _)) = core.tools.workspace(root).await
+    {
+        state.candidate_revision = Some(ws.lock().await.revision().number);
+    }
     let candidate = format!("ws-rev-{}", state.candidate_revision.unwrap_or(0));
     let Some(root) = task.workspace_root.clone() else {
         return (
@@ -5440,6 +5724,79 @@ async fn run_verification(
                     state.open_flags.push(f);
                 }
             }
+            // REQ-EPR-008: the candidate's factual risk, derived from the
+            // same changed files under revision lock, persisted beside — and
+            // independent of — the checks' outcome. A later derivation can
+            // only strengthen what an earlier one required.
+            {
+                let (policy, notes) = crate::assurance::policy_for(
+                    &core.assurance_policy,
+                    std::path::Path::new(&root),
+                );
+                let (facts, earlier) = {
+                    let store = core.store.lock().await;
+                    (
+                        crate::assurance::facts(
+                            &store,
+                            task,
+                            &files,
+                            state.candidate_revision.unwrap_or(0),
+                            state.plan.as_ref().map(|p| p.expected_files.clone()),
+                        ),
+                        crate::assurance::latest(&store, task).map(|(r, _, _)| r),
+                    )
+                };
+                let derived = modbit_policy::derive_realized_risk(&policy, &facts);
+                let risk = match &earlier {
+                    Some(e) => modbit_policy::strengthen_only(e, &derived),
+                    None => derived,
+                };
+                let store = core.store.lock().await;
+                if let Ok(risk_ref) = store
+                    .objects()
+                    .put(&serde_json::to_vec(&risk).unwrap_or_default())
+                {
+                    events.push(typed(
+                        "RealizedRiskDerived",
+                        &RunEvent::RealizedRiskDerived {
+                            verification_run_id: vrun.verification_run_id.clone(),
+                            realized_risk_ref: risk_ref,
+                            candidate_revision: risk.candidate_revision,
+                            level: risk.level.label().into(),
+                            minimum_assurance: risk.minimum_assurance.label().into(),
+                            independent_review_required: risk.independent_review_required,
+                            human_required: risk.human_required,
+                            reasons: risk
+                                .reasons
+                                .iter()
+                                .map(|r| match r.surface {
+                                    Some(s) => format!("{}:{}", r.code, s.label()),
+                                    None => r.code.clone(),
+                                })
+                                .collect(),
+                            policy_version: risk.policy_version.clone(),
+                            rules_version: risk.realized_risk_version.clone(),
+                            forbidden_effects_requested: risk.forbidden_effects_requested.clone(),
+                        },
+                        actor.clone(),
+                    ));
+                }
+                drop(store);
+                text.push_str(&crate::assurance::summary(&risk));
+                text.push('\n');
+                for n in &notes {
+                    text.push_str(&format!("policy: {n}\n"));
+                }
+                state.realized_risk = Some(serde_json::json!({
+                    "level": risk.level.label(),
+                    "minimum_assurance": risk.minimum_assurance.label(),
+                    "independent_review_required": risk.independent_review_required,
+                    "human_required": risk.human_required,
+                    "forbidden_effects_requested": risk.forbidden_effects_requested,
+                    "reasons": risk.reasons.iter().map(|r| r.detail.clone()).collect::<Vec<_>>(),
+                    "policy_version": risk.policy_version,
+                }));
+            }
             state
                 .open_failures
                 .retain(|f| !f.starts_with("verify:") && !f.starts_with("completion:"));
@@ -5450,6 +5807,76 @@ async fn run_verification(
                 state
                     .open_failures
                     .push("completion:DENY-class diff invariant violated".into());
+            }
+            if let Some(f) = state
+                .realized_risk
+                .as_ref()
+                .and_then(|r| r["forbidden_effects_requested"].as_array())
+                .filter(|a| !a.is_empty())
+            {
+                state.open_failures.push(format!(
+                    "completion:forbidden effect requested ({})",
+                    f.iter()
+                        .filter_map(|x| x.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ));
+                deny = true;
+            }
+            // REQ-EPR-017: the Acceptance Gate, evaluated from what the log
+            // holds once this run's records land — independently of the
+            // risk it consumes as an obligation. Its verdict is recorded;
+            // the run's own outcome below is the harness's, and a
+            // candidate the gate cannot accept still goes to the user's
+            // review carrying the obligation.
+            {
+                let (policy, _) = crate::assurance::policy_for(
+                    &core.assurance_policy,
+                    std::path::Path::new(&root),
+                );
+                let mut st = core.store.lock().await;
+                // The verification record of this run is in `events`, not
+                // yet on the log: land it first so the gate reads what ran.
+                if let Some(run_id) = lturn.run {
+                    let pending: Vec<NewEvent> = std::mem::take(&mut events);
+                    let _ = append(
+                        &mut st,
+                        core,
+                        lturn,
+                        AggregateType::Run,
+                        *run_id.as_bytes(),
+                        pending,
+                    );
+                }
+                let open_flags: Vec<String> = state.open_flags.clone();
+                let (gate, gate_ref) = crate::gate::evaluate(
+                    &st,
+                    task,
+                    &policy,
+                    state.candidate_revision.unwrap_or(0),
+                    &open_flags,
+                    &[],
+                );
+                events.push(typed(
+                    "AcceptanceGateEvaluated",
+                    &crate::gate::event(
+                        &gate,
+                        &gate_ref,
+                        &vrun.verification_run_id,
+                        "COMPLETION_RUN",
+                    ),
+                    actor.clone(),
+                ));
+                drop(st);
+                text.push_str(&crate::gate::summary(&gate));
+                text.push('\n');
+                state.acceptance = Some(serde_json::json!({
+                    "verdict": gate.verdict.label(),
+                    "required_assurance": gate.required_assurance,
+                    "missing_evidence": gate.missing_evidence,
+                    "reject_reasons": gate.reject_reasons,
+                    "gate_ref": gate_ref,
+                }));
             }
             ok = !attribution.blocks_acceptance
                 && !deny
@@ -5607,7 +6034,12 @@ fn invariant_context(state: &HarnessState) -> InvariantContext {
             .map(|p| p.verification.clone())
             .unwrap_or_default(),
         baseline_failing: state.baseline_failing.clone(),
-        protected_paths: vec![".github/".into(), ".modbit/".into()],
+        // REQ-EPR-008: the surfaces the policy says need a typed question
+        // before a write (docs/64 DI-9), from the one envelope.
+        protected_paths: state
+            .protected_paths
+            .clone()
+            .unwrap_or_else(|| vec![".github/".into(), ".modbit/".into()]),
         formatting_churn_lines: 50,
         expected_revision: None,
     }

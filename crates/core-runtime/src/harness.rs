@@ -113,6 +113,19 @@ pub struct HarnessState {
     /// The answer to the pending scope question, once it arrives.
     #[serde(default)]
     pub scope_answer: Option<String>,
+    /// Paths the policy protects with a typed question before a write
+    /// (docs/64 DI-9), from the assurance policy; `None` = the defaults.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub protected_paths: Option<Vec<String>>,
+    /// The factual risk of the candidate as last derived at a COMPLETION
+    /// run (REQ-EPR-008): level, minimum assurance, obligations, reasons.
+    /// Recorded for the model and the gate; never lowered by a later run.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub realized_risk: Option<serde_json::Value>,
+    /// The Acceptance Gate's latest verdict (REQ-EPR-017): what evidence
+    /// is still missing before the candidate can be accepted.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub acceptance: Option<serde_json::Value>,
     /// What this task carried from the task it was forked from
     /// (REQ-EV-0122: the `BranchCarryoverCapsule`, as the model sees it):
     /// the source, the checkpoint, the decisions, the evidence, the context.

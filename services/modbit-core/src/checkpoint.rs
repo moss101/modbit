@@ -454,7 +454,7 @@ pub(crate) async fn restore(
             }
         } else if let Ok(head_bytes) = repo.show("HEAD", &e.path) {
             let kind = if current.is_some() {
-                ChangeOpKind::Replace(head_bytes)
+                ChangeOpKind::ReplaceExact(head_bytes)
             } else {
                 ChangeOpKind::Create(head_bytes)
             };
@@ -492,7 +492,7 @@ pub(crate) async fn restore(
         }
         pre_bytes.insert(path.clone(), current.clone());
         let kind = if current.is_some() {
-            ChangeOpKind::Replace(content.clone())
+            ChangeOpKind::ReplaceExact(content.clone())
         } else {
             ChangeOpKind::Create(content.clone())
         };
