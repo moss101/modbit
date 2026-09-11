@@ -44,4 +44,5 @@ Named tests (run on macOS, Linux and Windows by `.github/workflows/ci.yml`):
 ## Evidence
 
 - `evidence.json` in this directory (commits, hosted CI run, test names)
-- CI run json copy alongside
+- `ci-run-34547831424.json`: hosted CI, green on macOS, Linux and Windows at `000c1ac`
+- Commits: `3a6a84e` (the work), `000c1ac` (rustfmt on the new test files, which CI's Format step caught)

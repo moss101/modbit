@@ -20313,13 +20313,16 @@
    "task_card": "docs/49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md#epr-014",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller or executor present",
    "milestone_override": "DR-M2-002: router machinery follows the EPR-000 baseline evidence; scheduled in M3 ahead of the M4/M5 EPR tasks that depend on it",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "commit:a5ce474",
     "artifact:evidence/m3/EPR-014/TASK_CARD.md",
     "test:qual_epr_014_a_conditional_plan_is_admitted_whole_and_its_activation_is_exact",
     "test:admission_refuses_before_anything_dispatches",
-    "test:a_legacy_template_label_authorizes_no_slot"
+    "test:a_legacy_template_label_authorizes_no_slot",
+    "run:34547831424",
+    "artifact:evidence/m3/EPR-014/ci-run-34547831424.json",
+    "commit:000c1ac"
    ],
    "notes": [
     {
@@ -20345,9 +20348,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "local gates green: cargo test --workspace, clippy --workspace --all-targets -D warnings, both architecture lints, and the cross-language round trip of the admission view"
+    },
+    {
+     "at": "2026-09-11T00:55:58Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 000c1ac: admission over the wire, every refusal, and the kill during activation"
+    },
+    {
+     "at": "2026-09-11T00:55:58Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "the shared plan validator and admission interface EPR-004 and EPR-005 consume, running on the direct path today"
     }
    ],
-   "status_changed_on": "2026-09-11T00:39:22Z"
+   "status_changed_on": "2026-09-11T00:55:58Z"
   },
   {
    "id": "EPR-015",
