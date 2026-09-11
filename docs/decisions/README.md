@@ -57,3 +57,4 @@ change of mind is a new record that names the old one in `supersedes`.
 | DR-M3-001 | Confine the search-stack dependencies to the retrieval crate | accepted | 2026-09-10 | none |
 | DR-M3-002 | The EPR direct baseline seals on the wire-faithful path; the production-endpoint run of EPR-E2E-000 waits for credentials | accepted | 2026-09-11 | none |
 | DR-M3-003 | Benchmark method and conformance tasks seal on their harness halves; the live-model halves wait for credentials | accepted | 2026-09-11 | none |
+| DR-M3-004 | Reschedule IMP-EV-0284 to M7 (web page text needs the web tool family the tool matrix defers to the browser milestone) | accepted | 2026-09-11 | none |

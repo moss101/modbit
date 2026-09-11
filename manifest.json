@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 721,
-    "docs_bytes": 1039691
+    "root_and_tooling": 728,
+    "docs_bytes": 1039729
   },
   "sections": [
     {
@@ -851,8 +851,8 @@
       "section": "live-state",
       "section_title": "Live state",
       "title": "Build Manifest",
-      "bytes": 4362,
-      "sha256": "eaa40224fab7d3e70981d3dc3f08dbb866f5cd062ab73911ab0387935db12d98"
+      "bytes": 4400,
+      "sha256": "3040999bddfeb8a3825c4e619ba8cc82e0c1a2915e413f3288bc57747b927ec5"
     }
   ],
   "root_and_tooling": [
@@ -927,9 +927,14 @@
       "sha256": "03b67efbc61b0b37d1ddfeab94fd0772dd34dd95ef0ed9782723b76c796c9d03"
     },
     {
+      "path": "docs/decisions/DR-M3-004-reschedule-web-content-isolation-to-m7.md",
+      "bytes": 2915,
+      "sha256": "c9c94e04bedcc346c082541cbb4a712010ed2c98c90d9e3f28799a02ea78d462"
+    },
+    {
       "path": "docs/decisions/README.md",
-      "bytes": 3048,
-      "sha256": "2e02afa1033e14629f93ec3cd23e894209c8eb9b8e5bf9a6ebf35fa83ce476c2"
+      "bytes": 3214,
+      "sha256": "79a02d28bf269bb9555870f1a5c2b252b2a1e54ed5598fa16297205e3f07f44d"
     },
     {
       "path": "evidence/dossier-epr-v1.1/baseline.json",
@@ -2928,23 +2933,33 @@
     },
     {
       "path": "evidence/m3/EPR-004/TASK_CARD.md",
-      "bytes": 6021,
-      "sha256": "e3b2c612e9f55fb1bb39c84952070e496d63fb8d10cecc20c1aa3fdcdad62764"
+      "bytes": 6133,
+      "sha256": "bb775a2e53a744522348bac224d4b9595e42f1d66ad1051222d56d1472dcbb46"
+    },
+    {
+      "path": "evidence/m3/EPR-004/ci-run-34564504407.json",
+      "bytes": 37229,
+      "sha256": "a84841be23c43fcd5829d322a261adec98d3d77a7eaa89150e1ad09fa6371c4b"
     },
     {
       "path": "evidence/m3/EPR-004/evidence.json",
-      "bytes": 2070,
-      "sha256": "cc006b40ace81f2670f854602fcf0553e190f7f8d340669309a06ffc70d0782f"
+      "bytes": 2536,
+      "sha256": "611938fcd0bccc7b97f41d8e0058d1d4d09e2cc89724398067da086acfdedc0b"
     },
     {
       "path": "evidence/m3/EPR-005/TASK_CARD.md",
-      "bytes": 7255,
-      "sha256": "fe3498b93a480a8e70f6d206c63f7943fb59f205f9cc65d7c943ca9b493f6100"
+      "bytes": 7356,
+      "sha256": "fe65a788c0183fcbccd3b42df14b363852fed553a26841941d8bb8778fd8283d"
+    },
+    {
+      "path": "evidence/m3/EPR-005/ci-run-34564504407.json",
+      "bytes": 37229,
+      "sha256": "a84841be23c43fcd5829d322a261adec98d3d77a7eaa89150e1ad09fa6371c4b"
     },
     {
       "path": "evidence/m3/EPR-005/evidence.json",
-      "bytes": 2385,
-      "sha256": "d5ff280f5355b36514a74e4b3fe483fa4be7dff640686b157fede3a175703e16"
+      "bytes": 2570,
+      "sha256": "23c4f503315d2a42219291a44e155924f1abfa5c97a3d79331d342f04ae77e8e"
     },
     {
       "path": "evidence/m3/EPR-014/TASK_CARD.md",
@@ -3913,13 +3928,18 @@
     },
     {
       "path": "evidence/m3/IMP-EV-0251/TASK_CARD.md",
-      "bytes": 3062,
-      "sha256": "4936bf761f2f0ef5b546cf7601bb9b16bffc9f67d117370fd36bbac4a4c93ec8"
+      "bytes": 3141,
+      "sha256": "4ddcd59b86cf961299e28da17ad52bb5ad1600fb2982479a1b3f01ad6dded764"
+    },
+    {
+      "path": "evidence/m3/IMP-EV-0251/ci-run-34564504407.json",
+      "bytes": 37229,
+      "sha256": "a84841be23c43fcd5829d322a261adec98d3d77a7eaa89150e1ad09fa6371c4b"
     },
     {
       "path": "evidence/m3/IMP-EV-0251/evidence.json",
-      "bytes": 959,
-      "sha256": "57d273ae57354027ea5065acd9cb6334a434cc026b49de1d17cc5e18f8384ad3"
+      "bytes": 1111,
+      "sha256": "16ab52c04333376f5d856ab89e09880312107d2f0758072d89efe25c21d149a2"
     },
     {
       "path": "evidence/m3/IMP-EV-0252/TASK_CARD.md",
@@ -3943,13 +3963,18 @@
     },
     {
       "path": "evidence/m3/IMP-EV-0253/TASK_CARD.md",
-      "bytes": 3153,
-      "sha256": "75b6ced3fe1aa35ee4d9ec3f843f04b1fa0d1da73003510572cde89b2af9e583"
+      "bytes": 3232,
+      "sha256": "d8c46b9ba101bd6952bd1390b53d75baeed16b3903555d0fa8498b197bdb090a"
+    },
+    {
+      "path": "evidence/m3/IMP-EV-0253/ci-run-34564504407.json",
+      "bytes": 37229,
+      "sha256": "a84841be23c43fcd5829d322a261adec98d3d77a7eaa89150e1ad09fa6371c4b"
     },
     {
       "path": "evidence/m3/IMP-EV-0253/evidence.json",
-      "bytes": 1049,
-      "sha256": "8c3ebde4b697ad57b99c42d9ca9452b157540ce0df5ebf92d35fdc08125eb95b"
+      "bytes": 1201,
+      "sha256": "27efcb48a6646437e0217493310bfc4a1d00561a88b5d66869ed3148a95c685c"
     },
     {
       "path": "evidence/m3/IMP-EV-0254/TASK_CARD.md",
@@ -4297,6 +4322,16 @@
       "sha256": "bf79f1311e3df6e936034a6634c95fcc3e398bcf81c7652e3e6d0b59101b0222"
     },
     {
+      "path": "evidence/m3/PX-028/TASK_CARD.md",
+      "bytes": 4179,
+      "sha256": "eecab5f191e5c36d02f359513ef266908b8503bd3dc29aafbfb29b8326dfaaf2"
+    },
+    {
+      "path": "evidence/m3/PX-028/evidence.json",
+      "bytes": 1533,
+      "sha256": "112f088e37930e78956c5201f46fc0a3675938ba54dfe69fbe2e81215f825ae0"
+    },
+    {
       "path": "evidence/m3/PX-029/TASK_CARD.md",
       "bytes": 3687,
       "sha256": "a1208f59497dc03a5ca5aacc003205580c848cb27bd7248bd634f1e309b26efa"
@@ -4418,18 +4453,18 @@
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 40866,
-      "sha256": "bb298654a1c6bd12a67ce494727d83ddd3b6873e040ef258bf07f3e26e8e2a91"
+      "bytes": 40862,
+      "sha256": "f1ac372b3e743dabc22f11dd39c14f0793a74b34ce140b1aa7a51a0548610e3d"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1285629,
-      "sha256": "60aebb0ce4937f8583466fbd6b973caf1b230e14eba087c39f4128cc3092c7ad"
+      "bytes": 1290179,
+      "sha256": "6f4061417f4095834060738af21532f5aef84a1adad36b1ad32d9bba69959af9"
     },
     {
       "path": "tools/build_graph.py",
-      "bytes": 52844,
-      "sha256": "13ea31cbf1ace263d36b4cc5ada8b19270a118e30e401114790652375b5c51d1"
+      "bytes": 53020,
+      "sha256": "cb5c9e0e1bf7c3327c0597e40a06725a7fa1c2529ee67a4540117cb73749b233"
     },
     {
       "path": "tools/build_manifest.py",

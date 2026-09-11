@@ -14101,3 +14101,131 @@ async fn qual_epr_005_new_runs_go_through_the_compiled_initial_leg_and_keep_the_
     assert_eq!(resumed.path_label, "DIRECT");
     core.kill();
 }
+
+/// QUAL-PX-028: a dead language service degrades explicitly rather than
+/// faking results. With no `rust-analyzer` reachable, the Tier A tools for
+/// Rust answer with a typed failure that names the missing service — never a
+/// success with no symbols, no references or no diagnostics — while the
+/// recorded tier stays what the suites earned, and the text-level tools keep
+/// working on the same file.
+#[tokio::test]
+async fn qual_px_028_a_dead_language_service_is_a_typed_failure_not_an_empty_answer() {
+    use modbit_protocol::v1::{LanguageList, ListLanguages};
+    use serde_json::json;
+    let (_repo, root) = fixture_repo("rust-cli");
+    // A PATH with no rust-analyzer and a HOME with no ~/.cargo/bin: the only
+    // ways the product finds the server are both closed.
+    let empty_home = tempfile::tempdir().unwrap();
+    // git stays reachable (the index needs it); rust-analyzer lives in
+    // ~/.cargo/bin, which the empty HOME hides.
+    let git_dir = std::env::var_os("PATH")
+        .map(|p| std::env::split_paths(&p).collect::<Vec<_>>())
+        .unwrap_or_default()
+        .into_iter()
+        .find(|d| {
+            d.join(if cfg!(windows) { "git.exe" } else { "git" })
+                .is_file()
+        })
+        .expect("git on PATH");
+    let bare_path = std::env::join_paths([
+        git_dir,
+        std::path::PathBuf::from(if cfg!(windows) {
+            "C:\\Windows\\System32"
+        } else {
+            "/usr/bin"
+        }),
+        std::path::PathBuf::from(if cfg!(windows) { "C:\\Windows" } else { "/bin" }),
+    ])
+    .unwrap()
+    .into_string()
+    .unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("PATH", bare_path.as_str()),
+        ("HOME", empty_home.path().to_str().unwrap()),
+        ("USERPROFILE", empty_home.path().to_str().unwrap()),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x81)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x82, "local_trusted").await;
+    for (i, (tool, args)) in [
+        ("lsp.symbols", json!({"path": "src/lib.rs"})),
+        (
+            "lsp.references",
+            json!({"path": "src/lib.rs", "line": 0, "character": 7}),
+        ),
+        ("lsp.diagnostics", json!({"path": "src/lib.rs"})),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let r = invoke_tool(
+            &mut c,
+            &task,
+            g,
+            0x83 + i as u8,
+            0xC1 + i as u8,
+            tool,
+            &args.to_string(),
+        )
+        .await;
+        assert_ne!(
+            r.status, "SUCCESS",
+            "{tool} must not succeed without a service: {r:?}"
+        );
+        let said = format!("{r:?}");
+        assert!(
+            said.contains("LANGUAGE_SERVICE_UNAVAILABLE") && said.contains("rust-analyzer"),
+            "{tool} names the missing service: {r:?}"
+        );
+        assert!(
+            r.structured_output_json.is_empty()
+                || !r.structured_output_json.contains("\"symbols\":[]"),
+            "{tool} must not answer with an empty result: {r:?}"
+        );
+    }
+    // The text-level tools still work on the same file: degradation is to
+    // Tier C behaviour, not to nothing.
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0x86,
+        0xC4,
+        "search.symbols",
+        &json!({"query": "compute_total"}).to_string(),
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0x87,
+        0xC5,
+        "fs.read",
+        &json!({"path": "src/lib.rs"}).to_string(),
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    // The catalog still reports what the suites recorded for Rust: a tier is
+    // a recorded pass, and a dead service on this machine does not unrecord
+    // it — but nothing here claimed Tier A behaviour it could not deliver.
+    let ack = c
+        .command(envelope(
+            id16(0x88),
+            "ListLanguages",
+            ListLanguages {}.encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let list: LanguageList = Client::result(&ack).unwrap();
+    let rust = list
+        .languages
+        .iter()
+        .find(|l| l.language == "rust")
+        .unwrap_or_else(|| panic!("{list:?}"));
+    assert!(rust.conformance.contains("Tier A"), "{rust:?}");
+}

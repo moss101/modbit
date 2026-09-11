@@ -8,11 +8,18 @@
   "qual_epr_014_a_conditional_plan_is_admitted_whole_and_its_activation_is_exact",
   "qual_ev_0221_background_handles_survive_client_restart_with_bounded_preview_and_cancel"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "2186be9",
+  "e0379fd",
+  "a56d074"
+ ],
+ "runs": [
+  "run:34564504407"
+ ],
  "decision_record": "docs/decisions/DR-M3-002-epr-baseline-live-provider-proof.md",
  "proof": "The same edit-verify-review task runs on the direct baseline and through the compiled path; the published baseline shows the same verified outcome, model, model calls and final state, and the compiled run is labelled DIRECT from what ran with its target not claimed at cold start. A manual pin opens the plan with the pinned stronger solver under the same generation; a canary generation with a raised floor and a rollback generation each take effect for the next run and pin themselves. A run interrupted after a dispatched change.apply on a hard-killed Core comes back suspended with its plan, admission, single activation and attempts identical, resumes on the same plan with no second plan or activation, and finishes. A verification check that writes a bytecode cache into the workspace has it recorded as residue on the workspace aggregate, excluded from the write-set invariant and from the accepted review's commit.",
  "audit": "PARTIAL before this task: the compiler had no runtime caller; every run dispatched on the direct plan from its start configuration.",
  "limitations": "The production-endpoint half of EPR-E2E-005 is deferred by DR-M3-002, so the cost comparison is of model calls and outcomes with cost unknown on both paths. No continuation activates yet (EPR-006), so every compiled run is DIRECT in fact. Registry activation is not durable across a restart by design. Reconciling a tool's unknown effect is the effect ledger's job (M4).",
- "ci_history": "run 34559776463 (2186be9) failed on the Linux runner only: its python3 wrote __pycache__ during the baseline check and DI-1 attributed the cache to the agent as an out-of-plan write, which blocked completion. Fixed forward by recording verification residue per workspace and excluding it from the invariants and the review candidate."
+ "ci_history": "run 34559776463 (2186be9) failed on the Linux runner: python3 wrote __pycache__ during the baseline check and DI-1 attributed it to the agent; fixed forward in e0379fd (verification residue). Run 34563130671 (e0379fd) failed on all three runners on a too-strict test assertion about which bytecode files a platform writes; fixed in a56d074.",
+ "ci": "https://github.com/moss101/modbit/actions/runs/34564504407 (green on macOS, Linux and Windows at a56d074)"
 }

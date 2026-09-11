@@ -6,10 +6,15 @@
   "qual_ev_0250_0252_0274_paired_context_economics_benchmark_publishes_savings_with_confidence",
   "tool_calls_are_normalized_across_tool_families"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "a56d074"
+ ],
+ "runs": [
+  "run:34564504407"
+ ],
  "decision_record": "docs/decisions/DR-M3-003-benchmark-and-conformance-live-model-halves.md",
  "proof": "On the real benchmark through Core the baseline's four reads and the treatment's one pack normalize to 4 and 1 with a paired delta of -3 over three pairs, recorded from the calls each variant actually made; unit tests show a batch counting as its operations and protocol calls counting as nothing.",
  "audit": "PARTIAL before: tool calls were counted as the log counts them, so a batch hid work and counts meant different things across tool families.",
- "limitations": "The reduction a model achieves choosing its own tools is the live-model half deferred by DR-M3-003."
+ "limitations": "The reduction a model achieves choosing its own tools is the live-model half deferred by DR-M3-003.",
+ "ci": "https://github.com/moss101/modbit/actions/runs/34564504407 (green on macOS, Linux and Windows at a56d074)"
 }

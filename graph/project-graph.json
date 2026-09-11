@@ -15100,12 +15100,15 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0251",
    "source": "docs/41",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "commit:e0379fd",
     "artifact:evidence/m3/IMP-EV-0251/TASK_CARD.md",
     "test:qual_ev_0250_0252_0274_paired_context_economics_benchmark_publishes_savings_with_confidence",
-    "artifact:docs/decisions/DR-M3-003-benchmark-and-conformance-live-model-halves.md"
+    "artifact:docs/decisions/DR-M3-003-benchmark-and-conformance-live-model-halves.md",
+    "run:34564504407",
+    "artifact:evidence/m3/IMP-EV-0251/ci-run-34564504407.json",
+    "commit:a56d074"
    ],
    "notes": [
     {
@@ -15131,9 +15134,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "harness half proven on the wire-faithful provider; live-model half deferred by DR-M3-003"
+    },
+    {
+     "at": "2026-09-11T05:11:49Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at a56d074"
+    },
+    {
+     "at": "2026-09-11T05:11:50Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34564504407"
     }
    ],
-   "status_changed_on": "2026-09-11T04:51:04Z"
+   "status_changed_on": "2026-09-11T05:11:50Z"
   },
   {
    "id": "IMP-EV-0252",
@@ -15206,12 +15221,15 @@
    "milestone": "M3",
    "qual": "QUAL-EV-0253",
    "source": "docs/41",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "commit:e0379fd",
     "artifact:evidence/m3/IMP-EV-0253/TASK_CARD.md",
     "test:qual_ev_0250_0252_0274_paired_context_economics_benchmark_publishes_savings_with_confidence",
-    "artifact:docs/decisions/DR-M3-003-benchmark-and-conformance-live-model-halves.md"
+    "artifact:docs/decisions/DR-M3-003-benchmark-and-conformance-live-model-halves.md",
+    "run:34564504407",
+    "artifact:evidence/m3/IMP-EV-0253/ci-run-34564504407.json",
+    "commit:a56d074"
    ],
    "notes": [
     {
@@ -15237,9 +15255,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "harness half proven on the wire-faithful provider; live-model half deferred by DR-M3-003"
+    },
+    {
+     "at": "2026-09-11T05:11:50Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at a56d074"
+    },
+    {
+     "at": "2026-09-11T05:11:50Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34564504407"
     }
    ],
-   "status_changed_on": "2026-09-11T04:51:04Z"
+   "status_changed_on": "2026-09-11T05:11:50Z"
   },
   {
    "id": "IMP-EV-0254",
@@ -15938,10 +15968,11 @@
    "type": "imp_task",
    "title": "Prompt-injection isolation in web content",
    "owner_label": "Context/Policy",
+   "milestone_override": "DR-M3-004: prompt-injection isolation in web content needs the web tool family the tool matrix defers to the browser milestone (REQ-EV-0088/0147)",
    "requirement": "REQ-EV-0284",
    "disposition": "ADOPT",
    "subsystem": "context-engine",
-   "milestone": "M3",
+   "milestone": "M7",
    "qual": "QUAL-EV-0284",
    "source": "docs/41",
    "status": "NOT_STARTED",
@@ -20210,13 +20241,16 @@
    "task_card": "docs/49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md#epr-004",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller or executor present",
    "milestone_override": "DR-M2-002: router machinery follows the EPR-000 baseline evidence; scheduled in M3 ahead of the M4/M5 EPR tasks that depend on it",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "commit:79b2c8b",
     "artifact:evidence/m3/EPR-004/TASK_CARD.md",
     "test:qual_epr_004_the_compiler_runs_through_core_and_identical_inputs_give_identical_plans",
     "test:nothing_dispatches_from_what_cannot_be_prevalidated",
-    "artifact:tests/fixtures/routing/golden/cold_start.json"
+    "artifact:tests/fixtures/routing/golden/cold_start.json",
+    "run:34564504407",
+    "artifact:evidence/m3/EPR-004/ci-run-34564504407.json",
+    "commit:a56d074"
    ],
    "notes": [
     {
@@ -20242,9 +20276,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "local gates pending the workspace run"
+    },
+    {
+     "at": "2026-09-11T05:11:49Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at a56d074"
+    },
+    {
+     "at": "2026-09-11T05:11:49Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on run 34564504407"
     }
    ],
-   "status_changed_on": "2026-09-11T03:04:50Z"
+   "status_changed_on": "2026-09-11T05:11:49Z"
   },
   {
    "id": "EPR-005",
@@ -20270,8 +20316,55 @@
    "task_card": "docs/49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md#epr-005",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller or executor present",
    "milestone_override": "DR-M2-002: router machinery follows the EPR-000 baseline evidence; scheduled in M3 ahead of the M4/M5 EPR tasks that depend on it",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:2186be9",
+    "artifact:evidence/m3/EPR-005/TASK_CARD.md",
+    "test:qual_epr_005_new_runs_go_through_the_compiled_initial_leg_and_keep_the_baseline",
+    "artifact:docs/decisions/DR-M3-002-epr-baseline-live-provider-proof.md",
+    "run:34564504407",
+    "artifact:evidence/m3/EPR-005/ci-run-34564504407.json",
+    "commit:a56d074"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-11T05:12:01Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: the compiler had no runtime caller; every run dispatched on the direct plan from its start configuration"
+    },
+    {
+     "at": "2026-09-11T05:12:02Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "route_new_run compiles when a registry is active and keeps the direct baseline otherwise; recover_route resumes on the plan and activation already recorded; StartTask's model is a manual pin that keeps policy"
+    },
+    {
+     "at": "2026-09-11T05:12:02Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "every new run dispatches on its plan's initial slot; attempts are recorded against that plan and slot; DIRECT is derived from what ran"
+    },
+    {
+     "at": "2026-09-11T05:12:02Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "the baseline comparison, the pin, the canary and rollback, the interrupted run and the residue fix, all green locally"
+    },
+    {
+     "at": "2026-09-11T05:12:02Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at a56d074, after two forward fixes CI itself found"
+    },
+    {
+     "at": "2026-09-11T05:12:02Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "every new run goes through the compiled initial leg with the direct baseline, pins, canary and rollback kept; the live-provider comparison is deferred by DR-M3-002"
+    }
+   ],
+   "status_changed_on": "2026-09-11T05:12:02Z"
   },
   {
    "id": "EPR-006",
@@ -23004,8 +23097,40 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-028",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "commit:a56d074",
+    "artifact:evidence/m3/PX-028/TASK_CARD.md",
+    "test:qual_px_028_a_dead_language_service_is_a_typed_failure_not_an_empty_answer",
+    "test:incremental_index_latency_is_within_budget_on_the_tier_a_fixtures"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-11T05:09:15Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: PX-027 recorded Tier A passes with real language services; no latency budget measured; explicit degradation proven only at the suite level"
+    },
+    {
+     "at": "2026-09-11T05:09:15Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "incremental index latency measured against a declared 250 ms budget on the three fixtures; lsp.* tools answer LANGUAGE_SERVICE_UNAVAILABLE naming the server"
+    },
+    {
+     "at": "2026-09-11T05:09:15Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "the tools an agent calls are the ones proven; the recorded tiers are PX-027's"
+    },
+    {
+     "at": "2026-09-11T05:09:16Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "offline halves proven; competence clause deferred by DR-M3-003"
+    }
+   ],
+   "status_changed_on": "2026-09-11T05:09:16Z"
   },
   {
    "id": "PX-029",
@@ -37451,7 +37576,7 @@
   },
   {
    "from": "IMP-EV-0284",
-   "to": "M3",
+   "to": "M7",
    "type": "scheduled_in"
   },
   {

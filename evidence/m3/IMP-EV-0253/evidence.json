@@ -6,10 +6,15 @@
   "qual_ev_0250_0252_0274_paired_context_economics_benchmark_publishes_savings_with_confidence",
   "a_benchmark_is_unbiased_only_when_its_prompts_are_identical_and_force_nothing"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "a56d074"
+ ],
+ "runs": [
+  "run:34564504407"
+ ],
  "decision_record": "docs/decisions/DR-M3-003-benchmark-and-conformance-live-model-halves.md",
  "proof": "On the real benchmark through Core the first prompt each variant saw is byte-identical in system prompt and request with the workspace location scrubbed, carries no forcing instruction, and differs in no capability; the verdict travels with the report. Unit tests flag a steering treatment prompt by variant and recognize a different request as a different task.",
  "audit": "ABSENT before: nothing checked what each variant was asked.",
- "limitations": "Whether a model reaches for retrieval unprompted is the live-model half deferred by DR-M3-003; the forcing-phrase list is a list, the byte-identity check carries the weight."
+ "limitations": "Whether a model reaches for retrieval unprompted is the live-model half deferred by DR-M3-003; the forcing-phrase list is a list, the byte-identity check carries the weight.",
+ "ci": "https://github.com/moss101/modbit/actions/runs/34564504407 (green on macOS, Linux and Windows at a56d074)"
 }
