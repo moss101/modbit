@@ -4478,8 +4478,8 @@
     },
     {
       "path": "evidence/m4/EPR-008/evidence.json",
-      "bytes": 1324,
-      "sha256": "5e47470d6f9aac332040d9dc951af0d4653944e6537d5f29c4244a44c083ac22"
+      "bytes": 1338,
+      "sha256": "7ad352b3c65ce21d769a176825780d7d040a17a8023c729e9d69d754f928a465"
     },
     {
       "path": "evidence/m4/EPR-009/TASK_CARD.md",
@@ -4488,8 +4488,8 @@
     },
     {
       "path": "evidence/m4/EPR-009/evidence.json",
-      "bytes": 1520,
-      "sha256": "013024836622e44c1ca34c25cb0d24059657aef14576c8352c222f4944b8ca97"
+      "bytes": 1534,
+      "sha256": "40bac960fefe1b3c291c9b0ab9a5179f49cda57348870b15ffde6fde630b6cf7"
     },
     {
       "path": "evidence/m4/EPR-017/TASK_CARD.md",
@@ -4498,8 +4498,8 @@
     },
     {
       "path": "evidence/m4/EPR-017/evidence.json",
-      "bytes": 1338,
-      "sha256": "cc89e1a57f16ceec3526aea1cad4c3e6a57df746ecb527d3268a455ce6769e1e"
+      "bytes": 1352,
+      "sha256": "4a46678bad942fff90b4d2d8535beb79f51eadbfe86151a7e30faa2918244044"
     },
     {
       "path": "evidence/m4/IMP-EV-0012/TASK_CARD.md",
@@ -4568,8 +4568,8 @@
     },
     {
       "path": "evidence/m4/IMP-EV-0077/evidence.json",
-      "bytes": 647,
-      "sha256": "5fb84e3940ab2ec801ec5beabc87dfae65403d7f58052350ba0d49da241320fd"
+      "bytes": 1154,
+      "sha256": "440f1abbf58c84c77d81fe297a604cceab2628dafa4b38e391d794d86948d18f"
     },
     {
       "path": "evidence/m4/IMP-EV-0122/TASK_CARD.md",
@@ -4578,8 +4578,8 @@
     },
     {
       "path": "evidence/m4/IMP-EV-0122/evidence.json",
-      "bytes": 634,
-      "sha256": "7d0b5312c7c3fe58f1ec27fce0e9b8b400f786df6d2fbdcbe23c344fb9a163c9"
+      "bytes": 666,
+      "sha256": "30a290e06da00bff9f65070129f01dea9a5050188533bad282ce4eb52f52569b"
     },
     {
       "path": "evidence/m4/IMP-EV-0123/TASK_CARD.md",
@@ -4588,8 +4588,8 @@
     },
     {
       "path": "evidence/m4/IMP-EV-0123/evidence.json",
-      "bytes": 670,
-      "sha256": "7623f6600074afcc3f3aa05d9b73f89f877e75a959a5c30078104b1a5875167f"
+      "bytes": 704,
+      "sha256": "9330b24ea2cd5d8aa7f8a90cf6a0db7faf82886dd093106978b6dabe81cea0f2"
     },
     {
       "path": "evidence/m4/IMP-EV-0242/TASK_CARD.md",
