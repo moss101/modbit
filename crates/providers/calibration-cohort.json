@@ -1,0 +1,7 @@
+{
+  "cohort_version": "cohort-0-unrecorded",
+  "note": "No calibration cohort has been recorded yet. The profiler ships shadow-only: with no observations, every slice is out of distribution, p_floor_success is the conservative prior and nothing may economise on it. This file is regenerated from recorded outcomes (REQ-EPR-015 snapshots) and never hand-written; an entry here is a claim that the product observed that slice, so an empty file is the honest state until it has.",
+  "source_digests": [],
+  "slices": [],
+  "holdout": []
+}

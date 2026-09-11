@@ -164,6 +164,31 @@ pub enum RunEvent {
         /// Object hash of the same plan, for clients that read it by ref.
         plan_ref: String,
     },
+    /// `RequestProfiled` (REQ-EPR-003, docs/38 §6): what the Request Profiler
+    /// said about this run's request, recorded in shadow — nothing routes on
+    /// it. A conservative fallback is recorded as one. No state change.
+    RequestProfiled {
+        /// Extractor version.
+        profiler_version: String,
+        /// Calibration cohort the answer came from.
+        cohort_version: String,
+        /// The slice the request fell in.
+        slice: String,
+        /// Digest of the intrinsic features.
+        features_digest: String,
+        /// Probability the floor is met, shrunk by support, in basis points
+        /// of `[0, 1]`: an integer on the log never drifts the way a
+        /// formatted float can.
+        p_floor_success_bp: u32,
+        /// How much the cohort supports that number, in basis points.
+        confidence_bp: u32,
+        /// The cohort has too little of this slice to say anything.
+        ood: bool,
+        /// Whether this is the conservative fallback rather than a measurement.
+        fallback: bool,
+        /// Why, when it is.
+        fallback_reason: String,
+    },
     /// `RoutingPlanAdmitted` (REQ-EPR-014, docs/38 §5.2): a plan passed
     /// admission — validated whole, with the digest of what was validated and
     /// the money it reserves. Nothing dispatches from a plan with no
@@ -286,6 +311,7 @@ impl RunEvent {
             Self::VerificationBaselineRecorded { .. } => "VerificationBaselineRecorded",
             Self::VerificationRunRecorded { .. } => "VerificationRunRecorded",
             Self::RoutingPlanCompiled { .. } => "RoutingPlanCompiled",
+            Self::RequestProfiled { .. } => "RequestProfiled",
             Self::RoutingPlanAdmitted { .. } => "RoutingPlanAdmitted",
             Self::SlotActivated { .. } => "SlotActivated",
             Self::RoutingAttemptRecorded { .. } => "RoutingAttemptRecorded",
@@ -366,6 +392,7 @@ impl Run {
             RunEvent::VerificationBaselineRecorded { .. }
             | RunEvent::VerificationRunRecorded { .. }
             | RunEvent::RoutingPlanCompiled { .. }
+            | RunEvent::RequestProfiled { .. }
             | RunEvent::RoutingPlanAdmitted { .. }
             | RunEvent::SlotActivated { .. }
             | RunEvent::RoutingAttemptRecorded { .. }

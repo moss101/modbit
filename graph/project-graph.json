@@ -20071,8 +20071,41 @@
    "task_card": "docs/49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md#epr-003",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller or executor present",
    "milestone_override": "DR-M2-002: router machinery follows the EPR-000 baseline evidence; scheduled in M3 ahead of the M4/M5 EPR tasks that depend on it",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "commit:16515e3",
+    "artifact:evidence/m3/EPR-003/TASK_CARD.md",
+    "test:qual_epr_003_the_profiler_records_intrinsic_demand_in_shadow_and_claims_nothing",
+    "test:calibration_is_published_and_an_unrecorded_cohort_blocks_promotion",
+    "test:features_are_intrinsic_and_no_catalog_change_can_move_them"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-11T01:25:24Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing code audit: nothing extracts features from a request at all; the runtime reads the goal text only for the reproduction gate, and no probability, confidence or OOD signal exists anywhere"
+    },
+    {
+     "at": "2026-09-11T01:25:24Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "crates/providers/src/profiler.rs extracts bounded deterministic intrinsic features (task, domain, modifier demand) from the request and the repository index, and answers p_floor_success, confidence and OOD from a versioned calibration cohort with shrinkage toward a conservative prior; no model call anywhere in it"
+    },
+    {
+     "at": "2026-09-11T01:25:24Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "the runtime profiles every run at start and records RunEvent::RequestProfiled in shadow; nothing reads it to decide anything, and the shipped cohort is empty so every slice is out of distribution"
+    },
+    {
+     "at": "2026-09-11T01:26:19Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "local gates green; metrics published in the task card: extraction p50 22us / p95 261us on an Apple M5 Pro, calibration not promotable at 0 observations"
+    }
+   ],
+   "status_changed_on": "2026-09-11T01:26:19Z"
   },
   {
    "id": "EPR-004",
@@ -20435,13 +20468,16 @@
    "task_card": "docs/49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md#epr-015",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller or executor present",
    "milestone_override": "DR-M2-002: router machinery follows the EPR-000 baseline evidence; scheduled in M3 ahead of the M4/M5 EPR tasks that depend on it",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "commit:c069092",
     "artifact:evidence/m3/EPR-015/TASK_CARD.md",
     "test:qual_epr_015_statistics_are_materialized_from_attributable_outcomes_and_reload",
     "test:a_sparse_key_stays_low_confidence_and_qualifies_nothing",
-    "test:a_snapshot_refuses_what_it_cannot_stand_behind"
+    "test:a_snapshot_refuses_what_it_cannot_stand_behind",
+    "run:34549783926",
+    "artifact:evidence/m3/EPR-015/ci-run-34549783926.json",
+    "commit:16515e3"
    ],
    "notes": [
     {
@@ -20467,9 +20503,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "local gates green: cargo test --workspace, fmt --check, clippy --workspace --all-targets -D warnings, both architecture lints"
+    },
+    {
+     "at": "2026-09-11T01:25:15Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 16515e3: materialization from real baselines, deduplication, the sparse-prior rule and the reload after a restart"
+    },
+    {
+     "at": "2026-09-11T01:25:15Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "immutable versioned snapshots of observed outcomes, joined independently of the registry generation"
     }
    ],
-   "status_changed_on": "2026-09-11T01:12:37Z"
+   "status_changed_on": "2026-09-11T01:25:15Z"
   },
   {
    "id": "EPR-016",

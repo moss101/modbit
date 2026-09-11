@@ -1,0 +1,34 @@
+{
+ "task": "EPR-003",
+ "requirement": "REQ-EPR-003",
+ "qual": "QUAL-EPR-003",
+ "tests": [
+  "qual_epr_003_the_profiler_records_intrinsic_demand_in_shadow_and_claims_nothing",
+  "extraction_is_bounded_deterministic_and_reads_the_corpus_correctly",
+  "features_are_intrinsic_and_no_catalog_change_can_move_them",
+  "a_disabled_profiler_or_stale_metadata_answers_conservatively",
+  "a_thin_slice_is_shrunk_toward_the_prior_and_a_thick_one_is_not",
+  "calibration_is_published_and_an_unrecorded_cohort_blocks_promotion"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "metrics": {
+  "hardware": "Apple M5 Pro, Darwin arm64",
+  "extraction_p50_us": 22,
+  "extraction_p95_us": 261,
+  "corpus_requests": 8,
+  "calibration_slices": 0,
+  "calibration_observations": 0,
+  "brier": 0.0,
+  "ece": 0.0,
+  "ood_slices": 0,
+  "promotable": false,
+  "blockers": [
+   "the holdout has 0 observations; promotion needs at least 200",
+   "no holdout slice is covered by the calibration set"
+  ]
+ },
+ "proof": "A real task through Core on a real repository records a profile that reads the request for what it intrinsically is (cross-file bug fix, web domain, wants verification), with a feature digest, an OOD flag and zero probability and confidence because the shipped cohort is empty; the run still dispatches on the direct path and its plan's provenance says no profiler informed it. Over a fixed corpus of eight requests against four real fixture repositories, extraction classifies every task and domain correctly, is deterministic to the digest, and costs p50 22us / p95 261us on an Apple M5 Pro.",
+ "audit": "ABSENT before this task: no feature extraction, no probability, no confidence and no OOD signal existed anywhere.",
+ "limitations": "The calibration cohort is empty, so every request is out of distribution and the promotion gate refuses at 0 observations: the profiler is shadow-only in fact. The shrinkage, support-floor and promotion rules are exercised against synthetic cohorts, which is honest for a rule but is not a measurement of the product. has_configured_verification is not read from the workspace yet. Nothing consumes the profile: that is EPR-016 and EPR-004, both gated on a promotable cohort."
+}

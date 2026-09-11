@@ -59,7 +59,7 @@ flowchart LR
   M0["M0<br/>Repository and authority<br/>5/5 done"]
   M1["M1<br/>Durable local shell and Core<br/>19/19 done"]
   M2["M2<br/>Real local engineering loop<br/>63/63 done"]
-  M3["M3<br/>Context intelligence<br/>78/89 done"]
+  M3["M3<br/>Context intelligence<br/>79/89 done"]
   M4["M4<br/>Durable recovery spine<br/>0/18 done"]
   M5["M5<br/>Procedural runtime and skills<br/>0/40 done"]
   M6["M6<br/>Subagents/fleet<br/>0/58 done"]
@@ -107,7 +107,7 @@ Critical path (reliability spine): **M0 → M1 → M2 → M4**. Do not start bro
 | M0 Repository and authority | COMPLETE | yes | 4 | 1 | 5 | 0 | — | clean clone build + architecture lint |
 | M1 Durable local shell and Core | COMPLETE | yes | 5 | 14 | 19 | 0 | M0 | user creates durable task, kills/restarts app/Core, same task recovers with no fake state. |
 | M2 Real local engineering loop | COMPLETE | yes | 10 | 53 | 63 | 0 | M1 | E2E-001/002/003 with live model and actual test pass. |
-| M3 Context intelligence | IN_PROGRESS | yes | 9 | 80 | 78 | 0 | M2 | profile A/B/C benchmark plus retrieval-before-edit visible in task evidence. |
+| M3 Context intelligence | IN_PROGRESS | yes | 9 | 80 | 79 | 0 | M2 | profile A/B/C benchmark plus retrieval-before-edit visible in task evidence. |
 | M4 Durable recovery spine | NOT_STARTED | yes | 6 | 12 | 0 | 0 | M2 | E2E-004/005/006/007/008. |
 | M5 Procedural runtime and skills | NOT_STARTED | yes | 7 | 33 | 0 | 0 | M2 | E2E-011/012; direct and procedural mode yield equivalent receipts/policy behavior. |
 | M6 Subagents/fleet | NOT_STARTED | no | 7 | 51 | 0 | 0 | M2, M4 | E2E-009/010 and user can supervise multiple tasks without raw-log polling. |
@@ -222,7 +222,7 @@ flowchart LR
   EPR_000["EPR-000<br/>Preserve and measure the direct baseline<br/>COMPLETE"]
   EPR_001["EPR-001<br/>Version routing contracts and durable Run state<br/>COMPLETE"]
   EPR_002["EPR-002<br/>Extend the Model Registry with current role bindings<br/>COMPLETE"]
-  EPR_003["EPR-003<br/>Bootstrap and calibrate the Request Profiler<br/>NOT_STARTED"]
+  EPR_003["EPR-003<br/>Bootstrap and calibrate the Request Profiler<br/>REAL_TESTING"]
   EPR_004["EPR-004<br/>Compile and validate one bounded conditional plan<br/>NOT_STARTED"]
   EPR_005["EPR-005<br/>Integrate initial execution and preserve direct baseline<br/>NOT_STARTED"]
   EPR_006["EPR-006<br/>Activate prevalidated escalation continuations<br/>NOT_STARTED"]
@@ -234,7 +234,7 @@ flowchart LR
   EPR_012["EPR-012<br/>Jointly evaluate conditional parameters and promote policy<br/>NOT_STARTED"]
   EPR_013["EPR-013<br/>Qualify model × Skill outcome statistics<br/>NOT_STARTED"]
   EPR_014["EPR-014<br/>Conditional plan migration and slot admission<br/>COMPLETE"]
-  EPR_015["EPR-015<br/>Versioned Outcome Statistics materialization<br/>REAL_TESTING"]
+  EPR_015["EPR-015<br/>Versioned Outcome Statistics materialization<br/>COMPLETE"]
   EPR_016["EPR-016<br/>Confidence-adjusted feasibility and cold start<br/>NOT_STARTED"]
   EPR_017["EPR-017<br/>Separate assurance classification and acceptance<br/>NOT_STARTED"]
   EPR_018["EPR-018<br/>Isolated Non-Committing Reviewer environment<br/>NOT_STARTED"]
@@ -286,7 +286,7 @@ flowchart LR
 | EPR-000 | M3 / 0 | COMPLETE | model-gateway | M2.9 | REQ-EPR-000 / QUAL-EPR-000 |
 | EPR-001 | M3 / 1 | COMPLETE | domain-events | EPR-000 | REQ-EPR-001 / QUAL-EPR-001 |
 | EPR-002 | M3 / 1 | COMPLETE | model-gateway | EPR-001 | REQ-EPR-002 / QUAL-EPR-002 |
-| EPR-003 | M3 / 1 | NOT_STARTED | model-gateway | EPR-002 | REQ-EPR-003 / QUAL-EPR-003 |
+| EPR-003 | M3 / 1 | REAL_TESTING | model-gateway | EPR-002 | REQ-EPR-003 / QUAL-EPR-003 |
 | EPR-004 | M3 / 1 | NOT_STARTED | model-gateway | EPR-014, EPR-016 | REQ-EPR-004 / QUAL-EPR-004 |
 | EPR-005 | M3 / 1-2 | NOT_STARTED | core-runtime | EPR-004 | REQ-EPR-005 / QUAL-EPR-005 |
 | EPR-006 | M5 / 3 | NOT_STARTED | core-runtime | EPR-017, EPR-009, M3.9 | REQ-EPR-006 / QUAL-EPR-006 |
@@ -298,7 +298,7 @@ flowchart LR
 | EPR-012 | M10 / 5 | NOT_STARTED | eval-bench | EPR-011, EPR-009, EPR-019, M10.1 | REQ-EPR-012 / QUAL-EPR-012 |
 | EPR-013 | M10 / 6 | NOT_STARTED | skills | EPR-012, M5.7 | REQ-EPR-013 / QUAL-EPR-013 |
 | EPR-014 | M3 / 1 | COMPLETE | core-runtime | EPR-001 | REQ-EPR-014 / QUAL-EPR-014 |
-| EPR-015 | M3 / 1 | REAL_TESTING | eval-bench | EPR-002 | REQ-EPR-015 / QUAL-EPR-015 |
+| EPR-015 | M3 / 1 | COMPLETE | eval-bench | EPR-002 | REQ-EPR-015 / QUAL-EPR-015 |
 | EPR-016 | M3 / 1 | NOT_STARTED | model-gateway | EPR-003, EPR-015 | REQ-EPR-016 / QUAL-EPR-016 |
 | EPR-017 | M4 / 2-3 | NOT_STARTED | verification | EPR-008, M4.6 | REQ-EPR-017 / QUAL-EPR-017 |
 | EPR-018 | M6 / 4 | NOT_STARTED | effects-security | EPR-006, M6.4 | REQ-EPR-018 / QUAL-EPR-018 |
@@ -323,8 +323,8 @@ Releases are projections over work items and gates (docs/75). Readiness is compu
 | Release | State | Included work items | Complete | Blocked | Required gates | Rule |
 |---|---|---:|---:|---:|---|---|
 | ALPHA: Local coding loop and recovery spine | NOT_READY | 114 | 97 | 0 | none | / ALPHA / Local coding loop and recovery spine / M0, M1, M2, M4 / M2.10 / EPR- / — / — / |
-| BETA: Intelligence, fleet and browser | NOT_READY | 320 | 165 | 0 | none | / BETA / Intelligence, fleet and browser / M0, M1, M2, M3, M4, M5, M6, M7 / — / — / — / — / |
-| RELEASE_ZERO: Full end-to-end proof | NOT_READY | 401 | 165 | 0 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
+| BETA: Intelligence, fleet and browser | NOT_READY | 320 | 166 | 0 | none | / BETA / Intelligence, fleet and browser / M0, M1, M2, M3, M4, M5, M6, M7 / — / — / — / — / |
+| RELEASE_ZERO: Full end-to-end proof | NOT_READY | 401 | 166 | 0 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
 
 ## Scoped v1.1 supersessions and source provenance
 

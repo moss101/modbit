@@ -467,6 +467,87 @@ pub(crate) fn typed<E: serde::Serialize>(event_type: &str, e: &E, actor: Actor) 
     ev
 }
 
+/// Record what the Request Profiler says about this run's request
+/// (REQ-EPR-003, docs/38 §6).
+///
+/// Shadow only: the profile is written to the log and nothing reads it to
+/// decide anything. The facts it sees are the request and the repository
+/// index; when there is no fresh index the answer is the conservative
+/// fallback, which is what the profiler is required to say when it cannot
+/// know.
+async fn profile_request(core: &Arc<Core>, task: &Task, lt: Lineage, actor: &Actor) {
+    let cohort = modbit_providers::profiler::cohort();
+    let (paths, languages, fresh) = match task.workspace_root.as_deref() {
+        Some(root) => {
+            let canonical = std::path::Path::new(root)
+                .canonicalize()
+                .unwrap_or_else(|_| std::path::PathBuf::from(root));
+            match core.tools.index(&canonical).await {
+                Ok(index) => {
+                    let index = index.lock().await;
+                    let mut paths = Vec::new();
+                    let mut counts: std::collections::BTreeMap<String, u32> =
+                        std::collections::BTreeMap::new();
+                    for (path, _, language) in index.texts() {
+                        paths.push(path.to_owned());
+                        if let Some(l) = language {
+                            *counts.entry(l.to_owned()).or_default() += 1;
+                        }
+                    }
+                    (paths, counts.into_iter().collect(), true)
+                }
+                Err(_) => (vec![], vec![], false),
+            }
+        }
+        None => (vec![], vec![], false),
+    };
+    let facts = modbit_providers::profiler::RequestFacts {
+        goal: &task.goal_text,
+        paths,
+        languages,
+        has_configured_verification: false,
+        metadata_fresh: fresh,
+    };
+    // Shadow: the profiler runs, and the answer is recorded, not consulted.
+    let profile = modbit_providers::profiler::profile(&facts, &cohort, true);
+    let bp = |v: f64| {
+        let scaled = (v * 10_000.0).round();
+        if scaled.is_finite() && scaled >= 0.0 {
+            u32::try_from(scaled as i64).unwrap_or(10_000).min(10_000)
+        } else {
+            0
+        }
+    };
+    let mut store = core.store.lock().await;
+    let _ = append(
+        &mut store,
+        core,
+        lt,
+        AggregateType::Run,
+        *profile_run_id(lt).as_bytes(),
+        vec![typed(
+            "RequestProfiled",
+            &RunEvent::RequestProfiled {
+                profiler_version: profile.features.profiler_version.clone(),
+                cohort_version: profile.cohort_version.clone(),
+                slice: profile.slice.clone(),
+                features_digest: profile.features.digest(),
+                p_floor_success_bp: bp(profile.p_floor_success),
+                confidence_bp: bp(profile.confidence),
+                ood: profile.ood,
+                fallback: profile.fallback,
+                fallback_reason: profile.fallback_reason.clone(),
+            },
+            actor.clone(),
+        )],
+    );
+}
+
+/// The run a lineage belongs to.
+fn profile_run_id(lt: Lineage) -> RunId {
+    lt.run.expect("a run lineage has a run")
+}
+
 /// The direct path this run dispatches on, as an admitted routing plan
 /// (REQ-EPR-001, REQ-EPR-014).
 ///
@@ -1187,6 +1268,10 @@ async fn run_loop(
         .leases_for_task(&task.task_id)
         .ok()
         .and_then(|l| l.into_iter().next());
+    // REQ-EPR-003: what this request intrinsically demands, recorded in
+    // shadow. Nothing routes on it; it is here so the profiler is measured
+    // against real requests before anything is allowed to depend on it.
+    profile_request(&core, &task, lt, &actor).await;
     let mut tools: Vec<ToolProjection>;
     let end = 'outer: loop {
         if cancel.is_cancelled() {

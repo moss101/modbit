@@ -4593,6 +4593,38 @@ async fn create_task_with_profile(
         .unwrap()
 }
 
+/// A task whose goal text is what the caller wants profiled or planned from.
+async fn create_task_with_goal(
+    c: &mut Client,
+    session: &Id,
+    g: Option<u64>,
+    root: &str,
+    id: u8,
+    goal: &str,
+) -> Id {
+    let ack = c
+        .command(envelope_fenced(
+            id16(id),
+            "CreateTask",
+            CreateTask {
+                session_id: Some(session.clone()),
+                goal_text: goal.into(),
+                workspace_id: None,
+                execution_profile: "local_trusted".into(),
+                origin: "cli".into(),
+                workspace_root: root.into(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    Client::result::<TaskCreated>(&ack)
+        .unwrap()
+        .task_id
+        .unwrap()
+}
+
 /// QUAL-EV-0096/0116/0133/0044: the tool surface is compiled from host
 /// support × policy. Without the terminal broker the shell tools are absent
 /// from the host list and from the model's projection; a narrower profile
@@ -12633,4 +12665,100 @@ async fn qual_epr_015_statistics_are_materialized_from_attributable_outcomes_and
     assert_eq!(after.aggregates.len(), v.aggregates.len());
     assert_eq!(after.source_digests, v.source_digests);
     core.kill();
+}
+
+/// QUAL-EPR-003 / EPR-E2E-003 / EPR-FI-003: the Request Profiler runs on a
+/// real request against a real repository, records what it found in shadow,
+/// and claims nothing the cohort behind it does not support.
+#[tokio::test]
+async fn qual_epr_003_the_profiler_records_intrinsic_demand_in_shadow_and_claims_nothing() {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (_repo, root) = plain_repo(&[
+        (
+            "src/cart.ts",
+            "export function total(items: number[]): number {\n  return items.reduce((a, b) => a + b, 0);\n}\n",
+        ),
+        (
+            "test/cart.test.ts",
+            "import { total } from '../src/cart';\n",
+        ),
+        ("README.md", "# Cart\n"),
+    ]);
+    let script = vec![
+        json!({"calls": [{"name": "fs.read", "args": {"path": "src/cart.ts"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "read it", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, _seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xA6)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_goal(
+        &mut c,
+        &session,
+        g,
+        &root,
+        0xA7,
+        "fix the bug in src/cart.ts where an empty cart crashes, and add a test in test/cart.test.ts",
+    )
+    .await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xA8),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 6,
+                max_tool_calls: 0,
+                max_no_progress_turns: 6,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 180).await;
+    assert!(!st.loop_alive, "{st:?}");
+    let events = task_events(&core, &session, &task).await;
+    let profiled = events
+        .iter()
+        .find(|(_, t, _)| t == "RequestProfiled")
+        .unwrap_or_else(|| panic!("{events:#?}"));
+    let p = &profiled.2;
+    // 1. It read the request for what it intrinsically is: a cross-file bug
+    //    fix in a web repository that wants verification.
+    assert_eq!(p["profiler_version"], "profiler-1", "{p}");
+    assert_eq!(
+        p["slice"], "bug_fix|web|cross_file+needs_verification",
+        "{p}"
+    );
+    assert_eq!(p["features_digest"].as_str().map(str::len), Some(64), "{p}");
+    // 2. With no recorded cohort it claims nothing: out of distribution, a
+    //    conservative probability and no confidence.
+    assert_eq!(p["cohort_version"], "cohort-0-unrecorded", "{p}");
+    assert_eq!(p["ood"], true, "{p}");
+    assert_eq!(p["p_floor_success_bp"], 0, "{p}");
+    assert_eq!(p["confidence_bp"], 0, "{p}");
+    // 3. Shadow only: the run still dispatched on the direct path, and the
+    //    plan it ran carries no profiler input at all.
+    let plan = events
+        .iter()
+        .find(|(_, t, _)| t == "RoutingPlanCompiled")
+        .unwrap_or_else(|| panic!("{events:#?}"));
+    assert_eq!(
+        plan.2["plan"]["provenance"]["profiler_version"], "none",
+        "{}",
+        plan.2
+    );
+    assert_eq!(plan.2["plan"]["slots"].as_array().map(Vec::len), Some(1));
 }

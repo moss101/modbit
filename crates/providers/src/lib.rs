@@ -19,6 +19,7 @@ pub mod anthropic;
 pub mod contract;
 pub mod gateway;
 pub mod openai;
+pub mod profiler;
 pub mod registry;
 pub mod sse;
 
