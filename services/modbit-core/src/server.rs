@@ -143,6 +143,7 @@ pub async fn run(data_dir: PathBuf, idle_exit_secs: Option<u64>) -> Result<()> {
     let nonce = encode_hex(&(0..6).map(|_| rand::random::<u8>()).collect::<Vec<_>>());
     let endpoint = Endpoint::for_dir(&data_dir, &nonce).context("choosing local endpoint")?;
     let (tx, _) = watch::channel(start);
+    let boot_generation = recovery.boot_generation;
     let core = Arc::new(Core {
         store: Arc::new(Mutex::new(store)),
         last_offset: tx,
@@ -151,7 +152,7 @@ pub async fn run(data_dir: PathBuf, idle_exit_secs: Option<u64>) -> Result<()> {
         user_id: UserId::from_bytes([0xB1; 16]),
         recovery,
         started_at: Timestamp::now(),
-        tools: crate::tools::ToolHost::new(&data_dir).context("tool host")?,
+        tools: crate::tools::ToolHost::new(&data_dir, boot_generation).context("tool host")?,
         gateway: modbit_providers::ProviderGateway::new(modbit_providers::endpoints_from_env())
             .with_policy(modbit_providers::OrgModelPolicy::from_env()),
         runtime: crate::runtime::Runtime::default(),
@@ -3030,6 +3031,22 @@ fn protocol_state_view(state: &modbit_protocol_state::ProtocolState) -> wire::Pr
             .unwrap_or_default(),
         active_leases: u32::try_from(state.leases.len()).unwrap_or(u32::MAX),
         digest: state.digest(),
+        terminals: state
+            .terminals
+            .iter()
+            .map(|t| wire::TerminalCursorView {
+                handle_id: t.handle_id.clone(),
+                request_id: t.request_id.clone(),
+                argv: t.argv.clone(),
+                replay_generation: t.replay_generation,
+                last_acknowledged_cursor: t.last_acknowledged_cursor,
+                running: t.running,
+                output_ref: t.output_ref.clone().unwrap_or_default(),
+                exit_code: t.exit_code.unwrap_or(0),
+                exit_known: t.exit_code.is_some(),
+                tool_call_id: t.tool_call_id.clone(),
+            })
+            .collect(),
     }
 }
 

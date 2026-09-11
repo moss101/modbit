@@ -1322,7 +1322,10 @@ tool!(
             Ok(c) => c,
             Err(e) => return ToolOutcome::infra("BROKER_UNAVAILABLE", e.to_string()),
         };
-        if let Err(e) = client.attach(&session_id, after).await {
+        if let Err(e) = client
+            .attach_fenced(&session_id, after, target.replay_generation)
+            .await
+        {
             return ToolOutcome::infra("BROKER_SEND", e.to_string());
         }
         let budget = (args
@@ -1413,7 +1416,7 @@ tool!(
                 Ok(Some(Event::Sessions(list))) => {
                     let sessions: Vec<Value> = list
                         .iter()
-                        .map(|x| json!({"session_id": x.session_id, "request_id": x.request_id, "argv": x.argv, "running": x.running, "bytes_so_far": x.bytes_so_far, "exit_code": x.exit_code}))
+                        .map(|x| json!({"session_id": x.session_id, "request_id": x.request_id, "argv": x.argv, "running": x.running, "bytes_so_far": x.bytes_so_far, "exit_code": x.exit_code, "status": x.status, "replay_generation": x.replay_generation, "started_at_ms": x.started_at_ms}))
                         .collect();
                     return ToolOutcome::ok(json!({"sessions": sessions}));
                 }
@@ -1445,7 +1448,10 @@ tool!(
             Err(e) => return ToolOutcome::infra("BROKER_UNAVAILABLE", e.to_string()),
         };
         // Attach live first so the exit is observed, then cancel.
-        if let Err(e) = client.attach(&session_id, u64::MAX / 2).await {
+        if let Err(e) = client
+            .attach_fenced(&session_id, u64::MAX / 2, target.replay_generation)
+            .await
+        {
             return ToolOutcome::infra("BROKER_SEND", e.to_string());
         }
         if let Err(e) = client.cancel(&session_id).await {

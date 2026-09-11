@@ -9,4 +9,5 @@
 shell.execReversibleWrite"UNKNOWN_OUTCOME*@eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeJgcore restarted (boot generation 7) after the call was dispatched and before its result was acknowledged*’
 
 UUUUUUUUUUUUUUUU
-3333333333333333git.worktree.close"Destructive*@dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd0€Ð•ÿ¼18B@ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+3333333333333333git.worktree.close"Destructive*@dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd0€Ð•ÿ¼18B@ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffJZ
+0011223344556677bg-1sh-ctail -f log (€ 0R$01a08f33-0d97-7d40-b299-f8a7bc5cda60

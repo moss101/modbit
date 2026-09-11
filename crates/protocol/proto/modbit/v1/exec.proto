@@ -57,6 +57,11 @@ message ProcessExited {
 message Attach {
   string session_id = 1;
   uint64 after_cursor = 2;            // replay output with cursor >= after_cursor, then live
+  // Terminal replay generation (docs/13 "Fencing and epochs", M4.5): a Core
+  // presents its boot generation; an attach with an older generation than
+  // the session's current one is refused STALE_GENERATION, and a newer one
+  // ends every older attachment. 0 = unfenced (a local reader of the log).
+  uint64 generation = 3;
 }
 
 message WriteStdin {
@@ -77,6 +82,12 @@ message SessionInfo {
   bool running = 4;
   uint64 bytes_so_far = 5;
   optional int32 exit_code = 6;
+  // RUNNING | EXITED | LOST (M4.5): LOST is a session whose process died with
+  // a previous broker; its output log is durable and replayable, its exit
+  // unknown.
+  string status = 7;
+  uint64 replay_generation = 8;       // the newest attach generation seen
+  int64 started_at_ms = 9;
 }
 
 message SessionList {

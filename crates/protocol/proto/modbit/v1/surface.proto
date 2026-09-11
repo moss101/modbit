@@ -1154,6 +1154,22 @@ message ProtocolStateView {
   string question_id = 6;          // the open question, if any
   uint32 active_leases = 7;
   string digest = 8;               // sha256 of the canonical state
+  repeated TerminalCursorView terminals = 9;   // durable handles and the cursors the run acknowledged (M4.5)
+}
+
+// A durable terminal handle and the last output cursor the run acknowledged
+// (docs/19 "terminal session ID + last acknowledged output cursor"; M4.5).
+message TerminalCursorView {
+  string handle_id = 1;
+  string request_id = 2;
+  repeated string argv = 3;
+  uint64 replay_generation = 4;
+  uint64 last_acknowledged_cursor = 5;
+  bool running = 6;
+  string output_ref = 7;           // once exited
+  int32 exit_code = 8;             // meaningful when exit_known
+  bool exit_known = 9;
+  string tool_call_id = 10;
 }
 
 // ---- M4.3 Workspace checkpoints (docs/19 "Checkpoint epochs", docs/31 checkpoints) ----

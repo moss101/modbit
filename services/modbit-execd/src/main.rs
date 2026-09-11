@@ -14,13 +14,23 @@ mod broker;
 fn main() -> ExitCode {
     let mut data_dir: Option<PathBuf> = None;
     let mut tether_stdin = false;
+    let mut orphan_grace: Option<std::time::Duration> = None;
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
         match a.as_str() {
             "--data-dir" => data_dir = args.next().map(PathBuf::from),
             "--tether-stdin" => tether_stdin = true,
+            "--orphan-grace-secs" => {
+                orphan_grace = args
+                    .next()
+                    .and_then(|v| v.parse::<u64>().ok())
+                    .filter(|s| *s > 0)
+                    .map(std::time::Duration::from_secs);
+            }
             "-h" | "--help" => {
-                println!("usage: modbit-execd --data-dir <dir> [--tether-stdin]");
+                println!(
+                    "usage: modbit-execd --data-dir <dir> [--tether-stdin] [--orphan-grace-secs <n>]"
+                );
                 return ExitCode::SUCCESS;
             }
             other => {
@@ -54,7 +64,7 @@ fn main() -> ExitCode {
             return ExitCode::from(1);
         }
     };
-    match rt.block_on(broker::run(data_dir)) {
+    match rt.block_on(broker::run(data_dir, orphan_grace)) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             eprintln!("modbit-execd: {e:#}");

@@ -60,7 +60,7 @@ flowchart LR
   M1["M1<br/>Durable local shell and Core<br/>19/19 done"]
   M2["M2<br/>Real local engineering loop<br/>63/63 done"]
   M3["M3<br/>Context intelligence<br/>87/88 done"]
-  M4["M4<br/>Durable recovery spine<br/>3/18 done"]
+  M4["M4<br/>Durable recovery spine<br/>4/18 done"]
   M5["M5<br/>Procedural runtime and skills<br/>0/40 done"]
   M6["M6<br/>Subagents/fleet<br/>0/58 done"]
   M7["M7<br/>Live browser<br/>0/29 done"]
@@ -108,7 +108,7 @@ Critical path (reliability spine): **M0 → M1 → M2 → M4**. Do not start bro
 | M1 Durable local shell and Core | COMPLETE | yes | 5 | 14 | 19 | 0 | M0 | user creates durable task, kills/restarts app/Core, same task recovers with no fake state. |
 | M2 Real local engineering loop | COMPLETE | yes | 10 | 53 | 63 | 0 | M1 | E2E-001/002/003 with live model and actual test pass. |
 | M3 Context intelligence | BLOCKED | yes | 9 | 79 | 87 | 1 | M2 | profile A/B/C benchmark plus retrieval-before-edit visible in task evidence. |
-| M4 Durable recovery spine | IN_PROGRESS | yes | 6 | 12 | 3 | 0 | M2 | E2E-004/005/006/007/008. |
+| M4 Durable recovery spine | IN_PROGRESS | yes | 6 | 12 | 4 | 0 | M2 | E2E-004/005/006/007/008. |
 | M5 Procedural runtime and skills | NOT_STARTED | yes | 7 | 33 | 0 | 0 | M2 | E2E-011/012; direct and procedural mode yield equivalent receipts/policy behavior. |
 | M6 Subagents/fleet | NOT_STARTED | no | 7 | 51 | 0 | 0 | M2, M4 | E2E-009/010 and user can supervise multiple tasks without raw-log polling. |
 | M7 Live browser | NOT_STARTED | yes | 8 | 21 | 0 | 0 | M2 | E2E-013..016. |
@@ -322,9 +322,9 @@ Releases are projections over work items and gates (docs/75). Readiness is compu
 
 | Release | State | Included work items | Complete | Blocked | Required gates | Rule |
 |---|---|---:|---:|---:|---|---|
-| ALPHA: Local coding loop and recovery spine | NOT_READY | 114 | 101 | 0 | none | / ALPHA / Local coding loop and recovery spine / M0, M1, M2, M4 / M2.10 / EPR- / — / — / |
-| BETA: Intelligence, fleet and browser | BLOCKED | 320 | 177 | 1 | none | / BETA / Intelligence, fleet and browser / M0, M1, M2, M3, M4, M5, M6, M7 / — / — / — / — / |
-| RELEASE_ZERO: Full end-to-end proof | BLOCKED | 401 | 177 | 1 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
+| ALPHA: Local coding loop and recovery spine | NOT_READY | 114 | 102 | 0 | none | / ALPHA / Local coding loop and recovery spine / M0, M1, M2, M4 / M2.10 / EPR- / — / — / |
+| BETA: Intelligence, fleet and browser | BLOCKED | 320 | 178 | 1 | none | / BETA / Intelligence, fleet and browser / M0, M1, M2, M3, M4, M5, M6, M7 / — / — / — / — / |
+| RELEASE_ZERO: Full end-to-end proof | BLOCKED | 401 | 178 | 1 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
 
 ## Scoped v1.1 supersessions and source provenance
 
@@ -430,8 +430,8 @@ flowchart LR
 | `M4.1` | COMPLETE | Protocol State store |  |
 | `M4.2` | COMPLETE | Compaction epochs + async worker + stale rejection + sync fallback |  |
 | `M4.3` | COMPLETE | Workspace checkpoint baseline/delta objects + epoch fencing |  |
-| `M4.4` | REAL_TESTING | kernel lease/session fencing |  |
-| `M4.5` | NOT_STARTED | terminal/browser/sandbox cursor metadata interfaces |  |
+| `M4.4` | COMPLETE | kernel lease/session fencing |  |
+| `M4.5` | REAL_TESTING | terminal/browser/sandbox cursor metadata interfaces |  |
 | `M4.6` | NOT_STARTED | kill-point recovery suite |  |
 
 ### M5 — Procedural runtime and skills

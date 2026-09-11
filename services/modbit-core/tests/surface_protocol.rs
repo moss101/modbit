@@ -16002,3 +16002,199 @@ async fn qual_m4_4_a_stale_execution_owner_is_fenced_out_and_the_new_owner_resum
         }
     }
 }
+
+/// M4.5 / docs/51 E2E-008 (durable terminal replay), docs/19 "terminal
+/// session ID + last acknowledged output cursor", docs/13 "terminal replay
+/// generation", docs/33 "detach rather than kill durable terminal
+/// resources", docs/54 fault 11: a background command outlives a hard kill
+/// of the Core. The restarted Core reattaches to the broker that kept the
+/// process — no duplicate start, the same handle — reads on from the cursor
+/// it had acknowledged, replays the earlier output from the durable log,
+/// and the protocol state carries the handle and its cursor across the
+/// restart; a reader with an older replay generation is refused; cancelling
+/// terminates the real process and seals its OutputRef.
+#[tokio::test]
+async fn qual_m4_5_e2e_008_a_background_command_survives_a_core_restart_and_resumes_from_its_cursor()
+ {
+    use serde_json::json;
+    let (_repo, root) = plain_repo(&[("a.txt", "a\n")]);
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_EXECD_ORPHAN_GRACE_SECS", "120"),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xE0)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xE1, "local_trusted").await;
+    let start = r#"{"argv":["sh","-c","i=0; while true; do echo tick $i; i=$((i+1)); sleep 0.05; done"],"inherit_env":true,"timeout_ms":600000}"#;
+    let r = invoke_tool(&mut c, &task, g, 0xE2, 0xF1, "shell.start", start).await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let handle = so["session_id"].as_str().unwrap().to_owned();
+    let request_id = so["request_id"].as_str().unwrap().to_owned();
+    assert!(!handle.is_empty() && !request_id.is_empty());
+    let read = |after: u64, max: u64| {
+        format!(
+            r#"{{"session_id":"{handle}","after_cursor":{after},"wait_ms":500,"max_bytes":{max}}}"#
+        )
+    };
+    let r = invoke_tool(&mut c, &task, g, 0xE3, 0xF2, "shell.read", &read(0, 400)).await;
+    let p1: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(p1["running"], true, "{p1}");
+    let acknowledged = p1["next_cursor"].as_u64().unwrap();
+    assert!(acknowledged > 0, "{p1}");
+    let first_preview = p1["preview"].as_str().unwrap().to_owned();
+    assert!(first_preview.starts_with("tick 0\n"), "{first_preview:?}");
+    // Protocol state: the handle and the acknowledged cursor.
+    let ps = protocol_state(&mut c, &task).await;
+    assert_eq!(ps.terminals.len(), 1, "{ps:?}");
+    assert_eq!(ps.terminals[0].handle_id, handle);
+    assert_eq!(ps.terminals[0].request_id, request_id);
+    assert_eq!(ps.terminals[0].last_acknowledged_cursor, acknowledged);
+    assert!(ps.terminals[0].running);
+    let generation_before = ps.terminals[0].replay_generation;
+    assert!(generation_before > 0);
+
+    // Hard-kill the Core; the broker and the process outlive it.
+    drop(c);
+    core.kill();
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    let core2 = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c2 = core2.client().await;
+    let g2 = Some(acquire_lease(&mut c2, id16(0xE4), session.clone(), "after-restart").await);
+    // The same handle is there, running, and there is exactly one.
+    let r = invoke_tool(&mut c2, &task, g2, 0xE5, 0xF3, "shell.list", "{}").await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let sessions = so["sessions"].as_array().unwrap();
+    assert_eq!(sessions.len(), 1, "no duplicate start: {so}");
+    assert_eq!(sessions[0]["session_id"], json!(handle));
+    assert_eq!(sessions[0]["running"], true, "{so}");
+    // Re-issuing the start is a replay of the recorded call, not a new process.
+    let r = invoke_tool(&mut c2, &task, g2, 0xE6, 0xF1, "shell.start", start).await;
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(so["session_id"], json!(handle), "the same handle: {so}");
+    let r = invoke_tool(&mut c2, &task, g2, 0xE7, 0xF4, "shell.list", "{}").await;
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(so["sessions"].as_array().unwrap().len(), 1, "{so}");
+    // Output resumes exactly from the acknowledged cursor.
+    let r = invoke_tool(
+        &mut c2,
+        &task,
+        g2,
+        0xE8,
+        0xF5,
+        "shell.read",
+        &read(acknowledged, 600),
+    )
+    .await;
+    let p2: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(p2["after_cursor"].as_u64().unwrap(), acknowledged, "{p2}");
+    assert!(p2["next_cursor"].as_u64().unwrap() > acknowledged, "{p2}");
+    assert_eq!(p2["running"], true, "{p2}");
+    let combined = format!("{first_preview}{}", p2["preview"].as_str().unwrap());
+    let ticks: Vec<u64> = combined
+        .lines()
+        .filter(|l| l.starts_with("tick "))
+        .filter_map(|l| l[5..].trim().parse().ok())
+        .collect();
+    let complete = if combined.ends_with('\n') {
+        &ticks[..]
+    } else {
+        &ticks[..ticks.len().saturating_sub(1)]
+    };
+    assert!(complete.len() >= 4, "{combined:?}");
+    assert!(
+        complete.windows(2).all(|w| w[1] == w[0] + 1),
+        "the output continued without a gap or a repeat across the restart: {combined:?}"
+    );
+    // Earlier output is available by replay from the durable log.
+    let r = invoke_tool(&mut c2, &task, g2, 0xE9, 0xF6, "shell.read", &read(0, 400)).await;
+    let p0: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert!(
+        p0["preview"].as_str().unwrap().starts_with(&first_preview),
+        "the replay from zero starts with exactly what was read before the restart: {p0}"
+    );
+    // The protocol state came through the restart and moved with the reads.
+    let ps = protocol_state(&mut c2, &task).await;
+    assert_eq!(ps.terminals.len(), 1, "{ps:?}");
+    assert_eq!(ps.terminals[0].handle_id, handle);
+    assert!(
+        ps.terminals[0].last_acknowledged_cursor >= p2["next_cursor"].as_u64().unwrap(),
+        "{ps:?}"
+    );
+    // The restarted Core attaches under a newer replay generation; a reader
+    // presenting the old one is refused by the broker.
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let _ = so;
+    let r = invoke_tool(&mut c2, &task, g2, 0xEA, 0xF7, "shell.list", "{}").await;
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let generation_now = so["sessions"][0]["replay_generation"].as_u64().unwrap();
+    assert!(generation_now > generation_before, "{so}");
+    {
+        let ready = std::fs::read_to_string(dir.path().join("execd").join("execd.ready")).unwrap();
+        let ready = modbit_protocol::local::ReadyLine::parse(ready.trim()).unwrap();
+        let secret = modbit_protocol::local::decode_hex(&ready.boot_secret_hex).unwrap();
+        let mut stale = modbit_terminal::ExecClient::connect(&ready.endpoint, &secret)
+            .await
+            .unwrap();
+        stale
+            .attach_fenced(&handle, 0, generation_before)
+            .await
+            .unwrap();
+        let refused = loop {
+            match stale.next().await {
+                Err(modbit_terminal::Error::Exec { code, .. }) => break code,
+                Ok(Some(_)) => continue,
+                other => panic!("expected STALE_GENERATION, got {other:?}"),
+            }
+        };
+        assert_eq!(refused, "STALE_GENERATION");
+    }
+    // Cancel terminates the real process and seals the OutputRef.
+    let r = invoke_tool(
+        &mut c2,
+        &task,
+        g2,
+        0xEB,
+        0xF8,
+        "shell.cancel",
+        &format!(r#"{{"session_id":"{handle}"}}"#),
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(so["cancelled"], true, "{so}");
+    assert_eq!(so["output_ref"].as_str().unwrap().len(), 64, "{so}");
+    let r = invoke_tool(&mut c2, &task, g2, 0xEC, 0xF9, "shell.list", "{}").await;
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(so["sessions"][0]["running"], false, "{so}");
+    let ps = protocol_state(&mut c2, &task).await;
+    assert!(!ps.terminals[0].running, "{ps:?}");
+    assert_eq!(ps.terminals[0].output_ref.len(), 64, "{ps:?}");
+    // The log has the whole story: created, advanced, exited.
+    let evs = task_events(&core2, &session, &task).await;
+    let kinds: Vec<&str> = evs
+        .iter()
+        .filter(|(_, t, _)| {
+            matches!(
+                t.as_str(),
+                "TerminalCreated" | "TerminalOutputAdvanced" | "ProcessExited"
+            )
+        })
+        .map(|(_, t, _)| t.as_str())
+        .collect();
+    assert_eq!(kinds.first(), Some(&"TerminalCreated"), "{kinds:?}");
+    assert_eq!(kinds.last(), Some(&"ProcessExited"), "{kinds:?}");
+    assert!(
+        kinds
+            .iter()
+            .filter(|k| **k == "TerminalOutputAdvanced")
+            .count()
+            >= 3,
+        "{kinds:?}"
+    );
+}

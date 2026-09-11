@@ -400,3 +400,164 @@ async fn wrong_secret_is_refused() {
         "{err}"
     );
 }
+
+/// M4.5 / docs/54 fault 12 ("terminal broker killed with active PTY"),
+/// docs/19 "terminal session ID + last acknowledged output cursor": the
+/// broker keeps every session's metadata beside its output log, so a broker
+/// that is hard-killed with a running session comes back knowing it — the
+/// session is LOST (its process died with the broker, its exit unknown), its
+/// output replays exactly from any cursor and is sealed under an OutputRef,
+/// a retry of the same request id replays it rather than starting again,
+/// and a session that had exited stays EXITED with its exit code. The ready
+/// file names the live broker and goes away with it; a broker with no client
+/// past its orphan grace stops its processes and exits.
+#[tokio::test]
+async fn qual_m4_5_a_killed_broker_comes_back_with_its_durable_sessions_and_an_orphan_exits() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut execd = Execd::spawn(dir.path());
+    let ready_path = dir.path().join("execd.ready");
+    let ready = std::fs::read_to_string(&ready_path).unwrap();
+    assert_eq!(
+        ReadyLine::parse(ready.trim()).unwrap().endpoint,
+        execd.ready.endpoint,
+        "the ready file names the live broker"
+    );
+    // One session that exits, one that keeps running.
+    let mut a = execd.client().await;
+    a.exec(req("short", "echo-args", &["hello"])).await.unwrap();
+    let (short_id, _, _, exited) = run_to_exit(&mut a).await;
+    assert_eq!(exited.exit_code, Some(3), "the role exits 3 on purpose");
+    a.exec(req("long", "ticker", &[])).await.unwrap();
+    let Event::Started(s) = a.next().await.unwrap().unwrap() else {
+        panic!()
+    };
+    let long_id = s.session_id;
+    let mut seen: Vec<(u64, Vec<u8>)> = Vec::new();
+    while seen.len() < 3 {
+        if let Event::Output(o) = a.next().await.unwrap().unwrap() {
+            seen.push((o.cursor, o.data));
+        }
+    }
+    drop(a);
+    // Hard-kill the broker with the ticker running.
+    execd.child.kill().unwrap();
+    let _ = execd.child.wait();
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    let execd2 = Execd::spawn(dir.path());
+    let mut b = execd2.client().await;
+    b.list().await.unwrap();
+    let Event::Sessions(list) = b.next().await.unwrap().unwrap() else {
+        panic!()
+    };
+    let long = list
+        .iter()
+        .find(|s| s.session_id == long_id)
+        .expect("recovered");
+    assert!(!long.running, "{long:?}");
+    assert_eq!(long.status, "LOST", "{long:?}");
+    assert_eq!(long.exit_code, None);
+    assert!(long.bytes_so_far >= seen.iter().map(|(_, d)| d.len() as u64).sum::<u64>());
+    let short = list
+        .iter()
+        .find(|s| s.session_id == short_id)
+        .expect("recovered");
+    assert_eq!(
+        (short.status.as_str(), short.exit_code),
+        ("EXITED", Some(3)),
+        "{short:?}"
+    );
+    // The lost session's log replays exactly from any cursor and is sealed.
+    let resume_from = seen[1].0 + seen[1].1.len() as u64;
+    b.attach(&long_id, resume_from).await.unwrap();
+    let mut replay = Vec::new();
+    let exit = loop {
+        match b.next().await.unwrap().unwrap() {
+            Event::Output(o) => replay.push((o.cursor, o.data)),
+            Event::Exited(e) => break e,
+            _ => {}
+        }
+    };
+    assert_eq!(replay[0], seen[2], "exact continuation from the cursor");
+    assert_eq!(exit.output_ref.len(), 64);
+    assert_eq!(exit.exit_code, None, "the exit is unknown, never invented");
+    let object = dir
+        .path()
+        .join("objects")
+        .join(&exit.output_ref[..2])
+        .join(&exit.output_ref[2..]);
+    let bytes = std::fs::read(object).unwrap();
+    assert_eq!(hex::encode(Sha256::digest(&bytes)), exit.output_ref);
+    assert!(bytes.starts_with(&seen[0].1), "the object is the log");
+    // A retry of the request replays the lost session; it does not start again.
+    b.exec(req("long", "ticker", &[])).await.unwrap();
+    let Event::Started(s2) = b.next().await.unwrap().unwrap() else {
+        panic!()
+    };
+    assert!(s2.replayed && s2.session_id == long_id, "{s2:?}");
+    drop(b);
+    drop(execd2);
+    // Orphan grace: a broker nobody connects to stops its running process and
+    // exits, removing its ready file.
+    let mut orphan = Command::new(env!("CARGO_BIN_EXE_modbit-execd"))
+        .arg("--data-dir")
+        .arg(dir.path())
+        .arg("--orphan-grace-secs")
+        .arg("1")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::inherit())
+        .spawn()
+        .unwrap();
+    let mut lines = BufReader::new(orphan.stdout.take().unwrap()).lines();
+    let ready = loop {
+        let l = lines.next().expect("ready line").unwrap();
+        if let Some(r) = ReadyLine::parse(&l) {
+            break r;
+        }
+    };
+    std::thread::spawn(move || for _ in lines {});
+    let mut c = ExecClient::connect(
+        &ready.endpoint,
+        &decode_hex(&ready.boot_secret_hex).unwrap(),
+    )
+    .await
+    .unwrap();
+    c.exec(req("orphaned", "ticker", &[])).await.unwrap();
+    let Event::Started(s3) = c.next().await.unwrap().unwrap() else {
+        panic!()
+    };
+    assert!(!s3.replayed);
+    drop(c);
+    let deadline = Instant::now() + Duration::from_secs(15);
+    let status = loop {
+        if let Some(st) = orphan.try_wait().unwrap() {
+            break st;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "the orphaned broker did not exit"
+        );
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    };
+    assert!(status.success(), "{status:?}");
+    assert!(
+        !ready_path.exists(),
+        "the ready file goes away with the broker"
+    );
+    // The next broker sees that session as cancelled, not lost: the orphan
+    // stopped it on purpose and said so.
+    let execd3 = Execd::spawn(dir.path());
+    let mut d = execd3.client().await;
+    d.list().await.unwrap();
+    let Event::Sessions(list) = d.next().await.unwrap().unwrap() else {
+        panic!()
+    };
+    let orphaned = list.iter().find(|s| s.session_id == s3.session_id).unwrap();
+    assert_eq!(orphaned.status, "EXITED", "{orphaned:?}");
+    d.attach(&s3.session_id, 0).await.unwrap();
+    let exit = loop {
+        if let Event::Exited(e) = d.next().await.unwrap().unwrap() {
+            break e;
+        }
+    };
+    assert!(exit.cancelled, "{exit:?}");
+}

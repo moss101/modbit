@@ -242,6 +242,18 @@ pub fn samples() -> Vec<Sample> {
         question_id: String::new(),
         active_leases: 1,
         digest: "f".repeat(64),
+        terminals: vec![TerminalCursorView {
+            handle_id: "0011223344556677".into(),
+            request_id: "bg-1".into(),
+            argv: vec!["sh".into(), "-c".into(), "tail -f log".into()],
+            replay_generation: 3,
+            last_acknowledged_cursor: 4096,
+            running: true,
+            output_ref: String::new(),
+            exit_code: 0,
+            exit_known: false,
+            tool_call_id: "01a08f33-0d97-7d40-b299-f8a7bc5cda60".into(),
+        }],
     };
     let hello = Hello {
         protocol_version: Some(modbit_protocol::PROTOCOL_VERSION),
@@ -381,7 +393,14 @@ pub fn samples() -> Vec<Sample> {
                     "toolName": "git.worktree.close", "effectClass": "Destructive",
                     "intentHash": "d".repeat(64), "expiresAt": "1700000000000", "expired": false
                 }],
-                "questionId": "", "activeLeases": 1, "digest": "f".repeat(64)
+                "questionId": "", "activeLeases": 1, "digest": "f".repeat(64),
+                "terminals": [{
+                    "handleId": "0011223344556677", "requestId": "bg-1",
+                    "argv": ["sh", "-c", "tail -f log"], "replayGeneration": "3",
+                    "lastAcknowledgedCursor": "4096", "running": true, "outputRef": "",
+                    "exitCode": 0, "exitKnown": false,
+                    "toolCallId": "01a08f33-0d97-7d40-b299-f8a7bc5cda60"
+                }]
             }),
             decode: reencode::<ProtocolStateView>,
         },

@@ -644,6 +644,50 @@ pub enum TaskEvent {
         /// Store offset the restored runtime cursor points at.
         event_offset: u64,
     },
+    /// `TerminalCreated` (docs/30 "Workspace/execution", docs/19 protocol
+    /// state "terminal session ID + last acknowledged output cursor"; M4.5):
+    /// a background command got its durable handle. No state change.
+    TerminalCreated {
+        /// The broker's session id.
+        handle_id: String,
+        /// The client-stable request id (a retry replays, never restarts).
+        request_id: String,
+        /// Command.
+        argv: Vec<String>,
+        /// The terminal replay generation the Core attaches under.
+        replay_generation: u64,
+        /// The tool call that started it (UUID text).
+        tool_call_id: String,
+    },
+    /// `TerminalOutputAdvanced`: the run read the handle's output up to a
+    /// cursor — the last acknowledged cursor a resume continues from. No
+    /// state change.
+    TerminalOutputAdvanced {
+        /// Handle.
+        handle_id: String,
+        /// Byte cursor after the bytes the run has seen.
+        cursor: u64,
+        /// Whether the process was still running at the read.
+        running: bool,
+    },
+    /// `ProcessExited`: the handle's process ended (or was found gone). No
+    /// state change.
+    ProcessExited {
+        /// Handle.
+        handle_id: String,
+        /// Exit code, when known.
+        exit_code: Option<i32>,
+        /// Signal, when known.
+        signal: Option<i32>,
+        /// Content-addressed full output.
+        output_ref: String,
+        /// Total output bytes.
+        total_bytes: u64,
+        /// Cancelled by the user or the run.
+        cancelled: bool,
+        /// Timed out.
+        timed_out: bool,
+    },
     /// `ProtocolStateResumed` (docs/19 layer 2, REQ-EV-0055): a restarted
     /// Core reconstructed the task's protocol state and continued the run
     /// from the boundary it names; the outstanding calls are re-entered by
@@ -723,6 +767,9 @@ impl TaskEvent {
             Self::CheckpointCommitted { .. } => "CheckpointCommitted",
             Self::CheckpointRejectedStale { .. } => "CheckpointRejectedStale",
             Self::CheckpointRestored { .. } => "CheckpointRestored",
+            Self::TerminalCreated { .. } => "TerminalCreated",
+            Self::TerminalOutputAdvanced { .. } => "TerminalOutputAdvanced",
+            Self::ProcessExited { .. } => "ProcessExited",
             Self::ProtocolStateResumed { .. } => "ProtocolStateResumed",
             Self::ToolCallReconciled { .. } => "ToolCallReconciled",
         }
@@ -841,6 +888,9 @@ impl Task {
             | TaskEvent::CheckpointCommitted { .. }
             | TaskEvent::CheckpointRejectedStale { .. }
             | TaskEvent::CheckpointRestored { .. }
+            | TaskEvent::TerminalCreated { .. }
+            | TaskEvent::TerminalOutputAdvanced { .. }
+            | TaskEvent::ProcessExited { .. }
             | TaskEvent::ProtocolStateResumed { .. }
             | TaskEvent::ToolCallReconciled { .. } => {
                 if self.state.is_terminal() {

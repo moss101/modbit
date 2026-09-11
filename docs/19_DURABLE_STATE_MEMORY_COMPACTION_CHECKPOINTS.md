@@ -67,6 +67,10 @@ Write-ahead: a tool call is `ToolCallProposed` (bound to run, turn, the model's 
 
 Restart: a call the dead Core had dispatched becomes `ToolCallUnknownOutcome` (read-only calls are cancelled); the task keeps the wait reason its boundary names and is marked for attention with that boundary. Resume: the run re-enters the outstanding calls of its last assistant message by their recorded ids (`ProtocolStateResumed`), so an approval-gated call finds the same `ApprovalId` bound to the same intent and approving once yields one effect; a call of unknown outcome is reconciled — receipt lookup for protected/external/destructive effects, target inspection for reversible writes — and the observation goes to the model as the call's result (`ToolCallReconciled`); nothing is replayed by the Core.
 
+### Cursor metadata interfaces (M4.5)
+
+`ProtocolState` carries `terminals: Vec<TerminalCursor>` (handle id, request id, argv, replay generation, last acknowledged cursor, running, OutputRef and exit once known), built from `TerminalCreated` / `TerminalOutputAdvanced` / `ProcessExited` in the same materialization as the rest of the state, and the typed interfaces the later milestones record into: `BrowserCursor` (session id, control lease generation, state cursor; M7) and `SandboxCursor` (lease id, generation; M8). `GetProtocolState` lists the terminals. Reattachment by lease and cursor (resume step 5) is proven for terminals in doc 51 E2E-008: the broker outlives the Core (doc 21), the restarted Core attaches under its boot generation, and reads continue from the acknowledged cursor.
+
 ## Engineering Memory
 
 Scopes: Run, Session, User, Agent Profile, Repository, Space, Organization. Record types: decision, convention, fact, procedure, failure pattern, dependency knowledge, user preference. Every item stores source provenance, author/actor, confidence, TTL/expiry, scope, sensitivity, supersedes/conflicts links and last validation revision.

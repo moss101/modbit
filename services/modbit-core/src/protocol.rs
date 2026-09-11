@@ -80,6 +80,7 @@ pub(crate) fn reconstruct_from_rows(store: &EventStore, task: &TaskId) -> Protoc
     let approvals = store.approvals_for_task(task).unwrap_or_default();
     let leases = store.leases_for_task(task).unwrap_or_default();
     let reconciled = reconciled_calls(store, task);
+    let terminals = terminal_cursors(store, task);
     ProtocolState::reconstruct(
         *task,
         Input {
@@ -88,9 +89,58 @@ pub(crate) fn reconstruct_from_rows(store: &EventStore, task: &TaskId) -> Protoc
             leases: &leases,
             question: pending_question(store, task),
             reconciled: &reconciled,
+            terminals: &terminals,
             now: Timestamp::now(),
         },
     )
+}
+
+/// The terminal cursors the task's log built, oldest event first.
+fn terminal_cursors(
+    store: &EventStore,
+    task: &TaskId,
+) -> Vec<modbit_protocol_state::TerminalCursor> {
+    use modbit_protocol_state::{TerminalUpdate, apply_terminal};
+    let events = store
+        .read_aggregate(task.as_bytes(), 0, usize::MAX)
+        .unwrap_or_default();
+    let mut out = Vec::new();
+    for e in &events {
+        let Ok(p) = store.payload(&e.envelope) else {
+            continue;
+        };
+        let strs = |v: &serde_json::Value| -> Vec<String> {
+            v.as_array()
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|x| x.as_str().map(str::to_owned))
+                        .collect()
+                })
+                .unwrap_or_default()
+        };
+        let update = match e.envelope.event_type.as_str() {
+            "TerminalCreated" => TerminalUpdate::Created {
+                handle_id: p["handle_id"].as_str().unwrap_or_default().to_owned(),
+                request_id: p["request_id"].as_str().unwrap_or_default().to_owned(),
+                argv: strs(&p["argv"]),
+                replay_generation: p["replay_generation"].as_u64().unwrap_or(0),
+                tool_call_id: p["tool_call_id"].as_str().unwrap_or_default().to_owned(),
+            },
+            "TerminalOutputAdvanced" => TerminalUpdate::Advanced {
+                handle_id: p["handle_id"].as_str().unwrap_or_default().to_owned(),
+                cursor: p["cursor"].as_u64().unwrap_or(0),
+                running: p["running"].as_bool().unwrap_or(false),
+            },
+            "ProcessExited" => TerminalUpdate::Exited {
+                handle_id: p["handle_id"].as_str().unwrap_or_default().to_owned(),
+                output_ref: p["output_ref"].as_str().unwrap_or_default().to_owned(),
+                exit_code: p["exit_code"].as_i64().and_then(|c| i32::try_from(c).ok()),
+            },
+            _ => continue,
+        };
+        apply_terminal(&mut out, update);
+    }
+    out
 }
 
 /// What a restart did to one task's in-flight calls.

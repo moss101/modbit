@@ -53,6 +53,7 @@ enum ProtocolDelta {
     QuestionAsked(modbit_protocol_state::PendingQuestion),
     QuestionAnswered(String),
     Reconciled(ToolCallId),
+    Terminal(modbit_protocol_state::TerminalUpdate),
 }
 
 /// The `protocol_state` row of a task (docs/31): key `task:<task_id>`.
@@ -98,9 +99,16 @@ fn materialize_protocol_state(
         .optional()?
         .unwrap_or(0);
     let mut question = prior.as_ref().and_then(|p| p.question.clone());
+    let mut terminals = prior
+        .as_ref()
+        .map(|p| p.terminals.clone())
+        .unwrap_or_default();
     let mut reconciled: Vec<ToolCallId> = prior.map(|p| p.reconciled).unwrap_or_default();
     match delta {
         ProtocolDelta::Rows => {}
+        ProtocolDelta::Terminal(update) => {
+            modbit_protocol_state::apply_terminal(&mut terminals, update);
+        }
         ProtocolDelta::QuestionAsked(q) => question = Some(q),
         ProtocolDelta::QuestionAnswered(id) => {
             if question.as_ref().is_some_and(|q| q.question_id == id) {
@@ -124,6 +132,7 @@ fn materialize_protocol_state(
             leases: &leases,
             question,
             reconciled: &reconciled,
+            terminals: &terminals,
             now: at,
         },
     );
@@ -589,6 +598,44 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                         .ok()
                         .map(ProtocolDelta::Reconciled)
                 }
+                TaskEvent::TerminalCreated {
+                    handle_id,
+                    request_id,
+                    argv,
+                    replay_generation,
+                    tool_call_id,
+                } => Some(ProtocolDelta::Terminal(
+                    modbit_protocol_state::TerminalUpdate::Created {
+                        handle_id: handle_id.clone(),
+                        request_id: request_id.clone(),
+                        argv: argv.clone(),
+                        replay_generation: *replay_generation,
+                        tool_call_id: tool_call_id.clone(),
+                    },
+                )),
+                TaskEvent::TerminalOutputAdvanced {
+                    handle_id,
+                    cursor,
+                    running,
+                } => Some(ProtocolDelta::Terminal(
+                    modbit_protocol_state::TerminalUpdate::Advanced {
+                        handle_id: handle_id.clone(),
+                        cursor: *cursor,
+                        running: *running,
+                    },
+                )),
+                TaskEvent::ProcessExited {
+                    handle_id,
+                    output_ref,
+                    exit_code,
+                    ..
+                } => Some(ProtocolDelta::Terminal(
+                    modbit_protocol_state::TerminalUpdate::Exited {
+                        handle_id: handle_id.clone(),
+                        output_ref: output_ref.clone(),
+                        exit_code: *exit_code,
+                    },
+                )),
                 _ => None,
             };
             if let Some(delta) = delta {

@@ -111,9 +111,22 @@ impl ExecClient {
 
     /// Attach to a session from a cursor.
     pub async fn attach(&mut self, session_id: &str, after_cursor: u64) -> Result<()> {
+        self.attach_fenced(session_id, after_cursor, 0).await
+    }
+
+    /// Attach under a terminal replay generation (docs/13, M4.5): an older
+    /// generation than the session's current one is refused
+    /// `STALE_GENERATION`; a newer one ends every older attachment.
+    pub async fn attach_fenced(
+        &mut self,
+        session_id: &str,
+        after_cursor: u64,
+        generation: u64,
+    ) -> Result<()> {
         self.send(Body::Attach(modbit_protocol::v1::Attach {
             session_id: session_id.into(),
             after_cursor,
+            generation,
         }))
         .await
     }

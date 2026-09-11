@@ -506,6 +506,7 @@ async fn shell_exec_and_test_run_go_through_the_real_broker() {
     let target = ExecTarget {
         endpoint: execd.1.endpoint.clone(),
         boot_secret: decode_hex(&execd.1.boot_secret_hex).unwrap(),
+        replay_generation: 0,
     };
     let f = fixture(Some(target));
     let git_bin = "git";

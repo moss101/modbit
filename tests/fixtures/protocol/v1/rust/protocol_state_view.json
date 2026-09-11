@@ -40,6 +40,24 @@
     "digest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
     "questionId": "",
     "taskId": "22222222222222222222222222222222",
+    "terminals": [
+      {
+        "argv": [
+          "sh",
+          "-c",
+          "tail -f log"
+        ],
+        "exitCode": 0,
+        "exitKnown": false,
+        "handleId": "0011223344556677",
+        "lastAcknowledgedCursor": "4096",
+        "outputRef": "",
+        "replayGeneration": "3",
+        "requestId": "bg-1",
+        "running": true,
+        "toolCallId": "01a08f33-0d97-7d40-b299-f8a7bc5cda60"
+      }
+    ],
     "version": "protocol-state-1"
   },
   "type": "modbit.v1.ProtocolStateView"

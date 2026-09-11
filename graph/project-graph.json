@@ -2544,11 +2544,14 @@
    "milestone": "M4",
    "order": 3,
    "source": "docs/43",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "test:qual_m4_4_a_stale_execution_owner_is_fenced_out_and_the_new_owner_resumes",
     "test:qual_ev_0054_0273_session_lease_fences_out_stale_writers_across_restart",
-    "artifact:evidence/m4/M4.4/TASK_CARD.md"
+    "artifact:evidence/m4/M4.4/TASK_CARD.md",
+    "run:34588581596",
+    "commit:59940bd",
+    "artifact:evidence/m4/M4.4/ci-run-34588581596.json"
    ],
    "notes": [
     {
@@ -2574,9 +2577,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "real-system proof locally: a second owner takes the lease mid-run; the stale loop records RunFenced and suspends, nothing advances after the takeover, the stale owner's StartTask is STALE_LEASE and the new owner resumes to completion; hosted CI pending"
+    },
+    {
+     "at": "2026-09-11T10:49:02Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34588581596 green on macOS, Linux and Windows at 59940bd"
+    },
+    {
+     "at": "2026-09-11T10:49:02Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on hosted CI run 34588581596; card records the audit (PARTIAL: commands fenced, the loop not), the fenced append, the loop checks, the CLI join-lease fix and the limitations (local lease; cloud lease with expiry is M8)"
     }
    ],
-   "status_changed_on": "2026-09-11T10:17:42Z"
+   "status_changed_on": "2026-09-11T10:49:02Z"
   },
   {
    "id": "M4.5",
@@ -2586,8 +2601,39 @@
    "milestone": "M4",
    "order": 4,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "test:qual_m4_5_e2e_008_a_background_command_survives_a_core_restart_and_resumes_from_its_cursor",
+    "test:qual_m4_5_a_killed_broker_comes_back_with_its_durable_sessions_and_an_orphan_exits",
+    "artifact:evidence/m4/M4.5/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-11T10:49:02Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: M2 handles survived a client restart only; the broker was tethered to the Core's stdin and died with it, sessions lived in memory, a restarted Core spawned a second broker that knew nothing, attaches carried no generation, and the Core recorded nothing about handles or cursors on the log; docs/19 cursor metadata, docs/13 terminal replay generation, docs/33 detach-not-kill, E2E-008 and faults 11/12 unbuilt"
+    },
+    {
+     "at": "2026-09-11T10:49:02Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "execd: durable session metadata, LOST recovery on boot, execd.ready, orphan grace, Attach.generation with STALE_GENERATION; Core: reattach-or-spawn, held connection, replay generation = boot generation, Terminal*/ProcessExited task events; protocol-state TerminalCursor/BrowserCursor/SandboxCursor + terminals materialization; GetProtocolState terminals"
+    },
+    {
+     "at": "2026-09-11T10:49:02Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the real broker binary, the Core's tool host and the protocol state; local gate green (fmt, clippy -D warnings, fixtures, cargo test --workspace exit 0)"
+    },
+    {
+     "at": "2026-09-11T10:49:02Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system proof locally: E2E-008 through a hard-killed and restarted Core with a real running command; fault 12 through a hard-killed and restarted broker; hosted CI pending"
+    }
+   ],
+   "status_changed_on": "2026-09-11T10:49:02Z"
   },
   {
    "id": "M4.6",

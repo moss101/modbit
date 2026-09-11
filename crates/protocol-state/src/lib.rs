@@ -116,6 +116,142 @@ pub struct ActiveLease {
     pub execution_profile: String,
 }
 
+/// A durable terminal handle and the last output cursor the run acknowledged
+/// (docs/19 "terminal session ID + last acknowledged output cursor"; M4.5).
+/// A resume reads from `last_acknowledged_cursor`; earlier output stays
+/// available by replay and, once exited, by `output_ref`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TerminalCursor {
+    /// The broker's session id.
+    pub handle_id: String,
+    /// Client-stable request id: a retry replays the same session.
+    pub request_id: String,
+    /// Command.
+    pub argv: Vec<String>,
+    /// Terminal replay generation the handle was last attached under.
+    pub replay_generation: u64,
+    /// Byte cursor after the bytes the run has seen.
+    pub last_acknowledged_cursor: u64,
+    /// Whether the process was running at the last observation.
+    pub running: bool,
+    /// Content-addressed full output, once exited.
+    pub output_ref: Option<String>,
+    /// Exit code, once known.
+    pub exit_code: Option<i32>,
+    /// The tool call that started it.
+    pub tool_call_id: String,
+}
+
+/// A browser session and its control lease (docs/19 "browser session/control
+/// lease"; docs/13 "browser control lease generation"). The interface M7's
+/// browser tools record into; nothing produces one yet.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BrowserCursor {
+    /// Browser session id.
+    pub session_id: String,
+    /// Control lease generation (a human taking control moves it).
+    pub control_lease_generation: u64,
+    /// Last acknowledged state cursor.
+    pub state_cursor: u64,
+}
+
+/// A sandbox lease and its generation (docs/19 "sandbox lease + generation";
+/// docs/13 "sandbox lease generation"). The interface M8's isolated
+/// execution records into; nothing produces one yet.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SandboxCursor {
+    /// Lease id.
+    pub lease_id: String,
+    /// Lease generation.
+    pub generation: u64,
+}
+
+/// One change to a task's terminal cursors, as the log records it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum TerminalUpdate {
+    /// `TerminalCreated`.
+    Created {
+        /// Handle.
+        handle_id: String,
+        /// Request id.
+        request_id: String,
+        /// Command.
+        argv: Vec<String>,
+        /// Replay generation.
+        replay_generation: u64,
+        /// Tool call.
+        tool_call_id: String,
+    },
+    /// `TerminalOutputAdvanced`.
+    Advanced {
+        /// Handle.
+        handle_id: String,
+        /// Cursor.
+        cursor: u64,
+        /// Running.
+        running: bool,
+    },
+    /// `ProcessExited`.
+    Exited {
+        /// Handle.
+        handle_id: String,
+        /// Output.
+        output_ref: String,
+        /// Exit code.
+        exit_code: Option<i32>,
+    },
+}
+
+/// Apply one terminal update to the cursors (idempotent for a replayed log).
+pub fn apply_terminal(terminals: &mut Vec<TerminalCursor>, update: TerminalUpdate) {
+    match update {
+        TerminalUpdate::Created {
+            handle_id,
+            request_id,
+            argv,
+            replay_generation,
+            tool_call_id,
+        } => {
+            if let Some(t) = terminals.iter_mut().find(|t| t.handle_id == handle_id) {
+                t.replay_generation = t.replay_generation.max(replay_generation);
+                return;
+            }
+            terminals.push(TerminalCursor {
+                handle_id,
+                request_id,
+                argv,
+                replay_generation,
+                last_acknowledged_cursor: 0,
+                running: true,
+                output_ref: None,
+                exit_code: None,
+                tool_call_id,
+            });
+        }
+        TerminalUpdate::Advanced {
+            handle_id,
+            cursor,
+            running,
+        } => {
+            if let Some(t) = terminals.iter_mut().find(|t| t.handle_id == handle_id) {
+                t.last_acknowledged_cursor = t.last_acknowledged_cursor.max(cursor);
+                t.running = running && t.output_ref.is_none();
+            }
+        }
+        TerminalUpdate::Exited {
+            handle_id,
+            output_ref,
+            exit_code,
+        } => {
+            if let Some(t) = terminals.iter_mut().find(|t| t.handle_id == handle_id) {
+                t.running = false;
+                t.output_ref = Some(output_ref);
+                t.exit_code = exit_code;
+            }
+        }
+    }
+}
+
 /// The boundary a resumed run continues from (docs/19 resume step 9).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "boundary", rename_all = "SCREAMING_SNAKE_CASE")]
@@ -226,6 +362,8 @@ pub struct Input<'a> {
     pub question: Option<PendingQuestion>,
     /// Calls whose unknown outcome was already reconciled on the log.
     pub reconciled: &'a [ToolCallId],
+    /// Terminal cursors, as the log built them.
+    pub terminals: &'a [TerminalCursor],
     /// Now, for expiry.
     pub now: Timestamp,
 }
@@ -238,6 +376,7 @@ impl Default for Input<'_> {
             leases: &[],
             question: None,
             reconciled: &[],
+            terminals: &[],
             now: Timestamp(0),
         }
     }
@@ -262,6 +401,15 @@ pub struct ProtocolState {
     /// longer outstanding; kept so a later materialization knows).
     #[serde(default)]
     pub reconciled: Vec<ToolCallId>,
+    /// Durable terminal handles with their last acknowledged cursors (M4.5).
+    #[serde(default)]
+    pub terminals: Vec<TerminalCursor>,
+    /// Browser sessions and control leases (interface; M7 produces them).
+    #[serde(default)]
+    pub browsers: Vec<BrowserCursor>,
+    /// Sandbox leases (interface; M8 produces them).
+    #[serde(default)]
+    pub sandboxes: Vec<SandboxCursor>,
 }
 
 impl ProtocolState {
@@ -358,6 +506,9 @@ impl ProtocolState {
             question: input.question,
             leases,
             reconciled: input.reconciled.to_vec(),
+            terminals: input.terminals.to_vec(),
+            browsers: Vec::new(),
+            sandboxes: Vec::new(),
         }
     }
 
@@ -587,6 +738,7 @@ mod tests {
                 leases: &[],
                 question: None,
                 reconciled: &[],
+                terminals: &[],
                 now: Timestamp(10),
             },
         );
@@ -634,6 +786,7 @@ mod tests {
                 leases: &[],
                 question: None,
                 reconciled: &[],
+                terminals: &[],
                 now: Timestamp(10),
             },
         );
@@ -704,6 +857,7 @@ mod tests {
                 leases: &[],
                 question: None,
                 reconciled: &[],
+                terminals: &[],
                 now: Timestamp(10),
             },
         );
@@ -728,6 +882,7 @@ mod tests {
                 leases: &[],
                 question: None,
                 reconciled: &[u.tool_call_id, a.tool_call_id],
+                terminals: &[],
                 now: Timestamp(10),
             },
         );
@@ -777,6 +932,7 @@ mod tests {
                     call_id: "call_2".into(),
                 }),
                 reconciled: &[],
+                terminals: &[],
                 now: Timestamp(10),
             },
         );

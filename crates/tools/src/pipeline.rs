@@ -85,6 +85,10 @@ pub struct ExecTarget {
     pub endpoint: modbit_protocol::local::Endpoint,
     /// Boot secret.
     pub boot_secret: Vec<u8>,
+    /// Terminal replay generation the host attaches under (docs/13 "Fencing
+    /// and epochs", M4.5): its boot generation, so a restarted Core's reads
+    /// supersede the dead one's attachments. 0 = unfenced.
+    pub replay_generation: u64,
 }
 
 /// What is about to be dispatched (docs/19 layer 2, M4.1): the pipeline

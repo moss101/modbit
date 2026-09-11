@@ -28,18 +28,35 @@ use modbit_workspace::WorkspaceService;
 use sha2::Digest;
 use tokio::sync::Mutex;
 
-/// The supervised broker process.
+/// The broker this Core uses: spawned by it, or found alive from a previous
+/// Core (docs/33: durable terminal resources are detached, never killed, so
+/// a Core restart keeps every running command and its replayable log; M4.5).
 pub struct Execd {
-    child: Child,
+    /// The child, when this Core spawned it. It is never killed on drop: the
+    /// broker outlives the Core and stops itself after the orphan grace.
+    child: Option<Child>,
     /// Where the shell tools connect.
     pub target: ExecTarget,
+    /// Whether the broker was found alive rather than spawned.
+    pub reattached: bool,
 }
 
 impl Drop for Execd {
     fn drop(&mut self) {
-        let _ = self.child.kill();
-        let _ = self.child.wait();
+        // Detach: reap nothing, kill nothing. The broker keeps its sessions
+        // for the next Core and exits on its own once no Core returns.
+        let _ = self.child.take();
     }
+}
+
+/// How long a broker waits for a Core to return before stopping its
+/// processes and exiting (`MODBIT_EXECD_ORPHAN_GRACE_SECS`, default 60).
+fn orphan_grace_secs() -> u64 {
+    std::env::var("MODBIT_EXECD_ORPHAN_GRACE_SECS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .filter(|s| *s > 0)
+        .unwrap_or(60)
 }
 
 /// Locate the broker binary: `MODBIT_EXECD_BIN`, else a sibling of this executable.
@@ -59,16 +76,98 @@ fn execd_binary() -> PathBuf {
         .unwrap_or_default()
 }
 
-/// Spawn the broker for this data directory and wait for its ready line.
-pub fn spawn_execd(data_dir: &Path) -> Result<Execd> {
+/// Reattach to a broker a previous Core left alive, if its ready file names
+/// one that answers; the sessions it holds — running processes, durable
+/// logs — carry over without a duplicate start (docs/51 E2E-008).
+fn reattach_execd(data_dir: &Path, replay_generation: u64) -> Option<Execd> {
+    let path = data_dir.join("execd").join("execd.ready");
+    let line = std::fs::read_to_string(&path).ok()?;
+    let ready = ReadyLine::parse(line.trim())?;
+    let secret = decode_hex(&ready.boot_secret_hex)?;
+    let endpoint = ready.endpoint.clone();
+    let alive: bool = std::thread::spawn(move || {
+        let Ok(rt) = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+        else {
+            return false;
+        };
+        rt.block_on(async {
+            tokio::time::timeout(
+                std::time::Duration::from_secs(2),
+                modbit_terminal::ExecClient::connect(&endpoint, &secret),
+            )
+            .await
+            .is_ok_and(|c| c.is_ok())
+        })
+    })
+    .join()
+    .unwrap_or(false);
+    if !alive {
+        return None;
+    }
+    Some(Execd {
+        child: None,
+        target: ExecTarget {
+            endpoint: ready.endpoint,
+            boot_secret: decode_hex(&ready.boot_secret_hex)?,
+            replay_generation,
+        },
+        reattached: true,
+    })
+}
+
+/// Keep one authenticated connection to the broker open for the life of
+/// this Core: the broker's orphan grace counts connected Cores, so it never
+/// mistakes an idle Core for a dead one. Reconnects if the connection drops.
+fn hold_broker_open(target: ExecTarget) {
+    std::thread::spawn(move || {
+        let Ok(rt) = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+        else {
+            return;
+        };
+        rt.block_on(async move {
+            loop {
+                if let Ok(mut c) =
+                    modbit_terminal::ExecClient::connect(&target.endpoint, &target.boot_secret)
+                        .await
+                {
+                    // The connection stays open until the broker closes it.
+                    while let Ok(Some(_)) = c.next().await {}
+                }
+                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+            }
+        });
+    });
+}
+
+/// Attach to the broker a previous Core left alive, or spawn one for this
+/// data directory and wait for its ready line. `replay_generation` is the
+/// Core's boot generation: the fence every attach from this Core carries.
+pub fn spawn_execd(data_dir: &Path, replay_generation: u64) -> Result<Execd> {
+    let execd = spawn_or_reattach(data_dir, replay_generation)?;
+    if execd.reattached {
+        eprintln!("modbit-core: reattached to the terminal broker a previous Core left alive");
+    }
+    hold_broker_open(execd.target.clone());
+    Ok(execd)
+}
+
+fn spawn_or_reattach(data_dir: &Path, replay_generation: u64) -> Result<Execd> {
+    if let Some(e) = reattach_execd(data_dir, replay_generation) {
+        return Ok(e);
+    }
     let bin = execd_binary();
-    // stdin is the lifetime tether: the broker exits when this pipe closes,
-    // so a hard-killed Core never leaves an orphaned broker behind.
+    // No stdin tether: the broker is a durable resource that outlives this
+    // Core (docs/33), bounded by its orphan grace when no Core returns.
     let mut child = Command::new(&bin)
         .arg("--data-dir")
         .arg(data_dir.join("execd"))
-        .arg("--tether-stdin")
-        .stdin(Stdio::piped())
+        .arg("--orphan-grace-secs")
+        .arg(orphan_grace_secs().to_string())
+        .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit())
         .spawn()
@@ -94,8 +193,13 @@ pub fn spawn_execd(data_dir: &Path) -> Result<Execd> {
     let target = ExecTarget {
         endpoint: ready.endpoint,
         boot_secret: decode_hex(&ready.boot_secret_hex).context("broker secret")?,
+        replay_generation,
     };
-    Ok(Execd { child, target })
+    Ok(Execd {
+        child: Some(child),
+        target,
+        reattached: false,
+    })
 }
 
 /// The event store's object directory as the artifact source (`artifact.range`).
@@ -164,11 +268,11 @@ pub struct ToolHost {
 
 impl ToolHost {
     /// Build the host: direct tools, default policy, broker.
-    pub fn new(data_dir: &Path) -> Result<Self> {
+    pub fn new(data_dir: &Path, replay_generation: u64) -> Result<Self> {
         let mut registry = ToolRegistry::new();
         modbit_tools::direct::register_direct(&mut registry).map_err(|e| anyhow::anyhow!("{e}"))?;
         let runtime = ToolRuntime::new(registry, Arc::new(ProfilePolicy));
-        let execd = match spawn_execd(data_dir) {
+        let execd = match spawn_execd(data_dir, replay_generation) {
             Ok(e) => Some(e),
             Err(e) => {
                 eprintln!(
@@ -615,6 +719,78 @@ impl ToolHost {
                         &actor,
                     ));
                 }
+            }
+        }
+        // Terminal cursor metadata (docs/19 layer 2, M4.5): what the run now
+        // knows about its durable handles — a handle it started, the cursor
+        // it read up to, an exit it observed — as task events the protocol
+        // state materializes.
+        if result.status == ToolStatus::Success {
+            let o = &result.structured_output;
+            let sid = o["session_id"].as_str().unwrap_or_default().to_owned();
+            let exited = |o: &serde_json::Value| modbit_domain::task::TaskEvent::ProcessExited {
+                handle_id: sid.clone(),
+                exit_code: o["exit_code"].as_i64().and_then(|c| i32::try_from(c).ok()),
+                signal: o["signal"].as_i64().and_then(|c| i32::try_from(c).ok()),
+                output_ref: o["output_ref"].as_str().unwrap_or_default().to_owned(),
+                total_bytes: o["total_bytes"].as_u64().unwrap_or(0),
+                cancelled: o["cancelled"].as_bool().unwrap_or(false),
+                timed_out: o["timed_out"].as_bool().unwrap_or(false),
+            };
+            let generation = self
+                .execd
+                .as_ref()
+                .map_or(0, |e| e.target.replay_generation);
+            match tool_name {
+                "shell.start" if !sid.is_empty() => {
+                    retrieval_events.push(typed_task_event(
+                        "TerminalCreated",
+                        &modbit_domain::task::TaskEvent::TerminalCreated {
+                            handle_id: sid.clone(),
+                            request_id: o["request_id"].as_str().unwrap_or_default().to_owned(),
+                            argv: o["argv"]
+                                .as_array()
+                                .map(|a| {
+                                    a.iter()
+                                        .filter_map(|x| x.as_str().map(str::to_owned))
+                                        .collect()
+                                })
+                                .unwrap_or_default(),
+                            replay_generation: generation,
+                            tool_call_id: tool_call_id.to_string(),
+                        },
+                        &actor,
+                    ));
+                    if o["running"].as_bool() == Some(false) {
+                        retrieval_events.push(typed_task_event(
+                            "ProcessExited",
+                            &exited(o),
+                            &actor,
+                        ));
+                    }
+                }
+                "shell.read" if !sid.is_empty() => {
+                    retrieval_events.push(typed_task_event(
+                        "TerminalOutputAdvanced",
+                        &modbit_domain::task::TaskEvent::TerminalOutputAdvanced {
+                            handle_id: sid.clone(),
+                            cursor: o["next_cursor"].as_u64().unwrap_or(0),
+                            running: o["running"].as_bool().unwrap_or(false),
+                        },
+                        &actor,
+                    ));
+                    if let Some(x) = o.get("exited").filter(|x| x.is_object()) {
+                        retrieval_events.push(typed_task_event(
+                            "ProcessExited",
+                            &exited(x),
+                            &actor,
+                        ));
+                    }
+                }
+                "shell.cancel" if !sid.is_empty() => {
+                    retrieval_events.push(typed_task_event("ProcessExited", &exited(o), &actor));
+                }
+                _ => {}
             }
         }
         if !retrieval_events.is_empty() {

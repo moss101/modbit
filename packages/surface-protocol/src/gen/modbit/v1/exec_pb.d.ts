@@ -239,6 +239,16 @@ export declare type Attach = Message<"modbit.v1.Attach"> & {
    * @generated from field: uint64 after_cursor = 2;
    */
   afterCursor: bigint;
+
+  /**
+   * Terminal replay generation (docs/13 "Fencing and epochs", M4.5): a Core
+   * presents its boot generation; an attach with an older generation than
+   * the session's current one is refused STALE_GENERATION, and a newer one
+   * ends every older attachment. 0 = unfenced (a local reader of the log).
+   *
+   * @generated from field: uint64 generation = 3;
+   */
+  generation: bigint;
 };
 
 /**
@@ -329,6 +339,27 @@ export declare type SessionInfo = Message<"modbit.v1.SessionInfo"> & {
    * @generated from field: optional int32 exit_code = 6;
    */
   exitCode?: number | undefined;
+
+  /**
+   * RUNNING | EXITED | LOST (M4.5): LOST is a session whose process died with
+   * a previous broker; its output log is durable and replayable, its exit
+   * unknown.
+   *
+   * @generated from field: string status = 7;
+   */
+  status: string;
+
+  /**
+   * the newest attach generation seen
+   *
+   * @generated from field: uint64 replay_generation = 8;
+   */
+  replayGeneration: bigint;
+
+  /**
+   * @generated from field: int64 started_at_ms = 9;
+   */
+  startedAtMs: bigint;
 };
 
 /**

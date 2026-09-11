@@ -5001,6 +5001,13 @@ export declare type ProtocolStateView = Message<"modbit.v1.ProtocolStateView"> &
    * @generated from field: string digest = 8;
    */
   digest: string;
+
+  /**
+   * durable handles and the cursors the run acknowledged (M4.5)
+   *
+   * @generated from field: repeated modbit.v1.TerminalCursorView terminals = 9;
+   */
+  terminals: TerminalCursorView[];
 };
 
 /**
@@ -5008,6 +5015,74 @@ export declare type ProtocolStateView = Message<"modbit.v1.ProtocolStateView"> &
  * Use `create(ProtocolStateViewSchema)` to create a new message.
  */
 export declare const ProtocolStateViewSchema: GenMessage<ProtocolStateView>;
+
+/**
+ * A durable terminal handle and the last output cursor the run acknowledged
+ * (docs/19 "terminal session ID + last acknowledged output cursor"; M4.5).
+ *
+ * @generated from message modbit.v1.TerminalCursorView
+ */
+export declare type TerminalCursorView = Message<"modbit.v1.TerminalCursorView"> & {
+  /**
+   * @generated from field: string handle_id = 1;
+   */
+  handleId: string;
+
+  /**
+   * @generated from field: string request_id = 2;
+   */
+  requestId: string;
+
+  /**
+   * @generated from field: repeated string argv = 3;
+   */
+  argv: string[];
+
+  /**
+   * @generated from field: uint64 replay_generation = 4;
+   */
+  replayGeneration: bigint;
+
+  /**
+   * @generated from field: uint64 last_acknowledged_cursor = 5;
+   */
+  lastAcknowledgedCursor: bigint;
+
+  /**
+   * @generated from field: bool running = 6;
+   */
+  running: boolean;
+
+  /**
+   * once exited
+   *
+   * @generated from field: string output_ref = 7;
+   */
+  outputRef: string;
+
+  /**
+   * meaningful when exit_known
+   *
+   * @generated from field: int32 exit_code = 8;
+   */
+  exitCode: number;
+
+  /**
+   * @generated from field: bool exit_known = 9;
+   */
+  exitKnown: boolean;
+
+  /**
+   * @generated from field: string tool_call_id = 10;
+   */
+  toolCallId: string;
+};
+
+/**
+ * Describes the message modbit.v1.TerminalCursorView.
+ * Use `create(TerminalCursorViewSchema)` to create a new message.
+ */
+export declare const TerminalCursorViewSchema: GenMessage<TerminalCursorView>;
 
 /**
  * @generated from message modbit.v1.CreateCheckpoint

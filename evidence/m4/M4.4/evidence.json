@@ -1,14 +1,24 @@
 {
  "task": "M4.4",
- "requirements": ["REQ-EV-0054", "REQ-EV-0273"],
- "scenarios": ["docs/54 fault 8"],
+ "requirements": [
+  "REQ-EV-0054",
+  "REQ-EV-0273"
+ ],
+ "scenarios": [
+  "docs/54 fault 8"
+ ],
  "tests": [
   "qual_m4_4_a_stale_execution_owner_is_fenced_out_and_the_new_owner_resumes",
   "qual_ev_0054_0273_session_lease_fences_out_stale_writers_across_restart"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "59940bd"
+ ],
+ "runs": [
+  "run:34588581596"
+ ],
  "proof": "A second owner acquires the session lease while a run executes under the old generation: the loop stops at its next boundary with RunFenced and RunSuspended, the task waits naming the superseded generation and the owner, no turn/step/dispatch/outcome lands after the takeover (every state-advancing append is fenced at commit time), the stale owner's StartTask is refused STALE_LEASE and the new owner resumes the run under its generation to completion.",
  "audit": "PARTIAL before: commands were fenced (M1) but the agent loop carried no generation and kept advancing state after a takeover.",
- "limitations": "Local lease only (cloud lease with expiry/heartbeat is M8); a model call in flight at lease loss completes at the provider but its result is not applied."
+ "limitations": "Local lease only (cloud lease with expiry/heartbeat is M8); a model call in flight at lease loss completes at the provider but its result is not applied.",
+ "ci": "https://github.com/moss101/modbit/actions/runs/34588581596 (green on macOS, Linux and Windows at 59940bd)"
 }
