@@ -974,6 +974,29 @@ pub(crate) async fn rebuild(
         let payload = store.payload(&ev.envelope).unwrap_or_default();
         match ev.envelope.event_type.as_str() {
             "TurnPrepared" => state.turns += 1,
+            "TaskForked" => {
+                // The capsule names what the fork inherited; the model reads
+                // it in harness_state instead of re-deciding.
+                if let Some(r) = payload["capsule_ref"].as_str()
+                    && let Ok(bytes) = store.objects().get(r)
+                    && let Ok(c) =
+                        serde_json::from_slice::<modbit_checkpoint::BranchCarryoverCapsule>(&bytes)
+                {
+                    state.carried = Some(serde_json::json!({
+                        "source_task_id": c.source_task_id.to_string(),
+                        "source_checkpoint_id": c.source_checkpoint_id.to_string(),
+                        "source_epoch": c.source_epoch,
+                        "capsule_ref": r,
+                        "carried": c.carried,
+                        "plan_version": c.plan.as_ref().map(|p| p.version),
+                        "decisions": c.decisions,
+                        "evidence_paths": c.evidence.iter().map(|e| e.path.clone()).collect::<Vec<_>>(),
+                        "context": c.context,
+                        "approvals_dropped": c.approvals_dropped.len(),
+                        "note": "this task was forked from another at a checkpoint; the decisions above were answered by the user there and stand here. Pending approvals were not carried: ask again if the effect is still wanted.",
+                    }));
+                }
+            }
             "PlanRecorded" | "PlanRevised" => {
                 if let Some(r) = payload["plan_ref"].as_str()
                     && let Ok(bytes) = store.objects().get(r)

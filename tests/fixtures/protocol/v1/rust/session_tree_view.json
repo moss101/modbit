@@ -1,0 +1,82 @@
+{
+  "expected": {
+    "branchGeneration": "1",
+    "branches": [
+      {
+        "branchGeneration": "1",
+        "kind": "fork",
+        "offset": "141",
+        "reason": "task 13 forked from task 11 at checkpoint 01a09072 (epoch 1)"
+      }
+    ],
+    "sessionId": "10101010101010101010101010101010",
+    "tasks": [
+      {
+        "branchGeneration": "0",
+        "capsuleRef": "",
+        "checkpoints": [
+          {
+            "baseCheckpointId": "",
+            "checkpointId": "01a09072-1262-70f2-b103-63d3e8f0feda",
+            "committedAtMs": "1700000000500",
+            "createdAtMs": "1700000000000",
+            "epoch": 1,
+            "eventOffset": "120",
+            "files": 1,
+            "gitHead": "cccccccccccccccccccccccccccccccccccccccc",
+            "indexGeneration": "2",
+            "integrityHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "kind": "BASELINE",
+            "manifestRef": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "reason": "before the fork",
+            "removed": 0,
+            "status": "CURRENT",
+            "workspaceRevision": "3"
+          }
+        ],
+        "forkedFromCheckpoint": "",
+        "forkedFromEpoch": 0,
+        "forkedFromOffset": "0",
+        "forkedFromTask": null,
+        "goalText": "make the check pass",
+        "origin": "cli",
+        "restores": [
+          {
+            "checkpointId": "01a09072-1262-70f2-b103-63d3e8f0feda",
+            "epoch": 1,
+            "filesReverted": 1,
+            "filesWritten": 1,
+            "offset": "140",
+            "preconditionsChecked": 2
+          }
+        ],
+        "runs": [
+          {
+            "runId": "12121212121212121212121212121212",
+            "state": "Suspended"
+          }
+        ],
+        "state": "Waiting(Approval)",
+        "taskId": "11111111111111111111111111111111",
+        "workspaceRoot": "/repo"
+      },
+      {
+        "branchGeneration": "1",
+        "capsuleRef": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "checkpoints": [],
+        "forkedFromCheckpoint": "01a09072-1262-70f2-b103-63d3e8f0feda",
+        "forkedFromEpoch": 1,
+        "forkedFromOffset": "120",
+        "forkedFromTask": "11111111111111111111111111111111",
+        "goalText": "make the check pass",
+        "origin": "fork",
+        "restores": [],
+        "runs": [],
+        "state": "Queued",
+        "taskId": "13131313131313131313131313131313",
+        "workspaceRoot": "/profile/worktrees/13"
+      }
+    ]
+  },
+  "type": "modbit.v1.SessionTreeView"
+}

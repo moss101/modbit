@@ -5422,6 +5422,15 @@ export declare type RestoreCheckpoint = Message<"modbit.v1.RestoreCheckpoint"> &
    * @generated from field: string checkpoint_id = 2;
    */
   checkpointId: string;
+
+  /**
+   * REQ-EV-0123: optimistic preconditions — the content hashes the caller
+   * last saw (from a RewindPreview). A path whose current content differs
+   * refuses the whole restore (HASH_MISMATCH) before anything is written.
+   *
+   * @generated from field: repeated modbit.v1.FileHash expected = 3;
+   */
+  expected: FileHash[];
 };
 
 /**
@@ -5429,6 +5438,29 @@ export declare type RestoreCheckpoint = Message<"modbit.v1.RestoreCheckpoint"> &
  * Use `create(RestoreCheckpointSchema)` to create a new message.
  */
 export declare const RestoreCheckpointSchema: GenMessage<RestoreCheckpoint>;
+
+/**
+ * @generated from message modbit.v1.FileHash
+ */
+export declare type FileHash = Message<"modbit.v1.FileHash"> & {
+  /**
+   * @generated from field: string path = 1;
+   */
+  path: string;
+
+  /**
+   * sha256 of the content; "" = the path is absent
+   *
+   * @generated from field: string content_hash = 2;
+   */
+  contentHash: string;
+};
+
+/**
+ * Describes the message modbit.v1.FileHash.
+ * Use `create(FileHashSchema)` to create a new message.
+ */
+export declare const FileHashSchema: GenMessage<FileHash>;
 
 /**
  * @generated from message modbit.v1.CheckpointRestoreResult
@@ -5479,7 +5511,7 @@ export declare type CheckpointRestoreResult = Message<"modbit.v1.CheckpointResto
   eventOffset: bigint;
 
   /**
-   * OBJECT_MISMATCH | BROKEN_LINK | NO_BASELINE | ...
+   * OBJECT_MISMATCH | BROKEN_LINK | NO_BASELINE | HASH_MISMATCH | ...
    *
    * @generated from field: string refusal = 9;
    */
@@ -5489,6 +5521,11 @@ export declare type CheckpointRestoreResult = Message<"modbit.v1.CheckpointResto
    * @generated from field: string detail = 10;
    */
   detail: string;
+
+  /**
+   * @generated from field: uint32 preconditions_checked = 11;
+   */
+  preconditionsChecked: number;
 };
 
 /**
@@ -5496,6 +5533,511 @@ export declare type CheckpointRestoreResult = Message<"modbit.v1.CheckpointResto
  * Use `create(CheckpointRestoreResultSchema)` to create a new message.
  */
 export declare const CheckpointRestoreResultSchema: GenMessage<CheckpointRestoreResult>;
+
+/**
+ * Fork a new task from one of a task's checkpoints. The fork gets its own
+ * git worktree (a branch at the checkpoint's HEAD with the checkpoint's
+ * dirty state materialized), its own revision lineage, and a
+ * BranchCarryoverCapsule naming exactly what it took from the source:
+ * the plan, answered questions, retrieval evidence its worktree still
+ * matches, and the source's latest context. Pending approvals and
+ * unfinished tool calls are never carried.
+ *
+ * @generated from message modbit.v1.ForkTask
+ */
+export declare type ForkTask = Message<"modbit.v1.ForkTask"> & {
+  /**
+   * the source task
+   *
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * "" = the source's current checkpoint
+   *
+   * @generated from field: string checkpoint_id = 2;
+   */
+  checkpointId: string;
+
+  /**
+   * "" = the source's goal
+   *
+   * @generated from field: string goal_text = 3;
+   */
+  goalText: string;
+
+  /**
+   * PLAN | DECISIONS | EVIDENCE | CONTEXT; empty = all four
+   *
+   * @generated from field: repeated string carry = 4;
+   */
+  carry: string[];
+
+  /**
+   * "" = <profile>/worktrees/<new task id>
+   *
+   * @generated from field: string worktree_dir = 5;
+   */
+  worktreeDir: string;
+};
+
+/**
+ * Describes the message modbit.v1.ForkTask.
+ * Use `create(ForkTaskSchema)` to create a new message.
+ */
+export declare const ForkTaskSchema: GenMessage<ForkTask>;
+
+/**
+ * @generated from message modbit.v1.TaskForked
+ */
+export declare type TaskForked = Message<"modbit.v1.TaskForked"> & {
+  /**
+   * the new task (Queued)
+   *
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: modbit.v1.Id source_task_id = 2;
+   */
+  sourceTaskId?: Id | undefined;
+
+  /**
+   * @generated from field: string checkpoint_id = 3;
+   */
+  checkpointId: string;
+
+  /**
+   * @generated from field: uint32 epoch = 4;
+   */
+  epoch: number;
+
+  /**
+   * object hash of the BranchCarryoverCapsule
+   *
+   * @generated from field: string capsule_ref = 5;
+   */
+  capsuleRef: string;
+
+  /**
+   * @generated from field: string worktree = 6;
+   */
+  worktree: string;
+
+  /**
+   * @generated from field: string branch = 7;
+   */
+  branch: string;
+
+  /**
+   * the session's, after SessionBranched
+   *
+   * @generated from field: uint64 branch_generation = 8;
+   */
+  branchGeneration: bigint;
+
+  /**
+   * @generated from field: repeated string carried = 9;
+   */
+  carried: string[];
+
+  /**
+   * @generated from field: uint32 decisions_carried = 10;
+   */
+  decisionsCarried: number;
+
+  /**
+   * @generated from field: uint32 evidence_carried = 11;
+   */
+  evidenceCarried: number;
+
+  /**
+   * @generated from field: uint32 approvals_dropped = 12;
+   */
+  approvalsDropped: number;
+
+  /**
+   * @generated from field: uint32 calls_dropped = 13;
+   */
+  callsDropped: number;
+
+  /**
+   * @generated from field: uint32 files_materialized = 14;
+   */
+  filesMaterialized: number;
+
+  /**
+   * @generated from field: uint64 offset = 15;
+   */
+  offset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.TaskForked.
+ * Use `create(TaskForkedSchema)` to create a new message.
+ */
+export declare const TaskForkedSchema: GenMessage<TaskForked>;
+
+/**
+ * What a restore to a checkpoint would do, without doing it: no event, no
+ * write, no revision change.
+ *
+ * @generated from message modbit.v1.PreviewRewind
+ */
+export declare type PreviewRewind = Message<"modbit.v1.PreviewRewind"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * "" = the current checkpoint
+   *
+   * @generated from field: string checkpoint_id = 2;
+   */
+  checkpointId: string;
+};
+
+/**
+ * Describes the message modbit.v1.PreviewRewind.
+ * Use `create(PreviewRewindSchema)` to create a new message.
+ */
+export declare const PreviewRewindSchema: GenMessage<PreviewRewind>;
+
+/**
+ * @generated from message modbit.v1.RewindEntryView
+ */
+export declare type RewindEntryView = Message<"modbit.v1.RewindEntryView"> & {
+  /**
+   * @generated from field: string path = 1;
+   */
+  path: string;
+
+  /**
+   * WRITE | DELETE | REVERT_TO_HEAD | REMOVE_UNTRACKED | UNCHANGED
+   *
+   * @generated from field: string action = 2;
+   */
+  action: string;
+
+  /**
+   * "" when the path is absent now
+   *
+   * @generated from field: string current_hash = 3;
+   */
+  currentHash: string;
+
+  /**
+   * "" when the path would be absent after
+   *
+   * @generated from field: string target_hash = 4;
+   */
+  targetHash: string;
+};
+
+/**
+ * Describes the message modbit.v1.RewindEntryView.
+ * Use `create(RewindEntryViewSchema)` to create a new message.
+ */
+export declare const RewindEntryViewSchema: GenMessage<RewindEntryView>;
+
+/**
+ * @generated from message modbit.v1.RewindPreview
+ */
+export declare type RewindPreview = Message<"modbit.v1.RewindPreview"> & {
+  /**
+   * @generated from field: string checkpoint_id = 1;
+   */
+  checkpointId: string;
+
+  /**
+   * @generated from field: uint32 epoch = 2;
+   */
+  epoch: number;
+
+  /**
+   * the runtime cursor the checkpoint recorded
+   *
+   * @generated from field: uint64 event_offset = 3;
+   */
+  eventOffset: bigint;
+
+  /**
+   * @generated from field: repeated modbit.v1.RewindEntryView entries = 4;
+   */
+  entries: RewindEntryView[];
+
+  /**
+   * @generated from field: uint32 files_written = 5;
+   */
+  filesWritten: number;
+
+  /**
+   * @generated from field: uint32 files_reverted = 6;
+   */
+  filesReverted: number;
+
+  /**
+   * the worktree's revision now (unchanged by the preview)
+   *
+   * @generated from field: uint64 workspace_revision = 7;
+   */
+  workspaceRevision: bigint;
+
+  /**
+   * "" when the chain validates
+   *
+   * @generated from field: string refusal = 8;
+   */
+  refusal: string;
+
+  /**
+   * @generated from field: string detail = 9;
+   */
+  detail: string;
+};
+
+/**
+ * Describes the message modbit.v1.RewindPreview.
+ * Use `create(RewindPreviewSchema)` to create a new message.
+ */
+export declare const RewindPreviewSchema: GenMessage<RewindPreview>;
+
+/**
+ * The session's run DAG: every task with its origin, fork edge, runs,
+ * checkpoints and restores, and the session's branch events.
+ *
+ * @generated from message modbit.v1.GetSessionTree
+ */
+export declare type GetSessionTree = Message<"modbit.v1.GetSessionTree"> & {
+  /**
+   * @generated from field: modbit.v1.Id session_id = 1;
+   */
+  sessionId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.GetSessionTree.
+ * Use `create(GetSessionTreeSchema)` to create a new message.
+ */
+export declare const GetSessionTreeSchema: GenMessage<GetSessionTree>;
+
+/**
+ * @generated from message modbit.v1.RestoreView
+ */
+export declare type RestoreView = Message<"modbit.v1.RestoreView"> & {
+  /**
+   * @generated from field: string checkpoint_id = 1;
+   */
+  checkpointId: string;
+
+  /**
+   * @generated from field: uint32 epoch = 2;
+   */
+  epoch: number;
+
+  /**
+   * where on the log the restore was recorded
+   *
+   * @generated from field: uint64 offset = 3;
+   */
+  offset: bigint;
+
+  /**
+   * @generated from field: uint32 files_written = 4;
+   */
+  filesWritten: number;
+
+  /**
+   * @generated from field: uint32 files_reverted = 5;
+   */
+  filesReverted: number;
+
+  /**
+   * @generated from field: uint32 preconditions_checked = 6;
+   */
+  preconditionsChecked: number;
+};
+
+/**
+ * Describes the message modbit.v1.RestoreView.
+ * Use `create(RestoreViewSchema)` to create a new message.
+ */
+export declare const RestoreViewSchema: GenMessage<RestoreView>;
+
+/**
+ * @generated from message modbit.v1.TaskRunView
+ */
+export declare type TaskRunView = Message<"modbit.v1.TaskRunView"> & {
+  /**
+   * @generated from field: modbit.v1.Id run_id = 1;
+   */
+  runId?: Id | undefined;
+
+  /**
+   * @generated from field: string state = 2;
+   */
+  state: string;
+};
+
+/**
+ * Describes the message modbit.v1.TaskRunView.
+ * Use `create(TaskRunViewSchema)` to create a new message.
+ */
+export declare const TaskRunViewSchema: GenMessage<TaskRunView>;
+
+/**
+ * @generated from message modbit.v1.SessionTreeNode
+ */
+export declare type SessionTreeNode = Message<"modbit.v1.SessionTreeNode"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: string goal_text = 2;
+   */
+  goalText: string;
+
+  /**
+   * @generated from field: string state = 3;
+   */
+  state: string;
+
+  /**
+   * @generated from field: string origin = 4;
+   */
+  origin: string;
+
+  /**
+   * @generated from field: string workspace_root = 5;
+   */
+  workspaceRoot: string;
+
+  /**
+   * absent unless the task is a fork
+   *
+   * @generated from field: modbit.v1.Id forked_from_task = 6;
+   */
+  forkedFromTask?: Id | undefined;
+
+  /**
+   * @generated from field: string forked_from_checkpoint = 7;
+   */
+  forkedFromCheckpoint: string;
+
+  /**
+   * @generated from field: uint32 forked_from_epoch = 8;
+   */
+  forkedFromEpoch: number;
+
+  /**
+   * the runtime cursor the fork started from
+   *
+   * @generated from field: uint64 forked_from_offset = 9;
+   */
+  forkedFromOffset: bigint;
+
+  /**
+   * @generated from field: string capsule_ref = 10;
+   */
+  capsuleRef: string;
+
+  /**
+   * the generation the fork opened
+   *
+   * @generated from field: uint64 branch_generation = 11;
+   */
+  branchGeneration: bigint;
+
+  /**
+   * @generated from field: repeated modbit.v1.TaskRunView runs = 12;
+   */
+  runs: TaskRunView[];
+
+  /**
+   * @generated from field: repeated modbit.v1.CheckpointView checkpoints = 13;
+   */
+  checkpoints: CheckpointView[];
+
+  /**
+   * @generated from field: repeated modbit.v1.RestoreView restores = 14;
+   */
+  restores: RestoreView[];
+};
+
+/**
+ * Describes the message modbit.v1.SessionTreeNode.
+ * Use `create(SessionTreeNodeSchema)` to create a new message.
+ */
+export declare const SessionTreeNodeSchema: GenMessage<SessionTreeNode>;
+
+/**
+ * @generated from message modbit.v1.BranchEventView
+ */
+export declare type BranchEventView = Message<"modbit.v1.BranchEventView"> & {
+  /**
+   * @generated from field: uint64 branch_generation = 1;
+   */
+  branchGeneration: bigint;
+
+  /**
+   * fork | revert | cancel
+   *
+   * @generated from field: string kind = 2;
+   */
+  kind: string;
+
+  /**
+   * @generated from field: string reason = 3;
+   */
+  reason: string;
+
+  /**
+   * @generated from field: uint64 offset = 4;
+   */
+  offset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.BranchEventView.
+ * Use `create(BranchEventViewSchema)` to create a new message.
+ */
+export declare const BranchEventViewSchema: GenMessage<BranchEventView>;
+
+/**
+ * @generated from message modbit.v1.SessionTreeView
+ */
+export declare type SessionTreeView = Message<"modbit.v1.SessionTreeView"> & {
+  /**
+   * @generated from field: modbit.v1.Id session_id = 1;
+   */
+  sessionId?: Id | undefined;
+
+  /**
+   * @generated from field: uint64 branch_generation = 2;
+   */
+  branchGeneration: bigint;
+
+  /**
+   * @generated from field: repeated modbit.v1.SessionTreeNode tasks = 3;
+   */
+  tasks: SessionTreeNode[];
+
+  /**
+   * @generated from field: repeated modbit.v1.BranchEventView branches = 4;
+   */
+  branches: BranchEventView[];
+};
+
+/**
+ * Describes the message modbit.v1.SessionTreeView.
+ * Use `create(SessionTreeViewSchema)` to create a new message.
+ */
+export declare const SessionTreeViewSchema: GenMessage<SessionTreeView>;
 
 /**
  * Command acknowledgement.

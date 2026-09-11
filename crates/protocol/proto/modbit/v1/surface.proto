@@ -1243,6 +1243,15 @@ message CheckpointList {
 message RestoreCheckpoint {
   Id task_id = 1;
   string checkpoint_id = 2;        // "" = the current checkpoint
+  // REQ-EV-0123: optimistic preconditions — the content hashes the caller
+  // last saw (from a RewindPreview). A path whose current content differs
+  // refuses the whole restore (HASH_MISMATCH) before anything is written.
+  repeated FileHash expected = 3;
+}
+
+message FileHash {
+  string path = 1;
+  string content_hash = 2;         // sha256 of the content; "" = the path is absent
 }
 
 message CheckpointRestoreResult {
@@ -1254,6 +1263,119 @@ message CheckpointRestoreResult {
   uint32 files_reverted = 6;
   uint64 workspace_revision_after = 7;
   uint64 event_offset = 8;         // the restored runtime cursor
-  string refusal = 9;              // OBJECT_MISMATCH | BROKEN_LINK | NO_BASELINE | ...
+  string refusal = 9;              // OBJECT_MISMATCH | BROKEN_LINK | NO_BASELINE | HASH_MISMATCH | ...
   string detail = 10;
+  uint32 preconditions_checked = 11;
+}
+
+// ---- Session branching: fork, rewind preview, session tree (REQ-EV-0077 / 0122 / 0123; docs/19) ----
+
+// Fork a new task from one of a task's checkpoints. The fork gets its own
+// git worktree (a branch at the checkpoint's HEAD with the checkpoint's
+// dirty state materialized), its own revision lineage, and a
+// BranchCarryoverCapsule naming exactly what it took from the source:
+// the plan, answered questions, retrieval evidence its worktree still
+// matches, and the source's latest context. Pending approvals and
+// unfinished tool calls are never carried.
+message ForkTask {
+  Id task_id = 1;                  // the source task
+  string checkpoint_id = 2;        // "" = the source's current checkpoint
+  string goal_text = 3;            // "" = the source's goal
+  repeated string carry = 4;       // PLAN | DECISIONS | EVIDENCE | CONTEXT; empty = all four
+  string worktree_dir = 5;         // "" = <profile>/worktrees/<new task id>
+}
+
+message TaskForked {
+  Id task_id = 1;                  // the new task (Queued)
+  Id source_task_id = 2;
+  string checkpoint_id = 3;
+  uint32 epoch = 4;
+  string capsule_ref = 5;          // object hash of the BranchCarryoverCapsule
+  string worktree = 6;
+  string branch = 7;
+  uint64 branch_generation = 8;    // the session's, after SessionBranched
+  repeated string carried = 9;
+  uint32 decisions_carried = 10;
+  uint32 evidence_carried = 11;
+  uint32 approvals_dropped = 12;
+  uint32 calls_dropped = 13;
+  uint32 files_materialized = 14;
+  uint64 offset = 15;
+}
+
+// What a restore to a checkpoint would do, without doing it: no event, no
+// write, no revision change.
+message PreviewRewind {
+  Id task_id = 1;
+  string checkpoint_id = 2;        // "" = the current checkpoint
+}
+
+message RewindEntryView {
+  string path = 1;
+  string action = 2;               // WRITE | DELETE | REVERT_TO_HEAD | REMOVE_UNTRACKED | UNCHANGED
+  string current_hash = 3;         // "" when the path is absent now
+  string target_hash = 4;          // "" when the path would be absent after
+}
+
+message RewindPreview {
+  string checkpoint_id = 1;
+  uint32 epoch = 2;
+  uint64 event_offset = 3;         // the runtime cursor the checkpoint recorded
+  repeated RewindEntryView entries = 4;
+  uint32 files_written = 5;
+  uint32 files_reverted = 6;
+  uint64 workspace_revision = 7;   // the worktree's revision now (unchanged by the preview)
+  string refusal = 8;              // "" when the chain validates
+  string detail = 9;
+}
+
+// The session's run DAG: every task with its origin, fork edge, runs,
+// checkpoints and restores, and the session's branch events.
+message GetSessionTree {
+  Id session_id = 1;
+}
+
+message RestoreView {
+  string checkpoint_id = 1;
+  uint32 epoch = 2;
+  uint64 offset = 3;               // where on the log the restore was recorded
+  uint32 files_written = 4;
+  uint32 files_reverted = 5;
+  uint32 preconditions_checked = 6;
+}
+
+message TaskRunView {
+  Id run_id = 1;
+  string state = 2;
+}
+
+message SessionTreeNode {
+  Id task_id = 1;
+  string goal_text = 2;
+  string state = 3;
+  string origin = 4;
+  string workspace_root = 5;
+  Id forked_from_task = 6;         // absent unless the task is a fork
+  string forked_from_checkpoint = 7;
+  uint32 forked_from_epoch = 8;
+  uint64 forked_from_offset = 9;   // the runtime cursor the fork started from
+  string capsule_ref = 10;
+  uint64 branch_generation = 11;   // the generation the fork opened
+  repeated TaskRunView runs = 12;
+  repeated CheckpointView checkpoints = 13;
+  repeated RestoreView restores = 14;
+}
+
+message BranchEventView {
+  uint64 branch_generation = 1;
+  string kind = 2;                 // fork | revert | cancel
+  string reason = 3;
+  uint64 offset = 4;
+}
+
+message SessionTreeView {
+  Id session_id = 1;
+  uint64 branch_generation = 2;
+  repeated SessionTreeNode tasks = 3;
+  repeated BranchEventView branches = 4;
 }

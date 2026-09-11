@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 771,
-    "docs_bytes": 1053542
+    "root_and_tooling": 777,
+    "docs_bytes": 1056594
   },
   "sections": [
     {
@@ -212,8 +212,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Durable State, Memory, Compaction, and Checkpoints",
-      "bytes": 11331,
-      "sha256": "112adeedbbcc34533cb1f8636895da10359a4eb9bbd4b03bcfe4a10dc1fd3cec"
+      "bytes": 13743,
+      "sha256": "7f0e6096737d1d922c7412e7927cb72baf871f0b6b309dcdb41941aa76598204"
     },
     {
       "path": "docs/20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md",
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 10457,
-      "sha256": "d8a30fe55d3040ab4f57d9ceeb0bbf063a932fea3afda0d6cc01afc7fe7302b5"
+      "bytes": 11097,
+      "sha256": "bf95979a7fdc68812c7f60ed5319b4859334f1632d71ab478c5512c0403b1cb7"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -4530,6 +4530,36 @@
       "path": "evidence/m4/IMP-EV-0073/evidence.json",
       "bytes": 1181,
       "sha256": "7ab02480aa55ebae42e1929b827f651ae71ef23bb23ffdb2fab1409fd97ff51a"
+    },
+    {
+      "path": "evidence/m4/IMP-EV-0077/TASK_CARD.md",
+      "bytes": 3475,
+      "sha256": "f04b69a66f0d040efdf1bb315c8560f6615d02676291163a9af3c4c69b627169"
+    },
+    {
+      "path": "evidence/m4/IMP-EV-0077/evidence.json",
+      "bytes": 647,
+      "sha256": "5fb84e3940ab2ec801ec5beabc87dfae65403d7f58052350ba0d49da241320fd"
+    },
+    {
+      "path": "evidence/m4/IMP-EV-0122/TASK_CARD.md",
+      "bytes": 2962,
+      "sha256": "272c5a977b6cf19c1312d9ffa92384dd43190ad4108ddd70970a5c76c2882f67"
+    },
+    {
+      "path": "evidence/m4/IMP-EV-0122/evidence.json",
+      "bytes": 634,
+      "sha256": "7d0b5312c7c3fe58f1ec27fce0e9b8b400f786df6d2fbdcbe23c344fb9a163c9"
+    },
+    {
+      "path": "evidence/m4/IMP-EV-0123/TASK_CARD.md",
+      "bytes": 3627,
+      "sha256": "fa67ce42544472beeabdf50c455e3d70373f6ba1d6e38009c51b87ee3dbed1b8"
+    },
+    {
+      "path": "evidence/m4/IMP-EV-0123/evidence.json",
+      "bytes": 670,
+      "sha256": "7623f6600074afcc3f3aa05d9b73f89f877e75a959a5c30078104b1a5875167f"
     },
     {
       "path": "evidence/m4/IMP-EV-0242/TASK_CARD.md",

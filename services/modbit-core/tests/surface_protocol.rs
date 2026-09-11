@@ -15545,6 +15545,7 @@ async fn restore_checkpoint(
             RestoreCheckpoint {
                 task_id: Some(task.clone()),
                 checkpoint_id: checkpoint_id.into(),
+                expected: vec![],
             }
             .encode_to_vec(),
             g,
@@ -17333,4 +17334,632 @@ async fn qual_ev_0242_restart_loses_no_durable_truth_while_live_control_resets()
         );
     }
     assert_eq!(any_file_contains(dir.path(), SECRET.as_bytes()), None);
+}
+
+async fn fork_task(
+    c: &mut Client,
+    task: &Id,
+    g: Option<u64>,
+    id: u8,
+    carry: &[&str],
+) -> Result<modbit_protocol::v1::TaskForked, ClientError> {
+    use modbit_protocol::v1::ForkTask;
+    let ack = c
+        .command(envelope_fenced(
+            id16(id),
+            "ForkTask",
+            ForkTask {
+                task_id: Some(task.clone()),
+                checkpoint_id: String::new(),
+                goal_text: String::new(),
+                carry: carry.iter().map(|s| (*s).to_owned()).collect(),
+                worktree_dir: String::new(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await?;
+    Ok(Client::result(&ack).unwrap())
+}
+
+async fn preview_rewind(
+    c: &mut Client,
+    task: &Id,
+    checkpoint_id: &str,
+) -> modbit_protocol::v1::RewindPreview {
+    use modbit_protocol::v1::PreviewRewind;
+    let ack = c
+        .command(envelope(
+            Id {
+                value: (0..16).map(|_| rand::random::<u8>()).collect(),
+            },
+            "PreviewRewind",
+            PreviewRewind {
+                task_id: Some(task.clone()),
+                checkpoint_id: checkpoint_id.into(),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    Client::result(&ack).unwrap()
+}
+
+async fn restore_checkpoint_expecting(
+    c: &mut Client,
+    task: &Id,
+    g: Option<u64>,
+    checkpoint_id: &str,
+    expected: &[(String, String)],
+) -> modbit_protocol::v1::CheckpointRestoreResult {
+    use modbit_protocol::v1::{FileHash, RestoreCheckpoint};
+    let ack = c
+        .command(envelope_fenced(
+            Id {
+                value: (0..16).map(|_| rand::random::<u8>()).collect(),
+            },
+            "RestoreCheckpoint",
+            RestoreCheckpoint {
+                task_id: Some(task.clone()),
+                checkpoint_id: checkpoint_id.into(),
+                expected: expected
+                    .iter()
+                    .map(|(p, h)| FileHash {
+                        path: p.clone(),
+                        content_hash: h.clone(),
+                    })
+                    .collect(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    Client::result(&ack).unwrap()
+}
+
+async fn session_tree(c: &mut Client, session: &Id) -> modbit_protocol::v1::SessionTreeView {
+    use modbit_protocol::v1::GetSessionTree;
+    let ack = c
+        .command(envelope(
+            Id {
+                value: (0..16).map(|_| rand::random::<u8>()).collect(),
+            },
+            "GetSessionTree",
+            GetSessionTree {
+                session_id: Some(session.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    Client::result(&ack).unwrap()
+}
+
+fn sha256_of(bytes: &[u8]) -> String {
+    use sha2::Digest;
+    hex::encode(sha2::Sha256::digest(bytes))
+}
+
+/// QUAL-EV-0077 / QUAL-EV-0122 (REQ-EV-0077, REQ-EV-0122; docs/19): a task
+/// with a plan, a read, a user's answer, a write and a destructive call
+/// waiting on its approval is forked at its checkpoint. The fork is a new
+/// task in the session with its own git worktree at the checkpoint's
+/// content and its own revision lineage: writing in the fork moves nothing
+/// in the source. Its `BranchCarryoverCapsule` carries the plan, the
+/// user's decision and the retrieval record whose bytes the fork still
+/// has — and not the record the write made stale, not the pending
+/// approval, not the unfinished call. The source keeps its approval,
+/// untouched; the fork starts with none and reaches review on its own.
+#[tokio::test]
+async fn qual_ev_0077_0122_a_fork_carries_decisions_and_evidence_but_no_stale_pending_effect() {
+    use modbit_protocol::v1::{
+        ListQuestions, QuestionList, RespondToQuestion, StartTask, TaskRunStarted,
+    };
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[("a.txt", "a\n"), ("b.txt", "b\n")]);
+    let wt = repo.path().join("wt-close");
+    assert!(
+        Command::new("git")
+            .arg("-C")
+            .arg(repo.path())
+            .args(["worktree", "add", "-q", "-b", "task/close"])
+            .arg(&wt)
+            .status()
+            .unwrap()
+            .success()
+    );
+    let wt_s = wt
+        .canonicalize()
+        .unwrap()
+        .to_string_lossy()
+        .trim_start_matches(r"\\?\")
+        .to_owned();
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "change a.txt then close the stale worktree", "expected_files": ["a.txt"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "a.txt"}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "b.txt"}}]}),
+        json!({"calls": [{"name": "user.ask", "args": {"question": "Which layout should a.txt follow?", "options": [{"id": "compact", "label": "compact"}, {"id": "verbose", "label": "verbose"}], "reason": "change_set"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "a.txt", "op": "replace", "content": "a: compact\n"}}]}),
+        json!({"calls": [{"name": "git.worktree.close", "args": {"path": wt_s}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "closed", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, _seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x77)).await;
+    let g = lease_for(&session);
+    let source = create_task_with_profile(&mut c, &session, g, &root, 0x78, "local_trusted").await;
+    let start = |t: &Id, id: u8| {
+        envelope_fenced(
+            id16(id),
+            "StartTask",
+            StartTask {
+                task_id: Some(t.clone()),
+                endpoint: "openai".into(),
+                model: "gpt-5".into(),
+                max_turns: 0,
+                max_tool_calls: 0,
+                max_no_progress_turns: 0,
+            }
+            .encode_to_vec(),
+            g,
+        )
+    };
+    let _: TaskRunStarted =
+        Client::result(&c.command(start(&source, 0x79)).await.unwrap()).unwrap();
+    // The user's decision, recorded on the source.
+    let st = wait_task(&mut c, &source, 60).await;
+    assert_eq!(
+        (st.state.as_str(), st.wait_reason.as_str()),
+        ("Waiting", "UserInput"),
+        "{st:?}"
+    );
+    let ack = c
+        .command(envelope(
+            id16(0x7A),
+            "ListQuestions",
+            ListQuestions {
+                task_id: Some(source.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let l: QuestionList = Client::result(&ack).unwrap();
+    let q = l.questions[0].clone();
+    c.command(envelope_fenced(
+        id16(0x7B),
+        "RespondToQuestion",
+        RespondToQuestion {
+            task_id: Some(source.clone()),
+            question_id: q.question_id.clone(),
+            option_id: "compact".into(),
+            text: String::new(),
+        }
+        .encode_to_vec(),
+        g,
+    ))
+    .await
+    .unwrap();
+    let _: TaskRunStarted =
+        Client::result(&c.command(start(&source, 0x7C)).await.unwrap()).unwrap();
+    // The write lands, then the destructive call waits on its approval.
+    let deadline = std::time::Instant::now() + Duration::from_secs(30);
+    let approval = loop {
+        let ps = protocol_state(&mut c, &source).await;
+        if ps.boundary == "AWAITING_APPROVAL" {
+            break ps.approvals[0].clone();
+        }
+        assert!(std::time::Instant::now() < deadline, "{ps:?}");
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    };
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("a.txt")).unwrap(),
+        "a: compact\n"
+    );
+    // The Core dies with the approval pending; the restarted one holds it.
+    drop(c);
+    core.kill();
+    let core2 = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c2 = core2.client().await;
+    let st = status_now(&mut c2, &source).await;
+    assert_eq!(
+        (st.state.as_str(), st.wait_reason.as_str(), st.loop_alive),
+        ("Waiting", "Approval", false),
+        "{st:?}"
+    );
+    let ps_source_before = protocol_state(&mut c2, &source).await;
+    assert_eq!(ps_source_before.boundary, "AWAITING_APPROVAL");
+    let cp = create_checkpoint(&mut c2, &source, g, "", "before the fork").await;
+    assert!(cp.committed, "{cp:?}");
+    let cp_id = cp.checkpoint.as_ref().unwrap().checkpoint_id.clone();
+    let source_revision_before = status_now(&mut c2, &source).await.last_offset;
+
+    // Fork.
+    let f = fork_task(&mut c2, &source, g, 0x7D, &[]).await.unwrap();
+    let fork = f.task_id.clone().unwrap();
+    assert_ne!(fork, source);
+    assert_eq!(f.checkpoint_id, cp_id);
+    assert_eq!(f.carried, ["PLAN", "DECISIONS", "EVIDENCE", "CONTEXT"]);
+    assert_eq!(
+        (
+            f.decisions_carried,
+            f.evidence_carried,
+            f.approvals_dropped,
+            f.calls_dropped
+        ),
+        (1, 2, 1, 1),
+        "one decision; two still-valid retrieval records (b.txt as read, a.txt as written — the read of a.txt before the write is stale and not carried); one pending approval and its call dropped: {f:?}"
+    );
+    assert_eq!(f.branch_generation, 1);
+    assert!(f.branch.starts_with("modbit/fork-"), "{f:?}");
+    assert!(
+        std::path::Path::new(&f.worktree).starts_with(dir.path().canonicalize().unwrap()),
+        "the worktree lives under the profile, never inside the source repository: {}",
+        f.worktree
+    );
+    assert_eq!(
+        std::fs::read_to_string(std::path::Path::new(&f.worktree).join("a.txt")).unwrap(),
+        "a: compact\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(std::path::Path::new(&f.worktree).join("b.txt")).unwrap(),
+        "b\n"
+    );
+    assert_eq!(
+        f.files_materialized, 1,
+        "only a.txt differed from HEAD: {f:?}"
+    );
+    // The capsule, byte for byte from the object store.
+    let capsule: serde_json::Value =
+        serde_json::from_slice(&read_object_bytes(&mut c2, id16(0xC7), &f.capsule_ref).await)
+            .unwrap();
+    assert_eq!(capsule["schema_version"], 1);
+    assert_eq!(capsule["source_task_id"], json!(uuid_of(&source)));
+    assert_eq!(capsule["fork_task_id"], json!(uuid_of(&fork)));
+    assert_eq!(
+        capsule["decisions"][0]["question"],
+        "Which layout should a.txt follow?"
+    );
+    assert_eq!(capsule["decisions"][0]["option_id"], "compact");
+    let evidence: Vec<(String, String)> = capsule["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| {
+            (
+                e["path"].as_str().unwrap().to_owned(),
+                e["content_hash"].as_str().unwrap().to_owned(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        evidence,
+        vec![
+            ("b.txt".to_owned(), sha256_of(b"b\n")),
+            ("a.txt".to_owned(), sha256_of(b"a: compact\n")),
+        ],
+        "{capsule}"
+    );
+    assert_eq!(
+        capsule["approvals_dropped"][0]["approval_id"],
+        json!(uuid_of(approval.approval_id.as_ref().unwrap())),
+        "{capsule}"
+    );
+    assert_eq!(capsule["plan"]["expected_files"], json!(["a.txt"]));
+    assert_eq!(
+        capsule["worktree_files"]["a.txt"],
+        json!(sha256_of(b"a: compact\n"))
+    );
+    // The fork: Queued, origin fork, nothing pending, nothing carried that
+    // was pending on the source.
+    let st = status_now(&mut c2, &fork).await;
+    assert_eq!(st.state, "Queued", "{st:?}");
+    let ps_fork = protocol_state(&mut c2, &fork).await;
+    assert_eq!(ps_fork.boundary, "TURN_START", "{ps_fork:?}");
+    assert!(
+        ps_fork.calls.is_empty() && ps_fork.approvals.is_empty(),
+        "{ps_fork:?}"
+    );
+    let approvals = approvals_of(&mut c2, &session).await;
+    assert!(
+        approvals.iter().all(|a| a.task_id.as_ref() != Some(&fork)),
+        "no approval belongs to the fork: {approvals:?}"
+    );
+    assert!(
+        approvals
+            .iter()
+            .any(|a| a.task_id.as_ref() == Some(&source) && a.status == "REQUESTED"),
+        "the source keeps its pending approval: {approvals:?}"
+    );
+    // The source is untouched: same protocol state, same offset of its own.
+    let ps_source_after = protocol_state(&mut c2, &source).await;
+    assert_eq!(ps_source_after.digest, ps_source_before.digest);
+    assert_eq!(ps_source_after, ps_source_before);
+    let _ = source_revision_before;
+    // The session tree shows the fork edge and the branch event.
+    let tree = session_tree(&mut c2, &session).await;
+    assert_eq!(tree.branch_generation, 1);
+    assert_eq!(tree.branches.len(), 1);
+    assert_eq!(tree.branches[0].kind, "fork");
+    let node = tree
+        .tasks
+        .iter()
+        .find(|t| t.task_id.as_ref() == Some(&fork))
+        .unwrap();
+    assert_eq!(node.origin, "fork");
+    assert_eq!(node.forked_from_task.as_ref(), Some(&source));
+    assert_eq!(node.forked_from_checkpoint, cp_id);
+    assert_eq!(node.capsule_ref, f.capsule_ref);
+    assert_eq!(node.workspace_root, f.worktree);
+    let src_node = tree
+        .tasks
+        .iter()
+        .find(|t| t.task_id.as_ref() == Some(&source))
+        .unwrap();
+    assert!(src_node.forked_from_task.is_none());
+    assert_eq!(src_node.checkpoints.len(), 1);
+    // A fork of the same command id replays; a fork from a running task is refused.
+    let again = fork_task(&mut c2, &source, g, 0x7D, &[]).await.unwrap();
+    assert_eq!(again.task_id, f.task_id);
+    let (base2, seen2) = scripted_model(
+        vec![
+            json!({"calls": [{"name": "fs.read", "args": {"path": "a.txt"}}]}),
+            json!({"calls": [{"name": "change.apply", "args": {"path": "a.txt", "op": "replace", "content": "a: compact, forked\n"}}]}),
+            json!({"calls": [{"name": "task.complete", "args": {"summary": "the fork's own change", "self_review": {"findings": []}}}]}),
+        ],
+        None,
+    )
+    .await;
+    drop(c2);
+    drop(core2);
+    let env3 = [
+        ("MODBIT_OPENAI_BASE_URL", base2.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core3 = CoreProcess::spawn_with_env(dir.path(), &env3);
+    let mut c3 = core3.client().await;
+    let _: TaskRunStarted = Client::result(&c3.command(start(&fork, 0x7E)).await.unwrap()).unwrap();
+    let st = wait_for_state(&mut c3, &fork, "ReadyForReview", 60).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    // Independent revision lineage: the fork wrote its worktree; the source's
+    // is as it was, and so is the source's log.
+    assert_eq!(
+        std::fs::read_to_string(std::path::Path::new(&f.worktree).join("a.txt")).unwrap(),
+        "a: compact, forked\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("a.txt")).unwrap(),
+        "a: compact\n"
+    );
+    let ps_source_final = protocol_state(&mut c3, &source).await;
+    assert_eq!(ps_source_final.digest, ps_source_before.digest);
+    assert!(
+        wt.exists(),
+        "the source's pending destructive effect never ran"
+    );
+    // The fork's model saw the carried decision in its harness state and
+    // was told the pending approval was not carried.
+    let bodies = seen2.lock().unwrap().clone();
+    let first = serde_json::to_string(&bodies[0]["messages"]).unwrap();
+    assert!(
+        first.contains("Which layout should a.txt follow?"),
+        "{first}"
+    );
+    assert!(first.contains("compact"), "{first}");
+    assert!(first.contains("approvals_dropped"), "{first}");
+    // The fork's own writes are on its own workspace aggregate.
+    let evs = task_events(&core3, &session, &fork).await;
+    assert!(evs.iter().any(|(_, t, _)| t == "TaskForked"), "{evs:?}");
+    assert!(
+        evs.iter().any(|(_, t, p)| t == "RetrievalRecorded"
+            && p["path"] == "b.txt"
+            && p["tool_name"] == "fork:carried"),
+        "{evs:?}"
+    );
+    assert!(
+        evs.iter().any(|(_, t, _)| t == "PlanRecorded"),
+        "the plan was carried as a durable record: {evs:?}"
+    );
+    let src_evs = task_events(&core3, &session, &source).await;
+    assert!(
+        !src_evs
+            .iter()
+            .any(|(_, t, _)| t == "TaskForked" || t == "TaskReadyForReview"),
+        "{src_evs:?}"
+    );
+    assert_eq!(
+        src_evs
+            .iter()
+            .filter(|(_, t, _)| t == "RetrievalRecorded")
+            .count(),
+        3,
+        "the source holds three records; the fork carried the two its bytes still match: {src_evs:?}"
+    );
+}
+
+/// QUAL-EV-0123 (REQ-EV-0123): a rewind preview is non-mutating — no event,
+/// no write, no revision change — and names exactly what a restore would
+/// do; a revert honours the caller's optimistic hashes: a stale expectation
+/// refuses the whole restore with nothing written, the previewed hashes
+/// let it through, and the restore is on the log and in the session tree.
+#[tokio::test]
+async fn qual_ev_0123_rewind_preview_is_non_mutating_and_revert_honours_optimistic_hashes() {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    let (repo, root) = git_repo_with_failing_check();
+    let hash = sha256_of(&std::fs::read(repo.path().join("qty.txt")).unwrap());
+    let (base, _seen) = scripted_model(coding_script(&hash), None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn_with_env(
+        dir.path(),
+        &[
+            ("MODBIT_OPENAI_BASE_URL", &base),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+        ],
+    );
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x23)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x24, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x25),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: "openai".into(),
+                model: "gpt-5".into(),
+                max_turns: 0,
+                max_tool_calls: 0,
+                max_no_progress_turns: 0,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_for_state(&mut c, &task, "ReadyForReview", 90).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    // The completion checkpoint holds qty.txt as the run left it.
+    let cps = list_checkpoints(&mut c, &task).await;
+    assert_eq!(cps.checkpoints.len(), 1, "{cps:?}");
+    let cp_id = cps.current_checkpoint_id.clone();
+    let final_qty = std::fs::read_to_string(repo.path().join("qty.txt")).unwrap();
+    assert!(final_qty.contains("validated"), "{final_qty}");
+    // Hands on the worktree after the run: an edit and a stray file.
+    std::fs::write(repo.path().join("qty.txt"), "quantity = -1 # hand edit\n").unwrap();
+    std::fs::write(repo.path().join("stray.txt"), "stray\n").unwrap();
+    let hand_hash = sha256_of(b"quantity = -1 # hand edit\n");
+    let stray_hash = sha256_of(b"stray\n");
+    let offset_before = status_now(&mut c, &task).await.last_offset;
+
+    // Preview: names the write and the removal, changes nothing.
+    let pv = preview_rewind(&mut c, &task, "").await;
+    assert_eq!(pv.refusal, "", "{pv:?}");
+    assert_eq!(pv.checkpoint_id, cp_id);
+    assert_eq!(pv.epoch, 1);
+    let by: std::collections::BTreeMap<&str, &modbit_protocol::v1::RewindEntryView> =
+        pv.entries.iter().map(|e| (e.path.as_str(), e)).collect();
+    assert_eq!(by["qty.txt"].action, "WRITE");
+    assert_eq!(by["qty.txt"].current_hash, hand_hash);
+    assert_eq!(by["qty.txt"].target_hash, sha256_of(final_qty.as_bytes()));
+    assert_eq!(by["stray.txt"].action, "REMOVE_UNTRACKED");
+    assert_eq!(by["stray.txt"].current_hash, stray_hash);
+    assert_eq!(by["stray.txt"].target_hash, "");
+    assert_eq!((pv.files_written, pv.files_reverted), (1, 1), "{pv:?}");
+    let pv2 = preview_rewind(&mut c, &task, "").await;
+    assert_eq!(
+        pv2, pv,
+        "a preview is a pure function of the worktree and the checkpoint"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("qty.txt")).unwrap(),
+        "quantity = -1 # hand edit\n"
+    );
+    assert!(repo.path().join("stray.txt").exists());
+    assert_eq!(
+        status_now(&mut c, &task).await.last_offset,
+        offset_before,
+        "a preview writes no event"
+    );
+
+    // A stale expectation refuses the restore before anything is written.
+    let refused = restore_checkpoint_expecting(
+        &mut c,
+        &task,
+        g,
+        "",
+        &[(
+            "qty.txt".to_owned(),
+            sha256_of(b"something the caller saw earlier\n"),
+        )],
+    )
+    .await;
+    assert!(!refused.restored, "{refused:?}");
+    assert_eq!(refused.refusal, "HASH_MISMATCH", "{refused:?}");
+    assert!(refused.detail.contains("qty.txt"), "{refused:?}");
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("qty.txt")).unwrap(),
+        "quantity = -1 # hand edit\n"
+    );
+    assert!(repo.path().join("stray.txt").exists());
+    assert_eq!(
+        status_now(&mut c, &task).await.last_offset,
+        offset_before,
+        "a refused restore writes no event"
+    );
+    // Absent is a hash too: expecting a file that exists is a mismatch.
+    let refused = restore_checkpoint_expecting(
+        &mut c,
+        &task,
+        g,
+        "",
+        &[("stray.txt".to_owned(), String::new())],
+    )
+    .await;
+    assert_eq!(refused.refusal, "HASH_MISMATCH", "{refused:?}");
+
+    // The previewed hashes let the restore through, and it does exactly the preview.
+    let expected: Vec<(String, String)> = pv
+        .entries
+        .iter()
+        .map(|e| (e.path.clone(), e.current_hash.clone()))
+        .collect();
+    let restored = restore_checkpoint_expecting(&mut c, &task, g, "", &expected).await;
+    assert!(restored.restored, "{restored:?}");
+    assert_eq!(
+        (
+            restored.files_written,
+            restored.files_reverted,
+            restored.preconditions_checked
+        ),
+        (1, 1, 2),
+        "{restored:?}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("qty.txt")).unwrap(),
+        final_qty
+    );
+    assert!(!repo.path().join("stray.txt").exists());
+    assert!(status_now(&mut c, &task).await.last_offset > offset_before);
+    let evs = task_events(&core, &session, &task).await;
+    let restore_ev = evs
+        .iter()
+        .find(|(_, t, _)| t == "CheckpointRestored")
+        .map(|(_, _, p)| p.clone())
+        .unwrap();
+    assert_eq!(restore_ev["preconditions_checked"], 2, "{restore_ev}");
+    assert_eq!(restore_ev["checkpoint_id"], serde_json::json!(cp_id));
+    // After the restore a preview finds nothing to do.
+    let pv3 = preview_rewind(&mut c, &task, "").await;
+    assert!(
+        pv3.entries.iter().all(|e| e.action == "UNCHANGED"),
+        "{pv3:?}"
+    );
+    assert_eq!((pv3.files_written, pv3.files_reverted), (0, 0));
+    // The session tree records the restore, explicitly.
+    let tree = session_tree(&mut c, &session).await;
+    let node = tree
+        .tasks
+        .iter()
+        .find(|t| t.task_id.as_ref() == Some(&task))
+        .unwrap();
+    assert_eq!(node.restores.len(), 1, "{node:?}");
+    assert_eq!(node.restores[0].checkpoint_id, cp_id);
+    assert_eq!(node.restores[0].preconditions_checked, 2);
+    assert_eq!(node.checkpoints.len(), 1);
+    assert!(
+        tree.branches.is_empty(),
+        "a revert of the same task opens no branch"
+    );
 }

@@ -10,6 +10,7 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 mod baseline;
+mod branch;
 mod checkpoint;
 mod economics;
 mod inspector;

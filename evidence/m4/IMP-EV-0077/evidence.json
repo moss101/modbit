@@ -1,0 +1,10 @@
+{
+ "task": "IMP-EV-0077",
+ "requirement": "REQ-EV-0077",
+ "qual": "QUAL-EV-0077",
+ "tests": ["qual_ev_0077_0122_a_fork_carries_decisions_and_evidence_but_no_stale_pending_effect", "carry_labels_round_trip"],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "A fork is a new task with its own git worktree at the checkpoint's content and its own revision lineage; writing in the fork moves nothing in the source; the source keeps its pending approval and its destructive effect never runs; the fork starts with no pending call or approval.",
+ "audit": "NOT-FOUND before (0077/0122) / PARTIAL before (0123: restore without preconditions or preview)."
+}

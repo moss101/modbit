@@ -27,7 +27,7 @@ use crate::tools::{append_file_events, file_changed_events, read_workspace_file}
 const MAX_DELTAS: usize = 8;
 
 /// Object reads for `modbit_checkpoint::validate`.
-struct Objects(ObjectStore);
+pub(crate) struct Objects(pub(crate) ObjectStore);
 
 impl modbit_checkpoint::ObjectSource for Objects {
     fn get(&self, hash: &str) -> Result<Vec<u8>, String> {
@@ -75,7 +75,7 @@ fn dirty_state(
 }
 
 /// The manifests of a task's committed checkpoints, oldest first.
-fn manifests(store: &EventStore, task: &Task) -> Vec<CheckpointManifest> {
+pub(crate) fn manifests(store: &EventStore, task: &Task) -> Vec<CheckpointManifest> {
     store
         .checkpoints(&task.task_id)
         .unwrap_or_default()
@@ -92,7 +92,7 @@ fn manifests(store: &EventStore, task: &Task) -> Vec<CheckpointManifest> {
 }
 
 /// The current checkpoint's manifest, when any.
-fn current(store: &EventStore, task: &Task) -> Option<CheckpointManifest> {
+pub(crate) fn current(store: &EventStore, task: &Task) -> Option<CheckpointManifest> {
     let row = store
         .checkpoints(&task.task_id)
         .unwrap_or_default()
@@ -350,6 +350,8 @@ pub(crate) struct Restored {
     pub workspace_revision_after: u64,
     /// The restored runtime cursor.
     pub event_offset: u64,
+    /// Caller preconditions checked.
+    pub preconditions_checked: u32,
 }
 
 /// Restore the worktree to a checkpoint: resolve its chain from the log,
@@ -362,6 +364,7 @@ pub(crate) async fn restore(
     lt: Lineage,
     actor: &Actor,
     target: Option<CheckpointId>,
+    expected: &[(String, String)],
 ) -> anyhow::Result<Result<Restored, RestoreRefused>> {
     let root = task
         .workspace_root
@@ -396,9 +399,43 @@ pub(crate) async fn restore(
     };
     let repo = modbit_git::Repo::open(&canonical)?;
     let mut ws = ws.lock().await;
+    // REQ-EV-0123: the caller's optimistic preconditions — the content it
+    // last saw at each path (a preview) — are checked before anything is
+    // planned; one mismatch refuses the whole restore.
+    for (path, hash) in expected {
+        let now = read_workspace_file(&ws, path)
+            .map(|b| content_hash(&b))
+            .unwrap_or_default();
+        if now != *hash {
+            return Ok(Err(RestoreRefused {
+                code: "HASH_MISMATCH",
+                detail: format!(
+                    "`{path}` changed since it was previewed: expected {}, found {}",
+                    if hash.is_empty() {
+                        "absent"
+                    } else {
+                        hash.as_str()
+                    },
+                    if now.is_empty() {
+                        "absent"
+                    } else {
+                        now.as_str()
+                    }
+                ),
+            }));
+        }
+    }
     let mut ops: Vec<ChangeOp> = Vec::new();
     let mut pre_bytes: HashMap<String, Option<Vec<u8>>> = HashMap::new();
     let mut reverted = 0u32;
+    // Every op carries the content it was planned against, so a write that
+    // lands between the plan and the transaction refuses the transaction
+    // (the change engine's own precondition), never overwrites it.
+    let pre_for = |current: &Option<Vec<u8>>| WritePrecondition {
+        expected_content_hash: current.as_deref().map(content_hash),
+        expected_workspace_revision: None,
+        expect_absent: current.is_none(),
+    };
     // Paths dirty now that the checkpoint does not have: back to HEAD, or gone.
     for e in repo.status()? {
         if state.files.contains_key(&e.path) {
@@ -411,7 +448,7 @@ pub(crate) async fn restore(
                 ops.push(ChangeOp {
                     path: e.path.clone(),
                     kind: ChangeOpKind::Delete,
-                    pre: WritePrecondition::default(),
+                    pre: pre_for(&current),
                 });
                 reverted += 1;
             }
@@ -424,7 +461,7 @@ pub(crate) async fn restore(
             ops.push(ChangeOp {
                 path: e.path.clone(),
                 kind,
-                pre: WritePrecondition::default(),
+                pre: pre_for(&current),
             });
             reverted += 1;
         }
@@ -432,14 +469,17 @@ pub(crate) async fn restore(
     let mut written = 0u32;
     // Paths the checkpoint has as deleted: gone.
     for (path, hash) in &state.files {
-        if hash == modbit_checkpoint::DELETED && read_workspace_file(&ws, path).is_some() {
-            pre_bytes.insert(path.clone(), read_workspace_file(&ws, path));
-            ops.push(ChangeOp {
-                path: path.clone(),
-                kind: ChangeOpKind::Delete,
-                pre: WritePrecondition::default(),
-            });
-            written += 1;
+        if hash == modbit_checkpoint::DELETED {
+            let current = read_workspace_file(&ws, path);
+            if current.is_some() {
+                pre_bytes.insert(path.clone(), current.clone());
+                ops.push(ChangeOp {
+                    path: path.clone(),
+                    kind: ChangeOpKind::Delete,
+                    pre: pre_for(&current),
+                });
+                written += 1;
+            }
         }
     }
     for (path, content) in &bytes {
@@ -459,15 +499,25 @@ pub(crate) async fn restore(
         ops.push(ChangeOp {
             path: path.clone(),
             kind,
-            pre: WritePrecondition::default(),
+            pre: pre_for(&current),
         });
         written += 1;
     }
     let pre_revision = ws.revision().number;
     if !ops.is_empty() {
-        let changes = ws
-            .apply_transaction(&ops)
-            .map_err(|e| anyhow::anyhow!("restore transaction: {e}"))?;
+        let changes = match ws.apply_transaction(&ops) {
+            Ok(c) => c,
+            Err(e) => {
+                let text = e.to_string();
+                if text.contains("precondition failed") {
+                    return Ok(Err(RestoreRefused {
+                        code: "HASH_MISMATCH",
+                        detail: format!("the worktree changed under the restore: {text}"),
+                    }));
+                }
+                return Err(anyhow::anyhow!("restore transaction: {e}"));
+            }
+        };
         let value = serde_json::json!({ "changes": changes });
         let events = file_changed_events(
             &objects,
@@ -509,6 +559,7 @@ pub(crate) async fn restore(
                     files_reverted: reverted,
                     workspace_revision_after: after,
                     event_offset: state.runtime.event_offset,
+                    preconditions_checked: expected.len() as u32,
                 },
                 actor.clone(),
             )],
@@ -522,10 +573,11 @@ pub(crate) async fn restore(
         files_reverted: reverted,
         workspace_revision_after: after,
         event_offset: state.runtime.event_offset,
+        preconditions_checked: expected.len() as u32,
     }))
 }
 
-fn chain_refusal(e: ChainError) -> RestoreRefused {
+pub(crate) fn chain_refusal(e: ChainError) -> RestoreRefused {
     let code = match &e {
         ChainError::NoBaseline => "NO_BASELINE",
         ChainError::BrokenLink { .. } => "BROKEN_LINK",

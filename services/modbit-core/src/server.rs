@@ -56,6 +56,8 @@ pub struct Core {
     pub(crate) gateway: modbit_providers::ProviderGateway,
     /// One-agent runtime (M2.7).
     pub(crate) runtime: crate::runtime::Runtime,
+    /// The profile directory (fork worktrees live under `worktrees/`).
+    pub(crate) data_dir: PathBuf,
 }
 
 /// Bounded number of events per subscription batch (REQ-EV-0108).
@@ -156,6 +158,7 @@ pub async fn run(data_dir: PathBuf, idle_exit_secs: Option<u64>) -> Result<()> {
         gateway: modbit_providers::ProviderGateway::new(modbit_providers::endpoints_from_env())
             .with_policy(modbit_providers::OrgModelPolicy::from_env()),
         runtime: crate::runtime::Runtime::default(),
+        data_dir: data_dir.clone(),
     });
     let _ = std::fs::remove_file(data_dir.join("core.ready"));
     let listener = Listener::bind(&endpoint)
@@ -2311,7 +2314,12 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 return ack;
             }
             let lt = crate::runtime::Lineage::task(core.tenant_id, task.session_id, task_id);
-            match crate::checkpoint::restore(core, &task, lt, &actor, target).await {
+            let expected: Vec<(String, String)> = p
+                .expected
+                .iter()
+                .map(|f| (f.path.clone(), f.content_hash.clone()))
+                .collect();
+            match crate::checkpoint::restore(core, &task, lt, &actor, target, &expected).await {
                 Ok(Ok(r)) => {
                     let offset = core.store.lock().await.last_offset().unwrap_or(0);
                     core.last_offset.send_replace(offset);
@@ -2329,6 +2337,7 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                             event_offset: r.event_offset,
                             refusal: String::new(),
                             detail: String::new(),
+                            preconditions_checked: r.preconditions_checked,
                         }
                         .encode_to_vec(),
                     )
@@ -2345,6 +2354,218 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                     .encode_to_vec(),
                 ),
                 Err(e) => reject(cid, "CHECKPOINT", e.to_string()),
+            }
+        }
+        "PreviewRewind" => {
+            let Ok(p) = wire::PreviewRewind::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "PreviewRewind");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let target = if p.checkpoint_id.is_empty() {
+                None
+            } else {
+                match modbit_domain::CheckpointId::parse(&p.checkpoint_id) {
+                    Ok(id) => Some(id),
+                    Err(_) => return reject(cid, "BAD_PAYLOAD", "checkpoint_id is not an id"),
+                }
+            };
+            let task = {
+                let store = core.store.lock().await;
+                match store.task(&task_id) {
+                    Ok(Some(t)) => t,
+                    Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                }
+            };
+            if task.workspace_root.is_none() {
+                return reject(cid, "NO_WORKSPACE", "the task has no workspace root");
+            }
+            // A preview is a read: no lease, no event, no write.
+            match crate::branch::preview_rewind(core, &task, target).await {
+                Ok(Ok(pv)) => {
+                    let files_written = pv
+                        .entries
+                        .iter()
+                        .filter(|e| matches!(e.action.as_str(), "WRITE" | "DELETE"))
+                        .count() as u32;
+                    let files_reverted = pv
+                        .entries
+                        .iter()
+                        .filter(|e| {
+                            matches!(e.action.as_str(), "REVERT_TO_HEAD" | "REMOVE_UNTRACKED")
+                        })
+                        .count() as u32;
+                    accept(
+                        cid,
+                        false,
+                        wire::RewindPreview {
+                            checkpoint_id: pv.checkpoint_id.to_string(),
+                            epoch: pv.epoch,
+                            event_offset: pv.event_offset,
+                            entries: pv
+                                .entries
+                                .into_iter()
+                                .map(|e| wire::RewindEntryView {
+                                    path: e.path,
+                                    action: e.action,
+                                    current_hash: e.current_hash.unwrap_or_default(),
+                                    target_hash: e.target_hash.unwrap_or_default(),
+                                })
+                                .collect(),
+                            files_written,
+                            files_reverted,
+                            workspace_revision: pv.workspace_revision,
+                            refusal: String::new(),
+                            detail: String::new(),
+                        }
+                        .encode_to_vec(),
+                    )
+                }
+                Ok(Err(refused)) => accept(
+                    cid,
+                    false,
+                    wire::RewindPreview {
+                        refusal: refused.code.to_owned(),
+                        detail: refused.detail,
+                        ..Default::default()
+                    }
+                    .encode_to_vec(),
+                ),
+                Err(e) => reject(cid, "CHECKPOINT", e.to_string()),
+            }
+        }
+        "ForkTask" => {
+            let Ok(p) = wire::ForkTask::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "ForkTask");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let checkpoint = if p.checkpoint_id.is_empty() {
+                None
+            } else {
+                match modbit_domain::CheckpointId::parse(&p.checkpoint_id) {
+                    Ok(id) => Some(id),
+                    Err(_) => return reject(cid, "BAD_PAYLOAD", "checkpoint_id is not an id"),
+                }
+            };
+            let mut carry = Vec::new();
+            for c in &p.carry {
+                match modbit_checkpoint::Carry::parse(c) {
+                    Some(k) => {
+                        if !carry.contains(&k) {
+                            carry.push(k);
+                        }
+                    }
+                    None => {
+                        return reject(
+                            cid,
+                            "BAD_PAYLOAD",
+                            format!("unknown carry `{c}` (PLAN | DECISIONS | EVIDENCE | CONTEXT)"),
+                        );
+                    }
+                }
+            }
+            let source = {
+                let store = core.store.lock().await;
+                match store.task(&task_id) {
+                    Ok(Some(t)) => t,
+                    Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                }
+            };
+            if source.workspace_root.is_none() {
+                return reject(cid, "NO_WORKSPACE", "the source task has no workspace root");
+            }
+            if core.runtime.is_running(&task_id).await {
+                return reject(
+                    cid,
+                    "TASK_RUNNING",
+                    "the source's agent loop is executing; fork from a checkpoint once it stops",
+                );
+            }
+            if let Err(ack) = require_lease(core, &cid, &env, &source.session_id).await {
+                return ack;
+            }
+            let new_task_id = TaskId::from_bytes(command_id);
+            {
+                let store = core.store.lock().await;
+                if let Ok(Some(existing)) = store.task(&new_task_id) {
+                    // The command id is the task id: a replay returns the fork.
+                    return accept(
+                        cid,
+                        true,
+                        wire::TaskForked {
+                            task_id: Some(wire_id(new_task_id.as_bytes())),
+                            source_task_id: Some(wire_id(task_id.as_bytes())),
+                            worktree: existing.workspace_root.unwrap_or_default(),
+                            ..Default::default()
+                        }
+                        .encode_to_vec(),
+                    );
+                }
+            }
+            let req = crate::branch::ForkRequest {
+                source,
+                checkpoint,
+                goal_text: if p.goal_text.trim().is_empty() {
+                    None
+                } else {
+                    Some(p.goal_text.clone())
+                },
+                carry,
+                worktree_dir: if p.worktree_dir.trim().is_empty() {
+                    None
+                } else {
+                    Some(PathBuf::from(p.worktree_dir.trim()))
+                },
+                new_task_id,
+            };
+            match crate::branch::fork(core, req, &actor).await {
+                Ok(Ok(f)) => accept(
+                    cid,
+                    false,
+                    wire::TaskForked {
+                        task_id: Some(wire_id(f.task_id.as_bytes())),
+                        source_task_id: Some(wire_id(task_id.as_bytes())),
+                        checkpoint_id: f.checkpoint_id.to_string(),
+                        epoch: f.epoch,
+                        capsule_ref: f.capsule_ref,
+                        worktree: f.worktree,
+                        branch: f.branch,
+                        branch_generation: f.branch_generation,
+                        carried: f.carried.iter().map(|c| c.label().to_owned()).collect(),
+                        decisions_carried: f.decisions_carried,
+                        evidence_carried: f.evidence_carried,
+                        approvals_dropped: f.approvals_dropped,
+                        calls_dropped: f.calls_dropped,
+                        files_materialized: f.files_materialized,
+                        offset: f.offset,
+                    }
+                    .encode_to_vec(),
+                ),
+                Ok(Err(refused)) => reject(cid, refused.code, refused.detail),
+                Err(e) => reject(cid, "FORK", e.to_string()),
+            }
+        }
+        "GetSessionTree" => {
+            let Ok(p) = wire::GetSessionTree::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "GetSessionTree");
+            };
+            let Some(session_id) = p
+                .session_id
+                .as_ref()
+                .and_then(id16)
+                .map(SessionId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "session_id required");
+            };
+            let store = core.store.lock().await;
+            match crate::branch::session_tree(&store, session_id) {
+                Ok(v) => accept(cid, false, v.encode_to_vec()),
+                Err(e) => reject(cid, "UNKNOWN_SESSION", e.to_string()),
             }
         }
         "UndoToolCall" => {

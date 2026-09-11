@@ -202,6 +202,77 @@ pub fn samples() -> Vec<Sample> {
             target_met: false,
         }),
     };
+    let session_tree = SessionTreeView {
+        session_id: id(0x10),
+        branch_generation: 1,
+        tasks: vec![
+            SessionTreeNode {
+                task_id: id(0x11),
+                goal_text: "make the check pass".into(),
+                state: "Waiting(Approval)".into(),
+                origin: "cli".into(),
+                workspace_root: "/repo".into(),
+                forked_from_task: None,
+                forked_from_checkpoint: String::new(),
+                forked_from_epoch: 0,
+                forked_from_offset: 0,
+                capsule_ref: String::new(),
+                branch_generation: 0,
+                runs: vec![TaskRunView {
+                    run_id: id(0x12),
+                    state: "Suspended".into(),
+                }],
+                checkpoints: vec![CheckpointView {
+                    checkpoint_id: "01a09072-1262-70f2-b103-63d3e8f0feda".into(),
+                    epoch: 1,
+                    kind: "BASELINE".into(),
+                    base_checkpoint_id: String::new(),
+                    status: "CURRENT".into(),
+                    workspace_revision: 3,
+                    manifest_ref: "a".repeat(64),
+                    integrity_hash: "b".repeat(64),
+                    git_head: "c".repeat(40),
+                    files: 1,
+                    removed: 0,
+                    event_offset: 120,
+                    index_generation: 2,
+                    reason: "before the fork".into(),
+                    created_at_ms: 1_700_000_000_000,
+                    committed_at_ms: 1_700_000_000_500,
+                }],
+                restores: vec![RestoreView {
+                    checkpoint_id: "01a09072-1262-70f2-b103-63d3e8f0feda".into(),
+                    epoch: 1,
+                    offset: 140,
+                    files_written: 1,
+                    files_reverted: 1,
+                    preconditions_checked: 2,
+                }],
+            },
+            SessionTreeNode {
+                task_id: id(0x13),
+                goal_text: "make the check pass".into(),
+                state: "Queued".into(),
+                origin: "fork".into(),
+                workspace_root: "/profile/worktrees/13".into(),
+                forked_from_task: id(0x11),
+                forked_from_checkpoint: "01a09072-1262-70f2-b103-63d3e8f0feda".into(),
+                forked_from_epoch: 1,
+                forked_from_offset: 120,
+                capsule_ref: "d".repeat(64),
+                branch_generation: 1,
+                runs: vec![],
+                checkpoints: vec![],
+                restores: vec![],
+            },
+        ],
+        branches: vec![BranchEventView {
+            branch_generation: 1,
+            kind: "fork".into(),
+            reason: "task 13 forked from task 11 at checkpoint 01a09072 (epoch 1)".into(),
+            offset: 141,
+        }],
+    };
     let protocol_state = ProtocolStateView {
         task_id: id(0x22),
         version: "protocol-state-1".into(),
@@ -403,6 +474,51 @@ pub fn samples() -> Vec<Sample> {
                 }]
             }),
             decode: reencode::<ProtocolStateView>,
+        },
+        Sample {
+            name: "session_tree_view",
+            type_name: "modbit.v1.SessionTreeView",
+            bytes: session_tree.encode_to_vec(),
+            expected: json!({
+                "sessionId": idhex(0x10), "branchGeneration": "1",
+                "tasks": [
+                    {
+                        "taskId": idhex(0x11), "goalText": "make the check pass",
+                        "state": "Waiting(Approval)", "origin": "cli", "workspaceRoot": "/repo",
+                        "forkedFromTask": null, "forkedFromCheckpoint": "", "forkedFromEpoch": 0,
+                        "forkedFromOffset": "0", "capsuleRef": "", "branchGeneration": "0",
+                        "runs": [{"runId": idhex(0x12), "state": "Suspended"}],
+                        "checkpoints": [{
+                            "checkpointId": "01a09072-1262-70f2-b103-63d3e8f0feda", "epoch": 1,
+                            "kind": "BASELINE", "baseCheckpointId": "", "status": "CURRENT",
+                            "workspaceRevision": "3", "manifestRef": "a".repeat(64),
+                            "integrityHash": "b".repeat(64), "gitHead": "c".repeat(40),
+                            "files": 1, "removed": 0, "eventOffset": "120",
+                            "indexGeneration": "2", "reason": "before the fork",
+                            "createdAtMs": "1700000000000", "committedAtMs": "1700000000500"
+                        }],
+                        "restores": [{
+                            "checkpointId": "01a09072-1262-70f2-b103-63d3e8f0feda", "epoch": 1,
+                            "offset": "140", "filesWritten": 1, "filesReverted": 1,
+                            "preconditionsChecked": 2
+                        }]
+                    },
+                    {
+                        "taskId": idhex(0x13), "goalText": "make the check pass",
+                        "state": "Queued", "origin": "fork", "workspaceRoot": "/profile/worktrees/13",
+                        "forkedFromTask": idhex(0x11),
+                        "forkedFromCheckpoint": "01a09072-1262-70f2-b103-63d3e8f0feda",
+                        "forkedFromEpoch": 1, "forkedFromOffset": "120", "capsuleRef": "d".repeat(64),
+                        "branchGeneration": "1", "runs": [], "checkpoints": [], "restores": []
+                    }
+                ],
+                "branches": [{
+                    "branchGeneration": "1", "kind": "fork",
+                    "reason": "task 13 forked from task 11 at checkpoint 01a09072 (epoch 1)",
+                    "offset": "141"
+                }]
+            }),
+            decode: reencode::<SessionTreeView>,
         },
         Sample {
             name: "hello",

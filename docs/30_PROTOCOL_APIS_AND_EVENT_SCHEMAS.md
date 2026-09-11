@@ -102,6 +102,8 @@ CommandEnvelope {
 ### Durability
 `CheckpointStarted, CheckpointCommitted, CheckpointRejectedStale, CompactionStarted, CompactionCommitted, CompactionRejectedStale, MemoryItemPromoted, MemoryItemSuperseded`.
 
+As built (M4): plus `CheckpointRestored` (with `preconditions_checked`), `ContextEpochOpened`, `ProtocolStateResumed`, `ToolCallReconciled`, `TerminalCreated`, `TerminalOutputAdvanced`, `ProcessExited`, `SessionBranched` (session; `kind` fork | revert | cancel) and `TaskForked` (the fork's lineage: source task, checkpoint, epoch, cursor, capsule, carried counts, worktree, branch; doc 19 "Session branching"). Commands added for the durability surface: `GetProtocolState`, `ReconcileToolCall`, `CreateCheckpoint`, `ListCheckpoints`, `RestoreCheckpoint` (with optimistic `expected` hashes), `ForkTask`, `PreviewRewind`, `GetSessionTree`.
+
 ### Security/effects
 `CapabilityLeaseGranted, CapabilityLeaseRevoked, ApprovalRequested, ApprovalResolved, EffectReceiptAppended, SecretHandleUsed, EmergencyStopActivated`.
 

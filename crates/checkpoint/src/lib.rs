@@ -622,3 +622,289 @@ mod tests {
         assert!(needs_baseline(9, 8));
     }
 }
+
+// ---------------------------------------------------------------------------
+// Session branching (REQ-EV-0077, REQ-EV-0122, REQ-EV-0123)
+// ---------------------------------------------------------------------------
+
+/// Capsule schema version.
+pub const CARRYOVER_SCHEMA_VERSION: u32 = 1;
+
+/// What a fork may carry from its source (docs/40 REQ-EV-0122: "selected
+/// decisions/evidence"). Pending approvals and in-flight calls are never
+/// carried: they are bound to the source's intents.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum Carry {
+    /// The latest plan and its expected files.
+    Plan,
+    /// Answered questions.
+    Decisions,
+    /// Retrieval records whose content the fork still has.
+    Evidence,
+    /// The latest compiled context and the installed compaction epoch.
+    Context,
+}
+
+impl Carry {
+    /// Every kind.
+    pub const ALL: [Self; 4] = [Self::Plan, Self::Decisions, Self::Evidence, Self::Context];
+
+    /// Stable label.
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Plan => "PLAN",
+            Self::Decisions => "DECISIONS",
+            Self::Evidence => "EVIDENCE",
+            Self::Context => "CONTEXT",
+        }
+    }
+
+    /// Parse a label.
+    #[must_use]
+    pub fn parse(label: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|c| c.label().eq_ignore_ascii_case(label.trim()))
+    }
+}
+
+/// A decision the source made that the fork inherits: a question and its
+/// recorded answer.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CarriedDecision {
+    /// Question id on the source.
+    pub question_id: String,
+    /// The question.
+    pub question: String,
+    /// Why it was asked.
+    pub reason: String,
+    /// Chosen option, if any.
+    pub option_id: Option<String>,
+    /// Free text, if any.
+    pub text: Option<String>,
+}
+
+/// A retrieval record the fork inherits: the fork's worktree has the same
+/// bytes at the path, so the retrieve-before-edit gate is satisfied.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CarriedEvidence {
+    /// Path.
+    pub path: String,
+    /// Content hash at the retrieval, equal to the fork's content.
+    pub content_hash: String,
+}
+
+/// An approval of the source that was pending at the fork and deliberately
+/// not carried (docs/40 QUAL-EV-0122: "no stale pending approval").
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DroppedApproval {
+    /// Approval id on the source.
+    pub approval_id: String,
+    /// The tool call it gates.
+    pub tool_call_id: String,
+    /// Why it was not carried.
+    pub reason: String,
+}
+
+/// The `BranchCarryoverCapsule` (REQ-EV-0122): a content-addressed record
+/// of exactly what a fork took from its source, and what it left behind.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BranchCarryoverCapsule {
+    /// Schema version.
+    pub schema_version: u32,
+    /// Source task.
+    pub source_task_id: TaskId,
+    /// Source's latest run at the fork, when any (as UUID text).
+    pub source_run_id: Option<String>,
+    /// The checkpoint the worktree was materialized from.
+    pub source_checkpoint_id: CheckpointId,
+    /// Its epoch.
+    pub source_epoch: u32,
+    /// The runtime cursor the checkpoint recorded.
+    pub source_event_offset: u64,
+    /// The fork task.
+    pub fork_task_id: TaskId,
+    /// The session branch generation the fork opened.
+    pub branch_generation: u64,
+    /// What was asked to be carried.
+    pub carried: Vec<Carry>,
+    /// The plan carried: object hash, expected files, version.
+    pub plan: Option<CarriedPlan>,
+    /// Decisions carried.
+    pub decisions: Vec<CarriedDecision>,
+    /// Evidence carried.
+    pub evidence: Vec<CarriedEvidence>,
+    /// Context carried: the latest Context Pack object and compaction
+    /// manifest of the source, when any.
+    pub context: Option<CarriedContext>,
+    /// Pending approvals not carried.
+    pub approvals_dropped: Vec<DroppedApproval>,
+    /// In-flight or unfinished tool calls of the source, not carried.
+    pub calls_dropped: Vec<String>,
+    /// The fork's worktree: path → object hash, exactly the checkpoint's.
+    pub worktree_files: BTreeMap<String, String>,
+    /// Git HEAD the worktree is relative to.
+    pub git_head: Option<String>,
+    /// When.
+    pub created_at: Timestamp,
+}
+
+/// The plan a fork carries.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CarriedPlan {
+    /// Object hash of the plan JSON.
+    pub plan_ref: String,
+    /// Expected files.
+    pub expected_files: Vec<String>,
+    /// Version.
+    pub version: u32,
+}
+
+/// The context a fork carries.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CarriedContext {
+    /// The latest Context Pack object of the source, when any.
+    pub context_pack_ref: Option<String>,
+    /// The installed compaction epoch and its manifest, when any.
+    pub compaction_epoch: u32,
+    /// Manifest object hash.
+    pub compaction_manifest_ref: Option<String>,
+}
+
+/// One line of a rewind preview (REQ-EV-0123): what a restore to the
+/// checkpoint would do to one path, without doing it.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RewindEntry {
+    /// Path.
+    pub path: String,
+    /// `WRITE` (from an object) | `DELETE` (the checkpoint has it deleted)
+    /// | `REVERT_TO_HEAD` (dirty now, absent from the checkpoint) |
+    /// `REMOVE_UNTRACKED` (untracked now, absent from the checkpoint) |
+    /// `UNCHANGED`.
+    pub action: String,
+    /// Content hash now, when the path exists.
+    pub current_hash: Option<String>,
+    /// Content hash after the restore, when the path would exist.
+    pub target_hash: Option<String>,
+}
+
+/// Plan a restore to `state` against the worktree as it is now: `current`
+/// is every path the worktree has dirty or untracked, with its content
+/// hash (`None` = a tracked path deleted from the worktree). Pure: reads
+/// nothing, writes nothing, so a preview is a plan that is not applied.
+#[must_use]
+pub fn plan_rewind(
+    state: &Materialized,
+    current: &BTreeMap<String, Option<String>>,
+    tracked_at_head: &BTreeSet<String>,
+) -> Vec<RewindEntry> {
+    let mut out = Vec::new();
+    for (path, target) in &state.files {
+        let now = current.get(path).cloned().flatten();
+        if target == DELETED {
+            if now.is_some() || (!current.contains_key(path) && tracked_at_head.contains(path)) {
+                out.push(RewindEntry {
+                    path: path.clone(),
+                    action: "DELETE".into(),
+                    current_hash: now,
+                    target_hash: None,
+                });
+            } else {
+                out.push(RewindEntry {
+                    path: path.clone(),
+                    action: "UNCHANGED".into(),
+                    current_hash: None,
+                    target_hash: None,
+                });
+            }
+        } else if now.as_deref() == Some(target.as_str()) {
+            out.push(RewindEntry {
+                path: path.clone(),
+                action: "UNCHANGED".into(),
+                current_hash: now,
+                target_hash: Some(target.clone()),
+            });
+        } else {
+            out.push(RewindEntry {
+                path: path.clone(),
+                action: "WRITE".into(),
+                current_hash: now,
+                target_hash: Some(target.clone()),
+            });
+        }
+    }
+    for (path, now) in current {
+        if state.files.contains_key(path) {
+            continue;
+        }
+        let action = if tracked_at_head.contains(path) {
+            "REVERT_TO_HEAD"
+        } else {
+            "REMOVE_UNTRACKED"
+        };
+        out.push(RewindEntry {
+            path: path.clone(),
+            action: action.into(),
+            current_hash: now.clone(),
+            target_hash: None,
+        });
+    }
+    out.sort_by(|a, b| a.path.cmp(&b.path));
+    out
+}
+
+#[cfg(test)]
+mod branching_tests {
+    use super::*;
+
+    fn state(files: &[(&str, &str)]) -> Materialized {
+        Materialized {
+            checkpoint_id: CheckpointId::new(),
+            epoch: 1,
+            files: files
+                .iter()
+                .map(|(p, h)| ((*p).to_owned(), (*h).to_owned()))
+                .collect(),
+            git_head: None,
+            workspace_revision: 3,
+            runtime: RuntimeCursor::default(),
+            chain: vec![],
+        }
+    }
+
+    #[test]
+    fn a_rewind_plan_names_every_action_and_nothing_else() {
+        let s = state(&[("a.txt", "h-a"), ("gone.txt", DELETED), ("same.txt", "h-s")]);
+        let mut current = BTreeMap::new();
+        current.insert("a.txt".to_owned(), Some("h-a2".to_owned()));
+        current.insert("same.txt".to_owned(), Some("h-s".to_owned()));
+        current.insert("extra.txt".to_owned(), Some("h-x".to_owned()));
+        current.insert("tracked-dirty.txt".to_owned(), Some("h-t".to_owned()));
+        current.insert("gone.txt".to_owned(), Some("h-g".to_owned()));
+        let tracked: BTreeSet<String> = ["tracked-dirty.txt", "gone.txt", "a.txt", "same.txt"]
+            .into_iter()
+            .map(str::to_owned)
+            .collect();
+        let plan = plan_rewind(&s, &current, &tracked);
+        let by: BTreeMap<&str, &str> = plan
+            .iter()
+            .map(|e| (e.path.as_str(), e.action.as_str()))
+            .collect();
+        assert_eq!(by["a.txt"], "WRITE");
+        assert_eq!(by["gone.txt"], "DELETE");
+        assert_eq!(by["same.txt"], "UNCHANGED");
+        assert_eq!(by["extra.txt"], "REMOVE_UNTRACKED");
+        assert_eq!(by["tracked-dirty.txt"], "REVERT_TO_HEAD");
+        assert_eq!(plan.len(), 5);
+    }
+
+    #[test]
+    fn carry_labels_round_trip() {
+        for c in Carry::ALL {
+            assert_eq!(Carry::parse(c.label()), Some(c));
+        }
+        assert_eq!(Carry::parse("nope"), None);
+    }
+}

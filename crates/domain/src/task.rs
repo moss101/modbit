@@ -43,6 +43,8 @@ pub enum TaskOrigin {
     ForgeIssue,
     /// Forge webhook.
     ForgeWebhook,
+    /// Forked from another task at a checkpoint (REQ-EV-0077/0122).
+    Fork,
 }
 
 /// Typed input dispatch mode (MOD-INPUT-001, docs/14): concurrency semantics
@@ -177,6 +179,38 @@ pub enum TaskEvent {
     },
     /// `TaskQueued`.
     TaskQueued,
+    /// `TaskForked` (REQ-EV-0077/0122, docs/19): this task began as a fork
+    /// of another at one of its checkpoints. The capsule object names what
+    /// was carried over and what was deliberately not; the worktree is the
+    /// fork's own. No state change.
+    TaskForked {
+        /// The source task.
+        from_task_id: String,
+        /// The checkpoint the fork's worktree was materialized from.
+        from_checkpoint_id: String,
+        /// The checkpoint's epoch.
+        from_epoch: u32,
+        /// The source's latest run at the fork, when any.
+        from_run_id: Option<String>,
+        /// The runtime cursor the checkpoint recorded.
+        from_event_offset: u64,
+        /// The session branch generation the fork opened.
+        branch_generation: u64,
+        /// Object hash of the `BranchCarryoverCapsule`.
+        capsule_ref: String,
+        /// What was carried: `PLAN` | `DECISIONS` | `EVIDENCE` | `CONTEXT`.
+        carried: Vec<String>,
+        /// Answered questions carried.
+        decisions_carried: u32,
+        /// Retrieval records carried (those whose content the fork still has).
+        evidence_carried: u32,
+        /// Pending approvals of the source that were not carried.
+        approvals_dropped: u32,
+        /// The fork's worktree root.
+        worktree: String,
+        /// The fork's branch.
+        branch: String,
+    },
     /// `TaskStarted`.
     TaskStarted,
     /// `TaskWaiting`.
@@ -647,6 +681,11 @@ pub enum TaskEvent {
         workspace_revision_after: u64,
         /// Store offset the restored runtime cursor points at.
         event_offset: u64,
+        /// Optimistic preconditions the caller supplied and the restore
+        /// checked before writing (REQ-EV-0123): path and the content hash
+        /// the caller last saw.
+        #[serde(default)]
+        preconditions_checked: u32,
     },
     /// `TerminalCreated` (docs/30 "Workspace/execution", docs/19 protocol
     /// state "terminal session ID + last acknowledged output cursor"; M4.5):
@@ -733,6 +772,7 @@ impl TaskEvent {
         match self {
             Self::TaskCreated { .. } => "TaskCreated",
             Self::TaskQueued => "TaskQueued",
+            Self::TaskForked { .. } => "TaskForked",
             Self::TaskStarted => "TaskStarted",
             Self::TaskWaiting { .. } => "TaskWaiting",
             Self::TaskResumed => "TaskResumed",
@@ -892,6 +932,7 @@ impl Task {
             | TaskEvent::CheckpointCommitted { .. }
             | TaskEvent::CheckpointRejectedStale { .. }
             | TaskEvent::CheckpointRestored { .. }
+            | TaskEvent::TaskForked { .. }
             | TaskEvent::TerminalCreated { .. }
             | TaskEvent::TerminalOutputAdvanced { .. }
             | TaskEvent::ProcessExited { .. }

@@ -34,16 +34,18 @@ use modbit_protocol::client::Client;
 use modbit_protocol::local::{ReadyLine, decode_hex, encode_hex};
 use modbit_protocol::v1::{
     AcquireSessionLease, AllowUnsupportedLanguage, ApprovalList, ApprovalResolvedAck,
-    AttachContextDocument, AttachmentIngested, CancelTask, CapabilityLeaseList, ClientKind,
-    CommandEnvelope, ContextDocumentAttached, ContextInspectorView, CreateSession, CreateTask,
-    DecideReview, EffectReceiptList, EmergencyStop, EmergencyStopped, GetCapabilityLeases,
-    GetContextInspector, GetEffectReceipts, GetReviewBundle, GetSessionSnapshot, GetTaskEconomics,
+    AttachContextDocument, AttachmentIngested, CancelTask, CapabilityLeaseList,
+    CheckpointRestoreResult, ClientKind, CommandEnvelope, ContextDocumentAttached,
+    ContextInspectorView, CreateSession, CreateTask, DecideReview, EffectReceiptList,
+    EmergencyStop, EmergencyStopped, FileHash, ForkTask, GetCapabilityLeases, GetContextInspector,
+    GetEffectReceipts, GetReviewBundle, GetSessionSnapshot, GetSessionTree, GetTaskEconomics,
     GetTaskStatus, HunkRef, Id, IngestAttachment, InvokeTool, LanguageList, ListApprovals,
     ListLanguages, ListModels, ListQuestions, ListTools, ModelList, ModelProbed,
-    OutcomeBaselinePublished, ProbeModel, PublishOutcomeBaseline, QuestionList, QuestionResponded,
-    ResolveApproval, RespondToQuestion, ReviewBundle, ReviewDecided, SessionCreated,
-    SessionLeaseAcquired, SessionSnapshot, SetTaskSelection, StartTask, TaskCancelRequested,
-    TaskCreated, TaskEconomicsView, TaskRunStarted, TaskSelectionRecorded, TaskStatus, ToolInvoked,
+    OutcomeBaselinePublished, PreviewRewind, ProbeModel, PublishOutcomeBaseline, QuestionList,
+    QuestionResponded, ResolveApproval, RespondToQuestion, RestoreCheckpoint, ReviewBundle,
+    ReviewDecided, RewindPreview, SessionCreated, SessionLeaseAcquired, SessionSnapshot,
+    SessionTreeView, SetTaskSelection, StartTask, TaskCancelRequested, TaskCreated,
+    TaskEconomicsView, TaskForked, TaskRunStarted, TaskSelectionRecorded, TaskStatus, ToolInvoked,
     ToolList, UndoPlanView, UndoToolCall, UnsupportedLanguageAllowed,
 };
 use prost::Message;
@@ -62,7 +64,7 @@ fn exit_for_state(state: &str) -> u8 {
     }
 }
 
-const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task economics --task <id> | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
+const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id>] [--apply --session <id>] | session tree --session <id> | task economics --task <id> | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
 
 fn parse_id(hex: &str) -> Result<Id, String> {
     let bytes = decode_hex(hex)
@@ -1211,6 +1213,188 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 &r.content_ref[..12.min(r.content_ref.len())],
                 r.offset
             );
+        }
+        // Session branching (REQ-EV-0077/0122/0123): fork at a checkpoint,
+        // preview or apply a rewind, show the session tree.
+        ["task", "fork", ..] => {
+            let sid = parse_id(opt("--session").ok_or(USAGE)?)?;
+            let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
+            let checkpoint_id = opt("--checkpoint").unwrap_or("").to_owned();
+            let carry: Vec<String> = opt("--carry")
+                .map(|c| c.split(',').map(|x| x.trim().to_uppercase()).collect())
+                .unwrap_or_default();
+            let goal_text = positionals(&words, 2).join(" ");
+            let lease = join_lease(&mut client, &sid).await?;
+            let ack = client
+                .command(envelope_fenced(
+                    "ForkTask",
+                    ForkTask {
+                        task_id: Some(task_id),
+                        checkpoint_id,
+                        goal_text,
+                        carry,
+                        worktree_dir: opt("--worktree").unwrap_or("").to_owned(),
+                    }
+                    .encode_to_vec(),
+                    Some(lease),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let f: TaskForked = Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "forked task {} from {} at checkpoint {} (epoch {}) branch={} generation={}",
+                encode_hex(&f.task_id.unwrap_or_default().value),
+                encode_hex(&f.source_task_id.unwrap_or_default().value),
+                f.checkpoint_id,
+                f.epoch,
+                f.branch,
+                f.branch_generation
+            );
+            println!("  worktree: {}", f.worktree);
+            println!(
+                "  carried: {} (decisions={} evidence={}); dropped: approvals={} calls={}; files materialized={}",
+                f.carried.join(","),
+                f.decisions_carried,
+                f.evidence_carried,
+                f.approvals_dropped,
+                f.calls_dropped,
+                f.files_materialized
+            );
+            println!("  capsule: {}", f.capsule_ref);
+        }
+        ["task", "rewind", ..] => {
+            let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
+            let checkpoint_id = opt("--checkpoint").unwrap_or("").to_owned();
+            let apply = words.contains(&"--apply");
+            let ack = client
+                .command(envelope(
+                    "PreviewRewind",
+                    PreviewRewind {
+                        task_id: Some(task_id.clone()),
+                        checkpoint_id: checkpoint_id.clone(),
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let pv: RewindPreview = Client::result(&ack).map_err(|e| e.to_string())?;
+            if !pv.refusal.is_empty() {
+                return Err(format!("rewind refused: {} {}", pv.refusal, pv.detail));
+            }
+            println!(
+                "rewind to checkpoint {} (epoch {}, cursor offset {}): {} to write, {} to revert; worktree revision {}",
+                pv.checkpoint_id,
+                pv.epoch,
+                pv.event_offset,
+                pv.files_written,
+                pv.files_reverted,
+                pv.workspace_revision
+            );
+            for e in &pv.entries {
+                if e.action != "UNCHANGED" {
+                    println!("  {:<16} {}", e.action, e.path);
+                }
+            }
+            if apply {
+                // The preview's hashes are the optimistic preconditions: the
+                // restore refuses if any path moved in between.
+                let sid = parse_id(opt("--session").ok_or(USAGE)?)?;
+                let lease = join_lease(&mut client, &sid).await?;
+                let ack = client
+                    .command(envelope_fenced(
+                        "RestoreCheckpoint",
+                        RestoreCheckpoint {
+                            task_id: Some(task_id),
+                            checkpoint_id,
+                            expected: pv
+                                .entries
+                                .iter()
+                                .map(|e| FileHash {
+                                    path: e.path.clone(),
+                                    content_hash: e.current_hash.clone(),
+                                })
+                                .collect(),
+                        }
+                        .encode_to_vec(),
+                        Some(lease),
+                    ))
+                    .await
+                    .map_err(|e| e.to_string())?;
+                let r: CheckpointRestoreResult = Client::result(&ack).map_err(|e| e.to_string())?;
+                if r.restored {
+                    println!(
+                        "restored: written={} reverted={} preconditions_checked={} revision_after={} cursor_offset={}",
+                        r.files_written,
+                        r.files_reverted,
+                        r.preconditions_checked,
+                        r.workspace_revision_after,
+                        r.event_offset
+                    );
+                } else {
+                    return Err(format!("restore refused: {} {}", r.refusal, r.detail));
+                }
+            } else {
+                println!("(preview only; add --apply --session <id> to restore)");
+            }
+        }
+        ["session", "tree", "--session", sid] => {
+            let ack = client
+                .command(envelope(
+                    "GetSessionTree",
+                    GetSessionTree {
+                        session_id: Some(parse_id(sid)?),
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let t: SessionTreeView = Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "session {} branch_generation={}",
+                encode_hex(&t.session_id.unwrap_or_default().value),
+                t.branch_generation
+            );
+            for n in &t.tasks {
+                let id = encode_hex(&n.task_id.clone().unwrap_or_default().value);
+                println!(
+                    "task {} state={} origin={} runs={} checkpoints={} restores={} root={}",
+                    &id[..8],
+                    n.state,
+                    n.origin,
+                    n.runs.len(),
+                    n.checkpoints.len(),
+                    n.restores.len(),
+                    n.workspace_root
+                );
+                if let Some(from) = &n.forked_from_task {
+                    println!(
+                        "  forked from {} at checkpoint {} (epoch {}, offset {}) generation={} capsule={}",
+                        &encode_hex(&from.value)[..8],
+                        n.forked_from_checkpoint,
+                        n.forked_from_epoch,
+                        n.forked_from_offset,
+                        n.branch_generation,
+                        n.capsule_ref
+                    );
+                }
+                for r in &n.restores {
+                    println!(
+                        "  restored to {} (epoch {}) at offset {}: written={} reverted={} preconditions={}",
+                        r.checkpoint_id,
+                        r.epoch,
+                        r.offset,
+                        r.files_written,
+                        r.files_reverted,
+                        r.preconditions_checked
+                    );
+                }
+            }
+            for b in &t.branches {
+                println!(
+                    "branch generation={} kind={} offset={} {}",
+                    b.branch_generation, b.kind, b.offset, b.reason
+                );
+            }
         }
         ["task", "economics", "--task", tid] => {
             let ack = client

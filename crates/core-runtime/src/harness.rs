@@ -113,6 +113,11 @@ pub struct HarnessState {
     /// The answer to the pending scope question, once it arrives.
     #[serde(default)]
     pub scope_answer: Option<String>,
+    /// What this task carried from the task it was forked from
+    /// (REQ-EV-0122: the `BranchCarryoverCapsule`, as the model sees it):
+    /// the source, the checkpoint, the decisions, the evidence, the context.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub carried: Option<serde_json::Value>,
     /// Recorded repair attempts, in order.
     #[serde(default)]
     pub repair_attempts: Vec<RepairAttempt>,
