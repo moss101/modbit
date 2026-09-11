@@ -308,7 +308,7 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
             if goal.is_empty() {
                 return Err(USAGE.into());
             }
-            let lease = acquire_lease(&mut client, &sid).await?;
+            let lease = join_lease(&mut client, &sid).await?;
             let ack = client
                 .command(envelope_fenced(
                     "CreateTask",
@@ -414,7 +414,7 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 Some(h) => parse_id(h)?,
                 None => fresh_id(),
             };
-            let lease = acquire_lease(&mut client, &sid).await?;
+            let lease = join_lease(&mut client, &sid).await?;
             let ack = client
                 .command(envelope_fenced(
                     "InvokeTool",
@@ -490,7 +490,7 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 "deny" => false,
                 _ => return Err(USAGE.into()),
             };
-            let lease = acquire_lease(&mut client, &sid).await?;
+            let lease = join_lease(&mut client, &sid).await?;
             let ack = client
                 .command(envelope_fenced(
                     "ResolveApproval",
@@ -514,7 +514,7 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
         ["stop", ..] => {
             let sid = parse_id(opt("--session").ok_or(USAGE)?)?;
             let reason = positionals(&words, 1).join(" ");
-            let lease = acquire_lease(&mut client, &sid).await?;
+            let lease = join_lease(&mut client, &sid).await?;
             let ack = client
                 .command(envelope_fenced(
                     "EmergencyStop",
@@ -605,7 +605,7 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 .map(|v| v.parse().map_err(|_| USAGE))
                 .transpose()?
                 .unwrap_or(0);
-            let lease = acquire_lease(&mut client, &sid).await?;
+            let lease = join_lease(&mut client, &sid).await?;
             start_task(
                 &mut client,
                 &task_id,
@@ -632,7 +632,7 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 .file_name()
                 .map(|n| n.to_string_lossy().into_owned())
                 .unwrap_or_default();
-            let lease = acquire_lease(&mut client, &sid).await?;
+            let lease = join_lease(&mut client, &sid).await?;
             let ack = client
                 .command(envelope_fenced(
                     "IngestAttachment",
@@ -687,7 +687,7 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
             let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
             let question_id = opt("--question").ok_or(USAGE)?.to_owned();
             let text = positionals(&words, 2).join(" ");
-            let lease = acquire_lease(&mut client, &sid).await?;
+            let lease = join_lease(&mut client, &sid).await?;
             let ack = client
                 .command(envelope_fenced(
                     "RespondToQuestion",
@@ -723,7 +723,7 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
         ["task", "cancel", ..] => {
             let sid = parse_id(opt("--session").ok_or(USAGE)?)?;
             let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
-            let lease = acquire_lease(&mut client, &sid).await?;
+            let lease = join_lease(&mut client, &sid).await?;
             let ack = client
                 .command(envelope_fenced(
                     "CancelTask",
@@ -772,7 +772,7 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
             }
             .encode_to_vec();
             let ack = if apply {
-                let lease = acquire_lease(&mut client, &session_id).await?;
+                let lease = join_lease(&mut client, &session_id).await?;
                 client
                     .command(envelope_fenced("UndoToolCall", payload, Some(lease)))
                     .await
@@ -889,7 +889,7 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 "return" => "RETURN",
                 _ => return Err(USAGE.into()),
             };
-            let lease = acquire_lease(&mut client, &sid).await?;
+            let lease = join_lease(&mut client, &sid).await?;
             let ack = client
                 .command(envelope_fenced(
                     "DecideReview",
@@ -1031,7 +1031,7 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
             }
             let task_id = parse_id(task.ok_or("--task required")?)?;
             let sid = parse_id(session.ok_or("--session required")?)?;
-            let generation = acquire_lease(&mut client, &sid).await?;
+            let generation = join_lease(&mut client, &sid).await?;
             let ack = client
                 .command(envelope_fenced(
                     "SetTaskSelection",
@@ -1079,7 +1079,7 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 }
             }
             let sid = parse_id(session.ok_or("--session required")?)?;
-            let generation = acquire_lease(&mut client, &sid).await?;
+            let generation = join_lease(&mut client, &sid).await?;
             let ack = client
                 .command(envelope_fenced(
                     "PublishOutcomeBaseline",
@@ -1124,7 +1124,7 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
             if languages.is_empty() {
                 return Err("--language required (a language label, or * for any)".into());
             }
-            let generation = acquire_lease(&mut client, &sid).await?;
+            let generation = join_lease(&mut client, &sid).await?;
             let ack = client
                 .command(envelope_fenced(
                     "AllowUnsupportedLanguage",
@@ -1171,7 +1171,7 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
             }
             let path = file.ok_or("a file to attach is required")?;
             let text = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
-            let generation = acquire_lease(&mut client, &sid).await?;
+            let generation = join_lease(&mut client, &sid).await?;
             let ack = client
                 .command(envelope_fenced(
                     "AttachContextDocument",
@@ -1436,6 +1436,29 @@ async fn wait_until_idle(client: &mut Client, task_id: &Id) -> Result<(), String
         tokio::time::sleep(std::time::Duration::from_millis(250)).await;
     }
     Ok(())
+}
+
+/// The generation a CLI invocation acts under (docs/33 "Session kernel
+/// lease", M4.4): the session's current lease when one exists — a shell
+/// approving, answering or steering joins the owner that is executing rather
+/// than fencing it out — and a freshly acquired one only when the session has
+/// none yet.
+async fn join_lease(client: &mut Client, sid: &Id) -> Result<u64, String> {
+    let ack = client
+        .command(envelope(
+            "GetSessionSnapshot",
+            GetSessionSnapshot {
+                session_id: Some(sid.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .map_err(|e| e.to_string())?;
+    let snapshot: SessionSnapshot = Client::result(&ack).map_err(|e| e.to_string())?;
+    if snapshot.lease_generation > 0 {
+        return Ok(snapshot.lease_generation);
+    }
+    acquire_lease(client, sid).await
 }
 
 async fn acquire_lease(client: &mut Client, sid: &Id) -> Result<u64, String> {

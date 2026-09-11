@@ -67,6 +67,10 @@ pub struct StartConfig {
     pub plan_id: String,
     /// The initial slot of that plan.
     pub slot_id: String,
+    /// The session kernel lease generation the run executes under (docs/13
+    /// "Fencing and epochs", M4.4): every state-advancing append is fenced by
+    /// it, and the loop stops at the next boundary once it is superseded.
+    pub lease_generation: u64,
 }
 
 /// Per-task control handle.
@@ -122,6 +126,12 @@ pub(crate) enum TranscriptEntry {
 
 /// Outcome of the loop.
 enum LoopEnd {
+    /// The session lease the run held was superseded (docs/13, docs/33;
+    /// M4.4): the run stops advancing state and suspends for the new owner.
+    Fenced {
+        current_generation: u64,
+        owner: String,
+    },
     ReadyForReview,
     /// A typed question is pending (REQ-EV-0222): the run suspends, never hangs.
     NeedsInput(String),
@@ -145,6 +155,7 @@ impl Runtime {
         actor: Actor,
     ) -> std::result::Result<(RunId, bool), (String, String)> {
         let mut cfg = cfg;
+        cfg.lease_generation = lease_generation;
         let mut tasks = self.tasks.lock().await;
         if tasks.contains_key(&task.task_id) {
             return Err(("TASK_ALREADY_RUNNING".into(), task.task_id.to_string()));
@@ -366,6 +377,21 @@ impl Runtime {
     }
 }
 
+/// Whether the session lease the run executes under has been superseded
+/// (docs/13 "Fencing and epochs", docs/33 "Session kernel lease"): the
+/// current generation and its owner when it has, `None` while the run still
+/// owns the session.
+async fn lease_lost(core: &Core, task: &Task, held: u64) -> Option<(u64, String)> {
+    let store = core.store.lock().await;
+    let session = store.session(&task.session_id).ok().flatten()?;
+    (session.lease_generation != held).then(|| {
+        (
+            session.lease_generation,
+            session.lease_owner.clone().unwrap_or_default(),
+        )
+    })
+}
+
 /// Startup reconciliation (docs/14 "Compound execution and interruption"): a
 /// task left `Running` by a previous process is suspended at a turn boundary
 /// and marked for attention; nothing is re-executed.
@@ -463,6 +489,9 @@ pub(crate) struct Lineage {
     run: Option<RunId>,
     turn: Option<TurnId>,
     step: Option<RunStepId>,
+    /// The session lease generation the append must still hold (M4.4);
+    /// `None` for audit records a stale owner may still write.
+    lease: Option<u64>,
 }
 
 impl Lineage {
@@ -472,6 +501,30 @@ impl Lineage {
             step: Some(step),
             ..self
         }
+    }
+
+    /// The same lineage, fenced by a session lease generation: an append
+    /// under it lands only while that generation is the session's.
+    pub(crate) fn fenced(self, lease_generation: u64) -> Self {
+        Self {
+            lease: Some(lease_generation),
+            ..self
+        }
+    }
+
+    /// The same lineage without the fence, for audit records a stale owner
+    /// may still write (docs/33: "can append audit events but cannot advance
+    /// state").
+    pub(crate) fn unfenced(self) -> Self {
+        Self {
+            lease: None,
+            ..self
+        }
+    }
+
+    /// The fence, if any.
+    pub(crate) fn lease(self) -> Option<u64> {
+        self.lease
     }
 
     /// The turn this lineage is inside, when it is inside one.
@@ -488,6 +541,7 @@ impl Lineage {
             run: None,
             turn: None,
             step: None,
+            lease: None,
         }
     }
 
@@ -499,6 +553,7 @@ impl Lineage {
             run: None,
             turn: None,
             step: None,
+            lease: None,
         }
     }
     pub(crate) fn run(tenant: TenantId, session: SessionId, task: TaskId, run: RunId) -> Self {
@@ -815,20 +870,28 @@ pub(crate) fn append(
     aggregate_id: [u8; 16],
     events: Vec<NewEvent>,
 ) -> std::result::Result<u64, String> {
-    let stored = store
-        .append(AppendRequest {
-            tenant_id: l.tenant,
-            session_id: l.session,
-            task_id: l.task,
-            run_id: l.run,
-            turn_id: l.turn,
-            step_id: l.step,
-            aggregate_type,
-            aggregate_id,
-            expected_sequence: None,
-            events,
-        })
-        .map_err(|e| e.to_string())?;
+    let req = AppendRequest {
+        tenant_id: l.tenant,
+        session_id: l.session,
+        task_id: l.task,
+        run_id: l.run,
+        turn_id: l.turn,
+        step_id: l.step,
+        aggregate_type,
+        aggregate_id,
+        expected_sequence: None,
+        events,
+    };
+    // A fenced lineage lands only while its lease generation is the
+    // session's (docs/13, docs/33; M4.4).
+    let stored = match l.lease {
+        Some(g) => store.append_fenced(req, g),
+        None => store.append(req),
+    }
+    .map_err(|e| match e {
+        modbit_event_store::Error::StaleLease { .. } => format!("STALE_LEASE: {e}"),
+        other => other.to_string(),
+    })?;
     let offset = stored.last().map(|e| e.offset).unwrap_or(0);
     if offset > 0 {
         core.last_offset.send_replace(offset);
@@ -1436,7 +1499,10 @@ async fn run_loop(
     cancel: CancellationToken,
 ) {
     let actor = Actor::Agent(format!("solver:{}", task.task_id));
-    let lt = Lineage::run(core.tenant_id, task.session_id, task.task_id, run_id);
+    // Every state-advancing append of this loop is fenced by the lease
+    // generation the run executes under (docs/13 "Fencing and epochs"; M4.4).
+    let lt = Lineage::run(core.tenant_id, task.session_id, task.task_id, run_id)
+        .fenced(cfg.lease_generation);
     let (mut transcript, mut state, mut seen_offset, mut carried) =
         rebuild(&core, &task, cfg.budgets).await;
     // docs/28 §5 (PX-039): a goal that reports a failure must reproduce it
@@ -1602,6 +1668,15 @@ async fn run_loop(
         }
         if let Err(x) = state.check_turn_budget() {
             break LoopEnd::BudgetExhausted(x);
+        }
+        // docs/33 "Session kernel lease": a stale owner cannot advance state.
+        // The boundary checks the lease before a turn starts; the fenced
+        // appends catch anything that slips between the check and a write.
+        if let Some((current, owner)) = lease_lost(&core, &task, cfg.lease_generation).await {
+            break LoopEnd::Fenced {
+                current_generation: current,
+                owner,
+            };
         }
         // ---- Turn
         let turn_id = TurnId::new();
@@ -2164,6 +2239,14 @@ async fn run_loop(
                     );
                     break 'outer LoopEnd::ProviderFailed(code, message);
                 }
+                // The response of a superseded owner is not applied (M4.4).
+                if let Some((current, owner)) = lease_lost(&core, &task, cfg.lease_generation).await
+                {
+                    break 'outer LoopEnd::Fenced {
+                        current_generation: current,
+                        owner,
+                    };
+                }
                 // Persist the assistant message before any action (docs/14 contract 1).
                 let assistant = TranscriptEntry::Assistant {
                     text: text.clone(),
@@ -2258,6 +2341,14 @@ async fn run_loop(
         for (call_id, name, arguments_json) in calls {
             if cancel.is_cancelled() {
                 break;
+            }
+            // No action under a superseded lease (M4.4); the dispatch journal
+            // is fenced as well, so nothing runs even if this check is raced.
+            if let Some((current, owner)) = lease_lost(&core, &task, cfg.lease_generation).await {
+                break 'outer LoopEnd::Fenced {
+                    current_generation: current,
+                    owner,
+                };
             }
             step_ordinal += 1;
             // A direct call to a deferred-but-visible tool activates it
@@ -3000,9 +3091,71 @@ async fn run_loop(
         )
         .await;
     }
-    // ---- Loop end: persist the run/task outcome.
+    // ---- Loop end: persist the run/task outcome. An outcome is a state
+    // advance, so it is fenced too; a lease lost at the very end turns the
+    // outcome into a fence like any other (docs/33).
+    let end = match lease_lost(&core, &task, cfg.lease_generation).await {
+        Some((current, owner)) if !matches!(end, LoopEnd::Fenced { .. }) => LoopEnd::Fenced {
+            current_generation: current,
+            owner,
+        },
+        _ => end,
+    };
     let mut store = core.store.lock().await;
     match end {
+        LoopEnd::Fenced {
+            current_generation,
+            owner,
+        } => {
+            // Audit records a stale owner may still write: what happened,
+            // and that the run waits for the lease holder to resume it.
+            let lt = lt.unfenced();
+            let _ = append(
+                &mut store,
+                &core,
+                lt,
+                AggregateType::Run,
+                *run_id.as_bytes(),
+                vec![
+                    typed(
+                        "RunFenced",
+                        &RunEvent::RunFenced {
+                            kernel_lease_generation: cfg.lease_generation,
+                            current_generation,
+                            owner: owner.clone(),
+                        },
+                        actor.clone(),
+                    ),
+                    typed("RunSuspended", &RunEvent::RunSuspended, actor.clone()),
+                ],
+            );
+            let _ = append(
+                &mut store,
+                &core,
+                lt,
+                AggregateType::Task,
+                *task.task_id.as_bytes(),
+                vec![
+                    typed(
+                        "TaskWaiting",
+                        &TaskEvent::TaskWaiting {
+                            reason: WaitReason::External,
+                        },
+                        actor.clone(),
+                    ),
+                    typed(
+                        "TaskNeedsAttention",
+                        &TaskEvent::TaskNeedsAttention {
+                            reason: format!(
+                                "the execution owner lost the session lease: generation {} was superseded by {current_generation} (owner {owner}); the run stopped at a safe boundary and resumes under the current lease with StartTask",
+                                cfg.lease_generation
+                            ),
+                        },
+                        actor.clone(),
+                    ),
+                ],
+            );
+        }
         LoopEnd::ReadyForReview => {
             let _ = append(
                 &mut store,
@@ -4589,6 +4742,7 @@ async fn execute_tool(
             run_id: lt.run,
             turn_id: lt.turn,
             call_id: Some(call_id.to_owned()),
+            lease_generation: lt.lease(),
         };
         let done = match core.tools.invoke(&core.store, req).await {
             Ok(d) => d,

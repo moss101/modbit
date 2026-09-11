@@ -15775,3 +15775,230 @@ async fn qual_ev_0012_0013_e2e_007_checkpoint_epochs_are_fenced_and_restore_vali
     let m: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
     assert!(m["files"]["note.txt"].as_str().unwrap().len() == 64, "{m}");
 }
+
+/// M4.4 (docs/13 "Fencing and epochs", docs/33 "Session kernel lease",
+/// docs/54 fault 8): the execution owner runs under the session lease
+/// generation it started with. When another owner acquires the lease
+/// mid-run, the stale owner records that it was fenced and suspends at the
+/// next safe boundary; it advances no state after the takeover — no turn,
+/// no step, no dispatch, no outcome — because every state-advancing append
+/// is fenced by the lease at commit time. The stale owner cannot resume the
+/// run; the new owner resumes it under the current generation and it
+/// finishes.
+#[tokio::test]
+async fn qual_m4_4_a_stale_execution_owner_is_fenced_out_and_the_new_owner_resumes() {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (_repo, root) = plain_repo(&[("a.txt", "a\n")]);
+    let read = json!({"calls": [{"name": "fs.read", "args": {"path": "a.txt"}}]});
+    let mut script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "read the file a few times", "expected_files": []}}]}),
+    ];
+    for _ in 0..12 {
+        script.push(read.clone());
+    }
+    script.push(json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}));
+    // Turns take at least 150 ms, so the takeover lands inside the run.
+    let (base, seen) = scripted_model_slow(script, Duration::from_millis(150)).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut a = core.client().await;
+    let (session, _) = create_session(&mut a, id16(0xD0)).await;
+    let g1 = lease_for(&session);
+    let task = create_task_with_profile(&mut a, &session, g1, &root, 0xD1, "local_trusted").await;
+    let start = |g: Option<u64>, id: u8| {
+        envelope_fenced(
+            id16(id),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: "openai".into(),
+                model: "gpt-5".into(),
+                max_turns: 40,
+                max_tool_calls: 0,
+                max_no_progress_turns: 0,
+            }
+            .encode_to_vec(),
+            g,
+        )
+    };
+    let ack = a.command(start(g1, 0xD2)).await.unwrap();
+    let started: TaskRunStarted = Client::result(&ack).unwrap();
+    assert!(!started.resumed);
+    // The run is under way: two turns recorded (read live from the stream;
+    // a paced run never goes quiet long enough for the replay helper to
+    // return before it ends).
+    {
+        let mut s = core.client().await;
+        s.subscribe(session.clone(), 0).await.unwrap();
+        let mut turns = 0;
+        let deadline = std::time::Instant::now() + Duration::from_secs(30);
+        while turns < 2 {
+            assert!(
+                std::time::Instant::now() < deadline,
+                "the run did not start"
+            );
+            if let Ok(Ok(Some(e))) =
+                tokio::time::timeout(Duration::from_secs(5), s.next_event()).await
+            {
+                let ev = e.event.unwrap();
+                if ev.task_id.as_ref() == Some(&task) && ev.event_type == "TurnPrepared" {
+                    turns += 1;
+                }
+            }
+        }
+    }
+    // Another owner takes the session lease.
+    let mut b = core.client().await;
+    let g2 = acquire_lease(&mut b, id16(0xD3), session.clone(), "owner-b").await;
+    assert_eq!(g2, g1.unwrap() + 1);
+    let takeover_offset = {
+        let mut s = core.client().await;
+        s.subscribe(session.clone(), 0).await.unwrap();
+        let mut off = 0;
+        while let Ok(Ok(Some(e))) =
+            tokio::time::timeout(Duration::from_millis(400), s.next_event()).await
+        {
+            let ev = e.event.unwrap();
+            if ev.event_type == "SessionLeaseAcquired" {
+                let p: serde_json::Value = serde_json::from_slice(&ev.payload).unwrap_or_default();
+                if p["payload"]["lease_generation"].as_u64() == Some(g2) {
+                    off = e.offset;
+                }
+            }
+        }
+        off
+    };
+    assert!(takeover_offset > 0);
+    // From the Core's side the old generation is stale at once.
+    let err = a
+        .command(envelope_fenced(
+            id16(0xD9),
+            "CreateCheckpoint",
+            modbit_protocol::v1::CreateCheckpoint {
+                task_id: Some(task.clone()),
+                kind: String::new(),
+                reason: "probe".into(),
+            }
+            .encode_to_vec(),
+            g1,
+        ))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "STALE_LEASE"),
+        "{err}"
+    );
+    // The stale owner stops at its next boundary: fenced, suspended, waiting.
+    let st = wait_task(&mut b, &task, 60).await;
+    let evs = task_events(&core, &session, &task).await;
+    assert_eq!(
+        (
+            st.state.as_str(),
+            st.wait_reason.as_str(),
+            st.run_state.as_str(),
+            st.loop_alive
+        ),
+        ("Waiting", "External", "Suspended", false),
+        "{st:?}\n{evs:#?}"
+    );
+    let fenced = evs
+        .iter()
+        .find(|(_, t, _)| t == "RunFenced")
+        .map(|(_, _, p)| p.clone())
+        .expect("the fence is on the log");
+    assert_eq!(fenced["kernel_lease_generation"], json!(g1.unwrap()));
+    assert_eq!(fenced["current_generation"], json!(g2));
+    assert_eq!(fenced["owner"], "owner-b");
+    let attention = evs
+        .iter()
+        .rev()
+        .find(|(_, t, _)| t == "TaskNeedsAttention")
+        .map(|(_, _, p)| p["reason"].as_str().unwrap_or_default().to_owned())
+        .unwrap_or_default();
+    assert!(
+        attention.contains("lost the session lease")
+            && attention.contains(&format!("superseded by {g2}")),
+        "{attention}"
+    );
+    // Nothing advanced after the takeover: every task event past it is an
+    // audit record of the fence itself.
+    let after: Vec<(String, String)> = {
+        let mut s = core.client().await;
+        s.subscribe(session.clone(), takeover_offset).await.unwrap();
+        let mut out = Vec::new();
+        while let Ok(Ok(Some(e))) =
+            tokio::time::timeout(Duration::from_millis(400), s.next_event()).await
+        {
+            let ev = e.event.unwrap();
+            if ev.task_id.as_ref() == Some(&task) {
+                out.push((ev.aggregate_type, ev.event_type));
+            }
+        }
+        out
+    };
+    assert!(!after.is_empty());
+    for (agg, ty) in &after {
+        assert!(
+            matches!(
+                (agg.as_str(), ty.as_str()),
+                ("run", "RunFenced")
+                    | ("run", "RunSuspended")
+                    | ("task", "TaskWaiting")
+                    | ("task", "TaskNeedsAttention")
+            ),
+            "state advanced under a stale lease: {agg}/{ty}\n{after:?}"
+        );
+    }
+    let attempts_before_resume = seen.lock().unwrap().len();
+    // The stale owner cannot resume; the new owner can, under its generation.
+    let err = a.command(start(g1, 0xD4)).await.unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "STALE_LEASE"),
+        "{err}"
+    );
+    let ack = b.command(start(Some(g2), 0xD5)).await.unwrap();
+    let started: TaskRunStarted = Client::result(&ack).unwrap();
+    assert!(started.resumed);
+    let st = wait_task(&mut b, &task, 120).await;
+    let evs = task_events(&core, &session, &task).await;
+    assert_eq!(
+        (st.state.as_str(), st.run_state.as_str()),
+        ("ReadyForReview", "Completed"),
+        "{st:?}\n{evs:#?}"
+    );
+    let resumed = evs
+        .iter()
+        .find(|(_, t, _)| t == "RunResumed")
+        .map(|(_, _, p)| p.clone())
+        .unwrap();
+    assert_eq!(resumed["kernel_lease_generation"], json!(g2));
+    assert!(
+        seen.lock().unwrap().len() > attempts_before_resume,
+        "the new owner ran the model"
+    );
+    // The stale owner's model result was never applied: every StepSucceeded
+    // of a ModelInvoke step precedes the fence or follows the resume.
+    let mut fence_seen = false;
+    let mut resume_seen = false;
+    for (agg, ty, _) in &evs {
+        match (agg.as_str(), ty.as_str()) {
+            ("run", "RunFenced") => fence_seen = true,
+            ("run", "RunResumed") => resume_seen = true,
+            ("run_step", "StepSucceeded")
+            | ("run_step", "StepFailed")
+            | ("tool_call", "ToolCallDispatched") => {
+                assert!(
+                    !fence_seen || resume_seen,
+                    "a step landed between the fence and the resume\n{evs:#?}"
+                );
+            }
+            _ => {}
+        }
+    }
+}

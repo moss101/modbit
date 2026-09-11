@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 739,
-    "docs_bytes": 1047325
+    "root_and_tooling": 744,
+    "docs_bytes": 1048196
   },
   "sections": [
     {
@@ -338,8 +338,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Core and Cloud Backend Implementation",
-      "bytes": 7476,
-      "sha256": "09beec690bb13005db61c0a2b3ff60594741f49023fc8510ceb4b3e29b199f46"
+      "bytes": 8354,
+      "sha256": "2313aa0669345474cd26c835f917594c3dd572411bbd7a01dd6c0370f5c4011f"
     },
     {
       "path": "docs/34_OBSERVABILITY_COST_AND_OPERATIONS_DATA.md",
@@ -851,8 +851,8 @@
       "section": "live-state",
       "section_title": "Live state",
       "title": "Build Manifest",
-      "bytes": 4700,
-      "sha256": "a75278cb5d6a49c7bdd2dad028d537f274c1689b30ed8d00d6ce4504634f6abb"
+      "bytes": 4693,
+      "sha256": "d9cac08f43cd0058bf74fd886856f96e0bde09cbd9f4e0e34ffdc8c26417c012"
     }
   ],
   "root_and_tooling": [
@@ -4488,33 +4488,58 @@
     },
     {
       "path": "evidence/m4/M4.2/TASK_CARD.md",
-      "bytes": 6477,
-      "sha256": "fb4a8e396197bd2a9b59436662662c5087dd685c546cefd87cffb16410d3c141"
+      "bytes": 6694,
+      "sha256": "45618e9c34dc93255b23d4cd513da9057090996cfae19863a541710a01b5dc65"
+    },
+    {
+      "path": "evidence/m4/M4.2/ci-run-34580712896.json",
+      "bytes": 36858,
+      "sha256": "7f04b526f263492ad23820c7713278936f26fd8120278162761ef19c44821d62"
+    },
+    {
+      "path": "evidence/m4/M4.2/ci-run-34586546102.json",
+      "bytes": 37317,
+      "sha256": "80e5c3e9706fe7fb0fb91654542801aaa7c86685085a06d32c9aff7945065a9f"
     },
     {
       "path": "evidence/m4/M4.2/evidence.json",
-      "bytes": 1688,
-      "sha256": "61e1124dd22fdbb1be32f0455169c79ce5151649e1fd970f6e9b23661e78e1e2"
+      "bytes": 2198,
+      "sha256": "cf2f5e2e0d50349544b3c110247e960391397656da191b9c0b90d29559a37dd5"
     },
     {
       "path": "evidence/m4/M4.3/TASK_CARD.md",
-      "bytes": 6987,
-      "sha256": "d41ca975bb28c88934c34dc4511297c88a967c2c9aca252ef749524cda15058e"
+      "bytes": 7066,
+      "sha256": "c6f843ac2c32015c0db397bac1611e48a6b8041604b9dfe650adee4b7b021b0b"
+    },
+    {
+      "path": "evidence/m4/M4.3/ci-run-34586546102.json",
+      "bytes": 37317,
+      "sha256": "80e5c3e9706fe7fb0fb91654542801aaa7c86685085a06d32c9aff7945065a9f"
     },
     {
       "path": "evidence/m4/M4.3/evidence.json",
-      "bytes": 1387,
-      "sha256": "5e66b2487c9b4008d2358da27cda2c6c334bc887d5f03d2203965ade26d02ceb"
+      "bytes": 1560,
+      "sha256": "a61a3b918e40bc03d57b2bb6a6cad76b8afc370713a43a690536f89f8286edeb"
+    },
+    {
+      "path": "evidence/m4/M4.4/TASK_CARD.md",
+      "bytes": 5045,
+      "sha256": "0b1da9764a95b7a3d40fd2ec39017b43a8acd483a675cc6ca0123254ac02783e"
+    },
+    {
+      "path": "evidence/m4/M4.4/evidence.json",
+      "bytes": 1089,
+      "sha256": "a6c073cf0901f6dd846f075047a3f937a6d6294eb2e7d467dc2a1132d5a9b2ff"
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 40860,
-      "sha256": "10db6fe6505377cb26fddaa0f4f68680b88edf3d5b0545dc20c60744cfeadd05"
+      "bytes": 40855,
+      "sha256": "c4ebbfee0d5016ce6428b4d88bde3fb50c0e35ce6d7377137c0c3c9784f735c5"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1299642,
-      "sha256": "7e45d8425d895550b6bd217bc0730b959a4a34d50fd0eeb409787b402259bdc0"
+      "bytes": 1304663,
+      "sha256": "c8d76f0ccf64da5c44d7c987c61f00106b9a1258d54d0bf3dc028351ab395ee3"
     },
     {
       "path": "tools/build_graph.py",

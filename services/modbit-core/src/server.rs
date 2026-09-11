@@ -960,6 +960,8 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                     generation: session.generation,
                     tasks,
                     last_offset,
+                    lease_generation: session.lease_generation,
+                    lease_owner: session.lease_owner.clone().unwrap_or_default(),
                 }
                 .encode_to_vec(),
             )
@@ -1600,6 +1602,7 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 run_id: None,
                 turn_id: None,
                 call_id: None,
+                lease_generation: env.expected_generation,
             };
             match core.tools.invoke(&core.store, req).await {
                 Ok(done) => {
@@ -2744,6 +2747,7 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 pinned: !p.model.is_empty(),
                 plan_id: String::new(),
                 slot_id: String::new(),
+                lease_generation: 0,
             };
             match core
                 .runtime

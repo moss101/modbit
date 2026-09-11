@@ -418,6 +418,7 @@ impl ToolHost {
             run_id,
             turn_id,
             call_id,
+            lease_generation,
         } = call;
         let (workspace, root) = match &workspace_root {
             Some(r) => {
@@ -484,7 +485,7 @@ impl ToolHost {
                 .map(|t| t.spec().clone());
             let mut st = store.lock().await;
             let arguments_ref = st.objects().put(arguments_json.as_bytes()).ok();
-            st.append(AppendRequest {
+            let req = AppendRequest {
                 tenant_id,
                 session_id,
                 task_id: Some(task_id),
@@ -515,7 +516,11 @@ impl ToolHost {
                     },
                     actor.clone(),
                 )],
-            })?;
+            };
+            match lease_generation {
+                Some(g) => st.append_fenced(req, g)?,
+                None => st.append(req)?,
+            };
         }
         let journal: Arc<dyn modbit_tools::DispatchJournal> = Arc::new(DispatchLog {
             store: Arc::clone(store),
@@ -526,6 +531,7 @@ impl ToolHost {
             turn_id,
             actor: actor.clone(),
             prior_state,
+            lease_generation,
         });
         let ctx = InvokeContext {
             task_id,
@@ -1026,6 +1032,10 @@ pub struct InvokeRequest<'a> {
     pub turn_id: Option<modbit_domain::TurnId>,
     /// The model's call id in the assistant message.
     pub call_id: Option<String>,
+    /// The session lease generation the caller holds (M4.4): the proposal and
+    /// the dispatch are fenced by it, so a superseded owner cannot start an
+    /// effect; the outcome of an effect already running is recorded either way.
+    pub lease_generation: Option<u64>,
 }
 
 /// What an invocation produced.
@@ -1092,6 +1102,8 @@ struct DispatchLog {
     turn_id: Option<modbit_domain::TurnId>,
     actor: Actor,
     prior_state: Option<ToolCallState>,
+    /// The lease the dispatch is fenced by (M4.4).
+    lease_generation: Option<u64>,
 }
 
 impl modbit_tools::DispatchJournal for DispatchLog {
@@ -1131,7 +1143,7 @@ impl modbit_tools::DispatchJournal for DispatchLog {
                 .tool_call(&record.tool_call_id)
                 .map_err(|e| e.to_string())?
                 .map(|c| c.generation);
-            st.append(AppendRequest {
+            let req = AppendRequest {
                 tenant_id: self.tenant_id,
                 session_id: self.session_id,
                 task_id: Some(self.task_id),
@@ -1142,7 +1154,12 @@ impl modbit_tools::DispatchJournal for DispatchLog {
                 aggregate_id: *record.tool_call_id.as_bytes(),
                 expected_sequence,
                 events,
-            })
+            };
+            // docs/33: a superseded owner cannot start an effect.
+            match self.lease_generation {
+                Some(g) => st.append_fenced(req, g),
+                None => st.append(req),
+            }
             .map(|_| ())
             .map_err(|e| e.to_string())
         })

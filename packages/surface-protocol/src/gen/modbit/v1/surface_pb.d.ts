@@ -307,6 +307,20 @@ export declare type SessionSnapshot = Message<"modbit.v1.SessionSnapshot"> & {
    * @generated from field: uint64 last_offset = 5;
    */
   lastOffset: bigint;
+
+  /**
+   * The session kernel lease (docs/13, docs/33; M4.4): a client of the same
+   * owner presents lease_generation to act under the current lease instead
+   * of taking it over; 0 = no lease acquired yet.
+   *
+   * @generated from field: uint64 lease_generation = 6;
+   */
+  leaseGeneration: bigint;
+
+  /**
+   * @generated from field: string lease_owner = 7;
+   */
+  leaseOwner: string;
 };
 
 /**

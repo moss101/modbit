@@ -164,6 +164,18 @@ pub enum RunEvent {
         /// Object hash of the same plan, for clients that read it by ref.
         plan_ref: String,
     },
+    /// `RunFenced` (docs/13 "Fencing and epochs", docs/33 "Session kernel
+    /// lease", M4.4): the execution owner found the session lease it ran under
+    /// superseded and stopped advancing state; `RunSuspended` follows. No
+    /// state change.
+    RunFenced {
+        /// The generation the run held.
+        kernel_lease_generation: u64,
+        /// The generation the session is at now.
+        current_generation: u64,
+        /// Who holds it.
+        owner: String,
+    },
     /// `RequestProfiled` (REQ-EPR-003, docs/38 §6): what the Request Profiler
     /// said about this run's request, recorded in shadow — nothing routes on
     /// it. A conservative fallback is recorded as one. No state change.
@@ -333,6 +345,7 @@ impl RunEvent {
             Self::RoutingPlanAdmitted { .. } => "RoutingPlanAdmitted",
             Self::SlotActivated { .. } => "SlotActivated",
             Self::RoutingAttemptRecorded { .. } => "RoutingAttemptRecorded",
+            Self::RunFenced { .. } => "RunFenced",
             Self::FlakyCheckQuarantined { .. } => "FlakyCheckQuarantined",
             Self::RegressionAttributed { .. } => "RegressionAttributed",
             Self::DiffInvariantViolated { .. } => "DiffInvariantViolated",
@@ -414,6 +427,7 @@ impl Run {
             | RunEvent::RoutingPlanAdmitted { .. }
             | RunEvent::SlotActivated { .. }
             | RunEvent::RoutingAttemptRecorded { .. }
+            | RunEvent::RunFenced { .. }
             | RunEvent::FlakyCheckQuarantined { .. }
             | RunEvent::RegressionAttributed { .. }
             | RunEvent::DiffInvariantViolated { .. } => {

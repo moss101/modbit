@@ -341,6 +341,7 @@ pub(crate) async fn run(
                         run_id: None,
                         turn_id: None,
                         call_id: Some(call_id.clone()),
+                        lease_generation: lt.lease(),
                     },
                 )
                 .await;

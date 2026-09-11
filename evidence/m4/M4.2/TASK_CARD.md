@@ -42,4 +42,4 @@ Named tests (run on macOS, Linux and Windows by `.github/workflows/ci.yml`):
 ## Evidence
 
 - `evidence.json` in this directory (commits, hosted CI run, test names)
-- CI run json copy alongside
+- commits `4eb837d` (the change) and `08ac542` (forward fixes for its first run 34580712896, which failed on two unrelated tests; `ci-run-34580712896.json`); hosted CI run 34586546102 green on macOS, Linux and Windows (`ci-run-34586546102.json`)

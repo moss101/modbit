@@ -2428,12 +2428,16 @@
    "milestone": "M4",
    "order": 1,
    "source": "docs/43",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "test:qual_m4_2_e2e_006_async_compaction_installs_at_a_boundary_and_a_late_result_is_refused",
     "test:an_asynchronous_result_installs_only_onto_the_prefix_and_branch_it_saw",
     "test:session_branch_generation_moves_forward_only_and_is_projected",
-    "artifact:evidence/m4/M4.2/TASK_CARD.md"
+    "artifact:evidence/m4/M4.2/TASK_CARD.md",
+    "run:34586546102",
+    "commit:4eb837d",
+    "commit:08ac542",
+    "artifact:evidence/m4/M4.2/ci-run-34586546102.json"
    ],
    "notes": [
     {
@@ -2459,9 +2463,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "real-system proof locally: a worker result installs at a later boundary as an ASYNC epoch bound to its logged request; with the fault-10 hook the late result is refused on the log (NOT_SUCCESSOR/SOURCE_REWRITTEN) after the sync fallback installed, and its manifest never reaches the model; hosted CI pending"
+    },
+    {
+     "at": "2026-09-11T10:13:38Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34586546102 green on macOS, Linux and Windows at 08ac542 (the task's own run 34580712896 failed on two unrelated tests, fixed forward in 08ac542): the ASYNC install and the fault-10 stale rejection pass on every runner"
+    },
+    {
+     "at": "2026-09-11T10:13:38Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on hosted CI run 34586546102; card records the audit (PARTIAL), the entry points, the proof and the limitations (BRANCH_CHANGED proven at crate and store level until fork/revert exist; the worker delay is a docs/54 fault hook)"
     }
    ],
-   "status_changed_on": "2026-09-11T08:44:12Z"
+   "status_changed_on": "2026-09-11T10:13:38Z"
   },
   {
    "id": "M4.3",
@@ -2471,8 +2487,54 @@
    "milestone": "M4",
    "order": 2,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0012_0013_e2e_007_checkpoint_epochs_are_fenced_and_restore_validates_every_object",
+    "test:a_stale_epoch_never_commits_over_a_newer_one_and_tampering_is_caught",
+    "artifact:evidence/m4/M4.3/TASK_CARD.md",
+    "run:34586546102",
+    "commit:08ac542",
+    "artifact:evidence/m4/M4.3/ci-run-34586546102.json"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-11T10:13:38Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: crates/checkpoint was the empty M0.1 scaffold; no checkpoint record, table, event or restore path existed; the revert path was the change-transaction history and the git dirty snapshot (docs/14 §8 names them as the Alpha stand-in); docs/31 checkpoints table and docs/30 Checkpoint* events unbuilt; E2E-007 and QUAL-EV-0012/0013 unproven"
+    },
+    {
+     "at": "2026-09-11T10:13:38Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "crates/checkpoint manifests/fence/chain/validate; domain Checkpoint* events; V12 checkpoints projection with the fence; Core capture/restore + CreateCheckpoint/ListCheckpoints/RestoreCheckpoint; before_completion/before_revert hooks; V13 routing rows keyed per run (defect found by the proof)"
+    },
+    {
+     "at": "2026-09-11T10:13:38Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the real Core and the agent loop; local gate green"
+    },
+    {
+     "at": "2026-09-11T10:13:38Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system proof: held epoch N refused after N+1 commits; corrupt object refuses the restore untouched; intact chain restores the worktree and cursor after a hard kill"
+    },
+    {
+     "at": "2026-09-11T10:13:38Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34586546102 green on macOS, Linux and Windows at 08ac542"
+    },
+    {
+     "at": "2026-09-11T10:13:38Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on hosted CI run 34586546102; card records the audit (ABSENT), the entry points, the V13 routing-identity fix the proof found, the proof and the limitations"
+    }
+   ],
+   "status_changed_on": "2026-09-11T10:13:38Z"
   },
   {
    "id": "M4.4",
@@ -2482,8 +2544,39 @@
    "milestone": "M4",
    "order": 3,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "test:qual_m4_4_a_stale_execution_owner_is_fenced_out_and_the_new_owner_resumes",
+    "test:qual_ev_0054_0273_session_lease_fences_out_stale_writers_across_restart",
+    "artifact:evidence/m4/M4.4/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-11T10:13:51Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: M1 fenced commands (require_lease/STALE_LEASE; RunResumed refuses an older generation) but the agent loop, the execution owner, carried no generation: after a second owner acquired the lease mid-run the old loop kept appending turns, steps, dispatches and outcomes; docs/33 says a stale owner can append audit events but cannot advance state; docs/54 fault 8 unproven"
+    },
+    {
+     "at": "2026-09-11T10:13:51Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "EventStore::append_fenced + Error::StaleLease (checked inside the append transaction); RunEvent::RunFenced; StartConfig.lease_generation; Lineage::fenced/unfenced; runtime append fenced; lease checks before each turn, after each model response, before each tool call and at loop end; LoopEnd::Fenced writes the audit records unfenced; tool proposal and dispatch journal fenced; SessionSnapshot exposes lease_generation/owner and the CLI joins the current lease instead of minting one per invocation"
+    },
+    {
+     "at": "2026-09-11T10:17:42Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the store, the loop, the tool journal and the CLI; local gate green (fmt, clippy -D warnings, fixtures, cargo test --workspace exit 0)"
+    },
+    {
+     "at": "2026-09-11T10:17:42Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system proof locally: a second owner takes the lease mid-run; the stale loop records RunFenced and suspends, nothing advances after the takeover, the stale owner's StartTask is STALE_LEASE and the new owner resumes to completion; hosted CI pending"
+    }
+   ],
+   "status_changed_on": "2026-09-11T10:17:42Z"
   },
   {
    "id": "M4.5",

@@ -291,6 +291,41 @@ impl EventStore {
         Ok(out)
     }
 
+    /// Append under the session kernel lease (docs/13 "Fencing and epochs",
+    /// docs/33 "Session kernel lease", M4.4): the events land only if the
+    /// session's lease generation is exactly `lease_generation` at commit
+    /// time, checked inside the same transaction. A writer whose lease was
+    /// superseded gets [`Error::StaleLease`] and nothing is written — it may
+    /// still record audit events through [`Self::append`], but it cannot
+    /// advance state.
+    pub fn append_fenced(
+        &mut self,
+        req: AppendRequest,
+        lease_generation: u64,
+    ) -> Result<Vec<StoredEvent>> {
+        let tx = self
+            .conn
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let current: Option<i64> = tx
+            .query_row(
+                "SELECT lease_generation FROM sessions WHERE session_id = ?1",
+                params![req.session_id.as_bytes().as_slice()],
+                |r| r.get(0),
+            )
+            .optional()?;
+        let current = current.map_or(0, |g| g as u64);
+        if current != lease_generation {
+            return Err(Error::StaleLease {
+                session: req.session_id.to_string(),
+                presented: lease_generation,
+                current,
+            });
+        }
+        let out = append_in(&tx, &self.objects, req)?;
+        tx.commit()?;
+        Ok(out)
+    }
+
     /// Execute a mutating command idempotently (docs/30: "Mutating commands are
     /// idempotent by `command_id`"). A retry with the same `command_id` and
     /// `request_hash` returns the recorded outcome without appending; the same

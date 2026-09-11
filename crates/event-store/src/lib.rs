@@ -103,6 +103,20 @@ pub enum Error {
         /// Problem.
         detail: String,
     },
+    /// A fenced append presented a session lease generation that is no
+    /// longer the session's (docs/13 "Fencing and epochs", docs/33 "Session
+    /// kernel lease"): the writer lost the lease and may not advance state.
+    #[error(
+        "stale lease on session {session}: presented generation {presented}, current {current}"
+    )]
+    StaleLease {
+        /// Session (UUID text).
+        session: String,
+        /// Generation the writer holds.
+        presented: u64,
+        /// Generation the session is at.
+        current: u64,
+    },
 }
 
 /// Result alias.
