@@ -5,9 +5,20 @@
  "tests": [
   "qual_ev_0242_restart_loses_no_durable_truth_while_live_control_resets"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "03a1b28"
+ ],
+ "runs": [
+  {
+   "id": "gha-34597741943",
+   "kind": "hosted CI on 03a1b28",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34597741943",
+   "log": "ci-run-34597741943.json"
+  }
+ ],
  "proof": "Across two hard kills of the real Core, every event (offset, hash, payload), object, checkpoint, protocol state and review view of a finished task reads back identical, the restart adds nothing to that task, the live provider registration is gone with the process (StartTask NO_PROVIDER until the client re-registers it) and its credential is in no file under the profile.",
  "audit": "IMPLEMENTED by design (docs/33); proven here. StartTask now refuses an unregistered named endpoint at the boundary.",
- "limitations": "The typed Hook Bus is M9; the ephemeral control that resets today is the provider registration, the loop, the broker connection and steering."
+ "limitations": "The typed Hook Bus is M9; the ephemeral control that resets today is the provider registration, the loop, the broker connection and steering.",
+ "ci": "https://github.com/moss101/modbit/actions/runs/34597741943 (green on macOS, Linux and Windows at 03a1b28)"
 }

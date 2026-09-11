@@ -15354,8 +15354,52 @@
    "milestone": "M4",
    "qual": "QUAL-EV-0242",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/m4/IMP-EV-0242/TASK_CARD.md",
+    "commit:03a1b28",
+    "test:qual_ev_0242_restart_loses_no_durable_truth_while_live_control_resets",
+    "run:34597741943"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-11T12:22:07Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED by design (docs/33): durable truth in the store, live control process-local; proven here"
+    },
+    {
+     "at": "2026-09-11T12:22:07Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "StartTask refuses an unregistered named endpoint at the boundary (NO_PROVIDER)"
+    },
+    {
+     "at": "2026-09-11T12:22:07Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired in server.rs StartTask; the desktop re-hands its credential to every restarted Core"
+    },
+    {
+     "at": "2026-09-11T12:22:07Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "two hard kills of the real Core; store read directly with no Core running"
+    },
+    {
+     "at": "2026-09-11T12:22:08Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "green on hosted CI (macOS, Linux, Windows) at 03a1b28"
+    },
+    {
+     "at": "2026-09-11T12:22:08Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json under evidence/m4/IMP-EV-0242"
+    }
+   ],
+   "status_changed_on": "2026-09-11T12:22:08Z"
   },
   {
    "id": "IMP-EV-0244",
