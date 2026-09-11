@@ -1150,3 +1150,64 @@ message ProtocolStateView {
   uint32 active_leases = 7;
   string digest = 8;               // sha256 of the canonical state
 }
+
+// ---- M4.3 Workspace checkpoints (docs/19 "Checkpoint epochs", docs/31 checkpoints) ----
+
+message CreateCheckpoint {
+  Id task_id = 1;
+  string kind = 2;                 // "" = the engine decides (baseline first, then deltas); BASELINE | DELTA
+  string reason = 3;               // why (requested | before_completion | before_revert)
+}
+
+message CheckpointView {
+  string checkpoint_id = 1;
+  uint32 epoch = 2;
+  string kind = 3;                 // BASELINE | DELTA
+  string base_checkpoint_id = 4;
+  string status = 5;               // STARTED | CURRENT | SUPERSEDED | REJECTED
+  uint64 workspace_revision = 6;
+  string manifest_ref = 7;         // object hash of the manifest once committed
+  string integrity_hash = 8;
+  string git_head = 9;
+  uint32 files = 10;
+  uint32 removed = 11;
+  uint64 event_offset = 12;        // the runtime cursor
+  uint64 index_generation = 13;
+  string reason = 14;
+  int64 created_at_ms = 15;
+  int64 committed_at_ms = 16;      // 0 while started
+}
+
+message CheckpointCreated {
+  CheckpointView checkpoint = 1;
+  bool committed = 2;              // false when refused as stale
+  string refusal = 3;              // NOT_NEWER | INTEGRITY_MISMATCH | ...
+}
+
+message ListCheckpoints {
+  Id task_id = 1;
+}
+
+message CheckpointList {
+  repeated CheckpointView checkpoints = 1;
+  string current_checkpoint_id = 2;
+  uint32 current_epoch = 3;
+}
+
+message RestoreCheckpoint {
+  Id task_id = 1;
+  string checkpoint_id = 2;        // "" = the current checkpoint
+}
+
+message CheckpointRestoreResult {
+  bool restored = 1;
+  string checkpoint_id = 2;
+  uint32 epoch = 3;
+  repeated string chain = 4;       // manifests walked, oldest first
+  uint32 files_written = 5;
+  uint32 files_reverted = 6;
+  uint64 workspace_revision_after = 7;
+  uint64 event_offset = 8;         // the restored runtime cursor
+  string refusal = 9;              // OBJECT_MISMATCH | BROKEN_LINK | NO_BASELINE | ...
+  string detail = 10;
+}

@@ -43,6 +43,10 @@ Checkpoint metadata includes monotonic epoch, base revision, delta object refs, 
 
 Use periodic full baseline + intermediate deltas. Restore validates every object hash before making the checkpoint current.
 
+### Checkpoints as built (M4.3)
+
+`crates/checkpoint` owns the manifest (`CheckpointManifest`: epoch, kind, base, path → object hash with a tracked deletion as an empty hash, Git HEAD, workspace revision, the runtime cursor, an integrity hash), the fence (`accept_commit`: strictly newer epoch, intact integrity hash), the chain (`chain_to`, `materialize`: baseline then deltas, links and epoch order checked) and the validation (`validate`: every object read back and digest-checked before a byte is written). The Core captures the worktree's dirty state into content-addressed objects, claims the epoch on the log (`CheckpointStarted`) before capturing, commits (`CheckpointCommitted`) only while newer than the current checkpoint — the projection refuses anything else — and records a loser as `CheckpointRejectedStale` (docs/54 fault 9; `MODBIT_FAULT_CHECKPOINT_DELAY=<epoch>:<ms>` is the injection hook). A baseline is taken first and after every eight deltas. Restore (`RestoreCheckpoint`) writes the validated state in one workspace transaction — files the checkpoint has from their objects, dirty paths it does not have back to HEAD or away — records `CheckpointRestored` with the runtime cursor, and refuses the whole restore on the first object that does not match. The agent loop checkpoints before its COMPLETION run and before reverting a WORSENED attempt (doc 14 §8).
+
 ## Protocol state examples
 
 - outstanding ToolCall and unknown outcome reconciliation;

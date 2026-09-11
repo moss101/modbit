@@ -4996,6 +4996,299 @@ export declare type ProtocolStateView = Message<"modbit.v1.ProtocolStateView"> &
 export declare const ProtocolStateViewSchema: GenMessage<ProtocolStateView>;
 
 /**
+ * @generated from message modbit.v1.CreateCheckpoint
+ */
+export declare type CreateCheckpoint = Message<"modbit.v1.CreateCheckpoint"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * "" = the engine decides (baseline first, then deltas); BASELINE | DELTA
+   *
+   * @generated from field: string kind = 2;
+   */
+  kind: string;
+
+  /**
+   * why (requested | before_completion | before_revert)
+   *
+   * @generated from field: string reason = 3;
+   */
+  reason: string;
+};
+
+/**
+ * Describes the message modbit.v1.CreateCheckpoint.
+ * Use `create(CreateCheckpointSchema)` to create a new message.
+ */
+export declare const CreateCheckpointSchema: GenMessage<CreateCheckpoint>;
+
+/**
+ * @generated from message modbit.v1.CheckpointView
+ */
+export declare type CheckpointView = Message<"modbit.v1.CheckpointView"> & {
+  /**
+   * @generated from field: string checkpoint_id = 1;
+   */
+  checkpointId: string;
+
+  /**
+   * @generated from field: uint32 epoch = 2;
+   */
+  epoch: number;
+
+  /**
+   * BASELINE | DELTA
+   *
+   * @generated from field: string kind = 3;
+   */
+  kind: string;
+
+  /**
+   * @generated from field: string base_checkpoint_id = 4;
+   */
+  baseCheckpointId: string;
+
+  /**
+   * STARTED | CURRENT | SUPERSEDED | REJECTED
+   *
+   * @generated from field: string status = 5;
+   */
+  status: string;
+
+  /**
+   * @generated from field: uint64 workspace_revision = 6;
+   */
+  workspaceRevision: bigint;
+
+  /**
+   * object hash of the manifest once committed
+   *
+   * @generated from field: string manifest_ref = 7;
+   */
+  manifestRef: string;
+
+  /**
+   * @generated from field: string integrity_hash = 8;
+   */
+  integrityHash: string;
+
+  /**
+   * @generated from field: string git_head = 9;
+   */
+  gitHead: string;
+
+  /**
+   * @generated from field: uint32 files = 10;
+   */
+  files: number;
+
+  /**
+   * @generated from field: uint32 removed = 11;
+   */
+  removed: number;
+
+  /**
+   * the runtime cursor
+   *
+   * @generated from field: uint64 event_offset = 12;
+   */
+  eventOffset: bigint;
+
+  /**
+   * @generated from field: uint64 index_generation = 13;
+   */
+  indexGeneration: bigint;
+
+  /**
+   * @generated from field: string reason = 14;
+   */
+  reason: string;
+
+  /**
+   * @generated from field: int64 created_at_ms = 15;
+   */
+  createdAtMs: bigint;
+
+  /**
+   * 0 while started
+   *
+   * @generated from field: int64 committed_at_ms = 16;
+   */
+  committedAtMs: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.CheckpointView.
+ * Use `create(CheckpointViewSchema)` to create a new message.
+ */
+export declare const CheckpointViewSchema: GenMessage<CheckpointView>;
+
+/**
+ * @generated from message modbit.v1.CheckpointCreated
+ */
+export declare type CheckpointCreated = Message<"modbit.v1.CheckpointCreated"> & {
+  /**
+   * @generated from field: modbit.v1.CheckpointView checkpoint = 1;
+   */
+  checkpoint?: CheckpointView | undefined;
+
+  /**
+   * false when refused as stale
+   *
+   * @generated from field: bool committed = 2;
+   */
+  committed: boolean;
+
+  /**
+   * NOT_NEWER | INTEGRITY_MISMATCH | ...
+   *
+   * @generated from field: string refusal = 3;
+   */
+  refusal: string;
+};
+
+/**
+ * Describes the message modbit.v1.CheckpointCreated.
+ * Use `create(CheckpointCreatedSchema)` to create a new message.
+ */
+export declare const CheckpointCreatedSchema: GenMessage<CheckpointCreated>;
+
+/**
+ * @generated from message modbit.v1.ListCheckpoints
+ */
+export declare type ListCheckpoints = Message<"modbit.v1.ListCheckpoints"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.ListCheckpoints.
+ * Use `create(ListCheckpointsSchema)` to create a new message.
+ */
+export declare const ListCheckpointsSchema: GenMessage<ListCheckpoints>;
+
+/**
+ * @generated from message modbit.v1.CheckpointList
+ */
+export declare type CheckpointList = Message<"modbit.v1.CheckpointList"> & {
+  /**
+   * @generated from field: repeated modbit.v1.CheckpointView checkpoints = 1;
+   */
+  checkpoints: CheckpointView[];
+
+  /**
+   * @generated from field: string current_checkpoint_id = 2;
+   */
+  currentCheckpointId: string;
+
+  /**
+   * @generated from field: uint32 current_epoch = 3;
+   */
+  currentEpoch: number;
+};
+
+/**
+ * Describes the message modbit.v1.CheckpointList.
+ * Use `create(CheckpointListSchema)` to create a new message.
+ */
+export declare const CheckpointListSchema: GenMessage<CheckpointList>;
+
+/**
+ * @generated from message modbit.v1.RestoreCheckpoint
+ */
+export declare type RestoreCheckpoint = Message<"modbit.v1.RestoreCheckpoint"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * "" = the current checkpoint
+   *
+   * @generated from field: string checkpoint_id = 2;
+   */
+  checkpointId: string;
+};
+
+/**
+ * Describes the message modbit.v1.RestoreCheckpoint.
+ * Use `create(RestoreCheckpointSchema)` to create a new message.
+ */
+export declare const RestoreCheckpointSchema: GenMessage<RestoreCheckpoint>;
+
+/**
+ * @generated from message modbit.v1.CheckpointRestoreResult
+ */
+export declare type CheckpointRestoreResult = Message<"modbit.v1.CheckpointRestoreResult"> & {
+  /**
+   * @generated from field: bool restored = 1;
+   */
+  restored: boolean;
+
+  /**
+   * @generated from field: string checkpoint_id = 2;
+   */
+  checkpointId: string;
+
+  /**
+   * @generated from field: uint32 epoch = 3;
+   */
+  epoch: number;
+
+  /**
+   * manifests walked, oldest first
+   *
+   * @generated from field: repeated string chain = 4;
+   */
+  chain: string[];
+
+  /**
+   * @generated from field: uint32 files_written = 5;
+   */
+  filesWritten: number;
+
+  /**
+   * @generated from field: uint32 files_reverted = 6;
+   */
+  filesReverted: number;
+
+  /**
+   * @generated from field: uint64 workspace_revision_after = 7;
+   */
+  workspaceRevisionAfter: bigint;
+
+  /**
+   * the restored runtime cursor
+   *
+   * @generated from field: uint64 event_offset = 8;
+   */
+  eventOffset: bigint;
+
+  /**
+   * OBJECT_MISMATCH | BROKEN_LINK | NO_BASELINE | ...
+   *
+   * @generated from field: string refusal = 9;
+   */
+  refusal: string;
+
+  /**
+   * @generated from field: string detail = 10;
+   */
+  detail: string;
+};
+
+/**
+ * Describes the message modbit.v1.CheckpointRestoreResult.
+ * Use `create(CheckpointRestoreResultSchema)` to create a new message.
+ */
+export declare const CheckpointRestoreResultSchema: GenMessage<CheckpointRestoreResult>;
+
+/**
  * Command acknowledgement.
  *
  * @generated from enum modbit.v1.CommandStatus

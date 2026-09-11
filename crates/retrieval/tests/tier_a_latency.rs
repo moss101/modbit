@@ -5,6 +5,10 @@
 //! exact, lexical, symbol and semantic indexes of a fixture repository are
 //! all current again within `BUDGET_MS`, measured as the p95 over repeated
 //! single-file changes on each fixture, on the hardware the evidence names.
+//! Forty refreshes per fixture: on a shared CI runner a scheduling hiccup
+//! stretches one sample by hundreds of milliseconds, and a p95 over a dozen
+//! samples is the maximum; over forty it tolerates two such outliers while
+//! still failing on a slow refresh path.
 
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -137,7 +141,7 @@ fn incremental_index_latency_is_within_budget_on_the_tier_a_fixtures() {
                 .unwrap();
         let original = std::fs::read_to_string(root.join(changed)).unwrap();
         let mut samples = Vec::new();
-        for i in 0..12u64 {
+        for i in 0..40u64 {
             // A real edit each time: a distinct comment line at the end.
             std::fs::write(
                 root.join(changed),

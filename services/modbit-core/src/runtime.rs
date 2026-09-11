@@ -756,7 +756,7 @@ fn recover_route(
     match plan {
         Some(p) => {
             let slot = store
-                .routing_activations(&p.plan_id)
+                .routing_activations(&run_id, &p.plan_id)
                 .unwrap_or_default()
                 .into_iter()
                 .next_back()
@@ -4157,6 +4157,13 @@ async fn conclude_repair(
     // WORSENED: revert the attempt's changes, latest first (docs/28 §5).
     let mut reverted = false;
     if outcome == "WORSENED" {
+        // docs/14 §8 (M4.3): a checkpoint before the revert, so the state
+        // being undone stays recoverable.
+        if let Err(e) =
+            crate::checkpoint::capture(core, task, lt, actor, None, "before_revert").await
+        {
+            eprintln!("modbit-core: checkpoint before revert failed: {e}");
+        }
         let mut calls: Vec<ToolCallId> = Vec::new();
         for (call, _, _, _, _, _) in changes.iter().rev() {
             if !calls.contains(call) {
@@ -4477,6 +4484,13 @@ async fn handle_complete(
         .retain(|f| !f.starts_with("verify:") && !f.starts_with("completion:"));
     let precheck = precheck_state.check_completion(unresolved);
     let verdict = if precheck.is_ok() {
+        // docs/14 §8 (M4.3): a checkpoint before the COMPLETION run, so the
+        // candidate the run judges is recoverable exactly as it was.
+        if let Err(e) =
+            crate::checkpoint::capture(core, task, lt, actor, None, "before_completion").await
+        {
+            eprintln!("modbit-core: checkpoint before completion failed: {e}");
+        }
         let (_entry, ok, _rev) =
             run_verification(core, task, lt, actor, state, Stage::Completion, 0).await;
         if ok {

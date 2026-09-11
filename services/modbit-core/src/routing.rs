@@ -42,8 +42,10 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::RoutingPlanView 
     else {
         return wire::RoutingPlanView::default();
     };
-    let attempts = store.routing_attempts(&plan.plan_id).unwrap_or_default();
-    let admission = admission_view(&store, &plan.plan_id);
+    let attempts = store
+        .routing_attempts(&run.run_id, &plan.plan_id)
+        .unwrap_or_default();
+    let admission = admission_view(&store, run.run_id, &plan.plan_id);
     wire::RoutingPlanView {
         plan_id: plan.plan_id.clone(),
         schema_version: plan.schema_version,
@@ -96,9 +98,10 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::RoutingPlanView 
 /// What admission decided about a plan, with the activations it has so far.
 fn admission_view(
     store: &modbit_event_store::EventStore,
+    run_id: modbit_domain::RunId,
     plan_id: &str,
 ) -> Option<wire::RoutingAdmissionView> {
-    let row = store.routing_admission(plan_id).ok().flatten()?;
+    let row = store.routing_admission(&run_id, plan_id).ok().flatten()?;
     Some(wire::RoutingAdmissionView {
         admitted: true,
         plan_id: plan_id.to_owned(),
@@ -115,7 +118,7 @@ fn admission_view(
         thresholds_version: row.thresholds_version,
         target_met: row.target_met,
         activations: store
-            .routing_activations(plan_id)
+            .routing_activations(&run_id, plan_id)
             .unwrap_or_default()
             .into_iter()
             .map(|a| wire::RoutingActivationView {
@@ -268,7 +271,7 @@ pub(crate) async fn admit(
         thresholds_version: feasibility.thresholds_version.clone(),
         target_met: feasibility.target_met,
         activations: store
-            .routing_activations(&plan_id)
+            .routing_activations(&run.run_id, &plan_id)
             .unwrap_or_default()
             .into_iter()
             .map(|a| wire::RoutingActivationView {
@@ -715,7 +718,7 @@ pub(crate) async fn compile(
             .iter()
             .map(|e| format!("{}: {}", e.plan_id, e.reason))
             .collect(),
-        admission: admission_view(&store, &plan_id),
+        admission: admission_view(&store, run.run_id, &plan_id),
         refusal_code: String::new(),
         refusal_detail: String::new(),
     }

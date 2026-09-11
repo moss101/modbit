@@ -9,6 +9,10 @@ publish.workspace = true
 
 [dependencies]
 modbit-domain.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+hex.workspace = true
 
 [lints]
 workspace = true
@@ -16,8 +20,10 @@ workspace = true
 # Module registration parsed by `architecture-lint modules` (M0.4, docs/45, docs/81).
 # owner: subsystem node id in graph/project-graph.json; canonical: doc 81 single-owner
 # systems this crate is THE implementation of (at most one member per system);
-# capabilities: production capabilities with their requirement ids (none yet).
+# capabilities: production capabilities with their requirement ids.
 [package.metadata.modbit]
 owner = "durability"
 canonical = ["checkpoint-engine"]
-capabilities = []
+capabilities = [
+  { id = "checkpoint.epochs", requirements = ["REQ-EV-0012", "REQ-EV-0013"] },
+]

@@ -14153,9 +14153,19 @@ async fn qual_epr_005_new_runs_go_through_the_compiled_initial_leg_and_keep_the_
         1,
         "no second activation: {resumed:?}"
     );
+    // The kill lands at one of two points: with the fourth invocation in
+    // flight (the resumed run invokes the model again: one more attempt) or
+    // just after its response was recorded (M4.1: the resumed run re-enters
+    // the call the model already asked for and does not ask again). Either
+    // way every attempt before the kill is kept and none is invented.
     assert!(
-        resumed.attempts.len() > before.attempts.len(),
+        resumed.attempts.len() >= before.attempts.len(),
         "{resumed:?}"
+    );
+    assert_eq!(
+        resumed.attempts[..before.attempts.len()],
+        before.attempts[..],
+        "the attempts before the kill are exactly kept: {resumed:?}"
     );
     assert_eq!(resumed.path_label, "DIRECT");
     core.kill();
@@ -15404,4 +15414,364 @@ async fn qual_m4_2_e2e_006_async_compaction_installs_at_a_boundary_and_a_late_re
         expected += 1;
     }
     assert_eq!(u64::from(view.compaction_epoch), expected - 1);
+}
+
+/// One `CreateCheckpoint` over the wire.
+async fn create_checkpoint(
+    c: &mut Client,
+    task: &Id,
+    g: Option<u64>,
+    kind: &str,
+    reason: &str,
+) -> modbit_protocol::v1::CheckpointCreated {
+    use modbit_protocol::v1::CreateCheckpoint;
+    let ack = c
+        .command(envelope_fenced(
+            Id {
+                value: (0..16).map(|_| rand::random::<u8>()).collect(),
+            },
+            "CreateCheckpoint",
+            CreateCheckpoint {
+                task_id: Some(task.clone()),
+                kind: kind.into(),
+                reason: reason.into(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    Client::result(&ack).unwrap()
+}
+
+/// The task's checkpoints over the wire.
+async fn list_checkpoints(c: &mut Client, task: &Id) -> modbit_protocol::v1::CheckpointList {
+    use modbit_protocol::v1::ListCheckpoints;
+    let ack = c
+        .command(envelope(
+            Id {
+                value: (0..16).map(|_| rand::random::<u8>()).collect(),
+            },
+            "ListCheckpoints",
+            ListCheckpoints {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    Client::result(&ack).unwrap()
+}
+
+/// One `RestoreCheckpoint` over the wire.
+async fn restore_checkpoint(
+    c: &mut Client,
+    task: &Id,
+    g: Option<u64>,
+    checkpoint_id: &str,
+) -> modbit_protocol::v1::CheckpointRestoreResult {
+    use modbit_protocol::v1::RestoreCheckpoint;
+    let ack = c
+        .command(envelope_fenced(
+            Id {
+                value: (0..16).map(|_| rand::random::<u8>()).collect(),
+            },
+            "RestoreCheckpoint",
+            RestoreCheckpoint {
+                task_id: Some(task.clone()),
+                checkpoint_id: checkpoint_id.into(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    Client::result(&ack).unwrap()
+}
+
+/// QUAL-EV-0012 / QUAL-EV-0013 / docs/51 E2E-007 / docs/54 fault 9 (M4.3):
+/// two checkpoint writers race — epoch N is held past epoch N+1's commit —
+/// and the stale N can never become current: it is refused, on the log, with
+/// N+1 standing. A delta on top of the current baseline records exactly what
+/// changed, including a tracked deletion. Restore walks the chain, reads back
+/// and hash-checks every object before writing anything — a corrupted object
+/// refuses the whole restore and leaves the worktree untouched — and, with
+/// the objects intact, returns the edited worktree and the runtime cursor to
+/// the checkpoint after a Core restart. The agent loop takes a checkpoint
+/// before its COMPLETION run (docs/14 §8).
+#[tokio::test]
+async fn qual_ev_0012_0013_e2e_007_checkpoint_epochs_are_fenced_and_restore_validates_every_object()
+{
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[("a.txt", "a1\n"), ("b.txt", "b1\n")]);
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        // docs/54 fault 9: epoch 1 is held for 1.5 s between capture and commit.
+        ("MODBIT_FAULT_CHECKPOINT_DELAY", "1:1500"),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xC0)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xC1, "local_trusted").await;
+    // Dirty state: a edited, c untracked.
+    std::fs::write(repo.path().join("a.txt"), "a2\n").unwrap();
+    std::fs::write(repo.path().join("c.txt"), "c1\n").unwrap();
+    // The race: N starts first and is held; N+1 starts and commits; N's
+    // commit then finds a newer epoch current and is refused.
+    let mut c_slow = core.client().await;
+    let task_slow = task.clone();
+    let slow = tokio::spawn(async move {
+        create_checkpoint(&mut c_slow, &task_slow, g, "BASELINE", "requested").await
+    });
+    // Let N claim its epoch before N+1 starts.
+    let deadline = std::time::Instant::now() + Duration::from_secs(10);
+    loop {
+        let l = list_checkpoints(&mut c, &task).await;
+        if l.checkpoints
+            .iter()
+            .any(|x| x.epoch == 1 && x.status == "STARTED")
+        {
+            break;
+        }
+        assert!(std::time::Instant::now() < deadline, "{l:?}");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    let fast = create_checkpoint(&mut c, &task, g, "BASELINE", "requested").await;
+    assert!(fast.committed, "{fast:?}");
+    let fast_view = fast.checkpoint.clone().unwrap();
+    assert_eq!(
+        (
+            fast_view.epoch,
+            fast_view.kind.as_str(),
+            fast_view.status.as_str()
+        ),
+        (2, "BASELINE", "CURRENT")
+    );
+    assert_eq!(fast_view.files, 2, "{fast_view:?}");
+    let stale = slow.await.unwrap();
+    assert!(
+        !stale.committed,
+        "the held epoch cannot become current: {stale:?}"
+    );
+    assert_eq!(stale.refusal, "NOT_NEWER");
+    let stale_view = stale.checkpoint.clone().unwrap();
+    assert_eq!(
+        (stale_view.epoch, stale_view.status.as_str()),
+        (1, "REJECTED")
+    );
+    let l = list_checkpoints(&mut c, &task).await;
+    assert_eq!(l.current_epoch, 2, "{l:?}");
+    assert_eq!(l.current_checkpoint_id, fast_view.checkpoint_id);
+    let trail = task_events(&core, &session, &task).await;
+    let rejected: Vec<&serde_json::Value> = trail
+        .iter()
+        .filter(|(_, t, _)| t == "CheckpointRejectedStale")
+        .map(|(_, _, p)| p)
+        .collect();
+    assert_eq!(rejected.len(), 1, "{trail:#?}");
+    assert_eq!(rejected[0]["epoch"], 1);
+    assert_eq!(rejected[0]["current_epoch"], 2);
+    let committed: Vec<&serde_json::Value> = trail
+        .iter()
+        .filter(|(_, t, _)| t == "CheckpointCommitted")
+        .map(|(_, _, p)| p)
+        .collect();
+    assert_eq!(committed.len(), 1);
+    assert_eq!(committed[0]["epoch"], 2);
+    // A delta on top: a edited again, b (tracked) deleted, c unchanged.
+    std::fs::write(repo.path().join("a.txt"), "a3\n").unwrap();
+    std::fs::remove_file(repo.path().join("b.txt")).unwrap();
+    let delta = create_checkpoint(&mut c, &task, g, "", "requested").await;
+    assert!(delta.committed, "{delta:?}");
+    let delta_view = delta.checkpoint.clone().unwrap();
+    assert_eq!((delta_view.epoch, delta_view.kind.as_str()), (3, "DELTA"));
+    assert_eq!(delta_view.base_checkpoint_id, fast_view.checkpoint_id);
+    assert_eq!(
+        (delta_view.files, delta_view.removed),
+        (2, 0),
+        "a changed and b deleted are the delta; c is not repeated: {delta_view:?}"
+    );
+    let manifest = read_object(&mut c, id16(0xC2), &delta_view.manifest_ref).await;
+    let manifest: serde_json::Value = serde_json::from_str(&manifest).unwrap();
+    assert_eq!(manifest["integrity_hash"], json!(delta_view.integrity_hash));
+    assert_eq!(
+        manifest["files"]["b.txt"],
+        json!(""),
+        "a tracked deletion is recorded: {manifest}"
+    );
+    let a3_hash = manifest["files"]["a.txt"].as_str().unwrap().to_owned();
+    assert_eq!(
+        manifest["runtime"]["event_offset"].as_u64().unwrap(),
+        delta_view.event_offset
+    );
+    assert!(delta_view.event_offset > 0);
+    let l = list_checkpoints(&mut c, &task).await;
+    let statuses: Vec<(u32, String)> = l
+        .checkpoints
+        .iter()
+        .map(|x| (x.epoch, x.status.clone()))
+        .collect();
+    assert_eq!(
+        statuses,
+        vec![
+            (1, "REJECTED".into()),
+            (2, "SUPERSEDED".into()),
+            (3, "CURRENT".into())
+        ]
+    );
+
+    // Move on, then restart the Core, then restore: the chain is read from
+    // the log of the new process.
+    std::fs::write(repo.path().join("a.txt"), "a4\n").unwrap();
+    std::fs::remove_file(repo.path().join("c.txt")).unwrap();
+    std::fs::write(repo.path().join("d.txt"), "d1\n").unwrap();
+    drop(c);
+    core.kill();
+    let core2 = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c2 = core2.client().await;
+    let g2 = Some(acquire_lease(&mut c2, id16(0xC3), session.clone(), "restorer").await);
+    // A corrupted object refuses the restore before a byte is written.
+    let object = dir
+        .path()
+        .join("core")
+        .join("objects")
+        .join(&a3_hash[..2])
+        .join(&a3_hash[2..]);
+    let original = std::fs::read(&object).unwrap();
+    std::fs::write(&object, b"corrupted\n").unwrap();
+    let r = restore_checkpoint(&mut c2, &task, g2, "").await;
+    assert!(!r.restored, "{r:?}");
+    assert_eq!(r.refusal, "OBJECT_MISMATCH", "{r:?}");
+    assert!(r.detail.contains("a.txt"), "{r:?}");
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("a.txt")).unwrap(),
+        "a4\n",
+        "untouched"
+    );
+    assert!(repo.path().join("d.txt").exists(), "untouched");
+    std::fs::write(&object, original).unwrap();
+    // Intact: the worktree returns to epoch 3 — a3, b deleted, c back, d gone.
+    let r = restore_checkpoint(&mut c2, &task, g2, "").await;
+    assert!(r.restored, "{r:?}");
+    assert_eq!((r.epoch, r.chain.len()), (3, 2), "{r:?}");
+    assert_eq!(
+        r.chain,
+        vec![
+            fast_view.checkpoint_id.clone(),
+            delta_view.checkpoint_id.clone()
+        ]
+    );
+    assert_eq!(
+        r.event_offset, delta_view.event_offset,
+        "the runtime cursor comes back with the worktree"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("a.txt")).unwrap(),
+        "a3\n"
+    );
+    assert!(
+        !repo.path().join("b.txt").exists(),
+        "the tracked deletion is restored"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("c.txt")).unwrap(),
+        "c1\n"
+    );
+    assert!(
+        !repo.path().join("d.txt").exists(),
+        "a file the checkpoint did not have is gone"
+    );
+    // a rewritten and c recreated from objects; d (not in the checkpoint)
+    // removed; b was already absent, as the checkpoint has it.
+    assert_eq!((r.files_written, r.files_reverted), (2, 1), "{r:?}");
+    let trail = task_events(&core2, &session, &task).await;
+    let restored = trail
+        .iter()
+        .find(|(_, t, _)| t == "CheckpointRestored")
+        .map(|(_, _, p)| p.clone())
+        .expect("the restore is on the log");
+    assert_eq!(restored["epoch"], 3);
+    assert_eq!(restored["chain"].as_array().unwrap().len(), 2);
+    // Restoring to the superseded baseline is a choice, not the default.
+    let r = restore_checkpoint(&mut c2, &task, g2, &fast_view.checkpoint_id).await;
+    assert!(r.restored, "{r:?}");
+    assert_eq!(r.epoch, 2);
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("a.txt")).unwrap(),
+        "a2\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("b.txt")).unwrap(),
+        "b1\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("c.txt")).unwrap(),
+        "c1\n"
+    );
+    // Deriving the table from the log again gives the same rows.
+    let l2 = list_checkpoints(&mut c2, &task).await;
+    assert_eq!(
+        l2.checkpoints
+            .iter()
+            .map(|x| (x.epoch, x.status.clone()))
+            .collect::<Vec<_>>(),
+        statuses
+    );
+
+    // docs/14 §8: the agent loop checkpoints before its COMPLETION run.
+    let (_repo2, root2) = plain_repo(&[("n.txt", "n\n")]);
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "add a note", "expected_files": ["note.txt"]}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "note.txt", "op": "create", "content": "hello\n"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, _seen) = scripted_model(script, None).await;
+    let dir2 = tempfile::tempdir().unwrap();
+    let env2 = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core3 = CoreProcess::spawn_with_env(dir2.path(), &env2);
+    let mut c3 = core3.client().await;
+    let (session3, _) = create_session(&mut c3, id16(0xC4)).await;
+    let g3 = lease_for(&session3);
+    let task3 =
+        create_task_with_profile(&mut c3, &session3, g3, &root2, 0xC5, "local_trusted").await;
+    let ack = c3
+        .command(envelope_fenced(
+            id16(0xC6),
+            "StartTask",
+            modbit_protocol::v1::StartTask {
+                task_id: Some(task3.clone()),
+                endpoint: "openai".into(),
+                model: "gpt-5".into(),
+                max_turns: 0,
+                max_tool_calls: 0,
+                max_no_progress_turns: 0,
+            }
+            .encode_to_vec(),
+            g3,
+        ))
+        .await
+        .unwrap();
+    let _: modbit_protocol::v1::TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c3, &task3, 60).await;
+    let trail = task_events(&core3, &session3, &task3).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}\n{trail:#?}");
+    let before_completion = trail
+        .iter()
+        .find(|(_, t, p)| t == "CheckpointCommitted" && p["kind"] == "BASELINE")
+        .map(|(_, _, p)| p.clone())
+        .expect("a checkpoint before the COMPLETION run");
+    assert_eq!(before_completion["files"], 1, "{before_completion}");
+    let l3 = list_checkpoints(&mut c3, &task3).await;
+    assert_eq!(l3.current_epoch, 1);
+    assert_eq!(l3.checkpoints[0].reason, "before_completion");
+    let bytes = read_object_bytes(&mut c3, id16(0xC7), &l3.checkpoints[0].manifest_ref).await;
+    let m: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    assert!(m["files"]["note.txt"].as_str().unwrap().len() == 64, "{m}");
 }

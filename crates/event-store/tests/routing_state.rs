@@ -90,7 +90,7 @@ fn rows(store: &EventStore, run: &RunId) -> (usize, usize, usize, usize) {
     let slots = plans.iter().map(|p| p.slots.len()).sum();
     let attempts: Vec<_> = plans
         .iter()
-        .flat_map(|p| store.routing_attempts(&p.plan_id).unwrap())
+        .flat_map(|p| store.routing_attempts(run, &p.plan_id).unwrap())
         .collect();
     let unknown = attempts.iter().filter(|a| !a.usage_known).count();
     (plans.len(), slots, attempts.len(), unknown)
@@ -378,7 +378,7 @@ fn a_plan_its_slots_and_its_attempts_are_durable_and_rebuildable() {
     );
     // The unknown attempt stayed unknown through all of it: a cancelled call
     // whose provider reported nothing must never be read back as free.
-    let attempts = store.routing_attempts(&one.plan_id).unwrap();
+    let attempts = store.routing_attempts(&run, &one.plan_id).unwrap();
     assert_eq!(attempts.len(), 2);
     assert_eq!(
         (
@@ -429,6 +429,9 @@ fn make_pre_routing(dir: &std::path::Path) {
     // `protocol_state` table.
     conn.execute("DROP TABLE IF EXISTS protocol_state", [])
         .unwrap();
+    // V12 (M4.3) added `checkpoints`.
+    conn.execute("DROP TABLE IF EXISTS checkpoints", [])
+        .unwrap();
     // V11 (M4.2) added the session branch generation and `compaction_epochs`.
     conn.execute("DROP TABLE IF EXISTS compaction_epochs", [])
         .unwrap();
@@ -467,8 +470,8 @@ fn a_database_from_before_the_routing_tables_upgrades_and_derives_them() {
 
     make_pre_routing(dir.path());
     let (store, report) = EventStore::open_with_report(dir.path()).unwrap();
-    assert_eq!((report.from_version, report.to_version), (6, 11));
-    assert_eq!(report.applied, vec![7, 8, 9, 10, 11]);
+    assert_eq!((report.from_version, report.to_version), (6, 13));
+    assert_eq!(report.applied, vec![7, 8, 9, 10, 11, 12, 13]);
     assert_eq!(
         store.last_offset().unwrap(),
         events,
@@ -483,7 +486,7 @@ fn a_database_from_before_the_routing_tables_upgrades_and_derives_them() {
     assert_eq!(one.content_digest, p.content_digest);
     assert_eq!(
         store
-            .routing_attempts(&one.plan_id)
+            .routing_attempts(&run, &one.plan_id)
             .unwrap()
             .iter()
             .filter(|a| !a.usage_known)
@@ -544,7 +547,7 @@ fn a_crash_during_the_routing_migration_leaves_a_recoverable_database() {
     let (store, report) = EventStore::open_with_report(dir.path()).unwrap();
     assert_eq!(
         (report.from_version, report.to_version),
-        (6, 11),
+        (6, 13),
         "the killed migration committed nothing"
     );
     assert_eq!(

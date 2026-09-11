@@ -496,6 +496,11 @@ impl EventStore {
         crate::projections::load_approvals_for_session(&self.conn, id)
     }
 
+    /// The checkpoints of a task (docs/31 `checkpoints`), by epoch.
+    pub fn checkpoints(&self, task: &TaskId) -> Result<Vec<crate::projections::CheckpointRow>> {
+        crate::projections::load_checkpoints(&self.conn, task)
+    }
+
     /// The compaction requests of a task (docs/31 `compaction_epochs`),
     /// oldest first: pending, committed as an epoch, or rejected.
     pub fn compaction_epochs(
@@ -578,26 +583,29 @@ impl EventStore {
     /// failed and the ones whose cost the provider never reported.
     pub fn routing_attempts(
         &self,
+        run: &RunId,
         plan_id: &str,
     ) -> Result<Vec<crate::projections::RoutingAttemptRow>> {
-        crate::projections::load_routing_attempts(&self.conn, plan_id)
+        crate::projections::load_routing_attempts(&self.conn, run, plan_id)
     }
 
-    /// What admission decided about a plan (REQ-EPR-014).
+    /// What admission decided about a run's plan (REQ-EPR-014).
     pub fn routing_admission(
         &self,
+        run: &RunId,
         plan_id: &str,
     ) -> Result<Option<crate::projections::RoutingAdmissionRow>> {
-        crate::projections::load_routing_admission(&self.conn, plan_id)
+        crate::projections::load_routing_admission(&self.conn, run, plan_id)
     }
 
-    /// The activations recorded against a plan: what bounds a slot, and what a
-    /// restart must recover rather than repeat.
+    /// The activations recorded against a run's plan: what bounds a slot,
+    /// and what a restart must recover rather than repeat.
     pub fn routing_activations(
         &self,
+        run: &RunId,
         plan_id: &str,
     ) -> Result<Vec<crate::projections::RoutingActivationRow>> {
-        crate::projections::load_routing_activations(&self.conn, plan_id)
+        crate::projections::load_routing_activations(&self.conn, run, plan_id)
     }
 
     /// Quarantined checks of an agent run: (check_id, first_run_id, rerun_id).

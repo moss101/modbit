@@ -231,6 +231,197 @@ fn project_compaction(
     Ok(())
 }
 
+/// docs/31 `checkpoints` (M4.3): `CheckpointStarted` claims the epoch as a
+/// STARTED row; `CheckpointCommitted` makes it CURRENT and the previous
+/// CURRENT one SUPERSEDED — refused (the whole append fails) when a row with
+/// an epoch at least as new is already CURRENT or SUPERSEDED, so a stale
+/// writer can never overwrite newer state; `CheckpointRejectedStale` records
+/// the refusal; `CheckpointRestored` marks the target RESTORED_TO.
+fn project_checkpoint(
+    tx: &Transaction<'_>,
+    task: &Task,
+    event: &TaskEvent,
+    at: Timestamp,
+    offset: u64,
+) -> Result<()> {
+    match event {
+        TaskEvent::CheckpointStarted {
+            checkpoint_id,
+            epoch,
+            kind,
+            base_checkpoint_id,
+            reason,
+        } => {
+            tx.execute(
+                "INSERT OR REPLACE INTO checkpoints (checkpoint_id, task_id, epoch, kind, base_checkpoint_id, created_at, status, reason)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'STARTED', ?7)",
+                params![
+                    checkpoint_id,
+                    task.task_id.as_bytes().as_slice(),
+                    i64::from(*epoch),
+                    kind,
+                    base_checkpoint_id,
+                    at.millis(),
+                    reason,
+                ],
+            )?;
+        }
+        TaskEvent::CheckpointCommitted {
+            checkpoint_id,
+            epoch,
+            kind,
+            base_checkpoint_id,
+            manifest_ref,
+            integrity_hash,
+            workspace_revision,
+            git_head,
+            files,
+            removed,
+            event_offset,
+            index_generation,
+        } => {
+            let newest: Option<i64> = tx
+                .query_row(
+                    "SELECT max(epoch) FROM checkpoints WHERE task_id = ?1 AND status IN ('CURRENT', 'SUPERSEDED')",
+                    params![task.task_id.as_bytes().as_slice()],
+                    |r| r.get::<_, Option<i64>>(0),
+                )
+                .optional()?
+                .flatten();
+            if let Some(n) = newest
+                && i64::from(*epoch) <= n
+            {
+                return Err(Error::Projection {
+                    offset,
+                    detail: format!(
+                        "CheckpointCommitted epoch {epoch} is not newer than the current checkpoint epoch {n} (docs/19: a stale epoch can never overwrite newer checkpoint state)"
+                    ),
+                });
+            }
+            tx.execute(
+                "UPDATE checkpoints SET status = 'SUPERSEDED' WHERE task_id = ?1 AND status = 'CURRENT'",
+                params![task.task_id.as_bytes().as_slice()],
+            )?;
+            let git_state = serde_json::json!({ "head": git_head }).to_string();
+            let runtime_ref = format!("offset:{event_offset}");
+            let created: Option<i64> = tx
+                .query_row(
+                    "SELECT created_at FROM checkpoints WHERE checkpoint_id = ?1",
+                    params![checkpoint_id],
+                    |r| r.get(0),
+                )
+                .optional()?;
+            tx.execute(
+                "INSERT OR REPLACE INTO checkpoints (checkpoint_id, task_id, epoch, kind, base_checkpoint_id, workspace_revision, manifest_object_hash, git_state_json, runtime_state_ref, index_generation, created_at, committed_at, status, integrity_hash, reason, files, removed)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, 'CURRENT', ?13, COALESCE((SELECT reason FROM checkpoints WHERE checkpoint_id = ?1), ''), ?14, ?15)",
+                params![
+                    checkpoint_id,
+                    task.task_id.as_bytes().as_slice(),
+                    i64::from(*epoch),
+                    kind,
+                    base_checkpoint_id,
+                    *workspace_revision as i64,
+                    manifest_ref,
+                    git_state,
+                    runtime_ref,
+                    *index_generation as i64,
+                    created.unwrap_or(at.millis()),
+                    at.millis(),
+                    integrity_hash,
+                    i64::from(*files),
+                    i64::from(*removed),
+                ],
+            )?;
+        }
+        TaskEvent::CheckpointRejectedStale {
+            checkpoint_id,
+            epoch,
+            current_epoch,
+            reason,
+        } => {
+            tx.execute(
+                "INSERT OR REPLACE INTO checkpoints (checkpoint_id, task_id, epoch, kind, base_checkpoint_id, created_at, committed_at, status, reason)
+                 VALUES (?1, ?2, ?3, COALESCE((SELECT kind FROM checkpoints WHERE checkpoint_id = ?1), 'DELTA'), (SELECT base_checkpoint_id FROM checkpoints WHERE checkpoint_id = ?1), COALESCE((SELECT created_at FROM checkpoints WHERE checkpoint_id = ?1), ?4), ?4, 'REJECTED', ?5)",
+                params![
+                    checkpoint_id,
+                    task.task_id.as_bytes().as_slice(),
+                    i64::from(*epoch),
+                    at.millis(),
+                    format!("stale: current epoch {current_epoch}; {reason}"),
+                ],
+            )?;
+        }
+        TaskEvent::CheckpointRestored { .. } => {}
+        _ => {}
+    }
+    Ok(())
+}
+
+/// One row of `checkpoints`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CheckpointRow {
+    /// Identity.
+    pub checkpoint_id: String,
+    /// Epoch.
+    pub epoch: u32,
+    /// `BASELINE` | `DELTA`.
+    pub kind: String,
+    /// Base.
+    pub base_checkpoint_id: Option<String>,
+    /// Workspace revision captured.
+    pub workspace_revision: u64,
+    /// Manifest object hash once committed.
+    pub manifest_object_hash: Option<String>,
+    /// Git state JSON.
+    pub git_state_json: Option<String>,
+    /// Runtime cursor reference.
+    pub runtime_state_ref: Option<String>,
+    /// Index generation.
+    pub index_generation: u64,
+    /// `STARTED` | `CURRENT` | `SUPERSEDED` | `REJECTED`.
+    pub status: String,
+    /// Integrity hash once committed.
+    pub integrity_hash: Option<String>,
+    /// Reason.
+    pub reason: String,
+    /// Files named.
+    pub files: u32,
+    /// Paths removed (delta).
+    pub removed: u32,
+    /// Start time.
+    pub created_at: Timestamp,
+    /// Commit or rejection time.
+    pub committed_at: Option<Timestamp>,
+}
+
+/// The checkpoints of a task, by epoch.
+pub fn load_checkpoints(tx: &rusqlite::Connection, task: &TaskId) -> Result<Vec<CheckpointRow>> {
+    let mut stmt = tx.prepare(
+        "SELECT checkpoint_id, epoch, kind, base_checkpoint_id, workspace_revision, manifest_object_hash, git_state_json, runtime_state_ref, index_generation, status, integrity_hash, reason, files, removed, created_at, committed_at FROM checkpoints WHERE task_id = ?1 ORDER BY epoch",
+    )?;
+    let rows = stmt.query_map(params![task.as_bytes().as_slice()], |r| {
+        Ok(CheckpointRow {
+            checkpoint_id: r.get(0)?,
+            epoch: u32::try_from(r.get::<_, i64>(1)?).unwrap_or(u32::MAX),
+            kind: r.get(2)?,
+            base_checkpoint_id: r.get(3)?,
+            workspace_revision: r.get::<_, i64>(4)? as u64,
+            manifest_object_hash: r.get(5)?,
+            git_state_json: r.get(6)?,
+            runtime_state_ref: r.get(7)?,
+            index_generation: r.get::<_, i64>(8)? as u64,
+            status: r.get(9)?,
+            integrity_hash: r.get(10)?,
+            reason: r.get(11)?,
+            files: u32::try_from(r.get::<_, i64>(12)?).unwrap_or(u32::MAX),
+            removed: u32::try_from(r.get::<_, i64>(13)?).unwrap_or(u32::MAX),
+            created_at: Timestamp(r.get(14)?),
+            committed_at: r.get::<_, Option<i64>>(15)?.map(Timestamp),
+        })
+    })?;
+    Ok(rows.collect::<std::result::Result<Vec<_>, _>>()?)
+}
+
 /// One row of `compaction_epochs`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CompactionEpochRow {
@@ -378,6 +569,7 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                 ],
             )?;
             project_compaction(tx, &t, &event, at)?;
+            project_checkpoint(tx, &t, &event, at, offset)?;
             let delta = match &event {
                 TaskEvent::UserQuestionAsked {
                     question_id,
@@ -499,8 +691,8 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                         )?;
                         for s in &plan.slots {
                             tx.execute(
-                                "INSERT OR REPLACE INTO routing_slots (plan_id, slot_id, predecessor, trigger, max_activations, endpoint, model, role, timeout_ms, max_output_tokens, max_retries, reserved_minor, activations)
-                                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, (SELECT count(*) FROM routing_activations WHERE plan_id = ?1 AND slot_id = ?2))",
+                                "INSERT OR REPLACE INTO routing_slots (run_id, plan_id, slot_id, predecessor, trigger, max_activations, endpoint, model, role, timeout_ms, max_output_tokens, max_retries, reserved_minor, activations)
+                                 VALUES (?13, ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, (SELECT count(*) FROM routing_activations WHERE run_id = ?13 AND plan_id = ?1 AND slot_id = ?2))",
                                 params![
                                     plan_id,
                                     &s.slot_id,
@@ -514,6 +706,7 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                                     s.budget.max_output_tokens,
                                     s.budget.max_retries,
                                     s.budget.reserved.minor_units as i64,
+                                    rid.as_bytes().as_slice(),
                                 ],
                             )?;
                         }
@@ -530,8 +723,8 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                     provider_request_id,
                 } => {
                     tx.execute(
-                        "INSERT OR REPLACE INTO routing_attempts (plan_id, slot_id, attempt, started_at, ended_at, outcome, usage_known, input_tokens, output_tokens, provider_request_id)
-                         VALUES (?1, ?2, ?3, COALESCE((SELECT started_at FROM routing_attempts WHERE plan_id = ?1 AND slot_id = ?2 AND attempt = ?3), ?4), ?4, ?5, ?6, ?7, ?8, ?9)",
+                        "INSERT OR REPLACE INTO routing_attempts (run_id, plan_id, slot_id, attempt, started_at, ended_at, outcome, usage_known, input_tokens, output_tokens, provider_request_id)
+                         VALUES (?10, ?1, ?2, ?3, COALESCE((SELECT started_at FROM routing_attempts WHERE run_id = ?10 AND plan_id = ?1 AND slot_id = ?2 AND attempt = ?3), ?4), ?4, ?5, ?6, ?7, ?8, ?9)",
                         params![
                             plan_id,
                             slot_id,
@@ -542,6 +735,7 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                             input_tokens.map(|v| v as i64),
                             output_tokens.map(|v| v as i64),
                             provider_request_id.clone(),
+                            rid.as_bytes().as_slice(),
                         ],
                     )?;
                 }
@@ -559,8 +753,8 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                     target_met,
                 } => {
                     tx.execute(
-                        "INSERT OR REPLACE INTO routing_admissions (plan_id, validation_digest, reserved_minor, currency, scale, lease_generation, admitted_at, feasibility, quality_lcb_bp, stats_version, thresholds_version, target_met)
-                         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+                        "INSERT OR REPLACE INTO routing_admissions (run_id, plan_id, validation_digest, reserved_minor, currency, scale, lease_generation, admitted_at, feasibility, quality_lcb_bp, stats_version, thresholds_version, target_met)
+                         VALUES (?13, ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
                         params![
                             plan_id,
                             validation_digest,
@@ -574,6 +768,7 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                             stats_version,
                             thresholds_version,
                             i64::from(*target_met),
+                            rid.as_bytes().as_slice(),
                         ],
                     )?;
                 }
@@ -584,16 +779,23 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                     reserved_minor,
                 } => {
                     tx.execute(
-                        "INSERT OR REPLACE INTO routing_activations (plan_id, slot_id, activation, reserved_minor, activated_at)
-                         VALUES (?1, ?2, ?3, ?4, COALESCE((SELECT activated_at FROM routing_activations WHERE plan_id = ?1 AND slot_id = ?2 AND activation = ?3), ?5))",
-                        params![plan_id, slot_id, activation, *reserved_minor as i64, at.millis()],
+                        "INSERT OR REPLACE INTO routing_activations (run_id, plan_id, slot_id, activation, reserved_minor, activated_at)
+                         VALUES (?6, ?1, ?2, ?3, ?4, COALESCE((SELECT activated_at FROM routing_activations WHERE run_id = ?6 AND plan_id = ?1 AND slot_id = ?2 AND activation = ?3), ?5))",
+                        params![
+                            plan_id,
+                            slot_id,
+                            activation,
+                            *reserved_minor as i64,
+                            at.millis(),
+                            rid.as_bytes().as_slice()
+                        ],
                     )?;
                     // A slot is bounded by its activations, so the count is
                     // the number of activation rows and never a running total
                     // a replay could double.
                     tx.execute(
-                        "UPDATE routing_slots SET activations = (SELECT count(*) FROM routing_activations WHERE plan_id = ?1 AND slot_id = ?2) WHERE plan_id = ?1 AND slot_id = ?2",
-                        params![plan_id, slot_id],
+                        "UPDATE routing_slots SET activations = (SELECT count(*) FROM routing_activations WHERE run_id = ?3 AND plan_id = ?1 AND slot_id = ?2) WHERE run_id = ?3 AND plan_id = ?1 AND slot_id = ?2",
+                        params![plan_id, slot_id, rid.as_bytes().as_slice()],
                     )?;
                 }
                 RunEvent::FlakyCheckQuarantined {
@@ -1614,10 +1816,10 @@ pub fn load_routing_plans(tx: &rusqlite::Connection, run: &RunId) -> Result<Vec<
     for mut row in rows {
         let mut ss = tx.prepare(
             "SELECT slot_id, predecessor, trigger, max_activations, activations, endpoint, model, role, timeout_ms, max_output_tokens, max_retries, reserved_minor
-             FROM routing_slots WHERE plan_id = ?1 ORDER BY slot_id",
+             FROM routing_slots WHERE run_id = ?2 AND plan_id = ?1 ORDER BY slot_id",
         )?;
         row.slots = ss
-            .query_map(params![row.plan_id], |r| {
+            .query_map(params![row.plan_id, run.as_bytes().as_slice()], |r| {
                 Ok(RoutingSlotRow {
                     slot_id: r.get(0)?,
                     predecessor: r.get(1)?,
@@ -1644,14 +1846,15 @@ pub fn load_routing_plans(tx: &rusqlite::Connection, run: &RunId) -> Result<Vec<
 /// what happened, not of what worked.
 pub fn load_routing_attempts(
     tx: &rusqlite::Connection,
+    run: &RunId,
     plan_id: &str,
 ) -> Result<Vec<RoutingAttemptRow>> {
     let mut stmt = tx.prepare(
         "SELECT slot_id, attempt, outcome, usage_known, input_tokens, output_tokens, provider_request_id
-         FROM routing_attempts WHERE plan_id = ?1 ORDER BY slot_id, attempt",
+         FROM routing_attempts WHERE run_id = ?2 AND plan_id = ?1 ORDER BY slot_id, attempt",
     )?;
     Ok(stmt
-        .query_map(params![plan_id], |r| {
+        .query_map(params![plan_id, run.as_bytes().as_slice()], |r| {
             Ok(RoutingAttemptRow {
                 slot_id: r.get(0)?,
                 attempt: u32::try_from(r.get::<_, i64>(1)?).unwrap_or_default(),
@@ -1708,13 +1911,14 @@ pub struct RoutingActivationRow {
 /// The admission of a plan, when it has one.
 pub fn load_routing_admission(
     tx: &rusqlite::Connection,
+    run: &RunId,
     plan_id: &str,
 ) -> Result<Option<RoutingAdmissionRow>> {
     let mut stmt = tx.prepare(
-        "SELECT validation_digest, reserved_minor, currency, scale, lease_generation, feasibility, quality_lcb_bp, stats_version, thresholds_version, target_met FROM routing_admissions WHERE plan_id = ?1",
+        "SELECT validation_digest, reserved_minor, currency, scale, lease_generation, feasibility, quality_lcb_bp, stats_version, thresholds_version, target_met FROM routing_admissions WHERE run_id = ?2 AND plan_id = ?1",
     )?;
     Ok(stmt
-        .query_map(params![plan_id], |r| {
+        .query_map(params![plan_id, run.as_bytes().as_slice()], |r| {
             Ok(RoutingAdmissionRow {
                 validation_digest: r.get(0)?,
                 reserved_minor: u64::try_from(r.get::<_, i64>(1)?).unwrap_or_default(),
@@ -1736,13 +1940,14 @@ pub fn load_routing_admission(
 /// The activations recorded against a plan, in slot then ordinal order.
 pub fn load_routing_activations(
     tx: &rusqlite::Connection,
+    run: &RunId,
     plan_id: &str,
 ) -> Result<Vec<RoutingActivationRow>> {
     let mut stmt = tx.prepare(
-        "SELECT slot_id, activation, reserved_minor FROM routing_activations WHERE plan_id = ?1 ORDER BY slot_id, activation",
+        "SELECT slot_id, activation, reserved_minor FROM routing_activations WHERE run_id = ?2 AND plan_id = ?1 ORDER BY slot_id, activation",
     )?;
     Ok(stmt
-        .query_map(params![plan_id], |r| {
+        .query_map(params![plan_id, run.as_bytes().as_slice()], |r| {
             Ok(RoutingActivationRow {
                 slot_id: r.get(0)?,
                 activation: u32::try_from(r.get::<_, i64>(1)?).unwrap_or_default(),
@@ -1769,6 +1974,7 @@ pub fn load_flaky_checks(
 /// Truncate the projection tables and replay every event from offset 0.
 pub fn rebuild(tx: &Transaction<'_>, objects: &crate::ObjectStore) -> Result<u64> {
     for t in [
+        "checkpoints",
         "compaction_epochs",
         "protocol_state",
         "routing_activations",

@@ -415,6 +415,129 @@ CREATE TABLE IF NOT EXISTS compaction_epochs (
 CREATE INDEX IF NOT EXISTS compaction_epochs_task ON compaction_epochs (task_id, created_at);
 "#;
 
+/// V12 (M4.3, docs/19 "Checkpoint epochs", docs/31 `checkpoints`): the
+/// checkpoint chain of a task, fenced by epoch — a commit with an epoch no
+/// newer than the current one is refused by the projection.
+pub const V12_CHECKPOINTS: &str = r#"
+CREATE TABLE IF NOT EXISTS checkpoints (
+  checkpoint_id        TEXT    PRIMARY KEY NOT NULL,
+  task_id              BLOB    NOT NULL,
+  epoch                INTEGER NOT NULL,
+  kind                 TEXT    NOT NULL,
+  base_checkpoint_id   TEXT,
+  workspace_revision   INTEGER NOT NULL DEFAULT 0,
+  manifest_object_hash TEXT,
+  git_state_json       TEXT,
+  runtime_state_ref    TEXT,
+  index_generation     INTEGER NOT NULL DEFAULT 0,
+  created_at           INTEGER NOT NULL,
+  committed_at         INTEGER,
+  status               TEXT    NOT NULL,
+  integrity_hash       TEXT,
+  reason               TEXT    NOT NULL DEFAULT '',
+  files                INTEGER NOT NULL DEFAULT 0,
+  removed              INTEGER NOT NULL DEFAULT 0,
+  UNIQUE (task_id, epoch)
+);
+CREATE INDEX IF NOT EXISTS checkpoints_task ON checkpoints (task_id, epoch);
+"#;
+
+/// V13 (found by M4.3's recovery proof; REQ-EPR-001): a compiled plan id is
+/// content-addressed, so two runs that compile the same plan share it — and
+/// the V7/V8 rows, keyed by plan id alone, let one run's slots, attempts,
+/// admission and activations overwrite another's. Routing rows are keyed by
+/// run; the tables are recreated and re-derived from the log.
+pub const V13_ROUTING_PER_RUN: &str = r#"
+DROP INDEX IF EXISTS routing_activations_plan;
+DROP TABLE IF EXISTS routing_activations;
+DROP TABLE IF EXISTS routing_admissions;
+DROP INDEX IF EXISTS routing_attempts_plan;
+DROP TABLE IF EXISTS routing_attempts;
+DROP TABLE IF EXISTS routing_slots;
+DROP INDEX IF EXISTS routing_plans_task;
+DROP TABLE IF EXISTS routing_plans;
+CREATE TABLE routing_plans (
+  run_id             BLOB NOT NULL,
+  plan_id            TEXT NOT NULL,
+  tenant_id          BLOB NOT NULL,
+  session_id         BLOB NOT NULL,
+  task_id            BLOB NOT NULL,
+  schema_version     INTEGER NOT NULL,
+  routing_epoch      INTEGER NOT NULL,
+  lease_generation   INTEGER NOT NULL,
+  created_at         INTEGER NOT NULL,
+  input_digest       TEXT NOT NULL,
+  content_digest     TEXT NOT NULL,
+  plan_ref           TEXT NOT NULL,
+  total_budget_minor INTEGER NOT NULL,
+  total_budget_currency TEXT NOT NULL,
+  total_budget_scale INTEGER NOT NULL,
+  legacy_source      TEXT,
+  PRIMARY KEY (run_id, plan_id),
+  UNIQUE (run_id, routing_epoch)
+);
+CREATE INDEX IF NOT EXISTS routing_plans_task ON routing_plans (task_id, created_at);
+CREATE TABLE routing_slots (
+  run_id           BLOB NOT NULL,
+  plan_id          TEXT NOT NULL,
+  slot_id          TEXT NOT NULL,
+  predecessor      TEXT,
+  trigger          TEXT NOT NULL,
+  max_activations  INTEGER NOT NULL,
+  endpoint         TEXT NOT NULL,
+  model            TEXT NOT NULL,
+  role             TEXT NOT NULL,
+  timeout_ms       INTEGER NOT NULL,
+  max_output_tokens INTEGER NOT NULL,
+  max_retries      INTEGER NOT NULL,
+  reserved_minor   INTEGER NOT NULL,
+  activations      INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (run_id, plan_id, slot_id),
+  FOREIGN KEY (run_id, plan_id) REFERENCES routing_plans(run_id, plan_id)
+);
+CREATE TABLE routing_attempts (
+  run_id         BLOB NOT NULL,
+  plan_id        TEXT NOT NULL,
+  slot_id        TEXT NOT NULL,
+  attempt        INTEGER NOT NULL,
+  started_at     INTEGER NOT NULL,
+  ended_at       INTEGER,
+  outcome        TEXT NOT NULL,
+  usage_known    INTEGER NOT NULL,
+  input_tokens   INTEGER,
+  output_tokens  INTEGER,
+  provider_request_id TEXT,
+  PRIMARY KEY (run_id, plan_id, slot_id, attempt)
+);
+CREATE INDEX IF NOT EXISTS routing_attempts_plan ON routing_attempts (run_id, plan_id, started_at);
+CREATE TABLE routing_admissions (
+  run_id            BLOB NOT NULL,
+  plan_id           TEXT NOT NULL,
+  validation_digest TEXT NOT NULL,
+  reserved_minor    INTEGER NOT NULL,
+  currency          TEXT NOT NULL,
+  scale             INTEGER NOT NULL,
+  lease_generation  INTEGER NOT NULL,
+  admitted_at       INTEGER NOT NULL,
+  feasibility       TEXT NOT NULL DEFAULT '',
+  quality_lcb_bp    INTEGER NOT NULL DEFAULT 0,
+  stats_version     TEXT NOT NULL DEFAULT '',
+  thresholds_version TEXT NOT NULL DEFAULT '',
+  target_met        INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (run_id, plan_id)
+);
+CREATE TABLE routing_activations (
+  run_id         BLOB NOT NULL,
+  plan_id        TEXT NOT NULL,
+  slot_id        TEXT NOT NULL,
+  activation     INTEGER NOT NULL,
+  reserved_minor INTEGER NOT NULL,
+  activated_at   INTEGER NOT NULL,
+  PRIMARY KEY (run_id, plan_id, slot_id, activation)
+);
+CREATE INDEX IF NOT EXISTS routing_activations_plan ON routing_activations (run_id, plan_id, activated_at);
+"#;
+
 /// All migrations in order. Never edit an entry once shipped; append a new one.
 pub const MIGRATIONS: &[Migration] = &[
     Migration {
@@ -482,6 +605,18 @@ pub const MIGRATIONS: &[Migration] = &[
         name: "compaction_epochs",
         up: V11_COMPACTION_EPOCHS,
         rollback: "Additive: a defaulted column on `sessions` and the derivable `compaction_epochs` table (docs/31). Rollback = drop the table; older builds ignore the column; a rebuild derives the rows from the log; no event is touched.",
+    },
+    Migration {
+        version: 12,
+        name: "checkpoints",
+        up: V12_CHECKPOINTS,
+        rollback: "Additive derivable table (docs/31 `checkpoints`). Rollback = drop the table; a rebuild derives the rows from the log; no event is touched.",
+    },
+    Migration {
+        version: 13,
+        name: "routing_rows_per_run",
+        up: V13_ROUTING_PER_RUN,
+        rollback: "Derivable tables recreated with run-scoped keys. Rollback = recreate the V7/V8 shapes and rebuild projections from the log; no event is touched.",
     },
 ];
 

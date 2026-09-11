@@ -2081,6 +2081,165 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 Err((code, message)) => reject(cid, &code, message),
             }
         }
+        "CreateCheckpoint" => {
+            let Ok(p) = wire::CreateCheckpoint::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "CreateCheckpoint");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let kind = match crate::checkpoint::kind_of(&p.kind) {
+                Ok(k) => k,
+                Err(e) => return reject(cid, "BAD_PAYLOAD", e),
+            };
+            let task = {
+                let store = core.store.lock().await;
+                match store.task(&task_id) {
+                    Ok(Some(t)) => t,
+                    Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                }
+            };
+            if task.workspace_root.is_none() {
+                return reject(cid, "NO_WORKSPACE", "the task has no workspace root");
+            }
+            // A checkpoint claims an epoch on the task: fenced like any write.
+            if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
+                return ack;
+            }
+            let reason = if p.reason.is_empty() {
+                "requested".to_owned()
+            } else {
+                p.reason.clone()
+            };
+            let lt = crate::runtime::Lineage::task(core.tenant_id, task.session_id, task_id);
+            match crate::checkpoint::capture(core, &task, lt, &actor, kind, &reason).await {
+                Ok(c) => {
+                    let offset = core.store.lock().await.last_offset().unwrap_or(0);
+                    core.last_offset.send_replace(offset);
+                    let row = core
+                        .store
+                        .lock()
+                        .await
+                        .checkpoints(&task_id)
+                        .unwrap_or_default()
+                        .into_iter()
+                        .find(|r| r.checkpoint_id == c.manifest.checkpoint_id.to_string());
+                    let (committed, refusal) = match &c.committed {
+                        Ok(()) => (true, String::new()),
+                        Err(modbit_checkpoint::StaleCheckpoint::NotNewer { .. }) => {
+                            (false, "NOT_NEWER".to_owned())
+                        }
+                        Err(modbit_checkpoint::StaleCheckpoint::IntegrityMismatch { .. }) => {
+                            (false, "INTEGRITY_MISMATCH".to_owned())
+                        }
+                    };
+                    accept(
+                        cid,
+                        false,
+                        wire::CheckpointCreated {
+                            checkpoint: row.as_ref().map(crate::checkpoint::view),
+                            committed,
+                            refusal,
+                        }
+                        .encode_to_vec(),
+                    )
+                }
+                Err(e) => reject(cid, "CHECKPOINT", e.to_string()),
+            }
+        }
+        "ListCheckpoints" => {
+            let Ok(p) = wire::ListCheckpoints::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "ListCheckpoints");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let store = core.store.lock().await;
+            let task = match store.task(&task_id) {
+                Ok(Some(t)) => t,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            accept(
+                cid,
+                false,
+                crate::checkpoint::list(&store, &task).encode_to_vec(),
+            )
+        }
+        "RestoreCheckpoint" => {
+            let Ok(p) = wire::RestoreCheckpoint::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "RestoreCheckpoint");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let target = if p.checkpoint_id.is_empty() {
+                None
+            } else {
+                match modbit_domain::CheckpointId::parse(&p.checkpoint_id) {
+                    Ok(id) => Some(id),
+                    Err(_) => return reject(cid, "BAD_PAYLOAD", "checkpoint_id is not an id"),
+                }
+            };
+            let task = {
+                let store = core.store.lock().await;
+                match store.task(&task_id) {
+                    Ok(Some(t)) => t,
+                    Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                }
+            };
+            if task.workspace_root.is_none() {
+                return reject(cid, "NO_WORKSPACE", "the task has no workspace root");
+            }
+            if core.runtime.is_running(&task_id).await {
+                return reject(
+                    cid,
+                    "TASK_RUNNING",
+                    "the agent loop is executing; cancel or wait before restoring",
+                );
+            }
+            if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
+                return ack;
+            }
+            let lt = crate::runtime::Lineage::task(core.tenant_id, task.session_id, task_id);
+            match crate::checkpoint::restore(core, &task, lt, &actor, target).await {
+                Ok(Ok(r)) => {
+                    let offset = core.store.lock().await.last_offset().unwrap_or(0);
+                    core.last_offset.send_replace(offset);
+                    accept(
+                        cid,
+                        false,
+                        wire::CheckpointRestoreResult {
+                            restored: true,
+                            checkpoint_id: r.checkpoint_id.to_string(),
+                            epoch: r.epoch,
+                            chain: r.chain.iter().map(ToString::to_string).collect(),
+                            files_written: r.files_written,
+                            files_reverted: r.files_reverted,
+                            workspace_revision_after: r.workspace_revision_after,
+                            event_offset: r.event_offset,
+                            refusal: String::new(),
+                            detail: String::new(),
+                        }
+                        .encode_to_vec(),
+                    )
+                }
+                Ok(Err(refused)) => accept(
+                    cid,
+                    false,
+                    wire::CheckpointRestoreResult {
+                        restored: false,
+                        refusal: refused.code.to_owned(),
+                        detail: refused.detail,
+                        ..Default::default()
+                    }
+                    .encode_to_vec(),
+                ),
+                Err(e) => reject(cid, "CHECKPOINT", e.to_string()),
+            }
+        }
         "UndoToolCall" => {
             let Ok(p) = wire::UndoToolCall::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "UndoToolCall");

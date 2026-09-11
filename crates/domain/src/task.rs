@@ -567,6 +567,83 @@ pub enum TaskEvent {
         /// Provenance label (`user_review`).
         provenance: String,
     },
+    /// `CheckpointStarted` (docs/19 "Checkpoint epochs", docs/30
+    /// "Durability", M4.3): a checkpoint with this epoch began capturing.
+    /// The epoch is claimed here, so a slower writer with an older epoch is
+    /// known to be stale when it commits. No state change.
+    CheckpointStarted {
+        /// Identity, as UUID text.
+        checkpoint_id: String,
+        /// Monotonic epoch.
+        epoch: u32,
+        /// `BASELINE` | `DELTA`.
+        kind: String,
+        /// The base a delta is relative to.
+        base_checkpoint_id: Option<String>,
+        /// Why (`before_completion`, `before_revert`, `requested`).
+        reason: String,
+    },
+    /// `CheckpointCommitted` (REQ-EV-0012/0013): the checkpoint became
+    /// current. The projection refuses this event when a newer epoch is
+    /// already current, so a stale writer can never overwrite newer state.
+    /// No state change.
+    CheckpointCommitted {
+        /// Identity.
+        checkpoint_id: String,
+        /// Epoch.
+        epoch: u32,
+        /// `BASELINE` | `DELTA`.
+        kind: String,
+        /// The base.
+        base_checkpoint_id: Option<String>,
+        /// Object hash of the manifest.
+        manifest_ref: String,
+        /// Manifest integrity hash.
+        integrity_hash: String,
+        /// Workspace revision captured.
+        workspace_revision: u64,
+        /// Git HEAD captured.
+        git_head: Option<String>,
+        /// Files the manifest names (baseline: all dirty; delta: changed).
+        files: u32,
+        /// Paths a delta removed.
+        removed: u32,
+        /// Store offset the runtime cursor points at.
+        event_offset: u64,
+        /// Retrieval index generation captured.
+        index_generation: u64,
+    },
+    /// `CheckpointRejectedStale` (docs/19: a stale epoch can never overwrite
+    /// newer checkpoint state; docs/54 fault 9). No state change.
+    CheckpointRejectedStale {
+        /// Identity.
+        checkpoint_id: String,
+        /// Its epoch.
+        epoch: u32,
+        /// The epoch that was current when it tried to commit.
+        current_epoch: u32,
+        /// Why, in words.
+        reason: String,
+    },
+    /// `CheckpointRestored` (REQ-EV-0013): the worktree and the runtime
+    /// cursor were restored from a validated chain. No state change.
+    CheckpointRestored {
+        /// The checkpoint restored to.
+        checkpoint_id: String,
+        /// Its epoch.
+        epoch: u32,
+        /// Manifests walked, as UUID text, oldest first.
+        chain: Vec<String>,
+        /// Files written from objects.
+        files_written: u32,
+        /// Dirty paths returned to HEAD or removed because the checkpoint
+        /// did not have them.
+        files_reverted: u32,
+        /// Workspace revision after the restore.
+        workspace_revision_after: u64,
+        /// Store offset the restored runtime cursor points at.
+        event_offset: u64,
+    },
     /// `ProtocolStateResumed` (docs/19 layer 2, REQ-EV-0055): a restarted
     /// Core reconstructed the task's protocol state and continued the run
     /// from the boundary it names; the outstanding calls are re-entered by
@@ -642,6 +719,10 @@ impl TaskEvent {
             Self::HarnessBudgetExhausted { .. } => "HarnessBudgetExhausted",
             Self::NoProgressDetected { .. } => "NoProgressDetected",
             Self::ReviewDecisionRecorded { .. } => "ReviewDecisionRecorded",
+            Self::CheckpointStarted { .. } => "CheckpointStarted",
+            Self::CheckpointCommitted { .. } => "CheckpointCommitted",
+            Self::CheckpointRejectedStale { .. } => "CheckpointRejectedStale",
+            Self::CheckpointRestored { .. } => "CheckpointRestored",
             Self::ProtocolStateResumed { .. } => "ProtocolStateResumed",
             Self::ToolCallReconciled { .. } => "ToolCallReconciled",
         }
@@ -756,6 +837,10 @@ impl Task {
             | TaskEvent::HarnessBudgetExhausted { .. }
             | TaskEvent::NoProgressDetected { .. }
             | TaskEvent::ReviewDecisionRecorded { .. }
+            | TaskEvent::CheckpointStarted { .. }
+            | TaskEvent::CheckpointCommitted { .. }
+            | TaskEvent::CheckpointRejectedStale { .. }
+            | TaskEvent::CheckpointRestored { .. }
             | TaskEvent::ProtocolStateResumed { .. }
             | TaskEvent::ToolCallReconciled { .. } => {
                 if self.state.is_terminal() {

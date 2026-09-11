@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 737,
-    "docs_bytes": 1044594
+    "root_and_tooling": 739,
+    "docs_bytes": 1047325
   },
   "sections": [
     {
@@ -167,8 +167,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Agent Runtime and Orchestration",
-      "bytes": 12027,
-      "sha256": "af5f478cd395862bea94af024ad20747e980ed0b7c012d55a027d76b185ed429"
+      "bytes": 12125,
+      "sha256": "b18874f62e374d8e2582e13393818f37cd7c80c0925d777c298f72b9af60a58b"
     },
     {
       "path": "docs/15_MODEL_ROUTER_AND_PROVIDER_GATEWAY.md",
@@ -212,8 +212,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Durable State, Memory, Compaction, and Checkpoints",
-      "bytes": 7985,
-      "sha256": "19402dddfd255b13b196892aa98b3a020d14e7c87461e3ba28f3652b2336aac0"
+      "bytes": 9378,
+      "sha256": "af53c8f6780000285cb3ca99ea6d2a533e50d50ad99b1ee682c7668363bbe42a"
     },
     {
       "path": "docs/20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md",
@@ -320,8 +320,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Database and Storage Schema",
-      "bytes": 12125,
-      "sha256": "1211bc564f3134af3a0101e55ebbeca738a704d341be5b824073f14b3a0886c0"
+      "bytes": 13365,
+      "sha256": "746144bb8e651919008b9c09f4b40349501b22f5e82e8af2bb8d1d10152f41cf"
     },
     {
       "path": "docs/32_DESKTOP_FRONTEND_IMPLEMENTATION.md",
@@ -4495,6 +4495,16 @@
       "path": "evidence/m4/M4.2/evidence.json",
       "bytes": 1688,
       "sha256": "61e1124dd22fdbb1be32f0455169c79ce5151649e1fd970f6e9b23661e78e1e2"
+    },
+    {
+      "path": "evidence/m4/M4.3/TASK_CARD.md",
+      "bytes": 6987,
+      "sha256": "d41ca975bb28c88934c34dc4511297c88a967c2c9aca252ef749524cda15058e"
+    },
+    {
+      "path": "evidence/m4/M4.3/evidence.json",
+      "bytes": 1387,
+      "sha256": "5e66b2487c9b4008d2358da27cda2c6c334bc887d5f03d2203965ade26d02ceb"
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
