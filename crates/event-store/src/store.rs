@@ -116,11 +116,87 @@ pub struct AppendRequest {
     pub events: Vec<NewEvent>,
 }
 
+/// Fault injection for the kill-point suite (docs/54 faults 1 and 2; docs/19
+/// "release-tested by process kill at every major state"; M4.6): the
+/// process aborts right before or right after committing the n-th event of a
+/// named type. `MODBIT_FAULT_KILL_BEFORE_EVENT="<EventType>:<n>"` and
+/// `MODBIT_FAULT_KILL_AFTER_EVENT="<EventType>:<n>"`; unset in production.
+#[derive(Debug, Default)]
+struct FaultPlan {
+    before: Option<(String, u32)>,
+    after: Option<(String, u32)>,
+    seen: std::collections::HashMap<String, u32>,
+}
+
+impl FaultPlan {
+    fn from_env() -> Self {
+        let parse = |var: &str| {
+            let v = std::env::var(var).ok()?;
+            let (ty, n) = v.split_once(':')?;
+            Some((ty.to_owned(), n.parse::<u32>().ok()?))
+        };
+        Self {
+            before: parse("MODBIT_FAULT_KILL_BEFORE_EVENT"),
+            after: parse("MODBIT_FAULT_KILL_AFTER_EVENT"),
+            seen: std::collections::HashMap::new(),
+        }
+    }
+
+    fn armed(&self) -> bool {
+        self.before.is_some() || self.after.is_some()
+    }
+
+    /// Count the events about to be committed; abort before the commit if
+    /// the n-th event of the "before" type is among them.
+    fn before_commit(&mut self, events: &[StoredEvent]) {
+        if !self.armed() {
+            return;
+        }
+        let mut hit = false;
+        for e in events {
+            let n = self.seen.entry(e.envelope.event_type.clone()).or_insert(0);
+            *n += 1;
+            if let Some((ty, at)) = &self.before
+                && *ty == e.envelope.event_type
+                && *n == *at
+            {
+                hit = true;
+            }
+        }
+        if hit {
+            eprintln!(
+                "modbit-event-store: MODBIT_FAULT_KILL_BEFORE_EVENT hit; aborting before commit"
+            );
+            std::process::abort();
+        }
+    }
+
+    /// Abort after the commit if the n-th event of the "after" type was in it.
+    fn after_commit(&self, events: &[StoredEvent]) {
+        let Some((ty, at)) = &self.after else {
+            return;
+        };
+        // `seen` was counted in `before_commit` (the same batch).
+        let count = self.seen.get(ty).copied().unwrap_or(0);
+        let in_batch = events
+            .iter()
+            .filter(|e| e.envelope.event_type == *ty)
+            .count() as u32;
+        if in_batch > 0 && count >= *at && count - in_batch < *at {
+            eprintln!(
+                "modbit-event-store: MODBIT_FAULT_KILL_AFTER_EVENT hit; aborting after commit"
+            );
+            std::process::abort();
+        }
+    }
+}
+
 /// The canonical Event Store.
 pub struct EventStore {
     conn: Connection,
     objects: ObjectStore,
     db_path: PathBuf,
+    fault: FaultPlan,
 }
 
 impl std::fmt::Debug for EventStore {
@@ -235,6 +311,7 @@ impl EventStore {
             conn,
             objects,
             db_path,
+            fault: FaultPlan::from_env(),
         };
         if report.applied.iter().any(|v| *v >= 2) {
             // Projections were introduced after events may already exist: derive them.
@@ -287,7 +364,49 @@ impl EventStore {
             .conn
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
         let out = append_in(&tx, &self.objects, req)?;
+        self.fault.before_commit(&out);
         tx.commit()?;
+        self.fault.after_commit(&out);
+        Ok(out)
+    }
+
+    /// Append several requests — different aggregates — in one transaction
+    /// (docs/19: "Core commits event + critical projection changes in one
+    /// transaction"; M4.6): a tool call's outcome and the file changes it
+    /// made land together or not at all, so a kill between them cannot leave
+    /// an effect without its record. Requests are applied in order.
+    pub fn append_all(
+        &mut self,
+        reqs: Vec<AppendRequest>,
+        lease_generation: Option<u64>,
+    ) -> Result<Vec<StoredEvent>> {
+        let tx = self
+            .conn
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        if let (Some(g), Some(first)) = (lease_generation, reqs.first()) {
+            let current: Option<i64> = tx
+                .query_row(
+                    "SELECT lease_generation FROM sessions WHERE session_id = ?1",
+                    params![first.session_id.as_bytes().as_slice()],
+                    |r| r.get(0),
+                )
+                .optional()?;
+            let current = current.map_or(0, |c| c as u64);
+            if current != g {
+                return Err(Error::StaleLease {
+                    session: first.session_id.to_string(),
+                    presented: g,
+                    current,
+                });
+            }
+        }
+        let mut out = Vec::new();
+        for req in reqs {
+            out.extend(append_in(&tx, &self.objects, req)?);
+        }
+        self.fault.before_commit(&out);
+        tx.commit()?;
+        self.fault.after_commit(&out);
         Ok(out)
     }
 
@@ -322,7 +441,9 @@ impl EventStore {
             });
         }
         let out = append_in(&tx, &self.objects, req)?;
+        self.fault.before_commit(&out);
         tx.commit()?;
+        self.fault.after_commit(&out);
         Ok(out)
     }
 
@@ -370,7 +491,9 @@ impl EventStore {
                 Timestamp::now().millis(),
             ],
         )?;
+        self.fault.before_commit(&events);
         tx.commit()?;
+        self.fault.after_commit(&events);
         Ok(CommandOutcome::Applied(events))
     }
 

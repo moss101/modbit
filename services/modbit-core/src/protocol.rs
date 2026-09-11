@@ -246,6 +246,47 @@ pub(crate) fn attention_after_restart(boundary: &ResumeBoundary, orphans: &Orpha
     }
 }
 
+/// The user's verdict on a call the model's `call_id` named whose outcome
+/// was unknown and which the user reconciled (`ReconcileToolCall`): the
+/// resolution (`USER_CONFIRMED` | `USER_ABSENT`) and the note, so a resumed
+/// run never repeats a confirmed effect and retries an absent one.
+pub(crate) fn user_verdict(
+    store: &EventStore,
+    task: &TaskId,
+    run: RunId,
+    call_id: &str,
+    tool_name: &str,
+    arguments_json: &str,
+) -> Option<(String, String, ToolCallId)> {
+    let hash = modbit_tools::arguments_hash(arguments_json)?;
+    let calls = store.tool_calls_for_task(task).unwrap_or_default();
+    let unknown = calls.iter().rev().find(|c| {
+        c.run_id == Some(run)
+            && c.call_id.as_deref() == Some(call_id)
+            && c.tool_name == tool_name
+            && c.arguments_hash == hash
+            && c.state == ToolCallState::UnknownOutcome
+    })?;
+    let events = store
+        .read_aggregate(task.as_bytes(), 0, usize::MAX)
+        .unwrap_or_default();
+    events.iter().rev().find_map(|e| {
+        if e.envelope.event_type != "ToolCallReconciled" {
+            return None;
+        }
+        let p = store.payload(&e.envelope).ok()?;
+        let id = ToolCallId::parse(p["tool_call_id"].as_str()?).ok()?;
+        let resolution = p["resolution"].as_str()?;
+        (id == unknown.tool_call_id && resolution.starts_with("USER_")).then(|| {
+            (
+                resolution.to_owned(),
+                p["observed"].as_str().unwrap_or_default().to_owned(),
+                id,
+            )
+        })
+    })
+}
+
 /// The model's `call_id` in `run` names an outstanding call: the id to
 /// re-enter, when its intent is the recorded one.
 pub(crate) fn resumed_call(

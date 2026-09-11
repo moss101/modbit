@@ -377,6 +377,41 @@ impl Runtime {
     }
 }
 
+/// Append events on several aggregates in one transaction under one lineage
+/// (docs/19 "one transaction"; M4.6): a run's end and the task transition it
+/// implies land together or not at all.
+pub(crate) fn append_batch(
+    store: &mut EventStore,
+    core: &Core,
+    l: Lineage,
+    parts: Vec<(AggregateType, [u8; 16], Vec<NewEvent>)>,
+) -> std::result::Result<u64, String> {
+    let reqs: Vec<AppendRequest> = parts
+        .into_iter()
+        .map(|(aggregate_type, aggregate_id, events)| AppendRequest {
+            tenant_id: l.tenant,
+            session_id: l.session,
+            task_id: l.task,
+            run_id: l.run,
+            turn_id: l.turn,
+            step_id: l.step,
+            aggregate_type,
+            aggregate_id,
+            expected_sequence: None,
+            events,
+        })
+        .collect();
+    let stored = store.append_all(reqs, l.lease).map_err(|e| match e {
+        modbit_event_store::Error::StaleLease { .. } => format!("STALE_LEASE: {e}"),
+        other => other.to_string(),
+    })?;
+    let offset = stored.last().map(|e| e.offset).unwrap_or(0);
+    if offset > 0 {
+        core.last_offset.send_replace(offset);
+    }
+    Ok(offset)
+}
+
 /// Whether the session lease the run executes under has been superseded
 /// (docs/13 "Fencing and epochs", docs/33 "Session kernel lease"): the
 /// current generation and its owner when it has, `None` while the run still
@@ -2604,6 +2639,43 @@ async fn run_loop(
                     };
                     (entry, StepType::ToolCall, Some("TOOL_NOT_VISIBLE".into()))
                 }
+                // docs/51 E2E-005: the user reconciled this call's unknown
+                // outcome. Confirmed means it happened and is never repeated;
+                // absent means the run may call again — as a new call.
+                _ if resume_state.is_some()
+                    && crate::protocol::user_verdict(
+                        &*core.store.lock().await,
+                        &task.task_id,
+                        run_id,
+                        &call_id,
+                        &name,
+                        &arguments_json,
+                    )
+                    .is_some_and(|(r, _, _)| r == "USER_CONFIRMED") =>
+                {
+                    let (resolution, note, id) = crate::protocol::user_verdict(
+                        &*core.store.lock().await,
+                        &task.task_id,
+                        run_id,
+                        &call_id,
+                        &name,
+                        &arguments_json,
+                    )
+                    .expect("checked by the guard");
+                    let entry = TranscriptEntry::ToolResult {
+                        call_id: call_id.clone(),
+                        name: name.clone(),
+                        text: format!(
+                            "status: RECONCILED\nresolution: {resolution}\ntool_call_id: {id}\nnote: {note}\nadvice: the user confirmed this effect happened while the Core was down; do not repeat it. Its output was not captured; read the target if you need its state"
+                        ),
+                        failure_signature: None,
+                        clears: vec![],
+                        wrote: None,
+                        progress: true,
+                        media: vec![],
+                    };
+                    (entry, StepType::ToolCall, None)
+                }
                 // docs/19 resume step 6: a call the dead Core had dispatched is
                 // reconciled with the ledger and the target, never replayed.
                 _ if crate::protocol::unknown_call(
@@ -3110,300 +3182,308 @@ async fn run_loop(
             // Audit records a stale owner may still write: what happened,
             // and that the run waits for the lease holder to resume it.
             let lt = lt.unfenced();
-            let _ = append(
+            let _ = append_batch(
                 &mut store,
                 &core,
                 lt,
-                AggregateType::Run,
-                *run_id.as_bytes(),
                 vec![
-                    typed(
-                        "RunFenced",
-                        &RunEvent::RunFenced {
-                            kernel_lease_generation: cfg.lease_generation,
-                            current_generation,
-                            owner: owner.clone(),
-                        },
-                        actor.clone(),
-                    ),
-                    typed("RunSuspended", &RunEvent::RunSuspended, actor.clone()),
-                ],
-            );
-            let _ = append(
-                &mut store,
-                &core,
-                lt,
-                AggregateType::Task,
-                *task.task_id.as_bytes(),
-                vec![
-                    typed(
-                        "TaskWaiting",
-                        &TaskEvent::TaskWaiting {
-                            reason: WaitReason::External,
-                        },
-                        actor.clone(),
-                    ),
-                    typed(
-                        "TaskNeedsAttention",
-                        &TaskEvent::TaskNeedsAttention {
-                            reason: format!(
-                                "the execution owner lost the session lease: generation {} was superseded by {current_generation} (owner {owner}); the run stopped at a safe boundary and resumes under the current lease with StartTask",
-                                cfg.lease_generation
+                    (
+                        AggregateType::Run,
+                        *run_id.as_bytes(),
+                        vec![
+                            typed(
+                                "RunFenced",
+                                &RunEvent::RunFenced {
+                                    kernel_lease_generation: cfg.lease_generation,
+                                    current_generation,
+                                    owner: owner.clone(),
+                                },
+                                actor.clone(),
                             ),
-                        },
-                        actor.clone(),
+                            typed("RunSuspended", &RunEvent::RunSuspended, actor.clone()),
+                        ],
+                    ),
+                    (
+                        AggregateType::Task,
+                        *task.task_id.as_bytes(),
+                        vec![
+                            typed(
+                                "TaskWaiting",
+                                &TaskEvent::TaskWaiting {
+                                    reason: WaitReason::External,
+                                },
+                                actor.clone(),
+                            ),
+                            typed(
+                                "TaskNeedsAttention",
+                                &TaskEvent::TaskNeedsAttention {
+                                    reason: format!(
+                                        "the execution owner lost the session lease: generation {} was superseded by {current_generation} (owner {owner}); the run stopped at a safe boundary and resumes under the current lease with StartTask",
+                                        cfg.lease_generation
+                                    ),
+                                },
+                                actor.clone(),
+                            ),
+                        ],
                     ),
                 ],
             );
         }
         LoopEnd::ReadyForReview => {
-            let _ = append(
+            let _ = append_batch(
                 &mut store,
                 &core,
                 lt,
-                AggregateType::Run,
-                *run_id.as_bytes(),
-                vec![typed(
-                    "RunCompleted",
-                    &RunEvent::RunCompleted,
-                    actor.clone(),
-                )],
-            );
-            let _ = append(
-                &mut store,
-                &core,
-                lt,
-                AggregateType::Task,
-                *task.task_id.as_bytes(),
-                vec![typed(
-                    "TaskReadyForReview",
-                    &TaskEvent::TaskReadyForReview,
-                    actor.clone(),
-                )],
+                vec![
+                    (
+                        AggregateType::Run,
+                        *run_id.as_bytes(),
+                        vec![typed(
+                            "RunCompleted",
+                            &RunEvent::RunCompleted,
+                            actor.clone(),
+                        )],
+                    ),
+                    (
+                        AggregateType::Task,
+                        *task.task_id.as_bytes(),
+                        vec![typed(
+                            "TaskReadyForReview",
+                            &TaskEvent::TaskReadyForReview,
+                            actor.clone(),
+                        )],
+                    ),
+                ],
             );
         }
         LoopEnd::Cancelled => {
-            let _ = append(
+            let _ = append_batch(
                 &mut store,
                 &core,
                 lt,
-                AggregateType::Run,
-                *run_id.as_bytes(),
-                vec![typed(
-                    "RunCancelled",
-                    &RunEvent::RunCancelled,
-                    actor.clone(),
-                )],
-            );
-            let _ = append(
-                &mut store,
-                &core,
-                lt,
-                AggregateType::Task,
-                *task.task_id.as_bytes(),
-                vec![typed(
-                    "TaskCancelled",
-                    &TaskEvent::TaskCancelled,
-                    actor.clone(),
-                )],
+                vec![
+                    (
+                        AggregateType::Run,
+                        *run_id.as_bytes(),
+                        vec![typed(
+                            "RunCancelled",
+                            &RunEvent::RunCancelled,
+                            actor.clone(),
+                        )],
+                    ),
+                    (
+                        AggregateType::Task,
+                        *task.task_id.as_bytes(),
+                        vec![typed(
+                            "TaskCancelled",
+                            &TaskEvent::TaskCancelled,
+                            actor.clone(),
+                        )],
+                    ),
+                ],
             );
         }
         LoopEnd::BudgetExhausted(x) => {
-            let _ = append(
+            let _ = append_batch(
                 &mut store,
                 &core,
                 lt,
-                AggregateType::Run,
-                *run_id.as_bytes(),
-                vec![typed(
-                    "RunSuspended",
-                    &RunEvent::RunSuspended,
-                    actor.clone(),
-                )],
-            );
-            let _ = append(
-                &mut store,
-                &core,
-                lt,
-                AggregateType::Task,
-                *task.task_id.as_bytes(),
                 vec![
-                    typed(
-                        "HarnessBudgetExhausted",
-                        &TaskEvent::HarnessBudgetExhausted {
-                            budget: x.budget.clone(),
-                            limit: x.limit,
-                            used: x.used,
-                        },
-                        actor.clone(),
+                    (
+                        AggregateType::Run,
+                        *run_id.as_bytes(),
+                        vec![typed(
+                            "RunSuspended",
+                            &RunEvent::RunSuspended,
+                            actor.clone(),
+                        )],
                     ),
-                    typed(
-                        "TaskWaiting",
-                        &TaskEvent::TaskWaiting {
-                            reason: WaitReason::UserInput,
-                        },
-                        actor.clone(),
-                    ),
-                    typed(
-                        "TaskNeedsAttention",
-                        &TaskEvent::TaskNeedsAttention {
-                            reason: format!(
-                                "budget `{}` exhausted ({}/{}); partial evidence retained",
-                                x.budget, x.used, x.limit
+                    (
+                        AggregateType::Task,
+                        *task.task_id.as_bytes(),
+                        vec![
+                            typed(
+                                "HarnessBudgetExhausted",
+                                &TaskEvent::HarnessBudgetExhausted {
+                                    budget: x.budget.clone(),
+                                    limit: x.limit,
+                                    used: x.used,
+                                },
+                                actor.clone(),
                             ),
-                        },
-                        actor.clone(),
+                            typed(
+                                "TaskWaiting",
+                                &TaskEvent::TaskWaiting {
+                                    reason: WaitReason::UserInput,
+                                },
+                                actor.clone(),
+                            ),
+                            typed(
+                                "TaskNeedsAttention",
+                                &TaskEvent::TaskNeedsAttention {
+                                    reason: format!(
+                                        "budget `{}` exhausted ({}/{}); partial evidence retained",
+                                        x.budget, x.used, x.limit
+                                    ),
+                                },
+                                actor.clone(),
+                            ),
+                        ],
                     ),
                 ],
             );
         }
         LoopEnd::NeedsInput(question_id) => {
-            let _ = append(
+            let _ = append_batch(
                 &mut store,
                 &core,
                 lt,
-                AggregateType::Run,
-                *run_id.as_bytes(),
-                vec![typed(
-                    "RunSuspended",
-                    &RunEvent::RunSuspended,
-                    actor.clone(),
-                )],
-            );
-            let _ = append(
-                &mut store,
-                &core,
-                lt,
-                AggregateType::Task,
-                *task.task_id.as_bytes(),
                 vec![
-                    typed(
-                        "TaskWaiting",
-                        &TaskEvent::TaskWaiting {
-                            reason: WaitReason::UserInput,
-                        },
-                        actor.clone(),
+                    (
+                        AggregateType::Run,
+                        *run_id.as_bytes(),
+                        vec![typed(
+                            "RunSuspended",
+                            &RunEvent::RunSuspended,
+                            actor.clone(),
+                        )],
                     ),
-                    typed(
-                        "TaskNeedsAttention",
-                        &TaskEvent::TaskNeedsAttention {
-                            reason: format!("question pending: {question_id}"),
-                        },
-                        actor.clone(),
+                    (
+                        AggregateType::Task,
+                        *task.task_id.as_bytes(),
+                        vec![
+                            typed(
+                                "TaskWaiting",
+                                &TaskEvent::TaskWaiting {
+                                    reason: WaitReason::UserInput,
+                                },
+                                actor.clone(),
+                            ),
+                            typed(
+                                "TaskNeedsAttention",
+                                &TaskEvent::TaskNeedsAttention {
+                                    reason: format!("question pending: {question_id}"),
+                                },
+                                actor.clone(),
+                            ),
+                        ],
                     ),
                 ],
             );
         }
         LoopEnd::NeedsAttention(reason) => {
-            let _ = append(
+            let _ = append_batch(
                 &mut store,
                 &core,
                 lt,
-                AggregateType::Run,
-                *run_id.as_bytes(),
-                vec![typed(
-                    "RunSuspended",
-                    &RunEvent::RunSuspended,
-                    actor.clone(),
-                )],
-            );
-            let _ = append(
-                &mut store,
-                &core,
-                lt,
-                AggregateType::Task,
-                *task.task_id.as_bytes(),
                 vec![
-                    typed(
-                        "TaskWaiting",
-                        &TaskEvent::TaskWaiting {
-                            reason: WaitReason::UserInput,
-                        },
-                        actor.clone(),
+                    (
+                        AggregateType::Run,
+                        *run_id.as_bytes(),
+                        vec![typed(
+                            "RunSuspended",
+                            &RunEvent::RunSuspended,
+                            actor.clone(),
+                        )],
                     ),
-                    typed(
-                        "TaskNeedsAttention",
-                        &TaskEvent::TaskNeedsAttention { reason },
-                        actor.clone(),
+                    (
+                        AggregateType::Task,
+                        *task.task_id.as_bytes(),
+                        vec![
+                            typed(
+                                "TaskWaiting",
+                                &TaskEvent::TaskWaiting {
+                                    reason: WaitReason::UserInput,
+                                },
+                                actor.clone(),
+                            ),
+                            typed(
+                                "TaskNeedsAttention",
+                                &TaskEvent::TaskNeedsAttention { reason },
+                                actor.clone(),
+                            ),
+                        ],
                     ),
                 ],
             );
         }
         LoopEnd::NoProgress(turns) => {
-            let _ = append(
+            let _ = append_batch(
                 &mut store,
                 &core,
                 lt,
-                AggregateType::Run,
-                *run_id.as_bytes(),
-                vec![typed(
-                    "RunSuspended",
-                    &RunEvent::RunSuspended,
-                    actor.clone(),
-                )],
-            );
-            let _ = append(
-                &mut store,
-                &core,
-                lt,
-                AggregateType::Task,
-                *task.task_id.as_bytes(),
                 vec![
-                    typed(
-                        "NoProgressDetected",
-                        &TaskEvent::NoProgressDetected { turns },
-                        actor.clone(),
+                    (
+                        AggregateType::Run,
+                        *run_id.as_bytes(),
+                        vec![typed(
+                            "RunSuspended",
+                            &RunEvent::RunSuspended,
+                            actor.clone(),
+                        )],
                     ),
-                    typed(
-                        "TaskWaiting",
-                        &TaskEvent::TaskWaiting {
-                            reason: WaitReason::UserInput,
-                        },
-                        actor.clone(),
-                    ),
-                    typed(
-                        "TaskNeedsAttention",
-                        &TaskEvent::TaskNeedsAttention {
-                            reason: format!("{turns} consecutive turns without progress"),
-                        },
-                        actor.clone(),
+                    (
+                        AggregateType::Task,
+                        *task.task_id.as_bytes(),
+                        vec![
+                            typed(
+                                "NoProgressDetected",
+                                &TaskEvent::NoProgressDetected { turns },
+                                actor.clone(),
+                            ),
+                            typed(
+                                "TaskWaiting",
+                                &TaskEvent::TaskWaiting {
+                                    reason: WaitReason::UserInput,
+                                },
+                                actor.clone(),
+                            ),
+                            typed(
+                                "TaskNeedsAttention",
+                                &TaskEvent::TaskNeedsAttention {
+                                    reason: format!("{turns} consecutive turns without progress"),
+                                },
+                                actor.clone(),
+                            ),
+                        ],
                     ),
                 ],
             );
         }
         LoopEnd::ProviderFailed(code, message) => {
-            let _ = append(
+            let _ = append_batch(
                 &mut store,
                 &core,
                 lt,
-                AggregateType::Run,
-                *run_id.as_bytes(),
-                vec![typed(
-                    "RunSuspended",
-                    &RunEvent::RunSuspended,
-                    actor.clone(),
-                )],
-            );
-            let _ = append(
-                &mut store,
-                &core,
-                lt,
-                AggregateType::Task,
-                *task.task_id.as_bytes(),
                 vec![
-                    typed(
-                        "TaskWaiting",
-                        &TaskEvent::TaskWaiting {
-                            reason: WaitReason::Provider,
-                        },
-                        actor.clone(),
+                    (
+                        AggregateType::Run,
+                        *run_id.as_bytes(),
+                        vec![typed(
+                            "RunSuspended",
+                            &RunEvent::RunSuspended,
+                            actor.clone(),
+                        )],
                     ),
-                    typed(
-                        "TaskNeedsAttention",
-                        &TaskEvent::TaskNeedsAttention {
-                            reason: format!("provider failure {code}: {message}"),
-                        },
-                        actor.clone(),
+                    (
+                        AggregateType::Task,
+                        *task.task_id.as_bytes(),
+                        vec![
+                            typed(
+                                "TaskWaiting",
+                                &TaskEvent::TaskWaiting {
+                                    reason: WaitReason::Provider,
+                                },
+                                actor.clone(),
+                            ),
+                            typed(
+                                "TaskNeedsAttention",
+                                &TaskEvent::TaskNeedsAttention {
+                                    reason: format!("provider failure {code}: {message}"),
+                                },
+                                actor.clone(),
+                            ),
+                        ],
                     ),
                 ],
             );

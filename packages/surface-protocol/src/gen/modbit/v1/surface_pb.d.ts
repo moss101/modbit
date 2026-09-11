@@ -5085,6 +5085,69 @@ export declare type TerminalCursorView = Message<"modbit.v1.TerminalCursorView">
 export declare const TerminalCursorViewSchema: GenMessage<TerminalCursorView>;
 
 /**
+ * @generated from message modbit.v1.ReconcileToolCall
+ */
+export declare type ReconcileToolCall = Message<"modbit.v1.ReconcileToolCall"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: modbit.v1.Id tool_call_id = 2;
+   */
+  toolCallId?: Id | undefined;
+
+  /**
+   * EFFECT_CONFIRMED (it happened; never repeat it) | EFFECT_ABSENT (it did not; a retry is safe)
+   *
+   * @generated from field: string resolution = 3;
+   */
+  resolution: string;
+
+  /**
+   * what the user checked
+   *
+   * @generated from field: string note = 4;
+   */
+  note: string;
+};
+
+/**
+ * Describes the message modbit.v1.ReconcileToolCall.
+ * Use `create(ReconcileToolCallSchema)` to create a new message.
+ */
+export declare const ReconcileToolCallSchema: GenMessage<ReconcileToolCall>;
+
+/**
+ * @generated from message modbit.v1.ToolCallReconciledAck
+ */
+export declare type ToolCallReconciledAck = Message<"modbit.v1.ToolCallReconciledAck"> & {
+  /**
+   * @generated from field: modbit.v1.Id tool_call_id = 1;
+   */
+  toolCallId?: Id | undefined;
+
+  /**
+   * USER_CONFIRMED | USER_ABSENT
+   *
+   * @generated from field: string resolution = 2;
+   */
+  resolution: string;
+
+  /**
+   * @generated from field: uint64 offset = 3;
+   */
+  offset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.ToolCallReconciledAck.
+ * Use `create(ToolCallReconciledAckSchema)` to create a new message.
+ */
+export declare const ToolCallReconciledAckSchema: GenMessage<ToolCallReconciledAck>;
+
+/**
  * @generated from message modbit.v1.CreateCheckpoint
  */
 export declare type CreateCheckpoint = Message<"modbit.v1.CreateCheckpoint"> & {

@@ -2085,6 +2085,109 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 Err((code, message)) => reject(cid, &code, message),
             }
         }
+        "ReconcileToolCall" => {
+            let Ok(p) = wire::ReconcileToolCall::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "ReconcileToolCall");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let Some(call) = p
+                .tool_call_id
+                .as_ref()
+                .and_then(id16)
+                .map(ToolCallId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "tool_call_id required");
+            };
+            let resolution = match p.resolution.as_str() {
+                "EFFECT_CONFIRMED" => "USER_CONFIRMED",
+                "EFFECT_ABSENT" => "USER_ABSENT",
+                other => {
+                    return reject(
+                        cid,
+                        "BAD_PAYLOAD",
+                        format!(
+                            "resolution must be EFFECT_CONFIRMED or EFFECT_ABSENT, not `{other}`"
+                        ),
+                    );
+                }
+            };
+            let (task, tc) = {
+                let store = core.store.lock().await;
+                let task = match store.task(&task_id) {
+                    Ok(Some(t)) => t,
+                    Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                };
+                let tc = match store.tool_call(&call) {
+                    Ok(Some(c)) if c.task_id == task_id => c,
+                    Ok(_) => return reject(cid, "UNKNOWN_TOOL_CALL", call.to_string()),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                };
+                (task, tc)
+            };
+            if tc.state != modbit_domain::toolcall::ToolCallState::UnknownOutcome {
+                return reject(
+                    cid,
+                    "NOT_UNKNOWN",
+                    format!(
+                        "the call is {:?}; only an unknown outcome is reconciled",
+                        tc.state
+                    ),
+                );
+            }
+            if core.runtime.is_running(&task_id).await {
+                return reject(
+                    cid,
+                    "TASK_RUNNING",
+                    "the agent loop is executing; it reconciles in flight, or cancel it first",
+                );
+            }
+            if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
+                return ack;
+            }
+            let state = crate::protocol::reconstruct(&*core.store.lock().await, &task_id);
+            if state.call(&call).is_none() {
+                return reject(cid, "ALREADY_RECONCILED", call.to_string());
+            }
+            let lt = crate::runtime::Lineage::task(core.tenant_id, task.session_id, task_id);
+            let mut store = core.store.lock().await;
+            match crate::runtime::append(
+                &mut store,
+                core,
+                lt,
+                AggregateType::Task,
+                *task_id.as_bytes(),
+                vec![crate::runtime::typed(
+                    "ToolCallReconciled",
+                    &modbit_domain::task::TaskEvent::ToolCallReconciled {
+                        tool_call_id: call.to_string(),
+                        tool_name: tc.tool_name.clone(),
+                        effect_class: format!("{:?}", tc.effect_class),
+                        resolution: resolution.to_owned(),
+                        observed: if p.note.is_empty() {
+                            "reconciled by the user".to_owned()
+                        } else {
+                            p.note.clone()
+                        },
+                    },
+                    actor,
+                )],
+            ) {
+                Ok(offset) => accept(
+                    cid,
+                    false,
+                    wire::ToolCallReconciledAck {
+                        tool_call_id: Some(wire_id(call.as_bytes())),
+                        resolution: resolution.to_owned(),
+                        offset,
+                    }
+                    .encode_to_vec(),
+                ),
+                Err(e) => reject(cid, "STORE", e),
+            }
+        }
         "CreateCheckpoint" => {
             let Ok(p) = wire::CreateCheckpoint::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "CreateCheckpoint");

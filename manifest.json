@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 747,
-    "docs_bytes": 1050388
+    "root_and_tooling": 749,
+    "docs_bytes": 1051545
   },
   "sections": [
     {
@@ -212,8 +212,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Durable State, Memory, Compaction, and Checkpoints",
-      "bytes": 10174,
-      "sha256": "5fa90ecdae77587ef00d97a8abf7eefa817756c1c428e66a8b3a5fa3e8f4f097"
+      "bytes": 11331,
+      "sha256": "112adeedbbcc34533cb1f8636895da10359a4eb9bbd4b03bcfe4a10dc1fd3cec"
     },
     {
       "path": "docs/20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md",
@@ -4545,6 +4545,16 @@
       "path": "evidence/m4/M4.5/evidence.json",
       "bytes": 1665,
       "sha256": "7d95e15aec50bf5ff53e5131805ea2fbce51e450e8c170a6eefc1614c9ff86ff"
+    },
+    {
+      "path": "evidence/m4/M4.6/TASK_CARD.md",
+      "bytes": 6293,
+      "sha256": "ad52c0ad34d3bf8a54999b7d9ed89d8ceb94cb298ad7d867e82dc86565aeebaf"
+    },
+    {
+      "path": "evidence/m4/M4.6/evidence.json",
+      "bytes": 1606,
+      "sha256": "3221311b30dc2b77387c6a9dffc6af062fbab79c6f15b28bffdccf9dd6026a67"
     },
     {
       "path": "graph/PROJECT_GRAPH.md",

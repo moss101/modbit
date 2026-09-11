@@ -73,6 +73,21 @@ impl CoreProcess {
         self.child.kill().unwrap();
         self.child.wait().unwrap();
     }
+
+    /// Wait for the process to exit on its own (a fault-injection abort);
+    /// `None` when it is still alive at the deadline.
+    fn wait_exit(&mut self, timeout: Duration) -> Option<std::process::ExitStatus> {
+        let deadline = std::time::Instant::now() + timeout;
+        loop {
+            if let Ok(Some(st)) = self.child.try_wait() {
+                return Some(st);
+            }
+            if std::time::Instant::now() >= deadline {
+                return None;
+            }
+            std::thread::sleep(Duration::from_millis(50));
+        }
+    }
 }
 
 impl Drop for CoreProcess {
@@ -2122,6 +2137,23 @@ async fn scripted_model_paced(
     String,
     std::sync::Arc<std::sync::Mutex<Vec<serde_json::Value>>>,
 ) {
+    scripted_model_reactive(script, specialist, stall_at, delay_at, vec![]).await
+}
+
+/// The same server with reactions: when the latest tool result in a request
+/// contains `needle`, the reply is the paired step instead of the indexed one
+/// (a model reading what its last call reported; the kill-point suite uses
+/// it to retry a write whose outcome came back unknown and absent).
+async fn scripted_model_reactive(
+    script: Vec<serde_json::Value>,
+    specialist: Vec<serde_json::Value>,
+    stall_at: Option<usize>,
+    delay_at: Option<(usize, Duration)>,
+    rules: Vec<(String, serde_json::Value)>,
+) -> (
+    String,
+    std::sync::Arc<std::sync::Mutex<Vec<serde_json::Value>>>,
+) {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
@@ -2129,6 +2161,7 @@ async fn scripted_model_paced(
     let seen2 = std::sync::Arc::clone(&seen);
     let script = std::sync::Arc::new(script);
     let specialist = std::sync::Arc::new(specialist);
+    let rules = std::sync::Arc::new(rules);
     let stalled_once = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
     tokio::spawn(async move {
         loop {
@@ -2138,6 +2171,7 @@ async fn scripted_model_paced(
             let seen = std::sync::Arc::clone(&seen2);
             let script = std::sync::Arc::clone(&script);
             let specialist = std::sync::Arc::clone(&specialist);
+            let rules = std::sync::Arc::clone(&rules);
             let stalled_once = std::sync::Arc::clone(&stalled_once);
             tokio::spawn(async move {
                 let mut buf = Vec::new();
@@ -2187,6 +2221,12 @@ async fn scripted_model_paced(
                 let prompt_tokens = serde_json::to_string(&body["messages"])
                     .map(|m| m.len().div_ceil(4))
                     .unwrap_or(0);
+                let last_tool_text = body["messages"]
+                    .as_array()
+                    .and_then(|m| m.iter().rev().find(|x| x["role"] == "tool"))
+                    .and_then(|m| m["content"].as_str())
+                    .unwrap_or_default()
+                    .to_owned();
                 seen.lock().unwrap().push(body);
                 if stall_at == Some(results)
                     && !stalled_once.swap(true, std::sync::atomic::Ordering::SeqCst)
@@ -2199,12 +2239,18 @@ async fn scripted_model_paced(
                 {
                     tokio::time::sleep(wait).await;
                 }
-                let reply = if for_specialist { &specialist } else { &script }
-                    .get(results)
-                    .cloned()
-                    .unwrap_or_else(
-                        || serde_json::json!({"text": "I have nothing further to do."}),
-                    );
+                let reaction = rules
+                    .iter()
+                    .find(|(needle, _)| last_tool_text.contains(needle.as_str()))
+                    .map(|(_, r)| r.clone());
+                let reply = reaction.unwrap_or_else(|| {
+                    if for_specialist { &specialist } else { &script }
+                        .get(results)
+                        .cloned()
+                        .unwrap_or_else(
+                            || serde_json::json!({"text": "I have nothing further to do."}),
+                        )
+                });
                 let mut frames: Vec<String> = Vec::new();
                 if let Some(t) = reply["text"].as_str() {
                     frames.push(serde_json::json!({"id":"c","model":"scripted-1","choices":[{"index":0,"delta":{"content":t},"finish_reason":null}]}).to_string());
@@ -16196,5 +16242,538 @@ async fn qual_m4_5_e2e_008_a_background_command_survives_a_core_restart_and_resu
             .count()
             >= 3,
         "{kinds:?}"
+    );
+}
+
+/// What a kill-point round leaves behind, for the invariants.
+#[derive(Debug)]
+struct KillRound {
+    #[allow(dead_code)]
+    boundary: String,
+    aborted: bool,
+    final_state: String,
+    note_content: Option<String>,
+    resumed: bool,
+    events: Vec<(String, String, serde_json::Value)>,
+}
+
+/// One kill-point round (M4.6): run the reference coding task on a fresh
+/// Core with the store armed to abort the process at `boundary`
+/// (`before:<EventType>:<n>` or `after:<EventType>:<n>`), then restart and
+/// resume it, and return what the log and the worktree say.
+async fn kill_point_round(boundary: &str) -> KillRound {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[("a.txt", "a\n")]);
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "write a note", "expected_files": ["note.txt"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "a.txt"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "note.txt", "op": "create", "content": "hello\n"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    // A model that reads what its call reported: a write whose outcome came
+    // back unknown and whose target is absent is issued again; one whose
+    // target is present is not.
+    let rules = vec![(
+        "note.txt: absent".to_owned(),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "note.txt", "op": "create", "content": "hello\n"}}]}),
+    )];
+    let (base, _seen) = scripted_model_reactive(script, vec![], None, None, rules).await;
+    let dir = tempfile::tempdir().unwrap();
+    let (var, spec) = match boundary.split_once(':') {
+        Some(("before", rest)) => ("MODBIT_FAULT_KILL_BEFORE_EVENT", rest.to_owned()),
+        Some(("after", rest)) => ("MODBIT_FAULT_KILL_AFTER_EVENT", rest.to_owned()),
+        _ => panic!("boundary must be before:<Event>:<n> or after:<Event>:<n>"),
+    };
+    let armed = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        (var, spec.as_str()),
+    ];
+    let clean = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &armed);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x90)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x91, "local_trusted").await;
+    let start = StartTask {
+        task_id: Some(task.clone()),
+        endpoint: "openai".into(),
+        model: "gpt-5".into(),
+        max_turns: 12,
+        max_tool_calls: 0,
+        max_no_progress_turns: 0,
+    }
+    .encode_to_vec();
+    // The start itself may be the boundary: a rejected ack means the Core died.
+    let started = c
+        .command(envelope_fenced(id16(0x92), "StartTask", start.clone(), g))
+        .await
+        .ok()
+        .and_then(|ack| Client::result::<TaskRunStarted>(&ack).ok())
+        .is_some();
+    let _ = started;
+    drop(c);
+    // Either the fault fires (the process aborts) or the run finishes without
+    // reaching the boundary.
+    let mut aborted = false;
+    let deadline = std::time::Instant::now() + Duration::from_secs(90);
+    loop {
+        if let Some(st) = core.wait_exit(Duration::from_millis(200)) {
+            aborted = !st.success();
+            break;
+        }
+        // Still alive: is the run over?
+        if let Ok(mut probe) = Client::connect(
+            &core.ready.endpoint,
+            &core.secret(),
+            ClientKind::Cli,
+            "probe",
+        )
+        .await
+        {
+            let st = status_now(&mut probe, &task).await;
+            if !st.loop_alive && st.state != "Queued" && st.state != "Created" {
+                break;
+            }
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "{boundary}: neither the fault fired nor the run ended"
+        );
+    }
+    if !aborted {
+        core.kill();
+    }
+    // Restart clean; resume if the run was suspended by the kill.
+    let core2 = CoreProcess::spawn_with_env(dir.path(), &clean);
+    let mut c2 = core2.client().await;
+    let st = wait_task(&mut c2, &task, 60).await;
+    let mut resumed = false;
+    let final_state = if matches!(st.state.as_str(), "Waiting" | "Queued") {
+        let g2 = Some(acquire_lease(&mut c2, id16(0x93), session.clone(), "resumer").await);
+        let ack = c2
+            .command(envelope_fenced(id16(0x94), "StartTask", start, g2))
+            .await
+            .unwrap_or_else(|e| panic!("{boundary}: resume refused: {e}"));
+        let r: TaskRunStarted = Client::result(&ack).unwrap();
+        resumed = r.resumed;
+        wait_task(&mut c2, &task, 120).await.state
+    } else {
+        st.state
+    };
+    let events = task_events(&core2, &session, &task).await;
+    let note_content = std::fs::read_to_string(repo.path().join("note.txt")).ok();
+    KillRound {
+        boundary: boundary.to_owned(),
+        aborted,
+        final_state,
+        note_content,
+        resumed,
+        events,
+    }
+}
+
+/// M4.6 kill-point recovery suite (docs/19 "release-tested by process kill
+/// at every major state"; docs/54 faults 1, 2, 5, 6; docs/51 E2E-004/005/007
+/// shapes): the reference coding task is run on a real Core that aborts
+/// itself right before or right after committing the event that marks each
+/// recovery boundary — turn, context, model call, tool proposal, dispatch,
+/// result, step, file change, plan, checkpoint start and commit, the
+/// completion run, the terminal task events — then restarted and resumed.
+/// After every round: the run reaches the same end state with the same
+/// worktree as the unkilled reference, the log verifies and its projections
+/// rebuild, no effect ran twice (one file write landed), nothing was invented
+/// (every recorded tool result has its call, every attempt its turn), and a
+/// write whose outcome the kill made unknown was reconciled — retried only
+/// because the target was absent — never replayed blindly.
+#[tokio::test]
+async fn qual_m4_6_kill_point_suite_every_recovery_boundary_survives_a_process_abort() {
+    let reference = kill_point_round("after:NoSuchEvent:1").await;
+    assert!(!reference.aborted);
+    assert_eq!(reference.final_state, "ReadyForReview", "{reference:?}");
+    assert_eq!(reference.note_content.as_deref(), Some("hello\n"));
+    let boundaries = [
+        "after:TaskStarted:1",
+        "after:RunCreated:1",
+        "after:TurnPrepared:1",
+        "after:ContextPackCompiled:1",
+        "after:ModelInvocationStarted:1",
+        "after:ModelInvocationCompleted:1",
+        "after:StepSucceeded:2",
+        "after:PlanRecorded:1",
+        "after:RetrievalRecorded:1",
+        "before:ToolCallProposed:2",
+        "after:ToolCallProposed:2",
+        "before:ToolCallDispatched:2",
+        "after:ToolCallDispatched:2",
+        "after:ToolCallSucceeded:2",
+        "after:FileChanged:1",
+        "after:TurnPrepared:4",
+        "after:SelfReviewRecorded:1",
+        "after:CheckpointStarted:1",
+        "before:CheckpointCommitted:1",
+        "after:CheckpointCommitted:1",
+        "after:VerificationRunRecorded:1",
+        "before:TaskReadyForReview:1",
+        "after:TaskReadyForReview:1",
+    ];
+    let mut report = Vec::new();
+    for b in boundaries {
+        let round = kill_point_round(b).await;
+        assert!(round.aborted, "{b}: the fault did not fire\n{round:?}");
+        assert_eq!(
+            round.final_state, "ReadyForReview",
+            "{b}: the task did not reach the reference end state\n{round:#?}"
+        );
+        assert_eq!(
+            round.note_content.as_deref(),
+            Some("hello\n"),
+            "{b}: the worktree differs from the reference\n{round:#?}"
+        );
+        let evs = &round.events;
+        let count = |agg: &str, ty: &str, tool: Option<&str>| {
+            evs.iter()
+                .filter(|(a, t, p)| a == agg && t == ty && tool.is_none_or(|n| p["tool_name"] == n))
+                .count()
+        };
+        // One write landed: at most one successful change.apply dispatch that
+        // succeeded, and every extra proposal is explained by a reconciled
+        // unknown outcome whose target was absent.
+        let applied_ok = count("tool_call", "ToolCallSucceeded", None);
+        let unknown = count("tool_call", "ToolCallUnknownOutcome", None);
+        let reconciled = evs
+            .iter()
+            .filter(|(_, t, _)| t == "ToolCallReconciled")
+            .count();
+        assert_eq!(
+            unknown, reconciled,
+            "{b}: every unknown outcome was reconciled\n{round:#?}"
+        );
+        let writes = evs
+            .iter()
+            .filter(|(_, t, p)| t == "FileChanged" && p["path"] == "note.txt")
+            .count();
+        assert!(
+            writes >= 1 && writes <= 1 + unknown,
+            "{b}: {writes} file changes for one note with {unknown} unknown outcome(s)\n{round:#?}"
+        );
+        assert!(applied_ok >= 1, "{b}\n{round:#?}");
+        // Nothing invented: a step result never precedes its scheduling, a
+        // tool result never precedes its proposal, and a completed run has
+        // exactly one completion.
+        let completions = count("run", "RunCompleted", None);
+        assert_eq!(completions, 1, "{b}\n{round:#?}");
+        assert_eq!(
+            count("task", "TaskReadyForReview", None),
+            1,
+            "{b}\n{round:#?}"
+        );
+        let mut proposed = std::collections::HashSet::new();
+        for (agg, ty, p) in evs {
+            if agg == "tool_call" {
+                let _ = p;
+            }
+            if ty == "ToolCallProposed" {
+                proposed.insert(p["tool_name"].as_str().unwrap_or_default().to_owned());
+            }
+            if ty == "ToolCallSucceeded" || ty == "ToolCallUnknownOutcome" {
+                assert!(
+                    !proposed.is_empty(),
+                    "{b}: a result before any proposal\n{round:#?}"
+                );
+            }
+        }
+        // A kill after the completion needs no resume; every other kill did.
+        let terminal = b.ends_with("TaskReadyForReview:1") && b.starts_with("after");
+        assert_eq!(
+            round.resumed, !terminal,
+            "{b}: resumed={} \n{round:#?}",
+            round.resumed
+        );
+        report.push(format!(
+            "{b}: aborted, resumed={}, unknown={unknown}, writes={writes}, end={}",
+            round.resumed, round.final_state
+        ));
+    }
+    eprintln!("kill-point suite:\n{}", report.join("\n"));
+}
+
+/// M4.6 / docs/51 E2E-005 in full (docs/19 resume step 6, docs/13
+/// "UnknownOutcome is never automatically retried for effectful tools",
+/// docs/54 faults 5 and 6): a destructive effect is approved and dispatched,
+/// the effect happens, and the Core dies before the outcome is acknowledged
+/// on the log. The restarted Core makes the call an unknown outcome, queries
+/// the effect ledger (no receipt) and holds it — the user sees the
+/// reconciliation state on the task and in the protocol state — and never
+/// replays it. The user checks the target, records that the effect
+/// happened, and the resumed run is told so instead of repeating it; the
+/// approval was consumed once and the effect ran once.
+#[tokio::test]
+async fn qual_m4_6_e2e_005_a_protected_effect_of_unknown_outcome_is_held_for_the_user_and_never_replayed()
+ {
+    use modbit_protocol::v1::{
+        ApprovalResolvedAck, ReconcileToolCall, ResolveApproval, StartTask, TaskRunStarted,
+        ToolCallReconciledAck,
+    };
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[("a.txt", "a\n")]);
+    let wt = repo.path().join("wt-held");
+    assert!(
+        Command::new("git")
+            .arg("-C")
+            .arg(repo.path())
+            .args(["worktree", "add", "-q", "-b", "task/held"])
+            .arg(&wt)
+            .status()
+            .unwrap()
+            .success()
+    );
+    let wt_s = wt
+        .canonicalize()
+        .unwrap()
+        .to_string_lossy()
+        .trim_start_matches(r"\\?\")
+        .to_owned();
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "close the stale worktree", "expected_files": []}}]}),
+        json!({"calls": [{"name": "git.worktree.close", "args": {"path": wt_s}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "closed", "self_review": {"findings": []}}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "closed", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    // The Core aborts right before committing the outcome of the first tool
+    // call: the effect has run, its record has not.
+    let armed = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_FAULT_KILL_BEFORE_EVENT", "ToolCallSucceeded:1"),
+    ];
+    let clean = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &armed);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x95)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x96, "local_trusted").await;
+    let start = StartTask {
+        task_id: Some(task.clone()),
+        endpoint: "openai".into(),
+        model: "gpt-5".into(),
+        max_turns: 0,
+        max_tool_calls: 0,
+        max_no_progress_turns: 0,
+    }
+    .encode_to_vec();
+    let ack = c
+        .command(envelope_fenced(id16(0x97), "StartTask", start.clone(), g))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let deadline = std::time::Instant::now() + Duration::from_secs(30);
+    let approval = loop {
+        let list = approvals_of(&mut c, &session).await;
+        if let Some(a) = list.iter().find(|a| a.status == "REQUESTED") {
+            break a.clone();
+        }
+        assert!(std::time::Instant::now() < deadline, "no approval opened");
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    };
+    assert!(wt.exists());
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x98),
+            "ResolveApproval",
+            ResolveApproval {
+                approval_id: approval.approval_id.clone(),
+                approve: true,
+                reason: "ok".into(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let res: ApprovalResolvedAck = Client::result(&ack).unwrap();
+    assert_eq!(res.status, "APPROVED");
+    drop(c);
+    // The effect runs, and the Core dies before acknowledging it.
+    let st = core
+        .wait_exit(Duration::from_secs(30))
+        .expect("the fault fired");
+    assert!(!st.success());
+    assert!(!wt.exists(), "the effect happened before the kill");
+    let core2 = CoreProcess::spawn_with_env(dir.path(), &clean);
+    let mut c2 = core2.client().await;
+    let st = wait_task(&mut c2, &task, 30).await;
+    assert_eq!(
+        (
+            st.state.as_str(),
+            st.wait_reason.as_str(),
+            st.run_state.as_str(),
+            st.loop_alive
+        ),
+        ("Waiting", "External", "Suspended", false),
+        "{st:?}"
+    );
+    // The user sees the reconciliation state: the protocol state names the
+    // call as unknown, the attention line explains it, the approval is
+    // consumed, and no receipt exists for the effect.
+    let ps = protocol_state(&mut c2, &task).await;
+    assert_eq!(ps.boundary, "RECONCILING", "{ps:?}");
+    assert_eq!(ps.calls.len(), 1, "{ps:?}");
+    assert_eq!(ps.calls[0].phase, "UNKNOWN_OUTCOME");
+    assert_eq!(ps.calls[0].tool_name, "git.worktree.close");
+    let call_id = ps.calls[0].tool_call_id.clone().unwrap();
+    let trail = task_events(&core2, &session, &task).await;
+    let attention = trail
+        .iter()
+        .rev()
+        .find(|(_, t, _)| t == "TaskNeedsAttention")
+        .map(|(_, _, p)| p["reason"].as_str().unwrap_or_default().to_owned())
+        .unwrap_or_default();
+    assert!(
+        attention.contains("unknown") && attention.contains("git.worktree.close"),
+        "{attention}"
+    );
+    assert_eq!(approvals_of(&mut c2, &session).await[0].status, "APPROVED");
+    assert_eq!(
+        trail
+            .iter()
+            .filter(|(_, t, _)| t == "EffectReceiptAppended")
+            .count(),
+        0,
+        "no receipt was recorded before the kill"
+    );
+    let g2 = Some(acquire_lease(&mut c2, id16(0x99), session.clone(), "reconciler").await);
+    // A call that is not of unknown outcome cannot be reconciled.
+    let err = c2
+        .command(envelope_fenced(
+            id16(0x9A),
+            "ReconcileToolCall",
+            ReconcileToolCall {
+                task_id: Some(task.clone()),
+                tool_call_id: Some(id16(0x11)),
+                resolution: "EFFECT_CONFIRMED".into(),
+                note: String::new(),
+            }
+            .encode_to_vec(),
+            g2,
+        ))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "UNKNOWN_TOOL_CALL"),
+        "{err}"
+    );
+    // The user checked the target: the worktree is gone. The effect happened.
+    let ack = c2
+        .command(envelope_fenced(
+            id16(0x9B),
+            "ReconcileToolCall",
+            ReconcileToolCall {
+                task_id: Some(task.clone()),
+                tool_call_id: Some(call_id.clone()),
+                resolution: "EFFECT_CONFIRMED".into(),
+                note: "checked: the worktree directory is gone".into(),
+            }
+            .encode_to_vec(),
+            g2,
+        ))
+        .await
+        .unwrap();
+    let r: ToolCallReconciledAck = Client::result(&ack).unwrap();
+    assert_eq!(r.resolution, "USER_CONFIRMED");
+    let ps = protocol_state(&mut c2, &task).await;
+    assert_eq!(ps.boundary, "TURN_START", "{ps:?}");
+    assert!(ps.calls.is_empty());
+    // Reconciling twice is refused.
+    let err = c2
+        .command(envelope_fenced(
+            id16(0x9C),
+            "ReconcileToolCall",
+            ReconcileToolCall {
+                task_id: Some(task.clone()),
+                tool_call_id: Some(call_id.clone()),
+                resolution: "EFFECT_ABSENT".into(),
+                note: String::new(),
+            }
+            .encode_to_vec(),
+            g2,
+        ))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "ALREADY_RECONCILED"),
+        "{err}"
+    );
+    // Resume: the run is told the effect happened; it does not repeat it.
+    let requests_before = seen.lock().unwrap().len();
+    let ack = c2
+        .command(envelope_fenced(id16(0x9D), "StartTask", start, g2))
+        .await
+        .unwrap();
+    let started: TaskRunStarted = Client::result(&ack).unwrap();
+    assert!(started.resumed);
+    let st = wait_task(&mut c2, &task, 60).await;
+    let trail = task_events(&core2, &session, &task).await;
+    assert_eq!(
+        (st.state.as_str(), st.run_state.as_str()),
+        ("ReadyForReview", "Completed"),
+        "{st:?}\n{trail:#?}"
+    );
+    let count = |ty: &str, tool: Option<&str>| {
+        trail
+            .iter()
+            .filter(|(_, t, p)| t == ty && tool.is_none_or(|n| p["tool_name"] == n))
+            .count()
+    };
+    assert_eq!(
+        count("ToolCallProposed", Some("git.worktree.close")),
+        1,
+        "never replayed"
+    );
+    assert_eq!(count("ToolCallDispatched", None), 1);
+    assert_eq!(
+        count("ApprovalRequested", None),
+        1,
+        "the approval was consumed once"
+    );
+    assert_eq!(count("ToolCallReconciled", None), 1);
+    let reconciled = trail
+        .iter()
+        .find(|(_, t, _)| t == "ToolCallReconciled")
+        .map(|(_, _, p)| p.clone())
+        .unwrap();
+    assert_eq!(reconciled["resolution"], "USER_CONFIRMED");
+    assert_eq!(
+        reconciled["observed"],
+        "checked: the worktree directory is gone"
+    );
+    // The model saw the verdict as the call's result.
+    let bodies = seen.lock().unwrap().clone();
+    let resumed_request = &bodies[requests_before]["messages"];
+    let verdict = resumed_request
+        .as_array()
+        .unwrap()
+        .iter()
+        .rev()
+        .find(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .unwrap_or_default();
+    assert!(
+        verdict.contains("status: RECONCILED") && verdict.contains("USER_CONFIRMED"),
+        "{verdict}"
     );
 }

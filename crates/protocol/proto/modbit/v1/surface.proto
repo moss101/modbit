@@ -1172,6 +1172,21 @@ message TerminalCursorView {
   string tool_call_id = 10;
 }
 
+// ---- M4.6 Unknown-outcome reconciliation by the user (docs/51 E2E-005, docs/19 resume step 6) ----
+
+message ReconcileToolCall {
+  Id task_id = 1;
+  Id tool_call_id = 2;
+  string resolution = 3;           // EFFECT_CONFIRMED (it happened; never repeat it) | EFFECT_ABSENT (it did not; a retry is safe)
+  string note = 4;                 // what the user checked
+}
+
+message ToolCallReconciledAck {
+  Id tool_call_id = 1;
+  string resolution = 2;           // USER_CONFIRMED | USER_ABSENT
+  uint64 offset = 3;
+}
+
 // ---- M4.3 Workspace checkpoints (docs/19 "Checkpoint epochs", docs/31 checkpoints) ----
 
 message CreateCheckpoint {

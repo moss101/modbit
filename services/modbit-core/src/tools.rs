@@ -14,6 +14,7 @@ use anyhow::{Context, Result};
 use modbit_domain::approval::{Approval, ApprovalEvent};
 use modbit_domain::event::{Actor, AggregateType};
 use modbit_domain::lease::CapabilityLease;
+use modbit_domain::state::StateMachine;
 use modbit_domain::toolcall::{EffectReceipt, ToolCall, ToolCallEvent, ToolCallState};
 use modbit_domain::{ApprovalId, RunId, RunStepId, SessionId, TaskId, TenantId, ToolCallId};
 use modbit_event_store::{AppendRequest, EventStore, NewEvent, ObjectStore};
@@ -143,6 +144,35 @@ fn hold_broker_open(target: ExecTarget) {
     });
 }
 
+/// Windows inherits every inheritable handle into a child, not just the stdio
+/// we set: a broker that outlives this Core would otherwise keep the
+/// supervising client's pipes open and the client would wait on them (the
+/// apps/cli lesson). Clear the inherit flag on our std handles first.
+#[cfg(windows)]
+#[allow(unsafe_code)]
+fn stop_inheriting_std_handles() {
+    use windows_sys::Win32::Foundation::{
+        HANDLE_FLAG_INHERIT, INVALID_HANDLE_VALUE, SetHandleInformation,
+    };
+    use windows_sys::Win32::System::Console::{
+        GetStdHandle, STD_ERROR_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
+    };
+    for which in [STD_INPUT_HANDLE, STD_OUTPUT_HANDLE, STD_ERROR_HANDLE] {
+        // SAFETY: GetStdHandle/SetHandleInformation take and return plain
+        // handles owned by this process; clearing the inherit flag has no
+        // effect on the handle's validity.
+        unsafe {
+            let h = GetStdHandle(which);
+            if !h.is_null() && h != INVALID_HANDLE_VALUE {
+                SetHandleInformation(h, HANDLE_FLAG_INHERIT, 0);
+            }
+        }
+    }
+}
+
+#[cfg(not(windows))]
+fn stop_inheriting_std_handles() {}
+
 /// Attach to the broker a previous Core left alive, or spawn one for this
 /// data directory and wait for its ready line. `replay_generation` is the
 /// Core's boot generation: the fence every attach from this Core carries.
@@ -161,15 +191,26 @@ fn spawn_or_reattach(data_dir: &Path, replay_generation: u64) -> Result<Execd> {
     }
     let bin = execd_binary();
     // No stdin tether: the broker is a durable resource that outlives this
-    // Core (docs/33), bounded by its orphan grace when no Core returns.
+    // Core (docs/33), bounded by its orphan grace when no Core returns. It
+    // must not hold any pipe of ours either — a supervising client waiting
+    // for this Core's pipes to close would wait for the broker instead — so
+    // its stderr goes to the profile's execd.log and nothing is inherited.
+    stop_inheriting_std_handles();
+    let execd_dir = data_dir.join("execd");
+    std::fs::create_dir_all(&execd_dir)?;
+    let log = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(execd_dir.join("execd.log"))
+        .context("opening execd.log")?;
     let mut child = Command::new(&bin)
         .arg("--data-dir")
-        .arg(data_dir.join("execd"))
+        .arg(&execd_dir)
         .arg("--orphan-grace-secs")
         .arg(orphan_grace_secs().to_string())
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
-        .stderr(Stdio::inherit())
+        .stderr(Stdio::from(log))
         .spawn()
         .with_context(|| {
             format!(
@@ -576,6 +617,63 @@ impl ToolHost {
             })),
             _ => None,
         };
+        // Exactly once (M4.6): a call that already finished is replayed from
+        // its recorded result, never run again — a Core that died between the
+        // outcome and the step that records it re-enters the same id.
+        if let Some(c) = &existing
+            && c.state.is_terminal()
+        {
+            let objects = store.lock().await.objects().clone();
+            if let Some(r) = &c.result_ref
+                && let Ok(bytes) = objects.get(r)
+                && let Ok(prior) = serde_json::from_slice::<modbit_tools::ToolCallResult>(&bytes)
+            {
+                return Ok(Invoked {
+                    result: prior,
+                    result_ref: r.clone(),
+                    approval_id: c.approval_id,
+                });
+            }
+            let (status, code, message) = match c.state {
+                ToolCallState::UnknownOutcome => (
+                    ToolStatus::UnknownOutcome,
+                    "UNKNOWN_OUTCOME",
+                    c.unknown_outcome_reason
+                        .clone()
+                        .unwrap_or_else(|| "outcome unknown; reconcile before retrying".into()),
+                ),
+                ToolCallState::Cancelled => (
+                    ToolStatus::Cancelled,
+                    "CANCELLED",
+                    "the call was cancelled".into(),
+                ),
+                _ => (
+                    ToolStatus::PolicyDenied,
+                    "APPROVAL_DENIED",
+                    c.policy_decision.clone().unwrap_or_default(),
+                ),
+            };
+            let result = modbit_tools::ToolCallResult {
+                tool_call_id,
+                tool_name: tool_name.to_owned(),
+                status,
+                structured_output: serde_json::Value::Null,
+                stdout_ref: None,
+                stderr_ref: None,
+                produced_artifact_ids: vec![],
+                effect_receipt_ids: vec![],
+                workspace_revision_after: None,
+                error_code: Some(code.into()),
+                error_message: Some(message),
+                arguments_hash: c.arguments_hash.clone(),
+            };
+            let result_ref = objects.put(&serde_json::to_vec(&result)?)?;
+            return Ok(Invoked {
+                result,
+                result_ref,
+                approval_id: c.approval_id,
+            });
+        }
         // Write-ahead (docs/19 layer 2, M4.1): the proposal is on the log,
         // bound to its run, turn and model call id and to the object holding
         // its arguments, before anything is validated, decided or run. A
@@ -792,21 +890,6 @@ impl ToolHost {
                 }
                 _ => {}
             }
-        }
-        if !retrieval_events.is_empty() {
-            let mut st = store.lock().await;
-            let _ = st.append(AppendRequest {
-                tenant_id,
-                session_id,
-                task_id: Some(task_id),
-                run_id: None,
-                turn_id: None,
-                step_id: None,
-                aggregate_type: AggregateType::Task,
-                aggregate_id: *task_id.as_bytes(),
-                expected_sequence: None,
-                events: retrieval_events,
-            });
         }
         let mut file_events = Vec::new();
         if result.status == ToolStatus::Success
@@ -1119,10 +1202,33 @@ impl ToolHost {
                 );
             }
         }
+        // Everything the outcome implies — the retrieval and terminal records,
+        // the call's outcome, the approval it opened, the files it changed —
+        // lands in one transaction (docs/19; M4.6): a kill between them can
+        // never leave a written file without its record, or a recorded
+        // outcome without its files.
+        let mut batch: Vec<AppendRequest> = Vec::new();
+        if !retrieval_events.is_empty() {
+            batch.push(AppendRequest {
+                tenant_id,
+                session_id,
+                task_id: Some(task_id),
+                run_id: None,
+                turn_id: None,
+                step_id: None,
+                aggregate_type: AggregateType::Task,
+                aggregate_id: *task_id.as_bytes(),
+                expected_sequence: None,
+                events: retrieval_events,
+            });
+        }
         if !events.is_empty() {
-            let mut st = store.lock().await;
-            let expected_sequence = st.tool_call(&tool_call_id)?.map(|c| c.generation);
-            st.append(AppendRequest {
+            let expected_sequence = store
+                .lock()
+                .await
+                .tool_call(&tool_call_id)?
+                .map(|c| c.generation);
+            batch.push(AppendRequest {
                 tenant_id,
                 session_id,
                 task_id: Some(task_id),
@@ -1133,9 +1239,9 @@ impl ToolHost {
                 aggregate_id: *tool_call_id.as_bytes(),
                 expected_sequence,
                 events,
-            })?;
+            });
             if let Some((id, evs)) = approval_events {
-                st.append(AppendRequest {
+                batch.push(AppendRequest {
                     tenant_id,
                     session_id,
                     task_id: Some(task_id),
@@ -1146,20 +1252,27 @@ impl ToolHost {
                     aggregate_id: *id.as_bytes(),
                     expected_sequence: Some(0),
                     events: evs,
-                })?;
+                });
             }
             if !file_events.is_empty()
                 && let Some(root) = &root
             {
-                append_file_events(
-                    &mut st,
+                batch.push(AppendRequest {
                     tenant_id,
                     session_id,
-                    task_id,
-                    &root.to_string_lossy(),
-                    file_events,
-                )?;
+                    task_id: Some(task_id),
+                    run_id: None,
+                    turn_id: None,
+                    step_id: None,
+                    aggregate_type: AggregateType::Workspace,
+                    aggregate_id: workspace_aggregate_id(&root.to_string_lossy()),
+                    expected_sequence: None,
+                    events: file_events,
+                });
             }
+        }
+        if !batch.is_empty() {
+            store.lock().await.append_all(batch, None)?;
         }
         Ok(Invoked {
             result,

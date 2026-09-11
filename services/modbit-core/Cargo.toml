@@ -58,3 +58,6 @@ capabilities = [
   { id = "events.subscribe_from_offset", requirements = ["REQ-EV-0010"] },
   { id = "tools.invoke", requirements = ["REQ-EV-0079", "REQ-EV-0239", "REQ-EV-0080"] },
 ]
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_Console"] }
