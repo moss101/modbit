@@ -536,6 +536,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m3/EPR-003/evidence.json` | retained evidence | 2352 | `4e31bcb28a28533af82266efb42b500c58a9243a8fa292a7a5118c54afb08d00` |
 | `evidence/m3/EPR-004/TASK_CARD.md` | retained evidence | 6021 | `e3b2c612e9f55fb1bb39c84952070e496d63fb8d10cecc20c1aa3fdcdad62764` |
 | `evidence/m3/EPR-004/evidence.json` | retained evidence | 2070 | `cc006b40ace81f2670f854602fcf0553e190f7f8d340669309a06ffc70d0782f` |
+| `evidence/m3/EPR-005/TASK_CARD.md` | retained evidence | 6366 | `57b107c756744957af5a9275f76ae8e1803585ed8dadea7eadbf570a71848fd2` |
+| `evidence/m3/EPR-005/evidence.json` | retained evidence | 1832 | `acc00371f79de03cc00867bcee47241d9be17e4b9972678a8a1675f269d992fe` |
 | `evidence/m3/EPR-014/TASK_CARD.md` | retained evidence | 5777 | `c4a66f97033f7be32fc0d34a5ee7d245e059f7c8e90ffb8b328bc34933808c4a` |
 | `evidence/m3/EPR-014/ci-run-34547831424.json` | retained evidence | 37229 | `883c0d8f5841f51e90cde63a05e55c06ce83f8b97d71289e6dfd06fb4f687fc9` |
 | `evidence/m3/EPR-014/evidence.json` | retained evidence | 2194 | `e8df4969fba2aba5a896ac6bc7b68d3adc6963b51f94f6541732f8cf1b8a1df2` |

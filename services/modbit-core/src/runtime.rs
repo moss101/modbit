@@ -57,6 +57,16 @@ pub struct StartConfig {
     pub model: String,
     /// Budgets.
     pub budgets: Budgets,
+    /// Whether the user pinned the endpoint and model (REQ-EPR-005): a pin
+    /// narrows the compiled plan to that binding and is never silently
+    /// switched away from, but it does not bypass policy.
+    pub pinned: bool,
+    /// The plan and slot the run dispatches on, filled in when the run is
+    /// created (or recovered when it resumes). Attempts are recorded against
+    /// them.
+    pub plan_id: String,
+    /// The initial slot of that plan.
+    pub slot_id: String,
 }
 
 /// Per-task control handle.
@@ -134,6 +144,7 @@ impl Runtime {
         lease_generation: u64,
         actor: Actor,
     ) -> std::result::Result<(RunId, bool), (String, String)> {
+        let mut cfg = cfg;
         let mut tasks = self.tasks.lock().await;
         if tasks.contains_key(&task.task_id) {
             return Err(("TASK_ALREADY_RUNNING".into(), task.task_id.to_string()));
@@ -156,15 +167,13 @@ impl Runtime {
                         vec![typed("TaskStarted", &TaskEvent::TaskStarted, actor.clone())],
                     )
                     .map_err(|e| ("STORE".into(), e))?;
-                    let plan_events = direct_plan_events(
-                        core,
-                        &store,
-                        &task,
-                        run_id,
-                        lease_generation,
-                        &cfg,
-                        &actor,
-                    )?;
+                    let route =
+                        route_new_run(core, &store, &task, run_id, lease_generation, &cfg, &actor)?;
+                    cfg.plan_id = route.plan_id;
+                    cfg.slot_id = route.slot_id;
+                    cfg.endpoint = route.endpoint;
+                    cfg.model = route.model;
+                    let plan_events = route.events;
                     append(
                         &mut store,
                         core,
@@ -217,7 +226,7 @@ impl Runtime {
                                 vec![typed("TaskResumed", &TaskEvent::TaskResumed, actor.clone())],
                             )
                             .map_err(|e| ("STORE".into(), e))?;
-                            let plan_events = direct_plan_events(
+                            let route = route_new_run(
                                 core,
                                 &store,
                                 &task,
@@ -226,6 +235,11 @@ impl Runtime {
                                 &cfg,
                                 &actor,
                             )?;
+                            cfg.plan_id = route.plan_id;
+                            cfg.slot_id = route.slot_id;
+                            cfg.endpoint = route.endpoint;
+                            cfg.model = route.model;
+                            let plan_events = route.events;
                             append(
                                 &mut store,
                                 core,
@@ -276,6 +290,15 @@ impl Runtime {
                             ),
                         ));
                     }
+                    // A resumed run continues on the plan and the activation
+                    // it already has; it never compiles a second plan or
+                    // activates a second slot on the way back (REQ-EPR-014).
+                    let (plan_id, slot_id, endpoint, model) =
+                        recover_route(&store, run.run_id, &cfg);
+                    cfg.plan_id = plan_id;
+                    cfg.slot_id = slot_id;
+                    cfg.endpoint = endpoint;
+                    cfg.model = model;
                     append(
                         &mut store,
                         core,
@@ -552,16 +575,36 @@ fn profile_run_id(lt: Lineage) -> RunId {
     lt.run.expect("a run lineage has a run")
 }
 
-/// The direct path this run dispatches on, as an admitted routing plan
-/// (REQ-EPR-001, REQ-EPR-014).
+/// The route a new run dispatches on (REQ-EPR-005): the plan, the slot, and
+/// the binding the slot names.
+pub(crate) struct RunRoute {
+    /// Plan id.
+    pub plan_id: String,
+    /// Initial slot.
+    pub slot_id: String,
+    /// Endpoint the slot dispatches to.
+    pub endpoint: String,
+    /// Model the slot dispatches to.
+    pub model: String,
+    /// The events that record the plan, its admission and its activation.
+    pub events: Vec<NewEvent>,
+}
+
+/// The plan a new run is routed through (REQ-EPR-005, docs/38 §9).
 ///
-/// Recording it changes no dispatch: it writes down what the direct path
-/// already does, in the shape a compiled plan will later take. It goes through
-/// the same admission every compiled plan will, because nothing dispatches
-/// from a plan that has not been admitted, and the run activates its single
-/// slot once — a resumed run recovers that activation rather than opening a
-/// second one.
-fn direct_plan_events(
+/// With a signed registry active the run goes through the canonical
+/// conditional transaction path: the plan is compiled from the registry, the
+/// pinned statistics and the mode floor, admitted, and its initial slot is
+/// what the run dispatches on. A manual pin narrows the compiled plan to that
+/// binding; it never bypasses policy and is never silently switched away
+/// from — a pin that is not eligible stops the run before it starts.
+///
+/// Without a registry the run keeps the measured direct baseline: the plan
+/// the direct path already executes, written down and admitted the same way.
+/// Either way every plan goes through the same admission, nothing dispatches
+/// from a plan that has not been admitted, and the run activates its initial
+/// slot exactly once.
+fn route_new_run(
     core: &Core,
     store: &EventStore,
     task: &Task,
@@ -569,88 +612,153 @@ fn direct_plan_events(
     lease_generation: u64,
     cfg: &StartConfig,
     actor: &Actor,
-) -> std::result::Result<Vec<NewEvent>, (String, String)> {
-    let plan = modbit_domain::routing::ConditionalExecutionPlan::direct(
-        core.tenant_id,
-        task.session_id,
-        task.task_id,
-        run_id,
-        lease_generation,
-        Timestamp::now().0,
-        &modbit_domain::routing::DirectPath {
-            endpoint: &cfg.endpoint,
-            model: &cfg.model,
-            timeout_ms: MODEL_TIMEOUT_MS,
-            max_output_tokens: MAX_OUTPUT_TOKENS,
-            max_retries: 0,
-            max_turns: cfg.budgets.max_turns,
-        },
-    );
-    let admission = admission::admit_plan(&plan, core.tenant_id, plan.routing_epoch)
-        .map_err(|r| (r.code().to_owned(), format!("{r:?}")))?;
+) -> std::result::Result<RunRoute, (String, String)> {
+    let pin = cfg
+        .pinned
+        .then(|| (cfg.endpoint.clone(), cfg.model.clone()));
+    let (plan, mut events) = if core.gateway.registry().is_some() {
+        let c =
+            crate::routing::compile_for_run(core, store, task, run_id, lease_generation, pin, 0)?;
+        let events = crate::routing::compiled_events(&c, actor.clone());
+        (c.compiled.plan, events)
+    } else {
+        let plan = modbit_domain::routing::ConditionalExecutionPlan::direct(
+            core.tenant_id,
+            task.session_id,
+            task.task_id,
+            run_id,
+            lease_generation,
+            Timestamp::now().0,
+            &modbit_domain::routing::DirectPath {
+                endpoint: &cfg.endpoint,
+                model: &cfg.model,
+                timeout_ms: MODEL_TIMEOUT_MS,
+                max_output_tokens: MAX_OUTPUT_TOKENS,
+                max_retries: 0,
+                max_turns: cfg.budgets.max_turns,
+            },
+        );
+        let admission = admission::admit_plan(&plan, core.tenant_id, plan.routing_epoch)
+            .map_err(|r| (r.code().to_owned(), format!("{r:?}")))?;
+        // REQ-EPR-016: what the evidence says about the direct plan. It is
+        // always hard eligible; whether it meets the mode's floor is a
+        // question of what was observed.
+        let feasibility = crate::routing::feasibility_of(
+            store,
+            core.gateway.registry().as_ref(),
+            task.session_id,
+            &plan,
+        );
+        let plan_ref = modbit_domain::routing::plan_digest(&plan);
+        let events = vec![
+            typed(
+                "RoutingPlanCompiled",
+                &RunEvent::RoutingPlanCompiled {
+                    plan: Box::new(plan.clone()),
+                    plan_ref,
+                },
+                actor.clone(),
+            ),
+            typed(
+                "RoutingPlanAdmitted",
+                &RunEvent::RoutingPlanAdmitted {
+                    plan_id: plan.plan_id.clone(),
+                    validation_digest: admission.validation_digest,
+                    reserved_minor: admission.reserved.minor_units,
+                    currency: admission.reserved.currency,
+                    scale: admission.reserved.scale,
+                    lease_generation,
+                    feasibility: feasibility.code,
+                    quality_lcb_bp: feasibility.lcb_bp,
+                    stats_version: feasibility.stats_version,
+                    thresholds_version: feasibility.thresholds_version,
+                    target_met: feasibility.target_met,
+                },
+                actor.clone(),
+            ),
+        ];
+        (plan, events)
+    };
+    // The initial slot activates once, through the same admission every
+    // activation goes through; a resumed run recovers this activation
+    // rather than opening a second one.
+    let initial = plan.initial_slot().ok_or_else(|| {
+        (
+            "PLAN_INVALID".to_owned(),
+            "the plan has no initial slot".to_owned(),
+        )
+    })?;
     let ledger = admission::RunLedger::empty(&plan.total_budget.currency, plan.total_budget.scale);
     let activation = admission::admit_activation(
         &plan,
         &ledger,
-        modbit_domain::routing::DIRECT_SLOT,
+        &initial.slot_id,
         modbit_domain::routing::Trigger::Initial,
     )
     .map_err(|r| (r.code().to_owned(), format!("{r:?}")))?;
-    let plan_ref = modbit_domain::routing::plan_digest(&plan);
-    let plan_id = plan.plan_id.clone();
-    // REQ-EPR-016: what the evidence says about this plan, recorded with its
-    // admission. The direct baseline is always hard eligible; whether it
-    // meets the mode's floor is a question of what was observed.
-    let feasibility = crate::routing::feasibility_of(
-        store,
-        core.gateway.registry().as_ref(),
-        task.session_id,
-        &plan,
-    );
-    Ok(vec![
-        typed(
-            "RoutingPlanCompiled",
-            &RunEvent::RoutingPlanCompiled {
-                plan: Box::new(plan),
-                plan_ref,
-            },
-            actor.clone(),
-        ),
-        typed(
-            "RoutingPlanAdmitted",
-            &RunEvent::RoutingPlanAdmitted {
-                plan_id: plan_id.clone(),
-                validation_digest: admission.validation_digest,
-                reserved_minor: admission.reserved.minor_units,
-                currency: admission.reserved.currency,
-                scale: admission.reserved.scale,
-                lease_generation,
-                feasibility: feasibility.code,
-                quality_lcb_bp: feasibility.lcb_bp,
-                stats_version: feasibility.stats_version,
-                thresholds_version: feasibility.thresholds_version,
-                target_met: feasibility.target_met,
-            },
-            actor.clone(),
-        ),
-        typed(
-            "SlotActivated",
-            &RunEvent::SlotActivated {
-                plan_id,
-                slot_id: activation.slot_id,
-                activation: activation.activation,
-                reserved_minor: activation.reserved.minor_units,
-            },
-            actor.clone(),
-        ),
-    ])
+    events.push(typed(
+        "SlotActivated",
+        &RunEvent::SlotActivated {
+            plan_id: plan.plan_id.clone(),
+            slot_id: activation.slot_id.clone(),
+            activation: activation.activation,
+            reserved_minor: activation.reserved.minor_units,
+        },
+        actor.clone(),
+    ));
+    Ok(RunRoute {
+        plan_id: plan.plan_id.clone(),
+        slot_id: initial.slot_id.clone(),
+        endpoint: initial.endpoint.clone(),
+        model: initial.model.clone(),
+        events,
+    })
 }
 
-/// One attempt of the direct plan's only slot, recorded from what happened:
+/// The route a resumed run continues on: the plan it already has, and the
+/// binding of the slot it was activated in. A run from before plans were
+/// recorded continues on its start configuration.
+fn recover_route(
+    store: &EventStore,
+    run_id: RunId,
+    cfg: &StartConfig,
+) -> (String, String, String, String) {
+    let plan = store
+        .routing_plans(&run_id)
+        .unwrap_or_default()
+        .into_iter()
+        .next_back();
+    match plan {
+        Some(p) => {
+            let slot = store
+                .routing_activations(&p.plan_id)
+                .unwrap_or_default()
+                .into_iter()
+                .next_back()
+                .map(|a| a.slot_id)
+                .unwrap_or_else(|| modbit_domain::routing::DIRECT_SLOT.to_owned());
+            let binding = p.slots.iter().find(|s| s.slot_id == slot);
+            (
+                p.plan_id.clone(),
+                slot,
+                binding.map_or_else(|| cfg.endpoint.clone(), |b| b.endpoint.clone()),
+                binding.map_or_else(|| cfg.model.clone(), |b| b.model.clone()),
+            )
+        }
+        None => (
+            modbit_domain::routing::direct_plan_id(run_id),
+            modbit_domain::routing::DIRECT_SLOT.to_owned(),
+            cfg.endpoint.clone(),
+            cfg.model.clone(),
+        ),
+    }
+}
+
+/// One attempt of the run's activated slot, recorded from what happened:
 /// an attempt whose provider reported no usage is unknown, never zero
 /// (REQ-EPR-001, and the EPR-000 rule that unknown cost stays unknown).
 fn routing_attempt_event(
-    run_id: RunId,
+    cfg: &StartConfig,
     attempt: u32,
     outcome: &str,
     usage: &modbit_providers::Usage,
@@ -661,8 +769,8 @@ fn routing_attempt_event(
     typed(
         "RoutingAttemptRecorded",
         &RunEvent::RoutingAttemptRecorded {
-            plan_id: modbit_domain::routing::direct_plan_id(run_id),
-            slot_id: modbit_domain::routing::DIRECT_SLOT.to_owned(),
+            plan_id: cfg.plan_id.clone(),
+            slot_id: cfg.slot_id.clone(),
             attempt,
             outcome: outcome.to_owned(),
             usage_known: usage_reported,
@@ -1816,7 +1924,7 @@ async fn run_loop(
                 AggregateType::Run,
                 *run_id.as_bytes(),
                 vec![routing_attempt_event(
-                    run_id,
+                    &cfg,
                     ordinal,
                     "INTERRUPTED",
                     &usage,
@@ -1865,7 +1973,7 @@ async fn run_loop(
                 AggregateType::Run,
                 *run_id.as_bytes(),
                 vec![routing_attempt_event(
-                    run_id,
+                    &cfg,
                     ordinal,
                     "CANCELLED",
                     &usage,
@@ -1931,7 +2039,7 @@ async fn run_loop(
                 AggregateType::Run,
                 *run_id.as_bytes(),
                 vec![routing_attempt_event(
-                    run_id,
+                    &cfg,
                     ordinal,
                     "FAILED",
                     &usage,
@@ -2027,7 +2135,7 @@ async fn run_loop(
                 AggregateType::Run,
                 *run_id.as_bytes(),
                 vec![routing_attempt_event(
-                    run_id,
+                    &cfg,
                     ordinal,
                     "SUCCEEDED",
                     &usage,

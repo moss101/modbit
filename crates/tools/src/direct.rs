@@ -1337,6 +1337,11 @@ tool!(
         let mut exited: Option<Value> = None;
         let mut running = true;
         let deadline = tokio::time::Instant::now() + wait;
+        // The preview budget bounds what is returned, not what is read: once
+        // it is full the stream is still drained until the wait window
+        // closes or the exit arrives, so `running` reports the process and
+        // not the size of the preview. A process that has exited is never
+        // reported as running because its output outran the preview.
         loop {
             let ev = match tokio::time::timeout_at(deadline, client.next()).await {
                 Ok(ev) => ev,
@@ -1345,20 +1350,21 @@ tool!(
             match ev {
                 Ok(Some(Event::Started(_))) => {}
                 Ok(Some(Event::Output(o))) => {
-                    next_cursor = o.cursor + o.data.len() as u64;
-                    if data.len() < budget {
-                        let room = budget - data.len();
-                        if o.data.len() > room {
-                            data.extend_from_slice(&o.data[..room]);
-                            truncated = true;
-                            next_cursor = o.cursor + room as u64;
-                            break;
-                        }
-                        data.extend_from_slice(&o.data);
-                    } else {
+                    if data.len() >= budget {
+                        // More output exists beyond the preview; the cursor
+                        // stays where the preview ended.
                         truncated = true;
-                        break;
+                        continue;
                     }
+                    let room = budget - data.len();
+                    if o.data.len() > room {
+                        data.extend_from_slice(&o.data[..room]);
+                        truncated = true;
+                        next_cursor = o.cursor + room as u64;
+                        continue;
+                    }
+                    data.extend_from_slice(&o.data);
+                    next_cursor = o.cursor + o.data.len() as u64;
                 }
                 Ok(Some(Event::Exited(x))) => {
                     running = false;

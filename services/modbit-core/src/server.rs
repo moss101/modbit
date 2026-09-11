@@ -2437,6 +2437,9 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 endpoint: endpoint.clone(),
                 model: model.clone(),
                 budgets,
+                pinned: !p.model.is_empty(),
+                plan_id: String::new(),
+                slot_id: String::new(),
             };
             match core
                 .runtime

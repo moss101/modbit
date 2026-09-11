@@ -2063,6 +2063,31 @@ async fn scripted_model_routed(
     String,
     std::sync::Arc<std::sync::Mutex<Vec<serde_json::Value>>>,
 ) {
+    scripted_model_paced(script, specialist, stall_at, None).await
+}
+
+/// The same server, answering one request slowly: the request whose tool
+/// result count is `delay_at.0` is held for `delay_at.1` before it is
+/// answered, so a test can change the world while an invocation is in flight.
+async fn scripted_model_delayed(
+    script: Vec<serde_json::Value>,
+    delay_at: (usize, Duration),
+) -> (
+    String,
+    std::sync::Arc<std::sync::Mutex<Vec<serde_json::Value>>>,
+) {
+    scripted_model_paced(script, vec![], None, Some(delay_at)).await
+}
+
+async fn scripted_model_paced(
+    script: Vec<serde_json::Value>,
+    specialist: Vec<serde_json::Value>,
+    stall_at: Option<usize>,
+    delay_at: Option<(usize, Duration)>,
+) -> (
+    String,
+    std::sync::Arc<std::sync::Mutex<Vec<serde_json::Value>>>,
+) {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
@@ -2134,6 +2159,11 @@ async fn scripted_model_routed(
                 {
                     tokio::time::sleep(Duration::from_secs(600)).await;
                     return;
+                }
+                if let Some((at, wait)) = delay_at
+                    && at == results
+                {
+                    tokio::time::sleep(wait).await;
                 }
                 let reply = if for_specialist { &specialist } else { &script }
                     .get(results)
@@ -12251,6 +12281,8 @@ async fn qual_epr_002_a_signed_registry_activates_at_runtime_and_a_revocation_st
     let key = SigningKey::from_bytes(&[11u8; 32]);
     let key_hex = hex::encode(key.verifying_key().to_bytes());
     let now = modbit_domain::Timestamp::now().0;
+    // The stronger solver is dearer, as it is in the world, so the compiler
+    // has a cheapest opener to choose at cold start.
     let entry = |model: &str, roles: &[&str], revoked: bool| RegistryEntry {
         endpoint: "openai".into(),
         provider: "openai".into(),
@@ -12265,8 +12297,8 @@ async fn qual_epr_002_a_signed_registry_activates_at_runtime_and_a_revocation_st
         reasoning: true,
         structured_output: true,
         economics: Economics {
-            input_per_mtok_minor: 25,
-            output_per_mtok_minor: 200,
+            input_per_mtok_minor: if model == "gpt-5-mini" { 25 } else { 125 },
+            output_per_mtok_minor: if model == "gpt-5-mini" { 200 } else { 1_000 },
             currency: "USD".into(),
             scale: 2,
         },
@@ -12434,10 +12466,64 @@ async fn qual_epr_002_a_signed_registry_activates_at_runtime_and_a_revocation_st
     let _: TaskRunStarted = Client::result(&ack).unwrap();
     let st = wait_task(&mut c, &task, 180).await;
     assert!(!st.loop_alive, "{st:?}");
-    // 6. A new generation revokes the model this task used. The next run's
+    // 6. A new generation revokes the model a run is using, while that run is
+    //    in flight. The invocation already dispatched completes; the next
     //    dispatch is refused explicitly, naming the generation that withdrew
-    //    it, rather than quietly running on something else.
-    let v = activate(&mut c, 0xFB, &sign(&document("registry-f", true))).await;
+    //    the model, rather than quietly running on something else.
+    let (slow, seen_slow) = scripted_model_delayed(
+        vec![
+            json!({"calls": [{"name": "fs.read", "args": {"path": "total.py"}}]}),
+            json!({"calls": [{"name": "fs.read", "args": {"path": "total.py"}}]}),
+            json!({"calls": [{"name": "fs.read", "args": {"path": "total.py"}}]}),
+        ],
+        (0, Duration::from_millis(1_500)),
+    )
+    .await;
+    core.kill();
+    let env_slow = [
+        ("MODBIT_OPENAI_BASE_URL", slow.as_str()),
+        ("OPENAI_API_KEY", "sk-test-registry"),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_REGISTRY_KEYS", &format!("ops:{key_hex}")),
+    ];
+    core = CoreProcess::spawn_with_env(dir.path(), &env_slow);
+    let mut c = core.client().await;
+    // Registry activation is not durable across a restart by design: it is
+    // configuration the operator activates, so activate the generation the
+    // run should start under.
+    let v = activate(&mut c, 0xFB, &sign(&document("registry-a2", false))).await;
+    assert!(v.active, "{v:?}");
+    let (session2, _) = create_session(&mut c, id16(0xFC)).await;
+    let g2 = lease_for(&session2);
+    let task2 = create_task_with_profile(&mut c, &session2, g2, &root, 0xFD, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xFE),
+            "StartTask",
+            StartTask {
+                task_id: Some(task2.clone()),
+                endpoint: String::new(),
+                model: String::new(),
+                max_turns: 3,
+                max_tool_calls: 0,
+                max_no_progress_turns: 6,
+            }
+            .encode_to_vec(),
+            g2,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    // Wait until the first invocation is in flight, then withdraw its model.
+    let deadline = std::time::Instant::now() + Duration::from_secs(30);
+    while seen_slow.lock().unwrap().is_empty() && std::time::Instant::now() < deadline {
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    assert!(
+        !seen_slow.lock().unwrap().is_empty(),
+        "the run never dispatched"
+    );
+    let v = activate(&mut c, 0xE0, &sign(&document("registry-f", true))).await;
     assert!(v.active, "{v:?}");
     assert!(
         v.bindings
@@ -12445,35 +12531,34 @@ async fn qual_epr_002_a_signed_registry_activates_at_runtime_and_a_revocation_st
             .any(|b| b.model == "gpt-5-mini" && b.revoked),
         "a withdrawn binding stays visible as withdrawn: {v:?}"
     );
-    let task2 = create_task_with_profile(&mut c, &session, g, &root, 0xFC, "local_trusted").await;
-    let ack = c
-        .command(envelope_fenced(
-            id16(0xFD),
-            "StartTask",
-            StartTask {
-                task_id: Some(task2.clone()),
-                endpoint: String::new(),
-                model: "gpt-5-mini".into(),
-                max_turns: 3,
-                max_tool_calls: 0,
-                max_no_progress_turns: 6,
-            }
-            .encode_to_vec(),
-            g,
-        ))
-        .await
-        .unwrap();
-    let _: TaskRunStarted = Client::result(&ack).unwrap();
     let st2 = wait_task(&mut c, &task2, 180).await;
     assert!(!st2.loop_alive, "{st2:?}");
-    let events = task_events(&core, &session, &task2).await;
+    let events = task_events(&core, &session2, &task2).await;
+    // The run dispatched on gpt-5-mini before the revocation...
+    let plan = events
+        .iter()
+        .find(|(_, t, _)| t == "RoutingPlanCompiled")
+        .unwrap_or_else(|| panic!("{events:#?}"));
+    assert_eq!(
+        plan.2["plan"]["slots"][0]["model"], "gpt-5-mini",
+        "{}",
+        plan.2
+    );
+    assert_eq!(
+        events
+            .iter()
+            .filter(|(_, t, _)| t == "ModelInvocationCompleted")
+            .count(),
+        1,
+        "exactly the invocation in flight completed: {events:#?}"
+    );
+    // ...and the next dispatch was refused with the revocation's own code.
     assert!(
         events
             .iter()
             .any(|(_, t, p)| t == "TurnFailed" && p["failure_code"] == "MODEL_REVOKED"),
-        "the turn fails with the revocation's own code: {events:#?}"
+        "{events:#?}"
     );
-    // The task stops for the user with the reason, rather than running on.
     let stopped = events
         .iter()
         .find(|(_, t, _)| t == "TaskNeedsAttention")
@@ -12483,14 +12568,33 @@ async fn qual_epr_002_a_signed_registry_activates_at_runtime_and_a_revocation_st
         said.contains("MODEL_REVOKED") && said.contains("registry-f"),
         "the stop names the generation that withdrew the model: {said}"
     );
+    // 7. A pin on the withdrawn model cannot start a run at all: the pin is
+    //    refused by name, never silently switched to the eligible binding.
+    let task3 = create_task_with_profile(&mut c, &session2, g2, &root, 0xE1, "local_trusted").await;
+    let err = c
+        .command(envelope_fenced(
+            id16(0xE2),
+            "StartTask",
+            StartTask {
+                task_id: Some(task3.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 3,
+                max_tool_calls: 0,
+                max_no_progress_turns: 6,
+            }
+            .encode_to_vec(),
+            g2,
+        ))
+        .await
+        .unwrap_err();
+    let said = format!("{err:?}");
     assert!(
-        !events
-            .iter()
-            .any(|(_, t, _)| t == "ModelInvocationCompleted"),
-        "nothing was dispatched on another model: {events:#?}"
+        said.contains("PIN_NOT_ELIGIBLE") && said.contains("revoked"),
+        "{said}"
     );
     // The eligible binding is still there; nothing switched to it by itself.
-    let v = registry_now(&mut c, 0xFE).await;
+    let v = registry_now(&mut c, 0xE3).await;
     assert!(
         v.bindings
             .iter()
@@ -12979,7 +13083,22 @@ async fn qual_epr_016_feasibility_is_measured_at_admission_under_pinned_versions
     assert!(a.quality_lcb_bp < 7_200, "{a:?}");
     // 4. A conditional plan submitted through admission is measured the same
     //    way, and its unobserved continuation is named rather than assumed.
-    let run_id = modbit_domain::RunId::parse(v.plan_id.strip_prefix("direct:").unwrap()).unwrap();
+    // With a registry active the run went through the compiled path, so its
+    // plan is a compiled one; the run id comes from the plan on the log.
+    assert!(v.plan_id.starts_with("compiled:"), "{v:?}");
+    let run_id = task_events(&core, &session, &second)
+        .await
+        .into_iter()
+        .rev()
+        .find(|(_, t, _)| t == "RoutingPlanCompiled")
+        .and_then(|(_, _, p)| {
+            serde_json::from_value::<modbit_domain::routing::ConditionalExecutionPlan>(
+                p["plan"].clone(),
+            )
+            .ok()
+        })
+        .map(|p| p.run_id)
+        .expect("the compiled plan names its run");
     let usd = |m: u64| Money {
         minor_units: m,
         currency: "USD".into(),
@@ -13373,5 +13492,460 @@ async fn qual_epr_004_the_compiler_runs_through_core_and_identical_inputs_give_i
     )
     .unwrap_err();
     assert_eq!(err.code(), "REQUIRED_CONTINUATION_UNAVAILABLE");
+    core.kill();
+}
+
+/// QUAL-EPR-005 / EPR-E2E-005 / EPR-FI-005: every new run goes through the
+/// canonical conditional transaction path — a compiled, admitted plan whose
+/// initial slot is what the run dispatches on — while the measured direct
+/// baseline, manual pins and the static-policy canary and rollback are all
+/// kept. The DIRECT label is derived from what ran. A run interrupted after a
+/// tool dispatch and restarted on a real Core resumes on the plan and the one
+/// activation it already had.
+#[tokio::test]
+async fn qual_epr_005_new_runs_go_through_the_compiled_initial_leg_and_keep_the_baseline() {
+    use ed25519_dalek::{Signer, SigningKey};
+    use modbit_protocol::v1::{
+        ActivateModelRegistry, DecideReview, GetRoutingPlan, ModelRegistryView,
+        OutcomeBaselinePublished, PublishOutcomeBaseline, ReviewDecided, RoutingPlanView,
+        StartTask, TaskRunStarted,
+    };
+    use modbit_providers::registry::{
+        Economics, Governance, Latency, QualityFloor, REGISTRY_SCHEMA_VERSION, RegistryDocument,
+        RegistryEntry, SignedRegistry,
+    };
+    use serde_json::json;
+    let key = SigningKey::from_bytes(&[19u8; 32]);
+    let key_hex = hex::encode(key.verifying_key().to_bytes());
+    let now = modbit_domain::Timestamp::now().0;
+    let entry = |model: &str, input_price: u64, output_price: u64| RegistryEntry {
+        endpoint: "openai".into(),
+        provider: "openai".into(),
+        family: "gpt-5".into(),
+        model: model.into(),
+        roles: vec!["solver".into(), "reviewer".into()],
+        input_modalities: vec!["text".into()],
+        context_tokens: 400_000,
+        max_output_tokens: 64_000,
+        tools: true,
+        vision: false,
+        reasoning: true,
+        structured_output: true,
+        economics: Economics {
+            input_per_mtok_minor: input_price,
+            output_per_mtok_minor: output_price,
+            currency: "USD".into(),
+            scale: 2,
+        },
+        latency: Latency {
+            p50_ms: 900,
+            p95_ms: 4_200,
+        },
+        governance: Governance {
+            data_residency: "us".into(),
+            retains_prompts: false,
+            allowed_profiles: vec![],
+        },
+        revoked: false,
+    };
+    let document = |generation: &str, floor: f64| RegistryDocument {
+        schema_version: REGISTRY_SCHEMA_VERSION,
+        registry_generation: generation.into(),
+        stats_version: "stats-1".into(),
+        issued_at_ms: now - 60_000,
+        expires_at_ms: now + 86_400_000,
+        quality_floors: vec![QualityFloor {
+            mode: "auto".into(),
+            min_quality: floor,
+            max_cost_minor: 5_000,
+            currency: "USD".into(),
+            scale: 2,
+        }],
+        entries: vec![entry("gpt-5-mini", 25, 200), entry("gpt-5", 125, 1_000)],
+    };
+    let sign = |doc: &RegistryDocument| {
+        let json = serde_json::to_string(doc).unwrap();
+        serde_json::to_string(&SignedRegistry {
+            key_id: "ops".into(),
+            signature_hex: hex::encode(key.sign(json.as_bytes()).to_bytes()),
+            document_json: json,
+        })
+        .unwrap()
+    };
+    // A repository with a real configured check, so verification is real and
+    // a continuation could be enumerated.
+    let (repo, root) = plain_repo(&[
+        ("total.py", "def total(q, unit):\n    return q * unit\n"),
+        (
+            ".modbit/verification.json",
+            "{\"commands\": [{\"id\": \"configured:py\", \"argv\": [\"python3\", \"-c\", \"import total; assert total.total(3, 250) == 750\"]}]}",
+        ),
+    ]);
+    let revision = String::from_utf8(
+        Command::new("git")
+            .arg("-C")
+            .arg(repo.path())
+            .args(["rev-parse", "HEAD"])
+            .output()
+            .unwrap()
+            .stdout,
+    )
+    .unwrap()
+    .trim()
+    .to_owned();
+    // The same edit-and-complete shape the baseline runs.
+    let script = || {
+        vec![
+            json!({"calls": [{"name": "plan.update", "args": {"outcome": "document the units", "expected_files": ["total.py"]}}]}),
+            json!({"calls": [{"name": "change.apply", "args": {"path": "total.py", "op": "replace", "content": "def total(q, unit):\n    \"\"\"unit is in minor units.\"\"\"\n    return q * unit\n"}}]}),
+            json!({"calls": [{"name": "task.complete", "args": {"summary": "documented", "self_review": {"findings": []}}}]}),
+        ]
+    };
+    let (base, _seen) = scripted_model(script(), None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_REGISTRY_KEYS", &format!("ops:{key_hex}")),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x51)).await;
+    let g = lease_for(&session);
+    async fn routing(c: &mut Client, task: Id, id: u8) -> RoutingPlanView {
+        let ack = c
+            .command(envelope(
+                id16(id),
+                "GetRoutingPlan",
+                GetRoutingPlan {
+                    task_id: Some(task),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    }
+    async fn run_and_accept(
+        c: &mut Client,
+        session: &Id,
+        g: Option<u64>,
+        root: &str,
+        id: u8,
+        model: &str,
+    ) -> Id {
+        let task = create_task_with_profile(c, session, g, root, id, "local_trusted").await;
+        let ack = c
+            .command(envelope_fenced(
+                id16(id + 1),
+                "StartTask",
+                StartTask {
+                    task_id: Some(task.clone()),
+                    endpoint: String::new(),
+                    model: model.into(),
+                    max_turns: 8,
+                    max_tool_calls: 0,
+                    max_no_progress_turns: 6,
+                }
+                .encode_to_vec(),
+                g,
+            ))
+            .await
+            .unwrap();
+        let _: TaskRunStarted = Client::result(&ack).unwrap();
+        let st = wait_task(c, &task, 300).await;
+        assert_eq!(st.state, "ReadyForReview", "{st:?}");
+        let ack = c
+            .command(envelope_fenced(
+                id16(id + 2),
+                "DecideReview",
+                DecideReview {
+                    task_id: Some(task.clone()),
+                    decision: "ACCEPT".into(),
+                    rejected: vec![],
+                    note: "looks right".into(),
+                    expected_workspace_revision: 0,
+                }
+                .encode_to_vec(),
+                g,
+            ))
+            .await
+            .unwrap();
+        let decided: ReviewDecided = Client::result(&ack).unwrap();
+        assert_eq!(decided.task_state, "Completed", "{decided:?}");
+        task
+    }
+    // 1. The measured direct baseline, with no registry active.
+    let direct = run_and_accept(&mut c, &session, g, &root, 0x52, "gpt-5-mini").await;
+    let d = routing(&mut c, direct.clone(), 0x55).await;
+    assert!(d.plan_id.starts_with("direct:"), "{d:?}");
+    assert_eq!(d.path_label, "DIRECT");
+    assert_eq!(d.slots[0].activations, 1);
+    // 2. Activate the registry: every new run now goes through the compiled
+    //    path, dispatching on the initial slot the compiler selected.
+    let ack = c
+        .command(envelope(
+            id16(0x56),
+            "ActivateModelRegistry",
+            ActivateModelRegistry {
+                signed_json: sign(&document("registry-live", 0.72)),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let r: ModelRegistryView = Client::result(&ack).unwrap();
+    assert!(r.active, "{r:?}");
+    let compiled = run_and_accept(&mut c, &session, g, &root, 0x57, "").await;
+    let v = routing(&mut c, compiled.clone(), 0x5A).await;
+    assert!(v.plan_id.starts_with("compiled:"), "{v:?}");
+    let a = v.admission.as_ref().unwrap();
+    assert_eq!(a.thresholds_version, "registry-live");
+    assert_eq!(
+        a.feasibility, "QUALITY_FLOOR_INFEASIBLE",
+        "cold start: {a:?}"
+    );
+    assert!(
+        !a.target_met,
+        "a cheap route is never promoted without LCB and gate evidence"
+    );
+    // The cheapest opener at cold start, activated exactly once, and every
+    // attempt recorded against the compiled plan's slot.
+    assert_eq!(v.slots[0].model, "gpt-5-mini", "{v:?}");
+    assert_eq!(v.slots[0].activations, 1, "{v:?}");
+    assert!(v.attempts.len() >= 3, "{v:?}");
+    assert!(
+        v.attempts
+            .iter()
+            .all(|t| t.slot_id == "initial" && t.outcome == "SUCCEEDED")
+    );
+    // DIRECT is derived from what actually ran, not from a template: the
+    // compiled plan ran one solver slot and nothing else.
+    assert_eq!(v.path_label, "DIRECT", "{v:?}");
+    // 3. The baseline compares the two paths: same verified outcome, same
+    //    number of model calls, same model, on the same revision.
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x5B),
+            "PublishOutcomeBaseline",
+            PublishOutcomeBaseline {
+                session_id: Some(session.clone()),
+                repository_revision: revision.clone(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let published: OutcomeBaselinePublished = Client::result(&ack).unwrap();
+    assert_eq!(published.tasks, 2, "{published:?}");
+    // The bundle is an object in the Core's object store; read it from disk,
+    // the way any auditor of this data directory would.
+    let bundle: modbit_observability::baseline::BaselineBundle = {
+        let objects = dir.path().join("core").join("objects");
+        let mut files = Vec::new();
+        let mut stack = vec![objects];
+        while let Some(d) = stack.pop() {
+            for e in std::fs::read_dir(&d).into_iter().flatten().flatten() {
+                let p = e.path();
+                if p.is_dir() {
+                    stack.push(p);
+                } else {
+                    files.push(p);
+                }
+            }
+        }
+        let bytes = files
+            .into_iter()
+            .find_map(|f| {
+                let bytes = std::fs::read(&f).ok()?;
+                let b: modbit_observability::baseline::BaselineBundle =
+                    serde_json::from_slice(&bytes).ok()?;
+                (b.bundle_digest == published.bundle_digest).then_some(bytes)
+            })
+            .expect("the published bundle is in the object store");
+        serde_json::from_slice(&bytes).unwrap()
+    };
+    let by_id = |t: &Id| {
+        bundle
+            .tasks
+            .iter()
+            .find(|o| o.task_id == hex::encode(&t.value))
+            .cloned()
+            .unwrap()
+    };
+    let (od, oc) = (by_id(&direct), by_id(&compiled));
+    assert_eq!(od.verified, oc.verified, "{od:?} vs {oc:?}");
+    assert_eq!(od.model_calls, oc.model_calls, "{od:?} vs {oc:?}");
+    assert_eq!(od.model, oc.model);
+    assert_eq!(od.state, oc.state);
+    // 4. A manual pin is honoured against the compiler's own preference and
+    //    keeps policy: the plan opens with the pin, under the same generation.
+    let pinned = run_and_accept(&mut c, &session, g, &root, 0x5C, "gpt-5").await;
+    let p = routing(&mut c, pinned.clone(), 0x5F).await;
+    assert!(p.plan_id.starts_with("compiled:"), "{p:?}");
+    assert_eq!(
+        p.slots[0].model, "gpt-5",
+        "the pin, not the cheapest: {p:?}"
+    );
+    assert_eq!(
+        p.admission.as_ref().unwrap().thresholds_version,
+        "registry-live"
+    );
+    // 5. Static policy canary and rollback: a generation with a raised floor
+    //    takes effect for the next run and pins itself; the previous content
+    //    re-activated as a new generation rolls it back the same way.
+    let ack = c
+        .command(envelope(
+            id16(0x60),
+            "ActivateModelRegistry",
+            ActivateModelRegistry {
+                signed_json: sign(&document("registry-canary", 0.90)),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    assert!(Client::result::<ModelRegistryView>(&ack).unwrap().active);
+    let canary = run_and_accept(&mut c, &session, g, &root, 0x61, "").await;
+    let cv = routing(&mut c, canary.clone(), 0x64).await;
+    assert_eq!(
+        cv.admission.as_ref().unwrap().thresholds_version,
+        "registry-canary"
+    );
+    let ack = c
+        .command(envelope(
+            id16(0x65),
+            "ActivateModelRegistry",
+            ActivateModelRegistry {
+                signed_json: sign(&document("registry-rollback", 0.72)),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    assert!(Client::result::<ModelRegistryView>(&ack).unwrap().active);
+    let rolled = run_and_accept(&mut c, &session, g, &root, 0x66, "").await;
+    let rv = routing(&mut c, rolled.clone(), 0x69).await;
+    assert_eq!(
+        rv.admission.as_ref().unwrap().thresholds_version,
+        "registry-rollback"
+    );
+    assert_eq!(rv.slots[0].model, "gpt-5-mini");
+    // 6. EPR-FI-005: interrupt after a typed tool dispatch and restart the
+    //    actual Core. The run is not continued silently: it is suspended for
+    //    reconciliation, and when it resumes it continues on the plan and the
+    //    single activation it already had rather than compiling another.
+    let (stalling, _seen2) = scripted_model(script(), Some(2)).await;
+    core.kill();
+    let env2 = [
+        ("MODBIT_OPENAI_BASE_URL", stalling.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_REGISTRY_KEYS", &format!("ops:{key_hex}")),
+    ];
+    core = CoreProcess::spawn_with_env(dir.path(), &env2);
+    let mut c = core.client().await;
+    let ack = c
+        .command(envelope(
+            id16(0x6A),
+            "ActivateModelRegistry",
+            ActivateModelRegistry {
+                signed_json: sign(&document("registry-rollback", 0.72)),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    assert!(Client::result::<ModelRegistryView>(&ack).unwrap().active);
+    let interrupted =
+        create_task_with_profile(&mut c, &session, g, &root, 0x6B, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x6C),
+            "StartTask",
+            StartTask {
+                task_id: Some(interrupted.clone()),
+                endpoint: String::new(),
+                model: String::new(),
+                max_turns: 8,
+                max_tool_calls: 0,
+                max_no_progress_turns: 6,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    // The change.apply is dispatched and its result recorded; the third
+    // invocation stalls. Kill there.
+    let deadline = std::time::Instant::now() + Duration::from_secs(60);
+    loop {
+        let v = routing(&mut c, interrupted.clone(), 0x6D).await;
+        if v.attempts.len() >= 2 {
+            break;
+        }
+        assert!(std::time::Instant::now() < deadline, "{v:?}");
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    let before = routing(&mut c, interrupted.clone(), 0x6E).await;
+    core.kill();
+    let (fresh, _seen3) = scripted_model(script(), None).await;
+    let env3 = [
+        ("MODBIT_OPENAI_BASE_URL", fresh.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_REGISTRY_KEYS", &format!("ops:{key_hex}")),
+    ];
+    core = CoreProcess::spawn_with_env(dir.path(), &env3);
+    let mut c = core.client().await;
+    let st = wait_task(&mut c, &interrupted, 30).await;
+    assert!(!st.loop_alive, "the run is not silently continued: {st:?}");
+    assert_ne!(st.state, "Running", "{st:?}");
+    let after = routing(&mut c, interrupted.clone(), 0x6F).await;
+    assert_eq!(after.plan_id, before.plan_id);
+    assert_eq!(
+        after.admission, before.admission,
+        "one exact activation across the kill"
+    );
+    assert_eq!(after.attempts, before.attempts);
+    // Resume: the same plan, the same activation, and the attempts continue.
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x70),
+            "StartTask",
+            StartTask {
+                task_id: Some(interrupted.clone()),
+                endpoint: String::new(),
+                model: String::new(),
+                max_turns: 8,
+                max_tool_calls: 0,
+                max_no_progress_turns: 6,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &interrupted, 300).await;
+    assert!(!st.loop_alive, "{st:?}");
+    let resumed = routing(&mut c, interrupted.clone(), 0x7C).await;
+    assert_eq!(
+        resumed.plan_id, before.plan_id,
+        "no second plan was compiled: {resumed:?}"
+    );
+    assert_eq!(
+        resumed.admission.as_ref().unwrap().activations.len(),
+        1,
+        "no second activation: {resumed:?}"
+    );
+    assert!(
+        resumed.attempts.len() > before.attempts.len(),
+        "{resumed:?}"
+    );
+    assert_eq!(resumed.path_label, "DIRECT");
     core.kill();
 }

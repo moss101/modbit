@@ -428,35 +428,48 @@ pub(crate) fn feasibility_of(
     }
 }
 
-/// Compile the plan for a task's current run (REQ-EPR-004) from the active
-/// signed registry, the session's latest statistics snapshot and the mode
-/// floor, and admit what the compiler selected.
+/// A plan compiled for a run, admitted and measured, ready to be recorded.
+pub(crate) struct CompiledForRun {
+    /// What the compiler produced.
+    pub compiled: modbit_providers::compiler::Compiled,
+    /// Its admission.
+    pub admission: modbit_core_runtime::admission::Admission,
+    /// What feasibility said, with the versions it was measured under.
+    pub feasibility: FeasibilityRecord,
+    /// The registry generation it was compiled from.
+    pub registry_generation: String,
+}
+
+/// Compile the plan for a run (REQ-EPR-004) from the active signed registry,
+/// the session's latest statistics snapshot and the mode floor, and admit
+/// what the compiler selected.
 ///
 /// Everything the compiler sees is pinned: the registry by its generation and
 /// document digest, the statistics by their version, the thresholds by the
 /// registry generation that carries the floor. Identical inputs produce an
 /// identical plan, and the answer carries every candidate with the reason it
 /// was or was not chosen.
-pub(crate) async fn compile(
+///
+/// # Errors
+/// No registry is active, the registry has no auto floor, the compiler
+/// refuses, or admission refuses; each with its own code.
+pub(crate) fn compile_for_run(
     core: &Core,
-    task_id: TaskId,
+    store: &modbit_event_store::EventStore,
+    task: &modbit_domain::task::Task,
+    run_id: modbit_domain::RunId,
+    lease_generation: u64,
     pin: Option<(String, String)>,
     request_cap_minor: u64,
-) -> wire::RoutingCompileView {
+) -> Result<CompiledForRun, (String, String)> {
     use modbit_bench_outcome_statistics::MIN_CONFIDENT_SAMPLES;
     use modbit_providers::compiler::{CompileInput, Evidence};
     use modbit_providers::feasibility::{LegEvidence, Thresholds};
-    let refuse = |code: &str, detail: String| wire::RoutingCompileView {
-        compiled: false,
-        refusal_code: code.to_owned(),
-        refusal_detail: detail,
-        ..Default::default()
-    };
     let Some(registry) = core.gateway.registry() else {
-        return refuse(
-            "NO_ACTIVE_REGISTRY",
+        return Err((
+            "NO_ACTIVE_REGISTRY".into(),
             "no signed registry is active; the direct path is the only plan the product compiles without one".into(),
-        );
+        ));
     };
     let Some(floor) = registry
         .document
@@ -465,26 +478,13 @@ pub(crate) async fn compile(
         .find(|f| f.mode == "auto")
         .cloned()
     else {
-        return refuse(
-            "NO_MODE_FLOOR",
+        return Err((
+            "NO_MODE_FLOOR".into(),
             "the active registry defines no auto floor".into(),
-        );
-    };
-    let task = match core.store.lock().await.task(&task_id) {
-        Ok(Some(t)) => t,
-        Ok(None) => return refuse("UNKNOWN_TASK", task_id.to_string()),
-        Err(e) => return refuse("STORE", e.to_string()),
-    };
-    let mut store = core.store.lock().await;
-    let Some(run) = store
-        .runs_for_task(&task_id)
-        .ok()
-        .and_then(|runs| runs.into_iter().next_back())
-    else {
-        return refuse("NO_RUN", "the task has no run to compile a plan for".into());
+        ));
     };
     let next_epoch = store
-        .routing_plans(&run.run_id)
+        .routing_plans(&run_id)
         .unwrap_or_default()
         .iter()
         .map(|p| p.routing_epoch)
@@ -492,7 +492,7 @@ pub(crate) async fn compile(
         .map_or(0, |e| e + 1);
     // The statistics the registry pins, when this session has materialized
     // them; otherwise no evidence, which the compiler treats as cold start.
-    let snapshot = crate::statistics::latest_snapshot(&store, task.session_id).map(|(s, _)| s);
+    let snapshot = crate::statistics::latest_snapshot(store, task.session_id).map(|(s, _)| s);
     let evidence = match snapshot.as_ref() {
         Some(s) => Evidence {
             stats_version: s.stats_version.clone(),
@@ -548,11 +548,11 @@ pub(crate) async fn compile(
         scope: modbit_domain::routing::PlanScope {
             tenant_id: core.tenant_id,
             session_id: task.session_id,
-            task_id,
-            run_id: run.run_id,
+            task_id: task.task_id,
+            run_id,
             created_at_ms: task.created_at.0,
         },
-        lease_generation: run.kernel_lease_generation,
+        lease_generation,
         routing_epoch: next_epoch,
         needs: modbit_providers::registry::Needs {
             tools: true,
@@ -573,19 +573,12 @@ pub(crate) async fn compile(
         risk_version: "none".into(),
         expected_input_tokens: 40_000,
     };
-    let compiled = match modbit_providers::compiler::compile(&input) {
-        Ok(c) => c,
-        Err(r) => return refuse(r.code(), format!("{r:?}")),
-    };
+    let compiled = modbit_providers::compiler::compile(&input)
+        .map_err(|r| (r.code().to_owned(), format!("{r:?}")))?;
     // Admit what was compiled through the same door every plan goes through.
-    let admission = match modbit_core_runtime::admission::admit_plan(
-        &compiled.plan,
-        core.tenant_id,
-        next_epoch,
-    ) {
-        Ok(a) => a,
-        Err(r) => return refuse(r.code(), format!("{r:?}")),
-    };
+    let admission =
+        modbit_core_runtime::admission::admit_plan(&compiled.plan, core.tenant_id, next_epoch)
+            .map_err(|r| (r.code().to_owned(), format!("{r:?}")))?;
     let feasibility = FeasibilityRecord {
         code: compiled.selection.code.clone(),
         lcb_bp: bp(compiled.selection.selected_lcb),
@@ -594,15 +587,26 @@ pub(crate) async fn compile(
         target_met: compiled.selection.target_met,
         detail: String::new(),
     };
-    let plan_id = compiled.plan.plan_id.clone();
-    let plan_ref = modbit_domain::routing::plan_digest(&compiled.plan);
-    let content_digest = compiled.plan.content_digest.clone();
-    let actor = modbit_domain::event::Actor::Core("compiler".into());
-    let events = vec![
+    Ok(CompiledForRun {
+        compiled,
+        admission,
+        feasibility,
+        registry_generation: registry.generation().to_owned(),
+    })
+}
+
+/// The events that record a compiled plan and its admission.
+pub(crate) fn compiled_events(
+    c: &CompiledForRun,
+    actor: modbit_domain::event::Actor,
+) -> Vec<modbit_event_store::NewEvent> {
+    let plan_id = c.compiled.plan.plan_id.clone();
+    let plan_ref = modbit_domain::routing::plan_digest(&c.compiled.plan);
+    vec![
         crate::runtime::typed(
             "RoutingPlanCompiled",
             &modbit_domain::run::RunEvent::RoutingPlanCompiled {
-                plan: Box::new(compiled.plan.clone()),
+                plan: Box::new(c.compiled.plan.clone()),
                 plan_ref,
             },
             actor.clone(),
@@ -610,58 +614,102 @@ pub(crate) async fn compile(
         crate::runtime::typed(
             "RoutingPlanAdmitted",
             &modbit_domain::run::RunEvent::RoutingPlanAdmitted {
-                plan_id: plan_id.clone(),
-                validation_digest: admission.validation_digest.clone(),
-                reserved_minor: admission.reserved.minor_units,
-                currency: admission.reserved.currency.clone(),
-                scale: admission.reserved.scale,
-                lease_generation: admission.lease_generation,
-                feasibility: feasibility.code.clone(),
-                quality_lcb_bp: feasibility.lcb_bp,
-                stats_version: feasibility.stats_version.clone(),
-                thresholds_version: feasibility.thresholds_version.clone(),
-                target_met: feasibility.target_met,
+                plan_id,
+                validation_digest: c.admission.validation_digest.clone(),
+                reserved_minor: c.admission.reserved.minor_units,
+                currency: c.admission.reserved.currency.clone(),
+                scale: c.admission.reserved.scale,
+                lease_generation: c.admission.lease_generation,
+                feasibility: c.feasibility.code.clone(),
+                quality_lcb_bp: c.feasibility.lcb_bp,
+                stats_version: c.feasibility.stats_version.clone(),
+                thresholds_version: c.feasibility.thresholds_version.clone(),
+                target_met: c.feasibility.target_met,
             },
             actor,
         ),
-    ];
+    ]
+}
+
+/// Compile the plan for a task's current run through the surface protocol
+/// (REQ-EPR-004) and install it.
+pub(crate) async fn compile(
+    core: &Core,
+    task_id: TaskId,
+    pin: Option<(String, String)>,
+    request_cap_minor: u64,
+) -> wire::RoutingCompileView {
+    let refuse = |code: &str, detail: String| wire::RoutingCompileView {
+        compiled: false,
+        refusal_code: code.to_owned(),
+        refusal_detail: detail,
+        ..Default::default()
+    };
+    let task = match core.store.lock().await.task(&task_id) {
+        Ok(Some(t)) => t,
+        Ok(None) => return refuse("UNKNOWN_TASK", task_id.to_string()),
+        Err(e) => return refuse("STORE", e.to_string()),
+    };
+    let mut store = core.store.lock().await;
+    let Some(run) = store
+        .runs_for_task(&task_id)
+        .ok()
+        .and_then(|runs| runs.into_iter().next_back())
+    else {
+        return refuse("NO_RUN", "the task has no run to compile a plan for".into());
+    };
+    let c = match compile_for_run(
+        core,
+        &store,
+        &task,
+        run.run_id,
+        run.kernel_lease_generation,
+        pin,
+        request_cap_minor,
+    ) {
+        Ok(c) => c,
+        Err((code, detail)) => return refuse(&code, detail),
+    };
+    let plan_id = c.compiled.plan.plan_id.clone();
     if let Err(e) = crate::runtime::append(
         &mut store,
         core,
         crate::runtime::Lineage::run(core.tenant_id, task.session_id, task_id, run.run_id),
         modbit_domain::event::AggregateType::Run,
         *run.run_id.as_bytes(),
-        events,
+        compiled_events(&c, modbit_domain::event::Actor::Core("compiler".into())),
     ) {
         return refuse("STORE", e.to_string());
     }
     wire::RoutingCompileView {
         compiled: true,
         plan_id: plan_id.clone(),
-        content_digest,
-        input_digest: compiled.input_digest,
-        selection_code: compiled.selection.code,
-        target_met: compiled.selection.target_met,
-        registry_generation: registry.generation().to_owned(),
-        stats_version: evidence.stats_version,
-        thresholds_version: thresholds.thresholds_version,
+        content_digest: c.compiled.plan.content_digest.clone(),
+        input_digest: c.compiled.input_digest.clone(),
+        selection_code: c.compiled.selection.code.clone(),
+        target_met: c.compiled.selection.target_met,
+        registry_generation: c.registry_generation.clone(),
+        stats_version: c.feasibility.stats_version.clone(),
+        thresholds_version: c.feasibility.thresholds_version.clone(),
         compiler_version: modbit_providers::compiler::COMPILER_VERSION.into(),
-        candidates: compiled
+        candidates: c
+            .compiled
             .candidates
             .iter()
-            .map(|c| wire::RoutingCandidateView {
-                plan_id: c.plan_id.clone(),
-                bindings: c.bindings.clone(),
-                worst_case_cost_minor: c.worst_case_cost_minor,
-                expected_cost_minor: c.expected_cost_minor,
-                quality_lcb_bp: bp(c.quality.lcb),
-                confident: c.quality.confident,
-                missing_evidence: c.quality.missing.clone(),
-                hard_eligible: c.hard_eligible,
-                ineligible_reason: c.ineligible_reason.clone(),
+            .map(|k| wire::RoutingCandidateView {
+                plan_id: k.plan_id.clone(),
+                bindings: k.bindings.clone(),
+                worst_case_cost_minor: k.worst_case_cost_minor,
+                expected_cost_minor: k.expected_cost_minor,
+                quality_lcb_bp: bp(k.quality.lcb),
+                confident: k.quality.confident,
+                missing_evidence: k.quality.missing.clone(),
+                hard_eligible: k.hard_eligible,
+                ineligible_reason: k.ineligible_reason.clone(),
             })
             .collect(),
-        exclusions: compiled
+        exclusions: c
+            .compiled
             .selection
             .exclusions
             .iter()
