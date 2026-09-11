@@ -36,4 +36,12 @@ Named tests (run on macOS, Linux and Windows by `.github/workflows/ci.yml`):
 ## Evidence
 
 - `evidence.json` in this directory (commits, hosted CI run, test names)
-- CI run json/log copies alongside
+- `ci-run-34544470328.json`: hosted CI, green on macOS, Linux and Windows at `d21ee00`
+- Commits: `994e37c` (the baseline and the unknown-usage records), `0d936a7` and `d21ee00` (two test-side fixes that CI found)
+
+## What CI found before it went green
+
+Run `34542192228` on `994e37c` failed for two things, neither of them the baseline:
+
+- the commit that added `DR-M3-002` touched a locked path without a `Decision-Record:` trailer, which the locked-path lint refuses. Pushed history is never rewritten here, so the rule is carried by the commits that follow.
+- two test assertions were wrong rather than the product. The fake provider advertised HTTP keep-alive while answering one request per connection, so a later request could be written into a socket it had already closed; and this task's own test required a tool call to take at least a millisecond, which a local file read need not. Both were fixed forward.

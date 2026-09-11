@@ -19850,13 +19850,16 @@
    "task_card": "docs/49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md#epr-000",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller or executor present",
    "milestone_override": "DR-M2-002: the direct baseline measurement needs the live provider proof (DR-M2-001) and the M3 benchmark harness",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "artifact:evidence/m3/EPR-000/TASK_CARD.md",
     "artifact:docs/decisions/DR-M3-002-epr-baseline-live-provider-proof.md",
     "test:qual_epr_000_the_direct_path_is_instrumented_and_published_as_a_fixed_revision_baseline",
     "test:unknown_cost_stays_unknown_and_is_counted",
-    "test:a_bundle_is_pinned_sealed_and_honest_about_what_it_does_not_know"
+    "test:a_bundle_is_pinned_sealed_and_honest_about_what_it_does_not_know",
+    "run:34544470328",
+    "artifact:evidence/m3/EPR-000/ci-run-34544470328.json",
+    "commit:d21ee00"
    ],
    "notes": [
     {
@@ -19882,9 +19885,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "a real edit/build/test/review task and a cancelled attempt whose cost stays unknown; DR-M3-002 defers the production-endpoint run"
+    },
+    {
+     "at": "2026-09-11T00:06:33Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at d21ee00; the offline half of EPR-E2E-000 is proven and DR-M3-002 defers the production-endpoint half"
+    },
+    {
+     "at": "2026-09-11T00:06:33Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "the direct baseline is published, pinned and honest about unknown cost; live-provider proof deferred by DR-M3-002"
     }
    ],
-   "status_changed_on": "2026-09-10T23:26:10Z"
+   "status_changed_on": "2026-09-11T00:06:33Z"
   },
   {
    "id": "EPR-001",

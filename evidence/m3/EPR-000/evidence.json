@@ -9,10 +9,18 @@
   "qual_ev_0173_task_economics_report_quality_and_cost_from_the_log",
   "m2_8_verification_engine_gates_completion_on_real_cargo_fixture"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "994e37c",
+  "0d936a7",
+  "d21ee00"
+ ],
+ "runs": [
+  "run:34544470328"
+ ],
  "decision_record": "docs/decisions/DR-M3-002-epr-baseline-live-provider-proof.md",
  "proof": "A real coding task on a real Git fixture (read, plan, repair attempt, edit, real cargo build and test evidence, a Review the user accepts) plus a second task whose provider stream is cancelled in flight. The published bundle is pinned to the build digest, the repository revision and the environment digest, and carries per task the outcome, the completion verdict, the checks, the model calls, the retries, the cache units, the tool calls, the usage, the three times and the user's interventions; its digest covers its own content. The cancelled attempt's usage is null and the task is counted in tasks_with_unknown_usage: unknown is never settled as zero, and nothing was repeated.",
  "audit": "PARTIAL before this task: the log already carried invocations, retries, cache units, verification and interventions; nothing published a baseline and a dropped invocation left no usage record at all.",
- "limitations": "The production-endpoint half of EPR-E2E-000 has not run: no provider credentials exist here. DR-M3-002 defers it to .github/workflows/live-providers.yml and its first green run is appended to this evidence file. One session per bundle; assembled on request."
+ "limitations": "The production-endpoint half of EPR-E2E-000 has not run: no provider credentials exist here. DR-M3-002 defers it to .github/workflows/live-providers.yml and its first green run is appended to this evidence file. One session per bundle; assembled on request.",
+ "ci": "https://github.com/moss101/modbit/actions/runs/34544470328 (green on macOS, Linux and Windows at d21ee00)",
+ "ci_history": "run 34542192228 (994e37c) failed twice for reasons outside this task's code: a missing Decision-Record trailer on the commit that added DR-M3-002, and two brittle test assertions (a keep-alive race in the fake provider, and a baseline timing assertion that required a tool call to take at least a millisecond). Both assertions were fixed forward in 0d936a7 and d21ee00; the trailer rule applies to later commits in range."
 }
