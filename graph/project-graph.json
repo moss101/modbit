@@ -2371,11 +2371,14 @@
    "milestone": "M4",
    "order": 0,
    "source": "docs/43",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "test:qual_ev_0055_e2e_004_core_crash_during_approval_restores_the_same_approval_and_one_effect",
     "test:qual_ev_0055_e2e_005_core_crash_after_dispatch_reconciles_the_unknown_outcome_without_replay",
-    "artifact:evidence/m4/M4.1/TASK_CARD.md"
+    "artifact:evidence/m4/M4.1/TASK_CARD.md",
+    "run:34575700540",
+    "commit:e3c0fb2",
+    "artifact:evidence/m4/M4.1/ci-run-34575700540.json"
    ],
    "notes": [
     {
@@ -2401,9 +2404,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "real-system proof locally: the Core process is hard-killed while a destructive call awaits approval and while a command is in flight; the restarted Core reconstructs the same ApprovalId/intent/ToolCallId and the RECONCILING boundary; resume re-enters by id, approving once yields one dispatch and one receipt, the unknown outcome is reconciled without replay; hosted CI pending"
+    },
+    {
+     "at": "2026-09-11T07:52:36Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34575700540 green on macOS, Linux and Windows at e3c0fb2: E2E-004 (same ApprovalId/intent after a hard kill, one effect on one approval) and the E2E-005 shape (unknown outcome reconciled without replay) pass on every runner"
+    },
+    {
+     "at": "2026-09-11T07:52:36Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed on hosted CI run 34575700540; card records the audit (ABSENT), the entry points, the proof and the limitations (target inspection for named workspace paths only; protected effects without a receipt are held and surfaced; protocol_state holds the task key until M4.5)"
     }
    ],
-   "status_changed_on": "2026-09-11T07:41:24Z"
+   "status_changed_on": "2026-09-11T07:52:36Z"
   },
   {
    "id": "M4.2",

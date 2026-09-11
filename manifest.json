@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 734,
-    "docs_bytes": 1042512
+    "root_and_tooling": 735,
+    "docs_bytes": 1042533
   },
   "sections": [
     {
@@ -851,8 +851,8 @@
       "section": "live-state",
       "section_title": "Live state",
       "title": "Build Manifest",
-      "bytes": 4679,
-      "sha256": "a1a6bb7c99e979c6d084c06d1c5c4df970ab1ff9f326792ca2b0dd49e93e646c"
+      "bytes": 4700,
+      "sha256": "a75278cb5d6a49c7bdd2dad028d537f274c1689b30ed8d00d6ce4504634f6abb"
     }
   ],
   "root_and_tooling": [
@@ -4473,23 +4473,28 @@
     },
     {
       "path": "evidence/m4/M4.1/TASK_CARD.md",
-      "bytes": 8388,
-      "sha256": "1acdccf415b49e2ffe36762f1ad6b089423e783c1f0a812d95d4267370fb1164"
+      "bytes": 8467,
+      "sha256": "a14c9ed238f536747ab52bbbd627c5cd33e3019dc50eacaf5a190a918297205d"
+    },
+    {
+      "path": "evidence/m4/M4.1/ci-run-34575700540.json",
+      "bytes": 37317,
+      "sha256": "4935dff1f95c3da823e4c69d390538ad0ee41d56e6e9958cd4af8a91569d8de8"
     },
     {
       "path": "evidence/m4/M4.1/evidence.json",
-      "bytes": 1948,
-      "sha256": "d735d6474a5ea50d570c310efb24d1d8af3fe5ab7935500ea7ec8d2a89a8a122"
+      "bytes": 2107,
+      "sha256": "ce7ed45990ba4c096fb560932c021cde05be8c0e56a426eae8960eb3b0f119a9"
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 40863,
-      "sha256": "7b61be33248d1c496ac05fdc003b7d5a5e835837d8c87d3fe0e58026e9e98296"
+      "bytes": 40859,
+      "sha256": "c28285d571ec7860ba5c8584cd99da03a94e569619b3266db82b28ec835626e7"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1296185,
-      "sha256": "43a736f082bea7bd69e06877093a63df952941cabbee45bd33bbbfba1f812ba3"
+      "bytes": 1297025,
+      "sha256": "8feb2eab90f0a4e67eefcc6ae38720697d759c62a4cf3f30c6ff8bae31682cc9"
     },
     {
       "path": "tools/build_graph.py",
