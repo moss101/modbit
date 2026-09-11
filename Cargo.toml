@@ -87,6 +87,7 @@ modbit-observability = { path = "crates/observability" }
 
 # external (exact versions pinned in Cargo.lock; new dependencies follow docs/36 and docs/70 supply-chain policy)
 anyhow = "1.0.104"
+ed25519-dalek = { version = "2.2.0", default-features = false, features = ["std", "zeroize"] }
 hex = "0.4.3"
 jsonschema = { version = "0.55.1", default-features = false }
 rusqlite = { version = "0.40.2", features = ["bundled"] }

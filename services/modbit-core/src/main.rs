@@ -13,6 +13,7 @@ mod baseline;
 mod economics;
 mod inspector;
 mod languages;
+mod model_registry;
 mod probe;
 mod review;
 mod routing;

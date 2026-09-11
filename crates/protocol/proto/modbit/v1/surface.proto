@@ -906,3 +906,49 @@ message RoutingActivationView {
   uint32 activation = 2;
   uint64 reserved_minor = 3;
 }
+
+// ---- Model Registry (REQ-EPR-002, docs/27 and docs/38) ----
+//
+// Configuration is not a release: a signed, versioned document activates the
+// registry at runtime. No credential, no endpoint URL and no empirical
+// workflow outcome ever appears here.
+
+message ActivateModelRegistry {
+  string signed_json = 1;          // a serialized SignedRegistry
+}
+
+message ModelRegistryView {
+  bool active = 1;
+  string registry_generation = 2;
+  string stats_version = 3;        // a reference; the registry holds no statistics
+  string key_id = 4;               // which trusted key signed it
+  string document_digest = 5;
+  int64 expires_at_ms = 6;
+  repeated RegistryBindingView bindings = 7;
+  string refusal_code = 8;         // empty when active
+  string refusal_detail = 9;
+}
+
+message RegistryBindingView {
+  string endpoint = 1;             // the endpoint's name, never its URL or its credential
+  string provider = 2;
+  string family = 3;
+  string model = 4;
+  repeated string roles = 5;
+  uint32 context_tokens = 6;
+  uint32 max_output_tokens = 7;
+  bool tools = 8;
+  bool vision = 9;
+  bool structured_output = 10;
+  uint64 input_per_mtok_minor = 11;
+  uint64 output_per_mtok_minor = 12;
+  string currency = 13;
+  uint32 scale = 14;
+  uint64 latency_p50_ms = 15;
+  uint64 latency_p95_ms = 16;
+  string data_residency = 17;
+  bool retains_prompts = 18;
+  bool revoked = 19;
+}
+
+message GetModelRegistry {}

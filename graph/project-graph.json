@@ -19998,8 +19998,41 @@
    "task_card": "docs/49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md#epr-002",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller or executor present",
    "milestone_override": "DR-M2-002: router machinery follows the EPR-000 baseline evidence; scheduled in M3 ahead of the M4/M5 EPR tasks that depend on it",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "commit:245763a",
+    "artifact:evidence/m3/EPR-002/TASK_CARD.md",
+    "test:qual_epr_002_a_signed_registry_activates_at_runtime_and_a_revocation_stops_dispatch",
+    "test:ingestion_refuses_empirical_workflow_outcomes",
+    "test:a_revoked_model_is_refused_at_dispatch_and_says_so"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-11T00:56:43Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing code audit: the gateway hardcodes its model catalog in default_openai_models/default_anthropic_models, so a binding, a price or a revocation needs a new build; nothing is signed, nothing is versioned, and there is no role binding at all"
+    },
+    {
+     "at": "2026-09-11T00:56:43Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "crates/providers/src/registry.rs is the signed versioned registry: Ed25519 over the document bytes, freshness window, empirical-field refusal at ingestion, role bindings filtered by capability and governance, and a revocation that refuses dispatch"
+    },
+    {
+     "at": "2026-09-11T00:56:43Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "the gateway consults the active registry per dispatch and ActivateModelRegistry/GetModelRegistry are the Core entry points; a withdrawn model stops the next run explicitly as MODEL_REVOKED"
+    },
+    {
+     "at": "2026-09-11T00:57:18Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "local gates green: cargo test --workspace, fmt --check, clippy --workspace --all-targets -D warnings"
+    }
+   ],
+   "status_changed_on": "2026-09-11T00:57:18Z"
   },
   {
    "id": "EPR-003",

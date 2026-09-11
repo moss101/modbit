@@ -1544,6 +1544,15 @@ async fn run_loop(
         let stream = match core.gateway.stream(request, &needs, stream_cancel.clone()) {
             Ok(s) => s,
             Err(e) => {
+                // A refusal keeps its own code: a model withdrawn by a new
+                // registry generation reads as MODEL_REVOKED, not as a generic
+                // routing problem (REQ-EPR-002).
+                let code = match &e {
+                    modbit_providers::RouteError::RegistryRefused { code, .. } => {
+                        (*code).to_owned()
+                    }
+                    _ => "ROUTE_REFUSED".to_owned(),
+                };
                 let mut store = core.store.lock().await;
                 let _ = append(
                     &mut store,
@@ -1557,7 +1566,7 @@ async fn run_loop(
                     vec![typed(
                         "StepFailed",
                         &StepEvent::StepFailed {
-                            failure_code: "ROUTE_REFUSED".into(),
+                            failure_code: code.clone(),
                             output_ref: None,
                         },
                         actor.clone(),
@@ -1572,12 +1581,12 @@ async fn run_loop(
                     vec![typed(
                         "TurnFailed",
                         &TurnEvent::TurnFailed {
-                            failure_code: "ROUTE_REFUSED".into(),
+                            failure_code: code.clone(),
                         },
                         actor.clone(),
                     )],
                 );
-                break LoopEnd::ProviderFailed("ROUTE_REFUSED".into(), e.to_string());
+                break LoopEnd::ProviderFailed(code, e.to_string());
             }
         };
         // The provider's own request id, when it gave one: read from the live

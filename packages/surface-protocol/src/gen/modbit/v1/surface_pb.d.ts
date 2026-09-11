@@ -3921,6 +3921,206 @@ export declare type RoutingActivationView = Message<"modbit.v1.RoutingActivation
 export declare const RoutingActivationViewSchema: GenMessage<RoutingActivationView>;
 
 /**
+ * @generated from message modbit.v1.ActivateModelRegistry
+ */
+export declare type ActivateModelRegistry = Message<"modbit.v1.ActivateModelRegistry"> & {
+  /**
+   * a serialized SignedRegistry
+   *
+   * @generated from field: string signed_json = 1;
+   */
+  signedJson: string;
+};
+
+/**
+ * Describes the message modbit.v1.ActivateModelRegistry.
+ * Use `create(ActivateModelRegistrySchema)` to create a new message.
+ */
+export declare const ActivateModelRegistrySchema: GenMessage<ActivateModelRegistry>;
+
+/**
+ * @generated from message modbit.v1.ModelRegistryView
+ */
+export declare type ModelRegistryView = Message<"modbit.v1.ModelRegistryView"> & {
+  /**
+   * @generated from field: bool active = 1;
+   */
+  active: boolean;
+
+  /**
+   * @generated from field: string registry_generation = 2;
+   */
+  registryGeneration: string;
+
+  /**
+   * a reference; the registry holds no statistics
+   *
+   * @generated from field: string stats_version = 3;
+   */
+  statsVersion: string;
+
+  /**
+   * which trusted key signed it
+   *
+   * @generated from field: string key_id = 4;
+   */
+  keyId: string;
+
+  /**
+   * @generated from field: string document_digest = 5;
+   */
+  documentDigest: string;
+
+  /**
+   * @generated from field: int64 expires_at_ms = 6;
+   */
+  expiresAtMs: bigint;
+
+  /**
+   * @generated from field: repeated modbit.v1.RegistryBindingView bindings = 7;
+   */
+  bindings: RegistryBindingView[];
+
+  /**
+   * empty when active
+   *
+   * @generated from field: string refusal_code = 8;
+   */
+  refusalCode: string;
+
+  /**
+   * @generated from field: string refusal_detail = 9;
+   */
+  refusalDetail: string;
+};
+
+/**
+ * Describes the message modbit.v1.ModelRegistryView.
+ * Use `create(ModelRegistryViewSchema)` to create a new message.
+ */
+export declare const ModelRegistryViewSchema: GenMessage<ModelRegistryView>;
+
+/**
+ * @generated from message modbit.v1.RegistryBindingView
+ */
+export declare type RegistryBindingView = Message<"modbit.v1.RegistryBindingView"> & {
+  /**
+   * the endpoint's name, never its URL or its credential
+   *
+   * @generated from field: string endpoint = 1;
+   */
+  endpoint: string;
+
+  /**
+   * @generated from field: string provider = 2;
+   */
+  provider: string;
+
+  /**
+   * @generated from field: string family = 3;
+   */
+  family: string;
+
+  /**
+   * @generated from field: string model = 4;
+   */
+  model: string;
+
+  /**
+   * @generated from field: repeated string roles = 5;
+   */
+  roles: string[];
+
+  /**
+   * @generated from field: uint32 context_tokens = 6;
+   */
+  contextTokens: number;
+
+  /**
+   * @generated from field: uint32 max_output_tokens = 7;
+   */
+  maxOutputTokens: number;
+
+  /**
+   * @generated from field: bool tools = 8;
+   */
+  tools: boolean;
+
+  /**
+   * @generated from field: bool vision = 9;
+   */
+  vision: boolean;
+
+  /**
+   * @generated from field: bool structured_output = 10;
+   */
+  structuredOutput: boolean;
+
+  /**
+   * @generated from field: uint64 input_per_mtok_minor = 11;
+   */
+  inputPerMtokMinor: bigint;
+
+  /**
+   * @generated from field: uint64 output_per_mtok_minor = 12;
+   */
+  outputPerMtokMinor: bigint;
+
+  /**
+   * @generated from field: string currency = 13;
+   */
+  currency: string;
+
+  /**
+   * @generated from field: uint32 scale = 14;
+   */
+  scale: number;
+
+  /**
+   * @generated from field: uint64 latency_p50_ms = 15;
+   */
+  latencyP50Ms: bigint;
+
+  /**
+   * @generated from field: uint64 latency_p95_ms = 16;
+   */
+  latencyP95Ms: bigint;
+
+  /**
+   * @generated from field: string data_residency = 17;
+   */
+  dataResidency: string;
+
+  /**
+   * @generated from field: bool retains_prompts = 18;
+   */
+  retainsPrompts: boolean;
+
+  /**
+   * @generated from field: bool revoked = 19;
+   */
+  revoked: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.RegistryBindingView.
+ * Use `create(RegistryBindingViewSchema)` to create a new message.
+ */
+export declare const RegistryBindingViewSchema: GenMessage<RegistryBindingView>;
+
+/**
+ * @generated from message modbit.v1.GetModelRegistry
+ */
+export declare type GetModelRegistry = Message<"modbit.v1.GetModelRegistry"> & {
+};
+
+/**
+ * Describes the message modbit.v1.GetModelRegistry.
+ * Use `create(GetModelRegistrySchema)` to create a new message.
+ */
+export declare const GetModelRegistrySchema: GenMessage<GetModelRegistry>;
+
+/**
  * Command acknowledgement.
  *
  * @generated from enum modbit.v1.CommandStatus

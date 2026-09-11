@@ -97,6 +97,19 @@ pub enum RouteError {
         /// Model.
         model: String,
     },
+    /// The active Model Registry does not allow this dispatch (REQ-EPR-002):
+    /// the binding is revoked, absent, or does not satisfy the request.
+    #[error("registry refuses `{endpoint}`/`{model}`: {detail} ({code})")]
+    RegistryRefused {
+        /// Endpoint.
+        endpoint: String,
+        /// Model.
+        model: String,
+        /// Stable code (`MODEL_REVOKED`, `MODEL_NOT_IN_REGISTRY`, `MODEL_NOT_ELIGIBLE`).
+        code: &'static str,
+        /// What the registry said.
+        detail: String,
+    },
     /// Organization policy blocks the endpoint/model (REQ-EV-0031); no request can widen it.
     #[error("endpoint `{endpoint}` model `{model}` is blocked by organization policy ({rule})")]
     PolicyBlocked {
@@ -165,6 +178,9 @@ pub struct ProviderGateway {
     endpoints: Arc<BTreeMap<String, Endpoint>>,
     health: Arc<Mutex<BTreeMap<String, EndpointHealth>>>,
     client: reqwest::Client,
+    /// The active Model Registry, when a signed configuration has been
+    /// activated. Absent means the build's own defaults are in force.
+    registry: Arc<Mutex<Option<crate::registry::ModelRegistry>>>,
     policy: Arc<OrgModelPolicy>,
 }
 
@@ -257,6 +273,7 @@ impl ProviderGateway {
                 .connect_timeout(Duration::from_secs(10))
                 .build()
                 .expect("reqwest client"),
+            registry: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -288,6 +305,30 @@ impl ProviderGateway {
     #[must_use]
     pub fn policy(&self) -> &OrgModelPolicy {
         &self.policy
+    }
+
+    /// Activate a signed configuration document (REQ-EPR-002). The previously
+    /// active registry stays in force until a document verifies whole, so a
+    /// bad generation never leaves the product without one.
+    ///
+    /// # Errors
+    /// The document does not verify, is stale, carries empirical outcome
+    /// fields, or leaves a required role unbound.
+    pub fn activate_registry(
+        &self,
+        signed: &crate::registry::SignedRegistry,
+        trusted: &std::collections::BTreeMap<String, [u8; 32]>,
+        now_ms: i64,
+    ) -> Result<crate::registry::ModelRegistry, crate::registry::RegistryRefused> {
+        let registry = crate::registry::activate(signed, trusted, now_ms)?;
+        *self.registry.lock().expect("registry") = Some(registry.clone());
+        Ok(registry)
+    }
+
+    /// The active Model Registry, when one has been activated.
+    #[must_use]
+    pub fn registry(&self) -> Option<crate::registry::ModelRegistry> {
+        self.registry.lock().expect("registry").clone()
     }
 
     /// What one endpoint's catalog says about a model, when it lists it.
@@ -336,6 +377,28 @@ impl ProviderGateway {
                 model: req.model_policy.model.clone(),
                 rule,
             });
+        }
+        // A configuration generation can withdraw a binding between one
+        // dispatch and the next, so the registry is consulted per request
+        // rather than at startup (REQ-EPR-002).
+        if let Some(registry) = self.registry.lock().expect("registry").as_ref() {
+            let wanted = crate::registry::Needs {
+                tools: needs.tools || !req.tool_projection.is_empty(),
+                vision: needs.vision,
+                structured_output: needs.structured_output,
+                min_context_tokens: 0,
+                execution_profile: None,
+            };
+            if let Err((code, detail)) =
+                registry.check_dispatch(&ep.name, &req.model_policy.model, "solver", &wanted)
+            {
+                return Err(RouteError::RegistryRefused {
+                    endpoint: ep.name.clone(),
+                    model: req.model_policy.model.clone(),
+                    code,
+                    detail,
+                });
+            }
         }
         let cap = ep
             .models

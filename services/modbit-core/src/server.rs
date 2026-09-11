@@ -489,6 +489,8 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "GetContextInspector",
                     "GetRoutingPlan",
                     "AdmitRoutingPlan",
+                    "ActivateModelRegistry",
+                    "GetModelRegistry",
                     "GetTaskEconomics",
                     "SetTaskSelection",
                     "AttachContextDocument",
@@ -2235,6 +2237,17 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 return ack;
             }
             let view = crate::routing::admit(core, task_id, &p.plan_json).await;
+            accept(cid, false, view.encode_to_vec())
+        }
+        "ActivateModelRegistry" => {
+            let Ok(p) = wire::ActivateModelRegistry::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "ActivateModelRegistry");
+            };
+            let view = crate::model_registry::activate(core, &p.signed_json);
+            accept(cid, false, view.encode_to_vec())
+        }
+        "GetModelRegistry" => {
+            let view = crate::model_registry::current(core);
             accept(cid, false, view.encode_to_vec())
         }
         "ListLanguages" => {

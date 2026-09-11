@@ -61,6 +61,7 @@ pub async fn probe(gw: &ProviderGateway, p: &wire::ProbeModel) -> wire::ModelPro
                 RouteError::CapabilityMismatch { .. } => "CAPABILITY_MISMATCH",
                 RouteError::MissingCredential(_) => "MISSING_CREDENTIAL",
                 RouteError::PolicyBlocked { .. } => "POLICY_BLOCKED",
+                RouteError::RegistryRefused { code, .. } => code,
             }
             .into();
             out.error_message = e.to_string();

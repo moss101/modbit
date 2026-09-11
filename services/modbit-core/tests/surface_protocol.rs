@@ -12200,3 +12200,269 @@ async fn qual_epr_014_a_conditional_plan_is_admitted_whole_and_its_activation_is
     assert_eq!(still.admission.as_ref().unwrap().reserved_minor, 600);
     core.kill();
 }
+
+/// QUAL-EPR-002 / EPR-E2E-002 / EPR-FI-002: the Model Registry is activated
+/// from a signed, versioned document rather than from a build, holds no
+/// empirical workflow outcome, and a revocation stops the next dispatch
+/// explicitly instead of silently choosing something else.
+#[tokio::test]
+async fn qual_epr_002_a_signed_registry_activates_at_runtime_and_a_revocation_stops_dispatch() {
+    use ed25519_dalek::{Signer, SigningKey};
+    use modbit_protocol::v1::{
+        ActivateModelRegistry, GetModelRegistry, ModelRegistryView, StartTask, TaskRunStarted,
+    };
+    use modbit_providers::registry::{
+        Economics, Governance, Latency, QualityFloor, REGISTRY_SCHEMA_VERSION, RegistryDocument,
+        RegistryEntry, SignedRegistry,
+    };
+    use serde_json::json;
+    let key = SigningKey::from_bytes(&[11u8; 32]);
+    let key_hex = hex::encode(key.verifying_key().to_bytes());
+    let now = modbit_domain::Timestamp::now().0;
+    let entry = |model: &str, roles: &[&str], revoked: bool| RegistryEntry {
+        endpoint: "openai".into(),
+        provider: "openai".into(),
+        family: "gpt-5".into(),
+        model: model.into(),
+        roles: roles.iter().map(|r| (*r).to_owned()).collect(),
+        input_modalities: vec!["text".into()],
+        context_tokens: 400_000,
+        max_output_tokens: 64_000,
+        tools: true,
+        vision: false,
+        reasoning: true,
+        structured_output: true,
+        economics: Economics {
+            input_per_mtok_minor: 25,
+            output_per_mtok_minor: 200,
+            currency: "USD".into(),
+            scale: 2,
+        },
+        latency: Latency {
+            p50_ms: 900,
+            p95_ms: 4_200,
+        },
+        governance: Governance {
+            data_residency: "us".into(),
+            retains_prompts: false,
+            allowed_profiles: vec![],
+        },
+        revoked,
+    };
+    let document = |generation: &str, revoke_mini: bool| RegistryDocument {
+        schema_version: REGISTRY_SCHEMA_VERSION,
+        registry_generation: generation.into(),
+        stats_version: "stats-2026-09-05".into(),
+        issued_at_ms: now - 60_000,
+        expires_at_ms: now + 86_400_000,
+        quality_floors: vec![QualityFloor {
+            mode: "auto".into(),
+            min_quality: 0.72,
+            max_cost_minor: 5_000,
+            currency: "USD".into(),
+            scale: 2,
+        }],
+        entries: vec![
+            entry("gpt-5-mini", &["solver"], revoke_mini),
+            entry("gpt-5", &["solver", "reviewer"], false),
+        ],
+    };
+    let sign = |doc: &RegistryDocument| {
+        let json = serde_json::to_string(doc).unwrap();
+        serde_json::to_string(&SignedRegistry {
+            key_id: "ops".into(),
+            signature_hex: hex::encode(key.sign(json.as_bytes()).to_bytes()),
+            document_json: json,
+        })
+        .unwrap()
+    };
+    let (_repo, root) = plain_repo(&[("total.py", "def total(q, unit):\n    return q * unit\n")]);
+    let script = vec![
+        json!({"calls": [{"name": "fs.read", "args": {"path": "total.py"}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "total.py"}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "total.py"}}]}),
+    ];
+    let (base, _seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", "sk-test-registry"),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_REGISTRY_KEYS", &format!("ops:{key_hex}")),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    async fn registry_now(c: &mut Client, id: u8) -> ModelRegistryView {
+        let ack = c
+            .command(envelope(
+                id16(id),
+                "GetModelRegistry",
+                GetModelRegistry {}.encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    }
+    async fn activate(c: &mut Client, id: u8, signed: &str) -> ModelRegistryView {
+        let ack = c
+            .command(envelope(
+                id16(id),
+                "ActivateModelRegistry",
+                ActivateModelRegistry {
+                    signed_json: signed.to_owned(),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    }
+    // 1. A Core with no activated document runs on its build defaults.
+    assert!(!registry_now(&mut c, 0xF1).await.active);
+    // 2. A signed document activates without a new build.
+    let v = activate(&mut c, 0xF2, &sign(&document("registry-a", false))).await;
+    assert!(v.active, "{v:?}");
+    assert_eq!(v.registry_generation, "registry-a");
+    assert_eq!(v.key_id, "ops");
+    assert_eq!(v.document_digest.len(), 64);
+    // The registry references the statistics dataset and materializes none of
+    // it: that is EPR-015's job, not the registry's.
+    assert_eq!(v.stats_version, "stats-2026-09-05");
+    assert_eq!(v.bindings.len(), 2, "{v:?}");
+    let mini = v.bindings.iter().find(|b| b.model == "gpt-5-mini").unwrap();
+    assert_eq!(mini.roles, vec!["solver".to_owned()]);
+    assert_eq!(
+        (mini.input_per_mtok_minor, mini.currency.as_str()),
+        (25, "USD")
+    );
+    assert!(!mini.revoked, "{mini:?}");
+    // 3. Nothing secret is in what a client sees.
+    let encoded = String::from_utf8_lossy(&v.encode_to_vec()).to_string();
+    assert!(!encoded.contains("sk-test-registry"), "credential exposed");
+    assert!(!encoded.contains("127.0.0.1"), "endpoint URL exposed");
+    assert!(!encoded.contains(&key_hex), "signing key exposed");
+    // 4. The refusals, none of which disturb the active generation.
+    let mut tampered: serde_json::Value =
+        serde_json::from_str(&sign(&document("registry-b", false))).unwrap();
+    tampered["document_json"] = json!(
+        tampered["document_json"]
+            .as_str()
+            .unwrap()
+            .replace("registry-b", "registry-forged")
+    );
+    let r = activate(&mut c, 0xF3, &tampered.to_string()).await;
+    assert_eq!(r.refusal_code, "REGISTRY_BAD_SIGNATURE", "{r:?}");
+    let mut stale = document("registry-c", false);
+    stale.expires_at_ms = now - 1;
+    let r = activate(&mut c, 0xF4, &sign(&stale)).await;
+    assert_eq!(r.refusal_code, "REGISTRY_EXPIRED", "{r:?}");
+    let mut empirical: serde_json::Value =
+        serde_json::from_str(&serde_json::to_string(&document("registry-d", false)).unwrap())
+            .unwrap();
+    empirical["entries"][0]["success_rate"] = json!(0.9);
+    let signed_empirical = serde_json::to_string(&SignedRegistry {
+        key_id: "ops".into(),
+        signature_hex: hex::encode(key.sign(empirical.to_string().as_bytes()).to_bytes()),
+        document_json: empirical.to_string(),
+    })
+    .unwrap();
+    let r = activate(&mut c, 0xF5, &signed_empirical).await;
+    assert_eq!(r.refusal_code, "REGISTRY_EMPIRICAL_FIELDS", "{r:?}");
+    assert!(r.refusal_detail.contains("success_rate"), "{r:?}");
+    let mut no_reviewer = document("registry-e", false);
+    no_reviewer.entries[1].roles = vec!["solver".into()];
+    let r = activate(&mut c, 0xF6, &sign(&no_reviewer)).await;
+    assert_eq!(r.refusal_code, "REGISTRY_MISSING_ROLE_BINDING", "{r:?}");
+    assert_eq!(
+        registry_now(&mut c, 0xF7).await.registry_generation,
+        "registry-a",
+        "a refused document must not disturb the active one"
+    );
+    // 5. A run dispatches under the active registry.
+    let (session, _) = create_session(&mut c, id16(0xF8)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xF9, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xFA),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 3,
+                max_tool_calls: 0,
+                max_no_progress_turns: 6,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 180).await;
+    assert!(!st.loop_alive, "{st:?}");
+    // 6. A new generation revokes the model this task used. The next run's
+    //    dispatch is refused explicitly, naming the generation that withdrew
+    //    it, rather than quietly running on something else.
+    let v = activate(&mut c, 0xFB, &sign(&document("registry-f", true))).await;
+    assert!(v.active, "{v:?}");
+    assert!(
+        v.bindings
+            .iter()
+            .any(|b| b.model == "gpt-5-mini" && b.revoked),
+        "a withdrawn binding stays visible as withdrawn: {v:?}"
+    );
+    let task2 = create_task_with_profile(&mut c, &session, g, &root, 0xFC, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xFD),
+            "StartTask",
+            StartTask {
+                task_id: Some(task2.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 3,
+                max_tool_calls: 0,
+                max_no_progress_turns: 6,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st2 = wait_task(&mut c, &task2, 180).await;
+    assert!(!st2.loop_alive, "{st2:?}");
+    let events = task_events(&core, &session, &task2).await;
+    assert!(
+        events
+            .iter()
+            .any(|(_, t, p)| t == "TurnFailed" && p["failure_code"] == "MODEL_REVOKED"),
+        "the turn fails with the revocation's own code: {events:#?}"
+    );
+    // The task stops for the user with the reason, rather than running on.
+    let stopped = events
+        .iter()
+        .find(|(_, t, _)| t == "TaskNeedsAttention")
+        .unwrap_or_else(|| panic!("{events:#?}"));
+    let said = stopped.2.to_string();
+    assert!(
+        said.contains("MODEL_REVOKED") && said.contains("registry-f"),
+        "the stop names the generation that withdrew the model: {said}"
+    );
+    assert!(
+        !events
+            .iter()
+            .any(|(_, t, _)| t == "ModelInvocationCompleted"),
+        "nothing was dispatched on another model: {events:#?}"
+    );
+    // The eligible binding is still there; nothing switched to it by itself.
+    let v = registry_now(&mut c, 0xFE).await;
+    assert!(
+        v.bindings
+            .iter()
+            .any(|b| b.model == "gpt-5" && !b.revoked && b.roles.contains(&"solver".to_owned()))
+    );
+    core.kill();
+}
