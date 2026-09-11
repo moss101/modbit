@@ -1,0 +1,28 @@
+{
+ "task": "PX-022",
+ "requirement": "REQ-PX-022",
+ "qual": "QUAL-PX-022",
+ "tests": [
+  "onboarding: a fresh profile reaches a first reviewed change through provider setup, repository trust and a starter task, within five minutes at the median",
+  "onboarding: an invalid key, an unreachable endpoint and a missing repository each name their cause; a profile without a provider cannot start a task",
+  "qual_px_022_provider_setup_and_repository_trust_are_enforced_by_the_core"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "decision_record": "docs/decisions/DR-M3-003-benchmark-and-conformance-live-model-halves.md",
+ "metrics": {
+  "hardware": "Apple M5 Pro, Darwin arm64",
+  "profiles": 3,
+  "samples_s": [
+   1.169,
+   1.176,
+   1.227
+  ],
+  "median_s": 1.2,
+  "p90_s": 1.2,
+  "budget_s": 300
+ },
+ "proof": "Three fresh profiles of the real Electron app against the real Core and the wire-faithful provider go from first launch through provider setup with a live test call, scoped repository trust and a starter task to the Review open on a one-hunk diff with a COMPLETION run, median 1.2 s. A profile without a provider cannot start a task (NO_PROVIDER); an invalid key, an unreachable endpoint and a missing repository each name their cause; the same task starts once the provider is confirmed. At the Core the rules hold over the wire and the credential is absent from every file under the profile.",
+ "audit": "ABSENT before: no welcome, no provider setup (keys came from the environment only), no repository trust anywhere in the product, no starter tasks.",
+ "limitations": "The measurement is against the wire-faithful provider; the live-model measurement is deferred by DR-M3-003. Reference hardware is the machine named. A path field stands in for a native folder picker. Trust is per session as docs/39 scopes it."
+}

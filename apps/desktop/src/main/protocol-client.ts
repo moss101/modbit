@@ -47,6 +47,16 @@ import {
   SetTaskSelectionSchema,
   TaskSelectionRecordedSchema,
   TaskEconomicsViewSchema,
+  ConfigureProviderSchema,
+  ProviderConfiguredSchema,
+  ListModelsSchema,
+  ModelListSchema,
+  ProbeModelSchema,
+  ModelProbedSchema,
+  TrustRepositorySchema,
+  RepositoryTrustedSchema,
+  ListStarterTasksSchema,
+  StarterTaskListSchema,
   type TaskEconomicsView,
   type LanguageList,
   type CommandAck,
@@ -303,6 +313,46 @@ export class CoreClient {
   async getRecoveryReport(): Promise<RecoveryReport> {
     const ack = await this.command("GetRecoveryReport", toBinary(GetRecoveryReportSchema, create(GetRecoveryReportSchema, {})));
     return fromBinary(RecoveryReportSchema, ack.result);
+  }
+
+  /** The endpoints the Core has, with whether each has a credential; never the credential. */
+  async listProviders(): Promise<{ endpoint: string; model: string; credentialAvailable: boolean }[]> {
+    const ack = await this.command("ListModels", toBinary(ListModelsSchema, create(ListModelsSchema, {})));
+    const r = fromBinary(ModelListSchema, ack.result);
+    return r.models.map((m) => ({ endpoint: m.endpoint, model: m.model, credentialAvailable: m.credentialAvailable }));
+  }
+
+  /** REQ-PX-022: hand the Core a provider credential. Main is the only
+   *  process that ever holds it in the clear; the Core keeps it in memory. */
+  async configureProvider(provider: string, apiKey: string, baseUrl = ""): Promise<{ endpoint: string; credentialAvailable: boolean; models: string[] }> {
+    const payload = toBinary(ConfigureProviderSchema, create(ConfigureProviderSchema, { provider, apiKey, baseUrl }));
+    const ack = await this.command("ConfigureProvider", payload);
+    const r = fromBinary(ProviderConfiguredSchema, ack.result);
+    return { endpoint: r.endpoint, credentialAvailable: r.credentialAvailable, models: r.models };
+  }
+
+  /** The live test call that confirms a provider (docs/39 step 2). */
+  async probeModel(endpoint: string, model: string): Promise<{ status: string; text: string; errorCode: string; errorMessage: string }> {
+    const payload = toBinary(ProbeModelSchema, create(ProbeModelSchema, { endpoint, model, prompt: "Reply with the single word pong.", withTools: false, timeoutMs: 20_000n }));
+    const ack = await this.command("ProbeModel", payload);
+    const r = fromBinary(ModelProbedSchema, ack.result);
+    return { status: r.status, text: r.text, errorCode: r.errorCode, errorMessage: r.errorMessage };
+  }
+
+  /** Explicit, scoped repository trust (docs/39 step 3). */
+  async trustRepository(sessionId: string, workspaceRoot: string): Promise<{ offset: string }> {
+    const payload = toBinary(TrustRepositorySchema, create(TrustRepositorySchema, { sessionId: { value: unhex(sessionId) }, workspaceRoot, scope: "repository" }));
+    const ack = await this.command("TrustRepository", payload, undefined, this.leases.get(sessionId));
+    const r = fromBinary(RepositoryTrustedSchema, ack.result);
+    return { offset: r.offset.toString() };
+  }
+
+  /** Starter tasks for the detected stack (docs/39 step 4). */
+  async listStarterTasks(workspaceRoot: string): Promise<{ stacks: string[]; tasks: { id: string; title: string; goalText: string; stack: string }[] }> {
+    const payload = toBinary(ListStarterTasksSchema, create(ListStarterTasksSchema, { workspaceRoot }));
+    const ack = await this.command("ListStarterTasks", payload);
+    const r = fromBinary(StarterTaskListSchema, ack.result);
+    return { stacks: r.stacks, tasks: r.tasks.map((t) => ({ id: t.id, title: t.title, goalText: t.goalText, stack: t.stack })) };
   }
 
   async startTask(sessionId: string, taskId: string): Promise<{ runId: string; resumed: boolean; endpoint: string; model: string }> {

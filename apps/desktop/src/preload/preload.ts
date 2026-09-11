@@ -128,6 +128,11 @@ export interface ModbitBridge {
   onCoreStatus(cb: (s: unknown) => void): () => void;
   onRecovery(cb: (r: unknown) => void): () => void;
   debugCoreInfo(): Promise<{ pid: number; endpoint: string } | null>;
+  // Onboarding (REQ-PX-022). The key goes to main and never comes back.
+  setupProvider(provider: "openai" | "anthropic", apiKey: string, baseUrl?: string): Promise<{ endpoint: string; model: string; ok: boolean; errorCode: string; errorMessage: string; persisted: boolean; keychainAvailable: boolean }>;
+  providerStatus(): Promise<{ configured: boolean; endpoints: string[]; stored: boolean; provider: string; keychainAvailable: boolean }>;
+  trustRepository(sessionId: string, workspaceRoot: string): Promise<{ workspaceRoot: string; offset: string }>;
+  starterTasks(workspaceRoot: string): Promise<{ stacks: string[]; tasks: { id: string; title: string; goalText: string; stack: string }[] }>;
 }
 
 const bridge: ModbitBridge = {
@@ -162,6 +167,10 @@ const bridge: ModbitBridge = {
     return () => ipcRenderer.removeListener("core:recovery", listener);
   },
   debugCoreInfo: () => ipcRenderer.invoke("debug:coreInfo"),
+  setupProvider: (provider, apiKey, baseUrl) => ipcRenderer.invoke("onboarding:provider", provider, apiKey, baseUrl ?? ""),
+  providerStatus: () => ipcRenderer.invoke("onboarding:providerStatus"),
+  trustRepository: (sessionId, workspaceRoot) => ipcRenderer.invoke("onboarding:trust", sessionId, workspaceRoot),
+  starterTasks: (workspaceRoot) => ipcRenderer.invoke("onboarding:starters", workspaceRoot),
 };
 
 contextBridge.exposeInMainWorld("modbit", bridge);

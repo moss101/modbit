@@ -4527,6 +4527,198 @@ export declare type RoutingCompileView = Message<"modbit.v1.RoutingCompileView">
 export declare const RoutingCompileViewSchema: GenMessage<RoutingCompileView>;
 
 /**
+ * @generated from message modbit.v1.ConfigureProvider
+ */
+export declare type ConfigureProvider = Message<"modbit.v1.ConfigureProvider"> & {
+  /**
+   * openai | anthropic
+   *
+   * @generated from field: string provider = 1;
+   */
+  provider: string;
+
+  /**
+   * the credential; empty clears it
+   *
+   * @generated from field: string api_key = 2;
+   */
+  apiKey: string;
+
+  /**
+   * optional: a compatible endpoint (empty = the provider's own)
+   *
+   * @generated from field: string base_url = 3;
+   */
+  baseUrl: string;
+};
+
+/**
+ * Describes the message modbit.v1.ConfigureProvider.
+ * Use `create(ConfigureProviderSchema)` to create a new message.
+ */
+export declare const ConfigureProviderSchema: GenMessage<ConfigureProvider>;
+
+/**
+ * @generated from message modbit.v1.ProviderConfigured
+ */
+export declare type ProviderConfigured = Message<"modbit.v1.ProviderConfigured"> & {
+  /**
+   * the endpoint name the Core registered
+   *
+   * @generated from field: string endpoint = 1;
+   */
+  endpoint: string;
+
+  /**
+   * @generated from field: bool credential_available = 2;
+   */
+  credentialAvailable: boolean;
+
+  /**
+   * model ids the endpoint serves
+   *
+   * @generated from field: repeated string models = 3;
+   */
+  models: string[];
+};
+
+/**
+ * Describes the message modbit.v1.ProviderConfigured.
+ * Use `create(ProviderConfiguredSchema)` to create a new message.
+ */
+export declare const ProviderConfiguredSchema: GenMessage<ProviderConfigured>;
+
+/**
+ * @generated from message modbit.v1.TrustRepository
+ */
+export declare type TrustRepository = Message<"modbit.v1.TrustRepository"> & {
+  /**
+   * @generated from field: modbit.v1.Id session_id = 1;
+   */
+  sessionId?: Id | undefined;
+
+  /**
+   * the root the user trusts, scoped exactly to it
+   *
+   * @generated from field: string workspace_root = 2;
+   */
+  workspaceRoot: string;
+
+  /**
+   * "repository" (this root only)
+   *
+   * @generated from field: string scope = 3;
+   */
+  scope: string;
+};
+
+/**
+ * Describes the message modbit.v1.TrustRepository.
+ * Use `create(TrustRepositorySchema)` to create a new message.
+ */
+export declare const TrustRepositorySchema: GenMessage<TrustRepository>;
+
+/**
+ * @generated from message modbit.v1.RepositoryTrusted
+ */
+export declare type RepositoryTrusted = Message<"modbit.v1.RepositoryTrusted"> & {
+  /**
+   * @generated from field: string workspace_root = 1;
+   */
+  workspaceRoot: string;
+
+  /**
+   * @generated from field: uint64 offset = 2;
+   */
+  offset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.RepositoryTrusted.
+ * Use `create(RepositoryTrustedSchema)` to create a new message.
+ */
+export declare const RepositoryTrustedSchema: GenMessage<RepositoryTrusted>;
+
+/**
+ * @generated from message modbit.v1.ListStarterTasks
+ */
+export declare type ListStarterTasks = Message<"modbit.v1.ListStarterTasks"> & {
+  /**
+   * @generated from field: string workspace_root = 1;
+   */
+  workspaceRoot: string;
+};
+
+/**
+ * Describes the message modbit.v1.ListStarterTasks.
+ * Use `create(ListStarterTasksSchema)` to create a new message.
+ */
+export declare const ListStarterTasksSchema: GenMessage<ListStarterTasks>;
+
+/**
+ * @generated from message modbit.v1.StarterTaskView
+ */
+export declare type StarterTaskView = Message<"modbit.v1.StarterTaskView"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string title = 2;
+   */
+  title: string;
+
+  /**
+   * @generated from field: string goal_text = 3;
+   */
+  goalText: string;
+
+  /**
+   * rust | node | python | text
+   *
+   * @generated from field: string stack = 4;
+   */
+  stack: string;
+};
+
+/**
+ * Describes the message modbit.v1.StarterTaskView.
+ * Use `create(StarterTaskViewSchema)` to create a new message.
+ */
+export declare const StarterTaskViewSchema: GenMessage<StarterTaskView>;
+
+/**
+ * @generated from message modbit.v1.StarterTaskList
+ */
+export declare type StarterTaskList = Message<"modbit.v1.StarterTaskList"> & {
+  /**
+   * what the repository was detected as
+   *
+   * @generated from field: repeated string stacks = 1;
+   */
+  stacks: string[];
+
+  /**
+   * @generated from field: repeated modbit.v1.StarterTaskView tasks = 2;
+   */
+  tasks: StarterTaskView[];
+
+  /**
+   * whether this session has trusted the root
+   *
+   * @generated from field: bool trusted = 3;
+   */
+  trusted: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.StarterTaskList.
+ * Use `create(StarterTaskListSchema)` to create a new message.
+ */
+export declare const StarterTaskListSchema: GenMessage<StarterTaskList>;
+
+/**
  * Command acknowledgement.
  *
  * @generated from enum modbit.v1.CommandStatus

@@ -64,6 +64,19 @@ function App() {
   const [workspaceRoot, setWorkspaceRoot] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [reviewing, setReviewing] = useState<string | null>(null);
+  // Onboarding (REQ-PX-022, docs/39): three steps, each a working control.
+  const [provider, setProvider] = useState<{ configured: boolean; endpoints: string[]; keychainAvailable: boolean } | null>(null);
+  const [providerKind, setProviderKind] = useState<"openai" | "anthropic">("openai");
+  const [providerKey, setProviderKey] = useState("");
+  const [providerUrl, setProviderUrl] = useState("");
+  const [providerBusy, setProviderBusy] = useState(false);
+  const [providerResult, setProviderResult] = useState<{ ok: boolean; text: string } | null>(null);
+  const [trustRoot, setTrustRoot] = useState("");
+  const [trusted, setTrusted] = useState<string | null>(null);
+  const [trustBusy, setTrustBusy] = useState(false);
+  const [trustError, setTrustError] = useState<string | null>(null);
+  const [starters, setStarters] = useState<{ stacks: string[]; tasks: { id: string; title: string; goalText: string; stack: string }[] } | null>(null);
+  const [autoReview, setAutoReview] = useState<string | null>(null);
   const modelRef = useRef(model);
   modelRef.current = model;
   const wasRestarting = useRef(false);
@@ -106,10 +119,12 @@ function App() {
 
   useEffect(() => {
     const offEvent = window.modbit.onEvent((raw) => {
-      const e = raw as Event & { taskId: string | null; aggregateType: string };
+      const e = raw as Event & { taskId: string | null; aggregateType: string; eventType?: string };
       if (e.aggregateType !== "task" || !e.taskId) return;
       setModel((m) => applyEvent(m, e, e.taskId!));
       setScreen("populated");
+      // docs/39 step 5: the first result opens the Review on the diff.
+      if (e.eventType === "TaskReadyForReview") setAutoReview(e.taskId);
     });
     const offRecovery = window.modbit.onRecovery((raw) => setRecovery(raw as RecoveryInfo));
     const offStatus = window.modbit.onCoreStatus((raw) => {
@@ -120,6 +135,7 @@ function App() {
         // PX-026: the language labels are read once the Core is connected,
         // whether that happened before this screen mounted or after.
         void window.modbit.languages().then(setLanguages).catch(() => {});
+        void window.modbit.providerStatus().then(setProvider).catch(() => {});
         if (wasRestarting.current) {
           wasRestarting.current = false;
           setRecovered(`Core reconnected after restart ${s.restarts}`);
@@ -135,6 +151,7 @@ function App() {
       if ((s as CoreStatus).state === "connected") {
         void load();
         void window.modbit.languages().then(setLanguages).catch(() => {});
+        void window.modbit.providerStatus().then(setProvider).catch(() => {});
       }
     });
     return () => {
@@ -160,7 +177,14 @@ function App() {
           setModel((m) => ({ ...m, sessionId }));
           await window.modbit.subscribe(sessionId, "0");
         }
-        const r = await window.modbit.createTask(sessionId, text, commandId, workspaceRoot.trim());
+        const root = workspaceRoot.trim();
+        // A desktop task runs only on a repository this session trusted
+        // (REQ-PX-022); trusting is explicit and scoped to this root.
+        if (root && trusted !== root) {
+          const t = await window.modbit.trustRepository(sessionId, root);
+          setTrusted(t.workspaceRoot);
+        }
+        const r = await window.modbit.createTask(sessionId, text, commandId, root);
         // Render from the durable id the Core returned; the events will follow.
         setModel((m) => {
           if (m.tasks.has(r.taskId)) return m;
@@ -176,7 +200,7 @@ function App() {
         setSubmitting(false);
       }
     },
-    [goal, workspaceRoot, submitting],
+    [goal, workspaceRoot, submitting, trusted],
   );
 
   const startTask = useCallback(async (taskId: string) => {
@@ -190,8 +214,94 @@ function App() {
     }
   }, []);
 
+  useEffect(() => {
+    if (autoReview && !reviewing) {
+      setReviewing(autoReview);
+      setAutoReview(null);
+    }
+  }, [autoReview, reviewing]);
+
+  /** docs/39 step 2: the key goes to main and the Core; the live test call
+   *  confirms it or names the cause. The renderer keeps nothing. */
+  const setupProvider = useCallback(async () => {
+    if (providerBusy) return;
+    setProviderBusy(true);
+    setProviderResult(null);
+    try {
+      const r = await window.modbit.setupProvider(providerKind, providerKey, providerUrl.trim() || undefined);
+      setProviderKey("");
+      if (r.ok) {
+        setProviderResult({ ok: true, text: `Provider confirmed: ${r.endpoint} answered on ${r.model}${r.persisted ? "; the key is in the OS keychain's custody" : r.keychainAvailable ? "" : "; this OS offers no keychain encryption, so the key was not saved and must be entered again after a restart"}.` });
+        setProvider(await window.modbit.providerStatus());
+      } else {
+        const cause = r.errorCode === "AUTH_REJECTED" ? "the provider rejected the key" : r.errorCode.includes("CONNECT") || r.errorCode === "TIMEOUT" || r.errorCode === "TRANSPORT" ? "the provider could not be reached" : r.errorCode === "RATE_LIMITED" ? "the provider is rate limiting or out of quota" : `the test call failed (${r.errorCode})`;
+        setProviderResult({ ok: false, text: `Not confirmed: ${cause}. ${r.errorMessage} Check the key and the network, then retry.` });
+      }
+    } catch (e) {
+      setProviderResult({ ok: false, text: `Not confirmed: ${(e as Error).message}. Retry.` });
+    } finally {
+      setProviderBusy(false);
+    }
+  }, [providerBusy, providerKind, providerKey, providerUrl]);
+
+  /** docs/39 step 3: explicit, scoped trust; then the starter tasks for the
+   *  stack the Core detects. */
+  const trustRepository = useCallback(async () => {
+    const root = trustRoot.trim();
+    if (!root || trustBusy) return;
+    setTrustBusy(true);
+    setTrustError(null);
+    try {
+      let sessionId = modelRef.current.sessionId;
+      if (!sessionId) {
+        sessionId = await window.modbit.createSession();
+        setModel((m) => ({ ...m, sessionId }));
+        await window.modbit.subscribe(sessionId, "0");
+      }
+      const t = await window.modbit.trustRepository(sessionId, root);
+      setTrusted(t.workspaceRoot);
+      setWorkspaceRoot(t.workspaceRoot);
+      setStarters(await window.modbit.starterTasks(t.workspaceRoot));
+    } catch (e) {
+      setTrustError((e as Error).message);
+    } finally {
+      setTrustBusy(false);
+    }
+  }, [trustRoot, trustBusy]);
+
+  /** docs/39 step 4: a starter task starts immediately on the direct baseline. */
+  const runStarter = useCallback(
+    async (goalText: string) => {
+      if (submitting || !trusted) return;
+      setSubmitting(true);
+      setError(null);
+      try {
+        const sessionId = modelRef.current.sessionId;
+        if (!sessionId) throw new Error("no session");
+        const r = await window.modbit.createTask(sessionId, goalText, hex32(), trusted);
+        setModel((m) => {
+          if (m.tasks.has(r.taskId)) return m;
+          const tasks = new Map(m.tasks);
+          tasks.set(r.taskId, { taskId: r.taskId, goalText, state: "Queued", waitReason: "Capacity", generation: 2, createdAtMs: Date.now(), nextAction: null } as TaskCard);
+          return { ...m, tasks };
+        });
+        setScreen("populated");
+        await window.modbit.startTask(sessionId, r.taskId);
+      } catch (e) {
+        setError((e as Error).message);
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [submitting, trusted],
+  );
+
   const cols = useMemo(() => columns(model), [model]);
   const attention = cols.needsAttention.length;
+  // docs/39 "Empty states": no provider keeps the welcome up with step 2
+  // highlighted whatever else exists; a provider with no trusted repository
+  // and no tasks keeps it up with step 3.
+  const onboarding = core.state === "connected" && provider !== null && (!provider.configured || model.tasks.size === 0);
 
   return (
     <>
@@ -262,6 +372,97 @@ function App() {
         </div>
       )}
       {reviewing && model.sessionId && <Review taskId={reviewing} sessionId={model.sessionId} onClose={() => setReviewing(null)} />}
+      {onboarding && (
+        <section className="welcome" data-testid="welcome" aria-label="Welcome">
+          <h2 style={{ margin: 0, fontSize: 16 }}>Welcome to Modbit</h2>
+          <p className="meta">Three steps to a first reviewed change. Nothing here is stored outside the Core and your OS keychain.</p>
+          <ol className="steps">
+            <li data-testid="welcome-step-core" data-done="true">Core running (pid {core.state === "connected" ? core.pid : "…"})</li>
+            <li data-testid="welcome-step-provider" data-done={provider?.configured ? "true" : "false"} data-active={!provider?.configured ? "true" : "false"}>
+              <strong>Provider.</strong>{" "}
+              {provider?.configured ? (
+                <span data-testid="provider-ready">
+                  Ready: {provider.endpoints.join(", ")}.
+                  {providerResult?.ok && (
+                    <span className="meta" role="status" data-testid="provider-result" data-ok="true">
+                      {" "}
+                      {providerResult.text}
+                    </span>
+                  )}
+                </span>
+              ) : (
+                <form
+                  onSubmit={(ev) => {
+                    ev.preventDefault();
+                    void setupProvider();
+                  }}
+                  aria-label="Provider setup"
+                >
+                  <label htmlFor="provider-kind" className="meta">Provider</label>
+                  <select id="provider-kind" data-testid="provider-kind" value={providerKind} onChange={(e) => setProviderKind(e.target.value as "openai" | "anthropic")}>
+                    <option value="openai">OpenAI (or a compatible endpoint)</option>
+                    <option value="anthropic">Anthropic</option>
+                  </select>
+                  <label htmlFor="provider-key" className="meta">API key (goes to the OS keychain through the app; never shown again)</label>
+                  <input id="provider-key" data-testid="provider-key" type="password" autoComplete="off" value={providerKey} onChange={(e) => setProviderKey(e.target.value)} />
+                  <label htmlFor="provider-url" className="meta">Endpoint URL (optional; a compatible endpoint)</label>
+                  <input id="provider-url" data-testid="provider-url" value={providerUrl} onChange={(e) => setProviderUrl(e.target.value)} placeholder="https://" />
+                  <button type="submit" data-testid="provider-test" disabled={providerBusy}>
+                    {providerBusy ? "Testing…" : "Test and save"}
+                  </button>
+                  {providerResult && (
+                    <div className="meta" role="status" data-testid="provider-result" data-ok={providerResult.ok ? "true" : "false"}>
+                      {providerResult.text}
+                    </div>
+                  )}
+                </form>
+              )}
+            </li>
+            <li data-testid="welcome-step-repository" data-done={trusted ? "true" : "false"} data-active={provider?.configured && !trusted ? "true" : "false"}>
+              <strong>Repository.</strong>{" "}
+              {trusted ? (
+                <span data-testid="repository-trusted">Trusted: {trusted}. Indexing runs in the background; you can start now.</span>
+              ) : (
+                <form
+                  onSubmit={(ev) => {
+                    ev.preventDefault();
+                    void trustRepository();
+                  }}
+                  aria-label="Repository trust"
+                >
+                  <label htmlFor="trust-root" className="meta">Local repository (a Git checkout on this machine)</label>
+                  <input id="trust-root" data-testid="trust-root" value={trustRoot} onChange={(e) => setTrustRoot(e.target.value)} placeholder="/path/to/repo" disabled={!provider?.configured} />
+                  <button type="submit" data-testid="trust-confirm" disabled={!provider?.configured || trustBusy || !trustRoot.trim()}>
+                    {trustBusy ? "Trusting…" : "Trust this repository"}
+                  </button>
+                  <div className="meta">Trust is scoped to this folder only: Modbit may read it, index it and run its checks. Nothing else on this machine is in scope.</div>
+                  {trustError && (
+                    <div className="meta" role="alert" data-testid="trust-error">
+                      {trustError}
+                    </div>
+                  )}
+                </form>
+              )}
+            </li>
+          </ol>
+          {trusted && starters && (
+            <div data-testid="starter-tasks">
+              <strong>First task</strong>
+              <span className="meta"> — detected: {starters.stacks.join(", ")}. Pick one, or write your own goal below.</span>
+              <ul>
+                {starters.tasks.map((t) => (
+                  <li key={t.id}>
+                    <button type="button" data-testid="starter-task" data-starter-id={t.id} disabled={submitting} onClick={() => void runStarter(t.goalText)}>
+                      {t.title}
+                    </button>{" "}
+                    <span className="meta">{t.goalText}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
+      )}
       <main hidden={reviewing !== null}>
         <form className="composer" onSubmit={submit} aria-label="New Task">
           <h2 style={{ margin: 0, fontSize: 14 }}>New Task</h2>
@@ -269,7 +470,12 @@ function App() {
           <textarea id="goal" data-testid="goal" value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="What should the agent achieve?" disabled={core.state !== "connected"} />
           <label htmlFor="workspace" className="meta">Workspace root (a local Git checkout; empty for a Work space)</label>
           <input id="workspace" data-testid="workspace" value={workspaceRoot} onChange={(e) => setWorkspaceRoot(e.target.value)} placeholder="/path/to/repo" disabled={core.state !== "connected"} />
-          <div className="meta">Execution: local_trusted · Origin: desktop</div>
+          <div className="meta">Execution: local_trusted · Origin: desktop · Running here trusts this repository, scoped to it, if it is not trusted yet.</div>
+          {provider !== null && !provider.configured && (
+            <div className="meta" role="status" data-testid="composer-no-provider">
+              No provider is set up: a task can be created but will not start until step 2 above is done.
+            </div>
+          )}
           <button type="submit" data-testid="run" disabled={core.state !== "connected" || submitting || !goal.trim()}>
             {submitting ? "Creating…" : "Run"}
           </button>

@@ -490,6 +490,9 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "GetRoutingPlan",
                     "AdmitRoutingPlan",
                     "CompileRoutingPlan",
+                    "ConfigureProvider",
+                    "TrustRepository",
+                    "ListStarterTasks",
                     "ActivateModelRegistry",
                     "GetModelRegistry",
                     "MaterializeOutcomeStatistics",
@@ -2316,6 +2319,110 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             let view = crate::routing::compile(core, task_id, pin, p.request_cap_minor).await;
             accept(cid, false, view.encode_to_vec())
         }
+        "ConfigureProvider" => {
+            // Not journaled: the request carries a credential, and a command
+            // record would keep a hash of it. The Core holds the key in
+            // memory and nothing else.
+            let Ok(p) = wire::ConfigureProvider::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "ConfigureProvider");
+            };
+            match crate::onboarding::configure_provider(core, &p) {
+                Ok(v) => accept(cid, false, v.encode_to_vec()),
+                Err((code, msg)) => reject(cid, &code, msg),
+            }
+        }
+        "TrustRepository" => {
+            let Ok(p) = wire::TrustRepository::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "TrustRepository");
+            };
+            let Some(session_id) = p
+                .session_id
+                .as_ref()
+                .and_then(id16)
+                .map(SessionId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "session_id required");
+            };
+            if p.workspace_root.trim().is_empty() {
+                return reject(cid, "BAD_PAYLOAD", "workspace_root required");
+            }
+            if !std::path::Path::new(&p.workspace_root).is_dir() {
+                return reject(
+                    cid,
+                    "REPOSITORY_MISSING",
+                    format!("`{}` is not a directory on this machine", p.workspace_root),
+                );
+            }
+            {
+                let store = core.store.lock().await;
+                match store.session(&session_id) {
+                    Ok(Some(_)) => {}
+                    Ok(None) => return reject(cid, "UNKNOWN_SESSION", session_id.to_string()),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                }
+            }
+            if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
+                return ack;
+            }
+            let req = AppendRequest {
+                tenant_id: core.tenant_id,
+                session_id,
+                task_id: None,
+                run_id: None,
+                turn_id: None,
+                step_id: None,
+                aggregate_type: AggregateType::Session,
+                aggregate_id: *session_id.as_bytes(),
+                expected_sequence: None,
+                events: vec![typed(
+                    "RepositoryTrusted",
+                    &modbit_domain::session::SessionEvent::RepositoryTrusted {
+                        workspace_root: p.workspace_root.clone(),
+                        scope: if p.scope.is_empty() {
+                            "repository".into()
+                        } else {
+                            p.scope.clone()
+                        },
+                    },
+                    actor.clone(),
+                )],
+            };
+            let offset = {
+                let mut store = core.store.lock().await;
+                match store.append(req) {
+                    Ok(stored) => stored.last().map(|e| e.offset).unwrap_or(0),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                }
+            };
+            if offset > 0 {
+                core.last_offset.send_replace(offset);
+            }
+            accept(
+                cid,
+                false,
+                wire::RepositoryTrusted {
+                    workspace_root: p.workspace_root,
+                    offset,
+                }
+                .encode_to_vec(),
+            )
+        }
+        "ListStarterTasks" => {
+            let Ok(p) = wire::ListStarterTasks::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "ListStarterTasks");
+            };
+            let (stacks, tasks) = crate::onboarding::starter_tasks(&p.workspace_root);
+            accept(
+                cid,
+                false,
+                wire::StarterTaskList {
+                    stacks,
+                    tasks,
+                    trusted: false,
+                }
+                .encode_to_vec(),
+            )
+        }
         "ListLanguages" => {
             let languages = crate::languages::catalog();
             accept(cid, false, wire::LanguageList { languages }.encode_to_vec())
@@ -2389,6 +2496,22 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             };
             if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
                 return ack;
+            }
+            // REQ-PX-022: a desktop task runs only on a repository the user
+            // trusted in this session, explicitly and scoped to that root.
+            // The headless CLI and the adapters run where the operator points
+            // them, which is the trust act itself.
+            if task.origin == modbit_domain::task::TaskOrigin::Desktop
+                && let Some(root) = task.workspace_root.as_deref()
+                && !crate::onboarding::is_trusted(&*core.store.lock().await, task.session_id, root)
+            {
+                return reject(
+                    cid,
+                    "REPOSITORY_UNTRUSTED",
+                    format!(
+                        "`{root}` has not been trusted in this session; trust it (TrustRepository) before starting a task there"
+                    ),
+                );
             }
             let lease_generation = env.expected_generation.unwrap_or(0);
             // Model policy: request → environment defaults → first registered.

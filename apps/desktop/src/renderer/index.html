@@ -16,6 +16,12 @@
       .banner[data-kind="error"] { background: color-mix(in srgb, var(--bad) 12%, var(--card)); }
       main { display: grid; grid-template-columns: 340px 1fr; gap: 20px; padding: 20px; }
       form.composer { display: flex; flex-direction: column; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 16px; }
+      section.welcome { margin: 12px 16px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 16px; }
+      section.welcome ol.steps { padding-left: 20px; display: flex; flex-direction: column; gap: 10px; }
+      section.welcome li[data-active="true"] { outline: 2px solid var(--accent, #4a7); outline-offset: 4px; border-radius: 4px; }
+      section.welcome li[data-done="true"] { opacity: 0.85; }
+      section.welcome form { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+      section.welcome input, section.welcome select { max-width: 520px; }
       textarea { min-height: 120px; font: inherit; padding: 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); }
       button { font: inherit; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--accent); color: white; cursor: pointer; }
       button:disabled { opacity: 0.5; cursor: default; }

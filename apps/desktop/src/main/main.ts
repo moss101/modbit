@@ -5,7 +5,7 @@
  * preload bridge. The renderer gets durable ids and Core events; it never gets
  * the socket, the secret, Node, or the filesystem.
  */
-import { app, BrowserWindow, ipcMain, session, type IpcMainInvokeEvent } from "electron";
+import { app, BrowserWindow, ipcMain, safeStorage, session, type IpcMainInvokeEvent } from "electron";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { CoreSupervisor, type CoreStatus } from "./core-supervisor.js";
@@ -33,6 +33,47 @@ function saveLocalState(s: { sessionId?: string }): void {
 let win: BrowserWindow | null = null;
 let subscription: { sessionId: string; cursor: bigint } | null = null;
 
+/**
+ * REQ-PX-022, docs/39 step 2: the provider credential lives in the OS
+ * keychain's custody through Electron main. `safeStorage` encrypts it with a
+ * key the operating system keeps (Keychain on macOS, DPAPI on Windows,
+ * libsecret on Linux) and only the ciphertext touches disk; the renderer
+ * never sees the value, and the Core receives it over the local socket and
+ * holds it in memory. When the OS offers no encryption the key is not
+ * persisted at all and the user is told so.
+ */
+const providerFile = join(dataDir, "provider.enc");
+type ProviderRecord = { provider: string; baseUrl: string; keyCiphertext: string };
+function loadProvider(): ProviderRecord | null {
+  try {
+    return existsSync(providerFile) ? (JSON.parse(readFileSync(providerFile, "utf8")) as ProviderRecord) : null;
+  } catch {
+    return null;
+  }
+}
+function storeProvider(provider: string, baseUrl: string, apiKey: string): { persisted: boolean } {
+  if (!safeStorage.isEncryptionAvailable()) return { persisted: false };
+  const keyCiphertext = safeStorage.encryptString(apiKey).toString("base64");
+  writeFileSync(providerFile, JSON.stringify({ provider, baseUrl, keyCiphertext } satisfies ProviderRecord), { mode: 0o600 });
+  return { persisted: true };
+}
+function recallProviderKey(rec: ProviderRecord): string | null {
+  try {
+    return safeStorage.isEncryptionAvailable() ? safeStorage.decryptString(Buffer.from(rec.keyCiphertext, "base64")) : null;
+  } catch {
+    return null;
+  }
+}
+/** Hand a stored credential to a (re)started Core, so a restart does not
+ *  undo provider setup. Never logs the value. */
+async function handProviderToCore(c: CoreClient): Promise<void> {
+  const rec = loadProvider();
+  if (!rec) return;
+  const key = recallProviderKey(rec);
+  if (key === null) return;
+  await c.configureProvider(rec.provider, key, rec.baseUrl).catch(() => {});
+}
+
 function send(channel: string, payload: unknown): void {
   if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
 }
@@ -54,6 +95,7 @@ const supervisor = new CoreSupervisor(
       // owner), re-attach the live subscription from the last cursor we delivered,
       // and tell the renderer exactly what the Core recovered (docs/39 PX-023).
       const local = loadLocalState();
+      void handProviderToCore(c);
       if (local.sessionId) void c.acquireSessionLease(local.sessionId, `desktop ${app.getVersion()}`).catch(() => {});
       if (subscription) c.subscribe(subscription.sessionId, subscription.cursor);
       void c
@@ -292,6 +334,57 @@ ipcMain.handle("review:decide", async (_e: IpcMainInvokeEvent, sessionId: unknow
   if (c.leaseGeneration(sid) === undefined) await c.acquireSessionLease(sid, `desktop ${app.getVersion()}`);
   const d = await c.decideReview(sid, tid, decision, rej, n, rev);
   return { taskState: d.taskState, commit: d.commit, reverted: d.reverted, workspaceRevision: d.workspaceRevision.toString() };
+});
+// ---- Onboarding (REQ-PX-022, docs/39): provider setup, repository trust,
+// starter tasks. The credential crosses main once, from the renderer's input
+// field to safeStorage and the Core; it is never returned to the renderer.
+ipcMain.handle("onboarding:provider", async (_e: IpcMainInvokeEvent, provider: unknown, apiKey: unknown, baseUrl: unknown) => {
+  if (typeof provider !== "string" || !["openai", "anthropic"].includes(provider)) throw new Error("BAD_ARGUMENT: provider must be openai or anthropic");
+  if (typeof apiKey !== "string" || apiKey.length > 4096 || apiKey.includes("\0")) throw new Error("BAD_ARGUMENT: key");
+  const url = typeof baseUrl === "string" && baseUrl.length <= 2048 && /^https?:\/\//.test(baseUrl) ? baseUrl : "";
+  const c = requireClient();
+  const configured = await c.configureProvider(provider, apiKey, url);
+  const model = configured.models.find((m) => m.includes("mini")) ?? configured.models[0] ?? "";
+  // The live test call: the provider answers, or the cause is named.
+  const probe = await c.probeModel(configured.endpoint, model);
+  const ok = probe.status === "COMPLETED";
+  // What the live call could not confirm is not left registered: the Core
+  // forgets the endpoint and the credential with it.
+  if (!ok) await c.configureProvider(provider, "", "").catch(() => {});
+  const stored = ok && apiKey.length > 0 ? storeProvider(provider, url, apiKey) : { persisted: false };
+  return {
+    endpoint: configured.endpoint,
+    model,
+    ok,
+    errorCode: probe.errorCode,
+    errorMessage: probe.errorMessage,
+    persisted: stored.persisted,
+    keychainAvailable: safeStorage.isEncryptionAvailable(),
+  };
+});
+ipcMain.handle("onboarding:providerStatus", async () => {
+  const rec = loadProvider();
+  // What the Core actually has is the truth; the keychain record is only
+  // what this profile will hand it on the next start.
+  const endpoints = await requireClient().listProviders().catch(() => []);
+  const ready = endpoints.filter((e) => e.credentialAvailable).map((e) => e.endpoint);
+  return { configured: ready.length > 0, endpoints: [...new Set(ready)], stored: rec !== null, provider: rec?.provider ?? "", keychainAvailable: safeStorage.isEncryptionAvailable() };
+});
+ipcMain.handle("onboarding:trust", async (_e: IpcMainInvokeEvent, sessionId: unknown, workspaceRoot: unknown) => {
+  const sid = requireSessionId(sessionId);
+  const root = optionalWorkspaceRoot(workspaceRoot);
+  if (!root) throw new Error("BAD_ARGUMENT: workspace root required");
+  const abs = resolve(root);
+  if (!existsSync(abs)) throw new Error("REPOSITORY_MISSING: that folder does not exist on this machine");
+  const c = requireClient();
+  if (c.leaseGeneration(sid) === undefined) await c.acquireSessionLease(sid, `desktop ${app.getVersion()}`);
+  const r = await c.trustRepository(sid, abs);
+  return { workspaceRoot: abs, offset: r.offset };
+});
+ipcMain.handle("onboarding:starters", async (_e: IpcMainInvokeEvent, workspaceRoot: unknown) => {
+  const root = optionalWorkspaceRoot(workspaceRoot);
+  if (!root) throw new Error("BAD_ARGUMENT: workspace root required");
+  return requireClient().listStarterTasks(resolve(root));
 });
 ipcMain.handle("events:subscribe", (_e: IpcMainInvokeEvent, sessionId: unknown, afterOffset: unknown) => {
   const sid = requireSessionId(sessionId);

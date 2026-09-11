@@ -1046,3 +1046,51 @@ message RoutingCompileView {
   string refusal_code = 14;
   string refusal_detail = 15;
 }
+
+// ---- Onboarding (REQ-PX-022, docs/39 "Onboarding") ----
+//
+// Provider setup, explicit scoped repository trust and starter tasks. The
+// credential in ConfigureProvider is held by the Core process in memory only:
+// it is never written to the log, the object store or a file, never echoed
+// in any view, and the renderer never handles it — Electron main sends it
+// from the OS keychain.
+
+message ConfigureProvider {
+  string provider = 1;             // openai | anthropic
+  string api_key = 2;              // the credential; empty clears it
+  string base_url = 3;             // optional: a compatible endpoint (empty = the provider's own)
+}
+
+message ProviderConfigured {
+  string endpoint = 1;             // the endpoint name the Core registered
+  bool credential_available = 2;
+  repeated string models = 3;      // model ids the endpoint serves
+}
+
+message TrustRepository {
+  Id session_id = 1;
+  string workspace_root = 2;       // the root the user trusts, scoped exactly to it
+  string scope = 3;                // "repository" (this root only)
+}
+
+message RepositoryTrusted {
+  string workspace_root = 1;
+  uint64 offset = 2;
+}
+
+message ListStarterTasks {
+  string workspace_root = 1;
+}
+
+message StarterTaskView {
+  string id = 1;
+  string title = 2;
+  string goal_text = 3;
+  string stack = 4;                // rust | node | python | text
+}
+
+message StarterTaskList {
+  repeated string stacks = 1;      // what the repository was detected as
+  repeated StarterTaskView tasks = 2;
+  bool trusted = 3;                // whether this session has trusted the root
+}

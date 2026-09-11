@@ -104,6 +104,16 @@ pub enum SessionEvent {
         /// Reason.
         reason: String,
     },
+    /// `RepositoryTrusted` (REQ-PX-022, docs/39 "Onboarding"): the user
+    /// explicitly trusted a repository root for this session. Trust is
+    /// scoped to exactly that root; a desktop task on an untrusted root does
+    /// not start. No state change.
+    RepositoryTrusted {
+        /// The root, as the user gave it.
+        workspace_root: String,
+        /// Scope (`repository`).
+        scope: String,
+    },
     /// `OutcomeStatisticsMaterialized` (REQ-EPR-015, docs/27 §21): an
     /// immutable statistics snapshot was derived from published baselines and
     /// stored. The event carries what pins it and what it was derived from;
@@ -162,6 +172,7 @@ impl SessionEvent {
             Self::EmergencyStopActivated { .. } => "EmergencyStopActivated",
             Self::OutcomeBaselinePublished { .. } => "OutcomeBaselinePublished",
             Self::OutcomeStatisticsMaterialized { .. } => "OutcomeStatisticsMaterialized",
+            Self::RepositoryTrusted { .. } => "RepositoryTrusted",
         }
     }
 }
@@ -218,7 +229,8 @@ impl Session {
             // happened, so publishing one changes nothing about the session
             // (REQ-EPR-000, REQ-EPR-015).
             SessionEvent::OutcomeBaselinePublished { .. }
-            | SessionEvent::OutcomeStatisticsMaterialized { .. } => {
+            | SessionEvent::OutcomeStatisticsMaterialized { .. }
+            | SessionEvent::RepositoryTrusted { .. } => {
                 if self.state.is_terminal() {
                     return Err(crate::InvalidTransition {
                         aggregate: "Session",

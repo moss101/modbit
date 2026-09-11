@@ -7,8 +7,12 @@
   "incremental_index_latency_is_within_budget_on_the_tier_a_fixtures",
   "qual_px_027_language_tier_suites_run_on_real_fixtures_and_a_tier_is_only_a_recorded_pass"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "213a89f"
+ ],
+ "runs": [
+  "run:34565153777"
+ ],
  "decision_record": "docs/decisions/DR-M3-003-benchmark-and-conformance-live-model-halves.md",
  "metrics": {
   "hardware": "Apple M5 Pro, Darwin arm64",
@@ -29,5 +33,6 @@
  },
  "proof": "With rust-analyzer unreachable the lsp.* tools fail with LANGUAGE_SERVICE_UNAVAILABLE naming the server while text-level tools succeed on the same file and the catalog keeps the recorded tier. Twelve single-file changes per fixture refresh the exact, lexical, symbol and semantic indexes with p95 8 ms against a 250 ms budget, each index verified current after every refresh. The Tier A suites with real language services are PX-027's recorded passes.",
  "audit": "PARTIAL before: Tier A passes were recorded by PX-027; no latency budget was measured and explicit degradation was proven only at the suite level.",
- "limitations": "The competence clause is PX-020's live-model baseline, deferred by DR-M3-003. The latency budget is declared by this task, not fixed by the dossier."
+ "limitations": "The competence clause is PX-020's live-model baseline, deferred by DR-M3-003. The latency budget is declared by this task, not fixed by the dossier.",
+ "ci": "https://github.com/moss101/modbit/actions/runs/34565153777 (green on macOS, Linux and Windows at 213a89f)"
 }

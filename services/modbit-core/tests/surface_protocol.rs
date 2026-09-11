@@ -1831,6 +1831,27 @@ async fn fake_openai() -> (
                     }
                     buf.extend_from_slice(&tmp[..n]);
                 }
+                // A real provider refuses a bad credential with 401 before it
+                // reads the body; so does this one, for the key a test names
+                // as invalid.
+                let head = String::from_utf8_lossy(&buf[..head_end]).to_string();
+                if head.lines().any(|l| {
+                    l.to_ascii_lowercase().starts_with("authorization:") && l.contains("sk-invalid")
+                }) {
+                    let body = "{\"error\":{\"message\":\"Incorrect API key provided\",\"type\":\"invalid_request_error\",\"code\":\"invalid_api_key\"}}";
+                    let _ = sock
+                        .write_all(
+                            format!(
+                                "HTTP/1.1 401 Unauthorized\r\ncontent-type: application/json\r\nconnection: close\r\ncontent-length: {}\r\n\r\n{}",
+                                body.len(),
+                                body
+                            )
+                            .as_bytes(),
+                        )
+                        .await;
+                    let _ = sock.shutdown().await;
+                    return;
+                }
                 let body: serde_json::Value =
                     serde_json::from_slice(&buf[head_end..head_end + len]).unwrap_or_default();
                 let with_tools = body["tools"].is_array();
@@ -4621,6 +4642,28 @@ async fn create_task_with_profile(
         .unwrap()
         .task_id
         .unwrap()
+}
+
+/// Trust a repository root for a session (REQ-PX-022): what the desktop does
+/// before it starts a task there.
+async fn trust_repository(c: &mut Client, session: &Id, g: Option<u64>, root: &str, id: u8) {
+    use modbit_protocol::v1::{RepositoryTrusted, TrustRepository};
+    let ack = c
+        .command(envelope_fenced(
+            id16(id),
+            "TrustRepository",
+            TrustRepository {
+                session_id: Some(session.clone()),
+                workspace_root: root.into(),
+                scope: "repository".into(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let t: RepositoryTrusted = Client::result(&ack).unwrap();
+    assert!(t.offset > 0, "{t:?}");
 }
 
 /// A task whose goal text is what the caller wants profiled or planned from.
@@ -8153,6 +8196,9 @@ async fn qual_px_038_scope_expansion_is_bounded_asks_a_typed_question_and_fails_
     let mut c = core.client().await;
     let (session, _) = create_session(&mut c, id16(0x38)).await;
     let g = lease_for(&session);
+    // A desktop task runs only on a repository this session trusted
+    // (REQ-PX-022).
+    trust_repository(&mut c, &session, g, &root, 0x37).await;
     let ack = c
         .command(envelope_fenced(
             id16(0x39),
@@ -14228,4 +14274,332 @@ async fn qual_px_028_a_dead_language_service_is_a_typed_failure_not_an_empty_ans
         .find(|l| l.language == "rust")
         .unwrap_or_else(|| panic!("{list:?}"));
     assert!(rust.conformance.contains("Tier A"), "{rust:?}");
+}
+
+/// QUAL-PX-022 (the Core half): a profile that skipped provider setup cannot
+/// start a task; a credential handed to the Core through provider setup is
+/// held in memory only and never reaches the log, the object store or any
+/// view; a live test call confirms the provider and names the cause when it
+/// fails; and a desktop task on a repository the session has not trusted does
+/// not start.
+#[tokio::test]
+async fn qual_px_022_provider_setup_and_repository_trust_are_enforced_by_the_core() {
+    use modbit_protocol::v1::{
+        ConfigureProvider, CreateTask, ListModels, ListStarterTasks, ModelList, ModelProbed,
+        ProbeModel, ProviderConfigured, StartTask, StarterTaskList, TaskCreated,
+    };
+    const KEY: &str = "sk-onboarding-secret-that-must-never-be-persisted";
+    let (fake, _seen) = fake_openai().await;
+    let (repo, root) = fixture_repo("rust-cli");
+    // A fresh profile: no provider anywhere in the environment.
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn_with_env(
+        dir.path(),
+        &[("OPENAI_API_KEY", ""), ("ANTHROPIC_API_KEY", "")],
+    );
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xE1)).await;
+    let g = lease_for(&session);
+    // 1. No provider: a task can be created but not started, and the refusal
+    //    says why.
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xE2),
+            "CreateTask",
+            CreateTask {
+                session_id: Some(session.clone()),
+                goal_text: "add a test".into(),
+                workspace_id: None,
+                execution_profile: "local_trusted".into(),
+                origin: "desktop".into(),
+                workspace_root: root.clone(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let task = Client::result::<TaskCreated>(&ack)
+        .unwrap()
+        .task_id
+        .unwrap();
+    let start = |task: Id| StartTask {
+        task_id: Some(task),
+        endpoint: String::new(),
+        model: String::new(),
+        max_turns: 4,
+        max_tool_calls: 0,
+        max_no_progress_turns: 4,
+    };
+    trust_repository(&mut c, &session, g, &root, 0xE3).await;
+    let err = c
+        .command(envelope_fenced(
+            id16(0xE4),
+            "StartTask",
+            start(task.clone()).encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap_err();
+    assert!(
+        format!("{err:?}").contains("NO_PROVIDER"),
+        "a profile that skipped provider setup cannot start a task: {err:?}"
+    );
+    // 2. Provider setup: the key goes to the Core and nowhere else. The live
+    //    test call confirms it against the (wire-faithful) endpoint.
+    let ack = c
+        .command(envelope(
+            id16(0xE5),
+            "ConfigureProvider",
+            ConfigureProvider {
+                provider: "openai".into(),
+                api_key: KEY.into(),
+                base_url: fake.clone(),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let p: ProviderConfigured = Client::result(&ack).unwrap();
+    assert_eq!(p.endpoint, "openai");
+    assert!(
+        p.credential_available && p.models.contains(&"gpt-5-mini".to_owned()),
+        "{p:?}"
+    );
+    let ack = c
+        .command(envelope(
+            id16(0xE6),
+            "ProbeModel",
+            ProbeModel {
+                endpoint: "openai".into(),
+                model: "gpt-5-mini".into(),
+                prompt: "Say pong.".into(),
+                with_tools: false,
+                timeout_ms: 10_000,
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let r: ModelProbed = Client::result(&ack).unwrap();
+    assert_eq!(
+        (r.status.as_str(), r.text.as_str()),
+        ("COMPLETED", "pong"),
+        "{r:?}"
+    );
+    // The endpoint the client sees says a credential is available and never
+    // says what it is.
+    let ack = c
+        .command(envelope(
+            id16(0xE7),
+            "ListModels",
+            ListModels {}.encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let list: ModelList = Client::result(&ack).unwrap();
+    let wire = String::from_utf8_lossy(&list.encode_to_vec()).to_string();
+    assert!(!wire.contains(KEY), "the credential reached a client view");
+    assert!(
+        list.models
+            .iter()
+            .any(|m| m.endpoint == "openai" && m.credential_available),
+        "{list:?}"
+    );
+    // 3. An invalid key names the cause: the endpoint rejects it and the
+    //    probe says so with the provider's own status rather than a guess.
+    let ack = c
+        .command(envelope(
+            id16(0xE8),
+            "ConfigureProvider",
+            ConfigureProvider {
+                provider: "openai".into(),
+                api_key: "sk-invalid".into(),
+                base_url: format!("{fake}/reject-auth"),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let _: ProviderConfigured = Client::result(&ack).unwrap();
+    let ack = c
+        .command(envelope(
+            id16(0xE9),
+            "ProbeModel",
+            ProbeModel {
+                endpoint: "openai".into(),
+                model: "gpt-5-mini".into(),
+                prompt: "Say pong.".into(),
+                with_tools: false,
+                timeout_ms: 10_000,
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let r: ModelProbed = Client::result(&ack).unwrap();
+    assert_ne!(r.status, "COMPLETED", "{r:?}");
+    assert!(
+        r.error_code == "AUTH_REJECTED" || r.error_code == "PROVIDER_REJECTED",
+        "the cause is named: {r:?}"
+    );
+    // A network failure is named too: an endpoint nobody listens on.
+    let ack = c
+        .command(envelope(
+            id16(0xEA),
+            "ConfigureProvider",
+            ConfigureProvider {
+                provider: "openai".into(),
+                api_key: KEY.into(),
+                base_url: "http://127.0.0.1:9".into(),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let _: ProviderConfigured = Client::result(&ack).unwrap();
+    let ack = c
+        .command(envelope(
+            id16(0xEB),
+            "ProbeModel",
+            ProbeModel {
+                endpoint: "openai".into(),
+                model: "gpt-5-mini".into(),
+                prompt: "Say pong.".into(),
+                with_tools: false,
+                timeout_ms: 5_000,
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let r: ModelProbed = Client::result(&ack).unwrap();
+    assert_ne!(r.status, "COMPLETED", "{r:?}");
+    assert!(
+        r.error_code.contains("CONNECT")
+            || r.error_code == "TIMEOUT"
+            || r.error_code == "TRANSPORT",
+        "a network failure is named as one: {r:?}"
+    );
+    // Back to the working endpoint for the rest.
+    let ack = c
+        .command(envelope(
+            id16(0xEC),
+            "ConfigureProvider",
+            ConfigureProvider {
+                provider: "openai".into(),
+                api_key: KEY.into(),
+                base_url: fake.clone(),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let _: ProviderConfigured = Client::result(&ack).unwrap();
+    // 4. Starter tasks come from the detected stack.
+    let ack = c
+        .command(envelope(
+            id16(0xED),
+            "ListStarterTasks",
+            ListStarterTasks {
+                workspace_root: root.clone(),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let starters: StarterTaskList = Client::result(&ack).unwrap();
+    assert_eq!(starters.stacks, vec!["rust".to_owned()], "{starters:?}");
+    assert!(
+        starters.tasks.iter().any(|t| t.id == "rust-add-test"),
+        "{starters:?}"
+    );
+    // 5. An untrusted repository: a desktop task there does not start, and
+    //    the refusal names the next action. The headless CLI is not gated.
+    let (_other, other_root) = plain_repo(&[("notes.txt", "hello\n")]);
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xEE),
+            "CreateTask",
+            CreateTask {
+                session_id: Some(session.clone()),
+                goal_text: "summarise".into(),
+                workspace_id: None,
+                execution_profile: "local_trusted".into(),
+                origin: "desktop".into(),
+                workspace_root: other_root.clone(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let untrusted = Client::result::<TaskCreated>(&ack)
+        .unwrap()
+        .task_id
+        .unwrap();
+    let err = c
+        .command(envelope_fenced(
+            id16(0xEF),
+            "StartTask",
+            start(untrusted.clone()).encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap_err();
+    let said = format!("{err:?}");
+    assert!(
+        said.contains("REPOSITORY_UNTRUSTED") && said.contains("TrustRepository"),
+        "{said}"
+    );
+    let cli_task =
+        create_task_with_profile(&mut c, &session, g, &other_root, 0xF0, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xF1),
+            "StartTask",
+            start(cli_task.clone()).encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    assert!(Client::result::<modbit_protocol::v1::TaskRunStarted>(&ack).is_ok());
+    // Trusting it, scoped to that root, lets the desktop task start.
+    trust_repository(&mut c, &session, g, &other_root, 0xF2).await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xF3),
+            "StartTask",
+            start(untrusted.clone()).encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    assert!(Client::result::<modbit_protocol::v1::TaskRunStarted>(&ack).is_ok());
+    // 6. The credential is nowhere on disk: not in the log, not in an object,
+    //    not in any file under the profile.
+    let _ = wait_task(&mut c, &untrusted, 60).await;
+    let _ = wait_task(&mut c, &cli_task, 60).await;
+    let mut stack = vec![dir.path().to_path_buf()];
+    let mut files = Vec::new();
+    while let Some(d) = stack.pop() {
+        for e in std::fs::read_dir(&d).into_iter().flatten().flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                stack.push(p);
+            } else {
+                files.push(p);
+            }
+        }
+    }
+    assert!(!files.is_empty());
+    for f in &files {
+        let bytes = std::fs::read(f).unwrap_or_default();
+        assert!(
+            !bytes.windows(KEY.len()).any(|w| w == KEY.as_bytes()),
+            "the credential was written to {}",
+            f.display()
+        );
+    }
+    let _ = repo;
 }

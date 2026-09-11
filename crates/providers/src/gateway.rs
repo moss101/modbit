@@ -175,7 +175,7 @@ pub struct RouteRecord {
 /// The gateway.
 #[derive(Clone)]
 pub struct ProviderGateway {
-    endpoints: Arc<BTreeMap<String, Endpoint>>,
+    endpoints: Arc<Mutex<BTreeMap<String, Endpoint>>>,
     health: Arc<Mutex<BTreeMap<String, EndpointHealth>>>,
     client: reqwest::Client,
     /// The active Model Registry, when a signed configuration has been
@@ -279,7 +279,7 @@ impl ProviderGateway {
             .map(|e| (e.name.clone(), e))
             .collect::<BTreeMap<_, _>>();
         Self {
-            endpoints: Arc::new(map),
+            endpoints: Arc::new(Mutex::new(map)),
             health: Arc::new(Mutex::new(BTreeMap::new())),
             policy: Arc::new(OrgModelPolicy::default()),
             client: reqwest::Client::builder()
@@ -292,8 +292,33 @@ impl ProviderGateway {
 
     /// Registered endpoints (credentials redacted by `Debug`).
     #[must_use]
-    pub fn endpoints(&self) -> Vec<&Endpoint> {
-        self.endpoints.values().collect()
+    pub fn endpoints(&self) -> Vec<Endpoint> {
+        self.endpoints
+            .lock()
+            .expect("endpoints")
+            .values()
+            .cloned()
+            .collect()
+    }
+
+    /// Register or replace an endpoint at runtime (REQ-PX-022: provider
+    /// setup hands the Core a credential it holds in memory only; nothing is
+    /// written to the log, the object store or any file by this call).
+    pub fn configure_endpoint(&self, endpoint: Endpoint) {
+        self.endpoints
+            .lock()
+            .expect("endpoints")
+            .insert(endpoint.name.clone(), endpoint);
+    }
+
+    /// Forget an endpoint, credential included. What provider setup could not
+    /// confirm is not left registered.
+    pub fn remove_endpoint(&self, name: &str) -> bool {
+        self.endpoints
+            .lock()
+            .expect("endpoints")
+            .remove(name)
+            .is_some()
     }
 
     /// Health snapshot.
@@ -348,6 +373,8 @@ impl ProviderGateway {
     #[must_use]
     pub fn capability(&self, endpoint: &str, model: &str) -> Option<ModelCapability> {
         self.endpoints
+            .lock()
+            .expect("endpoints")
             .get(endpoint)?
             .models
             .iter()
@@ -378,6 +405,8 @@ impl ProviderGateway {
     ) -> Result<(Endpoint, ModelCapability, RouteRecord), RouteError> {
         let ep = self
             .endpoints
+            .lock()
+            .expect("endpoints")
             .get(&req.model_policy.endpoint)
             .cloned()
             .ok_or_else(|| RouteError::UnknownEndpoint(req.model_policy.endpoint.clone()))?;
@@ -828,9 +857,11 @@ pub fn endpoints_from_env() -> Vec<Endpoint> {
         .ok()
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| "https://api.anthropic.com".into());
+    // An environment variable set to nothing is nothing: it registers no
+    // endpoint, the same as an absent one.
     let openai_cred = if std::env::var("OPENAI_API_KEY").is_ok_and(|v| !v.is_empty()) {
         SecretHandle::Env("OPENAI_API_KEY".into())
-    } else if std::env::var("MODBIT_OPENAI_BASE_URL").is_ok() {
+    } else if std::env::var("MODBIT_OPENAI_BASE_URL").is_ok_and(|v| !v.trim().is_empty()) {
         SecretHandle::None
     } else {
         return out;
@@ -845,7 +876,7 @@ pub fn endpoints_from_env() -> Vec<Endpoint> {
     });
     let anthropic_cred = if std::env::var("ANTHROPIC_API_KEY").is_ok_and(|v| !v.is_empty()) {
         SecretHandle::Env("ANTHROPIC_API_KEY".into())
-    } else if std::env::var("MODBIT_ANTHROPIC_BASE_URL").is_ok() {
+    } else if std::env::var("MODBIT_ANTHROPIC_BASE_URL").is_ok_and(|v| !v.trim().is_empty()) {
         SecretHandle::None
     } else {
         return out;

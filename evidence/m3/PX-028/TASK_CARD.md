@@ -39,4 +39,5 @@ Named tests (run on macOS, Linux and Windows by `.github/workflows/ci.yml`):
 ## Evidence
 
 - `evidence.json` in this directory (commits, hosted CI run, test names)
-- CI run json copy alongside
+- `ci-run-34565153777.json`: hosted CI, green on macOS, Linux and Windows at `213a89f`
+- Commit: `213a89f`

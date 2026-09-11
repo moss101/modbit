@@ -22851,8 +22851,40 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-022",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "milestone_override": "DR-M2-002: onboarding timing needs a live provider test model (DR-M2-001 credentials)",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "commit:213a89f",
+    "artifact:evidence/m3/PX-022/TASK_CARD.md",
+    "test:qual_px_022_provider_setup_and_repository_trust_are_enforced_by_the_core",
+    "artifact:docs/decisions/DR-M3-003-benchmark-and-conformance-live-model-halves.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-11T05:52:47Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: no welcome, no provider setup (keys from the environment only), no repository trust in the product, no starter tasks"
+    },
+    {
+     "at": "2026-09-11T05:52:47Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "Core: ConfigureProvider (in-memory credential, not journaled), TrustRepository (session event scoped to the root; desktop tasks refused on untrusted roots), ListStarterTasks; desktop: welcome with three working steps, safeStorage custody of the key in main, explicit trust in the composer, Review opening on the first result"
+    },
+    {
+     "at": "2026-09-11T05:52:47Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "the packaged app drives the real Core through the whole flow; the credential never reaches the renderer or the disk in the clear"
+    },
+    {
+     "at": "2026-09-11T05:52:47Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "three fresh profiles: median 1.2 s to the Review on an Apple M5 Pro against the wire-faithful provider; the live-model measurement is deferred by DR-M3-003"
+    }
+   ],
+   "status_changed_on": "2026-09-11T05:52:47Z"
   },
   {
    "id": "PX-023",
@@ -23097,12 +23129,15 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-028",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "commit:a56d074",
     "artifact:evidence/m3/PX-028/TASK_CARD.md",
     "test:qual_px_028_a_dead_language_service_is_a_typed_failure_not_an_empty_answer",
-    "test:incremental_index_latency_is_within_budget_on_the_tier_a_fixtures"
+    "test:incremental_index_latency_is_within_budget_on_the_tier_a_fixtures",
+    "run:34565153777",
+    "artifact:evidence/m3/PX-028/ci-run-34565153777.json",
+    "commit:213a89f"
    ],
    "notes": [
     {
@@ -23128,9 +23163,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "offline halves proven; competence clause deferred by DR-M3-003"
+    },
+    {
+     "at": "2026-09-11T05:22:37Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 213a89f: the latency budget on the three fixtures and the dead-service degradation through Core"
+    },
+    {
+     "at": "2026-09-11T05:22:37Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Tier A on evidence: PX-027's recorded passes, incremental index latency within a declared budget, explicit degradation; the competence clause is deferred by DR-M3-003"
     }
    ],
-   "status_changed_on": "2026-09-11T05:09:16Z"
+   "status_changed_on": "2026-09-11T05:22:37Z"
   },
   {
    "id": "PX-029",
