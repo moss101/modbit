@@ -17,8 +17,20 @@
   "qual_ev_0221_background_handles_survive_client_restart_with_bounded_preview_and_cancel",
   "qual_ev_0271_0027_0135_detach_reattach_from_cursor_exactly_then_cancel_kills_the_real_process"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "88fc68c",
+  "ccae2dd",
+  "82ae1f9"
+ ],
+ "runs": [
+  {
+   "id": "gha-34596631098",
+   "kind": "hosted CI on 82ae1f9",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34596631098",
+   "log": "ci-run-34596631098.json"
+  }
+ ],
  "proof": "A background command outlives a hard kill of the Core; the restarted Core reattaches to the same broker with no duplicate start, reads on from the acknowledged cursor without gap or repeat, replays the earlier output, refuses a reader with the old replay generation, and cancel ends the real process with a sealed OutputRef; the protocol state carries the handle and cursor across the restart. A hard-killed broker comes back with its sessions durable: a running one is LOST with exit unknown and a replayable sealed log, a retry replays it, an exited one keeps its exit code; an orphaned broker stops its process and exits.",
  "audit": "PARTIAL before: handles survived a client restart only; the broker died with the Core, sessions were in memory, attaches carried no generation, and nothing about handles or cursors was on the log.",
  "limitations": "A session lost with the broker is not restarted by the Core; browser and sandbox cursors are interfaces without producers until M7/M8; the orphan grace (60 s) bounds how long a dead Core's commands survive.",
@@ -38,5 +50,6 @@
    "fix": "next commit (handle sweep before the broker spawn; tolerant probe)",
    "repro": "linux-pipe-leak-repro.py / linux-pipe-leak-repro.txt"
   }
- ]
+ ],
+ "ci": "https://github.com/moss101/modbit/actions/runs/34596631098 (green on macOS, Linux and Windows at 82ae1f9; the two earlier runs and their forward fixes are in ci_history)"
 }

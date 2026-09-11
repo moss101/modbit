@@ -20,8 +20,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | Verification and testing | 50–69 | 15 | 203744 |
 | Delivery and operations | 70–79 | 7 | 33831 |
 | Agent process and governance | 80–97 | 18 | 109299 |
-| Live state | 98–99 | 1 | 4843 |
-| **Total docs** | | **89** | **1053512** |
+| Live state | 98–99 | 1 | 4828 |
+| **Total docs** | | **89** | **1053497** |
 
 ## Specification files (`docs/`)
 
@@ -115,7 +115,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 95 | `docs/95_EPR_V1_1_DOSSIER_TASK_AND_HANDOFF.md` | EPR v1.1 dossier task and handoff | governance | 10525 | `264069b600baf40d1e54d2f89be7e9804a8b77c0dbf3ddb0a9dca41111582413` |
 | 96 | `docs/96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md` | Dossier governance maintenance task and handoff | governance | 9070 | `af650309e48dd7fd60dd6d286c460ed7c3128a2201964078c7f50aea385bfb8c` |
 | 97 | `docs/97_DOSSIER_MAINTENANCE_LOG.md` | Dossier maintenance log | governance | 43736 | `ae48c1832a920977def82d1ba4b7d492d4281c60a3723beaef613d3144c97073` |
-| 98 | `docs/98_BUILD_MANIFEST.md` | Build Manifest | live-state | 4843 | `a43c5c91293f8b69c5a1c9a07965ecc56960b8841642dd7677830f3c50a3aa00` |
+| 98 | `docs/98_BUILD_MANIFEST.md` | Build Manifest | live-state | 4828 | `4e555b0a7976ccffa875e7055115b6df0d34c4358c18c03c5f4e9a19cf90a099` |
 
 ## Root governing files and tooling
 
@@ -844,10 +844,23 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m3/PX-040/ci-run-34507573124-tests.log` | retained evidence | 4206 | `a9e2a291c1bc0b8c6332b023ecd1361533d8286c33ba45c5465fcca3c2eacb50` |
 | `evidence/m3/PX-040/ci-run-34507573124.json` | retained evidence | 37317 | `cc7122950bffe169b616acd26ddc066cc491cfb3ea9bc94299350fbd41b06594` |
 | `evidence/m3/PX-040/evidence.json` | retained evidence | 1272 | `dc1c5415da2d653b16d94162aa23478c0d9694a3c0442c91e93c17db2e9e58ec` |
+| `evidence/m4/IMP-EV-0012/TASK_CARD.md` | retained evidence | 1655 | `1d0984241351a9938f01cea8bc87a502fcd72596a27a14aa0c5b7b83114ec4c3` |
+| `evidence/m4/IMP-EV-0012/ci-run-34586546102.json` | retained evidence | 37317 | `80e5c3e9706fe7fb0fb91654542801aaa7c86685085a06d32c9aff7945065a9f` |
+| `evidence/m4/IMP-EV-0012/evidence.json` | retained evidence | 994 | `5fc5aad172f6b5f452e854bc46ff9b474c52697d3d3f935a96d2c5e0aae80fd6` |
+| `evidence/m4/IMP-EV-0013/TASK_CARD.md` | retained evidence | 1708 | `c389f91082b580eb7f9baddc370f6f137a56cd00e35c71b1669af5ff416f6027` |
+| `evidence/m4/IMP-EV-0013/ci-run-34586546102.json` | retained evidence | 37317 | `80e5c3e9706fe7fb0fb91654542801aaa7c86685085a06d32c9aff7945065a9f` |
+| `evidence/m4/IMP-EV-0013/evidence.json` | retained evidence | 1155 | `22d9c2a57930654583f6d119c000148ecb42ddb15de52f578546b18c386e3487` |
+| `evidence/m4/IMP-EV-0055/TASK_CARD.md` | retained evidence | 2349 | `3d5e207fa01117560de630e0237cf988c9cbcef33b9d72f5386aad95f0a75bc4` |
+| `evidence/m4/IMP-EV-0055/ci-run-34575700540.json` | retained evidence | 37317 | `4935dff1f95c3da823e4c69d390538ad0ee41d56e6e9958cd4af8a91569d8de8` |
+| `evidence/m4/IMP-EV-0055/evidence.json` | retained evidence | 1263 | `31a398ca9d160bc5750b5a4d0b54528ff1770be5019e3df2953f69bbe4943291` |
 | `evidence/m4/IMP-EV-0073/TASK_CARD.md` | retained evidence | 4274 | `8353f25f442267ab1ad529c954036b76dcf50a75a3c154e072f87b2a3e25d254` |
-| `evidence/m4/IMP-EV-0073/evidence.json` | retained evidence | 805 | `01eaa33fb5a413fead438d9a90e2e321d8e4a3cce7e5ac0ab3d54286524e81d4` |
+| `evidence/m4/IMP-EV-0073/ci-run-34596631098.json` | retained evidence | 37317 | `c4b0a59c7c53ecea7ae2dd1da8ab0366da2a6c71466fdc95f0ee8f7b8162422d` |
+| `evidence/m4/IMP-EV-0073/evidence.json` | retained evidence | 1181 | `7ab02480aa55ebae42e1929b827f651ae71ef23bb23ffdb2fab1409fd97ff51a` |
+| `evidence/m4/IMP-EV-0242/TASK_CARD.md` | retained evidence | 4208 | `bb6cb2797145a0026e111b55331f031767f8ce0f0b3f5588399d7e73c8363e93` |
+| `evidence/m4/IMP-EV-0242/evidence.json` | retained evidence | 884 | `ca9ac84270210ea4bbc22b7d7907c95a38a3bf1a29097a95767f0205e587cd31` |
 | `evidence/m4/IMP-EV-0245/TASK_CARD.md` | retained evidence | 2386 | `635a39e867022bdf28f853651df667923d1cc9092e3397799024a720d951ccc5` |
-| `evidence/m4/IMP-EV-0245/evidence.json` | retained evidence | 445 | `56e57dbc9ea7ce561cceee1c2cb9765677e14375ef424f1a15b4e1684e32b83e` |
+| `evidence/m4/IMP-EV-0245/ci-run-34596631098.json` | retained evidence | 37317 | `c4b0a59c7c53ecea7ae2dd1da8ab0366da2a6c71466fdc95f0ee8f7b8162422d` |
+| `evidence/m4/IMP-EV-0245/evidence.json` | retained evidence | 821 | `b138517568838bcd707beac039542d7cbcffb75ec7b6871511101fb8acf4c5f9` |
 | `evidence/m4/M4.1/TASK_CARD.md` | retained evidence | 8467 | `a14c9ed238f536747ab52bbbd627c5cd33e3019dc50eacaf5a190a918297205d` |
 | `evidence/m4/M4.1/ci-run-34575700540.json` | retained evidence | 37317 | `4935dff1f95c3da823e4c69d390538ad0ee41d56e6e9958cd4af8a91569d8de8` |
 | `evidence/m4/M4.1/evidence.json` | retained evidence | 2107 | `ce7ed45990ba4c096fb560932c021cde05be8c0e56a426eae8960eb3b0f119a9` |
@@ -862,13 +875,15 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m4/M4.4/ci-run-34588581596.json` | retained evidence | 37317 | `547aa8bd0b47e6c55d580d35f9f271240eb829f98edc290037db110cd764bf9e` |
 | `evidence/m4/M4.4/evidence.json` | retained evidence | 1253 | `206ab4387d1f33cfd4b69e8d68e4c7a5095731e8296e71577f118444482c1068` |
 | `evidence/m4/M4.5/TASK_CARD.md` | retained evidence | 6873 | `356a5ae715154f43c3d9233ff4dae2cdb26a40af09178f9a50cffd6ebbe9a1d1` |
-| `evidence/m4/M4.5/evidence.json` | retained evidence | 2557 | `d5fc62bc58fca7d52d490fac7dace87f544c2a97074cdf3f308190980315c383` |
+| `evidence/m4/M4.5/ci-run-34596631098.json` | retained evidence | 37317 | `c4b0a59c7c53ecea7ae2dd1da8ab0366da2a6c71466fdc95f0ee8f7b8162422d` |
+| `evidence/m4/M4.5/evidence.json` | retained evidence | 3023 | `df84efab5ca55d0103510481f0f27c9efb6c2584e535805ef44384a3efdbd30f` |
 | `evidence/m4/M4.5/linux-pipe-leak-repro.py` | retained evidence | 2287 | `e10b2a0d03c7e7fabd9e12dbca1cc3c6b7606396c0f6ed45e404ee13c6ed9ecf` |
 | `evidence/m4/M4.5/linux-pipe-leak-repro.txt` | retained evidence | 903 | `b5b47c8e1ddb4480ddb730abec502a5eed28079879b796dc17fe5f55fda357f3` |
 | `evidence/m4/M4.6/TASK_CARD.md` | retained evidence | 6763 | `bcc84ee081a4b9c5d2ea41291c8ef220904686d91625ef20015a37c793317c96` |
-| `evidence/m4/M4.6/evidence.json` | retained evidence | 1606 | `3221311b30dc2b77387c6a9dffc6af062fbab79c6f15b28bffdccf9dd6026a67` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 40852 | `01733c06424f302b5af96073966125e9fc90efe736bd8fa7b5cadd0cddbea1bc` |
-| `graph/project-graph.json` | project driver graph with live status | 1307169 | `08273958247671d3cc3b9e42008f4a0268c909fc1b423d24ea67f6b917576d3f` |
+| `evidence/m4/M4.6/ci-run-34596631098.json` | retained evidence | 37317 | `c4b0a59c7c53ecea7ae2dd1da8ab0366da2a6c71466fdc95f0ee8f7b8162422d` |
+| `evidence/m4/M4.6/evidence.json` | retained evidence | 2378 | `0e567315ee19ab716569b84ee201867bd35a067dbd0617a8bb2d8f955923b1a2` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 40847 | `43b6d991b06bdda4ed0c4a022c99da3e86fc9c2013c731e9a7d2074a644de6fa` |
+| `graph/project-graph.json` | project driver graph with live status | 1315892 | `858cf9a1ce4a0d21079f12c09fcce80083909fe392cbe1658fe69d052ce3601e` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 53020 | `cb5c9e0e1bf7c3327c0597e40a06725a7fa1c2529ee67a4540117cb73749b233` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 17596 | `5c9b7a782d245223726f860ca583d766929a6f5662b644adebee64d257ad426b` |

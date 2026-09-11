@@ -1,7 +1,14 @@
 {
  "task": "M4.6",
- "requirements": ["REQ-EV-0055", "REQ-EV-0073"],
- "scenarios": ["E2E-005", "docs/54 faults 1, 2, 5, 6, 7", "E2E-004/007 shapes under the suite"],
+ "requirements": [
+  "REQ-EV-0055",
+  "REQ-EV-0073"
+ ],
+ "scenarios": [
+  "E2E-005",
+  "docs/54 faults 1, 2, 5, 6, 7",
+  "E2E-004/007 shapes under the suite"
+ ],
  "tests": [
   "qual_m4_6_kill_point_suite_every_recovery_boundary_survives_a_process_abort",
   "qual_m4_6_e2e_005_a_protected_effect_of_unknown_outcome_is_held_for_the_user_and_never_replayed",
@@ -9,9 +16,30 @@
   "qual_ev_0055_e2e_005_core_crash_after_dispatch_reconciles_the_unknown_outcome_without_replay",
   "kill_points_during_a_command_stream_never_duplicate_or_tear_state"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "ccae2dd",
+  "82ae1f9"
+ ],
+ "runs": [
+  {
+   "id": "gha-34596631098",
+   "kind": "hosted CI on 82ae1f9",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34596631098",
+   "log": "ci-run-34596631098.json"
+  }
+ ],
  "proof": "Twenty-three process aborts at the recovery boundaries of a real coding task, each restarted and resumed, all reaching the reference end state and worktree with one effect and nothing invented; the dispatch-boundary kill is reconciled by target inspection and retried by a model that read the report. E2E-005 in full: a dispatched destructive effect whose acknowledgement the kill lost is held as unknown with no receipt, visible to the user, settled by ReconcileToolCall, and never repeated.",
  "audit": "PARTIAL before: one boundary proven per M4 task; a tool outcome and its file changes, and a run end and its task transition, were separate transactions; a finished call re-entered on resume ran again.",
- "limitations": "Broker/provider-internal kills are covered by M4.5 and M2 tests; faults for browser/sandbox/cloud/subagent/MCP belong to their milestones; the reactive model retries an absent write as a real model would."
+ "limitations": "Broker/provider-internal kills are covered by M4.5 and M2 tests; faults for browser/sandbox/cloud/subagent/MCP belong to their milestones; the reactive model retries an absent write as a real model would.",
+ "ci": "https://github.com/moss101/modbit/actions/runs/34596631098 (green on macOS, Linux and Windows at 82ae1f9)",
+ "ci_history": [
+  {
+   "id": "gha-34593607441",
+   "kind": "hosted CI on ccae2dd",
+   "result": "FAIL: desktop E2E Linux/Windows (broker held the desktop's pipes through leaked descriptors/handles) and the Windows kill suite probe (abort landed mid-GetTaskStatus)",
+   "url": "https://github.com/moss101/modbit/actions/runs/34593607441",
+   "fix": "82ae1f9"
+  }
+ ]
 }

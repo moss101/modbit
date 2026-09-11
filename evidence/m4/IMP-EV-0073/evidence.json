@@ -6,8 +6,19 @@
   "qual_ev_0073_fault_injection_never_reports_a_generic_success",
   "qual_ev_0073_every_diagnosis_names_class_retryability_action_evidence_and_recovery"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "82ae1f9"
+ ],
+ "runs": [
+  {
+   "id": "gha-34596631098",
+   "kind": "hosted CI on 82ae1f9",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34596631098",
+   "log": "ci-run-34596631098.json"
+  }
+ ],
  "proof": "A timed-out command is TIMEOUT/retryable to the model and ToolCallFailed on the log; a stored object that no longer matches its digest is CORRUPT_STATE, not retryable, told apart from a missing artifact; a provider nobody answers suspends the task with a PROVIDER diagnosis on TaskStatus and in the attention event; a passing command carries no diagnosis.",
- "audit": "PARTIAL before: status lines and prose reasons; corrupt objects reported as missing; no class, retryability or recovery on any surface."
+ "audit": "PARTIAL before: status lines and prose reasons; corrupt objects reported as missing; no class, retryability or recovery on any surface.",
+ "ci": "https://github.com/moss101/modbit/actions/runs/34596631098 (green on macOS, Linux and Windows at 82ae1f9)"
 }

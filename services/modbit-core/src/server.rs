@@ -2804,6 +2804,20 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             let lease_generation = env.expected_generation.unwrap_or(0);
             // Model policy: request → environment defaults → first registered.
             let endpoints = core.gateway.endpoints();
+            // A named endpoint must be registered in this Core: a provider
+            // registration is live control, gone with the process (docs/33,
+            // REQ-EV-0242), so a run is refused here rather than started to
+            // fail at its first model call.
+            if !p.endpoint.is_empty() && !endpoints.iter().any(|e| e.name == p.endpoint) {
+                return reject(
+                    cid,
+                    "NO_PROVIDER",
+                    format!(
+                        "provider endpoint `{}` is not registered in this Core (configure it with ConfigureProvider, or set OPENAI_API_KEY / ANTHROPIC_API_KEY)",
+                        p.endpoint
+                    ),
+                );
+            }
             let endpoint = if !p.endpoint.is_empty() {
                 p.endpoint.clone()
             } else if let Ok(e) = std::env::var("MODBIT_DEFAULT_ENDPOINT") {

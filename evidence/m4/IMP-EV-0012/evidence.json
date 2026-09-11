@@ -1,0 +1,17 @@
+{
+ "task": "IMP-EV-0012",
+ "requirement": "REQ-EV-0012",
+ "qual": "QUAL-EV-0012",
+ "tests": [
+  "qual_ev_0012_0013_e2e_007_checkpoint_epochs_are_fenced_and_restore_validates_every_object",
+  "baseline_then_deltas_materialize_to_the_final_state_and_validate_every_object",
+  "a_stale_epoch_never_commits_over_a_newer_one_and_tampering_is_caught",
+  "broken_chains_are_refused"
+ ],
+ "batch_commits": ["08ac542"],
+ "runs": [
+  {"id": "gha-34586546102", "kind": "hosted CI on 08ac542 (M4.2/M4.3 seal run)", "result": "PASS: all jobs green on macOS, Linux and Windows", "url": "https://github.com/moss101/modbit/actions/runs/34586546102", "log": "ci-run-34586546102.json"}
+ ],
+ "proof": "Ladders REQ-EV-0012 on M4.3: two writers race on a real Core under the fault-9 hook; the held epoch 1 cannot become current after epoch 2 commits (NOT_NEWER, CheckpointRejectedStale on the log), and the projection refuses a non-newer CheckpointCommitted.",
+ "audit": "IMPLEMENTED by M4.3 (evidence/m4/M4.3)."
+}

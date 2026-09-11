@@ -2601,11 +2601,13 @@
    "milestone": "M4",
    "order": 4,
    "source": "docs/43",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "test:qual_m4_5_e2e_008_a_background_command_survives_a_core_restart_and_resumes_from_its_cursor",
     "test:qual_m4_5_a_killed_broker_comes_back_with_its_durable_sessions_and_an_orphan_exits",
-    "artifact:evidence/m4/M4.5/TASK_CARD.md"
+    "artifact:evidence/m4/M4.5/TASK_CARD.md",
+    "run:34596631098",
+    "commit:82ae1f9"
    ],
    "notes": [
     {
@@ -2631,9 +2633,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "real-system proof locally: E2E-008 through a hard-killed and restarted Core with a real running command; fault 12 through a hard-killed and restarted broker; hosted CI pending"
+    },
+    {
+     "at": "2026-09-11T12:10:28Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "E2E-008 and docs/54 faults 11/12 green on hosted CI (macOS, Linux, Windows) at 82ae1f9 after two forward fixes for broker handle inheritance"
+    },
+    {
+     "at": "2026-09-11T12:10:28Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Durable terminal broker sealed: card, evidence.json, CI run json and Linux pipe-leak repro under evidence/m4/M4.5"
     }
    ],
-   "status_changed_on": "2026-09-11T10:49:02Z"
+   "status_changed_on": "2026-09-11T12:10:28Z"
   },
   {
    "id": "M4.6",
@@ -2643,8 +2657,54 @@
    "milestone": "M4",
    "order": 5,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/m4/M4.6/TASK_CARD.md",
+    "commit:ccae2dd",
+    "commit:82ae1f9",
+    "test:qual_m4_6_kill_point_suite_every_recovery_boundary_survives_a_process_abort",
+    "test:qual_m4_6_e2e_005_a_protected_effect_of_unknown_outcome_is_held_for_the_user_and_never_replayed",
+    "run:34596631098"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-11T12:10:28Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Audit: one boundary per M4 task before; two atomicity gaps (tool outcome + FileChanged; run end + task transition) and one replay gap (finished call re-run on resume) found latent"
+    },
+    {
+     "at": "2026-09-11T12:10:28Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "FaultPlan kill hooks, append_all, atomic outcome batch, atomic loop ends, replay of finished calls, ReconcileToolCall, user verdict on resume"
+    },
+    {
+     "at": "2026-09-11T12:10:29Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Wired: MODBIT_FAULT_KILL_BEFORE_EVENT/AFTER_EVENT in the store; ReconcileToolCall on the wire (lease-fenced); handle sweep before the broker spawn"
+    },
+    {
+     "at": "2026-09-11T12:10:29Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "23 boundaries aborted, restarted and resumed on the real Core; E2E-005 in full"
+    },
+    {
+     "at": "2026-09-11T12:10:29Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "Green on hosted CI (macOS, Linux, Windows) at 82ae1f9; run 34593607441 failed on the broker inheritance leak and a Windows probe race, both fixed forward"
+    },
+    {
+     "at": "2026-09-11T12:10:29Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Kill-point recovery suite sealed: card, evidence.json and CI run json under evidence/m4/M4.6"
+    }
+   ],
+   "status_changed_on": "2026-09-11T12:10:29Z"
   },
   {
    "id": "M5.1",
@@ -7743,8 +7803,53 @@
    "milestone": "M4",
    "qual": "QUAL-EV-0012",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/m4/IMP-EV-0012/TASK_CARD.md",
+    "commit:08ac542",
+    "test:qual_ev_0012_0013_e2e_007_checkpoint_epochs_are_fenced_and_restore_validates_every_object",
+    "test:a_stale_epoch_never_commits_over_a_newer_one_and_tampering_is_caught",
+    "run:34586546102"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-11T12:11:24Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED by M4.3; ladders REQ-EV-0012 on M4.3's evidence"
+    },
+    {
+     "at": "2026-09-11T12:11:24Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 08ac542"
+    },
+    {
+     "at": "2026-09-11T12:11:24Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring in 08ac542 (see card)"
+    },
+    {
+     "at": "2026-09-11T12:11:24Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification (see card)"
+    },
+    {
+     "at": "2026-09-11T12:11:24Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "green on hosted CI (macOS, Linux, Windows)"
+    },
+    {
+     "at": "2026-09-11T12:11:24Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
+    }
+   ],
+   "status_changed_on": "2026-09-11T12:11:24Z"
   },
   {
    "id": "IMP-EV-0013",
@@ -7757,8 +7862,53 @@
    "milestone": "M4",
    "qual": "QUAL-EV-0013",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/m4/IMP-EV-0013/TASK_CARD.md",
+    "commit:08ac542",
+    "test:qual_ev_0012_0013_e2e_007_checkpoint_epochs_are_fenced_and_restore_validates_every_object",
+    "test:baseline_then_deltas_materialize_to_the_final_state_and_validate_every_object",
+    "run:34586546102"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-11T12:11:24Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED by M4.3; ladders REQ-EV-0013 on M4.3's evidence"
+    },
+    {
+     "at": "2026-09-11T12:11:24Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 08ac542"
+    },
+    {
+     "at": "2026-09-11T12:11:24Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring in 08ac542 (see card)"
+    },
+    {
+     "at": "2026-09-11T12:11:24Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification (see card)"
+    },
+    {
+     "at": "2026-09-11T12:11:24Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "green on hosted CI (macOS, Linux, Windows)"
+    },
+    {
+     "at": "2026-09-11T12:11:24Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
+    }
+   ],
+   "status_changed_on": "2026-09-11T12:11:24Z"
   },
   {
    "id": "IMP-EV-0014",
@@ -9183,8 +9333,53 @@
    "milestone": "M4",
    "qual": "QUAL-EV-0055",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/m4/IMP-EV-0055/TASK_CARD.md",
+    "commit:e3c0fb2",
+    "test:qual_ev_0055_e2e_004_core_crash_during_approval_restores_the_same_approval_and_one_effect",
+    "test:qual_ev_0055_e2e_005_core_crash_after_dispatch_reconciles_the_unknown_outcome_without_replay",
+    "run:34575700540"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-11T12:10:43Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED by M4.1; ladders REQ-EV-0055 on M4.1's evidence"
+    },
+    {
+     "at": "2026-09-11T12:10:43Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in e3c0fb2"
+    },
+    {
+     "at": "2026-09-11T12:10:43Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring in e3c0fb2 (see card)"
+    },
+    {
+     "at": "2026-09-11T12:11:23Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification (see card)"
+    },
+    {
+     "at": "2026-09-11T12:11:24Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "green on hosted CI (macOS, Linux, Windows)"
+    },
+    {
+     "at": "2026-09-11T12:11:24Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
+    }
+   ],
+   "status_changed_on": "2026-09-11T12:11:24Z"
   },
   {
    "id": "IMP-EV-0056",
@@ -9960,8 +10155,53 @@
    "milestone": "M4",
    "qual": "QUAL-EV-0073",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/m4/IMP-EV-0073/TASK_CARD.md",
+    "commit:82ae1f9",
+    "test:qual_ev_0073_fault_injection_never_reports_a_generic_success",
+    "test:qual_ev_0073_every_diagnosis_names_class_retryability_action_evidence_and_recovery",
+    "run:34596631098"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-11T12:11:24Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "PARTIAL before: status lines and prose reasons; corrupt objects reported as missing"
+    },
+    {
+     "at": "2026-09-11T12:11:24Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 82ae1f9"
+    },
+    {
+     "at": "2026-09-11T12:11:25Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring in 82ae1f9 (see card)"
+    },
+    {
+     "at": "2026-09-11T12:11:25Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification (see card)"
+    },
+    {
+     "at": "2026-09-11T12:11:25Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "green on hosted CI (macOS, Linux, Windows)"
+    },
+    {
+     "at": "2026-09-11T12:11:25Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
+    }
+   ],
+   "status_changed_on": "2026-09-11T12:11:25Z"
   },
   {
    "id": "IMP-EV-0075",
@@ -15142,8 +15382,52 @@
    "milestone": "M4",
    "qual": "QUAL-EV-0245",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "artifact:evidence/m4/IMP-EV-0245/TASK_CARD.md",
+    "commit:82ae1f9",
+    "test:qual_ev_0245_fault_corpus_produces_stable_diagnostic_features",
+    "run:34596631098"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-11T12:11:25Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "NOT-FOUND before: no taxonomy"
+    },
+    {
+     "at": "2026-09-11T12:11:25Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 82ae1f9"
+    },
+    {
+     "at": "2026-09-11T12:11:25Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring in 82ae1f9 (see card)"
+    },
+    {
+     "at": "2026-09-11T12:11:25Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification (see card)"
+    },
+    {
+     "at": "2026-09-11T12:11:25Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "green on hosted CI (macOS, Linux, Windows)"
+    },
+    {
+     "at": "2026-09-11T12:11:25Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
+    }
+   ],
+   "status_changed_on": "2026-09-11T12:11:25Z"
   },
   {
    "id": "IMP-EV-0246",

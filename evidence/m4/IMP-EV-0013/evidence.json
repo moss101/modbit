@@ -1,0 +1,17 @@
+{
+ "task": "IMP-EV-0013",
+ "requirement": "REQ-EV-0013",
+ "qual": "QUAL-EV-0013",
+ "tests": [
+  "qual_ev_0012_0013_e2e_007_checkpoint_epochs_are_fenced_and_restore_validates_every_object",
+  "baseline_then_deltas_materialize_to_the_final_state_and_validate_every_object",
+  "a_stale_epoch_never_commits_over_a_newer_one_and_tampering_is_caught",
+  "broken_chains_are_refused"
+ ],
+ "batch_commits": ["08ac542"],
+ "runs": [
+  {"id": "gha-34586546102", "kind": "hosted CI on 08ac542 (M4.2/M4.3 seal run)", "result": "PASS: all jobs green on macOS, Linux and Windows", "url": "https://github.com/moss101/modbit/actions/runs/34586546102", "log": "ci-run-34586546102.json"}
+ ],
+ "proof": "Ladders REQ-EV-0013 on M4.3: a delta records exactly the changed file and the tracked deletion with the runtime cursor and an integrity hash; after a hard kill and restart the chain baseline+delta materializes, every object is hash-checked before a byte is written (a corrupted object refuses the restore with the worktree untouched), and the restore returns the edited worktree and the cursor (CheckpointRestored).",
+ "audit": "IMPLEMENTED by M4.3 (evidence/m4/M4.3)."
+}

@@ -5,8 +5,19 @@
  "tests": [
   "qual_ev_0245_fault_corpus_produces_stable_diagnostic_features"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "82ae1f9"
+ ],
+ "runs": [
+  {
+   "id": "gha-34596631098",
+   "kind": "hosted CI on 82ae1f9",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34596631098",
+   "log": "ci-run-34596631098.json"
+  }
+ ],
  "proof": "39-case fault corpus classified deterministically; every diagnosis pinned byte for byte with sorted, unique feature tags carrying class, code, source and retryability.",
- "audit": "NOT-FOUND before: no taxonomy, prose reasons only."
+ "audit": "NOT-FOUND before: no taxonomy, prose reasons only.",
+ "ci": "https://github.com/moss101/modbit/actions/runs/34596631098 (green on macOS, Linux and Windows at 82ae1f9)"
 }

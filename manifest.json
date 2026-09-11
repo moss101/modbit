@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 755,
-    "docs_bytes": 1053512
+    "root_and_tooling": 770,
+    "docs_bytes": 1053497
   },
   "sections": [
     {
@@ -851,8 +851,8 @@
       "section": "live-state",
       "section_title": "Live state",
       "title": "Build Manifest",
-      "bytes": 4843,
-      "sha256": "a43c5c91293f8b69c5a1c9a07965ecc56960b8841642dd7677830f3c50a3aa00"
+      "bytes": 4828,
+      "sha256": "4e555b0a7976ccffa875e7055115b6df0d34c4358c18c03c5f4e9a19cf90a099"
     }
   ],
   "root_and_tooling": [
@@ -4472,14 +4472,74 @@
       "sha256": "dc1c5415da2d653b16d94162aa23478c0d9694a3c0442c91e93c17db2e9e58ec"
     },
     {
+      "path": "evidence/m4/IMP-EV-0012/TASK_CARD.md",
+      "bytes": 1655,
+      "sha256": "1d0984241351a9938f01cea8bc87a502fcd72596a27a14aa0c5b7b83114ec4c3"
+    },
+    {
+      "path": "evidence/m4/IMP-EV-0012/ci-run-34586546102.json",
+      "bytes": 37317,
+      "sha256": "80e5c3e9706fe7fb0fb91654542801aaa7c86685085a06d32c9aff7945065a9f"
+    },
+    {
+      "path": "evidence/m4/IMP-EV-0012/evidence.json",
+      "bytes": 994,
+      "sha256": "5fc5aad172f6b5f452e854bc46ff9b474c52697d3d3f935a96d2c5e0aae80fd6"
+    },
+    {
+      "path": "evidence/m4/IMP-EV-0013/TASK_CARD.md",
+      "bytes": 1708,
+      "sha256": "c389f91082b580eb7f9baddc370f6f137a56cd00e35c71b1669af5ff416f6027"
+    },
+    {
+      "path": "evidence/m4/IMP-EV-0013/ci-run-34586546102.json",
+      "bytes": 37317,
+      "sha256": "80e5c3e9706fe7fb0fb91654542801aaa7c86685085a06d32c9aff7945065a9f"
+    },
+    {
+      "path": "evidence/m4/IMP-EV-0013/evidence.json",
+      "bytes": 1155,
+      "sha256": "22d9c2a57930654583f6d119c000148ecb42ddb15de52f578546b18c386e3487"
+    },
+    {
+      "path": "evidence/m4/IMP-EV-0055/TASK_CARD.md",
+      "bytes": 2349,
+      "sha256": "3d5e207fa01117560de630e0237cf988c9cbcef33b9d72f5386aad95f0a75bc4"
+    },
+    {
+      "path": "evidence/m4/IMP-EV-0055/ci-run-34575700540.json",
+      "bytes": 37317,
+      "sha256": "4935dff1f95c3da823e4c69d390538ad0ee41d56e6e9958cd4af8a91569d8de8"
+    },
+    {
+      "path": "evidence/m4/IMP-EV-0055/evidence.json",
+      "bytes": 1263,
+      "sha256": "31a398ca9d160bc5750b5a4d0b54528ff1770be5019e3df2953f69bbe4943291"
+    },
+    {
       "path": "evidence/m4/IMP-EV-0073/TASK_CARD.md",
       "bytes": 4274,
       "sha256": "8353f25f442267ab1ad529c954036b76dcf50a75a3c154e072f87b2a3e25d254"
     },
     {
+      "path": "evidence/m4/IMP-EV-0073/ci-run-34596631098.json",
+      "bytes": 37317,
+      "sha256": "c4b0a59c7c53ecea7ae2dd1da8ab0366da2a6c71466fdc95f0ee8f7b8162422d"
+    },
+    {
       "path": "evidence/m4/IMP-EV-0073/evidence.json",
-      "bytes": 805,
-      "sha256": "01eaa33fb5a413fead438d9a90e2e321d8e4a3cce7e5ac0ab3d54286524e81d4"
+      "bytes": 1181,
+      "sha256": "7ab02480aa55ebae42e1929b827f651ae71ef23bb23ffdb2fab1409fd97ff51a"
+    },
+    {
+      "path": "evidence/m4/IMP-EV-0242/TASK_CARD.md",
+      "bytes": 4208,
+      "sha256": "bb6cb2797145a0026e111b55331f031767f8ce0f0b3f5588399d7e73c8363e93"
+    },
+    {
+      "path": "evidence/m4/IMP-EV-0242/evidence.json",
+      "bytes": 884,
+      "sha256": "ca9ac84270210ea4bbc22b7d7907c95a38a3bf1a29097a95767f0205e587cd31"
     },
     {
       "path": "evidence/m4/IMP-EV-0245/TASK_CARD.md",
@@ -4487,9 +4547,14 @@
       "sha256": "635a39e867022bdf28f853651df667923d1cc9092e3397799024a720d951ccc5"
     },
     {
+      "path": "evidence/m4/IMP-EV-0245/ci-run-34596631098.json",
+      "bytes": 37317,
+      "sha256": "c4b0a59c7c53ecea7ae2dd1da8ab0366da2a6c71466fdc95f0ee8f7b8162422d"
+    },
+    {
       "path": "evidence/m4/IMP-EV-0245/evidence.json",
-      "bytes": 445,
-      "sha256": "56e57dbc9ea7ce561cceee1c2cb9765677e14375ef424f1a15b4e1684e32b83e"
+      "bytes": 821,
+      "sha256": "b138517568838bcd707beac039542d7cbcffb75ec7b6871511101fb8acf4c5f9"
     },
     {
       "path": "evidence/m4/M4.1/TASK_CARD.md",
@@ -4562,9 +4627,14 @@
       "sha256": "356a5ae715154f43c3d9233ff4dae2cdb26a40af09178f9a50cffd6ebbe9a1d1"
     },
     {
+      "path": "evidence/m4/M4.5/ci-run-34596631098.json",
+      "bytes": 37317,
+      "sha256": "c4b0a59c7c53ecea7ae2dd1da8ab0366da2a6c71466fdc95f0ee8f7b8162422d"
+    },
+    {
       "path": "evidence/m4/M4.5/evidence.json",
-      "bytes": 2557,
-      "sha256": "d5fc62bc58fca7d52d490fac7dace87f544c2a97074cdf3f308190980315c383"
+      "bytes": 3023,
+      "sha256": "df84efab5ca55d0103510481f0f27c9efb6c2584e535805ef44384a3efdbd30f"
     },
     {
       "path": "evidence/m4/M4.5/linux-pipe-leak-repro.py",
@@ -4582,19 +4652,24 @@
       "sha256": "bcc84ee081a4b9c5d2ea41291c8ef220904686d91625ef20015a37c793317c96"
     },
     {
+      "path": "evidence/m4/M4.6/ci-run-34596631098.json",
+      "bytes": 37317,
+      "sha256": "c4b0a59c7c53ecea7ae2dd1da8ab0366da2a6c71466fdc95f0ee8f7b8162422d"
+    },
+    {
       "path": "evidence/m4/M4.6/evidence.json",
-      "bytes": 1606,
-      "sha256": "3221311b30dc2b77387c6a9dffc6af062fbab79c6f15b28bffdccf9dd6026a67"
+      "bytes": 2378,
+      "sha256": "0e567315ee19ab716569b84ee201867bd35a067dbd0617a8bb2d8f955923b1a2"
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 40852,
-      "sha256": "01733c06424f302b5af96073966125e9fc90efe736bd8fa7b5cadd0cddbea1bc"
+      "bytes": 40847,
+      "sha256": "43b6d991b06bdda4ed0c4a022c99da3e86fc9c2013c731e9a7d2074a644de6fa"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1307169,
-      "sha256": "08273958247671d3cc3b9e42008f4a0268c909fc1b423d24ea67f6b917576d3f"
+      "bytes": 1315892,
+      "sha256": "858cf9a1ce4a0d21079f12c09fcce80083909fe392cbe1658fe69d052ce3601e"
     },
     {
       "path": "tools/build_graph.py",

@@ -16997,3 +16997,340 @@ async fn qual_ev_0073_fault_injection_never_reports_a_generic_success() {
     assert_eq!(attention["diagnostic"]["class"], "PROVIDER", "{attention}");
     assert_eq!(attention["diagnostic"]["retryable"], true, "{attention}");
 }
+
+/// Everything durable about one session, read straight from the store while
+/// no Core runs: every event with its offset, aggregate, sequence, type,
+/// integrity hash and payload, plus every object the store holds.
+fn durable_truth(data_dir: &std::path::Path, session: &Id) -> serde_json::Value {
+    let store = modbit_event_store::EventStore::open(&data_dir.join("core")).unwrap();
+    let sid = modbit_domain::SessionId::from_bytes(session.value.clone().try_into().unwrap());
+    let events: Vec<serde_json::Value> = store
+        .read_session(&sid, 0, usize::MAX)
+        .unwrap()
+        .iter()
+        .map(|e| {
+            let env = &e.envelope;
+            serde_json::json!({
+                "offset": e.offset,
+                "event_id": env.event_id.to_string(),
+                "aggregate_type": env.aggregate_type.as_str(),
+                "aggregate_id": hex::encode(env.aggregate_id),
+                "sequence": env.sequence,
+                "event_type": env.event_type,
+                "integrity_hash": env.integrity_hash,
+                "payload": store.payload(env).unwrap(),
+            })
+        })
+        .collect();
+    // Every aggregate's chain verifies from 1.
+    let mut aggregates: Vec<[u8; 16]> = store
+        .read_session(&sid, 0, usize::MAX)
+        .unwrap()
+        .iter()
+        .map(|e| e.envelope.aggregate_id)
+        .collect();
+    aggregates.sort_unstable();
+    aggregates.dedup();
+    let verified: u64 = aggregates
+        .iter()
+        .map(|a| store.verify_aggregate(a).unwrap())
+        .sum();
+    let mut objects: Vec<String> = walk_files(store.objects().root())
+        .into_iter()
+        .map(|p| {
+            let rel = p.strip_prefix(store.objects().root()).unwrap();
+            let hash: String = rel
+                .components()
+                .map(|c| c.as_os_str().to_string_lossy().into_owned())
+                .collect::<Vec<_>>()
+                .join("");
+            // Each object still hashes to its name.
+            store.objects().get(&hash).unwrap();
+            hash
+        })
+        .collect();
+    objects.sort();
+    serde_json::json!({
+        "events": events,
+        "last_offset": store.last_offset().unwrap(),
+        "verified": verified,
+        "objects": objects,
+    })
+}
+
+fn walk_files(root: &std::path::Path) -> Vec<std::path::PathBuf> {
+    let mut out = Vec::new();
+    let mut stack = vec![root.to_path_buf()];
+    while let Some(d) = stack.pop() {
+        for e in std::fs::read_dir(&d).into_iter().flatten().flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                stack.push(p);
+            } else {
+                out.push(p);
+            }
+        }
+    }
+    out
+}
+
+/// Whether any file under `root` contains `needle`.
+fn any_file_contains(root: &std::path::Path, needle: &[u8]) -> Option<std::path::PathBuf> {
+    walk_files(root).into_iter().find(|p| {
+        std::fs::read(p)
+            .map(|b| b.windows(needle.len()).any(|w| w == needle))
+            .unwrap_or(false)
+    })
+}
+
+async fn session_snapshot_of(c: &mut Client, session: &Id) -> modbit_protocol::v1::SessionSnapshot {
+    use modbit_protocol::v1::GetSessionSnapshot;
+    let ack = c
+        .command(envelope(
+            Id {
+                value: (0..16).map(|_| rand::random::<u8>()).collect(),
+            },
+            "GetSessionSnapshot",
+            GetSessionSnapshot {
+                session_id: Some(session.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    Client::result(&ack).unwrap()
+}
+
+async fn review_bundle_of(c: &mut Client, task: &Id) -> modbit_protocol::v1::ReviewBundle {
+    use modbit_protocol::v1::GetReviewBundle;
+    let ack = c
+        .command(envelope(
+            Id {
+                value: (0..16).map(|_| rand::random::<u8>()).collect(),
+            },
+            "GetReviewBundle",
+            GetReviewBundle {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    Client::result(&ack).unwrap()
+}
+
+/// The wire replay of a session from offset zero, as a client sees it.
+async fn wire_replay(core: &CoreProcess, session: &Id) -> Vec<serde_json::Value> {
+    let mut s = core.client().await;
+    s.subscribe(session.clone(), 0).await.unwrap();
+    let mut out = Vec::new();
+    while let Ok(Ok(Some(e))) =
+        tokio::time::timeout(Duration::from_millis(400), s.next_event()).await
+    {
+        let ev = e.event.unwrap();
+        out.push(serde_json::json!({
+            "offset": e.offset,
+            "event_id": hex::encode(&ev.event_id.unwrap().value),
+            "sequence": ev.sequence,
+            "aggregate_type": ev.aggregate_type,
+            "aggregate_id": hex::encode(&ev.aggregate_id.unwrap().value),
+            "event_type": ev.event_type,
+            "task_id": ev.task_id.map(|t| hex::encode(&t.value)),
+            "payload": serde_json::from_slice::<serde_json::Value>(&ev.payload).unwrap(),
+        }));
+    }
+    out
+}
+
+/// QUAL-EV-0242 (REQ-EV-0242, docs/33): durable facts live in the store;
+/// live control is ephemeral to the Core process. A run's every fact — the
+/// events at their offsets with their hashes and payloads, the objects, the
+/// checkpoints, the protocol state, the review bundle — survives a hard kill
+/// of the Core byte for byte and reads back identical over the wire, while
+/// the live control the Core held in memory (a provider registration handed
+/// to it over the socket, the running loop) is gone with the process: never
+/// written to the log, the objects, or any file under the profile, and
+/// re-registered by the client that owns it, as the desktop does after every
+/// Core restart. The restart itself invents no durable fact for a task that
+/// was not live.
+#[tokio::test]
+async fn qual_ev_0242_restart_loses_no_durable_truth_while_live_control_resets() {
+    use modbit_protocol::v1::{ConfigureProvider, ProviderConfigured, StartTask, TaskRunStarted};
+    const SECRET: &str = "sk-live-control-0242-never-durable-7f3a9c";
+    let (repo, root) = git_repo_with_failing_check();
+    let hash = {
+        use sha2::Digest;
+        hex::encode(sha2::Sha256::digest(
+            std::fs::read(repo.path().join("qty.txt")).unwrap(),
+        ))
+    };
+    let (base, _seen) = scripted_model(coding_script(&hash), None).await;
+    let dir = tempfile::tempdir().unwrap();
+    // No provider from the environment: the only registration is live,
+    // handed over the socket with a credential, as the desktop does.
+    let no_provider = [("OPENAI_API_KEY", ""), ("ANTHROPIC_API_KEY", "")];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &no_provider);
+    let mut c = core.client().await;
+    let configure = |id: u8| {
+        envelope(
+            id16(id),
+            "ConfigureProvider",
+            ConfigureProvider {
+                provider: "openai".into(),
+                api_key: SECRET.into(),
+                base_url: base.clone(),
+            }
+            .encode_to_vec(),
+        )
+    };
+    let p: ProviderConfigured = Client::result(&c.command(configure(0x42)).await.unwrap()).unwrap();
+    assert!(p.credential_available);
+    let (session, _) = create_session(&mut c, id16(0x43)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x44, "local_trusted").await;
+    let start = |t: &Id, id: u8, g: Option<u64>| {
+        envelope_fenced(
+            id16(id),
+            "StartTask",
+            StartTask {
+                task_id: Some(t.clone()),
+                endpoint: "openai".into(),
+                model: "gpt-5".into(),
+                max_turns: 0,
+                max_tool_calls: 0,
+                max_no_progress_turns: 0,
+            }
+            .encode_to_vec(),
+            g,
+        )
+    };
+    let _: TaskRunStarted =
+        Client::result(&c.command(start(&task, 0x45, g)).await.unwrap()).unwrap();
+    let st = wait_for_state(&mut c, &task, "ReadyForReview", 90).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let cp = create_checkpoint(&mut c, &task, g, "DELTA", "before the kill").await;
+    assert!(cp.committed && cp.checkpoint.is_some(), "{cp:?}");
+    // The views a client reads before the kill.
+    let status_before = status_now(&mut c, &task).await;
+    let ps_before = protocol_state(&mut c, &task).await;
+    let cps_before = list_checkpoints(&mut c, &task).await;
+    let snap_before = session_snapshot_of(&mut c, &session).await;
+    let bundle_before = review_bundle_of(&mut c, &task).await;
+    let replay_before = wire_replay(&core, &session).await;
+    assert!(replay_before.len() > 30, "{}", replay_before.len());
+    drop(c);
+
+    // Hard kill. With no Core running, read the durable truth from the store.
+    core.kill();
+    let truth_before = durable_truth(dir.path(), &session);
+    assert_eq!(
+        truth_before["events"].as_array().unwrap().len(),
+        replay_before.len(),
+        "the wire replay is the log"
+    );
+    assert!(truth_before["verified"].as_u64().unwrap() >= replay_before.len() as u64);
+    assert!(!truth_before["objects"].as_array().unwrap().is_empty());
+    // The live credential is nowhere in the profile: not in the log, not in
+    // an object, not in a log file.
+    assert_eq!(any_file_contains(dir.path(), SECRET.as_bytes()), None);
+
+    // Restart. The process's live control is gone; the durable truth is not.
+    let mut core2 = CoreProcess::spawn_with_env(dir.path(), &no_provider);
+    let mut c2 = core2.client().await;
+    let fresh = create_task_with_profile(&mut c2, &session, g, &root, 0x48, "local_trusted").await;
+    let err = c2.command(start(&fresh, 0x49, g)).await.unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "NO_PROVIDER"),
+        "the provider registration was live control, not durable truth: {err:?}"
+    );
+    let status_after = status_now(&mut c2, &task).await;
+    assert_eq!(
+        (
+            status_after.state.as_str(),
+            status_after.run_state.as_str(),
+            status_after.loop_alive
+        ),
+        ("ReadyForReview", "Completed", false)
+    );
+    assert_eq!(
+        (
+            status_before.state.as_str(),
+            status_before.run_state.as_str(),
+            status_before.loop_alive
+        ),
+        ("ReadyForReview", "Completed", false)
+    );
+    let ps_after = protocol_state(&mut c2, &task).await;
+    assert_eq!(ps_after.digest, ps_before.digest);
+    assert_eq!(ps_after, ps_before);
+    let cps_after = list_checkpoints(&mut c2, &task).await;
+    assert_eq!(cps_after, cps_before);
+    assert_eq!(
+        cps_after.checkpoints.len(),
+        2,
+        "before_completion + USER: {cps_after:?}"
+    );
+    let snap_after = session_snapshot_of(&mut c2, &session).await;
+    assert_eq!(
+        snap_after
+            .tasks
+            .iter()
+            .find(|t| t.task_id == Some(task.clone())),
+        snap_before
+            .tasks
+            .iter()
+            .find(|t| t.task_id == Some(task.clone()))
+    );
+    let bundle_after = review_bundle_of(&mut c2, &task).await;
+    assert_eq!(bundle_after, bundle_before);
+    // The wire replay is the same prefix, offset for offset; the restart
+    // invented nothing for this task (its run had ended) — the only new
+    // events belong to the fresh task created after the restart.
+    let replay_after = wire_replay(&core2, &session).await;
+    assert_eq!(&replay_after[..replay_before.len()], &replay_before[..]);
+    let extra: Vec<&str> = replay_after[replay_before.len()..]
+        .iter()
+        .map(|e| e["event_type"].as_str().unwrap())
+        .collect();
+    assert!(
+        extra
+            .iter()
+            .all(|t| matches!(*t, "TaskCreated" | "TaskQueued" | "CapabilityLeaseGranted")),
+        "no durable fact was invented by the restart: {extra:?}"
+    );
+    let killed = hex::encode(&task.value);
+    assert!(
+        replay_after[replay_before.len()..]
+            .iter()
+            .all(|e| e["task_id"] != serde_json::json!(killed)),
+        "nothing new about the killed task: {extra:?}"
+    );
+    // The client that owns the live control re-registers it (the desktop
+    // hands its stored credential to every restarted Core), and the fresh
+    // task runs against the same durable session.
+    let p: ProviderConfigured =
+        Client::result(&c2.command(configure(0x4C)).await.unwrap()).unwrap();
+    assert!(p.credential_available);
+    let _: TaskRunStarted =
+        Client::result(&c2.command(start(&fresh, 0x4D, g)).await.unwrap()).unwrap();
+    let st = wait_for_state(&mut c2, &fresh, "ReadyForReview", 90).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    drop(c2);
+    core2.kill();
+    // After a second life: the first life's events are unchanged byte for
+    // byte — offsets, hashes, payloads — and the credential is still nowhere.
+    let truth_after = durable_truth(dir.path(), &session);
+    let n = truth_before["events"].as_array().unwrap().len();
+    assert_eq!(
+        &truth_after["events"].as_array().unwrap()[..n],
+        &truth_before["events"].as_array().unwrap()[..]
+    );
+    assert!(truth_after["last_offset"].as_u64() > truth_before["last_offset"].as_u64());
+    for o in truth_before["objects"].as_array().unwrap() {
+        assert!(
+            truth_after["objects"].as_array().unwrap().contains(o),
+            "{o}"
+        );
+    }
+    assert_eq!(any_file_contains(dir.path(), SECRET.as_bytes()), None);
+}
