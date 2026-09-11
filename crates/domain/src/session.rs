@@ -65,6 +65,11 @@ pub struct Session {
     /// Emergency stop time (docs/23 "Emergency stop"): while set, the kernel
     /// blocks every new effect in this session.
     pub emergency_stopped_at: Option<Timestamp>,
+    /// Branch generation (docs/19 "Compaction epochs", M4.2): moved by a
+    /// fork, a revert or any rewrite of the session's history. An
+    /// asynchronous compaction computed under an older generation is refused.
+    #[serde(default)]
+    pub branch_generation: u64,
 }
 
 /// Session events (docs/30 "Session/task").
@@ -113,6 +118,18 @@ pub enum SessionEvent {
         workspace_root: String,
         /// Scope (`repository`).
         scope: String,
+    },
+    /// `SessionBranched` (docs/19 "Compaction epochs", M4.2): the session's
+    /// history was forked, reverted or otherwise rewritten; the branch
+    /// generation moves and every pending compaction computed under the old
+    /// one is invalid. No state change.
+    SessionBranched {
+        /// The new branch generation (strictly greater than the previous).
+        branch_generation: u64,
+        /// `fork` | `revert` | `cancel`.
+        kind: String,
+        /// Why, in words.
+        reason: String,
     },
     /// `OutcomeStatisticsMaterialized` (REQ-EPR-015, docs/27 §21): an
     /// immutable statistics snapshot was derived from published baselines and
@@ -173,6 +190,7 @@ impl SessionEvent {
             Self::OutcomeBaselinePublished { .. } => "OutcomeBaselinePublished",
             Self::OutcomeStatisticsMaterialized { .. } => "OutcomeStatisticsMaterialized",
             Self::RepositoryTrusted { .. } => "RepositoryTrusted",
+            Self::SessionBranched { .. } => "SessionBranched",
         }
     }
 }
@@ -202,6 +220,7 @@ impl Session {
                 lease_generation: 0,
                 lease_owner: None,
                 emergency_stopped_at: None,
+                branch_generation: 0,
             }),
             other => Err(crate::InvalidTransition {
                 aggregate: "Session",
@@ -238,6 +257,19 @@ impl Session {
                         to: event.event_type().into(),
                     });
                 }
+                None
+            }
+            SessionEvent::SessionBranched {
+                branch_generation, ..
+            } => {
+                if self.state.is_terminal() || *branch_generation <= self.branch_generation {
+                    return Err(crate::InvalidTransition {
+                        aggregate: "Session",
+                        from: format!("{:?} (branch {})", self.state, self.branch_generation),
+                        to: format!("SessionBranched (branch {branch_generation})"),
+                    });
+                }
+                self.branch_generation = *branch_generation;
                 None
             }
             SessionEvent::SessionSuspended => Some(SessionState::Suspended),

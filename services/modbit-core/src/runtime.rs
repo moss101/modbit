@@ -1483,6 +1483,11 @@ async fn run_loop(
     }
     // docs/19 (REQ-EV-0056/0092/0130): the epoch rebuilt from the log, if any.
     let mut epoch: Option<modbit_compaction::CompactionManifest> = epoch_of(&core, &task).await;
+    // The asynchronous compaction in flight for this run, if any (M4.2). A
+    // request an earlier process left pending can never install now: its
+    // worker died with that process, so it is closed on the log first.
+    let mut compaction_worker: Option<CompactionWorker> = None;
+    close_abandoned_compactions(&core, &task, lt, &actor).await;
     let lease = core
         .store
         .lock()
@@ -1633,53 +1638,22 @@ async fn run_loop(
             (String::new(), calls)
         } else {
             {
-                // Compaction epochs (docs/19): when the model-visible transcript passes
-                // the budget, the older entries become one epoch projection. The
-                // canonical log is untouched and every dropped result stays reachable
-                // by its ref.
-                if let Some((manifest, kept)) = maybe_compact(
+                // Compaction epochs (docs/19, M4.2): a worker compacts the older
+                // entries off the loop once the transcript is under pressure and
+                // its result installs at this boundary only while the branch and
+                // the prefix it summarised are still current; under hard pressure
+                // a bounded synchronous compaction takes over. The canonical log
+                // is untouched and every dropped result stays reachable by its ref.
+                compaction_step(
                     &core,
                     &task,
-                    &transcript,
-                    epoch.as_ref(),
-                    compaction_budget(),
+                    lt,
+                    &actor,
+                    &mut transcript,
+                    &mut epoch,
+                    &mut compaction_worker,
                 )
-                .await
-                {
-                    let manifest_ref = {
-                        let store = core.store.lock().await;
-                        store
-                            .objects()
-                            .put(serde_json::to_vec(&manifest).unwrap_or_default().as_slice())
-                            .unwrap_or_default()
-                    };
-                    {
-                        let mut store = core.store.lock().await;
-                        let _ = append(
-                            &mut store,
-                            &core,
-                            lt,
-                            AggregateType::Task,
-                            *task.task_id.as_bytes(),
-                            vec![typed(
-                                "ContextEpochOpened",
-                                &TaskEvent::ContextEpochOpened {
-                                    epoch: manifest.epoch,
-                                    previous_epoch: manifest.previous_epoch,
-                                    source_head_offset: manifest.source_head_offset,
-                                    source_entries: u32::try_from(manifest.source_entries)
-                                        .unwrap_or(u32::MAX),
-                                    manifest_ref: manifest_ref.clone(),
-                                    manifest_hash: manifest.manifest_hash.clone(),
-                                    projection_tokens: manifest.projection_tokens,
-                                },
-                                actor.clone(),
-                            )],
-                        );
-                    }
-                    epoch = Some(manifest);
-                    transcript = kept;
-                }
+                .await;
                 // ContextCompile step.
                 // REQ-EV-0188: media reaches the model only when the routed model
                 // accepts that input; otherwise the result text stands on its own.
@@ -3009,6 +2983,23 @@ async fn run_loop(
             .unwrap_or(seen_offset)
             .max(seen_offset);
     };
+    // ---- Loop end: a worker still in flight cannot install after the run;
+    // it is stopped and its request closed on the log.
+    if let Some(w) = compaction_worker.take() {
+        w.handle.abort();
+        reject_compaction(
+            &core,
+            &task,
+            lt,
+            &actor,
+            &w.id,
+            w.epoch,
+            "RUN_ENDED",
+            "the run ended before the worker returned".into(),
+            String::new(),
+        )
+        .await;
+    }
     // ---- Loop end: persist the run/task outcome.
     let mut store = core.store.lock().await;
     match end {
@@ -3370,25 +3361,27 @@ async fn epoch_of(core: &Core, task: &Task) -> Option<modbit_compaction::Compact
     out
 }
 
-/// Compact the transcript when it passes the budget: returns the manifest and
-/// the entries that stay verbatim. `None` when nothing needs compacting or a
-/// concurrent write moved the log (the stale guard refuses the result).
-async fn maybe_compact(
-    core: &Core,
-    task: &Task,
-    transcript: &[Message],
-    installed: Option<&modbit_compaction::CompactionManifest>,
-    budget: u32,
-) -> Option<(modbit_compaction::CompactionManifest, Vec<Message>)> {
-    let tokens: u32 = transcript
-        .iter()
-        .map(|m| modbit_compaction::estimate_tokens(&message_text(m)))
-        .sum();
-    if tokens <= budget || transcript.len() <= COMPACTION_KEEP_TAIL + 1 {
-        return None;
-    }
-    let cut = transcript.len() - COMPACTION_KEEP_TAIL;
-    let source: Vec<modbit_compaction::SourceEntry> = transcript[..cut]
+/// Soft pressure: the fraction of the budget at which a worker starts
+/// compacting off the loop, so the result is usually ready before the hard
+/// budget is reached.
+const COMPACTION_SOFT_NUMERATOR: u32 = 3;
+const COMPACTION_SOFT_DENOMINATOR: u32 = 4;
+
+/// An asynchronous compaction in flight (docs/19 "Compaction epochs").
+struct CompactionWorker {
+    /// Request identity, as logged.
+    id: String,
+    /// The epoch it would open.
+    epoch: u32,
+    /// Transcript entries it summarises (`transcript[..cut]`).
+    cut: usize,
+    /// The worker.
+    handle: tokio::task::JoinHandle<modbit_compaction::CompactionManifest>,
+}
+
+/// The compaction source for `transcript[..cut]`.
+fn compaction_source(transcript: &[Message], cut: usize) -> Vec<modbit_compaction::SourceEntry> {
+    transcript[..cut.min(transcript.len())]
         .iter()
         .map(|m| modbit_compaction::SourceEntry {
             role: format!("{:?}", m.role).to_lowercase(),
@@ -3396,44 +3389,409 @@ async fn maybe_compact(
             text: message_text(m),
             failure_signature: None,
         })
-        .collect();
-    let (generation, head) = {
+        .collect()
+}
+
+/// Estimated tokens of the model-visible transcript.
+fn transcript_tokens(transcript: &[Message]) -> u32 {
+    transcript
+        .iter()
+        .map(|m| modbit_compaction::estimate_tokens(&message_text(m)))
+        .sum()
+}
+
+/// The task generation, the store head and the session branch generation,
+/// read together.
+async fn compaction_coordinates(core: &Core, task: &Task) -> (u64, u64, u64) {
+    let store = core.store.lock().await;
+    let generation = store
+        .task(&task.task_id)
+        .ok()
+        .flatten()
+        .map_or(0, |t| t.generation);
+    let branch = store
+        .session(&task.session_id)
+        .ok()
+        .flatten()
+        .map_or(0, |s| s.branch_generation);
+    (generation, store.last_offset().unwrap_or(0), branch)
+}
+
+/// Fault injection for docs/54 fault 10 ("asynchronous compaction returns
+/// after fork/revert"): a worker holds its result for this long, so a test
+/// can move the history before it returns. Unset in production.
+fn compaction_worker_delay() -> Option<std::time::Duration> {
+    std::env::var("MODBIT_COMPACTION_WORKER_DELAY_MS")
+        .ok()
+        .and_then(|v| v.parse::<u64>().ok())
+        .filter(|ms| *ms > 0)
+        .map(std::time::Duration::from_millis)
+}
+
+/// Install an epoch: store the manifest, put `ContextEpochOpened` (the
+/// model-facing epoch) and `CompactionCommitted` (the durability record) on
+/// the log, and replace the summarised prefix by the projection.
+#[allow(clippy::too_many_arguments)]
+async fn install_epoch(
+    core: &Core,
+    task: &Task,
+    lt: Lineage,
+    actor: &Actor,
+    transcript: &mut Vec<Message>,
+    epoch: &mut Option<modbit_compaction::CompactionManifest>,
+    manifest: modbit_compaction::CompactionManifest,
+    cut: usize,
+    compaction_id: &str,
+    mode: &str,
+) {
+    let manifest_ref = {
         let store = core.store.lock().await;
-        let generation = store
-            .task(&task.task_id)
-            .ok()
-            .flatten()
-            .map_or(0, |t| t.generation);
-        (generation, store.last_offset().unwrap_or(0))
+        store
+            .objects()
+            .put(serde_json::to_vec(&manifest).unwrap_or_default().as_slice())
+            .unwrap_or_default()
     };
-    let manifest = modbit_compaction::compact(&modbit_compaction::CompactionRequest {
-        entries: &source,
-        previous: installed,
-        task_generation: generation,
-        source_head_offset: head,
-        compiler_version: modbit_prompt_compiler::COMPILER_VERSION,
-        target_tokens: budget / 4,
-    });
-    // docs/19: the result installs only while its source is still current.
-    let (generation_now, head_now) = {
-        let store = core.store.lock().await;
-        let g = store
-            .task(&task.task_id)
-            .ok()
-            .flatten()
-            .map_or(0, |t| t.generation);
-        (g, store.last_offset().unwrap_or(0))
-    };
-    if let Err(rejected) = modbit_compaction::accept(
-        &manifest,
-        installed.map(|m| m.epoch),
-        generation_now,
-        head_now,
-    ) {
-        eprintln!("modbit-core: compaction refused: {rejected:?}");
-        return None;
+    {
+        let mut store = core.store.lock().await;
+        let _ = append(
+            &mut store,
+            core,
+            lt,
+            AggregateType::Task,
+            *task.task_id.as_bytes(),
+            vec![
+                typed(
+                    "ContextEpochOpened",
+                    &TaskEvent::ContextEpochOpened {
+                        epoch: manifest.epoch,
+                        previous_epoch: manifest.previous_epoch,
+                        source_head_offset: manifest.source_head_offset,
+                        source_entries: u32::try_from(manifest.source_entries).unwrap_or(u32::MAX),
+                        manifest_ref: manifest_ref.clone(),
+                        manifest_hash: manifest.manifest_hash.clone(),
+                        projection_tokens: manifest.projection_tokens,
+                        compaction_id: compaction_id.to_owned(),
+                        branch_generation: manifest.branch_generation,
+                        mode: mode.to_owned(),
+                        source_digest: manifest.source_digest.clone(),
+                    },
+                    actor.clone(),
+                ),
+                typed(
+                    "CompactionCommitted",
+                    &TaskEvent::CompactionCommitted {
+                        compaction_id: compaction_id.to_owned(),
+                        epoch: manifest.epoch,
+                        branch_generation: manifest.branch_generation,
+                        manifest_ref: manifest_ref.clone(),
+                        manifest_hash: manifest.manifest_hash.clone(),
+                        mode: mode.to_owned(),
+                    },
+                    actor.clone(),
+                ),
+            ],
+        );
     }
-    Some((manifest, transcript[cut..].to_vec()))
+    transcript.drain(..cut.min(transcript.len()));
+    *epoch = Some(manifest);
+}
+
+/// Put a refused compaction on the log (docs/19: the rejection is logged;
+/// the stale result never enters the context).
+#[allow(clippy::too_many_arguments)]
+async fn reject_compaction(
+    core: &Core,
+    task: &Task,
+    lt: Lineage,
+    actor: &Actor,
+    compaction_id: &str,
+    epoch: u32,
+    reason: &str,
+    detail: String,
+    manifest_hash: String,
+) {
+    eprintln!(
+        "modbit-core: compaction {compaction_id} (epoch {epoch}) refused: {reason}: {detail}"
+    );
+    let mut store = core.store.lock().await;
+    let _ = append(
+        &mut store,
+        core,
+        lt,
+        AggregateType::Task,
+        *task.task_id.as_bytes(),
+        vec![typed(
+            "CompactionRejectedStale",
+            &TaskEvent::CompactionRejectedStale {
+                compaction_id: compaction_id.to_owned(),
+                epoch,
+                reason: reason.to_owned(),
+                detail,
+                manifest_hash,
+            },
+            actor.clone(),
+        )],
+    );
+}
+
+/// Close every compaction request still PENDING on the log: the worker that
+/// would answer it belonged to a run (or a process) that is gone.
+async fn close_abandoned_compactions(core: &Core, task: &Task, lt: Lineage, actor: &Actor) {
+    let pending: Vec<(String, u32)> = core
+        .store
+        .lock()
+        .await
+        .compaction_epochs(&task.task_id)
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|r| r.status == "PENDING")
+        .map(|r| (r.epoch_id, r.epoch))
+        .collect();
+    for (id, epoch) in pending {
+        reject_compaction(
+            core,
+            task,
+            lt,
+            actor,
+            &id,
+            epoch,
+            "RUN_ENDED",
+            "the run that requested it ended before its result was installed".into(),
+            String::new(),
+        )
+        .await;
+    }
+}
+
+/// One turn boundary of the compaction protocol (docs/19 "Compaction
+/// epochs", M4.2):
+///
+/// 1. a finished worker's result installs only if the session branch, the
+///    prefix it summarised and the epoch order are still current — otherwise
+///    it is refused and the refusal is logged;
+/// 2. under hard pressure (the transcript is over the budget) a bounded
+///    synchronous compaction runs now, whatever the worker is doing; its
+///    result, when it returns, is stale and refused;
+/// 3. under soft pressure with no worker in flight, a worker starts on a
+///    snapshot of the prefix and the request is logged first.
+#[allow(clippy::too_many_arguments)]
+async fn compaction_step(
+    core: &Core,
+    task: &Task,
+    lt: Lineage,
+    actor: &Actor,
+    transcript: &mut Vec<Message>,
+    epoch: &mut Option<modbit_compaction::CompactionManifest>,
+    worker: &mut Option<CompactionWorker>,
+) {
+    let budget = compaction_budget();
+    // 1. harvest
+    if worker.as_ref().is_some_and(|w| w.handle.is_finished()) {
+        let w = worker.take().expect("checked");
+        match w.handle.await {
+            Ok(manifest) => {
+                let (_, _, branch_now) = compaction_coordinates(core, task).await;
+                let digest_now =
+                    modbit_compaction::source_digest(&compaction_source(transcript, w.cut));
+                match modbit_compaction::accept_async(
+                    &manifest,
+                    epoch.as_ref().map(|m| m.epoch),
+                    branch_now,
+                    &digest_now,
+                ) {
+                    Ok(()) => {
+                        install_epoch(
+                            core, task, lt, actor, transcript, epoch, manifest, w.cut, &w.id,
+                            "ASYNC",
+                        )
+                        .await;
+                    }
+                    Err(rejected) => {
+                        reject_compaction(
+                            core,
+                            task,
+                            lt,
+                            actor,
+                            &w.id,
+                            w.epoch,
+                            rejected.code(),
+                            format!("{rejected:?}"),
+                            manifest.manifest_hash.clone(),
+                        )
+                        .await;
+                    }
+                }
+            }
+            Err(e) => {
+                reject_compaction(
+                    core,
+                    task,
+                    lt,
+                    actor,
+                    &w.id,
+                    w.epoch,
+                    "WORKER_FAILED",
+                    e.to_string(),
+                    String::new(),
+                )
+                .await;
+            }
+        }
+    }
+    let tokens = transcript_tokens(transcript);
+    if transcript.len() <= COMPACTION_KEEP_TAIL + 1 {
+        return;
+    }
+    let cut = transcript.len() - COMPACTION_KEEP_TAIL;
+    let next_epoch = epoch.as_ref().map_or(1, |m| m.epoch + 1);
+    if tokens > budget {
+        // 2. hard pressure: bounded synchronous compaction, now.
+        let id = modbit_domain::RunStepId::new().to_string();
+        let source = compaction_source(transcript, cut);
+        let (generation, head, branch) = compaction_coordinates(core, task).await;
+        {
+            let mut store = core.store.lock().await;
+            let _ = append(
+                &mut store,
+                core,
+                lt,
+                AggregateType::Task,
+                *task.task_id.as_bytes(),
+                vec![typed(
+                    "CompactionStarted",
+                    &TaskEvent::CompactionStarted {
+                        compaction_id: id.clone(),
+                        epoch: next_epoch,
+                        previous_epoch: epoch.as_ref().map(|m| m.epoch),
+                        branch_generation: branch,
+                        source_head_offset: head,
+                        source_entries: u32::try_from(source.len()).unwrap_or(u32::MAX),
+                        source_digest: modbit_compaction::source_digest(&source),
+                        compiler_version: modbit_prompt_compiler::COMPILER_VERSION.to_owned(),
+                        target_tokens: budget / 4,
+                        mode: "SYNC_FALLBACK".into(),
+                    },
+                    actor.clone(),
+                )],
+            );
+        }
+        // The request is on the log: the head the manifest must match is the
+        // one after it.
+        let (generation, head) = {
+            let store = core.store.lock().await;
+            let g = store
+                .task(&task.task_id)
+                .ok()
+                .flatten()
+                .map_or(generation, |t| t.generation);
+            (g, store.last_offset().unwrap_or(head))
+        };
+        let manifest = modbit_compaction::compact(&modbit_compaction::CompactionRequest {
+            entries: &source,
+            previous: epoch.as_ref(),
+            task_generation: generation,
+            source_head_offset: head,
+            branch_generation: branch,
+            compiler_version: modbit_prompt_compiler::COMPILER_VERSION,
+            target_tokens: budget / 4,
+        });
+        // docs/19: the result installs only while its source is still current.
+        let (generation_now, head_now, _) = compaction_coordinates(core, task).await;
+        match modbit_compaction::accept(
+            &manifest,
+            epoch.as_ref().map(|m| m.epoch),
+            generation_now,
+            head_now,
+        ) {
+            Ok(()) => {
+                install_epoch(
+                    core,
+                    task,
+                    lt,
+                    actor,
+                    transcript,
+                    epoch,
+                    manifest,
+                    cut,
+                    &id,
+                    "SYNC_FALLBACK",
+                )
+                .await;
+            }
+            Err(rejected) => {
+                reject_compaction(
+                    core,
+                    task,
+                    lt,
+                    actor,
+                    &id,
+                    next_epoch,
+                    rejected.code(),
+                    format!("{rejected:?}"),
+                    manifest.manifest_hash.clone(),
+                )
+                .await;
+            }
+        }
+        return;
+    }
+    if worker.is_none() && tokens * COMPACTION_SOFT_DENOMINATOR > budget * COMPACTION_SOFT_NUMERATOR
+    {
+        // 3. soft pressure: a worker starts on a snapshot; the request is
+        // logged before the worker exists.
+        let id = modbit_domain::RunStepId::new().to_string();
+        let source = compaction_source(transcript, cut);
+        let (generation, head, branch) = compaction_coordinates(core, task).await;
+        let digest = modbit_compaction::source_digest(&source);
+        {
+            let mut store = core.store.lock().await;
+            let _ = append(
+                &mut store,
+                core,
+                lt,
+                AggregateType::Task,
+                *task.task_id.as_bytes(),
+                vec![typed(
+                    "CompactionStarted",
+                    &TaskEvent::CompactionStarted {
+                        compaction_id: id.clone(),
+                        epoch: next_epoch,
+                        previous_epoch: epoch.as_ref().map(|m| m.epoch),
+                        branch_generation: branch,
+                        source_head_offset: head,
+                        source_entries: u32::try_from(source.len()).unwrap_or(u32::MAX),
+                        source_digest: digest,
+                        compiler_version: modbit_prompt_compiler::COMPILER_VERSION.to_owned(),
+                        target_tokens: budget / 4,
+                        mode: "ASYNC".into(),
+                    },
+                    actor.clone(),
+                )],
+            );
+        }
+        let previous = epoch.clone();
+        let delay = compaction_worker_delay();
+        let handle = tokio::task::spawn_blocking(move || {
+            if let Some(d) = delay {
+                std::thread::sleep(d);
+            }
+            modbit_compaction::compact(&modbit_compaction::CompactionRequest {
+                entries: &source,
+                previous: previous.as_ref(),
+                task_generation: generation,
+                source_head_offset: head,
+                branch_generation: branch,
+                compiler_version: modbit_prompt_compiler::COMPILER_VERSION,
+                target_tokens: budget / 4,
+            })
+        });
+        *worker = Some(CompactionWorker {
+            id,
+            epoch: next_epoch,
+            cut,
+            handle,
+        });
+    }
 }
 
 /// The text of a message, for the token estimate and the compaction source.

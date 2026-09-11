@@ -496,6 +496,15 @@ impl EventStore {
         crate::projections::load_approvals_for_session(&self.conn, id)
     }
 
+    /// The compaction requests of a task (docs/31 `compaction_epochs`),
+    /// oldest first: pending, committed as an epoch, or rejected.
+    pub fn compaction_epochs(
+        &self,
+        task: &TaskId,
+    ) -> Result<Vec<crate::projections::CompactionEpochRow>> {
+        crate::projections::load_compaction_epochs(&self.conn, task)
+    }
+
     /// The materialized protocol state of a task (docs/31 `protocol_state`,
     /// docs/19 layer 2), written in the transaction of every event that
     /// touched its calls, approvals, leases, question or reconciliations.

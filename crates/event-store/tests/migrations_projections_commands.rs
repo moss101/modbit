@@ -60,8 +60,8 @@ fn migrates_the_committed_m1_1_fixture_and_derives_projections() {
     std::fs::copy(fixture(), dir.path().join("core.db")).unwrap();
     let (store, report) = EventStore::open_with_report(dir.path()).unwrap();
     assert_eq!(report.from_version, 1);
-    assert_eq!(report.to_version, 10);
-    assert_eq!(report.applied, vec![2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    assert_eq!(report.to_version, 11);
+    assert_eq!(report.applied, vec![2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
     // Events untouched (docs/31: migration preserves existing event ids).
     let task = TaskId::from_bytes([0xC3; 16]);
     assert_eq!(store.verify_aggregate(task.as_bytes()).unwrap(), 3);
@@ -82,12 +82,12 @@ fn migrates_the_committed_m1_1_fixture_and_derives_projections() {
     // Reopening is a no-op migration.
     let (_, report) = EventStore::open_with_report(dir.path()).unwrap();
     assert!(report.applied.is_empty());
-    assert_eq!(report.from_version, 10);
+    assert_eq!(report.from_version, 11);
     let conn = rusqlite::Connection::open(dir.path().join("core.db")).unwrap();
     let n: i64 = conn
         .query_row("SELECT count(*) FROM schema_migrations", [], |r| r.get(0))
         .unwrap();
-    assert_eq!(n, 10);
+    assert_eq!(n, 11);
 }
 
 #[test]
@@ -115,12 +115,12 @@ fn applied_migration_checksum_drift_and_newer_schema_are_refused() {
             err,
             Error::SchemaTooNew {
                 found: 99,
-                supported: 10
+                supported: 11
             }
         ),
         "{err}"
     );
-    assert_eq!(modbit_event_store::migrations::rollback_plans().len(), 10);
+    assert_eq!(modbit_event_store::migrations::rollback_plans().len(), 11);
 }
 
 #[test]
@@ -306,6 +306,85 @@ fn projections_follow_the_reducers_in_the_append_transaction_and_after_rebuild()
     check(&store);
 }
 
+/// docs/19 "Compaction epochs" (M4.2): the session branch generation is the
+/// durable key an asynchronous compaction is judged against. It only moves
+/// forward, a stale generation is refused at the store, and it survives a
+/// rebuild from the log.
+#[test]
+fn session_branch_generation_moves_forward_only_and_is_projected() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut store = EventStore::open(dir.path()).unwrap();
+    let tenant = TenantId::new();
+    let session = SessionId::new();
+    store
+        .append(req(
+            tenant,
+            session,
+            AggregateType::Session,
+            *session.as_bytes(),
+            vec![typed(
+                "SessionCreated",
+                &SessionEvent::SessionCreated {
+                    tenant_id: tenant,
+                    user_id: UserId::new(),
+                    space_id: SpaceId::new(),
+                },
+            )],
+        ))
+        .unwrap();
+    assert_eq!(
+        store.session(&session).unwrap().unwrap().branch_generation,
+        0
+    );
+    store
+        .append(req(
+            tenant,
+            session,
+            AggregateType::Session,
+            *session.as_bytes(),
+            vec![typed(
+                "SessionBranched",
+                &SessionEvent::SessionBranched {
+                    branch_generation: 1,
+                    kind: "fork".into(),
+                    reason: "forked at offset 3".into(),
+                },
+            )],
+        ))
+        .unwrap();
+    assert_eq!(
+        store.session(&session).unwrap().unwrap().branch_generation,
+        1
+    );
+    // Not forward: refused, and nothing changes.
+    let err = store
+        .append(req(
+            tenant,
+            session,
+            AggregateType::Session,
+            *session.as_bytes(),
+            vec![typed(
+                "SessionBranched",
+                &SessionEvent::SessionBranched {
+                    branch_generation: 1,
+                    kind: "revert".into(),
+                    reason: "stale".into(),
+                },
+            )],
+        ))
+        .unwrap_err();
+    assert!(matches!(err, Error::Projection { .. }), "{err}");
+    assert_eq!(
+        store.session(&session).unwrap().unwrap().branch_generation,
+        1
+    );
+    store.rebuild_projections().unwrap();
+    assert_eq!(
+        store.session(&session).unwrap().unwrap().branch_generation,
+        1
+    );
+}
+
 #[test]
 fn command_replay_is_idempotent_and_conflicting_reuse_is_rejected() {
     let dir = tempfile::tempdir().unwrap();
@@ -419,7 +498,7 @@ fn concurrent_openers_of_a_fresh_database_all_succeed_and_migrate_once() {
     let n: i64 = conn
         .query_row("SELECT count(*) FROM schema_migrations", [], |r| r.get(0))
         .unwrap();
-    assert_eq!(n, 10);
+    assert_eq!(n, 11);
 }
 
 #[test]

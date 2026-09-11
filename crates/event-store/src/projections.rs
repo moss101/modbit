@@ -140,6 +140,162 @@ fn materialize_protocol_state(
     Ok(())
 }
 
+/// docs/31 `compaction_epochs` (M4.2): `CompactionStarted` opens a PENDING
+/// row; `CompactionCommitted` commits it; `CompactionRejectedStale` closes it
+/// as REJECTED with the reason. Nothing here is estimated: rows come from the
+/// task's log.
+fn project_compaction(
+    tx: &Transaction<'_>,
+    task: &Task,
+    event: &TaskEvent,
+    at: Timestamp,
+) -> Result<()> {
+    match event {
+        TaskEvent::CompactionStarted {
+            compaction_id,
+            epoch,
+            previous_epoch,
+            branch_generation,
+            source_head_offset,
+            source_entries,
+            compiler_version,
+            target_tokens,
+            mode,
+            ..
+        } => {
+            let previous_id: Option<String> = previous_epoch
+                .map(|p| {
+                    tx.query_row(
+                        "SELECT epoch_id FROM compaction_epochs WHERE task_id = ?1 AND epoch = ?2 AND status = 'COMMITTED' ORDER BY committed_at DESC LIMIT 1",
+                        params![task.task_id.as_bytes().as_slice(), i64::from(p)],
+                        |r| r.get::<_, String>(0),
+                    )
+                    .optional()
+                })
+                .transpose()?
+                .flatten();
+            let start: i64 = previous_id
+                .as_ref()
+                .map(|id| {
+                    tx.query_row(
+                        "SELECT source_event_end FROM compaction_epochs WHERE epoch_id = ?1",
+                        params![id],
+                        |r| r.get::<_, i64>(0),
+                    )
+                })
+                .transpose()?
+                .unwrap_or(0);
+            tx.execute(
+                "INSERT OR REPLACE INTO compaction_epochs (epoch_id, session_id, task_id, branch_generation, epoch, previous_epoch_id, source_event_start, source_event_end, source_entries, compiler_version, target_tokens, status, mode, result_object_hash, rejection, created_at, committed_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 'PENDING', ?12, NULL, NULL, ?13, NULL)",
+                params![
+                    compaction_id,
+                    task.session_id.as_bytes().as_slice(),
+                    task.task_id.as_bytes().as_slice(),
+                    *branch_generation as i64,
+                    i64::from(*epoch),
+                    previous_id,
+                    start,
+                    *source_head_offset as i64,
+                    i64::from(*source_entries),
+                    compiler_version,
+                    i64::from(*target_tokens),
+                    mode,
+                    at.millis(),
+                ],
+            )?;
+        }
+        TaskEvent::CompactionCommitted {
+            compaction_id,
+            manifest_ref,
+            ..
+        } => {
+            tx.execute(
+                "UPDATE compaction_epochs SET status = 'COMMITTED', result_object_hash = ?2, committed_at = ?3 WHERE epoch_id = ?1",
+                params![compaction_id, manifest_ref, at.millis()],
+            )?;
+        }
+        TaskEvent::CompactionRejectedStale {
+            compaction_id,
+            reason,
+            detail,
+            ..
+        } => {
+            tx.execute(
+                "UPDATE compaction_epochs SET status = 'REJECTED', rejection = ?2, committed_at = ?3 WHERE epoch_id = ?1",
+                params![compaction_id, format!("{reason}: {detail}"), at.millis()],
+            )?;
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+/// One row of `compaction_epochs`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CompactionEpochRow {
+    /// Request identity.
+    pub epoch_id: String,
+    /// Epoch number it opens.
+    pub epoch: u32,
+    /// Branch generation captured.
+    pub branch_generation: u64,
+    /// The committed previous epoch's request id, when any.
+    pub previous_epoch_id: Option<String>,
+    /// Source range (store offsets).
+    pub source_event_start: u64,
+    /// Source range end.
+    pub source_event_end: u64,
+    /// Entries summarised.
+    pub source_entries: u32,
+    /// Compiler version.
+    pub compiler_version: String,
+    /// Target tokens.
+    pub target_tokens: u32,
+    /// `PENDING` | `COMMITTED` | `REJECTED`.
+    pub status: String,
+    /// `ASYNC` | `SYNC_FALLBACK`.
+    pub mode: String,
+    /// Manifest object hash once committed.
+    pub result_object_hash: Option<String>,
+    /// `<reason>: <detail>` once rejected.
+    pub rejection: Option<String>,
+    /// Request time.
+    pub created_at: Timestamp,
+    /// Commit or rejection time.
+    pub committed_at: Option<Timestamp>,
+}
+
+/// The compaction requests of a task, oldest first.
+pub fn load_compaction_epochs(
+    tx: &rusqlite::Connection,
+    task: &TaskId,
+) -> Result<Vec<CompactionEpochRow>> {
+    let mut stmt = tx.prepare(
+        "SELECT epoch_id, epoch, branch_generation, previous_epoch_id, source_event_start, source_event_end, source_entries, compiler_version, target_tokens, status, mode, result_object_hash, rejection, created_at, committed_at FROM compaction_epochs WHERE task_id = ?1 ORDER BY created_at, epoch_id",
+    )?;
+    let rows = stmt.query_map(params![task.as_bytes().as_slice()], |r| {
+        Ok(CompactionEpochRow {
+            epoch_id: r.get(0)?,
+            epoch: u32::try_from(r.get::<_, i64>(1)?).unwrap_or(u32::MAX),
+            branch_generation: r.get::<_, i64>(2)? as u64,
+            previous_epoch_id: r.get(3)?,
+            source_event_start: r.get::<_, i64>(4)? as u64,
+            source_event_end: r.get::<_, i64>(5)? as u64,
+            source_entries: u32::try_from(r.get::<_, i64>(6)?).unwrap_or(u32::MAX),
+            compiler_version: r.get(7)?,
+            target_tokens: u32::try_from(r.get::<_, i64>(8)?).unwrap_or(u32::MAX),
+            status: r.get(9)?,
+            mode: r.get(10)?,
+            result_object_hash: r.get(11)?,
+            rejection: r.get(12)?,
+            created_at: Timestamp(r.get(13)?),
+            committed_at: r.get::<_, Option<i64>>(14)?.map(Timestamp),
+        })
+    })?;
+    Ok(rows.collect::<std::result::Result<Vec<_>, _>>()?)
+}
+
 /// Apply one stored event to the projection tables.
 pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStore) -> Result<()> {
     let at = ev.envelope.occurred_at;
@@ -159,8 +315,8 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                 s.apply(&event, at).map_err(|e| invalid(e, offset))?;
             }
             tx.execute(
-                "INSERT OR REPLACE INTO sessions (session_id, tenant_id, user_id, space_id, state, generation, created_at, updated_at, current_task_id, last_event_sequence, lease_generation, lease_owner, emergency_stopped_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+                "INSERT OR REPLACE INTO sessions (session_id, tenant_id, user_id, space_id, state, generation, created_at, updated_at, current_task_id, last_event_sequence, lease_generation, lease_owner, emergency_stopped_at, branch_generation)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
                 params![
                     s.session_id.as_bytes().as_slice(),
                     s.tenant_id.as_bytes().as_slice(),
@@ -175,6 +331,7 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                     s.lease_generation as i64,
                     &s.lease_owner,
                     s.emergency_stopped_at.map(Timestamp::millis),
+                    s.branch_generation as i64,
                 ],
             )?;
         }
@@ -220,6 +377,7 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                     &t.workspace_root,
                 ],
             )?;
+            project_compaction(tx, &t, &event, at)?;
             let delta = match &event {
                 TaskEvent::UserQuestionAsked {
                     question_id,
@@ -652,7 +810,7 @@ fn blob16(v: Vec<u8>) -> rusqlite::Result<[u8; 16]> {
 pub fn load_session(tx: &rusqlite::Connection, id: &SessionId) -> Result<Option<Session>> {
     let row = tx
         .query_row(
-            "SELECT tenant_id, user_id, space_id, state, generation, created_at, updated_at, current_task_id, lease_generation, lease_owner, emergency_stopped_at FROM sessions WHERE session_id = ?1",
+            "SELECT tenant_id, user_id, space_id, state, generation, created_at, updated_at, current_task_id, lease_generation, lease_owner, emergency_stopped_at, branch_generation FROM sessions WHERE session_id = ?1",
             params![id.as_bytes().as_slice()],
             |r| {
                 Ok((
@@ -667,6 +825,7 @@ pub fn load_session(tx: &rusqlite::Connection, id: &SessionId) -> Result<Option<
                     r.get::<_, i64>(8)?,
                     r.get::<_, Option<String>>(9)?,
                     r.get::<_, Option<i64>>(10)?,
+                    r.get::<_, i64>(11)?,
                 ))
             },
         )
@@ -683,6 +842,7 @@ pub fn load_session(tx: &rusqlite::Connection, id: &SessionId) -> Result<Option<
         lease_generation,
         lease_owner,
         stopped,
+        branch_generation,
     )) = row
     else {
         return Ok(None);
@@ -700,6 +860,7 @@ pub fn load_session(tx: &rusqlite::Connection, id: &SessionId) -> Result<Option<
         lease_generation: lease_generation as u64,
         lease_owner,
         emergency_stopped_at: stopped.map(Timestamp),
+        branch_generation: branch_generation as u64,
     }))
 }
 
@@ -1608,6 +1769,7 @@ pub fn load_flaky_checks(
 /// Truncate the projection tables and replay every event from offset 0.
 pub fn rebuild(tx: &Transaction<'_>, objects: &crate::ObjectStore) -> Result<u64> {
     for t in [
+        "compaction_epochs",
         "protocol_state",
         "routing_activations",
         "routing_admissions",

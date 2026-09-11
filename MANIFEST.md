@@ -14,14 +14,14 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | Section | Range | Files | Bytes |
 |---|---|---:|---:|
 | Authority and orientation | 00–09 | 8 | 65205 |
-| Architecture and subsystems | 10–29 | 20 | 193150 |
-| Implementation specifications | 30–39 | 10 | 81008 |
+| Architecture and subsystems | 10–29 | 20 | 194556 |
+| Implementation specifications | 30–39 | 10 | 81663 |
 | Requirements, tasks and traceability | 40–49 | 10 | 351596 |
 | Verification and testing | 50–69 | 15 | 203744 |
 | Delivery and operations | 70–79 | 7 | 33831 |
 | Agent process and governance | 80–97 | 18 | 109299 |
 | Live state | 98–99 | 1 | 4700 |
-| **Total docs** | | **89** | **1042533** |
+| **Total docs** | | **89** | **1044594** |
 
 ## Specification files (`docs/`)
 
@@ -44,7 +44,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 16 | `docs/16_TOOL_CAPABILITY_AND_PROCEDURAL_RUNTIME.md` | Tool System, Capability Kernel, Procedural Runtime, and MCP | architecture | 5407 | `88f995ffc9687f2cc88f72e8f0a94c7aae602050db3dda997dc9d8bb9b052f3d` |
 | 17 | `docs/17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md` | Canonical Tool and Capability Inventory | architecture | 5852 | `6e92b564da319488bdab3e4d17325799f5bda5e0c9e9fd0d316f0981c9b4bbe9` |
 | 18 | `docs/18_CONTEXT_RETRIEVAL_AND_ENGINEERING_KNOWLEDGE.md` | Context, Retrieval, and Engineering Knowledge Engine | architecture | 5728 | `c6a362588d301b22d0f57bd11accecd6af33a9a5f7abc391afb15d7bef6f2303` |
-| 19 | `docs/19_DURABLE_STATE_MEMORY_COMPACTION_CHECKPOINTS.md` | Durable State, Memory, Compaction, and Checkpoints | architecture | 6579 | `e783e07e1010ad68090c7cb51cb15228d7e582c2a43a647cd2023ae88dbad165` |
+| 19 | `docs/19_DURABLE_STATE_MEMORY_COMPACTION_CHECKPOINTS.md` | Durable State, Memory, Compaction, and Checkpoints | architecture | 7985 | `19402dddfd255b13b196892aa98b3a020d14e7c87461e3ba28f3652b2336aac0` |
 | 20 | `docs/20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md` | Workspace, Git, Worktrees, Diagnostics, and Trusted Code Surface | architecture | 4238 | `71e5a6df1723eb19bfa3816eeb1bee5a5b73f3250ad53a2055fb65a1c79e6129` |
 | 21 | `docs/21_TERMINAL_EXECUTION_AND_SANDBOX.md` | Terminal, Execution Router, and Sandbox Architecture | architecture | 4273 | `993f563ecc713035e2ce4eb071c14fdd1cb3cd033ea0cc32a525ca542af2c64d` |
 | 22 | `docs/22_BROWSER_AND_COMPUTER_USE.md` | Browser and Computer-Use Architecture | architecture | 3961 | `a7e441d9bc60785aea7dcc62fe8cef5946f3aa2551665368a360d4ec3519220b` |
@@ -56,7 +56,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 28 | `docs/28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md` | Agent competence: planning, verification and repair | architecture | 12521 | `2dbf6183340ee6a0ba808eef2dd1eea147e41a75dc18e5a3ee77c5bfec117e57` |
 | 29 | `docs/29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md` | Client surfaces and source-control integration | architecture | 7279 | `4e378b45620945efedd7b8db3546d15ad72c247a894cb80cd650fddd70b5dae8` |
 | 30 | `docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md` | Protocol, APIs, and Event Schemas | implementation | 10457 | `d8a30fe55d3040ab4f57d9ceeb0bbf063a932fea3afda0d6cc01afc7fe7302b5` |
-| 31 | `docs/31_DATABASE_AND_STORAGE_SCHEMA.md` | Database and Storage Schema | implementation | 11470 | `91901179ca327f6f5f07a050d5a09d741dfc9754340c2fa5db37299a7bc7154b` |
+| 31 | `docs/31_DATABASE_AND_STORAGE_SCHEMA.md` | Database and Storage Schema | implementation | 12125 | `1211bc564f3134af3a0101e55ebbeca738a704d341be5b824073f14b3a0886c0` |
 | 32 | `docs/32_DESKTOP_FRONTEND_IMPLEMENTATION.md` | Desktop Frontend Implementation | implementation | 5827 | `ac322efa1e408d2d7fb3655990d0a0828c269af317ac84d7fc459437123abaac` |
 | 33 | `docs/33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md` | Core and Cloud Backend Implementation | implementation | 7476 | `09beec690bb13005db61c0a2b3ff60594741f49023fc8510ceb4b3e29b199f46` |
 | 34 | `docs/34_OBSERVABILITY_COST_AND_OPERATIONS_DATA.md` | Observability, Cost, and Operations Data | implementation | 5702 | `4fbb53f587aca00d3b90626f3af21efc95f7241976877e45948ce6b2de5a9bf6` |
@@ -847,8 +847,10 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m4/M4.1/TASK_CARD.md` | retained evidence | 8467 | `a14c9ed238f536747ab52bbbd627c5cd33e3019dc50eacaf5a190a918297205d` |
 | `evidence/m4/M4.1/ci-run-34575700540.json` | retained evidence | 37317 | `4935dff1f95c3da823e4c69d390538ad0ee41d56e6e9958cd4af8a91569d8de8` |
 | `evidence/m4/M4.1/evidence.json` | retained evidence | 2107 | `ce7ed45990ba4c096fb560932c021cde05be8c0e56a426eae8960eb3b0f119a9` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 40859 | `c28285d571ec7860ba5c8584cd99da03a94e569619b3266db82b28ec835626e7` |
-| `graph/project-graph.json` | project driver graph with live status | 1297025 | `8feb2eab90f0a4e67eefcc6ae38720697d759c62a4cf3f30c6ff8bae31682cc9` |
+| `evidence/m4/M4.2/TASK_CARD.md` | retained evidence | 6477 | `fb4a8e396197bd2a9b59436662662c5087dd685c546cefd87cffb16410d3c141` |
+| `evidence/m4/M4.2/evidence.json` | retained evidence | 1688 | `61e1124dd22fdbb1be32f0455169c79ce5151649e1fd970f6e9b23661e78e1e2` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 40860 | `10db6fe6505377cb26fddaa0f4f68680b88edf3d5b0545dc20c60744cfeadd05` |
+| `graph/project-graph.json` | project driver graph with live status | 1299642 | `7e45d8425d895550b6bd217bc0730b959a4a34d50fd0eeb409787b402259bdc0` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 53020 | `cb5c9e0e1bf7c3327c0597e40a06725a7fa1c2529ee67a4540117cb73749b233` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 17596 | `5c9b7a782d245223726f860ca583d766929a6f5662b644adebee64d257ad426b` |

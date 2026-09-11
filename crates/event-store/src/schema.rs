@@ -388,6 +388,33 @@ CREATE TABLE IF NOT EXISTS protocol_state (
 );
 "#;
 
+/// V11 (M4.2, docs/19 "Compaction epochs", docs/31 `compaction_epochs`):
+/// the session branch generation a fork or revert moves, and the record of
+/// every compaction request — pending, committed as an epoch, or rejected.
+pub const V11_COMPACTION_EPOCHS: &str = r#"
+ALTER TABLE sessions ADD COLUMN branch_generation INTEGER NOT NULL DEFAULT 0;
+CREATE TABLE IF NOT EXISTS compaction_epochs (
+  epoch_id           TEXT    PRIMARY KEY NOT NULL,
+  session_id         BLOB    NOT NULL,
+  task_id            BLOB    NOT NULL,
+  branch_generation  INTEGER NOT NULL,
+  epoch              INTEGER NOT NULL,
+  previous_epoch_id  TEXT,
+  source_event_start INTEGER NOT NULL,
+  source_event_end   INTEGER NOT NULL,
+  source_entries     INTEGER NOT NULL,
+  compiler_version   TEXT    NOT NULL,
+  target_tokens      INTEGER NOT NULL,
+  status             TEXT    NOT NULL,
+  mode               TEXT    NOT NULL,
+  result_object_hash TEXT,
+  rejection          TEXT,
+  created_at         INTEGER NOT NULL,
+  committed_at       INTEGER
+);
+CREATE INDEX IF NOT EXISTS compaction_epochs_task ON compaction_epochs (task_id, created_at);
+"#;
+
 /// All migrations in order. Never edit an entry once shipped; append a new one.
 pub const MIGRATIONS: &[Migration] = &[
     Migration {
@@ -449,6 +476,12 @@ pub const MIGRATIONS: &[Migration] = &[
         name: "protocol_state",
         up: V10_PROTOCOL_STATE,
         rollback: "Additive nullable derivable columns, an index and the derivable `protocol_state` table (docs/31). Rollback = drop the table; older builds ignore the columns; a rebuild derives everything from the log; no event is touched.",
+    },
+    Migration {
+        version: 11,
+        name: "compaction_epochs",
+        up: V11_COMPACTION_EPOCHS,
+        rollback: "Additive: a defaulted column on `sessions` and the derivable `compaction_epochs` table (docs/31). Rollback = drop the table; older builds ignore the column; a rebuild derives the rows from the log; no event is touched.",
     },
 ];
 

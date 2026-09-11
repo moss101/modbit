@@ -2044,6 +2044,13 @@ export declare type ContextInspectorView = Message<"modbit.v1.ContextInspectorVi
    * @generated from field: repeated string selection_review_hunks = 25;
    */
   selectionReviewHunks: string[];
+
+  /**
+   * Compaction requests (docs/19 "Compaction epochs", docs/31 compaction_epochs; M4.2).
+   *
+   * @generated from field: repeated modbit.v1.CompactionRequestView compactions = 26;
+   */
+  compactions: CompactionRequestView[];
 };
 
 /**
@@ -2051,6 +2058,87 @@ export declare type ContextInspectorView = Message<"modbit.v1.ContextInspectorVi
  * Use `create(ContextInspectorViewSchema)` to create a new message.
  */
 export declare const ContextInspectorViewSchema: GenMessage<ContextInspectorView>;
+
+/**
+ * @generated from message modbit.v1.CompactionRequestView
+ */
+export declare type CompactionRequestView = Message<"modbit.v1.CompactionRequestView"> & {
+  /**
+   * @generated from field: string compaction_id = 1;
+   */
+  compactionId: string;
+
+  /**
+   * @generated from field: uint32 epoch = 2;
+   */
+  epoch: number;
+
+  /**
+   * @generated from field: uint64 branch_generation = 3;
+   */
+  branchGeneration: bigint;
+
+  /**
+   * PENDING | COMMITTED | REJECTED
+   *
+   * @generated from field: string status = 4;
+   */
+  status: string;
+
+  /**
+   * ASYNC | SYNC_FALLBACK
+   *
+   * @generated from field: string mode = 5;
+   */
+  mode: string;
+
+  /**
+   * @generated from field: uint64 source_event_start = 6;
+   */
+  sourceEventStart: bigint;
+
+  /**
+   * @generated from field: uint64 source_event_end = 7;
+   */
+  sourceEventEnd: bigint;
+
+  /**
+   * @generated from field: uint32 source_entries = 8;
+   */
+  sourceEntries: number;
+
+  /**
+   * the manifest, once committed
+   *
+   * @generated from field: string result_object_hash = 9;
+   */
+  resultObjectHash: string;
+
+  /**
+   * "<reason>: <detail>", once rejected
+   *
+   * @generated from field: string rejection = 10;
+   */
+  rejection: string;
+
+  /**
+   * @generated from field: int64 created_at_ms = 11;
+   */
+  createdAtMs: bigint;
+
+  /**
+   * 0 while pending
+   *
+   * @generated from field: int64 committed_at_ms = 12;
+   */
+  committedAtMs: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.CompactionRequestView.
+ * Use `create(CompactionRequestViewSchema)` to create a new message.
+ */
+export declare const CompactionRequestViewSchema: GenMessage<CompactionRequestView>;
 
 /**
  * Publish a fixed-revision baseline of the direct path for this session: what

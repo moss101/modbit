@@ -310,6 +310,80 @@ pub enum TaskEvent {
         manifest_hash: String,
         /// Estimated tokens of the projection.
         projection_tokens: u32,
+        /// The compaction request this epoch answers (M4.2).
+        #[serde(default)]
+        compaction_id: String,
+        /// Session branch generation the epoch was computed under.
+        #[serde(default)]
+        branch_generation: u64,
+        /// `ASYNC` (worker result installed at a boundary) or
+        /// `SYNC_FALLBACK` (bounded compaction under hard pressure).
+        #[serde(default)]
+        mode: String,
+        /// sha256 of the source entries the epoch summarised.
+        #[serde(default)]
+        source_digest: String,
+    },
+    /// `CompactionStarted` (docs/19 "Compaction epochs", docs/30
+    /// "Durability", M4.2): a compaction was started, asynchronously by a
+    /// worker or synchronously under hard pressure; what it captured is on
+    /// the log before its result can be. No state change.
+    CompactionStarted {
+        /// Request identity.
+        compaction_id: String,
+        /// The epoch it would open.
+        epoch: u32,
+        /// The previous epoch, when any.
+        previous_epoch: Option<u32>,
+        /// Session branch generation captured.
+        branch_generation: u64,
+        /// Store offset the source range ends at.
+        source_head_offset: u64,
+        /// Transcript entries in the source range.
+        source_entries: u32,
+        /// sha256 of the source entries.
+        source_digest: String,
+        /// Compiler version the projection is written for.
+        compiler_version: String,
+        /// Target token budget.
+        target_tokens: u32,
+        /// `ASYNC` | `SYNC_FALLBACK`.
+        mode: String,
+    },
+    /// `CompactionCommitted` (docs/30 "Durability", M4.2): the durability
+    /// record of an installed epoch, beside the model-facing
+    /// `ContextEpochOpened` that carries the same manifest. No state change.
+    CompactionCommitted {
+        /// The request.
+        compaction_id: String,
+        /// The epoch it opened.
+        epoch: u32,
+        /// Session branch generation it was computed under.
+        branch_generation: u64,
+        /// Object hash of the manifest.
+        manifest_ref: String,
+        /// Hash of the manifest's fields.
+        manifest_hash: String,
+        /// `ASYNC` | `SYNC_FALLBACK`.
+        mode: String,
+    },
+    /// `CompactionRejectedStale` (docs/19: a result is accepted only while
+    /// its source is still current; docs/30 "Durability"; docs/54 fault 10):
+    /// a compaction result arrived for a history that moved on and was
+    /// refused, never installed. No state change.
+    CompactionRejectedStale {
+        /// The request.
+        compaction_id: String,
+        /// The epoch it would have opened.
+        epoch: u32,
+        /// `BRANCH_CHANGED` | `SOURCE_REWRITTEN` | `NOT_SUCCESSOR` |
+        /// `GENERATION_CHANGED` | `SOURCE_ADVANCED` | `SUPERSEDED` |
+        /// `WORKER_FAILED`.
+        reason: String,
+        /// Detail, in words.
+        detail: String,
+        /// Hash of the refused manifest, when one was produced.
+        manifest_hash: String,
     },
     /// `UnsupportedLanguageOptInRecorded` (REQ-PX-029, docs/76 "Degradation
     /// path"): the user allowed this task to edit files in languages the
@@ -556,6 +630,9 @@ impl TaskEvent {
             Self::SelfReviewRecorded { .. } => "SelfReviewRecorded",
             Self::ToolsActivated { .. } => "ToolsActivated",
             Self::ContextEpochOpened { .. } => "ContextEpochOpened",
+            Self::CompactionStarted { .. } => "CompactionStarted",
+            Self::CompactionCommitted { .. } => "CompactionCommitted",
+            Self::CompactionRejectedStale { .. } => "CompactionRejectedStale",
             Self::ReproductionRecorded { .. } => "ReproductionRecorded",
             Self::ScopeExpansionRecorded { .. } => "ScopeExpansionRecorded",
             Self::RetrievalRecorded { .. } => "RetrievalRecorded",
@@ -664,6 +741,9 @@ impl Task {
             | TaskEvent::SelfReviewRecorded { .. }
             | TaskEvent::ToolsActivated { .. }
             | TaskEvent::ContextEpochOpened { .. }
+            | TaskEvent::CompactionStarted { .. }
+            | TaskEvent::CompactionCommitted { .. }
+            | TaskEvent::CompactionRejectedStale { .. }
             | TaskEvent::ReproductionRecorded { .. }
             | TaskEvent::SelectionRecorded { .. }
             | TaskEvent::ContextDocumentAttached { .. }

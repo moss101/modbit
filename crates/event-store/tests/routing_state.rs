@@ -429,6 +429,11 @@ fn make_pre_routing(dir: &std::path::Path) {
     // `protocol_state` table.
     conn.execute("DROP TABLE IF EXISTS protocol_state", [])
         .unwrap();
+    // V11 (M4.2) added the session branch generation and `compaction_epochs`.
+    conn.execute("DROP TABLE IF EXISTS compaction_epochs", [])
+        .unwrap();
+    conn.execute("ALTER TABLE sessions DROP COLUMN branch_generation", [])
+        .unwrap();
     conn.execute("DROP INDEX IF EXISTS tool_calls_run", [])
         .unwrap();
     for c in ["run_id", "turn_id", "call_id", "arguments_ref"] {
@@ -462,8 +467,8 @@ fn a_database_from_before_the_routing_tables_upgrades_and_derives_them() {
 
     make_pre_routing(dir.path());
     let (store, report) = EventStore::open_with_report(dir.path()).unwrap();
-    assert_eq!((report.from_version, report.to_version), (6, 10));
-    assert_eq!(report.applied, vec![7, 8, 9, 10]);
+    assert_eq!((report.from_version, report.to_version), (6, 11));
+    assert_eq!(report.applied, vec![7, 8, 9, 10, 11]);
     assert_eq!(
         store.last_offset().unwrap(),
         events,
@@ -539,7 +544,7 @@ fn a_crash_during_the_routing_migration_leaves_a_recoverable_database() {
     let (store, report) = EventStore::open_with_report(dir.path()).unwrap();
     assert_eq!(
         (report.from_version, report.to_version),
-        (6, 10),
+        (6, 11),
         "the killed migration committed nothing"
     );
     assert_eq!(

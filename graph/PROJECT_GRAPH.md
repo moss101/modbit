@@ -428,7 +428,7 @@ flowchart LR
 | Task | Status | Title | Acceptance / note |
 |---|---|---|---|
 | `M4.1` | COMPLETE | Protocol State store |  |
-| `M4.2` | NOT_STARTED | Compaction epochs + async worker + stale rejection + sync fallback |  |
+| `M4.2` | REAL_TESTING | Compaction epochs + async worker + stale rejection + sync fallback |  |
 | `M4.3` | NOT_STARTED | Workspace checkpoint baseline/delta objects + epoch fencing |  |
 | `M4.4` | NOT_STARTED | kernel lease/session fencing |  |
 | `M4.5` | NOT_STARTED | terminal/browser/sandbox cursor metadata interfaces |  |

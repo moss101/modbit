@@ -484,6 +484,23 @@ message ContextInspectorView {
   string selection_symbol = 23;
   string selection_source = 24;
   repeated string selection_review_hunks = 25;
+  // Compaction requests (docs/19 "Compaction epochs", docs/31 compaction_epochs; M4.2).
+  repeated CompactionRequestView compactions = 26;
+}
+
+message CompactionRequestView {
+  string compaction_id = 1;
+  uint32 epoch = 2;
+  uint64 branch_generation = 3;
+  string status = 4;               // PENDING | COMMITTED | REJECTED
+  string mode = 5;                 // ASYNC | SYNC_FALLBACK
+  uint64 source_event_start = 6;
+  uint64 source_event_end = 7;
+  uint32 source_entries = 8;
+  string result_object_hash = 9;   // the manifest, once committed
+  string rejection = 10;           // "<reason>: <detail>", once rejected
+  int64 created_at_ms = 11;
+  int64 committed_at_ms = 12;      // 0 while pending
 }
 
 // ---- Verified-outcome baseline (REQ-EPR-000, docs/27) ----

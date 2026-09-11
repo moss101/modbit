@@ -57,6 +57,15 @@ pub struct CompactionManifest {
     pub source_head_offset: u64,
     /// Entries of the model-visible transcript that were summarised.
     pub source_entries: usize,
+    /// The session branch generation the compaction was computed under
+    /// (docs/19 "Compaction epochs", M4.2): a fork or a revert moves it and
+    /// an asynchronous result computed under the old one is refused.
+    #[serde(default)]
+    pub branch_generation: u64,
+    /// sha256 of the source entries (role, name, text, in order): an
+    /// asynchronous result installs only onto the exact prefix it summarised.
+    #[serde(default)]
+    pub source_digest: String,
     /// Compiler version the projection was written for.
     pub compiler_version: String,
     /// Target token budget for the projection.
@@ -98,6 +107,52 @@ pub enum RejectedCompaction {
         /// Offered epoch.
         offered: u32,
     },
+    /// The session branch generation moved (fork, revert) since the
+    /// compaction was computed.
+    BranchChanged {
+        /// The generation the compaction saw.
+        saw: u64,
+        /// The generation now.
+        now: u64,
+    },
+    /// The transcript prefix the compaction summarised is not the prefix
+    /// any more (another epoch drained it, or the history was rebuilt).
+    SourceRewritten {
+        /// Digest the compaction saw.
+        saw: String,
+        /// Digest now.
+        now: String,
+    },
+}
+
+impl RejectedCompaction {
+    /// Stable code for the log.
+    #[must_use]
+    pub const fn code(&self) -> &'static str {
+        match self {
+            Self::SourceAdvanced { .. } => "SOURCE_ADVANCED",
+            Self::GenerationChanged { .. } => "GENERATION_CHANGED",
+            Self::NotSuccessor { .. } => "NOT_SUCCESSOR",
+            Self::BranchChanged { .. } => "BRANCH_CHANGED",
+            Self::SourceRewritten { .. } => "SOURCE_REWRITTEN",
+        }
+    }
+}
+
+/// sha256 over the source entries, in order: the identity of the prefix a
+/// compaction summarised.
+#[must_use]
+pub fn source_digest(entries: &[SourceEntry]) -> String {
+    let mut h = Sha256::new();
+    for e in entries {
+        h.update(e.role.as_bytes());
+        h.update([0]);
+        h.update(e.name.as_bytes());
+        h.update([0]);
+        h.update(e.text.as_bytes());
+        h.update([0xFF]);
+    }
+    hex::encode(h.finalize())
 }
 
 /// A model-visible transcript entry, as compaction sees it.
@@ -156,6 +211,8 @@ pub struct CompactionRequest<'a> {
     pub task_generation: u64,
     /// The store offset the source range ends at.
     pub source_head_offset: u64,
+    /// The session branch generation the compaction is computed under.
+    pub branch_generation: u64,
     /// Compiler version the projection is written for.
     pub compiler_version: &'a str,
     /// Target token budget for the projection.
@@ -182,6 +239,7 @@ pub fn compact(request: &CompactionRequest<'_>) -> CompactionManifest {
         previous,
         task_generation,
         source_head_offset,
+        branch_generation,
         compiler_version,
         target_tokens,
     } = *request;
@@ -301,10 +359,13 @@ pub fn compact(request: &CompactionRequest<'_>) -> CompactionManifest {
         projection.push_str(&line);
     }
     let projection_tokens = estimate_tokens(&projection);
+    let source_digest = source_digest(entries);
     let manifest_hash = sha(&[
         &epoch.to_string(),
         &task_generation.to_string(),
         &source_head_offset.to_string(),
+        &branch_generation.to_string(),
+        &source_digest,
         compiler_version,
         &projection,
     ]);
@@ -314,6 +375,8 @@ pub fn compact(request: &CompactionRequest<'_>) -> CompactionManifest {
         task_generation,
         source_head_offset,
         source_entries: entries.len(),
+        branch_generation,
+        source_digest,
         compiler_version: compiler_version.to_owned(),
         target_tokens,
         preserved,
@@ -430,11 +493,50 @@ pub fn accept(
             now: current_head_offset,
         });
     }
+    successor(manifest, installed_epoch)
+}
+
+fn successor(
+    manifest: &CompactionManifest,
+    installed_epoch: Option<u32>,
+) -> Result<(), RejectedCompaction> {
     let expected = installed_epoch.unwrap_or(0) + 1;
     if manifest.epoch != expected {
         return Err(RejectedCompaction::NotSuccessor {
             installed: installed_epoch.unwrap_or(0),
             offered: manifest.epoch,
+        });
+    }
+    Ok(())
+}
+
+/// Whether an asynchronous compaction result may install now (docs/19:
+/// accepted only if the source branch/generation is still current;
+/// docs/54 fault 10). The log has moved on since the worker started — that
+/// is expected — so the checks are the branch generation the worker
+/// captured, the exact prefix it summarised, and the epoch order.
+///
+/// # Errors
+/// The branch generation moved, the prefix was rewritten (another epoch
+/// drained it, or the history was rebuilt), or the epoch is not the
+/// successor of the installed one.
+pub fn accept_async(
+    manifest: &CompactionManifest,
+    installed_epoch: Option<u32>,
+    current_branch_generation: u64,
+    current_source_digest: &str,
+) -> Result<(), RejectedCompaction> {
+    if manifest.branch_generation != current_branch_generation {
+        return Err(RejectedCompaction::BranchChanged {
+            saw: manifest.branch_generation,
+            now: current_branch_generation,
+        });
+    }
+    successor(manifest, installed_epoch)?;
+    if manifest.source_digest != current_source_digest {
+        return Err(RejectedCompaction::SourceRewritten {
+            saw: manifest.source_digest.clone(),
+            now: current_source_digest.to_owned(),
         });
     }
     Ok(())

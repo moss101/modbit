@@ -2,7 +2,7 @@
 //! stays recoverable, and which results may install.
 use modbit_compaction::{
     CompactionManifest, CompactionRequest, FactKind, RejectedCompaction, SourceEntry, accept,
-    compact, estimate_tokens, fidelity, handles_in,
+    accept_async, compact, estimate_tokens, fidelity, handles_in, source_digest,
 };
 
 fn request<'a>(
@@ -15,6 +15,7 @@ fn request<'a>(
         previous,
         task_generation: 3,
         source_head_offset: 120,
+        branch_generation: 7,
         compiler_version: "prompt-compiler-v1",
         target_tokens,
     }
@@ -155,6 +156,59 @@ fn a_stale_or_out_of_order_compaction_result_is_refused() {
     let second = compact(&request(&corpus, Some(&m), 400));
     assert!(accept(&second, Some(1), 3, 120).is_ok());
     assert_ne!(second.manifest_hash, m.manifest_hash);
+}
+
+/// docs/19 "Compaction epochs" / docs/54 fault 10 (M4.2): an asynchronous
+/// result is judged by the branch generation it captured, the exact prefix it
+/// summarised and the epoch order — never by the log head, which has moved
+/// on by the time a worker returns.
+#[test]
+fn an_asynchronous_result_installs_only_onto_the_prefix_and_branch_it_saw() {
+    let corpus = corpus();
+    let m = compact(&request(&corpus, None, 400));
+    assert_eq!(m.branch_generation, 7);
+    assert_eq!(m.source_digest, source_digest(&corpus));
+    assert_eq!(m.source_digest.len(), 64);
+    // The log advanced while the worker ran: still fine.
+    assert!(accept_async(&m, None, 7, &source_digest(&corpus)).is_ok());
+    // A fork or revert moved the branch generation: refused.
+    assert_eq!(
+        accept_async(&m, None, 8, &source_digest(&corpus)),
+        Err(RejectedCompaction::BranchChanged { saw: 7, now: 8 })
+    );
+    // Another epoch drained the prefix first: refused as out of order.
+    assert_eq!(
+        accept_async(&m, Some(1), 7, &source_digest(&corpus[3..])),
+        Err(RejectedCompaction::NotSuccessor {
+            installed: 1,
+            offered: 1
+        })
+    );
+    // The prefix itself was rewritten (history rebuilt): refused.
+    let mut rewritten = corpus.clone();
+    rewritten[0].text.push_str(" (edited)");
+    let now = source_digest(&rewritten);
+    assert_eq!(
+        accept_async(&m, None, 7, &now),
+        Err(RejectedCompaction::SourceRewritten {
+            saw: m.source_digest.clone(),
+            now
+        })
+    );
+    assert_eq!(
+        RejectedCompaction::BranchChanged { saw: 1, now: 2 }.code(),
+        "BRANCH_CHANGED"
+    );
+    // The digest is order- and content-sensitive, and the manifest hash
+    // binds it and the branch generation.
+    let mut swapped = corpus.clone();
+    swapped.swap(0, 1);
+    assert_ne!(source_digest(&swapped), source_digest(&corpus));
+    let other_branch = compact(&CompactionRequest {
+        branch_generation: 8,
+        ..request(&corpus, None, 400)
+    });
+    assert_ne!(other_branch.manifest_hash, m.manifest_hash);
 }
 
 /// REQ-EV-0056: a second epoch cannot drop what the first one preserved.

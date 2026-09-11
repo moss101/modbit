@@ -34,6 +34,28 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::ContextInspector
     v.compaction_epoch = economy.epoch;
     v.compaction_epochs = economy.epochs;
     v.compacted_entries = economy.compacted_entries;
+    v.compactions = core
+        .store
+        .lock()
+        .await
+        .compaction_epochs(&task_id)
+        .unwrap_or_default()
+        .into_iter()
+        .map(|r| wire::CompactionRequestView {
+            compaction_id: r.epoch_id,
+            epoch: r.epoch,
+            branch_generation: r.branch_generation,
+            status: r.status,
+            mode: r.mode,
+            source_event_start: r.source_event_start,
+            source_event_end: r.source_event_end,
+            source_entries: r.source_entries,
+            result_object_hash: r.result_object_hash.unwrap_or_default(),
+            rejection: r.rejection.unwrap_or_default(),
+            created_at_ms: r.created_at.0,
+            committed_at_ms: r.committed_at.map_or(0, |t| t.0),
+        })
+        .collect();
     v.manifest_ref = economy.manifest_ref;
     v.prefix_cache_hits = economy.hits;
     v.prefix_cache_misses = economy.misses;

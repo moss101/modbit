@@ -1,0 +1,18 @@
+{
+ "task": "M4.2",
+ "requirements": ["REQ-EV-0056", "REQ-EV-0057", "REQ-EV-0058", "REQ-EV-0092", "REQ-EV-0130"],
+ "scenarios": ["E2E-006 (shape)", "docs/54 fault 10"],
+ "tests": [
+  "qual_m4_2_e2e_006_async_compaction_installs_at_a_boundary_and_a_late_result_is_refused",
+  "an_asynchronous_result_installs_only_onto_the_prefix_and_branch_it_saw",
+  "a_stale_or_out_of_order_compaction_result_is_refused",
+  "session_branch_generation_moves_forward_only_and_is_projected",
+  "migrates_the_committed_m1_1_fixture_and_derives_projections",
+  "qual_ev_0056_0092_0130_compaction_epoch_preserves_facts_survives_restart_and_moves_the_cache_prefix"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "A worker started at soft pressure installs its manifest at a later boundary as an ASYNC epoch bound to the logged request; with the fault-10 hook holding the result, hard pressure runs the bounded synchronous compaction first and the late worker result is refused on the log (NOT_SUCCESSOR / SOURCE_REWRITTEN), its manifest never becomes an epoch and never appears in any prompt; every request ends committed or rejected and the compaction_epochs projection agrees with the log; the session branch generation moves forward only and survives a rebuild.",
+ "audit": "PARTIAL before: synchronous compaction only, guard keyed on values that move every turn, no worker, no branch generation, no logged rejection, no compaction_epochs projection.",
+ "limitations": "Fork/revert do not exist yet: BRANCH_CHANGED is proven at the crate and store level; the full E2E-006 with a real fork/revert is owed by IMP-EV-0077/0122/0123. The worker delay is a docs/54 fault-injection hook, unset in production."
+}

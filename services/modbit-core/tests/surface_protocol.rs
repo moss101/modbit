@@ -2087,6 +2087,19 @@ async fn scripted_model_routed(
     scripted_model_paced(script, specialist, stall_at, None).await
 }
 
+/// The same server, answering every request after `per_request`: a run that
+/// takes a known minimum time per turn, so a test can race something against
+/// the turns.
+async fn scripted_model_slow(
+    script: Vec<serde_json::Value>,
+    per_request: Duration,
+) -> (
+    String,
+    std::sync::Arc<std::sync::Mutex<Vec<serde_json::Value>>>,
+) {
+    scripted_model_paced(script, vec![], None, Some((usize::MAX, per_request))).await
+}
+
 /// The same server, answering one request slowly: the request whose tool
 /// result count is `delay_at.0` is held for `delay_at.1` before it is
 /// answered, so a test can change the world while an invocation is in flight.
@@ -2182,7 +2195,7 @@ async fn scripted_model_paced(
                     return;
                 }
                 if let Some((at, wait)) = delay_at
-                    && at == results
+                    && (at == results || at == usize::MAX)
                 {
                     tokio::time::sleep(wait).await;
                 }
@@ -15119,4 +15132,276 @@ async fn qual_ev_0055_e2e_005_core_crash_after_dispatch_reconciles_the_unknown_o
     let ps = protocol_state(&mut c2, &task).await;
     assert_eq!(ps.boundary, "TURN_START", "{ps:?}");
     assert!(ps.calls.is_empty());
+}
+
+/// Run one compaction scenario: a task that reads a big file `reads` times
+/// under `budget` tokens, with the docs/54 fault-10 worker delay when given.
+/// Returns the task's events and the request bodies the model saw.
+async fn compaction_scenario(
+    reads: usize,
+    budget: &str,
+    delay_ms: Option<&str>,
+    pace: Option<Duration>,
+    ids: u8,
+) -> (
+    Vec<(String, String, serde_json::Value)>,
+    Vec<serde_json::Value>,
+    modbit_protocol::v1::ContextInspectorView,
+) {
+    use modbit_protocol::v1::{
+        ContextInspectorView, GetContextInspector, StartTask, TaskRunStarted,
+    };
+    use serde_json::json;
+    let (_repo, root) = plain_repo(&[("big.txt", &"filler line for the transcript\n".repeat(400))]);
+    let read = json!({"calls": [{"name": "fs.read", "args": {"path": "big.txt"}}]});
+    let mut script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "read the big file many times", "expected_files": ["big.txt"]}}]}),
+    ];
+    for _ in 0..reads {
+        script.push(read.clone());
+    }
+    script.push(json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}));
+    let (base, seen) = match pace {
+        Some(p) => scripted_model_slow(script, p).await,
+        None => scripted_model(script, None).await,
+    };
+    let dir = tempfile::tempdir().unwrap();
+    let mut env = vec![
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_COMPACTION_TOKEN_BUDGET", budget),
+    ];
+    if let Some(d) = delay_ms {
+        env.push(("MODBIT_COMPACTION_WORKER_DELAY_MS", d));
+    }
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(ids)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, ids + 1, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(ids + 2),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 40,
+                max_tool_calls: 0,
+                max_no_progress_turns: 8,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 180).await;
+    assert!(!st.loop_alive, "{st:?}");
+    let evs = task_events(&core, &session, &task).await;
+    let ack = c
+        .command(envelope(
+            id16(ids + 3),
+            "GetContextInspector",
+            GetContextInspector {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let view: ContextInspectorView = Client::result(&ack).unwrap();
+    let bodies = seen.lock().unwrap().clone();
+    (evs, bodies, view)
+}
+
+/// M4.2 (docs/19 "Compaction epochs", docs/31 `compaction_epochs`, docs/51
+/// E2E-006 shape, docs/54 fault 10): compaction runs off the loop once the
+/// transcript is under pressure and its result installs at the next boundary
+/// only while the branch and the prefix it summarised are still current; a
+/// bounded synchronous compaction takes over under hard pressure; a worker
+/// result that arrives after the history moved on is refused and the refusal
+/// is on the log — the stale projection never enters the model's context.
+#[tokio::test]
+async fn qual_m4_2_e2e_006_async_compaction_installs_at_a_boundary_and_a_late_result_is_refused() {
+    // Phase A: no fault. Soft pressure starts a worker; it is harvested at a
+    // later boundary and installs as an ASYNC epoch, bound to its request.
+    // A read result is ~16 KiB (~4k tokens): the four-entry tail alone is
+    // ~8k, so the budget leaves a soft window wider than one turn's growth.
+    let (evs, bodies, view) = compaction_scenario(10, "24000", None, None, 0xA0).await;
+    let requested: Vec<&serde_json::Value> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "CompactionStarted")
+        .map(|(_, _, p)| p)
+        .collect();
+    let opened: Vec<&serde_json::Value> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "ContextEpochOpened")
+        .map(|(_, _, p)| p)
+        .collect();
+    let rejected: Vec<&serde_json::Value> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "CompactionRejectedStale")
+        .map(|(_, _, p)| p)
+        .collect();
+    assert!(
+        !opened.is_empty(),
+        "the transcript passed the budget: {evs:#?}"
+    );
+    // Every epoch answers a logged request of the same mode, with the
+    // branch generation and the source digest it captured.
+    for e in &opened {
+        let id = e["compaction_id"].as_str().unwrap();
+        let r = requested
+            .iter()
+            .find(|r| r["compaction_id"] == id)
+            .unwrap_or_else(|| panic!("epoch without a request: {e}"));
+        assert_eq!(r["mode"], e["mode"], "{r} vs {e}");
+        assert_eq!(r["epoch"], e["epoch"]);
+        assert_eq!(r["branch_generation"], e["branch_generation"]);
+        assert_eq!(r["source_digest"], e["source_digest"]);
+        assert_eq!(e["source_digest"].as_str().unwrap().len(), 64);
+    }
+    let async_epochs = opened.iter().filter(|e| e["mode"] == "ASYNC").count();
+    assert!(
+        async_epochs >= 1,
+        "a worker result installed at a boundary: opened={opened:#?} requested={requested:#?} rejected={rejected:#?}"
+    );
+    // Every request ends on the log: committed as an epoch or refused with a reason.
+    for r in &requested {
+        let id = r["compaction_id"].as_str().unwrap();
+        let committed = opened.iter().any(|e| e["compaction_id"] == id);
+        let refused = rejected.iter().any(|x| x["compaction_id"] == id);
+        assert!(committed || refused, "request left open: {r}\n{evs:#?}");
+    }
+    // The projection stayed derivable from the log (docs/31): the inspector
+    // lists every request with its status, and the committed ones name the
+    // manifest the epoch installed.
+    assert_eq!(view.compactions.len(), requested.len(), "{view:?}");
+    for e in &opened {
+        let row = view
+            .compactions
+            .iter()
+            .find(|r| r.compaction_id == e["compaction_id"].as_str().unwrap())
+            .unwrap();
+        assert_eq!(row.status, "COMMITTED");
+        assert_eq!(row.result_object_hash, e["manifest_ref"].as_str().unwrap());
+        assert_eq!(row.mode, e["mode"].as_str().unwrap());
+    }
+    // The model saw the installed projection at the next request.
+    let installed_hash = opened[0]["manifest_hash"].as_str().unwrap();
+    let _ = installed_hash;
+    assert!(
+        bodies.iter().any(|b| b["messages"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|m| m["content"].as_str().unwrap_or_default().contains("epoch"))),
+        "the epoch projection reached the model"
+    );
+
+    // Phase B: docs/54 fault 10. The worker holds its result; the transcript
+    // reaches hard pressure first, so a bounded synchronous compaction
+    // installs the epoch; the worker's result then returns for a history
+    // that moved on and is refused, on the log, and its projection never
+    // enters the context.
+    // Turns take at least 100 ms and the worker holds its result for 1.5 s:
+    // hard pressure (two turns after the worker starts) comes first whatever
+    // the runner's speed, and the run outlives the worker.
+    let (evs, bodies, view) = compaction_scenario(
+        30,
+        "24000",
+        Some("1500"),
+        Some(Duration::from_millis(100)),
+        0xB0,
+    )
+    .await;
+    let requested: Vec<&serde_json::Value> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "CompactionStarted")
+        .map(|(_, _, p)| p)
+        .collect();
+    let opened: Vec<&serde_json::Value> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "ContextEpochOpened")
+        .map(|(_, _, p)| p)
+        .collect();
+    let rejected: Vec<&serde_json::Value> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "CompactionRejectedStale")
+        .map(|(_, _, p)| p)
+        .collect();
+    let fallback: Vec<&&serde_json::Value> = opened
+        .iter()
+        .filter(|e| e["mode"] == "SYNC_FALLBACK")
+        .collect();
+    assert!(
+        !fallback.is_empty(),
+        "hard pressure ran the bounded synchronous compaction: opened={opened:#?} requested={requested:#?}"
+    );
+    let late: Vec<&&serde_json::Value> = rejected
+        .iter()
+        .filter(|r| {
+            requested
+                .iter()
+                .any(|q| q["compaction_id"] == r["compaction_id"] && q["mode"] == "ASYNC")
+        })
+        .collect();
+    assert!(
+        !late.is_empty(),
+        "the worker's late result was refused and logged: rejected={rejected:#?} requested={requested:#?}"
+    );
+    for r in &late {
+        assert!(
+            matches!(
+                r["reason"].as_str().unwrap(),
+                "NOT_SUCCESSOR" | "SOURCE_REWRITTEN" | "RUN_ENDED"
+            ),
+            "{r}"
+        );
+    }
+    let stale: Vec<&serde_json::Value> = late
+        .iter()
+        .filter(|r| r["reason"] != "RUN_ENDED")
+        .map(|r| **r)
+        .collect();
+    assert!(
+        !stale.is_empty(),
+        "at least one result returned after the history moved on: {late:#?}"
+    );
+    for r in &stale {
+        let hash = r["manifest_hash"].as_str().unwrap();
+        assert_eq!(hash.len(), 64, "{r}");
+        assert!(
+            opened.iter().all(|e| e["manifest_hash"] != hash),
+            "a refused manifest never became an epoch: {r}"
+        );
+        // Its projection is not in any prompt: the manifest hash is what the
+        // model-visible epoch segment is keyed by, and no request names it.
+        assert!(
+            bodies.iter().all(|b| !b.to_string().contains(hash)),
+            "the stale result never entered the context: {r}"
+        );
+        let row = view
+            .compactions
+            .iter()
+            .find(|x| x.compaction_id == r["compaction_id"].as_str().unwrap())
+            .unwrap();
+        assert_eq!(row.status, "REJECTED");
+        assert!(
+            row.rejection.starts_with(r["reason"].as_str().unwrap()),
+            "{row:?}"
+        );
+        assert!(row.result_object_hash.is_empty());
+    }
+    // The epochs that did install form one chain: each is the successor of
+    // the one before, and the installed one is what the model saw.
+    let mut expected = 1u64;
+    for e in &opened {
+        assert_eq!(e["epoch"].as_u64().unwrap(), expected, "{opened:#?}");
+        expected += 1;
+    }
+    assert_eq!(u64::from(view.compaction_epoch), expected - 1);
 }

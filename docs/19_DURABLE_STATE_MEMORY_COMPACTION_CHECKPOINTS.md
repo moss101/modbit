@@ -33,6 +33,10 @@ Each compaction request captures:
 
 Async compaction result is accepted only if the source branch/generation is still current. Fork/revert/cancel invalidates incompatible pending compactions. If context reaches hard pressure before async result arrives, Core executes bounded synchronous compaction. The compacted text is context material, **not semantic memory**.
 
+### Compaction epochs as built (M4.2)
+
+The session carries a `branch_generation` (`SessionBranched`; a fork or revert moves it forward only). At each turn boundary the runtime: harvests a finished worker and installs its manifest only if `accept_async` holds — the branch generation it captured is current, the transcript prefix it summarised still has the same `source_digest`, and its epoch is the successor of the installed one — otherwise it appends `CompactionRejectedStale` with the reason and the stale projection never enters the context; under hard pressure (transcript over `MODBIT_COMPACTION_TOKEN_BUDGET`) it runs the bounded synchronous compaction now (`mode` `SYNC_FALLBACK`); under soft pressure (three quarters of the budget) with no worker in flight it logs `CompactionStarted` and starts a worker off the loop (`mode` `ASYNC`). Every request ends on the log — committed by `CompactionCommitted` beside the `ContextEpochOpened` that names it, or rejected — and doc 31's `compaction_epochs` is projected from those events (doc 30 "Durability": `CompactionStarted`, `CompactionCommitted`, `CompactionRejectedStale`); the Context Inspector lists them. A request left pending by a run or process that ended is closed `RUN_ENDED` when the task resumes. `MODBIT_COMPACTION_WORKER_DELAY_MS` is the docs/54 fault-10 hook that holds a worker's result so a test can move the history first.
+
 ## Checkpoint epochs
 
 Checkpoint metadata includes monotonic epoch, base revision, delta object refs, Git HEAD/worktree state, index generation, terminal/browser/sandbox reattachment metadata and integrity hash. A stale epoch can never overwrite newer checkpoint state.
