@@ -10,12 +10,17 @@
       ],
       "admitted": true,
       "currency": "USD",
+      "feasibility": "QUALITY_FLOOR_UNKNOWN",
       "planId": "direct:11111111111111111111111111111111",
+      "qualityLcbBp": 0,
       "refusalCode": "",
       "refusalDetail": "",
       "reservedMinor": "0",
       "routingEpoch": "0",
       "scale": 2,
+      "statsVersion": "none",
+      "targetMet": false,
+      "thresholdsVersion": "none",
       "validationDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
     },
     "attempts": [

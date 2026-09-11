@@ -20071,13 +20071,16 @@
    "task_card": "docs/49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md#epr-003",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller or executor present",
    "milestone_override": "DR-M2-002: router machinery follows the EPR-000 baseline evidence; scheduled in M3 ahead of the M4/M5 EPR tasks that depend on it",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "commit:16515e3",
     "artifact:evidence/m3/EPR-003/TASK_CARD.md",
     "test:qual_epr_003_the_profiler_records_intrinsic_demand_in_shadow_and_claims_nothing",
     "test:calibration_is_published_and_an_unrecorded_cohort_blocks_promotion",
-    "test:features_are_intrinsic_and_no_catalog_change_can_move_them"
+    "test:features_are_intrinsic_and_no_catalog_change_can_move_them",
+    "run:34554982015",
+    "artifact:evidence/m3/EPR-003/ci-run-34554982015.json",
+    "commit:0540d62"
    ],
    "notes": [
     {
@@ -20103,9 +20106,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "local gates green; metrics published in the task card: extraction p50 22us / p95 261us on an Apple M5 Pro, calibration not promotable at 0 observations"
+    },
+    {
+     "at": "2026-09-11T02:40:33Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 0540d62: the corpus, the determinism, the conservative fallbacks and the shadow record through Core"
+    },
+    {
+     "at": "2026-09-11T02:40:33Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "bounded deterministic catalog-independent profiling, shadow-only, with calibration published and promotion blocked at zero observations"
     }
    ],
-   "status_changed_on": "2026-09-11T01:26:19Z"
+   "status_changed_on": "2026-09-11T02:40:33Z"
   },
   {
    "id": "EPR-004",
@@ -20542,8 +20557,41 @@
    "task_card": "docs/49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md#epr-016",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller or executor present",
    "milestone_override": "DR-M2-002: router machinery follows the EPR-000 baseline evidence; scheduled in M3 ahead of the M4/M5 EPR tasks that depend on it",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "commit:0540d62",
+    "artifact:evidence/m3/EPR-016/TASK_CARD.md",
+    "test:qual_epr_016_feasibility_is_measured_at_admission_under_pinned_versions",
+    "test:a_high_mean_with_a_weak_bound_fails_cheap_eligibility",
+    "test:an_empty_feasible_set_is_said_exactly_and_never_claims_the_target"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-11T02:40:41Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "existing code audit: admission validates a plan's shape and budget but nothing measures whether it can meet the mode's quality floor; the registry carries the floor and EPR-015 carries the observations, and nothing joins them"
+    },
+    {
+     "at": "2026-09-11T02:40:41Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "crates/providers/src/feasibility.rs: whole-plan quality composed from per-leg lower bounds, feasibility on the bound with a sample threshold, cheapest-feasible selection with a switch cost, and an exact QUALITY_FLOOR_INFEASIBLE fallback that never claims the target"
+    },
+    {
+     "at": "2026-09-11T02:40:41Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "admission measures every plan, the direct one included, against the session's latest snapshot and the registry's auto floor, and records the verdict with the stats and threshold versions it was measured under"
+    },
+    {
+     "at": "2026-09-11T02:41:17Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "local gates pending the workspace run"
+    }
+   ],
+   "status_changed_on": "2026-09-11T02:41:17Z"
   },
   {
    "id": "EPR-017",

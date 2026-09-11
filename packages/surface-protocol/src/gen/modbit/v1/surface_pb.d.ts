@@ -3886,6 +3886,43 @@ export declare type RoutingAdmissionView = Message<"modbit.v1.RoutingAdmissionVi
    * @generated from field: repeated modbit.v1.RoutingActivationView activations = 10;
    */
   activations: RoutingActivationView[];
+
+  /**
+   * What confidence-adjusted feasibility said at admission (REQ-EPR-016).
+   *
+   * FEASIBLE | QUALITY_FLOOR_INFEASIBLE | QUALITY_FLOOR_UNKNOWN
+   *
+   * @generated from field: string feasibility = 11;
+   */
+  feasibility: string;
+
+  /**
+   * the plan's quality lower bound, in basis points
+   *
+   * @generated from field: uint32 quality_lcb_bp = 12;
+   */
+  qualityLcbBp: number;
+
+  /**
+   * the snapshot the bound came from, or none
+   *
+   * @generated from field: string stats_version = 13;
+   */
+  statsVersion: string;
+
+  /**
+   * the threshold version it was measured against, or none
+   *
+   * @generated from field: string thresholds_version = 14;
+   */
+  thresholdsVersion: string;
+
+  /**
+   * only a feasible plan may be described as meeting the target
+   *
+   * @generated from field: bool target_met = 15;
+   */
+  targetMet: boolean;
 };
 
 /**

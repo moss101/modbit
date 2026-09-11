@@ -195,6 +195,11 @@ pub fn samples() -> Vec<Sample> {
                 activation: 1,
                 reserved_minor: 0,
             }],
+            feasibility: "QUALITY_FLOOR_UNKNOWN".into(),
+            quality_lcb_bp: 0,
+            stats_version: "none".into(),
+            thresholds_version: "none".into(),
+            target_met: false,
         }),
     };
     let hello = Hello {
@@ -301,7 +306,9 @@ pub fn samples() -> Vec<Sample> {
                     "routingEpoch": "0", "refusalCode": "", "refusalDetail": "",
                     "activations": [{
                         "slotId": "initial", "activation": 1, "reservedMinor": "0"
-                    }]
+                    }],
+                    "feasibility": "QUALITY_FLOOR_UNKNOWN", "qualityLcbBp": 0,
+                    "statsVersion": "none", "thresholdsVersion": "none", "targetMet": false
                 }
             }),
             decode: reencode::<RoutingPlanView>,

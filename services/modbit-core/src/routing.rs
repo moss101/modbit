@@ -109,6 +109,11 @@ fn admission_view(
         routing_epoch: 0,
         refusal_code: String::new(),
         refusal_detail: String::new(),
+        feasibility: row.feasibility,
+        quality_lcb_bp: row.quality_lcb_bp,
+        stats_version: row.stats_version,
+        thresholds_version: row.thresholds_version,
+        target_met: row.target_met,
         activations: store
             .routing_activations(plan_id)
             .unwrap_or_default()
@@ -208,6 +213,8 @@ pub(crate) async fn admit(
         };
     let plan_id = plan.plan_id.clone();
     let plan_ref = modbit_domain::routing::plan_digest(&plan);
+    let registry = core.gateway.registry();
+    let feasibility = feasibility_of(&store, registry.as_ref(), session_id, &plan);
     let events = vec![
         crate::runtime::typed(
             "RoutingPlanCompiled",
@@ -226,6 +233,11 @@ pub(crate) async fn admit(
                 currency: admission.reserved.currency.clone(),
                 scale: admission.reserved.scale,
                 lease_generation: admission.lease_generation,
+                feasibility: feasibility.code.clone(),
+                quality_lcb_bp: feasibility.lcb_bp,
+                stats_version: feasibility.stats_version.clone(),
+                thresholds_version: feasibility.thresholds_version.clone(),
+                target_met: feasibility.target_met,
             },
             modbit_domain::event::Actor::Core("admission".into()),
         ),
@@ -249,7 +261,12 @@ pub(crate) async fn admit(
         scale: u32::from(admission.reserved.scale),
         routing_epoch: admission.routing_epoch,
         refusal_code: String::new(),
-        refusal_detail: String::new(),
+        refusal_detail: feasibility.detail.clone(),
+        feasibility: feasibility.code.clone(),
+        quality_lcb_bp: feasibility.lcb_bp,
+        stats_version: feasibility.stats_version.clone(),
+        thresholds_version: feasibility.thresholds_version.clone(),
+        target_met: feasibility.target_met,
         activations: store
             .routing_activations(&plan_id)
             .unwrap_or_default()
@@ -260,5 +277,152 @@ pub(crate) async fn admit(
                 reserved_minor: a.reserved_minor,
             })
             .collect(),
+    }
+}
+
+/// What confidence-adjusted feasibility said about a plan at admission
+/// (REQ-EPR-016). Admission does not refuse on it; it records it, so the
+/// plan can never later be described as meeting a target the evidence did
+/// not support.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct FeasibilityRecord {
+    /// `FEASIBLE` | `QUALITY_FLOOR_INFEASIBLE` | `QUALITY_FLOOR_UNKNOWN`.
+    pub code: String,
+    /// Quality lower bound, in basis points.
+    pub lcb_bp: u32,
+    /// The snapshot the bound came from, or `none`.
+    pub stats_version: String,
+    /// The threshold version, or `none`.
+    pub thresholds_version: String,
+    /// Whether the plan may be described as meeting the target.
+    pub target_met: bool,
+    /// Why, in the selector's own words.
+    pub detail: String,
+}
+
+fn bp(v: f64) -> u32 {
+    let scaled = (v * 10_000.0).round();
+    if scaled.is_finite() && scaled >= 0.0 {
+        u32::try_from(scaled as i64).unwrap_or(10_000).min(10_000)
+    } else {
+        0
+    }
+}
+
+/// Measure one plan against the session's latest statistics snapshot and the
+/// active registry's mode floor. With no floor there is nothing to measure
+/// against, and the record says unknown rather than feasible.
+pub(crate) fn feasibility_of(
+    store: &modbit_event_store::EventStore,
+    registry: Option<&modbit_providers::registry::ModelRegistry>,
+    session_id: modbit_domain::SessionId,
+    plan: &modbit_domain::routing::ConditionalExecutionPlan,
+) -> FeasibilityRecord {
+    use modbit_providers::feasibility::{Candidate, LegEvidence, Thresholds, plan_quality, select};
+    let Some(floor) = registry.and_then(|r| {
+        r.document
+            .quality_floors
+            .iter()
+            .find(|f| f.mode == "auto")
+            .cloned()
+    }) else {
+        return FeasibilityRecord {
+            code: "QUALITY_FLOOR_UNKNOWN".into(),
+            lcb_bp: 0,
+            stats_version: "none".into(),
+            thresholds_version: "none".into(),
+            target_met: false,
+            detail: "no active registry defines a mode floor; nothing can be measured against"
+                .into(),
+        };
+    };
+    let thresholds = Thresholds {
+        mode: floor.mode.clone(),
+        tau: floor.min_quality,
+        delta: 0.05,
+        min_samples: modbit_bench_outcome_statistics::MIN_CONFIDENT_SAMPLES,
+        switch_cost_minor: 0,
+        thresholds_version: registry
+            .map_or_else(|| "none".to_owned(), |r| r.generation().to_owned()),
+    };
+    let snapshot = crate::statistics::latest_snapshot(store, session_id).map(|(s, _)| s);
+    let stats_version = snapshot
+        .as_ref()
+        .map_or_else(|| "none".to_owned(), |s| s.stats_version.clone());
+    let evidence_for = |key: &modbit_bench_outcome_statistics::StatKey| {
+        snapshot
+            .as_ref()
+            .and_then(|s| s.get(key))
+            .map(|a| LegEvidence {
+                key_id: a.key_id.clone(),
+                lcb: a.interval.0,
+                mean: a.mean,
+                samples: a.samples,
+            })
+    };
+    let initial = plan
+        .slots
+        .iter()
+        .find(|s| s.trigger == modbit_domain::routing::Trigger::Initial);
+    let continuation = plan
+        .slots
+        .iter()
+        .find(|s| s.trigger == modbit_domain::routing::Trigger::QualityRejected);
+    let initial_key = initial.map(|s| modbit_bench_outcome_statistics::StatKey::Solver {
+        model: s.model.clone(),
+        skill: "none".into(),
+        harness: crate::baseline::build_digest(),
+    });
+    let continuation_key = initial.zip(continuation).map(|(i, c)| {
+        modbit_bench_outcome_statistics::StatKey::Escalation {
+            from_model: i.model.clone(),
+            to_model: c.model.clone(),
+            gate: "acceptance".into(),
+            repository: "workspace".into(),
+            verification: "configured".into(),
+        }
+    });
+    let initial_key_id = initial_key
+        .as_ref()
+        .map_or_else(|| "solver|none".to_owned(), |k| k.key_id());
+    let continuation_key_id = continuation_key.as_ref().map(|k| k.key_id());
+    let quality = plan_quality(
+        initial_key.as_ref().and_then(&evidence_for).as_ref(),
+        continuation_key.as_ref().and_then(&evidence_for).as_ref(),
+        &initial_key_id,
+        continuation_key_id.as_deref(),
+        &thresholds,
+    );
+    let worst_case = plan
+        .slots
+        .iter()
+        .map(|s| s.budget.reserved.minor_units)
+        .sum::<u64>()
+        .saturating_add(plan.verification_reserve.minor_units);
+    let candidate = Candidate {
+        plan_id: plan.plan_id.clone(),
+        worst_case_cost_minor: worst_case,
+        quality: quality.clone(),
+        // Admission already validated the plan against its own cap; budget
+        // and policy hold by construction here.
+        hard_eligible: true,
+        ineligible_reason: String::new(),
+    };
+    let selection = select(&[candidate], &thresholds, None);
+    FeasibilityRecord {
+        code: selection.code.clone(),
+        lcb_bp: bp(quality.lcb),
+        stats_version,
+        thresholds_version: thresholds.thresholds_version.clone(),
+        target_met: selection.target_met,
+        detail: selection.exclusions.first().map_or_else(
+            || {
+                format!(
+                    "lower bound {:.3} clears tau {:.3}",
+                    quality.lcb, thresholds.tau
+                )
+            },
+            |e| e.reason.clone(),
+        ),
     }
 }

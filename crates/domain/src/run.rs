@@ -206,6 +206,24 @@ pub enum RunEvent {
         scale: u8,
         /// The lease generation that admitted it.
         lease_generation: u64,
+        /// What confidence-adjusted feasibility said (REQ-EPR-016):
+        /// `FEASIBLE` | `QUALITY_FLOOR_INFEASIBLE` | `QUALITY_FLOOR_UNKNOWN`.
+        /// Admission does not refuse on it; it records it so nothing can
+        /// later claim a target the evidence did not support.
+        #[serde(default)]
+        feasibility: String,
+        /// The plan's quality lower bound, in basis points.
+        #[serde(default)]
+        quality_lcb_bp: u32,
+        /// The statistics snapshot the bound came from, or `none`.
+        #[serde(default)]
+        stats_version: String,
+        /// The threshold version the bound was measured against, or `none`.
+        #[serde(default)]
+        thresholds_version: String,
+        /// Whether the plan may be described as meeting the mode's target.
+        #[serde(default)]
+        target_met: bool,
     },
     /// One activation of one slot (REQ-EPR-014). A slot is bounded by its
     /// activations, not by the attempts inside them, and a restart recovers

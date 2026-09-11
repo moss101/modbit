@@ -275,10 +275,15 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                     currency,
                     scale,
                     lease_generation,
+                    feasibility,
+                    quality_lcb_bp,
+                    stats_version,
+                    thresholds_version,
+                    target_met,
                 } => {
                     tx.execute(
-                        "INSERT OR REPLACE INTO routing_admissions (plan_id, validation_digest, reserved_minor, currency, scale, lease_generation, admitted_at)
-                         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                        "INSERT OR REPLACE INTO routing_admissions (plan_id, validation_digest, reserved_minor, currency, scale, lease_generation, admitted_at, feasibility, quality_lcb_bp, stats_version, thresholds_version, target_met)
+                         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
                         params![
                             plan_id,
                             validation_digest,
@@ -287,6 +292,11 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                             i64::from(*scale),
                             *lease_generation as i64,
                             at.millis(),
+                            feasibility,
+                            i64::from(*quality_lcb_bp),
+                            stats_version,
+                            thresholds_version,
+                            i64::from(*target_met),
                         ],
                     )?;
                 }
@@ -1350,6 +1360,16 @@ pub struct RoutingAdmissionRow {
     pub scale: u8,
     /// The lease generation that admitted the plan.
     pub lease_generation: u64,
+    /// What feasibility said (REQ-EPR-016).
+    pub feasibility: String,
+    /// The plan's quality lower bound, in basis points.
+    pub quality_lcb_bp: u32,
+    /// The statistics snapshot the bound came from.
+    pub stats_version: String,
+    /// The threshold version it was measured against.
+    pub thresholds_version: String,
+    /// Whether the plan may be described as meeting the target.
+    pub target_met: bool,
 }
 
 /// One recorded activation of one slot.
@@ -1369,7 +1389,7 @@ pub fn load_routing_admission(
     plan_id: &str,
 ) -> Result<Option<RoutingAdmissionRow>> {
     let mut stmt = tx.prepare(
-        "SELECT validation_digest, reserved_minor, currency, scale, lease_generation FROM routing_admissions WHERE plan_id = ?1",
+        "SELECT validation_digest, reserved_minor, currency, scale, lease_generation, feasibility, quality_lcb_bp, stats_version, thresholds_version, target_met FROM routing_admissions WHERE plan_id = ?1",
     )?;
     Ok(stmt
         .query_map(params![plan_id], |r| {
@@ -1379,6 +1399,11 @@ pub fn load_routing_admission(
                 currency: r.get(2)?,
                 scale: u8::try_from(r.get::<_, i64>(3)?).unwrap_or_default(),
                 lease_generation: u64::try_from(r.get::<_, i64>(4)?).unwrap_or_default(),
+                feasibility: r.get(5)?,
+                quality_lcb_bp: u32::try_from(r.get::<_, i64>(6)?).unwrap_or_default(),
+                stats_version: r.get(7)?,
+                thresholds_version: r.get(8)?,
+                target_met: r.get::<_, i64>(9)? == 1,
             })
         })?
         .collect::<std::result::Result<Vec<_>, _>>()?

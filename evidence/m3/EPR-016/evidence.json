@@ -1,0 +1,17 @@
+{
+ "task": "EPR-016",
+ "requirement": "REQ-EPR-016",
+ "qual": "QUAL-EPR-016",
+ "tests": [
+  "qual_epr_016_feasibility_is_measured_at_admission_under_pinned_versions",
+  "a_high_mean_with_a_weak_bound_fails_cheap_eligibility",
+  "the_minimum_cost_feasible_plan_wins_and_switch_cost_stops_flapping",
+  "an_empty_feasible_set_is_said_exactly_and_never_claims_the_target",
+  "a_continuation_adds_only_what_its_own_observations_support"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "Through Core, a run with no registry records QUALITY_FLOOR_UNKNOWN; after a signed registry with a 0.72 floor and a materialized stats-1 snapshot, the next run's admission records QUALITY_FLOOR_INFEASIBLE under stats-1 and registry-feas-1 with target_met false, and a submitted two-slot plan is measured the same way with its unobserved continuation named. Selection rules and every EPR-FI-016 mutation are proven against synthetic candidates.",
+ "audit": "ABSENT before this task: the floor, the observations and the plan were never joined; nothing measured a plan against the floor or chose between plans.",
+ "limitations": "The product is in the cold-start case: with one observation per session every plan is infeasible and the direct baseline runs unclaimed. delta and switch cost are fixed in Core until a mode policy carries them. The escalation key uses fixed gate/repository/verification components until EPR-005/006 observe real escalations. Multi-candidate selection has no caller until EPR-004."
+}

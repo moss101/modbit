@@ -12762,3 +12762,313 @@ async fn qual_epr_003_the_profiler_records_intrinsic_demand_in_shadow_and_claims
     );
     assert_eq!(plan.2["plan"]["slots"].as_array().map(Vec::len), Some(1));
 }
+
+/// QUAL-EPR-016 / EPR-E2E-016: the confidence-adjusted feasibility of a plan
+/// is measured at admission against the session's pinned statistics snapshot
+/// and the active registry's mode floor, and recorded with the versions it
+/// was measured under. Thin evidence is infeasible and never claims the
+/// target; no floor at all is unknown, not feasible.
+#[tokio::test]
+async fn qual_epr_016_feasibility_is_measured_at_admission_under_pinned_versions() {
+    use ed25519_dalek::{Signer, SigningKey};
+    use modbit_domain::routing::{
+        Budget, ConditionalExecutionPlan, Money, Provenance, ROUTING_SCHEMA_VERSION, Slot, Trigger,
+    };
+    use modbit_protocol::v1::{
+        ActivateModelRegistry, AdmitRoutingPlan, GetRoutingPlan, MaterializeOutcomeStatistics,
+        ModelRegistryView, OutcomeStatisticsView, PublishOutcomeBaseline, RoutingAdmissionView,
+        RoutingPlanView, StartTask, TaskRunStarted,
+    };
+    use modbit_providers::registry::{
+        Economics, Governance, Latency, QualityFloor, REGISTRY_SCHEMA_VERSION, RegistryDocument,
+        RegistryEntry, SignedRegistry,
+    };
+    use serde_json::json;
+    let key = SigningKey::from_bytes(&[13u8; 32]);
+    let key_hex = hex::encode(key.verifying_key().to_bytes());
+    let now = modbit_domain::Timestamp::now().0;
+    let entry = |model: &str, roles: &[&str]| RegistryEntry {
+        endpoint: "openai".into(),
+        provider: "openai".into(),
+        family: "gpt-5".into(),
+        model: model.into(),
+        roles: roles.iter().map(|r| (*r).to_owned()).collect(),
+        input_modalities: vec!["text".into()],
+        context_tokens: 400_000,
+        max_output_tokens: 64_000,
+        tools: true,
+        vision: false,
+        reasoning: true,
+        structured_output: true,
+        economics: Economics {
+            input_per_mtok_minor: 25,
+            output_per_mtok_minor: 200,
+            currency: "USD".into(),
+            scale: 2,
+        },
+        latency: Latency {
+            p50_ms: 900,
+            p95_ms: 4_200,
+        },
+        governance: Governance {
+            data_residency: "us".into(),
+            retains_prompts: false,
+            allowed_profiles: vec![],
+        },
+        revoked: false,
+    };
+    let document = RegistryDocument {
+        schema_version: REGISTRY_SCHEMA_VERSION,
+        registry_generation: "registry-feas-1".into(),
+        stats_version: "stats-1".into(),
+        issued_at_ms: now - 60_000,
+        expires_at_ms: now + 86_400_000,
+        quality_floors: vec![QualityFloor {
+            mode: "auto".into(),
+            min_quality: 0.72,
+            max_cost_minor: 5_000,
+            currency: "USD".into(),
+            scale: 2,
+        }],
+        entries: vec![
+            entry("gpt-5-mini", &["solver"]),
+            entry("gpt-5", &["solver", "reviewer"]),
+        ],
+    };
+    let signed = {
+        let json = serde_json::to_string(&document).unwrap();
+        serde_json::to_string(&SignedRegistry {
+            key_id: "ops".into(),
+            signature_hex: hex::encode(key.sign(json.as_bytes()).to_bytes()),
+            document_json: json,
+        })
+        .unwrap()
+    };
+    let (repo, root) = plain_repo(&[("total.py", "def total(q, unit):\n    return q * unit\n")]);
+    let revision = String::from_utf8(
+        Command::new("git")
+            .arg("-C")
+            .arg(repo.path())
+            .args(["rev-parse", "HEAD"])
+            .output()
+            .unwrap()
+            .stdout,
+    )
+    .unwrap()
+    .trim()
+    .to_owned();
+    let script = vec![
+        json!({"calls": [{"name": "fs.read", "args": {"path": "total.py"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "read it", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, _seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_REGISTRY_KEYS", &format!("ops:{key_hex}")),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x91)).await;
+    let g = lease_for(&session);
+    async fn routing(c: &mut Client, task: Id, id: u8) -> RoutingPlanView {
+        let ack = c
+            .command(envelope(
+                id16(id),
+                "GetRoutingPlan",
+                GetRoutingPlan {
+                    task_id: Some(task),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    }
+    async fn run_task(c: &mut Client, session: &Id, g: Option<u64>, root: &str, id: u8) -> Id {
+        let task = create_task_with_profile(c, session, g, root, id, "local_trusted").await;
+        let ack = c
+            .command(envelope_fenced(
+                id16(id + 1),
+                "StartTask",
+                StartTask {
+                    task_id: Some(task.clone()),
+                    endpoint: String::new(),
+                    model: "gpt-5-mini".into(),
+                    max_turns: 6,
+                    max_tool_calls: 0,
+                    max_no_progress_turns: 6,
+                }
+                .encode_to_vec(),
+                g,
+            ))
+            .await
+            .unwrap();
+        let _: TaskRunStarted = Client::result(&ack).unwrap();
+        let st = wait_task(c, &task, 180).await;
+        assert!(!st.loop_alive, "{st:?}");
+        task
+    }
+    // 1. No registry, no floor: the direct plan's admission says unknown,
+    //    with no version to pin, and never that the target was met.
+    let first = run_task(&mut c, &session, g, &root, 0x92).await;
+    let v = routing(&mut c, first.clone(), 0x94).await;
+    let a = v.admission.as_ref().unwrap_or_else(|| panic!("{v:?}"));
+    assert_eq!(a.feasibility, "QUALITY_FLOOR_UNKNOWN", "{a:?}");
+    assert_eq!(
+        (a.stats_version.as_str(), a.thresholds_version.as_str()),
+        ("none", "none")
+    );
+    assert!(!a.target_met, "{a:?}");
+    // 2. Activate the registry (a floor of 0.72) and materialize the one
+    //    observation this session has.
+    let ack = c
+        .command(envelope(
+            id16(0x95),
+            "ActivateModelRegistry",
+            ActivateModelRegistry {
+                signed_json: signed.clone(),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let r: ModelRegistryView = Client::result(&ack).unwrap();
+    assert!(r.active, "{r:?}");
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x96),
+            "PublishOutcomeBaseline",
+            PublishOutcomeBaseline {
+                session_id: Some(session.clone()),
+                repository_revision: revision.clone(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: modbit_protocol::v1::OutcomeBaselinePublished = Client::result(&ack).unwrap();
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x97),
+            "MaterializeOutcomeStatistics",
+            MaterializeOutcomeStatistics {
+                session_id: Some(session.clone()),
+                stats_version: "stats-1".into(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let s: OutcomeStatisticsView = Client::result(&ack).unwrap();
+    assert!(s.materialized && s.samples == 1, "{s:?}");
+    // 3. The next run is measured under the pinned versions: one observation
+    //    is thin evidence, so the plan is infeasible against the floor, says
+    //    why, and does not claim the target.
+    let second = run_task(&mut c, &session, g, &root, 0x98).await;
+    let v = routing(&mut c, second.clone(), 0x9A).await;
+    let a = v.admission.as_ref().unwrap_or_else(|| panic!("{v:?}"));
+    assert_eq!(a.feasibility, "QUALITY_FLOOR_INFEASIBLE", "{a:?}");
+    assert_eq!(a.stats_version, "stats-1", "{a:?}");
+    assert_eq!(a.thresholds_version, "registry-feas-1", "{a:?}");
+    assert!(!a.target_met, "{a:?}");
+    assert!(a.quality_lcb_bp < 7_200, "{a:?}");
+    // 4. A conditional plan submitted through admission is measured the same
+    //    way, and its unobserved continuation is named rather than assumed.
+    let run_id = modbit_domain::RunId::parse(v.plan_id.strip_prefix("direct:").unwrap()).unwrap();
+    let usd = |m: u64| Money {
+        minor_units: m,
+        currency: "USD".into(),
+        scale: 2,
+    };
+    let slot = |id: &str, model: &str, pred: Option<&str>, trigger: Trigger| Slot {
+        slot_id: id.into(),
+        predecessor: pred.map(str::to_owned),
+        trigger,
+        max_activations: 1,
+        endpoint: "openai".into(),
+        model: model.into(),
+        role: "solver".into(),
+        budget: Budget {
+            timeout_ms: 120_000,
+            max_output_tokens: 4096,
+            max_retries: 0,
+            reserved: usd(200),
+        },
+    };
+    let plan = ConditionalExecutionPlan {
+        schema_version: ROUTING_SCHEMA_VERSION,
+        plan_id: "plan-feas".into(),
+        tenant_id: modbit_domain::TenantId::from_bytes([0xA1; 16]),
+        session_id: modbit_domain::SessionId::from_bytes(session.value.clone().try_into().unwrap()),
+        task_id: modbit_domain::TaskId::from_bytes(second.value.clone().try_into().unwrap()),
+        run_id,
+        routing_epoch: 1,
+        lease_generation: g.unwrap_or(0),
+        created_at_ms: now,
+        provenance: Provenance {
+            policy_version: "policy-1".into(),
+            registry_generation: "registry-feas-1".into(),
+            profiler_version: "profiler-1".into(),
+            statistics_version: "stats-1".into(),
+            compiler_version: "compiler-2".into(),
+            gate_version: "gate-1".into(),
+            risk_version: "risk-1".into(),
+            legacy_decode: None,
+        },
+        input_digest: "f".repeat(64),
+        slots: vec![
+            slot("initial", "gpt-5-mini", None, Trigger::Initial),
+            slot(
+                "stronger",
+                "gpt-5",
+                Some("initial"),
+                Trigger::QualityRejected,
+            ),
+        ],
+        max_total_attempts: 4,
+        max_revisions: 1,
+        verification_reserve: usd(100),
+        total_budget: usd(1000),
+        content_digest: String::new(),
+    }
+    .sealed();
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x9B),
+            "AdmitRoutingPlan",
+            AdmitRoutingPlan {
+                task_id: Some(second.clone()),
+                plan_json: serde_json::to_string(&plan).unwrap(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let admitted: RoutingAdmissionView = Client::result(&ack).unwrap();
+    assert!(admitted.admitted, "{admitted:?}");
+    assert_eq!(
+        admitted.feasibility, "QUALITY_FLOOR_INFEASIBLE",
+        "{admitted:?}"
+    );
+    assert_eq!(admitted.stats_version, "stats-1");
+    assert_eq!(admitted.thresholds_version, "registry-feas-1");
+    assert!(!admitted.target_met);
+    assert!(
+        admitted.refusal_detail.contains("low confidence")
+            || admitted.refusal_detail.contains("no observation"),
+        "the shortfall is said in the selector's words: {admitted:?}"
+    );
+    // The record survives as the plan the client reads back.
+    let v = routing(&mut c, second.clone(), 0x9C).await;
+    let a = v.admission.as_ref().unwrap();
+    assert_eq!(
+        (a.feasibility.as_str(), a.target_met),
+        ("QUALITY_FLOOR_INFEASIBLE", false)
+    );
+}

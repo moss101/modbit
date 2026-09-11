@@ -236,6 +236,11 @@ fn append_plan_and_attempts(
                         currency: "USD".into(),
                         scale: 2,
                         lease_generation: 1,
+                        feasibility: "QUALITY_FLOOR_UNKNOWN".into(),
+                        quality_lcb_bp: 0,
+                        stats_version: "none".into(),
+                        thresholds_version: "none".into(),
+                        target_met: false,
                     },
                 ),
                 typed(
@@ -447,8 +452,8 @@ fn a_database_from_before_the_routing_tables_upgrades_and_derives_them() {
 
     make_pre_routing(dir.path());
     let (store, report) = EventStore::open_with_report(dir.path()).unwrap();
-    assert_eq!((report.from_version, report.to_version), (6, 8));
-    assert_eq!(report.applied, vec![7, 8]);
+    assert_eq!((report.from_version, report.to_version), (6, 9));
+    assert_eq!(report.applied, vec![7, 8, 9]);
     assert_eq!(
         store.last_offset().unwrap(),
         events,
@@ -524,7 +529,7 @@ fn a_crash_during_the_routing_migration_leaves_a_recoverable_database() {
     let (store, report) = EventStore::open_with_report(dir.path()).unwrap();
     assert_eq!(
         (report.from_version, report.to_version),
-        (6, 8),
+        (6, 9),
         "the killed migration committed nothing"
     );
     assert_eq!(

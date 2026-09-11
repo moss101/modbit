@@ -10,8 +10,12 @@
   "a_thin_slice_is_shrunk_toward_the_prior_and_a_thick_one_is_not",
   "calibration_is_published_and_an_unrecorded_cohort_blocks_promotion"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "0540d62"
+ ],
+ "runs": [
+  "run:34554982015"
+ ],
  "metrics": {
   "hardware": "Apple M5 Pro, Darwin arm64",
   "extraction_p50_us": 22,
@@ -30,5 +34,6 @@
  },
  "proof": "A real task through Core on a real repository records a profile that reads the request for what it intrinsically is (cross-file bug fix, web domain, wants verification), with a feature digest, an OOD flag and zero probability and confidence because the shipped cohort is empty; the run still dispatches on the direct path and its plan's provenance says no profiler informed it. Over a fixed corpus of eight requests against four real fixture repositories, extraction classifies every task and domain correctly, is deterministic to the digest, and costs p50 22us / p95 261us on an Apple M5 Pro.",
  "audit": "ABSENT before this task: no feature extraction, no probability, no confidence and no OOD signal existed anywhere.",
- "limitations": "The calibration cohort is empty, so every request is out of distribution and the promotion gate refuses at 0 observations: the profiler is shadow-only in fact. The shrinkage, support-floor and promotion rules are exercised against synthetic cohorts, which is honest for a rule but is not a measurement of the product. has_configured_verification is not read from the workspace yet. Nothing consumes the profile: that is EPR-016 and EPR-004, both gated on a promotable cohort."
+ "limitations": "The calibration cohort is empty, so every request is out of distribution and the promotion gate refuses at 0 observations: the profiler is shadow-only in fact. The shrinkage, support-floor and promotion rules are exercised against synthetic cohorts, which is honest for a rule but is not a measurement of the product. has_configured_verification is not read from the workspace yet. Nothing consumes the profile: that is EPR-016 and EPR-004, both gated on a promotable cohort.",
+ "ci": "https://github.com/moss101/modbit/actions/runs/34554982015 (green on macOS, Linux and Windows at 0540d62)"
 }

@@ -17,6 +17,7 @@
 
 pub mod anthropic;
 pub mod contract;
+pub mod feasibility;
 pub mod gateway;
 pub mod openai;
 pub mod profiler;

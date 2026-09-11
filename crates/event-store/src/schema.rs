@@ -359,6 +359,16 @@ CREATE TABLE IF NOT EXISTS routing_activations (
 CREATE INDEX IF NOT EXISTS routing_activations_plan ON routing_activations (plan_id, activated_at);
 "#;
 
+/// V9 (REQ-EPR-016): what confidence-adjusted feasibility said about an
+/// admitted plan, alongside the admission it belongs to.
+pub const V9_FEASIBILITY: &str = r#"
+ALTER TABLE routing_admissions ADD COLUMN feasibility TEXT NOT NULL DEFAULT '';
+ALTER TABLE routing_admissions ADD COLUMN quality_lcb_bp INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE routing_admissions ADD COLUMN stats_version TEXT NOT NULL DEFAULT '';
+ALTER TABLE routing_admissions ADD COLUMN thresholds_version TEXT NOT NULL DEFAULT '';
+ALTER TABLE routing_admissions ADD COLUMN target_met INTEGER NOT NULL DEFAULT 0;
+"#;
+
 /// All migrations in order. Never edit an entry once shipped; append a new one.
 pub const MIGRATIONS: &[Migration] = &[
     Migration {
@@ -408,6 +418,12 @@ pub const MIGRATIONS: &[Migration] = &[
         name: "routing_admissions_activations",
         up: V8_ADMISSION,
         rollback: "Additive derivable tables. Rollback = drop `routing_admissions` and `routing_activations` and rebuild projections; no event is touched.",
+    },
+    Migration {
+        version: 9,
+        name: "routing_admission_feasibility",
+        up: V9_FEASIBILITY,
+        rollback: "Additive derivable columns with defaults. Rollback = older builds ignore the columns; a rebuild derives them from the log; no event is touched.",
     },
 ];
 

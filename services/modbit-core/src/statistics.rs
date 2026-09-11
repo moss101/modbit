@@ -147,14 +147,13 @@ pub(crate) async fn materialize(
     view(&snapshot, &snapshot_ref)
 }
 
-/// Load a snapshot back: the pinned version, or the most recent one.
-pub(crate) async fn get(
-    core: &Core,
+/// The most recent snapshot materialized under a session, with its object
+/// ref, read from the log.
+pub(crate) fn latest_snapshot(
+    store: &modbit_event_store::EventStore,
     session_id: SessionId,
-    stats_version: &str,
-) -> wire::OutcomeStatisticsView {
-    let store = core.store.lock().await;
-    let mut found: Option<(stats::Snapshot, String)> = None;
+) -> Option<(stats::Snapshot, String)> {
+    let mut found = None;
     let mut after = 0u64;
     loop {
         let Ok(batch) = store.read_session(&session_id, after, 512) else {
@@ -181,7 +180,17 @@ pub(crate) async fn get(
             }
         }
     }
-    let Some((snapshot, snapshot_ref)) = found else {
+    found
+}
+
+/// Load a snapshot back: the pinned version, or the most recent one.
+pub(crate) async fn get(
+    core: &Core,
+    session_id: SessionId,
+    stats_version: &str,
+) -> wire::OutcomeStatisticsView {
+    let store = core.store.lock().await;
+    let Some((snapshot, snapshot_ref)) = latest_snapshot(&store, session_id) else {
         return wire::OutcomeStatisticsView {
             materialized: false,
             refusal_code: "STATS_NOT_FOUND".into(),

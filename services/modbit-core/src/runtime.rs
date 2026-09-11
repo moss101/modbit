@@ -156,6 +156,15 @@ impl Runtime {
                         vec![typed("TaskStarted", &TaskEvent::TaskStarted, actor.clone())],
                     )
                     .map_err(|e| ("STORE".into(), e))?;
+                    let plan_events = direct_plan_events(
+                        core,
+                        &store,
+                        &task,
+                        run_id,
+                        lease_generation,
+                        &cfg,
+                        &actor,
+                    )?;
                     append(
                         &mut store,
                         core,
@@ -176,14 +185,7 @@ impl Runtime {
                             typed("RunStarted", &RunEvent::RunStarted, actor.clone()),
                         ]
                         .into_iter()
-                        .chain(direct_plan_events(
-                            core,
-                            &task,
-                            run_id,
-                            lease_generation,
-                            &cfg,
-                            &actor,
-                        )?)
+                        .chain(plan_events)
                         .collect(),
                     )
                     .map_err(|e| ("STORE".into(), e))?;
@@ -215,6 +217,15 @@ impl Runtime {
                                 vec![typed("TaskResumed", &TaskEvent::TaskResumed, actor.clone())],
                             )
                             .map_err(|e| ("STORE".into(), e))?;
+                            let plan_events = direct_plan_events(
+                                core,
+                                &store,
+                                &task,
+                                run_id,
+                                lease_generation,
+                                &cfg,
+                                &actor,
+                            )?;
                             append(
                                 &mut store,
                                 core,
@@ -235,14 +246,7 @@ impl Runtime {
                                     typed("RunStarted", &RunEvent::RunStarted, actor.clone()),
                                 ]
                                 .into_iter()
-                                .chain(direct_plan_events(
-                                    core,
-                                    &task,
-                                    run_id,
-                                    lease_generation,
-                                    &cfg,
-                                    &actor,
-                                )?)
+                                .chain(plan_events)
                                 .collect(),
                             )
                             .map_err(|e| ("STORE".into(), e))?;
@@ -559,6 +563,7 @@ fn profile_run_id(lt: Lineage) -> RunId {
 /// second one.
 fn direct_plan_events(
     core: &Core,
+    store: &EventStore,
     task: &Task,
     run_id: RunId,
     lease_generation: u64,
@@ -593,6 +598,15 @@ fn direct_plan_events(
     .map_err(|r| (r.code().to_owned(), format!("{r:?}")))?;
     let plan_ref = modbit_domain::routing::plan_digest(&plan);
     let plan_id = plan.plan_id.clone();
+    // REQ-EPR-016: what the evidence says about this plan, recorded with its
+    // admission. The direct baseline is always hard eligible; whether it
+    // meets the mode's floor is a question of what was observed.
+    let feasibility = crate::routing::feasibility_of(
+        store,
+        core.gateway.registry().as_ref(),
+        task.session_id,
+        &plan,
+    );
     Ok(vec![
         typed(
             "RoutingPlanCompiled",
@@ -611,6 +625,11 @@ fn direct_plan_events(
                 currency: admission.reserved.currency,
                 scale: admission.reserved.scale,
                 lease_generation,
+                feasibility: feasibility.code,
+                quality_lcb_bp: feasibility.lcb_bp,
+                stats_version: feasibility.stats_version,
+                thresholds_version: feasibility.thresholds_version,
+                target_met: feasibility.target_met,
             },
             actor.clone(),
         ),

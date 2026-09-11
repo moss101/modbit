@@ -899,6 +899,12 @@ message RoutingAdmissionView {
   string refusal_code = 8;         // empty when admitted
   string refusal_detail = 9;
   repeated RoutingActivationView activations = 10;
+  // What confidence-adjusted feasibility said at admission (REQ-EPR-016).
+  string feasibility = 11;         // FEASIBLE | QUALITY_FLOOR_INFEASIBLE | QUALITY_FLOOR_UNKNOWN
+  uint32 quality_lcb_bp = 12;      // the plan's quality lower bound, in basis points
+  string stats_version = 13;       // the snapshot the bound came from, or none
+  string thresholds_version = 14;  // the threshold version it was measured against, or none
+  bool target_met = 15;            // only a feasible plan may be described as meeting the target
 }
 
 message RoutingActivationView {
