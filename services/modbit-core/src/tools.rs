@@ -415,6 +415,9 @@ impl ToolHost {
             approval,
             emergency_stopped,
             existing,
+            run_id,
+            turn_id,
+            call_id,
         } = call;
         let (workspace, root) = match &workspace_root {
             Some(r) => {
@@ -468,6 +471,62 @@ impl ToolHost {
             })),
             _ => None,
         };
+        // Write-ahead (docs/19 layer 2, M4.1): the proposal is on the log,
+        // bound to its run, turn and model call id and to the object holding
+        // its arguments, before anything is validated, decided or run. A
+        // Core that dies from here on finds the call and re-enters it by id.
+        let prior_state = existing.as_ref().map(|c| c.state);
+        if existing.is_none() {
+            let spec = self
+                .runtime
+                .registry()
+                .get(tool_name)
+                .map(|t| t.spec().clone());
+            let mut st = store.lock().await;
+            let arguments_ref = st.objects().put(arguments_json.as_bytes()).ok();
+            st.append(AppendRequest {
+                tenant_id,
+                session_id,
+                task_id: Some(task_id),
+                run_id,
+                turn_id,
+                step_id: None,
+                aggregate_type: AggregateType::ToolCall,
+                aggregate_id: *tool_call_id.as_bytes(),
+                expected_sequence: Some(0),
+                events: vec![typed(
+                    "ToolCallProposed",
+                    &ToolCallEvent::ToolCallProposed {
+                        task_id,
+                        step_id: None,
+                        tool_name: tool_name.to_owned(),
+                        tool_version: spec.as_ref().map(|s| s.version.clone()).unwrap_or_default(),
+                        effect_class: spec
+                            .as_ref()
+                            .map(|s| s.effect_class)
+                            .unwrap_or(modbit_domain::toolcall::EffectClass::ReadOnly),
+                        capability_lease_id: lease_id,
+                        arguments_hash: modbit_tools::arguments_hash(arguments_json)
+                            .unwrap_or_default(),
+                        run_id,
+                        turn_id,
+                        call_id: call_id.clone(),
+                        arguments_ref,
+                    },
+                    actor.clone(),
+                )],
+            })?;
+        }
+        let journal: Arc<dyn modbit_tools::DispatchJournal> = Arc::new(DispatchLog {
+            store: Arc::clone(store),
+            tenant_id,
+            session_id,
+            task_id,
+            run_id,
+            turn_id,
+            actor: actor.clone(),
+            prior_state,
+        });
         let ctx = InvokeContext {
             task_id,
             execution_profile: execution_profile.to_owned(),
@@ -482,6 +541,7 @@ impl ToolHost {
             language,
             artifacts,
             tool_call_id: None,
+            journal: Some(journal),
         };
         // REQ-EV-0106: snapshot the write targets so every successful write can
         // land a revision-bound FileChanged event with content and diff refs.
@@ -679,27 +739,9 @@ impl ToolHost {
             .unwrap_or(modbit_domain::toolcall::EffectClass::ReadOnly);
         let now = modbit_domain::Timestamp::now();
 
-        // Evidence: the stage trail becomes ToolCall events on the canonical log.
+        // Evidence: the outcome becomes ToolCall events on the canonical log
+        // (the proposal and the dispatch are already there, write-ahead).
         let mut events = Vec::new();
-        let (expected_sequence, prior_state) = match &existing {
-            Some(c) => (Some(c.generation), Some(c.state)),
-            None => (Some(0), None),
-        };
-        if existing.is_none() {
-            events.push(typed(
-                "ToolCallProposed",
-                &ToolCallEvent::ToolCallProposed {
-                    task_id,
-                    step_id: None,
-                    tool_name: tool_name.to_owned(),
-                    tool_version: outcome.tool_version.clone().unwrap_or_default(),
-                    effect_class,
-                    capability_lease_id: lease_id,
-                    arguments_hash: result.arguments_hash.clone(),
-                },
-                actor.clone(),
-            ));
-        }
         let mut approval_id: Option<ApprovalId> = None;
         let mut approval_events: Option<(ApprovalId, Vec<NewEvent>)> = None;
         let mut receipt: Option<EffectReceipt> = None;
@@ -784,7 +826,21 @@ impl ToolHost {
                     actor.clone(),
                 ));
             }
+            ToolStatus::InfraFailure if result.error_code.as_deref() == Some("JOURNAL_FAILED") => {
+                // The dispatch never reached the log, so nothing ran: the
+                // call fails from where it stood.
+                events.push(typed(
+                    "ToolCallFailed",
+                    &ToolCallEvent::ToolCallFailed {
+                        failure_code: "JOURNAL_FAILED".into(),
+                        result_ref: None,
+                    },
+                    actor.clone(),
+                ));
+            }
             _ => {
+                // Validated, decided and dispatched were journaled before the
+                // effector ran (`DispatchLog`); what follows is the outcome.
                 let (decision, used_approval) = match &outcome.policy {
                     Some(PolicyDecision::Allow { rule, approval_id }) => (
                         rule.clone(),
@@ -793,27 +849,6 @@ impl ToolHost {
                     other => (format!("{other:?}"), None),
                 };
                 approval_id = used_approval;
-                if prior_state != Some(ToolCallState::ApprovalPending) {
-                    events.push(typed(
-                        "ToolCallValidated",
-                        &ToolCallEvent::ToolCallValidated,
-                        actor.clone(),
-                    ));
-                }
-                events.push(typed(
-                    "ToolCallPolicyDecision",
-                    &ToolCallEvent::ToolCallPolicyDecision {
-                        allowed: true,
-                        decision: decision.clone(),
-                        approval_required: false,
-                    },
-                    actor.clone(),
-                ));
-                events.push(typed(
-                    "ToolCallDispatched",
-                    &ToolCallEvent::ToolCallDispatched,
-                    actor.clone(),
-                ));
                 // Protected/external/destructive effects get a receipt in the chain.
                 if effect_class >= modbit_domain::toolcall::EffectClass::ProtectedWrite {
                     let effect_id = modbit_domain::EffectId::new();
@@ -904,12 +939,13 @@ impl ToolHost {
         }
         if !events.is_empty() {
             let mut st = store.lock().await;
+            let expected_sequence = st.tool_call(&tool_call_id)?.map(|c| c.generation);
             st.append(AppendRequest {
                 tenant_id,
                 session_id,
                 task_id: Some(task_id),
-                run_id: None,
-                turn_id: None,
+                run_id,
+                turn_id,
                 step_id: None,
                 aggregate_type: AggregateType::ToolCall,
                 aggregate_id: *tool_call_id.as_bytes(),
@@ -984,6 +1020,12 @@ pub struct InvokeRequest<'a> {
     pub emergency_stopped: bool,
     /// Existing projection when the call re-enters after an approval.
     pub existing: Option<ToolCall>,
+    /// Run the call belongs to (protocol state binding, M4.1).
+    pub run_id: Option<RunId>,
+    /// Turn the call was proposed in.
+    pub turn_id: Option<modbit_domain::TurnId>,
+    /// The model's call id in the assistant message.
+    pub call_id: Option<String>,
 }
 
 /// What an invocation produced.
@@ -1035,6 +1077,78 @@ impl CapabilityPort for KernelPort {
     }
 }
 
+/// Write-ahead dispatch journal (docs/19 layer 2, M4.1): the pipeline calls
+/// this right before the effector runs, and the validated / decided /
+/// dispatched transitions land on the log in one transaction first. A Core
+/// that dies after this finds the call `Dispatched` and reconciles it; one
+/// that dies before finds it `Proposed` (or awaiting its approval) and
+/// re-enters it.
+struct DispatchLog {
+    store: Arc<Mutex<EventStore>>,
+    tenant_id: TenantId,
+    session_id: SessionId,
+    task_id: TaskId,
+    run_id: Option<RunId>,
+    turn_id: Option<modbit_domain::TurnId>,
+    actor: Actor,
+    prior_state: Option<ToolCallState>,
+}
+
+impl modbit_tools::DispatchJournal for DispatchLog {
+    fn dispatching<'a>(
+        &'a self,
+        record: &'a modbit_tools::DispatchRecord,
+    ) -> modbit_tools::JournalFuture<'a> {
+        Box::pin(async move {
+            let decision = match &record.decision {
+                PolicyDecision::Allow { rule, .. } => rule.clone(),
+                other => format!("{other:?}"),
+            };
+            let mut events = Vec::new();
+            if self.prior_state != Some(ToolCallState::ApprovalPending) {
+                events.push(typed(
+                    "ToolCallValidated",
+                    &ToolCallEvent::ToolCallValidated,
+                    self.actor.clone(),
+                ));
+            }
+            events.push(typed(
+                "ToolCallPolicyDecision",
+                &ToolCallEvent::ToolCallPolicyDecision {
+                    allowed: true,
+                    decision,
+                    approval_required: false,
+                },
+                self.actor.clone(),
+            ));
+            events.push(typed(
+                "ToolCallDispatched",
+                &ToolCallEvent::ToolCallDispatched,
+                self.actor.clone(),
+            ));
+            let mut st = self.store.lock().await;
+            let expected_sequence = st
+                .tool_call(&record.tool_call_id)
+                .map_err(|e| e.to_string())?
+                .map(|c| c.generation);
+            st.append(AppendRequest {
+                tenant_id: self.tenant_id,
+                session_id: self.session_id,
+                task_id: Some(self.task_id),
+                run_id: self.run_id,
+                turn_id: self.turn_id,
+                step_id: None,
+                aggregate_type: AggregateType::ToolCall,
+                aggregate_id: *record.tool_call_id.as_bytes(),
+                expected_sequence,
+                events,
+            })
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+        })
+    }
+}
+
 fn typed<E: serde::Serialize>(event_type: &str, e: &E, actor: Actor) -> NewEvent {
     let mut ev = NewEvent::new(
         event_type,
@@ -1046,7 +1160,7 @@ fn typed<E: serde::Serialize>(event_type: &str, e: &E, actor: Actor) -> NewEvent
 }
 
 /// Root-relative paths a write tool targets (for the pre-write snapshot).
-fn change_targets(tool_name: &str, arguments_json: &str) -> Vec<String> {
+pub(crate) fn change_targets(tool_name: &str, arguments_json: &str) -> Vec<String> {
     let Ok(v) = serde_json::from_str::<serde_json::Value>(arguments_json) else {
         return vec![];
     };

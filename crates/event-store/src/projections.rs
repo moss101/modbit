@@ -46,12 +46,107 @@ fn payload_json(
     }
 }
 
+/// What one event changes in a task's protocol state beyond the aggregate
+/// rows it updates (docs/19 layer 2).
+enum ProtocolDelta {
+    Rows,
+    QuestionAsked(modbit_protocol_state::PendingQuestion),
+    QuestionAnswered(String),
+    Reconciled(ToolCallId),
+}
+
+/// The `protocol_state` row of a task (docs/31): key `task:<task_id>`.
+pub fn protocol_key(task: &TaskId) -> String {
+    format!("task:{task}")
+}
+
+/// Load the materialized protocol state of a task, if any event touched it.
+pub fn load_protocol_state(
+    tx: &rusqlite::Connection,
+    session: &SessionId,
+    task: &TaskId,
+) -> Result<Option<modbit_protocol_state::ProtocolState>> {
+    let row: Option<String> = tx
+        .query_row(
+            "SELECT payload FROM protocol_state WHERE session_id = ?1 AND protocol_key = ?2",
+            params![session.as_bytes().as_slice(), protocol_key(task)],
+            |r| r.get(0),
+        )
+        .optional()?;
+    row.map(|p| Ok(serde_json::from_str(&p)?)).transpose()
+}
+
+/// docs/19 "Core commits event + critical projection changes in one
+/// transaction": after an event that touches a task's calls, approvals,
+/// leases, question or reconciliations, the task's protocol state is
+/// reconstructed from the rows just written and stored under its key with
+/// the next generation. Replay rebuilds it the same way, event by event.
+fn materialize_protocol_state(
+    tx: &Transaction<'_>,
+    session: SessionId,
+    task: TaskId,
+    at: Timestamp,
+    delta: ProtocolDelta,
+) -> Result<()> {
+    let prior = load_protocol_state(tx, &session, &task)?;
+    let generation = tx
+        .query_row(
+            "SELECT generation FROM protocol_state WHERE session_id = ?1 AND protocol_key = ?2",
+            params![session.as_bytes().as_slice(), protocol_key(&task)],
+            |r| r.get::<_, i64>(0),
+        )
+        .optional()?
+        .unwrap_or(0);
+    let mut question = prior.as_ref().and_then(|p| p.question.clone());
+    let mut reconciled: Vec<ToolCallId> = prior.map(|p| p.reconciled).unwrap_or_default();
+    match delta {
+        ProtocolDelta::Rows => {}
+        ProtocolDelta::QuestionAsked(q) => question = Some(q),
+        ProtocolDelta::QuestionAnswered(id) => {
+            if question.as_ref().is_some_and(|q| q.question_id == id) {
+                question = None;
+            }
+        }
+        ProtocolDelta::Reconciled(id) => {
+            if !reconciled.contains(&id) {
+                reconciled.push(id);
+            }
+        }
+    }
+    let calls = load_open_tool_calls(tx, &task)?;
+    let approvals = load_approvals_for_task(tx, &task)?;
+    let leases = load_leases_for_task(tx, &task)?;
+    let state = modbit_protocol_state::ProtocolState::reconstruct(
+        task,
+        modbit_protocol_state::Input {
+            tool_calls: &calls,
+            approvals: &approvals,
+            leases: &leases,
+            question,
+            reconciled: &reconciled,
+            now: at,
+        },
+    );
+    tx.execute(
+        "INSERT OR REPLACE INTO protocol_state (session_id, protocol_key, payload, generation, updated_at) VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![
+            session.as_bytes().as_slice(),
+            protocol_key(&task),
+            serde_json::to_string(&state)?,
+            generation + 1,
+            at.millis(),
+        ],
+    )?;
+    Ok(())
+}
+
 /// Apply one stored event to the projection tables.
 pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStore) -> Result<()> {
     let at = ev.envelope.occurred_at;
     let id = ev.envelope.aggregate_id;
     let payload = payload_json(tx, ev, objects)?;
     let offset = ev.offset;
+    let session = ev.envelope.session_id;
     match ev.envelope.aggregate_type {
         AggregateType::Session => {
             let event: SessionEvent = serde_json::from_value(payload)?;
@@ -125,6 +220,30 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                     &t.workspace_root,
                 ],
             )?;
+            let delta = match &event {
+                TaskEvent::UserQuestionAsked {
+                    question_id,
+                    call_id,
+                    ..
+                } => Some(ProtocolDelta::QuestionAsked(
+                    modbit_protocol_state::PendingQuestion {
+                        question_id: question_id.clone(),
+                        call_id: call_id.clone(),
+                    },
+                )),
+                TaskEvent::UserQuestionAnswered { question_id, .. } => {
+                    Some(ProtocolDelta::QuestionAnswered(question_id.clone()))
+                }
+                TaskEvent::ToolCallReconciled { tool_call_id, .. } => {
+                    ToolCallId::parse(tool_call_id)
+                        .ok()
+                        .map(ProtocolDelta::Reconciled)
+                }
+                _ => None,
+            };
+            if let Some(delta) = delta {
+                materialize_protocol_state(tx, session, tid, at, delta)?;
+            }
         }
         AggregateType::Run => {
             let event: RunEvent = serde_json::from_value(payload)?;
@@ -417,8 +536,8 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                 insert_receipt(tx, receipt)?;
             }
             tx.execute(
-                "INSERT OR REPLACE INTO tool_calls (tool_call_id, task_id, step_id, tool_name, tool_version, effect_class, capability_lease_id, status, arguments_hash, generation, dispatched_at, completed_at, result_ref, unknown_outcome_reason, policy_decision, approval_id)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+                "INSERT OR REPLACE INTO tool_calls (tool_call_id, task_id, step_id, tool_name, tool_version, effect_class, capability_lease_id, status, arguments_hash, generation, dispatched_at, completed_at, result_ref, unknown_outcome_reason, policy_decision, approval_id, run_id, turn_id, call_id, arguments_ref)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20)",
                 params![
                     c.tool_call_id.as_bytes().as_slice(),
                     c.task_id.as_bytes().as_slice(),
@@ -436,8 +555,13 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                     &c.unknown_outcome_reason,
                     &c.policy_decision,
                     c.approval_id.map(|a| a.as_bytes().to_vec()),
+                    c.run_id.map(|r| r.as_bytes().to_vec()),
+                    c.turn_id.map(|t| t.as_bytes().to_vec()),
+                    &c.call_id,
+                    &c.arguments_ref,
                 ],
             )?;
+            materialize_protocol_state(tx, session, c.task_id, at, ProtocolDelta::Rows)?;
         }
         AggregateType::Approval => {
             let event: ApprovalEvent = serde_json::from_value(payload)?;
@@ -468,6 +592,7 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                     a.expires_at.map(Timestamp::millis),
                 ],
             )?;
+            materialize_protocol_state(tx, session, a.task_id, at, ProtocolDelta::Rows)?;
         }
         AggregateType::CapabilityLease => {
             let event: CapabilityLeaseEvent = serde_json::from_value(payload)?;
@@ -498,8 +623,9 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                     &l.revoke_reason,
                 ],
             )?;
+            materialize_protocol_state(tx, session, l.task_id, at, ProtocolDelta::Rows)?;
         }
-        // Aggregates whose projections belong to later milestones (protocol state, checkpoints).
+        // Aggregates whose projections belong to later milestones (checkpoints).
         _ => {}
     }
     tx.execute(
@@ -763,77 +889,91 @@ pub fn load_step(tx: &rusqlite::Connection, id: &RunStepId) -> Result<Option<Run
     }))
 }
 
-/// Load a tool-call projection row.
-pub fn load_tool_call(tx: &rusqlite::Connection, id: &ToolCallId) -> Result<Option<ToolCall>> {
-    let row = tx
-        .query_row(
-            "SELECT task_id, step_id, tool_name, tool_version, effect_class, capability_lease_id, status, arguments_hash, generation, dispatched_at, completed_at, result_ref, unknown_outcome_reason, policy_decision, approval_id FROM tool_calls WHERE tool_call_id = ?1",
-            params![id.as_bytes().as_slice()],
-            |r| {
-                Ok((
-                    r.get::<_, Vec<u8>>(0)?,
-                    r.get::<_, Option<Vec<u8>>>(1)?,
-                    r.get::<_, String>(2)?,
-                    r.get::<_, String>(3)?,
-                    r.get::<_, String>(4)?,
-                    r.get::<_, Option<Vec<u8>>>(5)?,
-                    r.get::<_, String>(6)?,
-                    r.get::<_, String>(7)?,
-                    r.get::<_, i64>(8)?,
-                    r.get::<_, Option<i64>>(9)?,
-                    r.get::<_, Option<i64>>(10)?,
-                    r.get::<_, Option<String>>(11)?,
-                    r.get::<_, Option<String>>(12)?,
-                    r.get::<_, Option<String>>(13)?,
-                    r.get::<_, Option<Vec<u8>>>(14)?,
-                ))
-            },
-        )
-        .optional()?;
-    let Some((
-        task,
-        step,
-        name,
-        version,
-        effect,
-        lease,
-        status,
-        args,
-        generation,
-        dispatched,
-        completed,
-        result,
-        unknown,
-        policy,
-        approval,
-    )) = row
-    else {
-        return Ok(None);
-    };
-    Ok(Some(ToolCall {
-        tool_call_id: *id,
+const TOOL_CALL_COLS: &str = "tool_call_id, task_id, step_id, tool_name, tool_version, effect_class, capability_lease_id, status, arguments_hash, generation, dispatched_at, completed_at, result_ref, unknown_outcome_reason, policy_decision, approval_id, run_id, turn_id, call_id, arguments_ref";
+
+fn tool_call_from_row(r: &rusqlite::Row<'_>) -> rusqlite::Result<ToolCall> {
+    let bad = |_: crate::Error| rusqlite::Error::InvalidQuery;
+    let id: Vec<u8> = r.get(0)?;
+    let task: Vec<u8> = r.get(1)?;
+    let step: Option<Vec<u8>> = r.get(2)?;
+    let effect: String = r.get(5)?;
+    let lease: Option<Vec<u8>> = r.get(6)?;
+    let status: String = r.get(7)?;
+    let approval: Option<Vec<u8>> = r.get(15)?;
+    let run: Option<Vec<u8>> = r.get(16)?;
+    let turn: Option<Vec<u8>> = r.get(17)?;
+    Ok(ToolCall {
+        tool_call_id: ToolCallId::from_bytes(blob16(id)?),
         task_id: TaskId::from_bytes(blob16(task)?),
         step_id: step.map(blob16).transpose()?.map(RunStepId::from_bytes),
-        tool_name: name,
-        tool_version: version,
-        effect_class: q(&effect)?,
+        tool_name: r.get(3)?,
+        tool_version: r.get(4)?,
+        effect_class: q(&effect).map_err(bad)?,
         capability_lease_id: lease
             .map(blob16)
             .transpose()?
             .map(modbit_domain::CapabilityLeaseId::from_bytes),
-        arguments_hash: args,
-        state: q(&status)?,
-        generation: generation as u64,
-        dispatched_at: dispatched.map(Timestamp),
-        completed_at: completed.map(Timestamp),
-        result_ref: result,
-        unknown_outcome_reason: unknown,
-        policy_decision: policy,
+        arguments_hash: r.get(8)?,
+        state: q(&status).map_err(bad)?,
+        generation: r.get::<_, i64>(9)? as u64,
+        dispatched_at: r.get::<_, Option<i64>>(10)?.map(Timestamp),
+        completed_at: r.get::<_, Option<i64>>(11)?.map(Timestamp),
+        result_ref: r.get(12)?,
+        unknown_outcome_reason: r.get(13)?,
+        policy_decision: r.get(14)?,
         approval_id: approval
             .map(blob16)
             .transpose()?
             .map(ApprovalId::from_bytes),
-    }))
+        run_id: run.map(blob16).transpose()?.map(RunId::from_bytes),
+        turn_id: turn
+            .map(blob16)
+            .transpose()?
+            .map(modbit_domain::TurnId::from_bytes),
+        call_id: r.get(18)?,
+        arguments_ref: r.get(19)?,
+    })
+}
+
+/// Load a tool-call projection row.
+pub fn load_tool_call(tx: &rusqlite::Connection, id: &ToolCallId) -> Result<Option<ToolCall>> {
+    Ok(tx
+        .query_row(
+            &format!("SELECT {TOOL_CALL_COLS} FROM tool_calls WHERE tool_call_id = ?1"),
+            params![id.as_bytes().as_slice()],
+            tool_call_from_row,
+        )
+        .optional()?)
+}
+
+/// The task's tool calls that are not finished: proposed, validated, waiting
+/// on an approval, dispatched or streaming, plus those whose outcome is
+/// unknown (docs/19 layer 2: the outstanding calls a resumed run re-enters
+/// or reconciles). Oldest first by dispatch time, then by id.
+pub fn load_open_tool_calls(tx: &rusqlite::Connection, task: &TaskId) -> Result<Vec<ToolCall>> {
+    let mut stmt = tx.prepare(&format!(
+        "SELECT {TOOL_CALL_COLS} FROM tool_calls WHERE task_id = ?1 AND status NOT IN ('SUCCEEDED', 'FAILED', 'CANCELLED') ORDER BY dispatched_at, tool_call_id"
+    ))?;
+    let rows = stmt.query_map(params![task.as_bytes().as_slice()], tool_call_from_row)?;
+    let mut out = Vec::new();
+    for r in rows {
+        out.push(r?);
+    }
+    Ok(out)
+}
+
+/// Every tool call of a task, oldest first (by generation of proposal order
+/// is not stored; dispatch time then id).
+pub fn load_tool_calls_for_task(tx: &rusqlite::Connection, task: &TaskId) -> Result<Vec<ToolCall>> {
+    let mut stmt = tx.prepare(&format!(
+        "SELECT {TOOL_CALL_COLS} FROM tool_calls WHERE task_id = ?1 ORDER BY dispatched_at, tool_call_id"
+    ))?;
+    let rows = stmt.query_map(params![task.as_bytes().as_slice()], tool_call_from_row)?;
+    let mut out = Vec::new();
+    for r in rows {
+        out.push(r?);
+    }
+    Ok(out)
 }
 
 fn approval_from_row(r: &rusqlite::Row<'_>) -> rusqlite::Result<Approval> {
@@ -886,6 +1026,15 @@ pub fn load_approval_for_call(
             approval_from_row,
         )
         .optional()?)
+}
+
+/// The approvals of a task, oldest first.
+pub fn load_approvals_for_task(tx: &rusqlite::Connection, task: &TaskId) -> Result<Vec<Approval>> {
+    let mut stmt = tx.prepare(&format!(
+        "SELECT {APPROVAL_COLS} FROM approvals WHERE task_id = ?1 ORDER BY requested_at, approval_id"
+    ))?;
+    let rows = stmt.query_map(params![task.as_bytes().as_slice()], approval_from_row)?;
+    Ok(rows.collect::<std::result::Result<Vec<_>, _>>()?)
 }
 
 /// Approvals of every task in a session, pending first, oldest first.
@@ -1077,8 +1226,20 @@ pub fn load_receipts(
 
 /// Tasks currently in `Running` state (interrupted loops after a restart).
 pub fn load_running_tasks(tx: &rusqlite::Connection) -> Result<Vec<Task>> {
-    let mut stmt =
-        tx.prepare("SELECT task_id FROM tasks WHERE state = 'RUNNING' ORDER BY created_at")?;
+    load_tasks_in(tx, "state = 'RUNNING'")
+}
+
+/// Tasks that are running or waiting (on an approval, an answer or
+/// something external): the ones whose run may still be marked running by a
+/// Core that died (docs/19 resume).
+pub fn load_live_tasks(tx: &rusqlite::Connection) -> Result<Vec<Task>> {
+    load_tasks_in(tx, "state IN ('RUNNING', 'WAITING')")
+}
+
+fn load_tasks_in(tx: &rusqlite::Connection, filter: &str) -> Result<Vec<Task>> {
+    let mut stmt = tx.prepare(&format!(
+        "SELECT task_id FROM tasks WHERE {filter} ORDER BY created_at"
+    ))?;
     let ids: Vec<Vec<u8>> = stmt
         .query_map([], |r| r.get(0))?
         .collect::<std::result::Result<Vec<_>, _>>()?;
@@ -1447,6 +1608,7 @@ pub fn load_flaky_checks(
 /// Truncate the projection tables and replay every event from offset 0.
 pub fn rebuild(tx: &Transaction<'_>, objects: &crate::ObjectStore) -> Result<u64> {
     for t in [
+        "protocol_state",
         "routing_activations",
         "routing_admissions",
         "routing_attempts",

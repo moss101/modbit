@@ -425,6 +425,16 @@ fn make_pre_routing(dir: &std::path::Path) {
     ] {
         conn.execute(&format!("DROP TABLE {t}"), []).unwrap();
     }
+    // V10 (M4.1) added the protocol binding columns to `tool_calls` and the
+    // `protocol_state` table.
+    conn.execute("DROP TABLE IF EXISTS protocol_state", [])
+        .unwrap();
+    conn.execute("DROP INDEX IF EXISTS tool_calls_run", [])
+        .unwrap();
+    for c in ["run_id", "turn_id", "call_id", "arguments_ref"] {
+        conn.execute(&format!("ALTER TABLE tool_calls DROP COLUMN {c}"), [])
+            .unwrap();
+    }
     conn.execute("DELETE FROM schema_migrations WHERE version >= 7", [])
         .unwrap();
 }
@@ -452,8 +462,8 @@ fn a_database_from_before_the_routing_tables_upgrades_and_derives_them() {
 
     make_pre_routing(dir.path());
     let (store, report) = EventStore::open_with_report(dir.path()).unwrap();
-    assert_eq!((report.from_version, report.to_version), (6, 9));
-    assert_eq!(report.applied, vec![7, 8, 9]);
+    assert_eq!((report.from_version, report.to_version), (6, 10));
+    assert_eq!(report.applied, vec![7, 8, 9, 10]);
     assert_eq!(
         store.last_offset().unwrap(),
         events,
@@ -529,7 +539,7 @@ fn a_crash_during_the_routing_migration_leaves_a_recoverable_database() {
     let (store, report) = EventStore::open_with_report(dir.path()).unwrap();
     assert_eq!(
         (report.from_version, report.to_version),
-        (6, 9),
+        (6, 10),
         "the killed migration committed nothing"
     );
     assert_eq!(

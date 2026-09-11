@@ -5,7 +5,9 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::ids::{ApprovalId, CapabilityLeaseId, EffectId, RunStepId, TaskId, ToolCallId};
+use crate::ids::{
+    ApprovalId, CapabilityLeaseId, EffectId, RunId, RunStepId, TaskId, ToolCallId, TurnId,
+};
 use crate::state::StateMachine;
 use crate::time::Timestamp;
 
@@ -121,6 +123,21 @@ pub struct ToolCall {
     pub policy_decision: Option<String>,
     /// Approval the call waits on / executed under.
     pub approval_id: Option<ApprovalId>,
+    /// Run the call belongs to (protocol state, docs/19 layer 2): a resumed
+    /// run finds its outstanding calls by run.
+    #[serde(default)]
+    pub run_id: Option<RunId>,
+    /// Turn the call was proposed in.
+    #[serde(default)]
+    pub turn_id: Option<TurnId>,
+    /// The model's own call id in the assistant message that proposed the
+    /// call; a resumed run re-enters the same ToolCall for the same call id.
+    #[serde(default)]
+    pub call_id: Option<String>,
+    /// Object hash of the raw arguments JSON, so the exact intent is
+    /// reconstructable after a restart (the hash alone is not).
+    #[serde(default)]
+    pub arguments_ref: Option<String>,
 }
 
 /// A protected-effect receipt (docs/23 "Protected-effect receipt chain").
@@ -175,6 +192,18 @@ pub enum ToolCallEvent {
         capability_lease_id: Option<CapabilityLeaseId>,
         /// Arguments hash.
         arguments_hash: String,
+        /// Run (protocol state binding; absent for direct client calls).
+        #[serde(default)]
+        run_id: Option<RunId>,
+        /// Turn.
+        #[serde(default)]
+        turn_id: Option<TurnId>,
+        /// The model's call id.
+        #[serde(default)]
+        call_id: Option<String>,
+        /// Object hash of the raw arguments JSON.
+        #[serde(default)]
+        arguments_ref: Option<String>,
     },
     /// `ToolCallValidated`.
     ToolCallValidated,
@@ -265,6 +294,10 @@ impl ToolCall {
                 effect_class,
                 capability_lease_id,
                 arguments_hash,
+                run_id,
+                turn_id,
+                call_id,
+                arguments_ref,
             } => Ok(Self {
                 tool_call_id: id,
                 task_id: *task_id,
@@ -282,6 +315,10 @@ impl ToolCall {
                 unknown_outcome_reason: None,
                 policy_decision: None,
                 approval_id: None,
+                run_id: *run_id,
+                turn_id: *turn_id,
+                call_id: call_id.clone(),
+                arguments_ref: arguments_ref.clone(),
             }),
             other => Err(crate::InvalidTransition {
                 aggregate: "ToolCall",
@@ -387,6 +424,10 @@ mod tests {
                 effect_class: EffectClass::ReadOnly,
                 capability_lease_id: None,
                 arguments_hash: "h".into(),
+                run_id: None,
+                turn_id: None,
+                call_id: None,
+                arguments_ref: None,
             },
             Timestamp(1),
         )
@@ -418,6 +459,10 @@ mod tests {
                 effect_class: EffectClass::ReadOnly,
                 capability_lease_id: None,
                 arguments_hash: "h".into(),
+                run_id: None,
+                turn_id: None,
+                call_id: None,
+                arguments_ref: None,
             },
             Timestamp(1),
         )

@@ -16,6 +16,7 @@ mod languages;
 mod model_registry;
 mod onboarding;
 mod probe;
+mod protocol;
 mod review;
 mod routing;
 mod runtime;

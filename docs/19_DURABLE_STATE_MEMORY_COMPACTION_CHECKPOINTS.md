@@ -51,6 +51,14 @@ Use periodic full baseline + intermediate deltas. Restore validates every object
 - model stream attempt and safe resume boundary;
 - active ConditionalExecutionPlan slot activation, budget reservation and the `review_isolated` worktree/process lease of an in-flight review leg.
 
+### Protocol state as built (M4.1)
+
+`crates/protocol-state` is the typed reconstruction: `ProtocolState { calls, approvals, question, leases, reconciled }` with each outstanding call in a phase (`PROPOSED`, `AWAITING_APPROVAL { approval_id }`, `IN_FLIGHT`, `UNKNOWN_OUTCOME { reason }`) and a `ResumeBoundary` derived from it — `RECONCILING` before `AWAITING_APPROVAL` before `AWAITING_ANSWER` before `EXECUTING` before `TURN_START`. The store materializes it under `protocol_state` key `task:<task_id>` (doc 31) in the same transaction as the event that changed it; `GetProtocolState` shows it over the wire with a digest.
+
+Write-ahead: a tool call is `ToolCallProposed` (bound to run, turn, the model's call id and an `arguments_ref`) before validation, and `Validated`/`PolicyDecision`/`Dispatched` are appended by the pipeline's dispatch journal before the effector runs; a dispatch that is not on the log does not run (`JOURNAL_FAILED`).
+
+Restart: a call the dead Core had dispatched becomes `ToolCallUnknownOutcome` (read-only calls are cancelled); the task keeps the wait reason its boundary names and is marked for attention with that boundary. Resume: the run re-enters the outstanding calls of its last assistant message by their recorded ids (`ProtocolStateResumed`), so an approval-gated call finds the same `ApprovalId` bound to the same intent and approving once yields one effect; a call of unknown outcome is reconciled — receipt lookup for protected/external/destructive effects, target inspection for reversible writes — and the observation goes to the model as the call's result (`ToolCallReconciled`); nothing is replayed by the Core.
+
 ## Engineering Memory
 
 Scopes: Run, Session, User, Agent Profile, Repository, Space, Organization. Record types: decision, convention, fact, procedure, failure pattern, dependency knowledge, user preference. Every item stores source provenance, author/actor, confidence, TTL/expiry, scope, sensitivity, supersedes/conflicts links and last validation revision.

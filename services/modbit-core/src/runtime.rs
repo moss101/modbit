@@ -83,7 +83,7 @@ pub struct Runtime {
 /// One piece of media a tool result made available, named by digest: the
 /// transcript never holds the bytes (docs/25).
 #[derive(Clone, Debug, Serialize, Deserialize)]
-struct MediaRef {
+pub(crate) struct MediaRef {
     /// Object hash of the egress copy.
     source_ref: String,
     /// MIME type.
@@ -95,7 +95,7 @@ struct MediaRef {
 /// One transcript entry persisted as a step output (content-addressed).
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "entry", rename_all = "snake_case")]
-enum TranscriptEntry {
+pub(crate) enum TranscriptEntry {
     /// The model's message for one invocation.
     Assistant {
         text: String,
@@ -369,15 +369,24 @@ impl Runtime {
 /// Startup reconciliation (docs/14 "Compound execution and interruption"): a
 /// task left `Running` by a previous process is suspended at a turn boundary
 /// and marked for attention; nothing is re-executed.
-pub fn reconcile_after_restart(store: &mut EventStore, core_tenant: TenantId) -> Vec<TaskId> {
+pub fn reconcile_after_restart(
+    store: &mut EventStore,
+    core_tenant: TenantId,
+    boot_generation: u64,
+) -> Vec<TaskId> {
     let actor = Actor::Core("recovery".into());
     let mut out = Vec::new();
-    let Ok(tasks) = store.running_tasks() else {
+    // Running tasks, and waiting ones whose run the dead Core still owned
+    // (a task waits on an approval or an answer while its run stays
+    // Running): both suspend at the boundary the protocol state names.
+    let Ok(tasks) = store.live_tasks() else {
         return out;
     };
     for t in tasks {
+        let mut owned_run = false;
         if let Ok(runs) = store.runs_for_task(&t.task_id) {
             for r in runs.into_iter().filter(|r| r.state == RunState::Running) {
+                owned_run = true;
                 let _ = store.append(AppendRequest {
                     tenant_id: core_tenant,
                     session_id: t.session_id,
@@ -396,6 +405,39 @@ pub fn reconcile_after_restart(store: &mut EventStore, core_tenant: TenantId) ->
                 });
             }
         }
+        if !owned_run && t.state != TaskState::Running {
+            // A waiting task with no live run was suspended by the loop
+            // itself before the restart; nothing to reconcile.
+            continue;
+        }
+        // docs/19 resume step 6: calls the dead Core had dispatched are of
+        // unknown outcome now (read-only ones are cancelled); nothing runs.
+        let orphans =
+            crate::protocol::mark_orphaned_calls(store, core_tenant, &t, boot_generation, &actor);
+        let state = crate::protocol::reconstruct(store, &t.task_id);
+        let boundary = state.boundary(None);
+        let reason = match boundary {
+            modbit_protocol_state::ResumeBoundary::AwaitingApproval { .. } => WaitReason::Approval,
+            modbit_protocol_state::ResumeBoundary::AwaitingAnswer { .. } => WaitReason::UserInput,
+            _ => WaitReason::External,
+        };
+        let mut events = Vec::new();
+        // A running task suspends with the reason its boundary names; a
+        // task already waiting keeps the reason its loop recorded.
+        if t.state == TaskState::Running {
+            events.push(typed(
+                "TaskWaiting",
+                &TaskEvent::TaskWaiting { reason },
+                actor.clone(),
+            ));
+        }
+        events.push(typed(
+            "TaskNeedsAttention",
+            &TaskEvent::TaskNeedsAttention {
+                reason: crate::protocol::attention_after_restart(&boundary, &orphans),
+            },
+            actor.clone(),
+        ));
         let _ = store.append(AppendRequest {
             tenant_id: core_tenant,
             session_id: t.session_id,
@@ -406,24 +448,7 @@ pub fn reconcile_after_restart(store: &mut EventStore, core_tenant: TenantId) ->
             aggregate_type: AggregateType::Task,
             aggregate_id: *t.task_id.as_bytes(),
             expected_sequence: None,
-            events: vec![
-                typed(
-                    "TaskWaiting",
-                    &TaskEvent::TaskWaiting {
-                        reason: WaitReason::External,
-                    },
-                    actor.clone(),
-                ),
-                typed(
-                    "TaskNeedsAttention",
-                    &TaskEvent::TaskNeedsAttention {
-                        reason:
-                            "runtime restarted while the task was running; resume with StartTask"
-                                .into(),
-                    },
-                    actor.clone(),
-                ),
-            ],
+            events,
         });
         out.push(t.task_id);
     }
@@ -1081,6 +1106,37 @@ pub(crate) async fn rebuild(
     (transcript, state, last_offset, pending)
 }
 
+/// The calls of the transcript's last assistant message that have no result
+/// (docs/19 resume step 9): a Core that died while acting on them left the
+/// message on the log and the calls outstanding. In order.
+pub(crate) fn dangling_calls(transcript: &[Message]) -> Vec<(String, String, String)> {
+    let Some(last) = transcript.iter().rposition(|m| m.role == Role::Assistant) else {
+        return vec![];
+    };
+    let answered: Vec<&str> = transcript[last + 1..]
+        .iter()
+        .flat_map(|m| m.parts.iter())
+        .filter_map(|p| match p {
+            ContentPart::ToolResult { call_id, .. } => Some(call_id.as_str()),
+            _ => None,
+        })
+        .collect();
+    transcript[last]
+        .parts
+        .iter()
+        .filter_map(|p| match p {
+            ContentPart::ToolCall {
+                call_id,
+                name,
+                arguments_json,
+            } if !answered.contains(&call_id.as_str()) => {
+                Some((call_id.clone(), name.clone(), arguments_json.clone()))
+            }
+            _ => None,
+        })
+        .collect()
+}
+
 /// The media a tool result made available to the model (docs/25): the egress
 /// copy, which is the original bytes with their metadata stripped.
 fn media_refs(output: &serde_json::Value) -> Vec<MediaRef> {
@@ -1386,6 +1442,45 @@ async fn run_loop(
     // docs/28 §5 (PX-039): a goal that reports a failure must reproduce it
     // before a fix transaction.
     state.goal_reports_failure = harness::goal_reports_failure(&task.goal_text);
+    // Protocol state (docs/19 layer 2, M4.1): the calls the model asked for
+    // that never finished are re-entered by their recorded ids, at the exact
+    // boundary the run stopped at; the model is not asked again.
+    let dangling = dangling_calls(&transcript);
+    let mut resume_calls: Option<Vec<(String, String, String)>> = None;
+    let mut resume_state: Option<modbit_protocol_state::ProtocolState> = None;
+    if !dangling.is_empty() {
+        let pstate = crate::protocol::reconstruct(&*core.store.lock().await, &task.task_id);
+        let boundary = pstate.boundary(Some(run_id));
+        let ids: Vec<String> = dangling
+            .iter()
+            .filter_map(|(c, n, a)| {
+                pstate
+                    .find_call(run_id, c, n, &modbit_tools::arguments_hash(a)?)
+                    .map(|p| p.tool_call_id.to_string())
+            })
+            .collect();
+        let mut store = core.store.lock().await;
+        let _ = append(
+            &mut store,
+            &core,
+            lt,
+            AggregateType::Task,
+            *task.task_id.as_bytes(),
+            vec![typed(
+                "ProtocolStateResumed",
+                &TaskEvent::ProtocolStateResumed {
+                    run_id,
+                    boundary: boundary.label().to_owned(),
+                    tool_call_ids: ids,
+                    digest: pstate.digest(),
+                },
+                actor.clone(),
+            )],
+        );
+        drop(store);
+        resume_calls = Some(dangling);
+        resume_state = Some(pstate);
+    }
     // docs/19 (REQ-EV-0056/0092/0130): the epoch rebuilt from the log, if any.
     let mut epoch: Option<modbit_compaction::CompactionManifest> = epoch_of(&core, &task).await;
     let lease = core
@@ -1530,639 +1625,655 @@ async fn run_loop(
                 break LoopEnd::ProviderFailed("STORE".into(), "append failed".into());
             }
         }
-        // Compaction epochs (docs/19): when the model-visible transcript passes
-        // the budget, the older entries become one epoch projection. The
-        // canonical log is untouched and every dropped result stays reachable
-        // by its ref.
-        if let Some((manifest, kept)) = maybe_compact(
-            &core,
-            &task,
-            &transcript,
-            epoch.as_ref(),
-            compaction_budget(),
-        )
-        .await
-        {
-            let manifest_ref = {
-                let store = core.store.lock().await;
-                store
-                    .objects()
-                    .put(serde_json::to_vec(&manifest).unwrap_or_default().as_slice())
-                    .unwrap_or_default()
-            };
+        // The turn's model invocation, unless the run continues at the
+        // executing boundary (docs/19 resume step 9, M4.1): the model's last
+        // message is already on the log and its outstanding calls are
+        // re-entered by id; the model is not invoked again for them.
+        let (_text, calls) = if let Some(calls) = resume_calls.take() {
+            (String::new(), calls)
+        } else {
             {
-                let mut store = core.store.lock().await;
-                let _ = append(
-                    &mut store,
+                // Compaction epochs (docs/19): when the model-visible transcript passes
+                // the budget, the older entries become one epoch projection. The
+                // canonical log is untouched and every dropped result stays reachable
+                // by its ref.
+                if let Some((manifest, kept)) = maybe_compact(
                     &core,
-                    lt,
-                    AggregateType::Task,
-                    *task.task_id.as_bytes(),
-                    vec![typed(
-                        "ContextEpochOpened",
-                        &TaskEvent::ContextEpochOpened {
-                            epoch: manifest.epoch,
-                            previous_epoch: manifest.previous_epoch,
-                            source_head_offset: manifest.source_head_offset,
-                            source_entries: u32::try_from(manifest.source_entries)
-                                .unwrap_or(u32::MAX),
-                            manifest_ref: manifest_ref.clone(),
-                            manifest_hash: manifest.manifest_hash.clone(),
-                            projection_tokens: manifest.projection_tokens,
-                        },
-                        actor.clone(),
-                    )],
-                );
-            }
-            epoch = Some(manifest);
-            transcript = kept;
-        }
-        // ContextCompile step.
-        // REQ-EV-0188: media reaches the model only when the routed model
-        // accepts that input; otherwise the result text stands on its own.
-        let vision = core
-            .gateway
-            .capability(&cfg.endpoint, &cfg.model)
-            .is_some_and(|c| c.vision);
-        let mut harness_json = serde_json::to_value(&state).unwrap_or_default();
-        // REQ-EV-0141 / 0160: the model is told what the user is looking at.
-        // A selection is context, not authority: the write gate is unchanged.
-        let selection = crate::tools::selection_of(&core.store, task.task_id).await;
-        if !selection.is_empty() {
-            harness_json["selection"] = serde_json::json!({
-                "paths": selection.paths,
-                "symbol": selection.symbol,
-                "lines": selection.lines.map(|(a, b)| [a, b]),
-                "review_hunks": selection.review_hunks,
-                "source": selection.source,
-                "note": "what the user has selected; retrieval prefers it. It grants no tool and no write.",
-            });
-        }
-        // REQ-EV-0169: the task's latest Context Pack enters the prompt with
-        // its provenance; the envelope refuses any fragment that lacks it.
-        let context_fragments = {
-            let ledger = core.tools.ledger(task.task_id).await;
-            let ledger = ledger.lock().await;
-            ledger
-                .last_pack
-                .as_ref()
-                .map(|p| {
-                    p.entries
-                        .iter()
-                        .map(|e| modbit_prompt_compiler::ContextFragment {
-                            source_ref: e.source_ref.clone(),
-                            path: e.provenance.path.clone(),
-                            workspace_revision: e.provenance.workspace_revision,
-                            content_hash: e.provenance.content_hash.clone().unwrap_or_default(),
-                            retrieval_reason: format!(
-                                "{}; {}",
-                                e.reason,
-                                e.provenance.retrieval_reasons.join(", ")
-                            ),
-                            lines: e.lines,
-                            text: e.text.clone(),
-                            ephemeral: false,
+                    &task,
+                    &transcript,
+                    epoch.as_ref(),
+                    compaction_budget(),
+                )
+                .await
+                {
+                    let manifest_ref = {
+                        let store = core.store.lock().await;
+                        store
+                            .objects()
+                            .put(serde_json::to_vec(&manifest).unwrap_or_default().as_slice())
+                            .unwrap_or_default()
+                    };
+                    {
+                        let mut store = core.store.lock().await;
+                        let _ = append(
+                            &mut store,
+                            &core,
+                            lt,
+                            AggregateType::Task,
+                            *task.task_id.as_bytes(),
+                            vec![typed(
+                                "ContextEpochOpened",
+                                &TaskEvent::ContextEpochOpened {
+                                    epoch: manifest.epoch,
+                                    previous_epoch: manifest.previous_epoch,
+                                    source_head_offset: manifest.source_head_offset,
+                                    source_entries: u32::try_from(manifest.source_entries)
+                                        .unwrap_or(u32::MAX),
+                                    manifest_ref: manifest_ref.clone(),
+                                    manifest_hash: manifest.manifest_hash.clone(),
+                                    projection_tokens: manifest.projection_tokens,
+                                },
+                                actor.clone(),
+                            )],
+                        );
+                    }
+                    epoch = Some(manifest);
+                    transcript = kept;
+                }
+                // ContextCompile step.
+                // REQ-EV-0188: media reaches the model only when the routed model
+                // accepts that input; otherwise the result text stands on its own.
+                let vision = core
+                    .gateway
+                    .capability(&cfg.endpoint, &cfg.model)
+                    .is_some_and(|c| c.vision);
+                let mut harness_json = serde_json::to_value(&state).unwrap_or_default();
+                // REQ-EV-0141 / 0160: the model is told what the user is looking at.
+                // A selection is context, not authority: the write gate is unchanged.
+                let selection = crate::tools::selection_of(&core.store, task.task_id).await;
+                if !selection.is_empty() {
+                    harness_json["selection"] = serde_json::json!({
+                        "paths": selection.paths,
+                        "symbol": selection.symbol,
+                        "lines": selection.lines.map(|(a, b)| [a, b]),
+                        "review_hunks": selection.review_hunks,
+                        "source": selection.source,
+                        "note": "what the user has selected; retrieval prefers it. It grants no tool and no write.",
+                    });
+                }
+                // REQ-EV-0169: the task's latest Context Pack enters the prompt with
+                // its provenance; the envelope refuses any fragment that lacks it.
+                let context_fragments = {
+                    let ledger = core.tools.ledger(task.task_id).await;
+                    let ledger = ledger.lock().await;
+                    ledger
+                        .last_pack
+                        .as_ref()
+                        .map(|p| {
+                            p.entries
+                                .iter()
+                                .map(|e| modbit_prompt_compiler::ContextFragment {
+                                    source_ref: e.source_ref.clone(),
+                                    path: e.provenance.path.clone(),
+                                    workspace_revision: e.provenance.workspace_revision,
+                                    content_hash: e
+                                        .provenance
+                                        .content_hash
+                                        .clone()
+                                        .unwrap_or_default(),
+                                    retrieval_reason: format!(
+                                        "{}; {}",
+                                        e.reason,
+                                        e.provenance.retrieval_reasons.join(", ")
+                                    ),
+                                    lines: e.lines,
+                                    text: e.text.clone(),
+                                    ephemeral: false,
+                                })
+                                .collect::<Vec<_>>()
                         })
-                        .collect::<Vec<_>>()
-                })
-                .unwrap_or_default()
-        };
-        let compiled = modbit_prompt_compiler::compile(modbit_prompt_compiler::PromptInput {
-            goal: task.goal_text.clone(),
-            workspace_root: task.workspace_root.clone(),
-            execution_profile: task.execution_profile.clone(),
-            workspace_rules: vec![],
-            compaction_summary: epoch.as_ref().map(|m| m.projection.clone()),
-            harness_state: harness_json.clone(),
-            transcript: {
-                // The bytes enter the request, never the log or the ledger.
-                let mut t = transcript.clone();
-                hydrate_media(&core, &mut t, vision).await;
-                t
-            },
-            context: context_fragments,
-            tools: tools.clone(),
-            model_policy: ModelPolicy {
-                endpoint: cfg.endpoint.clone(),
-                model: cfg.model.clone(),
-                reasoning_effort: None,
-                service_tier: None,
-            },
-            max_output_tokens: MAX_OUTPUT_TOKENS,
-            timeout_ms: MODEL_TIMEOUT_MS,
-        });
-        let mut request = compiled.request;
-        request.request_id = format!("{}:{}", task.task_id, ordinal);
-        let pack_ref = {
-            let store = core.store.lock().await;
-            store
+                        .unwrap_or_default()
+                };
+                let compiled =
+                    modbit_prompt_compiler::compile(modbit_prompt_compiler::PromptInput {
+                        goal: task.goal_text.clone(),
+                        workspace_root: task.workspace_root.clone(),
+                        execution_profile: task.execution_profile.clone(),
+                        workspace_rules: vec![],
+                        compaction_summary: epoch.as_ref().map(|m| m.projection.clone()),
+                        harness_state: harness_json.clone(),
+                        transcript: {
+                            // The bytes enter the request, never the log or the ledger.
+                            let mut t = transcript.clone();
+                            hydrate_media(&core, &mut t, vision).await;
+                            t
+                        },
+                        context: context_fragments,
+                        tools: tools.clone(),
+                        model_policy: ModelPolicy {
+                            endpoint: cfg.endpoint.clone(),
+                            model: cfg.model.clone(),
+                            reasoning_effort: None,
+                            service_tier: None,
+                        },
+                        max_output_tokens: MAX_OUTPUT_TOKENS,
+                        timeout_ms: MODEL_TIMEOUT_MS,
+                    });
+                let mut request = compiled.request;
+                request.request_id = format!("{}:{}", task.task_id, ordinal);
+                let pack_ref = {
+                    let store = core.store.lock().await;
+                    store
                 .objects()
                 .put(serde_json::json!({"harness_state": harness_json, "segment_hashes": compiled.segment_hashes, "tool_projection_hash": compiled.tool_projection_hash, "injected_fragments": compiled.injected_fragments, "rejected_fragments": compiled.rejected_fragments}).to_string().as_bytes())
                 .ok()
-        };
-        let ctx_step = RunStepId::new();
-        {
-            let mut store = core.store.lock().await;
-            let _ = append(
-                &mut store,
-                &core,
-                Lineage {
-                    step: Some(ctx_step),
-                    ..lturn
-                },
-                AggregateType::RunStep,
-                *ctx_step.as_bytes(),
-                vec![
-                    typed(
-                        "StepScheduled",
-                        &StepEvent::StepScheduled {
-                            turn_id,
-                            step_type: StepType::ContextCompile,
-                            ordinal: 1,
-                            input_ref: None,
-                        },
-                        actor.clone(),
-                    ),
-                    typed("StepStarted", &StepEvent::StepStarted, actor.clone()),
-                    typed(
-                        "StepSucceeded",
-                        &StepEvent::StepSucceeded {
-                            output_ref: pack_ref.clone(),
-                        },
-                        actor.clone(),
-                    ),
-                ],
-            );
-            let _ = append(
-                &mut store,
-                &core,
-                lturn,
-                AggregateType::Turn,
-                *turn_id.as_bytes(),
-                vec![
-                    typed(
-                        "ContextPackCompiled",
-                        &TurnEvent::ContextPackCompiled {
-                            context_pack_id: compiled.context_pack_id.clone(),
-                        },
-                        actor.clone(),
-                    ),
-                    typed(
-                        "ToolProjectionSelected",
-                        &TurnEvent::ToolProjectionSelected {
-                            tool_projection_hash: compiled.tool_projection_hash.clone(),
-                        },
-                        actor.clone(),
-                    ),
-                ],
-            );
-        }
-        // ModelInvoke step.
-        let invoke_step = RunStepId::new();
-        let route_json = serde_json::json!({"endpoint": cfg.endpoint, "model": cfg.model, "cache_key": request.cache_key});
-        {
-            let mut store = core.store.lock().await;
-            let _ = append(
-                &mut store,
-                &core,
-                Lineage {
-                    step: Some(invoke_step),
-                    ..lturn
-                },
-                AggregateType::RunStep,
-                *invoke_step.as_bytes(),
-                vec![
-                    typed(
-                        "StepScheduled",
-                        &StepEvent::StepScheduled {
-                            turn_id,
-                            step_type: StepType::ModelInvoke,
-                            ordinal: 2,
-                            input_ref: pack_ref.clone(),
-                        },
-                        actor.clone(),
-                    ),
-                    typed("StepStarted", &StepEvent::StepStarted, actor.clone()),
-                ],
-            );
-            let _ = append(
-                &mut store,
-                &core,
-                lturn,
-                AggregateType::Turn,
-                *turn_id.as_bytes(),
-                vec![typed(
-                    "ModelInvocationStarted",
-                    &TurnEvent::ModelInvocationStarted {
-                        model_route: route_json.clone(),
-                    },
-                    actor.clone(),
-                )],
-            );
-        }
-        let needs = Requirements {
-            tools: true,
-            ..Default::default()
-        };
-        let stream_cancel = cancel.child_token();
-        let stream = match core.gateway.stream(request, &needs, stream_cancel.clone()) {
-            Ok(s) => s,
-            Err(e) => {
-                // A refusal keeps its own code: a model withdrawn by a new
-                // registry generation reads as MODEL_REVOKED, not as a generic
-                // routing problem (REQ-EPR-002).
-                let code = match &e {
-                    modbit_providers::RouteError::RegistryRefused { code, .. } => {
-                        (*code).to_owned()
-                    }
-                    _ => "ROUTE_REFUSED".to_owned(),
                 };
-                let mut store = core.store.lock().await;
-                let _ = append(
-                    &mut store,
-                    &core,
-                    Lineage {
-                        step: Some(invoke_step),
-                        ..lturn
-                    },
-                    AggregateType::RunStep,
-                    *invoke_step.as_bytes(),
-                    vec![typed(
-                        "StepFailed",
-                        &StepEvent::StepFailed {
-                            failure_code: code.clone(),
-                            output_ref: None,
+                let ctx_step = RunStepId::new();
+                {
+                    let mut store = core.store.lock().await;
+                    let _ = append(
+                        &mut store,
+                        &core,
+                        Lineage {
+                            step: Some(ctx_step),
+                            ..lturn
                         },
-                        actor.clone(),
-                    )],
-                );
-                let _ = append(
-                    &mut store,
-                    &core,
-                    lturn,
-                    AggregateType::Turn,
-                    *turn_id.as_bytes(),
-                    vec![typed(
-                        "TurnFailed",
-                        &TurnEvent::TurnFailed {
-                            failure_code: code.clone(),
+                        AggregateType::RunStep,
+                        *ctx_step.as_bytes(),
+                        vec![
+                            typed(
+                                "StepScheduled",
+                                &StepEvent::StepScheduled {
+                                    turn_id,
+                                    step_type: StepType::ContextCompile,
+                                    ordinal: 1,
+                                    input_ref: None,
+                                },
+                                actor.clone(),
+                            ),
+                            typed("StepStarted", &StepEvent::StepStarted, actor.clone()),
+                            typed(
+                                "StepSucceeded",
+                                &StepEvent::StepSucceeded {
+                                    output_ref: pack_ref.clone(),
+                                },
+                                actor.clone(),
+                            ),
+                        ],
+                    );
+                    let _ = append(
+                        &mut store,
+                        &core,
+                        lturn,
+                        AggregateType::Turn,
+                        *turn_id.as_bytes(),
+                        vec![
+                            typed(
+                                "ContextPackCompiled",
+                                &TurnEvent::ContextPackCompiled {
+                                    context_pack_id: compiled.context_pack_id.clone(),
+                                },
+                                actor.clone(),
+                            ),
+                            typed(
+                                "ToolProjectionSelected",
+                                &TurnEvent::ToolProjectionSelected {
+                                    tool_projection_hash: compiled.tool_projection_hash.clone(),
+                                },
+                                actor.clone(),
+                            ),
+                        ],
+                    );
+                }
+                // ModelInvoke step.
+                let invoke_step = RunStepId::new();
+                let route_json = serde_json::json!({"endpoint": cfg.endpoint, "model": cfg.model, "cache_key": request.cache_key});
+                {
+                    let mut store = core.store.lock().await;
+                    let _ = append(
+                        &mut store,
+                        &core,
+                        Lineage {
+                            step: Some(invoke_step),
+                            ..lturn
                         },
-                        actor.clone(),
-                    )],
-                );
-                break LoopEnd::ProviderFailed(code, e.to_string());
-            }
-        };
-        // The provider's own request id, when it gave one: read from the live
-        // route record, so an interrupted attempt carries it too.
-        let provider_request_id = || {
-            stream
-                .route
-                .lock()
-                .ok()
-                .and_then(|r| r.provider_request_id.clone())
-        };
-        let mut text = String::new();
-        let mut calls: Vec<(String, String, String)> = Vec::new();
-        // Usage is unknown until the provider reports it: a stream that drops
-        // or is cancelled leaves the cost unknown, never zero (docs/38).
-        let mut usage = modbit_providers::Usage::default();
-        let mut usage_reported = false;
-        let mut error: Option<(String, String)> = None;
-        let mut events = stream.events;
-        // A STEER queued while the model streams interrupts the stream
-        // (REQ-EV-0191 interrupt-and-replace); the log offset watch wakes us.
-        let mut offset_rx = core.last_offset.subscribe();
-        let mut interrupted = false;
-        loop {
-            tokio::select! {
-                ev = events.recv() => {
-                    let Some(ev) = ev else { break };
-                    match ev {
-                        ModelEvent::MessageDelta { text: t } => text.push_str(&t),
-                        ModelEvent::ToolCallComplete {
-                            call_id,
-                            name,
-                            arguments_json,
-                        } => calls.push((call_id, name, arguments_json)),
-                        ModelEvent::Usage { usage: u } => {
-                            usage = u;
-                            usage_reported = true;
+                        AggregateType::RunStep,
+                        *invoke_step.as_bytes(),
+                        vec![
+                            typed(
+                                "StepScheduled",
+                                &StepEvent::StepScheduled {
+                                    turn_id,
+                                    step_type: StepType::ModelInvoke,
+                                    ordinal: 2,
+                                    input_ref: pack_ref.clone(),
+                                },
+                                actor.clone(),
+                            ),
+                            typed("StepStarted", &StepEvent::StepStarted, actor.clone()),
+                        ],
+                    );
+                    let _ = append(
+                        &mut store,
+                        &core,
+                        lturn,
+                        AggregateType::Turn,
+                        *turn_id.as_bytes(),
+                        vec![typed(
+                            "ModelInvocationStarted",
+                            &TurnEvent::ModelInvocationStarted {
+                                model_route: route_json.clone(),
+                            },
+                            actor.clone(),
+                        )],
+                    );
+                }
+                let needs = Requirements {
+                    tools: true,
+                    ..Default::default()
+                };
+                let stream_cancel = cancel.child_token();
+                let stream = match core.gateway.stream(request, &needs, stream_cancel.clone()) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        // A refusal keeps its own code: a model withdrawn by a new
+                        // registry generation reads as MODEL_REVOKED, not as a generic
+                        // routing problem (REQ-EPR-002).
+                        let code = match &e {
+                            modbit_providers::RouteError::RegistryRefused { code, .. } => {
+                                (*code).to_owned()
+                            }
+                            _ => "ROUTE_REFUSED".to_owned(),
+                        };
+                        let mut store = core.store.lock().await;
+                        let _ = append(
+                            &mut store,
+                            &core,
+                            Lineage {
+                                step: Some(invoke_step),
+                                ..lturn
+                            },
+                            AggregateType::RunStep,
+                            *invoke_step.as_bytes(),
+                            vec![typed(
+                                "StepFailed",
+                                &StepEvent::StepFailed {
+                                    failure_code: code.clone(),
+                                    output_ref: None,
+                                },
+                                actor.clone(),
+                            )],
+                        );
+                        let _ = append(
+                            &mut store,
+                            &core,
+                            lturn,
+                            AggregateType::Turn,
+                            *turn_id.as_bytes(),
+                            vec![typed(
+                                "TurnFailed",
+                                &TurnEvent::TurnFailed {
+                                    failure_code: code.clone(),
+                                },
+                                actor.clone(),
+                            )],
+                        );
+                        break 'outer LoopEnd::ProviderFailed(code, e.to_string());
+                    }
+                };
+                // The provider's own request id, when it gave one: read from the live
+                // route record, so an interrupted attempt carries it too.
+                let provider_request_id = || {
+                    stream
+                        .route
+                        .lock()
+                        .ok()
+                        .and_then(|r| r.provider_request_id.clone())
+                };
+                let mut text = String::new();
+                let mut calls: Vec<(String, String, String)> = Vec::new();
+                // Usage is unknown until the provider reports it: a stream that drops
+                // or is cancelled leaves the cost unknown, never zero (docs/38).
+                let mut usage = modbit_providers::Usage::default();
+                let mut usage_reported = false;
+                let mut error: Option<(String, String)> = None;
+                let mut events = stream.events;
+                // A STEER queued while the model streams interrupts the stream
+                // (REQ-EV-0191 interrupt-and-replace); the log offset watch wakes us.
+                let mut offset_rx = core.last_offset.subscribe();
+                let mut interrupted = false;
+                loop {
+                    tokio::select! {
+                        ev = events.recv() => {
+                            let Some(ev) = ev else { break };
+                            match ev {
+                                ModelEvent::MessageDelta { text: t } => text.push_str(&t),
+                                ModelEvent::ToolCallComplete {
+                                    call_id,
+                                    name,
+                                    arguments_json,
+                                } => calls.push((call_id, name, arguments_json)),
+                                ModelEvent::Usage { usage: u } => {
+                                    usage = u;
+                                    usage_reported = true;
+                                }
+                                ModelEvent::Completed { .. } => {}
+                                ModelEvent::Error { code, message, .. } => error = Some((code, message)),
+                                _ => {}
+                            }
                         }
-                        ModelEvent::Completed { .. } => {}
-                        ModelEvent::Error { code, message, .. } => error = Some((code, message)),
-                        _ => {}
+                        changed = offset_rx.changed() => {
+                            if changed.is_err() {
+                                continue;
+                            }
+                            let steer_pending = pending_inputs(&core, &task, seen_offset)
+                                .await
+                                .iter()
+                                .any(|(_, m)| matches!(m, InputMode::Steer));
+                            if steer_pending {
+                                interrupted = true;
+                                stream_cancel.cancel();
+                                break;
+                            }
+                        }
                     }
                 }
-                changed = offset_rx.changed() => {
-                    if changed.is_err() {
-                        continue;
-                    }
-                    let steer_pending = pending_inputs(&core, &task, seen_offset)
-                        .await
-                        .iter()
-                        .any(|(_, m)| matches!(m, InputMode::Steer));
-                    if steer_pending {
-                        interrupted = true;
-                        stream_cancel.cancel();
-                        break;
-                    }
+                if interrupted {
+                    let mut store = core.store.lock().await;
+                    let _ = append(
+                        &mut store,
+                        &core,
+                        Lineage {
+                            step: Some(invoke_step),
+                            ..lturn
+                        },
+                        AggregateType::RunStep,
+                        *invoke_step.as_bytes(),
+                        vec![typed(
+                            "StepCancelled",
+                            &StepEvent::StepCancelled,
+                            actor.clone(),
+                        )],
+                    );
+                    let _ = append(
+                        &mut store,
+                        &core,
+                        lturn,
+                        AggregateType::Turn,
+                        *turn_id.as_bytes(),
+                        vec![typed(
+                            "TurnInterrupted",
+                            &TurnEvent::TurnInterrupted,
+                            actor.clone(),
+                        )],
+                    );
+                    let _ = append(
+                        &mut store,
+                        &core,
+                        lturn,
+                        AggregateType::Turn,
+                        *turn_id.as_bytes(),
+                        vec![typed(
+                            "ModelUsageRecorded",
+                            &TurnEvent::ModelUsageRecorded {
+                                input_tokens: usage.input_tokens,
+                                output_tokens: usage.output_tokens,
+                                cached_input_tokens: usage.cached_input_tokens,
+                                route: serde_json::Value::Null,
+                                reported: usage_reported,
+                            },
+                            actor.clone(),
+                        )],
+                    );
+                    let _ = append(
+                        &mut store,
+                        &core,
+                        lt,
+                        AggregateType::Run,
+                        *run_id.as_bytes(),
+                        vec![routing_attempt_event(
+                            &cfg,
+                            ordinal,
+                            "INTERRUPTED",
+                            &usage,
+                            usage_reported,
+                            provider_request_id(),
+                            actor.clone(),
+                        )],
+                    );
+                    drop(store);
+                    // Nothing from the interrupted response is applied; the boundary
+                    // applies the steer and the next turn starts from it.
+                    continue 'outer;
                 }
-            }
-        }
-        if interrupted {
-            let mut store = core.store.lock().await;
-            let _ = append(
-                &mut store,
-                &core,
-                Lineage {
-                    step: Some(invoke_step),
-                    ..lturn
-                },
-                AggregateType::RunStep,
-                *invoke_step.as_bytes(),
-                vec![typed(
-                    "StepCancelled",
-                    &StepEvent::StepCancelled,
-                    actor.clone(),
-                )],
-            );
-            let _ = append(
-                &mut store,
-                &core,
-                lturn,
-                AggregateType::Turn,
-                *turn_id.as_bytes(),
-                vec![typed(
-                    "TurnInterrupted",
-                    &TurnEvent::TurnInterrupted,
-                    actor.clone(),
-                )],
-            );
-            let _ = append(
-                &mut store,
-                &core,
-                lturn,
-                AggregateType::Turn,
-                *turn_id.as_bytes(),
-                vec![typed(
-                    "ModelUsageRecorded",
-                    &TurnEvent::ModelUsageRecorded {
-                        input_tokens: usage.input_tokens,
-                        output_tokens: usage.output_tokens,
-                        cached_input_tokens: usage.cached_input_tokens,
-                        route: serde_json::Value::Null,
-                        reported: usage_reported,
-                    },
-                    actor.clone(),
-                )],
-            );
-            let _ = append(
-                &mut store,
-                &core,
-                lt,
-                AggregateType::Run,
-                *run_id.as_bytes(),
-                vec![routing_attempt_event(
-                    &cfg,
-                    ordinal,
-                    "INTERRUPTED",
-                    &usage,
-                    usage_reported,
-                    provider_request_id(),
-                    actor.clone(),
-                )],
-            );
-            drop(store);
-            // Nothing from the interrupted response is applied; the boundary
-            // applies the steer and the next turn starts from it.
-            continue 'outer;
-        }
-        let route_record = stream
-            .route
-            .lock()
-            .map(|r| serde_json::to_value(&*r).unwrap_or_default())
-            .unwrap_or_default();
-        if cancel.is_cancelled() {
-            let mut store = core.store.lock().await;
-            // A cancelled attempt still cost something the provider never told
-            // us: it is recorded as unknown, never dropped and never zero
-            // (docs/38, EPR-FI-000).
-            let _ = append(
-                &mut store,
-                &core,
-                lturn,
-                AggregateType::Turn,
-                *turn_id.as_bytes(),
-                vec![typed(
-                    "ModelUsageRecorded",
-                    &TurnEvent::ModelUsageRecorded {
-                        input_tokens: usage.input_tokens,
-                        output_tokens: usage.output_tokens,
-                        cached_input_tokens: usage.cached_input_tokens,
-                        route: route_record.clone(),
-                        reported: usage_reported,
-                    },
-                    actor.clone(),
-                )],
-            );
-            let _ = append(
-                &mut store,
-                &core,
-                lt,
-                AggregateType::Run,
-                *run_id.as_bytes(),
-                vec![routing_attempt_event(
-                    &cfg,
-                    ordinal,
-                    "CANCELLED",
-                    &usage,
-                    usage_reported,
-                    provider_request_id(),
-                    actor.clone(),
-                )],
-            );
-            let _ = append(
-                &mut store,
-                &core,
-                Lineage {
-                    step: Some(invoke_step),
-                    ..lturn
-                },
-                AggregateType::RunStep,
-                *invoke_step.as_bytes(),
-                vec![typed(
-                    "StepCancelled",
-                    &StepEvent::StepCancelled,
-                    actor.clone(),
-                )],
-            );
-            let _ = append(
-                &mut store,
-                &core,
-                lturn,
-                AggregateType::Turn,
-                *turn_id.as_bytes(),
-                vec![typed(
-                    "TurnInterrupted",
-                    &TurnEvent::TurnInterrupted,
-                    actor.clone(),
-                )],
-            );
-            break LoopEnd::Cancelled;
-        }
-        if let Some((code, message)) = error {
-            let mut store = core.store.lock().await;
-            // A failed attempt is accounted the same way: unknown, not free.
-            let _ = append(
-                &mut store,
-                &core,
-                lturn,
-                AggregateType::Turn,
-                *turn_id.as_bytes(),
-                vec![typed(
-                    "ModelUsageRecorded",
-                    &TurnEvent::ModelUsageRecorded {
-                        input_tokens: usage.input_tokens,
-                        output_tokens: usage.output_tokens,
-                        cached_input_tokens: usage.cached_input_tokens,
-                        route: route_record.clone(),
-                        reported: usage_reported,
-                    },
-                    actor.clone(),
-                )],
-            );
-            let _ = append(
-                &mut store,
-                &core,
-                lt,
-                AggregateType::Run,
-                *run_id.as_bytes(),
-                vec![routing_attempt_event(
-                    &cfg,
-                    ordinal,
-                    "FAILED",
-                    &usage,
-                    usage_reported,
-                    provider_request_id(),
-                    actor.clone(),
-                )],
-            );
-            let _ = append(
-                &mut store,
-                &core,
-                Lineage {
-                    step: Some(invoke_step),
-                    ..lturn
-                },
-                AggregateType::RunStep,
-                *invoke_step.as_bytes(),
-                vec![typed(
-                    "StepFailed",
-                    &StepEvent::StepFailed {
-                        failure_code: code.clone(),
-                        output_ref: None,
-                    },
-                    actor.clone(),
-                )],
-            );
-            let _ = append(
-                &mut store,
-                &core,
-                lturn,
-                AggregateType::Turn,
-                *turn_id.as_bytes(),
-                vec![typed(
-                    "TurnFailed",
-                    &TurnEvent::TurnFailed {
-                        failure_code: code.clone(),
-                    },
-                    actor.clone(),
-                )],
-            );
-            break LoopEnd::ProviderFailed(code, message);
-        }
-        // Persist the assistant message before any action (docs/14 contract 1).
-        let assistant = TranscriptEntry::Assistant {
-            text: text.clone(),
-            tool_calls: calls.clone(),
-        };
-        let assistant_ref = {
-            let store = core.store.lock().await;
-            store
-                .objects()
-                .put(
-                    serde_json::to_vec(&assistant)
-                        .unwrap_or_default()
-                        .as_slice(),
-                )
-                .ok()
-        };
-        apply_entry(&mut transcript, &mut state, assistant);
-        {
-            let mut store = core.store.lock().await;
-            let _ = append(
-                &mut store,
-                &core,
-                lturn,
-                AggregateType::Turn,
-                *turn_id.as_bytes(),
-                vec![
-                    typed(
-                        "ModelUsageRecorded",
-                        &TurnEvent::ModelUsageRecorded {
-                            input_tokens: usage.input_tokens,
-                            output_tokens: usage.output_tokens,
-                            cached_input_tokens: usage.cached_input_tokens,
-                            route: route_record,
-                            reported: usage_reported,
+                let route_record = stream
+                    .route
+                    .lock()
+                    .map(|r| serde_json::to_value(&*r).unwrap_or_default())
+                    .unwrap_or_default();
+                if cancel.is_cancelled() {
+                    let mut store = core.store.lock().await;
+                    // A cancelled attempt still cost something the provider never told
+                    // us: it is recorded as unknown, never dropped and never zero
+                    // (docs/38, EPR-FI-000).
+                    let _ = append(
+                        &mut store,
+                        &core,
+                        lturn,
+                        AggregateType::Turn,
+                        *turn_id.as_bytes(),
+                        vec![typed(
+                            "ModelUsageRecorded",
+                            &TurnEvent::ModelUsageRecorded {
+                                input_tokens: usage.input_tokens,
+                                output_tokens: usage.output_tokens,
+                                cached_input_tokens: usage.cached_input_tokens,
+                                route: route_record.clone(),
+                                reported: usage_reported,
+                            },
+                            actor.clone(),
+                        )],
+                    );
+                    let _ = append(
+                        &mut store,
+                        &core,
+                        lt,
+                        AggregateType::Run,
+                        *run_id.as_bytes(),
+                        vec![routing_attempt_event(
+                            &cfg,
+                            ordinal,
+                            "CANCELLED",
+                            &usage,
+                            usage_reported,
+                            provider_request_id(),
+                            actor.clone(),
+                        )],
+                    );
+                    let _ = append(
+                        &mut store,
+                        &core,
+                        Lineage {
+                            step: Some(invoke_step),
+                            ..lturn
                         },
-                        actor.clone(),
-                    ),
-                    typed(
-                        "ModelInvocationCompleted",
-                        &TurnEvent::ModelInvocationCompleted {
-                            requested_actions: !calls.is_empty(),
+                        AggregateType::RunStep,
+                        *invoke_step.as_bytes(),
+                        vec![typed(
+                            "StepCancelled",
+                            &StepEvent::StepCancelled,
+                            actor.clone(),
+                        )],
+                    );
+                    let _ = append(
+                        &mut store,
+                        &core,
+                        lturn,
+                        AggregateType::Turn,
+                        *turn_id.as_bytes(),
+                        vec![typed(
+                            "TurnInterrupted",
+                            &TurnEvent::TurnInterrupted,
+                            actor.clone(),
+                        )],
+                    );
+                    break 'outer LoopEnd::Cancelled;
+                }
+                if let Some((code, message)) = error {
+                    let mut store = core.store.lock().await;
+                    // A failed attempt is accounted the same way: unknown, not free.
+                    let _ = append(
+                        &mut store,
+                        &core,
+                        lturn,
+                        AggregateType::Turn,
+                        *turn_id.as_bytes(),
+                        vec![typed(
+                            "ModelUsageRecorded",
+                            &TurnEvent::ModelUsageRecorded {
+                                input_tokens: usage.input_tokens,
+                                output_tokens: usage.output_tokens,
+                                cached_input_tokens: usage.cached_input_tokens,
+                                route: route_record.clone(),
+                                reported: usage_reported,
+                            },
+                            actor.clone(),
+                        )],
+                    );
+                    let _ = append(
+                        &mut store,
+                        &core,
+                        lt,
+                        AggregateType::Run,
+                        *run_id.as_bytes(),
+                        vec![routing_attempt_event(
+                            &cfg,
+                            ordinal,
+                            "FAILED",
+                            &usage,
+                            usage_reported,
+                            provider_request_id(),
+                            actor.clone(),
+                        )],
+                    );
+                    let _ = append(
+                        &mut store,
+                        &core,
+                        Lineage {
+                            step: Some(invoke_step),
+                            ..lturn
                         },
-                        actor.clone(),
-                    ),
-                ],
-            );
-            let _ = append(
-                &mut store,
-                &core,
-                lt,
-                AggregateType::Run,
-                *run_id.as_bytes(),
-                vec![routing_attempt_event(
-                    &cfg,
-                    ordinal,
-                    "SUCCEEDED",
-                    &usage,
-                    usage_reported,
-                    provider_request_id(),
-                    actor.clone(),
-                )],
-            );
+                        AggregateType::RunStep,
+                        *invoke_step.as_bytes(),
+                        vec![typed(
+                            "StepFailed",
+                            &StepEvent::StepFailed {
+                                failure_code: code.clone(),
+                                output_ref: None,
+                            },
+                            actor.clone(),
+                        )],
+                    );
+                    let _ = append(
+                        &mut store,
+                        &core,
+                        lturn,
+                        AggregateType::Turn,
+                        *turn_id.as_bytes(),
+                        vec![typed(
+                            "TurnFailed",
+                            &TurnEvent::TurnFailed {
+                                failure_code: code.clone(),
+                            },
+                            actor.clone(),
+                        )],
+                    );
+                    break 'outer LoopEnd::ProviderFailed(code, message);
+                }
+                // Persist the assistant message before any action (docs/14 contract 1).
+                let assistant = TranscriptEntry::Assistant {
+                    text: text.clone(),
+                    tool_calls: calls.clone(),
+                };
+                let assistant_ref = {
+                    let store = core.store.lock().await;
+                    store
+                        .objects()
+                        .put(
+                            serde_json::to_vec(&assistant)
+                                .unwrap_or_default()
+                                .as_slice(),
+                        )
+                        .ok()
+                };
+                apply_entry(&mut transcript, &mut state, assistant);
+                {
+                    let mut store = core.store.lock().await;
+                    let _ = append(
+                        &mut store,
+                        &core,
+                        lturn,
+                        AggregateType::Turn,
+                        *turn_id.as_bytes(),
+                        vec![
+                            typed(
+                                "ModelUsageRecorded",
+                                &TurnEvent::ModelUsageRecorded {
+                                    input_tokens: usage.input_tokens,
+                                    output_tokens: usage.output_tokens,
+                                    cached_input_tokens: usage.cached_input_tokens,
+                                    route: route_record,
+                                    reported: usage_reported,
+                                },
+                                actor.clone(),
+                            ),
+                            typed(
+                                "ModelInvocationCompleted",
+                                &TurnEvent::ModelInvocationCompleted {
+                                    requested_actions: !calls.is_empty(),
+                                },
+                                actor.clone(),
+                            ),
+                        ],
+                    );
+                    let _ = append(
+                        &mut store,
+                        &core,
+                        lt,
+                        AggregateType::Run,
+                        *run_id.as_bytes(),
+                        vec![routing_attempt_event(
+                            &cfg,
+                            ordinal,
+                            "SUCCEEDED",
+                            &usage,
+                            usage_reported,
+                            provider_request_id(),
+                            actor.clone(),
+                        )],
+                    );
 
-            let _ = append(
-                &mut store,
-                &core,
-                Lineage {
-                    step: Some(invoke_step),
-                    ..lturn
-                },
-                AggregateType::RunStep,
-                *invoke_step.as_bytes(),
-                vec![typed(
-                    "StepSucceeded",
-                    &StepEvent::StepSucceeded {
-                        output_ref: assistant_ref,
-                    },
-                    actor.clone(),
-                )],
-            );
-        }
+                    let _ = append(
+                        &mut store,
+                        &core,
+                        Lineage {
+                            step: Some(invoke_step),
+                            ..lturn
+                        },
+                        AggregateType::RunStep,
+                        *invoke_step.as_bytes(),
+                        vec![typed(
+                            "StepSucceeded",
+                            &StepEvent::StepSucceeded {
+                                output_ref: assistant_ref,
+                            },
+                            actor.clone(),
+                        )],
+                    );
+                }
+                (text, calls)
+            }
+        };
         // ---- Actions
         let mut progress = false;
         let mut completed = false;
@@ -2428,6 +2539,37 @@ async fn run_loop(
                     };
                     (entry, StepType::ToolCall, Some("TOOL_NOT_VISIBLE".into()))
                 }
+                // docs/19 resume step 6: a call the dead Core had dispatched is
+                // reconciled with the ledger and the target, never replayed.
+                _ if crate::protocol::unknown_call(
+                    &resume_state,
+                    run_id,
+                    &call_id,
+                    &name,
+                    &arguments_json,
+                )
+                .is_some() =>
+                {
+                    let pending = crate::protocol::unknown_call(
+                        &resume_state,
+                        run_id,
+                        &call_id,
+                        &name,
+                        &arguments_json,
+                    )
+                    .expect("checked by the guard");
+                    let entry = crate::protocol::reconcile_unknown(
+                        &core,
+                        &task,
+                        lturn,
+                        &actor,
+                        &call_id,
+                        &pending,
+                        &arguments_json,
+                    )
+                    .await;
+                    (entry, StepType::ToolCall, Some("UNKNOWN_OUTCOME".into()))
+                }
                 _ => {
                     // PX-029: an edit in a language the product claims nothing about is
                     // refused until the user opts this task in; the plan gate still applies on
@@ -2679,13 +2821,20 @@ async fn run_loop(
                             let entry = execute_tool(
                                 &core,
                                 &task,
-                                lt,
+                                lturn,
                                 &actor,
                                 &mut state,
                                 &call_id,
                                 &name,
                                 &arguments_json,
                                 &cancel,
+                                crate::protocol::resumed_call(
+                                    &resume_state,
+                                    run_id,
+                                    &call_id,
+                                    &name,
+                                    &arguments_json,
+                                ),
                             )
                             .await;
                             let failure = match &entry {
@@ -4027,8 +4176,11 @@ async fn execute_tool(
     name: &str,
     args: &str,
     cancel: &CancellationToken,
+    resume: Option<ToolCallId>,
 ) -> TranscriptEntry {
-    let tool_call_id = ToolCallId::new();
+    // A resumed run re-enters the call it already proposed (docs/19 layer 2):
+    // the same id finds the same approval bound to the same intent.
+    let tool_call_id = resume.unwrap_or_default();
     let mut first = true;
     loop {
         let (lease, approval, existing, stopped) = {
@@ -4062,6 +4214,9 @@ async fn execute_tool(
             approval,
             emergency_stopped: stopped,
             existing,
+            run_id: lt.run,
+            turn_id: lt.turn,
+            call_id: Some(call_id.to_owned()),
         };
         let done = match core.tools.invoke(&core.store, req).await {
             Ok(d) => d,

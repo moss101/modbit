@@ -1,0 +1,46 @@
+{
+  "expected": {
+    "activeLeases": 1,
+    "approvals": [
+      {
+        "approvalId": "55555555555555555555555555555555",
+        "effectClass": "Destructive",
+        "expired": false,
+        "expiresAt": "1700000000000",
+        "intentHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "toolCallId": "33333333333333333333333333333333",
+        "toolName": "git.worktree.close"
+      }
+    ],
+    "boundary": "AWAITING_APPROVAL",
+    "calls": [
+      {
+        "approvalId": "55555555555555555555555555555555",
+        "argumentsHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "callId": "call_1_0",
+        "effectClass": "Destructive",
+        "phase": "AWAITING_APPROVAL",
+        "reason": "",
+        "runId": "44444444444444444444444444444444",
+        "toolCallId": "33333333333333333333333333333333",
+        "toolName": "git.worktree.close"
+      },
+      {
+        "approvalId": "",
+        "argumentsHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "callId": "",
+        "effectClass": "ReversibleWrite",
+        "phase": "UNKNOWN_OUTCOME",
+        "reason": "core restarted (boot generation 7) after the call was dispatched and before its result was acknowledged",
+        "runId": null,
+        "toolCallId": "66666666666666666666666666666666",
+        "toolName": "shell.exec"
+      }
+    ],
+    "digest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "questionId": "",
+    "taskId": "22222222222222222222222222222222",
+    "version": "protocol-state-1"
+  },
+  "type": "modbit.v1.ProtocolStateView"
+}

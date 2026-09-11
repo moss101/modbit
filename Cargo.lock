@@ -1817,6 +1817,7 @@ dependencies = [
  "modbit-policy",
  "modbit-prompt-compiler",
  "modbit-protocol",
+ "modbit-protocol-state",
  "modbit-providers",
  "modbit-retrieval",
  "modbit-terminal",
@@ -1884,6 +1885,7 @@ version = "0.0.0"
 dependencies = [
  "hex",
  "modbit-domain",
+ "modbit-protocol-state",
  "rusqlite",
  "serde",
  "serde_json",
@@ -1995,7 +1997,11 @@ dependencies = [
 name = "modbit-protocol-state"
 version = "0.0.0"
 dependencies = [
+ "hex",
  "modbit-domain",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
 ]
 
 [[package]]

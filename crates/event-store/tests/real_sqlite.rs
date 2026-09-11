@@ -230,7 +230,7 @@ fn newer_schema_is_refused() {
             err,
             Error::SchemaTooNew {
                 found: 99,
-                supported: 9
+                supported: 10
             }
         ),
         "{err}"

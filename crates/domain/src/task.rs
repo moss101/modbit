@@ -9,7 +9,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::ids::{SessionId, TaskId, WorkspaceId};
+use crate::ids::{RunId, SessionId, TaskId, WorkspaceId};
 use crate::state::StateMachine;
 use crate::time::Timestamp;
 
@@ -493,6 +493,38 @@ pub enum TaskEvent {
         /// Provenance label (`user_review`).
         provenance: String,
     },
+    /// `ProtocolStateResumed` (docs/19 layer 2, REQ-EV-0055): a restarted
+    /// Core reconstructed the task's protocol state and continued the run
+    /// from the boundary it names; the outstanding calls are re-entered by
+    /// their existing ids, never re-proposed. No state change.
+    ProtocolStateResumed {
+        /// Run that continued.
+        run_id: RunId,
+        /// Boundary continued from (`EXECUTING`, `AWAITING_APPROVAL`,
+        /// `RECONCILING`, `TURN_START`).
+        boundary: String,
+        /// Outstanding tool calls re-entered, as UUID text.
+        tool_call_ids: Vec<String>,
+        /// sha256 of the canonical protocol state that was reconstructed.
+        digest: String,
+    },
+    /// `ToolCallReconciled` (docs/19 resume step 6, REQ-EV-0055): a call
+    /// whose outcome became unknown across a restart was reconciled against
+    /// the effect ledger and the target before the run went on; no effect
+    /// was replayed. No state change.
+    ToolCallReconciled {
+        /// The call, as UUID text.
+        tool_call_id: String,
+        /// Tool.
+        tool_name: String,
+        /// Effect class of the call.
+        effect_class: String,
+        /// `RECEIPT_FOUND`, `TARGET_INSPECTED`, `HELD_FOR_RECEIPT` or
+        /// `REPLAY_SAFE`.
+        resolution: String,
+        /// What was observed (receipt hash, target content hash, ...).
+        observed: String,
+    },
 }
 
 impl TaskEvent {
@@ -533,6 +565,8 @@ impl TaskEvent {
             Self::HarnessBudgetExhausted { .. } => "HarnessBudgetExhausted",
             Self::NoProgressDetected { .. } => "NoProgressDetected",
             Self::ReviewDecisionRecorded { .. } => "ReviewDecisionRecorded",
+            Self::ProtocolStateResumed { .. } => "ProtocolStateResumed",
+            Self::ToolCallReconciled { .. } => "ToolCallReconciled",
         }
     }
 }
@@ -641,7 +675,9 @@ impl Task {
             | TaskEvent::RepairEscalated { .. }
             | TaskEvent::HarnessBudgetExhausted { .. }
             | TaskEvent::NoProgressDetected { .. }
-            | TaskEvent::ReviewDecisionRecorded { .. } => {
+            | TaskEvent::ReviewDecisionRecorded { .. }
+            | TaskEvent::ProtocolStateResumed { .. }
+            | TaskEvent::ToolCallReconciled { .. } => {
                 if self.state.is_terminal() {
                     return Err(invalid(&self.state, event.event_type()));
                 }

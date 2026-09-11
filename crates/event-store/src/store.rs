@@ -457,6 +457,21 @@ impl EventStore {
         crate::projections::load_tool_call(&self.conn, id)
     }
 
+    /// The task's outstanding tool calls (not succeeded, failed or cancelled:
+    /// proposed, validated, awaiting approval, dispatched, streaming or of
+    /// unknown outcome), oldest first.
+    pub fn open_tool_calls(&self, task: &TaskId) -> Result<Vec<modbit_domain::toolcall::ToolCall>> {
+        crate::projections::load_open_tool_calls(&self.conn, task)
+    }
+
+    /// Every tool call of a task, oldest first.
+    pub fn tool_calls_for_task(
+        &self,
+        task: &TaskId,
+    ) -> Result<Vec<modbit_domain::toolcall::ToolCall>> {
+        crate::projections::load_tool_calls_for_task(&self.conn, task)
+    }
+
     /// Load an approval projection.
     pub fn approval(
         &self,
@@ -479,6 +494,25 @@ impl EventStore {
         id: &SessionId,
     ) -> Result<Vec<modbit_domain::approval::Approval>> {
         crate::projections::load_approvals_for_session(&self.conn, id)
+    }
+
+    /// The materialized protocol state of a task (docs/31 `protocol_state`,
+    /// docs/19 layer 2), written in the transaction of every event that
+    /// touched its calls, approvals, leases, question or reconciliations.
+    pub fn protocol_state(
+        &self,
+        session: &SessionId,
+        task: &TaskId,
+    ) -> Result<Option<modbit_protocol_state::ProtocolState>> {
+        crate::projections::load_protocol_state(&self.conn, session, task)
+    }
+
+    /// The approvals of a task, oldest first.
+    pub fn approvals_for_task(
+        &self,
+        task: &TaskId,
+    ) -> Result<Vec<modbit_domain::approval::Approval>> {
+        crate::projections::load_approvals_for_task(&self.conn, task)
     }
 
     /// Load a capability lease projection.
@@ -565,6 +599,11 @@ impl EventStore {
     /// Tasks in `Running` state.
     pub fn running_tasks(&self) -> Result<Vec<modbit_domain::task::Task>> {
         crate::projections::load_running_tasks(&self.conn)
+    }
+
+    /// Tasks that are running or waiting, oldest first.
+    pub fn live_tasks(&self) -> Result<Vec<modbit_domain::task::Task>> {
+        crate::projections::load_live_tasks(&self.conn)
     }
 
     /// Runs of a task, newest attempt first.

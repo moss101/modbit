@@ -38,7 +38,8 @@ Unique `(aggregate_id, sequence)`.
 `step_id PK, turn_id, step_type, state, ordinal, started_at, ended_at, input_ref, output_ref, failure_code`.
 
 ### `tool_calls`
-`tool_call_id PK, step_id, tool_name, tool_version, effect_class, capability_lease_id, status, arguments_hash, dispatched_at, completed_at, result_ref, unknown_outcome_reason`.
+`tool_call_id PK, step_id, tool_name, tool_version, effect_class, capability_lease_id, status, arguments_hash, dispatched_at, completed_at, result_ref, unknown_outcome_reason, run_id, turn_id, call_id, arguments_ref`.
+`run_id`/`turn_id`/`call_id` bind a call to the run, the turn and the model's own call id that proposed it; `arguments_ref` is the object hash of the raw arguments (M4.1). The proposal and the dispatch are journaled before validation and before the effector runs, so a restarted Core finds every call it must re-enter or reconcile.
 
 ### `approvals`
 `approval_id PK, task_id, tool_call_id, intent_hash, scope_json, status, requested_at, resolved_at, resolver_user_id, expires_at`.
@@ -51,6 +52,7 @@ Unique `(aggregate_id, sequence)`.
 
 ### `protocol_state`
 Keyed by `session_id + protocol_key`; stores typed JSON/protobuf payload and generation for pending tool/approval/question/subagent/terminal/browser/sandbox lifecycle.
+`(session_id, protocol_key) PK, payload, generation, updated_at`. Key `task:<task_id>` holds the task's `ProtocolState` (`crates/protocol-state`: outstanding calls with their phase, pending approvals with their intent hash, the open question, active leases, reconciled unknown outcomes), materialized in the transaction of every event that touches the task's calls, approvals, leases, question or reconciliations (M4.1); terminal/browser/sandbox keys arrive with M4.5.
 
 ### `checkpoints`
 `checkpoint_id PK, task_id, epoch, base_checkpoint_id, workspace_revision, manifest_object_hash, git_state_json, runtime_state_ref, index_generation, created_at, status, integrity_hash`.

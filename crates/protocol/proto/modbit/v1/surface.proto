@@ -1094,3 +1094,42 @@ message StarterTaskList {
   repeated StarterTaskView tasks = 2;
   bool trusted = 3;                // whether this session has trusted the root
 }
+
+// ---- M4.1 Protocol State (docs/19 layer 2, REQ-EV-0055) ----
+
+message GetProtocolState {
+  Id task_id = 1;
+}
+
+message PendingCallView {
+  Id tool_call_id = 1;
+  string tool_name = 2;
+  string effect_class = 3;
+  string phase = 4;                // PROPOSED | AWAITING_APPROVAL | IN_FLIGHT | UNKNOWN_OUTCOME
+  string arguments_hash = 5;       // the intent
+  string call_id = 6;              // the model's call id, when the call came from a run
+  Id run_id = 7;
+  string approval_id = 8;          // hex, when awaiting one
+  string reason = 9;               // why the outcome is unknown, when it is
+}
+
+message PendingApprovalView {
+  Id approval_id = 1;
+  Id tool_call_id = 2;
+  string tool_name = 3;
+  string effect_class = 4;
+  string intent_hash = 5;
+  int64 expires_at = 6;            // millis since epoch; 0 = never
+  bool expired = 7;
+}
+
+message ProtocolStateView {
+  Id task_id = 1;
+  string version = 2;              // reconstruction version
+  string boundary = 3;             // TURN_START | EXECUTING | AWAITING_APPROVAL | AWAITING_ANSWER | RECONCILING
+  repeated PendingCallView calls = 4;
+  repeated PendingApprovalView approvals = 5;
+  string question_id = 6;          // the open question, if any
+  uint32 active_leases = 7;
+  string digest = 8;               // sha256 of the canonical state
+}

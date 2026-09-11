@@ -14603,3 +14603,520 @@ async fn qual_px_022_provider_setup_and_repository_trust_are_enforced_by_the_cor
     }
     let _ = repo;
 }
+
+/// A wire id as the UUID text the log records ids in.
+fn uuid_of(id: &Id) -> String {
+    let bytes: [u8; 16] = id.value.clone().try_into().unwrap();
+    modbit_domain::ToolCallId::from_bytes(bytes).to_string()
+}
+
+/// The task's protocol state over the wire (M4.1).
+async fn protocol_state(c: &mut Client, task: &Id) -> modbit_protocol::v1::ProtocolStateView {
+    use modbit_protocol::v1::GetProtocolState;
+    let ack = c
+        .command(envelope(
+            Id {
+                value: (0..16).map(|_| rand::random::<u8>()).collect(),
+            },
+            "GetProtocolState",
+            GetProtocolState {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    Client::result(&ack).unwrap()
+}
+
+/// The session's approvals over the wire.
+async fn approvals_of(c: &mut Client, session: &Id) -> Vec<modbit_protocol::v1::ApprovalView> {
+    use modbit_protocol::v1::{ApprovalList, ListApprovals};
+    let ack = c
+        .command(envelope(
+            Id {
+                value: (0..16).map(|_| rand::random::<u8>()).collect(),
+            },
+            "ListApprovals",
+            ListApprovals {
+                session_id: Some(session.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    Client::result::<ApprovalList>(&ack).unwrap().approvals
+}
+
+/// The task's status over the wire, right now.
+async fn status_now(c: &mut Client, task: &Id) -> modbit_protocol::v1::TaskStatus {
+    use modbit_protocol::v1::GetTaskStatus;
+    let ack = c
+        .command(envelope(
+            Id {
+                value: (0..16).map(|_| rand::random::<u8>()).collect(),
+            },
+            "GetTaskStatus",
+            GetTaskStatus {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    Client::result(&ack).unwrap()
+}
+
+/// QUAL-EV-0055 / E2E-004 (docs/19 layer 2, docs/51): the agent asks for a
+/// destructive effect, the Core opens an approval bound to the intent and is
+/// hard-killed while it waits. The restarted Core reconstructs the exact
+/// pending state — the same ApprovalId, the same intent hash, the same
+/// ToolCallId, the task waiting on the approval — and the resumed run
+/// re-enters the call by id instead of asking the model again. Approving
+/// once causes exactly one effect, on the log as one dispatch and one
+/// receipt.
+#[tokio::test]
+async fn qual_ev_0055_e2e_004_core_crash_during_approval_restores_the_same_approval_and_one_effect()
+{
+    use modbit_protocol::v1::{ApprovalResolvedAck, ResolveApproval, StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[("a.txt", "a\n")]);
+    // A worktree the agent will ask to close (destructive: approval-gated).
+    let wt = repo.path().join("wt-close");
+    assert!(
+        Command::new("git")
+            .arg("-C")
+            .arg(repo.path())
+            .args(["worktree", "add", "-q", "-b", "task/close"])
+            .arg(&wt)
+            .status()
+            .unwrap()
+            .success()
+    );
+    let wt_s = wt
+        .canonicalize()
+        .unwrap()
+        .to_string_lossy()
+        .trim_start_matches(r"\\?\")
+        .to_owned();
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "close the stale worktree", "expected_files": []}}]}),
+        json!({"calls": [{"name": "git.worktree.close", "args": {"path": wt_s}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "closed the worktree", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xF0)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xF1, "local_trusted").await;
+    let start = StartTask {
+        task_id: Some(task.clone()),
+        endpoint: "openai".into(),
+        model: "gpt-5".into(),
+        max_turns: 0,
+        max_tool_calls: 0,
+        max_no_progress_turns: 0,
+    }
+    .encode_to_vec();
+    let ack = c
+        .command(envelope_fenced(id16(0xF2), "StartTask", start.clone(), g))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    // The approval opens; the run waits on it with the loop alive.
+    let deadline = std::time::Instant::now() + Duration::from_secs(30);
+    let approval = loop {
+        let list = approvals_of(&mut c, &session).await;
+        if let Some(a) = list.iter().find(|a| a.status == "REQUESTED") {
+            break a.clone();
+        }
+        if std::time::Instant::now() >= deadline {
+            let trail = task_events(&core, &session, &task).await;
+            panic!("no approval opened\n{trail:#?}");
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    };
+    assert_eq!(
+        (approval.tool_name.as_str(), approval.effect_class.as_str()),
+        ("git.worktree.close", "Destructive")
+    );
+    let deadline = std::time::Instant::now() + Duration::from_secs(10);
+    let st = loop {
+        let st = status_now(&mut c, &task).await;
+        if st.state == "Waiting" {
+            break st;
+        }
+        assert!(std::time::Instant::now() < deadline, "{st:?}");
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    };
+    assert_eq!(
+        (
+            st.wait_reason.as_str(),
+            st.run_state.as_str(),
+            st.loop_alive
+        ),
+        ("Approval", "Running", true),
+        "{st:?}"
+    );
+    let before = protocol_state(&mut c, &task).await;
+    assert_eq!(before.boundary, "AWAITING_APPROVAL", "{before:?}");
+    assert_eq!(before.calls.len(), 1, "{before:?}");
+    assert_eq!(before.calls[0].phase, "AWAITING_APPROVAL");
+    assert_eq!(
+        before.calls[0].approval_id,
+        hex_id(approval.approval_id.as_ref().unwrap())
+    );
+    assert_eq!(before.calls[0].arguments_hash, approval.intent_hash);
+    assert_eq!(before.calls[0].tool_call_id, approval.tool_call_id);
+    assert_eq!(before.approvals.len(), 1);
+    assert!(wt.exists(), "nothing happened before the approval");
+
+    // Hard-kill the Core while the approval is pending; restart.
+    drop(c);
+    core.kill();
+    let core2 = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c2 = core2.client().await;
+    let st = status_now(&mut c2, &task).await;
+    assert_eq!(
+        (
+            st.state.as_str(),
+            st.wait_reason.as_str(),
+            st.run_state.as_str(),
+            st.loop_alive
+        ),
+        ("Waiting", "Approval", "Suspended", false),
+        "{st:?}"
+    );
+    // The same approval, bound to the same intent, on the same call.
+    let list = approvals_of(&mut c2, &session).await;
+    assert_eq!(list.len(), 1, "{list:?}");
+    assert_eq!(list[0].approval_id, approval.approval_id);
+    assert_eq!(list[0].intent_hash, approval.intent_hash);
+    assert_eq!(list[0].tool_call_id, approval.tool_call_id);
+    assert_eq!(list[0].status, "REQUESTED");
+    let after = protocol_state(&mut c2, &task).await;
+    assert_eq!(after.boundary, "AWAITING_APPROVAL", "{after:?}");
+    assert_eq!(
+        after.calls, before.calls,
+        "the pending call is exactly the one before the crash"
+    );
+    assert_eq!(after.approvals, before.approvals);
+    assert_eq!(
+        after.digest, before.digest,
+        "the reconstruction is deterministic"
+    );
+    let trail = task_events(&core2, &session, &task).await;
+    let attention = trail
+        .iter()
+        .rev()
+        .find(|(_, t, _)| t == "TaskNeedsAttention")
+        .map(|(_, _, p)| p["reason"].as_str().unwrap_or_default().to_owned())
+        .unwrap_or_default();
+    assert!(
+        attention.contains("awaited approval")
+            && attention.contains(&uuid_of(approval.approval_id.as_ref().unwrap())),
+        "{attention}"
+    );
+    assert!(wt.exists(), "a restart is not an approval");
+
+    // Resume: the run re-enters the same call and waits on the same approval;
+    // no second approval is opened and the model is not asked again.
+    let g2 = Some(acquire_lease(&mut c2, id16(0xF3), session.clone(), "resumer").await);
+    let requests_before = seen.lock().unwrap().len();
+    let ack = c2
+        .command(envelope_fenced(id16(0xF4), "StartTask", start.clone(), g2))
+        .await
+        .unwrap();
+    let started: TaskRunStarted = Client::result(&ack).unwrap();
+    assert!(started.resumed);
+    let deadline = std::time::Instant::now() + Duration::from_secs(10);
+    loop {
+        let st = status_now(&mut c2, &task).await;
+        if st.state == "Waiting" && st.wait_reason == "Approval" && st.loop_alive {
+            break;
+        }
+        assert!(std::time::Instant::now() < deadline, "{st:?}");
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    let list = approvals_of(&mut c2, &session).await;
+    assert_eq!(list.len(), 1, "no second approval after resume: {list:?}");
+    assert_eq!(list[0].approval_id, approval.approval_id);
+    assert_eq!(
+        seen.lock().unwrap().len(),
+        requests_before,
+        "the model was not invoked to re-request the call"
+    );
+    assert!(wt.exists(), "still nothing before the approval");
+
+    // Approve once: exactly one effect.
+    let ack = c2
+        .command(envelope_fenced(
+            id16(0xF5),
+            "ResolveApproval",
+            ResolveApproval {
+                approval_id: approval.approval_id.clone(),
+                approve: true,
+                reason: "ok".into(),
+            }
+            .encode_to_vec(),
+            g2,
+        ))
+        .await
+        .unwrap();
+    let res: ApprovalResolvedAck = Client::result(&ack).unwrap();
+    assert_eq!(res.status, "APPROVED");
+    let st = wait_task(&mut c2, &task, 60).await;
+    let trail = task_events(&core2, &session, &task).await;
+    assert_eq!(
+        (st.state.as_str(), st.run_state.as_str()),
+        ("ReadyForReview", "Completed"),
+        "{st:?}\n{trail:#?}"
+    );
+    assert!(!wt.exists(), "the worktree was removed");
+    let count = |agg: &str, ty: &str, tool: Option<&str>| {
+        trail
+            .iter()
+            .filter(|(a, t, p)| a == agg && t == ty && tool.is_none_or(|n| p["tool_name"] == n))
+            .count()
+    };
+    assert_eq!(
+        count("tool_call", "ToolCallProposed", Some("git.worktree.close")),
+        1,
+        "one proposal: the resumed run re-entered the same call\n{trail:#?}"
+    );
+    assert_eq!(count("tool_call", "ToolCallApprovalRequested", None), 1);
+    assert_eq!(count("approval", "ApprovalRequested", None), 1);
+    assert_eq!(
+        count("tool_call", "ToolCallDispatched", None),
+        1,
+        "one dispatch"
+    );
+    assert_eq!(
+        count("tool_call", "EffectReceiptAppended", None),
+        1,
+        "one receipt"
+    );
+    assert_eq!(count("tool_call", "ToolCallSucceeded", None), 1);
+    let resumed = trail
+        .iter()
+        .find(|(_, t, _)| t == "ProtocolStateResumed")
+        .map(|(_, _, p)| p.clone())
+        .expect("the resume boundary is on the log");
+    assert_eq!(resumed["boundary"], "AWAITING_APPROVAL");
+    assert_eq!(
+        resumed["tool_call_ids"],
+        json!([uuid_of(approval.tool_call_id.as_ref().unwrap())])
+    );
+    assert_eq!(resumed["digest"], json!(before.digest));
+    // The receipt carries the approval that authorized the effect.
+    let receipt = trail
+        .iter()
+        .find(|(_, t, _)| t == "EffectReceiptAppended")
+        .map(|(_, _, p)| p["receipt"].clone())
+        .unwrap();
+    assert_eq!(
+        receipt["approval_id"],
+        json!(approval.approval_id.as_ref().map(uuid_of).unwrap())
+    );
+    // The model saw the one result of the call it asked for, then completed.
+    let bodies = seen.lock().unwrap().clone();
+    let last = &bodies[bodies.len() - 1]["messages"];
+    let results: Vec<&serde_json::Value> = last
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .collect();
+    assert_eq!(results.len(), 2, "{last}");
+    assert!(
+        results[1]["content"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("SUCCESS"),
+        "{}",
+        results[1]
+    );
+}
+
+/// QUAL-EV-0055 / E2E-005 shape (docs/19 resume step 6, docs/13): the Core is
+/// hard-killed after a command crossed the dispatch boundary and before its
+/// result was acknowledged. The restarted Core finds the dispatch on the log
+/// (it was journaled before the effector ran), records the call as
+/// UnknownOutcome with the boot generation, and the resumed run reconciles it
+/// — the observation goes to the model as the call's result — instead of
+/// running the command again. The user sees the reconciliation state.
+#[tokio::test]
+async fn qual_ev_0055_e2e_005_core_crash_after_dispatch_reconciles_the_unknown_outcome_without_replay()
+ {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (_repo, root) = plain_repo(&[("a.txt", "a\n")]);
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "run the long command", "expected_files": []}}]}),
+        json!({"calls": [{"name": "shell.exec", "args": {"argv": ["sh", "-c", "sleep 20; echo done"], "inherit_env": true, "timeout_ms": 60000}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "reconciled", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xF6)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xF7, "local_trusted").await;
+    let start = StartTask {
+        task_id: Some(task.clone()),
+        endpoint: "openai".into(),
+        model: "gpt-5".into(),
+        max_turns: 0,
+        max_tool_calls: 0,
+        max_no_progress_turns: 0,
+    }
+    .encode_to_vec();
+    let ack = c
+        .command(envelope_fenced(id16(0xF8), "StartTask", start.clone(), g))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    // The command is dispatched: the journal put it on the log before it ran.
+    let deadline = std::time::Instant::now() + Duration::from_secs(30);
+    let in_flight = loop {
+        let ps = protocol_state(&mut c, &task).await;
+        if let Some(call) = ps.calls.iter().find(|c| c.phase == "IN_FLIGHT") {
+            break call.clone();
+        }
+        assert!(std::time::Instant::now() < deadline, "{ps:?}");
+        tokio::time::sleep(Duration::from_millis(30)).await;
+    };
+    assert_eq!(in_flight.tool_name, "shell.exec");
+    assert_eq!(in_flight.effect_class, "ReversibleWrite");
+    let call_id = in_flight.tool_call_id.clone().unwrap();
+    // Hard-kill the Core mid-command; restart.
+    drop(c);
+    core.kill();
+    let core2 = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c2 = core2.client().await;
+    let st = status_now(&mut c2, &task).await;
+    assert_eq!(
+        (
+            st.state.as_str(),
+            st.wait_reason.as_str(),
+            st.run_state.as_str(),
+            st.loop_alive
+        ),
+        ("Waiting", "External", "Suspended", false),
+        "{st:?}"
+    );
+    let ps = protocol_state(&mut c2, &task).await;
+    assert_eq!(ps.boundary, "RECONCILING", "{ps:?}");
+    assert_eq!(ps.calls.len(), 1);
+    assert_eq!(ps.calls[0].tool_call_id, Some(call_id.clone()));
+    assert_eq!(ps.calls[0].phase, "UNKNOWN_OUTCOME");
+    assert!(
+        ps.calls[0].reason.contains("core restarted")
+            && ps.calls[0]
+                .reason
+                .contains("before its result was acknowledged"),
+        "{}",
+        ps.calls[0].reason
+    );
+    let trail = task_events(&core2, &session, &task).await;
+    let attention = trail
+        .iter()
+        .rev()
+        .find(|(_, t, _)| t == "TaskNeedsAttention")
+        .map(|(_, _, p)| p["reason"].as_str().unwrap_or_default().to_owned())
+        .unwrap_or_default();
+    assert!(
+        attention.contains("in flight")
+            && attention.contains("unknown")
+            && attention.contains("shell.exec"),
+        "{attention}"
+    );
+    // Resume: the call is reconciled, not replayed; the model gets the
+    // observation and completes.
+    let g2 = Some(acquire_lease(&mut c2, id16(0xF9), session.clone(), "resumer").await);
+    let requests_before = seen.lock().unwrap().len();
+    let ack = c2
+        .command(envelope_fenced(id16(0xFA), "StartTask", start.clone(), g2))
+        .await
+        .unwrap();
+    let started: TaskRunStarted = Client::result(&ack).unwrap();
+    assert!(started.resumed);
+    let st = wait_task(&mut c2, &task, 60).await;
+    let trail = task_events(&core2, &session, &task).await;
+    assert_eq!(
+        (st.state.as_str(), st.run_state.as_str()),
+        ("ReadyForReview", "Completed"),
+        "{st:?}\n{trail:#?}"
+    );
+    let count = |agg: &str, ty: &str, tool: Option<&str>| {
+        trail
+            .iter()
+            .filter(|(a, t, p)| a == agg && t == ty && tool.is_none_or(|n| p["tool_name"] == n))
+            .count()
+    };
+    assert_eq!(
+        count("tool_call", "ToolCallProposed", Some("shell.exec")),
+        1
+    );
+    assert_eq!(
+        count("tool_call", "ToolCallDispatched", None),
+        1,
+        "no replay\n{trail:#?}"
+    );
+    assert_eq!(count("tool_call", "ToolCallUnknownOutcome", None), 1);
+    let reconciled = trail
+        .iter()
+        .find(|(_, t, _)| t == "ToolCallReconciled")
+        .map(|(_, _, p)| p.clone())
+        .expect("the reconciliation is on the log");
+    assert_eq!(reconciled["tool_call_id"], json!(uuid_of(&call_id)));
+    assert_eq!(reconciled["resolution"], "TARGET_INSPECTED");
+    assert_eq!(reconciled["effect_class"], "ReversibleWrite");
+    let resumed = trail
+        .iter()
+        .find(|(_, t, _)| t == "ProtocolStateResumed")
+        .map(|(_, _, p)| p.clone())
+        .unwrap();
+    assert_eq!(resumed["boundary"], "RECONCILING");
+    // The first request after the resume carried the reconciliation as the
+    // command's result: the model was told, not re-asked.
+    let bodies = seen.lock().unwrap().clone();
+    assert_eq!(
+        bodies.len(),
+        requests_before + 1,
+        "one request after resume"
+    );
+    let resumed_request = &bodies[requests_before]["messages"];
+    let results: Vec<String> = resumed_request
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    assert_eq!(results.len(), 2, "{resumed_request}");
+    assert!(
+        results[1].contains("status: UNKNOWN_OUTCOME")
+            && results[1].contains("reconciliation: TARGET_INSPECTED")
+            && results[1].contains("nothing was retried"),
+        "{}",
+        results[1]
+    );
+    // After reconciliation the protocol state is quiet.
+    let ps = protocol_state(&mut c2, &task).await;
+    assert_eq!(ps.boundary, "TURN_START", "{ps:?}");
+    assert!(ps.calls.is_empty());
+}

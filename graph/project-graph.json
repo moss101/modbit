@@ -2371,8 +2371,39 @@
    "milestone": "M4",
    "order": 0,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "test:qual_ev_0055_e2e_004_core_crash_during_approval_restores_the_same_approval_and_one_effect",
+    "test:qual_ev_0055_e2e_005_core_crash_after_dispatch_reconciles_the_unknown_outcome_without_replay",
+    "artifact:evidence/m4/M4.1/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-11T06:10:00Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: crates/protocol-state is the empty M0.1 scaffold; tool-call lifecycle events (Proposed/Validated/PolicyDecision/Dispatched) are appended after the effect completes in services/modbit-core/src/tools.rs so a crash between dispatch and result leaves no record; ToolCallProposed carries no run/turn/model call_id binding and no arguments ref; execute_tool mints a fresh ToolCallId on every entry and the tool-call step is recorded after execution, so a crash while awaiting approval resumes by re-invoking the model with a dangling call and any re-execution opens a second ApprovalId (E2E-004 cannot pass); reconcile_after_restart flags every running task Waiting/External regardless of what it waited on and records no UnknownOutcome for in-flight calls; no typed reconstruction of pending approval/question/unknown-outcome/lease state exists (docs/19 layer 2)"
+    },
+    {
+     "at": "2026-09-11T06:42:24Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "protocol-state crate (typed ProtocolState/PendingCall/PendingApproval/ResumeBoundary/Reconciliation, reconstruct/boundary/find_call/digest); domain ToolCallProposed+ToolCall bound to run/turn/model call_id/arguments_ref; event-store V10 columns + open_tool_calls/live_tasks/approvals_for_task; tools pipeline DispatchJournal write-ahead port; Core tools.rs journals Proposed before validation and Validated/PolicyDecision/Dispatched before the effector; runtime re-enters dangling calls by id at the recorded boundary (ProtocolStateResumed), reconciles unknown outcomes (ToolCallReconciled) instead of replaying; reconcile_after_restart marks in-flight calls UnknownOutcome/Cancelled and keeps the wait reason; GetProtocolState wire view"
+    },
+    {
+     "at": "2026-09-11T07:41:24Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the real runtime: write-ahead ToolCallProposed and DispatchLog in services/modbit-core/src/tools.rs, dangling-call resume and unknown-outcome reconciliation in runtime.rs, protocol-aware reconcile_after_restart, materialized protocol_state table, GetProtocolState over the wire; local gate green (fmt, clippy -D warnings, cargo test --workspace exit 0)"
+    },
+    {
+     "at": "2026-09-11T07:41:24Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system proof locally: the Core process is hard-killed while a destructive call awaits approval and while a command is in flight; the restarted Core reconstructs the same ApprovalId/intent/ToolCallId and the RECONCILING boundary; resume re-enters by id, approving once yields one dispatch and one receipt, the unknown outcome is reconciled without replay; hosted CI pending"
+    }
+   ],
+   "status_changed_on": "2026-09-11T07:41:24Z"
   },
   {
    "id": "M4.2",

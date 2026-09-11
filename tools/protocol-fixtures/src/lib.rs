@@ -202,6 +202,47 @@ pub fn samples() -> Vec<Sample> {
             target_met: false,
         }),
     };
+    let protocol_state = ProtocolStateView {
+        task_id: id(0x22),
+        version: "protocol-state-1".into(),
+        boundary: "AWAITING_APPROVAL".into(),
+        calls: vec![
+            PendingCallView {
+                tool_call_id: id(0x33),
+                tool_name: "git.worktree.close".into(),
+                effect_class: "Destructive".into(),
+                phase: "AWAITING_APPROVAL".into(),
+                arguments_hash: "d".repeat(64),
+                call_id: "call_1_0".into(),
+                run_id: id(0x44),
+                approval_id: idhex(0x55),
+                reason: String::new(),
+            },
+            PendingCallView {
+                tool_call_id: id(0x66),
+                tool_name: "shell.exec".into(),
+                effect_class: "ReversibleWrite".into(),
+                phase: "UNKNOWN_OUTCOME".into(),
+                arguments_hash: "e".repeat(64),
+                call_id: String::new(),
+                run_id: None,
+                approval_id: String::new(),
+                reason: "core restarted (boot generation 7) after the call was dispatched and before its result was acknowledged".into(),
+            },
+        ],
+        approvals: vec![PendingApprovalView {
+            approval_id: id(0x55),
+            tool_call_id: id(0x33),
+            tool_name: "git.worktree.close".into(),
+            effect_class: "Destructive".into(),
+            intent_hash: "d".repeat(64),
+            expires_at: 1_700_000_000_000,
+            expired: false,
+        }],
+        question_id: String::new(),
+        active_leases: 1,
+        digest: "f".repeat(64),
+    };
     let hello = Hello {
         protocol_version: Some(modbit_protocol::PROTOCOL_VERSION),
         client_kind: ClientKind::Cli as i32,
@@ -312,6 +353,37 @@ pub fn samples() -> Vec<Sample> {
                 }
             }),
             decode: reencode::<RoutingPlanView>,
+        },
+        Sample {
+            name: "protocol_state_view",
+            type_name: "modbit.v1.ProtocolStateView",
+            bytes: protocol_state.encode_to_vec(),
+            expected: json!({
+                "taskId": idhex(0x22), "version": "protocol-state-1",
+                "boundary": "AWAITING_APPROVAL",
+                "calls": [
+                    {
+                        "toolCallId": idhex(0x33), "toolName": "git.worktree.close",
+                        "effectClass": "Destructive", "phase": "AWAITING_APPROVAL",
+                        "argumentsHash": "d".repeat(64), "callId": "call_1_0",
+                        "runId": idhex(0x44), "approvalId": idhex(0x55), "reason": ""
+                    },
+                    {
+                        "toolCallId": idhex(0x66), "toolName": "shell.exec",
+                        "effectClass": "ReversibleWrite", "phase": "UNKNOWN_OUTCOME",
+                        "argumentsHash": "e".repeat(64), "callId": "",
+                        "runId": null, "approvalId": "",
+                        "reason": "core restarted (boot generation 7) after the call was dispatched and before its result was acknowledged"
+                    }
+                ],
+                "approvals": [{
+                    "approvalId": idhex(0x55), "toolCallId": idhex(0x33),
+                    "toolName": "git.worktree.close", "effectClass": "Destructive",
+                    "intentHash": "d".repeat(64), "expiresAt": "1700000000000", "expired": false
+                }],
+                "questionId": "", "activeLeases": 1, "digest": "f".repeat(64)
+            }),
+            decode: reencode::<ProtocolStateView>,
         },
         Sample {
             name: "hello",

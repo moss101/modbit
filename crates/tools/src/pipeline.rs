@@ -87,6 +87,39 @@ pub struct ExecTarget {
     pub boot_secret: Vec<u8>,
 }
 
+/// What is about to be dispatched (docs/19 layer 2, M4.1): the pipeline
+/// hands this to the host's journal right before the effector runs, so the
+/// dispatch is on the log before the effect can happen. A Core that dies
+/// between the two finds the call `Dispatched` and reconciles it instead of
+/// guessing.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DispatchRecord {
+    /// The call.
+    pub tool_call_id: ToolCallId,
+    /// Tool.
+    pub tool_name: String,
+    /// Tool version.
+    pub tool_version: String,
+    /// Effect class as registered.
+    pub effect_class: modbit_domain::toolcall::EffectClass,
+    /// sha256 of the normalized arguments.
+    pub arguments_hash: String,
+    /// The policy decision that allowed the dispatch.
+    pub decision: PolicyDecision,
+}
+
+/// A boxed future for the journal port (the host's store is async).
+pub type JournalFuture<'a> =
+    std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), String>> + Send + 'a>>;
+
+/// Write-ahead journal for dispatches. `Err` means the dispatch was not
+/// journaled: the pipeline does not run the effector and reports an
+/// infrastructure failure (`JOURNAL_FAILED`).
+pub trait DispatchJournal: Send + Sync {
+    /// Record that `record` is being dispatched now.
+    fn dispatching<'a>(&'a self, record: &'a DispatchRecord) -> JournalFuture<'a>;
+}
+
 /// Everything a tool may touch during one invocation.
 #[derive(Clone)]
 pub struct InvokeContext {
@@ -118,6 +151,8 @@ pub struct InvokeContext {
     /// The call being executed (set by the pipeline; effectors derive their
     /// idempotency keys from it so a new call never replays an old one).
     pub tool_call_id: Option<ToolCallId>,
+    /// Write-ahead dispatch journal, when the host keeps one (M4.1).
+    pub journal: Option<Arc<dyn DispatchJournal>>,
 }
 
 /// Status of a tool call result (docs/30 `ToolCallResult.status` plus the
@@ -452,7 +487,41 @@ impl ToolRuntime {
             };
         }
 
-        // 4. execute against the real effector
+        // 4. journal the dispatch before the effect can happen (M4.1): a
+        // dispatch that is not on the log does not run.
+        if let Some(journal) = &ctx.journal {
+            let record = DispatchRecord {
+                tool_call_id,
+                tool_name: spec.name.clone(),
+                tool_version: spec.version.clone(),
+                effect_class: spec.effect_class,
+                arguments_hash: args_hash.clone(),
+                decision: decision.clone(),
+            };
+            if let Err(e) = journal.dispatching(&record).await {
+                stages.push(StageRecord {
+                    stage: "journal".into(),
+                    outcome: format!("not journaled: {e}"),
+                });
+                return PipelineOutcome {
+                    result: base(
+                        ToolStatus::InfraFailure,
+                        &args_hash,
+                        Some("JOURNAL_FAILED".into()),
+                        Some(format!("the dispatch could not be journaled: {e}")),
+                    ),
+                    stages,
+                    policy: Some(decision),
+                    effect_class: Some(spec.effect_class),
+                    tool_version: Some(spec.version.clone()),
+                };
+            }
+            stages.push(StageRecord {
+                stage: "journal".into(),
+                outcome: "dispatched".into(),
+            });
+        }
+        // 5. execute against the real effector
         let mut call_ctx = ctx.clone();
         call_ctx.tool_call_id = Some(tool_call_id);
         let outcome: ToolOutcome = tool.invoke(&call_ctx, args).await;
@@ -468,7 +537,7 @@ impl ToolRuntime {
             },
         });
 
-        // 5. postprocess: bounded inline view, complete bytes by OutputRef (docs/16 "Large results")
+        // 6. postprocess: bounded inline view, complete bytes by OutputRef (docs/16 "Large results")
         let budget = if ctx.output_budget_bytes > 0 {
             ctx.output_budget_bytes as usize
         } else {

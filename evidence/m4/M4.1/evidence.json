@@ -1,0 +1,19 @@
+{
+ "task": "M4.1",
+ "requirement": "REQ-EV-0055",
+ "qual": "QUAL-EV-0055",
+ "scenarios": ["E2E-004", "E2E-005 (shape)"],
+ "tests": [
+  "qual_ev_0055_e2e_004_core_crash_during_approval_restores_the_same_approval_and_one_effect",
+  "qual_ev_0055_e2e_005_core_crash_after_dispatch_reconciles_the_unknown_outcome_without_replay",
+  "an_approval_pending_call_resumes_at_the_same_approval_and_intent",
+  "in_flight_and_unknown_calls_reconcile_before_anything_else",
+  "a_question_without_an_answer_is_the_boundary_and_finished_calls_are_dropped",
+  "reconciliation_follows_the_effect_class"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "Core hard-killed while a destructive call waits on its approval: the restart lists the same ApprovalId bound to the same intent hash on the same ToolCallId, the task waits on the approval, GetProtocolState returns the identical pending call and digest; resume re-enters the call by id without invoking the model, opens no second approval, and one approval removes the worktree once (one proposal, one dispatch, one receipt, one success). Core hard-killed while a command runs: the journaled dispatch is found, the call becomes UnknownOutcome naming the boot generation, RECONCILING is visible over the wire and on the task, the resumed run reconciles it and hands the model the observation, never dispatches the command again, and completes.",
+ "audit": "ABSENT before: empty protocol-state scaffold; tool-call events appended after the effect; no run/call binding; fresh ToolCallId on every entry; restart flagged every running task External and recorded nothing for in-flight calls.",
+ "limitations": "Reversible-write reconciliation inspects named workspace targets only; process-table reconciliation of a still-running command is M4.5/M4.6. A protected effect without a receipt is held and surfaced; a user-facing external reconciliation command is M4.6. protocol_state holds the task key only until M4.5."
+}

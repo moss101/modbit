@@ -127,8 +127,11 @@ pub async fn run(data_dir: PathBuf, idle_exit_secs: Option<u64>) -> Result<()> {
         }
     );
     // Interrupted agent loops suspend at a turn boundary (docs/14); nothing re-executes.
-    let suspended =
-        crate::runtime::reconcile_after_restart(&mut store, TenantId::from_bytes([0xA1; 16]));
+    let suspended = crate::runtime::reconcile_after_restart(
+        &mut store,
+        TenantId::from_bytes([0xA1; 16]),
+        recovery.boot_generation,
+    );
     if !suspended.is_empty() {
         eprintln!(
             "modbit-core: suspended {} running task(s) after restart",
@@ -1594,6 +1597,9 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 approval,
                 emergency_stopped: session.emergency_stopped_at.is_some(),
                 existing,
+                run_id: None,
+                turn_id: None,
+                call_id: None,
             };
             match core.tools.invoke(&core.store, req).await {
                 Ok(done) => {
@@ -2224,6 +2230,22 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             let view = crate::routing::view(core, task_id).await;
             accept(cid, false, view.encode_to_vec())
         }
+        "GetProtocolState" => {
+            let Ok(p) = wire::GetProtocolState::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "GetProtocolState");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let store = core.store.lock().await;
+            match store.task(&task_id) {
+                Ok(Some(_)) => {}
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            }
+            let state = crate::protocol::reconstruct(&store, &task_id);
+            accept(cid, false, protocol_state_view(&state).encode_to_vec())
+        }
         "AdmitRoutingPlan" => {
             let Ok(p) = wire::AdmitRoutingPlan::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "AdmitRoutingPlan");
@@ -2786,6 +2808,65 @@ fn tool_invoked(
             .map(|a| encode_hex(a.as_bytes()))
             .unwrap_or_default(),
         effect_receipt_ids: r.effect_receipt_ids.clone(),
+    }
+}
+
+/// The wire view of a task's protocol state (docs/19 layer 2, M4.1).
+fn protocol_state_view(state: &modbit_protocol_state::ProtocolState) -> wire::ProtocolStateView {
+    use modbit_protocol_state::CallPhase;
+    wire::ProtocolStateView {
+        task_id: Some(wire_id(state.task_id.as_bytes())),
+        version: state.version.clone(),
+        boundary: state.boundary(None).label().to_owned(),
+        calls: state
+            .calls
+            .iter()
+            .map(|c| {
+                let (phase, approval_id, reason) = match &c.phase {
+                    CallPhase::Proposed => ("PROPOSED", String::new(), String::new()),
+                    CallPhase::AwaitingApproval { approval_id } => (
+                        "AWAITING_APPROVAL",
+                        encode_hex(approval_id.as_bytes()),
+                        String::new(),
+                    ),
+                    CallPhase::InFlight => ("IN_FLIGHT", String::new(), String::new()),
+                    CallPhase::UnknownOutcome { reason } => {
+                        ("UNKNOWN_OUTCOME", String::new(), reason.clone())
+                    }
+                };
+                wire::PendingCallView {
+                    tool_call_id: Some(wire_id(c.tool_call_id.as_bytes())),
+                    tool_name: c.tool_name.clone(),
+                    effect_class: format!("{:?}", c.effect_class),
+                    phase: phase.to_owned(),
+                    arguments_hash: c.arguments_hash.clone(),
+                    call_id: c.call_id.clone().unwrap_or_default(),
+                    run_id: c.run_id.map(|r| wire_id(r.as_bytes())),
+                    approval_id,
+                    reason,
+                }
+            })
+            .collect(),
+        approvals: state
+            .approvals
+            .iter()
+            .map(|a| wire::PendingApprovalView {
+                approval_id: Some(wire_id(a.approval_id.as_bytes())),
+                tool_call_id: Some(wire_id(a.tool_call_id.as_bytes())),
+                tool_name: a.tool_name.clone(),
+                effect_class: format!("{:?}", a.effect_class),
+                intent_hash: a.intent_hash.clone(),
+                expires_at: a.expires_at.map(|t| t.0).unwrap_or(0),
+                expired: a.expired,
+            })
+            .collect(),
+        question_id: state
+            .question
+            .as_ref()
+            .map(|q| q.question_id.clone())
+            .unwrap_or_default(),
+        active_leases: u32::try_from(state.leases.len()).unwrap_or(u32::MAX),
+        digest: state.digest(),
     }
 }
 

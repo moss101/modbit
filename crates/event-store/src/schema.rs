@@ -369,6 +369,25 @@ ALTER TABLE routing_admissions ADD COLUMN thresholds_version TEXT NOT NULL DEFAU
 ALTER TABLE routing_admissions ADD COLUMN target_met INTEGER NOT NULL DEFAULT 0;
 "#;
 
+/// V10 (M4.1, REQ-EV-0055 protocol state): a tool call is bound to the run,
+/// the turn and the model's call id that proposed it, and to the object that
+/// holds its raw arguments, so a restarted Core re-enters the same call.
+pub const V10_PROTOCOL_STATE: &str = r#"
+ALTER TABLE tool_calls ADD COLUMN run_id BLOB;
+ALTER TABLE tool_calls ADD COLUMN turn_id BLOB;
+ALTER TABLE tool_calls ADD COLUMN call_id TEXT;
+ALTER TABLE tool_calls ADD COLUMN arguments_ref TEXT;
+CREATE INDEX IF NOT EXISTS tool_calls_run ON tool_calls (run_id, status);
+CREATE TABLE IF NOT EXISTS protocol_state (
+  session_id   BLOB    NOT NULL,
+  protocol_key TEXT    NOT NULL,
+  payload      TEXT    NOT NULL,
+  generation   INTEGER NOT NULL,
+  updated_at   INTEGER NOT NULL,
+  PRIMARY KEY (session_id, protocol_key)
+);
+"#;
+
 /// All migrations in order. Never edit an entry once shipped; append a new one.
 pub const MIGRATIONS: &[Migration] = &[
     Migration {
@@ -424,6 +443,12 @@ pub const MIGRATIONS: &[Migration] = &[
         name: "routing_admission_feasibility",
         up: V9_FEASIBILITY,
         rollback: "Additive derivable columns with defaults. Rollback = older builds ignore the columns; a rebuild derives them from the log; no event is touched.",
+    },
+    Migration {
+        version: 10,
+        name: "protocol_state",
+        up: V10_PROTOCOL_STATE,
+        rollback: "Additive nullable derivable columns, an index and the derivable `protocol_state` table (docs/31). Rollback = drop the table; older builds ignore the columns; a rebuild derives everything from the log; no event is touched.",
     },
 ];
 

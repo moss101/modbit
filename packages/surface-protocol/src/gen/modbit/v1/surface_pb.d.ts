@@ -4719,6 +4719,195 @@ export declare type StarterTaskList = Message<"modbit.v1.StarterTaskList"> & {
 export declare const StarterTaskListSchema: GenMessage<StarterTaskList>;
 
 /**
+ * @generated from message modbit.v1.GetProtocolState
+ */
+export declare type GetProtocolState = Message<"modbit.v1.GetProtocolState"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.GetProtocolState.
+ * Use `create(GetProtocolStateSchema)` to create a new message.
+ */
+export declare const GetProtocolStateSchema: GenMessage<GetProtocolState>;
+
+/**
+ * @generated from message modbit.v1.PendingCallView
+ */
+export declare type PendingCallView = Message<"modbit.v1.PendingCallView"> & {
+  /**
+   * @generated from field: modbit.v1.Id tool_call_id = 1;
+   */
+  toolCallId?: Id | undefined;
+
+  /**
+   * @generated from field: string tool_name = 2;
+   */
+  toolName: string;
+
+  /**
+   * @generated from field: string effect_class = 3;
+   */
+  effectClass: string;
+
+  /**
+   * PROPOSED | AWAITING_APPROVAL | IN_FLIGHT | UNKNOWN_OUTCOME
+   *
+   * @generated from field: string phase = 4;
+   */
+  phase: string;
+
+  /**
+   * the intent
+   *
+   * @generated from field: string arguments_hash = 5;
+   */
+  argumentsHash: string;
+
+  /**
+   * the model's call id, when the call came from a run
+   *
+   * @generated from field: string call_id = 6;
+   */
+  callId: string;
+
+  /**
+   * @generated from field: modbit.v1.Id run_id = 7;
+   */
+  runId?: Id | undefined;
+
+  /**
+   * hex, when awaiting one
+   *
+   * @generated from field: string approval_id = 8;
+   */
+  approvalId: string;
+
+  /**
+   * why the outcome is unknown, when it is
+   *
+   * @generated from field: string reason = 9;
+   */
+  reason: string;
+};
+
+/**
+ * Describes the message modbit.v1.PendingCallView.
+ * Use `create(PendingCallViewSchema)` to create a new message.
+ */
+export declare const PendingCallViewSchema: GenMessage<PendingCallView>;
+
+/**
+ * @generated from message modbit.v1.PendingApprovalView
+ */
+export declare type PendingApprovalView = Message<"modbit.v1.PendingApprovalView"> & {
+  /**
+   * @generated from field: modbit.v1.Id approval_id = 1;
+   */
+  approvalId?: Id | undefined;
+
+  /**
+   * @generated from field: modbit.v1.Id tool_call_id = 2;
+   */
+  toolCallId?: Id | undefined;
+
+  /**
+   * @generated from field: string tool_name = 3;
+   */
+  toolName: string;
+
+  /**
+   * @generated from field: string effect_class = 4;
+   */
+  effectClass: string;
+
+  /**
+   * @generated from field: string intent_hash = 5;
+   */
+  intentHash: string;
+
+  /**
+   * millis since epoch; 0 = never
+   *
+   * @generated from field: int64 expires_at = 6;
+   */
+  expiresAt: bigint;
+
+  /**
+   * @generated from field: bool expired = 7;
+   */
+  expired: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.PendingApprovalView.
+ * Use `create(PendingApprovalViewSchema)` to create a new message.
+ */
+export declare const PendingApprovalViewSchema: GenMessage<PendingApprovalView>;
+
+/**
+ * @generated from message modbit.v1.ProtocolStateView
+ */
+export declare type ProtocolStateView = Message<"modbit.v1.ProtocolStateView"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * reconstruction version
+   *
+   * @generated from field: string version = 2;
+   */
+  version: string;
+
+  /**
+   * TURN_START | EXECUTING | AWAITING_APPROVAL | AWAITING_ANSWER | RECONCILING
+   *
+   * @generated from field: string boundary = 3;
+   */
+  boundary: string;
+
+  /**
+   * @generated from field: repeated modbit.v1.PendingCallView calls = 4;
+   */
+  calls: PendingCallView[];
+
+  /**
+   * @generated from field: repeated modbit.v1.PendingApprovalView approvals = 5;
+   */
+  approvals: PendingApprovalView[];
+
+  /**
+   * the open question, if any
+   *
+   * @generated from field: string question_id = 6;
+   */
+  questionId: string;
+
+  /**
+   * @generated from field: uint32 active_leases = 7;
+   */
+  activeLeases: number;
+
+  /**
+   * sha256 of the canonical state
+   *
+   * @generated from field: string digest = 8;
+   */
+  digest: string;
+};
+
+/**
+ * Describes the message modbit.v1.ProtocolStateView.
+ * Use `create(ProtocolStateViewSchema)` to create a new message.
+ */
+export declare const ProtocolStateViewSchema: GenMessage<ProtocolStateView>;
+
+/**
  * Command acknowledgement.
  *
  * @generated from enum modbit.v1.CommandStatus

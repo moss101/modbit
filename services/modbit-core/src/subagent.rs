@@ -338,6 +338,9 @@ pub(crate) async fn run(
                         approval: None,
                         emergency_stopped: false,
                         existing: None,
+                        run_id: None,
+                        turn_id: None,
+                        call_id: Some(call_id.clone()),
                     },
                 )
                 .await;

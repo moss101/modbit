@@ -13,6 +13,7 @@ modbit-domain.workspace = true
 modbit-prompt-compiler.workspace = true
 modbit-core-runtime.workspace = true
 modbit-event-store.workspace = true
+modbit-protocol-state.workspace = true
 modbit-policy.workspace = true
 modbit-protocol.workspace = true
 modbit-providers.workspace = true
