@@ -59,7 +59,7 @@ flowchart LR
   M0["M0<br/>Repository and authority<br/>5/5 done"]
   M1["M1<br/>Durable local shell and Core<br/>19/19 done"]
   M2["M2<br/>Real local engineering loop<br/>63/63 done"]
-  M3["M3<br/>Context intelligence<br/>75/89 done"]
+  M3["M3<br/>Context intelligence<br/>76/89 done"]
   M4["M4<br/>Durable recovery spine<br/>0/18 done"]
   M5["M5<br/>Procedural runtime and skills<br/>0/40 done"]
   M6["M6<br/>Subagents/fleet<br/>0/58 done"]
@@ -107,7 +107,7 @@ Critical path (reliability spine): **M0 → M1 → M2 → M4**. Do not start bro
 | M0 Repository and authority | COMPLETE | yes | 4 | 1 | 5 | 0 | — | clean clone build + architecture lint |
 | M1 Durable local shell and Core | COMPLETE | yes | 5 | 14 | 19 | 0 | M0 | user creates durable task, kills/restarts app/Core, same task recovers with no fake state. |
 | M2 Real local engineering loop | COMPLETE | yes | 10 | 53 | 63 | 0 | M1 | E2E-001/002/003 with live model and actual test pass. |
-| M3 Context intelligence | IN_PROGRESS | yes | 9 | 80 | 75 | 0 | M2 | profile A/B/C benchmark plus retrieval-before-edit visible in task evidence. |
+| M3 Context intelligence | IN_PROGRESS | yes | 9 | 80 | 76 | 0 | M2 | profile A/B/C benchmark plus retrieval-before-edit visible in task evidence. |
 | M4 Durable recovery spine | NOT_STARTED | yes | 6 | 12 | 0 | 0 | M2 | E2E-004/005/006/007/008. |
 | M5 Procedural runtime and skills | NOT_STARTED | yes | 7 | 33 | 0 | 0 | M2 | E2E-011/012; direct and procedural mode yield equivalent receipts/policy behavior. |
 | M6 Subagents/fleet | NOT_STARTED | no | 7 | 51 | 0 | 0 | M2, M4 | E2E-009/010 and user can supervise multiple tasks without raw-log polling. |
@@ -220,7 +220,7 @@ EPR requirements extend the preserved EV ledger under DR-EPR-2026-09-05-v1.1; v1
 ```mermaid
 flowchart LR
   EPR_000["EPR-000<br/>Preserve and measure the direct baseline<br/>COMPLETE"]
-  EPR_001["EPR-001<br/>Version routing contracts and durable Run state<br/>REAL_TESTING"]
+  EPR_001["EPR-001<br/>Version routing contracts and durable Run state<br/>COMPLETE"]
   EPR_002["EPR-002<br/>Extend the Model Registry with current role bindings<br/>NOT_STARTED"]
   EPR_003["EPR-003<br/>Bootstrap and calibrate the Request Profiler<br/>NOT_STARTED"]
   EPR_004["EPR-004<br/>Compile and validate one bounded conditional plan<br/>NOT_STARTED"]
@@ -284,7 +284,7 @@ flowchart LR
 | Task | Milestone / phase | Status | Owner | Prerequisites | Requirement / qualification |
 |---|---|---|---|---|---|
 | EPR-000 | M3 / 0 | COMPLETE | model-gateway | M2.9 | REQ-EPR-000 / QUAL-EPR-000 |
-| EPR-001 | M3 / 1 | REAL_TESTING | domain-events | EPR-000 | REQ-EPR-001 / QUAL-EPR-001 |
+| EPR-001 | M3 / 1 | COMPLETE | domain-events | EPR-000 | REQ-EPR-001 / QUAL-EPR-001 |
 | EPR-002 | M3 / 1 | NOT_STARTED | model-gateway | EPR-001 | REQ-EPR-002 / QUAL-EPR-002 |
 | EPR-003 | M3 / 1 | NOT_STARTED | model-gateway | EPR-002 | REQ-EPR-003 / QUAL-EPR-003 |
 | EPR-004 | M3 / 1 | NOT_STARTED | model-gateway | EPR-014, EPR-016 | REQ-EPR-004 / QUAL-EPR-004 |
@@ -323,8 +323,8 @@ Releases are projections over work items and gates (docs/75). Readiness is compu
 | Release | State | Included work items | Complete | Blocked | Required gates | Rule |
 |---|---|---:|---:|---:|---|---|
 | ALPHA: Local coding loop and recovery spine | NOT_READY | 114 | 97 | 0 | none | / ALPHA / Local coding loop and recovery spine / M0, M1, M2, M4 / M2.10 / EPR- / — / — / |
-| BETA: Intelligence, fleet and browser | NOT_READY | 320 | 162 | 0 | none | / BETA / Intelligence, fleet and browser / M0, M1, M2, M3, M4, M5, M6, M7 / — / — / — / — / |
-| RELEASE_ZERO: Full end-to-end proof | NOT_READY | 401 | 162 | 0 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
+| BETA: Intelligence, fleet and browser | NOT_READY | 320 | 163 | 0 | none | / BETA / Intelligence, fleet and browser / M0, M1, M2, M3, M4, M5, M6, M7 / — / — / — / — / |
+| RELEASE_ZERO: Full end-to-end proof | NOT_READY | 401 | 163 | 0 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
 
 ## Scoped v1.1 supersessions and source provenance
 

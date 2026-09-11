@@ -16,9 +16,14 @@
   "typescript_encoded_fixtures_decode_and_reencode_identically",
   "committed_rust_fixtures_are_fresh"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "15b320d"
+ ],
+ "runs": [
+  "run:34545828972"
+ ],
  "proof": "A real coding task through Core on a real Git repository: the run compiles its direct plan in the same transaction as RunCreated, records one attempt per model invocation with the outcome, the usage the provider reported and the provider's own request id, and answers GetRoutingPlan with a view that carries no credential and no endpoint URL. Two hard kills (after the run, and with a second run stalled mid-invocation) return an identical view. A database from before the routing tables migrates to V7 and derives its routing state from the events it already held; a process killed while that migration is in flight commits nothing and the next open recovers. The generated Rust and TypeScript schemas round-trip the view byte for byte, including an attempt whose usage is unknown and a token count above 2^53.",
  "audit": "ABSENT before this task: no routing contract existed and nothing recorded how a run was routed.",
- "limitations": "Only the direct plan is compiled today; conditional plans are validated, persisted and read back but nothing compiles one until EPR-004, and no slot activation enforces max_activations until EPR-005/006. Money is zero on the direct path, meaning unbudgeted rather than free. RealizedRisk, AcceptanceGateResult, ReviewerResult, OutcomeRecord and OutcomeStatistics have no producer yet; their versions are carried in Provenance rather than invented as records."
+ "limitations": "Only the direct plan is compiled today; conditional plans are validated, persisted and read back but nothing compiles one until EPR-004, and no slot activation enforces max_activations until EPR-005/006. Money is zero on the direct path, meaning unbudgeted rather than free. RealizedRisk, AcceptanceGateResult, ReviewerResult, OutcomeRecord and OutcomeStatistics have no producer yet; their versions are carried in Provenance rather than invented as records.",
+ "ci": "https://github.com/moss101/modbit/actions/runs/34545828972 (green on macOS, Linux and Windows at 15b320d)"
 }

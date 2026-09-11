@@ -19924,13 +19924,16 @@
    "task_card": "docs/49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md#epr-001",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller or executor present",
    "milestone_override": "DR-M2-002: router machinery follows the EPR-000 baseline evidence; scheduled in M3 ahead of the M4/M5 EPR tasks that depend on it",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "commit:fe3509c",
     "artifact:evidence/m3/EPR-001/TASK_CARD.md",
     "test:qual_epr_001_the_routing_state_of_a_run_is_durable_versioned_and_redacted",
     "test:a_database_from_before_the_routing_tables_upgrades_and_derives_them",
-    "test:a_crash_during_the_routing_migration_leaves_a_recoverable_database"
+    "test:a_crash_during_the_routing_migration_leaves_a_recoverable_database",
+    "run:34545828972",
+    "artifact:evidence/m3/EPR-001/ci-run-34545828972.json",
+    "commit:15b320d"
    ],
    "notes": [
     {
@@ -19956,9 +19959,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "local gates green: cargo test --workspace, clippy --workspace --all-targets -D warnings, both architecture lints, pnpm -r test including the cross-language round trip of RoutingPlanView"
+    },
+    {
+     "at": "2026-09-11T00:30:00Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS, Linux and Windows at 15b320d: the cross-language round trip, the pre-plan migration, the killed migration and both Core kills"
+    },
+    {
+     "at": "2026-09-11T00:30:00Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "routing contracts are versioned and the routing state of a run is durable, derived from the log and safe to show a client"
     }
    ],
-   "status_changed_on": "2026-09-11T00:16:03Z"
+   "status_changed_on": "2026-09-11T00:30:00Z"
   },
   {
    "id": "EPR-002",
