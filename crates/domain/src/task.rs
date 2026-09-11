@@ -208,6 +208,10 @@ pub enum TaskEvent {
     TaskNeedsAttention {
         /// Reason text.
         reason: String,
+        /// The typed diagnosis behind the reason (REQ-EV-0073): class,
+        /// retryability, user action, recovery path and evidence.
+        #[serde(default)]
+        diagnostic: Option<crate::failure::FailureDiagnostic>,
     },
     /// `UserQuestionAsked` (REQ-EV-0222, docs/28 clarification policy): a typed
     /// question with concrete alternatives; the run suspends until answered.

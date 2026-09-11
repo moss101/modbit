@@ -17,9 +17,11 @@
 #![forbid(unsafe_code)]
 
 pub mod admission;
+pub mod diagnostics;
 pub mod harness;
 
 pub use admission::{Activation, Admission, Refused, RunLedger, admit_activation, admit_plan};
+pub use diagnostics::{FailureSource, classify};
 pub use harness::{
     Budgets, Exhausted, HarnessRefusal, HarnessState, Observation, Plan, failure_signature, observe,
 };

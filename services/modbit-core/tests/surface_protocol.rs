@@ -14718,6 +14718,25 @@ async fn approvals_of(c: &mut Client, session: &Id) -> Vec<modbit_protocol::v1::
 }
 
 /// The task's status over the wire, right now.
+/// `GetTaskStatus` that reports a dead Core as `None` instead of panicking.
+async fn try_status(c: &mut Client, task: &Id) -> Option<modbit_protocol::v1::TaskStatus> {
+    use modbit_protocol::v1::GetTaskStatus;
+    let ack = c
+        .command(envelope(
+            Id {
+                value: (0..16).map(|_| rand::random::<u8>()).collect(),
+            },
+            "GetTaskStatus",
+            GetTaskStatus {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .ok()?;
+    Client::result(&ack).ok()
+}
+
 async fn status_now(c: &mut Client, task: &Id) -> modbit_protocol::v1::TaskStatus {
     use modbit_protocol::v1::GetTaskStatus;
     let ack = c
@@ -16338,8 +16357,13 @@ async fn kill_point_round(boundary: &str) -> KillRound {
         )
         .await
         {
-            let st = status_now(&mut probe, &task).await;
-            if !st.loop_alive && st.state != "Queued" && st.state != "Created" {
+            // The abort can land while the probe is in flight: a closed
+            // connection is the fault firing, seen from the client side.
+            if let Some(st) = try_status(&mut probe, &task).await
+                && !st.loop_alive
+                && st.state != "Queued"
+                && st.state != "Created"
+            {
                 break;
             }
         }
@@ -16776,4 +16800,200 @@ async fn qual_m4_6_e2e_005_a_protected_effect_of_unknown_outcome_is_held_for_the
         verdict.contains("status: RECONCILED") && verdict.contains("USER_CONFIRMED"),
         "{verdict}"
     );
+}
+
+/// QUAL-EV-0073 (REQ-EV-0073, docs/40): fault injection against the real
+/// Core. A command that times out, a stored object whose bytes no longer
+/// match their digest, and a provider nobody answers each reach the model —
+/// and the status surface — as a typed diagnosis: a class, whether a retry
+/// can help, what the user can do and how the system recovers. Nothing is
+/// reported as a generic success or a bare status line.
+#[tokio::test]
+async fn qual_ev_0073_fault_injection_never_reports_a_generic_success() {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    use sha2::Digest;
+    let (_repo, root) = plain_repo(&[("a.txt", "a\n")]);
+    // Fault 2, planted before the Core opens the profile: an object whose
+    // content does not hash to its name.
+    let dir = tempfile::tempdir().unwrap();
+    let clean = b"the bytes this object was stored with";
+    let hash = hex::encode(sha2::Sha256::digest(clean));
+    let object_dir = dir.path().join("core").join("objects").join(&hash[..2]);
+    std::fs::create_dir_all(&object_dir).unwrap();
+    std::fs::write(object_dir.join(&hash[2..]), b"bit rot").unwrap();
+    // Fault 1 is the command itself: it cannot finish inside its timeout.
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "exercise the faults", "expected_files": []}}]}),
+        json!({"calls": [{"name": "shell.exec", "args": {"argv": ["sh", "-c", "sleep 30"], "inherit_env": true, "timeout_ms": 400}}]}),
+        json!({"calls": [{"name": "artifact.range", "args": {"ref": hash, "offset": 0, "max_bytes": 64}}]}),
+        json!({"calls": [{"name": "shell.exec", "args": {"argv": ["sh", "-c", "true"], "inherit_env": true}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "faults observed", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x73)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x74, "local_trusted").await;
+    let start = StartTask {
+        task_id: Some(task.clone()),
+        endpoint: "openai".into(),
+        model: "gpt-5".into(),
+        max_turns: 0,
+        max_tool_calls: 0,
+        max_no_progress_turns: 0,
+    };
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x75),
+            "StartTask",
+            start.encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_for_state(&mut c, &task, "ReadyForReview", 60).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    // What the model saw, per call.
+    let bodies = seen.lock().unwrap().clone();
+    let observations: Vec<String> = bodies
+        .last()
+        .and_then(|b| b["messages"].as_array().cloned())
+        .unwrap_or_default()
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .filter_map(|m| m["content"].as_str().map(str::to_owned))
+        .collect();
+    let timeout = observations
+        .iter()
+        .find(|o| o.contains("error_code: TIMEOUT"))
+        .unwrap_or_else(|| panic!("{observations:#?}"));
+    assert!(!timeout.contains("status: SUCCESS"), "{timeout}");
+    assert!(timeout.contains("failure_class: TIMEOUT"), "{timeout}");
+    assert!(timeout.contains("retryable: true"), "{timeout}");
+    assert!(timeout.contains("recovery: "), "{timeout}");
+    assert!(timeout.contains("\"timed_out\":true"), "{timeout}");
+    let corrupt = observations
+        .iter()
+        .find(|o| o.contains("error_code: OBJECT_MISMATCH"))
+        .unwrap_or_else(|| panic!("{observations:#?}"));
+    assert!(corrupt.starts_with("status: INFRAFAILURE"), "{corrupt}");
+    assert!(
+        corrupt.contains("failure_class: CORRUPT_STATE"),
+        "{corrupt}"
+    );
+    assert!(corrupt.contains("retryable: false"), "{corrupt}");
+    assert!(corrupt.contains("user_action: "), "{corrupt}");
+    assert!(
+        corrupt.contains("does not match digest"),
+        "the cause is named, not blurred into a missing artifact: {corrupt}"
+    );
+    // The passing command carries no diagnosis: a diagnosis is a failure's.
+    let passed = observations
+        .iter()
+        .filter(|o| o.starts_with("status: SUCCESS"))
+        .filter(|o| o.contains("\"exit_code\":0"))
+        .count();
+    assert!(passed >= 1, "{observations:#?}");
+    assert!(
+        observations
+            .iter()
+            .filter(|o| o.starts_with("status: SUCCESS"))
+            .all(|o| !o.contains("failure_class: ")),
+        "{observations:#?}"
+    );
+    // On the log: the two faults are ToolCallFailed, never Succeeded.
+    let evs = task_events(&core, &session, &task).await;
+    let failed: Vec<&serde_json::Value> = evs
+        .iter()
+        .filter(|(a, t, _)| a == "tool_call" && t == "ToolCallFailed")
+        .map(|(_, _, p)| p)
+        .collect();
+    assert!(
+        failed
+            .iter()
+            .any(|p| p["failure_code"].as_str() == Some("TIMEOUT")),
+        "{failed:#?}"
+    );
+    assert!(
+        failed
+            .iter()
+            .any(|p| p["failure_code"].as_str() == Some("OBJECT_MISMATCH")),
+        "{failed:#?}"
+    );
+    drop(c);
+
+    // Fault 3: a provider nobody answers. The run suspends with a PROVIDER
+    // diagnosis the status surface reports, retryable, with the user told
+    // to check the endpoint.
+    let dead = {
+        let l = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let p = l.local_addr().unwrap().port();
+        drop(l);
+        format!("http://127.0.0.1:{p}")
+    };
+    let dir2 = tempfile::tempdir().unwrap();
+    let env2 = [
+        ("MODBIT_OPENAI_BASE_URL", dead.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core2 = CoreProcess::spawn_with_env(dir2.path(), &env2);
+    let mut c2 = core2.client().await;
+    let (session2, _) = create_session(&mut c2, id16(0x76)).await;
+    let g2 = lease_for(&session2);
+    let task2 =
+        create_task_with_profile(&mut c2, &session2, g2, &root, 0x77, "local_trusted").await;
+    let start2 = StartTask {
+        task_id: Some(task2.clone()),
+        endpoint: "openai".into(),
+        model: "gpt-5".into(),
+        max_turns: 0,
+        max_tool_calls: 0,
+        max_no_progress_turns: 0,
+    };
+    let ack = c2
+        .command(envelope_fenced(
+            id16(0x78),
+            "StartTask",
+            start2.encode_to_vec(),
+            g2,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_for_state(&mut c2, &task2, "Waiting", 60).await;
+    assert_eq!(
+        (st.state.as_str(), st.wait_reason.as_str()),
+        ("Waiting", "Provider"),
+        "{st:?}"
+    );
+    assert_eq!(st.failure_class, "PROVIDER", "{st:?}");
+    assert!(st.retryable, "{st:?}");
+    assert!(!st.failure_code.is_empty(), "{st:?}");
+    assert!(st.attention_reason.contains("provider failure"), "{st:?}");
+    assert!(st.user_action.contains("endpoint"), "{st:?}");
+    assert!(st.recovery_path.contains("StartTask"), "{st:?}");
+    assert!(
+        st.diagnostic_features
+            .contains(&"class:provider".to_owned())
+            && st.diagnostic_features.contains(&"retryable".to_owned()),
+        "{st:?}"
+    );
+    // The same diagnosis is on the log, typed, in the attention event.
+    let evs = task_events(&core2, &session2, &task2).await;
+    let attention = evs
+        .iter()
+        .find(|(a, t, _)| a == "task" && t == "TaskNeedsAttention")
+        .map(|(_, _, p)| p.clone())
+        .unwrap_or_else(|| panic!("{evs:#?}"));
+    assert_eq!(attention["diagnostic"]["class"], "PROVIDER", "{attention}");
+    assert_eq!(attention["diagnostic"]["retryable"], true, "{attention}");
 }

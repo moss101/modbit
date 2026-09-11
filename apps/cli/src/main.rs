@@ -755,6 +755,22 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 "task state={} wait_reason={} run_state={} loop_alive={}",
                 st.state, st.wait_reason, st.run_state, st.loop_alive
             );
+            // REQ-EV-0073: a waiting task names its failure class, whether a
+            // retry helps, what the operator can do and how it recovers.
+            if st.state == "Waiting" && !st.failure_class.is_empty() {
+                println!(
+                    "attention class={} code={} retryable={}",
+                    st.failure_class, st.failure_code, st.retryable
+                );
+                println!("  reason: {}", st.attention_reason);
+                if !st.user_action.is_empty() {
+                    println!("  user_action: {}", st.user_action);
+                }
+                println!("  recovery: {}", st.recovery_path);
+                for r in &st.evidence_refs {
+                    println!("  evidence: {r}");
+                }
+            }
             EXIT_CODE.store(
                 exit_for_state(&st.state),
                 std::sync::atomic::Ordering::SeqCst,

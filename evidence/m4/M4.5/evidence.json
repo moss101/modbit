@@ -1,7 +1,16 @@
 {
  "task": "M4.5",
- "requirements": ["REQ-EV-0221", "REQ-EV-0271", "REQ-EV-0027", "REQ-EV-0135"],
- "scenarios": ["E2E-008", "docs/54 fault 11", "docs/54 fault 12"],
+ "requirements": [
+  "REQ-EV-0221",
+  "REQ-EV-0271",
+  "REQ-EV-0027",
+  "REQ-EV-0135"
+ ],
+ "scenarios": [
+  "E2E-008",
+  "docs/54 fault 11",
+  "docs/54 fault 12"
+ ],
  "tests": [
   "qual_m4_5_e2e_008_a_background_command_survives_a_core_restart_and_resumes_from_its_cursor",
   "qual_m4_5_a_killed_broker_comes_back_with_its_durable_sessions_and_an_orphan_exits",
@@ -12,5 +21,22 @@
  "runs": [],
  "proof": "A background command outlives a hard kill of the Core; the restarted Core reattaches to the same broker with no duplicate start, reads on from the acknowledged cursor without gap or repeat, replays the earlier output, refuses a reader with the old replay generation, and cancel ends the real process with a sealed OutputRef; the protocol state carries the handle and cursor across the restart. A hard-killed broker comes back with its sessions durable: a running one is LOST with exit unknown and a replayable sealed log, a retry replays it, an exited one keeps its exit code; an orphaned broker stops its process and exits.",
  "audit": "PARTIAL before: handles survived a client restart only; the broker died with the Core, sessions were in memory, attaches carried no generation, and nothing about handles or cursors was on the log.",
- "limitations": "A session lost with the broker is not restarted by the Core; browser and sandbox cursors are interfaces without producers until M7/M8; the orphan grace (60 s) bounds how long a dead Core's commands survive."
+ "limitations": "A session lost with the broker is not restarted by the Core; browser and sandbox cursors are interfaces without producers until M7/M8; the orphan grace (60 s) bounds how long a dead Core's commands survive.",
+ "ci_history": [
+  {
+   "id": "gha-34591118802",
+   "kind": "hosted CI on 88fc68c",
+   "result": "FAIL: desktop E2E on Linux/Windows (app close waited the broker's orphan grace: broker inherited the Core's stderr pipe); macOS tier-A p95 flake",
+   "url": "https://github.com/moss101/modbit/actions/runs/34591118802",
+   "fix": "ccae2dd"
+  },
+  {
+   "id": "gha-34593607441",
+   "kind": "hosted CI on ccae2dd",
+   "result": "FAIL: desktop E2E on Linux/Windows (app close still 60 s: the desktop's own pipes reached the broker through descriptors/handles the browser process leaks into the Core); Windows kill suite probe hit a closed connection",
+   "url": "https://github.com/moss101/modbit/actions/runs/34593607441",
+   "fix": "next commit (handle sweep before the broker spawn; tolerant probe)",
+   "repro": "linux-pipe-leak-repro.py / linux-pipe-leak-repro.txt"
+  }
+ ]
 }

@@ -14,6 +14,7 @@
 
 pub mod approval;
 pub mod event;
+pub mod failure;
 pub mod ids;
 pub mod lease;
 pub mod media;

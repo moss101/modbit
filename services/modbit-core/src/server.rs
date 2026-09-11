@@ -2967,6 +2967,38 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 .and_then(|r| r.into_iter().next())
                 .map(|r| format!("{:?}", r.state))
                 .unwrap_or_default();
+            let attention = store.latest_attention(&task_id).ok().flatten();
+            let attention_reason = attention
+                .as_ref()
+                .and_then(|a| a["reason"].as_str())
+                .unwrap_or_default()
+                .to_owned();
+            let diagnostic = attention.as_ref().and_then(|a| {
+                serde_json::from_value::<modbit_domain::failure::FailureDiagnostic>(
+                    a["diagnostic"].clone(),
+                )
+                .ok()
+            });
+            let (
+                failure_class,
+                failure_code,
+                retryable,
+                user_action,
+                recovery_path,
+                evidence_refs,
+                diagnostic_features,
+            ) = match diagnostic {
+                Some(d) => (
+                    d.class.label().to_owned(),
+                    d.code,
+                    d.retryable,
+                    d.user_action,
+                    d.recovery_path,
+                    d.evidence_refs,
+                    d.features,
+                ),
+                None => Default::default(),
+            };
             accept(
                 cid,
                 false,
@@ -2976,6 +3008,14 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                     run_state,
                     loop_alive,
                     last_offset: store.last_offset().unwrap_or(0),
+                    attention_reason,
+                    failure_class,
+                    failure_code,
+                    retryable,
+                    user_action,
+                    recovery_path,
+                    evidence_refs,
+                    diagnostic_features,
                 }
                 .encode_to_vec(),
             )

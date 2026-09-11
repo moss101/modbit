@@ -1808,6 +1808,7 @@ dependencies = [
  "anyhow",
  "ed25519-dalek",
  "hex",
+ "libc",
  "modbit-bench-context-economics",
  "modbit-bench-outcome-statistics",
  "modbit-checkpoint",

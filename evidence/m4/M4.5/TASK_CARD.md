@@ -28,6 +28,7 @@ Make terminal handles durable across a Core restart and a broker restart, fence 
 - Browser and sandbox cursors are typed interfaces with no producer until M7 (browser control lease) and M8 (sandbox lease); the protocol state carries them empty.
 - The Core holds a broker connection open for its lifetime and the broker's orphan grace defaults to 60 s: a Core that stays dead longer than that loses its running commands (stopped as cancelled), which the next broker reports honestly.
 - The replay generation is the Core's boot generation; a single Core per data directory is enforced by the Core's own lock, so the generation fences a dead Core's readers rather than concurrent Cores.
+- A broker that outlives the Core must inherit nothing from whoever spawned the Core. Hosted CI found this twice: run 34591118802 (the broker inherited the Core's stderr pipe; fixed by `execd.log`, a null stdin, and clearing the inherit flag on the Core's std handles on Windows) and run 34593607441 (the desktop's own stdout/stderr, which the browser process leaks into the Core as non-CLOEXEC descriptors on Linux and inheritable handles on Windows, still reached the broker, so Playwright's app close waited the full orphan grace; fixed by making every handle the Core holds non-inheritable before the spawn: a Windows handle-table sweep, `FD_CLOEXEC` on every descriptor above the stdio triple on Unix). macOS never showed it because `posix_spawn` there closes everything not explicitly mapped.
 
 ## Verification
 

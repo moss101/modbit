@@ -1,0 +1,13 @@
+{
+ "task": "IMP-EV-0073",
+ "requirement": "REQ-EV-0073",
+ "qual": "QUAL-EV-0073",
+ "tests": [
+  "qual_ev_0073_fault_injection_never_reports_a_generic_success",
+  "qual_ev_0073_every_diagnosis_names_class_retryability_action_evidence_and_recovery"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "A timed-out command is TIMEOUT/retryable to the model and ToolCallFailed on the log; a stored object that no longer matches its digest is CORRUPT_STATE, not retryable, told apart from a missing artifact; a provider nobody answers suspends the task with a PROVIDER diagnosis on TaskStatus and in the attention event; a passing command carries no diagnosis.",
+ "audit": "PARTIAL before: status lines and prose reasons; corrupt objects reported as missing; no class, retryability or recovery on any surface."
+}

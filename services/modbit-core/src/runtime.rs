@@ -135,8 +135,13 @@ enum LoopEnd {
     ReadyForReview,
     /// A typed question is pending (REQ-EV-0222): the run suspends, never hangs.
     NeedsInput(String),
-    /// The repair loop escalated (docs/28 §5): the task needs attention with its history.
-    NeedsAttention(String),
+    /// The repair loop escalated (docs/28 §5) or a scope decision failed
+    /// closed: the task needs attention with its history. `code` names
+    /// which (REQ-EV-0073).
+    NeedsAttention {
+        code: &'static str,
+        reason: String,
+    },
     Cancelled,
     BudgetExhausted(harness::Exhausted),
     ProviderFailed(String, String),
@@ -492,11 +497,18 @@ pub fn reconcile_after_restart(
                 actor.clone(),
             ));
         }
+        let reason = crate::protocol::attention_after_restart(&boundary, &orphans);
+        let unknown_ids: Vec<String> = orphans.unknown.iter().map(|(id, _)| id.clone()).collect();
+        let diagnostic = Some(modbit_core_runtime::classify(
+            &modbit_core_runtime::FailureSource::Restart {
+                boundary: boundary.label(),
+                message: &reason,
+                unknown_calls: &unknown_ids,
+            },
+        ));
         events.push(typed(
             "TaskNeedsAttention",
-            &TaskEvent::TaskNeedsAttention {
-                reason: crate::protocol::attention_after_restart(&boundary, &orphans),
-            },
+            &TaskEvent::TaskNeedsAttention { reason, diagnostic },
             actor.clone(),
         ));
         let _ = store.append(AppendRequest {
@@ -3079,13 +3091,19 @@ async fn run_loop(
             break LoopEnd::NeedsInput(q);
         }
         if let Some(reason) = scope_fail_closed {
-            break LoopEnd::NeedsAttention(reason);
+            break LoopEnd::NeedsAttention {
+                code: "SCOPE_FAIL_CLOSED",
+                reason,
+            };
         }
         if let Some(esc) = escalation {
-            break LoopEnd::NeedsAttention(format!(
-                "repair escalated for {}: {} ({} attempt(s))",
-                esc.failure_signature, esc.reason, esc.attempts
-            ));
+            break LoopEnd::NeedsAttention {
+                code: "REPAIR_ESCALATED",
+                reason: format!(
+                    "repair escalated for {}: {} ({} attempt(s))",
+                    esc.failure_signature, esc.reason, esc.attempts
+                ),
+            };
         }
         if cancel.is_cancelled() {
             let mut store = core.store.lock().await;
@@ -3221,6 +3239,13 @@ async fn run_loop(
                                         "the execution owner lost the session lease: generation {} was superseded by {current_generation} (owner {owner}); the run stopped at a safe boundary and resumes under the current lease with StartTask",
                                         cfg.lease_generation
                                     ),
+                                    diagnostic: Some(modbit_core_runtime::classify(
+                                        &modbit_core_runtime::FailureSource::LeaseLost {
+                                            held: cfg.lease_generation,
+                                            current: current_generation,
+                                            owner: &owner,
+                                        },
+                                    )),
                                 },
                                 actor.clone(),
                             ),
@@ -3325,6 +3350,13 @@ async fn run_loop(
                                         "budget `{}` exhausted ({}/{}); partial evidence retained",
                                         x.budget, x.used, x.limit
                                     ),
+                                    diagnostic: Some(modbit_core_runtime::classify(
+                                        &modbit_core_runtime::FailureSource::Budget {
+                                            budget: &x.budget,
+                                            limit: x.limit,
+                                            used: x.used,
+                                        },
+                                    )),
                                 },
                                 actor.clone(),
                             ),
@@ -3363,6 +3395,12 @@ async fn run_loop(
                                 "TaskNeedsAttention",
                                 &TaskEvent::TaskNeedsAttention {
                                     reason: format!("question pending: {question_id}"),
+                                    diagnostic: Some(modbit_core_runtime::classify(
+                                        &modbit_core_runtime::FailureSource::Loop {
+                                            code: "QUESTION_PENDING",
+                                            message: &format!("question pending: {question_id}"),
+                                        },
+                                    )),
                                 },
                                 actor.clone(),
                             ),
@@ -3371,7 +3409,13 @@ async fn run_loop(
                 ],
             );
         }
-        LoopEnd::NeedsAttention(reason) => {
+        LoopEnd::NeedsAttention { code, reason } => {
+            let diagnostic = Some(modbit_core_runtime::classify(
+                &modbit_core_runtime::FailureSource::Loop {
+                    code,
+                    message: &reason,
+                },
+            ));
             let _ = append_batch(
                 &mut store,
                 &core,
@@ -3399,7 +3443,7 @@ async fn run_loop(
                             ),
                             typed(
                                 "TaskNeedsAttention",
-                                &TaskEvent::TaskNeedsAttention { reason },
+                                &TaskEvent::TaskNeedsAttention { reason, diagnostic },
                                 actor.clone(),
                             ),
                         ],
@@ -3442,6 +3486,14 @@ async fn run_loop(
                                 "TaskNeedsAttention",
                                 &TaskEvent::TaskNeedsAttention {
                                     reason: format!("{turns} consecutive turns without progress"),
+                                    diagnostic: Some(modbit_core_runtime::classify(
+                                        &modbit_core_runtime::FailureSource::Loop {
+                                            code: "NO_PROGRESS",
+                                            message: &format!(
+                                                "{turns} consecutive turns without progress"
+                                            ),
+                                        },
+                                    )),
                                 },
                                 actor.clone(),
                             ),
@@ -3480,6 +3532,12 @@ async fn run_loop(
                                 "TaskNeedsAttention",
                                 &TaskEvent::TaskNeedsAttention {
                                     reason: format!("provider failure {code}: {message}"),
+                                    diagnostic: Some(modbit_core_runtime::classify(
+                                        &modbit_core_runtime::FailureSource::Provider {
+                                            code: &code,
+                                            message: &message,
+                                        },
+                                    )),
                                 },
                                 actor.clone(),
                             ),
@@ -4827,10 +4885,21 @@ async fn execute_tool(
         let done = match core.tools.invoke(&core.store, req).await {
             Ok(d) => d,
             Err(e) => {
+                let message = e.to_string();
+                let diagnostic =
+                    modbit_core_runtime::classify(&modbit_core_runtime::FailureSource::Tool {
+                        tool: name,
+                        status: "INFRA_FAILURE",
+                        code: Some(crate::tools::error_code(&e)),
+                        message: Some(&message),
+                        result_ref: "",
+                        timed_out: false,
+                        cancelled: false,
+                    });
                 return TranscriptEntry::ToolResult {
                     call_id: call_id.into(),
                     name: name.into(),
-                    text: format!("status: INFRA_FAILURE\nerror: {e}"),
+                    text: format!("status: INFRA_FAILURE\nerror: {e}\n{}", diagnostic.render()),
                     failure_signature: Some(harness::failure_signature(
                         name,
                         "INFRA",
@@ -4865,10 +4934,20 @@ async fn execute_tool(
             // Wait for the resolver at a safe boundary; the same tool_call_id re-enters.
             loop {
                 if cancel.is_cancelled() {
+                    let diagnostic =
+                        modbit_core_runtime::classify(&modbit_core_runtime::FailureSource::Tool {
+                            tool: name,
+                            status: "CANCELLED",
+                            code: None,
+                            message: Some("cancelled while awaiting approval"),
+                            result_ref: "",
+                            timed_out: false,
+                            cancelled: true,
+                        });
                     return TranscriptEntry::ToolResult {
                         call_id: call_id.into(),
                         name: name.into(),
-                        text: "status: CANCELLED".into(),
+                        text: format!("status: CANCELLED\n{}", diagnostic.render()),
                         failure_signature: None,
                         clears: vec![],
                         wrote: None,
@@ -4905,13 +4984,35 @@ async fn execute_tool(
                 .tool_call(&tool_call_id)
                 .unwrap_or(None);
             if call.is_some_and(|c| c.state == ToolCallState::Failed) {
-                return TranscriptEntry::ToolResult { call_id: call_id.into(), name: name.into(), text: "status: POLICY_DENIED\nerror_code: APPROVAL_DENIED\nerror: the user denied this effect".into(), failure_signature: None, clears: vec![], wrote: None, progress: false, media: vec![] };
+                let diagnostic =
+                    modbit_core_runtime::classify(&modbit_core_runtime::FailureSource::Tool {
+                        tool: name,
+                        status: "POLICY_DENIED",
+                        code: Some("APPROVAL_DENIED"),
+                        message: Some("the user denied this effect"),
+                        result_ref: "",
+                        timed_out: false,
+                        cancelled: false,
+                    });
+                return TranscriptEntry::ToolResult {
+                    call_id: call_id.into(),
+                    name: name.into(),
+                    text: format!(
+                        "status: POLICY_DENIED\nerror_code: APPROVAL_DENIED\nerror: the user denied this effect\n{}",
+                        diagnostic.render()
+                    ),
+                    failure_signature: None,
+                    clears: vec![],
+                    wrote: None,
+                    progress: false,
+                    media: vec![],
+                };
             }
             continue;
         }
         let r = &done.result;
         let status = format!("{:?}", r.status).to_uppercase();
-        let obs = harness::observe(
+        let mut obs = harness::observe(
             &status,
             r.error_code.as_deref(),
             r.error_message.as_deref(),
@@ -4928,6 +5029,24 @@ async fn execute_tool(
                 || r.structured_output["exit_code"]
                     .as_i64()
                     .is_some_and(|c| c != 0));
+        // REQ-EV-0073: a failure is told to the model as a class with its
+        // retryability and recovery path, never as a bare status line.
+        if r.status != ToolStatus::Success || check_failed {
+            let timed_out = r.structured_output["timed_out"].as_bool() == Some(true)
+                || r.structured_output["status"].as_str() == Some("TIMEOUT");
+            let cancelled = r.structured_output["cancelled"].as_bool() == Some(true);
+            let diagnostic =
+                modbit_core_runtime::classify(&modbit_core_runtime::FailureSource::Tool {
+                    tool: name,
+                    status: &status,
+                    code: r.error_code.as_deref(),
+                    message: r.error_message.as_deref(),
+                    result_ref: &done.result_ref,
+                    timed_out,
+                    cancelled,
+                });
+            obs.text.push_str(&diagnostic.render());
+        }
         let sig_prefix = format!("{name}:");
         let clears: Vec<String> = if is_check && !check_failed {
             state

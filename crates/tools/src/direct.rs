@@ -1238,6 +1238,9 @@ tool!(
                     "content": text,
                 }))
             }
+            // Corrupt state is an infrastructure failure the model cannot
+            // fix by calling again (REQ-EV-0073).
+            Err((code, msg)) if code == "OBJECT_MISMATCH" => ToolOutcome::infra(&code, msg),
             Err((code, msg)) => ToolOutcome::fail(&code, msg),
         }
     }

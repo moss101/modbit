@@ -751,6 +751,16 @@ message TaskStatus {
   string run_state = 3;          // latest run, empty if none
   bool loop_alive = 4;           // the agent loop is executing in this Core
   uint64 last_offset = 5;
+  // REQ-EV-0073: the latest TaskNeedsAttention, typed. Empty when the
+  // task has never needed attention.
+  string attention_reason = 6;
+  string failure_class = 7;      // TIMEOUT | INFRASTRUCTURE | APPLICATION | POLICY | APPROVAL | CORRUPT_STATE | UNKNOWN_OUTCOME | LEASE | PROVIDER | BUDGET | HARNESS | CANCELLED | INVALID
+  string failure_code = 8;       // stable code within the class
+  bool retryable = 9;            // a retry of the same operation can succeed
+  string user_action = 10;       // what only the user can do (empty when nothing)
+  string recovery_path = 11;     // how the system recovers
+  repeated string evidence_refs = 12; // object hashes / ids that prove the failure
+  repeated string diagnostic_features = 13; // stable feature tags (REQ-EV-0245)
 }
 
 // ---- M2.9 Trusted Code Review Surface (docs/20) ----

@@ -125,10 +125,10 @@ tempfile = "3.27.0"
 toml = "1.1.5"
 
 [workspace.lints.rust]
-# Denied, not forbidden: the sanctioned exceptions are the Windows handle
-# inheritance fixes in apps/cli and services/modbit-core (each a scoped
-# `#[allow(unsafe_code)]` with a SAFETY note): a spawned child must not keep
-# its parent's pipes open.
+# Denied, not forbidden: the sanctioned exceptions are the handle
+# inheritance fixes in apps/cli (Windows) and services/modbit-core (Windows
+# handle flags, Unix FD_CLOEXEC), each a scoped `#[allow(unsafe_code)]` with
+# a SAFETY note: a spawned child must not keep its parent's pipes open.
 unsafe_code = "deny"
 missing_docs = "warn"
 unused_crate_dependencies = "allow"

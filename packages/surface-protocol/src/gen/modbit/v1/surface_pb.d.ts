@@ -3215,6 +3215,63 @@ export declare type TaskStatus = Message<"modbit.v1.TaskStatus"> & {
    * @generated from field: uint64 last_offset = 5;
    */
   lastOffset: bigint;
+
+  /**
+   * REQ-EV-0073: the latest TaskNeedsAttention, typed. Empty when the
+   * task has never needed attention.
+   *
+   * @generated from field: string attention_reason = 6;
+   */
+  attentionReason: string;
+
+  /**
+   * TIMEOUT | INFRASTRUCTURE | APPLICATION | POLICY | APPROVAL | CORRUPT_STATE | UNKNOWN_OUTCOME | LEASE | PROVIDER | BUDGET | HARNESS | CANCELLED | INVALID
+   *
+   * @generated from field: string failure_class = 7;
+   */
+  failureClass: string;
+
+  /**
+   * stable code within the class
+   *
+   * @generated from field: string failure_code = 8;
+   */
+  failureCode: string;
+
+  /**
+   * a retry of the same operation can succeed
+   *
+   * @generated from field: bool retryable = 9;
+   */
+  retryable: boolean;
+
+  /**
+   * what only the user can do (empty when nothing)
+   *
+   * @generated from field: string user_action = 10;
+   */
+  userAction: string;
+
+  /**
+   * how the system recovers
+   *
+   * @generated from field: string recovery_path = 11;
+   */
+  recoveryPath: string;
+
+  /**
+   * object hashes / ids that prove the failure
+   *
+   * @generated from field: repeated string evidence_refs = 12;
+   */
+  evidenceRefs: string[];
+
+  /**
+   * stable feature tags (REQ-EV-0245)
+   *
+   * @generated from field: repeated string diagnostic_features = 13;
+   */
+  diagnosticFeatures: string[];
 };
 
 /**

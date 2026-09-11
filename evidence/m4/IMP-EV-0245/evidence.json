@@ -1,0 +1,12 @@
+{
+ "task": "IMP-EV-0245",
+ "requirement": "REQ-EV-0245",
+ "qual": "QUAL-EV-0245",
+ "tests": [
+  "qual_ev_0245_fault_corpus_produces_stable_diagnostic_features"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "39-case fault corpus classified deterministically; every diagnosis pinned byte for byte with sorted, unique feature tags carrying class, code, source and retryability.",
+ "audit": "NOT-FOUND before: no taxonomy, prose reasons only."
+}

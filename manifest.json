@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 749,
-    "docs_bytes": 1051545
+    "root_and_tooling": 755,
+    "docs_bytes": 1053512
   },
   "sections": [
     {
@@ -167,8 +167,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Agent Runtime and Orchestration",
-      "bytes": 12125,
-      "sha256": "b18874f62e374d8e2582e13393818f37cd7c80c0925d777c298f72b9af60a58b"
+      "bytes": 13689,
+      "sha256": "88b405e8853c80331bae41590badaa76e92a750531a37a35f7988702f07705e1"
     },
     {
       "path": "docs/15_MODEL_ROUTER_AND_PROVIDER_GATEWAY.md",
@@ -230,8 +230,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Terminal, Execution Router, and Sandbox Architecture",
-      "bytes": 5519,
-      "sha256": "3296c00d89026bc6ad839664f364fd22c7f8febc0186c91947839c65cb915dfa"
+      "bytes": 5922,
+      "sha256": "9715a5883316dd2ea95a2dd19827d97ad7dd096b84b026ce75a450ae74eb03c5"
     },
     {
       "path": "docs/22_BROWSER_AND_COMPUTER_USE.md",
@@ -4472,6 +4472,26 @@
       "sha256": "dc1c5415da2d653b16d94162aa23478c0d9694a3c0442c91e93c17db2e9e58ec"
     },
     {
+      "path": "evidence/m4/IMP-EV-0073/TASK_CARD.md",
+      "bytes": 4274,
+      "sha256": "8353f25f442267ab1ad529c954036b76dcf50a75a3c154e072f87b2a3e25d254"
+    },
+    {
+      "path": "evidence/m4/IMP-EV-0073/evidence.json",
+      "bytes": 805,
+      "sha256": "01eaa33fb5a413fead438d9a90e2e321d8e4a3cce7e5ac0ab3d54286524e81d4"
+    },
+    {
+      "path": "evidence/m4/IMP-EV-0245/TASK_CARD.md",
+      "bytes": 2386,
+      "sha256": "635a39e867022bdf28f853651df667923d1cc9092e3397799024a720d951ccc5"
+    },
+    {
+      "path": "evidence/m4/IMP-EV-0245/evidence.json",
+      "bytes": 445,
+      "sha256": "56e57dbc9ea7ce561cceee1c2cb9765677e14375ef424f1a15b4e1684e32b83e"
+    },
+    {
       "path": "evidence/m4/M4.1/TASK_CARD.md",
       "bytes": 8467,
       "sha256": "a14c9ed238f536747ab52bbbd627c5cd33e3019dc50eacaf5a190a918297205d"
@@ -4538,18 +4558,28 @@
     },
     {
       "path": "evidence/m4/M4.5/TASK_CARD.md",
-      "bytes": 6074,
-      "sha256": "35e43b5674b87e05bd71b55defa53705878d3f232ab547edaf93d1944c2d31af"
+      "bytes": 6873,
+      "sha256": "356a5ae715154f43c3d9233ff4dae2cdb26a40af09178f9a50cffd6ebbe9a1d1"
     },
     {
       "path": "evidence/m4/M4.5/evidence.json",
-      "bytes": 1665,
-      "sha256": "7d95e15aec50bf5ff53e5131805ea2fbce51e450e8c170a6eefc1614c9ff86ff"
+      "bytes": 2557,
+      "sha256": "d5fc62bc58fca7d52d490fac7dace87f544c2a97074cdf3f308190980315c383"
+    },
+    {
+      "path": "evidence/m4/M4.5/linux-pipe-leak-repro.py",
+      "bytes": 2287,
+      "sha256": "e10b2a0d03c7e7fabd9e12dbca1cc3c6b7606396c0f6ed45e404ee13c6ed9ecf"
+    },
+    {
+      "path": "evidence/m4/M4.5/linux-pipe-leak-repro.txt",
+      "bytes": 903,
+      "sha256": "b5b47c8e1ddb4480ddb730abec502a5eed28079879b796dc17fe5f55fda357f3"
     },
     {
       "path": "evidence/m4/M4.6/TASK_CARD.md",
-      "bytes": 6293,
-      "sha256": "ad52c0ad34d3bf8a54999b7d9ed89d8ceb94cb298ad7d867e82dc86565aeebaf"
+      "bytes": 6763,
+      "sha256": "bcc84ee081a4b9c5d2ea41291c8ef220904686d91625ef20015a37c793317c96"
     },
     {
       "path": "evidence/m4/M4.6/evidence.json",

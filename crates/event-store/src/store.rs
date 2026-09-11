@@ -808,6 +808,19 @@ impl EventStore {
         rows.map(|r| r.map_err(Error::from)).collect()
     }
 
+    /// The latest `TaskNeedsAttention` payload of one task, if any
+    /// (REQ-EV-0073: the status surface names the failure class, not a guess).
+    pub fn latest_attention(&self, task: &TaskId) -> Result<Option<serde_json::Value>> {
+        let mut stmt = self.conn.prepare_cached(&format!(
+            "SELECT {COLUMNS} FROM events WHERE aggregate_id = ?1 AND event_type = 'TaskNeedsAttention' ORDER BY sequence DESC LIMIT 1"
+        ))?;
+        let rows = stmt.query_map(params![task.as_bytes().as_slice()], row_to_event)?;
+        let Some(e) = rows.map(|r| r.map_err(Error::from)).next().transpose()? else {
+            return Ok(None);
+        };
+        self.payload(&e.envelope).map(Some)
+    }
+
     /// Events of one session with `offset > after`, ascending by offset
     /// (the resume cursor of REQ-EV-0010).
     pub fn read_session(

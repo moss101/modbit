@@ -25,4 +25,7 @@ workspace = true
 [package.metadata.modbit]
 owner = "core-runtime"
 canonical = ["orchestration"]
-capabilities = [{ id = "harness.contracts", requirements = ["REQ-EV-0099", "REQ-EV-0107"] }]
+capabilities = [
+  { id = "harness.contracts", requirements = ["REQ-EV-0099", "REQ-EV-0107"] },
+  { id = "failure.diagnostics", requirements = ["REQ-EV-0073", "REQ-EV-0245"] },
+]

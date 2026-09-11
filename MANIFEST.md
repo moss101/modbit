@@ -14,14 +14,14 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | Section | Range | Files | Bytes |
 |---|---|---:|---:|
 | Authority and orientation | 00–09 | 8 | 65205 |
-| Architecture and subsystems | 10–29 | 20 | 199246 |
+| Architecture and subsystems | 10–29 | 20 | 201213 |
 | Implementation specifications | 30–39 | 10 | 83781 |
 | Requirements, tasks and traceability | 40–49 | 10 | 351596 |
 | Verification and testing | 50–69 | 15 | 203744 |
 | Delivery and operations | 70–79 | 7 | 33831 |
 | Agent process and governance | 80–97 | 18 | 109299 |
 | Live state | 98–99 | 1 | 4843 |
-| **Total docs** | | **89** | **1051545** |
+| **Total docs** | | **89** | **1053512** |
 
 ## Specification files (`docs/`)
 
@@ -39,14 +39,14 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 11 | `docs/11_SYSTEM_ARCHITECTURE.md` | End-to-End System Architecture | architecture | 12638 | `34b51dd3be83dac06e6d2a50d9fc8baed4b9d7839597c9a3ebe1b38c66552233` |
 | 12 | `docs/12_REPOSITORY_AND_MODULE_LAYOUT.md` | Clean Repository and Module Layout | architecture | 9439 | `9cf99c8535c14f16b216f2a477703fdc9c4a47a63867a616eea3ffcc3e3560b4` |
 | 13 | `docs/13_DOMAIN_MODEL_AND_STATE_MACHINES.md` | Canonical Domain Model and State Machines | architecture | 6829 | `7c15fd3f525fe0f863ce28e00bb31d0eb8f0313babd53befd83148d18378f5c3` |
-| 14 | `docs/14_AGENT_RUNTIME_AND_ORCHESTRATION.md` | Agent Runtime and Orchestration | architecture | 12125 | `b18874f62e374d8e2582e13393818f37cd7c80c0925d777c298f72b9af60a58b` |
+| 14 | `docs/14_AGENT_RUNTIME_AND_ORCHESTRATION.md` | Agent Runtime and Orchestration | architecture | 13689 | `88b405e8853c80331bae41590badaa76e92a750531a37a35f7988702f07705e1` |
 | 15 | `docs/15_MODEL_ROUTER_AND_PROVIDER_GATEWAY.md` | Execution Policy Router and Provider Gateway | architecture | 7208 | `c2d264fb093ef1ac5b62685a082a5743015f6916fad49799ee529a6c91f277a3` |
 | 16 | `docs/16_TOOL_CAPABILITY_AND_PROCEDURAL_RUNTIME.md` | Tool System, Capability Kernel, Procedural Runtime, and MCP | architecture | 5407 | `88f995ffc9687f2cc88f72e8f0a94c7aae602050db3dda997dc9d8bb9b052f3d` |
 | 17 | `docs/17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md` | Canonical Tool and Capability Inventory | architecture | 5852 | `6e92b564da319488bdab3e4d17325799f5bda5e0c9e9fd0d316f0981c9b4bbe9` |
 | 18 | `docs/18_CONTEXT_RETRIEVAL_AND_ENGINEERING_KNOWLEDGE.md` | Context, Retrieval, and Engineering Knowledge Engine | architecture | 5728 | `c6a362588d301b22d0f57bd11accecd6af33a9a5f7abc391afb15d7bef6f2303` |
 | 19 | `docs/19_DURABLE_STATE_MEMORY_COMPACTION_CHECKPOINTS.md` | Durable State, Memory, Compaction, and Checkpoints | architecture | 11331 | `112adeedbbcc34533cb1f8636895da10359a4eb9bbd4b03bcfe4a10dc1fd3cec` |
 | 20 | `docs/20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md` | Workspace, Git, Worktrees, Diagnostics, and Trusted Code Surface | architecture | 4238 | `71e5a6df1723eb19bfa3816eeb1bee5a5b73f3250ad53a2055fb65a1c79e6129` |
-| 21 | `docs/21_TERMINAL_EXECUTION_AND_SANDBOX.md` | Terminal, Execution Router, and Sandbox Architecture | architecture | 5519 | `3296c00d89026bc6ad839664f364fd22c7f8febc0186c91947839c65cb915dfa` |
+| 21 | `docs/21_TERMINAL_EXECUTION_AND_SANDBOX.md` | Terminal, Execution Router, and Sandbox Architecture | architecture | 5922 | `9715a5883316dd2ea95a2dd19827d97ad7dd096b84b026ce75a450ae74eb03c5` |
 | 22 | `docs/22_BROWSER_AND_COMPUTER_USE.md` | Browser and Computer-Use Architecture | architecture | 3961 | `a7e441d9bc60785aea7dcc62fe8cef5946f3aa2551665368a360d4ec3519220b` |
 | 23 | `docs/23_SECURITY_POLICY_EFFECT_LEDGER.md` | Security, Policy, Capabilities, Secrets, and Effect Ledger | architecture | 5169 | `f9f908c35490defc63d706e8748f8b3f1a0b707820f3a3b80da61268a8225500` |
 | 24 | `docs/24_CLOUD_CONTROL_PLANE_AND_SYNC.md` | Cloud Control Plane, Remote Execution, and Sync | architecture | 5065 | `50516f6c15cc4353f2960c6a488cb706a706bdc6b2853b35dfb6c930df7c2eeb` |
@@ -844,6 +844,10 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m3/PX-040/ci-run-34507573124-tests.log` | retained evidence | 4206 | `a9e2a291c1bc0b8c6332b023ecd1361533d8286c33ba45c5465fcca3c2eacb50` |
 | `evidence/m3/PX-040/ci-run-34507573124.json` | retained evidence | 37317 | `cc7122950bffe169b616acd26ddc066cc491cfb3ea9bc94299350fbd41b06594` |
 | `evidence/m3/PX-040/evidence.json` | retained evidence | 1272 | `dc1c5415da2d653b16d94162aa23478c0d9694a3c0442c91e93c17db2e9e58ec` |
+| `evidence/m4/IMP-EV-0073/TASK_CARD.md` | retained evidence | 4274 | `8353f25f442267ab1ad529c954036b76dcf50a75a3c154e072f87b2a3e25d254` |
+| `evidence/m4/IMP-EV-0073/evidence.json` | retained evidence | 805 | `01eaa33fb5a413fead438d9a90e2e321d8e4a3cce7e5ac0ab3d54286524e81d4` |
+| `evidence/m4/IMP-EV-0245/TASK_CARD.md` | retained evidence | 2386 | `635a39e867022bdf28f853651df667923d1cc9092e3397799024a720d951ccc5` |
+| `evidence/m4/IMP-EV-0245/evidence.json` | retained evidence | 445 | `56e57dbc9ea7ce561cceee1c2cb9765677e14375ef424f1a15b4e1684e32b83e` |
 | `evidence/m4/M4.1/TASK_CARD.md` | retained evidence | 8467 | `a14c9ed238f536747ab52bbbd627c5cd33e3019dc50eacaf5a190a918297205d` |
 | `evidence/m4/M4.1/ci-run-34575700540.json` | retained evidence | 37317 | `4935dff1f95c3da823e4c69d390538ad0ee41d56e6e9958cd4af8a91569d8de8` |
 | `evidence/m4/M4.1/evidence.json` | retained evidence | 2107 | `ce7ed45990ba4c096fb560932c021cde05be8c0e56a426eae8960eb3b0f119a9` |
@@ -857,9 +861,11 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m4/M4.4/TASK_CARD.md` | retained evidence | 5124 | `524f293fb9aac82cfc773574ef6ae2a25c95f57ab581a5d20d88144eca8c612c` |
 | `evidence/m4/M4.4/ci-run-34588581596.json` | retained evidence | 37317 | `547aa8bd0b47e6c55d580d35f9f271240eb829f98edc290037db110cd764bf9e` |
 | `evidence/m4/M4.4/evidence.json` | retained evidence | 1253 | `206ab4387d1f33cfd4b69e8d68e4c7a5095731e8296e71577f118444482c1068` |
-| `evidence/m4/M4.5/TASK_CARD.md` | retained evidence | 6074 | `35e43b5674b87e05bd71b55defa53705878d3f232ab547edaf93d1944c2d31af` |
-| `evidence/m4/M4.5/evidence.json` | retained evidence | 1665 | `7d95e15aec50bf5ff53e5131805ea2fbce51e450e8c170a6eefc1614c9ff86ff` |
-| `evidence/m4/M4.6/TASK_CARD.md` | retained evidence | 6293 | `ad52c0ad34d3bf8a54999b7d9ed89d8ceb94cb298ad7d867e82dc86565aeebaf` |
+| `evidence/m4/M4.5/TASK_CARD.md` | retained evidence | 6873 | `356a5ae715154f43c3d9233ff4dae2cdb26a40af09178f9a50cffd6ebbe9a1d1` |
+| `evidence/m4/M4.5/evidence.json` | retained evidence | 2557 | `d5fc62bc58fca7d52d490fac7dace87f544c2a97074cdf3f308190980315c383` |
+| `evidence/m4/M4.5/linux-pipe-leak-repro.py` | retained evidence | 2287 | `e10b2a0d03c7e7fabd9e12dbca1cc3c6b7606396c0f6ed45e404ee13c6ed9ecf` |
+| `evidence/m4/M4.5/linux-pipe-leak-repro.txt` | retained evidence | 903 | `b5b47c8e1ddb4480ddb730abec502a5eed28079879b796dc17fe5f55fda357f3` |
+| `evidence/m4/M4.6/TASK_CARD.md` | retained evidence | 6763 | `bcc84ee081a4b9c5d2ea41291c8ef220904686d91625ef20015a37c793317c96` |
 | `evidence/m4/M4.6/evidence.json` | retained evidence | 1606 | `3221311b30dc2b77387c6a9dffc6af062fbab79c6f15b28bffdccf9dd6026a67` |
 | `graph/PROJECT_GRAPH.md` | human view of the graph | 40852 | `01733c06424f302b5af96073966125e9fc90efe736bd8fa7b5cadd0cddbea1bc` |
 | `graph/project-graph.json` | project driver graph with live status | 1307169 | `08273958247671d3cc3b9e42008f4a0268c909fc1b423d24ea67f6b917576d3f` |

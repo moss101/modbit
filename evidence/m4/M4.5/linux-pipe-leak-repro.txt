@@ -1,0 +1,13 @@
+Linux reproduction of the run-34593607441 failure mechanism, with the fix in place.
+Built modbit-core + modbit-execd for x86_64 Linux (rust:1.97.1-bookworm, --platform linux/amd64,
+cargo build --offline) from the working tree that became the forward-fix commit; ran
+linux-pipe-leak-repro.py in the same container. The supervisor leaks a non-CLOEXEC dup of
+the harness's stdout pipe into the Core (what a browser process does); the broker's orphan
+grace is 20 s in this run.
+
+harness: supervisor exit=0 stdout EOF after 1.5s; child said: core exited in 0.01s;
+broker (pid 31) fds: /dev/null, execd.log, its own stdout pipe, eventfd/epoll, sockets — no harness pipe.
+
+Before the fix (hosted run 34593607441, Playwright trace): every app.close() took 60 s = the
+orphan grace, because the broker held the desktop's stdout/stderr and Playwright waits for
+the Electron process's `close` (exit + stdio EOF).

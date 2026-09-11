@@ -1,0 +1,627 @@
+{
+  "artifact_range_corrupt_object": {
+    "class": "CORRUPT_STATE",
+    "code": "OBJECT_MISMATCH",
+    "detail": "object 00…01 content does not match digest",
+    "evidence_refs": [
+      "0000000000000000000000000000000000000000000000000000000000000005"
+    ],
+    "features": [
+      "class:corrupt_state",
+      "code:object_mismatch",
+      "corrupt_state",
+      "not_retryable",
+      "source:tool",
+      "tool:artifact.range"
+    ],
+    "recovery_path": "nothing is read past a digest mismatch; the operation stops before writing",
+    "retryable": false,
+    "user_action": "the stored object does not match its digest; restore it from a backup or discard the checkpoint that names it"
+  },
+  "artifact_range_missing_object": {
+    "class": "APPLICATION",
+    "code": "NO_SUCH_ARTIFACT",
+    "detail": "object 00…02 unreadable: No such file",
+    "evidence_refs": [
+      "0000000000000000000000000000000000000000000000000000000000000006"
+    ],
+    "features": [
+      "class:application",
+      "code:no_such_artifact",
+      "retryable",
+      "source:tool",
+      "tool:artifact.range"
+    ],
+    "recovery_path": "the operation ran and reported failure; read its output and change the command or the code before running it again",
+    "retryable": true,
+    "user_action": ""
+  },
+  "budget_tool_calls": {
+    "class": "BUDGET",
+    "code": "BUDGET_EXHAUSTED",
+    "detail": "max_tool_calls: 40/40",
+    "evidence_refs": [],
+    "features": [
+      "budget:max_tool_calls",
+      "class:budget",
+      "code:budget_exhausted",
+      "not_retryable",
+      "source:harness"
+    ],
+    "recovery_path": "the run suspended with its partial evidence; resume with StartTask and a larger budget",
+    "retryable": false,
+    "user_action": "raise `max_tool_calls` (used 40 of 40) and resume, or narrow the goal"
+  },
+  "budget_turns": {
+    "class": "BUDGET",
+    "code": "BUDGET_EXHAUSTED",
+    "detail": "max_turns: 12/12",
+    "evidence_refs": [],
+    "features": [
+      "budget:max_turns",
+      "class:budget",
+      "code:budget_exhausted",
+      "not_retryable",
+      "source:harness"
+    ],
+    "recovery_path": "the run suspended with its partial evidence; resume with StartTask and a larger budget",
+    "retryable": false,
+    "user_action": "raise `max_turns` (used 12 of 12) and resume, or narrow the goal"
+  },
+  "change_apply_unknown_outcome": {
+    "class": "UNKNOWN_OUTCOME",
+    "code": "UNKNOWN_OUTCOME",
+    "detail": "no exit observed",
+    "evidence_refs": [
+      "0000000000000000000000000000000000000000000000000000000000000007"
+    ],
+    "features": [
+      "class:unknown_outcome",
+      "code:unknown_outcome",
+      "not_retryable",
+      "source:tool",
+      "tool:change.apply"
+    ],
+    "recovery_path": "the resumed run reconciles the call against the effect ledger and the target before anything else runs; it never replays the effect",
+    "retryable": false,
+    "user_action": "check the target of the effect and record the outcome with ReconcileToolCall (EFFECT_CONFIRMED or EFFECT_ABSENT) when the Core cannot tell"
+  },
+  "dispatch_not_journaled": {
+    "class": "INFRASTRUCTURE",
+    "code": "JOURNAL_FAILED",
+    "detail": "database is locked",
+    "evidence_refs": [],
+    "features": [
+      "class:infrastructure",
+      "code:journal_failed",
+      "retryable",
+      "source:tool",
+      "tool:change.apply"
+    ],
+    "recovery_path": "the dispatch was not journaled so nothing ran; call again",
+    "retryable": true,
+    "user_action": ""
+  },
+  "dispatch_stale_lease": {
+    "class": "INFRASTRUCTURE",
+    "code": "STALE_LEASE",
+    "detail": "lease generation 3 is not current (4)",
+    "evidence_refs": [],
+    "features": [
+      "class:infrastructure",
+      "code:stale_lease",
+      "retryable",
+      "source:tool",
+      "tool:change.apply"
+    ],
+    "recovery_path": "the operation did not run; call again once the infrastructure is back",
+    "retryable": true,
+    "user_action": "check the terminal broker and the workspace are reachable"
+  },
+  "fs_write_outside_scope": {
+    "class": "POLICY",
+    "code": "SCOPE_VIOLATION",
+    "detail": "path is outside the task scope",
+    "evidence_refs": [],
+    "features": [
+      "class:policy",
+      "code:scope_violation",
+      "not_retryable",
+      "source:tool",
+      "tool:change.apply"
+    ],
+    "recovery_path": "the effect did not happen; the run continues without it",
+    "retryable": false,
+    "user_action": "widen the task's lease or profile if the effect is wanted"
+  },
+  "git_push_approval_denied": {
+    "class": "APPROVAL",
+    "code": "APPROVAL_DENIED",
+    "detail": "the user denied this effect",
+    "evidence_refs": [],
+    "features": [
+      "class:approval",
+      "code:approval_denied",
+      "not_retryable",
+      "source:tool",
+      "tool:git.push"
+    ],
+    "recovery_path": "the effect did not happen; the run continues without it",
+    "retryable": false,
+    "user_action": ""
+  },
+  "git_push_approval_pending": {
+    "class": "APPROVAL",
+    "code": "APPROVAL_REQUIRED",
+    "detail": "",
+    "evidence_refs": [],
+    "features": [
+      "class:approval",
+      "code:approval_required",
+      "retryable",
+      "source:tool",
+      "tool:git.push"
+    ],
+    "recovery_path": "the run waits at the approval; approving once runs the effect once",
+    "retryable": true,
+    "user_action": "resolve the approval bound to this intent (ResolveApproval); the same call re-enters once it is approved"
+  },
+  "invalid_arguments": {
+    "class": "INVALID",
+    "code": "SCHEMA",
+    "detail": "missing field `path`",
+    "evidence_refs": [],
+    "features": [
+      "class:invalid",
+      "code:schema",
+      "not_retryable",
+      "source:tool",
+      "tool:fs.read"
+    ],
+    "recovery_path": "call again with arguments that fit the tool's schema, or a tool that exists",
+    "retryable": false,
+    "user_action": ""
+  },
+  "lease_lost": {
+    "class": "LEASE",
+    "code": "LEASE_LOST",
+    "detail": "held 2, current 3, owner cli:shell-2",
+    "evidence_refs": [],
+    "features": [
+      "class:lease",
+      "code:lease_lost",
+      "not_retryable",
+      "source:lease"
+    ],
+    "recovery_path": "the stale owner stopped at a safe boundary; the current lease holder resumes with StartTask",
+    "retryable": false,
+    "user_action": "the session lease moved from generation 2 to 3 (owner cli:shell-2); the new owner resumes the run"
+  },
+  "loop_no_progress": {
+    "class": "HARNESS",
+    "code": "NO_PROGRESS",
+    "detail": "4 consecutive turns without progress",
+    "evidence_refs": [],
+    "features": [
+      "class:harness",
+      "code:no_progress",
+      "not_retryable",
+      "source:harness"
+    ],
+    "recovery_path": "the run suspended after consecutive turns without progress; resume with StartTask",
+    "retryable": false,
+    "user_action": "steer the task or narrow the goal"
+  },
+  "loop_question_pending": {
+    "class": "HARNESS",
+    "code": "QUESTION_PENDING",
+    "detail": "question pending: q1",
+    "evidence_refs": [],
+    "features": [
+      "class:harness",
+      "code:question_pending",
+      "not_retryable",
+      "source:harness"
+    ],
+    "recovery_path": "the run waits at the question boundary",
+    "retryable": false,
+    "user_action": "answer the question (RespondToQuestion); the run resumes from the answer"
+  },
+  "loop_repair_escalated": {
+    "class": "HARNESS",
+    "code": "REPAIR_ESCALATED",
+    "detail": "repair escalated for test.run:FAILED: same failure 3 times (3 attempt(s))",
+    "evidence_refs": [],
+    "features": [
+      "class:harness",
+      "code:repair_escalated",
+      "not_retryable",
+      "source:harness"
+    ],
+    "recovery_path": "the repair loop stopped by policy; resume with StartTask and a steer",
+    "retryable": false,
+    "user_action": "read the attempt history and steer, or return the task to work with a new hypothesis"
+  },
+  "loop_scope_fail_closed": {
+    "class": "HARNESS",
+    "code": "SCOPE_FAIL_CLOSED",
+    "detail": "scope expansion to src/x needs a decision; headless resolution is FAIL_CLOSED",
+    "evidence_refs": [],
+    "features": [
+      "class:harness",
+      "code:scope_fail_closed",
+      "not_retryable",
+      "source:harness"
+    ],
+    "recovery_path": "resume with StartTask",
+    "retryable": false,
+    "user_action": ""
+  },
+  "provider_auth_rejected": {
+    "class": "PROVIDER",
+    "code": "AUTH_REJECTED",
+    "detail": "401",
+    "evidence_refs": [],
+    "features": [
+      "class:provider",
+      "code:auth_rejected",
+      "not_retryable",
+      "source:provider"
+    ],
+    "recovery_path": "resume with StartTask once the provider accepts the credential",
+    "retryable": false,
+    "user_action": "the provider rejected the credential; configure it again (ConfigureProvider)"
+  },
+  "provider_connect_failed": {
+    "class": "PROVIDER",
+    "code": "CONNECT_FAILED",
+    "detail": "connection refused (127.0.0.1:1)",
+    "evidence_refs": [],
+    "features": [
+      "class:provider",
+      "code:connect_failed",
+      "retryable",
+      "source:provider"
+    ],
+    "recovery_path": "resume with StartTask; the interrupted attempt is recorded and not repeated",
+    "retryable": true,
+    "user_action": "check the provider endpoint is reachable"
+  },
+  "provider_model_revoked": {
+    "class": "POLICY",
+    "code": "MODEL_REVOKED",
+    "detail": "gpt-x revoked by registry",
+    "evidence_refs": [],
+    "features": [
+      "class:policy",
+      "code:model_revoked",
+      "not_retryable",
+      "source:provider"
+    ],
+    "recovery_path": "resume with StartTask on an eligible model",
+    "retryable": false,
+    "user_action": "choose a model the registry allows, or lift the pin"
+  },
+  "provider_none_configured": {
+    "class": "PROVIDER",
+    "code": "NO_PROVIDER",
+    "detail": "no provider serves gpt-5",
+    "evidence_refs": [],
+    "features": [
+      "class:provider",
+      "code:no_provider",
+      "not_retryable",
+      "source:provider"
+    ],
+    "recovery_path": "resume with StartTask once a provider serves the model",
+    "retryable": false,
+    "user_action": "configure a provider (ConfigureProvider) or pick a served model"
+  },
+  "provider_other": {
+    "class": "PROVIDER",
+    "code": "PROVIDER_ERROR",
+    "detail": "500",
+    "evidence_refs": [],
+    "features": [
+      "class:provider",
+      "code:provider_error",
+      "retryable",
+      "source:provider"
+    ],
+    "recovery_path": "resume with StartTask; the failed attempt is recorded and not repeated",
+    "retryable": true,
+    "user_action": ""
+  },
+  "provider_rate_limited": {
+    "class": "PROVIDER",
+    "code": "RATE_LIMITED",
+    "detail": "429",
+    "evidence_refs": [],
+    "features": [
+      "class:provider",
+      "code:rate_limited",
+      "retryable",
+      "source:provider"
+    ],
+    "recovery_path": "resume with StartTask after the provider's retry window",
+    "retryable": true,
+    "user_action": ""
+  },
+  "provider_stream_timeout": {
+    "class": "TIMEOUT",
+    "code": "TIMEOUT",
+    "detail": "no bytes for 120s",
+    "evidence_refs": [],
+    "features": [
+      "class:timeout",
+      "code:timeout",
+      "retryable",
+      "source:provider"
+    ],
+    "recovery_path": "resume with StartTask; the interrupted attempt is recorded with its cost unknown",
+    "retryable": true,
+    "user_action": ""
+  },
+  "restart_awaiting_answer": {
+    "class": "HARNESS",
+    "code": "RESTART_AWAITING_ANSWER",
+    "detail": "runtime restarted while the task awaited an answer",
+    "evidence_refs": [],
+    "features": [
+      "boundary:awaiting_answer",
+      "class:harness",
+      "code:restart_awaiting_answer",
+      "retryable",
+      "source:restart"
+    ],
+    "recovery_path": "the run continues from the answer",
+    "retryable": true,
+    "user_action": "answer the question and resume with StartTask"
+  },
+  "restart_awaiting_approval": {
+    "class": "APPROVAL",
+    "code": "RESTART_AWAITING_APPROVAL",
+    "detail": "runtime restarted while the task awaited approval",
+    "evidence_refs": [],
+    "features": [
+      "boundary:awaiting_approval",
+      "class:approval",
+      "code:restart_awaiting_approval",
+      "retryable",
+      "source:restart"
+    ],
+    "recovery_path": "the same approval, bound to the same intent, is still open; approving once runs the effect once",
+    "retryable": true,
+    "user_action": "resolve the open approval and resume with StartTask"
+  },
+  "restart_executing": {
+    "class": "INFRASTRUCTURE",
+    "code": "RESTART_SUSPENDED",
+    "detail": "runtime restarted with 2 proposed tool call(s) not yet run",
+    "evidence_refs": [],
+    "features": [
+      "boundary:executing",
+      "class:infrastructure",
+      "code:restart_suspended",
+      "retryable",
+      "source:restart"
+    ],
+    "recovery_path": "the run continues from its last recorded boundary; nothing is repeated",
+    "retryable": true,
+    "user_action": "resume with StartTask"
+  },
+  "restart_reconciling": {
+    "class": "UNKNOWN_OUTCOME",
+    "code": "RESTART_RECONCILING",
+    "detail": "runtime restarted with 1 tool call(s) in flight",
+    "evidence_refs": [
+      "11111111-1111-1111-1111-111111111111"
+    ],
+    "features": [
+      "boundary:reconciling",
+      "class:unknown_outcome",
+      "code:restart_reconciling",
+      "not_retryable",
+      "source:restart"
+    ],
+    "recovery_path": "the resumed run reconciles each unknown outcome against the ledger and the target before anything else runs",
+    "retryable": false,
+    "user_action": "resume with StartTask to reconcile the calls, or record their outcome with ReconcileToolCall first"
+  },
+  "restart_turn_start": {
+    "class": "INFRASTRUCTURE",
+    "code": "RESTART_SUSPENDED",
+    "detail": "runtime restarted while the task was running",
+    "evidence_refs": [],
+    "features": [
+      "boundary:turn_start",
+      "class:infrastructure",
+      "code:restart_suspended",
+      "retryable",
+      "source:restart"
+    ],
+    "recovery_path": "the run continues from its last recorded boundary; nothing is repeated",
+    "retryable": true,
+    "user_action": "resume with StartTask"
+  },
+  "shell_exec_broker_unreachable": {
+    "class": "INFRASTRUCTURE",
+    "code": "EXECD_UNREACHABLE",
+    "detail": "connection refused",
+    "evidence_refs": [],
+    "features": [
+      "class:infrastructure",
+      "code:execd_unreachable",
+      "retryable",
+      "source:tool",
+      "tool:shell.exec"
+    ],
+    "recovery_path": "the operation did not run; call again once the infrastructure is back",
+    "retryable": true,
+    "user_action": "check the terminal broker and the workspace are reachable"
+  },
+  "shell_exec_cancelled": {
+    "class": "CANCELLED",
+    "code": "CANCELLED",
+    "detail": "exit_code=None timed_out=false cancelled=true",
+    "evidence_refs": [
+      "0000000000000000000000000000000000000000000000000000000000000003"
+    ],
+    "features": [
+      "class:cancelled",
+      "code:cancelled",
+      "not_retryable",
+      "source:tool",
+      "tool:shell.exec"
+    ],
+    "recovery_path": "the run stopped at a safe boundary; resume with StartTask to continue",
+    "retryable": false,
+    "user_action": ""
+  },
+  "shell_exec_nonzero_exit": {
+    "class": "APPLICATION",
+    "code": "NON_ZERO_EXIT",
+    "detail": "exit_code=Some(2) timed_out=false cancelled=false",
+    "evidence_refs": [
+      "0000000000000000000000000000000000000000000000000000000000000002"
+    ],
+    "features": [
+      "class:application",
+      "code:non_zero_exit",
+      "retryable",
+      "source:tool",
+      "tool:shell.exec"
+    ],
+    "recovery_path": "the operation ran and reported failure; read its output and change the command or the code before running it again",
+    "retryable": true,
+    "user_action": ""
+  },
+  "shell_exec_timeout": {
+    "class": "TIMEOUT",
+    "code": "TIMEOUT",
+    "detail": "exit_code=None timed_out=true cancelled=false",
+    "evidence_refs": [
+      "0000000000000000000000000000000000000000000000000000000000000001"
+    ],
+    "features": [
+      "class:timeout",
+      "code:timeout",
+      "retryable",
+      "source:tool",
+      "timed_out",
+      "tool:shell.exec"
+    ],
+    "recovery_path": "run it again with a larger timeout_ms, or split the command; a process that timed out was killed and left no result to trust",
+    "retryable": true,
+    "user_action": ""
+  },
+  "store_integrity": {
+    "class": "CORRUPT_STATE",
+    "code": "INTEGRITY",
+    "detail": "hash chain broken at sequence 7",
+    "evidence_refs": [],
+    "features": [
+      "class:corrupt_state",
+      "code:integrity",
+      "not_retryable",
+      "source:store"
+    ],
+    "recovery_path": "nothing is applied past an integrity failure",
+    "retryable": false,
+    "user_action": "the store's record does not verify; recovery refuses to proceed past it"
+  },
+  "store_object_mismatch": {
+    "class": "CORRUPT_STATE",
+    "code": "OBJECT_MISMATCH",
+    "detail": "content does not match digest",
+    "evidence_refs": [],
+    "features": [
+      "class:corrupt_state",
+      "code:object_mismatch",
+      "not_retryable",
+      "source:store"
+    ],
+    "recovery_path": "nothing is applied past an integrity failure",
+    "retryable": false,
+    "user_action": "the store's record does not verify; recovery refuses to proceed past it"
+  },
+  "store_sequence_conflict": {
+    "class": "INFRASTRUCTURE",
+    "code": "SEQUENCE_CONFLICT",
+    "detail": "expected 3, head 4",
+    "evidence_refs": [],
+    "features": [
+      "class:infrastructure",
+      "code:sequence_conflict",
+      "retryable",
+      "source:store"
+    ],
+    "recovery_path": "another writer moved the aggregate; the operation re-reads and retries",
+    "retryable": true,
+    "user_action": ""
+  },
+  "store_sqlite": {
+    "class": "INFRASTRUCTURE",
+    "code": "SQLITE",
+    "detail": "disk I/O error",
+    "evidence_refs": [],
+    "features": [
+      "class:infrastructure",
+      "code:sqlite",
+      "retryable",
+      "source:store"
+    ],
+    "recovery_path": "the write did not land; the operation may be retried",
+    "retryable": true,
+    "user_action": "check the profile directory is writable and the disk has space"
+  },
+  "store_stale_lease": {
+    "class": "LEASE",
+    "code": "STALE_LEASE",
+    "detail": "generation 1 superseded",
+    "evidence_refs": [],
+    "features": [
+      "class:lease",
+      "code:stale_lease",
+      "not_retryable",
+      "source:store"
+    ],
+    "recovery_path": "a stale owner cannot advance state; the current owner resumes with StartTask",
+    "retryable": false,
+    "user_action": "re-acquire the session lease (AcquireSessionLease) or let the current owner continue"
+  },
+  "test_run_failed": {
+    "class": "APPLICATION",
+    "code": "FAILED",
+    "detail": "1 test failed",
+    "evidence_refs": [
+      "0000000000000000000000000000000000000000000000000000000000000004"
+    ],
+    "features": [
+      "class:application",
+      "code:failed",
+      "retryable",
+      "source:tool",
+      "tool:test.run"
+    ],
+    "recovery_path": "the operation ran and reported failure; read its output and change the command or the code before running it again",
+    "retryable": true,
+    "user_action": ""
+  },
+  "unknown_tool": {
+    "class": "INVALID",
+    "code": "UNKNOWN_TOOL",
+    "detail": "no such tool",
+    "evidence_refs": [],
+    "features": [
+      "class:invalid",
+      "code:unknown_tool",
+      "not_retryable",
+      "source:tool",
+      "tool:nope.do"
+    ],
+    "recovery_path": "call again with arguments that fit the tool's schema, or a tool that exists",
+    "retryable": false,
+    "user_action": ""
+  }
+}
