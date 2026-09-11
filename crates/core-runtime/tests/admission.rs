@@ -173,16 +173,23 @@ fn a_legacy_template_label_authorizes_no_slot() {
     );
     // The label is kept as provenance, and the decoded plan holds exactly the
     // one leg the legacy record described.
-    let d = decoded.provenance.legacy_decode.as_ref().expect("provenance");
+    let d = decoded
+        .provenance
+        .legacy_decode
+        .as_ref()
+        .expect("provenance");
     assert_eq!(d.template_label, "CASCADE");
     assert_eq!(decoded.slots.len(), 1);
     assert!(admit_plan(&decoded, tenant, 0).is_ok());
     // The CASCADE label buys no second slot: a plan that leans on it is
     // refused rather than admitted.
     let mut smuggled = decoded.clone();
-    smuggled
-        .slots
-        .push(slot("stronger", Some("initial"), Trigger::QualityRejected, 0));
+    smuggled.slots.push(slot(
+        "stronger",
+        Some("initial"),
+        Trigger::QualityRejected,
+        0,
+    ));
     let err = admit_plan(&smuggled.sealed(), tenant, 0).unwrap_err();
     assert_eq!(err.code(), "LEGACY_TEMPLATE_AUTHORIZES_NOTHING");
     assert!(
@@ -258,7 +265,9 @@ fn no_slot_receives_a_new_budget_and_a_restart_recovers_its_activation() {
     // A restart that replays an activation it already recorded recovers it
     // rather than opening a second one.
     assert_eq!(
-        check_not_replayed(&ledger, "initial", 1).unwrap_err().code(),
+        check_not_replayed(&ledger, "initial", 1)
+            .unwrap_err()
+            .code(),
         "DUPLICATE_ACTIVATION"
     );
     assert!(check_not_replayed(&ledger, "stronger", 1).is_ok());

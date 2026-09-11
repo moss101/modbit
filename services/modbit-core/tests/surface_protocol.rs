@@ -12168,10 +12168,7 @@ async fn qual_epr_014_a_conditional_plan_is_admitted_whole_and_its_activation_is
     let r = admit(&mut c, task.clone(), 0xD9, g, &cyclic).await;
     assert_eq!(r.refusal_code, "PLAN_INVALID", "{r:?}");
     assert!(r.refusal_detail.contains("cycle"), "{r:?}");
-    let mut foreign = conditional(
-        2,
-        vec![slot("initial", None, Trigger::Initial, 100)],
-    );
+    let mut foreign = conditional(2, vec![slot("initial", None, Trigger::Initial, 100)]);
     foreign.tenant_id = modbit_domain::TenantId::new();
     let r = admit(&mut c, task.clone(), 0xDA, g, &foreign.sealed()).await;
     assert_eq!(r.refusal_code, "PLAN_INVALID", "{r:?}");
