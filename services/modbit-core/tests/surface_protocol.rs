@@ -2326,6 +2326,7 @@ fn git_repo_with_failing_check() -> (tempfile::TempDir, String) {
     .unwrap();
     for args in [
         vec!["init", "-q", "-b", "main"],
+        vec!["config", "core.autocrlf", "false"],
         vec!["add", "-A"],
         vec![
             "-c",
@@ -4242,6 +4243,10 @@ fn plain_repo(files: &[(&str, &str)]) -> (tempfile::TempDir, String) {
     }
     for args in [
         vec!["init", "-q", "-b", "main"],
+        // Bytes as written: no line-ending rewriting on checkout (Git for
+        // Windows defaults autocrlf=true), so a worktree of this repository
+        // holds the same bytes the test wrote (as `Repo::init` sets too).
+        vec!["config", "core.autocrlf", "false"],
         vec!["add", "-A"],
         vec![
             "-c",

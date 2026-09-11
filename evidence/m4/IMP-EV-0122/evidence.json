@@ -2,8 +2,13 @@
  "task": "IMP-EV-0122",
  "requirement": "REQ-EV-0122",
  "qual": "QUAL-EV-0122",
- "tests": ["qual_ev_0077_0122_a_fork_carries_decisions_and_evidence_but_no_stale_pending_effect"],
- "batch_commits": [],
+ "tests": [
+  "qual_ev_0077_0122_a_fork_carries_decisions_and_evidence_but_no_stale_pending_effect"
+ ],
+ "batch_commits": [
+  "426d478",
+  "1f91757"
+ ],
  "runs": [],
  "proof": "The BranchCarryoverCapsule read back over the wire names the plan, the user's decision, exactly the two retrieval records the fork's bytes still match (not the one the write made stale), the dropped pending approval and the worktree hashes; the fork's model sees the decisions in harness_state.",
  "audit": "NOT-FOUND before (0077/0122) / PARTIAL before (0123: restore without preconditions or preview)."

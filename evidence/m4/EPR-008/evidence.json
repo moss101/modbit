@@ -12,7 +12,9 @@
   "layers_only_strengthen",
   "later_facts_strengthen_and_never_weaken"
  ],
- "batch_commits": [],
+ "batch_commits": [
+  "1f91757"
+ ],
  "runs": [],
  "proof": "A real task on an auth module and a migration with a passing check derives CRITICAL/HIGH_ASSURANCE with review and human required, persisted beside the PASSED run, a weakening repository layer ignored and named; under the unattended profile the completion is refused ASSURANCE_HUMAN_REQUIRED and nothing is synthesized; the 23-case corpus pins every rule and forged advisories change nothing.",
  "audit": "PARTIAL before: the envelope had no assurance section, protected paths were a literal, risk_version was none.",

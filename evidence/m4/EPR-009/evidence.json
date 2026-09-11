@@ -11,7 +11,9 @@
   "qual_epr_005_new_runs_go_through_the_compiled_initial_leg_and_keep_the_baseline",
   "identical_inputs_produce_identical_plans_and_the_golden_cold_start"
  ],
- "batch_commits": [],
+ "batch_commits": [
+  "1f91757"
+ ],
  "runs": [],
  "decision_record": "docs/decisions/DR-M3-002-epr-baseline-live-provider-proof.md",
  "proof": "Routes are re-evaluated at the task boundary with the session's warm prefix and at every compaction epoch cold, each decision recorded with both totals and the itemized switch cost; with nothing confidence-feasible the route in force stays and says so; everything survives a hard kill; a stale-epoch plan is refused; the production compiler keeps a warm incumbent and switches a cold one when the alternative is feasible.",
