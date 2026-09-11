@@ -45,6 +45,19 @@ pub enum WorkspaceEvent {
         #[serde(default)]
         unsupported_language: bool,
     },
+    /// Files a verification stage created inside the workspace (docs/64 §4):
+    /// bytecode caches, reporter files, build output. They are not the
+    /// agent's writes, so they are excluded from the diff invariants and from
+    /// the review candidate — for every task that shares this workspace — and
+    /// named here so a reader knows why they are absent.
+    VerificationResidueRecorded {
+        /// The task whose verification produced them.
+        task_id: TaskId,
+        /// The stage that produced them.
+        verification_run_id: String,
+        /// Root-relative paths.
+        paths: Vec<String>,
+    },
 }
 
 /// One typed inverse action of an undo plan.

@@ -13578,7 +13578,7 @@ async fn qual_epr_005_new_runs_go_through_the_compiled_initial_leg_and_keep_the_
         ("total.py", "def total(q, unit):\n    return q * unit\n"),
         (
             ".modbit/verification.json",
-            "{\"commands\": [{\"id\": \"configured:py\", \"argv\": [\"python3\", \"-c\", \"import total; assert total.total(3, 250) == 750\"]}]}",
+            "{\"commands\": [{\"id\": \"configured:py\", \"argv\": [\"python3\", \"-c\", \"import os; os.makedirs('__pycache__', exist_ok=True); open('__pycache__/probe.pyc', 'w').write('x'); import total; assert total.total(3, 250) == 750\"]}]}",
         ),
     ]);
     let revision = String::from_utf8(
@@ -13593,11 +13593,14 @@ async fn qual_epr_005_new_runs_go_through_the_compiled_initial_leg_and_keep_the_
     .unwrap()
     .trim()
     .to_owned();
-    // The same edit-and-complete shape the baseline runs.
+    // The same read-edit-verify-complete shape the baseline runs. The edit
+    // appends a comment line, so every run changes the file it reads and the
+    // candidate the user accepts is a real diff each time.
     let script = || {
         vec![
             json!({"calls": [{"name": "plan.update", "args": {"outcome": "document the units", "expected_files": ["total.py"]}}]}),
-            json!({"calls": [{"name": "change.apply", "args": {"path": "total.py", "op": "replace", "content": "def total(q, unit):\n    \"\"\"unit is in minor units.\"\"\"\n    return q * unit\n"}}]}),
+            json!({"calls": [{"name": "fs.read", "args": {"path": "total.py"}}]}),
+            json!({"calls": [{"name": "change.apply", "args": {"path": "total.py", "op": "edit", "text_edits": [{"old": "    return q * unit\n", "new": "    return q * unit  # unit is in minor units\n"}]}}]}),
             json!({"calls": [{"name": "task.complete", "args": {"summary": "documented", "self_review": {"findings": []}}}]}),
         ]
     };
@@ -13628,6 +13631,7 @@ async fn qual_epr_005_new_runs_go_through_the_compiled_initial_leg_and_keep_the_
         Client::result(&ack).unwrap()
     }
     async fn run_and_accept(
+        core: &CoreProcess,
         c: &mut Client,
         session: &Id,
         g: Option<u64>,
@@ -13655,7 +13659,10 @@ async fn qual_epr_005_new_runs_go_through_the_compiled_initial_leg_and_keep_the_
             .unwrap();
         let _: TaskRunStarted = Client::result(&ack).unwrap();
         let st = wait_task(c, &task, 300).await;
-        assert_eq!(st.state, "ReadyForReview", "{st:?}");
+        if st.state != "ReadyForReview" {
+            let events = task_events(core, session, &task).await;
+            panic!("{st:?}\n{events:#?}");
+        }
         let ack = c
             .command(envelope_fenced(
                 id16(id + 2),
@@ -13677,7 +13684,42 @@ async fn qual_epr_005_new_runs_go_through_the_compiled_initial_leg_and_keep_the_
         task
     }
     // 1. The measured direct baseline, with no registry active.
-    let direct = run_and_accept(&mut c, &session, g, &root, 0x52, "gpt-5-mini").await;
+    let direct = run_and_accept(&core, &mut c, &session, g, &root, 0x52, "gpt-5-mini").await;
+    assert!(
+        std::fs::read_to_string(repo.path().join("total.py"))
+            .unwrap()
+            .contains("minor units"),
+        "the direct run's edit landed"
+    );
+    // The check wrote a bytecode cache into the workspace. That is the
+    // verification's residue, not the agent's write: it is recorded as such,
+    // it did not trip the write-set invariant, and the accepted review did
+    // not commit it.
+    let events = task_events(&core, &session, &direct).await;
+    let residue = events
+        .iter()
+        .find(|(_, t, _)| t == "VerificationResidueRecorded")
+        .unwrap_or_else(|| panic!("{events:#?}"));
+    assert_eq!(
+        residue.2["paths"],
+        json!(["__pycache__/probe.pyc"]),
+        "{}",
+        residue.2
+    );
+    assert!(
+        !events.iter().any(|(_, t, _)| t == "DiffInvariantViolated"),
+        "residue must not be attributed to the agent: {events:#?}"
+    );
+    let tracked = Command::new("git")
+        .arg("-C")
+        .arg(repo.path())
+        .args(["ls-files", "__pycache__"])
+        .output()
+        .unwrap();
+    assert!(
+        tracked.stdout.is_empty(),
+        "residue was committed: {tracked:?}"
+    );
     let d = routing(&mut c, direct.clone(), 0x55).await;
     assert!(d.plan_id.starts_with("direct:"), "{d:?}");
     assert_eq!(d.path_label, "DIRECT");
@@ -13697,7 +13739,7 @@ async fn qual_epr_005_new_runs_go_through_the_compiled_initial_leg_and_keep_the_
         .unwrap();
     let r: ModelRegistryView = Client::result(&ack).unwrap();
     assert!(r.active, "{r:?}");
-    let compiled = run_and_accept(&mut c, &session, g, &root, 0x57, "").await;
+    let compiled = run_and_accept(&core, &mut c, &session, g, &root, 0x57, "").await;
     let v = routing(&mut c, compiled.clone(), 0x5A).await;
     assert!(v.plan_id.starts_with("compiled:"), "{v:?}");
     let a = v.admission.as_ref().unwrap();
@@ -13782,7 +13824,7 @@ async fn qual_epr_005_new_runs_go_through_the_compiled_initial_leg_and_keep_the_
     assert_eq!(od.state, oc.state);
     // 4. A manual pin is honoured against the compiler's own preference and
     //    keeps policy: the plan opens with the pin, under the same generation.
-    let pinned = run_and_accept(&mut c, &session, g, &root, 0x5C, "gpt-5").await;
+    let pinned = run_and_accept(&core, &mut c, &session, g, &root, 0x5C, "gpt-5").await;
     let p = routing(&mut c, pinned.clone(), 0x5F).await;
     assert!(p.plan_id.starts_with("compiled:"), "{p:?}");
     assert_eq!(
@@ -13808,7 +13850,7 @@ async fn qual_epr_005_new_runs_go_through_the_compiled_initial_leg_and_keep_the_
         .await
         .unwrap();
     assert!(Client::result::<ModelRegistryView>(&ack).unwrap().active);
-    let canary = run_and_accept(&mut c, &session, g, &root, 0x61, "").await;
+    let canary = run_and_accept(&core, &mut c, &session, g, &root, 0x61, "").await;
     let cv = routing(&mut c, canary.clone(), 0x64).await;
     assert_eq!(
         cv.admission.as_ref().unwrap().thresholds_version,
@@ -13826,7 +13868,7 @@ async fn qual_epr_005_new_runs_go_through_the_compiled_initial_leg_and_keep_the_
         .await
         .unwrap();
     assert!(Client::result::<ModelRegistryView>(&ack).unwrap().active);
-    let rolled = run_and_accept(&mut c, &session, g, &root, 0x66, "").await;
+    let rolled = run_and_accept(&core, &mut c, &session, g, &root, 0x66, "").await;
     let rv = routing(&mut c, rolled.clone(), 0x69).await;
     assert_eq!(
         rv.admission.as_ref().unwrap().thresholds_version,
@@ -13837,7 +13879,7 @@ async fn qual_epr_005_new_runs_go_through_the_compiled_initial_leg_and_keep_the_
     //    actual Core. The run is not continued silently: it is suspended for
     //    reconciliation, and when it resumes it continues on the plan and the
     //    single activation it already had rather than compiling another.
-    let (stalling, _seen2) = scripted_model(script(), Some(2)).await;
+    let (stalling, _seen2) = scripted_model(script(), Some(3)).await;
     core.kill();
     let env2 = [
         ("MODBIT_OPENAI_BASE_URL", stalling.as_str()),
@@ -13879,12 +13921,12 @@ async fn qual_epr_005_new_runs_go_through_the_compiled_initial_leg_and_keep_the_
         .await
         .unwrap();
     let _: TaskRunStarted = Client::result(&ack).unwrap();
-    // The change.apply is dispatched and its result recorded; the third
+    // The change.apply is dispatched and its result recorded; the fourth
     // invocation stalls. Kill there.
     let deadline = std::time::Instant::now() + Duration::from_secs(60);
     loop {
         let v = routing(&mut c, interrupted.clone(), 0x6D).await;
-        if v.attempts.len() >= 2 {
+        if v.attempts.len() >= 3 {
             break;
         }
         assert!(std::time::Instant::now() < deadline, "{v:?}");

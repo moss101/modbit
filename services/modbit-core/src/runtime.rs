@@ -3320,6 +3320,35 @@ fn is_check_tool(name: &str) -> bool {
     matches!(name, "test.run" | "shell.exec")
 }
 
+/// Every path a verification stage created inside this workspace, whichever
+/// task ran it, read from the workspace aggregate on the log.
+pub(crate) async fn verification_residue(
+    core: &Core,
+    root: &str,
+) -> std::collections::BTreeSet<String> {
+    let store = core.store.lock().await;
+    let mut out = std::collections::BTreeSet::new();
+    let Ok(events) = store.read_aggregate(&crate::tools::workspace_aggregate_id(root), 0, 100_000)
+    else {
+        return out;
+    };
+    for e in &events {
+        if e.envelope.event_type != "VerificationResidueRecorded" {
+            continue;
+        }
+        if let Ok(modbit_domain::workspace::WorkspaceEvent::VerificationResidueRecorded {
+            paths,
+            ..
+        }) = store
+            .payload(&e.envelope)
+            .and_then(|p| serde_json::from_value(p).map_err(Into::into))
+        {
+            out.extend(paths);
+        }
+    }
+    out
+}
+
 /// The workspace's `FileChanged` records after `since` revision, oldest
 /// first: (tool call, path, after hash, op, revision).
 type ChangeRecord = (
@@ -4339,6 +4368,10 @@ async fn run_verification(
             ],
         );
     }
+    // What is untracked before the stage runs: anything untracked afterwards
+    // that was not is residue the checks produced (docs/64 §4), not a write
+    // of the agent's, and is recorded as such rather than attributed.
+    let untracked_before = crate::verify::untracked_paths(std::path::Path::new(&root));
     let (vrun, quarantines) = engine
         .run_stage(
             &plan,
@@ -4351,6 +4384,11 @@ async fn run_verification(
             &["modbit-core".into()],
         )
         .await;
+    let residue: Vec<String> = crate::verify::untracked_paths(std::path::Path::new(&root))
+        .difference(&untracked_before)
+        .filter(|p| !p.starts_with(".modbit"))
+        .cloned()
+        .collect();
     let vrun_ref = {
         let store = core.store.lock().await;
         store
@@ -4359,6 +4397,28 @@ async fn run_verification(
             .unwrap_or_default()
     };
     let mut events = crate::verify::stage_events(&vrun, &quarantines, actor);
+    if !residue.is_empty() {
+        // Residue belongs to the workspace, not to this task: a later task
+        // in the same worktree must not be charged with a cache the checks
+        // of an earlier one left behind.
+        let mut store = core.store.lock().await;
+        let _ = append(
+            &mut store,
+            core,
+            Lineage::task(core.tenant_id, task.session_id, task.task_id),
+            AggregateType::Workspace,
+            crate::tools::workspace_aggregate_id(&root),
+            vec![typed(
+                "VerificationResidueRecorded",
+                &modbit_domain::workspace::WorkspaceEvent::VerificationResidueRecorded {
+                    task_id: task.task_id,
+                    verification_run_id: vrun.verification_run_id.clone(),
+                    paths: residue,
+                },
+                actor.clone(),
+            )],
+        );
+    }
     let indeterminate = matches!(
         vrun.status,
         modbit_verification::ReportStatus::Unknown
@@ -4438,7 +4498,8 @@ async fn run_verification(
                     ));
                 }
             }
-            let files = crate::verify::changed_files(std::path::Path::new(&root));
+            let residue = verification_residue(core, &root).await;
+            let files = crate::verify::changed_files(std::path::Path::new(&root), &residue);
             let ctx = invariant_context(state);
             let violations = modbit_verification::evaluate_diff(&ctx, &files, None);
             // A FLAG whose path the current plan declares has already been

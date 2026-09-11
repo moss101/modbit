@@ -59,7 +59,18 @@ struct Candidate {
     files: Vec<FileDiff>,
 }
 
-fn candidate(task: &Task) -> Result<Candidate, (String, String)> {
+/// The verification residue of the task's workspace, when it has one.
+async fn residue_of(core: &Core, task: &Task) -> std::collections::BTreeSet<String> {
+    match task.workspace_root.as_deref() {
+        Some(root) => crate::runtime::verification_residue(core, root).await,
+        None => std::collections::BTreeSet::new(),
+    }
+}
+
+fn candidate(
+    task: &Task,
+    residue: &std::collections::BTreeSet<String>,
+) -> Result<Candidate, (String, String)> {
     let root = task.workspace_root.clone().ok_or_else(|| {
         (
             "NO_WORKSPACE".to_owned(),
@@ -71,12 +82,15 @@ fn candidate(task: &Task) -> Result<Candidate, (String, String)> {
     let base_commit = repo.head().map_err(|e| ("GIT".to_owned(), e.to_string()))?;
     // Untracked files are part of the candidate: stage them into the index view
     // without committing so `git diff HEAD` shows them (`-N` intent-to-add).
+    // Residue a verification stage produced (bytecode caches, reporter files)
+    // is not the agent's work and stays out of the candidate.
     let status = repo
         .status()
         .map_err(|e| ("GIT".to_owned(), e.to_string()))?;
     let untracked: Vec<&str> = status
         .iter()
         .filter(|e| e.code.starts_with('?') && !e.path.starts_with(".modbit"))
+        .filter(|e| !crate::verify::is_residue(&e.path, residue))
         .map(|e| e.path.as_str())
         .collect();
     if !untracked.is_empty() {
@@ -94,6 +108,7 @@ fn candidate(task: &Task) -> Result<Candidate, (String, String)> {
     let files = parse_unified(&diff.unified)
         .into_iter()
         .filter(|f| !f.path.starts_with(".modbit"))
+        .filter(|f| !crate::verify::is_residue(&f.path, residue))
         .collect();
     Ok(Candidate {
         root,
@@ -128,7 +143,8 @@ pub async fn bundle(
         return Err(("BAD_PAYLOAD".into(), "task_id required".into()));
     };
     let task = load_task(core, id).await?;
-    let cand = candidate(&task)?;
+    let residue = residue_of(core, &task).await;
+    let cand = candidate(&task, &residue)?;
     let store = core.store.lock().await;
     let mut files = Vec::new();
     for f in &cand.files {
@@ -315,7 +331,8 @@ pub async fn code_view(
     let stale =
         !p.expected_file_revision.is_empty() && p.expected_file_revision != read.content_hash;
     let mut changed_ranges = Vec::new();
-    if let Ok(cand) = candidate(&task)
+    let residue = residue_of(core, &task).await;
+    if let Ok(cand) = candidate(&task, &residue)
         && let Some(f) = cand.files.iter().find(|f| f.path == p.path)
     {
         for h in &f.hunks {
@@ -380,7 +397,8 @@ pub async fn decide(
             ),
         ));
     }
-    let cand = candidate(&task)?;
+    let residue = residue_of(core, &task).await;
+    let cand = candidate(&task, &residue)?;
     let (ws, _) = core
         .tools
         .workspace(&cand.root)

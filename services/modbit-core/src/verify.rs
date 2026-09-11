@@ -194,9 +194,40 @@ pub fn stage_events(
     out
 }
 
-/// The working tree's changes against HEAD as `ChangedFile`s (whole-diff invariants).
+/// The untracked paths of a working tree right now: what a verification
+/// stage is compared against before and after it runs, so the files it
+/// creates can be told apart from the agent's writes.
 #[must_use]
-pub fn changed_files(root: &Path) -> Vec<ChangedFile> {
+pub fn untracked_paths(root: &Path) -> std::collections::BTreeSet<String> {
+    let Ok(repo) = modbit_git::Repo::open(root) else {
+        return std::collections::BTreeSet::new();
+    };
+    repo.status()
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|e| e.code.starts_with('?'))
+        .map(|e| e.path)
+        .collect()
+}
+
+/// Whether a path is inside a residue entry (a directory recorded as residue
+/// covers everything under it).
+#[must_use]
+pub fn is_residue(path: &str, residue: &std::collections::BTreeSet<String>) -> bool {
+    residue.iter().any(|r| {
+        let r = r.trim_end_matches('/');
+        path == r || path.starts_with(&format!("{r}/"))
+    })
+}
+
+/// The working tree's changes against HEAD as `ChangedFile`s (whole-diff
+/// invariants), leaving out the residue verification stages produced: those
+/// files are not the agent's writes and the invariants judge the agent.
+#[must_use]
+pub fn changed_files(
+    root: &Path,
+    residue: &std::collections::BTreeSet<String>,
+) -> Vec<ChangedFile> {
     let Ok(repo) = modbit_git::Repo::open(root) else {
         return vec![];
     };
@@ -206,6 +237,7 @@ pub fn changed_files(root: &Path) -> Vec<ChangedFile> {
     entries
         .into_iter()
         .filter(|e| !e.path.starts_with(".modbit"))
+        .filter(|e| !is_residue(&e.path, residue))
         .map(|e| {
             let old = repo
                 .show("HEAD", &e.path)
