@@ -14817,8 +14817,14 @@
    "milestone": "M5",
    "qual": "QUAL-EV-0184",
    "source": "docs/41",
-   "status": "REAL_TESTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:34694431409",
+    "commit:24c0775",
+    "test:qual_ev_0184_0185_a_text_only_model_is_told_the_modality_and_a_bridge_describes_media",
+    "test:qual_ev_0184_audio_and_video_are_typed_with_their_modality_and_nothing_is_invented",
+    "artifact:evidence/m5/IMP-EV-0184/TASK_CARD.md"
+   ],
    "notes": [
     {
      "at": "2026-09-12T11:53:41Z",
@@ -14843,9 +14849,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "real-system qualification: Core E2E tests against real fixtures (see card)"
+    },
+    {
+     "at": "2026-09-12T12:55:25Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "green on hosted CI (macOS, Linux, Windows) at 24c0775"
+    },
+    {
+     "at": "2026-09-12T12:55:25Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
     }
    ],
-   "status_changed_on": "2026-09-12T12:42:09Z"
+   "status_changed_on": "2026-09-12T12:55:25Z"
   },
   {
    "id": "IMP-EV-0185",
@@ -14858,8 +14876,14 @@
    "milestone": "M5",
    "qual": "QUAL-EV-0185",
    "source": "docs/41",
-   "status": "REAL_TESTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:34694431409",
+    "commit:24c0775",
+    "test:qual_ev_0185_a_scanned_pdf_hands_over_bounded_page_images_and_a_text_pdf_does_not",
+    "test:qual_ev_0184_0185_a_text_only_model_is_told_the_modality_and_a_bridge_describes_media",
+    "artifact:evidence/m5/IMP-EV-0185/TASK_CARD.md"
+   ],
    "notes": [
     {
      "at": "2026-09-12T11:53:41Z",
@@ -14884,9 +14908,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "real-system qualification: Core E2E tests against real fixtures (see card)"
+    },
+    {
+     "at": "2026-09-12T12:55:25Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "green on hosted CI (macOS, Linux, Windows) at 24c0775"
+    },
+    {
+     "at": "2026-09-12T12:55:25Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
     }
    ],
-   "status_changed_on": "2026-09-12T12:42:09Z"
+   "status_changed_on": "2026-09-12T12:55:25Z"
   },
   {
    "id": "IMP-EV-0186",
@@ -14899,8 +14935,14 @@
    "milestone": "M5",
    "qual": "QUAL-EV-0186",
    "source": "docs/41",
-   "status": "REAL_TESTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:34694431409",
+    "commit:24c0775",
+    "test:qual_ev_0186_a_notebook_edit_targets_one_cell_by_id_and_keeps_the_rest",
+    "test:a_notebook_reads_as_cells_with_ids_and_an_edit_touches_one_cell_only",
+    "artifact:evidence/m5/IMP-EV-0186/TASK_CARD.md"
+   ],
    "notes": [
     {
      "at": "2026-09-12T11:53:41Z",
@@ -14925,9 +14967,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "real-system qualification: Core E2E tests against real fixtures (see card)"
+    },
+    {
+     "at": "2026-09-12T12:55:25Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "green on hosted CI (macOS, Linux, Windows) at 24c0775"
+    },
+    {
+     "at": "2026-09-12T12:55:25Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
     }
    ],
-   "status_changed_on": "2026-09-12T12:42:09Z"
+   "status_changed_on": "2026-09-12T12:55:25Z"
   },
   {
    "id": "IMP-EV-0187",
@@ -16593,8 +16647,14 @@
    "milestone": "M5",
    "qual": "QUAL-EV-0223",
    "source": "docs/41",
-   "status": "REAL_TESTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:34694431409",
+    "commit:24c0775",
+    "test:qual_ev_0223_a_region_read_sends_the_crop_and_the_bomb_stays_bounded",
+    "test:qual_ev_0223_a_region_crops_the_egress_copy_and_oversized_media_stays_bounded",
+    "artifact:evidence/m5/IMP-EV-0223/TASK_CARD.md"
+   ],
    "notes": [
     {
      "at": "2026-09-12T11:53:41Z",
@@ -16619,9 +16679,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "real-system qualification: Core E2E tests against real fixtures (see card)"
+    },
+    {
+     "at": "2026-09-12T12:55:25Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "green on hosted CI (macOS, Linux, Windows) at 24c0775"
+    },
+    {
+     "at": "2026-09-12T12:55:26Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
     }
    ],
-   "status_changed_on": "2026-09-12T12:42:09Z"
+   "status_changed_on": "2026-09-12T12:55:26Z"
   },
   {
    "id": "IMP-EV-0224",

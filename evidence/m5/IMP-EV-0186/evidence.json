@@ -6,10 +6,20 @@
   "qual_ev_0186_a_notebook_edit_targets_one_cell_by_id_and_keeps_the_rest",
   "a_notebook_reads_as_cells_with_ids_and_an_edit_touches_one_cell_only"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "24c0775"
+ ],
+ "runs": [
+  {
+   "id": "gha-34694431409",
+   "kind": "hosted CI on 24c0775",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34694431409",
+   "log": "ci-run-34694431409.json"
+  }
+ ],
  "proof": "on the real Core the fixture `totals.ipynb` reads as three addressable cells; `change.apply op=notebook_cell cell_id=total` lands one `FileChanged` with a workspace revision, Git's `-U0` diff removes exactly the cell's execution count, its outputs block and its one changed source line and adds their replacements, the other cells (including tagged metadata and outputs) and notebook metadata are byte-identical; an unknown id is refused `NOTEBOOK_NO_SUCH_CELL` with no write; unit tests cover ambiguous ids, truncated JSON and unsupported nbformat.",
  "audit": "MISSING before: `.ipynb` was read as opaque JSON text and edited by string replacement.",
  "limitations": "Cell insertion, deletion and reordering are not yet operations; a notebook whose cells lack ids is readable but not addressable (`all_cells_addressable: false`). Canonical form is Jupyter's (indent 1, sorted keys), so a notebook saved by another tool in a different layout diffs whole on its first edit.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34694431409 (green on macOS, Linux and Windows at 24c0775)"
 }

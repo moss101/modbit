@@ -61,7 +61,7 @@ flowchart LR
   M2["M2<br/>Real local engineering loop<br/>63/63 done"]
   M3["M3<br/>Context intelligence<br/>87/88 done"]
   M4["M4<br/>Durable recovery spine<br/>18/18 done"]
-  M5["M5<br/>Procedural runtime and skills<br/>34/39 done"]
+  M5["M5<br/>Procedural runtime and skills<br/>38/39 done"]
   M6["M6<br/>Subagents/fleet<br/>0/58 done"]
   M7["M7<br/>Live browser<br/>0/29 done"]
   M8["M8<br/>Cloud isolated execution<br/>0/28 done"]
@@ -109,7 +109,7 @@ Critical path (reliability spine): **M0 → M1 → M2 → M4**. Do not start bro
 | M2 Real local engineering loop | COMPLETE | yes | 10 | 53 | 63 | 0 | M1 | E2E-001/002/003 with live model and actual test pass. |
 | M3 Context intelligence | BLOCKED | yes | 9 | 79 | 87 | 1 | M2 | profile A/B/C benchmark plus retrieval-before-edit visible in task evidence. |
 | M4 Durable recovery spine | COMPLETE | yes | 6 | 12 | 18 | 0 | M2 | E2E-004/005/006/007/008. |
-| M5 Procedural runtime and skills | IN_PROGRESS | yes | 7 | 32 | 34 | 0 | M2 | E2E-011/012; direct and procedural mode yield equivalent receipts/policy behavior. |
+| M5 Procedural runtime and skills | IN_PROGRESS | yes | 7 | 32 | 38 | 0 | M2 | E2E-011/012; direct and procedural mode yield equivalent receipts/policy behavior. |
 | M6 Subagents/fleet | NOT_STARTED | yes | 7 | 51 | 0 | 0 | M2, M4 | E2E-009/010 and user can supervise multiple tasks without raw-log polling. |
 | M7 Live browser | NOT_STARTED | yes | 8 | 21 | 0 | 0 | M2 | E2E-013..016. |
 | M8 Cloud isolated execution | NOT_STARTED | no | 9 | 19 | 0 | 0 | M4, M7 | E2E-017/018/024. |
@@ -323,8 +323,8 @@ Releases are projections over work items and gates (docs/75). Readiness is compu
 | Release | State | Included work items | Complete | Blocked | Required gates | Rule |
 |---|---|---:|---:|---:|---|---|
 | ALPHA: Local coding loop and recovery spine | NOT_READY | 114 | 113 | 0 | none | / ALPHA / Local coding loop and recovery spine / M0, M1, M2, M4 / M2.10 / EPR- / — / — / |
-| BETA: Intelligence, fleet and browser | BLOCKED | 319 | 226 | 1 | none | / BETA / Intelligence, fleet and browser / M0, M1, M2, M3, M4, M5, M6, M7 / — / — / — / — / |
-| RELEASE_ZERO: Full end-to-end proof | BLOCKED | 401 | 226 | 1 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
+| BETA: Intelligence, fleet and browser | BLOCKED | 319 | 230 | 1 | none | / BETA / Intelligence, fleet and browser / M0, M1, M2, M3, M4, M5, M6, M7 / — / — / — / — / |
+| RELEASE_ZERO: Full end-to-end proof | BLOCKED | 401 | 230 | 1 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
 
 ## Scoped v1.1 supersessions and source provenance
 

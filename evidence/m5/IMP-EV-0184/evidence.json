@@ -7,10 +7,20 @@
   "qual_ev_0184_audio_and_video_are_typed_with_their_modality_and_nothing_is_invented",
   "qual_ev_0188_a_media_tool_result_reaches_the_model_as_a_split_follow_up"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "24c0775"
+ ],
+ "runs": [
+  {
+   "id": "gha-34694431409",
+   "kind": "hosted CI on 24c0775",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34694431409",
+   "log": "ci-run-34694431409.json"
+  }
+ ],
  "proof": "on the real Core a text-only routed model (`o3-mini`) reading a PNG, a scanned PDF and a WAV gets explicit `UNSUPPORTED_MODALITY` notes (routed model, modality, digest, nothing invented) with no image block in any request; with `MODBIT_VISION_BRIDGE=openai/gpt-5-mini` a scripted vision model describes each distinct digest once, the description enters the tool result labelled lossy and untrusted, and `MediaBridged` records digest, mime, routed model, bridge, description object and tokens; audio is typed `input_modality: audio` with no transcript.",
  "audit": "PARTIAL before: `fs.read` returned typed `MediaEnvelope`s for PNG/JPEG/PDF/audio/video (M4, REQ-EV-0188/0189) and a vision model received image bytes as split follow-ups, but a text-only model had its media parts dropped in silence (`strip_media`) and audio/video carried no modality on the envelope.",
  "limitations": "Audio/video transcription and frame extraction wait for a provider that takes those modalities; the bridge covers images (including scanned pages) only. A substituted note lives in the tool result text, so the model's view of a media read for a text-only model is prose, not a media part.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34694431409 (green on macOS, Linux and Windows at 24c0775)"
 }
