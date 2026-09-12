@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 948,
-    "docs_bytes": 1102982
+    "root_and_tooling": 962,
+    "docs_bytes": 1106458
   },
   "sections": [
     {
@@ -167,8 +167,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Agent Runtime and Orchestration",
-      "bytes": 21896,
-      "sha256": "11e8f4059d632d24ffa86e50dbc192ebd27592f436ae3a8768766ec8b13e1ba3"
+      "bytes": 23431,
+      "sha256": "aba910d4a51bf5be31193997fcf5f0ea8226d773110408bd719ceac9c291fc2d"
     },
     {
       "path": "docs/15_MODEL_ROUTER_AND_PROVIDER_GATEWAY.md",
@@ -212,8 +212,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Durable State, Memory, Compaction, and Checkpoints",
-      "bytes": 13743,
-      "sha256": "7f0e6096737d1d922c7412e7927cb72baf871f0b6b309dcdb41941aa76598204"
+      "bytes": 13748,
+      "sha256": "a56bb1e31611a229e1e1f786406cb3d7b31e5d21836c578be2a8c5cf2ca20ada"
     },
     {
       "path": "docs/20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md",
@@ -266,8 +266,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Multimodal, Media and Notebook Runtime",
-      "bytes": 7601,
-      "sha256": "ca66092cc89a28cfced9f7ea78f5fd8a9ce76b9bfef83bc8d6cdc898e2941599"
+      "bytes": 8001,
+      "sha256": "8f711ffd6294c377dbba537086356fc869d171240d6ccdf5bef5a0c2d5b9ba3e"
     },
     {
       "path": "docs/26_SKILL_REGISTRY_AND_EVOLUTION.md",
@@ -329,8 +329,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Desktop Frontend Implementation",
-      "bytes": 5827,
-      "sha256": "ac322efa1e408d2d7fb3655990d0a0828c269af317ac84d7fc459437123abaac"
+      "bytes": 7363,
+      "sha256": "741c3136bcce23377f105961ce1775667ebd33fc2b346cc295d12704918d87b6"
     },
     {
       "path": "docs/33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md",
@@ -5347,6 +5347,16 @@
       "sha256": "b1cc522f037f2027058b574b63c7d8850743f09d35598a95af92a761965bd37b"
     },
     {
+      "path": "evidence/m6/IMP-EV-0006/TASK_CARD.md",
+      "bytes": 1837,
+      "sha256": "0f31201074af753dad230b650e78cfbf099a8c456a0d15e034c796de7ebda591"
+    },
+    {
+      "path": "evidence/m6/IMP-EV-0006/evidence.json",
+      "bytes": 905,
+      "sha256": "7b77f9ee5820738d4ccb24405633149718a1c7ea3c62fc813ddb1789e4db80cc"
+    },
+    {
       "path": "evidence/m6/IMP-EV-0007/TASK_CARD.md",
       "bytes": 1440,
       "sha256": "2859a1fd0b831373c663e8f8cda9200bd1a495ac1b589919fb2b8af891fa480a"
@@ -5355,6 +5365,16 @@
       "path": "evidence/m6/IMP-EV-0007/evidence.json",
       "bytes": 553,
       "sha256": "e008f1df1452e9f08b16b44c091da824ac4d74cdca0ddc2797dfc78da0991373"
+    },
+    {
+      "path": "evidence/m6/IMP-EV-0047/TASK_CARD.md",
+      "bytes": 2007,
+      "sha256": "62ae211d4b8e432026fb27328e9b51f9c29d66310822d66c1d3643ba19c6726f"
+    },
+    {
+      "path": "evidence/m6/IMP-EV-0047/evidence.json",
+      "bytes": 1072,
+      "sha256": "4bc18fe8e9b9c046aac412ace4083cfa003fc7255c17a34bac75690448f1876b"
     },
     {
       "path": "evidence/m6/IMP-EV-0048/TASK_CARD.md",
@@ -5437,6 +5457,26 @@
       "sha256": "2738eb5faad7610db12835e7da1999401b7d7576c1a1b74e757eea517fd15f4f"
     },
     {
+      "path": "evidence/m6/IMP-EV-0220/TASK_CARD.md",
+      "bytes": 1532,
+      "sha256": "850b2cb11f5114e11c46f88da395e3b181a5e90c434ba73079ab397ab52c6232"
+    },
+    {
+      "path": "evidence/m6/IMP-EV-0220/evidence.json",
+      "bytes": 722,
+      "sha256": "b82ced7fffe47afecff0ce3954883599e885770c4445f32241099deadf3e395c"
+    },
+    {
+      "path": "evidence/m6/IMP-EV-0238/TASK_CARD.md",
+      "bytes": 1479,
+      "sha256": "1c448ced7f7867d9a437ffad223156e76c80321af5ebe136ce0e4eb616023f32"
+    },
+    {
+      "path": "evidence/m6/IMP-EV-0238/evidence.json",
+      "bytes": 619,
+      "sha256": "c01b8c4dbb21ea0a4c6f616ca09ad86938bfb87dd4d6f1c967afb477f3ead954"
+    },
+    {
       "path": "evidence/m6/IMP-EV-0255/TASK_CARD.md",
       "bytes": 1701,
       "sha256": "6e77494f7e36bced0511b5fca77eb123c29baf3564182448633358c8bda82eea"
@@ -5465,6 +5505,16 @@
       "path": "evidence/m6/IMP-EV-0256/evidence.json",
       "bytes": 1303,
       "sha256": "3d076fb5bdfe350c6120a1364a384084e1f0fefbfe851392894755b2f602c5de"
+    },
+    {
+      "path": "evidence/m6/IMP-EV-0263/TASK_CARD.md",
+      "bytes": 2018,
+      "sha256": "8e7a65d6bcebe62fa8d2dda1d66ae3e423b3a3f6a8e94c777663be00709e23c4"
+    },
+    {
+      "path": "evidence/m6/IMP-EV-0263/evidence.json",
+      "bytes": 1088,
+      "sha256": "453d537a41400bc20b7824cf831cab34b1e94b92b5c111f5fb93075cfd0c57e4"
     },
     {
       "path": "evidence/m6/IMP-EV-0267/TASK_CARD.md",
@@ -5552,14 +5602,34 @@
       "sha256": "e31ff74db82e348385b50b09bd3488a173340fb844d7c2a9a670d37780357133"
     },
     {
+      "path": "evidence/m6/M6.6/TASK_CARD.md",
+      "bytes": 4455,
+      "sha256": "14e1ebd1674bb81e218770a5688e3a87e03af91f86b0871f3d1526af2a001ea3"
+    },
+    {
+      "path": "evidence/m6/M6.6/evidence.json",
+      "bytes": 1137,
+      "sha256": "475d281c1932005ecf1b27450f3da76b53945b003227c705b3a2cbcff3ee0b50"
+    },
+    {
+      "path": "evidence/m6/M6.7/TASK_CARD.md",
+      "bytes": 4600,
+      "sha256": "2a5fbd24bce42e8feecb24e272f640e265e8f5576966a4d4edcd0e4f63ea2ba5"
+    },
+    {
+      "path": "evidence/m6/M6.7/evidence.json",
+      "bytes": 1068,
+      "sha256": "c5a7d1ddc7520677284650b03728b407cf619e2545a3648fb6dfe514607d57fe"
+    },
+    {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 40814,
-      "sha256": "8383ef62b3f947ac7c5a17ad7ce414e5f81d5caca2f9f62a66f2960fde69ac01"
+      "sha256": "3332061dde96044b289001ad197e9ab69c037e41a4b950230ca425654aff3aa1"
     },
     {
       "path": "graph/project-graph.json",
       "bytes": 1387296,
-      "sha256": "bb6dcf0519fc2bb15e8dd0daffc9d2872f9c15dc698d2613e65e744ce6a05ffb"
+      "sha256": "a78c06dfd6f8014905314eaab548e17bf913b004c4e9e9ee5fdcb2afed1fd7fc"
     },
     {
       "path": "tools/build_graph.py",
