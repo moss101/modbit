@@ -153,6 +153,25 @@ pub struct HarnessState {
     /// Revision of the last COMPLETION run that passed attribution.
     #[serde(default)]
     pub completion_verified_revision: Option<u64>,
+    /// The quality boundary's last STAY on this run (REQ-EPR-006): the leg
+    /// ended rejected and no continuation could activate, in the words the
+    /// log holds. A resumed run consults the boundary again while this is
+    /// set — a stronger slot admitted since then continues the run.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub quality_rejection: Option<String>,
+}
+
+impl HarnessState {
+    /// Start a new leg on the same run (REQ-EPR-006): the continuation's
+    /// repair loop and no-progress count begin fresh; the failed leg's
+    /// attempts stay on the log, and the candidate revision, the plan and
+    /// the open failures are the workspace's facts and stay.
+    pub fn begin_leg(&mut self) {
+        self.repair_attempts.clear();
+        self.pending_attempt = None;
+        self.no_progress_turns = 0;
+        self.quality_rejection = None;
+    }
 }
 
 /// Why the harness refused something.

@@ -1083,26 +1083,38 @@ fn recover_route(
     // epoch (REQ-EPR-009): a switch at a boundary opened a new transaction
     // on this run, and a resumed run continues on it, never on the one it
     // left.
-    let plan = store
-        .routing_plans(&run_id)
-        .unwrap_or_default()
-        .into_iter()
-        .max_by_key(|p| p.routing_epoch);
-    match plan {
+    let mut plans = store.routing_plans(&run_id).unwrap_or_default();
+    plans.sort_by_key(|p| p.routing_epoch);
+    match plans.last() {
         Some(p) => {
-            let slot = store
-                .routing_activations(&run_id, &p.plan_id)
-                .unwrap_or_default()
-                .into_iter()
-                .next_back()
-                .map(|a| a.slot_id)
-                .unwrap_or_else(|| modbit_domain::routing::DIRECT_SLOT.to_owned());
-            let binding = p.slots.iter().find(|s| s.slot_id == slot);
+            // The slot in force is the run's latest activation — on the plan
+            // in force, or on the transaction before it when a plan admitted
+            // since (REQ-EPR-006: a stronger slot for a rejected leg) has
+            // not activated yet; the quality boundary decides that.
+            let activated = plans.iter().rev().find_map(|q| {
+                store
+                    .routing_activations(&run_id, &q.plan_id)
+                    .unwrap_or_default()
+                    .into_iter()
+                    .next_back()
+                    .map(|a| (q, a.slot_id))
+            });
+            let (slot, binding) = match activated {
+                Some((q, slot)) => {
+                    let b = q.slots.iter().find(|s| s.slot_id == slot).cloned();
+                    (slot, b)
+                }
+                None => (modbit_domain::routing::DIRECT_SLOT.to_owned(), None),
+            };
             (
                 p.plan_id.clone(),
                 slot,
-                binding.map_or_else(|| cfg.endpoint.clone(), |b| b.endpoint.clone()),
-                binding.map_or_else(|| cfg.model.clone(), |b| b.model.clone()),
+                binding
+                    .as_ref()
+                    .map_or_else(|| cfg.endpoint.clone(), |b| b.endpoint.clone()),
+                binding
+                    .as_ref()
+                    .map_or_else(|| cfg.model.clone(), |b| b.model.clone()),
             )
         }
         None => (
@@ -1300,6 +1312,30 @@ pub(crate) async fn rebuild(
             }
             "SelfReviewRecorded" => {
                 state.self_review_clean = payload["unresolved"].as_u64() == Some(0);
+            }
+            "AcceptanceGateEvaluated" => {
+                state.acceptance = Some(serde_json::json!({
+                    "verdict": payload["verdict"],
+                    "candidate_revision": payload["candidate_revision"],
+                    "required_assurance": payload["required_assurance"],
+                    "missing_evidence": payload["missing_evidence"],
+                    "reject_reasons": payload["reject_reasons"],
+                    "gate_ref": payload["gate_ref"],
+                }));
+            }
+            // REQ-EPR-006: the quality boundary's decisions. A STAY leaves
+            // the run to consult the boundary again when it resumes; an
+            // activated continuation rebuilds its note in the transcript
+            // and starts the harness's leg afresh, as it did live.
+            "RouteReevaluated" if payload["boundary"] == "QUALITY" => {
+                state.quality_rejection = (payload["decision"] == "STAY")
+                    .then(|| payload["reason"].as_str().unwrap_or_default().to_owned());
+            }
+            "ContinuationActivated" => {
+                if let Some(note) = payload["note"].as_str() {
+                    transcript.push(Message::text(Role::User, note.to_owned()));
+                }
+                state.begin_leg();
             }
             "TaskSteered" => {
                 state.steers += 1;
@@ -2145,6 +2181,25 @@ async fn run_loop(
                 current_generation: current,
                 owner,
             };
+        }
+        // REQ-EPR-006: a run whose leg ended rejected with nothing to
+        // continue on consults the quality boundary again when it resumes —
+        // a stronger-solver slot admitted since then continues the run on
+        // the same transcript; nothing else changes topology.
+        if let Some(stay) = state.quality_rejection.take() {
+            let rejection = crate::escalation::Rejection {
+                code: "RESUMED".into(),
+                detail: stay,
+            };
+            if let crate::escalation::Decision::Activated { note } =
+                crate::escalation::at_quality_boundary(
+                    &core, &task, run_id, &mut cfg, &mut state, lt, &actor, &rejection,
+                )
+                .await
+            {
+                transcript.push(Message::text(Role::User, note));
+                bridge.set_routed(&cfg.endpoint, &cfg.model);
+            }
         }
         // ---- Turn
         let turn_id = TurnId::new();
@@ -3613,14 +3668,37 @@ async fn run_loop(
                 reason,
             };
         }
-        if let Some(esc) = escalation {
-            break LoopEnd::NeedsAttention {
-                code: "REPAIR_ESCALATED",
-                reason: format!(
-                    "repair escalated for {}: {} ({} attempt(s))",
-                    esc.failure_signature, esc.reason, esc.attempts
-                ),
+        if let Some(esc) = escalation.take() {
+            let reason = format!(
+                "repair escalated for {}: {} ({} attempt(s))",
+                esc.failure_signature, esc.reason, esc.attempts
+            );
+            // REQ-EPR-006: the initial solver has exhausted its bounded
+            // repair; the plan's prevalidated stronger-solver slot, if the
+            // gate rejects the candidate and admission allows it, continues
+            // the run. Otherwise the task needs attention, as before.
+            let rejection = crate::escalation::Rejection {
+                code: "REPAIR_ESCALATED".into(),
+                detail: reason.clone(),
             };
+            match crate::escalation::at_quality_boundary(
+                &core, &task, run_id, &mut cfg, &mut state, lt, &actor, &rejection,
+            )
+            .await
+            {
+                crate::escalation::Decision::Activated { note } => {
+                    transcript.push(Message::text(Role::User, note));
+                    bridge.set_routed(&cfg.endpoint, &cfg.model);
+                    progress = true;
+                }
+                crate::escalation::Decision::Stayed { reason: stay } => {
+                    state.quality_rejection = Some(stay);
+                    break LoopEnd::NeedsAttention {
+                        code: "REPAIR_ESCALATED",
+                        reason,
+                    };
+                }
+            }
         }
         if cancel.is_cancelled() {
             let mut store = core.store.lock().await;
@@ -3670,7 +3748,28 @@ async fn run_loop(
         } else {
             state.no_progress_turns += 1;
             if state.no_progress_turns >= state.budgets.max_consecutive_no_progress_turns {
-                break 'outer LoopEnd::NoProgress(state.no_progress_turns);
+                // REQ-EPR-006: a solver that stopped making progress on a
+                // rejected candidate is over; the prevalidated stronger
+                // slot continues the run when the gate and admission say so.
+                let turns = state.no_progress_turns;
+                let rejection = crate::escalation::Rejection {
+                    code: "NO_PROGRESS".into(),
+                    detail: format!("{turns} consecutive turns without progress"),
+                };
+                match crate::escalation::at_quality_boundary(
+                    &core, &task, run_id, &mut cfg, &mut state, lt, &actor, &rejection,
+                )
+                .await
+                {
+                    crate::escalation::Decision::Activated { note } => {
+                        transcript.push(Message::text(Role::User, note));
+                        bridge.set_routed(&cfg.endpoint, &cfg.model);
+                    }
+                    crate::escalation::Decision::Stayed { reason } => {
+                        state.quality_rejection = Some(reason);
+                        break 'outer LoopEnd::NoProgress(turns);
+                    }
+                }
             }
         }
         seen_offset = core
@@ -5712,7 +5811,7 @@ fn is_failing(s: modbit_verification::CheckStatus) -> bool {
 /// Run a verification stage through the engine, record it on the Run and as
 /// a Verification step; update harness failure state. Returns the
 /// observation entry, whether acceptance is not blocked, and the revision.
-async fn run_verification(
+pub(crate) async fn run_verification(
     core: &Core,
     task: &Task,
     lturn: Lineage,
@@ -6123,6 +6222,7 @@ async fn run_verification(
                 text.push('\n');
                 state.acceptance = Some(serde_json::json!({
                     "verdict": gate.verdict.label(),
+                    "candidate_revision": gate.candidate_revision,
                     "required_assurance": gate.required_assurance,
                     "missing_evidence": gate.missing_evidence,
                     "reject_reasons": gate.reject_reasons,

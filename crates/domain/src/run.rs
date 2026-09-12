@@ -365,6 +365,56 @@ pub enum RunEvent {
         /// Economics rules version.
         economics_version: String,
     },
+    /// `ContinuationActivated` (REQ-EPR-006, docs/27 §9.2): the run
+    /// continued on a prevalidated continuation slot of the plan in force
+    /// after the leg before it was rejected — the same run, the same
+    /// transcript with the original request and the failed leg's evidence,
+    /// the remaining budget. Beside the `SlotActivated` that admitted it.
+    /// No state change.
+    ContinuationActivated {
+        /// The plan whose slot activated.
+        plan_id: String,
+        /// The plan the failed leg ran under (the same, or an earlier
+        /// transaction on this run reconciled into this one).
+        from_plan_id: String,
+        /// The slot the failed leg ran in.
+        from_slot_id: String,
+        /// The slot that activated.
+        slot_id: String,
+        /// Its activation ordinal.
+        activation: u32,
+        /// `QUALITY_REJECTED`.
+        trigger: String,
+        /// Why the leg was over: `REPAIR_ESCALATED` | `NO_PROGRESS` |
+        /// `RESUMED`.
+        cause: String,
+        /// The binding the run continues on.
+        endpoint: String,
+        /// Model.
+        model: String,
+        /// The Acceptance Gate result that rejected the candidate.
+        gate_ref: String,
+        /// The candidate revision it judged.
+        candidate_revision: u64,
+        /// Its reject reasons.
+        reject_reasons: Vec<String>,
+        /// Invocations the failed leg made, as recorded attempts.
+        failed_leg_attempts: u32,
+        /// Repair attempts the failed leg recorded.
+        failed_leg_repair_attempts: u32,
+        /// Money the run had spent when the slot was admitted, minor units.
+        spent_minor: u64,
+        /// Money the activation reserves.
+        reserved_minor: u64,
+        /// What the continuation may still spend after the reserve.
+        remaining_minor: u64,
+        /// Currency.
+        currency: String,
+        /// Scale.
+        scale: u8,
+        /// The note the continuation reads in its transcript.
+        note: String,
+    },
     /// `AcceptanceGateEvaluated` (REQ-EPR-017, docs/27 §9.4): whether the
     /// evidence at the candidate revision satisfies the required assurance,
     /// decided independently of the risk classification. No state change.
@@ -439,6 +489,7 @@ impl RunEvent {
             Self::RegressionAttributed { .. } => "RegressionAttributed",
             Self::DiffInvariantViolated { .. } => "DiffInvariantViolated",
             Self::RealizedRiskDerived { .. } => "RealizedRiskDerived",
+            Self::ContinuationActivated { .. } => "ContinuationActivated",
             Self::AcceptanceGateEvaluated { .. } => "AcceptanceGateEvaluated",
             Self::RouteReevaluated { .. } => "RouteReevaluated",
         }
@@ -524,7 +575,8 @@ impl Run {
             | RunEvent::RegressionAttributed { .. }
             | RunEvent::DiffInvariantViolated { .. }
             | RunEvent::RealizedRiskDerived { .. }
-            | RunEvent::RouteReevaluated { .. } => {
+            | RunEvent::RouteReevaluated { .. }
+            | RunEvent::ContinuationActivated { .. } => {
                 if self.state.is_terminal() {
                     return Err(crate::InvalidTransition {
                         aggregate: "Run",

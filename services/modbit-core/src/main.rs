@@ -14,6 +14,7 @@ mod baseline;
 mod branch;
 mod checkpoint;
 mod economics;
+mod escalation;
 mod gate;
 mod inspector;
 mod languages;

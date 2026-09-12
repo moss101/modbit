@@ -110,6 +110,8 @@ As built (M5.4): task events `ProgramStarted` (handle, program_ref, declared_eff
 
 As built (M5.5): task events `SkillSelected` (name, version, content_hash, lifecycle, source, reason, instructions_hash, instructions_truncated, tool_projection, tools_unavailable) and `SkillRejected` (name, code, reason); `StartTask.skills` names skills explicitly (doc 16 "Skills as built"). Task event `RulesSelected` (active rules with id, layer, source, hash and reason; dormant; expired; conflicts with winner and loser sources; invalid files) whenever a turn's rule selection changes (doc 16 "Rules as built").
 
+As built (EPR-006): run event `ContinuationActivated` (plan_id, from_plan_id, from_slot_id, slot_id, activation, trigger QUALITY_REJECTED, cause REPAIR_ESCALATED | NO_PROGRESS | RESUMED, endpoint, model, gate_ref, candidate_revision, reject_reasons, failed_leg_attempts, failed_leg_repair_attempts, spent_minor, reserved_minor, remaining_minor, currency, scale, note) beside the `SlotActivated` that admitted the continuation and a `RouteReevaluated` at boundary `QUALITY` (decision SWITCH; a STAY when nothing could activate, its reason the refusal). Record-only; a resumed run rebuilds the note into its transcript from it (doc 27 §9 "As built (EPR-006)").
+
 As built (M5 media): task event `MediaBridged` (digest, mime, routed_model, bridge_endpoint, bridge_model, description_ref, input_tokens, output_tokens, error) whenever the vision bridge described media for a text-only routed model, once per distinct digest in a run; the description is an object the record names, never transcript text the log holds twice (doc 25 "As built").
 
 ### Security/effects

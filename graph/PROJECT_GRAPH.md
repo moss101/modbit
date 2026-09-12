@@ -225,7 +225,7 @@ flowchart LR
   EPR_003["EPR-003<br/>Bootstrap and calibrate the Request Profiler<br/>COMPLETE"]
   EPR_004["EPR-004<br/>Compile and validate one bounded conditional plan<br/>COMPLETE"]
   EPR_005["EPR-005<br/>Integrate initial execution and preserve direct baseline<br/>COMPLETE"]
-  EPR_006["EPR-006<br/>Activate prevalidated escalation continuations<br/>NOT_STARTED"]
+  EPR_006["EPR-006<br/>Activate prevalidated escalation continuations<br/>REAL_TESTING"]
   EPR_007["EPR-007<br/>Integrate isolated review and bounded revision<br/>NOT_STARTED"]
   EPR_008["EPR-008<br/>Derive factual policy-owned assurance requirements<br/>COMPLETE"]
   EPR_009["EPR-009<br/>Persist routing epochs and switch economics<br/>COMPLETE"]
@@ -289,7 +289,7 @@ flowchart LR
 | EPR-003 | M3 / 1 | COMPLETE | model-gateway | EPR-002 | REQ-EPR-003 / QUAL-EPR-003 |
 | EPR-004 | M3 / 1 | COMPLETE | model-gateway | EPR-014, EPR-016 | REQ-EPR-004 / QUAL-EPR-004 |
 | EPR-005 | M3 / 1-2 | COMPLETE | core-runtime | EPR-004 | REQ-EPR-005 / QUAL-EPR-005 |
-| EPR-006 | M5 / 3 | NOT_STARTED | core-runtime | EPR-017, EPR-009, M3.9 | REQ-EPR-006 / QUAL-EPR-006 |
+| EPR-006 | M5 / 3 | REAL_TESTING | core-runtime | EPR-017, EPR-009, M3.9 | REQ-EPR-006 / QUAL-EPR-006 |
 | EPR-007 | M6 / 4 | NOT_STARTED | core-runtime | EPR-018, M6.5 | REQ-EPR-007 / QUAL-EPR-007 |
 | EPR-008 | M4 / 2-4 | COMPLETE | effects-security | EPR-005, M4.6 | REQ-EPR-008 / QUAL-EPR-008 |
 | EPR-009 | M4 / 2-4 | COMPLETE | core-runtime | EPR-005, M4.6 | REQ-EPR-009 / QUAL-EPR-009 |

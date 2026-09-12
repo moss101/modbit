@@ -1,0 +1,20 @@
+{
+ "task": "EPR-006",
+ "requirement": "REQ-EPR-006",
+ "qual": "QUAL-EPR-006",
+ "tests": [
+  "qual_epr_006_a_quality_rejection_continues_the_run_on_the_prevalidated_stronger_slot",
+  "no_slot_receives_a_new_budget_and_a_restart_recovers_its_activation",
+  "qual_epr_017_acceptance_is_evidence_at_the_revision_and_never_erases_a_human_obligation",
+  "qual_epr_009_routes_reevaluate_at_boundaries_on_cache_economics_and_survive_restart",
+  "qual_epr_005_new_runs_go_through_the_compiled_initial_leg_and_keep_the_baseline",
+  "qual_epr_014_a_conditional_plan_is_admitted_whole_and_its_activation_is_exact"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "decision_record": "docs/decisions/DR-M3-002-epr-baseline-live-provider-proof.md",
+ "proof": "A rejected initial leg stops safely when its plan has no prevalidated stronger slot (STAY on the log); a continuation the transaction cannot afford is refused and the run stops safely again with the rejected candidate unacceptable; a funded plan's stronger slot activates on the same run with the failed leg's spend counted and the remaining budget exact, survives a hard kill with exactly one activation, continues on the same transcript (original request, failed-leg evidence, note), is accepted by the gate and the user, and the run is labelled CASCADE from what ran.",
+ "audit": "PARTIAL before: continuations were compiled and admissible but nothing consumed a quality rejection; every compiled run was DIRECT in fact and a resumed run never activated anything.",
+ "limitations": "Live-provider half and holdout measurement deferred by DR-M3-002; at cold start the compiler opens direct so a cascade is an admitted plan until escalation statistics exist; one continuation per rejection; reviewer continuations are EPR-007.",
+ "ci": ""
+}

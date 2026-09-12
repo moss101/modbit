@@ -45,6 +45,33 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::RoutingPlanView 
     let attempts = store
         .routing_attempts(&run.run_id, &plan.plan_id)
         .unwrap_or_default();
+    // The label covers the run: a transaction admitted for a rejected leg
+    // (REQ-EPR-006) ran its continuation after a leg of the transaction
+    // before it, and the path is what ran on both.
+    let mut plans = store.routing_plans(&run.run_id).unwrap_or_default();
+    plans.sort_by_key(|p| p.routing_epoch);
+    let mut ran: Vec<(String, String, String)> = Vec::new();
+    for p in &plans {
+        let attempts = store
+            .routing_attempts(&run.run_id, &p.plan_id)
+            .unwrap_or_default();
+        for s in p
+            .slots
+            .iter()
+            .filter(|s| attempts.iter().any(|a| a.slot_id == s.slot_id))
+        {
+            let leg = (
+                s.role.clone(),
+                s.trigger.clone(),
+                format!("{}/{}", s.endpoint, s.model),
+            );
+            // One leg that continued across a reconciled transaction on
+            // the same binding is one leg.
+            if ran.last() != Some(&leg) {
+                ran.push(leg);
+            }
+        }
+    }
     let admission = admission_view(&store, run.run_id, &plan.plan_id);
     wire::RoutingPlanView {
         plan_id: plan.plan_id.clone(),
@@ -57,9 +84,10 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::RoutingPlanView 
         currency: plan.total_budget.1,
         scale: u32::from(plan.total_budget.2),
         legacy_source: plan.legacy_source.unwrap_or_default(),
-        // The label is derived from the slots that actually activated: one
-        // solver and nothing else is the direct path.
-        path_label: path_label(&plan.slots, &attempts),
+        // The label is derived from the slots that actually ran: one
+        // solver and nothing else is the direct path; a stronger solver
+        // after a rejected one is the cascade.
+        path_label: path_label(&ran),
         slots: plan
             .slots
             .into_iter()
@@ -130,21 +158,17 @@ fn admission_view(
     })
 }
 
-/// The path label a plan earned, from the slots that actually ran.
-fn path_label(
-    slots: &[modbit_event_store::projections::RoutingSlotRow],
-    attempts: &[modbit_event_store::projections::RoutingAttemptRow],
-) -> String {
-    let ran: std::collections::BTreeSet<&str> =
-        attempts.iter().map(|a| a.slot_id.as_str()).collect();
-    let roles: Vec<&str> = slots
-        .iter()
-        .filter(|s| ran.contains(s.slot_id.as_str()))
-        .map(|s| s.role.as_str())
-        .collect();
+/// The path label a run earned, from the `(role, trigger, binding)` of the
+/// slots that actually ran, in order: one solver is `DIRECT`; a solver continued
+/// by a stronger solver on quality rejection is `CASCADE` (docs/27 §9,
+/// REQ-EPR-006: derived from what ran, never a template); anything else is
+/// the roles joined.
+fn path_label(ran: &[(String, String, String)]) -> String {
+    let roles: Vec<&str> = ran.iter().map(|(r, _, _)| r.as_str()).collect();
     match roles.as_slice() {
         [] => String::new(),
         ["solver"] => "DIRECT".to_owned(),
+        ["solver", "solver"] if ran[1].1 == "QUALITY_REJECTED" => "CASCADE".to_owned(),
         _ => roles.join("+").to_uppercase(),
     }
 }

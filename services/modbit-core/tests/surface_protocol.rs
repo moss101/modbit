@@ -2141,7 +2141,16 @@ async fn scripted_model_paced(
     String,
     std::sync::Arc<std::sync::Mutex<Vec<serde_json::Value>>>,
 ) {
-    scripted_model_reactive(script, specialist, stall_at, delay_at, vec![], false).await
+    scripted_model_reactive(
+        script,
+        specialist,
+        stall_at,
+        delay_at,
+        vec![],
+        false,
+        vec![],
+    )
+    .await
 }
 
 /// The same server with reactions: when the latest tool result in a request
@@ -2158,9 +2167,37 @@ async fn scripted_model_cached(
     String,
     std::sync::Arc<std::sync::Mutex<Vec<serde_json::Value>>>,
 ) {
-    scripted_model_reactive(script, vec![], None, None, vec![], true).await
+    scripted_model_reactive(script, vec![], None, None, vec![], true, vec![]).await
 }
 
+/// The same server with a script per model: a request names its model, and
+/// the script for that model answers it (indexed by tool results as ever);
+/// a model without a script of its own gets `script`. A run that changes
+/// binding mid-way (REQ-EPR-006) is answered by two scripted models.
+async fn scripted_models(
+    script: Vec<serde_json::Value>,
+    by_model: Vec<(&str, Vec<serde_json::Value>)>,
+    delay_at: Option<(usize, Duration)>,
+) -> (
+    String,
+    std::sync::Arc<std::sync::Mutex<Vec<serde_json::Value>>>,
+) {
+    scripted_model_reactive(
+        script,
+        vec![],
+        None,
+        delay_at,
+        vec![],
+        false,
+        by_model
+            .into_iter()
+            .map(|(m, s)| (m.to_owned(), s))
+            .collect(),
+    )
+    .await
+}
+
+#[allow(clippy::too_many_arguments)]
 async fn scripted_model_reactive(
     script: Vec<serde_json::Value>,
     specialist: Vec<serde_json::Value>,
@@ -2168,6 +2205,7 @@ async fn scripted_model_reactive(
     delay_at: Option<(usize, Duration)>,
     rules: Vec<(String, serde_json::Value)>,
     cached_report: bool,
+    by_model: Vec<(String, Vec<serde_json::Value>)>,
 ) -> (
     String,
     std::sync::Arc<std::sync::Mutex<Vec<serde_json::Value>>>,
@@ -2180,6 +2218,7 @@ async fn scripted_model_reactive(
     let script = std::sync::Arc::new(script);
     let specialist = std::sync::Arc::new(specialist);
     let rules = std::sync::Arc::new(rules);
+    let by_model = std::sync::Arc::new(by_model);
     let stalled_once = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
     tokio::spawn(async move {
         loop {
@@ -2190,6 +2229,7 @@ async fn scripted_model_reactive(
             let script = std::sync::Arc::clone(&script);
             let specialist = std::sync::Arc::clone(&specialist);
             let rules = std::sync::Arc::clone(&rules);
+            let by_model = std::sync::Arc::clone(&by_model);
             let stalled_once = std::sync::Arc::clone(&stalled_once);
             tokio::spawn(async move {
                 let mut buf = Vec::new();
@@ -2247,6 +2287,7 @@ async fn scripted_model_reactive(
                     .and_then(|m| m["content"].as_str())
                     .unwrap_or_default()
                     .to_owned();
+                let model_name = body["model"].as_str().map(str::to_owned);
                 seen.lock().unwrap().push(body);
                 if stall_at == Some(results)
                     && !stalled_once.swap(true, std::sync::atomic::Ordering::SeqCst)
@@ -2263,13 +2304,19 @@ async fn scripted_model_reactive(
                     .iter()
                     .find(|(needle, _)| last_tool_text.contains(needle.as_str()))
                     .map(|(_, r)| r.clone());
+                let model_script = by_model
+                    .iter()
+                    .find(|(m, _)| Some(m.as_str()) == model_name.as_deref())
+                    .map(|(_, s)| s);
                 let reply = reaction.unwrap_or_else(|| {
-                    if for_specialist { &specialist } else { &script }
-                        .get(results)
-                        .cloned()
-                        .unwrap_or_else(
-                            || serde_json::json!({"text": "I have nothing further to do."}),
-                        )
+                    if for_specialist {
+                        &specialist
+                    } else {
+                        model_script.unwrap_or(&script)
+                    }
+                    .get(results)
+                    .cloned()
+                    .unwrap_or_else(|| serde_json::json!({"text": "I have nothing further to do."}))
                 });
                 let mut frames: Vec<String> = Vec::new();
                 if let Some(t) = reply["text"].as_str() {
@@ -16417,7 +16464,8 @@ async fn kill_point_round(boundary: &str) -> KillRound {
         "note.txt: absent".to_owned(),
         json!({"calls": [{"name": "change.apply", "args": {"path": "note.txt", "op": "create", "content": "hello\n"}}]}),
     )];
-    let (base, _seen) = scripted_model_reactive(script, vec![], None, None, rules, false).await;
+    let (base, _seen) =
+        scripted_model_reactive(script, vec![], None, None, rules, false, vec![]).await;
     let dir = tempfile::tempdir().unwrap();
     let (var, spec) = match boundary.split_once(':') {
         Some(("before", rest)) => ("MODBIT_FAULT_KILL_BEFORE_EVENT", rest.to_owned()),
@@ -20027,7 +20075,7 @@ async fn qual_m5_6_direct_and_procedural_modes_yield_the_same_effects_at_differe
         ] {
             let (repo, root) = plain_repo(&[("a.txt", "alpha\n")]);
             let (base, seen) =
-                scripted_model_reactive(script, vec![], None, None, rules, false).await;
+                scripted_model_reactive(script, vec![], None, None, rules, false, vec![]).await;
             let dir = tempfile::tempdir().unwrap();
             let env = [
                 ("MODBIT_OPENAI_BASE_URL", base.as_str()),
@@ -21517,4 +21565,541 @@ async fn qual_ev_0223_a_region_read_sends_the_crop_and_the_bomb_stays_bounded() 
         tool_msgs[2]
     );
     assert_eq!(payloads.len(), 2, "the bomb sent nothing");
+}
+
+/// QUAL-EPR-006 / EPR-E2E-006 (the offline half; REQ-EPR-006, docs/27 §9.2
+/// and §9.6, docs/49 EPR-006) with EPR-FI-006: the economical initial
+/// solver's candidate is judged by static evidence and the independent
+/// Acceptance Gate; when it is rejected and the solver has stopped, the run
+/// continues on the plan's prevalidated stronger-solver slot — the same run,
+/// the same transcript with the original request and the failed leg's
+/// evidence, the remaining budget — and on nothing else: a plan without one
+/// stops safely and says so, a slot the budget cannot cover is refused and
+/// the run stops safely, a Core killed after the activation resumes on the
+/// stronger slot with exactly one activation, the rejected candidate is
+/// never accepted, and the accepted continuation earns `CASCADE` from what
+/// ran. Live-provider proof waits for credentials (DR-M3-002).
+#[tokio::test]
+async fn qual_epr_006_a_quality_rejection_continues_the_run_on_the_prevalidated_stronger_slot() {
+    use ed25519_dalek::{Signer, SigningKey};
+    use modbit_domain::routing::{
+        Budget, ConditionalExecutionPlan, Money, Provenance, ROUTING_SCHEMA_VERSION, Slot, Trigger,
+    };
+    use modbit_protocol::v1::{
+        ActivateModelRegistry, AdmitRoutingPlan, GetRoutingPlan, ModelRegistryView,
+        RoutingAdmissionView, RoutingPlanView, StartTask, TaskRunStarted,
+    };
+    use modbit_providers::registry::{
+        Economics, Governance, Latency, QualityFloor, REGISTRY_SCHEMA_VERSION, RegistryDocument,
+        RegistryEntry, SignedRegistry,
+    };
+    use serde_json::json;
+    let key = SigningKey::from_bytes(&[29u8; 32]);
+    let key_hex = hex::encode(key.verifying_key().to_bytes());
+    let now = modbit_domain::Timestamp::now().0;
+    let entry = |model: &str, input: u64, output: u64| RegistryEntry {
+        endpoint: "openai".into(),
+        provider: "openai".into(),
+        family: "gpt-5".into(),
+        model: model.into(),
+        roles: vec!["solver".into(), "reviewer".into()],
+        input_modalities: vec!["text".into()],
+        context_tokens: 400_000,
+        max_output_tokens: 64_000,
+        tools: true,
+        vision: false,
+        reasoning: true,
+        structured_output: true,
+        economics: Economics {
+            input_per_mtok_minor: input,
+            output_per_mtok_minor: output,
+            currency: "USD".into(),
+            scale: 2,
+            cached_input_per_mtok_minor: None,
+            cache_write_per_mtok_minor: None,
+            cache_ttl_ms: None,
+        },
+        latency: Latency {
+            p50_ms: 900,
+            p95_ms: 4_200,
+        },
+        governance: Governance {
+            data_residency: "us".into(),
+            retains_prompts: false,
+            allowed_profiles: vec![],
+        },
+        revoked: false,
+    };
+    let document = RegistryDocument {
+        schema_version: REGISTRY_SCHEMA_VERSION,
+        registry_generation: "registry-cascade".into(),
+        stats_version: "stats-1".into(),
+        issued_at_ms: now - 60_000,
+        expires_at_ms: now + 86_400_000,
+        quality_floors: vec![QualityFloor {
+            mode: "auto".into(),
+            min_quality: 0.72,
+            max_cost_minor: 5_000,
+            currency: "USD".into(),
+            scale: 2,
+        }],
+        entries: vec![entry("gpt-5-mini", 25, 200), entry("gpt-5", 125, 1_000)],
+    };
+    let signed = {
+        let json = serde_json::to_string(&document).unwrap();
+        serde_json::to_string(&SignedRegistry {
+            key_id: "ops".into(),
+            signature_hex: hex::encode(key.sign(json.as_bytes()).to_bytes()),
+            document_json: json,
+        })
+        .unwrap()
+    };
+    // A repository with a real configured check: the file must say the
+    // quantity is validated. The check is the assurance the compiler needs
+    // to enumerate continuations at all.
+    let (repo, root) = plain_repo(&[
+        ("qty.txt", "quantity = 5\nvalidated = yes\n"),
+        (
+            "check.sh",
+            "grep -q '^validated = yes' qty.txt && grep -q '^quantity = [0-9]' qty.txt\n",
+        ),
+        (
+            ".modbit/verification.json",
+            "{\"commands\": [{\"id\": \"gate\", \"argv\": [\"sh\", \"check.sh\"]}]}",
+        ),
+    ]);
+    let hash = sha256_of(b"quantity = 5\nvalidated = yes\n");
+    // The economical solver: plans, reads, makes a change that does not
+    // satisfy the check, proposes completion (rejected), then stops.
+    let mini = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "the quantity is 7", "expected_files": ["qty.txt"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "qty.txt"}}]}),
+        // Wrong: negative, and the validation line is gone.
+        json!({"calls": [{"name": "change.apply", "args": {"path": "qty.txt", "op": "replace", "content": "quantity = -7\n", "expected_content_hash": hash}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "set to 7", "self_review": {"findings": []}}}]}),
+        json!({"text": "I cannot see why the check fails."}),
+        json!({"text": "I have nothing further."}),
+        json!({"text": "Still nothing."}),
+    ];
+    // The stronger solver: continues from the same transcript (four tool
+    // results already there), fixes the file, proposes completion.
+    let stronger = vec![
+        json!({"text": "unused"}),
+        json!({"text": "unused"}),
+        json!({"text": "unused"}),
+        json!({"text": "unused"}),
+        json!({"text": "Reading the failed leg's evidence: the check wants a positive quantity and the validation line.", "calls": [{"name": "change.apply", "args": {"path": "qty.txt", "op": "replace", "content": "quantity = 7\nvalidated = yes\n"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "quantity is 7, validated", "self_review": {"findings": []}}}]}),
+    ];
+    // The stronger solver's first answer is held for a while, so a Core can
+    // be killed between the activation and the continuation's first turn.
+    let (base, seen) = scripted_models(
+        mini.clone(),
+        vec![("gpt-5", stronger)],
+        Some((4, Duration::from_secs(3))),
+    )
+    .await;
+    let dir = tempfile::tempdir().unwrap();
+    let keys = format!("ops:{key_hex}");
+    let env: Vec<(&str, &str)> = vec![
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_REGISTRY_KEYS", keys.as_str()),
+    ];
+    async fn activate(c: &mut Client, id: u8, signed: &str) {
+        let ack = c
+            .command(envelope(
+                id16(id),
+                "ActivateModelRegistry",
+                ActivateModelRegistry {
+                    signed_json: signed.to_owned(),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        let r: ModelRegistryView = Client::result(&ack).unwrap();
+        assert!(r.active, "{r:?}");
+    }
+    async fn routing(c: &mut Client, task: &Id, id: u8) -> RoutingPlanView {
+        let ack = c
+            .command(envelope(
+                id16(id),
+                "GetRoutingPlan",
+                GetRoutingPlan {
+                    task_id: Some(task.clone()),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    }
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    activate(&mut c, 0x60, &signed).await;
+    let (session, _) = create_session(&mut c, id16(0x61)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x62, "local_trusted").await;
+    let start = |t: &Id, id: u8| {
+        envelope_fenced(
+            id16(id),
+            "StartTask",
+            StartTask {
+                task_id: Some(t.clone()),
+                endpoint: String::new(),
+                model: String::new(),
+                max_turns: 20,
+                max_tool_calls: 0,
+                max_no_progress_turns: 2,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        )
+    };
+    // 1. The initial leg on the compiled plan: at cold start the compiler
+    //    opens with the cheaper solver on a direct plan (no continuation is
+    //    confidence-feasible without statistics). The candidate fails the
+    //    check, the gate rejects it, the solver stops: the quality boundary
+    //    finds no prevalidated slot and the run stops safely, saying so.
+    let _: TaskRunStarted = Client::result(&c.command(start(&task, 0x63)).await.unwrap()).unwrap();
+    let st = wait_task(&mut c, &task, 120).await;
+    let evs = task_events(&core, &session, &task).await;
+    assert_eq!(
+        (st.state.as_str(), st.failure_code.as_str()),
+        ("Waiting", "NO_PROGRESS"),
+        "{st:?}"
+    );
+    let of = |evs: &[(String, String, serde_json::Value)], t: &str| -> Vec<serde_json::Value> {
+        evs.iter()
+            .filter(|(_, ty, _)| ty == t)
+            .map(|(_, _, p)| p.clone())
+            .collect()
+    };
+    let gates = of(&evs, "AcceptanceGateEvaluated");
+    assert!(
+        !gates.is_empty() && gates.iter().all(|g| g["verdict"] == "REJECT"),
+        "{gates:#?}"
+    );
+    let quality: Vec<serde_json::Value> = of(&evs, "RouteReevaluated")
+        .into_iter()
+        .filter(|d| d["boundary"] == "QUALITY")
+        .collect();
+    assert_eq!(quality.len(), 1, "{quality:#?}");
+    assert_eq!(quality[0]["decision"], "STAY");
+    assert_eq!(quality[0]["current"], "openai/gpt-5-mini");
+    let reason = quality[0]["reason"].as_str().unwrap();
+    assert!(
+        reason.starts_with("NO_PROGRESS: ")
+            && reason.contains("no prevalidated stronger-solver slot"),
+        "{reason}"
+    );
+    assert!(of(&evs, "ContinuationActivated").is_empty());
+    let v1 = routing(&mut c, &task, 0x64).await;
+    assert_eq!(v1.path_label, "DIRECT", "{v1:?}");
+    assert_eq!(v1.slots.len(), 1, "the compiled plan opened direct: {v1:?}");
+    let run_id = of(&evs, "RoutingPlanCompiled")
+        .into_iter()
+        .filter_map(|p| serde_json::from_value::<ConditionalExecutionPlan>(p["plan"].clone()).ok())
+        .map(|p| p.run_id)
+        .next()
+        .expect("the compiled plan names its run");
+    let content_before = std::fs::read_to_string(repo.path().join("qty.txt")).unwrap();
+    assert_eq!(
+        content_before, "quantity = -7\n",
+        "the rejected candidate stands in the worktree"
+    );
+    // A conditional plan for this run: the same opener, and the stronger
+    // solver prevalidated to continue it on quality rejection.
+    let usd = |m: u64| Money {
+        minor_units: m,
+        currency: "USD".into(),
+        scale: 2,
+    };
+    let slot = |id: &str, model: &str, pred: Option<&str>, trigger: Trigger, reserved: u64| Slot {
+        slot_id: id.into(),
+        predecessor: pred.map(str::to_owned),
+        trigger,
+        max_activations: 1,
+        endpoint: "openai".into(),
+        model: model.into(),
+        role: "solver".into(),
+        budget: Budget {
+            timeout_ms: 120_000,
+            max_output_tokens: 4096,
+            max_retries: 0,
+            reserved: usd(reserved),
+        },
+    };
+    let cascade = |epoch: u64, max_total_attempts: u32| {
+        ConditionalExecutionPlan {
+            schema_version: ROUTING_SCHEMA_VERSION,
+            plan_id: format!("cascade-{epoch}"),
+            tenant_id: modbit_domain::TenantId::from_bytes([0xA1; 16]),
+            session_id: modbit_domain::SessionId::from_bytes(
+                session.value.clone().try_into().unwrap(),
+            ),
+            task_id: modbit_domain::TaskId::from_bytes(task.value.clone().try_into().unwrap()),
+            run_id,
+            routing_epoch: epoch,
+            lease_generation: g.unwrap_or(0),
+            created_at_ms: now,
+            provenance: Provenance {
+                policy_version: "policy-1".into(),
+                registry_generation: "registry-cascade".into(),
+                profiler_version: "none".into(),
+                statistics_version: "stats-1".into(),
+                compiler_version: "operator".into(),
+                gate_version: "gate-1".into(),
+                risk_version: "risk-1".into(),
+                legacy_decode: None,
+            },
+            input_digest: "e".repeat(64),
+            slots: vec![
+                slot("initial", "gpt-5-mini", None, Trigger::Initial, 100),
+                slot(
+                    "stronger",
+                    "gpt-5",
+                    Some("initial"),
+                    Trigger::QualityRejected,
+                    300,
+                ),
+            ],
+            max_total_attempts,
+            max_revisions: 1,
+            verification_reserve: usd(50),
+            total_budget: usd(2_000),
+            content_digest: String::new(),
+        }
+        .sealed()
+    };
+    async fn admit(
+        c: &mut Client,
+        task: &Id,
+        g: Option<u64>,
+        id: u8,
+        plan: ConditionalExecutionPlan,
+    ) -> RoutingAdmissionView {
+        let ack = c
+            .command(envelope_fenced(
+                id16(id),
+                "AdmitRoutingPlan",
+                AdmitRoutingPlan {
+                    task_id: Some(task.clone()),
+                    plan_json: serde_json::to_string(&plan).unwrap(),
+                }
+                .encode_to_vec(),
+                g,
+            ))
+            .await
+            .unwrap();
+        let a: RoutingAdmissionView = Client::result(&ack).unwrap();
+        assert!(a.admitted, "{a:?}");
+        a
+    }
+    // 2. EPR-FI-006, budget: a plan whose transaction allows one leg in
+    //    all is admitted whole (the shape is valid) but its continuation is
+    //    refused at the boundary — the initial leg was that one leg; the
+    //    run stops safely again, and the rejected candidate is still not
+    //    accepted. (The money allowance is the same door: admission unit
+    //    tests cover a slot the remaining budget cannot cover.)
+    admit(&mut c, &task, g, 0x65, cascade(1, 1)).await;
+    let _: TaskRunStarted = Client::result(&c.command(start(&task, 0x66)).await.unwrap()).unwrap();
+    let st = wait_for_state(&mut c, &task, "Waiting", 120).await;
+    let st = if st.loop_alive {
+        wait_task(&mut c, &task, 120).await
+    } else {
+        st
+    };
+    assert_eq!(st.state, "Waiting", "{st:?}");
+    let evs = task_events(&core, &session, &task).await;
+    let quality: Vec<serde_json::Value> = of(&evs, "RouteReevaluated")
+        .into_iter()
+        .filter(|d| d["boundary"] == "QUALITY")
+        .collect();
+    assert!(quality.len() >= 2, "{quality:#?}");
+    assert!(
+        quality[1..].iter().all(|d| d["decision"] == "STAY"),
+        "{quality:#?}"
+    );
+    let starved = quality[1]["reason"].as_str().unwrap();
+    assert!(
+        starved.starts_with("RESUMED: ")
+            && starved.contains("ATTEMPTS_EXHAUSTED")
+            && starved.contains("`stronger` (openai/gpt-5)"),
+        "{starved}"
+    );
+    assert!(of(&evs, "ContinuationActivated").is_empty());
+    assert!(
+        of(&evs, "SlotActivated")
+            .iter()
+            .all(|a| a["slot_id"] == "initial"),
+        "{:#?}",
+        of(&evs, "SlotActivated")
+    );
+    assert!(
+        decide_review(&mut c, &task, g, 0x67, "ACCEPT")
+            .await
+            .is_err(),
+        "the rejected candidate cannot be accepted"
+    );
+    // 3. A funded plan: the boundary at resume finds the stronger slot,
+    //    the gate (a fresh COMPLETION run at the candidate revision) still
+    //    rejects, admission covers the slot from the remaining budget, and
+    //    the run continues on gpt-5 with the note in its transcript.
+    admit(&mut c, &task, g, 0x68, cascade(2, 4)).await;
+    let _: TaskRunStarted = Client::result(&c.command(start(&task, 0x69)).await.unwrap()).unwrap();
+    let deadline = std::time::Instant::now() + Duration::from_secs(60);
+    let mut activated = Vec::new();
+    while std::time::Instant::now() < deadline {
+        let evs = task_events(&core, &session, &task).await;
+        activated = of(&evs, "ContinuationActivated");
+        if !activated.is_empty() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    assert_eq!(activated.len(), 1, "{activated:#?}");
+    let a = &activated[0];
+    assert_eq!(a["plan_id"], "cascade-2");
+    assert_eq!(a["from_slot_id"], "initial");
+    assert_eq!(a["slot_id"], "stronger");
+    assert_eq!(a["activation"], 1);
+    assert_eq!(a["trigger"], "QUALITY_REJECTED");
+    assert_eq!(a["cause"], "RESUMED");
+    assert_eq!(
+        (
+            a["endpoint"].as_str().unwrap(),
+            a["model"].as_str().unwrap()
+        ),
+        ("openai", "gpt-5")
+    );
+    assert_eq!(a["gate_ref"].as_str().unwrap().len(), 64);
+    assert!(
+        a["reject_reasons"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|r| r.as_str().unwrap().contains("failed")),
+        "{a:#?}"
+    );
+    assert!(a["failed_leg_attempts"].as_u64().unwrap() >= 4, "{a:#?}");
+    assert!(
+        a["spent_minor"].as_u64().unwrap() > 0,
+        "the failed leg's spend is counted: {a:#?}"
+    );
+    assert_eq!(a["reserved_minor"], 300);
+    assert_eq!(
+        a["remaining_minor"].as_u64().unwrap(),
+        2_000 - a["spent_minor"].as_u64().unwrap() - 50,
+        "the continuation gets what is left after the spend and the verification reserve: {a:#?}"
+    );
+    let note = a["note"].as_str().unwrap();
+    assert!(
+        note.contains("[CONTINUATION]")
+            && note.contains("you are openai/gpt-5")
+            && note.contains("initial leg on openai/gpt-5-mini was rejected")
+            && note.contains("REJECT (")
+            && note.contains("original request is the first user message"),
+        "{note}"
+    );
+    // EPR-FI-006, kill: the Core dies after the activation, before the
+    // continuation's first turn answered. The restarted Core resumes the
+    // run on the stronger slot — one activation, no second — and finishes.
+    drop(c);
+    core.kill();
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    activate(&mut c, 0x6A, &signed).await;
+    let _: TaskRunStarted = Client::result(&c.command(start(&task, 0x6B)).await.unwrap()).unwrap();
+    let st = wait_for_state(&mut c, &task, "ReadyForReview", 180).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let evs = task_events(&core, &session, &task).await;
+    let strongers: Vec<serde_json::Value> = of(&evs, "SlotActivated")
+        .into_iter()
+        .filter(|a| a["slot_id"] == "stronger")
+        .collect();
+    assert_eq!(
+        strongers.len(),
+        1,
+        "exactly one activation across the kill: {strongers:#?}"
+    );
+    assert_eq!(of(&evs, "ContinuationActivated").len(), 1);
+    let quality: Vec<serde_json::Value> = of(&evs, "RouteReevaluated")
+        .into_iter()
+        .filter(|d| d["boundary"] == "QUALITY")
+        .collect();
+    let switch = quality
+        .iter()
+        .find(|d| d["decision"] == "SWITCH")
+        .expect("the switch is on the log");
+    assert_eq!(switch["current"], "openai/gpt-5-mini");
+    assert_eq!(switch["chosen"], "openai/gpt-5");
+    assert_eq!(switch["plan_id"], "cascade-2");
+    // The continuation saw the original request and the failed leg's
+    // evidence, then the note; its requests were its own model's.
+    let bodies = seen.lock().unwrap().clone();
+    let strong_bodies: Vec<&serde_json::Value> =
+        bodies.iter().filter(|b| b["model"] == "gpt-5").collect();
+    assert!(!strong_bodies.is_empty());
+    let first = strong_bodies[0];
+    let msgs = first["messages"].as_array().unwrap();
+    assert!(
+        msgs.iter().any(|m| m["role"] == "user"
+            && m["content"]
+                .as_str()
+                .unwrap_or_default()
+                .starts_with("Task goal:")),
+        "the original request"
+    );
+    assert!(
+        msgs.iter().filter(|m| m["role"] == "tool").count() >= 4,
+        "the failed leg's tool results"
+    );
+    assert!(
+        msgs.iter().any(|m| m["role"] == "user"
+            && m["content"]
+                .as_str()
+                .unwrap_or_default()
+                .starts_with("[CONTINUATION]")),
+        "the note"
+    );
+    assert!(
+        msgs.iter().any(|m| m["role"] == "tool"
+            && m["content"]
+                .as_str()
+                .unwrap_or_default()
+                .contains("COMPLETION_REFUSED")),
+        "the rejection the failed leg saw"
+    );
+    // Attempts after the activation are the stronger slot's; the last
+    // gate is an ACCEPT at the continuation's revision.
+    let v = routing(&mut c, &task, 0x6C).await;
+    assert_eq!(v.plan_id, "cascade-2");
+    assert!(v.attempts.iter().all(|a| a.slot_id == "stronger"), "{v:?}");
+    assert!(!v.attempts.is_empty());
+    let gates = of(&evs, "AcceptanceGateEvaluated");
+    assert_eq!(gates.last().unwrap()["verdict"], "ACCEPT", "{gates:#?}");
+    // 4. Exact-revision verified atomic apply: the user's accept lands the
+    //    continuation's candidate, and the path is derived from what ran.
+    let d = decide_review(&mut c, &task, g, 0x6D, "ACCEPT")
+        .await
+        .unwrap();
+    assert_eq!(d.task_state, "Completed", "{d:?}");
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("qty.txt")).unwrap(),
+        "quantity = 7\nvalidated = yes\n"
+    );
+    let v = routing(&mut c, &task, 0x6E).await;
+    assert_eq!(v.path_label, "CASCADE", "{v:?}");
+    let s = routing_session_state(&mut c, &session).await;
+    assert!(
+        s.executed_path_labels
+            .iter()
+            .any(|l| l == "openai/gpt-5-mini -> openai/gpt-5"),
+        "{s:?}"
+    );
+    core.kill();
 }

@@ -22775,8 +22775,35 @@
    ],
    "task_card": "docs/49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md#epr-006",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller or executor present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-12T12:57:34Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "PARTIAL before: continuations compiled and admissible (EPR-014), gate rejecting (EPR-017), boundaries on economics (EPR-009); nothing consumed a quality rejection, every compiled run DIRECT in fact"
+    },
+    {
+     "at": "2026-09-12T12:57:34Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "quality boundary in services/modbit-core/src/escalation.rs; ContinuationActivated; HarnessState::begin_leg"
+    },
+    {
+     "at": "2026-09-12T12:57:34Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "consulted at repair escalation, the no-progress ceiling and resume; recover_route and rebuild carry the continuation; CASCADE derived in the routing view"
+    },
+    {
+     "at": "2026-09-12T12:57:34Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification through Core (see card)"
+    }
+   ],
+   "status_changed_on": "2026-09-12T12:57:34Z"
   },
   {
    "id": "EPR-007",

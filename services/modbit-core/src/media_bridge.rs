@@ -77,6 +77,11 @@ impl BridgeSession {
         }
     }
 
+    /// The run continues on another binding (REQ-EPR-006): the notes name it.
+    pub fn set_routed(&mut self, endpoint: &str, model: &str) {
+        self.routed = format!("{endpoint}/{model}");
+    }
+
     /// Replace every media part of `message` with text: the bridge's
     /// description when a bridge is configured, the explicit
     /// `UNSUPPORTED_MODALITY` note otherwise. Media that answered a tool
