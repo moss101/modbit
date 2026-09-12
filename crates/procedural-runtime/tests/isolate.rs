@@ -398,9 +398,10 @@ async fn the_async_form_runs_on_its_own_thread_and_awaits_real_host_futures() {
     assert_eq!(out.status, Status::Completed, "{out:#?}");
     assert_eq!(out.value_json.as_deref(), Some(r#"["p1","p2","p3"]"#));
     // Three concurrent 100 ms host futures take about 100 ms inside the
-    // isolate, not 300 (the wall clock also carries the thread and engine
-    // start-up, bounded loosely for slow runners).
-    assert!(out.elapsed_ms >= 100 && out.elapsed_ms < 260, "{out:#?}");
+    // isolate, never the 300 of three in sequence (the wall clock also
+    // carries the thread and engine start-up: a hosted macOS runner has
+    // measured 277 ms, so the bound is the sequential floor itself).
+    assert!(out.elapsed_ms >= 100 && out.elapsed_ms < 300, "{out:#?}");
     assert!(started.elapsed().as_secs() < 5, "{:?}", started.elapsed());
 }
 
