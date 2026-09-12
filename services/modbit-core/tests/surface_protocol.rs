@@ -20334,12 +20334,14 @@ async fn qual_ev_0061_0214_a_skill_cannot_widen_task_authority_and_a_non_invocab
         !bodies.iter().any(|b| b.to_string().contains("system-only")),
         "a non-model-invocable skill reached the model"
     );
-    // The capability ceiling is recorded in the package, not granted: the
-    // task's lease is what it was.
-    assert!(
-        !evs.iter()
-            .any(|(_, t, p)| t == "SkillSelected" && p.to_string().contains("admin"))
+    // The capability ceiling is recorded in the package, not granted:
+    // nothing the selection compiled to carries it (the record's `source`
+    // is a path, which on a CI runner may well contain "admin").
+    let compiled: String = format!(
+        "{}{}",
+        selected[0]["tool_projection"], selected[0]["tools_unavailable"]
     );
+    assert!(!compiled.contains("admin"), "{compiled}");
 }
 
 /// QUAL-EV-0105 and QUAL-EV-0114 on the real Core: a skill's instructions
@@ -20539,4 +20541,233 @@ async fn run_skill_task(
         "{st:?}"
     );
     task
+}
+
+/// WSK-E2E-005 and WSK-E2E-010 (docs/57; M5.7, REQ-EV-0203, REQ-EV-0208) on
+/// the real Core. A skill promoted through the lab into the profile's
+/// registry reaches the model as its approved projection and nothing else:
+/// the lab's traces, patterns and candidates — with a marker planted in
+/// them — never appear in any request. Then the Core is hard-killed
+/// mid-task with the lab's whole directory deleted, and the task resumes
+/// from the event, protocol and checkpoint stores alone.
+#[tokio::test]
+async fn wsk_e2e_005_010_a_promoted_skill_reaches_the_model_without_the_wiki_and_recovery_needs_no_lab()
+ {
+    use ed25519_dalek::SigningKey;
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use modbit_skills::evolution::{
+        EvolutionTrace, KnowledgeStore, Lab, Maintainer, Promotion, Proposer, QualificationTrial,
+        Qualifier, TemplateProposer, TraceCost,
+    };
+    use serde_json::json;
+    let marker = "WIKI-MARKER-7f3a";
+    let (repo, root) = plain_repo(&[("a.txt", "alpha\n")]);
+    let dir = tempfile::tempdir().unwrap();
+    // The profile's user skills root and the lab beside it.
+    let registry_root = dir.path().join("skills");
+    let skill_dir = registry_root.join("careful-edit");
+    std::fs::create_dir_all(&skill_dir).unwrap();
+    std::fs::write(
+        skill_dir.join("SKILL.md"),
+        "---\nname: careful-edit\nversion: 1.0.0\ndescription: Edit carefully.\nrequired_tools: [fs.read, change.apply]\ntriggers: [derive]\n---\n# careful-edit\n\n- Read a file before deriving from it.\n",
+    )
+    .unwrap();
+    let lab = Lab::open(&dir.path().join("skill-lab")).unwrap();
+    let base = modbit_skills::load_package(&skill_dir).unwrap();
+    Promotion::archive_head(&lab, &base).unwrap();
+    let mut sealed = Vec::new();
+    for i in 0..3 {
+        sealed.push(
+            lab.seal(
+                &EvolutionTrace {
+                    task: format!("fixture-{i}"),
+                    task_class: "bug-repair".into(),
+                    repository_revision: "rev".into(),
+                    model_config: "openai/gpt-5".into(),
+                    instruction_manifest_hash: "im".into(),
+                    tool_capability_snapshot_hash: "tc".into(),
+                    environment_revision: "env".into(),
+                    // The marker lives in the wiki's own fields (evidence,
+                    // verification text), never in the observation the
+                    // proposer turns into skill text.
+                    evidence_refs: vec![format!("{marker}:trace:{i}")],
+                    observations: vec!["verify-after-write".to_owned()],
+                    outcome: "VERIFIED".into(),
+                    verification_result: format!("PASSED {marker}"),
+                    cost: TraceCost::default(),
+                    redaction_status: "REDACTED".into(),
+                },
+                i,
+            )
+            .unwrap(),
+        );
+    }
+    Maintainer::consolidate(&lab, &sealed, 1).unwrap();
+    let ids: Vec<String> = KnowledgeStore::index(&lab)
+        .unwrap()
+        .iter()
+        .map(|e| e.pattern_id.clone())
+        .collect();
+    let evidence = KnowledgeStore::hydrate(&lab, &ids, 10_000).unwrap();
+    let candidate =
+        Proposer::propose(&lab, &base, "verify", &evidence, &TemplateProposer, 1).unwrap();
+    let key = SigningKey::from_bytes(&[43u8; 32]);
+    let key_hex = hex::encode(key.verifying_key().to_bytes());
+    let trials: Vec<QualificationTrial> = (0..2)
+        .flat_map(|r| {
+            ["current", "candidate"]
+                .into_iter()
+                .map(move |arm| QualificationTrial {
+                    task: "t".into(),
+                    task_class: "bug-repair".into(),
+                    model: "openai/gpt-5".into(),
+                    repeat: r,
+                    arm: arm.into(),
+                    verified: true,
+                    safety_failures: 0,
+                    input_tokens: 1000,
+                    output_tokens: 100,
+                    tool_calls: 3,
+                    wall_ms: 100,
+                    cost_minor: 10,
+                })
+        })
+        .collect();
+    let q = Qualifier::qualify(
+        "bench-1",
+        &base.content_hash,
+        &candidate,
+        Proposer::validate(&base, &candidate),
+        &trials,
+    );
+    assert_eq!(q.decision, "PROMOTE", "{q:#?}");
+    let promoted = Promotion::promote(&lab, &base, &candidate, &q, "lab-1", &key, 2).unwrap();
+    assert_eq!(promoted.version, "1.0.1");
+    // The model stalls on its third request so the Core can be killed
+    // mid-task; the resumed run finishes the script.
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "derive b", "expected_files": ["b.txt"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "a.txt"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "b.txt", "op": "create", "content": "alpha\nbeta\n"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "derived", "self_review": {"findings": []}}}]}),
+    ];
+    let (base_url, seen) = scripted_model(script, Some(2)).await;
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base_url.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_SKILL_KEYS", &format!("lab-1:{key_hex}")),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xB1)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_goal(&mut c, &session, g, &root, 0xB2, "derive b from a").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xB3),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 10,
+                max_tool_calls: 0,
+                max_no_progress_turns: 4,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    // Let the third (stalled) request start, then hard-kill the Core and
+    // delete the lab entirely.
+    let deadline = std::time::Instant::now() + Duration::from_secs(30);
+    while seen.lock().unwrap().len() < 3 {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "{}",
+            seen.lock().unwrap().len()
+        );
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    drop(c);
+    core.kill();
+    std::fs::remove_dir_all(dir.path().join("skill-lab")).unwrap();
+    assert!(!dir.path().join("skill-lab").exists());
+    let core2 = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c2 = core2.client().await;
+    let st = wait_task(&mut c2, &task, 5).await;
+    assert_eq!(
+        (st.state.as_str(), st.loop_alive),
+        ("Waiting", false),
+        "{st:?}"
+    );
+    let g2 = Some(acquire_lease(&mut c2, id16(0xB4), session.clone(), "resumer").await);
+    let ack = c2
+        .command(envelope_fenced(
+            id16(0xB5),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 10,
+                max_tool_calls: 0,
+                max_no_progress_turns: 4,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g2,
+        ))
+        .await
+        .unwrap();
+    let started: TaskRunStarted = Client::result(&ack).unwrap();
+    assert!(started.resumed);
+    let st = wait_task(&mut c2, &task, 120).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("b.txt")).unwrap(),
+        "alpha\nbeta\n"
+    );
+    // WSK-E2E-005: every request carried the promoted skill's projection
+    // (version 1.0.1 with the proposed line) and nothing of the wiki: no
+    // pattern id, no trace id, no claim text, no marker.
+    let bodies = seen.lock().unwrap().clone();
+    assert!(bodies.len() >= 4, "{}", bodies.len());
+    for b in &bodies {
+        let text = b.to_string();
+        assert!(text.contains("# Skill: careful-edit v1.0.1"), "{text}");
+        assert!(text.contains("- Always: verify-after-write"), "{text}");
+        assert!(!text.contains(marker), "the wiki reached the model: {text}");
+        for id in &ids {
+            assert!(!text.contains(id.as_str()));
+        }
+        for s in &sealed {
+            assert!(!text.contains(s.trace_id.as_str()));
+        }
+        assert!(
+            !text.contains("accompanies verified completion"),
+            "a pattern claim reached the model"
+        );
+    }
+    // The selection record names the promoted version and its hash.
+    let evs = task_events(&core2, &session, &task).await;
+    let sel = evs
+        .iter()
+        .find(|(_, t, _)| t == "SkillSelected")
+        .map(|(_, _, p)| p.clone())
+        .unwrap();
+    assert_eq!(sel["version"], "1.0.1");
+    assert_eq!(sel["content_hash"], promoted.content_hash);
+    // WSK-E2E-010: the resumed run never opened the lab (it is gone) and
+    // the second selection, after the restart, still came from the
+    // registry head alone.
+    assert_eq!(
+        evs.iter().filter(|(_, t, _)| t == "SkillSelected").count(),
+        2,
+        "one selection per run"
+    );
 }

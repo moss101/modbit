@@ -1763,6 +1763,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "modbit-bench-skill-evolution"
+version = "0.0.0"
+dependencies = [
+ "modbit-bench-context-economics",
+ "modbit-skills",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "modbit-browser"
 version = "0.0.0"
 dependencies = [

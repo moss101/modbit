@@ -1,0 +1,15 @@
+{
+ "task": "IMP-EV-0202",
+ "requirement": "REQ-EV-0202",
+ "qual": "QUAL-EV-0202",
+ "tests": [
+  "req_ev_0202_a_promoted_skill_carries_its_purpose_not_the_wiki",
+  "wsk_e2e_005_010_a_promoted_skill_reaches_the_model_without_the_wiki_and_recovery_needs_no_lab"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "`req_ev_0202_\u2026`: the promoted head compiles to its instruction line with no pattern record, id or claim in the prompt; the PURPOSE and evidence are in the candidate and impact records under the lab; on the real Core, WSK-E2E-005 shows no wiki field in any request.",
+ "audit": "NOT-FOUND before M5.7",
+ "finding": "EXPERIMENT: behaves as hypothesised on the fixture; no lift established; no ADR proposed",
+ "ci": ""
+}

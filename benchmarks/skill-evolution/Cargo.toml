@@ -1,0 +1,25 @@
+[package]
+name = "modbit-bench-skill-evolution"
+description = "Modbit skill qualification harness: paired no-skill / current / candidate trials, cross-model transfer and the evolution-lab ablation (docs/26, docs/57)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+modbit-bench-context-economics.workspace = true
+modbit-skills.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true
+
+# Module registration parsed by `architecture-lint modules` (M0.4, docs/45, docs/81).
+[package.metadata.modbit]
+owner = "eval-bench"
+canonical = []
+capabilities = [
+  { id = "bench.skill_qualification", requirements = ["REQ-EV-0205", "REQ-EV-0206", "REQ-EV-0207"] },
+]

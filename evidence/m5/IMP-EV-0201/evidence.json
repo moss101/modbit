@@ -1,0 +1,15 @@
+{
+ "task": "IMP-EV-0201",
+ "requirement": "REQ-EV-0201",
+ "qual": "QUAL-EV-0201",
+ "tests": [
+  "wsk_e2e_004_promotion_needs_the_gates_and_rollback_restores_the_head",
+  "req_ev_0202_a_promoted_skill_carries_its_purpose_not_the_wiki"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "WSK-E2E-004: `Promotion::impact` returns one record per decision \u2014 the REJECTED one with its gate reasons, the PROMOTED one with the version, the patch, the source patterns, the proposer configuration and the environment \u2014 and the rollback record.",
+ "audit": "NOT-FOUND before M5.7",
+ "finding": "EXPERIMENT: behaves as hypothesised on the fixture; no lift established; no ADR proposed",
+ "ci": ""
+}

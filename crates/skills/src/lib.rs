@@ -19,6 +19,8 @@
 //! capabilities beyond the task's policy — the compiler intersects, it never
 //! widens.
 
+pub mod evolution;
+
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 

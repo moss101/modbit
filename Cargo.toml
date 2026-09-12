@@ -26,6 +26,7 @@ members = [
     "benchmarks/context-economics",
     "benchmarks/outcome-statistics",
     "benchmarks/retrieval",
+    "benchmarks/skill-evolution",
     "crates/retrieval",
     "crates/workspace",
     "crates/git",
@@ -75,6 +76,7 @@ modbit-procedural-runtime = { path = "crates/procedural-runtime" }
 modbit-context = { path = "crates/context" }
 modbit-bench-context-economics = { path = "benchmarks/context-economics" }
 modbit-bench-outcome-statistics = { path = "benchmarks/outcome-statistics" }
+modbit-bench-skill-evolution = { path = "benchmarks/skill-evolution" }
 modbit-bench-retrieval = { path = "benchmarks/retrieval" }
 modbit-retrieval = { path = "crates/retrieval" }
 modbit-workspace = { path = "crates/workspace" }

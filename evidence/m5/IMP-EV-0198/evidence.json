@@ -1,0 +1,14 @@
+{
+ "task": "IMP-EV-0198",
+ "requirement": "REQ-EV-0198",
+ "qual": "QUAL-EV-0198",
+ "tests": [
+  "wsk_e2e_002_the_maintainer_consolidates_contradictory_traces_without_overwriting"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "WSK-E2E-002: two verified and one failed trace with the same observation become one pattern with two supporting and one contradicting trace id and 6666 bp confidence; a later failing trace yields a superseding revision at 5000 bp with the earlier one persisting; the skill files and no memory store are touched.",
+ "audit": "NOT-FOUND before M5.7",
+ "finding": "EXPERIMENT: behaves as hypothesised on the fixture; no lift established; no ADR proposed",
+ "ci": ""
+}

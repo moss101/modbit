@@ -1,0 +1,15 @@
+{
+ "task": "IMP-EV-0199",
+ "requirement": "REQ-EV-0199",
+ "qual": "QUAL-EV-0199",
+ "tests": [
+  "wsk_e2e_003_006_a_candidate_is_atomic_and_cannot_widen_authority",
+  "a_proposer_model_is_a_trait_the_template_stands_in_for"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "WSK-E2E-003/006: the candidate carries the base content hash, one atomic patch to SKILL.md adding one instruction line (version bumped), PURPOSE naming the claim, the motivating pattern ids and the three trace ids, the declared tools and ceiling unchanged; a proposer without evidence proposes nothing.",
+ "audit": "NOT-FOUND before M5.7",
+ "finding": "EXPERIMENT: behaves as hypothesised on the fixture; no lift established; no ADR proposed",
+ "ci": ""
+}

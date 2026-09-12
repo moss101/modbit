@@ -1,0 +1,14 @@
+{
+ "task": "IMP-EV-0204",
+ "requirement": "REQ-EV-0204",
+ "qual": "QUAL-EV-0204",
+ "tests": [
+  "wsk_e2e_007_selective_hydration_respects_the_budget_and_names_its_sources"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "WSK-E2E-007: 2,000 traces \u2192 120 patterns; the compact index is under a quarter of the full records; hydration of ten heads under a 1,200-token budget takes what fits, refuses the rest by name, counts only what was hydrated, and the candidate names exactly the hydrated sources.",
+ "audit": "NOT-FOUND before M5.7",
+ "finding": "EXPERIMENT: behaves as hypothesised on the fixture; no lift established; no ADR proposed",
+ "ci": ""
+}

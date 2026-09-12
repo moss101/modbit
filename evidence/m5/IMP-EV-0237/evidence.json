@@ -1,0 +1,15 @@
+{
+ "task": "IMP-EV-0237",
+ "requirement": "REQ-EV-0237",
+ "qual": "QUAL-EV-0237",
+ "tests": [
+  "wsk_e2e_004_promotion_needs_the_gates_and_rollback_restores_the_head",
+  "wsk_e2e_005_010_a_promoted_skill_reaches_the_model_without_the_wiki_and_recovery_needs_no_lab"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "WSK-E2E-004: promotion is refused under a REJECT qualification and under another candidate's qualification; the `ProposerModel` trait and `Proposer` hold no head write \u2014 only `Promotion::promote` with a PROMOTE qualification and the lab's signing key moves the head; on the real Core the production run selects the head only (WSK-E2E-005).",
+ "audit": "NOT-FOUND before M5.7",
+ "finding": "EXPERIMENT: behaves as hypothesised on the fixture; no lift established; no ADR proposed",
+ "ci": ""
+}

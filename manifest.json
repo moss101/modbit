@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 824,
-    "docs_bytes": 1072591
+    "root_and_tooling": 854,
+    "docs_bytes": 1076731
   },
   "sections": [
     {
@@ -275,8 +275,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Skill Registry and Evolution Integration — Skill Evolution Without a Second Runtime",
-      "bytes": 7450,
-      "sha256": "3d7a2092543a186967759ebfcdcb4708afb73f96817d55989932b1908844b180"
+      "bytes": 11590,
+      "sha256": "e5b69188c09e95c66a4bb2b42549e00b5f55790b81c163d29f892c62d6a1eec3"
     },
     {
       "path": "docs/27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
@@ -4797,6 +4797,116 @@
       "sha256": "f67a3300f73bd35267e5aac39bc34b9123482ac56d464ab59e14b7c783e67314"
     },
     {
+      "path": "evidence/m5/IMP-EV-0196/TASK_CARD.md",
+      "bytes": 2061,
+      "sha256": "75d0eabb71f0cc9473e069fd6e33c26f781c21f3abbe708659ccf0017ee4d2c2"
+    },
+    {
+      "path": "evidence/m5/IMP-EV-0196/evidence.json",
+      "bytes": 670,
+      "sha256": "82e0df145de5e1654b17f73ef6a40e2f8743fc90fa45d9bb27043c8bd5d5a443"
+    },
+    {
+      "path": "evidence/m5/IMP-EV-0197/TASK_CARD.md",
+      "bytes": 1999,
+      "sha256": "12bdf1a07cf179a81fe4bffeedaac18a74f365b5e2f904ba8f719ad3f6866cc5"
+    },
+    {
+      "path": "evidence/m5/IMP-EV-0197/evidence.json",
+      "bytes": 662,
+      "sha256": "220861bd95841448ecbc1e1c1c83bc45b6268ff3e239513d9c6b3f18d4c26a6e"
+    },
+    {
+      "path": "evidence/m5/IMP-EV-0198/TASK_CARD.md",
+      "bytes": 2049,
+      "sha256": "3a59b3eea5ebfabc12e1bdabb7439247e6ad62d11fbe3812b80e67af4bce576f"
+    },
+    {
+      "path": "evidence/m5/IMP-EV-0198/evidence.json",
+      "bytes": 694,
+      "sha256": "927fc43790b33b73b420d1dcf8e46cbd32daeebedf5e58c0e5c0ba2c69b52466"
+    },
+    {
+      "path": "evidence/m5/IMP-EV-0199/TASK_CARD.md",
+      "bytes": 2072,
+      "sha256": "155886efa8416a185c331fd1fc547dbf0b15250a13e3724ba674bc210222cb51"
+    },
+    {
+      "path": "evidence/m5/IMP-EV-0199/evidence.json",
+      "bytes": 729,
+      "sha256": "6115472dad297bfb3ec27a19efb6e86f5cfbc48b207860ae43970b895b01dfa7"
+    },
+    {
+      "path": "evidence/m5/IMP-EV-0200/TASK_CARD.md",
+      "bytes": 1936,
+      "sha256": "e0e06eb1e8fba6be7d51ca97632655bac6dede462587e96b304c613f3733ae4d"
+    },
+    {
+      "path": "evidence/m5/IMP-EV-0200/evidence.json",
+      "bytes": 582,
+      "sha256": "611a8d619f94750a64a40457769c2f8ef55a4720f34456fbca1d488ad141a759"
+    },
+    {
+      "path": "evidence/m5/IMP-EV-0201/TASK_CARD.md",
+      "bytes": 1977,
+      "sha256": "398e83744aef3b43ddd576ea4ff3ef1159df7ad441828c186cd7b964e3d8a3fe"
+    },
+    {
+      "path": "evidence/m5/IMP-EV-0201/evidence.json",
+      "bytes": 695,
+      "sha256": "8a5db65dbe0dc4b17730e2feb60e514b88b764b61e537cbb33f59bbf24d59865"
+    },
+    {
+      "path": "evidence/m5/IMP-EV-0202/TASK_CARD.md",
+      "bytes": 2080,
+      "sha256": "e13a0798c367e03f762e68fa8f47d5ba5c1e5da18d7f3cfb09d779cdeece083d"
+    },
+    {
+      "path": "evidence/m5/IMP-EV-0202/evidence.json",
+      "bytes": 732,
+      "sha256": "ac4b6ca9cd5d0aac8f80e73d9c0f38303e8933df719f6c63847988194d521e95"
+    },
+    {
+      "path": "evidence/m5/IMP-EV-0204/TASK_CARD.md",
+      "bytes": 2019,
+      "sha256": "debc43f1f627777aac18cccec6828ae553281d0e8ebb4c9a711afb1251b3fed5"
+    },
+    {
+      "path": "evidence/m5/IMP-EV-0204/evidence.json",
+      "bytes": 658,
+      "sha256": "c1adb3451aabdf4061107aad646320525eaef663291fbd6d0959632783977c21"
+    },
+    {
+      "path": "evidence/m5/IMP-EV-0205/TASK_CARD.md",
+      "bytes": 2026,
+      "sha256": "96b759f80fef8c2ef2d0b5c92c56974a1638cfa4c69e299ce962d436606de024"
+    },
+    {
+      "path": "evidence/m5/IMP-EV-0205/evidence.json",
+      "bytes": 672,
+      "sha256": "86f6d4c54fce472c3b039d2915af83274f060249f641586779ab0fa240542717"
+    },
+    {
+      "path": "evidence/m5/IMP-EV-0206/TASK_CARD.md",
+      "bytes": 2104,
+      "sha256": "805437167ab3ff6cd9b24cccf7a2f97c8be6f50cd0d031e32cbe50ad68905a1c"
+    },
+    {
+      "path": "evidence/m5/IMP-EV-0206/evidence.json",
+      "bytes": 733,
+      "sha256": "549f66a98a696efe20d4e308d02e82ecfbba5c407e400c941c2b11085c2afa26"
+    },
+    {
+      "path": "evidence/m5/IMP-EV-0207/TASK_CARD.md",
+      "bytes": 2064,
+      "sha256": "549acaaf46a35ef8ec141479c1ca9d2634700a69be3674a5fbe6c09251e61bd6"
+    },
+    {
+      "path": "evidence/m5/IMP-EV-0207/evidence.json",
+      "bytes": 673,
+      "sha256": "f0792a194ae9556a39cd6525792eb28f5fc1ed92659d04c0c39628021f7e2cb2"
+    },
+    {
       "path": "evidence/m5/IMP-EV-0209/TASK_CARD.md",
       "bytes": 1790,
       "sha256": "21ef10e52131ca438e50b10c8618ecae8560baec6f1a18bb04cf06fba10ef575"
@@ -4845,6 +4955,36 @@
       "path": "evidence/m5/IMP-EV-0231/evidence.json",
       "bytes": 1129,
       "sha256": "4ae7fc1872b107c1e99c547a769fe9866ec797b3a007f61a2c4aa4b4e2573ed2"
+    },
+    {
+      "path": "evidence/m5/IMP-EV-0237/TASK_CARD.md",
+      "bytes": 2108,
+      "sha256": "95e8d5a0ab0007aa66332fcc94bb8c99230e1116b14ae129f2f191359691a5d7"
+    },
+    {
+      "path": "evidence/m5/IMP-EV-0237/evidence.json",
+      "bytes": 814,
+      "sha256": "eb561fdb8fa419aea4ef2a810f555cef4a9c379992f5596948ba5d501a377ef8"
+    },
+    {
+      "path": "evidence/m5/IMP-EV-0247/TASK_CARD.md",
+      "bytes": 1916,
+      "sha256": "9eef59f1d0cc6c73e01a1dcd8dead99e2adefa74feb620f6edbe4ed812ed7d08"
+    },
+    {
+      "path": "evidence/m5/IMP-EV-0247/evidence.json",
+      "bytes": 610,
+      "sha256": "32e4e3da12b34ed43bfeb99dd86d4f19b32e1aa857cac451b9a2c7a981f93677"
+    },
+    {
+      "path": "evidence/m5/IMP-EV-0248/TASK_CARD.md",
+      "bytes": 1993,
+      "sha256": "267439f9915bb38ed3b687fd3c658cec83978477342984f139647107ee9c618f"
+    },
+    {
+      "path": "evidence/m5/IMP-EV-0248/evidence.json",
+      "bytes": 681,
+      "sha256": "4efd5634cd9e9f23fc6842ccb9fa09c0413e177f5ec9cb6f79174acb3a1703ef"
     },
     {
       "path": "evidence/m5/M5.1/TASK_CARD.md",
@@ -4930,6 +5070,16 @@
       "path": "evidence/m5/M5.6/evidence.json",
       "bytes": 1356,
       "sha256": "01d211f1f2be17f0d574717782099932c239331a92f9787d1f14e97a0eaf36a8"
+    },
+    {
+      "path": "evidence/m5/M5.7/TASK_CARD.md",
+      "bytes": 5123,
+      "sha256": "7abbdee460d3305eb51cbb832fbeaf910d1be6d4a91aa4f52ca991b7d500ca42"
+    },
+    {
+      "path": "evidence/m5/M5.7/evidence.json",
+      "bytes": 2711,
+      "sha256": "1cc5bebf9dc8612db76ba6fb22fc179480e13097352efa7b0db4a52cf3811706"
     },
     {
       "path": "graph/PROJECT_GRAPH.md",

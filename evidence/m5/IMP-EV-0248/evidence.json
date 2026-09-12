@@ -1,0 +1,15 @@
+{
+ "task": "IMP-EV-0248",
+ "requirement": "REQ-EV-0248",
+ "qual": "QUAL-EV-0248",
+ "tests": [
+  "wsk_e2e_004_promotion_needs_the_gates_and_rollback_restores_the_head",
+  "wsk_e2e_008_the_paired_benchmark_reports_every_arm_with_intervals_and_never_promotes_over_a_failed_gate"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "WSK-E2E-004 and 008: a candidate a sixth of the tokens and less correct in one class is REJECTED with \"economics not considered: a hard gate failed\"; economics are recorded only after the gates pass.",
+ "audit": "NOT-FOUND before M5.7",
+ "finding": "EXPERIMENT: behaves as hypothesised on the fixture; no lift established; no ADR proposed",
+ "ci": ""
+}

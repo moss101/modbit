@@ -1,0 +1,15 @@
+{
+ "task": "IMP-EV-0197",
+ "requirement": "REQ-EV-0197",
+ "qual": "QUAL-EV-0197",
+ "tests": [
+  "wsk_e2e_004_promotion_needs_the_gates_and_rollback_restores_the_head",
+  "wsk_e2e_002_the_maintainer_consolidates_contradictory_traces_without_overwriting"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "WSK-E2E-004: after promotion and rollback of the skill head the knowledge index still holds its one head pattern; WSK-E2E-002: a maintainer revision supersedes and both revisions persist, provenance-bound.",
+ "audit": "NOT-FOUND before M5.7",
+ "finding": "EXPERIMENT: behaves as hypothesised on the fixture; no lift established; no ADR proposed",
+ "ci": ""
+}

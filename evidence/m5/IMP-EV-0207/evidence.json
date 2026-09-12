@@ -1,0 +1,14 @@
+{
+ "task": "IMP-EV-0207",
+ "requirement": "REQ-EV-0207",
+ "qual": "QUAL-EV-0207",
+ "tests": [
+  "req_ev_0207_the_ablation_says_whether_the_lab_earns_its_complexity"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "`req_ev_0207_\u2026`: the ablation pairs an evolved candidate against a manual refinement; on the fixture the lift is 0 bp and the finding says the lab is not justified there; a clear lift is recognised on both counts; no pairs establish nothing. Finding: no ADR proposed; the mechanism stays EXPERIMENT.",
+ "audit": "NOT-FOUND before M5.7",
+ "finding": "EXPERIMENT: behaves as hypothesised on the fixture; no lift established; no ADR proposed",
+ "ci": ""
+}
