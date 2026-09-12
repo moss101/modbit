@@ -1,0 +1,15 @@
+{
+ "task": "IMP-EV-0263",
+ "requirement": "REQ-EV-0263",
+ "qual": "QUAL-EV-0263",
+ "tests": [
+  "m6_7_a_background_child_survives_a_core_restart_and_hands_its_result_back",
+  "fleet: a delegating parent shows its phase, agents and the nested child; the child is never a top-level card (apps/desktop/e2e/fleet-agents.spec.ts)"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "the client disconnects and the Core is killed mid-child; the child is suspended, not lost: the second Core lists it Waiting/External/Suspended with its node WAITING, and the parent's resume brings it back to completion under the same ceiling; the packaged app restarts and rebuilds the parent card with the child nested from the Core.",
+ "audit": "PARTIAL before: a background child had a durable task handle, a capped effect ceiling (REVERSIBLE_WRITE) and a checkpoint before its admission (M6.3), but was lost to a Core restart.",
+ "limitations": "A client disconnect alone does not suspend a headless Core's work; the desktop-supervised Core exits with its client and resumes on the next start.",
+ "ci": ""
+}

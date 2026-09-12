@@ -63,7 +63,7 @@ fn migrates_the_committed_m1_1_fixture_and_derives_projections() {
     assert_eq!(report.to_version, 15);
     assert_eq!(
         report.applied,
-        vec![2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+        vec![2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
     );
     // Events untouched (docs/31: migration preserves existing event ids).
     let task = TaskId::from_bytes([0xC3; 16]);
