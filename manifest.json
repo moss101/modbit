@@ -8,7 +8,7 @@
   "counts": {
     "docs": 89,
     "root_and_tooling": 921,
-    "docs_bytes": 1097551
+    "docs_bytes": 1097678
   },
   "sections": [
     {
@@ -851,8 +851,8 @@
       "section": "live-state",
       "section_title": "Live state",
       "title": "Build Manifest",
-      "bytes": 5649,
-      "sha256": "081eee295507ad6480c2852b54977961d9c023e0739749693ec34628626e52a2"
+      "bytes": 5776,
+      "sha256": "c7e710d65e1eec9616a423a913f22e863d63d3e0a78f741a8b5bd7f15f82138c"
     }
   ],
   "root_and_tooling": [
