@@ -106,6 +106,7 @@ tree-sitter-typescript = "0.23"
 tree-sitter-javascript = "0.25"
 tree-sitter-python = "0.25"
 usearch = "2.26"
+rquickjs = { version = "0.13.0", default-features = false, features = ["futures"] }
 memchr = "2.8"
 portable-pty = "0.9.0"
 prost = "0.14.4"

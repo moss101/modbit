@@ -19401,3 +19401,308 @@ async fn qual_m5_1_projection_follows_the_plan_and_refuses_crafted_calls() {
         "only the declared write landed: {trails:#?}"
     );
 }
+
+/// E2E-012 (docs/51, docs/16 "Procedural Tool Runtime", M5.2/M5.3/M5.4): a
+/// coding task through `proc.exec`. The program runs in the isolate with no
+/// ambient authority (no `require`, `process`, `fetch`) and composes the
+/// turn's projected tools through `tools.*`: every binding call is an
+/// ordinary tool call on the log under the exec call's id — the same
+/// pipeline, projection fence, Capability Kernel, approval flow and
+/// receipts as a direct call. A write outside the plan meets the harness
+/// scope gate inside the program; the destructive tool the plan declared
+/// opens a real approval the user denies, and the program sees
+/// `APPROVAL_DENIED` with no effect; a program past its CPU budget ends as
+/// `BUDGET_EXHAUSTED`; the declared write lands and the task completes.
+#[tokio::test]
+async fn qual_m5_e2e_012_a_program_composes_governed_tools_in_the_isolate() {
+    use modbit_protocol::v1::{ApprovalResolvedAck, ResolveApproval, StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[("a.txt", "alpha\n")]);
+    let program = r#"
+        const probe = [typeof require, typeof process, typeof fetch];
+        const hits = await tools.search.exact({ query: "alpha" });
+        const f = await tools.fs.read({ path: "a.txt" });
+        const w = await tools.change.apply({ path: "b.txt", op: "create", content: f.content + "beta\n" });
+        const sh = await tools.shell.exec({ argv: ["sh", "-c", "cat b.txt"], inherit_env: true });
+        let outside = null;
+        try { await tools.change.apply({ path: "c.txt", op: "create", content: "no\n" }); }
+        catch (e) { outside = e.code; }
+        let denied = null;
+        try { await tools.git.worktree.close({ path: "nowhere" }); }
+        catch (e) { denied = e.code; }
+        console.log("hits", hits.hits.length);
+        return { probe, hits: hits.hits.length, content: f.content, rev: w.workspace_revision_after,
+                 exit: sh.exit_code, outside, denied, calls: typeof w.tool_call_id };
+    "#;
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "add b.txt", "expected_files": ["b.txt"], "protected_effects": ["git.worktree.close"]}}]}),
+        json!({"calls": [{"name": "proc.exec", "args": {"program": program, "declared_effects": ["fs", "search", "change", "shell", "git.worktree"]}}]}),
+        // The program is awaiting the approval: RUNNING; wait for it.
+        json!({"calls": [{"name": "proc.wait", "args": {"handle": "call_1_0", "timeout_ms": 30000}}]}),
+        json!({"calls": [{"name": "proc.exec", "args": {"program": "let n = 0; for (;;) { n++; } return n;", "budget": {"cpu_time_ms": 300}}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "added b.txt through a program", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x61)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x62, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x63),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 12,
+                max_tool_calls: 0,
+                max_no_progress_turns: 6,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    // The program's destructive call opened a real approval; deny it.
+    let deadline = std::time::Instant::now() + Duration::from_secs(60);
+    let approval = loop {
+        let list = approvals_of(&mut c, &session).await;
+        if let Some(a) = list.iter().find(|a| a.status == "REQUESTED") {
+            break a.clone();
+        }
+        if std::time::Instant::now() >= deadline {
+            let trail = task_events(&core, &session, &task).await;
+            panic!("no approval opened\n{trail:#?}");
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    };
+    assert_eq!(approval.tool_name, "git.worktree.close");
+    // Let the exec's inline grace pass while the program waits, so the model
+    // sees RUNNING and has to wait for the outcome.
+    tokio::time::sleep(Duration::from_millis(2_600)).await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x64),
+            "ResolveApproval",
+            ResolveApproval {
+                approval_id: approval.approval_id.clone(),
+                approve: false,
+                reason: "not this worktree".into(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let res: ApprovalResolvedAck = Client::result(&ack).unwrap();
+    assert_eq!(res.status, "DENIED");
+    let st = wait_task(&mut c, &task, 120).await;
+    let bodies = seen.lock().unwrap().clone();
+    let last_msgs: Vec<String> = bodies.last().unwrap()["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    assert_eq!(st.state, "ReadyForReview", "{st:?}\n{last_msgs:#?}");
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("b.txt")).unwrap(),
+        "alpha\nbeta\n"
+    );
+    assert!(
+        !repo.path().join("c.txt").exists(),
+        "the out-of-plan write never happened"
+    );
+    // What the model saw: the exec surface named the bindings; the exec came
+    // back RUNNING with the handle; the wait brought the outcome; the second
+    // program ended on its CPU budget.
+    let exec_desc = bodies[1]["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|t| t["function"]["name"] == "proc.exec")
+        .unwrap()["function"]["description"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    assert!(
+        exec_desc.contains("fs.read")
+            && exec_desc.contains("change.apply")
+            && exec_desc.contains("shell.exec"),
+        "{exec_desc}"
+    );
+    assert!(
+        last_msgs[1].starts_with("status: RUNNING\nhandle: call_1_0\n"),
+        "{}",
+        last_msgs[1]
+    );
+    let waited = &last_msgs[2];
+    assert!(
+        waited.starts_with("status: COMPLETED\nhandle: call_1_0\n"),
+        "{waited}"
+    );
+    let value: serde_json::Value = serde_json::from_str(
+        waited
+            .split("value:\n")
+            .nth(1)
+            .unwrap()
+            .lines()
+            .next()
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        value["probe"],
+        json!(["undefined", "undefined", "undefined"])
+    );
+    assert_eq!(value["hits"], 1);
+    assert_eq!(value["content"], "alpha\n");
+    assert_eq!(value["rev"], 2);
+    assert_eq!(value["exit"], 0);
+    assert_eq!(value["outside"], "HARNESS_PLAN_REVISION_REQUIRED");
+    assert_eq!(value["denied"], "APPROVAL_DENIED");
+    assert_eq!(value["calls"], "string");
+    assert!(
+        waited.contains("- change.apply: HARNESS_PLAN_REVISION_REQUIRED\n")
+            && waited.contains("- git.worktree.close: APPROVAL_DENIED\n"),
+        "{waited}"
+    );
+    assert!(waited.contains("  hits 1\n"), "{waited}");
+    assert!(
+        last_msgs[3].starts_with(
+            "status: BUDGET_EXHAUSTED\nhandle: call_3_0\nbudget_exhausted: CPU_TIME\n"
+        ),
+        "{}",
+        last_msgs[3]
+    );
+    // On the log: each binding call is its own tool call under the exec
+    // call's id; the destructive one went through the approval flow and
+    // ended denied; the out-of-plan write never became a tool call; the
+    // program's lifecycle is recorded; the task waited on the approval.
+    let replay = wire_replay(&core, &session).await;
+    let mut proposed: Vec<(String, String)> = Vec::new();
+    for e in replay.iter().filter(|e| {
+        e["aggregate_type"] == "tool_call"
+            && e["event_type"] == "ToolCallProposed"
+            && e["task_id"].as_str() == Some(&hex_id(&task))
+    }) {
+        let p = &e["payload"]["payload"];
+        proposed.push((
+            p["call_id"].as_str().unwrap_or_default().to_owned(),
+            p["tool_name"].as_str().unwrap_or_default().to_owned(),
+        ));
+    }
+    let program_calls: Vec<&str> = proposed
+        .iter()
+        .filter(|(c, _)| c.starts_with("call_1_0#"))
+        .map(|(_, n)| n.as_str())
+        .collect();
+    assert_eq!(
+        program_calls,
+        [
+            "search.exact",
+            "fs.read",
+            "change.apply",
+            "shell.exec",
+            "git.worktree.close"
+        ],
+        "{proposed:?}"
+    );
+    assert_eq!(
+        proposed.iter().filter(|(_, n)| n == "change.apply").count(),
+        1,
+        "the out-of-plan write never reached the pipeline: {proposed:?}"
+    );
+    let evs = task_events(&core, &session, &task).await;
+    let names: Vec<&str> = evs
+        .iter()
+        .filter(|(a, _, _)| a == "task")
+        .map(|(_, t, _)| t.as_str())
+        .collect();
+    assert_eq!(
+        names.iter().filter(|t| **t == "ProgramStarted").count(),
+        2,
+        "{names:?}"
+    );
+    assert_eq!(
+        names.iter().filter(|t| **t == "ProgramEnded").count(),
+        2,
+        "{names:?}"
+    );
+    assert!(
+        names.contains(&"TaskWaiting") && names.contains(&"TaskResumed"),
+        "the task waited on the program's approval: {names:?}"
+    );
+    let ended: Vec<&serde_json::Value> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "ProgramEnded")
+        .map(|(_, _, p)| p)
+        .collect();
+    assert_eq!(ended[0]["status"], "COMPLETED");
+    // Six binding calls, five of which reached the pipeline (the out-of-plan
+    // write stopped at the host's harness gate).
+    assert_eq!(ended[0]["tool_calls"], 6);
+    assert_eq!(ended[1]["status"], "BUDGET_EXHAUSTED");
+    assert_eq!(ended[1]["budget_exhausted"], "CPU_TIME");
+    let started: Vec<&serde_json::Value> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "ProgramStarted")
+        .map(|(_, _, p)| p)
+        .collect();
+    let bindings: Vec<&str> = started[0]["bindings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|v| v.as_str())
+        .collect();
+    assert!(
+        bindings.contains(&"fs.read")
+            && bindings.contains(&"change.apply")
+            && bindings.contains(&"git.worktree.close")
+            && !bindings
+                .iter()
+                .any(|b| b.starts_with("lsp.") || *b == "plan.update"),
+        "{bindings:?}"
+    );
+    let steps: Vec<&str> = evs
+        .iter()
+        .filter(|(a, t, _)| a == "run_step" && t == "StepScheduled")
+        .filter_map(|(_, _, p)| p["step_type"]["kind"].as_str())
+        .collect();
+    assert_eq!(
+        steps.iter().filter(|s| **s == "PROCEDURE_RUN").count(),
+        3,
+        "{steps:?}"
+    );
+    // The BASELINE ran before the first program that may write (docs/64 §1).
+    let first_program = steps.iter().position(|s| *s == "PROCEDURE_RUN").unwrap();
+    assert_eq!(steps[first_program - 1], "VERIFICATION", "{steps:?}");
+    let denied_call = replay
+        .iter()
+        .filter(|e| e["aggregate_type"] == "tool_call")
+        .filter(|e| e["payload"]["payload"]["call_id"].as_str() == Some("call_1_0#6"))
+        .map(|e| e["aggregate_id"].as_str().unwrap().to_owned())
+        .next()
+        .unwrap();
+    let trail: Vec<&str> = replay
+        .iter()
+        .filter(|e| e["aggregate_id"].as_str() == Some(&denied_call))
+        .filter_map(|e| e["event_type"].as_str())
+        .collect();
+    assert!(
+        trail.contains(&"ToolCallApprovalRequested")
+            && !trail.contains(&"ToolCallDispatched")
+            && trail.last() == Some(&"ToolCallFailed"),
+        "{trail:?}"
+    );
+}

@@ -574,6 +574,11 @@ impl Lineage {
         self.lease
     }
 
+    /// The run, if any.
+    pub(crate) fn run_id(self) -> Option<RunId> {
+        self.run
+    }
+
     /// The turn this lineage is inside, when it is inside one.
     pub(crate) fn turn_id(self) -> Option<TurnId> {
         self.turn
@@ -1794,6 +1799,37 @@ fn projection(
         description: "Record a repair attempt before changing code after a failed verification: the failing check (check_id), a one-sentence hypothesis, the evidence you read or ran, and the intended fix. A change after a failed verification without a recorded attempt is refused; an equivalent hypothesis for the same failure, or the policy's attempt bounds, escalate the task to Needs Attention with the attempt history; a WORSENED attempt is reverted (docs/28 §5).".into(),
         input_schema: serde_json::json!({"type":"object","properties":{"check_id":{"type":"string"},"failure_signature":{"type":"string"},"hypothesis":{"type":"string","minLength":1},"evidence_refs":{"type":"array","items":{"type":"string"}},"intended_fix":{"type":"string"}},"required":["hypothesis"]}),
     });
+    // The procedural surface (docs/16, M5.4): a program composes the same
+    // projected tools through `tools.*`; each call is an ordinary governed
+    // tool call.
+    let program_bindings: Vec<String> = tools
+        .iter()
+        .map(|t| t.name.clone())
+        .filter(|n| {
+            !matches!(
+                n.as_str(),
+                TOOL_SEARCH | CONTEXT_TOOL | ASK_TOOL | PLAN_TOOL
+            )
+        })
+        .collect();
+    tools.push(ToolProjection {
+        name: crate::procedural::EXEC_TOOL.into(),
+        description: format!(
+            "Run a JavaScript program (the body of an async function: `await` and `return` work) in an isolated runtime with no filesystem, network, process or module access of its own. Its only way out is `await tools.<toolset>.<name>(args)` for the tools projected this turn ({}; a deferred tool in scope may be called by name too), each an ordinary governed tool call with its own policy decision, approval and receipt; a refused call throws an Error carrying `code`. `console.log` for notes; `return` the result (JSON). `declared_effects` narrows the bindings to the named tools or toolsets. Budgets: cpu_time_ms (default 5000, max {}), memory_bytes, max_tool_calls (bounded by the task's remaining tool budget), max_output_bytes. Returns the outcome, or a handle for proc.wait when the program is still running after {} ms (for instance awaiting an approval). Use it to compose several tool calls in one turn; use direct calls when one call is enough.",
+            if program_bindings.is_empty() { "none".to_owned() } else { program_bindings.join(", ") },
+            crate::procedural::MAX_CPU_TIME_MS,
+            crate::procedural::EXEC_INLINE_GRACE_MS
+        ),
+        input_schema: serde_json::json!({"type":"object","properties":{"program":{"type":"string","minLength":1},"declared_effects":{"type":"array","items":{"type":"string"}},"budget":{"type":"object","properties":{"cpu_time_ms":{"type":"integer","minimum":1},"memory_bytes":{"type":"integer","minimum":1},"max_tool_calls":{"type":"integer","minimum":1},"max_output_bytes":{"type":"integer","minimum":1}},"additionalProperties":false}},"required":["program"],"additionalProperties":false}),
+    });
+    tools.push(ToolProjection {
+        name: crate::procedural::WAIT_TOOL.into(),
+        description: format!(
+            "Wait for a program proc.exec handed back as RUNNING: its outcome once it ends (asked again, the same outcome), or RUNNING again after timeout_ms (default and maximum {} ms).",
+            crate::procedural::WAIT_CEILING_MS
+        ),
+        input_schema: serde_json::json!({"type":"object","properties":{"handle":{"type":"string","minLength":1},"timeout_ms":{"type":"integer","minimum":1}},"required":["handle"],"additionalProperties":false}),
+    });
     tools.push(ToolProjection {
         name: VERIFY_TOOL.into(),
         description: "Run the derived verification plan as a TARGETED stage (build, tests) and get normalized failing checks first; the COMPLETION run happens on task.complete.".into(),
@@ -1911,6 +1947,8 @@ async fn run_loop(
     profile_request(&core, &task, lt, &actor).await;
     let mut tools: Vec<ToolProjection>;
     let mut projected_names: Vec<String>;
+    // The programs of this run (docs/16 "Procedural Tool Runtime", M5.4).
+    let mut programs = crate::procedural::Programs::default();
     let end = 'outer: loop {
         if cancel.is_cancelled() {
             break LoopEnd::Cancelled;
@@ -2947,6 +2985,81 @@ async fn run_loop(
                         },
                     )
                 }
+                crate::procedural::EXEC_TOOL => {
+                    // A program that may write meets the same rule as a direct
+                    // write: a BASELINE before the first write (docs/64 §1).
+                    let declared: Vec<String> =
+                        serde_json::from_str::<serde_json::Value>(&arguments_json)
+                            .ok()
+                            .and_then(|v| {
+                                serde_json::from_value(v["declared_effects"].clone()).ok()
+                            })
+                            .unwrap_or_default();
+                    let may_write = crate::procedural::bindings_for(&projected_names, &declared)
+                        .iter()
+                        .any(|b| WRITE_TOOLS.contains(&b.as_str()));
+                    if may_write && state.plan.is_some() && !state.baseline_recorded {
+                        let _ = run_verification(
+                            &core,
+                            &task,
+                            lturn,
+                            &actor,
+                            &mut state,
+                            Stage::Baseline,
+                            step_ordinal,
+                        )
+                        .await;
+                        step_ordinal += 1;
+                    }
+                    let r = crate::procedural::handle_exec(
+                        &core,
+                        &task,
+                        lturn,
+                        &actor,
+                        &mut state,
+                        &mut programs,
+                        &projected_names,
+                        &call_id,
+                        &arguments_json,
+                        &cancel,
+                    )
+                    .await;
+                    if let TranscriptEntry::ToolResult { progress: p, .. } = &r.entry {
+                        progress |= *p;
+                    }
+                    (r.entry, StepType::ProcedureRun, r.failure_code)
+                }
+                crate::procedural::WAIT_TOOL => {
+                    let r = crate::procedural::handle_wait(
+                        &core,
+                        &task,
+                        lturn,
+                        &actor,
+                        &mut state,
+                        &mut programs,
+                        &call_id,
+                        &arguments_json,
+                        &cancel,
+                    )
+                    .await;
+                    if let TranscriptEntry::ToolResult { progress: p, .. } = &r.entry {
+                        progress |= *p;
+                    }
+                    (r.entry, StepType::ProcedureRun, r.failure_code)
+                }
+                COMPLETE_TOOL if programs.any_running() => {
+                    let entry = TranscriptEntry::ToolResult {
+                        call_id: call_id.clone(),
+                        name: name.clone(),
+                        text: "status: REFUSED\nerror_code: PROGRAM_RUNNING\nerror: a program is still running; proc.wait for it before completing".into(),
+                        failure_signature: None,
+                        clears: vec![],
+                        wrote: None,
+                        progress: false,
+                        media: vec![],
+                    };
+                    (entry, StepType::SelfReview, Some("PROGRAM_RUNNING".into()))
+                }
                 COMPLETE_TOOL => {
                     let (entry, ok) = handle_complete(
                         &core,
@@ -3522,6 +3635,9 @@ async fn run_loop(
     // ---- Loop end: persist the run/task outcome. An outcome is a state
     // advance, so it is fenced too; a lease lost at the very end turns the
     // outcome into a fence like any other (docs/33).
+    // A program still running when the loop ends is ended with it: it stops
+    // at its next interrupt poll or binding call.
+    programs.cancel_all();
     let end = match lease_lost(&core, &task, cfg.lease_generation).await {
         Some((current, owner)) if !matches!(end, LoopEnd::Fenced { .. }) => LoopEnd::Fenced {
             current_generation: current,

@@ -106,6 +106,8 @@ As built (M4): plus `RouteReevaluated` (run; EPR-009: boundary, routing epoch, t
 
 As built (M5.1): `ToolProjectionSelected` (turn) carries, besides the projection hash, `projected` (the tool names offered that turn), `withheld` (`<tool>:<reason>` — `DECLARE_WRITES` | `DECLARE_PROTECTED_EFFECT` | `REVIEWER_LEG`) and `leg_role`; a model call outside the turn's projection fails at the policy stage with `TOOL_NOT_PROJECTED` (doc 16 "Projection as built").
 
+As built (M5.4): task events `ProgramStarted` (handle, program_ref, declared_effects, bindings, budget) and `ProgramEnded` (handle, status COMPLETED | FAILED | BUDGET_EXHAUSTED | CANCELLED, budget_exhausted, outcome_ref, tool_calls, elapsed_ms, interrupt_polls); a program's binding calls are ordinary tool-call aggregates whose `call_id` is `<exec call id>#<n>`; exec/wait are `ProcedureRun` steps (doc 16 "Bindings and the model-visible surface as built").
+
 ### Security/effects
 `CapabilityLeaseGranted, CapabilityLeaseRevoked, ApprovalRequested, ApprovalResolved, EffectReceiptAppended, SecretHandleUsed, EmergencyStopActivated`.
 

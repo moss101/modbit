@@ -1,0 +1,26 @@
+{
+ "task": "M5.2",
+ "requirements": [
+  "docs/16 Procedural Tool Runtime (isolate)",
+  "REQ-EV-0231"
+ ],
+ "scenarios": [
+  "E2E-012 (isolate half)"
+ ],
+ "tests": [
+  "the_isolate_has_no_ambient_authority",
+  "tools_bindings_are_the_only_way_out_and_every_call_reaches_the_host",
+  "a_host_refusal_is_a_typed_error_the_program_may_catch_and_never_an_effect",
+  "the_cpu_budget_ends_a_spinning_program",
+  "the_memory_and_stack_budgets_end_a_program_that_grows_without_bound",
+  "the_tool_call_output_and_log_budgets_are_enforced",
+  "a_thrown_error_fails_the_program_with_its_message_and_stack",
+  "the_async_form_runs_on_its_own_thread_and_awaits_real_host_futures"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "A fresh quickjs-ng runtime with the core intrinsics only: no fs/network/process/module/timer access, the raw bindings removed after the prelude, a frozen tools tree as the only way out, every call served (or refused with a typed code) by the host; CPU, interrupt-poll, memory, stack, tool-call, output and log budgets each tripped by a real program and named in the outcome.",
+ "audit": "NOT-FOUND before: the crate was the M0.1 stub; no JavaScript engine in the workspace.",
+ "limitations": "CPU budget is a deadline at interrupt polls plus a poll ceiling, not an exact instruction count; registry routing is M5.3; exec/wait/request_user_input is M5.4.",
+ "ci": ""
+}

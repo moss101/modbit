@@ -1,0 +1,20 @@
+{
+ "task": "M5.4",
+ "requirements": [
+  "docs/16 Procedural Tool Runtime (surface)",
+  "REQ-EV-0097"
+ ],
+ "scenarios": [
+  "E2E-012"
+ ],
+ "tests": [
+  "qual_m5_e2e_012_a_program_composes_governed_tools_in_the_isolate",
+  "time_awaiting_the_host_is_not_cpu_time_and_the_host_can_cancel"
+ ],
+ "proof": "proc.exec / proc.wait as harness tools with the bindings named; a program awaiting an approval comes back RUNNING and proc.wait brings its outcome; a CPU-budget trip is BUDGET_EXHAUSTED; ProgramStarted/ProgramEnded and ProcedureRun steps on the log; the program's writes, calls and check results fold into the task's state; the task completes.",
+ "audit": "NOT-FOUND before: no model-visible way to run a program.",
+ "limitations": "request_user_input is user.ask between programs; a projection-narrowing procedural mode is not switched on (M5.6 compares the modes).",
+ "batch_commits": [],
+ "runs": [],
+ "ci": ""
+}

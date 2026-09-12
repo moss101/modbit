@@ -1,0 +1,23 @@
+{
+ "task": "M5.3",
+ "requirements": [
+  "docs/16 Procedural Tool Runtime (bindings)",
+  "REQ-EV-0231",
+  "REQ-EV-0097"
+ ],
+ "scenarios": [
+  "E2E-012",
+  "QUAL-EV-0231"
+ ],
+ "tests": [
+  "qual_m5_e2e_012_a_program_composes_governed_tools_in_the_isolate",
+  "tools_bindings_are_the_only_way_out_and_every_call_reaches_the_host",
+  "a_host_refusal_is_a_typed_error_the_program_may_catch_and_never_an_effect"
+ ],
+ "proof": "A program's tools.* calls are ordinary tool-call aggregates under the exec call's id through the same pipeline, projection fence, kernel, approval flow and receipts; an out-of-plan write is refused by the harness gate inside the program and never becomes a call; the declared destructive call opens a real approval the user denies and the program sees APPROVAL_DENIED with no effect.",
+ "audit": "NOT-FOUND before: the isolate had a Host seam; nothing routed a program's call through the registry.",
+ "limitations": "A program cannot ask the user (a scope question refuses the write); the retrieval rule is enforced by the pipeline's ledger, not pre-checked by the host.",
+ "batch_commits": [],
+ "runs": [],
+ "ci": ""
+}

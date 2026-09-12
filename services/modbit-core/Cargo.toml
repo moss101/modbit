@@ -20,6 +20,7 @@ modbit-protocol.workspace = true
 modbit-providers.workspace = true
 modbit-terminal.workspace = true
 modbit-tools.workspace = true
+modbit-procedural-runtime.workspace = true
 modbit-workspace.workspace = true
 modbit-git.workspace = true
 modbit-verification.workspace = true

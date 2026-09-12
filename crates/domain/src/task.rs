@@ -330,6 +330,40 @@ pub enum TaskEvent {
         /// Tool names activated.
         tools: Vec<String>,
     },
+    /// `ProgramStarted` (docs/16 "Procedural Tool Runtime", M5.4): a
+    /// `proc.exec` program began in the isolate with the bindings and budget
+    /// named; every binding call is its own tool call on the log. No state
+    /// change.
+    ProgramStarted {
+        /// Program handle (the exec call id).
+        handle: String,
+        /// Object hash of the program source.
+        program_ref: String,
+        /// Effects the program declared (tool names or toolsets).
+        declared_effects: Vec<String>,
+        /// Bindings the program was given.
+        bindings: Vec<String>,
+        /// Budget (JSON: cpu_time_ms, memory_bytes, max_tool_calls, …).
+        budget: serde_json::Value,
+    },
+    /// `ProgramEnded`: how the program ended and what it produced. No state
+    /// change.
+    ProgramEnded {
+        /// Program handle.
+        handle: String,
+        /// `COMPLETED` | `FAILED` | `BUDGET_EXHAUSTED` | `CANCELLED`.
+        status: String,
+        /// The budget that ended it, when one did.
+        budget_exhausted: Option<String>,
+        /// Object hash of the full outcome (value, error, log, calls).
+        outcome_ref: Option<String>,
+        /// Binding calls the program made.
+        tool_calls: u32,
+        /// Wall-clock milliseconds the program ran.
+        elapsed_ms: u64,
+        /// Interrupt polls the interpreter made.
+        interrupt_polls: u64,
+    },
     /// `ContextEpochOpened` (docs/19 "Compaction epochs", REQ-EV-0056):
     /// the model-visible transcript before `source_head_offset` is replaced by
     /// the epoch's projection. The canonical log is untouched. No state change.
@@ -794,6 +828,8 @@ impl TaskEvent {
             Self::SelectionRecorded { .. } => "SelectionRecorded",
             Self::SelfReviewRecorded { .. } => "SelfReviewRecorded",
             Self::ToolsActivated { .. } => "ToolsActivated",
+            Self::ProgramStarted { .. } => "ProgramStarted",
+            Self::ProgramEnded { .. } => "ProgramEnded",
             Self::ContextEpochOpened { .. } => "ContextEpochOpened",
             Self::CompactionStarted { .. } => "CompactionStarted",
             Self::CompactionCommitted { .. } => "CompactionCommitted",
@@ -912,6 +948,8 @@ impl Task {
             | TaskEvent::PlanRevised { .. }
             | TaskEvent::SelfReviewRecorded { .. }
             | TaskEvent::ToolsActivated { .. }
+            | TaskEvent::ProgramStarted { .. }
+            | TaskEvent::ProgramEnded { .. }
             | TaskEvent::ContextEpochOpened { .. }
             | TaskEvent::CompactionStarted { .. }
             | TaskEvent::CompactionCommitted { .. }
