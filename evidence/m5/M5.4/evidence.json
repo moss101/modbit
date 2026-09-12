@@ -14,7 +14,17 @@
  "proof": "proc.exec / proc.wait as harness tools with the bindings named; a program awaiting an approval comes back RUNNING and proc.wait brings its outcome; a CPU-budget trip is BUDGET_EXHAUSTED; ProgramStarted/ProgramEnded and ProcedureRun steps on the log; the program's writes, calls and check results fold into the task's state; the task completes.",
  "audit": "NOT-FOUND before: no model-visible way to run a program.",
  "limitations": "request_user_input is user.ask between programs; a projection-narrowing procedural mode is not switched on (M5.6 compares the modes).",
- "batch_commits": [],
- "runs": [],
- "ci": ""
+ "batch_commits": [
+  "b428243"
+ ],
+ "runs": [
+  {
+   "id": "gha-34679501944",
+   "kind": "hosted CI on b428243",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34679501944",
+   "log": "ci-run-34679501944.json"
+  }
+ ],
+ "ci": "https://github.com/moss101/modbit/actions/runs/34679501944 (green on macOS, Linux and Windows at b428243)"
 }

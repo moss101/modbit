@@ -17,10 +17,20 @@
   "a_thrown_error_fails_the_program_with_its_message_and_stack",
   "the_async_form_runs_on_its_own_thread_and_awaits_real_host_futures"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "b428243"
+ ],
+ "runs": [
+  {
+   "id": "gha-34679501944",
+   "kind": "hosted CI on b428243",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34679501944",
+   "log": "ci-run-34679501944.json"
+  }
+ ],
  "proof": "A fresh quickjs-ng runtime with the core intrinsics only: no fs/network/process/module/timer access, the raw bindings removed after the prelude, a frozen tools tree as the only way out, every call served (or refused with a typed code) by the host; CPU, interrupt-poll, memory, stack, tool-call, output and log budgets each tripped by a real program and named in the outcome.",
  "audit": "NOT-FOUND before: the crate was the M0.1 stub; no JavaScript engine in the workspace.",
  "limitations": "CPU budget is a deadline at interrupt polls plus a poll ceiling, not an exact instruction count; registry routing is M5.3; exec/wait/request_user_input is M5.4.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34679501944 (green on macOS, Linux and Windows at b428243)"
 }

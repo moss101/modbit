@@ -17,7 +17,17 @@
  "proof": "A program's tools.* calls are ordinary tool-call aggregates under the exec call's id through the same pipeline, projection fence, kernel, approval flow and receipts; an out-of-plan write is refused by the harness gate inside the program and never becomes a call; the declared destructive call opens a real approval the user denies and the program sees APPROVAL_DENIED with no effect.",
  "audit": "NOT-FOUND before: the isolate had a Host seam; nothing routed a program's call through the registry.",
  "limitations": "A program cannot ask the user (a scope question refuses the write); the retrieval rule is enforced by the pipeline's ledger, not pre-checked by the host.",
- "batch_commits": [],
- "runs": [],
- "ci": ""
+ "batch_commits": [
+  "b428243"
+ ],
+ "runs": [
+  {
+   "id": "gha-34679501944",
+   "kind": "hosted CI on b428243",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34679501944",
+   "log": "ci-run-34679501944.json"
+  }
+ ],
+ "ci": "https://github.com/moss101/modbit/actions/runs/34679501944 (green on macOS, Linux and Windows at b428243)"
 }

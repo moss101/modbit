@@ -2770,8 +2770,55 @@
    "milestone": "M5",
    "order": 1,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:b428243",
+    "artifact:evidence/m5/M5.2/TASK_CARD.md",
+    "test:the_isolate_has_no_ambient_authority",
+    "test:the_cpu_budget_ends_a_spinning_program",
+    "test:the_memory_and_stack_budgets_end_a_program_that_grows_without_bound",
+    "test:the_tool_call_output_and_log_budgets_are_enforced",
+    "run:34679501944"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-12T07:15:38Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "NOT-FOUND before: crates/procedural-runtime was the M0.1 stub; no JavaScript engine in the workspace; docs/35 binding PROVISIONAL"
+    },
+    {
+     "at": "2026-09-12T07:15:38Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in b428243: rquickjs 0.13 isolate, Host seam, budgets, Cancel, prelude with frozen tools.*"
+    },
+    {
+     "at": "2026-09-12T07:15:38Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired: run/run_async on a dedicated thread; docs/35 records the binding"
+    },
+    {
+     "at": "2026-09-12T07:15:38Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "nine isolate tests on the real engine (crates/procedural-runtime/tests/isolate.rs)"
+    },
+    {
+     "at": "2026-09-12T07:15:38Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "green on hosted CI (macOS, Linux, Windows) at b428243; E2E-012 runs the isolate inside the real Core"
+    },
+    {
+     "at": "2026-09-12T07:15:38Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: isolate half of E2E-012 proven; docs/16 and docs/35 as built; card under evidence/m5/M5.2"
+    }
+   ],
+   "status_changed_on": "2026-09-12T07:15:38Z"
   },
   {
    "id": "M5.3",
@@ -2781,8 +2828,52 @@
    "milestone": "M5",
    "order": 2,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:b428243",
+    "artifact:evidence/m5/M5.3/TASK_CARD.md",
+    "test:qual_m5_e2e_012_a_program_composes_governed_tools_in_the_isolate",
+    "run:34679501944"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-12T07:15:38Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "NOT-FOUND before: the isolate had a Host seam; nothing routed a program's call through the Tool Registry"
+    },
+    {
+     "at": "2026-09-12T07:15:38Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in b428243: services/modbit-core/src/procedural.rs ProgramHost (bindings from the projection, harness gates, pipeline serve with approval flow)"
+    },
+    {
+     "at": "2026-09-12T07:15:38Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired: every program call is a ToolHost::invoke with a fresh ToolCallId under <exec>#<n>"
+    },
+    {
+     "at": "2026-09-12T07:15:38Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification on the real Core (E2E-012; QUAL-EV-0231: the destructive call meets the same kernel and approval flow and is denied)"
+    },
+    {
+     "at": "2026-09-12T07:15:38Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "green on hosted CI (macOS, Linux, Windows) at b428243"
+    },
+    {
+     "at": "2026-09-12T07:15:38Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: bindings are ordinary tool calls on the log; card under evidence/m5/M5.3"
+    }
+   ],
+   "status_changed_on": "2026-09-12T07:15:38Z"
   },
   {
    "id": "M5.4",
@@ -2792,8 +2883,53 @@
    "milestone": "M5",
    "order": 3,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:b428243",
+    "artifact:evidence/m5/M5.4/TASK_CARD.md",
+    "test:qual_m5_e2e_012_a_program_composes_governed_tools_in_the_isolate",
+    "test:time_awaiting_the_host_is_not_cpu_time_and_the_host_can_cancel",
+    "run:34679501944"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-12T07:15:38Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "NOT-FOUND before: no model-visible way to run a program"
+    },
+    {
+     "at": "2026-09-12T07:15:38Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in b428243: proc.exec/proc.wait in the projection and the loop, ProgramStarted/ProgramEnded, ProcedureRun steps, cancellation at loop end"
+    },
+    {
+     "at": "2026-09-12T07:15:38Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired: exec returns the outcome or a RUNNING handle; wait resolves it; task.complete refused while a program runs"
+    },
+    {
+     "at": "2026-09-12T07:15:38Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "E2E-012 in full on the real Core"
+    },
+    {
+     "at": "2026-09-12T07:15:39Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "green on hosted CI (macOS, Linux, Windows) at b428243"
+    },
+    {
+     "at": "2026-09-12T07:15:39Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: E2E-012 proven; docs/16 and docs/30 as built; card under evidence/m5/M5.4"
+    }
+   ],
+   "status_changed_on": "2026-09-12T07:15:39Z"
   },
   {
    "id": "M5.5",
