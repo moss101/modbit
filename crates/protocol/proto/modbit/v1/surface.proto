@@ -1499,3 +1499,88 @@ message SessionTreeView {
   repeated SessionTreeNode tasks = 3;
   repeated BranchEventView branches = 4;
 }
+
+// ---- M6.1: the WorkGraph and the AgentGraph of a task (docs/14 "One
+// runtime, three explicit graphs"), served as projections of the task's log.
+
+message GetWorkGraph {
+  Id task_id = 1;
+}
+
+message WorkNodeView {
+  string id = 1;
+  string title = 2;
+  repeated string depends_on = 3;
+  Id owner_agent_id = 4;           // absent when nobody owns it
+  string status = 5;               // PENDING | READY | ACTIVE | BLOCKED | DONE | FAILED | CANCELLED
+  repeated string expected_artifacts = 6;
+  string verification = 7;
+  repeated string evidence_refs = 8;
+  repeated string blockers = 9;
+  uint32 attempts = 10;
+  uint32 plan_version = 11;
+}
+
+message WorkGraphView {
+  Id task_id = 1;
+  repeated WorkNodeView nodes = 2;
+  repeated string ready = 3;       // ids whose dependencies are all done
+  uint32 plan_version = 4;         // the latest plan version that changed a node
+}
+
+message GetAgentGraph {
+  Id task_id = 1;
+}
+
+message AgentNodeView {
+  Id agent_id = 1;
+  Id parent_agent_id = 2;          // absent for the primary
+  Id root_agent_id = 3;
+  uint32 depth = 4;
+  string kind = 5;                 // PRIMARY | SUBAGENT | SPECIALIST
+  string status = 6;               // PROPOSED | ADMISSION_PENDING | ADMITTED | RUNNING | BACKGROUND | PARKED | WAITING | COMPLETED | FAILED | CANCELLED
+  Id run_id = 7;                   // the run it executes in, when any
+  string capsule_ref = 8;          // the execution capsule object, once admitted
+  string endpoint = 9;
+  string model = 10;
+  string idempotency_key = 11;
+  repeated string owns = 12;       // work node ids
+  int64 created_at_ms = 13;
+  int64 updated_at_ms = 14;
+  uint64 last_offset = 15;
+}
+
+message AgentGraphView {
+  Id task_id = 1;
+  repeated AgentNodeView nodes = 2;
+}
+
+// ---- M6.2: capacity tickets (docs/14 "Capacity tickets", REQ-EV-0272).
+
+message GetCapacity {}
+
+message ResourceVectorView {
+  uint32 model_concurrency = 1;
+  uint32 terminal_slots = 2;
+  uint32 sandbox_slots = 3;
+  uint32 browser_slots = 4;
+  uint32 memory_mib = 5;
+  uint32 provider_quota = 6;
+}
+
+message CapacityTicketView {
+  string ticket_id = 1;
+  string holder = 2;               // run:<id> | agent:<id> | terminal:<id> | ...
+  ResourceVectorView holds = 3;
+  int64 granted_at_ms = 4;
+  int64 expires_at_ms = 5;
+  uint64 generation = 6;           // the holder's lease generation at grant
+}
+
+message CapacityView {
+  ResourceVectorView limits = 1;
+  ResourceVectorView held = 2;
+  ResourceVectorView available = 3;
+  int64 ttl_ms = 4;                // a ticket's lease without renewal
+  repeated CapacityTicketView tickets = 5;
+}

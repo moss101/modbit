@@ -1,0 +1,16 @@
+{
+ "task": "IMP-EV-0256",
+ "requirement": "REQ-EV-0256",
+ "qual": "QUAL-EV-0256",
+ "tests": [
+  "m6_1_work_graph_and_primary_agent_survive_compaction_and_restart_unchanged",
+  "qual_epr_006_a_quality_rejection_continues_the_run_on_the_prevalidated_stronger_slot",
+  "agent_status_transitions_are_the_documented_ones"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "on the EPR-006 continuation the run moves from `openai/gpt-5-mini` to `openai/gpt-5`: one `AgentNodeCreated` for the task, one `AgentBindingChanged` (from mini to gpt-5, reason naming REQ-EPR-006), the same agent id and run before and after, `GetAgentGraph` showing the primary on the new binding.",
+ "audit": "MISSING before: the binding was the identity.",
+ "limitations": "A provider fallback (EPR-007/route switch at a boundary) rebinds through the same function when it moves a live run; a run-start route change is recorded on resume.",
+ "ci": ""
+}

@@ -426,6 +426,22 @@ pub(crate) async fn at_quality_boundary(
     ) {
         return stay(format!("the activation could not be recorded: {e}"));
     }
+    // REQ-EV-0256: the same agent, on the stronger binding.
+    crate::agents::primary_rebound(
+        &mut store,
+        core,
+        task,
+        lt,
+        actor,
+        modbit_domain::agent::AgentBinding {
+            endpoint: slot.endpoint.clone(),
+            model: slot.model.clone(),
+        },
+        &format!(
+            "continuation slot `{}` activated on quality rejection (REQ-EPR-006)",
+            slot.slot_id
+        ),
+    );
     drop(store);
     // The run continues on the slot's binding: attempts from here are the
     // continuation's, the harness's repair loop starts a fresh leg (the

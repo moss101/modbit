@@ -538,6 +538,53 @@ CREATE TABLE routing_activations (
 CREATE INDEX IF NOT EXISTS routing_activations_plan ON routing_activations (run_id, plan_id, activated_at);
 "#;
 
+/// V14 (M6.1, docs/14 "One runtime, three explicit graphs"; docs/31
+/// `agent_nodes`, `work_nodes`): the AgentGraph and the WorkGraph as
+/// derivable projections of the task's log — which logical agents work a
+/// task, on which binding, in which state; which work nodes exist, what
+/// they depend on, who owns them, what proves them done.
+pub const V14_AGENT_AND_WORK_GRAPHS: &str = r#"
+CREATE TABLE IF NOT EXISTS agent_nodes (
+  agent_id         BLOB    PRIMARY KEY NOT NULL,
+  task_id          BLOB    NOT NULL,
+  parent_agent_id  BLOB,
+  root_agent_id    BLOB    NOT NULL,
+  depth            INTEGER NOT NULL DEFAULT 0,
+  kind             TEXT    NOT NULL,
+  status           TEXT    NOT NULL,
+  run_id           BLOB,
+  capsule_ref      TEXT,
+  endpoint         TEXT    NOT NULL DEFAULT '',
+  model            TEXT    NOT NULL DEFAULT '',
+  idempotency_key  TEXT    NOT NULL DEFAULT '',
+  owns_json        TEXT    NOT NULL DEFAULT '[]',
+  created_at       INTEGER NOT NULL,
+  updated_at       INTEGER NOT NULL,
+  last_offset      INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS agent_nodes_task ON agent_nodes (task_id, created_at);
+CREATE UNIQUE INDEX IF NOT EXISTS agent_nodes_idempotency ON agent_nodes (task_id, idempotency_key);
+CREATE TABLE IF NOT EXISTS work_nodes (
+  task_id            BLOB    NOT NULL,
+  node_id            TEXT    NOT NULL,
+  title              TEXT    NOT NULL,
+  depends_on_json    TEXT    NOT NULL DEFAULT '[]',
+  owner_agent_id     BLOB,
+  status             TEXT    NOT NULL,
+  expected_artifacts_json TEXT NOT NULL DEFAULT '[]',
+  verification       TEXT    NOT NULL DEFAULT '',
+  evidence_refs_json TEXT    NOT NULL DEFAULT '[]',
+  blockers_json      TEXT    NOT NULL DEFAULT '[]',
+  attempts           INTEGER NOT NULL DEFAULT 0,
+  plan_version       INTEGER NOT NULL DEFAULT 0,
+  ordinal            INTEGER NOT NULL DEFAULT 0,
+  created_at         INTEGER NOT NULL,
+  updated_at         INTEGER NOT NULL,
+  PRIMARY KEY (task_id, node_id)
+);
+CREATE INDEX IF NOT EXISTS work_nodes_task ON work_nodes (task_id, ordinal);
+"#;
+
 /// All migrations in order. Never edit an entry once shipped; append a new one.
 pub const MIGRATIONS: &[Migration] = &[
     Migration {
@@ -617,6 +664,12 @@ pub const MIGRATIONS: &[Migration] = &[
         name: "routing_rows_per_run",
         up: V13_ROUTING_PER_RUN,
         rollback: "Derivable tables recreated with run-scoped keys. Rollback = recreate the V7/V8 shapes and rebuild projections from the log; no event is touched.",
+    },
+    Migration {
+        version: 14,
+        name: "agent_and_work_graphs",
+        up: V14_AGENT_AND_WORK_GRAPHS,
+        rollback: "Additive derivable tables (docs/31 `agent_nodes`, `work_nodes`). Rollback = drop the tables; a rebuild derives the rows from the log; no event is touched.",
     },
 ];
 

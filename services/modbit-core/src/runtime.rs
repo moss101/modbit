@@ -73,6 +73,10 @@ pub struct StartConfig {
     /// "Fencing and epochs", M4.4): every state-advancing append is fenced by
     /// it, and the loop stops at the next boundary once it is superseded.
     pub lease_generation: u64,
+    /// The capacity ticket the run holds (M6.2, REQ-EV-0272): consumed
+    /// before the run exists, renewed every turn, released when the loop
+    /// ends.
+    pub ticket_id: String,
 }
 
 /// Per-task control handle.
@@ -148,9 +152,44 @@ enum LoopEnd {
     BudgetExhausted(harness::Exhausted),
     ProviderFailed(String, String),
     NoProgress(u32),
+    /// The run's capacity ticket lapsed and could not be taken again (M6.2):
+    /// the run waits for capacity at the next turn boundary.
+    CapacityLost(String),
 }
 
 impl Runtime {
+    /// A capacity ticket for one run (M6.2, REQ-EV-0272): taken before the
+    /// run record exists, so a refusal leaves nothing behind — no run, no
+    /// lease, no worktree — and the caller is told, typed, what did not fit.
+    fn take_run_ticket(
+        store: &mut EventStore,
+        core: &Core,
+        task: &Task,
+        actor: &Actor,
+        lease_generation: u64,
+    ) -> std::result::Result<String, (String, String)> {
+        let holder = format!("run:{}", task.task_id);
+        match core.capacity.acquire(
+            store,
+            core,
+            task,
+            Lineage::task(core.tenant_id, task.session_id, task.task_id),
+            actor,
+            &holder,
+            modbit_core_runtime::capacity::ResourceVector::one_run(),
+            lease_generation,
+        ) {
+            Ok(t) => Ok(t.ticket_id),
+            Err(e) => Err((
+                e.code().to_owned(),
+                format!(
+                    "capacity: {}; the task keeps its state and can be started once capacity returns",
+                    serde_json::to_string(&e).unwrap_or_default()
+                ),
+            )),
+        }
+    }
+
     /// Start (Queued) or resume (Waiting) a task under the session lease
     /// generation `lease_generation`. Returns the run id and whether it resumed.
     pub async fn start(
@@ -171,6 +210,8 @@ impl Runtime {
             let mut store = core.store.lock().await;
             match task.state {
                 TaskState::Queued => {
+                    cfg.ticket_id =
+                        Self::take_run_ticket(&mut store, core, &task, &actor, lease_generation)?;
                     let run_id = RunId::new();
                     let attempt = store
                         .runs_for_task(&task.task_id)
@@ -216,6 +257,20 @@ impl Runtime {
                         .collect(),
                     )
                     .map_err(|e| ("STORE".into(), e))?;
+                    // M6.1: the task's one primary agent (REQ-EV-0255), on
+                    // this run and the route's binding.
+                    crate::agents::primary_running(
+                        &mut store,
+                        core,
+                        &task,
+                        Lineage::run(core.tenant_id, task.session_id, task.task_id, run_id),
+                        &actor,
+                        run_id,
+                        modbit_domain::agent::AgentBinding {
+                            endpoint: cfg.endpoint.clone(),
+                            model: cfg.model.clone(),
+                        },
+                    );
                     (run_id, false)
                 }
                 TaskState::Waiting(_) => {
@@ -226,6 +281,19 @@ impl Runtime {
                         .runs_for_task(&task.task_id)
                         .ok()
                         .and_then(|r| r.into_iter().find(|r| r.state == RunState::Suspended));
+                    if let Some(r) = &run
+                        && lease_generation < r.kernel_lease_generation
+                    {
+                        return Err((
+                            "STALE_LEASE".into(),
+                            format!(
+                                "run is owned by lease generation {}",
+                                r.kernel_lease_generation
+                            ),
+                        ));
+                    }
+                    cfg.ticket_id =
+                        Self::take_run_ticket(&mut store, core, &task, &actor, lease_generation)?;
                     let run = match run {
                         Some(r) => r,
                         None => {
@@ -282,6 +350,18 @@ impl Runtime {
                                 .collect(),
                             )
                             .map_err(|e| ("STORE".into(), e))?;
+                            crate::agents::primary_running(
+                                &mut store,
+                                core,
+                                &task,
+                                Lineage::run(core.tenant_id, task.session_id, task.task_id, run_id),
+                                &actor,
+                                run_id,
+                                modbit_domain::agent::AgentBinding {
+                                    endpoint: cfg.endpoint.clone(),
+                                    model: cfg.model.clone(),
+                                },
+                            );
                             drop(store);
                             let cancel = CancellationToken::new();
                             tasks.insert(
@@ -299,15 +379,6 @@ impl Runtime {
                             return Ok((run_id, true));
                         }
                     };
-                    if lease_generation < run.kernel_lease_generation {
-                        return Err((
-                            "STALE_LEASE".into(),
-                            format!(
-                                "run is owned by lease generation {}",
-                                run.kernel_lease_generation
-                            ),
-                        ));
-                    }
                     // A resumed run continues on the plan and the activation
                     // it already has; it never compiles a second plan or
                     // activates a second slot on the way back (REQ-EPR-014).
@@ -341,6 +412,18 @@ impl Runtime {
                         )],
                     )
                     .map_err(|e| ("STORE".into(), e))?;
+                    crate::agents::primary_running(
+                        &mut store,
+                        core,
+                        &task,
+                        Lineage::run(core.tenant_id, task.session_id, task.task_id, run.run_id),
+                        &actor,
+                        run.run_id,
+                        modbit_domain::agent::AgentBinding {
+                            endpoint: cfg.endpoint.clone(),
+                            model: cfg.model.clone(),
+                        },
+                    );
                     (run.run_id, true)
                 }
                 other => {
@@ -1504,6 +1587,9 @@ pub(crate) async fn rebuild(
             _ => {}
         }
     }
+    // M6.1: the WorkGraph is a projection of the same log (docs/31
+    // `work_nodes`); compaction never touched it (REQ-EV-0052).
+    state.work_graph.nodes = store.work_nodes(&task.task_id).unwrap_or_default();
     let pending = queued.into_iter().skip(applied).collect();
     (transcript, state, last_offset, pending)
 }
@@ -1858,9 +1944,9 @@ fn projection(
     tools.push(ToolProjection {
         name: PLAN_TOOL.into(),
         description: format!(
-            "Record or revise the plan before writing: outcome, expected files, verification, protected effects.{withheld_note}"
+            "Record or revise the plan before writing: outcome, expected files, verification, protected effects, and steps — the work graph: each step has an id, a title, depends_on (step ids), status (PENDING|READY|ACTIVE|BLOCKED|DONE|FAILED|CANCELLED), expected_artifacts, verification, evidence_refs (required to mark DONE) and blockers. Steps persist outside the transcript; revise only what changed.{withheld_note}"
         ),
-        input_schema: serde_json::json!({"type":"object","properties":{"outcome":{"type":"string"},"expected_files":{"type":"array","items":{"type":"string"}},"verification":{"type":"array","items":{"type":"string"}},"protected_effects":{"type":"array","items":{"type":"string"}},"reason":{"type":"string"}},"required":["outcome","expected_files"]}),
+        input_schema: serde_json::json!({"type":"object","properties":{"outcome":{"type":"string"},"expected_files":{"type":"array","items":{"type":"string"}},"verification":{"type":"array","items":{"type":"string"}},"protected_effects":{"type":"array","items":{"type":"string"}},"reason":{"type":"string"},"steps":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"title":{"type":"string"},"depends_on":{"type":"array","items":{"type":"string"}},"status":{"type":"string","enum":["PENDING","READY","ACTIVE","BLOCKED","DONE","FAILED","CANCELLED"]},"expected_artifacts":{"type":"array","items":{"type":"string"}},"verification":{"type":"string"},"evidence_refs":{"type":"array","items":{"type":"string"}},"blockers":{"type":"array","items":{"type":"string"}}},"required":["id"]}}},"required":["outcome","expected_files"]}),
     });
     tools.push(ToolProjection {
         name: COMPLETE_TOOL.into(),
@@ -2173,6 +2259,34 @@ async fn run_loop(
         if let Err(x) = state.check_turn_budget() {
             break LoopEnd::BudgetExhausted(x);
         }
+        // M6.2 (REQ-EV-0272): the run's capacity ticket is renewed at every
+        // turn boundary under the run's lease generation. A ticket that
+        // lapsed while the run was away (a long tool call, a stall) is taken
+        // again if the pool allows; otherwise the run waits for capacity
+        // rather than running over it.
+        if let Err(e) = core.capacity.renew(&cfg.ticket_id, cfg.lease_generation) {
+            let mut store = core.store.lock().await;
+            match core.capacity.acquire(
+                &mut store,
+                &core,
+                &task,
+                lt,
+                &actor,
+                &format!("run:{}", task.task_id),
+                modbit_core_runtime::capacity::ResourceVector::one_run(),
+                cfg.lease_generation,
+            ) {
+                Ok(t) => cfg.ticket_id = t.ticket_id,
+                Err(again) => {
+                    break LoopEnd::CapacityLost(format!(
+                        "ticket {}: {}; re-acquire refused {}",
+                        cfg.ticket_id,
+                        e.code(),
+                        serde_json::to_string(&again).unwrap_or_default()
+                    ));
+                }
+            }
+        }
         // docs/33 "Session kernel lease": a stale owner cannot advance state.
         // The boundary checks the lease before a turn starts; the fenced
         // appends catch anything that slips between the check and a write.
@@ -2270,6 +2384,10 @@ async fn run_loop(
                     .capability(&cfg.endpoint, &cfg.model)
                     .is_some_and(|c| c.vision);
                 let mut harness_json = serde_json::to_value(&state).unwrap_or_default();
+                // M6.1: the WorkGraph, one line per node, outside the transcript.
+                if !state.work_graph.nodes.is_empty() {
+                    harness_json["work"] = serde_json::json!(state.work_graph.summary());
+                }
                 // REQ-EV-0141 / 0160: the model is told what the user is looking at.
                 // A selection is context, not authority: the write gate is unchanged.
                 let selection = crate::tools::selection_of(&core.store, task.task_id).await;
@@ -2979,6 +3097,7 @@ async fn run_loop(
                                 max_turns: turns,
                                 endpoint: &cfg.endpoint,
                                 model: &cfg.model,
+                                call_id: &call_id,
                             },
                             &cancel,
                         )
@@ -3811,6 +3930,46 @@ async fn run_loop(
         _ => end,
     };
     let mut store = core.store.lock().await;
+    // M6.1: where the primary agent stands once this run is over.
+    let agent_end: (modbit_domain::agent::AgentStatus, String) = match &end {
+        LoopEnd::ReadyForReview => (
+            modbit_domain::agent::AgentStatus::Completed,
+            "completion proposed; the candidate is with the user".into(),
+        ),
+        LoopEnd::Cancelled => (
+            modbit_domain::agent::AgentStatus::Cancelled,
+            "cancelled".into(),
+        ),
+        LoopEnd::Fenced { owner, .. } => (
+            modbit_domain::agent::AgentStatus::Waiting,
+            format!("lease superseded by {owner}"),
+        ),
+        LoopEnd::NeedsInput(q) => (
+            modbit_domain::agent::AgentStatus::Waiting,
+            format!("question {q} pending"),
+        ),
+        LoopEnd::NeedsAttention { code, .. } => (
+            modbit_domain::agent::AgentStatus::Waiting,
+            format!("needs attention: {code}"),
+        ),
+        LoopEnd::BudgetExhausted(_) => (
+            modbit_domain::agent::AgentStatus::Waiting,
+            "budget exhausted".into(),
+        ),
+        LoopEnd::NoProgress(n) => (
+            modbit_domain::agent::AgentStatus::Waiting,
+            format!("{n} turns without progress"),
+        ),
+        LoopEnd::ProviderFailed(code, _) => (
+            modbit_domain::agent::AgentStatus::Waiting,
+            format!("provider failure {code}"),
+        ),
+        LoopEnd::CapacityLost(_) => (
+            modbit_domain::agent::AgentStatus::Waiting,
+            "waiting for capacity".into(),
+        ),
+    };
+    let fenced_end = matches!(end, LoopEnd::Fenced { .. });
     match end {
         LoopEnd::Fenced {
             current_generation,
@@ -4165,7 +4324,73 @@ async fn run_loop(
                 ],
             );
         }
+        LoopEnd::CapacityLost(reason) => {
+            let _ = append_batch(
+                &mut store,
+                &core,
+                lt,
+                vec![
+                    (
+                        AggregateType::Run,
+                        *run_id.as_bytes(),
+                        vec![typed(
+                            "RunSuspended",
+                            &RunEvent::RunSuspended,
+                            actor.clone(),
+                        )],
+                    ),
+                    (
+                        AggregateType::Task,
+                        *task.task_id.as_bytes(),
+                        vec![
+                            typed(
+                                "TaskWaiting",
+                                &TaskEvent::TaskWaiting {
+                                    reason: WaitReason::Capacity,
+                                },
+                                actor.clone(),
+                            ),
+                            typed(
+                                "TaskNeedsAttention",
+                                &TaskEvent::TaskNeedsAttention {
+                                    reason: format!("waiting for capacity: {reason}"),
+                                    diagnostic: Some(modbit_core_runtime::classify(
+                                        &modbit_core_runtime::FailureSource::Loop {
+                                            code: "CAPACITY_LOST",
+                                            message: &reason,
+                                        },
+                                    )),
+                                },
+                                actor.clone(),
+                            ),
+                        ],
+                    ),
+                ],
+            );
+        }
     }
+    // A stale owner writes audit only; the primary's status is advanced by
+    // the lease holder when it resumes.
+    if !fenced_end {
+        crate::agents::primary_transition(
+            &mut store,
+            &core,
+            &task,
+            lt,
+            &actor,
+            agent_end.0,
+            &agent_end.1,
+        );
+    }
+    // M6.2: the run's capacity returns to the pool with the run.
+    core.capacity.release(
+        &mut store,
+        &core,
+        &task,
+        lt.unfenced(),
+        &actor,
+        &cfg.ticket_id,
+    );
 }
 
 /// The existing files a write targets that have no retrieval record at the
@@ -5247,6 +5472,33 @@ async fn handle_plan(
     let plan: Result<Plan, _> = serde_json::from_str(args);
     match plan {
         Ok(plan) => {
+            // M6.1 (REQ-EV-0052 / 0120): the plan's steps are the WorkGraph.
+            // The change is validated whole — unknown dependency, cycle,
+            // done without evidence or ahead of a dependency — and a
+            // refused change records no plan version.
+            let next_version = state.plan.as_ref().map_or(1, |p| p.version + 1);
+            let mut work_graph = state.work_graph.clone();
+            let work_changed = match work_graph.apply(task.task_id, next_version, &plan.steps) {
+                Ok(changed) => changed,
+                Err(e) => {
+                    return (
+                        TranscriptEntry::ToolResult {
+                            call_id: call_id.into(),
+                            name: PLAN_TOOL.into(),
+                            text: format!(
+                                "status: REFUSED\nerror_code: WORK_GRAPH_INVALID\nerror: {}\nthe plan was not recorded; fix the steps and record it again",
+                                serde_json::to_string(&e).unwrap_or_default()
+                            ),
+                            failure_signature: None,
+                            clears: vec![],
+                            wrote: None,
+                            progress: false,
+                            media: vec![],
+                        },
+                        false,
+                    );
+                }
+            };
             let plan_ref = {
                 let store = core.store.lock().await;
                 store
@@ -5255,6 +5507,13 @@ async fn handle_plan(
                     .unwrap_or_default()
             };
             let (version, added, removed) = state.record_plan(plan.clone());
+            let ready: Vec<String> = work_graph
+                .ready()
+                .iter()
+                .map(|n| n.id.clone())
+                .filter(|id| !work_changed.iter().any(|c| &c.id == id))
+                .collect();
+            state.work_graph = work_graph;
             state.resolve_flags_by_plan();
             let reason = serde_json::from_str::<serde_json::Value>(args)
                 .ok()
@@ -5287,6 +5546,17 @@ async fn handle_plan(
                 )
             };
             let mut evs = vec![ev];
+            if !work_changed.is_empty() {
+                evs.push(typed(
+                    "WorkNodesChanged",
+                    &TaskEvent::WorkNodesChanged {
+                        plan_version: version,
+                        changed: work_changed.clone(),
+                        ready,
+                    },
+                    actor.clone(),
+                ));
+            }
             if waived {
                 evs.push(typed(
                     "ReproductionRecorded",
@@ -5307,12 +5577,22 @@ async fn handle_plan(
                 *task.task_id.as_bytes(),
                 evs,
             );
+            let work_note = if state.work_graph.nodes.is_empty() {
+                String::new()
+            } else {
+                format!(
+                    "\nwork ({} node(s), {} ready):\n{}",
+                    state.work_graph.nodes.len(),
+                    state.work_graph.ready().len(),
+                    state.work_graph.summary().join("\n")
+                )
+            };
             (
                 TranscriptEntry::ToolResult {
                     call_id: call_id.into(),
                     name: PLAN_TOOL.into(),
                     text: format!(
-                        "status: SUCCESS\nplan version {version} recorded (ref {plan_ref})"
+                        "status: SUCCESS\nplan version {version} recorded (ref {plan_ref}){work_note}"
                     ),
                     failure_signature: None,
                     clears: vec![],

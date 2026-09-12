@@ -431,6 +431,220 @@ pub fn load_checkpoints(tx: &rusqlite::Connection, task: &TaskId) -> Result<Vec<
     Ok(rows.collect::<std::result::Result<Vec<_>, _>>()?)
 }
 
+/// docs/31 `agent_nodes` / `work_nodes` (M6.1): the AgentGraph and the
+/// WorkGraph as the task's log describes them. `AgentNodeCreated` inserts
+/// the node, `AgentNodeTransitioned` and `AgentBindingChanged` update it,
+/// `WorkNodesChanged` upserts every node it carries as it now stands.
+fn project_graphs(
+    tx: &Transaction<'_>,
+    task: &Task,
+    event: &TaskEvent,
+    at: Timestamp,
+    offset: u64,
+) -> Result<()> {
+    match event {
+        TaskEvent::AgentNodeCreated { node } => {
+            tx.execute(
+                "INSERT OR REPLACE INTO agent_nodes (agent_id, task_id, parent_agent_id, root_agent_id, depth, kind, status, run_id, capsule_ref, endpoint, model, idempotency_key, owns_json, created_at, updated_at, last_offset)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?14, ?15)",
+                params![
+                    node.agent_id.as_bytes().as_slice(),
+                    task.task_id.as_bytes().as_slice(),
+                    node.parent_agent_id.map(|p| p.as_bytes().to_vec()),
+                    node.root_agent_id.as_bytes().as_slice(),
+                    i64::from(node.depth),
+                    serde_json::to_string(&node.kind)?.trim_matches('"'),
+                    serde_json::to_string(&node.status)?.trim_matches('"'),
+                    node.run_id.map(|r| r.as_bytes().to_vec()),
+                    &node.capsule_ref,
+                    &node.binding.endpoint,
+                    &node.binding.model,
+                    &node.idempotency_key,
+                    serde_json::to_string(&node.owns)?,
+                    at.millis(),
+                    offset as i64,
+                ],
+            )?;
+        }
+        TaskEvent::AgentNodeTransitioned {
+            agent_id,
+            to,
+            run_id,
+            ..
+        } => {
+            tx.execute(
+                "UPDATE agent_nodes SET status = ?2, run_id = COALESCE(?3, run_id), updated_at = ?4, last_offset = ?5 WHERE agent_id = ?1",
+                params![
+                    agent_id.as_bytes().as_slice(),
+                    serde_json::to_string(to)?.trim_matches('"'),
+                    run_id.map(|r| r.as_bytes().to_vec()),
+                    at.millis(),
+                    offset as i64,
+                ],
+            )?;
+        }
+        TaskEvent::AgentBindingChanged { agent_id, to, .. } => {
+            tx.execute(
+                "UPDATE agent_nodes SET endpoint = ?2, model = ?3, updated_at = ?4, last_offset = ?5 WHERE agent_id = ?1",
+                params![
+                    agent_id.as_bytes().as_slice(),
+                    &to.endpoint,
+                    &to.model,
+                    at.millis(),
+                    offset as i64,
+                ],
+            )?;
+        }
+        TaskEvent::WorkNodesChanged { changed, ready, .. } => {
+            for n in changed {
+                let ordinal: i64 = tx
+                    .query_row(
+                        "SELECT ordinal FROM work_nodes WHERE task_id = ?1 AND node_id = ?2",
+                        params![task.task_id.as_bytes().as_slice(), &n.id],
+                        |r| r.get(0),
+                    )
+                    .optional()?
+                    .unwrap_or_else(|| {
+                        tx.query_row(
+                            "SELECT COALESCE(MAX(ordinal), 0) + 1 FROM work_nodes WHERE task_id = ?1",
+                            params![task.task_id.as_bytes().as_slice()],
+                            |r| r.get(0),
+                        )
+                        .unwrap_or(1)
+                    });
+                tx.execute(
+                    "INSERT INTO work_nodes (task_id, node_id, title, depends_on_json, owner_agent_id, status, expected_artifacts_json, verification, evidence_refs_json, blockers_json, attempts, plan_version, ordinal, created_at, updated_at)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?14)
+                     ON CONFLICT (task_id, node_id) DO UPDATE SET title = excluded.title, depends_on_json = excluded.depends_on_json, owner_agent_id = excluded.owner_agent_id, status = excluded.status, expected_artifacts_json = excluded.expected_artifacts_json, verification = excluded.verification, evidence_refs_json = excluded.evidence_refs_json, blockers_json = excluded.blockers_json, attempts = excluded.attempts, plan_version = excluded.plan_version, updated_at = excluded.updated_at",
+                    params![
+                        task.task_id.as_bytes().as_slice(),
+                        &n.id,
+                        &n.title,
+                        serde_json::to_string(&n.depends_on)?,
+                        n.owner.map(|o| o.as_bytes().to_vec()),
+                        serde_json::to_string(&n.status)?.trim_matches('"'),
+                        serde_json::to_string(&n.expected_artifacts)?,
+                        &n.verification,
+                        serde_json::to_string(&n.evidence_refs)?,
+                        serde_json::to_string(&n.blockers)?,
+                        i64::from(n.attempts),
+                        i64::from(n.plan_version),
+                        ordinal,
+                        at.millis(),
+                    ],
+                )?;
+            }
+            // Nodes whose readiness followed from the change.
+            for id in ready {
+                tx.execute(
+                    "UPDATE work_nodes SET status = CASE WHEN status IN ('PENDING', 'READY') THEN 'READY' ELSE status END, updated_at = ?3 WHERE task_id = ?1 AND node_id = ?2",
+                    params![task.task_id.as_bytes().as_slice(), id, at.millis()],
+                )?;
+            }
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+/// One row of `agent_nodes`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AgentNodeRow {
+    /// Node.
+    pub agent_id: modbit_domain::AgentId,
+    /// Parent, when any.
+    pub parent_agent_id: Option<modbit_domain::AgentId>,
+    /// Root of its lineage.
+    pub root_agent_id: modbit_domain::AgentId,
+    /// Depth.
+    pub depth: u32,
+    /// Kind label.
+    pub kind: String,
+    /// Status label.
+    pub status: String,
+    /// Run, when any.
+    pub run_id: Option<RunId>,
+    /// Capsule object, when admitted.
+    pub capsule_ref: Option<String>,
+    /// Endpoint.
+    pub endpoint: String,
+    /// Model.
+    pub model: String,
+    /// Idempotency key.
+    pub idempotency_key: String,
+    /// Work nodes owned (ids).
+    pub owns: Vec<String>,
+    /// Created.
+    pub created_at: Timestamp,
+    /// Last change.
+    pub updated_at: Timestamp,
+    /// Offset of the last event that changed it.
+    pub last_offset: u64,
+}
+
+/// The agent nodes of a task, in creation order.
+pub fn load_agent_nodes(tx: &rusqlite::Connection, task: &TaskId) -> Result<Vec<AgentNodeRow>> {
+    let mut stmt = tx.prepare(
+        "SELECT agent_id, parent_agent_id, root_agent_id, depth, kind, status, run_id, capsule_ref, endpoint, model, idempotency_key, owns_json, created_at, updated_at, last_offset FROM agent_nodes WHERE task_id = ?1 ORDER BY created_at, last_offset",
+    )?;
+    let rows = stmt.query_map(params![task.as_bytes().as_slice()], |r| {
+        let id = |v: Vec<u8>| -> modbit_domain::AgentId {
+            modbit_domain::AgentId::from_bytes(v.try_into().unwrap_or([0u8; 16]))
+        };
+        Ok(AgentNodeRow {
+            agent_id: id(r.get(0)?),
+            parent_agent_id: r.get::<_, Option<Vec<u8>>>(1)?.map(id),
+            root_agent_id: id(r.get(2)?),
+            depth: u32::try_from(r.get::<_, i64>(3)?).unwrap_or(0),
+            kind: r.get(4)?,
+            status: r.get(5)?,
+            run_id: r
+                .get::<_, Option<Vec<u8>>>(6)?
+                .map(|v| RunId::from_bytes(v.try_into().unwrap_or([0u8; 16]))),
+            capsule_ref: r.get(7)?,
+            endpoint: r.get(8)?,
+            model: r.get(9)?,
+            idempotency_key: r.get(10)?,
+            owns: serde_json::from_str(&r.get::<_, String>(11)?).unwrap_or_default(),
+            created_at: Timestamp(r.get(12)?),
+            updated_at: Timestamp(r.get(13)?),
+            last_offset: r.get::<_, i64>(14)? as u64,
+        })
+    })?;
+    Ok(rows.collect::<std::result::Result<Vec<_>, _>>()?)
+}
+
+/// The work nodes of a task, in creation order, as the domain type.
+pub fn load_work_nodes(
+    tx: &rusqlite::Connection,
+    task: &TaskId,
+) -> Result<Vec<modbit_domain::agent::WorkNode>> {
+    let mut stmt = tx.prepare(
+        "SELECT node_id, title, depends_on_json, owner_agent_id, status, expected_artifacts_json, verification, evidence_refs_json, blockers_json, attempts, plan_version FROM work_nodes WHERE task_id = ?1 ORDER BY ordinal",
+    )?;
+    let rows = stmt.query_map(params![task.as_bytes().as_slice()], |r| {
+        let status: String = r.get(4)?;
+        Ok(modbit_domain::agent::WorkNode {
+            id: r.get(0)?,
+            task_id: *task,
+            title: r.get(1)?,
+            depends_on: serde_json::from_str(&r.get::<_, String>(2)?).unwrap_or_default(),
+            owner: r
+                .get::<_, Option<Vec<u8>>>(3)?
+                .map(|v| modbit_domain::AgentId::from_bytes(v.try_into().unwrap_or([0u8; 16]))),
+            status: serde_json::from_value(serde_json::Value::String(status))
+                .unwrap_or(modbit_domain::agent::WorkStatus::Pending),
+            expected_artifacts: serde_json::from_str(&r.get::<_, String>(5)?).unwrap_or_default(),
+            verification: r.get(6)?,
+            evidence_refs: serde_json::from_str(&r.get::<_, String>(7)?).unwrap_or_default(),
+            blockers: serde_json::from_str(&r.get::<_, String>(8)?).unwrap_or_default(),
+            attempts: u32::try_from(r.get::<_, i64>(9)?).unwrap_or(0),
+            plan_version: u32::try_from(r.get::<_, i64>(10)?).unwrap_or(0),
+        })
+    })?;
+    Ok(rows.collect::<std::result::Result<Vec<_>, _>>()?)
+}
+
 /// One row of `compaction_epochs`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CompactionEpochRow {
@@ -579,6 +793,7 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
             )?;
             project_compaction(tx, &t, &event, at)?;
             project_checkpoint(tx, &t, &event, at, offset)?;
+            project_graphs(tx, &t, &event, at, offset)?;
             let delta = match &event {
                 TaskEvent::UserQuestionAsked {
                     question_id,
@@ -2024,6 +2239,8 @@ pub fn rebuild(tx: &Transaction<'_>, objects: &crate::ObjectStore) -> Result<u64
         "checkpoints",
         "compaction_epochs",
         "protocol_state",
+        "work_nodes",
+        "agent_nodes",
         "routing_activations",
         "routing_admissions",
         "routing_attempts",

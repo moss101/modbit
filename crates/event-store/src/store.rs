@@ -659,6 +659,16 @@ impl EventStore {
         crate::projections::load_checkpoints(&self.conn, task)
     }
 
+    /// The agent nodes of a task (docs/31 `agent_nodes`, M6.1), in creation order.
+    pub fn agent_nodes(&self, task: &TaskId) -> Result<Vec<crate::projections::AgentNodeRow>> {
+        crate::projections::load_agent_nodes(&self.conn, task)
+    }
+
+    /// The work nodes of a task (docs/31 `work_nodes`, M6.1), in creation order.
+    pub fn work_nodes(&self, task: &TaskId) -> Result<Vec<modbit_domain::agent::WorkNode>> {
+        crate::projections::load_work_nodes(&self.conn, task)
+    }
+
     /// The compaction requests of a task (docs/31 `compaction_epochs`),
     /// oldest first: pending, committed as an epoch, or rejected.
     pub fn compaction_epochs(

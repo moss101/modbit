@@ -1,0 +1,18 @@
+{
+ "task": "M6.2",
+ "requirement": "M6.2 (docs/43); REQ-EV-0272",
+ "qual": "M6.2 / QUAL-EV-0272",
+ "tests": [
+  "m6_2_capacity_tickets_gate_runs_all_or_nothing_and_lapse_at_expiry",
+  "a_ticket_is_all_or_nothing_and_exhaustion_names_the_dimension",
+  "tickets_lapse_at_expiry_and_a_stale_generation_cannot_renew",
+  "the_vector_parses_and_refuses_what_it_cannot_read",
+  "qual_ev_0245_fault_corpus_produces_stable_diagnostic_features"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "A one-slot pool refuses the second task's StartTask CAPACITY_EXHAUSTED with a typed record and nothing created; the first task's ticket is released at its end and the second starts; a one-second lease lapses under a four-second provider hold, the waiting task takes the slot, the lapsed run re-takes one at its boundary or suspends Waiting(Capacity) with CAPACITY_LOST; the pool ends empty.",
+ "audit": "MISSING before: nothing bounded concurrent runs; Waiting(Capacity) had no producer.",
+ "limitations": "Only the run-level ticket consumes capacity until M6.3 (subagents) and the sandbox/terminal owners; the pool is process-local; lapse is enforced at turn boundaries.",
+ "ci": ""
+}

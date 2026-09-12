@@ -213,6 +213,21 @@
     "retryable": false,
     "user_action": "the session lease moved from generation 2 to 3 (owner cli:shell-2); the new owner resumes the run"
   },
+  "loop_capacity_lost": {
+    "class": "BUDGET",
+    "code": "CAPACITY_LOST",
+    "detail": "ticket t-1: UNKNOWN_TICKET; re-acquire refused {\"code\":\"CAPACITY_EXHAUSTED\"}",
+    "evidence_refs": [],
+    "features": [
+      "class:budget",
+      "code:capacity_lost",
+      "retryable",
+      "source:harness"
+    ],
+    "recovery_path": "the run suspended at a turn boundary; StartTask takes a ticket again before it resumes",
+    "retryable": true,
+    "user_action": "wait for a running task to finish, or raise MODBIT_CAPACITY, then resume with StartTask"
+  },
   "loop_no_progress": {
     "class": "HARNESS",
     "code": "NO_PROGRESS",

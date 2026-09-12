@@ -37,17 +37,18 @@ use modbit_protocol::v1::{
     AttachContextDocument, AttachmentIngested, CancelTask, CapabilityLeaseList,
     CheckpointRestoreResult, ClientKind, CommandEnvelope, ContextDocumentAttached,
     ContextInspectorView, CreateSession, CreateTask, DecideReview, EffectReceiptList,
-    EmergencyStop, EmergencyStopped, FileHash, ForkTask, GetCapabilityLeases, GetContextInspector,
-    GetEffectReceipts, GetReviewBundle, GetRoutingSessionState, GetSessionSnapshot, GetSessionTree,
-    GetTaskAssurance, GetTaskEconomics, GetTaskStatus, HunkRef, Id, IngestAttachment, InvokeTool,
-    LanguageList, ListApprovals, ListLanguages, ListModels, ListQuestions, ListTools, ModelList,
-    ModelProbed, OutcomeBaselinePublished, PreviewRewind, ProbeModel, PublishOutcomeBaseline,
-    QuestionList, QuestionResponded, ResolveApproval, RespondToQuestion, RestoreCheckpoint,
-    ReviewBundle, ReviewDecided, RewindPreview, RoutingSessionStateView, SessionCreated,
-    SessionLeaseAcquired, SessionSnapshot, SessionTreeView, SetTaskSelection, StartTask,
-    TaskAssuranceView, TaskCancelRequested, TaskCreated, TaskEconomicsView, TaskForked,
-    TaskRunStarted, TaskSelectionRecorded, TaskStatus, ToolInvoked, ToolList, UndoPlanView,
-    UndoToolCall, UnsupportedLanguageAllowed,
+    EmergencyStop, EmergencyStopped, FileHash, ForkTask, GetAgentGraph, GetCapabilityLeases,
+    GetContextInspector, GetEffectReceipts, GetReviewBundle, GetRoutingSessionState,
+    GetSessionSnapshot, GetSessionTree, GetTaskAssurance, GetTaskEconomics, GetTaskStatus,
+    GetWorkGraph, HunkRef, Id, IngestAttachment, InvokeTool, LanguageList, ListApprovals,
+    ListLanguages, ListModels, ListQuestions, ListTools, ModelList, ModelProbed,
+    OutcomeBaselinePublished, PreviewRewind, ProbeModel, PublishOutcomeBaseline, QuestionList,
+    QuestionResponded, ResolveApproval, RespondToQuestion, RestoreCheckpoint, ReviewBundle,
+    ReviewDecided, RewindPreview, RoutingSessionStateView, SessionCreated, SessionLeaseAcquired,
+    SessionSnapshot, SessionTreeView, SetTaskSelection, StartTask, TaskAssuranceView,
+    TaskCancelRequested, TaskCreated, TaskEconomicsView, TaskForked, TaskRunStarted,
+    TaskSelectionRecorded, TaskStatus, ToolInvoked, ToolList, UndoPlanView, UndoToolCall,
+    UnsupportedLanguageAllowed,
 };
 use prost::Message;
 
@@ -65,7 +66,7 @@ fn exit_for_state(state: &str) -> u8 {
     }
 }
 
-const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--skill <name>]... [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id>] [--apply --session <id>] | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | skill install <dir> [--expect-hash <hex>] [--replace] | skill remove <name> | skill list | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
+const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--skill <name>]... [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id>] [--apply --session <id>] | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | task work --task <id> | task agents --task <id> | capacity show | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | skill install <dir> [--expect-hash <hex>] [--replace] | skill remove <name> | skill list | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
 
 fn parse_id(hex: &str) -> Result<Id, String> {
     let bytes = decode_hex(hex)
@@ -1537,6 +1538,120 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 println!(
                     "branch generation={} kind={} offset={} {}",
                     b.branch_generation, b.kind, b.offset, b.reason
+                );
+            }
+        }
+        ["capacity", "show"] => {
+            let ack = client
+                .command(envelope(
+                    "GetCapacity",
+                    modbit_protocol::v1::GetCapacity {}.encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let v: modbit_protocol::v1::CapacityView =
+                Client::result(&ack).map_err(|e| e.to_string())?;
+            let vec = |r: &Option<modbit_protocol::v1::ResourceVectorView>| -> String {
+                r.as_ref().map_or_else(String::new, |r| {
+                    format!(
+                        "model={} terminal={} sandbox={} browser={} memory_mib={} provider={}",
+                        r.model_concurrency,
+                        r.terminal_slots,
+                        r.sandbox_slots,
+                        r.browser_slots,
+                        r.memory_mib,
+                        r.provider_quota
+                    )
+                })
+            };
+            println!("limits    {}", vec(&v.limits));
+            println!("held      {}", vec(&v.held));
+            println!("available {}", vec(&v.available));
+            println!("ttl_ms {} tickets {}", v.ttl_ms, v.tickets.len());
+            for t in &v.tickets {
+                println!(
+                    "  {} holder={} holds=[{}] granted_at={} expires_at={} generation={}",
+                    t.ticket_id,
+                    t.holder,
+                    vec(&t.holds),
+                    t.granted_at_ms,
+                    t.expires_at_ms,
+                    t.generation
+                );
+            }
+        }
+        ["task", "work", "--task", tid] => {
+            let ack = client
+                .command(envelope(
+                    "GetWorkGraph",
+                    GetWorkGraph {
+                        task_id: Some(parse_id(tid)?),
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let w: modbit_protocol::v1::WorkGraphView =
+                Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "work nodes={} ready={} plan_version={}",
+                w.nodes.len(),
+                w.ready.join(","),
+                w.plan_version
+            );
+            for n in &w.nodes {
+                println!(
+                    "  {} [{}] {} after={} owner={} attempts={} evidence={} blockers={}",
+                    n.id,
+                    n.status,
+                    n.title,
+                    n.depends_on.join(","),
+                    n.owner_agent_id
+                        .as_ref()
+                        .map(|o| encode_hex(&o.value))
+                        .unwrap_or_default(),
+                    n.attempts,
+                    n.evidence_refs.join(","),
+                    n.blockers.join(";")
+                );
+            }
+        }
+        ["task", "agents", "--task", tid] => {
+            let ack = client
+                .command(envelope(
+                    "GetAgentGraph",
+                    GetAgentGraph {
+                        task_id: Some(parse_id(tid)?),
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let a: modbit_protocol::v1::AgentGraphView =
+                Client::result(&ack).map_err(|e| e.to_string())?;
+            println!("agents {}", a.nodes.len());
+            for n in &a.nodes {
+                println!(
+                    "  {} {} [{}] depth={} parent={} run={} binding={}/{} key={} owns={}",
+                    n.agent_id
+                        .as_ref()
+                        .map(|o| encode_hex(&o.value))
+                        .unwrap_or_default(),
+                    n.kind,
+                    n.status,
+                    n.depth,
+                    n.parent_agent_id
+                        .as_ref()
+                        .map(|o| encode_hex(&o.value))
+                        .unwrap_or_default(),
+                    n.run_id
+                        .as_ref()
+                        .map(|o| encode_hex(&o.value))
+                        .unwrap_or_default(),
+                    n.endpoint,
+                    n.model,
+                    n.idempotency_key,
+                    n.owns.join(",")
                 );
             }
         }

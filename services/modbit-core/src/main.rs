@@ -9,9 +9,11 @@
 use std::path::PathBuf;
 use std::process::ExitCode;
 
+mod agents;
 mod assurance;
 mod baseline;
 mod branch;
+mod capacity;
 mod checkpoint;
 mod economics;
 mod escalation;

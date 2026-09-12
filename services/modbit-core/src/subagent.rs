@@ -93,11 +93,64 @@ pub(crate) struct Ask<'a> {
     pub endpoint: &'a str,
     /// Model id.
     pub model: &'a str,
+    /// The tool call the sub-run answers: its AgentGraph node's idempotency
+    /// key, so a retried call reattaches (REQ-EV-0007).
+    pub call_id: &'a str,
 }
 
 /// Run the specialist. Returns what it built and what it was refused.
 #[allow(clippy::too_many_lines)]
 pub(crate) async fn run(
+    core: &Arc<Core>,
+    task: &Task,
+    lt: Lineage,
+    ask: &Ask<'_>,
+    cancel: &CancellationToken,
+) -> Specialist {
+    // M6.1: the specialist is a node of the task's AgentGraph under the
+    // primary, one per sub-run (its key is the call it answers), running
+    // while it works and completed or failed when it returns.
+    let actor = Actor::Agent(format!("context-specialist:{}", task.task_id));
+    let key = format!("specialist:{}", ask.call_id);
+    let node = {
+        let mut store = core.store.lock().await;
+        crate::agents::child_started(
+            &mut store,
+            core,
+            task,
+            lt,
+            &actor,
+            modbit_domain::agent::AgentKind::Specialist,
+            lt.run_id(),
+            modbit_domain::agent::AgentBinding {
+                endpoint: ask.endpoint.to_owned(),
+                model: ask.model.to_owned(),
+            },
+            &key,
+        )
+    };
+    let out = run_inner(core, task, lt, ask, cancel).await;
+    if let Some(agent_id) = node {
+        let (to, reason) = if !out.pack_ref.is_empty() {
+            (
+                modbit_domain::agent::AgentStatus::Completed,
+                out.note.clone(),
+            )
+        } else if out.note == "cancelled" {
+            (
+                modbit_domain::agent::AgentStatus::Cancelled,
+                out.note.clone(),
+            )
+        } else {
+            (modbit_domain::agent::AgentStatus::Failed, out.note.clone())
+        };
+        let mut store = core.store.lock().await;
+        crate::agents::child_ended(&mut store, core, task, lt, &actor, agent_id, to, &reason);
+    }
+    out
+}
+
+async fn run_inner(
     core: &Arc<Core>,
     task: &Task,
     lt: Lineage,
@@ -110,6 +163,7 @@ pub(crate) async fn run(
         max_turns,
         endpoint,
         model,
+        ..
     } = *ask;
     let actor = Actor::Agent(format!("context-specialist:{}", task.task_id));
     let lease = core

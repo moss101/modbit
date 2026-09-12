@@ -16182,6 +16182,10 @@ async fn qual_m4_4_a_stale_execution_owner_is_fenced_out_and_the_new_owner_resum
                     | ("run", "RunSuspended")
                     | ("task", "TaskWaiting")
                     | ("task", "TaskNeedsAttention")
+                    // M6.2: the fenced owner returns its own process-local
+                    // capacity ticket — bookkeeping of the loop that ended,
+                    // not an advance of the task.
+                    | ("task", "CapacityTicketReleased")
             ),
             "state advanced under a stale lease: {agg}/{ty}\n{after:?}"
         );
@@ -22101,5 +22105,512 @@ async fn qual_epr_006_a_quality_rejection_continues_the_run_on_the_prevalidated_
             .any(|l| l == "openai/gpt-5-mini -> openai/gpt-5"),
         "{s:?}"
     );
+    // REQ-EV-0256 (M6.1): the task's one primary agent kept its identity
+    // across the continuation; only its binding changed, on the log.
+    let ack = c
+        .command(envelope(
+            id16(0x6F),
+            "GetAgentGraph",
+            modbit_protocol::v1::GetAgentGraph {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let agents: modbit_protocol::v1::AgentGraphView = Client::result(&ack).unwrap();
+    assert_eq!(agents.nodes.len(), 1, "{agents:?}");
+    let primary = &agents.nodes[0];
+    assert_eq!(primary.kind, "PRIMARY");
+    assert_eq!(
+        (primary.endpoint.as_str(), primary.model.as_str()),
+        ("openai", "gpt-5")
+    );
+    let evs = task_events(&core, &session, &task).await;
+    let created = of(&evs, "AgentNodeCreated");
+    assert_eq!(
+        created.len(),
+        1,
+        "one identity for the whole task: {created:#?}"
+    );
+    assert_eq!(created[0]["node"]["binding"]["model"], "gpt-5-mini");
+    let rebound = of(&evs, "AgentBindingChanged");
+    assert_eq!(rebound.len(), 1, "{rebound:#?}");
+    assert_eq!(rebound[0]["from"]["model"], "gpt-5-mini");
+    assert_eq!(rebound[0]["to"]["model"], "gpt-5");
+    assert!(
+        rebound[0]["reason"]
+            .as_str()
+            .unwrap()
+            .contains("REQ-EPR-006"),
+        "{rebound:#?}"
+    );
+    core.kill();
+}
+
+/// M6.1 — WorkGraph and AgentGraph projections (docs/14 "One runtime,
+/// three explicit graphs"; QUAL-EV-0052, QUAL-EV-0120, QUAL-EV-0047,
+/// QUAL-EV-0255): the plan's steps are a dependency graph outside the
+/// transcript — validated whole (a step marked done ahead of its
+/// dependency is refused and records no plan version), readiness following
+/// the dependencies, done needing evidence — that a compaction epoch and a
+/// Core restart leave exactly as it was, and that the resumed model reads
+/// from its harness state; and every task has one primary agent, created
+/// at its first run with the run and the binding, moved through its
+/// statuses as runs end and resume, the same identity after the restart.
+#[tokio::test]
+async fn m6_1_work_graph_and_primary_agent_survive_compaction_and_restart_unchanged() {
+    use modbit_protocol::v1::{
+        AgentGraphView, GetAgentGraph, GetWorkGraph, StartTask, TaskRunStarted, WorkGraphView,
+    };
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[("big.txt", &"filler line for the transcript\n".repeat(400))]);
+    let read = json!({"calls": [{"name": "fs.read", "args": {"path": "big.txt"}}]});
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "the guard is fixed", "expected_files": ["big.txt"], "steps": [
+            {"id": "read", "title": "read the file", "expected_artifacts": []},
+            {"id": "fix", "title": "fix the guard", "depends_on": ["read"], "verification": "the check passes"},
+            {"id": "test", "title": "run the tests", "depends_on": ["fix"]}
+        ]}}]}),
+        // A step done ahead of its dependency: refused whole, no version.
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "the guard is fixed", "expected_files": ["big.txt"], "steps": [
+            {"id": "test", "status": "DONE", "evidence_refs": ["nothing yet"]}
+        ]}}]}),
+        // Done with evidence: the dependent becomes ready.
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "the guard is fixed", "expected_files": ["big.txt"], "steps": [
+            {"id": "read", "status": "DONE", "evidence_refs": ["fs.read big.txt"]},
+            {"id": "fix", "status": "ACTIVE", "blockers": []}
+        ]}}]}),
+    ];
+    // After the plan is in place the model reads the big file until its
+    // turn budget stops it (a reaction to what it last saw, so compaction
+    // shrinking the transcript replays nothing): enough reads to compact.
+    let rules = vec![
+        ("plan version 2 recorded".to_owned(), read.clone()),
+        ("\"path\":\"big.txt\"".to_owned(), read.clone()),
+    ];
+    let (base, seen) =
+        scripted_model_reactive(script, vec![], None, None, rules, false, vec![]).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_COMPACTION_TOKEN_BUDGET", "1500"),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x71)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x72, "local_trusted").await;
+    let start = |t: &Id, id: u8, max_turns: u32| {
+        envelope_fenced(
+            id16(id),
+            "StartTask",
+            StartTask {
+                task_id: Some(t.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns,
+                max_tool_calls: 0,
+                max_no_progress_turns: 5,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        )
+    };
+    async fn work(c: &mut Client, task: &Id, id: u8) -> WorkGraphView {
+        let ack = c
+            .command(envelope(
+                id16(id),
+                "GetWorkGraph",
+                GetWorkGraph {
+                    task_id: Some(task.clone()),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    }
+    async fn agents(c: &mut Client, task: &Id, id: u8) -> AgentGraphView {
+        let ack = c
+            .command(envelope(
+                id16(id),
+                "GetAgentGraph",
+                GetAgentGraph {
+                    task_id: Some(task.clone()),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    }
+    let _: TaskRunStarted =
+        Client::result(&c.command(start(&task, 0x73, 12)).await.unwrap()).unwrap();
+    let st = wait_task(&mut c, &task, 120).await;
+    assert!(!st.loop_alive, "{st:?}");
+    let evs = task_events(&core, &session, &task).await;
+    let of = |evs: &[(String, String, serde_json::Value)], t: &str| -> Vec<serde_json::Value> {
+        evs.iter()
+            .filter(|(_, ty, _)| ty == t)
+            .map(|(_, _, p)| p.clone())
+            .collect()
+    };
+    // The graph as the plan versions left it: two versions recorded (the
+    // refused change is none), two WorkNodesChanged records.
+    assert_eq!(of(&evs, "PlanRecorded").len(), 1);
+    assert_eq!(
+        of(&evs, "PlanRevised").len(),
+        1,
+        "{:#?}",
+        of(&evs, "PlanRevised")
+    );
+    let changes = of(&evs, "WorkNodesChanged");
+    assert_eq!(changes.len(), 2, "{changes:#?}");
+    assert_eq!(changes[0]["plan_version"], 1);
+    assert_eq!(changes[0]["changed"].as_array().unwrap().len(), 3);
+    assert_eq!(changes[1]["plan_version"], 2);
+    assert_eq!(changes[1]["ready"], json!([]));
+    // The refusal reached the model, typed, and recorded nothing.
+    let bodies = seen.lock().unwrap().clone();
+    let all_tool_texts: Vec<String> = bodies
+        .iter()
+        .flat_map(|b| b["messages"].as_array().cloned().unwrap_or_default())
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    assert!(
+        all_tool_texts
+            .iter()
+            .any(|t| t.contains("WORK_GRAPH_INVALID") && t.contains("DEPENDENCY_NOT_DONE")),
+        "{all_tool_texts:#?}"
+    );
+    assert!(
+        all_tool_texts
+            .iter()
+            .any(|t| t.contains("plan version 2 recorded")
+                && t.contains("fix [Active] fix the guard (after read)")),
+        "{all_tool_texts:#?}"
+    );
+    let w1 = work(&mut c, &task, 0x74).await;
+    assert_eq!(w1.nodes.len(), 3, "{w1:?}");
+    assert_eq!(w1.plan_version, 2);
+    let by_id = |w: &WorkGraphView, id: &str| w.nodes.iter().find(|n| n.id == id).cloned().unwrap();
+    let read_n = by_id(&w1, "read");
+    assert_eq!(read_n.status, "DONE");
+    assert_eq!(read_n.evidence_refs, vec!["fs.read big.txt".to_owned()]);
+    assert_eq!(read_n.attempts, 0);
+    let fix_n = by_id(&w1, "fix");
+    assert_eq!(fix_n.status, "ACTIVE");
+    assert_eq!(fix_n.depends_on, vec!["read".to_owned()]);
+    assert_eq!(fix_n.verification, "the check passes");
+    assert_eq!(fix_n.attempts, 1);
+    assert_eq!(by_id(&w1, "test").status, "PENDING");
+    assert!(w1.ready.is_empty(), "fix is active, test waits: {w1:?}");
+    // A compaction epoch happened in this run and touched nothing of it.
+    assert!(
+        !of(&evs, "CompactionCommitted").is_empty(),
+        "the transcript compacted"
+    );
+    // One primary agent, on this run, on the binding, no longer running.
+    let a1 = agents(&mut c, &task, 0x75).await;
+    assert_eq!(a1.nodes.len(), 1, "{a1:?}");
+    let p1 = &a1.nodes[0];
+    assert_eq!((p1.kind.as_str(), p1.depth), ("PRIMARY", 0));
+    assert!(p1.parent_agent_id.is_none());
+    assert_eq!(p1.root_agent_id, p1.agent_id);
+    assert!(p1.run_id.is_some());
+    assert_eq!(
+        (p1.endpoint.as_str(), p1.model.as_str()),
+        ("openai", "gpt-5-mini")
+    );
+    assert!(
+        !p1.idempotency_key.is_empty() && p1.idempotency_key.contains('-'),
+        "the primary's key is its task id: {p1:?}"
+    );
+    assert!(
+        matches!(p1.status.as_str(), "WAITING" | "COMPLETED"),
+        "the run is over: {p1:?}"
+    );
+    let created = of(&evs, "AgentNodeCreated");
+    assert_eq!(created.len(), 1, "one primary, created once: {created:#?}");
+    assert_eq!(created[0]["node"]["kind"], "PRIMARY");
+    assert_eq!(created[0]["node"]["status"], "RUNNING");
+    // Kill and restart: the projections are rebuilt from the log and are
+    // exactly what they were.
+    drop(c);
+    core.kill();
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let w2 = work(&mut c, &task, 0x76).await;
+    assert_eq!(w2, w1, "the WorkGraph after the restart");
+    let a2 = agents(&mut c, &task, 0x77).await;
+    assert_eq!(a2, a1, "the AgentGraph after the restart");
+    // Resumed: the same agent runs again (a finished primary passes through
+    // ADMITTED), and the model's first request carries the work graph in
+    // its harness state, not in a transcript that compaction rewrote.
+    seen.lock().unwrap().clear();
+    if st.state == "Waiting" {
+        // The turn budget is the task's, counted from the log: the resumed
+        // run gets a larger one so it can turn again.
+        let _: TaskRunStarted =
+            Client::result(&c.command(start(&task, 0x78, 16)).await.unwrap()).unwrap();
+        let st2 = wait_for_state(&mut c, &task, "Running", 30).await;
+        let _ = st2;
+        let st2 = wait_task(&mut c, &task, 120).await;
+        assert!(!st2.loop_alive, "{st2:?}");
+        let bodies = seen.lock().unwrap().clone();
+        assert!(!bodies.is_empty());
+        let first = bodies[0].to_string();
+        assert!(
+            first.contains("read [Done] read the file")
+                && first.contains("fix [Active] fix the guard (after read)")
+                && first.contains("test [Pending] run the tests (after fix)"),
+            "the work graph reaches the resumed model: {}",
+            &first[..first.len().min(3000)]
+        );
+        let a3 = agents(&mut c, &task, 0x79).await;
+        assert_eq!(a3.nodes.len(), 1, "still one primary: {a3:?}");
+        assert_eq!(a3.nodes[0].agent_id, p1.agent_id, "the same identity");
+        let evs = task_events(&core, &session, &task).await;
+        let transitions = of(&evs, "AgentNodeTransitioned");
+        assert!(
+            transitions.iter().any(|t| t["to"] == "RUNNING"),
+            "{transitions:#?}"
+        );
+        let w3 = work(&mut c, &task, 0x7A).await;
+        assert_eq!(w3.nodes.len(), 3);
+        assert_eq!(by_id(&w3, "read").status, "DONE");
+    }
+    core.kill();
+    let _ = repo;
+}
+
+/// M6.2 — capacity tickets (docs/14 "Capacity tickets", REQ-EV-0272,
+/// QUAL-EV-0272): capacity is a typed resource vector the host offers; a
+/// run consumes a ticket for one model slot and one unit of provider quota
+/// before its run record exists, so a task that does not fit is refused
+/// `CAPACITY_EXHAUSTED` with a typed record and nothing else — no run, no
+/// agent, no lease — and starts once the holder is done; a ticket is a
+/// lease renewed at every turn under the run's generation, so a run that
+/// stays away past the lease lapses, a waiting task takes the slot, and the
+/// lapsed run waits for capacity at its next boundary rather than running
+/// over it; the pool is served as `GetCapacity`.
+#[tokio::test]
+async fn m6_2_capacity_tickets_gate_runs_all_or_nothing_and_lapse_at_expiry() {
+    use modbit_protocol::v1::{CapacityView, GetCapacity, StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (_repo, root) = plain_repo(&[("notes.md", "hello\n")]);
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "read notes", "expected_files": []}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "notes.md"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "read", "self_review": {"findings": []}}}]}),
+    ];
+    // The second request of every run (one tool result) is held for four
+    // seconds: long enough for another task to be refused meanwhile, and
+    // longer than the ticket lease in the second half.
+    let (base, _seen) = scripted_model_delayed(script, (1, Duration::from_secs(4))).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        // One model slot on the whole host; tickets lease for 60 s.
+        ("MODBIT_CAPACITY", "model=1,provider=4"),
+        ("MODBIT_CAPACITY_TTL_MS", "60000"),
+    ];
+    async fn capacity(c: &mut Client, id: u8) -> CapacityView {
+        let ack = c
+            .command(envelope(
+                id16(id),
+                "GetCapacity",
+                GetCapacity {}.encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    }
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x81)).await;
+    let g = lease_for(&session);
+    let task_a = create_task_with_profile(&mut c, &session, g, &root, 0x82, "local_trusted").await;
+    let task_b = create_task_with_profile(&mut c, &session, g, &root, 0x83, "local_trusted").await;
+    let start = |t: &Id, id: u8| {
+        envelope_fenced(
+            id16(id),
+            "StartTask",
+            StartTask {
+                task_id: Some(t.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 8,
+                max_tool_calls: 0,
+                max_no_progress_turns: 3,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        )
+    };
+    let v0 = capacity(&mut c, 0x84).await;
+    assert_eq!(v0.limits.as_ref().unwrap().model_concurrency, 1);
+    assert_eq!(v0.limits.as_ref().unwrap().provider_quota, 4);
+    assert_eq!(
+        v0.limits.as_ref().unwrap().terminal_slots,
+        8,
+        "unnamed dimensions keep the default"
+    );
+    assert!(v0.tickets.is_empty());
+    // 1. A takes the one slot; B is refused, typed, with nothing created.
+    let a: TaskRunStarted =
+        Client::result(&c.command(start(&task_a, 0x85)).await.unwrap()).unwrap();
+    let v1 = capacity(&mut c, 0x86).await;
+    assert_eq!(v1.tickets.len(), 1, "{v1:?}");
+    assert_eq!(v1.tickets[0].holder, format!("run:{}", uuid_of(&task_a)));
+    assert_eq!(v1.tickets[0].holds.as_ref().unwrap().model_concurrency, 1);
+    assert_eq!(v1.tickets[0].generation, g.unwrap_or(0));
+    assert_eq!(v1.available.as_ref().unwrap().model_concurrency, 0);
+    let refused = c.command(start(&task_b, 0x87)).await;
+    let err = match refused {
+        Ok(ack) => match Client::result::<TaskRunStarted>(&ack) {
+            Ok(_) => panic!("B started over capacity"),
+            Err(e) => e.to_string(),
+        },
+        Err(e) => e.to_string(),
+    };
+    assert!(err.contains("CAPACITY_EXHAUSTED"), "{err}");
+    assert!(
+        err.contains("model_concurrency"),
+        "the dimension is named: {err}"
+    );
+    let evs_b = task_events(&core, &session, &task_b).await;
+    let of = |evs: &[(String, String, serde_json::Value)], t: &str| -> Vec<serde_json::Value> {
+        evs.iter()
+            .filter(|(_, ty, _)| ty == t)
+            .map(|(_, _, p)| p.clone())
+            .collect()
+    };
+    let denied = of(&evs_b, "CapacityDenied");
+    assert_eq!(denied.len(), 1, "{denied:#?}");
+    assert_eq!(denied[0]["code"], "CAPACITY_EXHAUSTED");
+    assert_eq!(denied[0]["dimension"], "model_concurrency");
+    assert_eq!(
+        (
+            denied[0]["needed"].as_u64(),
+            denied[0]["available"].as_u64()
+        ),
+        (Some(1), Some(0))
+    );
+    assert_eq!(
+        denied[0]["live"],
+        json!([format!("run:{}", uuid_of(&task_a))])
+    );
+    assert!(
+        of(&evs_b, "RunCreated").is_empty()
+            && of(&evs_b, "TaskStarted").is_empty()
+            && of(&evs_b, "AgentNodeCreated").is_empty(),
+        "nothing partial: {evs_b:#?}"
+    );
+    let st_b = wait_task(&mut c, &task_b, 1).await;
+    assert_eq!(st_b.state, "Queued", "{st_b:?}");
+    // 2. A finishes and releases; B starts.
+    let st_a = wait_for_state(&mut c, &task_a, "ReadyForReview", 60).await;
+    assert_eq!(st_a.state, "ReadyForReview", "{st_a:?}");
+    let evs_a = task_events(&core, &session, &task_a).await;
+    let granted = of(&evs_a, "CapacityTicketGranted");
+    assert_eq!(granted.len(), 1, "{granted:#?}");
+    assert_eq!(granted[0]["holds"]["model_concurrency"], 1);
+    let released = of(&evs_a, "CapacityTicketReleased");
+    assert_eq!(released.len(), 1, "{released:#?}");
+    assert_eq!(released[0]["reason"], "RELEASED");
+    assert_eq!(released[0]["ticket_id"], granted[0]["ticket_id"]);
+    let v2 = capacity(&mut c, 0x88).await;
+    assert!(v2.tickets.is_empty(), "{v2:?}");
+    let _: TaskRunStarted =
+        Client::result(&c.command(start(&task_b, 0x89)).await.unwrap()).unwrap();
+    let st_b = wait_for_state(&mut c, &task_b, "ReadyForReview", 60).await;
+    assert_eq!(st_b.state, "ReadyForReview", "{st_b:?}");
+    let _ = a;
+    drop(c);
+    core.kill();
+    // 3. Lapse: a ticket leased for one second, a run away for four. The
+    //    waiting task takes the slot the lapse freed; the lapsed run waits
+    //    for capacity at its next turn instead of running over the pool.
+    let dir2 = tempfile::tempdir().unwrap();
+    let env2 = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_CAPACITY", "model=1,provider=4"),
+        ("MODBIT_CAPACITY_TTL_MS", "1000"),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir2.path(), &env2);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x8A)).await;
+    let g = lease_for(&session);
+    let task_c = create_task_with_profile(&mut c, &session, g, &root, 0x8B, "local_trusted").await;
+    let task_d = create_task_with_profile(&mut c, &session, g, &root, 0x8C, "local_trusted").await;
+    let start2 = |t: &Id, id: u8| {
+        envelope_fenced(
+            id16(id),
+            "StartTask",
+            StartTask {
+                task_id: Some(t.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 8,
+                max_tool_calls: 0,
+                max_no_progress_turns: 3,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        )
+    };
+    let _: TaskRunStarted =
+        Client::result(&c.command(start2(&task_c, 0x8D)).await.unwrap()).unwrap();
+    // While C is held by the provider (4 s) its ticket lapses (1 s).
+    tokio::time::sleep(Duration::from_millis(2000)).await;
+    let _: TaskRunStarted =
+        Client::result(&c.command(start2(&task_d, 0x8E)).await.unwrap()).unwrap();
+    let st_d = wait_for_state(&mut c, &task_d, "ReadyForReview", 60).await;
+    assert_eq!(st_d.state, "ReadyForReview", "{st_d:?}");
+    let st_c = wait_task(&mut c, &task_c, 60).await;
+    let evs_c = task_events(&core, &session, &task_c).await;
+    let lapsed: Vec<serde_json::Value> = of(&evs_c, "CapacityTicketReleased")
+        .into_iter()
+        .filter(|r| r["reason"] == "LAPSED")
+        .collect();
+    let evs_d = task_events(&core, &session, &task_d).await;
+    let lapsed_seen_by_d: Vec<serde_json::Value> = of(&evs_d, "CapacityTicketReleased")
+        .into_iter()
+        .filter(|r| r["reason"] == "LAPSED")
+        .collect();
+    assert!(
+        !lapsed.is_empty() || !lapsed_seen_by_d.is_empty(),
+        "the lapse is on the log: {evs_c:#?}"
+    );
+    // C either re-took a slot when D was done (and finished), or waited for
+    // capacity at its boundary; it never ran while D held the only slot.
+    assert!(
+        matches!(st_c.state.as_str(), "ReadyForReview" | "Waiting"),
+        "{st_c:?}"
+    );
+    if st_c.state == "Waiting" {
+        assert_eq!(st_c.wait_reason, "Capacity", "{st_c:?}");
+        assert_eq!(st_c.failure_code, "CAPACITY_LOST", "{st_c:?}");
+        assert!(st_c.retryable, "{st_c:?}");
+        // Capacity is back; the resumed run takes a ticket again and finishes.
+        let _: TaskRunStarted =
+            Client::result(&c.command(start2(&task_c, 0x8F)).await.unwrap()).unwrap();
+        let st_c = wait_for_state(&mut c, &task_c, "ReadyForReview", 60).await;
+        assert_eq!(st_c.state, "ReadyForReview", "{st_c:?}");
+    }
+    let v3 = capacity(&mut c, 0x90).await;
+    assert!(v3.tickets.is_empty(), "everything released: {v3:?}");
     core.kill();
 }

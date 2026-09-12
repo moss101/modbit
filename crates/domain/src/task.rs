@@ -407,6 +407,97 @@ pub enum TaskEvent {
         /// Invalid files as `source: why`.
         invalid: Vec<String>,
     },
+    /// `AgentNodeCreated` (M6.1, docs/13 "Agent node", docs/14
+    /// "AgentGraph"): a logical agent joined the task's AgentGraph — the
+    /// primary at the first run, a specialist or subagent when admitted.
+    /// No task state change.
+    AgentNodeCreated {
+        /// The node as created.
+        node: crate::agent::AgentNode,
+    },
+    /// `AgentNodeTransitioned`: a node's status moved (docs/13 "Subagent").
+    /// No task state change.
+    AgentNodeTransitioned {
+        /// Node.
+        agent_id: crate::AgentId,
+        /// From.
+        from: crate::agent::AgentStatus,
+        /// To.
+        to: crate::agent::AgentStatus,
+        /// The run it executes in, when it has one.
+        run_id: Option<crate::RunId>,
+        /// Why.
+        reason: String,
+    },
+    /// `AgentBindingChanged` (REQ-EV-0256): the node runs on another
+    /// binding under policy (a continuation on a stronger solver, a
+    /// fallback) while its identity, lineage and run stay. No state change.
+    AgentBindingChanged {
+        /// Node.
+        agent_id: crate::AgentId,
+        /// Before.
+        from: crate::agent::AgentBinding,
+        /// After.
+        to: crate::agent::AgentBinding,
+        /// Why.
+        reason: String,
+    },
+    /// `WorkNodesChanged` (M6.1, REQ-EV-0052 / 0120): a plan version
+    /// created or changed work nodes; the nodes as they stand after the
+    /// change, so a reader needs no earlier record to know their state.
+    /// No task state change.
+    WorkNodesChanged {
+        /// Plan version that carried the change.
+        plan_version: u32,
+        /// The nodes touched, as they now are.
+        changed: Vec<crate::agent::WorkNode>,
+        /// Nodes whose `PENDING`/`READY` followed from the change.
+        ready: Vec<crate::agent::WorkNodeId>,
+    },
+    /// `CapacityTicketGranted` (M6.2, REQ-EV-0272, docs/14 "Capacity
+    /// tickets"): a holder consumed a ticket for the resource vector it
+    /// needs, leased until `expires_at_ms` under `generation`. No state
+    /// change.
+    CapacityTicketGranted {
+        /// Ticket id.
+        ticket_id: String,
+        /// Holder (`run:<id>`, `agent:<id>`, …).
+        holder: String,
+        /// The vector held (JSON `ResourceVector`).
+        holds: serde_json::Value,
+        /// Lease expiry, ms.
+        expires_at_ms: i64,
+        /// Lease generation at grant.
+        generation: u64,
+    },
+    /// `CapacityTicketReleased`: the ticket's capacity returned to the pool
+    /// (released by its holder, or lapsed at expiry). No state change.
+    CapacityTicketReleased {
+        /// Ticket id.
+        ticket_id: String,
+        /// Holder.
+        holder: String,
+        /// `RELEASED` | `LAPSED`.
+        reason: String,
+    },
+    /// `CapacityDenied`: the pool could not cover the request; nothing was
+    /// reserved and nothing started. No state change.
+    CapacityDenied {
+        /// Holder that asked.
+        holder: String,
+        /// The vector asked for (JSON `ResourceVector`).
+        needs: serde_json::Value,
+        /// Refusal code (`CAPACITY_EXHAUSTED` | `EXCEEDS_POOL` | …).
+        code: String,
+        /// The first dimension that did not fit.
+        dimension: String,
+        /// Units needed there.
+        needed: u32,
+        /// Units available there.
+        available: u32,
+        /// Holders of the live tickets at the time.
+        live: Vec<String>,
+    },
     /// `MediaBridged` (REQ-EV-0184 / 0185): the routed model takes no input
     /// of this media's modality, so a configured vision bridge described it
     /// (or failed to); the description is lossy, untrusted data. No state
@@ -910,6 +1001,13 @@ impl TaskEvent {
             Self::SkillSelected { .. } => "SkillSelected",
             Self::SkillRejected { .. } => "SkillRejected",
             Self::RulesSelected { .. } => "RulesSelected",
+            Self::AgentNodeCreated { .. } => "AgentNodeCreated",
+            Self::AgentNodeTransitioned { .. } => "AgentNodeTransitioned",
+            Self::AgentBindingChanged { .. } => "AgentBindingChanged",
+            Self::WorkNodesChanged { .. } => "WorkNodesChanged",
+            Self::CapacityTicketGranted { .. } => "CapacityTicketGranted",
+            Self::CapacityTicketReleased { .. } => "CapacityTicketReleased",
+            Self::CapacityDenied { .. } => "CapacityDenied",
             Self::MediaBridged { .. } => "MediaBridged",
             Self::ContextEpochOpened { .. } => "ContextEpochOpened",
             Self::CompactionStarted { .. } => "CompactionStarted",
@@ -1035,6 +1133,13 @@ impl Task {
             | TaskEvent::SkillRejected { .. }
             | TaskEvent::RulesSelected { .. }
             | TaskEvent::MediaBridged { .. }
+            | TaskEvent::CapacityTicketGranted { .. }
+            | TaskEvent::CapacityTicketReleased { .. }
+            | TaskEvent::CapacityDenied { .. }
+            | TaskEvent::AgentNodeCreated { .. }
+            | TaskEvent::AgentNodeTransitioned { .. }
+            | TaskEvent::AgentBindingChanged { .. }
+            | TaskEvent::WorkNodesChanged { .. }
             | TaskEvent::ContextEpochOpened { .. }
             | TaskEvent::CompactionStarted { .. }
             | TaskEvent::CompactionCommitted { .. }

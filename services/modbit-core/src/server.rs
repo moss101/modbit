@@ -61,6 +61,9 @@ pub struct Core {
     /// The assurance policy this Core runs under (REQ-EPR-008): the base
     /// strengthened by the organization layer, never weakened.
     pub(crate) assurance_policy: modbit_policy::AssurancePolicy,
+    /// Capacity tickets (M6.2, REQ-EV-0272): the host's resource vector
+    /// and the tickets alive against it.
+    pub(crate) capacity: crate::capacity::Capacity,
 }
 
 /// Bounded number of events per subscription batch (REQ-EV-0108).
@@ -171,6 +174,9 @@ pub async fn run(data_dir: PathBuf, idle_exit_secs: Option<u64>) -> Result<()> {
             }
             policy
         },
+        capacity: crate::capacity::from_env()
+            .map_err(|e| anyhow::anyhow!("{e}"))
+            .context("capacity")?,
     });
     let _ = std::fs::remove_file(data_dir.join("core.ready"));
     let listener = Listener::bind(&endpoint)
@@ -507,6 +513,9 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "ListLanguages",
                     "GetContextInspector",
                     "GetRoutingPlan",
+                    "GetWorkGraph",
+                    "GetAgentGraph",
+                    "GetCapacity",
                     "AdmitRoutingPlan",
                     "CompileRoutingPlan",
                     "ConfigureProvider",
@@ -2787,6 +2796,90 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             let view = crate::routing::view(core, task_id).await;
             accept(cid, false, view.encode_to_vec())
         }
+        "GetWorkGraph" => {
+            let Ok(p) = wire::GetWorkGraph::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "GetWorkGraph");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let store = core.store.lock().await;
+            match store.task(&task_id) {
+                Ok(Some(_)) => {}
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            }
+            let nodes = store.work_nodes(&task_id).unwrap_or_default();
+            let graph = modbit_domain::agent::WorkGraph {
+                nodes: nodes.clone(),
+            };
+            let view = wire::WorkGraphView {
+                task_id: Some(wire_id(task_id.as_bytes())),
+                ready: graph.ready().iter().map(|n| n.id.clone()).collect(),
+                plan_version: nodes.iter().map(|n| n.plan_version).max().unwrap_or(0),
+                nodes: nodes
+                    .into_iter()
+                    .map(|n| wire::WorkNodeView {
+                        id: n.id,
+                        title: n.title,
+                        depends_on: n.depends_on,
+                        owner_agent_id: n.owner.map(|o| wire_id(o.as_bytes())),
+                        status: serde_json::to_string(&n.status)
+                            .unwrap_or_default()
+                            .trim_matches('"')
+                            .to_owned(),
+                        expected_artifacts: n.expected_artifacts,
+                        verification: n.verification,
+                        evidence_refs: n.evidence_refs,
+                        blockers: n.blockers,
+                        attempts: n.attempts,
+                        plan_version: n.plan_version,
+                    })
+                    .collect(),
+            };
+            accept(cid, false, view.encode_to_vec())
+        }
+        "GetAgentGraph" => {
+            let Ok(p) = wire::GetAgentGraph::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "GetAgentGraph");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let store = core.store.lock().await;
+            match store.task(&task_id) {
+                Ok(Some(_)) => {}
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            }
+            let view = wire::AgentGraphView {
+                task_id: Some(wire_id(task_id.as_bytes())),
+                nodes: store
+                    .agent_nodes(&task_id)
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|n| wire::AgentNodeView {
+                        agent_id: Some(wire_id(n.agent_id.as_bytes())),
+                        parent_agent_id: n.parent_agent_id.map(|p| wire_id(p.as_bytes())),
+                        root_agent_id: Some(wire_id(n.root_agent_id.as_bytes())),
+                        depth: n.depth,
+                        kind: n.kind,
+                        status: n.status,
+                        run_id: n.run_id.map(|r| wire_id(r.as_bytes())),
+                        capsule_ref: n.capsule_ref.unwrap_or_default(),
+                        endpoint: n.endpoint,
+                        model: n.model,
+                        idempotency_key: n.idempotency_key,
+                        owns: n.owns,
+                        created_at_ms: n.created_at.0,
+                        updated_at_ms: n.updated_at.0,
+                        last_offset: n.last_offset,
+                    })
+                    .collect(),
+            };
+            accept(cid, false, view.encode_to_vec())
+        }
+        "GetCapacity" => accept(cid, false, core.capacity.view().encode_to_vec()),
         "GetProtocolState" => {
             let Ok(p) = wire::GetProtocolState::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "GetProtocolState");
@@ -3158,6 +3251,7 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 skills: p.skills.clone(),
                 slot_id: String::new(),
                 lease_generation: 0,
+                ticket_id: String::new(),
             };
             match core
                 .runtime

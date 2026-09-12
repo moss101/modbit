@@ -455,6 +455,18 @@ pub fn classify(source: &FailureSource<'_>) -> FailureDiagnostic {
                     f,
                     message,
                 ),
+                // M6.2 (REQ-EV-0272): the run's capacity ticket lapsed and the
+                // pool could not cover it again; the run waits for capacity.
+                "CAPACITY_LOST" => diag(
+                    FailureClass::Budget,
+                    code,
+                    true,
+                    "wait for a running task to finish, or raise MODBIT_CAPACITY, then resume with StartTask",
+                    "the run suspended at a turn boundary; StartTask takes a ticket again before it resumes",
+                    vec![],
+                    f,
+                    message,
+                ),
                 _ => diag(
                     FailureClass::Harness,
                     code,

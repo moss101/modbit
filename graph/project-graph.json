@@ -3052,8 +3052,35 @@
    "milestone": "M6",
    "order": 0,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-12T14:23:06Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: see evidence/m6/M6.1/TASK_CARD.md"
+    },
+    {
+     "at": "2026-09-12T14:23:06Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implementing per the task card"
+    },
+    {
+     "at": "2026-09-12T14:23:06Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired: plan.update steps, run start/resume/end, GetWorkGraph/GetAgentGraph, CLI"
+    },
+    {
+     "at": "2026-09-12T14:23:06Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification through Core (see card)"
+    }
+   ],
+   "status_changed_on": "2026-09-12T14:23:06Z"
   },
   {
    "id": "M6.2",
@@ -9575,8 +9602,35 @@
    "milestone": "M6",
    "qual": "QUAL-EV-0052",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-12T14:23:07Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: see evidence/m6/IMP-EV-0052/TASK_CARD.md"
+    },
+    {
+     "at": "2026-09-12T14:23:07Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implementing per the task card"
+    },
+    {
+     "at": "2026-09-12T14:23:07Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired: plan.update steps, run start/resume/end, GetWorkGraph/GetAgentGraph, CLI"
+    },
+    {
+     "at": "2026-09-12T14:23:07Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification through Core (see card)"
+    }
+   ],
+   "status_changed_on": "2026-09-12T14:23:07Z"
   },
   {
    "id": "IMP-EV-0053",
@@ -12201,8 +12255,35 @@
    "milestone": "M6",
    "qual": "QUAL-EV-0120",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-12T14:23:07Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: see evidence/m6/IMP-EV-0120/TASK_CARD.md"
+    },
+    {
+     "at": "2026-09-12T14:23:07Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implementing per the task card"
+    },
+    {
+     "at": "2026-09-12T14:23:07Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired: plan.update steps, run start/resume/end, GetWorkGraph/GetAgentGraph, CLI"
+    },
+    {
+     "at": "2026-09-12T14:23:07Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification through Core (see card)"
+    }
+   ],
+   "status_changed_on": "2026-09-12T14:23:07Z"
   },
   {
    "id": "IMP-EV-0121",
@@ -17727,8 +17808,35 @@
    "milestone": "M6",
    "qual": "QUAL-EV-0255",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-12T14:23:07Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: see evidence/m6/IMP-EV-0255/TASK_CARD.md"
+    },
+    {
+     "at": "2026-09-12T14:23:07Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implementing per the task card"
+    },
+    {
+     "at": "2026-09-12T14:23:07Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired: plan.update steps, run start/resume/end, GetWorkGraph/GetAgentGraph, CLI"
+    },
+    {
+     "at": "2026-09-12T14:23:07Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification through Core (see card)"
+    }
+   ],
+   "status_changed_on": "2026-09-12T14:23:07Z"
   },
   {
    "id": "IMP-EV-0256",
@@ -17741,8 +17849,35 @@
    "milestone": "M6",
    "qual": "QUAL-EV-0256",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-12T14:23:07Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: see evidence/m6/IMP-EV-0256/TASK_CARD.md"
+    },
+    {
+     "at": "2026-09-12T14:23:07Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implementing per the task card"
+    },
+    {
+     "at": "2026-09-12T14:23:07Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired: plan.update steps, run start/resume/end, GetWorkGraph/GetAgentGraph, CLI"
+    },
+    {
+     "at": "2026-09-12T14:23:07Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification through Core (see card)"
+    }
+   ],
+   "status_changed_on": "2026-09-12T14:23:07Z"
   },
   {
    "id": "IMP-EV-0261",

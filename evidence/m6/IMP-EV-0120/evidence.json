@@ -1,0 +1,16 @@
+{
+ "task": "IMP-EV-0120",
+ "requirement": "REQ-EV-0120",
+ "qual": "QUAL-EV-0120",
+ "tests": [
+  "m6_1_work_graph_and_primary_agent_survive_compaction_and_restart_unchanged",
+  "nodes_follow_their_dependencies_and_done_needs_evidence",
+  "unknown_dependencies_and_cycles_are_refused"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "statuses, evidence references and attempts survive a hard kill and restart unchanged while the transcript compacted; a refused change (done ahead of a dependency) records nothing.",
+ "audit": "MISSING before: no task list existed beyond the plan's outcome sentence.",
+ "limitations": "Insertion, deletion and reordering are changes to `steps`; there is no separate todo tool — the plan owns the list (docs/17).",
+ "ci": ""
+}

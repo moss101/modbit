@@ -1,0 +1,16 @@
+{
+ "task": "IMP-EV-0052",
+ "requirement": "REQ-EV-0052",
+ "qual": "QUAL-EV-0052",
+ "tests": [
+  "m6_1_work_graph_and_primary_agent_survive_compaction_and_restart_unchanged",
+  "nodes_follow_their_dependencies_and_done_needs_evidence",
+  "unknown_dependencies_and_cycles_are_refused"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "the plan's steps with dependencies, owner slot, status, evidence and blockers are recorded outside the transcript; a compaction epoch during the run and a Core kill/restart leave `GetWorkGraph` identical, and the resumed model reads the nodes from its harness state rather than the rewritten transcript.",
+ "audit": "MISSING before: the plan held no nodes; only the transcript carried what the model thought it was doing.",
+ "limitations": "Owner assignment waits for admission (M6.3).",
+ "ci": ""
+}

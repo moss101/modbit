@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 907,
-    "docs_bytes": 1092058
+    "root_and_tooling": 921,
+    "docs_bytes": 1097551
   },
   "sections": [
     {
@@ -167,8 +167,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Agent Runtime and Orchestration",
-      "bytes": 13689,
-      "sha256": "88b405e8853c80331bae41590badaa76e92a750531a37a35f7988702f07705e1"
+      "bytes": 17397,
+      "sha256": "b2ceae86290eb631449ef823755f9dc0d1dce2795c401eb78439bb74bf847554"
     },
     {
       "path": "docs/15_MODEL_ROUTER_AND_PROVIDER_GATEWAY.md",
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 14089,
-      "sha256": "00b4c59701f5cc04a21e868895ef8092865982f9e10d36dc2de817d06c974d83"
+      "bytes": 15309,
+      "sha256": "59130f95d771bc1649626d8ae31a4cb37c7704d25e398267897aa32d633a5c48"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -320,8 +320,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Database and Storage Schema",
-      "bytes": 13365,
-      "sha256": "746144bb8e651919008b9c09f4b40349501b22f5e82e8af2bb8d1d10152f41cf"
+      "bytes": 13930,
+      "sha256": "ba8817151a4efeb8ef03b50818275577f21de86242413b53ea3492638d8cda9e"
     },
     {
       "path": "docs/32_DESKTOP_FRONTEND_IMPLEMENTATION.md",
@@ -5347,14 +5347,84 @@
       "sha256": "b1cc522f037f2027058b574b63c7d8850743f09d35598a95af92a761965bd37b"
     },
     {
+      "path": "evidence/m6/IMP-EV-0052/TASK_CARD.md",
+      "bytes": 1752,
+      "sha256": "e76fe98551b6e47e0319e84f72ee8cc49d4291d3ec7c6591044537d083508f53"
+    },
+    {
+      "path": "evidence/m6/IMP-EV-0052/evidence.json",
+      "bytes": 833,
+      "sha256": "75e3bf29e658db8258372f2c65fec22a56ec15f0a8db80464a276a7dfc1cdd6d"
+    },
+    {
+      "path": "evidence/m6/IMP-EV-0120/TASK_CARD.md",
+      "bytes": 1579,
+      "sha256": "69f47eb8d474c60fc871dada4c8508dd242c152063664ea2c6f4e3c1df707a58"
+    },
+    {
+      "path": "evidence/m6/IMP-EV-0120/evidence.json",
+      "bytes": 760,
+      "sha256": "53c681941e331c4340ffbe6369e1a40d126823593ed192f5b7250ea5b5a674e8"
+    },
+    {
+      "path": "evidence/m6/IMP-EV-0255/TASK_CARD.md",
+      "bytes": 1701,
+      "sha256": "6e77494f7e36bced0511b5fca77eb123c29baf3564182448633358c8bda82eea"
+    },
+    {
+      "path": "evidence/m6/IMP-EV-0255/evidence.json",
+      "bytes": 790,
+      "sha256": "2314c144b6e9188ccde20ad967e8ee1c33c226976d49a87ca65dc436cb8586ee"
+    },
+    {
+      "path": "evidence/m6/IMP-EV-0256/TASK_CARD.md",
+      "bytes": 1853,
+      "sha256": "b5084dcc7641fb72e6862dfdb128d297999318811ea7ed2f4055f00b375cf5e0"
+    },
+    {
+      "path": "evidence/m6/IMP-EV-0256/evidence.json",
+      "bytes": 922,
+      "sha256": "197eebb5af8d43dcc3724a4df5d821974ea5dc94a935ae5f7134923947ae6bbf"
+    },
+    {
+      "path": "evidence/m6/IMP-EV-0272/TASK_CARD.md",
+      "bytes": 3491,
+      "sha256": "11b2650cd7d1a4efeee5bfe928be901a0eb723e64efef350125d8570504f8b17"
+    },
+    {
+      "path": "evidence/m6/IMP-EV-0272/evidence.json",
+      "bytes": 1155,
+      "sha256": "66bbab40b9c4adb98dde1bde07d5b473b55213a6fc511c83a83898631c9895eb"
+    },
+    {
+      "path": "evidence/m6/M6.1/TASK_CARD.md",
+      "bytes": 3770,
+      "sha256": "7554a021a54dba8fa690c0ebad3289c01b459ce2da388a0a90161e6afeac1be0"
+    },
+    {
+      "path": "evidence/m6/M6.1/evidence.json",
+      "bytes": 1851,
+      "sha256": "5da8401f229701f85794ca3c41534eefd8e7635597843574fbdbcbb22f47094b"
+    },
+    {
+      "path": "evidence/m6/M6.2/TASK_CARD.md",
+      "bytes": 3839,
+      "sha256": "9a849046fb887733a771835fb53c2a1d1a8693255fbbcfa84dde526b19f7a043"
+    },
+    {
+      "path": "evidence/m6/M6.2/evidence.json",
+      "bytes": 1171,
+      "sha256": "00f184e51d46f72b3aab28a7c03ac21bf64003089a8a3d872ad0462f0546c074"
+    },
+    {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 40820,
-      "sha256": "433a808c1905a2d237c0a22cf7803fd07dfe418d33d331fcfe2b05b84c76fa98"
+      "bytes": 40821,
+      "sha256": "5fdfddd97d17aececa64fc01907976f6d249e495379238e0b57793b388ab3410"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1378009,
-      "sha256": "9b119e1d89339de61a36fd86f8dd0b2112236c781f69d978c17a7c10157e8cfb"
+      "bytes": 1381652,
+      "sha256": "2bffac092a9daa1b7466a66b6d788bf54df7698536a5a2682000a6dd5cb605b9"
     },
     {
       "path": "tools/build_graph.py",

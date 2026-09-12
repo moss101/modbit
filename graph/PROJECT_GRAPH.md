@@ -91,7 +91,7 @@ flowchart LR
   style M3 fill:#fee2e2,stroke:#dc2626,color:#111827
   style M4 fill:#dcfce7,stroke:#16a34a,color:#111827
   style M5 fill:#dcfce7,stroke:#16a34a,color:#111827
-  style M6 fill:#f3f4f6,stroke:#9ca3af,color:#111827
+  style M6 fill:#fef3c7,stroke:#d97706,color:#111827
   style M7 fill:#f3f4f6,stroke:#9ca3af,color:#111827
   style M8 fill:#f3f4f6,stroke:#9ca3af,color:#111827
   style M9 fill:#f3f4f6,stroke:#9ca3af,color:#111827
@@ -110,7 +110,7 @@ Critical path (reliability spine): **M0 → M1 → M2 → M4**. Do not start bro
 | M3 Context intelligence | BLOCKED | yes | 9 | 79 | 87 | 1 | M2 | profile A/B/C benchmark plus retrieval-before-edit visible in task evidence. |
 | M4 Durable recovery spine | COMPLETE | yes | 6 | 12 | 18 | 0 | M2 | E2E-004/005/006/007/008. |
 | M5 Procedural runtime and skills | COMPLETE | yes | 7 | 32 | 39 | 0 | M2 | E2E-011/012; direct and procedural mode yield equivalent receipts/policy behavior. |
-| M6 Subagents/fleet | NOT_STARTED | yes | 7 | 51 | 0 | 0 | M2, M4 | E2E-009/010 and user can supervise multiple tasks without raw-log polling. |
+| M6 Subagents/fleet | IN_PROGRESS | yes | 7 | 51 | 0 | 0 | M2, M4 | E2E-009/010 and user can supervise multiple tasks without raw-log polling. |
 | M7 Live browser | NOT_STARTED | yes | 8 | 21 | 0 | 0 | M2 | E2E-013..016. |
 | M8 Cloud isolated execution | NOT_STARTED | no | 9 | 19 | 0 | 0 | M4, M7 | E2E-017/018/024. |
 | M9 Engineering memory/effects/security hardening | NOT_STARTED | yes | 6 | 26 | 0 | 0 | M4, M5 | memory cannot be created from transcript without promotion; receipt chain verifies; threat tests pass. |
@@ -450,7 +450,7 @@ flowchart LR
 
 | Task | Status | Title | Acceptance / note |
 |---|---|---|---|
-| `M6.1` | NOT_STARTED | WorkGraph/AgentGraph projections |  |
+| `M6.1` | REAL_TESTING | WorkGraph/AgentGraph projections |  |
 | `M6.2` | NOT_STARTED | capacity ticket allocator |  |
 | `M6.3` | NOT_STARTED | transactional subagent admission |  |
 | `M6.4` | NOT_STARTED | semantic write-conflict detector |  |

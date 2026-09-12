@@ -63,6 +63,12 @@ As built (M4.3): plus `kind` (`BASELINE` | `DELTA`), `committed_at`, `reason`, `
 `epoch_id PK, session_id, branch_generation, source_event_start, source_event_end, previous_epoch_id, compiler_version, target_tokens, status, result_object_hash, created_at, committed_at`.
 As built (M4.2): plus `task_id, epoch, source_entries, mode, rejection`. A row opens `PENDING` from `CompactionStarted` (`mode` `ASYNC` for a worker, `SYNC_FALLBACK` under hard pressure), commits from `CompactionCommitted` (`result_object_hash` = the manifest; `ContextEpochOpened` carries the same manifest to the model), or closes `REJECTED` from `CompactionRejectedStale` with `rejection` = `<reason>: <detail>` (`BRANCH_CHANGED`, `SOURCE_REWRITTEN`, `NOT_SUCCESSOR`, `GENERATION_CHANGED`, `SOURCE_ADVANCED`, `WORKER_FAILED`, `RUN_ENDED`). `sessions.branch_generation` (V11) is the session/branch generation a fork or revert moves (`SessionBranched`).
 
+### `agent_nodes` (as built, M6.1)
+Derivable from `AgentNodeCreated` / `AgentNodeTransitioned` / `AgentBindingChanged`: agent id, task, parent and root, depth, kind, status, run, capsule ref, endpoint and model, idempotency key (unique per task), owned work node ids, timestamps and the offset of the last event that changed it.
+
+### `work_nodes` (as built, M6.1)
+Derivable from `WorkNodesChanged`: per task and node id — title, dependencies, owner, status, expected artifacts, verification, evidence refs, blockers, attempts, plan version and creation ordinal.
+
 ### `memory_items`
 `memory_id PK, scope_type, scope_id, type, content_object_hash, source_ref, confidence, sensitivity, ttl_at, revision_binding, supersedes_id, state, created_at, validated_at`.
 

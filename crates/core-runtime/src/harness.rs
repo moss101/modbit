@@ -46,6 +46,11 @@ pub struct Plan {
     /// Version (1 = original).
     #[serde(default)]
     pub version: u32,
+    /// Work nodes this version creates or changes (M6.1, REQ-EV-0052 /
+    /// 0120): the plan's steps as a dependency graph outside the
+    /// transcript. Absent fields leave a node as it is.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub steps: Vec<modbit_domain::agent::WorkNodeChange>,
 }
 
 /// Durable harness state carried into every Context Pack (docs/14 contract 4).
@@ -153,6 +158,11 @@ pub struct HarnessState {
     /// Revision of the last COMPLETION run that passed attribution.
     #[serde(default)]
     pub completion_verified_revision: Option<u64>,
+    /// The task's WorkGraph (M6.1): the plan's steps with dependencies,
+    /// status, evidence and blockers, kept outside the transcript and
+    /// rebuilt from the log; the model sees its summary in `work`.
+    #[serde(default, skip_serializing)]
+    pub work_graph: modbit_domain::agent::WorkGraph,
     /// The quality boundary's last STAY on this run (REQ-EPR-006): the leg
     /// ended rejected and no continuation could activate, in the words the
     /// log holds. A resumed run consults the boundary again while this is
@@ -1429,6 +1439,7 @@ mod tests {
             verification: vec![],
             protected_effects: vec!["git.worktree".into()],
             version: 1,
+            steps: vec![],
         });
         let scope = h.projection_scope("solver");
         assert!(scope.writes_declared);

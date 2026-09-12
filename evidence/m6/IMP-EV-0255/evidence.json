@@ -1,0 +1,16 @@
+{
+ "task": "IMP-EV-0255",
+ "requirement": "REQ-EV-0255",
+ "qual": "QUAL-EV-0255",
+ "tests": [
+  "m6_1_work_graph_and_primary_agent_survive_compaction_and_restart_unchanged",
+  "qual_epr_006_a_quality_rejection_continues_the_run_on_the_prevalidated_stronger_slot",
+  "agent_status_transitions_are_the_documented_ones"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "a typical task through Core creates exactly one `PRIMARY` node and no other agent; the same node is the one running after a restart and a resume; the EPR-006 continuation spawns no second agent.",
+ "audit": "MISSING before: no agent identity existed to be one of.",
+ "limitations": "Delegation of separable work (subagents) arrives with M6.3–M6.5; until then the primary is the only worker by construction.",
+ "ci": ""
+}

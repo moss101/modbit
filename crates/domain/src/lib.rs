@@ -12,6 +12,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod agent;
 pub mod approval;
 pub mod event;
 pub mod failure;

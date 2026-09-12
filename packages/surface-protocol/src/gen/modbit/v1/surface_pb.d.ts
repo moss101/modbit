@@ -6619,6 +6619,398 @@ export declare type SessionTreeView = Message<"modbit.v1.SessionTreeView"> & {
 export declare const SessionTreeViewSchema: GenMessage<SessionTreeView>;
 
 /**
+ * @generated from message modbit.v1.GetWorkGraph
+ */
+export declare type GetWorkGraph = Message<"modbit.v1.GetWorkGraph"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.GetWorkGraph.
+ * Use `create(GetWorkGraphSchema)` to create a new message.
+ */
+export declare const GetWorkGraphSchema: GenMessage<GetWorkGraph>;
+
+/**
+ * @generated from message modbit.v1.WorkNodeView
+ */
+export declare type WorkNodeView = Message<"modbit.v1.WorkNodeView"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string title = 2;
+   */
+  title: string;
+
+  /**
+   * @generated from field: repeated string depends_on = 3;
+   */
+  dependsOn: string[];
+
+  /**
+   * absent when nobody owns it
+   *
+   * @generated from field: modbit.v1.Id owner_agent_id = 4;
+   */
+  ownerAgentId?: Id | undefined;
+
+  /**
+   * PENDING | READY | ACTIVE | BLOCKED | DONE | FAILED | CANCELLED
+   *
+   * @generated from field: string status = 5;
+   */
+  status: string;
+
+  /**
+   * @generated from field: repeated string expected_artifacts = 6;
+   */
+  expectedArtifacts: string[];
+
+  /**
+   * @generated from field: string verification = 7;
+   */
+  verification: string;
+
+  /**
+   * @generated from field: repeated string evidence_refs = 8;
+   */
+  evidenceRefs: string[];
+
+  /**
+   * @generated from field: repeated string blockers = 9;
+   */
+  blockers: string[];
+
+  /**
+   * @generated from field: uint32 attempts = 10;
+   */
+  attempts: number;
+
+  /**
+   * @generated from field: uint32 plan_version = 11;
+   */
+  planVersion: number;
+};
+
+/**
+ * Describes the message modbit.v1.WorkNodeView.
+ * Use `create(WorkNodeViewSchema)` to create a new message.
+ */
+export declare const WorkNodeViewSchema: GenMessage<WorkNodeView>;
+
+/**
+ * @generated from message modbit.v1.WorkGraphView
+ */
+export declare type WorkGraphView = Message<"modbit.v1.WorkGraphView"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: repeated modbit.v1.WorkNodeView nodes = 2;
+   */
+  nodes: WorkNodeView[];
+
+  /**
+   * ids whose dependencies are all done
+   *
+   * @generated from field: repeated string ready = 3;
+   */
+  ready: string[];
+
+  /**
+   * the latest plan version that changed a node
+   *
+   * @generated from field: uint32 plan_version = 4;
+   */
+  planVersion: number;
+};
+
+/**
+ * Describes the message modbit.v1.WorkGraphView.
+ * Use `create(WorkGraphViewSchema)` to create a new message.
+ */
+export declare const WorkGraphViewSchema: GenMessage<WorkGraphView>;
+
+/**
+ * @generated from message modbit.v1.GetAgentGraph
+ */
+export declare type GetAgentGraph = Message<"modbit.v1.GetAgentGraph"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.GetAgentGraph.
+ * Use `create(GetAgentGraphSchema)` to create a new message.
+ */
+export declare const GetAgentGraphSchema: GenMessage<GetAgentGraph>;
+
+/**
+ * @generated from message modbit.v1.AgentNodeView
+ */
+export declare type AgentNodeView = Message<"modbit.v1.AgentNodeView"> & {
+  /**
+   * @generated from field: modbit.v1.Id agent_id = 1;
+   */
+  agentId?: Id | undefined;
+
+  /**
+   * absent for the primary
+   *
+   * @generated from field: modbit.v1.Id parent_agent_id = 2;
+   */
+  parentAgentId?: Id | undefined;
+
+  /**
+   * @generated from field: modbit.v1.Id root_agent_id = 3;
+   */
+  rootAgentId?: Id | undefined;
+
+  /**
+   * @generated from field: uint32 depth = 4;
+   */
+  depth: number;
+
+  /**
+   * PRIMARY | SUBAGENT | SPECIALIST
+   *
+   * @generated from field: string kind = 5;
+   */
+  kind: string;
+
+  /**
+   * PROPOSED | ADMISSION_PENDING | ADMITTED | RUNNING | BACKGROUND | PARKED | WAITING | COMPLETED | FAILED | CANCELLED
+   *
+   * @generated from field: string status = 6;
+   */
+  status: string;
+
+  /**
+   * the run it executes in, when any
+   *
+   * @generated from field: modbit.v1.Id run_id = 7;
+   */
+  runId?: Id | undefined;
+
+  /**
+   * the execution capsule object, once admitted
+   *
+   * @generated from field: string capsule_ref = 8;
+   */
+  capsuleRef: string;
+
+  /**
+   * @generated from field: string endpoint = 9;
+   */
+  endpoint: string;
+
+  /**
+   * @generated from field: string model = 10;
+   */
+  model: string;
+
+  /**
+   * @generated from field: string idempotency_key = 11;
+   */
+  idempotencyKey: string;
+
+  /**
+   * work node ids
+   *
+   * @generated from field: repeated string owns = 12;
+   */
+  owns: string[];
+
+  /**
+   * @generated from field: int64 created_at_ms = 13;
+   */
+  createdAtMs: bigint;
+
+  /**
+   * @generated from field: int64 updated_at_ms = 14;
+   */
+  updatedAtMs: bigint;
+
+  /**
+   * @generated from field: uint64 last_offset = 15;
+   */
+  lastOffset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.AgentNodeView.
+ * Use `create(AgentNodeViewSchema)` to create a new message.
+ */
+export declare const AgentNodeViewSchema: GenMessage<AgentNodeView>;
+
+/**
+ * @generated from message modbit.v1.AgentGraphView
+ */
+export declare type AgentGraphView = Message<"modbit.v1.AgentGraphView"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: repeated modbit.v1.AgentNodeView nodes = 2;
+   */
+  nodes: AgentNodeView[];
+};
+
+/**
+ * Describes the message modbit.v1.AgentGraphView.
+ * Use `create(AgentGraphViewSchema)` to create a new message.
+ */
+export declare const AgentGraphViewSchema: GenMessage<AgentGraphView>;
+
+/**
+ * @generated from message modbit.v1.GetCapacity
+ */
+export declare type GetCapacity = Message<"modbit.v1.GetCapacity"> & {
+};
+
+/**
+ * Describes the message modbit.v1.GetCapacity.
+ * Use `create(GetCapacitySchema)` to create a new message.
+ */
+export declare const GetCapacitySchema: GenMessage<GetCapacity>;
+
+/**
+ * @generated from message modbit.v1.ResourceVectorView
+ */
+export declare type ResourceVectorView = Message<"modbit.v1.ResourceVectorView"> & {
+  /**
+   * @generated from field: uint32 model_concurrency = 1;
+   */
+  modelConcurrency: number;
+
+  /**
+   * @generated from field: uint32 terminal_slots = 2;
+   */
+  terminalSlots: number;
+
+  /**
+   * @generated from field: uint32 sandbox_slots = 3;
+   */
+  sandboxSlots: number;
+
+  /**
+   * @generated from field: uint32 browser_slots = 4;
+   */
+  browserSlots: number;
+
+  /**
+   * @generated from field: uint32 memory_mib = 5;
+   */
+  memoryMib: number;
+
+  /**
+   * @generated from field: uint32 provider_quota = 6;
+   */
+  providerQuota: number;
+};
+
+/**
+ * Describes the message modbit.v1.ResourceVectorView.
+ * Use `create(ResourceVectorViewSchema)` to create a new message.
+ */
+export declare const ResourceVectorViewSchema: GenMessage<ResourceVectorView>;
+
+/**
+ * @generated from message modbit.v1.CapacityTicketView
+ */
+export declare type CapacityTicketView = Message<"modbit.v1.CapacityTicketView"> & {
+  /**
+   * @generated from field: string ticket_id = 1;
+   */
+  ticketId: string;
+
+  /**
+   * run:<id> | agent:<id> | terminal:<id> | ...
+   *
+   * @generated from field: string holder = 2;
+   */
+  holder: string;
+
+  /**
+   * @generated from field: modbit.v1.ResourceVectorView holds = 3;
+   */
+  holds?: ResourceVectorView | undefined;
+
+  /**
+   * @generated from field: int64 granted_at_ms = 4;
+   */
+  grantedAtMs: bigint;
+
+  /**
+   * @generated from field: int64 expires_at_ms = 5;
+   */
+  expiresAtMs: bigint;
+
+  /**
+   * the holder's lease generation at grant
+   *
+   * @generated from field: uint64 generation = 6;
+   */
+  generation: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.CapacityTicketView.
+ * Use `create(CapacityTicketViewSchema)` to create a new message.
+ */
+export declare const CapacityTicketViewSchema: GenMessage<CapacityTicketView>;
+
+/**
+ * @generated from message modbit.v1.CapacityView
+ */
+export declare type CapacityView = Message<"modbit.v1.CapacityView"> & {
+  /**
+   * @generated from field: modbit.v1.ResourceVectorView limits = 1;
+   */
+  limits?: ResourceVectorView | undefined;
+
+  /**
+   * @generated from field: modbit.v1.ResourceVectorView held = 2;
+   */
+  held?: ResourceVectorView | undefined;
+
+  /**
+   * @generated from field: modbit.v1.ResourceVectorView available = 3;
+   */
+  available?: ResourceVectorView | undefined;
+
+  /**
+   * a ticket's lease without renewal
+   *
+   * @generated from field: int64 ttl_ms = 4;
+   */
+  ttlMs: bigint;
+
+  /**
+   * @generated from field: repeated modbit.v1.CapacityTicketView tickets = 5;
+   */
+  tickets: CapacityTicketView[];
+};
+
+/**
+ * Describes the message modbit.v1.CapacityView.
+ * Use `create(CapacityViewSchema)` to create a new message.
+ */
+export declare const CapacityViewSchema: GenMessage<CapacityView>;
+
+/**
  * Command acknowledgement.
  *
  * @generated from enum modbit.v1.CommandStatus
