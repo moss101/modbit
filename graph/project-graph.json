@@ -3,7 +3,7 @@
  "product": "Modbit",
  "edition": "V3.3 EPR v1.1",
  "authority_date": "2026-09-05",
- "generated_on": "2026-09-11",
+ "generated_on": "2026-09-12",
  "generator": "tools/build_graph.py",
  "status_vocabulary": [
   "NOT_STARTED",
@@ -2714,8 +2714,53 @@
    "milestone": "M5",
    "order": 0,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:cb17003",
+    "artifact:evidence/m5/M5.1/TASK_CARD.md",
+    "test:qual_m5_1_projection_follows_the_plan_and_refuses_crafted_calls",
+    "test:projection_follows_the_plan_and_the_leg_role",
+    "run:34661374839"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-12T00:34:03Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "PARTIAL before: the projection was the same for every node (support x profile x lease x kernel plus the deferred split); nothing about the plan narrowed it; ToolProjectionSelected carried only the hash; visible meant callable"
+    },
+    {
+     "at": "2026-09-12T00:34:03Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in cb17003: harness ProjectionScope/project/WithheldTool, runtime projected_names per turn, InvokeRequest.projection, KernelPort TOOL_NOT_PROJECTED, plan.update names the withheld set"
+    },
+    {
+     "at": "2026-09-12T00:34:03Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring in cb17003 (see card): runtime projection() applies the scope, execute_tool carries the projection, the specialist carries its own"
+    },
+    {
+     "at": "2026-09-12T00:34:04Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification on the real Core (E2E-011) plus the harness rule test and the diagnostics corpus"
+    },
+    {
+     "at": "2026-09-12T00:34:04Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "green on hosted CI (macOS, Linux, Windows) at cb17003"
+    },
+    {
+     "at": "2026-09-12T00:34:04Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: E2E-011 proven; docs/16 and docs/30 as built; card and evidence under evidence/m5/M5.1"
+    }
+   ],
+   "status_changed_on": "2026-09-12T00:34:04Z"
   },
   {
    "id": "M5.2",
