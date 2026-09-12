@@ -2939,8 +2939,54 @@
    "milestone": "M5",
    "order": 4,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:c0a01c2",
+    "artifact:evidence/m5/M5.5/TASK_CARD.md",
+    "test:qual_m5_5_signed_skills_are_selected_compiled_and_recorded_and_unsigned_ones_are_not",
+    "test:the_lifecycle_follows_attestations_and_policy_and_a_tampered_package_is_not_signed",
+    "test:the_compiler_injects_bounded_instructions_and_never_widens_the_projection",
+    "run:34683293125"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-12T08:53:05Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "NOT-FOUND before: crates/skills was the M0.1 stub; no package format, registry, selector, compiler or signature check; the prompt compiler's rules segment was empty"
+    },
+    {
+     "at": "2026-09-12T08:53:05Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in c0a01c2: SKILL.md packages with content identity, lifecycle by EVALUATION.json / SIGNATURE.json (Ed25519) and policy, selector (explicit + triggers), compiler (bounded instructions, tools intersected)"
+    },
+    {
+     "at": "2026-09-12T08:53:05Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired: Core discovers <workspace>/.modbit/skills and <profile>/skills with MODBIT_SKILL_KEYS, StartTask.skills / CLI --skill, PromptInput.skills in the rules segment, SkillSelected/SkillRejected on the task"
+    },
+    {
+     "at": "2026-09-12T08:53:05Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real Core with real packages and signatures; four package tests"
+    },
+    {
+     "at": "2026-09-12T08:53:05Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "green on hosted CI (macOS, Linux, Windows) at c0a01c2"
+    },
+    {
+     "at": "2026-09-12T08:53:05Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: signed skills selected, compiled and recorded; unsigned/tampered excluded; docs/16 and docs/30 as built; card under evidence/m5/M5.5"
+    }
+   ],
+   "status_changed_on": "2026-09-12T08:53:05Z"
   },
   {
    "id": "M5.6",

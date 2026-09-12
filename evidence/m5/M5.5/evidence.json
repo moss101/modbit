@@ -17,10 +17,20 @@
   "the_selector_takes_explicit_names_and_trigger_phrases_and_refuses_with_a_reason",
   "the_compiler_injects_bounded_instructions_and_never_widens_the_projection"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "c0a01c2"
+ ],
+ "runs": [
+  {
+   "id": "gha-34683293125",
+   "kind": "hosted CI on c0a01c2",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34683293125",
+   "log": "ci-run-34683293125.json"
+  }
+ ],
  "proof": "A signed project skill selected by trigger is compiled against the task's policy surface (tools intersected, the rest told as unavailable), injected as a stable prompt segment and recorded with its identity and reason; unsigned and tampered packages are not injected; explicit names that are unknown or not enabled are rejected on the log with the reason.",
  "audit": "NOT-FOUND before: the skills crate was the M0.1 stub; no package format, registry, selector, compiler or signature check.",
  "limitations": "Trigger-phrase selector only; EVALUATION.json is read, not produced (Skill Evolution Lab); capability ceiling recorded, enforced by the kernel through the projection.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34683293125 (green on macOS, Linux and Windows at c0a01c2)"
 }
