@@ -79,6 +79,15 @@ pub struct StartConfig {
     pub ticket_id: String,
 }
 
+/// The type-erased future of [`Runtime::start`] (see `start_boxed`).
+pub type StartFuture<'a> = std::pin::Pin<
+    Box<
+        dyn std::future::Future<Output = std::result::Result<(RunId, bool), (String, String)>>
+            + Send
+            + 'a,
+    >,
+>;
+
 /// Per-task control handle.
 struct Running {
     cancel: CancellationToken,
@@ -200,13 +209,7 @@ impl Runtime {
         cfg: StartConfig,
         lease_generation: u64,
         actor: Actor,
-    ) -> std::pin::Pin<
-        Box<
-            dyn std::future::Future<Output = std::result::Result<(RunId, bool), (String, String)>>
-                + Send
-                + 'a,
-        >,
-    > {
+    ) -> StartFuture<'a> {
         Box::pin(self.start(core, task, cfg, lease_generation, actor))
     }
 
