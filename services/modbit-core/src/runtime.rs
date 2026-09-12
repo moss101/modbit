@@ -67,6 +67,8 @@ pub struct StartConfig {
     pub plan_id: String,
     /// The initial slot of that plan.
     pub slot_id: String,
+    /// Skills selected explicitly by name (M5.5).
+    pub skills: Vec<String>,
     /// The session kernel lease generation the run executes under (docs/13
     /// "Fencing and epochs", M4.4): every state-advancing append is fenced by
     /// it, and the loop stops at the next boundary once it is superseded.
@@ -1949,6 +1951,20 @@ async fn run_loop(
     let mut projected_names: Vec<String>;
     // The programs of this run (docs/16 "Procedural Tool Runtime", M5.4).
     let mut programs = crate::procedural::Programs::default();
+    // Skills (docs/16 "Skills", M5.5): discovered, selected and compiled
+    // once per run against the task's policy surface (profile × lease ×
+    // kernel — what a skill may use at most; the node's turn-by-turn
+    // projection stays the harness's); their instructions are a stable
+    // prompt segment, their selection is on the log.
+    let skill_instructions: Vec<String> = {
+        let surface: Vec<String> = core
+            .tools
+            .visible_specs(Some(&task.execution_profile), lease.as_ref())
+            .into_iter()
+            .map(|s| s.name)
+            .collect();
+        crate::skills::select_for_run(&core, &task, lt, &actor, &cfg.skills, &surface).await
+    };
     let end = 'outer: loop {
         if cancel.is_cancelled() {
             break LoopEnd::Cancelled;
@@ -2202,6 +2218,7 @@ async fn run_loop(
                         workspace_root: task.workspace_root.clone(),
                         execution_profile: task.execution_profile.clone(),
                         workspace_rules: vec![],
+                        skills: skill_instructions.clone(),
                         compaction_summary: epoch.as_ref().map(|m| m.projection.clone()),
                         harness_state: harness_json.clone(),
                         transcript: {

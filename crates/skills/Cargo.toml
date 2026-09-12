@@ -9,6 +9,15 @@ publish.workspace = true
 
 [dependencies]
 modbit-domain.workspace = true
+ed25519-dalek.workspace = true
+hex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
 
 [lints]
 workspace = true
@@ -20,4 +29,6 @@ workspace = true
 [package.metadata.modbit]
 owner = "skills"
 canonical = []
-capabilities = []
+capabilities = [
+  { id = "skills.packages", requirements = ["REQ-EV-0209", "REQ-EV-0061"] },
+]

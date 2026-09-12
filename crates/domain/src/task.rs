@@ -364,6 +364,42 @@ pub enum TaskEvent {
         /// Interrupt polls the interpreter made.
         interrupt_polls: u64,
     },
+    /// `SkillSelected` (docs/16 "Skills", M5.5; REQ-EV-0105's instruction
+    /// manifest): a skill's compiled instructions entered the prompt, with
+    /// its identity, lifecycle, why it was selected and what it compiled to.
+    /// No state change.
+    SkillSelected {
+        /// Skill name.
+        name: String,
+        /// Version.
+        version: String,
+        /// Package content hash.
+        content_hash: String,
+        /// Lifecycle state at selection (`ENABLED`).
+        lifecycle: String,
+        /// Where the package was loaded from.
+        source: String,
+        /// Why (`EXPLICIT`, or `TRIGGER:<phrase>`).
+        reason: String,
+        /// Hash of the injected instructions.
+        instructions_hash: String,
+        /// Whether the instructions were cut at the budget.
+        instructions_truncated: bool,
+        /// Required tools the turn projects.
+        tool_projection: Vec<String>,
+        /// Required tools the turn does not project.
+        tools_unavailable: Vec<String>,
+    },
+    /// `SkillRejected`: a skill named for the task was not used, with why.
+    /// No state change.
+    SkillRejected {
+        /// Skill name.
+        name: String,
+        /// Error code (`NOT_ENABLED`, `UNKNOWN`, …).
+        code: String,
+        /// Reason.
+        reason: String,
+    },
     /// `ContextEpochOpened` (docs/19 "Compaction epochs", REQ-EV-0056):
     /// the model-visible transcript before `source_head_offset` is replaced by
     /// the epoch's projection. The canonical log is untouched. No state change.
@@ -830,6 +866,8 @@ impl TaskEvent {
             Self::ToolsActivated { .. } => "ToolsActivated",
             Self::ProgramStarted { .. } => "ProgramStarted",
             Self::ProgramEnded { .. } => "ProgramEnded",
+            Self::SkillSelected { .. } => "SkillSelected",
+            Self::SkillRejected { .. } => "SkillRejected",
             Self::ContextEpochOpened { .. } => "ContextEpochOpened",
             Self::CompactionStarted { .. } => "CompactionStarted",
             Self::CompactionCommitted { .. } => "CompactionCommitted",
@@ -950,6 +988,8 @@ impl Task {
             | TaskEvent::ToolsActivated { .. }
             | TaskEvent::ProgramStarted { .. }
             | TaskEvent::ProgramEnded { .. }
+            | TaskEvent::SkillSelected { .. }
+            | TaskEvent::SkillRejected { .. }
             | TaskEvent::ContextEpochOpened { .. }
             | TaskEvent::CompactionStarted { .. }
             | TaskEvent::CompactionCommitted { .. }

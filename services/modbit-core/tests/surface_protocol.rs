@@ -2502,6 +2502,7 @@ async fn m2_7_one_agent_runtime_drives_a_coding_task_to_ready_for_review() {
                 max_turns: 0,
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
+                skills: vec![],
             }
             .encode_to_vec(),
         ))
@@ -2519,6 +2520,7 @@ async fn m2_7_one_agent_runtime_drives_a_coding_task_to_ready_for_review() {
                 max_turns: 0,
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -2734,6 +2736,7 @@ async fn m2_7_harness_refuses_unplanned_writes_exhausts_budgets_and_resumes_afte
                 max_turns: 1,
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -2781,6 +2784,7 @@ async fn m2_7_harness_refuses_unplanned_writes_exhausts_budgets_and_resumes_afte
                 max_turns: 20,
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -2831,6 +2835,7 @@ async fn m2_7_harness_refuses_unplanned_writes_exhausts_budgets_and_resumes_afte
                 max_turns: 20,
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
+                skills: vec![],
             }
             .encode_to_vec(),
             g2,
@@ -2974,6 +2979,7 @@ async fn m2_7_steering_and_cancellation_apply_at_safe_boundaries() {
                 max_turns: 10,
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -3173,6 +3179,7 @@ async fn m2_8_verification_engine_gates_completion_on_real_cargo_fixture() {
                 max_turns: 20,
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -3514,6 +3521,7 @@ async fn m2_9_review_surface_applies_per_hunk_decisions_and_commits() {
                 max_turns: 10,
                 max_tool_calls: 0,
                 max_no_progress_turns: 3,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -3787,6 +3795,7 @@ async fn m2_9_review_surface_applies_per_hunk_decisions_and_commits() {
                 max_turns: 10,
                 max_tool_calls: 0,
                 max_no_progress_turns: 3,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -3830,6 +3839,7 @@ async fn m2_9_review_surface_applies_per_hunk_decisions_and_commits() {
                 max_turns: 10,
                 max_tool_calls: 0,
                 max_no_progress_turns: 3,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -4863,6 +4873,7 @@ async fn qual_ev_0096_0116_0133_0044_0031_tool_surface_is_compiled_from_support_
                 max_turns: 0,
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -5271,6 +5282,7 @@ async fn qual_ev_0191_steering_policy_interrupts_replaces_coalesces_and_orders()
                 max_turns: 0,
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -5396,6 +5408,7 @@ async fn qual_ev_0222_px_014_typed_question_suspends_the_run_and_the_answer_resu
         max_turns: 0,
         max_tool_calls: 0,
         max_no_progress_turns: 0,
+        skills: vec![],
     }
     .encode_to_vec();
     let ack = c
@@ -5603,6 +5616,7 @@ async fn qual_ev_0222_px_014_typed_question_suspends_the_run_and_the_answer_resu
                 max_turns: 0,
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
+                skills: vec![],
             }
             .encode_to_vec(),
             g2,
@@ -5649,6 +5663,7 @@ async fn qual_ev_0222_px_014_typed_question_suspends_the_run_and_the_answer_resu
                 max_turns: 0,
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
+                skills: vec![],
             }
             .encode_to_vec(),
             g3,
@@ -7305,6 +7320,7 @@ async fn qual_ev_0134_deferred_tool_search_activates_without_authorizing_and_hyd
                 max_turns: 10,
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -7628,6 +7644,7 @@ async fn qual_px_016_change_strategy_tests_first_one_concern_per_transaction_and
                 max_turns: 20,
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -7882,6 +7899,7 @@ async fn qual_px_018_repair_attempts_are_recorded_bounded_reverted_when_worsened
                 max_turns: 20,
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -8100,6 +8118,7 @@ async fn qual_px_015_retrieval_before_edit_is_enforced_and_a_stale_record_is_ref
                 max_turns: 20,
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -8151,6 +8170,7 @@ async fn qual_px_015_retrieval_before_edit_is_enforced_and_a_stale_record_is_ref
                 max_turns: 20,
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
+                skills: vec![],
             }
             .encode_to_vec(),
             g2,
@@ -8319,6 +8339,7 @@ async fn qual_px_038_scope_expansion_is_bounded_asks_a_typed_question_and_fails_
         max_turns: 20,
         max_tool_calls: 0,
         max_no_progress_turns: 5,
+        skills: vec![],
     }
     .encode_to_vec();
     let ack = c
@@ -8507,6 +8528,7 @@ async fn qual_px_038_scope_expansion_is_bounded_asks_a_typed_question_and_fails_
                 max_turns: 30,
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
+                skills: vec![],
             }
             .encode_to_vec(),
             g2,
@@ -8628,6 +8650,7 @@ async fn qual_px_039_reproduction_first_is_enforced_and_no_progress_turns_escala
                 max_tool_calls: 0,
                 // 0 keeps the policy's own bound (3), not a second copy.
                 max_no_progress_turns: 0,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -8711,6 +8734,7 @@ async fn qual_px_039_reproduction_first_is_enforced_and_no_progress_turns_escala
                 max_turns: 20,
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
+                skills: vec![],
             }
             .encode_to_vec(),
             g2,
@@ -8906,6 +8930,7 @@ async fn qual_ev_0169_context_pack_reaches_the_prompt_with_provenance_or_not_at_
                 max_turns: 20,
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -9019,6 +9044,7 @@ async fn qual_px_040_harness_contracts_bound_observations_page_results_and_fail_
                 max_turns: 20,
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -9224,6 +9250,7 @@ async fn qual_ev_0035_0131_0175_context_inspector_matches_the_prompt_envelope() 
                 max_turns: 20,
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -9373,6 +9400,7 @@ async fn qual_ev_0056_0092_0130_compaction_epoch_preserves_facts_survives_restar
                 max_turns: 12,
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -9721,6 +9749,7 @@ async fn qual_ev_0188_a_media_tool_result_reaches_the_model_as_a_split_follow_up
                 max_turns: 8,
                 max_tool_calls: 0,
                 max_no_progress_turns: 4,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -9820,6 +9849,7 @@ async fn qual_ev_0173_task_economics_report_quality_and_cost_from_the_log() {
                 max_turns: 8,
                 max_tool_calls: 0,
                 max_no_progress_turns: 4,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -9983,6 +10013,7 @@ async fn qual_ev_0141_0160_a_selection_steers_retrieval_is_visible_and_grants_no
                 max_turns: 8,
                 max_tool_calls: 0,
                 max_no_progress_turns: 4,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -10143,6 +10174,7 @@ async fn qual_ev_0174_a_read_only_specialist_builds_the_pack_and_cannot_mutate()
                 max_turns: 10,
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -10334,6 +10366,7 @@ async fn qual_ev_0060_0203_the_repository_map_flags_stale_claims_and_never_enter
                 max_turns: 10,
                 max_tool_calls: 0,
                 max_no_progress_turns: 5,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -10507,6 +10540,7 @@ async fn qual_ev_0161_an_attached_ticket_is_labelled_context_and_cannot_grant_a_
                 max_turns: 8,
                 max_tool_calls: 0,
                 max_no_progress_turns: 4,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -11008,6 +11042,7 @@ async fn qual_px_027_language_tier_suites_run_on_real_fixtures_and_a_tier_is_onl
                     max_turns: 3,
                     max_tool_calls: 0,
                     max_no_progress_turns: 3,
+                    skills: vec![],
                 }
                 .encode_to_vec(),
                 g,
@@ -11341,6 +11376,7 @@ async fn qual_px_029_an_unsupported_language_degrades_explicitly_and_edits_need_
                 max_turns: 12,
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -11588,6 +11624,7 @@ async fn qual_ev_0250_0252_0274_paired_context_economics_benchmark_publishes_sav
                         max_turns: 12,
                         max_tool_calls: 0,
                         max_no_progress_turns: 6,
+                        skills: vec![],
                     }
                     .encode_to_vec(),
                     g,
@@ -11856,6 +11893,7 @@ async fn qual_epr_000_the_direct_path_is_instrumented_and_published_as_a_fixed_r
                 max_turns: 12,
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -11913,6 +11951,7 @@ async fn qual_epr_000_the_direct_path_is_instrumented_and_published_as_a_fixed_r
                 max_turns: 4,
                 max_tool_calls: 0,
                 max_no_progress_turns: 4,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -12082,6 +12121,7 @@ async fn qual_epr_001_the_routing_state_of_a_run_is_durable_versioned_and_redact
                 max_turns: 12,
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -12209,6 +12249,7 @@ async fn qual_epr_001_the_routing_state_of_a_run_is_durable_versioned_and_redact
                 max_turns: 12,
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -12287,6 +12328,7 @@ async fn qual_epr_014_a_conditional_plan_is_admitted_whole_and_its_activation_is
                 max_turns: 12,
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -12713,6 +12755,7 @@ async fn qual_epr_002_a_signed_registry_activates_at_runtime_and_a_revocation_st
                 max_turns: 3,
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -12763,6 +12806,7 @@ async fn qual_epr_002_a_signed_registry_activates_at_runtime_and_a_revocation_st
                 max_turns: 3,
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
+                skills: vec![],
             }
             .encode_to_vec(),
             g2,
@@ -12838,6 +12882,7 @@ async fn qual_epr_002_a_signed_registry_activates_at_runtime_and_a_revocation_st
                 max_turns: 3,
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
+                skills: vec![],
             }
             .encode_to_vec(),
             g2,
@@ -12910,6 +12955,7 @@ async fn qual_epr_015_statistics_are_materialized_from_attributable_outcomes_and
                 max_turns: 6,
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -13080,6 +13126,7 @@ async fn qual_epr_003_the_profiler_records_intrinsic_demand_in_shadow_and_claims
                 max_turns: 6,
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -13263,6 +13310,7 @@ async fn qual_epr_016_feasibility_is_measured_at_admission_under_pinned_versions
                     max_turns: 6,
                     max_tool_calls: 0,
                     max_no_progress_turns: 6,
+                    skills: vec![],
                 }
                 .encode_to_vec(),
                 g,
@@ -13587,6 +13635,7 @@ async fn qual_epr_004_the_compiler_runs_through_core_and_identical_inputs_give_i
                 max_turns: 6,
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -13916,6 +13965,7 @@ async fn qual_epr_005_new_runs_go_through_the_compiled_initial_leg_and_keep_the_
                     max_turns: 8,
                     max_tool_calls: 0,
                     max_no_progress_turns: 6,
+                    skills: vec![],
                 }
                 .encode_to_vec(),
                 g,
@@ -14186,6 +14236,7 @@ async fn qual_epr_005_new_runs_go_through_the_compiled_initial_leg_and_keep_the_
                 max_turns: 8,
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -14237,6 +14288,7 @@ async fn qual_epr_005_new_runs_go_through_the_compiled_initial_leg_and_keep_the_
                 max_turns: 8,
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -14456,6 +14508,7 @@ async fn qual_px_022_provider_setup_and_repository_trust_are_enforced_by_the_cor
         max_turns: 4,
         max_tool_calls: 0,
         max_no_progress_turns: 4,
+        skills: vec![],
     };
     trust_repository(&mut c, &session, g, &root, 0xE3).await;
     let err = c
@@ -14868,6 +14921,7 @@ async fn qual_ev_0055_e2e_004_core_crash_during_approval_restores_the_same_appro
         max_turns: 0,
         max_tool_calls: 0,
         max_no_progress_turns: 0,
+        skills: vec![],
     }
     .encode_to_vec();
     let ack = c
@@ -15127,6 +15181,7 @@ async fn qual_ev_0055_e2e_005_core_crash_after_dispatch_reconciles_the_unknown_o
         max_turns: 0,
         max_tool_calls: 0,
         max_no_progress_turns: 0,
+        skills: vec![],
     }
     .encode_to_vec();
     let ack = c
@@ -15323,6 +15378,7 @@ async fn compaction_scenario(
                 max_turns: 40,
                 max_tool_calls: 0,
                 max_no_progress_turns: 8,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -15875,6 +15931,7 @@ async fn qual_ev_0012_0013_e2e_007_checkpoint_epochs_are_fenced_and_restore_vali
                 max_turns: 0,
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
+                skills: vec![],
             }
             .encode_to_vec(),
             g3,
@@ -15945,6 +16002,7 @@ async fn qual_m4_4_a_stale_execution_owner_is_fenced_out_and_the_new_owner_resum
                 max_turns: 40,
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -16386,6 +16444,7 @@ async fn kill_point_round(boundary: &str) -> KillRound {
         max_turns: 12,
         max_tool_calls: 0,
         max_no_progress_turns: 0,
+        skills: vec![],
     }
     .encode_to_vec();
     // The start itself may be the boundary: a rejected ack means the Core died.
@@ -16656,6 +16715,7 @@ async fn qual_m4_6_e2e_005_a_protected_effect_of_unknown_outcome_is_held_for_the
         max_turns: 0,
         max_tool_calls: 0,
         max_no_progress_turns: 0,
+        skills: vec![],
     }
     .encode_to_vec();
     let ack = c
@@ -16906,6 +16966,7 @@ async fn qual_ev_0073_fault_injection_never_reports_a_generic_success() {
         max_turns: 0,
         max_tool_calls: 0,
         max_no_progress_turns: 0,
+        skills: vec![],
     };
     let ack = c
         .command(envelope_fenced(
@@ -17016,6 +17077,7 @@ async fn qual_ev_0073_fault_injection_never_reports_a_generic_success() {
         max_turns: 0,
         max_tool_calls: 0,
         max_no_progress_turns: 0,
+        skills: vec![],
     };
     let ack = c2
         .command(envelope_fenced(
@@ -17257,6 +17319,7 @@ async fn qual_ev_0242_restart_loses_no_durable_truth_while_live_control_resets()
                 max_turns: 0,
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -17564,6 +17627,7 @@ async fn qual_ev_0077_0122_a_fork_carries_decisions_and_evidence_but_no_stale_pe
                 max_turns: 0,
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -17885,6 +17949,7 @@ async fn qual_ev_0123_rewind_preview_is_non_mutating_and_revert_honours_optimist
                 max_turns: 0,
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -18149,6 +18214,7 @@ async fn qual_epr_008_factual_risk_stays_strict_despite_passing_tests_and_stops_
                 max_turns: 0,
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -18269,6 +18335,7 @@ async fn qual_epr_008_factual_risk_stays_strict_despite_passing_tests_and_stops_
             max_turns: 12,
             max_tool_calls: 0,
             max_no_progress_turns: 2,
+            skills: vec![],
         }
         .encode_to_vec(),
         g2,
@@ -18361,6 +18428,7 @@ async fn qual_epr_017_acceptance_is_evidence_at_the_revision_and_never_erases_a_
                 max_turns: 0,
                 max_tool_calls: 0,
                 max_no_progress_turns: 2,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -18843,6 +18911,7 @@ async fn qual_epr_009_routes_reevaluate_at_boundaries_on_cache_economics_and_sur
                 max_turns: 14,
                 max_tool_calls: 0,
                 max_no_progress_turns: 8,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -19133,6 +19202,7 @@ async fn qual_m5_1_projection_follows_the_plan_and_refuses_crafted_calls() {
                 max_turns: 12,
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -19465,6 +19535,7 @@ async fn qual_m5_e2e_012_a_program_composes_governed_tools_in_the_isolate() {
                 max_turns: 12,
                 max_tool_calls: 0,
                 max_no_progress_turns: 6,
+                skills: vec![],
             }
             .encode_to_vec(),
             g,
@@ -19704,5 +19775,188 @@ async fn qual_m5_e2e_012_a_program_composes_governed_tools_in_the_isolate() {
             && !trail.contains(&"ToolCallDispatched")
             && trail.last() == Some(&"ToolCallFailed"),
         "{trail:?}"
+    );
+}
+
+/// M5.5 (docs/16 "Skills", docs/26): skills are portable packages with a
+/// content identity and a lifecycle decided by attestations and policy. A
+/// signed project skill whose trigger matches the goal is selected,
+/// compiled against the turn's projection (its tools intersected, never
+/// widened) and injected as a stable prompt segment, and the selection is on
+/// the log with its identity, reason and what it compiled to; an unsigned
+/// skill with the same trigger is not injected; an explicitly named unsigned
+/// skill is rejected on the log with the reason; a signed package tampered
+/// with after signing loses its signature and is not injected; the model
+/// sees exactly the skills the log says.
+#[tokio::test]
+async fn qual_m5_5_signed_skills_are_selected_compiled_and_recorded_and_unsigned_ones_are_not() {
+    use ed25519_dalek::SigningKey;
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[("NOTES.md", "# notes\n")]);
+    let skills = repo.path().join(".modbit").join("skills");
+    let write = |rel: &str, content: &str| {
+        let p = skills.join(rel);
+        std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+        std::fs::write(p, content).unwrap();
+    };
+    let manifest = |name: &str, extra: &str| {
+        format!(
+            "---\nname: {name}\nversion: 1.0.0\ndescription: Edit notes in the house style.\nrequired_tools: [fs.read, change.apply, git.worktree, net.fetch]\ntriggers: [notes]\nprovenance.author: docs team\n{extra}---\n# {name}\n\n1. Read the note before editing it.\n2. Keep headings in sentence case.\n"
+        )
+    };
+    write("house-style/SKILL.md", &manifest("house-style", ""));
+    write(
+        "house-style/procedures/retitle.js",
+        "const f = await tools.fs.read({ path: 'NOTES.md' }); return f.content.length;",
+    );
+    write("draft-style/SKILL.md", &manifest("draft-style", ""));
+    write("tampered-style/SKILL.md", &manifest("tampered-style", ""));
+    write("tampered-style/resources/style.md", "# style\n");
+    let key = SigningKey::from_bytes(&[23u8; 32]);
+    let key_hex = hex::encode(key.verifying_key().to_bytes());
+    for name in ["house-style", "tampered-style"] {
+        let pkg = modbit_skills::load_package(&skills.join(name)).unwrap();
+        let sig = modbit_skills::sign(&pkg, "skills-1", &key, 1_700_000_000_000);
+        write(
+            &format!("{name}/SIGNATURE.json"),
+            &serde_json::to_string(&sig).unwrap(),
+        );
+    }
+    // Tamper after signing: the content changed, the attestation did not.
+    write(
+        "tampered-style/resources/style.md",
+        "# style\nanything goes\n",
+    );
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "o", "expected_files": ["NOTES.md"]}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_SKILL_KEYS", &format!("skills-1:{key_hex}")),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x71)).await;
+    let g = lease_for(&session);
+    // The task's goal carries the trigger; its workspace carries the
+    // project skills.
+    let task = create_task_with_goal(
+        &mut c,
+        &session,
+        g,
+        &root,
+        0x73,
+        "Update the NOTES to match our conventions",
+    )
+    .await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x74),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 6,
+                max_tool_calls: 0,
+                max_no_progress_turns: 3,
+                skills: vec!["draft-style".into(), "no-such-skill".into()],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 120).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    // The model saw the signed skill's instructions in the rules segment of
+    // every request, and nothing of the unsigned or tampered ones.
+    let bodies = seen.lock().unwrap().clone();
+    assert!(bodies.len() >= 2);
+    for b in &bodies {
+        let system: String = b["messages"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|m| m["role"] == "system")
+            .filter_map(|m| m["content"].as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(system.contains("# Skill: house-style v1.0.0"), "{system}");
+        assert!(
+            system.contains("Keep headings in sentence case."),
+            "{system}"
+        );
+        assert!(
+            system.contains("names net.fetch which this task's policy does not offer"),
+            "the skill's tools are intersected with the policy surface, never granted: {system}"
+        );
+        assert!(system.contains("proc.exec: retitle"), "{system}");
+        assert!(
+            !system.contains("draft-style") && !system.contains("tampered-style"),
+            "{system}"
+        );
+    }
+    // On the log: the selection with its identity, reason and compilation;
+    // the two rejections with their reasons.
+    let evs = task_events(&core, &session, &task).await;
+    let selected: Vec<&serde_json::Value> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "SkillSelected")
+        .map(|(_, _, p)| p)
+        .collect();
+    assert_eq!(selected.len(), 1, "{selected:#?}");
+    let s = selected[0];
+    assert_eq!(s["name"], "house-style");
+    assert_eq!(s["version"], "1.0.0");
+    assert_eq!(s["lifecycle"], "ENABLED");
+    assert_eq!(s["reason"], "TRIGGER:notes");
+    let pkg = modbit_skills::load_package(&skills.join("house-style")).unwrap();
+    assert_eq!(s["content_hash"], pkg.content_hash);
+    assert_eq!(
+        s["tool_projection"],
+        json!([
+            "change.apply",
+            "fs.read",
+            "git.worktree.close",
+            "git.worktree.create"
+        ])
+    );
+    assert_eq!(s["tools_unavailable"], json!(["net.fetch"]));
+    assert_eq!(s["instructions_truncated"], false);
+    assert!(s["source"].as_str().unwrap().ends_with("house-style"));
+    let rejected: Vec<(String, String)> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "SkillRejected")
+        .map(|(_, _, p)| {
+            (
+                p["name"].as_str().unwrap().to_owned(),
+                p["code"].as_str().unwrap().to_owned(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        rejected,
+        [
+            ("draft-style".to_owned(), "NOT_ENABLED".to_owned()),
+            ("no-such-skill".to_owned(), "UNKNOWN".to_owned())
+        ],
+        "{evs:#?}"
+    );
+    let reason = evs
+        .iter()
+        .find(|(_, t, p)| t == "SkillRejected" && p["name"] == "draft-style")
+        .map(|(_, _, p)| p["reason"].as_str().unwrap().to_owned())
+        .unwrap();
+    assert!(
+        reason.contains("Incubator") && reason.contains("no signature"),
+        "{reason}"
     );
 }

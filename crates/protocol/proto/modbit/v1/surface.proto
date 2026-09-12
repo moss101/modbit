@@ -724,6 +724,7 @@ message StartTask {
   uint32 max_turns = 4;          // 0 = Alpha default (60)
   uint32 max_tool_calls = 5;     // 0 = Alpha default (300)
   uint32 max_no_progress_turns = 6; // 0 = Alpha default (3)
+  repeated string skills = 7;       // skills selected explicitly by name (M5.5); enabled skills whose triggers match the goal are selected as well
 }
 
 message TaskRunStarted {

@@ -15,7 +15,7 @@
 //!   modbit-cli --data-dir <dir> stop --session <hex-id> [reason]
 //!   modbit-cli --data-dir <dir> receipts [--task <hex-id>]
 //!   modbit-cli --data-dir <dir> lease list --task <hex-id>
-//!   modbit-cli --data-dir <dir> task run --session <hex-id> --task <hex-id> [--endpoint <name>] [--model <id>] [--max-turns N] [--wait]
+//!   modbit-cli --data-dir <dir> task run --session <hex-id> --task <hex-id> [--endpoint <name>] [--model <id>] [--max-turns N] [--skill <name>]... [--wait]
 //!   modbit-cli --data-dir <dir> task cancel --session <hex-id> --task <hex-id>
 //!   modbit-cli --data-dir <dir> task status --task <hex-id>
 //!   modbit-cli --data-dir <dir> review show --task <hex-id>
@@ -65,7 +65,7 @@ fn exit_for_state(state: &str) -> u8 {
     }
 }
 
-const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id>] [--apply --session <id>] | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
+const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--skill <name>]... [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id>] [--apply --session <id>] | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
 
 fn parse_id(hex: &str) -> Result<Id, String> {
     let bytes = decode_hex(hex)
@@ -609,6 +609,12 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 .transpose()?
                 .unwrap_or(0);
             let lease = join_lease(&mut client, &sid).await?;
+            // `--skill <name>` may repeat (M5.5): explicit skill selection.
+            let skills: Vec<String> = words
+                .windows(2)
+                .filter(|w| w[0] == "--skill")
+                .map(|w| w[1].to_owned())
+                .collect();
             start_task(
                 &mut client,
                 &task_id,
@@ -616,6 +622,7 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 opt("--endpoint").unwrap_or_default(),
                 opt("--model").unwrap_or_default(),
                 max_turns,
+                skills,
             )
             .await?;
             if words.contains(&"--wait") {
@@ -717,6 +724,7 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 opt("--endpoint").unwrap_or_default(),
                 opt("--model").unwrap_or_default(),
                 0,
+                vec![],
             )
             .await?;
             if words.contains(&"--wait") {
@@ -1712,6 +1720,7 @@ async fn start_task(
     endpoint: &str,
     model: &str,
     max_turns: u32,
+    skills: Vec<String>,
 ) -> Result<(), String> {
     let ack = client
         .command(envelope_fenced(
@@ -1723,6 +1732,7 @@ async fn start_task(
                 max_turns,
                 max_tool_calls: 0,
                 max_no_progress_turns: 0,
+                skills,
             }
             .encode_to_vec(),
             Some(lease),

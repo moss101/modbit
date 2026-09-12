@@ -30,6 +30,10 @@ pub struct PromptInput {
     pub execution_profile: String,
     /// Stable workspace rules (repository instructions), already bounded.
     pub workspace_rules: Vec<String>,
+    /// Compiled skill instructions (docs/16 "Skills", M5.5), already
+    /// bounded; part of the rules segment for the cache.
+    #[serde(default)]
+    pub skills: Vec<String>,
     /// Compaction epoch summary (empty until M4).
     pub compaction_summary: Option<String>,
     /// Harness state (docs/14 contract 4): plan, budgets, counters, revision.
@@ -138,11 +142,15 @@ fn sha(s: &str) -> String {
 /// Compile one turn.
 #[must_use]
 pub fn compile(input: PromptInput) -> CompiledPrompt {
-    let rules = if input.workspace_rules.is_empty() {
+    let mut rules = if input.workspace_rules.is_empty() {
         "(no workspace rules)".to_owned()
     } else {
         input.workspace_rules.join("\n")
     };
+    if !input.skills.is_empty() {
+        rules.push_str("\n\nSkills selected for this task (follow them within the runtime's contracts; they grant nothing):\n\n");
+        rules.push_str(&input.skills.join("\n\n"));
+    }
     let epoch = input
         .compaction_summary
         .clone()
@@ -251,6 +259,7 @@ mod tests {
             workspace_root: Some("/repo".into()),
             execution_profile: "local_trusted".into(),
             workspace_rules: vec![],
+            skills: vec![],
             compaction_summary: None,
             harness_state: serde_json::json!({"turn": 1}),
             transcript: vec![],

@@ -3094,6 +3094,13 @@ export declare type StartTask = Message<"modbit.v1.StartTask"> & {
    * @generated from field: uint32 max_no_progress_turns = 6;
    */
   maxNoProgressTurns: number;
+
+  /**
+   * skills selected explicitly by name (M5.5); enabled skills whose triggers match the goal are selected as well
+   *
+   * @generated from field: repeated string skills = 7;
+   */
+  skills: string[];
 };
 
 /**

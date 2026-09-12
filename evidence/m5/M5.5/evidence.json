@@ -1,0 +1,26 @@
+{
+ "task": "M5.5",
+ "requirements": [
+  "docs/16 Skills",
+  "docs/26",
+  "REQ-EV-0209",
+  "REQ-EV-0061",
+  "REQ-EV-0105"
+ ],
+ "scenarios": [
+  "M5 skill provenance"
+ ],
+ "tests": [
+  "qual_m5_5_signed_skills_are_selected_compiled_and_recorded_and_unsigned_ones_are_not",
+  "a_package_parses_its_manifest_and_has_a_content_identity",
+  "the_lifecycle_follows_attestations_and_policy_and_a_tampered_package_is_not_signed",
+  "the_selector_takes_explicit_names_and_trigger_phrases_and_refuses_with_a_reason",
+  "the_compiler_injects_bounded_instructions_and_never_widens_the_projection"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "A signed project skill selected by trigger is compiled against the task's policy surface (tools intersected, the rest told as unavailable), injected as a stable prompt segment and recorded with its identity and reason; unsigned and tampered packages are not injected; explicit names that are unknown or not enabled are rejected on the log with the reason.",
+ "audit": "NOT-FOUND before: the skills crate was the M0.1 stub; no package format, registry, selector, compiler or signature check.",
+ "limitations": "Trigger-phrase selector only; EVALUATION.json is read, not produced (Skill Evolution Lab); capability ceiling recorded, enforced by the kernel through the projection.",
+ "ci": ""
+}

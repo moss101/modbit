@@ -21,6 +21,7 @@ modbit-providers.workspace = true
 modbit-terminal.workspace = true
 modbit-tools.workspace = true
 modbit-procedural-runtime.workspace = true
+modbit-skills.workspace = true
 modbit-workspace.workspace = true
 modbit-git.workspace = true
 modbit-verification.workspace = true
@@ -44,6 +45,7 @@ tokio-util.workspace = true
 
 [dev-dependencies]
 ed25519-dalek.workspace = true
+modbit-skills.workspace = true
 modbit-bench-context-economics.workspace = true
 tempfile.workspace = true
 

@@ -27,6 +27,7 @@ mod routing;
 mod runtime;
 mod server;
 mod side;
+mod skills;
 mod statistics;
 mod subagent;
 mod tools;
