@@ -236,8 +236,7 @@ pub(crate) async fn spawn(
     //    dependency hot spots, shared/migration/lockfiles, generated files
     //    and fixtures. A blocking conflict refuses; warnings go to the
     //    parent with the admission.
-    let mut warnings: Vec<String> = Vec::new();
-    {
+    let warnings: Vec<String> = {
         let store = core.store.lock().await;
         let live_children: Vec<(AgentId, Vec<String>)> = store
             .agent_nodes(&parent.task_id)
@@ -272,7 +271,7 @@ pub(crate) async fn spawn(
             .filter(|c| c.severity == modbit_core_runtime::conflict::Severity::Block)
             .map(|c| format!("{:?} with {}: {}", c.rule, c.with, c.detail))
             .collect();
-        warnings = conflicts
+        let warnings: Vec<String> = conflicts
             .iter()
             .filter(|c| c.severity == modbit_core_runtime::conflict::Severity::Warn)
             .map(|c| format!("{:?} with {}: {}", c.rule, c.with, c.detail))
@@ -324,7 +323,8 @@ pub(crate) async fn spawn(
             );
             return Err(r);
         }
-    }
+        warnings
+    };
     // 5. Capacity: the child's own run ticket (REQ-EV-0272).
     let agent_id = AgentId::new();
     let holder = format!("agent:{agent_id}");
