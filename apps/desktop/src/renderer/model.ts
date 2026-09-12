@@ -5,6 +5,22 @@
  */
 export type FleetColumn = "needsAttention" | "readyForReview" | "running" | "waiting" | "completed" | "failed";
 
+/** The agents of a task as the Fleet counts them (M6.6): every node the
+ *  AgentGraph recorded, by status. */
+export interface AgentCounts {
+  total: number;
+  running: number;
+  background: number;
+  waiting: number;
+  done: number;
+  failed: number;
+}
+
+/** PRD "Home / Fleet" card phase: drafting, verifying, reviewing,
+ *  escalating, awaiting human, waiting for capacity. Derived from Core
+ *  events only. */
+export type Phase = "drafting" | "verifying" | "reviewing" | "escalating" | "awaitingHuman" | "waitingCapacity" | "delegating" | "done";
+
 export interface TaskCard {
   taskId: string;
   goalText: string;
@@ -14,6 +30,24 @@ export interface TaskCard {
   createdAtMs: number;
   nextAction: string | null;
   attachments: number;
+  /** `subagent` cards nest under their parent (M6.6); null for a top-level task. */
+  parentTaskId: string | null;
+  /** Where the task came from (`cli`, `desktop`, `subagent`, …). */
+  origin: string;
+  /** Agents on this task, from the AgentGraph events. */
+  agents: AgentCounts;
+  /** Current phase. */
+  phase: Phase;
+  /** The latest evidence line (verification run, gate verdict, continuation). */
+  latestEvidence: string | null;
+  /** Realized risk level (`LOW` … `CRITICAL`) once derived. */
+  risk: string | null;
+  /** Child task ids, in admission order. */
+  children: string[];
+}
+
+function emptyCounts(): AgentCounts {
+  return { total: 0, running: 0, background: 0, waiting: 0, done: 0, failed: 0 };
 }
 
 export interface Snapshot {
@@ -39,10 +73,19 @@ export interface Model {
   tasks: Map<string, TaskCard>;
   /** Task ids whose TaskCreated event we have seen, keyed by created goal (for cards created before the event arrives). */
   seenOffsets: Set<string>;
+  /** Agent node status by agent id, per task (M6.6). */
+  agents: Map<string, Map<string, string>>;
+  /** Child task → parent task, learned from `SubagentAdmitted` (which may
+   *  arrive before or after the child's own `TaskCreated`). */
+  parents: Map<string, string>;
 }
 
 export function emptyModel(): Model {
-  return { sessionId: null, cursor: "0", tasks: new Map(), seenOffsets: new Set() };
+  return { sessionId: null, cursor: "0", tasks: new Map(), seenOffsets: new Set(), agents: new Map(), parents: new Map() };
+}
+
+function freshCard(taskId: string, goalText: string, state: string, generation: number, createdAtMs: number, origin: string): TaskCard {
+  return { taskId, goalText, state: normalizeState(state), waitReason: waitReasonOf(state), generation, createdAtMs, nextAction: null, attachments: 0, parentTaskId: null, origin, agents: emptyCounts(), phase: "drafting", latestEvidence: null, risk: null, children: [] };
 }
 
 export function fromSnapshot(s: Snapshot): Model {
@@ -50,9 +93,50 @@ export function fromSnapshot(s: Snapshot): Model {
   m.sessionId = s.sessionId;
   m.cursor = s.lastOffset;
   for (const t of s.tasks) {
-    m.tasks.set(t.taskId, { taskId: t.taskId, goalText: t.goalText, state: normalizeState(t.state), waitReason: waitReasonOf(t.state), generation: t.generation, createdAtMs: t.createdAtMs, nextAction: null, attachments: 0 });
+    m.tasks.set(t.taskId, freshCard(t.taskId, t.goalText, t.state, t.generation, t.createdAtMs, (t as { origin?: string }).origin ?? ""));
   }
   return m;
+}
+
+function countsOf(statuses: Map<string, string> | undefined): AgentCounts {
+  const c = emptyCounts();
+  if (!statuses) return c;
+  for (const st of statuses.values()) {
+    c.total += 1;
+    switch (st) {
+      case "RUNNING":
+      case "ADMITTED":
+      case "ADMISSION_PENDING":
+        c.running += 1;
+        break;
+      case "BACKGROUND":
+        c.background += 1;
+        break;
+      case "WAITING":
+      case "PARKED":
+        c.waiting += 1;
+        break;
+      case "COMPLETED":
+        c.done += 1;
+        break;
+      case "FAILED":
+      case "CANCELLED":
+        c.failed += 1;
+        break;
+      default:
+        break;
+    }
+  }
+  return c;
+}
+
+/** Link a child card to its parent once both are known. */
+function link(next: Model, childId: string, parentId: string): void {
+  next.parents.set(childId, parentId);
+  const child = next.tasks.get(childId);
+  if (child && child.parentTaskId !== parentId) next.tasks.set(childId, { ...child, parentTaskId: parentId });
+  const parent = next.tasks.get(parentId);
+  if (parent && !parent.children.includes(childId)) next.tasks.set(parentId, { ...parent, children: [...parent.children, childId] });
 }
 
 function normalizeState(s: string): string {
@@ -73,7 +157,7 @@ function waitReasonOf(s: string): string | null {
  *  present in the event, else to the most recent task whose sequence matches. */
 export function applyEvent(m: Model, e: Event, taskIdHint?: string): Model {
   if (m.seenOffsets.has(e.offset)) return m;
-  const next: Model = { ...m, tasks: new Map(m.tasks), seenOffsets: new Set(m.seenOffsets) };
+  const next: Model = { ...m, tasks: new Map(m.tasks), seenOffsets: new Set(m.seenOffsets), agents: new Map(m.agents), parents: new Map(m.parents) };
   next.seenOffsets.add(e.offset);
   if (BigInt(e.offset) > BigInt(next.cursor)) next.cursor = e.offset;
   const p = (e.payload ?? {}) as Record<string, unknown>;
@@ -81,16 +165,10 @@ export function applyEvent(m: Model, e: Event, taskIdHint?: string): Model {
   switch (e.eventType) {
     case "TaskCreated": {
       if (!target) return next;
-      next.tasks.set(target, {
-        taskId: target,
-        goalText: String(p["goal_text"] ?? ""),
-        state: "Created",
-        waitReason: null,
-        generation: 1,
-        createdAtMs: e.occurredAtMs,
-        nextAction: null,
-        attachments: 0,
-      });
+      const card = freshCard(target, String(p["goal_text"] ?? ""), "Created", 1, e.occurredAtMs, String(p["origin"] ?? ""));
+      next.tasks.set(target, card);
+      const parent = next.parents.get(target);
+      if (parent) link(next, target, parent);
       return next;
     }
     default: {
@@ -135,14 +213,90 @@ export function applyEvent(m: Model, e: Event, taskIdHint?: string): Model {
           break;
         case "TaskNeedsAttention":
           updated.nextAction = String(p["reason"] ?? "Needs attention");
+          if (updated.waitReason === "Capacity") updated.phase = "waitingCapacity";
+          break;
+        // M6.6: the AgentGraph on the card — agents by status, children
+        // nested under their parent, a child's trouble surfacing on the
+        // parent as its next action.
+        case "AgentNodeCreated": {
+          const node = (p["node"] ?? {}) as Record<string, unknown>;
+          const id = String(node["agent_id"] ?? "");
+          const statuses = new Map(next.agents.get(target) ?? []);
+          statuses.set(id, String(node["status"] ?? ""));
+          next.agents.set(target, statuses);
+          updated.agents = countsOf(statuses);
+          if (String(node["kind"]) === "SUBAGENT") updated.phase = "delegating";
+          const child = node["child_task_id"];
+          if (typeof child === "string") link(next, child, target);
+          break;
+        }
+        case "AgentNodeTransitioned": {
+          const statuses = new Map(next.agents.get(target) ?? []);
+          statuses.set(String(p["agent_id"] ?? ""), String(p["to"] ?? ""));
+          next.agents.set(target, statuses);
+          updated.agents = countsOf(statuses);
+          break;
+        }
+        case "SubagentAdmitted": {
+          const child = String(p["child_task_id"] ?? "");
+          if (child) link(next, child, target);
+          updated.phase = "delegating";
+          updated.latestEvidence = `delegated ${String(p["idempotency_key"] ?? "a child")} (${String(p["mode"] ?? "")})`;
+          break;
+        }
+        case "SubagentAdmissionRefused":
+          updated.latestEvidence = `delegation refused: ${String(p["code"] ?? "")} at ${String(p["stage"] ?? "")}`;
+          break;
+        case "SubagentResultRecorded": {
+          const status = String(p["status"] ?? "");
+          const summary = String(p["summary"] ?? "");
+          updated.latestEvidence = `child ${status.toLowerCase()}: ${summary}`;
+          if (status === "FAILED" || status === "WAITING") updated.nextAction = `A child agent needs attention (${status.toLowerCase()}): ${summary}`;
+          break;
+        }
+        case "CapacityDenied":
+          updated.waitReason = "Capacity";
+          updated.phase = "waitingCapacity";
+          updated.nextAction = `Waiting for capacity: ${String(p["dimension"] ?? "")} ${String(p["available"] ?? "")}/${String(p["needed"] ?? "")}`;
+          break;
+        case "CapacityTicketGranted":
+          if (updated.phase === "waitingCapacity") updated.phase = "drafting";
+          if (updated.nextAction?.startsWith("Waiting for capacity")) updated.nextAction = null;
+          break;
+        // Run-aggregate events the Core stamps with the task id: the
+        // phase and the latest evidence come from them, never from logs.
+        case "VerificationRunRecorded":
+          updated.phase = "verifying";
+          updated.latestEvidence = `${String(p["stage"] ?? "")} verification ${String(p["status"] ?? "")}`;
+          break;
+        case "AcceptanceGateEvaluated":
+          updated.phase = "reviewing";
+          updated.latestEvidence = `acceptance gate ${String(p["verdict"] ?? "")}`;
+          if (p["human_required"] === true) updated.phase = "awaitingHuman";
+          break;
+        case "ContinuationActivated":
+          updated.phase = "escalating";
+          updated.latestEvidence = `escalated to ${String(p["endpoint"] ?? "")}/${String(p["model"] ?? "")}`;
+          break;
+        case "RealizedRiskDerived":
+          updated.risk = String(p["level"] ?? "");
           break;
         default:
           return next;
       }
+      if (updated.state === "Waiting" && (updated.waitReason === "Approval" || updated.waitReason === "UserInput")) updated.phase = "awaitingHuman";
+      if (updated.state === "Completed") updated.phase = "done";
       next.tasks.set(target, updated);
       return next;
     }
   }
+}
+
+/** The children of a task, in admission order. */
+export function childrenOf(m: Model, taskId: string): TaskCard[] {
+  const c = m.tasks.get(taskId);
+  if (!c) return [];
+  return c.children.map((id) => m.tasks.get(id)).filter((x): x is TaskCard => Boolean(x));
 }
 
 /** PRD "Home / Fleet" columns from card state. Needs Attention is derived
@@ -166,6 +320,8 @@ export function columnOf(c: TaskCard): FleetColumn {
 
 export function columns(m: Model): Record<FleetColumn, TaskCard[]> {
   const out: Record<FleetColumn, TaskCard[]> = { needsAttention: [], readyForReview: [], running: [], waiting: [], completed: [], failed: [] };
-  for (const c of [...m.tasks.values()].sort((a, b) => b.createdAtMs - a.createdAtMs || a.taskId.localeCompare(b.taskId))) out[columnOf(c)].push(c);
+  // A subagent's task is its parent's business: it shows under the parent
+  // card, never as a top-level card (M6.6, one primary owns the outcome).
+  for (const c of [...m.tasks.values()].filter((c) => c.parentTaskId === null && c.origin !== "subagent").sort((a, b) => b.createdAtMs - a.createdAtMs || a.taskId.localeCompare(b.taskId))) out[columnOf(c)].push(c);
   return out;
 }

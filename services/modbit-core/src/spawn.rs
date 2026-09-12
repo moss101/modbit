@@ -692,11 +692,18 @@ pub(crate) async fn spawn(
         ticket_id: ticket.ticket_id.clone(),
     };
     let child_actor = Actor::Agent(format!("subagent:{agent_id}"));
-    match core
-        .runtime
-        .start(core, child_task, cfg, req.parent_generation, child_actor)
-        .await
-    {
+    // The child's loop is the same loop that is calling this (a parent
+    // spawning from inside its turn): the start future is boxed so the
+    // recursive future type stays nameable and `Send`.
+    type Started = std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<(RunId, bool), (String, String)>> + Send>,
+    >;
+    let started: Started =
+        Box::pin(
+            core.runtime
+                .start(core, child_task, cfg, req.parent_generation, child_actor),
+        );
+    match started.await {
         Ok((run_id, _)) => {
             let mut store = core.store.lock().await;
             let _ = append(

@@ -22811,7 +22811,7 @@ async fn m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back
     let parent_tool_texts: Vec<String> = bodies
         .iter()
         .filter(|b| b.to_string().contains("PARENT-GOAL-MARKER"))
-        .last()
+        .next_back()
         .unwrap()["messages"]
         .as_array()
         .unwrap()
