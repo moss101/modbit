@@ -43,6 +43,10 @@ pub struct Trial {
     pub cold_ms: u64,
     /// Whether the run reached a verified outcome.
     pub verified: bool,
+    /// Bytes of tool schemas sent to the model, summed over the run's
+    /// requests (M5.6 tool-schema economics; REQ-EV-0116).
+    #[serde(default)]
+    pub tool_schema_bytes: u64,
 }
 
 /// The measured quantities, so a report can speak about any of them.
@@ -59,6 +63,10 @@ pub enum Metric {
     AgentMs,
     /// Cold time to first use.
     ColdMs,
+    /// Model invocations.
+    ModelCalls,
+    /// Tool-schema bytes sent over the run.
+    ToolSchemaBytes,
 }
 
 impl Metric {
@@ -71,6 +79,8 @@ impl Metric {
             Self::NormalizedToolCalls => f64::from(t.normalized_tool_calls),
             Self::AgentMs => t.agent_ms as f64,
             Self::ColdMs => t.cold_ms as f64,
+            Self::ModelCalls => f64::from(t.model_calls),
+            Self::ToolSchemaBytes => t.tool_schema_bytes as f64,
         }
     }
 
@@ -83,6 +93,8 @@ impl Metric {
             Self::NormalizedToolCalls => "normalized_tool_calls",
             Self::AgentMs => "agent_ms",
             Self::ColdMs => "cold_ms",
+            Self::ModelCalls => "model_calls",
+            Self::ToolSchemaBytes => "tool_schema_bytes",
         }
     }
 }
@@ -228,6 +240,8 @@ pub fn paired_report(
         Metric::NormalizedToolCalls,
         Metric::AgentMs,
         Metric::ColdMs,
+        Metric::ModelCalls,
+        Metric::ToolSchemaBytes,
     ]
     .into_iter()
     .map(|metric| {

@@ -19,6 +19,7 @@ fn trial(variant: &str, task: &str, repeat: u32, tokens: u64, tools: u32, ms: u6
         agent_ms: ms,
         cold_ms: ms + 500,
         verified: true,
+        tool_schema_bytes: 0,
     }
 }
 

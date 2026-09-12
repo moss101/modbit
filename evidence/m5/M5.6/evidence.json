@@ -1,0 +1,45 @@
+{
+ "task": "M5.6",
+ "requirements": [
+  "docs/43 M5 benchmark",
+  "REQ-EV-0116"
+ ],
+ "scenarios": [
+  "direct vs procedural paired benchmark"
+ ],
+ "tests": [
+  "qual_m5_6_direct_and_procedural_modes_yield_the_same_effects_at_different_token_costs",
+  "qual_ev_0096_0116_0133_0044_0031_tool_surface_is_compiled_from_support_and_policy"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "measured": {
+  "model_calls": {
+   "direct": 5,
+   "procedural": 3
+  },
+  "tool_schema_bytes": {
+   "direct": 70813,
+   "procedural": 41709,
+   "relative": -0.411
+  },
+  "input_tokens": {
+   "direct": 5860,
+   "procedural": 3143,
+   "relative": -0.464
+  },
+  "tool_calls": {
+   "direct": 3,
+   "procedural": 3
+  },
+  "pairs": 3,
+  "verified": [
+   3,
+   3
+  ]
+ },
+ "proof": "Three paired trials of one coding task through the real Core: identical tool calls and outcomes on the log and an identical file in every pair; procedural mode makes 3 model calls to 5, sends 41 % fewer tool-schema bytes and 46 % fewer prompt tokens at the deterministic local server.",
+ "audit": "PARTIAL before: the eager-vs-projected schema comparison existed; no mode comparison; the benchmark crate lacked model-call and schema-byte metrics.",
+ "limitations": "Deterministic local model accounting; identical pairs (no interval width); live-model behaviour not established (DR-M3-002).",
+ "ci": ""
+}

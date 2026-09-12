@@ -11711,6 +11711,7 @@ async fn qual_ev_0250_0252_0274_paired_context_economics_benchmark_publishes_sav
                 agent_ms: e.wall_ms,
                 cold_ms,
                 verified: st.state == "ReadyForReview",
+                tool_schema_bytes: 0,
             });
             let _ = repo;
         }
@@ -19958,5 +19959,216 @@ async fn qual_m5_5_signed_skills_are_selected_compiled_and_recorded_and_unsigned
     assert!(
         reason.contains("Incubator") && reason.contains("no signature"),
         "{reason}"
+    );
+}
+
+/// M5.6 (docs/43 M5 "tool-schema/token-economics benchmark"; REQ-EV-0116,
+/// QUAL-EV-0116 in its procedural half): the same coding task done in
+/// direct mode (one governed tool call per model turn) and in procedural
+/// mode (one `proc.exec` program composing the same calls), paired three
+/// times through the real Core, measured from the canonical log and from
+/// the requests the model server received. The two modes yield the same
+/// effects and the same policy behaviour — the same tool calls on the log,
+/// each through the same pipeline, the same file written — and the report
+/// says what each mode costs in model calls, tool-schema bytes and input
+/// tokens, with its method stated.
+#[tokio::test]
+async fn qual_m5_6_direct_and_procedural_modes_yield_the_same_effects_at_different_token_costs() {
+    use modbit_bench_context_economics::{Metric, Trial, metric_of, paired_report};
+    use modbit_protocol::v1::{GetTaskEconomics, StartTask, TaskEconomicsView, TaskRunStarted};
+    use serde_json::json;
+    let direct_script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "derive b.txt from a.txt", "expected_files": ["b.txt"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "a.txt"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "b.txt", "op": "create", "content": "alpha\nbeta\n"}}]}),
+        json!({"calls": [{"name": "shell.exec", "args": {"argv": ["sh", "-c", "cat b.txt"], "inherit_env": true}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "derived", "self_review": {"findings": []}}}]}),
+    ];
+    let program = r#"
+        const f = await tools.fs.read({ path: "a.txt" });
+        await tools.change.apply({ path: "b.txt", op: "create", content: f.content + "beta\n" });
+        const sh = await tools.shell.exec({ argv: ["sh", "-c", "cat b.txt"], inherit_env: true });
+        return { exit: sh.exit_code };
+    "#;
+    let procedural_script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "derive b.txt from a.txt", "expected_files": ["b.txt"]}}]}),
+        json!({"calls": [{"name": "proc.exec", "args": {"program": program, "declared_effects": ["fs", "change", "shell"]}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "derived", "self_review": {"findings": []}}}]}),
+    ];
+    let mut trials: Vec<Trial> = Vec::new();
+    // Effect parity per pair: the tool calls on the log (name, final
+    // state) and the file written.
+    type Effects = (Vec<(String, String)>, String);
+    let mut effects: std::collections::BTreeMap<(String, u32), Effects> =
+        std::collections::BTreeMap::new();
+    for repeat in 0..3u32 {
+        for (variant, script) in [
+            ("baseline", direct_script.clone()),
+            ("treatment", procedural_script.clone()),
+        ] {
+            let (repo, root) = plain_repo(&[("a.txt", "alpha\n")]);
+            let (base, seen) = scripted_model(script, None).await;
+            let dir = tempfile::tempdir().unwrap();
+            let env = [
+                ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+                ("OPENAI_API_KEY", ""),
+                ("ANTHROPIC_API_KEY", ""),
+            ];
+            let cold_started = std::time::Instant::now();
+            let core = CoreProcess::spawn_with_env(dir.path(), &env);
+            let mut c = core.client().await;
+            let cmd = u8::try_from(repeat).unwrap() * 8 + u8::from(variant == "treatment") * 4;
+            let (session, _) = create_session(&mut c, id16(0x80 + cmd)).await;
+            let g = lease_for(&session);
+            let task =
+                create_task_with_profile(&mut c, &session, g, &root, 0x81 + cmd, "local_trusted")
+                    .await;
+            let ack = c
+                .command(envelope_fenced(
+                    id16(0x82 + cmd),
+                    "StartTask",
+                    StartTask {
+                        task_id: Some(task.clone()),
+                        endpoint: String::new(),
+                        model: "gpt-5-mini".into(),
+                        max_turns: 12,
+                        max_tool_calls: 0,
+                        max_no_progress_turns: 6,
+                        skills: vec![],
+                    }
+                    .encode_to_vec(),
+                    g,
+                ))
+                .await
+                .unwrap();
+            let _: TaskRunStarted = Client::result(&ack).unwrap();
+            let st = wait_task(&mut c, &task, 180).await;
+            let cold_ms = u64::try_from(cold_started.elapsed().as_millis()).unwrap_or(u64::MAX);
+            assert_eq!(st.state, "ReadyForReview", "{variant} #{repeat}: {st:?}");
+            let ack = c
+                .command(envelope(
+                    id16(0x83 + cmd),
+                    "GetTaskEconomics",
+                    GetTaskEconomics {
+                        task_id: Some(task.clone()),
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .unwrap();
+            let e: TaskEconomicsView = Client::result(&ack).unwrap();
+            let bodies = seen.lock().unwrap().clone();
+            let tool_schema_bytes: u64 = bodies
+                .iter()
+                .map(|b| serde_json::to_string(&b["tools"]).unwrap_or_default().len() as u64)
+                .sum();
+            // The effects: every tool call on the log with its final state,
+            // in order, and the file the task produced.
+            let replay = wire_replay(&core, &session).await;
+            let mut calls: Vec<(String, String, String)> = Vec::new(); // (aggregate, name, last state)
+            for ev in replay.iter().filter(|e| {
+                e["aggregate_type"] == "tool_call" && e["task_id"].as_str() == Some(&hex_id(&task))
+            }) {
+                let agg = ev["aggregate_id"].as_str().unwrap().to_owned();
+                let et = ev["event_type"].as_str().unwrap().to_owned();
+                match calls.iter_mut().find(|(a, _, _)| *a == agg) {
+                    Some(entry) => entry.2 = et,
+                    None => calls.push((
+                        agg,
+                        ev["payload"]["payload"]["tool_name"]
+                            .as_str()
+                            .unwrap_or_default()
+                            .to_owned(),
+                        et,
+                    )),
+                }
+            }
+            let tool_calls = u32::try_from(calls.len()).unwrap();
+            effects.insert(
+                (variant.to_owned(), repeat),
+                (
+                    calls.into_iter().map(|(_, n, s)| (n, s)).collect(),
+                    std::fs::read_to_string(repo.path().join("b.txt")).unwrap_or_default(),
+                ),
+            );
+            trials.push(Trial {
+                variant: variant.into(),
+                task: "derive-b-from-a".into(),
+                repeat,
+                input_tokens: e.input_tokens,
+                output_tokens: e.output_tokens,
+                cached_input_tokens: e.cached_input_tokens,
+                tool_calls,
+                normalized_tool_calls: tool_calls,
+                model_calls: u32::try_from(bodies.len()).unwrap(),
+                agent_ms: e.wall_ms,
+                cold_ms,
+                verified: st.state == "ReadyForReview",
+                tool_schema_bytes,
+            });
+        }
+    }
+    // Effect and policy parity (docs/43 M5 proof): the same tool calls with
+    // the same outcomes on the log, the same file, in every pair.
+    for repeat in 0..3u32 {
+        let (direct_calls, direct_file) = &effects[&("baseline".to_owned(), repeat)];
+        let (proc_calls, proc_file) = &effects[&("treatment".to_owned(), repeat)];
+        assert_eq!(direct_file, "alpha\nbeta\n");
+        assert_eq!(proc_file, direct_file, "pair #{repeat}");
+        assert_eq!(
+            direct_calls,
+            &vec![
+                ("fs.read".to_owned(), "ToolCallSucceeded".to_owned()),
+                ("change.apply".to_owned(), "ToolCallSucceeded".to_owned()),
+                ("shell.exec".to_owned(), "ToolCallSucceeded".to_owned()),
+            ],
+            "pair #{repeat}"
+        );
+        assert_eq!(
+            proc_calls, direct_calls,
+            "pair #{repeat}: the same calls through the same pipeline"
+        );
+    }
+    let report = paired_report(
+        &trials,
+        "procedural mode (one proc.exec program composing fs.read, change.apply and shell.exec) instead of direct mode (one governed tool call per model turn), same task, same model, same policy",
+        &[
+            "task",
+            "model",
+            "execution profile",
+            "plan",
+            "tool projection",
+        ],
+        "Three paired trials of one coding task through the real Core, measured from the canonical log (tool calls with their outcomes) and from the requests the model server received (model calls, the bytes of tool schemas in each request, prompt tokens as the deterministic local server reports them: request bytes over four). Each variant does what an agent can do with the machinery it has — direct mode calls one tool per turn, procedural mode composes the same three calls in one program — so the numbers measure the surface's cost under its intended use, not a model's spontaneous choice of mode. Two consequences, stated rather than hidden: the product is deterministic here, so the paired trials are identical and the intervals have no width; and whether a live model would write the program correctly, or prefer it, cannot be answered without a live provider. The tool-schema bytes are per request and grow with the number of model calls, which is the mechanism this surface is meant to shorten.",
+    );
+    eprintln!("BENCH {}", serde_json::to_string_pretty(&report).unwrap());
+    assert_eq!(report.pairs, 3, "{report:?}");
+    assert!(report.unpaired.is_empty());
+    assert_eq!(report.verified, (3, 3));
+    let model_calls = metric_of(&report, Metric::ModelCalls).unwrap();
+    assert_eq!(
+        (model_calls.baseline_median, model_calls.treatment_median),
+        (5.0, 3.0)
+    );
+    let schema = metric_of(&report, Metric::ToolSchemaBytes).unwrap();
+    assert!(
+        schema.treatment_median < schema.baseline_median,
+        "fewer requests carry fewer schema bytes: {schema:?}"
+    );
+    assert!(schema.baseline_median > 20_000.0, "{schema:?}");
+    let tokens = metric_of(&report, Metric::InputTokens).unwrap();
+    assert!(
+        tokens.treatment_median < tokens.baseline_median,
+        "{tokens:?}"
+    );
+    let tool_calls = metric_of(&report, Metric::ToolCalls).unwrap();
+    assert_eq!(
+        tool_calls.mean_delta, 0.0,
+        "the same governed calls: {tool_calls:?}"
+    );
+    assert!(
+        report.method.contains("the intervals have no width"),
+        "{}",
+        report.method
     );
 }

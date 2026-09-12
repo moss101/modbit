@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 804,
-    "docs_bytes": 1071247
+    "root_and_tooling": 806,
+    "docs_bytes": 1072591
   },
   "sections": [
     {
@@ -185,8 +185,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Tool System, Capability Kernel, Procedural Runtime, and MCP",
-      "bytes": 12468,
-      "sha256": "45e4a4d7377abc0fe0d489bd96bf46c68d1ce7304437e003e7a3d9bab7edbafc"
+      "bytes": 13812,
+      "sha256": "1d556cc835f5f79cf1e9ae6ab16f02ae97c1b24509378af03448341f9ab63ddc"
     },
     {
       "path": "docs/17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md",
@@ -4830,6 +4830,16 @@
       "path": "evidence/m5/M5.5/evidence.json",
       "bytes": 1693,
       "sha256": "89a90f9d3d2b9e28e3009df33c1c273ee77362ecf2e25802476f82b978621489"
+    },
+    {
+      "path": "evidence/m5/M5.6/TASK_CARD.md",
+      "bytes": 3466,
+      "sha256": "5eff4c1a373dd20d1d17b1db53acc3457296bb6690a80e067aa273c5461f4fbe"
+    },
+    {
+      "path": "evidence/m5/M5.6/evidence.json",
+      "bytes": 1356,
+      "sha256": "01d211f1f2be17f0d574717782099932c239331a92f9787d1f14e97a0eaf36a8"
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
