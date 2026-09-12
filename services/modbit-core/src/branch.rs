@@ -291,8 +291,18 @@ pub(crate) async fn fork(
         .clone()
         .or_else(|| repo.head().ok())
         .unwrap_or_else(|| "HEAD".into());
-    let short = &req.new_task_id.to_string()[..8];
-    let branch = format!("modbit/fork-{short}");
+    // The branch carries the whole task id: the first characters of a
+    // time-ordered id repeat within a minute, and two forks (or two
+    // subagents, M6.3) a minute apart must never share a branch.
+    let branch = format!(
+        "modbit/{}-{}",
+        if req.subagent.is_some() {
+            "agent"
+        } else {
+            "fork"
+        },
+        req.new_task_id
+    );
     let worktree_dir = req.worktree_dir.clone().unwrap_or_else(|| {
         core.data_dir
             .join("worktrees")

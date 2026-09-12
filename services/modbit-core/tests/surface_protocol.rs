@@ -22669,6 +22669,7 @@ async fn m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back
     // write tool at all (REQ-EV-0218), so the call is refused as not
     // projected; it reports instead.
     let child_e = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "a report on README.md", "expected_files": []}}]}),
         json!({"calls": [{"name": "fs.read", "args": {"path": "README.md"}}]}),
         json!({"calls": [{"name": "change.apply", "args": {"path": "docs/notes.md", "op": "replace", "content": "x\n"}}]}),
         json!({"calls": [{"name": "task.complete", "args": {"summary": "README says split work", "self_review": {"findings": []}}}]}),
@@ -22880,9 +22881,9 @@ async fn m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back
         .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
         .collect();
     assert!(
-        e_last[1].contains("TOOL_NOT_PROJECTED") || e_last[1].contains("TOOL_NOT_VISIBLE"),
+        e_last[2].contains("TOOL_NOT_PROJECTED") || e_last[2].contains("TOOL_NOT_VISIBLE"),
         "{}",
-        e_last[1]
+        e_last[2]
     );
     let ra = results
         .iter()
