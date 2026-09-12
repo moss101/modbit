@@ -7,10 +7,20 @@
   "the_isolate_has_no_ambient_authority",
   "the_tool_call_output_and_log_budgets_are_enforced"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "2f210a9"
+ ],
+ "runs": [
+  {
+   "id": "gha-34688570289",
+   "kind": "hosted CI on 4ef17d4",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34688570289",
+   "log": "ci-run-34688570289.json"
+  }
+ ],
  "proof": "E2E-012: the program's `git.worktree.close` reaches the same kernel port and approval flow as a direct call and ends `APPROVAL_DENIED` with no effect; an out-of-plan write is refused by the harness gate inside the program; a tool the projection withholds is not even a binding (`the_isolate_has_no_ambient_authority`, `tools_bindings_are_the_only_way_out_\u2026`); budgets: `the_cpu_budget_ends_a_spinning_program`, `the_memory_and_stack_budgets_\u2026`, `the_tool_call_output_and_log_budgets_\u2026`.",
  "audit": "NOT-FOUND before M5.2; this task is the qualification of the boundary.",
  "limitations": "A kernel denial of a projected tool for want of a lease capability is exercised through the approval path (denied) rather than a lease gap, since the projection already excludes what the lease lacks.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34688570289 (green on macOS, Linux and Windows at 4ef17d4)"
 }

@@ -6,10 +6,20 @@
   "qual_m5_e2e_012_a_program_composes_governed_tools_in_the_isolate",
   "qual_m5_6_direct_and_procedural_modes_yield_the_same_effects_at_different_token_costs"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "2f210a9"
+ ],
+ "runs": [
+  {
+   "id": "gha-34688570289",
+   "kind": "hosted CI on 4ef17d4",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34688570289",
+   "log": "ci-run-34688570289.json"
+  }
+ ],
  "proof": "`qual_m5_e2e_012_a_program_composes_governed_tools_in_the_isolate`: the program's five calls are five tool-call aggregates under the exec id, each through the pipeline; the declared write lands; the task reaches ReadyForReview; `qual_m5_6_\u2026` shows the same effects and policy outcomes as direct mode in three pairs.",
  "audit": "NOT-FOUND before M5.4; this task is the qualification of M5.2\u2013M5.4 against its own acceptance.",
  "limitations": "`request_user_input` is the model's `user.ask` between programs, not callable from inside one.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34688570289 (green on macOS, Linux and Windows at 4ef17d4)"
 }

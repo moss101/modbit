@@ -5,10 +5,20 @@
  "tests": [
   "wsk_e2e_002_the_maintainer_consolidates_contradictory_traces_without_overwriting"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "4ef17d4"
+ ],
+ "runs": [
+  {
+   "id": "gha-34688570289",
+   "kind": "hosted CI on 4ef17d4",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34688570289",
+   "log": "ci-run-34688570289.json"
+  }
+ ],
  "proof": "WSK-E2E-002: two verified and one failed trace with the same observation become one pattern with two supporting and one contradicting trace id and 6666 bp confidence; a later failing trace yields a superseding revision at 5000 bp with the earlier one persisting; the skill files and no memory store are touched.",
  "audit": "NOT-FOUND before M5.7",
  "finding": "EXPERIMENT: behaves as hypothesised on the fixture; no lift established; no ADR proposed",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34688570289 (green on macOS, Linux and Windows at 4ef17d4)"
 }

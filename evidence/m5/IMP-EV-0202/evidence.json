@@ -6,10 +6,20 @@
   "req_ev_0202_a_promoted_skill_carries_its_purpose_not_the_wiki",
   "wsk_e2e_005_010_a_promoted_skill_reaches_the_model_without_the_wiki_and_recovery_needs_no_lab"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "4ef17d4"
+ ],
+ "runs": [
+  {
+   "id": "gha-34688570289",
+   "kind": "hosted CI on 4ef17d4",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34688570289",
+   "log": "ci-run-34688570289.json"
+  }
+ ],
  "proof": "`req_ev_0202_\u2026`: the promoted head compiles to its instruction line with no pattern record, id or claim in the prompt; the PURPOSE and evidence are in the candidate and impact records under the lab; on the real Core, WSK-E2E-005 shows no wiki field in any request.",
  "audit": "NOT-FOUND before M5.7",
  "finding": "EXPERIMENT: behaves as hypothesised on the fixture; no lift established; no ADR proposed",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34688570289 (green on macOS, Linux and Windows at 4ef17d4)"
 }

@@ -5,10 +5,20 @@
  "tests": [
   "wsk_e2e_004_promotion_needs_the_gates_and_rollback_restores_the_head"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "4ef17d4"
+ ],
+ "runs": [
+  {
+   "id": "gha-34688570289",
+   "kind": "hosted CI on 4ef17d4",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34688570289",
+   "log": "ci-run-34688570289.json"
+  }
+ ],
  "proof": "WSK-E2E-004: a class regression, a cheaper-but-less-correct candidate and a safety failure each REJECT; the head's SKILL.md bytes are unchanged after the refused promotion; rollback restores 1.0.0 byte for byte.",
  "audit": "NOT-FOUND before M5.7",
  "finding": "EXPERIMENT: behaves as hypothesised on the fixture; no lift established; no ADR proposed",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34688570289 (green on macOS, Linux and Windows at 4ef17d4)"
 }

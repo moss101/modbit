@@ -23,11 +23,21 @@
   "req_ev_0207_the_ablation_says_whether_the_lab_earns_its_complexity",
   "wsk_e2e_005_010_a_promoted_skill_reaches_the_model_without_the_wiki_and_recovery_needs_no_lab"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "4ef17d4"
+ ],
+ "runs": [
+  {
+   "id": "gha-34688570289",
+   "kind": "hosted CI on 4ef17d4",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34688570289",
+   "log": "ci-run-34688570289.json"
+  }
+ ],
  "proof": "WSK-E2E-001 sealing/immutability/corrections; 002 contradictory traces consolidated side by side, superseded not overwritten, nothing outside the lab written; 003/006 atomic candidate with base hash, PURPOSE and evidence, refusals of unrelated files, widened tools or ceiling (candidate or manifest), prohibited executable behaviour, stale base; 004 a regressing candidate REJECTED with the head byte-identical and the candidate, evidence and knowledge queryable, a cheaper-but-worse candidate REJECTED, a safety failure REJECTED, a passing candidate promoted as a signed, evaluated, addressable 1.0.1 the registry enables, the impact trail with both decisions, rollback to 1.0.0 byte for byte with 1.0.1 still addressable and the wiki untouched, promotion refused under another candidate's qualification; 007 2,000 traces \u2192 120 patterns, a compact index a quarter of the full records, hydration unde",
  "audit": "NOT-FOUND before this task (the registry, selector, compiler and signing of M5.5 existed; no trace archive, knowledge store, maintainer, proposer, qualification harness or promotion transaction).",
  "limitations": "EXPERIMENT: the proposer is the deterministic template stand-in (a model-backed proposer implements the same trait; not wired to a live provider, DR-M3-002); fixture trials give intervals of no width; the dedicated `skill-evolution-fixtures` repository and nightly cross-model runs of docs/57 are not set up; the ablation on the fixture finds no meaningful lift, so the mechanism stays EXPERIMENT with no ADR proposed.",
  "finding": "no meaningful lift over manual refinement on the fixture; EXPERIMENT stays, no ADR proposed",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34688570289 (green on macOS, Linux and Windows at 4ef17d4)"
 }

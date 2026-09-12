@@ -6,10 +6,30 @@
   "qual_ev_0061_0214_a_skill_cannot_widen_task_authority_and_a_non_invocable_skill_is_not_selected",
   "the_compiler_injects_bounded_instructions_and_never_widens_the_projection"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "2f210a9",
+  "4ef17d4"
+ ],
+ "runs": [
+  {
+   "id": "gha-34688570289",
+   "kind": "hosted CI on 4ef17d4",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34688570289",
+   "log": "ci-run-34688570289.json"
+  }
+ ],
  "proof": "`qual_ev_0061_0214_a_skill_cannot_widen_task_authority_and_a_non_invocable_skill_is_not_selected`: a signed `greedy` skill (`required_tools: fs.read, git.worktree, secret.read, shell.exec`; `capability_ceiling: admin, fs.write, net.egress`; instructions inviting `git.worktree.close`) under `review_isolated` is selected and compiled to `tool_projection [fs.read, shell.exec]`, `tools_unavailable [git.worktree, secret.read]`; the model's `git.worktree.close` is refused `TOOL_NOT_VISIBLE` and never becomes a tool call; nothing about `admin` reaches the log as a grant.",
  "audit": "NOT-FOUND before M5.5 (no skills). As of M5.5 the compiler intersects `required_tools` with the task's policy surface and records the rest as unavailable; this task proves the boundary against a hostile package.",
  "limitations": "The ceiling is recorded and honoured by intersection; a per-skill capability lease narrower than the task's (a skill that asks for less) is not applied yet.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34688570289 (green on macOS, Linux and Windows at 4ef17d4)",
+ "ci_history": [
+  {
+   "id": "gha-34686794529",
+   "kind": "hosted CI on 2f210a9",
+   "result": "FAIL: Windows rust job \u2014 the test asserted no `admin` anywhere in the SkillSelected record, whose source path on the runner is under C:\\Users\\runneradmin; fixed in 4ef17d4",
+   "url": "https://github.com/moss101/modbit/actions/runs/34686794529",
+   "fix": "4ef17d4"
+  }
+ ]
 }

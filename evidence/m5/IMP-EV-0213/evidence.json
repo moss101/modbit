@@ -5,10 +5,20 @@
  "tests": [
   "qual_ev_0213_compiled_projection_is_a_fraction_of_the_eager_package"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "2f210a9"
+ ],
+ "runs": [
+  {
+   "id": "gha-34688570289",
+   "kind": "hosted CI on 4ef17d4",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34688570289",
+   "log": "ci-run-34688570289.json"
+  }
+ ],
  "proof": "`qual_ev_0213_compiled_projection_is_a_fraction_of_the_eager_package` prints a `BENCH` report: a package with a 25 KB reference document and two procedures \u2014 eager injection would send every byte; the compiled projection is under a tenth of it and names the two resources and two procedures by reference; the reference text never enters the instructions.",
  "audit": "NOT-FOUND before M5.5; M5.5's `compile` bounds the instructions (8 KiB in the Core) and names procedures and resources by reference.",
  "limitations": "Bytes on the crate's fixture, not tokens of a live provider; the benchmark's method says so.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34688570289 (green on macOS, Linux and Windows at 4ef17d4)"
 }

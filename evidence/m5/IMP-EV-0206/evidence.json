@@ -5,10 +5,20 @@
  "tests": [
   "wsk_e2e_008_the_paired_benchmark_reports_every_arm_with_intervals_and_never_promotes_over_a_failed_gate"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "4ef17d4"
+ ],
+ "runs": [
+  {
+   "id": "gha-34688570289",
+   "kind": "hosted CI on 4ef17d4",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34688570289",
+   "log": "ci-run-34688570289.json"
+  }
+ ],
  "proof": "WSK-E2E-008: paired arms over the same tasks, models and environment with bootstrap intervals (18 pairs; the fixture is deterministic, so the intervals have no width and the report says so); a larger aggregate saving never overrides a failed hard gate. The hypothesis itself is not tested on engineering tasks with live models.",
  "audit": "NOT-FOUND before M5.7",
  "finding": "EXPERIMENT: behaves as hypothesised on the fixture; no lift established; no ADR proposed",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34688570289 (green on macOS, Linux and Windows at 4ef17d4)"
 }

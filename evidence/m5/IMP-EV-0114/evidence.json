@@ -6,10 +6,20 @@
   "qual_ev_0105_0114_skill_instructions_survive_compaction_and_the_registry_follows_the_disk",
   "a_package_parses_its_manifest_and_has_a_content_identity"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "2f210a9"
+ ],
+ "runs": [
+  {
+   "id": "gha-34688570289",
+   "kind": "hosted CI on 4ef17d4",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34688570289",
+   "log": "ci-run-34688570289.json"
+  }
+ ],
  "proof": "`qual_ev_0105_0114_\u2026`: run 1 selects `reader@1.0.0` with its hash; the package is removed and a `broken` one (no description) added \u2014 run 2 selects nothing and records `SkillRejected` `MISSING_FIELD` for `\u2026/broken`; the package returns changed and re-signed \u2014 run 3 records version 1.1.0 with a different content hash.",
  "audit": "NOT-FOUND before M5.5; built with M5.5's `SkillRegistry::discover` over `<workspace>/.modbit/skills` and `<profile>/skills`.",
  "limitations": "Discovery is per run, not a live watcher; a change mid-run applies to the next run.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34688570289 (green on macOS, Linux and Windows at 4ef17d4)"
 }

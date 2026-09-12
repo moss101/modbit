@@ -6,10 +6,20 @@
   "qual_ev_0061_0214_a_skill_cannot_widen_task_authority_and_a_non_invocable_skill_is_not_selected",
   "the_selector_takes_explicit_names_and_trigger_phrases_and_refuses_with_a_reason"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "2f210a9"
+ ],
+ "runs": [
+  {
+   "id": "gha-34688570289",
+   "kind": "hosted CI on 4ef17d4",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34688570289",
+   "log": "ci-run-34688570289.json"
+  }
+ ],
  "proof": "`qual_ev_0061_0214_\u2026`: `system-only` (signed, trigger `notes`, `model_invocable: false`) never reaches a model request; the package test `the_selector_takes_explicit_names_and_trigger_phrases_and_refuses_with_a_reason` shows the same skill selected when named explicitly.",
  "audit": "NOT-FOUND before M5.5; built with M5.5's manifest (`model_invocable`, default true) and selector.",
  "limitations": "Explicit selection is the operator's (`StartTask.skills` / CLI `--skill`); the desktop does not expose it yet.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34688570289 (green on macOS, Linux and Windows at 4ef17d4)"
 }

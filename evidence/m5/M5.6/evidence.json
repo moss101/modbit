@@ -11,8 +11,19 @@
   "qual_m5_6_direct_and_procedural_modes_yield_the_same_effects_at_different_token_costs",
   "qual_ev_0096_0116_0133_0044_0031_tool_surface_is_compiled_from_support_and_policy"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "81a64d7",
+  "2f210a9"
+ ],
+ "runs": [
+  {
+   "id": "gha-34688570289",
+   "kind": "hosted CI on 4ef17d4",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34688570289",
+   "log": "ci-run-34688570289.json"
+  }
+ ],
  "measured": {
   "model_calls": {
    "direct": 5,
@@ -41,5 +52,14 @@
  "proof": "Three paired trials of one coding task through the real Core: identical tool calls and outcomes on the log and an identical file in every pair; procedural mode makes 3 model calls to 5, sends 41 % fewer tool-schema bytes and 46 % fewer prompt tokens at the deterministic local server.",
  "audit": "PARTIAL before: the eager-vs-projected schema comparison existed; no mode comparison; the benchmark crate lacked model-call and schema-byte metrics.",
  "limitations": "Deterministic local model accounting; identical pairs (no interval width); live-model behaviour not established (DR-M3-002).",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34688570289 (green on macOS, Linux and Windows at 4ef17d4)",
+ "ci_history": [
+  {
+   "id": "gha-34684614501",
+   "kind": "hosted CI on 81a64d7",
+   "result": "FAIL: Windows rust job \u2014 the benchmark's program outlived proc.exec's 2 s inline grace on the runner and the scripted model had no wait step; fixed in 2f210a9",
+   "url": "https://github.com/moss101/modbit/actions/runs/34684614501",
+   "fix": "2f210a9"
+  }
+ ]
 }

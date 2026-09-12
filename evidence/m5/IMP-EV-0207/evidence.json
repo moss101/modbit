@@ -5,10 +5,20 @@
  "tests": [
   "req_ev_0207_the_ablation_says_whether_the_lab_earns_its_complexity"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "4ef17d4"
+ ],
+ "runs": [
+  {
+   "id": "gha-34688570289",
+   "kind": "hosted CI on 4ef17d4",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34688570289",
+   "log": "ci-run-34688570289.json"
+  }
+ ],
  "proof": "`req_ev_0207_\u2026`: the ablation pairs an evolved candidate against a manual refinement; on the fixture the lift is 0 bp and the finding says the lab is not justified there; a clear lift is recognised on both counts; no pairs establish nothing. Finding: no ADR proposed; the mechanism stays EXPERIMENT.",
  "audit": "NOT-FOUND before M5.7",
  "finding": "EXPERIMENT: behaves as hypothesised on the fixture; no lift established; no ADR proposed",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34688570289 (green on macOS, Linux and Windows at 4ef17d4)"
 }

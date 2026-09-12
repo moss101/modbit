@@ -6,10 +6,20 @@
   "qual_ev_0230_every_tool_namespace_carries_a_build_or_buy_justification",
   "qual_ev_0217_compatibility_matrix_covers_every_registered_tool_with_owner_effect_and_test"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "2f210a9"
+ ],
+ "runs": [
+  {
+   "id": "gha-34688570289",
+   "kind": "hosted CI on 4ef17d4",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34688570289",
+   "log": "ci-run-34688570289.json"
+  }
+ ],
  "proof": "the lint passes over the eleven registered namespaces (`artifact`, `change`, `context`, `evidence`, `fs`, `git`, `knowledge`, `lsp`, `search`, `shell`, `test`) and fails on a namespace without a row or with an `inventory_ref` absent from docs/17.",
  "audit": "PARTIAL before: the tool matrix (REQ-EV-0217) covered every tool's owner, effect and test but nothing asked why a namespace exists.",
  "limitations": "The justification is prose reviewed by people; the lint enforces its presence and its anchor in docs/17, not its merit.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34688570289 (green on macOS, Linux and Windows at 4ef17d4)"
 }
