@@ -9892,8 +9892,53 @@
    "milestone": "M5",
    "qual": "QUAL-EV-0059",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:1e273f5",
+    "artifact:evidence/m5/IMP-EV-0059/TASK_CARD.md",
+    "test:qual_ev_0059_0129_scoped_rules_activate_lazily_and_conflicts_name_the_winner",
+    "test:rules::tests::scoped_rules_stay_dormant_until_a_matching_path_is_active_and_layers_decide_conflicts",
+    "run:34690889568"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-12T11:37:24Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "NOT-FOUND before: the prompt compiler's rules segment was always empty; no rule files were read"
+    },
+    {
+     "at": "2026-09-12T11:37:24Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 1e273f5"
+    },
+    {
+     "at": "2026-09-12T11:37:24Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring (see card)"
+    },
+    {
+     "at": "2026-09-12T11:37:24Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "qualification on the real Core / CLI (see card)"
+    },
+    {
+     "at": "2026-09-12T11:37:24Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "green on hosted CI (macOS, Linux, Windows) at 1e273f5"
+    },
+    {
+     "at": "2026-09-12T11:37:24Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed (see card)"
+    }
+   ],
+   "status_changed_on": "2026-09-12T11:37:24Z"
   },
   {
    "id": "IMP-EV-0060",
@@ -12504,8 +12549,53 @@
    "milestone": "M5",
    "qual": "QUAL-EV-0129",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:1e273f5",
+    "artifact:evidence/m5/IMP-EV-0129/TASK_CARD.md",
+    "test:qual_ev_0059_0129_scoped_rules_activate_lazily_and_conflicts_name_the_winner",
+    "test:rules::tests::a_rule_without_front_matter_is_global_and_named_by_its_file",
+    "run:34690889568"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-12T11:37:25Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "NOT-FOUND before (see IMP-EV-0059)"
+    },
+    {
+     "at": "2026-09-12T11:37:25Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 1e273f5"
+    },
+    {
+     "at": "2026-09-12T11:37:25Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring (see card)"
+    },
+    {
+     "at": "2026-09-12T11:37:25Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "qualification on the real Core / CLI (see card)"
+    },
+    {
+     "at": "2026-09-12T11:37:25Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "green on hosted CI (macOS, Linux, Windows) at 1e273f5"
+    },
+    {
+     "at": "2026-09-12T11:37:25Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed (see card)"
+    }
+   ],
+   "status_changed_on": "2026-09-12T11:37:25Z"
   },
   {
    "id": "IMP-EV-0130",
@@ -14641,8 +14731,52 @@
    "milestone": "M5",
    "qual": "QUAL-EV-0181",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:1e273f5",
+    "artifact:evidence/m5/IMP-EV-0181/TASK_CARD.md",
+    "test:qual_ev_0181_0210_an_extension_skill_installs_lists_runs_its_procedure_and_survives_removal_and_reload",
+    "run:34690889568"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-12T11:37:25Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "NOT-FOUND before: no install path; packages had to be placed by hand"
+    },
+    {
+     "at": "2026-09-12T11:37:25Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 1e273f5"
+    },
+    {
+     "at": "2026-09-12T11:37:25Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring (see card)"
+    },
+    {
+     "at": "2026-09-12T11:37:25Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "qualification on the real Core / CLI (see card)"
+    },
+    {
+     "at": "2026-09-12T11:37:25Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "green on hosted CI (macOS, Linux, Windows) at 1e273f5"
+    },
+    {
+     "at": "2026-09-12T11:37:25Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed (see card)"
+    }
+   ],
+   "status_changed_on": "2026-09-12T11:37:25Z"
   },
   {
    "id": "IMP-EV-0182",
@@ -15926,8 +16060,53 @@
    "milestone": "M5",
    "qual": "QUAL-EV-0210",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:1e273f5",
+    "artifact:evidence/m5/IMP-EV-0210/TASK_CARD.md",
+    "test:qual_ev_0181_0210_an_extension_skill_installs_lists_runs_its_procedure_and_survives_removal_and_reload",
+    "test:qual_ev_0230_every_tool_namespace_carries_a_build_or_buy_justification",
+    "run:34690889568"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-12T11:37:25Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "PARTIAL before: M5.5 validated manifests; nothing exercised register → list → invoke → remove → reload as one path"
+    },
+    {
+     "at": "2026-09-12T11:37:25Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 1e273f5"
+    },
+    {
+     "at": "2026-09-12T11:37:25Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring (see card)"
+    },
+    {
+     "at": "2026-09-12T11:37:25Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "qualification on the real Core / CLI (see card)"
+    },
+    {
+     "at": "2026-09-12T11:37:26Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "green on hosted CI (macOS, Linux, Windows) at 1e273f5"
+    },
+    {
+     "at": "2026-09-12T11:37:26Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed (see card)"
+    }
+   ],
+   "status_changed_on": "2026-09-12T11:37:26Z"
   },
   {
    "id": "IMP-EV-0211",
