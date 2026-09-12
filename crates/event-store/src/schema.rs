@@ -585,6 +585,11 @@ CREATE TABLE IF NOT EXISTS work_nodes (
 CREATE INDEX IF NOT EXISTS work_nodes_task ON work_nodes (task_id, ordinal);
 "#;
 
+/// V15 (M6.3): a subagent's node names the task it executes as.
+pub const V15_AGENT_CHILD_TASK: &str = r#"
+ALTER TABLE agent_nodes ADD COLUMN child_task_id BLOB;
+"#;
+
 /// All migrations in order. Never edit an entry once shipped; append a new one.
 pub const MIGRATIONS: &[Migration] = &[
     Migration {
@@ -670,6 +675,12 @@ pub const MIGRATIONS: &[Migration] = &[
         name: "agent_and_work_graphs",
         up: V14_AGENT_AND_WORK_GRAPHS,
         rollback: "Additive derivable tables (docs/31 `agent_nodes`, `work_nodes`). Rollback = drop the tables; a rebuild derives the rows from the log; no event is touched.",
+    },
+    Migration {
+        version: 15,
+        name: "agent_child_task",
+        up: V15_AGENT_CHILD_TASK,
+        rollback: "Additive nullable derivable column. Rollback = drop the column or ignore it; a rebuild derives it from the log; no event is touched.",
     },
 ];
 

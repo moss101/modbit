@@ -498,7 +498,7 @@ pub(crate) async fn spawn(
         mode: req.mode,
     };
     let (capsule_ref, work_changed, ready) = {
-        let mut store = core.store.lock().await;
+        let store = core.store.lock().await;
         let capsule_ref = store
             .objects()
             .put(&serde_json::to_vec(&capsule).unwrap_or_default())

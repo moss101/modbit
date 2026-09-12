@@ -445,8 +445,8 @@ fn project_graphs(
     match event {
         TaskEvent::AgentNodeCreated { node } => {
             tx.execute(
-                "INSERT OR REPLACE INTO agent_nodes (agent_id, task_id, parent_agent_id, root_agent_id, depth, kind, status, run_id, capsule_ref, endpoint, model, idempotency_key, owns_json, created_at, updated_at, last_offset)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?14, ?15)",
+                "INSERT OR REPLACE INTO agent_nodes (agent_id, task_id, parent_agent_id, root_agent_id, depth, kind, status, run_id, capsule_ref, endpoint, model, idempotency_key, owns_json, created_at, updated_at, last_offset, child_task_id)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?14, ?15, ?16)",
                 params![
                     node.agent_id.as_bytes().as_slice(),
                     task.task_id.as_bytes().as_slice(),
@@ -463,6 +463,7 @@ fn project_graphs(
                     serde_json::to_string(&node.owns)?,
                     at.millis(),
                     offset as i64,
+                    node.child_task_id.map(|t| t.as_bytes().to_vec()),
                 ],
             )?;
         }
@@ -580,12 +581,14 @@ pub struct AgentNodeRow {
     pub updated_at: Timestamp,
     /// Offset of the last event that changed it.
     pub last_offset: u64,
+    /// The task a subagent executes as (M6.3).
+    pub child_task_id: Option<TaskId>,
 }
 
 /// The agent nodes of a task, in creation order.
 pub fn load_agent_nodes(tx: &rusqlite::Connection, task: &TaskId) -> Result<Vec<AgentNodeRow>> {
     let mut stmt = tx.prepare(
-        "SELECT agent_id, parent_agent_id, root_agent_id, depth, kind, status, run_id, capsule_ref, endpoint, model, idempotency_key, owns_json, created_at, updated_at, last_offset FROM agent_nodes WHERE task_id = ?1 ORDER BY created_at, last_offset",
+        "SELECT agent_id, parent_agent_id, root_agent_id, depth, kind, status, run_id, capsule_ref, endpoint, model, idempotency_key, owns_json, created_at, updated_at, last_offset, child_task_id FROM agent_nodes WHERE task_id = ?1 ORDER BY created_at, last_offset",
     )?;
     let rows = stmt.query_map(params![task.as_bytes().as_slice()], |r| {
         let id = |v: Vec<u8>| -> modbit_domain::AgentId {
@@ -609,6 +612,9 @@ pub fn load_agent_nodes(tx: &rusqlite::Connection, task: &TaskId) -> Result<Vec<
             created_at: Timestamp(r.get(12)?),
             updated_at: Timestamp(r.get(13)?),
             last_offset: r.get::<_, i64>(14)? as u64,
+            child_task_id: r
+                .get::<_, Option<Vec<u8>>>(15)?
+                .map(|v| TaskId::from_bytes(v.try_into().unwrap_or([0u8; 16]))),
         })
     })?;
     Ok(rows.collect::<std::result::Result<Vec<_>, _>>()?)

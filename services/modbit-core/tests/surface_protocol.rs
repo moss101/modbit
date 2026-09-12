@@ -22622,38 +22622,6 @@ async fn m6_2_capacity_tickets_gate_runs_all_or_nothing_and_lapse_at_expiry() {
     core.kill();
 }
 
-/// Create a task with its own goal text.
-async fn create_task_with_goal(
-    c: &mut Client,
-    session: &Id,
-    g: Option<u64>,
-    root: &str,
-    id: u8,
-    goal: &str,
-) -> Id {
-    let ack = c
-        .command(envelope_fenced(
-            id16(id),
-            "CreateTask",
-            CreateTask {
-                session_id: Some(session.clone()),
-                goal_text: goal.into(),
-                workspace_id: None,
-                execution_profile: "local_trusted".into(),
-                origin: "cli".into(),
-                workspace_root: root.into(),
-            }
-            .encode_to_vec(),
-            g,
-        ))
-        .await
-        .unwrap();
-    Client::result::<TaskCreated>(&ack)
-        .unwrap()
-        .task_id
-        .unwrap()
-}
-
 /// M6.3 — transactional subagent admission, M6.5 — result handoff
 /// (E2E-009, E2E-010; docs/14 "Decomposition", "Transactional subagent
 /// admission", "Agent-to-agent communication"; QUAL-EV-0267, 0007, 0051,
