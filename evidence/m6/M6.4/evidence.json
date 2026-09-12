@@ -10,10 +10,21 @@
   "globs_match_names_and_paths",
   "m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "70b2171",
+  "5d4e9d8"
+ ],
+ "runs": [
+  {
+   "id": "gha-34725408133",
+   "kind": "hosted CI on 5d4e9d8 (attempt 2: the macOS tier-A index latency p90 measured 251 ms against a 250 ms budget on the first attempt, a runner stall; the rerun passed)",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34725408133",
+   "log": "ci-run-34725408133.json"
+  }
+ ],
  "proof": "Every rule is pinned by a unit test against a fixture fact set; through Core the overlapping builder is refused WRITE_CONFLICT and disjoint builders merge cleanly.",
  "audit": "PARTIAL before: explicit path/glob overlap only (M6.3).",
  "limitations": "Symbol ownership by definition site; default patterns; the parent replans on a refusal.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34725408133 (green on macOS, Linux and Windows at 5d4e9d8)"
 }

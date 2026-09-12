@@ -6,10 +6,21 @@
   "m6_7_a_background_child_survives_a_core_restart_and_hands_its_result_back",
   "m6_1_work_graph_and_primary_agent_survive_compaction_and_restart_unchanged"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "70b2171",
+  "5d4e9d8"
+ ],
+ "runs": [
+  {
+   "id": "gha-34725408133",
+   "kind": "hosted CI on 5d4e9d8 (attempt 2: the macOS tier-A index latency p90 measured 251 ms against a 250 ms budget on the first attempt, a runner stall; the rerun passed)",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34725408133",
+   "log": "ci-run-34725408133.json"
+  }
+ ],
  "proof": "after the kill every node is WAITING (parent primary, child node on the parent, child primary); after the resume the child's node runs BACKGROUND then COMPLETED with the same `capsule_ref`; the child's write ran exactly once (the re-entered cursor), its plan and capsule (private context refs, tools, budgets) rebuilt from its own log; M6.1 pins nodes and work graph across compaction and restart.",
  "audit": "PARTIAL before: nodes were projected from the log (M6.1) and survived restart unchanged, but a child's status after restart was stale (RUNNING/BACKGROUND with no process) and its tool cursor was not re-entered by anything.",
  "limitations": "Private context refs are carried in the capsule object; none are exercised beyond the empty set today.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34725408133 (green on macOS, Linux and Windows at 5d4e9d8)"
 }

@@ -5,10 +5,21 @@
  "tests": [
   "qual_px_039_reproduction_first_is_enforced_and_no_progress_turns_escalate"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "70b2171",
+  "5d4e9d8"
+ ],
+ "runs": [
+  {
+   "id": "gha-34725408133",
+   "kind": "hosted CI on 5d4e9d8 (attempt 2: the macOS tier-A index latency p90 measured 251 ms against a 250 ms budget on the first attempt, a runner stall; the rerun passed)",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34725408133",
+   "log": "ci-run-34725408133.json"
+  }
+ ],
  "proof": "the scripted model plans, then repeats `search.exact` three turns: `NoProgressDetected` lands once with `turns: 3`, the task is `Waiting(UserInput)` with a `TaskNeedsAttention` reason naming the turns without progress, and `task.complete` never ran \u2014 the loop did not continue indefinitely.",
  "audit": "PRESENT since M2.7 / PX-039 (docs/28 \u00a75 repair policy: `max_consecutive_no_progress_turns`, Alpha default 3). No code change in this task: the audit traces the production path and names the qualification that already runs on every CI push.",
  "limitations": "Novelty is measured by the absence of progress-bearing actions per turn, not by comparing tool outputs; a loop that alternates a cheap plan revision with reads is bounded by `max_turns`.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34725408133 (green on macOS, Linux and Windows at 5d4e9d8)"
 }

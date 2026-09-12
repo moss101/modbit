@@ -6,10 +6,21 @@
   "m6_7_a_background_child_survives_a_core_restart_and_hands_its_result_back",
   "fleet: a delegating parent shows its phase, agents and the nested child; the child is never a top-level card (apps/desktop/e2e/fleet-agents.spec.ts)"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "70b2171",
+  "5d4e9d8"
+ ],
+ "runs": [
+  {
+   "id": "gha-34725408133",
+   "kind": "hosted CI on 5d4e9d8 (attempt 2: the macOS tier-A index latency p90 measured 251 ms against a 250 ms budget on the first attempt, a runner stall; the rerun passed)",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34725408133",
+   "log": "ci-run-34725408133.json"
+  }
+ ],
  "proof": "the client disconnects and the Core is killed mid-child; the child is suspended, not lost: the second Core lists it Waiting/External/Suspended with its node WAITING, and the parent's resume brings it back to completion under the same ceiling; the packaged app restarts and rebuilds the parent card with the child nested from the Core.",
  "audit": "PARTIAL before: a background child had a durable task handle, a capped effect ceiling (REVERSIBLE_WRITE) and a checkpoint before its admission (M6.3), but was lost to a Core restart.",
  "limitations": "A client disconnect alone does not suspend a headless Core's work; the desktop-supervised Core exits with its client and resumes on the next start.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34725408133 (green on macOS, Linux and Windows at 5d4e9d8)"
 }

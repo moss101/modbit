@@ -7,10 +7,21 @@
   "write_scopes_overlap_on_prefix_and_glob_but_not_on_disjoint_paths",
   "agent_status_transitions_are_the_documented_ones"
  ],
- "batch_commits": [],
- "runs": [],
- "proof": "through Core, a primary delegates two builders with disjoint write scopes and an explorer with read tools only: each is admitted as one transaction (capacity ticket, parent liveness, write-set check, checkpoint + fork into its own worktree and branch, a lease narrowed to `fs.write:<worktree>/<scope>/**` with no `git.worktree` and the ceiling `REVERSIBLE_WRITE`, the SUBAGENT node under the primary owning its work node, `SubagentAdmitted`), runs inside its capsule — its first request carries its own objective and the capsule note and nothing of the parent's goal, and no `agent.*` tool — and hands a typed result back (`SubagentResultRecorded` with status, summary, artifacts, verification-run evidence, branch); a retried spawn with the same key reattaches (three nodes for four spawn calls); a builder whose scope overlaps is refused `WRITE_CONFLICT` at stage `WRITE_SET` with nothing taken; a child's write outside its scope is refused `WRITE_SCOPE_DENIED` before any effector even though its own plan names the path; the explorer's write is refused as not projected; the two builder branches merge cleanly into main with both files; every child ticket returns to the pool. With `MODBIT_FAULT_SPAWN=WORKTREE` the admission fails after the worktree exists and rolls back — worktree removed, child task cancelled, ticket released — leaving no node, no worktree directory and no ticket. With `MODBIT_AGENT_MAX_DEPTH=0` a spawn is refused `NESTING_DISABLED` at stage `DEPTH` with only the parent's own ticket ever granted.",
+ "batch_commits": [
+  "70b2171",
+  "5d4e9d8"
+ ],
+ "runs": [
+  {
+   "id": "gha-34725408133",
+   "kind": "hosted CI on 5d4e9d8 (attempt 2: the macOS tier-A index latency p90 measured 251 ms against a 250 ms budget on the first attempt, a runner stall; the rerun passed)",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34725408133",
+   "log": "ci-run-34725408133.json"
+  }
+ ],
+ "proof": "through Core, a primary delegates two builders with disjoint write scopes and an explorer with read tools only: each is admitted as one transaction (capacity ticket, parent liveness, write-set check, checkpoint + fork into its own worktree and branch, a lease narrowed to `fs.write:<worktree>/<scope>/**` with no `git.worktree` and the ceiling `REVERSIBLE_WRITE`, the SUBAGENT node under the primary owning its work node, `SubagentAdmitted`), runs inside its capsule \u2014 its first request carries its own objective and the capsule note and nothing of the parent's goal, and no `agent.*` tool \u2014 and hands a typed result back (`SubagentResultRecorded` with status, summary, artifacts, verification-run evidence, branch); a retried spawn with the same key reattaches (three nodes for four spawn calls); a builder whose scope overlaps is refused `WRITE_CONFLICT` at stage `WRITE_SET` with nothing taken; a child's write outside its scope is refused `WRITE_SCOPE_DENIED` before any effector even though its own plan names the path; the explorer's write is refused as not projected; the two builder branches merge cleanly into main with both files; every child ticket returns to the pool. With `MODBIT_FAULT_SPAWN=WORKTREE` the admission fails after the worktree exists and rolls back \u2014 worktree removed, child task cancelled, ticket released \u2014 leaving no node, no worktree directory and no ticket. With `MODBIT_AGENT_MAX_DEPTH=0` a spawn is refused `NESTING_DISABLED` at stage `DEPTH` with only the parent's own ticket ever granted.",
  "audit": "MISSING before: the Fast Context specialist was the only sub-run and it shared the parent's task; nothing admitted a child with its own task, worktree, lease and ticket, and `agent.*` were inventory rows without a tool.",
  "limitations": "The write-set check is explicit path/glob overlap; symbol ownership, dependency hot spots, migrations, generated files and lockfiles are M6.4. A child that reaches a protected effect is refused by its lease ceiling rather than escalated to the parent's attention (REQ-EV-0046's transition arrives with M6.6). Durable continuation of a child across a Core restart (REQ-EV-0006 / 0220 / 0263) is M6.7: today a killed Core suspends the child like any run and the parent's `agent.wait` sees `WAITING`.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34725408133 (green on macOS, Linux and Windows at 5d4e9d8)"
 }

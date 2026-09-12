@@ -5,10 +5,21 @@
  "tests": [
   "m6_7_a_background_child_survives_a_core_restart_and_hands_its_result_back"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "70b2171",
+  "5d4e9d8"
+ ],
+ "runs": [
+  {
+   "id": "gha-34725408133",
+   "kind": "hosted CI on 5d4e9d8 (attempt 2: the macOS tier-A index latency p90 measured 251 ms against a 250 ms budget on the first attempt, a runner stall; the rerun passed)",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34725408133",
+   "log": "ci-run-34725408133.json"
+  }
+ ],
  "proof": "the Core is killed while the child's model request is open; the second Core moves the child's node (on the parent) and its primary to WAITING; resuming the parent resumes the child: one admission, one result envelope with the same `agent_id` and `child_task_id`, the same `capsule_ref` on the node, the child's conversation continuing on its own log (one run: suspended then resumed).",
  "audit": "PARTIAL before: the child's task, node and capsule were durable (M6.1/M6.3) but a restart left the node RUNNING/BACKGROUND with no owner and nothing resumed it.",
  "limitations": "A child is resumed with its parent or on a repeated spawn key, not on its own by a client.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34725408133 (green on macOS, Linux and Windows at 5d4e9d8)"
 }

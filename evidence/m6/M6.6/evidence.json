@@ -7,10 +7,21 @@
   "M6.6: agents, phases, capacity waits and children come from Core events; a child nests under its parent (apps/desktop/src/renderer/model.test.ts)",
   "M6.6: a child named by dashed UUID text in a payload links to the card keyed by its hex envelope id (apps/desktop/src/renderer/model.test.ts)"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "70b2171",
+  "5d4e9d8"
+ ],
+ "runs": [
+  {
+   "id": "gha-34725408133",
+   "kind": "hosted CI on 5d4e9d8 (attempt 2: the macOS tier-A index latency p90 measured 251 ms against a 250 ms budget on the first attempt, a runner stall; the rerun passed)",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34725408133",
+   "log": "ci-run-34725408133.json"
+  }
+ ],
  "proof": "The packaged app shows a delegating parent's phase, agents, evidence and nested child from Core events, keeps the child off the top-level board, and rebuilds the same board after an app restart from the Core snapshot; the reducer is pinned by unit tests.",
  "audit": "PARTIAL before: state-only cards; no subagents, phases, agents, evidence or risk on the board.",
  "limitations": "No duration/location on the card; no child steering from the renderer; REQ-EV-0046 attention transition renders once the Core emits it.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34725408133 (green on macOS, Linux and Windows at 5d4e9d8)"
 }

@@ -5,10 +5,21 @@
  "tests": [
   "m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "70b2171",
+  "5d4e9d8"
+ ],
+ "runs": [
+  {
+   "id": "gha-34725408133",
+   "kind": "hosted CI on 5d4e9d8 (attempt 2: the macOS tier-A index latency p90 measured 251 ms against a 250 ms budget on the first attempt, a runner stall; the rerun passed)",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34725408133",
+   "log": "ci-run-34725408133.json"
+  }
+ ],
  "proof": "the explorer (read tools only) is refused when it tries `change.apply` and changes nothing; each builder mutates only its own worktree under its lease and scope.",
  "audit": "MISSING before.",
  "limitations": "A dedicated plan-mode child profile is IMP-EV-0117.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34725408133 (green on macOS, Linux and Windows at 5d4e9d8)"
 }

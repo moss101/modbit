@@ -6,10 +6,21 @@
   "m2_7_one_agent_runtime_drives_a_coding_task_to_ready_for_review",
   "m2_8_verification_engine_gates_completion_on_real_cargo_fixture"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "70b2171",
+  "5d4e9d8"
+ ],
+ "runs": [
+  {
+   "id": "gha-34725408133",
+   "kind": "hosted CI on 5d4e9d8 (attempt 2: the macOS tier-A index latency p90 measured 251 ms against a 250 ms budget on the first attempt, a runner stall; the rerun passed)",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34725408133",
+   "log": "ci-run-34725408133.json"
+  }
+ ],
  "proof": "`m2_7\u2026`: the check fails after the first edit (`sh check.sh` nonzero) and the same run edits again, the check passes and the task reaches ReadyForReview with no `TaskFailed` (asserted by name for REQ-EV-0099); `m2_8\u2026`: on the real cargo fixture a failing TARGETED run reports normalized checks and the COMPLETION run attributes a REGRESSION and refuses completion until it is fixed \u2014 the run continues in both.",
  "audit": "PRESENT since M2.7/M2.8 (docs/14 \"Turn shape\": a turn never ends because a tool or a test failed; command failure is evidence, not turn failure). No code change in this task: the audit traces the production path and names the qualification that already runs on every CI push.",
  "limitations": "A compile failure is exercised through cargo on the rust-cli fixture (M2.8) and a shell check (M2.7); the repair loop's bounds are PX-018's.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34725408133 (green on macOS, Linux and Windows at 5d4e9d8)"
 }
