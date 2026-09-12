@@ -150,6 +150,12 @@ function link(next: Model, childId: string, parentId: string): void {
   if (child && child.parentTaskId !== parentId) next.tasks.set(childId, { ...child, parentTaskId: parentId });
 }
 
+/** A task id as the renderer keys cards: 32 hex chars. Event payloads carry
+ *  ids as dashed UUID text; envelopes and snapshots as bytes rendered hex. */
+export function hexId(v: unknown): string {
+  return typeof v === "string" ? v.replace(/-/g, "").toLowerCase() : "";
+}
+
 function withChild(children: string[], childId: string): string[] {
   return children.includes(childId) ? children : [...children, childId];
 }
@@ -176,7 +182,7 @@ export function applyEvent(m: Model, e: Event, taskIdHint?: string): Model {
   next.seenOffsets.add(e.offset);
   if (BigInt(e.offset) > BigInt(next.cursor)) next.cursor = e.offset;
   const p = (e.payload ?? {}) as Record<string, unknown>;
-  const target = taskIdHint ?? (typeof p["task_id"] === "string" ? (p["task_id"] as string) : undefined);
+  const target = taskIdHint ?? (typeof p["task_id"] === "string" ? hexId(p["task_id"]) : undefined);
   switch (e.eventType) {
     case "TaskCreated": {
       if (!target) return next;
@@ -245,8 +251,8 @@ export function applyEvent(m: Model, e: Event, taskIdHint?: string): Model {
           next.agents.set(target, statuses);
           updated.agents = countsOf(statuses);
           if (String(node["kind"]) === "SUBAGENT") updated.phase = "delegating";
-          const child = node["child_task_id"];
-          if (typeof child === "string") {
+          const child = hexId(node["child_task_id"]);
+          if (child) {
             link(next, child, target);
             updated.children = withChild(updated.children, child);
           }
@@ -260,7 +266,7 @@ export function applyEvent(m: Model, e: Event, taskIdHint?: string): Model {
           break;
         }
         case "SubagentAdmitted": {
-          const child = String(p["child_task_id"] ?? "");
+          const child = hexId(p["child_task_id"]);
           if (child) {
             link(next, child, target);
             updated.children = withChild(updated.children, child);

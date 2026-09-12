@@ -28,7 +28,9 @@ use modbit_domain::step::{StepEvent, StepType};
 use modbit_domain::task::{InputMode, Task, TaskEvent, TaskState, WaitReason};
 use modbit_domain::toolcall::ToolCallState;
 use modbit_domain::turn::TurnEvent;
-use modbit_domain::{RunId, RunStepId, SessionId, TaskId, TenantId, Timestamp, ToolCallId, TurnId};
+use modbit_domain::{
+    AgentId, RunId, RunStepId, SessionId, TaskId, TenantId, Timestamp, ToolCallId, TurnId,
+};
 use modbit_event_store::{AppendRequest, EventStore, NewEvent};
 use modbit_providers::{
     ContentPart, Message, ModelEvent, ModelPolicy, Requirements, Role, ToolProjection,
@@ -479,11 +481,30 @@ impl Runtime {
             },
         );
         let core2 = Arc::clone(core);
+        let resume_children = resumed && task.origin != modbit_domain::task::TaskOrigin::Subagent;
+        let parent = task.clone();
+        let child_actor = actor.clone();
         tokio::spawn(async move {
             let task_id = task.task_id;
             run_loop(core2.clone(), task, run_id, cfg, cancel).await;
             core2.runtime.tasks.lock().await.remove(&task_id);
         });
+        drop(tasks);
+        // M6.7: a resumed parent brings back the background children a
+        // restart left suspended — the same identity, lineage, capsule and
+        // offsets, a fresh run ticket each (docs/25 "Subagent continuation").
+        if resume_children {
+            let core3 = Arc::clone(core);
+            tokio::spawn(async move {
+                crate::spawn::resume_suspended_children(
+                    &core3,
+                    &parent,
+                    lease_generation,
+                    &child_actor,
+                )
+                .await;
+            });
+        }
         Ok((run_id, resumed))
     }
 
@@ -645,9 +666,81 @@ pub fn reconcile_after_restart(
             expected_sequence: None,
             events,
         });
+        // M6.7: the AgentGraph follows the suspension — the task's primary
+        // waits, and a subagent's node on its parent's graph waits too, so
+        // the parent (and its Fleet card) sees the child as suspended, its
+        // identity, lineage and capsule intact for the resume.
+        agent_nodes_suspended(store, core_tenant, &t, &actor);
         out.push(t.task_id);
     }
     out
+}
+
+/// After a restart, move the primary of `t` and (for a subagent's task)
+/// its node on the parent's graph to `WAITING`.
+fn agent_nodes_suspended(store: &mut EventStore, core_tenant: TenantId, t: &Task, actor: &Actor) {
+    let mut moves: Vec<(TaskId, AgentId, String)> = Vec::new();
+    for n in store.agent_nodes(&t.task_id).unwrap_or_default() {
+        if n.kind == "PRIMARY" {
+            moves.push((t.task_id, n.agent_id, n.status));
+        }
+    }
+    // A subagent's task names its parent and its node on the child's log.
+    if let Ok(events) = store.read_session(&t.session_id, 0, usize::MAX) {
+        for e in events.iter().rev() {
+            if e.envelope.task_id == Some(t.task_id)
+                && e.envelope.event_type == "SubagentCapsuleBound"
+                && let Ok(p) = store.payload(&e.envelope)
+                && let (Some(parent), Some(agent)) = (
+                    p["parent_task_id"]
+                        .as_str()
+                        .and_then(|s| TaskId::parse(s).ok()),
+                    p["agent_id"].as_str().and_then(|s| AgentId::parse(s).ok()),
+                )
+            {
+                if let Some(n) = store
+                    .agent_nodes(&parent)
+                    .unwrap_or_default()
+                    .into_iter()
+                    .find(|n| n.agent_id == agent)
+                {
+                    moves.push((parent, agent, n.status));
+                }
+                break;
+            }
+        }
+    }
+    for (task_id, agent_id, status) in moves {
+        let from: modbit_domain::agent::AgentStatus =
+            serde_json::from_value(serde_json::Value::String(status))
+                .unwrap_or(modbit_domain::agent::AgentStatus::Running);
+        let to = modbit_domain::agent::AgentStatus::Waiting;
+        if from == to || !from.can_transition(to) {
+            continue;
+        }
+        let _ = store.append(AppendRequest {
+            tenant_id: core_tenant,
+            session_id: t.session_id,
+            task_id: Some(task_id),
+            run_id: None,
+            turn_id: None,
+            step_id: None,
+            aggregate_type: AggregateType::Task,
+            aggregate_id: *task_id.as_bytes(),
+            expected_sequence: None,
+            events: vec![typed(
+                "AgentNodeTransitioned",
+                &TaskEvent::AgentNodeTransitioned {
+                    agent_id,
+                    from,
+                    to,
+                    run_id: None,
+                    reason: "Core restarted; the run is suspended at its boundary".into(),
+                },
+                actor.clone(),
+            )],
+        });
+    }
 }
 
 #[derive(Clone, Copy)]

@@ -85,3 +85,17 @@ test("M6.6: agents, phases, capacity waits and children come from Core events; a
   m = applyEvent(m, ev(20, "TaskWaiting", { reason: "Approval" }), "q");
   assert.equal(m.tasks.get("q")!.phase, "awaitingHuman");
 });
+
+test("M6.6: a child named by dashed UUID text in a payload links to the card keyed by its hex envelope id", () => {
+  const hex = "01a097a36cdd7ef197652cd12fe221ef";
+  const dashed = "01a097a3-6cdd-7ef1-9765-2cd12fe221ef";
+  let m = emptyModel();
+  m = applyEvent(m, ev(1, "TaskCreated", { goal_text: "parent", origin: "desktop" }), "p");
+  m = applyEvent(m, ev(2, "TaskCreated", { goal_text: "child work", origin: "subagent" }), hex);
+  m = applyEvent(m, ev(3, "AgentNodeCreated", { node: { agent_id: "a1", kind: "SUBAGENT", status: "ADMITTED", child_task_id: dashed } }), "p");
+  m = applyEvent(m, ev(4, "SubagentAdmitted", { agent_id: "a1", child_task_id: dashed, idempotency_key: "child-a", mode: "BACKGROUND" }), "p");
+  assert.deepEqual(m.tasks.get("p")!.children, [hex]);
+  assert.equal(childrenOf(m, "p").length, 1);
+  assert.equal(m.tasks.get(hex)!.parentTaskId, "p");
+  assert.equal(columns(m).waiting.length + columns(m).running.length + columns(m).needsAttention.length + columns(m).readyForReview.length + columns(m).completed.length, 1, "the child is never a top-level card");
+});

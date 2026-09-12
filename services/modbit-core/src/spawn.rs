@@ -139,11 +139,32 @@ pub(crate) async fn spawn(
             latest_admission(&store, parent, n.agent_id)
         };
         if let Some(a) = admitted {
+            // M6.7: a child the dead Core left suspended continues on its
+            // own log when its parent asks for it again — the same identity,
+            // lineage, capsule and offsets, a fresh run ticket (docs/25
+            // "Subagent continuation").
+            let ticket_id = a.2.clone();
+            if let Err((code, detail)) =
+                resume_child(core, parent, &n, &a.0, &a.1, req.parent_generation, actor).await
+            {
+                let r = refuse(&code, detail, "START", vec![]);
+                let (store, ev) = record_refusal(core, &r);
+                let mut store = store.lock().await;
+                let _ = append(
+                    &mut store,
+                    core,
+                    lt,
+                    AggregateType::Task,
+                    *parent.task_id.as_bytes(),
+                    vec![ev],
+                );
+                return Err(r);
+            }
             return Ok(Spawned {
                 agent_id: n.agent_id,
                 child_task_id: a.0,
                 capsule_ref: a.1,
-                ticket_id: a.2,
+                ticket_id,
                 worktree: a.3,
                 branch: a.4,
                 work_node: a.5,
@@ -473,7 +494,12 @@ pub(crate) async fn spawn(
     } else {
         req.spec.max_turns
     };
-    let max_tool_calls = req.spec.max_tool_calls;
+    // An unset tool budget is the runtime's default, never "none".
+    let max_tool_calls = if req.spec.max_tool_calls == 0 {
+        modbit_core_runtime::Budgets::default().max_tool_calls
+    } else {
+        req.spec.max_tool_calls
+    };
     let work_node = req
         .spec
         .work_node
@@ -1085,4 +1111,138 @@ async fn repo_facts(core: &Core, parent: &Task) -> modbit_core_runtime::conflict
         }
     }
     facts
+}
+
+/// M6.7 (docs/25 "Subagent continuation"): a child whose run a restart
+/// left suspended resumes on its own log — the same task, node, capsule and
+/// offsets, the capsule's budgets, a fresh run ticket — and its node on the
+/// parent's graph moves back to `RUNNING` / `BACKGROUND`. A child that is
+/// not suspended is left alone. Errors carry the start refusal.
+pub(crate) async fn resume_child(
+    core: &Arc<Core>,
+    parent: &Task,
+    node: &modbit_event_store::projections::AgentNodeRow,
+    child_task_id: &TaskId,
+    capsule_ref: &str,
+    lease_generation: u64,
+    actor: &Actor,
+) -> std::result::Result<Option<RunId>, (String, String)> {
+    let (child, capsule) = {
+        let store = core.store.lock().await;
+        let child = store.task(child_task_id).ok().flatten();
+        let capsule = store
+            .objects()
+            .get(capsule_ref)
+            .ok()
+            .and_then(|b| serde_json::from_slice::<AgentExecutionCapsule>(&b).ok());
+        (child, capsule)
+    };
+    let Some(child) = child else {
+        return Ok(None);
+    };
+    if !matches!(child.state, TaskState::Waiting(_))
+        || core.runtime.is_running(&child.task_id).await
+    {
+        return Ok(None);
+    }
+    let suspended = {
+        let store = core.store.lock().await;
+        store
+            .runs_for_task(&child.task_id)
+            .unwrap_or_default()
+            .iter()
+            .any(|r| r.state == modbit_domain::run::RunState::Suspended)
+    };
+    if !suspended {
+        return Ok(None);
+    }
+    let (max_turns, max_tool_calls, mode) = capsule
+        .as_ref()
+        .map(|c| (c.max_turns, c.max_tool_calls, c.mode))
+        .unwrap_or((20, 0, SpawnMode::Background));
+    let cfg = StartConfig {
+        endpoint: node.endpoint.clone(),
+        model: node.model.clone(),
+        budgets: modbit_core_runtime::Budgets {
+            max_turns: if max_turns == 0 { 20 } else { max_turns },
+            max_tool_calls: if max_tool_calls == 0 {
+                modbit_core_runtime::Budgets::default().max_tool_calls
+            } else {
+                max_tool_calls
+            },
+            max_consecutive_no_progress_turns: 3,
+        },
+        pinned: false,
+        plan_id: String::new(),
+        slot_id: String::new(),
+        skills: vec![],
+        lease_generation,
+        ticket_id: String::new(),
+    };
+    let child_actor = Actor::Agent(format!("subagent:{}", node.agent_id));
+    let (run_id, resumed) = core
+        .runtime
+        .start_boxed(core, child, cfg, lease_generation, child_actor)
+        .await?;
+    let from: AgentStatus = serde_json::from_value(serde_json::Value::String(node.status.clone()))
+        .unwrap_or(AgentStatus::Waiting);
+    let to = if mode == SpawnMode::Background {
+        AgentStatus::Background
+    } else {
+        AgentStatus::Running
+    };
+    if from != to && from.can_transition(to) {
+        let mut store = core.store.lock().await;
+        let _ = append(
+            &mut store,
+            core,
+            Lineage::task(core.tenant_id, parent.session_id, parent.task_id)
+                .fenced(lease_generation),
+            AggregateType::Task,
+            *parent.task_id.as_bytes(),
+            vec![typed(
+                "AgentNodeTransitioned",
+                &TaskEvent::AgentNodeTransitioned {
+                    agent_id: node.agent_id,
+                    from,
+                    to,
+                    run_id: Some(run_id),
+                    reason: if resumed {
+                        "child run resumed after a restart (M6.7)".into()
+                    } else {
+                        "child run started on reattach".into()
+                    },
+                },
+                actor.clone(),
+            )],
+        );
+    }
+    Ok(Some(run_id))
+}
+
+/// M6.7: every child of `parent` a restart left suspended, resumed (each
+/// on a fresh ticket; one that finds no capacity stays `WAITING` and is
+/// reported by `agent.wait`).
+pub(crate) async fn resume_suspended_children(
+    core: &Arc<Core>,
+    parent: &Task,
+    lease_generation: u64,
+    actor: &Actor,
+) {
+    let nodes = {
+        let store = core.store.lock().await;
+        store.agent_nodes(&parent.task_id).unwrap_or_default()
+    };
+    for n in nodes
+        .into_iter()
+        .filter(|n| n.kind == "SUBAGENT" && n.status == "WAITING")
+    {
+        let admitted = {
+            let store = core.store.lock().await;
+            latest_admission(&store, parent, n.agent_id)
+        };
+        if let Some(a) = admitted {
+            let _ = resume_child(core, parent, &n, &a.0, &a.1, lease_generation, actor).await;
+        }
+    }
 }

@@ -4,7 +4,8 @@
  "qual": "M6.6",
  "tests": [
   "fleet: a delegating parent shows its phase, agents and the nested child; the child is never a top-level card (apps/desktop/e2e/fleet-agents.spec.ts)",
-  "M6.6: agents, phases, capacity waits and children come from Core events; a child nests under its parent (apps/desktop/src/renderer/model.test.ts)"
+  "M6.6: agents, phases, capacity waits and children come from Core events; a child nests under its parent (apps/desktop/src/renderer/model.test.ts)",
+  "M6.6: a child named by dashed UUID text in a payload links to the card keyed by its hex envelope id (apps/desktop/src/renderer/model.test.ts)"
  ],
  "batch_commits": [],
  "runs": [],

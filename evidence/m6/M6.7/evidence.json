@@ -1,0 +1,15 @@
+{
+ "task": "M6.7",
+ "requirement": "M6.7 (docs/43); docs/25 Subagent continuation; docs/14",
+ "qual": "M6.7",
+ "tests": [
+  "m6_7_a_background_child_survives_a_core_restart_and_hands_its_result_back",
+  "m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "A real Core killed mid-child; the second Core suspends parent and child and moves their agent nodes to WAITING; resuming the parent resumes the child on its own log (same agent id, task, capsule, run; fresh ticket); one admission, one result envelope with the child's summary and artifacts; the write ran once.",
+ "audit": "PARTIAL before: restart suspended both tasks but the agent graph stayed RUNNING/BACKGROUND and nothing resumed a suspended child; an unset child tool budget refused every kernel call.",
+ "limitations": "Children resume with their parent or on a repeated spawn key; background eligibility from WorkGraph dependency analysis is not enforced at admission; a child without capacity on resume stays WAITING.",
+ "ci": ""
+}

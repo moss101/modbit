@@ -2325,6 +2325,18 @@ async fn scripted_model_reactive(
                     .cloned()
                     .unwrap_or_else(|| serde_json::json!({"text": "I have nothing further to do."}))
                 });
+                // A script step `{"stall": true}` holds that request open
+                // once (a Core killed mid-stream, M6.7); the same step answers
+                // from `then` when the resumed run asks again.
+                let reply = if reply["stall"] == true {
+                    if !stalled_once.swap(true, std::sync::atomic::Ordering::SeqCst) {
+                        tokio::time::sleep(Duration::from_secs(600)).await;
+                        return;
+                    }
+                    reply["then"].clone()
+                } else {
+                    reply
+                };
                 let mut frames: Vec<String> = Vec::new();
                 if let Some(t) = reply["text"].as_str() {
                     frames.push(serde_json::json!({"id":"c","model":"scripted-1","choices":[{"index":0,"delta":{"content":t},"finish_reason":null}]}).to_string());
@@ -22637,6 +22649,301 @@ async fn m6_2_capacity_tickets_gate_runs_all_or_nothing_and_lapse_at_expiry() {
 /// same key reattaches to the one child; a failure injected after the
 /// worktree rolls everything back — worktree removed, child task
 /// cancelled, capacity ticket returned; nested delegation is refused.
+/// M6.7 (docs/25 "Subagent continuation", docs/14): a background child
+/// survives a Core killed mid-run. On restart both the parent and the child
+/// suspend at their boundaries and their agent nodes wait; resuming the
+/// parent resumes the child on its own log — the same agent id, child task,
+/// capsule and run, the offsets continuing past the suspension, a fresh
+/// capacity ticket — and the child's result envelope reaches the parent,
+/// whose re-entered `agent.wait` collects it. Nothing runs twice.
+#[tokio::test]
+async fn m6_7_a_background_child_survives_a_core_restart_and_hands_its_result_back() {
+    use modbit_protocol::v1::{AgentGraphView, GetAgentGraph, StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (_repo, root) = plain_repo(&[("README.md", "# durable\n"), ("src/a/.keep", "")]);
+    let parent = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "module a exists", "expected_files": ["README.md"], "steps": [{"id": "a", "title": "module a"}]}}]}),
+        json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "child-a", "objective": "create src/a/a.txt containing alpha", "write_scope": ["src/a/"], "work_node": "a", "max_turns": 6}}]}),
+        json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "child-a", "timeout_ms": 60000}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "delegated and collected", "self_review": {"findings": []}}}]}),
+    ];
+    // The child's second request is held open: the Core dies mid-stream.
+    // The resumed child asks again and is answered.
+    let child_a = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "a.txt exists", "expected_files": ["src/a/a.txt"]}}]}),
+        json!({"stall": true, "then": {"calls": [{"name": "change.apply", "args": {"path": "src/a/a.txt", "op": "replace", "content": "alpha\n"}}]}}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "created src/a/a.txt", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_models(
+        parent,
+        vec![("needle:Task goal: create src/a/a.txt", child_a)],
+        None,
+    )
+    .await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_CAPACITY", "model=4,provider=8"),
+    ];
+    async fn agents(c: &mut Client, task: &Id) -> AgentGraphView {
+        let ack = c
+            .command(envelope(
+                Id {
+                    value: (0..16).map(|_| rand::random::<u8>()).collect(),
+                },
+                "GetAgentGraph",
+                GetAgentGraph {
+                    task_id: Some(task.clone()),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    }
+    let start = |t: &Id, id: u8, g: Option<u64>| {
+        envelope_fenced(
+            id16(id),
+            "StartTask",
+            StartTask {
+                task_id: Some(t.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 12,
+                max_tool_calls: 0,
+                max_no_progress_turns: 4,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        )
+    };
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xB1)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_goal(&mut c, &session, g, &root, 0xB2, "delegate module a").await;
+    let _: TaskRunStarted =
+        Client::result(&c.command(start(&task, 0xB3, g)).await.unwrap()).unwrap();
+    // The child has planned and its next request is stalled; the parent is
+    // inside agent.wait.
+    let deadline = std::time::Instant::now() + Duration::from_secs(60);
+    loop {
+        let bodies = seen.lock().unwrap().clone();
+        let child_stalled = bodies.iter().any(|b| {
+            b.to_string().contains("Task goal: create src/a/a.txt")
+                && b["messages"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .filter(|m| m["role"] == "tool")
+                    .count()
+                    == 1
+        });
+        let parent_waiting = bodies.iter().any(|b| {
+            !b.to_string().contains("Task goal: create src/a/a.txt")
+                && b["messages"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .filter(|m| m["role"] == "tool")
+                    .count()
+                    == 2
+        });
+        if child_stalled && parent_waiting {
+            break;
+        }
+        assert!(std::time::Instant::now() < deadline, "{bodies:#?}");
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    let before = task_events(&core, &session, &task).await;
+    let admitted: Vec<serde_json::Value> = before
+        .iter()
+        .filter(|(_, t, _)| t == "SubagentAdmitted")
+        .map(|(_, _, p)| p.clone())
+        .collect();
+    assert_eq!(admitted.len(), 1, "{admitted:#?}");
+    let child_task = Id {
+        value: hex::decode(
+            admitted[0]["child_task_id"]
+                .as_str()
+                .unwrap()
+                .replace('-', ""),
+        )
+        .unwrap(),
+    };
+    let agent_id = admitted[0]["agent_id"].as_str().unwrap().to_owned();
+    let graph_before = agents(&mut c, &task).await;
+    let node_before = graph_before
+        .nodes
+        .iter()
+        .find(|n| n.kind == "SUBAGENT")
+        .unwrap()
+        .clone();
+    assert_eq!(uuid_of(node_before.agent_id.as_ref().unwrap()), agent_id);
+    assert_eq!(node_before.status, "BACKGROUND", "{graph_before:#?}");
+    let child_offset_before = task_events(&core, &session, &child_task).await.len();
+    let requests_before = seen.lock().unwrap().len();
+    drop(c);
+    core.kill();
+    // Restart: both suspend at their boundaries; the nodes wait; nothing runs.
+    let core2 = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c2 = core2.client().await;
+    let st = wait_task(&mut c2, &task, 5).await;
+    assert_eq!(
+        (
+            st.state.as_str(),
+            st.wait_reason.as_str(),
+            st.run_state.as_str(),
+            st.loop_alive
+        ),
+        ("Waiting", "External", "Suspended", false),
+        "{st:?}"
+    );
+    let cst = wait_task(&mut c2, &child_task, 5).await;
+    assert_eq!(
+        (
+            cst.state.as_str(),
+            cst.wait_reason.as_str(),
+            cst.run_state.as_str(),
+            cst.loop_alive
+        ),
+        ("Waiting", "External", "Suspended", false),
+        "{cst:?}"
+    );
+    let graph_after_kill = agents(&mut c2, &task).await;
+    for n in &graph_after_kill.nodes {
+        assert_eq!(n.status, "WAITING", "{graph_after_kill:#?}");
+    }
+    let child_graph = agents(&mut c2, &child_task).await;
+    assert_eq!(child_graph.nodes.len(), 1);
+    assert_eq!(child_graph.nodes[0].kind, "PRIMARY");
+    assert_eq!(child_graph.nodes[0].status, "WAITING", "{child_graph:#?}");
+    // Resume the parent: the child comes back with it, on its own log.
+    let g2 = Some(acquire_lease(&mut c2, id16(0xB4), session.clone(), "resumer").await);
+    let started: TaskRunStarted =
+        Client::result(&c2.command(start(&task, 0xB5, g2)).await.unwrap()).unwrap();
+    assert!(started.resumed);
+    let st = wait_for_state(&mut c2, &task, "ReadyForReview", 120).await;
+    let trail = task_events(&core2, &session, &task).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}\n{trail:#?}");
+    let cst = wait_for_state(&mut c2, &child_task, "ReadyForReview", 30).await;
+    assert_eq!(cst.state, "ReadyForReview", "{cst:?}");
+    // Identity and lineage: the same agent, the same child task, one
+    // admission, one result; the envelope names what the child did.
+    let of = |evs: &[(String, String, serde_json::Value)], t: &str| -> Vec<serde_json::Value> {
+        evs.iter()
+            .filter(|(_, ty, _)| ty == t)
+            .map(|(_, _, p)| p.clone())
+            .collect()
+    };
+    assert_eq!(
+        of(&trail, "SubagentAdmitted").len(),
+        1,
+        "no second admission"
+    );
+    let results = of(&trail, "SubagentResultRecorded");
+    assert_eq!(results.len(), 1, "{results:#?}");
+    assert_eq!(results[0]["agent_id"], agent_id);
+    assert_eq!(results[0]["child_task_id"], admitted[0]["child_task_id"]);
+    assert_eq!(results[0]["status"], "COMPLETED");
+    assert_eq!(results[0]["summary"], "created src/a/a.txt");
+    assert_eq!(results[0]["artifacts"], json!(["src/a/a.txt"]));
+    let wt = std::path::Path::new(admitted[0]["worktree"].as_str().unwrap());
+    assert_eq!(
+        std::fs::read_to_string(wt.join("src/a/a.txt")).unwrap(),
+        "alpha\n"
+    );
+    // The child's node went WAITING -> BACKGROUND on the resume and ended
+    // COMPLETED; the parent's primary went WAITING -> RUNNING.
+    let moves: Vec<(String, String, String)> = of(&trail, "AgentNodeTransitioned")
+        .iter()
+        .map(|p| {
+            (
+                p["agent_id"].as_str().unwrap_or_default().to_owned(),
+                p["from"].as_str().unwrap_or_default().to_owned(),
+                p["to"].as_str().unwrap_or_default().to_owned(),
+            )
+        })
+        .collect();
+    assert!(
+        moves.contains(&(agent_id.clone(), "BACKGROUND".into(), "WAITING".into())),
+        "{moves:#?}"
+    );
+    assert!(
+        moves.contains(&(agent_id.clone(), "WAITING".into(), "BACKGROUND".into())),
+        "{moves:#?}"
+    );
+    assert!(
+        moves.contains(&(agent_id.clone(), "BACKGROUND".into(), "COMPLETED".into())),
+        "{moves:#?}"
+    );
+    let graph_end = agents(&mut c2, &task).await;
+    let node_end = graph_end
+        .nodes
+        .iter()
+        .find(|n| n.kind == "SUBAGENT")
+        .unwrap();
+    assert_eq!(node_end.status, "COMPLETED");
+    assert_eq!(
+        node_end.capsule_ref, node_before.capsule_ref,
+        "the same capsule"
+    );
+    assert_eq!(node_end.agent_id, node_before.agent_id);
+    // The child's log continued past the suspension on the same run: its
+    // offsets grew, one run, suspended then resumed, the write done once.
+    let child_evs = task_events(&core2, &session, &child_task).await;
+    assert!(child_evs.len() > child_offset_before, "{child_evs:#?}");
+    assert_eq!(of(&child_evs, "RunCreated").len(), 1, "one run");
+    assert_eq!(of(&child_evs, "RunSuspended").len(), 1);
+    assert_eq!(of(&child_evs, "RunResumed").len(), 1);
+    assert_eq!(of(&child_evs, "TaskWaiting").len(), 1);
+    assert_eq!(of(&child_evs, "TaskResumed").len(), 1);
+    assert_eq!(
+        child_evs
+            .iter()
+            .filter(|(a, t, p)| a == "tool_call"
+                && t == "ToolCallProposed"
+                && p["tool_name"] == "change.apply")
+            .count(),
+        1,
+        "the write ran once"
+    );
+    // A fresh capacity ticket for the resumed child run (the admission
+    // ticket was taken on the parent's log and lapses with the dead Core).
+    let resumed_at = child_evs
+        .iter()
+        .position(|(_, t, _)| t == "RunResumed")
+        .unwrap();
+    assert!(
+        child_evs[..resumed_at]
+            .iter()
+            .any(|(_, t, _)| t == "CapacityTicketGranted"),
+        "{child_evs:#?}"
+    );
+    // The parent never spawned twice and re-entered its wait rather than
+    // asking the model again: the resumed conversation carried the earlier
+    // tool results.
+    let bodies = seen.lock().unwrap().clone();
+    let parent_after: Vec<&serde_json::Value> = bodies[requests_before..]
+        .iter()
+        .filter(|b| !b.to_string().contains("Task goal: create src/a/a.txt"))
+        .collect();
+    assert!(
+        parent_after.iter().all(|b| b["messages"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|m| m["role"] == "tool")
+            .count()
+            >= 3),
+        "{parent_after:#?}"
+    );
+}
+
 #[tokio::test]
 async fn m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back() {
     use modbit_protocol::v1::{
@@ -22665,11 +22972,12 @@ async fn m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back
         json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "child-e", "timeout_ms": 60000}}]}),
         json!({"calls": [{"name": "task.complete", "args": {"summary": "delegated and collected", "self_review": {"findings": []}}}]}),
     ];
-    // The explorer reads, then tries to write: its capsule projects no
-    // write tool at all (REQ-EV-0218), so the call is refused as not
-    // projected; it reports instead.
+    // The explorer reads, then tries to write (a file its own plan names,
+    // inside its scope, so no earlier harness rule speaks): its capsule
+    // projects no write tool at all (REQ-EV-0218), so the call is refused
+    // as not projected; it reports instead.
     let child_e = vec![
-        json!({"calls": [{"name": "plan.update", "args": {"outcome": "a report on README.md", "expected_files": []}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "a report on README.md", "expected_files": ["docs/notes.md"]}}]}),
         json!({"calls": [{"name": "fs.read", "args": {"path": "README.md"}}]}),
         json!({"calls": [{"name": "change.apply", "args": {"path": "docs/notes.md", "op": "replace", "content": "x\n"}}]}),
         json!({"calls": [{"name": "task.complete", "args": {"summary": "README says split work", "self_review": {"findings": []}}}]}),
@@ -22880,6 +23188,13 @@ async fn m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back
         .filter(|m| m["role"] == "tool")
         .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
         .collect();
+    // The read ran (an unset tool budget is the default, not none); the
+    // write was refused as not projected.
+    assert!(
+        e_last[1].contains("split work") && !e_last[1].contains("REFUSED"),
+        "{}",
+        e_last[1]
+    );
     assert!(
         e_last[2].contains("TOOL_NOT_PROJECTED") || e_last[2].contains("TOOL_NOT_VISIBLE"),
         "{}",
