@@ -190,6 +190,26 @@ impl Runtime {
         }
     }
 
+    /// `start` behind a type-erased future: a subagent's admission (which
+    /// runs inside a parent's loop) starts the child through this, so the
+    /// loop's future type does not contain itself.
+    pub fn start_boxed<'a>(
+        &'a self,
+        core: &'a Arc<Core>,
+        task: Task,
+        cfg: StartConfig,
+        lease_generation: u64,
+        actor: Actor,
+    ) -> std::pin::Pin<
+        Box<
+            dyn std::future::Future<Output = std::result::Result<(RunId, bool), (String, String)>>
+                + Send
+                + 'a,
+        >,
+    > {
+        Box::pin(self.start(core, task, cfg, lease_generation, actor))
+    }
+
     /// Start (Queued) or resume (Waiting) a task under the session lease
     /// generation `lease_generation`. Returns the run id and whether it resumed.
     pub async fn start(

@@ -130,13 +130,17 @@ function countsOf(statuses: Map<string, string> | undefined): AgentCounts {
   return c;
 }
 
-/** Link a child card to its parent once both are known. */
+/** Link a child card to its parent once both are known: the parents map
+ *  and the child's side; the parent's `children` is kept by the parent's
+ *  own event arm (its card is rewritten there). */
 function link(next: Model, childId: string, parentId: string): void {
   next.parents.set(childId, parentId);
   const child = next.tasks.get(childId);
   if (child && child.parentTaskId !== parentId) next.tasks.set(childId, { ...child, parentTaskId: parentId });
-  const parent = next.tasks.get(parentId);
-  if (parent && !parent.children.includes(childId)) next.tasks.set(parentId, { ...parent, children: [...parent.children, childId] });
+}
+
+function withChild(children: string[], childId: string): string[] {
+  return children.includes(childId) ? children : [...children, childId];
 }
 
 function normalizeState(s: string): string {
@@ -168,7 +172,11 @@ export function applyEvent(m: Model, e: Event, taskIdHint?: string): Model {
       const card = freshCard(target, String(p["goal_text"] ?? ""), "Created", 1, e.occurredAtMs, String(p["origin"] ?? ""));
       next.tasks.set(target, card);
       const parent = next.parents.get(target);
-      if (parent) link(next, target, parent);
+      if (parent) {
+        link(next, target, parent);
+        const pc = next.tasks.get(parent);
+        if (pc) next.tasks.set(parent, { ...pc, children: withChild(pc.children, target) });
+      }
       return next;
     }
     default: {
@@ -227,7 +235,10 @@ export function applyEvent(m: Model, e: Event, taskIdHint?: string): Model {
           updated.agents = countsOf(statuses);
           if (String(node["kind"]) === "SUBAGENT") updated.phase = "delegating";
           const child = node["child_task_id"];
-          if (typeof child === "string") link(next, child, target);
+          if (typeof child === "string") {
+            link(next, child, target);
+            updated.children = withChild(updated.children, child);
+          }
           break;
         }
         case "AgentNodeTransitioned": {
@@ -239,7 +250,10 @@ export function applyEvent(m: Model, e: Event, taskIdHint?: string): Model {
         }
         case "SubagentAdmitted": {
           const child = String(p["child_task_id"] ?? "");
-          if (child) link(next, child, target);
+          if (child) {
+            link(next, child, target);
+            updated.children = withChild(updated.children, child);
+          }
           updated.phase = "delegating";
           updated.latestEvidence = `delegated ${String(p["idempotency_key"] ?? "a child")} (${String(p["mode"] ?? "")})`;
           break;
