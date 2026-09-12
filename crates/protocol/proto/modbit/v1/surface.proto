@@ -79,6 +79,8 @@ message TaskView {
   string state = 3;
   uint64 generation = 4;
   google.protobuf.Timestamp created_at = 5;
+  string origin = 6;               // desktop | cli | ide_adapter | forge_issue | forge_webhook | fork | subagent (M6.6)
+  Id parent_task_id = 7;           // the parent of a subagent's task (M6.3); absent otherwise
 }
 
 message SessionSnapshot {

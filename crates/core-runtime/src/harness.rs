@@ -163,6 +163,18 @@ pub struct HarnessState {
     /// rebuilt from the log; the model sees its summary in `work`.
     #[serde(default, skip_serializing)]
     pub work_graph: modbit_domain::agent::WorkGraph,
+    /// The write scope a subagent's capsule admitted it for (M6.3); empty
+    /// for a primary, whose plan is its scope.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub write_scope: Vec<String>,
+    /// A subagent's capsule (M6.3): `(agent_id, parent_task_id, capsule_ref,
+    /// tools, depth)`; `None` for a primary.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub capsule: Option<serde_json::Value>,
+    /// The summary of the completion the run proposed (M6.5): the child's
+    /// result envelope carries it to the parent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub completion_summary: Option<String>,
     /// The quality boundary's last STAY on this run (REQ-EPR-006): the leg
     /// ended rejected and no continuation could activate, in the words the
     /// log holds. A resumed run consults the boundary again while this is
@@ -190,6 +202,14 @@ impl HarnessState {
 pub enum HarnessRefusal {
     /// A write before the plan (docs/28 PX-014).
     PlanRequired,
+    /// A subagent wrote outside the write scope its capsule admitted it
+    /// for (M6.3, REQ-EV-0048): refused before any effector.
+    WriteScopeDenied {
+        /// The path.
+        path: String,
+        /// The scope.
+        write_scope: Vec<String>,
+    },
     /// A write to a path the current plan does not declare (docs/28 §3, PX-016):
     /// scope is never widened silently — revise the plan first.
     PlanRevisionRequired {
@@ -858,6 +878,15 @@ impl HarnessState {
     /// (the `PlanRevised` event carries the scope delta). An expected entry
     /// ending in `/` covers a directory.
     pub fn check_write(&self, path: &str) -> Result<(), HarnessRefusal> {
+        if !self.write_scope.is_empty()
+            && modbit_domain::agent::write_scopes_overlap(&self.write_scope, &[path.to_owned()])
+                .is_empty()
+        {
+            return Err(HarnessRefusal::WriteScopeDenied {
+                path: path.to_owned(),
+                write_scope: self.write_scope.clone(),
+            });
+        }
         let Some(plan) = &self.plan else {
             return Err(HarnessRefusal::PlanRequired);
         };

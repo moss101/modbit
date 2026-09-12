@@ -62,6 +62,7 @@ pub(crate) fn primary_running(
                 binding,
                 idempotency_key: task.task_id.to_string(),
                 owns: vec![],
+                child_task_id: None,
             };
             append(
                 store,
@@ -254,6 +255,7 @@ pub(crate) fn child_started(
         binding,
         idempotency_key: idempotency_key.to_owned(),
         owns: vec![],
+        child_task_id: None,
     };
     append(
         store,

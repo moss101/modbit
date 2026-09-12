@@ -139,6 +139,171 @@ pub struct AgentNode {
     pub idempotency_key: String,
     /// The work nodes it owns.
     pub owns: Vec<WorkNodeId>,
+    /// The task a subagent executes as (its own task, forked from the
+    /// parent's; M6.3). `None` for the primary and for specialists.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub child_task_id: Option<TaskId>,
+}
+
+/// What a parent proposes for a child (docs/14 "Decomposition"): Core
+/// validates it rather than trusting model-generated parallelism.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SubtaskSpec {
+    /// The child's objective, its whole goal.
+    pub objective: String,
+    /// Artifacts it is expected to produce (paths).
+    #[serde(default)]
+    pub expected_artifacts: Vec<String>,
+    /// Work nodes it depends on.
+    #[serde(default)]
+    pub depends_on: Vec<WorkNodeId>,
+    /// Paths it may read (empty = the whole worktree).
+    #[serde(default)]
+    pub read_scope: Vec<String>,
+    /// Paths it may write (prefixes or globs); its lease is narrowed to them.
+    #[serde(default)]
+    pub write_scope: Vec<String>,
+    /// Tools it needs by name; its projection is narrowed to them when set.
+    #[serde(default)]
+    pub required_tools: Vec<String>,
+    /// Execution profile; `None` = the parent's.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub execution_profile: Option<String>,
+    /// What proves it done, in words.
+    #[serde(default)]
+    pub verification: String,
+    /// Turns it may spend.
+    #[serde(default)]
+    pub max_turns: u32,
+    /// Tool calls it may make.
+    #[serde(default)]
+    pub max_tool_calls: u32,
+    /// The work node it will own; `None` = one is created from the objective.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub work_node: Option<WorkNodeId>,
+}
+
+/// How a child is scheduled with respect to the parent's attention
+/// (REQ-EV-0008).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum SpawnMode {
+    /// The parent waits for the result in its turn.
+    Foreground,
+    /// The child runs detached; the parent collects the result later.
+    #[default]
+    Background,
+}
+
+/// The explicit envelope a child runs inside (REQ-EV-0048, docs/25
+/// "Subagent continuation"): its context, tools, model policy, budgets and
+/// capability ceiling. A child gets this and nothing of the parent's
+/// transcript (REQ-EV-0078).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AgentExecutionCapsule {
+    /// The child.
+    pub agent_id: AgentId,
+    /// Its parent.
+    pub parent_agent_id: AgentId,
+    /// The parent's task.
+    pub parent_task_id: TaskId,
+    /// The child's task.
+    pub child_task_id: TaskId,
+    /// Depth (REQ-EV-0051).
+    pub depth: u32,
+    /// What it is to do.
+    pub spec: SubtaskSpec,
+    /// Tools it may see, by name; empty = the profile's projection.
+    pub tools: Vec<String>,
+    /// The binding it runs on.
+    pub binding: AgentBinding,
+    /// Turns it may spend.
+    pub max_turns: u32,
+    /// Tool calls it may make.
+    pub max_tool_calls: u32,
+    /// The effect ceiling of its lease (`READ_ONLY` | `WRITE` | …), never
+    /// above the parent's (REQ-EV-0046).
+    pub effect_ceiling: String,
+    /// The worktree root it works in.
+    pub worktree: String,
+    /// Its branch.
+    pub branch: String,
+    /// Modalities it may receive.
+    pub allowed_modalities: Vec<String>,
+    /// Private context refs it starts with (objects, never the parent's
+    /// transcript).
+    pub private_context_refs: Vec<String>,
+    /// `FOREGROUND` | `BACKGROUND`.
+    pub mode: SpawnMode,
+}
+
+/// The typed result a child hands back (docs/14 "Agent-to-agent
+/// communication"): untrusted context until the parent selects it.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SubagentResult {
+    /// The child.
+    pub agent_id: AgentId,
+    /// Its task.
+    pub child_task_id: TaskId,
+    /// `COMPLETED` | `FAILED` | `CANCELLED` | `WAITING`.
+    pub status: String,
+    /// Summary in the child's words.
+    pub summary: String,
+    /// Paths changed in its worktree.
+    pub artifacts: Vec<String>,
+    /// Evidence references.
+    pub evidence_refs: Vec<String>,
+    /// Unresolved risks.
+    pub unresolved_risks: Vec<String>,
+    /// Follow-ups the child proposes.
+    pub proposed_follow_ups: Vec<String>,
+    /// Its branch, for the parent's merge.
+    pub branch: String,
+    /// Its worktree root.
+    pub worktree: String,
+    /// The child's final candidate revision.
+    pub candidate_revision: u64,
+}
+
+/// Whether two write scopes overlap: a path prefix or glob of one covers
+/// a path of the other (docs/14 "Semantic conflict detection", the
+/// explicit-overlap check of M6.3; M6.4 adds the symbol, hot-spot and
+/// generated-file rules).
+#[must_use]
+pub fn write_scopes_overlap(a: &[String], b: &[String]) -> Vec<(String, String)> {
+    fn norm(p: &str) -> String {
+        p.trim()
+            .trim_start_matches("./")
+            .trim_end_matches('/')
+            .to_owned()
+    }
+    fn covers(pattern: &str, path: &str) -> bool {
+        let (pattern, path) = (norm(pattern), norm(path));
+        if pattern.is_empty() || path.is_empty() {
+            return pattern.is_empty() && path.is_empty();
+        }
+        if let Some(prefix) = pattern
+            .strip_suffix("/**")
+            .or_else(|| pattern.strip_suffix("/*"))
+        {
+            return path == prefix || path.starts_with(&format!("{prefix}/"));
+        }
+        if pattern == "**" || pattern == "*" {
+            return true;
+        }
+        pattern == path
+            || path.starts_with(&format!("{pattern}/"))
+            || pattern.starts_with(&format!("{path}/"))
+    }
+    let mut out = Vec::new();
+    for x in a {
+        for y in b {
+            if covers(x, y) || covers(y, x) {
+                out.push((x.clone(), y.clone()));
+            }
+        }
+    }
+    out
 }
 
 /// Stable id of a work node within a task: the plan step's own id, as the
@@ -632,6 +797,28 @@ mod tests {
         assert!(g.nodes.is_empty());
         let err = g.apply(task, 1, &[change("c", None, None)]).unwrap_err();
         assert!(matches!(err, WorkGraphError::TitleRequired { .. }));
+    }
+
+    #[test]
+    fn write_scopes_overlap_on_prefix_and_glob_but_not_on_disjoint_paths() {
+        let a = vec!["src/api/".to_owned(), "docs/*".to_owned()];
+        let b = vec!["src/api/users.rs".to_owned(), "tests/".to_owned()];
+        let hits = write_scopes_overlap(&a, &b);
+        assert_eq!(
+            hits,
+            vec![("src/api/".to_owned(), "src/api/users.rs".to_owned())]
+        );
+        assert!(write_scopes_overlap(&["src/a".to_owned()], &["src/b".to_owned()]).is_empty());
+        assert!(
+            !write_scopes_overlap(&["src/**".to_owned()], &["src/b/c.rs".to_owned()]).is_empty()
+        );
+        assert!(
+            !write_scopes_overlap(&["Cargo.lock".to_owned()], &["Cargo.lock".to_owned()])
+                .is_empty()
+        );
+        assert!(
+            write_scopes_overlap(&["src/api".to_owned()], &["src/apix.rs".to_owned()]).is_empty()
+        );
     }
 
     #[test]

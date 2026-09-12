@@ -1,0 +1,14 @@
+{
+ "task": "IMP-EV-0219",
+ "requirement": "REQ-EV-0219",
+ "qual": "QUAL-EV-0219",
+ "tests": [
+  "m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "the children's request bodies carry no `agent.spawn`, `agent.wait`, `agent.result` or `agent.cancel` tool.",
+ "audit": "MISSING before.",
+ "limitations": "Profile-level (rather than depth-level) leaf declarations arrive with profile bundles (IMP-EV-0241).",
+ "ci": ""
+}

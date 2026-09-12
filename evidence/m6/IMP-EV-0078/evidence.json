@@ -1,0 +1,14 @@
+{
+ "task": "IMP-EV-0078",
+ "requirement": "REQ-EV-0078",
+ "qual": "QUAL-EV-0078",
+ "tests": [
+  "m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "every child request body lacks the parent's goal marker and the parent's tool results; the child's tools are its capsule's.",
+ "audit": "MISSING before.",
+ "limitations": "Same as IMP-EV-0048.",
+ "ci": ""
+}

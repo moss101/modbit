@@ -49,6 +49,21 @@ pub(crate) struct ForkRequest {
     pub worktree_dir: Option<PathBuf>,
     /// The new task's id (the command id, for idempotency).
     pub new_task_id: TaskId,
+    /// M6.3: the fork is a subagent's task (`TaskOrigin::Subagent`),
+    /// carrying nothing of the source's transcript, plan, decisions or
+    /// context (REQ-EV-0078: a bounded capsule, not the parent's memory),
+    /// with its lease narrowed to `write_scope` and its effect ceiling
+    /// capped (REQ-EV-0046).
+    pub subagent: Option<SubagentFork>,
+}
+
+/// How a subagent's fork differs from a user's (M6.3).
+#[derive(Clone, Debug, Default)]
+pub(crate) struct SubagentFork {
+    /// Paths (relative to the worktree) the child may write; empty = all.
+    pub write_scope: Vec<String>,
+    /// The highest effect class the child's lease allows.
+    pub effect_ceiling_cap: Option<modbit_domain::toolcall::EffectClass>,
 }
 
 /// What a fork produced.
@@ -192,7 +207,9 @@ pub(crate) async fn fork(
         .workspace_root
         .as_deref()
         .ok_or_else(|| anyhow::anyhow!("the source task has no workspace root"))?;
-    let carry: Vec<Carry> = if req.carry.is_empty() {
+    let carry: Vec<Carry> = if req.subagent.is_some() {
+        vec![]
+    } else if req.carry.is_empty() {
         Carry::ALL.to_vec()
     } else {
         req.carry.clone()
@@ -274,8 +291,18 @@ pub(crate) async fn fork(
         .clone()
         .or_else(|| repo.head().ok())
         .unwrap_or_else(|| "HEAD".into());
-    let short = &req.new_task_id.to_string()[..8];
-    let branch = format!("modbit/fork-{short}");
+    // The branch carries the whole task id: the first characters of a
+    // time-ordered id repeat within a minute, and two forks (or two
+    // subagents, M6.3) a minute apart must never share a branch.
+    let branch = format!(
+        "modbit/{}-{}",
+        if req.subagent.is_some() {
+            "agent"
+        } else {
+            "fork"
+        },
+        req.new_task_id
+    );
     let worktree_dir = req.worktree_dir.clone().unwrap_or_else(|| {
         core.data_dir
             .join("worktrees")
@@ -467,7 +494,11 @@ pub(crate) async fn fork(
                 base_revision: state.git_head.clone(),
                 execution_profile: source.execution_profile.clone(),
                 policy_profile_id: None,
-                origin: TaskOrigin::Fork,
+                origin: if req.subagent.is_some() {
+                    TaskOrigin::Subagent
+                } else {
+                    TaskOrigin::Fork
+                },
             },
             actor.clone(),
         ),
@@ -530,10 +561,32 @@ pub(crate) async fn fork(
     })?;
     let mut offset = stored.last().map(|e| e.offset).unwrap_or(0);
     // Capability Kernel (docs/23): the fork's own default lease on its own root.
-    let (resources, operations, effect_ceiling) = modbit_policy::default_lease_for_profile(
-        &source.execution_profile,
-        Some(worktree.as_str()),
-    );
+    let (mut resources, mut operations, mut effect_ceiling) =
+        modbit_policy::default_lease_for_profile(
+            &source.execution_profile,
+            Some(worktree.as_str()),
+        );
+    if let Some(sub) = &req.subagent {
+        // M6.3: least privilege for a child — writes only inside its write
+        // scope, no worktrees of its own, never a higher effect class than
+        // its parent allows (REQ-EV-0046 / 0048).
+        operations.retain(|o| o != "git.worktree");
+        resources.retain(|r| !r.starts_with("git.worktree:"));
+        if !sub.write_scope.is_empty() {
+            resources.retain(|r| !r.starts_with("fs.write:"));
+            for p in &sub.write_scope {
+                let p = p.trim().trim_start_matches("./").trim_end_matches('/');
+                let p = p.trim_end_matches("/**").trim_end_matches("/*");
+                resources.push(format!("fs.write:{worktree}/{p}/**"));
+                resources.push(format!("fs.write:{worktree}/{p}"));
+            }
+        }
+        if let Some(cap) = sub.effect_ceiling_cap
+            && effect_ceiling > cap
+        {
+            effect_ceiling = cap;
+        }
+    }
     let lease_id = modbit_domain::CapabilityLeaseId::new();
     let granted = store.append(AppendRequest {
         tenant_id: core.tenant_id,

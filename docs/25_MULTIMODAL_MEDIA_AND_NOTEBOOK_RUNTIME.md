@@ -22,6 +22,8 @@ Some transports cannot embed media directly inside a tool-result message. The ad
 
 Agent execution capsules declare allowed modalities and tools. Child agents may continue durably/background only when WorkGraph dependency analysis says the parent can proceed without their immediate result. Identity, lineage, private context refs, event offsets and result envelope survive restart.
 
+As built (M6.7): the capsule (`AgentExecutionCapsule`, docs/14) carries the allowed modalities and tools; a `BACKGROUND` child suspended by a Core restart resumes with its parent on its own log — the same agent id, task, capsule and run, the offsets continuing past `RunSuspended`, the result envelope landing on the parent as `SubagentResultRecorded` once it ends. See docs/14 "As built (M6.7)".
+
 ## Import compatibility
 
 Foreign instruction manifests, command packs, skill bundles, agent definitions and external-tool declarations may be imported through a compatibility adapter. Import is a migration into Modbit schemas, not execution of a foreign runtime. Imported executable material is discovered but untrusted and receives no authority beyond normal policy.

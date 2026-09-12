@@ -955,6 +955,22 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 Err(e) => return reject(cid, error_code(&e), e.to_string()),
             };
             let last_offset = events.last().map(|e| e.offset).unwrap_or(0);
+            // M6.6: a subagent's task names its parent, from the parent's
+            // admission record, so a client rebuilt from the snapshot nests
+            // it where it belongs.
+            let mut parents: std::collections::HashMap<[u8; 16], TaskId> =
+                std::collections::HashMap::new();
+            for ev in &events {
+                if ev.envelope.event_type == "SubagentAdmitted"
+                    && let Some(parent) = ev.envelope.task_id
+                    && let Ok(p) = store.payload(&ev.envelope)
+                    && let Some(child) = p["child_task_id"]
+                        .as_str()
+                        .and_then(|c| TaskId::parse(c).ok())
+                {
+                    parents.insert(*child.as_bytes(), parent);
+                }
+            }
             let mut tasks = Vec::new();
             let mut seen = std::collections::BTreeSet::new();
             for ev in &events {
@@ -972,6 +988,13 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                                 seconds: t.created_at.millis().div_euclid(1000),
                                 nanos: (t.created_at.millis().rem_euclid(1000) * 1_000_000) as i32,
                             }),
+                            origin: serde_json::to_string(&t.origin)
+                                .unwrap_or_default()
+                                .trim_matches('"')
+                                .to_owned(),
+                            parent_task_id: parents
+                                .get(t.task_id.as_bytes())
+                                .map(|p| wire_id(p.as_bytes())),
                         });
                     }
                 }
@@ -2601,6 +2624,7 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                     Some(PathBuf::from(p.worktree_dir.trim()))
                 },
                 new_task_id,
+                subagent: None,
             };
             match crate::branch::fork(core, req, &actor).await {
                 Ok(Ok(f)) => accept(

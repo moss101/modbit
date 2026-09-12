@@ -516,6 +516,46 @@
       "test": "m2_8_verification_engine_gates_completion_on_real_cargo_fixture"
     },
     {
+      "tool": "agent.spawn",
+      "family": "agent",
+      "source_behaviors": [
+        "Task/Agent spawn"
+      ],
+      "owner": "core-runtime harness (transactional admission)",
+      "effect": "ReversibleWrite",
+      "test": "m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back"
+    },
+    {
+      "tool": "agent.wait",
+      "family": "agent",
+      "source_behaviors": [
+        "await subagent result"
+      ],
+      "owner": "core-runtime harness",
+      "effect": "ReadOnly",
+      "test": "m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back"
+    },
+    {
+      "tool": "agent.result",
+      "family": "agent",
+      "source_behaviors": [
+        "read subagent result"
+      ],
+      "owner": "core-runtime harness",
+      "effect": "ReadOnly",
+      "test": "m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back"
+    },
+    {
+      "tool": "agent.cancel",
+      "family": "agent",
+      "source_behaviors": [
+        "cancel subagent"
+      ],
+      "owner": "core-runtime harness",
+      "effect": "ReadOnly",
+      "test": "m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back"
+    },
+    {
       "tool": "verify.run",
       "family": "task",
       "source_behaviors": [
@@ -547,7 +587,7 @@
       "source_behaviors": [
         "Task/Agent spawn"
       ],
-      "status": "DEFERRED (M3 multi-agent)"
+      "status": "SERVED by the harness tools agent.spawn / wait / result / cancel (M6.3, M6.5)"
     },
     {
       "family": "media",

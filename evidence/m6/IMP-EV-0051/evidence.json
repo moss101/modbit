@@ -1,0 +1,14 @@
+{
+ "task": "IMP-EV-0051",
+ "requirement": "REQ-EV-0051",
+ "qual": "QUAL-EV-0051",
+ "tests": [
+  "m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "with `MODBIT_AGENT_MAX_DEPTH=0` the primary's spawn is refused `NESTING_DISABLED` at stage `DEPTH` with nothing taken; children's projections carry no agent tool.",
+ "audit": "MISSING before.",
+ "limitations": "Depth is a global setting; per-profile depth arrives with profile bundles (IMP-EV-0241).",
+ "ci": ""
+}

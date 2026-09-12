@@ -269,6 +269,20 @@ export declare type TaskView = Message<"modbit.v1.TaskView"> & {
    * @generated from field: google.protobuf.Timestamp created_at = 5;
    */
   createdAt?: Timestamp | undefined;
+
+  /**
+   * desktop | cli | ide_adapter | forge_issue | forge_webhook | fork | subagent (M6.6)
+   *
+   * @generated from field: string origin = 6;
+   */
+  origin: string;
+
+  /**
+   * the parent of a subagent's task (M6.3); absent otherwise
+   *
+   * @generated from field: modbit.v1.Id parent_task_id = 7;
+   */
+  parentTaskId?: Id | undefined;
 };
 
 /**

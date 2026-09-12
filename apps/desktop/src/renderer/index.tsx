@@ -6,7 +6,7 @@
  */
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { applyEvent, columns, emptyModel, fromSnapshot, type Event, type FleetColumn, type Model, type Snapshot, type TaskCard } from "./model.ts";
+import { applyEvent, childrenOf, columns, emptyModel, fromSnapshot, type Event, type FleetColumn, type Model, type Snapshot, type TaskCard } from "./model.ts";
 import type { ContextInspectorSummary, ModbitBridge, ReviewBundleView, TaskEconomicsSummary } from "../preload/preload.ts";
 
 declare global {
@@ -189,7 +189,7 @@ function App() {
         setModel((m) => {
           if (m.tasks.has(r.taskId)) return m;
           const tasks = new Map(m.tasks);
-          tasks.set(r.taskId, { taskId: r.taskId, goalText: text, state: "Queued", waitReason: "Capacity", generation: 2, createdAtMs: Date.now(), nextAction: null } as TaskCard);
+          tasks.set(r.taskId, { taskId: r.taskId, goalText: text, state: "Queued", waitReason: "Capacity", generation: 2, createdAtMs: Date.now(), nextAction: null, attachments: 0, parentTaskId: null, origin: "desktop", agents: { total: 0, running: 0, background: 0, waiting: 0, done: 0, failed: 0 }, phase: "drafting", latestEvidence: null, risk: null, children: [] } as TaskCard);
           return { ...m, tasks };
         });
         setScreen("populated");
@@ -282,7 +282,7 @@ function App() {
         setModel((m) => {
           if (m.tasks.has(r.taskId)) return m;
           const tasks = new Map(m.tasks);
-          tasks.set(r.taskId, { taskId: r.taskId, goalText, state: "Queued", waitReason: "Capacity", generation: 2, createdAtMs: Date.now(), nextAction: null } as TaskCard);
+          tasks.set(r.taskId, { taskId: r.taskId, goalText, state: "Queued", waitReason: "Capacity", generation: 2, createdAtMs: Date.now(), nextAction: null, attachments: 0, parentTaskId: null, origin: "desktop", agents: { total: 0, running: 0, background: 0, waiting: 0, done: 0, failed: 0 }, phase: "drafting", latestEvidence: null, risk: null, children: [] } as TaskCard);
           return { ...m, tasks };
         });
         setScreen("populated");
@@ -491,7 +491,7 @@ function App() {
                 <h2>
                   {c.title} <span aria-hidden="true">({cols[c.key].length})</span>
                 </h2>
-                {cols[c.key].length === 0 ? <p className="empty">None</p> : cols[c.key].map((t) => <Card key={t.taskId} card={t} onStart={startTask} onReview={(id) => setReviewing(id)} />)}
+                {cols[c.key].length === 0 ? <p className="empty">None</p> : cols[c.key].map((t) => <Card key={t.taskId} card={t} children={childrenOf(model, t.taskId)} onStart={startTask} onReview={(id) => setReviewing(id)} />)}
               </section>
             ))}
           </div>
@@ -501,10 +501,25 @@ function App() {
   );
 }
 
-function Card({ card, onStart, onReview }: { card: TaskCard; onStart: (id: string) => void; onReview: (id: string) => void }) {
+const PHASE_LABEL: Record<TaskCard["phase"], string> = {
+  drafting: "drafting",
+  verifying: "verifying",
+  reviewing: "reviewing",
+  escalating: "escalating",
+  awaitingHuman: "awaiting human",
+  waitingCapacity: "waiting for capacity",
+  delegating: "delegating",
+  done: "done",
+};
+
+/** PRD "Home / Fleet" card (M6.6): goal, state, phase, active agents, risk,
+ *  latest evidence, next required action, and the subagents nested under
+ *  their parent — every fact from a Core event. */
+function Card({ card, children, onStart, onReview }: { card: TaskCard; children?: TaskCard[]; onStart: (id: string) => void; onReview: (id: string) => void }) {
   const startable = card.state === "Queued" || (card.state === "Waiting" && card.waitReason === "UserInput");
+  const active = card.agents.running + card.agents.background;
   return (
-    <article className="card" tabIndex={0} data-testid="task-card" data-task-id={card.taskId} data-state={card.state}>
+    <article className="card" tabIndex={0} data-testid="task-card" data-task-id={card.taskId} data-state={card.state} data-phase={card.phase}>
       <div>{card.goalText}</div>
       <div className="meta">
         state: <span data-testid="task-state">{card.state}</span>
@@ -512,10 +527,38 @@ function Card({ card, onStart, onReview }: { card: TaskCard; onStart: (id: strin
         {" · attachments "}
         <span data-testid="task-attachments">{card.attachments ?? 0}</span>
       </div>
+      <div className="meta">
+        phase: <span data-testid="task-phase">{PHASE_LABEL[card.phase]}</span>
+        {" · agents "}
+        <span data-testid="task-agents" aria-label={`${active} active of ${card.agents.total} agents`}>
+          {active}/{card.agents.total}
+        </span>
+        {card.risk ? (
+          <>
+            {" · risk "}
+            <span data-testid="task-risk">{card.risk}</span>
+          </>
+        ) : null}
+      </div>
+      {card.latestEvidence && (
+        <div className="meta">
+          evidence: <span data-testid="task-evidence">{card.latestEvidence}</span>
+        </div>
+      )}
       {card.nextAction && (
         <div className="meta">
           next: <strong>{card.nextAction}</strong>
         </div>
+      )}
+      {children && children.length > 0 && (
+        <ul className="children" data-testid="task-children" aria-label="subagents">
+          {children.map((c) => (
+            <li key={c.taskId} data-testid="child-card" data-task-id={c.taskId} data-state={c.state}>
+              <span data-testid="child-goal">{c.goalText}</span> · <span data-testid="child-state">{c.state}</span>
+              {c.latestEvidence ? ` · ${c.latestEvidence}` : ""}
+            </li>
+          ))}
+        </ul>
       )}
       <div className="actions">
         {startable && (

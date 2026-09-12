@@ -1,0 +1,14 @@
+{
+ "task": "M6.5",
+ "requirement": "M6.5 (docs/43); docs/14 Agent-to-agent communication",
+ "qual": "M6.5 / E2E-010",
+ "tests": [
+  "m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "Three children each land one SubagentResultRecorded on the parent (status, summary, artifacts, evidence, branch); agent.wait returns them labelled untrusted; the branches merge cleanly.",
+ "audit": "MISSING before.",
+ "limitations": "No proposed follow-ups yet; the parent merges itself.",
+ "ci": ""
+}

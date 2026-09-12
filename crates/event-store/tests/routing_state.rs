@@ -432,6 +432,11 @@ fn make_pre_routing(dir: &std::path::Path) {
     // V12 (M4.3) added `checkpoints`.
     conn.execute("DROP TABLE IF EXISTS checkpoints", [])
         .unwrap();
+    // V14 (M6.1) added the agent and work graphs; V15 (M6.3) a column on
+    // `agent_nodes` that cannot be re-added to a table that still exists.
+    conn.execute("DROP TABLE IF EXISTS agent_nodes", [])
+        .unwrap();
+    conn.execute("DROP TABLE IF EXISTS work_nodes", []).unwrap();
     // V11 (M4.2) added the session branch generation and `compaction_epochs`.
     conn.execute("DROP TABLE IF EXISTS compaction_epochs", [])
         .unwrap();
@@ -470,8 +475,8 @@ fn a_database_from_before_the_routing_tables_upgrades_and_derives_them() {
 
     make_pre_routing(dir.path());
     let (store, report) = EventStore::open_with_report(dir.path()).unwrap();
-    assert_eq!((report.from_version, report.to_version), (6, 14));
-    assert_eq!(report.applied, vec![7, 8, 9, 10, 11, 12, 13, 14]);
+    assert_eq!((report.from_version, report.to_version), (6, 15));
+    assert_eq!(report.applied, vec![7, 8, 9, 10, 11, 12, 13, 14, 15]);
     assert_eq!(
         store.last_offset().unwrap(),
         events,
@@ -547,7 +552,7 @@ fn a_crash_during_the_routing_migration_leaves_a_recoverable_database() {
     let (store, report) = EventStore::open_with_report(dir.path()).unwrap();
     assert_eq!(
         (report.from_version, report.to_version),
-        (6, 14),
+        (6, 15),
         "the killed migration committed nothing"
     );
     assert_eq!(

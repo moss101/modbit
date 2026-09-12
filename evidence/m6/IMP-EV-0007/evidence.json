@@ -1,0 +1,14 @@
+{
+ "task": "IMP-EV-0007",
+ "requirement": "REQ-EV-0007",
+ "qual": "QUAL-EV-0007",
+ "tests": [
+  "m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "the parent calls `agent.spawn` twice with `child-a`: the second reports `reattached: true`, one `AgentNodeCreated` for that key, one admission, one worktree.",
+ "audit": "MISSING before.",
+ "limitations": "A key reused after the child ended reattaches to the ended child (REQ-EV-0050's resume-as-new-attempt is M6.5+).",
+ "ci": ""
+}
