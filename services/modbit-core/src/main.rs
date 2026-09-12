@@ -17,6 +17,7 @@ mod economics;
 mod gate;
 mod inspector;
 mod languages;
+mod media_bridge;
 mod model_registry;
 mod onboarding;
 mod probe;

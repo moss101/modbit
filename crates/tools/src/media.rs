@@ -6,7 +6,7 @@
 
 use modbit_domain::TaskId;
 use modbit_domain::media::{
-    MediaBudget, MediaEnvelope, MediaKind, MediaProvenance, MediaTransform, TrustLabel,
+    MediaBudget, MediaEnvelope, MediaKind, MediaProvenance, MediaTransform, PageImage, TrustLabel,
 };
 use sha2::{Digest, Sha256};
 
@@ -88,6 +88,9 @@ pub struct ReadRequest<'a> {
     pub task_id: Option<TaskId>,
     /// Page selection for documents (1-based, inclusive); empty = from page 1 within the budget.
     pub pages: Option<(u32, u32)>,
+    /// A region of an image to crop the egress copy to (`x, y, width,
+    /// height` in the original's pixels; REQ-EV-0223 targeted escalation).
+    pub region: Option<(u32, u32, u32, u32)>,
     /// Budget.
     pub budget: MediaBudget,
 }
@@ -133,6 +136,16 @@ pub fn read(req: &ReadRequest<'_>, sink: &dyn ObjectSink) -> Result<MediaRead, M
         text_derivative: None,
         truncated: false,
         metadata_stripped: vec![],
+        page_images: vec![],
+        input_modality: match kind {
+            MediaKind::Image => "image",
+            MediaKind::Document => "document",
+            MediaKind::Audio => "audio",
+            MediaKind::Video => "video",
+            _ => "text",
+        }
+        .into(),
+        region: None,
     };
     let mut full_text = None;
     match (kind, mime) {
@@ -152,22 +165,54 @@ pub fn read(req: &ReadRequest<'_>, sink: &dyn ObjectSink) -> Result<MediaRead, M
                 .read_info()
                 .map_err(|e| err("MEDIA_MALFORMED", format!("png: {e}")))?;
             let mut buf = vec![0u8; reader.output_buffer_size().unwrap_or(0)];
-            reader
+            let frame = reader
                 .next_frame(&mut buf)
                 .map_err(|e| err("MEDIA_MALFORMED", format!("png: {e}")))?;
-            let (egress, stripped) = strip_png_metadata(req.bytes);
-            record_egress(
-                &mut env,
-                sink,
-                "exif_strip",
-                &original_digest,
-                egress,
-                stripped,
-            )?;
+            if let Some(region) = req.region {
+                // REQ-EV-0223: the egress copy is the region, re-encoded
+                // without metadata; the original stays by digest.
+                let info = reader.info();
+                let (egress, cw, ch) = crop_png(&buf[..frame.buffer_size()], info, w, h, region)?;
+                env.width = Some(cw);
+                env.height = Some(ch);
+                env.region = Some(region);
+                let egress_digest = sha(&egress);
+                let egress_ref = sink
+                    .put(&egress)
+                    .map_err(|e| err("MEDIA_STORE", e.to_string()))?;
+                env.egress_ref = Some(egress_ref);
+                env.lineage.push(MediaTransform {
+                    name: "crop".into(),
+                    input_digest: original_digest.clone(),
+                    output_digest: Some(egress_digest),
+                    detail: format!(
+                        "region x={} y={} w={} h={} of {w}x{h}; re-encoded PNG without metadata",
+                        region.0, region.1, region.2, region.3
+                    ),
+                });
+            } else {
+                let (egress, stripped) = strip_png_metadata(req.bytes);
+                record_egress(
+                    &mut env,
+                    sink,
+                    "exif_strip",
+                    &original_digest,
+                    egress,
+                    stripped,
+                )?;
+            }
         }
         (MediaKind::Image, "image/jpeg") => {
             let (w, h) = jpeg_dimensions(req.bytes)?;
             check_pixels(w, h, &req.budget)?;
+            if req.region.is_some() {
+                // No JPEG decoder is in the tree; a crop of a JPEG is a
+                // typed refusal, not a silent full image.
+                return Err(err(
+                    "MEDIA_CROP_UNSUPPORTED",
+                    "cropping a JPEG is not supported (PNG regions are); read the full image or convert it",
+                ));
+            }
             env.width = Some(w);
             env.height = Some(h);
             let (egress, stripped) = strip_jpeg_metadata(req.bytes);
@@ -222,6 +267,74 @@ pub fn read(req: &ReadRequest<'_>, sink: &dyn ObjectSink) -> Result<MediaRead, M
                     "pages {from}-{to} of {count}; deterministic extraction, no vision"
                 ),
             });
+            // REQ-EV-0185: text first; when the requested pages yield no
+            // text, the embedded page images (a scan's JPEGs) are handed
+            // over for vision, bounded by the page budget, labelled lossy
+            // and untrusted; pages outside the range are not implied.
+            if text.trim().is_empty() {
+                let mut handed = Vec::new();
+                let mut skipped = Vec::new();
+                for (number, id) in &pages {
+                    if *number < from || *number > to {
+                        continue;
+                    }
+                    let images = doc.get_page_images(*id).unwrap_or_default();
+                    let Some(img) = images.iter().find(|i| {
+                        i.filters
+                            .as_ref()
+                            .is_some_and(|f| f.iter().any(|x| x == "DCTDecode"))
+                    }) else {
+                        skipped.push(*number);
+                        continue;
+                    };
+                    let (iw, ih) = match jpeg_dimensions(img.content) {
+                        Ok(d) => d,
+                        Err(_) => {
+                            skipped.push(*number);
+                            continue;
+                        }
+                    };
+                    if check_pixels(iw, ih, &req.budget).is_err()
+                        || img.content.len() as u64 > req.budget.max_bytes
+                    {
+                        skipped.push(*number);
+                        continue;
+                    }
+                    let (egress, _) = strip_jpeg_metadata(img.content);
+                    let egress_ref = sink
+                        .put(&egress)
+                        .map_err(|e| err("MEDIA_STORE", e.to_string()))?;
+                    handed.push(PageImage {
+                        page: *number,
+                        egress_ref,
+                        mime: "image/jpeg".into(),
+                        width: iw,
+                        height: ih,
+                    });
+                }
+                env.lineage.push(MediaTransform {
+                    name: "pdf_page_images".into(),
+                    input_digest: original_digest.clone(),
+                    output_digest: None,
+                    detail: format!(
+                        "no extractable text on pages {from}-{to}; {} page image(s) handed over for vision (lossy, untrusted){}; pages outside {from}-{to} not covered",
+                        handed.len(),
+                        if skipped.is_empty() {
+                            String::new()
+                        } else {
+                            format!(
+                                "; no JPEG scan on page(s) {}",
+                                skipped
+                                    .iter()
+                                    .map(ToString::to_string)
+                                    .collect::<Vec<_>>()
+                                    .join(",")
+                            )
+                        }
+                    ),
+                });
+                env.page_images = handed;
+            }
             full_text = Some(text);
         }
         (MediaKind::Text, _) => {
@@ -287,6 +400,54 @@ fn record_egress(
     env.egress_ref = Some(egress_ref);
     env.metadata_stripped = stripped;
     Ok(())
+}
+
+/// Crop decoded PNG pixels to `region` and re-encode as PNG (8-bit RGB/RGBA/
+/// grey as decoded). The output carries no ancillary chunks.
+fn crop_png(
+    pixels: &[u8],
+    info: &png::Info<'_>,
+    w: u32,
+    h: u32,
+    region: (u32, u32, u32, u32),
+) -> Result<(Vec<u8>, u32, u32), MediaError> {
+    let (x, y, cw, ch) = region;
+    if cw == 0 || ch == 0 || x.saturating_add(cw) > w || y.saturating_add(ch) > h {
+        return Err(err(
+            "MEDIA_MALFORMED",
+            format!("region x={x} y={y} w={cw} h={ch} is outside the {w}x{h} image"),
+        ));
+    }
+    if info.bit_depth != png::BitDepth::Eight {
+        return Err(err("MEDIA_CROP_UNSUPPORTED", "cropping needs an 8-bit PNG"));
+    }
+    let channels = info.color_type.samples();
+    let stride = w as usize * channels;
+    let mut out = Vec::with_capacity(cw as usize * ch as usize * channels);
+    for row in y..y + ch {
+        let start = row as usize * stride + x as usize * channels;
+        let end = start + cw as usize * channels;
+        let line = pixels.get(start..end).ok_or_else(|| {
+            err(
+                "MEDIA_MALFORMED",
+                "png: decoded buffer shorter than declared",
+            )
+        })?;
+        out.extend_from_slice(line);
+    }
+    let mut encoded = Vec::new();
+    {
+        let mut encoder = png::Encoder::new(&mut encoded, cw, ch);
+        encoder.set_color(info.color_type);
+        encoder.set_depth(png::BitDepth::Eight);
+        let mut writer = encoder
+            .write_header()
+            .map_err(|e| err("MEDIA_MALFORMED", format!("png encode: {e}")))?;
+        writer
+            .write_image_data(&out)
+            .map_err(|e| err("MEDIA_MALFORMED", format!("png encode: {e}")))?;
+    }
+    Ok((encoded, cw, ch))
 }
 
 fn check_pixels(w: u32, h: u32, budget: &MediaBudget) -> Result<(), MediaError> {

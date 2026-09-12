@@ -1,0 +1,15 @@
+{
+ "task": "IMP-EV-0223",
+ "requirement": "REQ-EV-0223",
+ "qual": "QUAL-EV-0223",
+ "tests": [
+  "qual_ev_0223_a_region_read_sends_the_crop_and_the_bomb_stays_bounded",
+  "qual_ev_0223_a_region_crops_the_egress_copy_and_oversized_media_stays_bounded"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "on the real Core a vision model reading `label.png` whole and then with `region {4,4,16,8}` receives two PNG payloads, the second smaller, the tool result carrying `region: [4,4,16,8]`, the crop's dimensions and `crop` lineage; `bomb.png` with a region is refused `MEDIA_BUDGET_EXCEEDED` and sends nothing; tool-level tests cover the crop bytes, the JPEG refusal and the budgets.",
+ "audit": "PARTIAL before: pixel, byte, page and text budgets were enforced (M4, `MEDIA_BUDGET_EXCEEDED` on the pixel bomb) but there was no way to ask for a region at full resolution.",
+ "limitations": "Regions apply to 8-bit PNG only (no JPEG decoder in the tree); video duration budgets wait for a provider that takes video.",
+ "ci": ""
+}

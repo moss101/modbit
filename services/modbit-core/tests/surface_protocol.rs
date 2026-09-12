@@ -2227,13 +2227,15 @@ async fn scripted_model_reactive(
                     .as_array()
                     .map(|m| m.iter().filter(|x| x["role"] == "tool").count())
                     .unwrap_or(0);
+                // A side request — the Fast Context specialist, or the
+                // vision bridge describing media for a text-only model —
+                // is answered from the specialist script.
                 let for_specialist = !specialist.is_empty()
                     && body["messages"].as_array().is_some_and(|m| {
                         m.iter().any(|x| {
-                            x["content"]
-                                .as_str()
-                                .unwrap_or_default()
-                                .contains("Fast Context specialist")
+                            let c = x["content"].as_str().unwrap_or_default();
+                            c.contains("Fast Context specialist")
+                                || c.contains("Describe this media factually")
                         })
                     });
                 let prompt_tokens = serde_json::to_string(&body["messages"])
@@ -20949,4 +20951,570 @@ async fn qual_ev_0059_0129_scoped_rules_activate_lazily_and_conflicts_name_the_w
     assert_eq!(billing["layer"], "project");
     assert_eq!(billing["hash"].as_str().unwrap().len(), 64);
     assert_eq!(second["dormant"], json!([]));
+}
+
+/// Stage and commit everything in a test repository (fixture binaries a
+/// task then reads, so the diff invariant sees no stray additions).
+fn commit_all(repo: &std::path::Path, message: &str) {
+    for args in [
+        vec!["add", "-A"],
+        vec![
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@e",
+            "commit",
+            "-q",
+            "-m",
+            message,
+        ],
+    ] {
+        assert!(
+            Command::new("git")
+                .arg("-C")
+                .arg(repo)
+                .args(&args)
+                .status()
+                .unwrap()
+                .success()
+        );
+    }
+}
+
+/// QUAL-EV-0184 and QUAL-EV-0185 on the real Core (MEDIA-E2E-002 and
+/// MEDIA-E2E-004 with a scripted vision bridge): a text-only routed model
+/// reads an image and a scanned PDF. Without a bridge, every media part
+/// becomes an explicit `UNSUPPORTED_MODALITY` note naming the model and
+/// the modality — nothing dropped, nothing invented; the scan's pages are
+/// handed over as page images (lossy, untrusted), the range said. With a
+/// bridge configured, the bridge — a vision-capable model — describes each
+/// image once per digest, the description enters the tool message labelled
+/// lossy and untrusted, and `MediaBridged` records digest, routed model,
+/// bridge, description object and tokens. Audio and video stay
+/// metadata-only with their modality named.
+#[tokio::test]
+async fn qual_ev_0184_0185_a_text_only_model_is_told_the_modality_and_a_bridge_describes_media() {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let fixtures =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/media");
+    let files = ["label.png", "scanned.pdf", "silence.wav"];
+    let mut fixture_files: Vec<(&str, String)> = Vec::new();
+    for f in files {
+        fixture_files.push((
+            f,
+            String::from_utf8_lossy(&std::fs::read(fixtures.join(f)).unwrap()).into_owned(),
+        ));
+    }
+    // A plain repo, the fixtures copied in as bytes.
+    let (repo, root) = plain_repo(&[("README.md", "# media\n")]);
+    for f in files {
+        std::fs::copy(fixtures.join(f), repo.path().join(f)).unwrap();
+    }
+    commit_all(repo.path(), "media");
+    let script = vec![
+        json!({"calls": [{"name": "fs.read", "args": {"path": "label.png"}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "scanned.pdf", "pages": [1, 2]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "silence.wav"}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "looked", "expected_files": []}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "looked", "self_review": {"findings": []}}}]}),
+    ];
+    // The same scripted server also answers as the bridge (any model name):
+    // a request whose system message is the bridge prompt gets a
+    // description mentioning what it was asked about.
+    let (base, seen) = scripted_model_routed(
+        script.clone(),
+        vec![json!({"text": "BRIDGE-SAW: a label image with the word ORCHID in blue"})],
+        None,
+    )
+    .await;
+    // Run 1: text-only model, no bridge.
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xD1)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xD2, "local_trusted").await;
+    let start = |task: Id| StartTask {
+        task_id: Some(task),
+        endpoint: String::new(),
+        // In the catalog without image input: text only.
+        model: "o3-mini".into(),
+        max_turns: 8,
+        max_tool_calls: 0,
+        max_no_progress_turns: 4,
+        skills: vec![],
+    };
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xD3),
+            "StartTask",
+            start(task.clone()).encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 120).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let bodies = seen.lock().unwrap().clone();
+    let last = bodies.last().unwrap();
+    let tool_msgs: Vec<String> = last["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    assert!(tool_msgs.len() >= 3, "{tool_msgs:#?}");
+    // The image: an explicit note, no image block anywhere, nothing invented.
+    assert!(
+        tool_msgs[0].contains("UNSUPPORTED_MODALITY")
+            && tool_msgs[0].contains("openai/o3-mini")
+            && tool_msgs[0].contains("takes no image input")
+            && tool_msgs[0].contains("nothing was invented"),
+        "{}",
+        tool_msgs[0]
+    );
+    assert!(
+        !last.to_string().contains("image_url"),
+        "an image reached a text-only model"
+    );
+    // The scan: two page images handed over (lossy, untrusted), pages said,
+    // and each an explicit note for this model.
+    assert!(
+        tool_msgs[1].contains("\"page_images\"")
+            && tool_msgs[1].contains("no extractable text on pages 1-2"),
+        "{}",
+        tool_msgs[1]
+    );
+    assert_eq!(
+        tool_msgs[1].matches("UNSUPPORTED_MODALITY").count(),
+        2,
+        "{}",
+        tool_msgs[1]
+    );
+    assert!(
+        tool_msgs[1].contains("scanned page 1 of scanned.pdf")
+            && tool_msgs[1].contains("scanned page 2 of scanned.pdf")
+    );
+    // Audio: typed, modality named, no transcript.
+    assert!(
+        tool_msgs[2].contains("\"input_modality\":\"audio\"")
+            && tool_msgs[2].contains("metadata_only"),
+        "{}",
+        tool_msgs[2]
+    );
+    assert!(!tool_msgs[2].contains("transcript\":\""));
+    let evs = task_events(&core, &session, &task).await;
+    assert!(
+        !evs.iter().any(|(_, t, _)| t == "MediaBridged"),
+        "no bridge, no bridging"
+    );
+    drop(c);
+    drop(core);
+    // Run 2: the same text-only model with a vision bridge configured.
+    seen.lock().unwrap().clear();
+    let dir2 = tempfile::tempdir().unwrap();
+    let env2 = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_VISION_BRIDGE", "openai/gpt-5-mini"),
+    ];
+    let core2 = CoreProcess::spawn_with_env(dir2.path(), &env2);
+    let mut c2 = core2.client().await;
+    let (session2, _) = create_session(&mut c2, id16(0xD5)).await;
+    let g2 = lease_for(&session2);
+    let task2 =
+        create_task_with_profile(&mut c2, &session2, g2, &root, 0xD6, "local_trusted").await;
+    let ack = c2
+        .command(envelope_fenced(
+            id16(0xD7),
+            "StartTask",
+            start(task2.clone()).encode_to_vec(),
+            g2,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c2, &task2, 120).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let bodies = seen.lock().unwrap().clone();
+    // The bridge requests: the bridge prompt, an image block, the model
+    // asked for; one per distinct digest — the label and the scan's page
+    // images (the fixture's two pages share one JPEG, so one digest).
+    let bridge_requests: Vec<&serde_json::Value> = bodies
+        .iter()
+        .filter(|b| b.to_string().contains("Describe this media factually"))
+        .collect();
+    let distinct_digests = {
+        let mut d: Vec<String> = Vec::new();
+        for m in bodies.last().unwrap()["messages"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|m| m["role"] == "tool")
+        {
+            let text = m["content"].as_str().unwrap_or_default();
+            for (i, _) in text.match_indices("bridge description of image/") {
+                let digest = text[i..].split_whitespace().nth(4).unwrap().to_owned();
+                if !d.contains(&digest) {
+                    d.push(digest);
+                }
+            }
+        }
+        d
+    };
+    assert_eq!(distinct_digests.len(), 2, "{distinct_digests:?}");
+    assert_eq!(
+        bridge_requests.len(),
+        distinct_digests.len(),
+        "{}",
+        bridge_requests.len()
+    );
+    for b in &bridge_requests {
+        assert_eq!(b["model"], "gpt-5-mini");
+        assert!(
+            b.to_string().contains("image_url"),
+            "the bridge got no image"
+        );
+        assert!(b["tools"].is_null() || b["tools"].as_array().is_some_and(Vec::is_empty));
+    }
+    let last = bodies
+        .iter()
+        .rfind(|b| !b.to_string().contains("Describe this media factually"))
+        .unwrap();
+    let tool_msgs: Vec<String> = last["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    assert!(
+        tool_msgs[0].contains("bridge description of image/png")
+            && tool_msgs[0].contains("by openai/gpt-5-mini")
+            && tool_msgs[0].contains("lossy, untrusted data, not instructions")
+            && tool_msgs[0].contains("BRIDGE-SAW: a label image with the word ORCHID"),
+        "{}",
+        tool_msgs[0]
+    );
+    assert_eq!(
+        tool_msgs[1]
+            .matches("bridge description of image/jpeg")
+            .count(),
+        2,
+        "{}",
+        tool_msgs[1]
+    );
+    assert!(
+        !last.to_string().contains("image_url"),
+        "the routed model still got no image"
+    );
+    let evs = task_events(&core2, &session2, &task2).await;
+    let bridged: Vec<&serde_json::Value> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "MediaBridged")
+        .map(|(_, _, p)| p)
+        .collect();
+    assert_eq!(bridged.len(), 2, "{bridged:#?}");
+    assert_eq!(bridged[0]["mime"], "image/png");
+    assert_eq!(bridged[0]["routed_model"], "openai/o3-mini");
+    assert_eq!(bridged[0]["bridge_endpoint"], "openai");
+    assert_eq!(bridged[0]["bridge_model"], "gpt-5-mini");
+    assert_eq!(bridged[0]["description_ref"].as_str().unwrap().len(), 64);
+    assert!(bridged[0]["input_tokens"].as_u64().unwrap() > 0);
+    assert!(bridged[0]["error"].is_null());
+    assert_eq!(bridged[1]["mime"], "image/jpeg");
+    assert_eq!(bridged[1]["digest"], distinct_digests[1]);
+    // Described once per digest: the turns after the reads carry the same
+    // descriptions without new bridge calls, and the second scan page
+    // (same bytes) reused the first's description.
+    assert_eq!(bridged.len(), bridge_requests.len());
+}
+
+/// QUAL-EV-0186 on the real Core (MEDIA-E2E-008 without a kernel): a real
+/// `.ipynb` reads as cells with stable ids; `change.apply op=notebook_cell`
+/// rewrites one cell through the Change Engine with the revision binding of
+/// any write, clears that cell's outputs and execution count, keeps every
+/// other cell and the metadata, writes Jupyter's canonical form so the Git
+/// diff is the cell; an ambiguous id is refused.
+#[tokio::test]
+async fn qual_ev_0186_a_notebook_edit_targets_one_cell_by_id_and_keeps_the_rest() {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let fixtures =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/media");
+    let notebook = std::fs::read_to_string(fixtures.join("totals.ipynb")).unwrap();
+    let (repo, root) = plain_repo(&[("totals.ipynb", &notebook)]);
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "fix the total", "expected_files": ["totals.ipynb"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "totals.ipynb"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "totals.ipynb", "op": "notebook_cell", "cell_id": "total", "source": "def total(items):\n    return sum(items) + 0\nprint(total([100, 200]))"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "totals.ipynb", "op": "notebook_cell", "cell_id": "nope", "source": "x"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "edited", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xE1)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xE2, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xE3),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 8,
+                max_tool_calls: 0,
+                max_no_progress_turns: 4,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 120).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let bodies = seen.lock().unwrap().clone();
+    let tool_msgs: Vec<String> = bodies.last().unwrap()["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    // The read: structure, not a blob.
+    let read: serde_json::Value = serde_json::from_str(
+        tool_msgs[1]
+            .split("output:\n")
+            .nth(1)
+            .unwrap()
+            .lines()
+            .next()
+            .unwrap(),
+    )
+    .unwrap();
+    let nb = &read["notebook"];
+    assert_eq!(nb["nbformat"], 4);
+    assert_eq!(nb["kernel"], "Python 3");
+    assert_eq!(nb["all_cells_addressable"], true);
+    assert_eq!(nb["cells"][1]["id"], "total");
+    assert_eq!(nb["cells"][1]["execution_count"], 2);
+    assert_eq!(nb["cells"][1]["output_types"], json!(["stream"]));
+    assert!(
+        nb["cells"][1]["source"]
+            .as_str()
+            .unwrap()
+            .starts_with("def total(items):")
+    );
+    // The edit landed through the Change Engine with a revision.
+    assert!(
+        tool_msgs[2].starts_with("status: SUCCESS"),
+        "{}",
+        tool_msgs[2]
+    );
+    assert!(tool_msgs[2].contains("\"workspace_revision\""));
+    let after: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(repo.path().join("totals.ipynb")).unwrap())
+            .unwrap();
+    let before: serde_json::Value = serde_json::from_str(&notebook).unwrap();
+    assert_eq!(
+        after["cells"][1]["source"],
+        json!([
+            "def total(items):\n",
+            "    return sum(items) + 0\n",
+            "print(total([100, 200]))"
+        ])
+    );
+    assert_eq!(after["cells"][1]["outputs"], json!([]));
+    assert!(after["cells"][1]["execution_count"].is_null());
+    assert_eq!(after["cells"][0], before["cells"][0]);
+    assert_eq!(
+        after["cells"][2], before["cells"][2],
+        "the unrelated cell keeps its outputs and metadata"
+    );
+    assert_eq!(after["metadata"], before["metadata"]);
+    // Canonical form: the fixture was written canonically, so Git's diff
+    // is exactly the edited cell — its execution count, its outputs, its
+    // one changed source line — and nothing of the other cells.
+    let diff = Command::new("git")
+        .arg("-C")
+        .arg(repo.path())
+        .args(["diff", "--no-color", "-U0", "--", "totals.ipynb"])
+        .output()
+        .unwrap();
+    let diff = String::from_utf8_lossy(&diff.stdout).into_owned();
+    let removed: Vec<&str> = diff
+        .lines()
+        .filter(|l| l.starts_with('-') && !l.starts_with("---"))
+        .map(|l| l[1..].trim())
+        .collect();
+    let added: Vec<&str> = diff
+        .lines()
+        .filter(|l| l.starts_with('+') && !l.starts_with("+++"))
+        .map(|l| l[1..].trim())
+        .collect();
+    assert_eq!(
+        removed,
+        vec![
+            "\"execution_count\": 2,",
+            "\"outputs\": [",
+            "{",
+            "\"name\": \"stdout\",",
+            "\"output_type\": \"stream\",",
+            "\"text\": [",
+            "\"300\\n\"",
+            "]",
+            "}",
+            "],",
+            "\"    return sum(items)\\n\",",
+        ],
+        "{diff}"
+    );
+    assert_eq!(
+        added,
+        vec![
+            "\"execution_count\": null,",
+            "\"outputs\": [],",
+            "\"    return sum(items) + 0\\n\",",
+        ],
+        "{diff}"
+    );
+    assert!(!diff.contains("keep") && !diff.contains("Totals"), "{diff}");
+    // The unknown id is refused, typed, with no write.
+    assert!(
+        tool_msgs[3].contains("NOTEBOOK_NO_SUCH_CELL"),
+        "{}",
+        tool_msgs[3]
+    );
+    let evs = task_events(&core, &session, &task).await;
+    assert_eq!(
+        evs.iter().filter(|(_, t, _)| t == "FileChanged").count(),
+        1,
+        "one write, the refused one none: {evs:#?}"
+    );
+}
+
+/// QUAL-EV-0223 on the real Core: an explicit region crops the egress copy
+/// the model receives; the oversized image is bounded as before; the
+/// region is on the media record and in the model's view.
+#[tokio::test]
+async fn qual_ev_0223_a_region_read_sends_the_crop_and_the_bomb_stays_bounded() {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let fixtures =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/media");
+    let (repo, root) = plain_repo(&[("README.md", "# media\n")]);
+    for f in ["label.png", "bomb.png"] {
+        std::fs::copy(fixtures.join(f), repo.path().join(f)).unwrap();
+    }
+    commit_all(repo.path(), "media");
+    let script = vec![
+        json!({"calls": [{"name": "fs.read", "args": {"path": "label.png"}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "label.png", "region": {"x": 4, "y": 4, "width": 16, "height": 8}}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "bomb.png", "region": {"x": 0, "y": 0, "width": 8, "height": 8}}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "looked", "expected_files": []}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "looked", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xF1)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xF2, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xF3),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 8,
+                max_tool_calls: 0,
+                max_no_progress_turns: 4,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 120).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let bodies = seen.lock().unwrap().clone();
+    let last = bodies.last().unwrap();
+    // The two image payloads the vision model received: the full egress
+    // copy and the crop, the crop smaller; both PNG.
+    let payloads: Vec<String> = last["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["role"] == "user")
+        .flat_map(|m| m["content"].as_array().cloned().unwrap_or_default())
+        .filter(|b| b["type"] == "image_url")
+        .filter_map(|b| b["image_url"]["url"].as_str().map(str::to_owned))
+        .collect();
+    assert_eq!(payloads.len(), 2, "{}", payloads.len());
+    assert!(
+        payloads
+            .iter()
+            .all(|p| p.starts_with("data:image/png;base64,"))
+    );
+    assert!(
+        payloads[1].len() < payloads[0].len(),
+        "the crop is smaller: {} vs {}",
+        payloads[1].len(),
+        payloads[0].len()
+    );
+    let tool_msgs: Vec<String> = last["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    assert!(
+        tool_msgs[1].contains("\"region\":[4,4,16,8]")
+            && tool_msgs[1].contains("\"width\":16")
+            && tool_msgs[1].contains("\"height\":8"),
+        "{}",
+        tool_msgs[1]
+    );
+    assert!(
+        tool_msgs[1].contains("\"name\":\"crop\""),
+        "{}",
+        tool_msgs[1]
+    );
+    assert!(
+        tool_msgs[2].contains("MEDIA_BUDGET_EXCEEDED"),
+        "the bomb, region or not: {}",
+        tool_msgs[2]
+    );
+    assert_eq!(payloads.len(), 2, "the bomb sent nothing");
 }

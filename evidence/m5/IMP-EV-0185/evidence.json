@@ -1,0 +1,15 @@
+{
+ "task": "IMP-EV-0185",
+ "requirement": "REQ-EV-0185",
+ "qual": "QUAL-EV-0185",
+ "tests": [
+  "qual_ev_0185_a_scanned_pdf_hands_over_bounded_page_images_and_a_text_pdf_does_not",
+  "qual_ev_0184_0185_a_text_only_model_is_told_the_modality_and_a_bridge_describes_media"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "`tests/fixtures/media/scanned.pdf` (two pages, JPEG scans, no text layer) hands over two bounded page images with `pdf_page_images` lineage `no extractable text on pages 1-2; 2 page image(s) handed over for vision (lossy, untrusted)`, while a text PDF hands over none; on the real Core the pages reach a vision model as media parts and a text-only model as per-page notes or bridge descriptions with the page, source and model on the log.",
+ "audit": "PARTIAL before: PDFs went through `pdf_text_extract` with page budgets (M4) but a scanned PDF with no text layer produced an empty derivative and nothing for vision.",
+ "limitations": "Only embedded JPEG scans are handed over; vector pages are reported as not covered rather than rasterised (no renderer in the tree). Page images share the image pixel budget, so a scan above it is skipped and named.",
+ "ci": ""
+}

@@ -44,6 +44,7 @@ fn req<'a>(bytes: &'a [u8], name: &'a str) -> ReadRequest<'a> {
         workspace_revision: Some(3),
         task_id: None,
         pages: None,
+        region: None,
         budget: default_budget(),
     }
 }
@@ -312,4 +313,216 @@ async fn fs_read_returns_media_envelopes_through_the_registry() {
         "text reads are unchanged"
     );
     assert!(o.result.structured_output.get("media").is_none());
+}
+
+fn stored(sink: &MemSink, digest: &str) -> Option<Vec<u8>> {
+    sink.0
+        .lock()
+        .unwrap()
+        .iter()
+        .find(|b| hex::encode(Sha256::digest(b)) == digest)
+        .cloned()
+}
+
+/// QUAL-EV-0185 (MEDIA-E2E-004 half without a model): a scanned PDF yields
+/// no text, so the requested pages' embedded JPEG scans are handed over as
+/// page images — metadata-stripped egress copies by digest, bounded by the
+/// page budget, labelled lossy and untrusted, the uncovered pages named —
+/// and a text PDF never does.
+#[test]
+fn qual_ev_0185_a_scanned_pdf_hands_over_bounded_page_images_and_a_text_pdf_does_not() {
+    let pdf = fixture("scanned.pdf");
+    let sink = MemSink(Mutex::new(vec![]));
+    let mut r = req(&pdf, "scanned.pdf");
+    r.pages = Some((1, 2));
+    let m = read(&r, &sink).unwrap();
+    assert_eq!(m.envelope.kind, MediaKind::Document);
+    assert_eq!(m.envelope.input_modality, "document");
+    assert_eq!(m.envelope.pages, Some(2));
+    assert!(
+        m.envelope
+            .text_derivative
+            .as_deref()
+            .unwrap_or("")
+            .trim()
+            .is_empty()
+    );
+    assert_eq!(
+        m.envelope.page_images.len(),
+        2,
+        "{:#?}",
+        m.envelope.page_images
+    );
+    for (i, p) in m.envelope.page_images.iter().enumerate() {
+        assert_eq!(p.page as usize, i + 1);
+        assert_eq!(p.mime, "image/jpeg");
+        assert_eq!(
+            (p.width, p.height),
+            (120, 80),
+            "the JPEG's own dimensions, not the PDF dictionary's"
+        );
+        let bytes = stored(&sink, &p.egress_ref).expect("page image stored by digest");
+        assert!(bytes.starts_with(&[0xFF, 0xD8]));
+        // The scan's JPEG carried EXIF (photo.jpg); the egress copy does not.
+        assert!(
+            !bytes.windows(4).any(|w| w == b"Exif"),
+            "EXIF survived into the egress copy"
+        );
+    }
+    let lineage = m
+        .envelope
+        .lineage
+        .iter()
+        .find(|t| t.name == "pdf_page_images")
+        .unwrap();
+    assert!(
+        lineage.detail.contains("no extractable text on pages 1-2"),
+        "{}",
+        lineage.detail
+    );
+    assert!(
+        lineage
+            .detail
+            .contains("2 page image(s) handed over for vision (lossy, untrusted)")
+    );
+    assert_eq!(m.envelope.trust, TrustLabel::UntrustedWorkspaceContent);
+    // A page range hands over only that range and says the rest is not covered.
+    let mut r = req(&pdf, "scanned.pdf");
+    r.pages = Some((2, 2));
+    let m = read(&r, &sink).unwrap();
+    assert_eq!(m.envelope.page_images.len(), 1);
+    assert_eq!(m.envelope.page_images[0].page, 2);
+    assert!(
+        m.envelope
+            .lineage
+            .iter()
+            .any(|t| t.detail.contains("pages outside 2-2 not covered"))
+    );
+    // A text PDF is text first and hands over no page images.
+    let report = fixture("report.pdf");
+    let m = read(&req(&report, "report.pdf"), &sink).unwrap();
+    assert!(
+        !m.envelope
+            .text_derivative
+            .as_deref()
+            .unwrap_or("")
+            .trim()
+            .is_empty()
+    );
+    assert!(m.envelope.page_images.is_empty());
+    assert!(
+        !m.envelope
+            .lineage
+            .iter()
+            .any(|t| t.name == "pdf_page_images")
+    );
+    // The page budget bounds a scan like any document: 3 pages asked of a
+    // 2-page scan is a range error; a budget of one page refuses two.
+    let mut r = req(&pdf, "scanned.pdf");
+    r.pages = Some((1, 3));
+    assert_eq!(read(&r, &sink).unwrap_err().code, "MEDIA_MALFORMED");
+    let mut r = req(&pdf, "scanned.pdf");
+    r.pages = Some((1, 2));
+    r.budget.max_pages = 1;
+    assert_eq!(read(&r, &sink).unwrap_err().code, "MEDIA_BUDGET_EXCEEDED");
+}
+
+/// QUAL-EV-0223: an explicit region crops the egress copy to the part the
+/// model needs at full resolution — smaller bytes, the region's pixels, no
+/// metadata — while the original stays by digest; an out-of-bounds region
+/// is refused; a JPEG region is a typed refusal, never a silent full image;
+/// an oversized image is bounded as before.
+#[test]
+fn qual_ev_0223_a_region_crops_the_egress_copy_and_oversized_media_stays_bounded() {
+    let png = fixture("label.png");
+    let sink = MemSink(Mutex::new(vec![]));
+    let full = read(&req(&png, "label.png"), &sink).unwrap();
+    let (w, h) = (full.envelope.width.unwrap(), full.envelope.height.unwrap());
+    assert!(w >= 8 && h >= 8, "{w}x{h}");
+    let full_egress = stored(&sink, full.envelope.egress_ref.as_deref().unwrap()).unwrap();
+    let mut r = req(&png, "label.png");
+    let region = (w / 4, h / 4, w / 2, h / 2);
+    r.region = Some(region);
+    let m = read(&r, &sink).unwrap();
+    assert_eq!(m.envelope.region, Some(region));
+    assert_eq!(
+        (m.envelope.width, m.envelope.height),
+        (Some(w / 2), Some(h / 2))
+    );
+    let crop = stored(&sink, m.envelope.egress_ref.as_deref().unwrap()).unwrap();
+    assert!(crop.starts_with(b"\x89PNG"));
+    assert!(
+        crop.len() < full_egress.len(),
+        "{} vs {}",
+        crop.len(),
+        full_egress.len()
+    );
+    assert!(
+        !crop.windows(4).any(|w| w == b"tEXt"),
+        "metadata in the crop"
+    );
+    // The crop decodes to exactly the region.
+    let decoder = png::Decoder::new(std::io::Cursor::new(&crop));
+    let mut reader = decoder.read_info().unwrap();
+    let info = reader.info();
+    assert_eq!((info.width, info.height), (w / 2, h / 2));
+    let mut buf = vec![0u8; reader.output_buffer_size().unwrap()];
+    reader.next_frame(&mut buf).unwrap();
+    assert_eq!(
+        m.envelope.provenance.original_digest,
+        full.envelope.provenance.original_digest
+    );
+    assert!(
+        m.envelope
+            .lineage
+            .iter()
+            .any(|t| t.name == "crop" && t.detail.contains("re-encoded PNG without metadata"))
+    );
+    // Refusals.
+    let mut r = req(&png, "label.png");
+    r.region = Some((w - 2, h - 2, 8, 8));
+    assert_eq!(read(&r, &sink).unwrap_err().code, "MEDIA_MALFORMED");
+    let jpg = fixture("photo.jpg");
+    let mut r = req(&jpg, "photo.jpg");
+    r.region = Some((0, 0, 4, 4));
+    assert_eq!(read(&r, &sink).unwrap_err().code, "MEDIA_CROP_UNSUPPORTED");
+    // Oversized: the pixel bomb is refused before decoding, region or not.
+    let bomb = fixture("bomb.png");
+    let mut r = req(&bomb, "bomb.png");
+    r.region = Some((0, 0, 8, 8));
+    assert_eq!(read(&r, &sink).unwrap_err().code, "MEDIA_BUDGET_EXCEEDED");
+}
+
+/// QUAL-EV-0184 (pipeline half): audio and video are typed by magic bytes
+/// with their modality named and no transcript or frame invented; the
+/// bytes are retained by digest.
+#[test]
+fn qual_ev_0184_audio_and_video_are_typed_with_their_modality_and_nothing_is_invented() {
+    let sink = MemSink(Mutex::new(vec![]));
+    let wav = fixture("silence.wav");
+    let m = read(&req(&wav, "silence.wav"), &sink).unwrap();
+    assert_eq!(
+        (m.envelope.kind, m.envelope.mime.as_str()),
+        (MediaKind::Audio, "audio/wav")
+    );
+    assert_eq!(m.envelope.input_modality, "audio");
+    assert!(m.envelope.text_derivative.is_none());
+    assert!(m.envelope.lineage.iter().any(|t| t.name == "metadata_only"));
+    assert!(stored(&sink, &m.envelope.content_ref).is_some());
+    let mp4 = fixture("clip.mp4");
+    let m = read(&req(&mp4, "clip.mp4"), &sink).unwrap();
+    assert_eq!(
+        (m.envelope.kind, m.envelope.mime.as_str()),
+        (MediaKind::Video, "video/mp4")
+    );
+    assert_eq!(m.envelope.input_modality, "video");
+    assert!(m.envelope.text_derivative.is_none());
+    let png = fixture("label.png");
+    assert_eq!(
+        read(&req(&png, "label.png"), &sink)
+            .unwrap()
+            .envelope
+            .input_modality,
+        "image"
+    );
 }

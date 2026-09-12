@@ -407,6 +407,30 @@ pub enum TaskEvent {
         /// Invalid files as `source: why`.
         invalid: Vec<String>,
     },
+    /// `MediaBridged` (REQ-EV-0184 / 0185): the routed model takes no input
+    /// of this media's modality, so a configured vision bridge described it
+    /// (or failed to); the description is lossy, untrusted data. No state
+    /// change.
+    MediaBridged {
+        /// Digest of the egress copy described.
+        digest: String,
+        /// MIME.
+        mime: String,
+        /// The routed model that could not take it (`endpoint/model`).
+        routed_model: String,
+        /// Bridge endpoint.
+        bridge_endpoint: String,
+        /// Bridge model.
+        bridge_model: String,
+        /// Object hash of the description, when one came back.
+        description_ref: Option<String>,
+        /// Bridge input tokens.
+        input_tokens: u64,
+        /// Bridge output tokens.
+        output_tokens: u64,
+        /// Why no description came back, when it did not.
+        error: Option<String>,
+    },
     /// `SkillRejected`: a skill named for the task was not used, with why.
     /// No state change.
     SkillRejected {
@@ -886,6 +910,7 @@ impl TaskEvent {
             Self::SkillSelected { .. } => "SkillSelected",
             Self::SkillRejected { .. } => "SkillRejected",
             Self::RulesSelected { .. } => "RulesSelected",
+            Self::MediaBridged { .. } => "MediaBridged",
             Self::ContextEpochOpened { .. } => "ContextEpochOpened",
             Self::CompactionStarted { .. } => "CompactionStarted",
             Self::CompactionCommitted { .. } => "CompactionCommitted",
@@ -1009,6 +1034,7 @@ impl Task {
             | TaskEvent::SkillSelected { .. }
             | TaskEvent::SkillRejected { .. }
             | TaskEvent::RulesSelected { .. }
+            | TaskEvent::MediaBridged { .. }
             | TaskEvent::ContextEpochOpened { .. }
             | TaskEvent::CompactionStarted { .. }
             | TaskEvent::CompactionCommitted { .. }

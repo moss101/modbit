@@ -129,7 +129,7 @@ tool!(
         "fs.read",
         "Read a file inside the workspace; returns content, content_hash and workspace_revision.",
         EffectClass::ReadOnly,
-        json!({"type":"object","properties":{"path":{"type":"string"},"max_bytes":{"type":"integer","minimum":1},"pages":{"type":"array","items":{"type":"integer","minimum":1},"minItems":2,"maxItems":2}},"required":["path"],"additionalProperties":false}),
+        json!({"type":"object","properties":{"path":{"type":"string"},"max_bytes":{"type":"integer","minimum":1},"pages":{"type":"array","items":{"type":"integer","minimum":1},"minItems":2,"maxItems":2},"region":{"type":"object","properties":{"x":{"type":"integer","minimum":0},"y":{"type":"integer","minimum":0},"width":{"type":"integer","minimum":1},"height":{"type":"integer","minimum":1}},"required":["x","y","width","height"],"additionalProperties":false}},"required":["path"],"additionalProperties":false}),
         &["fs.read"],
         Idempotency::Idempotent
     ),
@@ -142,6 +142,26 @@ tool!(
             .and_then(Value::as_u64)
             .unwrap_or(u64::MAX) as usize;
         match ws.lock().await.read(&s(&args, "path")) {
+            // REQ-EV-0186: a notebook reads as structure — cells with their
+            // stable ids, types, sources and output summaries — never as a
+            // JSON blob to be string-replaced.
+            Ok(r)
+                if r.path.ends_with(".ipynb")
+                    && crate::media::detect(&r.bytes).0
+                        == modbit_domain::media::MediaKind::Text =>
+            {
+                match crate::notebook::read(&r.bytes) {
+                    Ok(view) => ToolOutcome::ok(json!({
+                        "path": r.path,
+                        "content_hash": r.content_hash,
+                        "workspace_revision": r.workspace_revision,
+                        "byte_length": r.bytes.len(),
+                        "notebook": view,
+                        "edit_hint": "change.apply op=notebook_cell with cell_id and source rewrites one cell; the edited cell's outputs and execution count are cleared, every other cell is kept",
+                    })),
+                    Err(e) => ToolOutcome::fail(e.code, e.message),
+                }
+            }
             Ok(r) if crate::media::detect(&r.bytes).0 != modbit_domain::media::MediaKind::Text => {
                 // Media Pipeline (docs/25): typed envelope with provenance, budgets and digests;
                 // bytes never reach the model view inline.
@@ -154,12 +174,19 @@ tool!(
                         _ => None,
                     }
                 });
+                // REQ-EV-0223: an explicit region crops the egress copy to
+                // the part the model needs at full resolution.
+                let region = args.get("region").and_then(|r| {
+                    let n = |k: &str| r.get(k).and_then(Value::as_u64).map(|v| v as u32);
+                    Some((n("x")?, n("y")?, n("width")?, n("height")?))
+                });
                 let req = crate::media::ReadRequest {
                     bytes: &r.bytes,
                     source: &r.path,
                     workspace_revision: Some(r.workspace_revision),
                     task_id: Some(ctx.task_id),
                     pages,
+                    region,
                     budget: crate::media::default_budget(),
                 };
                 match crate::media::read(&req, ctx.sink.as_ref()) {
@@ -273,9 +300,9 @@ tool!(
     ChangeApply,
     spec(
         "change.apply",
-        "Apply a revision-bound change: create | replace | patch (byte-range edits) | edit (ordered text edits located exactly once: exact, then whitespace-remapped; ambiguity fails) | delete; refuses stale preconditions.",
+        "Apply a revision-bound change: create | replace | patch (byte-range edits) | edit (ordered text edits located exactly once: exact, then whitespace-remapped; ambiguity fails) | delete | notebook_cell (rewrite one .ipynb cell's source by its stable cell_id; its outputs and execution count are cleared, every other cell kept); refuses stale preconditions.",
         EffectClass::ReversibleWrite,
-        json!({"type":"object","properties":{"path":{"type":"string"},"op":{"type":"string","enum":["create","replace","patch","edit","delete"]},"content":{"type":"string"},"edits":{"type":"array","items":{"type":"object","properties":{"start":{"type":"integer","minimum":0},"end":{"type":"integer","minimum":0},"replacement":{"type":"string"}},"required":["start","end","replacement"],"additionalProperties":false}},"text_edits":{"type":"array","items":{"type":"object","properties":{"old":{"type":"string"},"new":{"type":"string"}},"required":["old","new"],"additionalProperties":false}},"expected_content_hash":{"type":"string"},"expected_workspace_revision":{"type":"integer","minimum":0}},"required":["path","op"],"additionalProperties":false}),
+        json!({"type":"object","properties":{"path":{"type":"string"},"op":{"type":"string","enum":["create","replace","patch","edit","delete","notebook_cell"]},"content":{"type":"string"},"cell_id":{"type":"string"},"source":{"type":"string"},"edits":{"type":"array","items":{"type":"object","properties":{"start":{"type":"integer","minimum":0},"end":{"type":"integer","minimum":0},"replacement":{"type":"string"}},"required":["start","end","replacement"],"additionalProperties":false}},"text_edits":{"type":"array","items":{"type":"object","properties":{"old":{"type":"string"},"new":{"type":"string"}},"required":["old","new"],"additionalProperties":false}},"expected_content_hash":{"type":"string"},"expected_workspace_revision":{"type":"integer","minimum":0}},"required":["path","op"],"additionalProperties":false}),
         &["fs.write"],
         Idempotency::NonIdempotent
     ),
@@ -325,6 +352,26 @@ tool!(
                 }
             }
             "delete" => ws.delete(&path, pre),
+            "notebook_cell" => {
+                // REQ-EV-0186: one cell by stable id, revision-bound like any
+                // other write; the notebook is re-serialized in Jupyter's
+                // canonical form so the diff is the cell.
+                let cell_id = s(&args, "cell_id");
+                if cell_id.is_empty() {
+                    return ToolOutcome::fail(
+                        "NOTEBOOK_NO_SUCH_CELL",
+                        "notebook_cell needs a cell_id",
+                    );
+                }
+                let current = match ws.read(&path) {
+                    Ok(r) => r,
+                    Err(e) => return ws_err(e),
+                };
+                match crate::notebook::edit_cell(&current.bytes, &cell_id, &s(&args, "source")) {
+                    Ok(bytes) => ws.atomic_replace(&path, &bytes, pre),
+                    Err(e) => return ToolOutcome::fail(e.code, e.message),
+                }
+            }
             other => return ToolOutcome::fail("BAD_OP", format!("unknown op `{other}`")),
         };
         match r {

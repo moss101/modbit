@@ -929,6 +929,9 @@ pub fn default_openai_models() -> Vec<ModelCapability> {
         cap("gpt-5-mini", 400_000, 128_000, true, true, 0.25, 2.0),
         cap("gpt-4.1", 1_000_000, 32_768, false, true, 2.0, 8.0),
         cap("gpt-4.1-mini", 1_000_000, 32_768, false, true, 0.4, 1.6),
+        // Text only: no image input, so media reaches it through the vision
+        // bridge or as an explicit unsupported-modality note (REQ-EV-0184).
+        cap("o3-mini", 200_000, 100_000, true, false, 1.1, 4.4),
     ]
 }
 

@@ -19,6 +19,7 @@
 
 pub mod direct;
 pub mod media;
+pub mod notebook;
 pub mod pipeline;
 pub mod policy;
 pub mod registry;

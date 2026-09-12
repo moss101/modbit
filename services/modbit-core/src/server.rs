@@ -1934,6 +1934,7 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 workspace_revision: None,
                 task_id: Some(task_id),
                 pages: None,
+                region: None,
                 budget: modbit_tools::media::default_budget(),
             };
             let read = match modbit_tools::media::read(&req, &sink) {

@@ -14817,8 +14817,35 @@
    "milestone": "M5",
    "qual": "QUAL-EV-0184",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-12T11:53:41Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: see evidence/m5/IMP-EV-0184/TASK_CARD.md (existing-code audit)"
+    },
+    {
+     "at": "2026-09-12T11:53:41Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implementing per the task card"
+    },
+    {
+     "at": "2026-09-12T11:53:41Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired: fs.read/change.apply/Core media bridge paths reachable from the production tool surface"
+    },
+    {
+     "at": "2026-09-12T12:42:09Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification: Core E2E tests against real fixtures (see card)"
+    }
+   ],
+   "status_changed_on": "2026-09-12T12:42:09Z"
   },
   {
    "id": "IMP-EV-0185",
@@ -14831,8 +14858,35 @@
    "milestone": "M5",
    "qual": "QUAL-EV-0185",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-12T11:53:41Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: see evidence/m5/IMP-EV-0185/TASK_CARD.md (existing-code audit)"
+    },
+    {
+     "at": "2026-09-12T11:53:41Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implementing per the task card"
+    },
+    {
+     "at": "2026-09-12T11:53:41Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired: fs.read/change.apply/Core media bridge paths reachable from the production tool surface"
+    },
+    {
+     "at": "2026-09-12T12:42:09Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification: Core E2E tests against real fixtures (see card)"
+    }
+   ],
+   "status_changed_on": "2026-09-12T12:42:09Z"
   },
   {
    "id": "IMP-EV-0186",
@@ -14845,8 +14899,35 @@
    "milestone": "M5",
    "qual": "QUAL-EV-0186",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-12T11:53:41Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: see evidence/m5/IMP-EV-0186/TASK_CARD.md (existing-code audit)"
+    },
+    {
+     "at": "2026-09-12T11:53:41Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implementing per the task card"
+    },
+    {
+     "at": "2026-09-12T11:53:41Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired: fs.read/change.apply/Core media bridge paths reachable from the production tool surface"
+    },
+    {
+     "at": "2026-09-12T12:42:09Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification: Core E2E tests against real fixtures (see card)"
+    }
+   ],
+   "status_changed_on": "2026-09-12T12:42:09Z"
   },
   {
    "id": "IMP-EV-0187",
@@ -16512,8 +16593,35 @@
    "milestone": "M5",
    "qual": "QUAL-EV-0223",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-12T11:53:41Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: see evidence/m5/IMP-EV-0223/TASK_CARD.md (existing-code audit)"
+    },
+    {
+     "at": "2026-09-12T11:53:41Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implementing per the task card"
+    },
+    {
+     "at": "2026-09-12T11:53:41Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired: fs.read/change.apply/Core media bridge paths reachable from the production tool surface"
+    },
+    {
+     "at": "2026-09-12T12:42:09Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification: Core E2E tests against real fixtures (see card)"
+    }
+   ],
+   "status_changed_on": "2026-09-12T12:42:09Z"
   },
   {
    "id": "IMP-EV-0224",

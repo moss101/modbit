@@ -56,17 +56,6 @@ pub async fn select_for_run(
         .map(|raw| modbit_skills::trusted_keys_from_env(&raw))
         .unwrap_or_default();
     let registry = SkillRegistry::discover(&roots(core, task), &trusted, &policy());
-    eprintln!(
-        "DEBUG skills roots={:?} trusted={} skills={:?} rejected={:?}",
-        roots(core, task),
-        trusted.len(),
-        registry
-            .skills
-            .iter()
-            .map(|s| (s.package.manifest.name.clone(), s.lifecycle))
-            .collect::<Vec<_>>(),
-        registry.rejected
-    );
     let (selected, rejected) = modbit_skills::select(&registry, &task.goal_text, explicit);
     if selected.is_empty() && rejected.is_empty() && registry.rejected.is_empty() {
         return vec![];
