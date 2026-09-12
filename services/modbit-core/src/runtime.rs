@@ -210,8 +210,15 @@ impl Runtime {
             let mut store = core.store.lock().await;
             match task.state {
                 TaskState::Queued => {
-                    cfg.ticket_id =
-                        Self::take_run_ticket(&mut store, core, &task, &actor, lease_generation)?;
+                    if cfg.ticket_id.is_empty() {
+                        cfg.ticket_id = Self::take_run_ticket(
+                            &mut store,
+                            core,
+                            &task,
+                            &actor,
+                            lease_generation,
+                        )?;
+                    }
                     let run_id = RunId::new();
                     let attempt = store
                         .runs_for_task(&task.task_id)
@@ -292,8 +299,15 @@ impl Runtime {
                             ),
                         ));
                     }
-                    cfg.ticket_id =
-                        Self::take_run_ticket(&mut store, core, &task, &actor, lease_generation)?;
+                    if cfg.ticket_id.is_empty() {
+                        cfg.ticket_id = Self::take_run_ticket(
+                            &mut store,
+                            core,
+                            &task,
+                            &actor,
+                            lease_generation,
+                        )?;
+                    }
                     let run = match run {
                         Some(r) => r,
                         None => {
@@ -1420,6 +1434,33 @@ pub(crate) async fn rebuild(
                 }
                 state.begin_leg();
             }
+            // M6.3: a subagent runs inside its capsule — its write scope
+            // and its tool set — after any restart.
+            "SubagentCapsuleBound" => {
+                if let Some(r) = payload["capsule_ref"].as_str()
+                    && let Ok(bytes) = store.objects().get(r)
+                    && let Ok(c) = serde_json::from_slice::<
+                        modbit_domain::agent::AgentExecutionCapsule,
+                    >(&bytes)
+                {
+                    state.write_scope = c.spec.write_scope.clone();
+                    state.capsule = Some(serde_json::json!({
+                        "agent_id": c.agent_id.to_string(),
+                        "parent_task_id": c.parent_task_id.to_string(),
+                        "capsule_ref": r,
+                        "tools": c.tools,
+                        "depth": c.depth,
+                        "objective": c.spec.objective,
+                        "write_scope": c.spec.write_scope,
+                        "read_scope": c.spec.read_scope,
+                        "verification": c.spec.verification,
+                        "expected_artifacts": c.spec.expected_artifacts,
+                        "branch": c.branch,
+                        "worktree": c.worktree,
+                        "note": "you are a subagent inside this capsule: write only inside write_scope, finish with task.complete; your result goes to your parent as a typed envelope",
+                    }));
+                }
+            }
             "TaskSteered" => {
                 state.steers += 1;
                 applied += 1;
@@ -1869,7 +1910,22 @@ fn projection(
     // `tool.search` description and hydrated only once activated.
     let mut deferred: Vec<(String, String)> = Vec::new();
     let mut tools: Vec<ToolProjection> = Vec::new();
+    // M6.3 (REQ-EV-0048): a subagent's capsule may name the tools it may
+    // see; the profile's projection is narrowed to them.
+    let capsule_tools: Vec<String> = state
+        .capsule
+        .as_ref()
+        .and_then(|c| c["tools"].as_array())
+        .map(|a| {
+            a.iter()
+                .filter_map(|x| x.as_str().map(str::to_owned))
+                .collect()
+        })
+        .unwrap_or_default();
     for s in visible {
+        if !capsule_tools.is_empty() && !capsule_tools.iter().any(|t| t == &s.name) {
+            continue;
+        }
         if let Err(w) = harness::project(&s.name, s.effect_class, &s.required_capabilities, &scope)
         {
             state.withheld_tools.push(w);
@@ -1941,6 +1997,11 @@ fn projection(
                 .join("; ")
         )
     };
+    // M6.3: the agent tools, for a primary only (a child of the maximum
+    // depth delegates nothing, REQ-EV-0051 / 0219).
+    if state.capsule.is_none() {
+        tools.extend(crate::agent_tools::projections());
+    }
     tools.push(ToolProjection {
         name: PLAN_TOOL.into(),
         description: format!(
@@ -1967,7 +2028,14 @@ fn projection(
         .filter(|n| {
             !matches!(
                 n.as_str(),
-                TOOL_SEARCH | CONTEXT_TOOL | ASK_TOOL | PLAN_TOOL
+                TOOL_SEARCH
+                    | CONTEXT_TOOL
+                    | ASK_TOOL
+                    | PLAN_TOOL
+                    | crate::agent_tools::SPAWN_TOOL
+                    | crate::agent_tools::WAIT_TOOL
+                    | crate::agent_tools::RESULT_TOOL
+                    | crate::agent_tools::CANCEL_TOOL
             )
         })
         .collect();
@@ -3287,6 +3355,54 @@ async fn run_loop(
                     }
                     (r.entry, StepType::ProcedureRun, r.failure_code)
                 }
+                crate::agent_tools::SPAWN_TOOL => {
+                    let r = crate::agent_tools::handle_spawn(
+                        &core,
+                        &task,
+                        run_id,
+                        cfg.lease_generation,
+                        modbit_domain::agent::AgentBinding {
+                            endpoint: cfg.endpoint.clone(),
+                            model: cfg.model.clone(),
+                        },
+                        &actor,
+                        &state,
+                        &call_id,
+                        &arguments_json,
+                    )
+                    .await;
+                    if r.failure_code.is_none() {
+                        progress = true;
+                    }
+                    (r.entry, StepType::Handoff, r.failure_code)
+                }
+                crate::agent_tools::WAIT_TOOL | crate::agent_tools::RESULT_TOOL => {
+                    let r = crate::agent_tools::handle_wait(
+                        &core,
+                        &task,
+                        &call_id,
+                        &arguments_json,
+                        name == crate::agent_tools::WAIT_TOOL,
+                    )
+                    .await;
+                    if let TranscriptEntry::ToolResult { progress: p, .. } = &r.entry {
+                        progress |= *p;
+                    }
+                    (r.entry, StepType::Handoff, r.failure_code)
+                }
+                crate::agent_tools::CANCEL_TOOL => {
+                    let r = crate::agent_tools::handle_cancel(
+                        &core,
+                        &task,
+                        lt,
+                        &actor,
+                        &call_id,
+                        &arguments_json,
+                    )
+                    .await;
+                    progress = true;
+                    (r.entry, StepType::Handoff, r.failure_code)
+                }
                 COMPLETE_TOOL if programs.any_running() => {
                     let entry = TranscriptEntry::ToolResult {
                         call_id: call_id.clone(),
@@ -3540,6 +3656,7 @@ async fn run_loop(
                             }
                             let code = match &refusal {
                                 HarnessRefusal::PlanRequired => "PLAN_REQUIRED",
+                                HarnessRefusal::WriteScopeDenied { .. } => "WRITE_SCOPE_DENIED",
                                 HarnessRefusal::PlanRevisionRequired { .. } => {
                                     "PLAN_REVISION_REQUIRED"
                                 }
@@ -4380,6 +4497,19 @@ async fn run_loop(
             &actor,
             agent_end.0,
             &agent_end.1,
+        );
+    }
+    // M6.5: a subagent's result envelope goes to its parent with the run.
+    if let Some(c) = state.capsule.clone() {
+        crate::spawn::record_result(
+            &mut store,
+            &core,
+            &task,
+            &c,
+            &state,
+            agent_end.0,
+            &agent_end.1,
+            &actor,
         );
     }
     // M6.2: the run's capacity returns to the pool with the run.
@@ -5719,6 +5849,9 @@ async fn handle_complete(
     } else {
         precheck
     };
+    if verdict.is_ok() {
+        state.completion_summary = v["summary"].as_str().map(str::to_owned);
+    }
     match verdict {
         Ok(()) => (
             TranscriptEntry::ToolResult {

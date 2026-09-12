@@ -1,0 +1,14 @@
+{
+ "task": "IMP-EV-0267",
+ "requirement": "REQ-EV-0267",
+ "qual": "QUAL-EV-0267",
+ "tests": [
+  "m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "with `MODBIT_FAULT_SPAWN=WORKTREE` the admission fails after the fork: the worktree is removed, the child task cancelled and the capacity ticket released (`SubagentAdmissionRefused` with `stage: WORKTREE` and the three rollback records); the worktrees directory is empty, the AgentGraph holds the primary only, the pool holds no ticket; the happy path admits three children whose tickets all return with their runs.",
+ "audit": "MISSING before: no admission existed.",
+ "limitations": "One fault point is injected (after the worktree); the other rollback paths share the same functions.",
+ "ci": ""
+}

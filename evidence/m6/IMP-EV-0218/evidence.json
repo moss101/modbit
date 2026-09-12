@@ -1,0 +1,14 @@
+{
+ "task": "IMP-EV-0218",
+ "requirement": "REQ-EV-0218",
+ "qual": "QUAL-EV-0218",
+ "tests": [
+  "m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "the explorer (read tools only) is refused when it tries `change.apply` and changes nothing; each builder mutates only its own worktree under its lease and scope.",
+ "audit": "MISSING before.",
+ "limitations": "A dedicated plan-mode child profile is IMP-EV-0117.",
+ "ci": ""
+}

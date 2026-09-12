@@ -45,6 +45,9 @@ pub enum TaskOrigin {
     ForgeWebhook,
     /// Forked from another task at a checkpoint (REQ-EV-0077/0122).
     Fork,
+    /// A subagent's task, admitted by a parent agent (M6.3, docs/14
+    /// "Transactional subagent admission").
+    Subagent,
 }
 
 /// Typed input dispatch mode (MOD-INPUT-001, docs/14): concurrency semantics
@@ -441,6 +444,83 @@ pub enum TaskEvent {
         to: crate::agent::AgentBinding,
         /// Why.
         reason: String,
+    },
+    /// `SubagentAdmitted` (M6.3, REQ-EV-0267; docs/14 "Transactional
+    /// subagent admission"): the admission transaction committed whole —
+    /// capacity ticket, parent generation, write-set check, worktree,
+    /// capability lease, agent node and work ownership — and the child's
+    /// task exists. Recorded on the parent task. No state change.
+    SubagentAdmitted {
+        /// The child node.
+        agent_id: crate::AgentId,
+        /// The child's task.
+        child_task_id: crate::TaskId,
+        /// Object hash of the `AgentExecutionCapsule` (REQ-EV-0048).
+        capsule_ref: String,
+        /// The capacity ticket the child holds.
+        ticket_id: String,
+        /// The child's worktree root.
+        worktree: String,
+        /// The child's branch.
+        branch: String,
+        /// The paths the child may write.
+        write_scope: Vec<String>,
+        /// The work node it owns.
+        work_node: String,
+        /// The idempotency key the spawn carried.
+        idempotency_key: String,
+        /// `FOREGROUND` | `BACKGROUND`.
+        mode: String,
+    },
+    /// `SubagentAdmissionRefused`: an admission step failed and everything
+    /// taken before it was returned; nothing started (REQ-EV-0267). No
+    /// state change.
+    SubagentAdmissionRefused {
+        /// The key the spawn carried.
+        idempotency_key: String,
+        /// Refusal code.
+        code: String,
+        /// Why.
+        detail: String,
+        /// The step that refused: `IDEMPOTENCY` | `DEPTH` | `PARENT` |
+        /// `WRITE_SET` | `CAPACITY` | `WORKTREE` | `LEASE` | `START`.
+        stage: String,
+        /// What was rolled back, in order.
+        rolled_back: Vec<String>,
+    },
+    /// `SubagentCapsuleBound` (M6.3): on the child's own log, the capsule it
+    /// runs inside and the parent it reports to; the child's harness reads
+    /// its write scope and tool set from here. No state change.
+    SubagentCapsuleBound {
+        /// The child node.
+        agent_id: crate::AgentId,
+        /// The parent task.
+        parent_task_id: crate::TaskId,
+        /// Object hash of the `AgentExecutionCapsule`.
+        capsule_ref: String,
+    },
+    /// `SubagentResultRecorded` (M6.5, docs/14 "Agent-to-agent
+    /// communication"): the child's typed result envelope, on the parent
+    /// task. No state change.
+    SubagentResultRecorded {
+        /// The child node.
+        agent_id: crate::AgentId,
+        /// The child's task.
+        child_task_id: crate::TaskId,
+        /// `COMPLETED` | `FAILED` | `CANCELLED` | `WAITING`.
+        status: String,
+        /// Object hash of the `SubagentResult`.
+        result_ref: String,
+        /// The summary the child gave.
+        summary: String,
+        /// Paths the child changed in its worktree.
+        artifacts: Vec<String>,
+        /// Evidence references (verification runs, objects, offsets).
+        evidence_refs: Vec<String>,
+        /// Unresolved risks (self-review findings left open, refusals).
+        unresolved_risks: Vec<String>,
+        /// The child's branch, for the parent's merge.
+        branch: String,
     },
     /// `WorkNodesChanged` (M6.1, REQ-EV-0052 / 0120): a plan version
     /// created or changed work nodes; the nodes as they stand after the
@@ -1004,6 +1084,10 @@ impl TaskEvent {
             Self::AgentNodeCreated { .. } => "AgentNodeCreated",
             Self::AgentNodeTransitioned { .. } => "AgentNodeTransitioned",
             Self::AgentBindingChanged { .. } => "AgentBindingChanged",
+            Self::SubagentAdmitted { .. } => "SubagentAdmitted",
+            Self::SubagentAdmissionRefused { .. } => "SubagentAdmissionRefused",
+            Self::SubagentCapsuleBound { .. } => "SubagentCapsuleBound",
+            Self::SubagentResultRecorded { .. } => "SubagentResultRecorded",
             Self::WorkNodesChanged { .. } => "WorkNodesChanged",
             Self::CapacityTicketGranted { .. } => "CapacityTicketGranted",
             Self::CapacityTicketReleased { .. } => "CapacityTicketReleased",
@@ -1140,6 +1224,10 @@ impl Task {
             | TaskEvent::AgentNodeTransitioned { .. }
             | TaskEvent::AgentBindingChanged { .. }
             | TaskEvent::WorkNodesChanged { .. }
+            | TaskEvent::SubagentAdmitted { .. }
+            | TaskEvent::SubagentAdmissionRefused { .. }
+            | TaskEvent::SubagentCapsuleBound { .. }
+            | TaskEvent::SubagentResultRecorded { .. }
             | TaskEvent::ContextEpochOpened { .. }
             | TaskEvent::CompactionStarted { .. }
             | TaskEvent::CompactionCommitted { .. }

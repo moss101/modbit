@@ -2601,6 +2601,7 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                     Some(PathBuf::from(p.worktree_dir.trim()))
                 },
                 new_task_id,
+                subagent: None,
             };
             match crate::branch::fork(core, req, &actor).await {
                 Ok(Ok(f)) => accept(

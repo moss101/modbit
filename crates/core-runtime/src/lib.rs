@@ -18,6 +18,7 @@
 
 pub mod admission;
 pub mod capacity;
+pub mod conflict;
 pub mod diagnostics;
 pub mod harness;
 

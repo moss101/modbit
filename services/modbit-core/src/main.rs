@@ -9,6 +9,7 @@
 use std::path::PathBuf;
 use std::process::ExitCode;
 
+mod agent_tools;
 mod agents;
 mod assurance;
 mod baseline;
@@ -33,6 +34,7 @@ mod runtime;
 mod server;
 mod side;
 mod skills;
+mod spawn;
 mod statistics;
 mod subagent;
 mod tools;

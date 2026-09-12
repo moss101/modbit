@@ -2288,6 +2288,7 @@ async fn scripted_model_reactive(
                     .unwrap_or_default()
                     .to_owned();
                 let model_name = body["model"].as_str().map(str::to_owned);
+                let body_text = body.to_string();
                 seen.lock().unwrap().push(body);
                 if stall_at == Some(results)
                     && !stalled_once.swap(true, std::sync::atomic::Ordering::SeqCst)
@@ -2304,9 +2305,15 @@ async fn scripted_model_reactive(
                     .iter()
                     .find(|(needle, _)| last_tool_text.contains(needle.as_str()))
                     .map(|(_, r)| r.clone());
+                // A script keyed by the request's model, or by a needle in
+                // the request itself (a child agent's goal, M6.3), so runs
+                // that share a model are told apart by what they were asked.
                 let model_script = by_model
                     .iter()
-                    .find(|(m, _)| Some(m.as_str()) == model_name.as_deref())
+                    .find(|(m, _)| {
+                        Some(m.as_str()) == model_name.as_deref()
+                            || (m.starts_with("needle:") && body_text.contains(&m[7..]))
+                    })
                     .map(|(_, s)| s);
                 let reply = reaction.unwrap_or_else(|| {
                     if for_specialist {
@@ -22613,4 +22620,651 @@ async fn m6_2_capacity_tickets_gate_runs_all_or_nothing_and_lapse_at_expiry() {
     let v3 = capacity(&mut c, 0x90).await;
     assert!(v3.tickets.is_empty(), "everything released: {v3:?}");
     core.kill();
+}
+
+/// Create a task with its own goal text.
+async fn create_task_with_goal(
+    c: &mut Client,
+    session: &Id,
+    g: Option<u64>,
+    root: &str,
+    id: u8,
+    goal: &str,
+) -> Id {
+    let ack = c
+        .command(envelope_fenced(
+            id16(id),
+            "CreateTask",
+            CreateTask {
+                session_id: Some(session.clone()),
+                goal_text: goal.into(),
+                workspace_id: None,
+                execution_profile: "local_trusted".into(),
+                origin: "cli".into(),
+                workspace_root: root.into(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    Client::result::<TaskCreated>(&ack)
+        .unwrap()
+        .task_id
+        .unwrap()
+}
+
+/// M6.3 — transactional subagent admission, M6.5 — result handoff
+/// (E2E-009, E2E-010; docs/14 "Decomposition", "Transactional subagent
+/// admission", "Agent-to-agent communication"; QUAL-EV-0267, 0007, 0051,
+/// 0048, 0078, 0046, 0006-shape): the primary proposes two builders with
+/// disjoint write sets; both are admitted as one transaction each — a
+/// capacity ticket, the parent's liveness, the write-set check, a worktree
+/// and branch of their own, a lease narrowed to their write scope, an
+/// agent node and the work node they own — run inside their capsule with
+/// nothing of the parent's transcript, cannot write outside their scope,
+/// and hand a typed result envelope back that the parent collects; the
+/// branches merge cleanly. A third builder whose write set overlaps is
+/// refused `WRITE_CONFLICT` with nothing created; a retried spawn with the
+/// same key reattaches to the one child; a failure injected after the
+/// worktree rolls everything back — worktree removed, child task
+/// cancelled, capacity ticket returned; nested delegation is refused.
+#[tokio::test]
+async fn m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back() {
+    use modbit_protocol::v1::{
+        AgentGraphView, GetAgentGraph, GetCapacity, StartTask, TaskRunStarted,
+    };
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[
+        ("README.md", "# split work\n"),
+        ("src/a/.keep", ""),
+        ("src/b/.keep", ""),
+    ]);
+    let parent_goal = "PARENT-GOAL-MARKER: delegate two disjoint modules";
+    let parent = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "two modules exist", "expected_files": ["README.md"], "steps": [
+            {"id": "a", "title": "module a"}, {"id": "b", "title": "module b"}]}}]}),
+        json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "child-a", "objective": "create src/a/a.txt containing alpha", "write_scope": ["src/a/"], "work_node": "a", "verification": "the file exists", "max_turns": 6}}]}),
+        // The same key again: a transport retry reattaches, no second child.
+        json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "child-a", "objective": "create src/a/a.txt containing alpha", "write_scope": ["src/a/"], "work_node": "a", "max_turns": 6}}]}),
+        json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "child-b", "objective": "create src/b/b.txt containing beta", "write_scope": ["src/b/"], "work_node": "b", "max_turns": 6}}]}),
+        // Overlaps child-a's scope: refused before anything is taken.
+        json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "child-c", "objective": "rewrite src/a/x.txt", "write_scope": ["src/a/x.txt"], "max_turns": 6}}]}),
+        // An explorer: read tools only, a disjoint (unused) scope.
+        json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "child-e", "objective": "explore README.md and report", "write_scope": ["docs/"], "required_tools": ["fs.read", "fs.list", "search.exact"], "max_turns": 6}}]}),
+        json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "child-a", "timeout_ms": 60000}}]}),
+        json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "child-b", "timeout_ms": 60000}}]}),
+        json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "child-e", "timeout_ms": 60000}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "delegated and collected", "self_review": {"findings": []}}}]}),
+    ];
+    // The explorer reads, then tries to write: its capsule projects no
+    // write tool at all (REQ-EV-0218), so the call is refused as not
+    // projected; it reports instead.
+    let child_e = vec![
+        json!({"calls": [{"name": "fs.read", "args": {"path": "README.md"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "docs/notes.md", "op": "replace", "content": "x\n"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "README says split work", "self_review": {"findings": []}}}]}),
+    ];
+    let child_a = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "a.txt exists", "expected_files": ["src/a/a.txt"]}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "src/a/a.txt", "op": "replace", "content": "alpha\n"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "created src/a/a.txt", "self_review": {"findings": []}}}]}),
+    ];
+    let child_b = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "b.txt exists", "expected_files": ["src/b/b.txt", "src/a/evil.txt"]}}]}),
+        // Outside its write scope, though its own plan names it: refused
+        // before any effector (REQ-EV-0048 / 0078).
+        json!({"calls": [{"name": "change.apply", "args": {"path": "src/a/evil.txt", "op": "replace", "content": "no\n"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "src/b/b.txt", "op": "replace", "content": "beta\n"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "created src/b/b.txt", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_models(
+        parent,
+        vec![
+            ("needle:Task goal: create src/a/a.txt", child_a),
+            ("needle:Task goal: create src/b/b.txt", child_b),
+            ("needle:Task goal: explore README.md", child_e),
+        ],
+        None,
+    )
+    .await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_CAPACITY", "model=4,provider=8"),
+    ];
+    async fn agents(c: &mut Client, task: &Id, id: u8) -> AgentGraphView {
+        let ack = c
+            .command(envelope(
+                id16(id),
+                "GetAgentGraph",
+                GetAgentGraph {
+                    task_id: Some(task.clone()),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    }
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xA1)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_goal(&mut c, &session, g, &root, 0xA2, parent_goal).await;
+    let start = |t: &Id, id: u8| {
+        envelope_fenced(
+            id16(id),
+            "StartTask",
+            StartTask {
+                task_id: Some(t.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 12,
+                max_tool_calls: 0,
+                max_no_progress_turns: 4,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        )
+    };
+    let _: TaskRunStarted = Client::result(&c.command(start(&task, 0xA3)).await.unwrap()).unwrap();
+    let st = wait_for_state(&mut c, &task, "ReadyForReview", 180).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let evs = task_events(&core, &session, &task).await;
+    let of = |evs: &[(String, String, serde_json::Value)], t: &str| -> Vec<serde_json::Value> {
+        evs.iter()
+            .filter(|(_, ty, _)| ty == t)
+            .map(|(_, _, p)| p.clone())
+            .collect()
+    };
+    // E2E-010: three admissions — two builders and an explorer — distinct
+    // worktrees and branches.
+    let admitted = of(&evs, "SubagentAdmitted");
+    assert_eq!(admitted.len(), 3, "{admitted:#?}");
+    let a = admitted
+        .iter()
+        .find(|x| x["idempotency_key"] == "child-a")
+        .unwrap();
+    let b = admitted
+        .iter()
+        .find(|x| x["idempotency_key"] == "child-b")
+        .unwrap();
+    assert_ne!(a["worktree"], b["worktree"]);
+    assert_ne!(a["branch"], b["branch"]);
+    assert_eq!(a["write_scope"], json!(["src/a/"]));
+    assert_eq!(a["work_node"], "a");
+    assert_eq!(a["mode"], "BACKGROUND");
+    assert!(
+        a["capsule_ref"].as_str().unwrap().len() == 64
+            && a["ticket_id"].as_str().unwrap().starts_with("t-")
+    );
+    // E2E-009: the overlapping builder was refused with nothing taken.
+    let refused = of(&evs, "SubagentAdmissionRefused");
+    assert_eq!(refused.len(), 1, "{refused:#?}");
+    assert_eq!(refused[0]["idempotency_key"], "child-c");
+    assert_eq!(refused[0]["code"], "WRITE_CONFLICT");
+    assert_eq!(refused[0]["stage"], "WRITE_SET");
+    assert_eq!(refused[0]["rolled_back"], json!([]));
+    assert!(
+        refused[0]["detail"]
+            .as_str()
+            .unwrap()
+            .contains("src/a/x.txt"),
+        "{refused:#?}"
+    );
+    // QUAL-EV-0007: the retried spawn reattached; three SUBAGENT nodes in all.
+    let graph = agents(&mut c, &task, 0xA4).await;
+    let subs: Vec<_> = graph
+        .nodes
+        .iter()
+        .filter(|n| n.kind == "SUBAGENT")
+        .collect();
+    assert_eq!(subs.len(), 3, "{graph:?}");
+    assert!(
+        subs.iter()
+            .all(|n| n.depth == 1 && n.parent_agent_id.is_some() && n.status == "COMPLETED"),
+        "{graph:?}"
+    );
+    assert!(
+        subs.iter().all(|n| n.owns.len() == 1),
+        "each owns its work node: {graph:?}"
+    );
+    let created: Vec<serde_json::Value> = of(&evs, "AgentNodeCreated")
+        .into_iter()
+        .filter(|n| n["node"]["kind"] == "SUBAGENT")
+        .collect();
+    assert_eq!(created.len(), 3, "{created:#?}");
+    // The parent saw the reattachment and the refusal, typed.
+    let bodies = seen.lock().unwrap().clone();
+    let parent_tool_texts: Vec<String> = bodies
+        .iter()
+        .filter(|b| b.to_string().contains("PARENT-GOAL-MARKER"))
+        .last()
+        .unwrap()["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    assert!(
+        parent_tool_texts[1].contains("status: SUCCESS")
+            && parent_tool_texts[1].contains("reattached: false"),
+        "{}",
+        parent_tool_texts[1]
+    );
+    assert!(
+        parent_tool_texts[2].contains("reattached: true"),
+        "{}",
+        parent_tool_texts[2]
+    );
+    assert!(
+        parent_tool_texts[4].contains("WRITE_CONFLICT")
+            && parent_tool_texts[4].contains("nothing was taken"),
+        "{}",
+        parent_tool_texts[4]
+    );
+    // M6.5: the results came back typed, with artifacts, evidence and branches.
+    let results = of(&evs, "SubagentResultRecorded");
+    assert_eq!(results.len(), 3, "{results:#?}");
+    let e = admitted
+        .iter()
+        .find(|x| x["idempotency_key"] == "child-e")
+        .unwrap();
+    let re = results
+        .iter()
+        .find(|r| r["agent_id"] == e["agent_id"])
+        .unwrap();
+    assert_eq!(re["status"], "COMPLETED");
+    assert_eq!(
+        re["artifacts"],
+        json!([]),
+        "the explorer changed nothing: {re:#?}"
+    );
+    // QUAL-EV-0218: the explorer's capsule projected read tools only; its
+    // write was refused as not projected, and no write tool was offered.
+    let e_bodies: Vec<&serde_json::Value> = bodies
+        .iter()
+        .filter(|b| b.to_string().contains("Task goal: explore README.md"))
+        .collect();
+    assert!(!e_bodies.is_empty());
+    let e_tools: Vec<String> = e_bodies[0]["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|t| t["function"]["name"].as_str().map(str::to_owned))
+        .collect();
+    assert!(
+        e_tools.iter().any(|t| t == "fs.read")
+            && !e_tools
+                .iter()
+                .any(|t| t == "change.apply" || t == "agent.spawn"),
+        "{e_tools:?}"
+    );
+    let e_last: Vec<String> = e_bodies.last().unwrap()["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    assert!(
+        e_last[1].contains("TOOL_NOT_PROJECTED") || e_last[1].contains("TOOL_NOT_VISIBLE"),
+        "{}",
+        e_last[1]
+    );
+    let ra = results
+        .iter()
+        .find(|r| r["agent_id"] == a["agent_id"])
+        .unwrap();
+    let rb = results
+        .iter()
+        .find(|r| r["agent_id"] == b["agent_id"])
+        .unwrap();
+    assert_eq!(ra["status"], "COMPLETED");
+    assert_eq!(ra["summary"], "created src/a/a.txt");
+    assert_eq!(ra["artifacts"], json!(["src/a/a.txt"]));
+    assert!(
+        ra["evidence_refs"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|e| e.as_str().unwrap().starts_with("verification:COMPLETION:")),
+        "{ra:#?}"
+    );
+    assert_eq!(ra["branch"], a["branch"]);
+    assert_eq!(
+        rb["artifacts"],
+        json!(["src/b/b.txt"]),
+        "the refused write is not an artifact: {rb:#?}"
+    );
+    assert!(
+        parent_tool_texts[6].contains("status: SUCCESS")
+            && parent_tool_texts[6].contains("created src/a/a.txt")
+            && parent_tool_texts[6].contains("untrusted context"),
+        "{}",
+        parent_tool_texts[6]
+    );
+    assert!(
+        parent_tool_texts[7].contains("created src/b/b.txt"),
+        "{}",
+        parent_tool_texts[7]
+    );
+    assert!(
+        parent_tool_texts[8].contains("README says split work"),
+        "{}",
+        parent_tool_texts[8]
+    );
+    // QUAL-EV-0048 / 0078: the children ran inside their capsules — their
+    // own objective, the capsule note, no parent transcript, no agent tools
+    // — and child-b's write outside its scope was refused before any effector.
+    let child_bodies: Vec<&serde_json::Value> = bodies
+        .iter()
+        .filter(|b| b.to_string().contains("Task goal: create src/b/b.txt"))
+        .collect();
+    assert!(!child_bodies.is_empty());
+    let first = child_bodies[0].to_string();
+    assert!(
+        first.contains("you are a subagent inside this capsule"),
+        "the capsule note"
+    );
+    assert!(
+        !first.contains("PARENT-GOAL-MARKER"),
+        "no parent goal in the child's context"
+    );
+    assert!(!first.contains("agent.spawn"), "no agent tools for a child");
+    let last_b = child_bodies.last().unwrap();
+    let b_tool_texts: Vec<String> = last_b["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    assert!(
+        b_tool_texts[1].contains("WRITE_SCOPE_DENIED"),
+        "{}",
+        b_tool_texts[1]
+    );
+    assert!(!repo.path().join("src/a/evil.txt").exists());
+    let wt_a = std::path::Path::new(a["worktree"].as_str().unwrap());
+    let wt_b = std::path::Path::new(b["worktree"].as_str().unwrap());
+    assert_eq!(
+        std::fs::read_to_string(wt_a.join("src/a/a.txt")).unwrap(),
+        "alpha\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(wt_b.join("src/b/b.txt")).unwrap(),
+        "beta\n"
+    );
+    assert!(!wt_a.join("src/b/b.txt").exists(), "worktrees are separate");
+    // The children's leases are narrowed to their write scope (REQ-EV-0046 / 0048).
+    let child_a_task = Id {
+        value: hex::decode(a["child_task_id"].as_str().unwrap().replace('-', "")).unwrap(),
+    };
+    let child_evs = task_events(&core, &session, &child_a_task).await;
+    let leases = of(&child_evs, "CapabilityLeaseGranted");
+    assert_eq!(leases.len(), 1, "{leases:#?}");
+    let resources: Vec<String> = leases[0]["resources"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r.as_str().unwrap().to_owned())
+        .collect();
+    assert!(
+        resources
+            .iter()
+            .any(|r| r.starts_with("fs.write:") && r.ends_with("/src/a/**")),
+        "{resources:?}"
+    );
+    assert!(
+        !resources.iter().any(|r| r.starts_with("fs.write:")
+            && r.ends_with(&format!("{}/**", a["worktree"].as_str().unwrap()))),
+        "no whole-tree write: {resources:?}"
+    );
+    assert!(
+        !resources.iter().any(|r| r.starts_with("git.worktree:")),
+        "{resources:?}"
+    );
+    assert_eq!(
+        leases[0]["effect_ceiling"], "REVERSIBLE_WRITE",
+        "{leases:#?}"
+    );
+    assert!(of(&child_evs, "SubagentCapsuleBound").len() == 1);
+    assert_eq!(of(&child_evs, "TaskCreated")[0]["origin"], "subagent");
+    // E2E-010: the two branches merge deterministically into the parent's
+    // main and both files are there.
+    // The runtime commits nothing of its own: the worktree changes are
+    // committed on their branches first, as the parent's merge tools would.
+    let commit_wt = |wt: &std::path::Path, msg: &str| {
+        for args in [
+            vec!["add", "-A"],
+            vec![
+                "-c",
+                "user.name=t",
+                "-c",
+                "user.email=t@e",
+                "commit",
+                "-q",
+                "-m",
+                msg,
+            ],
+        ] {
+            assert!(
+                Command::new("git")
+                    .arg("-C")
+                    .arg(wt)
+                    .args(&args)
+                    .status()
+                    .unwrap()
+                    .success()
+            );
+        }
+    };
+    commit_wt(wt_a, "a");
+    commit_wt(wt_b, "b");
+    for br in [a["branch"].as_str().unwrap(), b["branch"].as_str().unwrap()] {
+        let st = Command::new("git")
+            .arg("-C")
+            .arg(repo.path())
+            .args([
+                "-c",
+                "user.name=t",
+                "-c",
+                "user.email=t@e",
+                "merge",
+                "-q",
+                "--no-edit",
+                br,
+            ])
+            .status()
+            .unwrap();
+        assert!(st.success(), "merge of {br} is clean");
+    }
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("src/a/a.txt")).unwrap(),
+        "alpha\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("src/b/b.txt")).unwrap(),
+        "beta\n"
+    );
+    // Capacity: every child's ticket came back with its run.
+    let ack = c
+        .command(envelope(
+            id16(0xA5),
+            "GetCapacity",
+            GetCapacity {}.encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let cap: modbit_protocol::v1::CapacityView = Client::result(&ack).unwrap();
+    assert!(cap.tickets.is_empty(), "{cap:?}");
+    drop(c);
+    core.kill();
+
+    // QUAL-EV-0267 (fault injection): the worktree exists, then the
+    // transaction fails — everything is returned and nothing is left.
+    let (repo2, root2) = plain_repo(&[("README.md", "# fault\n"), ("src/a/.keep", "")]);
+    let parent2 = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "x", "expected_files": ["README.md"]}}]}),
+        json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "child-f", "objective": "create src/a/a.txt", "write_scope": ["src/a/"], "max_turns": 4}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "gave up delegating", "self_review": {"findings": []}}}]}),
+    ];
+    let (base2, _seen2) = scripted_model(parent2, None).await;
+    let dir2 = tempfile::tempdir().unwrap();
+    let env2 = [
+        ("MODBIT_OPENAI_BASE_URL", base2.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_FAULT_SPAWN", "WORKTREE"),
+    ];
+    let mut core2 = CoreProcess::spawn_with_env(dir2.path(), &env2);
+    let mut c2 = core2.client().await;
+    let (session2, _) = create_session(&mut c2, id16(0xA6)).await;
+    let g2 = lease_for(&session2);
+    let task2 = create_task_with_goal(&mut c2, &session2, g2, &root2, 0xA7, "fault").await;
+    let _: TaskRunStarted = Client::result(
+        &c2.command(envelope_fenced(
+            id16(0xA8),
+            "StartTask",
+            StartTask {
+                task_id: Some(task2.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 8,
+                max_tool_calls: 0,
+                max_no_progress_turns: 4,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g2,
+        ))
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+    let st2 = wait_for_state(&mut c2, &task2, "ReadyForReview", 120).await;
+    assert_eq!(st2.state, "ReadyForReview", "{st2:?}");
+    let evs2 = task_events(&core2, &session2, &task2).await;
+    let refused2 = of(&evs2, "SubagentAdmissionRefused");
+    assert_eq!(refused2.len(), 1, "{refused2:#?}");
+    assert_eq!(refused2[0]["code"], "WORKTREE_FAILED");
+    assert_eq!(refused2[0]["stage"], "WORKTREE");
+    let rolled: Vec<String> = refused2[0]["rolled_back"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r.as_str().unwrap().to_owned())
+        .collect();
+    assert!(
+        rolled
+            .iter()
+            .any(|r| r.contains("worktree") && r.ends_with("removed")),
+        "{rolled:?}"
+    );
+    assert!(
+        rolled
+            .iter()
+            .any(|r| r.contains("child task") && r.contains("cancelled")),
+        "{rolled:?}"
+    );
+    assert!(
+        rolled
+            .iter()
+            .any(|r| r.contains("capacity ticket") && r.contains("released")),
+        "{rolled:?}"
+    );
+    assert!(of(&evs2, "SubagentAdmitted").is_empty());
+    assert!(
+        of(&evs2, "AgentNodeCreated")
+            .iter()
+            .all(|n| n["node"]["kind"] == "PRIMARY"),
+        "no child node"
+    );
+    let worktrees = dir2.path().join("worktrees");
+    let leftover = std::fs::read_dir(&worktrees)
+        .map(|d| d.count())
+        .unwrap_or(0);
+    assert_eq!(
+        leftover,
+        0,
+        "no orphan worktree under {}",
+        worktrees.display()
+    );
+    let ack = c2
+        .command(envelope(
+            id16(0xA9),
+            "GetCapacity",
+            GetCapacity {}.encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let cap2: modbit_protocol::v1::CapacityView = Client::result(&ack).unwrap();
+    assert!(cap2.tickets.is_empty(), "no leaked ticket: {cap2:?}");
+    let graph2 = agents(&mut c2, &task2, 0xAA).await;
+    assert_eq!(graph2.nodes.len(), 1, "{graph2:?}");
+    drop(c2);
+    core2.kill();
+    let _ = repo2;
+
+    // QUAL-EV-0051: nesting disabled by policy — a depth beyond the maximum
+    // is refused with a typed admission failure and nothing taken.
+    let (repo3, root3) = plain_repo(&[("README.md", "# depth\n")]);
+    let parent3 = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "x", "expected_files": ["README.md"]}}]}),
+        json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "child-d", "objective": "anything", "write_scope": ["src/"], "max_turns": 4}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "no delegation", "self_review": {"findings": []}}}]}),
+    ];
+    let (base3, _seen3) = scripted_model(parent3, None).await;
+    let dir3 = tempfile::tempdir().unwrap();
+    let env3 = [
+        ("MODBIT_OPENAI_BASE_URL", base3.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_AGENT_MAX_DEPTH", "0"),
+    ];
+    let mut core3 = CoreProcess::spawn_with_env(dir3.path(), &env3);
+    let mut c3 = core3.client().await;
+    let (session3, _) = create_session(&mut c3, id16(0xAB)).await;
+    let g3 = lease_for(&session3);
+    let task3 = create_task_with_goal(&mut c3, &session3, g3, &root3, 0xAC, "depth").await;
+    let _: TaskRunStarted = Client::result(
+        &c3.command(envelope_fenced(
+            id16(0xAD),
+            "StartTask",
+            StartTask {
+                task_id: Some(task3.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 8,
+                max_tool_calls: 0,
+                max_no_progress_turns: 4,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g3,
+        ))
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+    let st3 = wait_for_state(&mut c3, &task3, "ReadyForReview", 120).await;
+    assert_eq!(st3.state, "ReadyForReview", "{st3:?}");
+    let evs3 = task_events(&core3, &session3, &task3).await;
+    let refused3 = of(&evs3, "SubagentAdmissionRefused");
+    assert_eq!(refused3.len(), 1, "{refused3:#?}");
+    assert_eq!(refused3[0]["code"], "NESTING_DISABLED");
+    assert_eq!(refused3[0]["stage"], "DEPTH");
+    assert!(
+        of(&evs3, "CapacityTicketGranted").len() == 1,
+        "only the parent's own ticket: {:#?}",
+        of(&evs3, "CapacityTicketGranted")
+    );
+    core3.kill();
+    let _ = repo3;
 }
