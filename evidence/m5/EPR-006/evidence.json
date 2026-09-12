@@ -10,11 +10,21 @@
   "qual_epr_005_new_runs_go_through_the_compiled_initial_leg_and_keep_the_baseline",
   "qual_epr_014_a_conditional_plan_is_admitted_whole_and_its_activation_is_exact"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "5f7b5f5"
+ ],
+ "runs": [
+  {
+   "id": "gha-34696941949",
+   "kind": "hosted CI on 5f7b5f5",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34696941949",
+   "log": "ci-run-34696941949.json"
+  }
+ ],
  "decision_record": "docs/decisions/DR-M3-002-epr-baseline-live-provider-proof.md",
  "proof": "A rejected initial leg stops safely when its plan has no prevalidated stronger slot (STAY on the log); a continuation the transaction cannot afford is refused and the run stops safely again with the rejected candidate unacceptable; a funded plan's stronger slot activates on the same run with the failed leg's spend counted and the remaining budget exact, survives a hard kill with exactly one activation, continues on the same transcript (original request, failed-leg evidence, note), is accepted by the gate and the user, and the run is labelled CASCADE from what ran.",
  "audit": "PARTIAL before: continuations were compiled and admissible but nothing consumed a quality rejection; every compiled run was DIRECT in fact and a resumed run never activated anything.",
  "limitations": "Live-provider half and holdout measurement deferred by DR-M3-002; at cold start the compiler opens direct so a cascade is an admitted plan until escalation statistics exist; one continuation per rejection; reviewer continuations are EPR-007.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34696941949 (green on macOS, Linux and Windows at 5f7b5f5)"
 }

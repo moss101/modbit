@@ -161,10 +161,10 @@ class DossierTests(unittest.TestCase):
 
     def test_completion_and_upstream_guards_do_not_mutate_graph(self):
         before = (self.root / "graph/project-graph.json").read_bytes()
-        self.run_tool("graph", "set", "EPR-006", "COMPLETE", ok=False, contains="requires at least one")
+        self.run_tool("graph", "set", "EPR-012", "COMPLETE", ok=False, contains="requires at least one")
         # Whichever guard fires first (upstream milestone or prerequisite), the set is refused.
-        self.run_tool("graph", "set", "EPR-006", "COMPLETE", "--evidence", "run:fixture-test",
-                      ok=False, contains="cannot COMPLETE EPR-006")
+        self.run_tool("graph", "set", "EPR-012", "COMPLETE", "--evidence", "run:fixture-test",
+                      ok=False, contains="cannot COMPLETE EPR-012")
         self.assertEqual(before, (self.root / "graph/project-graph.json").read_bytes())
 
     def test_cross_task_readiness_and_status_guard(self):

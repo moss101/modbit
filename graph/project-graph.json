@@ -22775,8 +22775,14 @@
    ],
    "task_card": "docs/49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md#epr-006",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller or executor present",
-   "status": "REAL_TESTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:34696941949",
+    "commit:5f7b5f5",
+    "test:qual_epr_006_a_quality_rejection_continues_the_run_on_the_prevalidated_stronger_slot",
+    "test:no_slot_receives_a_new_budget_and_a_restart_recovers_its_activation",
+    "artifact:evidence/m5/EPR-006/TASK_CARD.md"
+   ],
    "notes": [
     {
      "at": "2026-09-12T12:57:34Z",
@@ -22801,9 +22807,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "real-system qualification through Core (see card)"
+    },
+    {
+     "at": "2026-09-12T14:00:00Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "green on hosted CI (macOS, Linux, Windows) at 5f7b5f5"
+    },
+    {
+     "at": "2026-09-12T14:00:00Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside; live-provider half deferred by DR-M3-002"
     }
    ],
-   "status_changed_on": "2026-09-12T12:57:34Z"
+   "status_changed_on": "2026-09-12T14:00:00Z"
   },
   {
    "id": "EPR-007",
