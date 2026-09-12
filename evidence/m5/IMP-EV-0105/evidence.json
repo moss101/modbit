@@ -1,0 +1,15 @@
+{
+ "task": "IMP-EV-0105",
+ "requirement": "REQ-EV-0105",
+ "qual": "QUAL-EV-0105",
+ "tests": [
+  "qual_ev_0105_0114_skill_instructions_survive_compaction_and_the_registry_follows_the_disk",
+  "qual_m5_5_signed_skills_are_selected_compiled_and_recorded_and_unsigned_ones_are_not"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "`qual_ev_0105_0114_skill_instructions_survive_compaction_and_the_registry_follows_the_disk`: with a 1500-token compaction budget the run opens a `ContextEpochOpened` and every request before and after it carries `# Skill: reader v1.0.0`; a run with no selected skill sends no skill text at all; the selection record carries the package hash.",
+ "audit": "PARTIAL before: the prompt compiler had a rules segment the runtime left empty; no manifest. With M5.5, `SkillSelected` is the manifest record and `PromptInput.skills` the segment.",
+ "limitations": "Workspace rules files (repository instructions) are not read yet \u2014 the rules segment carries skills; IMP-EV-0059/0129 add path-scoped and layered rules.",
+ "ci": ""
+}

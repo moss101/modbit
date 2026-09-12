@@ -423,3 +423,109 @@ fn the_compiler_injects_bounded_instructions_and_never_widens_the_projection() {
     assert!(small.instructions.contains("cut at the budget"));
     assert_ne!(small.instructions_hash, compiled.instructions_hash);
 }
+
+/// QUAL-EV-0209: the package parser validates metadata and resources and
+/// rejects a malformed or oversized package.
+#[test]
+fn qual_ev_0209_the_parser_rejects_malformed_and_oversized_packages() {
+    use modbit_skills::{MAX_FILE_BYTES, MAX_PACKAGE_BYTES};
+    let root = tempfile::tempdir().unwrap();
+    // Malformed metadata: no front matter; a bad name; a missing field.
+    let bad = root.path().join("bad");
+    write(&bad, "SKILL.md", "# just a heading, no manifest\n");
+    assert!(matches!(
+        load_package(&bad),
+        Err(SkillError::MalformedManifest { .. })
+    ));
+    write(
+        &bad,
+        "SKILL.md",
+        "---\nname: Not Valid\nversion: 1\ndescription: d\n---\n",
+    );
+    assert!(matches!(
+        load_package(&bad),
+        Err(SkillError::MalformedManifest { .. })
+    ));
+    write(&bad, "SKILL.md", "---\nname: ok\ndescription: d\n---\n");
+    assert_eq!(
+        load_package(&bad),
+        Err(SkillError::MissingField {
+            field: "version".into()
+        })
+    );
+    // Oversized: one file past the file limit; a package past the total.
+    let big = package_dir(root.path(), "big");
+    let one_file = vec![b'x'; usize::try_from(MAX_FILE_BYTES).unwrap() + 1];
+    std::fs::write(big.join("resources").join("blob.bin"), &one_file).unwrap();
+    match load_package(&big) {
+        Err(SkillError::Oversized { path, bytes, limit }) => {
+            assert_eq!(path, "resources/blob.bin");
+            assert_eq!(bytes, MAX_FILE_BYTES + 1);
+            assert_eq!(limit, MAX_FILE_BYTES);
+        }
+        other => panic!("{other:?}"),
+    }
+    std::fs::remove_file(big.join("resources").join("blob.bin")).unwrap();
+    let half = vec![b'y'; usize::try_from(MAX_FILE_BYTES).unwrap() - 1024];
+    for i in 0..5 {
+        std::fs::write(big.join("resources").join(format!("part{i}.bin")), &half).unwrap();
+    }
+    match load_package(&big) {
+        Err(SkillError::Oversized { path, limit, .. }) => {
+            assert_eq!(path, "<package>");
+            assert_eq!(limit, MAX_PACKAGE_BYTES);
+        }
+        other => panic!("{other:?}"),
+    }
+    assert_eq!(MAX_PACKAGE_BYTES, 4 * 1024 * 1024);
+}
+
+/// QUAL-EV-0213 (compact skill mode / selective context): what an eager
+/// injection of the whole package would cost against the compiled
+/// projection — instructions bounded, resources and procedures by
+/// reference. Printed as a BENCH line and asserted.
+#[test]
+fn qual_ev_0213_compiled_projection_is_a_fraction_of_the_eager_package() {
+    let root = tempfile::tempdir().unwrap();
+    let dir = package_dir(root.path(), "notes-style");
+    // A realistic package: a long reference document and two procedures.
+    write(
+        &dir,
+        "resources/reference.md",
+        &"A line of reference material the model rarely needs verbatim.\n".repeat(400),
+    );
+    write(
+        &dir,
+        "procedures/lint.js",
+        &"const r = await tools.shell.exec({ argv: ['sh', '-c', 'true'], inherit_env: true }); // step\n".repeat(30),
+    );
+    let pkg = load_package(&dir).unwrap();
+    let eager_bytes: u64 = std::fs::read(dir.join("SKILL.md")).unwrap().len() as u64
+        + pkg
+            .procedures
+            .iter()
+            .map(|p| p.source.len() as u64)
+            .sum::<u64>()
+        + pkg.resources.iter().map(|r| r.bytes).sum::<u64>();
+    let projection: Vec<String> = ["fs.read", "change.apply"]
+        .iter()
+        .map(|s| (*s).to_owned())
+        .collect();
+    let compiled = compile(&pkg, &projection, 8 * 1024);
+    let compiled_bytes = compiled.instructions.len() as u64;
+    let report = serde_json::json!({
+        "benchmark": "QUAL-EV-0213 eager package vs compiled skill projection",
+        "eager_bytes": eager_bytes,
+        "compiled_bytes": compiled_bytes,
+        "relative": compiled_bytes as f64 / eager_bytes as f64,
+        "resources_by_reference": pkg.resources.len(),
+        "procedures_by_reference": pkg.procedures.len(),
+        "method": "bytes of every package file a naive injection would send, against the bytes the compiler injects (bounded instructions; resources and procedures named by reference); measured on the crate's fixture, not tokens of any provider",
+    });
+    eprintln!("BENCH {report}");
+    assert!(eager_bytes > 25_000, "{report}");
+    assert!(compiled_bytes < eager_bytes / 10, "{report}");
+    assert_eq!(compiled.resources.len(), 2);
+    assert_eq!(compiled.procedures.len(), 2);
+    assert!(!compiled.instructions.contains("reference material"));
+}

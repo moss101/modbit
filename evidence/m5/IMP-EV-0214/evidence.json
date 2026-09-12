@@ -1,0 +1,15 @@
+{
+ "task": "IMP-EV-0214",
+ "requirement": "REQ-EV-0214",
+ "qual": "QUAL-EV-0214",
+ "tests": [
+  "qual_ev_0061_0214_a_skill_cannot_widen_task_authority_and_a_non_invocable_skill_is_not_selected",
+  "the_selector_takes_explicit_names_and_trigger_phrases_and_refuses_with_a_reason"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "`qual_ev_0061_0214_\u2026`: `system-only` (signed, trigger `notes`, `model_invocable: false`) never reaches a model request; the package test `the_selector_takes_explicit_names_and_trigger_phrases_and_refuses_with_a_reason` shows the same skill selected when named explicitly.",
+ "audit": "NOT-FOUND before M5.5; built with M5.5's manifest (`model_invocable`, default true) and selector.",
+ "limitations": "Explicit selection is the operator's (`StartTask.skills` / CLI `--skill`); the desktop does not expose it yet.",
+ "ci": ""
+}

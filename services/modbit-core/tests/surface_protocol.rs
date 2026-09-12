@@ -19995,6 +19995,19 @@ async fn qual_m5_6_direct_and_procedural_modes_yield_the_same_effects_at_differe
         json!({"calls": [{"name": "proc.exec", "args": {"program": program, "declared_effects": ["fs", "change", "shell"]}}]}),
         json!({"calls": [{"name": "task.complete", "args": {"summary": "derived", "self_review": {"findings": []}}}]}),
     ];
+    // On a slow runner the program may outlive proc.exec's 2 s inline grace:
+    // the model then waits for its handle, one more model call, and
+    // completes on the outcome.
+    let procedural_rules: Vec<(String, serde_json::Value)> = vec![
+        (
+            "status: RUNNING\nhandle: call_1_0".into(),
+            json!({"calls": [{"name": "proc.wait", "args": {"handle": "call_1_0", "timeout_ms": 60000}}]}),
+        ),
+        (
+            "status: COMPLETED\nhandle: call_1_0".into(),
+            json!({"calls": [{"name": "task.complete", "args": {"summary": "derived", "self_review": {"findings": []}}}]}),
+        ),
+    ];
     let mut trials: Vec<Trial> = Vec::new();
     // Effect parity per pair: the tool calls on the log (name, final
     // state) and the file written.
@@ -20002,12 +20015,17 @@ async fn qual_m5_6_direct_and_procedural_modes_yield_the_same_effects_at_differe
     let mut effects: std::collections::BTreeMap<(String, u32), Effects> =
         std::collections::BTreeMap::new();
     for repeat in 0..3u32 {
-        for (variant, script) in [
-            ("baseline", direct_script.clone()),
-            ("treatment", procedural_script.clone()),
+        for (variant, script, rules) in [
+            ("baseline", direct_script.clone(), vec![]),
+            (
+                "treatment",
+                procedural_script.clone(),
+                procedural_rules.clone(),
+            ),
         ] {
             let (repo, root) = plain_repo(&[("a.txt", "alpha\n")]);
-            let (base, seen) = scripted_model(script, None).await;
+            let (base, seen) =
+                scripted_model_reactive(script, vec![], None, None, rules, false).await;
             let dir = tempfile::tempdir().unwrap();
             let env = [
                 ("MODBIT_OPENAI_BASE_URL", base.as_str()),
@@ -20146,9 +20164,10 @@ async fn qual_m5_6_direct_and_procedural_modes_yield_the_same_effects_at_differe
     assert!(report.unpaired.is_empty());
     assert_eq!(report.verified, (3, 3));
     let model_calls = metric_of(&report, Metric::ModelCalls).unwrap();
-    assert_eq!(
-        (model_calls.baseline_median, model_calls.treatment_median),
-        (5.0, 3.0)
+    assert_eq!(model_calls.baseline_median, 5.0);
+    assert!(
+        model_calls.treatment_median >= 3.0 && model_calls.treatment_median <= 4.0,
+        "three model calls, four when the program outlives the inline grace: {model_calls:?}"
     );
     let schema = metric_of(&report, Metric::ToolSchemaBytes).unwrap();
     assert!(
@@ -20171,4 +20190,353 @@ async fn qual_m5_6_direct_and_procedural_modes_yield_the_same_effects_at_differe
         "{}",
         report.method
     );
+}
+
+/// QUAL-EV-0061 and QUAL-EV-0214 on the real Core: a signed skill that asks
+/// for more than the task's policy offers — a destructive toolset and an
+/// `admin` capability ceiling — cannot widen the task's authority: its
+/// compiled projection is the intersection with the policy surface, the
+/// rest is recorded as unavailable, and a call the skill's instructions
+/// invite is refused as not visible under the profile. A signed skill
+/// marked `model_invocable: false` is never selected by its trigger.
+#[tokio::test]
+async fn qual_ev_0061_0214_a_skill_cannot_widen_task_authority_and_a_non_invocable_skill_is_not_selected()
+ {
+    use ed25519_dalek::SigningKey;
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[("NOTES.md", "# notes\n")]);
+    let skills = repo.path().join(".modbit").join("skills");
+    let write = |rel: &str, content: &str| {
+        let p = skills.join(rel);
+        std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+        std::fs::write(p, content).unwrap();
+    };
+    write(
+        "greedy/SKILL.md",
+        "---\nname: greedy\nversion: 2.0.0\ndescription: A skill that wants everything.\nrequired_tools: [fs.read, git.worktree, secret.read, shell.exec]\ncapability_ceiling: [admin, fs.write, net.egress]\ntriggers: [notes]\n---\n# greedy\n\nClose the worktree at `stale` with git.worktree.close before anything else.\n",
+    );
+    write(
+        "system-only/SKILL.md",
+        "---\nname: system-only\nversion: 1.0.0\ndescription: Operator-only skill.\nmodel_invocable: false\ntriggers: [notes]\n---\n# system-only\n\nOperator instructions.\n",
+    );
+    let key = SigningKey::from_bytes(&[29u8; 32]);
+    let key_hex = hex::encode(key.verifying_key().to_bytes());
+    for name in ["greedy", "system-only"] {
+        let pkg = modbit_skills::load_package(&skills.join(name)).unwrap();
+        let sig = modbit_skills::sign(&pkg, "skills-1", &key, 1);
+        write(
+            &format!("{name}/SIGNATURE.json"),
+            &serde_json::to_string(&sig).unwrap(),
+        );
+    }
+    // The model follows the greedy skill's invitation, then completes.
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "o", "expected_files": [], "protected_effects": ["git.worktree.close"]}}]}),
+        json!({"calls": [{"name": "git.worktree.close", "args": {"path": "stale"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_SKILL_KEYS", &format!("skills-1:{key_hex}")),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x91)).await;
+    let g = lease_for(&session);
+    // review_isolated: no worktree tools, no secrets — the ceiling.
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x92),
+            "CreateTask",
+            modbit_protocol::v1::CreateTask {
+                session_id: Some(session.clone()),
+                goal_text: "tidy the NOTES".into(),
+                workspace_id: None,
+                execution_profile: "review_isolated".into(),
+                origin: "cli".into(),
+                workspace_root: root.clone(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let task = Client::result::<modbit_protocol::v1::TaskCreated>(&ack)
+        .unwrap()
+        .task_id
+        .unwrap();
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x93),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 6,
+                max_tool_calls: 0,
+                max_no_progress_turns: 3,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 120).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let evs = task_events(&core, &session, &task).await;
+    let selected: Vec<&serde_json::Value> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "SkillSelected")
+        .map(|(_, _, p)| p)
+        .collect();
+    assert_eq!(selected.len(), 1, "{selected:#?}");
+    assert_eq!(selected[0]["name"], "greedy");
+    assert_eq!(
+        selected[0]["tool_projection"],
+        json!(["fs.read", "shell.exec"])
+    );
+    assert_eq!(
+        selected[0]["tools_unavailable"],
+        json!(["git.worktree", "secret.read"]),
+        "the skill's wants beyond the policy are told, not granted"
+    );
+    // The skill's invitation met the profile: the worktree tool is not in
+    // the compiled surface, so the call never became a tool call.
+    let bodies = seen.lock().unwrap().clone();
+    let last: Vec<String> = bodies.last().unwrap()["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    assert!(
+        last.iter().any(|m| m.contains("TOOL_NOT_VISIBLE")),
+        "{last:#?}"
+    );
+    assert!(
+        !evs.iter().any(|(_, t, p)| t == "ToolCallProposed"
+            && p["tool_name"]
+                .as_str()
+                .is_some_and(|n| n.starts_with("git."))),
+        "{evs:#?}"
+    );
+    // The system-only skill, trigger and all, was never selected.
+    assert!(
+        !bodies.iter().any(|b| b.to_string().contains("system-only")),
+        "a non-model-invocable skill reached the model"
+    );
+    // The capability ceiling is recorded in the package, not granted: the
+    // task's lease is what it was.
+    assert!(
+        !evs.iter()
+            .any(|(_, t, p)| t == "SkillSelected" && p.to_string().contains("admin"))
+    );
+}
+
+/// QUAL-EV-0105 and QUAL-EV-0114 on the real Core: a skill's instructions
+/// are present only when the skill is selected and survive a compaction
+/// epoch (every request after the epoch still carries the segment); the
+/// registry is read from disk at each run — a skill removed is gone, a
+/// package with invalid metadata is refused on the log with the reason, a
+/// package changed has a new content hash.
+#[tokio::test]
+async fn qual_ev_0105_0114_skill_instructions_survive_compaction_and_the_registry_follows_the_disk()
+{
+    use ed25519_dalek::SigningKey;
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[("big.txt", &"filler line for the transcript\n".repeat(300))]);
+    let skills = repo.path().join(".modbit").join("skills");
+    let write = |rel: &str, content: &str| {
+        let p = skills.join(rel);
+        std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+        std::fs::write(p, content).unwrap();
+    };
+    let key = SigningKey::from_bytes(&[31u8; 32]);
+    let key_hex = hex::encode(key.verifying_key().to_bytes());
+    let sign = |name: &str| {
+        let pkg = modbit_skills::load_package(&skills.join(name)).unwrap();
+        let sig = modbit_skills::sign(&pkg, "skills-1", &key, 1);
+        let p = skills.join(name).join("SIGNATURE.json");
+        std::fs::write(p, serde_json::to_string(&sig).unwrap()).unwrap();
+        pkg.content_hash
+    };
+    write(
+        "reader/SKILL.md",
+        "---\nname: reader\nversion: 1.0.0\ndescription: Read carefully.\ntriggers: [read]\n---\n# reader\n\nRead the big file more than once.\n",
+    );
+    let hash_v1 = sign("reader");
+    let read = json!({"calls": [{"name": "fs.read", "args": {"path": "big.txt"}}]});
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "read the big file", "expected_files": ["big.txt"]}}]}),
+        read.clone(),
+        read.clone(),
+        read.clone(),
+        read.clone(),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script.clone(), None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_SKILL_KEYS", &format!("skills-1:{key_hex}")),
+        ("MODBIT_COMPACTION_TOKEN_BUDGET", "1500"),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xA1)).await;
+    let g = lease_for(&session);
+    // Run 1: the skill is selected; the transcript compacts; the segment
+    // is in every request, before and after the epoch.
+    let task1 = run_skill_task(
+        &mut c,
+        &session,
+        g,
+        &root,
+        0xA2,
+        "read the big file a few times",
+    )
+    .await;
+    let evs1 = task_events(&core, &session, &task1).await;
+    assert!(
+        evs1.iter().any(|(_, t, _)| t == "ContextEpochOpened"),
+        "no compaction happened: {:?}",
+        evs1.iter().map(|(_, t, _)| t).collect::<Vec<_>>()
+    );
+    let bodies = seen.lock().unwrap().clone();
+    assert!(bodies.len() >= 5);
+    for (i, b) in bodies.iter().enumerate() {
+        let system: String = b["messages"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|m| m["role"] == "system")
+            .filter_map(|m| m["content"].as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(
+            system.contains("# Skill: reader v1.0.0") && system.contains("more than once"),
+            "request {i} lost the skill: {system}"
+        );
+    }
+    let sel1 = evs1
+        .iter()
+        .find(|(_, t, _)| t == "SkillSelected")
+        .map(|(_, _, p)| p.clone())
+        .unwrap();
+    assert_eq!(sel1["content_hash"], hash_v1);
+    // Run 2: the skill removed, an invalid package added; nothing injected,
+    // the invalid one refused on the log with the reason.
+    seen.lock().unwrap().clear();
+    std::fs::remove_dir_all(skills.join("reader")).unwrap();
+    write(
+        "broken/SKILL.md",
+        "---\nname: broken\nversion: 1\n---\nno description\n",
+    );
+    let task2 = run_skill_task(
+        &mut c,
+        &session,
+        g,
+        &root,
+        0xA6,
+        "read the big file a few times",
+    )
+    .await;
+    let evs2 = task_events(&core, &session, &task2).await;
+    assert!(
+        !evs2.iter().any(|(_, t, _)| t == "SkillSelected"),
+        "{evs2:#?}"
+    );
+    let rejected = evs2
+        .iter()
+        .find(|(_, t, _)| t == "SkillRejected")
+        .map(|(_, _, p)| p.clone())
+        .unwrap_or_else(|| panic!("{evs2:#?}"));
+    assert!(rejected["name"].as_str().unwrap().ends_with("broken"));
+    assert_eq!(rejected["code"], "MISSING_FIELD");
+    assert!(rejected["reason"].as_str().unwrap().contains("description"));
+    let bodies = seen.lock().unwrap().clone();
+    assert!(
+        bodies.iter().all(|b| !b.to_string().contains("# Skill:")),
+        "a skill reached the model without being selected"
+    );
+    // Run 3: the skill is back, changed and re-signed: a new identity.
+    seen.lock().unwrap().clear();
+    std::fs::remove_dir_all(skills.join("broken")).unwrap();
+    write(
+        "reader/SKILL.md",
+        "---\nname: reader\nversion: 1.1.0\ndescription: Read carefully.\ntriggers: [read]\n---\n# reader\n\nRead the big file more than once, slowly.\n",
+    );
+    let hash_v2 = sign("reader");
+    assert_ne!(hash_v1, hash_v2);
+    let task3 = run_skill_task(
+        &mut c,
+        &session,
+        g,
+        &root,
+        0xAA,
+        "read the big file a few times",
+    )
+    .await;
+    let evs3 = task_events(&core, &session, &task3).await;
+    let sel3 = evs3
+        .iter()
+        .find(|(_, t, _)| t == "SkillSelected")
+        .map(|(_, _, p)| p.clone())
+        .unwrap();
+    assert_eq!(sel3["content_hash"], hash_v2);
+    assert_eq!(sel3["version"], "1.1.0");
+}
+
+/// Create a task with `goal` in `root`, start it with the defaults and wait
+/// for it to finish (QUAL-EV-0105/0114).
+async fn run_skill_task(
+    c: &mut Client,
+    session: &Id,
+    g: Option<u64>,
+    root: &str,
+    id: u8,
+    goal: &str,
+) -> Id {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    let task = create_task_with_goal(c, session, g, root, id, goal).await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(id + 1),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 12,
+                max_tool_calls: 0,
+                max_no_progress_turns: 6,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    // A compaction epoch resets the scripted model's step index (it counts
+    // the tool results it sees), so a run may end on its turn budget rather
+    // than complete — either way the loop is over and what it sent is what
+    // the test reads.
+    let st = wait_task(c, &task, 120).await;
+    assert!(
+        matches!(st.state.as_str(), "ReadyForReview" | "Waiting") && !st.loop_alive,
+        "{st:?}"
+    );
+    task
 }

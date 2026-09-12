@@ -57,10 +57,27 @@ pub async fn select_for_run(
         .unwrap_or_default();
     let registry = SkillRegistry::discover(&roots(core, task), &trusted, &policy());
     let (selected, rejected) = modbit_skills::select(&registry, &task.goal_text, explicit);
-    if selected.is_empty() && rejected.is_empty() {
+    if selected.is_empty() && rejected.is_empty() && registry.rejected.is_empty() {
         return vec![];
     }
     let mut events = Vec::new();
+    // A package on disk that could not be loaded (REQ-EV-0114: invalid
+    // metadata fails, visibly): recorded by its directory.
+    for (dir, error) in &registry.rejected {
+        let code = serde_json::to_value(error)
+            .ok()
+            .and_then(|v| v["code"].as_str().map(str::to_owned))
+            .unwrap_or_else(|| "INVALID_PACKAGE".into());
+        events.push(typed(
+            "SkillRejected",
+            &TaskEvent::SkillRejected {
+                name: dir.clone(),
+                code,
+                reason: error.to_string(),
+            },
+            actor.clone(),
+        ));
+    }
     let mut instructions = Vec::new();
     for sel in &selected {
         let Some(reg) = registry.get(&sel.name) else {

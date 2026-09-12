@@ -1,0 +1,15 @@
+{
+ "task": "IMP-EV-0114",
+ "requirement": "REQ-EV-0114",
+ "qual": "QUAL-EV-0114",
+ "tests": [
+  "qual_ev_0105_0114_skill_instructions_survive_compaction_and_the_registry_follows_the_disk",
+  "a_package_parses_its_manifest_and_has_a_content_identity"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "`qual_ev_0105_0114_\u2026`: run 1 selects `reader@1.0.0` with its hash; the package is removed and a `broken` one (no description) added \u2014 run 2 selects nothing and records `SkillRejected` `MISSING_FIELD` for `\u2026/broken`; the package returns changed and re-signed \u2014 run 3 records version 1.1.0 with a different content hash.",
+ "audit": "NOT-FOUND before M5.5; built with M5.5's `SkillRegistry::discover` over `<workspace>/.modbit/skills` and `<profile>/skills`.",
+ "limitations": "Discovery is per run, not a live watcher; a change mid-run applies to the next run.",
+ "ci": ""
+}

@@ -1,0 +1,15 @@
+{
+ "task": "IMP-EV-0061",
+ "requirement": "REQ-EV-0061",
+ "qual": "QUAL-EV-0061",
+ "tests": [
+  "qual_ev_0061_0214_a_skill_cannot_widen_task_authority_and_a_non_invocable_skill_is_not_selected",
+  "the_compiler_injects_bounded_instructions_and_never_widens_the_projection"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "`qual_ev_0061_0214_a_skill_cannot_widen_task_authority_and_a_non_invocable_skill_is_not_selected`: a signed `greedy` skill (`required_tools: fs.read, git.worktree, secret.read, shell.exec`; `capability_ceiling: admin, fs.write, net.egress`; instructions inviting `git.worktree.close`) under `review_isolated` is selected and compiled to `tool_projection [fs.read, shell.exec]`, `tools_unavailable [git.worktree, secret.read]`; the model's `git.worktree.close` is refused `TOOL_NOT_VISIBLE` and never becomes a tool call; nothing about `admin` reaches the log as a grant.",
+ "audit": "NOT-FOUND before M5.5 (no skills). As of M5.5 the compiler intersects `required_tools` with the task's policy surface and records the rest as unavailable; this task proves the boundary against a hostile package.",
+ "limitations": "The ceiling is recorded and honoured by intersection; a per-skill capability lease narrower than the task's (a skill that asks for less) is not applied yet.",
+ "ci": ""
+}

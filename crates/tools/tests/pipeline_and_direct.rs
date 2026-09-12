@@ -741,3 +741,50 @@ fn walk(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
     }
     out
 }
+
+/// QUAL-EV-0230 (REQ-EV-0230 "procedural skills over existing tools"): a
+/// tool namespace exists only with a build/buy justification — the docs/17
+/// canonical inventory row it realizes (which must be in the document) and
+/// why it is a native tool rather than a skill over existing tools. A new
+/// namespace without a row fails here; a stale row fails too.
+#[test]
+fn qual_ev_0230_every_tool_namespace_carries_a_build_or_buy_justification() {
+    let matrix: serde_json::Value =
+        serde_json::from_str(include_str!("../tool-matrix.json")).unwrap();
+    let mut registry = ToolRegistry::new();
+    modbit_tools::direct::register_direct(&mut registry).unwrap();
+    let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let inventory =
+        std::fs::read_to_string(repo.join("docs/17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md"))
+            .unwrap();
+    let rows = matrix["namespaces"].as_array().unwrap();
+    let mut namespaces: Vec<String> = registry
+        .specs()
+        .iter()
+        .map(|s| s.name.split('.').next().unwrap().to_owned())
+        .collect();
+    namespaces.sort();
+    namespaces.dedup();
+    for ns in &namespaces {
+        let row = rows
+            .iter()
+            .find(|r| r["namespace"] == ns.as_str())
+            .unwrap_or_else(|| {
+                panic!("namespace `{ns}` has no build/buy justification in tool-matrix.json")
+            });
+        let justification = row["justification"].as_str().unwrap_or_default();
+        assert!(justification.len() >= 20, "`{ns}`: justify the namespace");
+        let inventory_ref = row["inventory_ref"].as_str().unwrap_or_default();
+        assert!(
+            inventory.contains(&format!("| {inventory_ref} |")),
+            "`{ns}`: inventory_ref `{inventory_ref}` is not a docs/17 row"
+        );
+    }
+    for r in rows {
+        let ns = r["namespace"].as_str().unwrap();
+        assert!(
+            namespaces.iter().any(|n| n == ns),
+            "stale namespace row `{ns}`"
+        );
+    }
+}

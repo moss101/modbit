@@ -1,0 +1,15 @@
+{
+ "task": "IMP-EV-0209",
+ "requirement": "REQ-EV-0209",
+ "qual": "QUAL-EV-0209",
+ "tests": [
+  "qual_ev_0209_the_parser_rejects_malformed_and_oversized_packages",
+  "a_package_parses_its_manifest_and_has_a_content_identity"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "`qual_ev_0209_the_parser_rejects_malformed_and_oversized_packages`: no front matter, a bad name and a missing field are refused with their codes; a 1 MiB + 1 resource is `Oversized` naming the file; five near-limit resources make the package `Oversized` as a whole.",
+ "audit": "NOT-FOUND before M5.5; the parser, the file limits and the typed refusals are M5.5's `load_package` with this task's size ceilings.",
+ "limitations": "Limits are constants; a per-deployment ceiling is not configurable yet.",
+ "ci": ""
+}

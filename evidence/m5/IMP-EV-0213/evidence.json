@@ -1,0 +1,14 @@
+{
+ "task": "IMP-EV-0213",
+ "requirement": "REQ-EV-0213",
+ "qual": "QUAL-EV-0213",
+ "tests": [
+  "qual_ev_0213_compiled_projection_is_a_fraction_of_the_eager_package"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "`qual_ev_0213_compiled_projection_is_a_fraction_of_the_eager_package` prints a `BENCH` report: a package with a 25 KB reference document and two procedures \u2014 eager injection would send every byte; the compiled projection is under a tenth of it and names the two resources and two procedures by reference; the reference text never enters the instructions.",
+ "audit": "NOT-FOUND before M5.5; M5.5's `compile` bounds the instructions (8 KiB in the Core) and names procedures and resources by reference.",
+ "limitations": "Bytes on the crate's fixture, not tokens of a live provider; the benchmark's method says so.",
+ "ci": ""
+}

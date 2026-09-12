@@ -78,6 +78,17 @@ pub enum SkillError {
         /// Name asked for.
         name: String,
     },
+    /// A file or the package is larger than a skill may be (REQ-EV-0209:
+    /// a package is instructions and small resources, not a payload).
+    #[error("`{path}` is {bytes} bytes; the limit is {limit}")]
+    Oversized {
+        /// The file, or `<package>` for the whole.
+        path: String,
+        /// Its size.
+        bytes: u64,
+        /// The limit.
+        limit: u64,
+    },
     /// A file could not be read.
     #[error("cannot read `{path}`: {detail}")]
     Io {
@@ -428,6 +439,11 @@ fn read(path: &Path) -> Result<Vec<u8>, SkillError> {
 /// attest.
 const ATTESTATION_FILES: &[&str] = &["SIGNATURE.json", "EVALUATION.json"];
 
+/// The most one file of a package may be.
+pub const MAX_FILE_BYTES: u64 = 1024 * 1024;
+/// The most a whole package may be.
+pub const MAX_PACKAGE_BYTES: u64 = 4 * 1024 * 1024;
+
 /// Load a package from its directory.
 ///
 /// # Errors
@@ -442,6 +458,25 @@ pub fn load_package(dir: &Path) -> Result<SkillPackage, SkillError> {
     let mut files: Vec<(String, Vec<u8>)> = Vec::new();
     collect_files(dir, dir, &mut files)?;
     files.sort_by(|a, b| a.0.cmp(&b.0));
+    let mut total: u64 = 0;
+    for (p, bytes) in &files {
+        let n = bytes.len() as u64;
+        if n > MAX_FILE_BYTES {
+            return Err(SkillError::Oversized {
+                path: p.clone(),
+                bytes: n,
+                limit: MAX_FILE_BYTES,
+            });
+        }
+        total += n;
+    }
+    if total > MAX_PACKAGE_BYTES {
+        return Err(SkillError::Oversized {
+            path: "<package>".into(),
+            bytes: total,
+            limit: MAX_PACKAGE_BYTES,
+        });
+    }
     let mut hasher = sha2::Sha256::new();
     for (p, bytes) in &files {
         if ATTESTATION_FILES.contains(&p.as_str()) {

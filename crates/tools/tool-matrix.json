@@ -557,5 +557,63 @@
       ],
       "status": "SERVED by fs.read (MediaEnvelope, M2.10)"
     }
-  ]
+  ],
+  "namespaces": [
+    {
+      "namespace": "artifact",
+      "inventory_ref": "artifact.get / range",
+      "justification": "content-addressed evidence access; no new effector"
+    },
+    {
+      "namespace": "change",
+      "inventory_ref": "change.propose / change.apply",
+      "justification": "revision-bound change engine; the one write path"
+    },
+    {
+      "namespace": "context",
+      "inventory_ref": "context.query / resolve",
+      "justification": "bounded retrieval of a Context Pack; no new effector"
+    },
+    {
+      "namespace": "evidence",
+      "inventory_ref": "artifact.get / range",
+      "justification": "evidence search over the task/session log (docs/18 L2); reads the evidence store the artifact family already exposes"
+    },
+    {
+      "namespace": "fs",
+      "inventory_ref": "fs.list / fs.glob / fs.read",
+      "justification": "authorized workspace enumeration and read"
+    },
+    {
+      "namespace": "git",
+      "inventory_ref": "git.worktree.create / close",
+      "justification": "repository lineage and isolated worktree lifecycle"
+    },
+    {
+      "namespace": "knowledge",
+      "inventory_ref": "context.query / resolve",
+      "justification": "engineering knowledge map over the workspace (docs/18 L1); a read of the Context Engine, no new effector"
+    },
+    {
+      "namespace": "lsp",
+      "inventory_ref": "diagnostics.pull",
+      "justification": "language-service reads (diagnostics, symbols, references, definition) through headless servers; no new effector"
+    },
+    {
+      "namespace": "search",
+      "inventory_ref": "search.grep / search.symbol",
+      "justification": "exact, regex, lexical, symbol, semantic, graph, impact and retrieval search over the index"
+    },
+    {
+      "namespace": "shell",
+      "inventory_ref": "shell.exec",
+      "justification": "structured process execution through the Terminal Broker"
+    },
+    {
+      "namespace": "test",
+      "inventory_ref": "test.run",
+      "justification": "configured real tests with a normalized TestReport"
+    }
+  ],
+  "namespaces_note": "REQ-EV-0230 build/buy lint: every registered tool namespace names the docs/17 canonical inventory row it realizes and why it exists as a tool rather than a skill over existing tools; a new namespace without a row here, or whose inventory_ref is not in docs/17, fails qual_ev_0230."
 }
