@@ -1054,7 +1054,7 @@ async fn repo_facts(core: &Core, parent: &Task) -> modbit_core_runtime::conflict
     if let Ok(sx) = core.tools.symbols(&canonical).await {
         let sx = sx.lock().await;
         for p in &facts.paths {
-            let syms: Vec<(String, String, Option<String>)> = sx
+            let syms: Vec<modbit_core_runtime::conflict::SymbolFact> = sx
                 .symbols_in(p)
                 .iter()
                 .map(|s| (s.name.clone(), s.kind.clone(), s.container.clone()))

@@ -2,13 +2,13 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-09-12",
+  "generated_on": "2026-09-13",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 928,
-    "docs_bytes": 1097731
+    "root_and_tooling": 948,
+    "docs_bytes": 1102982
   },
   "sections": [
     {
@@ -167,8 +167,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Agent Runtime and Orchestration",
-      "bytes": 17397,
-      "sha256": "b2ceae86290eb631449ef823755f9dc0d1dce2795c401eb78439bb74bf847554"
+      "bytes": 21896,
+      "sha256": "11e8f4059d632d24ffa86e50dbc192ebd27592f436ae3a8768766ec8b13e1ba3"
     },
     {
       "path": "docs/15_MODEL_ROUTER_AND_PROVIDER_GATEWAY.md",
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 15309,
-      "sha256": "59130f95d771bc1649626d8ae31a4cb37c7704d25e398267897aa32d633a5c48"
+      "bytes": 16061,
+      "sha256": "368b03557b7ed2f8dc37b82a4939d7a5e4004268174c1dc7232b375b40a1285f"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -5347,6 +5347,36 @@
       "sha256": "b1cc522f037f2027058b574b63c7d8850743f09d35598a95af92a761965bd37b"
     },
     {
+      "path": "evidence/m6/IMP-EV-0007/TASK_CARD.md",
+      "bytes": 1440,
+      "sha256": "2859a1fd0b831373c663e8f8cda9200bd1a495ac1b589919fb2b8af891fa480a"
+    },
+    {
+      "path": "evidence/m6/IMP-EV-0007/evidence.json",
+      "bytes": 553,
+      "sha256": "e008f1df1452e9f08b16b44c091da824ac4d74cdca0ddc2797dfc78da0991373"
+    },
+    {
+      "path": "evidence/m6/IMP-EV-0048/TASK_CARD.md",
+      "bytes": 1747,
+      "sha256": "64e0280344f76c33664ed8a030098708a858025b860ca2b0c1908d0ec34b8feb"
+    },
+    {
+      "path": "evidence/m6/IMP-EV-0048/evidence.json",
+      "bytes": 706,
+      "sha256": "2528882fe18f257fa794ae26a8a5a5474e08235c8733812cb34ab1d635a976ac"
+    },
+    {
+      "path": "evidence/m6/IMP-EV-0051/TASK_CARD.md",
+      "bytes": 1413,
+      "sha256": "386528513013398c5133c4545a0a87564f41ad8affc056f0140092efa5de696b"
+    },
+    {
+      "path": "evidence/m6/IMP-EV-0051/evidence.json",
+      "bytes": 534,
+      "sha256": "0a318854c79aebe384316f7a132dd3aac63897129cc530f1ace8dbef4055db4b"
+    },
+    {
       "path": "evidence/m6/IMP-EV-0052/TASK_CARD.md",
       "bytes": 1752,
       "sha256": "e76fe98551b6e47e0319e84f72ee8cc49d4291d3ec7c6591044537d083508f53"
@@ -5362,6 +5392,16 @@
       "sha256": "f1e2ee4b600dc86b45d60cf340ab663ceff50f080e490e772f439713c4fcc177"
     },
     {
+      "path": "evidence/m6/IMP-EV-0078/TASK_CARD.md",
+      "bytes": 1292,
+      "sha256": "8d1532fa1c696ada22ac102d1d208f9ddacdd97dbe957ab40b2b49ff75d34c07"
+    },
+    {
+      "path": "evidence/m6/IMP-EV-0078/evidence.json",
+      "bytes": 427,
+      "sha256": "8b3d56d3392835c17f5aa654a50a5777c8d73fafec7a842476ba9e24590513cc"
+    },
+    {
       "path": "evidence/m6/IMP-EV-0120/TASK_CARD.md",
       "bytes": 1579,
       "sha256": "69f47eb8d474c60fc871dada4c8508dd242c152063664ea2c6f4e3c1df707a58"
@@ -5375,6 +5415,26 @@
       "path": "evidence/m6/IMP-EV-0120/evidence.json",
       "bytes": 1141,
       "sha256": "937d81020d0fcb61be43dc07c3f2adb5465ffc58960de047eac800741fb778f5"
+    },
+    {
+      "path": "evidence/m6/IMP-EV-0218/TASK_CARD.md",
+      "bytes": 1320,
+      "sha256": "fb77d8a8e37ec1f68c5e703a24b1d6908e646e1d9eec79a935052af852cadd64"
+    },
+    {
+      "path": "evidence/m6/IMP-EV-0218/evidence.json",
+      "bytes": 496,
+      "sha256": "b439adcb260b5314f9831f7143684a523cd2d7725af1f30782398e5360e81df7"
+    },
+    {
+      "path": "evidence/m6/IMP-EV-0219/TASK_CARD.md",
+      "bytes": 1284,
+      "sha256": "2288d24160285c730e6ddce1a37cc32564441f638fcc2ffa67fa0a3257c46cd1"
+    },
+    {
+      "path": "evidence/m6/IMP-EV-0219/evidence.json",
+      "bytes": 490,
+      "sha256": "2738eb5faad7610db12835e7da1999401b7d7576c1a1b74e757eea517fd15f4f"
     },
     {
       "path": "evidence/m6/IMP-EV-0255/TASK_CARD.md",
@@ -5405,6 +5465,16 @@
       "path": "evidence/m6/IMP-EV-0256/evidence.json",
       "bytes": 1303,
       "sha256": "3d076fb5bdfe350c6120a1364a384084e1f0fefbfe851392894755b2f602c5de"
+    },
+    {
+      "path": "evidence/m6/IMP-EV-0267/TASK_CARD.md",
+      "bytes": 1712,
+      "sha256": "26849d3d8a8a9d2dbbe79af4b11ba9c5466d2fe57fe38ff6011dc74b317117a0"
+    },
+    {
+      "path": "evidence/m6/IMP-EV-0267/evidence.json",
+      "bytes": 821,
+      "sha256": "c23b2dded97d440f4cde466a3079d63c885a40825b5d1848e3b47cdd31654041"
     },
     {
       "path": "evidence/m6/IMP-EV-0272/TASK_CARD.md",
@@ -5450,6 +5520,36 @@
       "path": "evidence/m6/M6.2/evidence.json",
       "bytes": 1552,
       "sha256": "826fefab96b2720234ebe3ed88bfbd9e4698d45613cd3b078cd6ea762682a4f9"
+    },
+    {
+      "path": "evidence/m6/M6.3/TASK_CARD.md",
+      "bytes": 5144,
+      "sha256": "e32ebcb888a0ed1b3611a9a5e766a27fc4a5bbc1843e9d7000314b945cbb05ee"
+    },
+    {
+      "path": "evidence/m6/M6.3/evidence.json",
+      "bytes": 2641,
+      "sha256": "184d02dfc009ca8bbef3fff2249a573fe852040a04017cca3fbe1c6e59446382"
+    },
+    {
+      "path": "evidence/m6/M6.4/TASK_CARD.md",
+      "bytes": 3107,
+      "sha256": "2ecdd2e4367ae03fdc3cf873a6c6a50f2e086e7bffea7f2bb0742a996be3e061"
+    },
+    {
+      "path": "evidence/m6/M6.4/evidence.json",
+      "bytes": 882,
+      "sha256": "a9038a9cf366c4cb8b872f85df06d3657e42e22127d696079d3ece02d441e65b"
+    },
+    {
+      "path": "evidence/m6/M6.5/TASK_CARD.md",
+      "bytes": 2338,
+      "sha256": "9e8afca3d8e5933ed0dabb9f6c97bb59f75a5e3ea787c69a60138c76dc751ae2"
+    },
+    {
+      "path": "evidence/m6/M6.5/evidence.json",
+      "bytes": 558,
+      "sha256": "e31ff74db82e348385b50b09bd3488a173340fb844d7c2a9a670d37780357133"
     },
     {
       "path": "graph/PROJECT_GRAPH.md",

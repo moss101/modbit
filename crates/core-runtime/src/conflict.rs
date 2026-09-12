@@ -14,10 +14,13 @@ pub trait RepoFacts {
     /// Every indexed path (root-relative, `/`-separated).
     fn paths(&self) -> Vec<String>;
     /// Public symbols a file defines: `(name, kind, container)`.
-    fn symbols_of(&self, path: &str) -> Vec<(String, String, Option<String>)>;
+    fn symbols_of(&self, path: &str) -> Vec<SymbolFact>;
     /// Files that import `path` (direct importers).
     fn importers_of(&self, path: &str) -> Vec<String>;
 }
+
+/// A public symbol as the detector sees it: `(name, kind, container)`.
+pub type SymbolFact = (String, String, Option<String>);
 
 /// The facts as plain data, for callers that gathered them already.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -25,7 +28,7 @@ pub struct Facts {
     /// Paths.
     pub paths: Vec<String>,
     /// Path → symbols.
-    pub symbols: Vec<(String, Vec<(String, String, Option<String>)>)>,
+    pub symbols: Vec<(String, Vec<SymbolFact>)>,
     /// Path → importers.
     pub importers: Vec<(String, Vec<String>)>,
 }
@@ -34,7 +37,7 @@ impl RepoFacts for Facts {
     fn paths(&self) -> Vec<String> {
         self.paths.clone()
     }
-    fn symbols_of(&self, path: &str) -> Vec<(String, String, Option<String>)> {
+    fn symbols_of(&self, path: &str) -> Vec<SymbolFact> {
         self.symbols
             .iter()
             .find(|(p, _)| p == path)
