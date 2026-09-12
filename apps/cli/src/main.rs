@@ -65,7 +65,7 @@ fn exit_for_state(state: &str) -> u8 {
     }
 }
 
-const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--skill <name>]... [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id>] [--apply --session <id>] | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
+const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--skill <name>]... [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id>] [--apply --session <id>] | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | skill install <dir> [--expect-hash <hex>] [--replace] | skill remove <name> | skill list | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
 
 fn parse_id(hex: &str) -> Result<Id, String> {
     let bytes = decode_hex(hex)
@@ -181,11 +181,91 @@ async fn run(args: Vec<String>) -> Result<(), String> {
         }
     }
     let data_dir = data_dir.ok_or(USAGE)?;
+    // Skill packages live in the profile (`<data-dir>/skills`), installed
+    // and removed by the client with no Core in the loop (REQ-EV-0181);
+    // what a run does with them is the Core's, from the registry it reads.
+    if rest.first().map(String::as_str) == Some("skill") {
+        return skill_command(&data_dir, &rest);
+    }
     let (child, ready) = attach_or_spawn(&data_dir).await?;
     let result = run_command(&ready, rest).await;
     // A spawned Core is left running for the next invocation (idle exit).
     drop(child);
     result
+}
+
+/// `skill install <dir> [--expect-hash <hex>] [--replace] | skill remove
+/// <name> | skill list`: the profile's skill registry root is
+/// `<data-dir>/skills`; trusted signing keys come from `MODBIT_SKILL_KEYS`.
+fn skill_command(data_dir: &str, rest: &[String]) -> Result<(), String> {
+    let root = std::path::Path::new(data_dir).join("skills");
+    let words: Vec<&str> = rest.iter().map(String::as_str).collect();
+    let opt = |flag: &str| {
+        words
+            .iter()
+            .position(|w| *w == flag)
+            .and_then(|i| words.get(i + 1).copied())
+    };
+    match words.as_slice() {
+        ["skill", "install", dir, ..] => {
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| i64::try_from(d.as_millis()).unwrap_or(i64::MAX))
+                .unwrap_or(0);
+            let installed = modbit_skills::install(
+                std::path::Path::new(dir),
+                &root,
+                opt("--expect-hash"),
+                words.contains(&"--replace"),
+                now,
+            )
+            .map_err(|e| format!("install refused: {e}"))?;
+            println!(
+                "installed {} {} content_hash={} signed={} path={}",
+                installed.name,
+                installed.version,
+                installed.content_hash,
+                installed.signed,
+                installed.path.display()
+            );
+            Ok(())
+        }
+        ["skill", "remove", name] => {
+            modbit_skills::uninstall(&root, name).map_err(|e| format!("remove refused: {e}"))?;
+            println!("removed {name}");
+            Ok(())
+        }
+        ["skill", "list"] => {
+            let trusted = std::env::var("MODBIT_SKILL_KEYS")
+                .map(|raw| modbit_skills::trusted_keys_from_env(&raw))
+                .unwrap_or_default();
+            // The same policy the Core applies (MODBIT_SKILLS_ENABLE_INCUBATOR
+            // for development), so the listing says what a run would use.
+            let policy = modbit_skills::SkillPolicy {
+                enable_signed: true,
+                enable_incubator: std::env::var("MODBIT_SKILLS_ENABLE_INCUBATOR")
+                    .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+                    .unwrap_or(false),
+            };
+            let registry = modbit_skills::SkillRegistry::discover(&[root], &trusted, &policy);
+            for s in &registry.skills {
+                println!(
+                    "skill {} {} lifecycle={:?} content_hash={} tools={} note={:?}",
+                    s.package.manifest.name,
+                    s.package.manifest.version,
+                    s.lifecycle,
+                    s.package.content_hash,
+                    s.package.manifest.required_tools.join(","),
+                    s.note
+                );
+            }
+            for (dir, e) in &registry.rejected {
+                println!("rejected {dir}: {e}");
+            }
+            Ok(())
+        }
+        _ => Err(USAGE.into()),
+    }
 }
 
 /// Attach to the profile's running Core through its owner-only `core.ready`

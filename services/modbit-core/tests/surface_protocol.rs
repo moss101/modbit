@@ -20771,3 +20771,182 @@ async fn wsk_e2e_005_010_a_promoted_skill_reaches_the_model_without_the_wiki_and
         "one selection per run"
     );
 }
+
+/// QUAL-EV-0059 and QUAL-EV-0129 on the real Core: a project rule scoped to
+/// `src/billing/**` stays out of the prompt until the task reads a billing
+/// file, then enters it with the matching path and glob on the log; a user
+/// rule with the same id as a project rule loses by layer and the conflict
+/// names the winner and both sources; an expired rule never appears; a
+/// file that is not a rule is reported, not injected.
+#[tokio::test]
+async fn qual_ev_0059_0129_scoped_rules_activate_lazily_and_conflicts_name_the_winner() {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[
+        ("README.md", "# demo\n"),
+        ("src/billing/invoice.rs", "// cents\n"),
+    ]);
+    let write = |p: &std::path::Path, rel: &str, content: &str| {
+        let f = p.join(rel);
+        std::fs::create_dir_all(f.parent().unwrap()).unwrap();
+        std::fs::write(f, content).unwrap();
+    };
+    let project = repo.path().join(".modbit").join("rules");
+    write(&project, "general.md", "Keep commits small. RULE-GENERAL");
+    write(
+        &project,
+        "billing.md",
+        "---\nid: billing\npaths: [src/billing/**]\n---\nMoney is in minor units. RULE-BILLING",
+    );
+    write(
+        &project,
+        "style.md",
+        "---\nid: style\n---\nProject style wins. RULE-STYLE-PROJECT",
+    );
+    write(&project, "notes.txt", "not a rule");
+    let dir = tempfile::tempdir().unwrap();
+    let user = dir.path().join("rules");
+    write(
+        &user,
+        "style.md",
+        "---\nid: style\npriority: 99\n---\nUser style loses. RULE-STYLE-USER",
+    );
+    write(
+        &user,
+        "old.md",
+        "---\nid: old\nexpires_at_ms: 1000\n---\nExpired advice. RULE-OLD",
+    );
+    write(&user, "broken.md", "---\nid: b\nnope: 1\n---\nx");
+    let script = vec![
+        json!({"calls": [{"name": "fs.read", "args": {"path": "README.md"}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "src/billing/invoice.rs"}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "o", "expected_files": []}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xC1)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xC2, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xC3),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 8,
+                max_tool_calls: 0,
+                max_no_progress_turns: 4,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 120).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let bodies = seen.lock().unwrap().clone();
+    assert!(bodies.len() >= 4);
+    let rules_of = |b: &serde_json::Value| -> String {
+        b["messages"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|m| m["role"] == "system")
+            .filter_map(|m| m["content"].as_str())
+            .find(|c| c.starts_with("Workspace rules:"))
+            .unwrap_or_default()
+            .to_owned()
+    };
+    // Turns 1–2 (README read at most): the global rules, the project style,
+    // nothing of billing, the user style, the expired or the broken file.
+    for b in &bodies[..2] {
+        let r = rules_of(b);
+        assert!(
+            r.contains("RULE-GENERAL") && r.contains("RULE-STYLE-PROJECT"),
+            "{r}"
+        );
+        assert!(
+            r.contains("[rule general — project]") && r.contains("[rule style — project]"),
+            "{r}"
+        );
+        assert!(
+            !r.contains("RULE-BILLING"),
+            "billing rule before any billing path: {r}"
+        );
+        assert!(
+            !r.contains("RULE-STYLE-USER") && !r.contains("RULE-OLD") && !r.contains("nope"),
+            "{r}"
+        );
+    }
+    // From turn 3 (the billing file was read): the billing rule is in.
+    for b in &bodies[2..] {
+        let r = rules_of(b);
+        assert!(
+            r.contains("RULE-BILLING") && r.contains("[rule billing — project]"),
+            "{r}"
+        );
+    }
+    // On the log: the first selection (dormant billing, the conflict with
+    // its winner and sources, the expired and the invalid file), then the
+    // activation with the path and glob.
+    let evs = task_events(&core, &session, &task).await;
+    let selections: Vec<&serde_json::Value> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "RulesSelected")
+        .map(|(_, _, p)| p)
+        .collect();
+    assert_eq!(selections.len(), 2, "{selections:#?}");
+    let first = selections[0];
+    assert_eq!(first["dormant"], json!(["billing"]));
+    let ids: Vec<&str> = first["active"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|a| a["id"].as_str())
+        .collect();
+    assert_eq!(ids, ["general", "style"]);
+    assert!(first["active"][1]["reason"]["kind"] == "GLOBAL");
+    let conflict = &first["conflicts"][0];
+    assert_eq!(conflict["id"], "style");
+    assert_eq!(
+        (
+            conflict["winner_layer"].as_str(),
+            conflict["loser_layer"].as_str(),
+            conflict["decided_by"].as_str()
+        ),
+        (Some("project"), Some("user"), Some("LAYER"))
+    );
+    assert!(conflict["winner"].as_str().unwrap().contains(".modbit"));
+    assert!(conflict["loser"].as_str().unwrap().ends_with("style.md"));
+    assert!(first["expired"][0].as_str().unwrap().starts_with("old:"));
+    assert!(
+        first["invalid"][0]
+            .as_str()
+            .unwrap()
+            .contains("unknown front matter key")
+    );
+    let second = selections[1];
+    let billing = second["active"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|a| a["id"] == "billing")
+        .unwrap();
+    assert_eq!(billing["reason"]["kind"], "PATH");
+    assert_eq!(billing["reason"]["path"], "src/billing/invoice.rs");
+    assert_eq!(billing["reason"]["glob"], "src/billing/**");
+    assert_eq!(billing["layer"], "project");
+    assert_eq!(billing["hash"].as_str().unwrap().len(), 64);
+    assert_eq!(second["dormant"], json!([]));
+}

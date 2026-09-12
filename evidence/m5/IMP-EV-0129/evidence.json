@@ -1,0 +1,15 @@
+{
+ "task": "IMP-EV-0129",
+ "requirement": "REQ-EV-0129",
+ "qual": "QUAL-EV-0129",
+ "tests": [
+  "qual_ev_0059_0129_scoped_rules_activate_lazily_and_conflicts_name_the_winner",
+  "rules::tests::a_rule_without_front_matter_is_global_and_named_by_its_file"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "`qual_ev_0059_0129_\u2026`: a user `style` rule with priority 99 loses to the project `style` rule by LAYER, the conflict naming both sources; the expired user rule is listed as expired and never injected; a file with an unknown front-matter key is reported as invalid; every active rule carries its layer, source and hash. Memory items as a further layer are the runtime's (REQ-EV-0208) and not part of this task.",
+ "audit": "NOT-FOUND before (see IMP-EV-0059).",
+ "limitations": "Memory layering beyond project/user rules is not built; TTL is absolute epoch milliseconds.",
+ "ci": ""
+}

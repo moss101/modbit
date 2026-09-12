@@ -1,0 +1,15 @@
+{
+ "task": "IMP-EV-0210",
+ "requirement": "REQ-EV-0210",
+ "qual": "QUAL-EV-0210",
+ "tests": [
+  "qual_ev_0181_0210_an_extension_skill_installs_lists_runs_its_procedure_and_survives_removal_and_reload",
+  "qual_ev_0230_every_tool_namespace_carries_a_build_or_buy_justification"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "`qual_ev_0181_0210_\u2026`: the plugin registers (install), lists (ENABLED with its hash), its `count.js` procedure is invoked by a task through `proc.exec` as an ordinary `fs.read` tool call under the exec id (`ProgramEnded` COMPLETED), is removed (gone from the list; a second removal refused), and reloads with the same identity.",
+ "audit": "PARTIAL before: M5.5 validated manifests; nothing exercised register \u2192 list \u2192 invoke \u2192 remove \u2192 reload as one path.",
+ "limitations": "The plugin is a skill package; native tool plugins (new registry namespaces) go through the tool matrix and REQ-EV-0230's lint, not an install command.",
+ "ci": ""
+}

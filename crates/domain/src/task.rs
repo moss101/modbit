@@ -390,6 +390,23 @@ pub enum TaskEvent {
         /// Required tools the turn does not project.
         tools_unavailable: Vec<String>,
     },
+    /// `RulesSelected` (REQ-EV-0059 / 0105 / 0129): the workspace and user
+    /// rules in the prompt from this turn, each with its layer, source, hash
+    /// and why it is active; the scoped rules still dormant; the expired;
+    /// the conflicts with their winner; the files that were not rules. No
+    /// state change.
+    RulesSelected {
+        /// Active rules (`{id, layer, source, hash, reason}`).
+        active: Vec<serde_json::Value>,
+        /// Dormant scoped rule ids.
+        dormant: Vec<String>,
+        /// Expired rules as `id:source`.
+        expired: Vec<String>,
+        /// Conflicts (`{id, winner, winner_layer, loser, loser_layer, decided_by}`).
+        conflicts: Vec<serde_json::Value>,
+        /// Invalid files as `source: why`.
+        invalid: Vec<String>,
+    },
     /// `SkillRejected`: a skill named for the task was not used, with why.
     /// No state change.
     SkillRejected {
@@ -868,6 +885,7 @@ impl TaskEvent {
             Self::ProgramEnded { .. } => "ProgramEnded",
             Self::SkillSelected { .. } => "SkillSelected",
             Self::SkillRejected { .. } => "SkillRejected",
+            Self::RulesSelected { .. } => "RulesSelected",
             Self::ContextEpochOpened { .. } => "ContextEpochOpened",
             Self::CompactionStarted { .. } => "CompactionStarted",
             Self::CompactionCommitted { .. } => "CompactionCommitted",
@@ -990,6 +1008,7 @@ impl Task {
             | TaskEvent::ProgramEnded { .. }
             | TaskEvent::SkillSelected { .. }
             | TaskEvent::SkillRejected { .. }
+            | TaskEvent::RulesSelected { .. }
             | TaskEvent::ContextEpochOpened { .. }
             | TaskEvent::CompactionStarted { .. }
             | TaskEvent::CompactionCommitted { .. }

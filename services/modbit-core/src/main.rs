@@ -24,6 +24,7 @@ mod procedural;
 mod protocol;
 mod review;
 mod routing;
+mod rules;
 mod runtime;
 mod server;
 mod side;

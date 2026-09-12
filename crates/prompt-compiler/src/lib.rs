@@ -16,6 +16,8 @@ use modbit_providers::{Message, ModelPolicy, ModelRequest, Role, ToolProjection}
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
+pub mod rules;
+
 /// Prompt compiler version; part of every cache key.
 pub const COMPILER_VERSION: &str = "m2.7-basic-1";
 

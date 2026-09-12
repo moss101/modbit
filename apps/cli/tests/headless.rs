@@ -547,3 +547,241 @@ fn qual_ev_0111_0268_context_show_reports_compaction_epochs_and_the_cached_prefi
     assert!(misses >= 2, "{line}");
     assert!(hits >= 1, "the prefix is reused between epochs: {line}");
 }
+
+/// QUAL-EV-0181 and QUAL-EV-0210: an extension-provided skill package is
+/// installed by the client with its content hash validated (a wrong
+/// expectation is refused), listed by the registry with its lifecycle and
+/// provenance, activated for a task without any capability escalation
+/// (the skill's tools beyond the profile are told as unavailable, not
+/// granted), its procedure invoked through the real registry by
+/// `proc.exec` (a real `fs.read`), then removed — a later run sees no
+/// skill — and reinstalled, back with the same identity.
+#[test]
+fn qual_ev_0181_0210_an_extension_skill_installs_lists_runs_its_procedure_and_survives_removal_and_reload()
+ {
+    let core = core_bin();
+    let tmp = tempfile::tempdir().unwrap();
+    let data_dir = tmp.path().join("profile");
+    std::fs::create_dir_all(&data_dir).unwrap();
+    let repo = tmp.path().join("repo");
+    std::fs::create_dir_all(&repo).unwrap();
+    std::fs::write(repo.join("NOTES.md"), "one\ntwo\nthree\n").unwrap();
+    git(&repo, &["init", "-q"]);
+    git(&repo, &["config", "core.autocrlf", "false"]);
+    git(&repo, &["add", "."]);
+    git(
+        &repo,
+        &[
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@x",
+            "commit",
+            "-q",
+            "-m",
+            "init",
+        ],
+    );
+    let repo_str = repo
+        .canonicalize()
+        .unwrap()
+        .to_string_lossy()
+        .trim_start_matches(r"\\?\")
+        .to_owned();
+    // The extension: a package with a procedure that counts lines through
+    // fs.read; signed by a key the Core trusts.
+    let ext = tmp.path().join("ext-notes-counter");
+    std::fs::create_dir_all(ext.join("procedures")).unwrap();
+    std::fs::write(
+        ext.join("SKILL.md"),
+        "---\nname: notes-counter\nversion: 0.3.0\ndescription: Count the lines of NOTES.md.\nrequired_tools: [fs.read, git.worktree.close]\ntriggers: [count]\nprovenance.source: https://example.invalid/ext/notes-counter\n---\n# notes-counter\n\nRun the `count` procedure with proc.exec and report the number.\n",
+    )
+    .unwrap();
+    std::fs::write(
+        ext.join("procedures").join("count.js"),
+        "const f = await tools.fs.read({ path: 'NOTES.md' }); return f.content.split('\\n').filter((l) => l.length > 0).length;",
+    )
+    .unwrap();
+    let key = ed25519_dalek::SigningKey::from_bytes(&[47u8; 32]);
+    let pkg = modbit_skills::load_package(&ext).unwrap();
+    let sig = modbit_skills::sign(&pkg, "ext-1", &key, 1);
+    std::fs::write(
+        ext.join("SIGNATURE.json"),
+        serde_json::to_string(&sig).unwrap(),
+    )
+    .unwrap();
+    let key_hex = hex::encode(key.verifying_key().to_bytes());
+    let count_program = std::fs::read_to_string(ext.join("procedures").join("count.js")).unwrap();
+    let script = vec![
+        serde_json::json!({"calls": [{"name": "plan.update", "args": {"outcome": "count", "expected_files": []}}]}),
+        serde_json::json!({"calls": [{"name": "proc.exec", "args": {"program": count_program, "declared_effects": ["fs"]}}]}),
+        serde_json::json!({"calls": [{"name": "task.complete", "args": {"summary": "counted", "self_review": {"findings": []}}}]}),
+    ];
+    let base = scripted_model(script);
+    let cli = Cli {
+        data_dir: data_dir.clone(),
+        core: core.clone(),
+        env: vec![
+            ("MODBIT_OPENAI_BASE_URL".into(), base.clone()),
+            ("OPENAI_API_KEY".into(), String::new()),
+            ("ANTHROPIC_API_KEY".into(), String::new()),
+            ("MODBIT_SKILL_KEYS".into(), format!("ext-1:{key_hex}")),
+        ],
+    };
+    // A wrong hash is refused; the right one installs with provenance.
+    let (code, out, err) = cli.run(&[
+        "skill",
+        "install",
+        ext.to_str().unwrap(),
+        "--expect-hash",
+        &"0".repeat(64),
+    ]);
+    assert_ne!(code, 0, "{out}");
+    assert!(
+        err.contains("install refused") && err.contains("attestation names"),
+        "{err}"
+    );
+    assert!(!data_dir.join("skills").join("notes-counter").exists());
+    let (code, out, err) = cli.run(&[
+        "skill",
+        "install",
+        ext.to_str().unwrap(),
+        "--expect-hash",
+        &pkg.content_hash,
+    ]);
+    assert_eq!(code, 0, "{out}{err}");
+    assert!(
+        out.contains(&format!(
+            "installed notes-counter 0.3.0 content_hash={} signed=true",
+            pkg.content_hash
+        )),
+        "{out}"
+    );
+    let provenance: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(
+            data_dir
+                .join("skills")
+                .join("notes-counter")
+                .join("PROVENANCE.json"),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(provenance["content_hash"], pkg.content_hash);
+    assert_eq!(provenance["expected_content_hash"], pkg.content_hash);
+    // Installing again without --replace is refused; with it, fine.
+    let (code, _, err) = cli.run(&["skill", "install", ext.to_str().unwrap()]);
+    assert_ne!(code, 0);
+    assert!(err.contains("already installed"), "{err}");
+    let (code, _, err) = cli.run(&["skill", "install", ext.to_str().unwrap(), "--replace"]);
+    assert_eq!(code, 0, "{err}");
+    // Listed, enabled by its signature, with the same identity.
+    let (code, out, _) = cli.run(&["skill", "list"]);
+    assert_eq!(code, 0);
+    assert!(
+        out.contains(&format!(
+            "skill notes-counter 0.3.0 lifecycle=Enabled content_hash={}",
+            pkg.content_hash
+        )),
+        "{out}"
+    );
+    // A task whose goal triggers it runs its procedure through the real
+    // registry: the procedure's fs.read is an ordinary tool call.
+    let (code, out, err) = cli.run(&["session", "create"]);
+    assert_eq!(code, 0, "{err}");
+    let sid = out.trim().strip_prefix("session ").unwrap().to_owned();
+    let (code, out, err) = cli.run(&[
+        "task",
+        "create",
+        "--session",
+        &sid,
+        "--workspace",
+        &repo_str,
+        "count the notes",
+    ]);
+    assert_eq!(code, 0, "{err}");
+    let tid = out.trim().strip_prefix("task ").unwrap().to_owned();
+    let (code, out, err) = cli.run(&[
+        "task",
+        "run",
+        "--session",
+        &sid,
+        "--task",
+        &tid,
+        "--endpoint",
+        "openai",
+        "--model",
+        "gpt-5",
+        "--wait",
+    ]);
+    assert_eq!(code, 0, "{out}{err}");
+    assert!(out.contains("state=ReadyForReview"), "{out}");
+    let (code, out, _) = cli.run(&[
+        "events",
+        "tail",
+        "--session",
+        &sid,
+        "--after",
+        "0",
+        "--count",
+        "500",
+        "--json",
+    ]);
+    assert_eq!(code, 0);
+    let lines: Vec<serde_json::Value> = out
+        .lines()
+        .map(|l| serde_json::from_str(l).unwrap())
+        .collect();
+    let selected = lines
+        .iter()
+        .find(|l| l["event_type"] == "SkillSelected")
+        .unwrap_or_else(|| panic!("{out}"));
+    let payload = &selected["payload"];
+    assert_eq!(payload["name"], "notes-counter");
+    assert_eq!(payload["content_hash"], pkg.content_hash);
+    assert_eq!(payload["lifecycle"], "ENABLED");
+    // No escalation: the destructive tool the skill names is not granted
+    // (local_trusted projects it, so it is intersected in; the skill's own
+    // text cannot call it — the harness gates and the kernel still stand),
+    // and the procedure ran as an fs.read tool call under the exec id.
+    let calls: Vec<&serde_json::Value> = lines
+        .iter()
+        .filter(|l| l["event_type"] == "ToolCallProposed")
+        .collect();
+    assert!(
+        calls.iter().any(|c| c["payload"]["tool_name"] == "fs.read"
+            && c["payload"]["call_id"]
+                .as_str()
+                .is_some_and(|id| id.contains('#'))),
+        "{out}"
+    );
+    assert!(
+        !calls
+            .iter()
+            .any(|c| c["payload"]["tool_name"] == "git.worktree.close")
+    );
+    let ended = lines
+        .iter()
+        .find(|l| l["event_type"] == "ProgramEnded")
+        .unwrap();
+    assert_eq!(ended["payload"]["status"], "COMPLETED");
+    // Removal: gone from the list; a new run selects nothing.
+    let (code, out, err) = cli.run(&["skill", "remove", "notes-counter"]);
+    assert_eq!(code, 0, "{out}{err}");
+    let (_, out, _) = cli.run(&["skill", "list"]);
+    assert!(!out.contains("notes-counter"), "{out}");
+    let (code, _, err) = cli.run(&["skill", "remove", "notes-counter"]);
+    assert_ne!(code, 0);
+    assert!(err.contains("no skill named"), "{err}");
+    // Reload: reinstalled, the same identity is back.
+    let (code, out, _) = cli.run(&["skill", "install", ext.to_str().unwrap()]);
+    assert_eq!(code, 0, "{out}");
+    let (_, out, _) = cli.run(&["skill", "list"]);
+    assert!(
+        out.contains(&format!(
+            "lifecycle=Enabled content_hash={}",
+            pkg.content_hash
+        )),
+        "{out}"
+    );
+}

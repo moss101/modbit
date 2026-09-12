@@ -9,6 +9,7 @@ publish.workspace = true
 
 [dependencies]
 modbit-protocol.workspace = true
+modbit-skills.workspace = true
 prost.workspace = true
 rand.workspace = true
 tokio.workspace = true
@@ -21,6 +22,8 @@ serde_json.workspace = true
 windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_Console"] }
 
 [dev-dependencies]
+ed25519-dalek.workspace = true
+hex.workspace = true
 tempfile.workspace = true
 
 [lints]

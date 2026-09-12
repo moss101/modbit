@@ -439,7 +439,7 @@ fn read(path: &Path) -> Result<Vec<u8>, SkillError> {
 
 /// The files that attest a package and are therefore not part of what they
 /// attest.
-const ATTESTATION_FILES: &[&str] = &["SIGNATURE.json", "EVALUATION.json"];
+const ATTESTATION_FILES: &[&str] = &["SIGNATURE.json", "EVALUATION.json", "PROVENANCE.json"];
 
 /// The most one file of a package may be.
 pub const MAX_FILE_BYTES: u64 = 1024 * 1024;
@@ -939,4 +939,146 @@ pub fn compile(skill: &SkillPackage, projection: &[String], budget_bytes: usize)
             .collect(),
         resources: skill.resources.clone(),
     }
+}
+
+/// What an installation recorded beside the package (`PROVENANCE.json`;
+/// REQ-EV-0181): where it came from, when, and the hash it was validated
+/// against. Not part of the content identity.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct InstallProvenance {
+    /// The extension directory it was installed from.
+    pub source: String,
+    /// Content hash validated at install.
+    pub content_hash: String,
+    /// The hash the installer was told to expect, if any.
+    pub expected_content_hash: Option<String>,
+    /// When.
+    pub installed_at_ms: i64,
+}
+
+/// An installed extension skill.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Installed {
+    /// Name.
+    pub name: String,
+    /// Version.
+    pub version: String,
+    /// Content hash.
+    pub content_hash: String,
+    /// Where it now lives.
+    pub path: PathBuf,
+    /// Whether a signature shipped with it.
+    pub signed: bool,
+}
+
+/// Install an extension-provided package (REQ-EV-0181, REQ-EV-0210): the
+/// package must load, its content hash must equal `expected` when one is
+/// given, and it lands under `registry_root/<name>` with a
+/// `PROVENANCE.json`. Installation grants nothing: the lifecycle is decided
+/// by the registry from the shipped attestations and policy.
+///
+/// # Errors
+/// The package does not load, the hash does not match, the name is already
+/// installed (unless `replace`), or a copy fails.
+pub fn install(
+    extension_dir: &Path,
+    registry_root: &Path,
+    expected: Option<&str>,
+    replace: bool,
+    now_ms: i64,
+) -> Result<Installed, SkillError> {
+    let package = load_package(extension_dir)?;
+    if let Some(e) = expected
+        && e != package.content_hash
+    {
+        return Err(SkillError::ContentMismatch {
+            attested: e.to_owned(),
+            actual: package.content_hash.clone(),
+        });
+    }
+    let target = registry_root.join(&package.manifest.name);
+    if target.exists() {
+        if !replace {
+            return Err(SkillError::Io {
+                path: target.display().to_string(),
+                detail: "already installed; pass replace to overwrite".into(),
+            });
+        }
+        std::fs::remove_dir_all(&target).map_err(|e| SkillError::Io {
+            path: target.display().to_string(),
+            detail: e.to_string(),
+        })?;
+    }
+    copy_tree(extension_dir, &target)?;
+    let provenance = InstallProvenance {
+        source: extension_dir.display().to_string(),
+        content_hash: package.content_hash.clone(),
+        expected_content_hash: expected.map(str::to_owned),
+        installed_at_ms: now_ms,
+    };
+    let p = target.join("PROVENANCE.json");
+    std::fs::write(
+        &p,
+        serde_json::to_vec_pretty(&provenance).unwrap_or_default(),
+    )
+    .map_err(|e| SkillError::Io {
+        path: p.display().to_string(),
+        detail: e.to_string(),
+    })?;
+    // The installed copy must still be the package that was validated.
+    let installed = load_package(&target)?;
+    if installed.content_hash != package.content_hash {
+        return Err(SkillError::ContentMismatch {
+            attested: package.content_hash,
+            actual: installed.content_hash,
+        });
+    }
+    Ok(Installed {
+        name: installed.manifest.name,
+        version: installed.manifest.version,
+        content_hash: installed.content_hash,
+        path: target.clone(),
+        signed: target.join("SIGNATURE.json").is_file(),
+    })
+}
+
+/// Remove an installed skill by name.
+///
+/// # Errors
+/// No such skill, or the removal fails.
+pub fn uninstall(registry_root: &Path, name: &str) -> Result<(), SkillError> {
+    let target = registry_root.join(name);
+    if !target.join("SKILL.md").is_file() {
+        return Err(SkillError::Unknown { name: name.into() });
+    }
+    std::fs::remove_dir_all(&target).map_err(|e| SkillError::Io {
+        path: target.display().to_string(),
+        detail: e.to_string(),
+    })
+}
+
+fn copy_tree(from: &Path, to: &Path) -> Result<(), SkillError> {
+    std::fs::create_dir_all(to).map_err(|e| SkillError::Io {
+        path: to.display().to_string(),
+        detail: e.to_string(),
+    })?;
+    for e in std::fs::read_dir(from)
+        .map_err(|e| SkillError::Io {
+            path: from.display().to_string(),
+            detail: e.to_string(),
+        })?
+        .flatten()
+    {
+        let src = e.path();
+        let dst = to.join(e.file_name());
+        if src.is_dir() {
+            copy_tree(&src, &dst)?;
+        } else {
+            std::fs::copy(&src, &dst).map_err(|e| SkillError::Io {
+                path: src.display().to_string(),
+                detail: e.to_string(),
+            })?;
+        }
+    }
+    Ok(())
 }

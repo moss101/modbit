@@ -108,6 +108,8 @@ As built (M5.1): `ToolProjectionSelected` (turn) carries, besides the projection
 
 As built (M5.4): task events `ProgramStarted` (handle, program_ref, declared_effects, bindings, budget) and `ProgramEnded` (handle, status COMPLETED | FAILED | BUDGET_EXHAUSTED | CANCELLED, budget_exhausted, outcome_ref, tool_calls, elapsed_ms, interrupt_polls); a program's binding calls are ordinary tool-call aggregates whose `call_id` is `<exec call id>#<n>`; exec/wait are `ProcedureRun` steps (doc 16 "Bindings and the model-visible surface as built").
 
+As built (M5.5): task events `SkillSelected` (name, version, content_hash, lifecycle, source, reason, instructions_hash, instructions_truncated, tool_projection, tools_unavailable) and `SkillRejected` (name, code, reason); `StartTask.skills` names skills explicitly (doc 16 "Skills as built"). Task event `RulesSelected` (active rules with id, layer, source, hash and reason; dormant; expired; conflicts with winner and loser sources; invalid files) whenever a turn's rule selection changes (doc 16 "Rules as built").
+
 ### Security/effects
 `CapabilityLeaseGranted, CapabilityLeaseRevoked, ApprovalRequested, ApprovalResolved, EffectReceiptAppended, SecretHandleUsed, EmergencyStopActivated`.
 

@@ -1794,7 +1794,10 @@ dependencies = [
 name = "modbit-cli"
 version = "0.0.0"
 dependencies = [
+ "ed25519-dalek",
+ "hex",
  "modbit-protocol",
+ "modbit-skills",
  "prost",
  "rand 0.10.2",
  "serde_json",
@@ -2027,12 +2030,14 @@ dependencies = [
 name = "modbit-prompt-compiler"
 version = "0.0.0"
 dependencies = [
+ "globset",
  "hex",
  "modbit-domain",
  "modbit-providers",
  "serde",
  "serde_json",
  "sha2 0.11.0",
+ "tempfile",
 ]
 
 [[package]]

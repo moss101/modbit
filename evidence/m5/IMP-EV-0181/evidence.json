@@ -1,0 +1,14 @@
+{
+ "task": "IMP-EV-0181",
+ "requirement": "REQ-EV-0181",
+ "qual": "QUAL-EV-0181",
+ "tests": [
+  "qual_ev_0181_0210_an_extension_skill_installs_lists_runs_its_procedure_and_survives_removal_and_reload"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "`qual_ev_0181_0210_\u2026`: a wrong expectation is refused naming both hashes; the right one installs with provenance; a second install needs `--replace`; the listing shows ENABLED under the trusted signature; the task's `SkillSelected` carries the same content hash; the destructive tool the skill names never becomes a call; removal and reload keep the identity.",
+ "audit": "NOT-FOUND before: no install path; packages had to be placed by hand.",
+ "limitations": "Install reads a directory (an archive format is not defined); trust is the registry's signature check, not an installer-side allowlist.",
+ "ci": ""
+}

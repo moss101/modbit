@@ -1965,6 +1965,10 @@ async fn run_loop(
             .collect();
         crate::skills::select_for_run(&core, &task, lt, &actor, &cfg.skills, &surface).await
     };
+    // Rules (REQ-EV-0059/0105/0129): loaded once, selected every turn from
+    // the paths the task has made active, recorded when the selection
+    // changes.
+    let mut rules = crate::rules::RunRules::load(&core, &task);
     let end = 'outer: loop {
         if cancel.is_cancelled() {
             break LoopEnd::Cancelled;
@@ -2217,7 +2221,7 @@ async fn run_loop(
                         goal: task.goal_text.clone(),
                         workspace_root: task.workspace_root.clone(),
                         execution_profile: task.execution_profile.clone(),
-                        workspace_rules: vec![],
+                        workspace_rules: rules.select(&core, &task, lt, &actor, &state).await,
                         skills: skill_instructions.clone(),
                         compaction_summary: epoch.as_ref().map(|m| m.projection.clone()),
                         harness_state: harness_json.clone(),
