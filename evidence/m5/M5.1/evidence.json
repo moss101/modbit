@@ -1,0 +1,25 @@
+{
+ "task": "M5.1",
+ "requirements": [
+  "docs/16 Dynamic task-scoped projection",
+  "REQ-EV-0096",
+  "REQ-EV-0134"
+ ],
+ "scenarios": [
+  "E2E-011"
+ ],
+ "tests": [
+  "qual_m5_1_projection_follows_the_plan_and_refuses_crafted_calls",
+  "projection_follows_the_plan_and_the_leg_role",
+  "diagnostics_corpus",
+  "qual_ev_0134_deferred_tool_search_activates_without_authorizing_and_hydrates_schemas_lazily",
+  "qual_ev_0096_0116_0133_0044_0031_tool_surface_is_compiled_from_support_and_policy",
+  "m2_7_one_agent_runtime_drives_a_coding_task_to_ready_for_review"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "A read-only question is offered read-only tools and process execution, never a file write or a destructive tool, and plan.update names what is withheld and what unlocks it; crafted change.apply and git.worktree.close calls fail at the policy stage with TOOL_NOT_PROJECTED and never dispatch; once the plan declares files and the protected effect the tools are projected with their schemas and the declared write lands; every turn's ToolProjectionSelected names the projected and withheld sets and the leg role.",
+ "audit": "PARTIAL before: the projection was the same for every node of a task (support x profile x lease x kernel, plus the deferred split); nothing about the plan narrowed it; ToolProjectionSelected carried only the hash; a visible tool was a callable tool.",
+ "limitations": "No reviewer leg runs yet (EPR-018); browser/secret/network tools do not exist in the registry yet (M7/M8), their classes are withheld by construction; relevance is the plan's declarations, not a model.",
+ "ci": ""
+}

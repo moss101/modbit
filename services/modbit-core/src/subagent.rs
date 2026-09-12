@@ -342,6 +342,9 @@ pub(crate) async fn run(
                         turn_id: None,
                         call_id: Some(call_id.clone()),
                         lease_generation: lt.lease(),
+                        // The specialist's own projection (M5.1): a second
+                        // fence under the read-only guard above.
+                        projection: Some(tools.iter().map(|t| t.name.clone()).collect()),
                     },
                 )
                 .await;

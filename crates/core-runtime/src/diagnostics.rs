@@ -207,7 +207,20 @@ pub fn classify(source: &FailureSource<'_>) -> FailureDiagnostic {
                     msg,
                 ),
                 "POLICY_DENIED" => {
-                    if code_s == "APPROVAL_DENIED" {
+                    if code_s == "TOOL_NOT_PROJECTED" {
+                        // docs/16 (M5.1): the model was not offered the tool
+                        // this turn; the plan unlocks it, not the user.
+                        diag(
+                            FailureClass::Policy,
+                            code_s,
+                            true,
+                            "",
+                            "declare the files (expected_files) or the effect (protected_effects) in `plan.update`, or activate the tool with tool.search; call it once it is projected",
+                            ev,
+                            f,
+                            msg,
+                        )
+                    } else if code_s == "APPROVAL_DENIED" {
                         diag(
                             FailureClass::Approval,
                             "APPROVAL_DENIED",

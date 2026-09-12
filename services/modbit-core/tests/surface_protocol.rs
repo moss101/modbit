@@ -9530,7 +9530,19 @@ async fn qual_ev_0056_0092_0130_compaction_epoch_preserves_facts_survives_restar
         .collect();
     assert!(keys.len() >= 3, "{keys:?}");
     let misses = keys.windows(2).filter(|w| w[0] != w[1]).count();
-    assert_eq!(misses, epochs.len(), "one cache miss per epoch: {keys:?}");
+    // One miss per epoch, plus the one the projection change costs after
+    // the first turn's plan declared files (docs/16 M5.1: write tools join
+    // the projection from the next turn on, and the projection hash is in
+    // the cache key).
+    assert_eq!(
+        misses,
+        epochs.len() + 1,
+        "one cache miss per epoch plus the projection change: {keys:?}"
+    );
+    assert!(
+        keys[0] != keys[1],
+        "the first miss is the projection change after the plan: {keys:?}"
+    );
     assert!(
         keys.len() - 1 - misses > 0,
         "the prefix is reused between epochs: {keys:?}"
@@ -14833,7 +14845,7 @@ async fn qual_ev_0055_e2e_004_core_crash_during_approval_restores_the_same_appro
         .trim_start_matches(r"\\?\")
         .to_owned();
     let script = vec![
-        json!({"calls": [{"name": "plan.update", "args": {"outcome": "close the stale worktree", "expected_files": []}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "close the stale worktree", "expected_files": [], "protected_effects": ["git.worktree.close"]}}]}),
         json!({"calls": [{"name": "git.worktree.close", "args": {"path": wt_s}}]}),
         json!({"calls": [{"name": "task.complete", "args": {"summary": "closed the worktree", "self_review": {"findings": []}}}]}),
     ];
@@ -16612,7 +16624,7 @@ async fn qual_m4_6_e2e_005_a_protected_effect_of_unknown_outcome_is_held_for_the
         .trim_start_matches(r"\\?\")
         .to_owned();
     let script = vec![
-        json!({"calls": [{"name": "plan.update", "args": {"outcome": "close the stale worktree", "expected_files": []}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "close the stale worktree", "expected_files": [], "protected_effects": ["git.worktree.close"]}}]}),
         json!({"calls": [{"name": "git.worktree.close", "args": {"path": wt_s}}]}),
         json!({"calls": [{"name": "task.complete", "args": {"summary": "closed", "self_review": {"findings": []}}}]}),
         json!({"calls": [{"name": "task.complete", "args": {"summary": "closed", "self_review": {"findings": []}}}]}),
@@ -17521,7 +17533,7 @@ async fn qual_ev_0077_0122_a_fork_carries_decisions_and_evidence_but_no_stale_pe
         .trim_start_matches(r"\\?\")
         .to_owned();
     let script = vec![
-        json!({"calls": [{"name": "plan.update", "args": {"outcome": "change a.txt then close the stale worktree", "expected_files": ["a.txt"]}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "change a.txt then close the stale worktree", "expected_files": ["a.txt"], "protected_effects": ["git.worktree.close"]}}]}),
         json!({"calls": [{"name": "fs.read", "args": {"path": "a.txt"}}]}),
         json!({"calls": [{"name": "fs.read", "args": {"path": "b.txt"}}]}),
         json!({"calls": [{"name": "user.ask", "args": {"question": "Which layout should a.txt follow?", "options": [{"id": "compact", "label": "compact"}, {"id": "verbose", "label": "verbose"}], "reason": "change_set"}}]}),
@@ -19045,5 +19057,347 @@ async fn qual_epr_009_routes_reevaluate_at_boundaries_on_cache_economics_and_sur
     assert!(
         refused.is_err(),
         "a plan under a superseded epoch admits nothing"
+    );
+}
+
+/// E2E-011 (docs/51, docs/16 "Dynamic task-scoped projection", M5.1): a
+/// read-only repository question is offered read-only tools — no file write,
+/// no protected effect — and told on `plan.update` what would unlock the
+/// rest. A crafted call to a tool the model was not offered this turn is
+/// refused at the pipeline's policy stage before any effector
+/// (`TOOL_NOT_PROJECTED`: Proposed → Validated → PolicyDecision denied, never
+/// Dispatched), whatever the model wrote — a write crafted in the very turn
+/// whose plan declares it, a destructive tool the plan does not declare —
+/// while a write before any plan still meets the harness plan gate of
+/// docs/14 first. Once the plan declares files and a protected effect, the
+/// tools are projected from the next turn on and the declared write lands.
+/// Every turn records what was projected and what was withheld, and why.
+#[tokio::test]
+async fn qual_m5_1_projection_follows_the_plan_and_refuses_crafted_calls() {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[("a.txt", "alpha\n")]);
+    let write = json!({"name": "change.apply", "args": {"path": "b.txt", "op": "create", "content": "beta\n"}});
+    // The scripted model indexes its steps by the tool results it has seen;
+    // the two-call turn (index 2) skips index 3.
+    let script = vec![
+        // 0: the read-only question.
+        json!({"calls": [{"name": "fs.read", "args": {"path": "a.txt"}}]}),
+        // 1: a write crafted before any plan — the harness plan gate answers.
+        json!({"calls": [write.clone()]}),
+        // 2: the plan declares the file, and the same turn crafts the write
+        // it now covers: the harness gates pass, this turn's projection does
+        // not carry it.
+        json!({"calls": [
+            {"name": "plan.update", "args": {"outcome": "add b.txt", "expected_files": ["b.txt"]}},
+            write.clone()
+        ]}),
+        json!({"calls": []}),
+        // 4: a destructive tool the plan does not declare.
+        json!({"calls": [{"name": "git.worktree.close", "args": {"path": "nowhere"}}]}),
+        // 5: the plan declares the effect.
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "add b.txt", "expected_files": ["b.txt"], "protected_effects": ["git.worktree.close"], "reason": "the stale worktree too"}}]}),
+        // 6: the declared write, projected since the turn after its plan.
+        json!({"calls": [write]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "added b.txt", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x51)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x52, "local_trusted").await;
+    // The host list (profile × lease × kernel) does carry the write and the
+    // destructive tool: the projection is what narrows the model's view.
+    let host = list_tools(&mut c, 0x53, Some(task.clone())).await;
+    assert!(
+        host.iter().any(|(n, _, _)| n == "change.apply")
+            && host.iter().any(|(n, _, _)| n == "git.worktree.close"),
+        "{:?}",
+        host.iter().map(|t| &t.0).collect::<Vec<_>>()
+    );
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x54),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 12,
+                max_tool_calls: 0,
+                max_no_progress_turns: 6,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 120).await;
+    let bodies = seen.lock().unwrap().clone();
+    // The last request carries the whole transcript once.
+    let last_msgs: Vec<String> = bodies.last().unwrap()["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    assert_eq!(st.state, "ReadyForReview", "{st:?}\n{last_msgs:#?}");
+    assert_eq!(bodies.len(), 7, "{}", bodies.len());
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("b.txt")).unwrap(),
+        "beta\n",
+        "the declared write landed"
+    );
+    let names = |b: &serde_json::Value| -> Vec<String> {
+        b["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|t| t["function"]["name"].as_str().unwrap().to_owned())
+            .collect()
+    };
+    let description = |b: &serde_json::Value, tool: &str| -> String {
+        b["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|t| t["function"]["name"] == tool)
+            .unwrap()["function"]["description"]
+            .as_str()
+            .unwrap()
+            .to_owned()
+    };
+    // Requests 1–3 (no plan yet): read-only tools and process execution; no
+    // file write, no destructive tool; the model is told what is withheld
+    // and what unlocks it; the withheld deferred tool is not even named in
+    // the deferred catalog.
+    for b in &bodies[..3] {
+        let n = names(b);
+        assert!(
+            n.contains(&"fs.read".to_owned())
+                && n.contains(&"search.retrieve".to_owned())
+                && n.contains(&"shell.exec".to_owned())
+                && n.contains(&"plan.update".to_owned()),
+            "{n:?}"
+        );
+        assert!(
+            !n.iter()
+                .any(|t| t == "change.apply" || t == "change.batch" || t == "git.worktree.close"),
+            "write and destructive tools are not offered to a read-only node: {n:?}"
+        );
+        let plan_desc = description(b, "plan.update");
+        assert!(
+            plan_desc.contains("DECLARE_WRITES -> change.apply, change.batch")
+                && plan_desc.contains("DECLARE_PROTECTED_EFFECT -> git.worktree.close"),
+            "{plan_desc}"
+        );
+        let search_desc = description(b, "tool.search");
+        assert!(
+            search_desc.contains("git.worktree.create")
+                && !search_desc.contains("git.worktree.close"),
+            "{search_desc}"
+        );
+    }
+    // Requests 4–5 (files declared, the effect not yet): the write tools
+    // are projected with their schemas; the destructive one is still
+    // withheld and still unnamed.
+    for b in &bodies[3..5] {
+        let n = names(b);
+        assert!(
+            n.contains(&"change.apply".to_owned()) && n.contains(&"change.batch".to_owned()),
+            "{n:?}"
+        );
+        assert!(
+            b["tools"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|t| t["function"]["name"] == "change.apply")
+                .unwrap()["function"]["parameters"]["properties"]["path"]
+                .is_object()
+        );
+        let plan_desc = description(b, "plan.update");
+        assert!(
+            plan_desc.contains("DECLARE_PROTECTED_EFFECT -> git.worktree.close")
+                && !plan_desc.contains("DECLARE_WRITES"),
+            "{plan_desc}"
+        );
+        assert!(!description(b, "tool.search").contains("git.worktree.close"));
+    }
+    // Request 6 (everything declared): the destructive tool is named in the
+    // deferred catalog (callable by name, hydrated on use); nothing is
+    // withheld any more.
+    assert!(
+        description(&bodies[5], "tool.search").contains("git.worktree.close"),
+        "{}",
+        description(&bodies[5], "tool.search")
+    );
+    assert!(
+        !description(&bodies[5], "plan.update").contains("Withheld"),
+        "{}",
+        description(&bodies[5], "plan.update")
+    );
+    // The refusals the model saw: the harness plan gate for the write
+    // before any plan; the projection fence, with the way forward, for the
+    // write crafted in the turn that declared it and for the undeclared
+    // destructive tool.
+    assert_eq!(
+        last_msgs
+            .iter()
+            .filter(|m| m.contains("error_code: HARNESS_PLAN_REQUIRED"))
+            .count(),
+        1,
+        "{last_msgs:#?}"
+    );
+    let refused: Vec<&String> = last_msgs
+        .iter()
+        .filter(|m| m.contains("error_code: TOOL_NOT_PROJECTED"))
+        .collect();
+    assert_eq!(refused.len(), 2, "{last_msgs:#?}");
+    assert!(
+        refused.iter().all(|m| m.contains("status: POLICYDENIED")
+            && m.contains("failure_class: POLICY")
+            && m.contains("retryable: true")
+            && m.contains("plan.update")),
+        "{refused:#?}"
+    );
+    assert!(refused[0].contains("`change.apply`") && refused[1].contains("`git.worktree.close`"));
+    assert!(
+        !repo.path().join("nowhere").exists(),
+        "nothing happened for the crafted destructive call"
+    );
+    // On the log: every turn's projection names what was projected and what
+    // was withheld with its reason; the hash follows the scope.
+    let evs = task_events(&core, &session, &task).await;
+    let projections: Vec<&serde_json::Value> = evs
+        .iter()
+        .filter(|(a, t, _)| a == "turn" && t == "ToolProjectionSelected")
+        .map(|(_, _, p)| p)
+        .collect();
+    assert_eq!(projections.len(), 7, "{projections:#?}");
+    let strings = |v: &serde_json::Value| -> Vec<String> {
+        v.as_array()
+            .unwrap()
+            .iter()
+            .map(|s| s.as_str().unwrap().to_owned())
+            .collect()
+    };
+    let first = projections[0];
+    assert_eq!(first["leg_role"], "solver");
+    let withheld = strings(&first["withheld"]);
+    assert!(
+        withheld.contains(&"change.apply:DECLARE_WRITES".to_owned())
+            && withheld.contains(&"change.batch:DECLARE_WRITES".to_owned())
+            && withheld.contains(&"git.worktree.close:DECLARE_PROTECTED_EFFECT".to_owned()),
+        "{withheld:?}"
+    );
+    let projected = strings(&first["projected"]);
+    assert!(
+        projected.contains(&"fs.read".to_owned())
+            && !projected.contains(&"change.apply".to_owned()),
+        "{projected:?}"
+    );
+    let files_declared = projections[3];
+    assert_eq!(
+        strings(&files_declared["withheld"]),
+        ["git.worktree.close:DECLARE_PROTECTED_EFFECT"],
+        "{files_declared:#?}"
+    );
+    assert!(strings(&files_declared["projected"]).contains(&"change.apply".to_owned()));
+    let all_declared = projections[5];
+    assert!(
+        strings(&all_declared["withheld"]).is_empty(),
+        "{all_declared:#?}"
+    );
+    assert!(
+        first["tool_projection_hash"] != files_declared["tool_projection_hash"]
+            && files_declared["tool_projection_hash"] != all_declared["tool_projection_hash"],
+        "the projection hash follows the scope"
+    );
+    // Per tool call (grouped by aggregate): the crafted calls are Proposed →
+    // Validated → PolicyDecision denied (the call's end), never Dispatched;
+    // the write before any plan never became a tool call; the one declared
+    // write is the only `change.apply` that dispatched.
+    let replay = wire_replay(&core, &session).await;
+    let mut trails: Vec<(String, String, Vec<String>, Option<String>)> = Vec::new();
+    for e in replay.iter().filter(|e| {
+        e["aggregate_type"] == "tool_call" && e["task_id"].as_str() == Some(&hex_id(&task))
+    }) {
+        let agg = e["aggregate_id"].as_str().unwrap().to_owned();
+        let et = e["event_type"].as_str().unwrap().to_owned();
+        let payload = &e["payload"]["payload"];
+        let entry = match trails.iter_mut().find(|(a, _, _, _)| *a == agg) {
+            Some(t) => t,
+            None => {
+                trails.push((agg, String::new(), vec![], None));
+                trails.last_mut().unwrap()
+            }
+        };
+        if et == "ToolCallProposed" {
+            entry.1 = payload["tool_name"].as_str().unwrap_or_default().to_owned();
+        }
+        if et == "ToolCallPolicyDecision" && payload["allowed"] == false {
+            entry.3 = payload["decision"]
+                .as_str()
+                .and_then(|d| d.split(':').next())
+                .map(str::to_owned);
+        }
+        entry.2.push(et);
+    }
+    let crafted: Vec<&(String, String, Vec<String>, Option<String>)> = trails
+        .iter()
+        .filter(|(_, _, _, code)| code.as_deref() == Some("TOOL_NOT_PROJECTED"))
+        .collect();
+    assert_eq!(
+        crafted
+            .iter()
+            .map(|(_, n, _, _)| n.as_str())
+            .collect::<Vec<_>>(),
+        ["change.apply", "git.worktree.close"],
+        "{trails:#?}"
+    );
+    for (_, _, trail, _) in &crafted {
+        assert_eq!(
+            trail,
+            &vec![
+                "ToolCallProposed".to_owned(),
+                "ToolCallValidated".to_owned(),
+                "ToolCallPolicyDecision".to_owned()
+            ],
+            "refused at the policy stage, before any effector: {trail:?}"
+        );
+    }
+    assert_eq!(
+        trails
+            .iter()
+            .filter(|(_, n, _, _)| n == "change.apply")
+            .count(),
+        2,
+        "the write before any plan never reached the pipeline: {trails:#?}"
+    );
+    assert!(
+        !trails
+            .iter()
+            .any(|(_, n, t, _)| n == "git.worktree.close"
+                && t.iter().any(|e| e == "ToolCallDispatched")),
+        "{trails:#?}"
+    );
+    assert_eq!(
+        trails
+            .iter()
+            .filter(|(_, n, t, _)| n == "change.apply"
+                && t.iter().any(|e| e == "ToolCallSucceeded"))
+            .count(),
+        1,
+        "only the declared write landed: {trails:#?}"
     );
 }

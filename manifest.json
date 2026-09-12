@@ -2,13 +2,13 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-09-11",
+  "generated_on": "2026-09-12",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 789,
-    "docs_bytes": 1062652
+    "root_and_tooling": 791,
+    "docs_bytes": 1065468
   },
   "sections": [
     {
@@ -185,8 +185,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Tool System, Capability Kernel, Procedural Runtime, and MCP",
-      "bytes": 5407,
-      "sha256": "88f995ffc9687f2cc88f72e8f0a94c7aae602050db3dda997dc9d8bb9b052f3d"
+      "bytes": 7846,
+      "sha256": "f8e5e538e84119ee54a9a52bdd3fd3c38ed2777dada64e5e1aaa9b8651f8a238"
     },
     {
       "path": "docs/17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md",
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 11693,
-      "sha256": "9a88c098ca1da1b255ae50b0df4d09793acb58b44149d79ada6cd4c8846af1cb"
+      "bytes": 12070,
+      "sha256": "0c33c7c09abddc738613a6018c05eafb08bc4c55b4cc19fde950d1662f56a7b9"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -4755,6 +4755,16 @@
       "path": "evidence/m4/M4.6/evidence.json",
       "bytes": 2378,
       "sha256": "0e567315ee19ab716569b84ee201867bd35a067dbd0617a8bb2d8f955923b1a2"
+    },
+    {
+      "path": "evidence/m5/M5.1/TASK_CARD.md",
+      "bytes": 7616,
+      "sha256": "20dd77b342c34559386d7cfc8f477b0638c1d00552cbc813dfadd92abdb7cbd2"
+    },
+    {
+      "path": "evidence/m5/M5.1/evidence.json",
+      "bytes": 1617,
+      "sha256": "d793a7954549ea888dcc013ac2ec0d05055341075dbb2a39861d0c02131337d0"
     },
     {
       "path": "graph/PROJECT_GRAPH.md",

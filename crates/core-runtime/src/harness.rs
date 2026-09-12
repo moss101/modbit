@@ -2,6 +2,7 @@
 //! docs/28): the Core-enforced rules the one-agent runtime applies between
 //! model output and tool execution. Pure: no I/O, no clocks.
 
+use modbit_domain::toolcall::EffectClass;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
@@ -122,6 +123,11 @@ pub struct HarnessState {
     /// Recorded for the model and the gate; never lowered by a later run.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub realized_risk: Option<serde_json::Value>,
+    /// Tools the task's profile allows but this turn's projection withheld
+    /// (docs/16 "Dynamic task-scoped projection", M5.1), each with what the
+    /// model must declare to have it projected.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub withheld_tools: Vec<WithheldTool>,
     /// The Acceptance Gate's latest verdict (REQ-EPR-017): what evidence
     /// is still missing before the candidate can be accepted.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -951,6 +957,122 @@ impl HarnessState {
     }
 }
 
+/// A tool withheld from the projection, and why (docs/16, M5.1).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WithheldTool {
+    /// Tool name.
+    pub name: String,
+    /// `DECLARE_WRITES` | `DECLARE_PROTECTED_EFFECT` | `REVIEWER_LEG`.
+    pub reason: String,
+    /// What to do.
+    pub how: String,
+}
+
+/// What the active node has declared (docs/16 "only tools authorized and
+/// likely useful for the active node"): derived from the plan, per leg role.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ProjectionScope {
+    /// The plan declares files it will change.
+    pub writes_declared: bool,
+    /// Protected effects the plan declares (tool names, toolsets or
+    /// capability ids).
+    pub protected_declared: Vec<String>,
+    /// `solver` | `reviewer` | `reviser` (docs/16: a reviewer leg gets
+    /// read-only tools plus reversible writes and process execution scoped
+    /// to its disposable worktree, never a protected effect).
+    pub leg_role: String,
+}
+
+impl HarnessState {
+    /// The projection scope this turn compiles under.
+    #[must_use]
+    pub fn projection_scope(&self, leg_role: &str) -> ProjectionScope {
+        ProjectionScope {
+            writes_declared: self
+                .plan
+                .as_ref()
+                .is_some_and(|p| !p.expected_files.is_empty()),
+            protected_declared: self
+                .plan
+                .as_ref()
+                .map(|p| p.protected_effects.clone())
+                .unwrap_or_default(),
+            leg_role: leg_role.into(),
+        }
+    }
+}
+
+/// Whether a declared protected effect names this tool: exact name, a
+/// toolset prefix (`git.worktree` covers `git.worktree.close`), or one of
+/// the tool's capability ids.
+fn declares(declared: &[String], name: &str, capabilities: &[String]) -> bool {
+    declared.iter().any(|d| {
+        let d = d.trim();
+        !d.is_empty()
+            && (d == name
+                || name.starts_with(&format!("{d}."))
+                || capabilities.iter().any(|c| c == d))
+    })
+}
+
+/// Decide whether a registry tool is projected for the active node
+/// (docs/16 "Dynamic task-scoped projection", REQ-EV-0096 as built in M5.1).
+/// Read-only tools always are; a file-writing tool needs the plan to have
+/// declared files; a protected, external, secret or destructive tool needs
+/// the plan to have declared that effect; a reviewer leg sees read-only
+/// tools and reversible writes (its worktree is disposable) and never a
+/// protected class. The Capability Kernel is the boundary either way —
+/// projection decides what the model is offered.
+///
+/// # Errors
+/// The tool is withheld, with the reason and what to declare.
+pub fn project(
+    name: &str,
+    effect_class: EffectClass,
+    capabilities: &[String],
+    scope: &ProjectionScope,
+) -> Result<(), WithheldTool> {
+    let writes_files = capabilities.iter().any(|c| c == "fs.write");
+    match effect_class {
+        EffectClass::ReadOnly => Ok(()),
+        EffectClass::ReversibleWrite if scope.leg_role == "reviewer" => Ok(()),
+        EffectClass::ReversibleWrite => {
+            if writes_files && !scope.writes_declared {
+                Err(WithheldTool {
+                    name: name.into(),
+                    reason: "DECLARE_WRITES".into(),
+                    how: "declare the files you will change in `plan.update` (`expected_files`); write tools are projected from the next turn on".into(),
+                })
+            } else {
+                Ok(())
+            }
+        }
+        EffectClass::ProtectedWrite
+        | EffectClass::ExternalSideEffect
+        | EffectClass::SecretAccess
+        | EffectClass::Destructive => {
+            if scope.leg_role == "reviewer" {
+                return Err(WithheldTool {
+                    name: name.into(),
+                    reason: "REVIEWER_LEG".into(),
+                    how: "a reviewer leg never causes protected, external, secret or destructive effects".into(),
+                });
+            }
+            if declares(&scope.protected_declared, name, capabilities) {
+                Ok(())
+            } else {
+                Err(WithheldTool {
+                    name: name.into(),
+                    reason: "DECLARE_PROTECTED_EFFECT".into(),
+                    how: format!(
+                        "declare `{name}` (or its toolset) in `plan.update` (`protected_effects`); it is projected from the next turn on and still needs its approval"
+                    ),
+                })
+            }
+        }
+    }
+}
+
 /// A failure signature normalized from a command/test observation
 /// (docs/28 §5: failing check, error class, stable message fingerprint).
 #[must_use]
@@ -1233,6 +1355,124 @@ mod tests {
         h.budgets.max_turns = 1;
         h.turns = 1;
         assert_eq!(h.check_turn_budget().unwrap_err().budget, "max_turns");
+    }
+
+    #[test]
+    fn projection_follows_the_plan_and_the_leg_role() {
+        let caps = |c: &[&str]| c.iter().map(|s| (*s).to_owned()).collect::<Vec<_>>();
+        let mut h = HarnessState::default();
+        // No plan: read-only tools only; writes and protected effects are
+        // withheld with what unlocks them.
+        let scope = h.projection_scope("solver");
+        assert!(
+            project(
+                "fs.read",
+                EffectClass::ReadOnly,
+                &caps(&["fs.read"]),
+                &scope
+            )
+            .is_ok()
+        );
+        assert!(
+            project(
+                "shell.exec",
+                EffectClass::ReversibleWrite,
+                &caps(&["shell.exec"]),
+                &scope
+            )
+            .is_ok(),
+            "process execution is not a file write"
+        );
+        let w = project(
+            "change.apply",
+            EffectClass::ReversibleWrite,
+            &caps(&["fs.write"]),
+            &scope,
+        )
+        .unwrap_err();
+        assert_eq!(
+            (w.name.as_str(), w.reason.as_str()),
+            ("change.apply", "DECLARE_WRITES")
+        );
+        let w = project(
+            "git.worktree.close",
+            EffectClass::Destructive,
+            &caps(&["git.worktree"]),
+            &scope,
+        )
+        .unwrap_err();
+        assert_eq!(w.reason, "DECLARE_PROTECTED_EFFECT");
+        assert!(w.how.contains("git.worktree.close"));
+        // The plan names files and a protected effect by toolset.
+        h.plan = Some(Plan {
+            outcome: "o".into(),
+            expected_files: vec!["a.txt".into()],
+            verification: vec![],
+            protected_effects: vec!["git.worktree".into()],
+            version: 1,
+        });
+        let scope = h.projection_scope("solver");
+        assert!(scope.writes_declared);
+        assert!(
+            project(
+                "change.apply",
+                EffectClass::ReversibleWrite,
+                &caps(&["fs.write"]),
+                &scope
+            )
+            .is_ok()
+        );
+        assert!(
+            project(
+                "git.worktree.close",
+                EffectClass::Destructive,
+                &caps(&["git.worktree"]),
+                &scope
+            )
+            .is_ok()
+        );
+        assert!(
+            project(
+                "net.fetch",
+                EffectClass::ExternalSideEffect,
+                &caps(&["net.egress"]),
+                &scope
+            )
+            .is_err(),
+            "an undeclared effect stays withheld"
+        );
+        // A capability id declares too.
+        h.plan.as_mut().unwrap().protected_effects = vec!["net.egress".into()];
+        let scope = h.projection_scope("solver");
+        assert!(
+            project(
+                "net.fetch",
+                EffectClass::ExternalSideEffect,
+                &caps(&["net.egress"]),
+                &scope
+            )
+            .is_ok()
+        );
+        // A reviewer leg: reads and reversible writes in its disposable
+        // worktree, never a protected class whatever the plan declares.
+        let scope = h.projection_scope("reviewer");
+        assert!(
+            project(
+                "change.apply",
+                EffectClass::ReversibleWrite,
+                &caps(&["fs.write"]),
+                &scope
+            )
+            .is_ok()
+        );
+        let w = project(
+            "net.fetch",
+            EffectClass::ExternalSideEffect,
+            &caps(&["net.egress"]),
+            &scope,
+        )
+        .unwrap_err();
+        assert_eq!(w.reason, "REVIEWER_LEG");
     }
 
     #[test]

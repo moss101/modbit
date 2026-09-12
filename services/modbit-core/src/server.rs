@@ -1619,6 +1619,7 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 turn_id: None,
                 call_id: None,
                 lease_generation: env.expected_generation,
+                projection: None,
             };
             match core.tools.invoke(&core.store, req).await {
                 Ok(done) => {

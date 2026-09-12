@@ -103,6 +103,16 @@ pub enum TurnEvent {
     ToolProjectionSelected {
         /// Projection hash.
         tool_projection_hash: String,
+        /// Tools projected with schemas this turn (docs/16, M5.1).
+        #[serde(default)]
+        projected: Vec<String>,
+        /// Tools the profile allows but the active node has not declared,
+        /// as `name:reason` (M5.1).
+        #[serde(default)]
+        withheld: Vec<String>,
+        /// The leg role the projection was compiled for.
+        #[serde(default)]
+        leg_role: String,
     },
     /// `ModelInvocationStarted` (Prepared → Streaming, or Executing/Verifying → Streaming for repair).
     ModelInvocationStarted {
@@ -218,6 +228,7 @@ impl Turn {
             }
             TurnEvent::ToolProjectionSelected {
                 tool_projection_hash,
+                ..
             } => {
                 if self.state != Prepared {
                     return Err(invalid(self.state, "ToolProjectionSelected"));

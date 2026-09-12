@@ -614,6 +614,7 @@ impl ToolHost {
             turn_id,
             call_id,
             lease_generation,
+            projection,
         } = call;
         let (workspace, root) = match &workspace_root {
             Some(r) => {
@@ -632,6 +633,7 @@ impl ToolHost {
             lease,
             approval,
             emergency_stopped,
+            projection,
         };
         let search: Option<Arc<dyn modbit_tools::SearchPort>> = match (&workspace, &root) {
             (Some(ws), Some(r)) => Some(Arc::new(IndexPort {
@@ -1375,6 +1377,10 @@ pub struct InvokeRequest<'a> {
     /// the dispatch are fenced by it, so a superseded owner cannot start an
     /// effect; the outcome of an effect already running is recorded either way.
     pub lease_generation: Option<u64>,
+    /// The tools projected to the model this turn (docs/16, M5.1): a call
+    /// naming a tool outside it is refused before any effect, however it
+    /// was crafted. `None` = no projection applies (a user's direct call).
+    pub projection: Option<Vec<String>>,
 }
 
 /// What an invocation produced.
@@ -1393,10 +1399,27 @@ struct KernelPort {
     lease: Option<CapabilityLease>,
     approval: Option<Approval>,
     emergency_stopped: bool,
+    /// The turn's projection, when the caller is the model (M5.1).
+    projection: Option<Vec<String>>,
 }
 
 impl CapabilityPort for KernelPort {
     fn decide(&self, req: &PolicyRequest) -> PolicyDecision {
+        // docs/16 (M5.1): a call to a tool the model was not offered this
+        // turn is refused before the kernel is asked — a crafted name is not
+        // a projection. The kernel remains the boundary for what was offered.
+        if let Some(p) = &self.projection
+            && !p.iter().any(|n| n == &req.tool_name)
+        {
+            return PolicyDecision::Deny {
+                code: "TOOL_NOT_PROJECTED".into(),
+                reason: format!(
+                    "`{}` is not in this turn's tool projection; declare what it needs in `plan.update` (files in expected_files, effects in protected_effects) or find it with tool.search, and call it once it is projected",
+                    req.tool_name
+                ),
+                approval_required: false,
+            };
+        }
         let d = self.kernel.decide(&KernelRequest {
             tool_name: &req.tool_name,
             effect_class: req.effect_class,

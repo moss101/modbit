@@ -1688,17 +1688,29 @@ fn projection(
     core: &Core,
     task: &Task,
     lease: Option<&modbit_domain::lease::CapabilityLease>,
-    state: &HarnessState,
+    state: &mut HarnessState,
 ) -> Vec<ToolProjection> {
     let visible = core
         .tools
         .visible_specs(Some(&task.execution_profile), lease);
+    // Dynamic task-scoped projection (docs/16, M5.1): of what the profile,
+    // the lease and the kernel allow, the model is offered what the active
+    // node has declared — read-only tools always, file writes once the plan
+    // names files, protected effects once the plan names them. What is
+    // withheld is told to the model with what to declare.
+    let scope = state.projection_scope("solver");
+    state.withheld_tools.clear();
     // Deferred tool search (REQ-EV-0134/0177/0229): the stable core is
     // projected with schemas; deferred tools are named by toolset in the
     // `tool.search` description and hydrated only once activated.
     let mut deferred: Vec<(String, String)> = Vec::new();
     let mut tools: Vec<ToolProjection> = Vec::new();
     for s in visible {
+        if let Err(w) = harness::project(&s.name, s.effect_class, &s.required_capabilities, &scope)
+        {
+            state.withheld_tools.push(w);
+            continue;
+        }
         if harness::is_deferred(&s.name) && !state.activated_tools.contains(&s.name) {
             deferred.push((harness::toolset_of(&s.name).to_owned(), s.name.clone()));
             continue;
@@ -1743,9 +1755,33 @@ fn projection(
         description: "Ask the user one typed question only when the change set, the verification or a protected effect depends on the answer; offer concrete options. Never ask what the repository can answer. The run suspends until the answer arrives.".into(),
         input_schema: serde_json::json!({"type":"object","properties":{"question":{"type":"string"},"options":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"label":{"type":"string"}},"required":["id","label"]}},"allow_free_text":{"type":"boolean"},"reason":{"type":"string","enum":["change_set","verification","protected_effect","other"]}},"required":["question","reason"]}),
     });
+    // The withheld tools are named on the plan tool with what unlocks them
+    // (docs/16 M5.1): the model is told, not left to guess at a refusal.
+    let withheld_note = if state.withheld_tools.is_empty() {
+        String::new()
+    } else {
+        let mut by_reason: Vec<(String, Vec<String>)> = Vec::new();
+        for w in &state.withheld_tools {
+            match by_reason.iter_mut().find(|(r, _)| *r == w.reason) {
+                Some((_, names)) => names.push(w.name.clone()),
+                None => by_reason.push((w.reason.clone(), vec![w.name.clone()])),
+            }
+        }
+        by_reason.sort();
+        format!(
+            " Withheld from this turn's projection until declared here: {}.",
+            by_reason
+                .iter()
+                .map(|(r, names)| format!("{r} -> {}", names.join(", ")))
+                .collect::<Vec<_>>()
+                .join("; ")
+        )
+    };
     tools.push(ToolProjection {
         name: PLAN_TOOL.into(),
-        description: "Record or revise the plan before writing: outcome, expected files, verification, protected effects.".into(),
+        description: format!(
+            "Record or revise the plan before writing: outcome, expected files, verification, protected effects.{withheld_note}"
+        ),
         input_schema: serde_json::json!({"type":"object","properties":{"outcome":{"type":"string"},"expected_files":{"type":"array","items":{"type":"string"}},"verification":{"type":"array","items":{"type":"string"}},"protected_effects":{"type":"array","items":{"type":"string"}},"reason":{"type":"string"}},"required":["outcome","expected_files"]}),
     });
     tools.push(ToolProjection {
@@ -1874,13 +1910,17 @@ async fn run_loop(
     // against real requests before anything is allowed to depend on it.
     profile_request(&core, &task, lt, &actor).await;
     let mut tools: Vec<ToolProjection>;
+    let mut projected_names: Vec<String>;
     let end = 'outer: loop {
         if cancel.is_cancelled() {
             break LoopEnd::Cancelled;
         }
         // The projection follows the harness state: deferred tools activated
         // by `tool.search` appear with their schemas from this turn on.
-        tools = projection(&core, &task, lease.as_ref(), &state);
+        tools = projection(&core, &task, lease.as_ref(), &mut state);
+        // The names offered this turn: a call outside them is refused at the
+        // pipeline (M5.1), whatever the model wrote.
+        projected_names = tools.iter().map(|t| t.name.clone()).collect();
         // Scope policy (docs/28 §3, PX-038): the user's answer decides whether
         // the expansion proceeds, and is recorded with the counters it was
         // measured against — always the original plan's.
@@ -1921,14 +1961,31 @@ async fn run_loop(
             }
         }
         // Deferred tools the task may still call by name (discovery by use):
-        // visible under profile × lease × kernel, not yet projected.
-        let deferred_visible: Vec<String> = core
+        // visible under profile × lease × kernel and inside the node's
+        // projection scope, not yet hydrated. A deferred tool the scope
+        // withholds is not callable by name either (M5.1).
+        // `host_visible` is the compiled surface itself (support × policy):
+        // a name outside it is TOOL_NOT_VISIBLE; a name inside it that the
+        // scope withholds is TOOL_NOT_PROJECTED.
+        let host_specs = core
             .tools
-            .visible_specs(Some(&task.execution_profile), lease.as_ref())
-            .into_iter()
-            .map(|s| s.name)
-            .filter(|n| harness::is_deferred(n) && !state.activated_tools.contains(n))
-            .collect();
+            .visible_specs(Some(&task.execution_profile), lease.as_ref());
+        let host_visible: Vec<String> = host_specs.iter().map(|s| s.name.clone()).collect();
+        let deferred_visible: Vec<String> = {
+            let scope = state.projection_scope("solver");
+            host_specs
+                .into_iter()
+                .filter(|s| {
+                    harness::is_deferred(&s.name) && !state.activated_tools.contains(&s.name)
+                })
+                .filter(|s| {
+                    harness::project(&s.name, s.effect_class, &s.required_capabilities, &scope)
+                        .is_ok()
+                })
+                .map(|s| s.name)
+                .collect()
+        };
+        projected_names.extend(deferred_visible.iter().cloned());
         // Steering at a safe boundary (docs/14 contract 9): inputs queued
         // before this boundary (including before the loop started).
         let mut inputs = std::mem::take(&mut carried);
@@ -2186,6 +2243,13 @@ async fn run_loop(
                                 "ToolProjectionSelected",
                                 &TurnEvent::ToolProjectionSelected {
                                     tool_projection_hash: compiled.tool_projection_hash.clone(),
+                                    projected: tools.iter().map(|t| t.name.clone()).collect(),
+                                    withheld: state
+                                        .withheld_tools
+                                        .iter()
+                                        .map(|w| format!("{}:{}", w.name, w.reason))
+                                        .collect(),
+                                    leg_role: "solver".into(),
                                 },
                                 actor.clone(),
                             ),
@@ -2907,9 +2971,7 @@ async fn run_loop(
                 }
                 // REQ-EV-0044: a tool outside the compiled surface (unsupported by
                 // the host or not authorized) is refused before any effector.
-                n if !tools.iter().any(|t| t.name == n)
-                    && !deferred_visible.iter().any(|d| d == n) =>
-                {
+                n if !tools.iter().any(|t| t.name == n) && !host_visible.iter().any(|d| d == n) => {
                     let entry = TranscriptEntry::ToolResult {
                         call_id: call_id.clone(),
                         name: name.clone(),
@@ -3238,6 +3300,10 @@ async fn run_loop(
                                 continue;
                             }
                             state.tool_calls += 1;
+                            // docs/16 (M5.1): the turn's projection travels with
+                            // the call; a tool the model was not offered this
+                            // turn is refused at the pipeline's policy stage
+                            // (TOOL_NOT_PROJECTED) before any effector.
                             let entry = execute_tool(
                                 &core,
                                 &task,
@@ -3255,6 +3321,7 @@ async fn run_loop(
                                     &name,
                                     &arguments_json,
                                 ),
+                                &projected_names,
                             )
                             .await;
                             let failure = match &entry {
@@ -5137,6 +5204,7 @@ async fn execute_tool(
     args: &str,
     cancel: &CancellationToken,
     resume: Option<ToolCallId>,
+    projected: &[String],
 ) -> TranscriptEntry {
     // A resumed run re-enters the call it already proposed (docs/19 layer 2):
     // the same id finds the same approval bound to the same intent.
@@ -5178,6 +5246,7 @@ async fn execute_tool(
             turn_id: lt.turn,
             call_id: Some(call_id.to_owned()),
             lease_generation: lt.lease(),
+            projection: Some(projected.to_vec()),
         };
         let done = match core.tools.invoke(&core.store, req).await {
             Ok(d) => d,

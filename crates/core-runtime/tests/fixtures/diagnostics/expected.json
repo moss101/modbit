@@ -68,6 +68,22 @@
     "retryable": false,
     "user_action": "raise `max_turns` (used 12 of 12) and resume, or narrow the goal"
   },
+  "change_apply_not_projected": {
+    "class": "POLICY",
+    "code": "TOOL_NOT_PROJECTED",
+    "detail": "`change.apply` is not in this turn's tool projection; declare what it needs in `plan.update` (files in expected_files, effects in protected_effects) or find it with tool.search, and call it once it is projected",
+    "evidence_refs": [],
+    "features": [
+      "class:policy",
+      "code:tool_not_projected",
+      "retryable",
+      "source:tool",
+      "tool:change.apply"
+    ],
+    "recovery_path": "declare the files (expected_files) or the effect (protected_effects) in `plan.update`, or activate the tool with tool.search; call it once it is projected",
+    "retryable": true,
+    "user_action": ""
+  },
   "change_apply_unknown_outcome": {
     "class": "UNKNOWN_OUTCOME",
     "code": "UNKNOWN_OUTCOME",

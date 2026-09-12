@@ -170,7 +170,7 @@ fn qual_px_000_headless_cli_task_lifecycle() {
         .to_owned();
     let wt = format!("{}-wt", repo_str.replace('\\', "/"));
     let script = vec![
-        serde_json::json!({"calls": [{"name": "plan.update", "args": {"outcome": "o", "expected_files": ["out.txt"]}}]}),
+        serde_json::json!({"calls": [{"name": "plan.update", "args": {"outcome": "o", "expected_files": ["out.txt"], "protected_effects": ["git.worktree.close"]}}]}),
         serde_json::json!({"calls": [{"name": "user.ask", "args": {"question": "Which greeting?", "options": [{"id": "hi", "label": "hi"}, {"id": "hello", "label": "hello"}], "reason": "change_set"}}]}),
         serde_json::json!({"calls": [{"name": "change.apply", "args": {"path": "out.txt", "op": "create", "content": "hi\n"}}]}),
         serde_json::json!({"calls": [{"name": "git.worktree.create", "args": {"branch": "t/px", "path": wt}}]}),
