@@ -7,10 +7,21 @@
   "nodes_follow_their_dependencies_and_done_needs_evidence",
   "unknown_dependencies_and_cycles_are_refused"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "498110c",
+  "3b96176"
+ ],
+ "runs": [
+  {
+   "id": "gha-34714564353",
+   "kind": "hosted CI on 3b96176",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34714564353",
+   "log": "ci-run-34714564353.json"
+  }
+ ],
  "proof": "the plan's steps with dependencies, owner slot, status, evidence and blockers are recorded outside the transcript; a compaction epoch during the run and a Core kill/restart leave `GetWorkGraph` identical, and the resumed model reads the nodes from its harness state rather than the rewritten transcript.",
  "audit": "MISSING before: the plan held no nodes; only the transcript carried what the model thought it was doing.",
  "limitations": "Owner assignment waits for admission (M6.3).",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34714564353 (green on macOS, Linux and Windows at 3b96176)"
 }

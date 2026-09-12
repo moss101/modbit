@@ -7,10 +7,21 @@
   "qual_epr_006_a_quality_rejection_continues_the_run_on_the_prevalidated_stronger_slot",
   "agent_status_transitions_are_the_documented_ones"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "498110c",
+  "3b96176"
+ ],
+ "runs": [
+  {
+   "id": "gha-34714564353",
+   "kind": "hosted CI on 3b96176",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34714564353",
+   "log": "ci-run-34714564353.json"
+  }
+ ],
  "proof": "a typical task through Core creates exactly one `PRIMARY` node and no other agent; the same node is the one running after a restart and a resume; the EPR-006 continuation spawns no second agent.",
  "audit": "MISSING before: no agent identity existed to be one of.",
  "limitations": "Delegation of separable work (subagents) arrives with M6.3–M6.5; until then the primary is the only worker by construction.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34714564353 (green on macOS, Linux and Windows at 3b96176)"
 }

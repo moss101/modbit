@@ -9,10 +9,21 @@
   "the_vector_parses_and_refuses_what_it_cannot_read",
   "qual_ev_0245_fault_corpus_produces_stable_diagnostic_features"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "498110c",
+  "3b96176"
+ ],
+ "runs": [
+  {
+   "id": "gha-34714564353",
+   "kind": "hosted CI on 3b96176",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34714564353",
+   "log": "ci-run-34714564353.json"
+  }
+ ],
  "proof": "A one-slot pool refuses the second task's StartTask CAPACITY_EXHAUSTED with a typed record and nothing created; the first task's ticket is released at its end and the second starts; a one-second lease lapses under a four-second provider hold, the waiting task takes the slot, the lapsed run re-takes one at its boundary or suspends Waiting(Capacity) with CAPACITY_LOST; the pool ends empty.",
  "audit": "MISSING before: nothing bounded concurrent runs; Waiting(Capacity) had no producer.",
  "limitations": "Only the run-level ticket consumes capacity until M6.3 (subagents) and the sandbox/terminal owners; the pool is process-local; lapse is enforced at turn boundaries.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34714564353 (green on macOS, Linux and Windows at 3b96176)"
 }

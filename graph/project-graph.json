@@ -3052,8 +3052,14 @@
    "milestone": "M6",
    "order": 0,
    "source": "docs/43",
-   "status": "REAL_TESTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:34714564353",
+    "commit:498110c",
+    "test:m6_1_work_graph_and_primary_agent_survive_compaction_and_restart_unchanged",
+    "test:qual_epr_006_a_quality_rejection_continues_the_run_on_the_prevalidated_stronger_slot",
+    "artifact:evidence/m6/M6.1/TASK_CARD.md"
+   ],
    "notes": [
     {
      "at": "2026-09-12T14:23:06Z",
@@ -3078,9 +3084,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "real-system qualification through Core (see card)"
+    },
+    {
+     "at": "2026-09-12T19:58:06Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "green on hosted CI (macOS, Linux, Windows) at 3b96176"
+    },
+    {
+     "at": "2026-09-12T19:58:06Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
     }
    ],
-   "status_changed_on": "2026-09-12T14:23:06Z"
+   "status_changed_on": "2026-09-12T19:58:06Z"
   },
   {
    "id": "M6.2",
@@ -3090,8 +3108,53 @@
    "milestone": "M6",
    "order": 1,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:34714564353",
+    "commit:498110c",
+    "test:m6_2_capacity_tickets_gate_runs_all_or_nothing_and_lapse_at_expiry",
+    "test:a_ticket_is_all_or_nothing_and_exhaustion_names_the_dimension",
+    "artifact:evidence/m6/M6.2/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-12T19:58:06Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: see evidence/m6/M6.2/TASK_CARD.md"
+    },
+    {
+     "at": "2026-09-12T19:58:06Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "crates/core-runtime capacity allocator; Core capacity module (498110c)"
+    },
+    {
+     "at": "2026-09-12T19:58:07Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired: run tickets before RunCreated, renewal per turn, release at loop end, GetCapacity, CLI capacity show"
+    },
+    {
+     "at": "2026-09-12T19:58:07Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification through Core (see card)"
+    },
+    {
+     "at": "2026-09-12T19:58:07Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "green on hosted CI at 3b96176"
+    },
+    {
+     "at": "2026-09-12T19:58:07Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
+    }
+   ],
+   "status_changed_on": "2026-09-12T19:58:07Z"
   },
   {
    "id": "M6.3",
@@ -9602,8 +9665,14 @@
    "milestone": "M6",
    "qual": "QUAL-EV-0052",
    "source": "docs/41",
-   "status": "REAL_TESTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:34714564353",
+    "commit:498110c",
+    "test:m6_1_work_graph_and_primary_agent_survive_compaction_and_restart_unchanged",
+    "test:nodes_follow_their_dependencies_and_done_needs_evidence",
+    "artifact:evidence/m6/IMP-EV-0052/TASK_CARD.md"
+   ],
    "notes": [
     {
      "at": "2026-09-12T14:23:07Z",
@@ -9628,9 +9697,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "real-system qualification through Core (see card)"
+    },
+    {
+     "at": "2026-09-12T19:58:06Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "green on hosted CI at 3b96176"
+    },
+    {
+     "at": "2026-09-12T19:58:06Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
     }
    ],
-   "status_changed_on": "2026-09-12T14:23:07Z"
+   "status_changed_on": "2026-09-12T19:58:06Z"
   },
   {
    "id": "IMP-EV-0053",
@@ -12255,8 +12336,14 @@
    "milestone": "M6",
    "qual": "QUAL-EV-0120",
    "source": "docs/41",
-   "status": "REAL_TESTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:34714564353",
+    "commit:498110c",
+    "test:m6_1_work_graph_and_primary_agent_survive_compaction_and_restart_unchanged",
+    "test:nodes_follow_their_dependencies_and_done_needs_evidence",
+    "artifact:evidence/m6/IMP-EV-0120/TASK_CARD.md"
+   ],
    "notes": [
     {
      "at": "2026-09-12T14:23:07Z",
@@ -12281,9 +12368,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "real-system qualification through Core (see card)"
+    },
+    {
+     "at": "2026-09-12T19:58:06Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "green on hosted CI at 3b96176"
+    },
+    {
+     "at": "2026-09-12T19:58:06Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
     }
    ],
-   "status_changed_on": "2026-09-12T14:23:07Z"
+   "status_changed_on": "2026-09-12T19:58:06Z"
   },
   {
    "id": "IMP-EV-0121",
@@ -17808,8 +17907,14 @@
    "milestone": "M6",
    "qual": "QUAL-EV-0255",
    "source": "docs/41",
-   "status": "REAL_TESTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:34714564353",
+    "commit:498110c",
+    "test:m6_1_work_graph_and_primary_agent_survive_compaction_and_restart_unchanged",
+    "test:qual_epr_006_a_quality_rejection_continues_the_run_on_the_prevalidated_stronger_slot",
+    "artifact:evidence/m6/IMP-EV-0255/TASK_CARD.md"
+   ],
    "notes": [
     {
      "at": "2026-09-12T14:23:07Z",
@@ -17834,9 +17939,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "real-system qualification through Core (see card)"
+    },
+    {
+     "at": "2026-09-12T19:58:06Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "green on hosted CI at 3b96176"
+    },
+    {
+     "at": "2026-09-12T19:58:06Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
     }
    ],
-   "status_changed_on": "2026-09-12T14:23:07Z"
+   "status_changed_on": "2026-09-12T19:58:06Z"
   },
   {
    "id": "IMP-EV-0256",
@@ -17849,8 +17966,14 @@
    "milestone": "M6",
    "qual": "QUAL-EV-0256",
    "source": "docs/41",
-   "status": "REAL_TESTING",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:34714564353",
+    "commit:498110c",
+    "test:m6_1_work_graph_and_primary_agent_survive_compaction_and_restart_unchanged",
+    "test:qual_epr_006_a_quality_rejection_continues_the_run_on_the_prevalidated_stronger_slot",
+    "artifact:evidence/m6/IMP-EV-0256/TASK_CARD.md"
+   ],
    "notes": [
     {
      "at": "2026-09-12T14:23:07Z",
@@ -17875,9 +17998,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "real-system qualification through Core (see card)"
+    },
+    {
+     "at": "2026-09-12T19:58:06Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "green on hosted CI at 3b96176"
+    },
+    {
+     "at": "2026-09-12T19:58:06Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
     }
    ],
-   "status_changed_on": "2026-09-12T14:23:07Z"
+   "status_changed_on": "2026-09-12T19:58:06Z"
   },
   {
    "id": "IMP-EV-0261",
@@ -18246,8 +18381,53 @@
    "milestone": "M6",
    "qual": "QUAL-EV-0272",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:34714564353",
+    "commit:498110c",
+    "test:m6_2_capacity_tickets_gate_runs_all_or_nothing_and_lapse_at_expiry",
+    "test:a_ticket_is_all_or_nothing_and_exhaustion_names_the_dimension",
+    "artifact:evidence/m6/IMP-EV-0272/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-12T19:58:07Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: see evidence/m6/IMP-EV-0272/TASK_CARD.md"
+    },
+    {
+     "at": "2026-09-12T19:58:07Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "crates/core-runtime capacity allocator; Core capacity module (498110c)"
+    },
+    {
+     "at": "2026-09-12T19:58:07Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired: run tickets before RunCreated, renewal per turn, release at loop end, GetCapacity, CLI capacity show"
+    },
+    {
+     "at": "2026-09-12T19:58:07Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification through Core (see card)"
+    },
+    {
+     "at": "2026-09-12T19:58:07Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "green on hosted CI at 3b96176"
+    },
+    {
+     "at": "2026-09-12T19:58:07Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
+    }
+   ],
+   "status_changed_on": "2026-09-12T19:58:07Z"
   },
   {
    "id": "IMP-EV-0273",

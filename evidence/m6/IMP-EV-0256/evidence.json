@@ -7,10 +7,21 @@
   "qual_epr_006_a_quality_rejection_continues_the_run_on_the_prevalidated_stronger_slot",
   "agent_status_transitions_are_the_documented_ones"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "498110c",
+  "3b96176"
+ ],
+ "runs": [
+  {
+   "id": "gha-34714564353",
+   "kind": "hosted CI on 3b96176",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34714564353",
+   "log": "ci-run-34714564353.json"
+  }
+ ],
  "proof": "on the EPR-006 continuation the run moves from `openai/gpt-5-mini` to `openai/gpt-5`: one `AgentNodeCreated` for the task, one `AgentBindingChanged` (from mini to gpt-5, reason naming REQ-EPR-006), the same agent id and run before and after, `GetAgentGraph` showing the primary on the new binding.",
  "audit": "MISSING before: the binding was the identity.",
  "limitations": "A provider fallback (EPR-007/route switch at a boundary) rebinds through the same function when it moves a live run; a run-start route change is recorded on resume.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34714564353 (green on macOS, Linux and Windows at 3b96176)"
 }
