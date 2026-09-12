@@ -1032,8 +1032,12 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m6/IMP-EV-0052/TASK_CARD.md` | retained evidence | 1752 | `e76fe98551b6e47e0319e84f72ee8cc49d4291d3ec7c6591044537d083508f53` |
 | `evidence/m6/IMP-EV-0052/ci-run-34714564353.json` | retained evidence | 37317 | `b9e04fb441f0d184d4822bed4269dead5c1b1e320d317dd10240fd306fd37266` |
 | `evidence/m6/IMP-EV-0052/evidence.json` | retained evidence | 1214 | `f1e2ee4b600dc86b45d60cf340ab663ceff50f080e490e772f439713c4fcc177` |
+| `evidence/m6/IMP-EV-0053/TASK_CARD.md` | retained evidence | 2107 | `f909cf51bf591c0da69b3168c99a9c7f5b7c610db559b8ad2c52c00ce1d8ca14` |
+| `evidence/m6/IMP-EV-0053/evidence.json` | retained evidence | 996 | `6a37b993822254b5d6a1c70a5919ace117184040281c0794979af3ce1577bce2` |
 | `evidence/m6/IMP-EV-0078/TASK_CARD.md` | retained evidence | 1292 | `8d1532fa1c696ada22ac102d1d208f9ddacdd97dbe957ab40b2b49ff75d34c07` |
 | `evidence/m6/IMP-EV-0078/evidence.json` | retained evidence | 427 | `8b3d56d3392835c17f5aa654a50a5777c8d73fafec7a842476ba9e24590513cc` |
+| `evidence/m6/IMP-EV-0099/TASK_CARD.md` | retained evidence | 2110 | `610d94664bfdece4eb55654b700d96ce6b25f1be51552f6d4d6d7e4fab0ddc14` |
+| `evidence/m6/IMP-EV-0099/evidence.json` | retained evidence | 1172 | `350ac0f4c19674b959d1284189b2dcc8b9b3e87d17a0567aa3512ab4394ff7b6` |
 | `evidence/m6/IMP-EV-0120/TASK_CARD.md` | retained evidence | 1579 | `69f47eb8d474c60fc871dada4c8508dd242c152063664ea2c6f4e3c1df707a58` |
 | `evidence/m6/IMP-EV-0120/ci-run-34714564353.json` | retained evidence | 37317 | `b9e04fb441f0d184d4822bed4269dead5c1b1e320d317dd10240fd306fd37266` |
 | `evidence/m6/IMP-EV-0120/evidence.json` | retained evidence | 1141 | `937d81020d0fcb61be43dc07c3f2adb5465ffc58960de047eac800741fb778f5` |

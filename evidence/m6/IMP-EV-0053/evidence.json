@@ -1,0 +1,14 @@
+{
+ "task": "IMP-EV-0053",
+ "requirement": "REQ-EV-0053",
+ "qual": "QUAL-EV-0053",
+ "tests": [
+  "qual_px_039_reproduction_first_is_enforced_and_no_progress_turns_escalate"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "the scripted model plans, then repeats `search.exact` three turns: `NoProgressDetected` lands once with `turns: 3`, the task is `Waiting(UserInput)` with a `TaskNeedsAttention` reason naming the turns without progress, and `task.complete` never ran \u2014 the loop did not continue indefinitely.",
+ "audit": "PRESENT since M2.7 / PX-039 (docs/28 \u00a75 repair policy: `max_consecutive_no_progress_turns`, Alpha default 3). No code change in this task: the audit traces the production path and names the qualification that already runs on every CI push.",
+ "limitations": "Novelty is measured by the absence of progress-bearing actions per turn, not by comparing tool outputs; a loop that alternates a cheap plan revision with reads is bounded by `max_turns`.",
+ "ci": ""
+}

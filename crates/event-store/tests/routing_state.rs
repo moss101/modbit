@@ -432,6 +432,10 @@ fn make_pre_routing(dir: &std::path::Path) {
     // V12 (M4.3) added `checkpoints`.
     conn.execute("DROP TABLE IF EXISTS checkpoints", [])
         .unwrap();
+    // V14 (M6.1) added the agent and work graphs; V15 (M6.3) a column on
+    // `agent_nodes` that cannot be re-added to a table that still exists.
+    conn.execute("DROP TABLE IF EXISTS agent_nodes", []).unwrap();
+    conn.execute("DROP TABLE IF EXISTS work_nodes", []).unwrap();
     // V11 (M4.2) added the session branch generation and `compaction_epochs`.
     conn.execute("DROP TABLE IF EXISTS compaction_epochs", [])
         .unwrap();
