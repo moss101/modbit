@@ -106,6 +106,8 @@ MILESTONE_OVERRIDES = {
     "EPR-016": ("M3", "DR-M2-002: router machinery follows the EPR-000 baseline evidence; scheduled in M3 ahead of the M4/M5 EPR tasks that depend on it"),
     "IMP-EV-0107": ("M2", "DR-PX-2026-09-05-006: bounded failure evidence is a prerequisite of the M2 repair loop (PX-018, PX-033, PX-039); scheduled ahead of its owner label's default milestone"),
     "IMP-EV-0284": ("M7", "DR-M3-004: prompt-injection isolation in web content needs the web tool family the tool matrix defers to the browser milestone (REQ-EV-0088/0147)"),
+    # DR-M5-001: rich MCP media results need the external MCP gateway (M9.4).
+    "IMP-EV-0187": ("M9", "DR-M5-001: rich MCP media results need the External Tool Hub and MCP gateway of M9.4"),
     "IMP-EV-0242": ("M4", "DR-M0-005: QUAL-EV-0242 (restart loses no durable truth while the hook process resets) needs the durable store, hook bus and kill-point recovery suite of M1/M4; scheduled after its owner label's default milestone"),
     # DR-M1-006: twelve M1-labelled tasks whose qualifications need M2–M6 runtime.
     "IMP-EV-0035": ("M3", "DR-M1-006: Context Inspector needs PromptEnvelope context ids (M2.7/M3)"),

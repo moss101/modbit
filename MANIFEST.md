@@ -136,6 +136,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `docs/decisions/DR-M3-002-epr-baseline-live-provider-proof.md` | source patch provenance | 4858 | `058af4b42034e0b7a46d15909aa15f1406941e082751da14ca7c9a91b9ad7ec1` |
 | `docs/decisions/DR-M3-003-benchmark-and-conformance-live-model-halves.md` | source patch provenance | 5733 | `03b67efbc61b0b37d1ddfeab94fd0772dd34dd95ef0ed9782723b76c796c9d03` |
 | `docs/decisions/DR-M3-004-reschedule-web-content-isolation-to-m7.md` | source patch provenance | 2915 | `c9c94e04bedcc346c082541cbb4a712010ed2c98c90d9e3f28799a02ea78d462` |
+| `docs/decisions/DR-M5-001-reschedule-mcp-media-to-m9.md` | source patch provenance | 2731 | `496c9d80ff66916b11aa66e2fa3368e18a40ae472e5cd488699cd9b589cbd1de` |
 | `docs/decisions/README.md` | source patch provenance | 3214 | `79a02d28bf269bb9555870f1a5c2b252b2a1e54ed5598fa16297205e3f07f44d` |
 | `evidence/dossier-epr-v1.1/baseline.json` | retained evidence | 11128 | `ae11c9be07272788d2957bff45bc1333f879e121d2b5205ebc01ce780ec62543` |
 | `evidence/dossier-epr-v1.1/tests.log` | retained evidence | 2071 | `2f4bbebb6db1f0f0c6802f8dee65e5d6aa7933db6d1bda28a8acd70aa9bd88b3` |
@@ -999,9 +1000,9 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m5/M5.7/TASK_CARD.md` | retained evidence | 5123 | `7abbdee460d3305eb51cbb832fbeaf910d1be6d4a91aa4f52ca991b7d500ca42` |
 | `evidence/m5/M5.7/ci-run-34688570289.json` | retained evidence | 37317 | `a6f26542156e123d6bf75d879df1b47566f5ff0e9f431e8732e2cd07444ceab6` |
 | `evidence/m5/M5.7/evidence.json` | retained evidence | 3079 | `b1cc522f037f2027058b574b63c7d8850743f09d35598a95af92a761965bd37b` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 40828 | `5440ef3300e42e32bf636f5fb7b86a659ec8ec283f89272d7a539cd99b18aaa4` |
-| `graph/project-graph.json` | project driver graph with live status | 1365570 | `3b1c79d730b3ede5a17f43e27a191a3185ebac8a53c8d4ab7d03898b98cf094e` |
-| `tools/build_graph.py` | regenerates graph structure from docs | 53020 | `cb5c9e0e1bf7c3327c0597e40a06725a7fa1c2529ee67a4540117cb73749b233` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 40828 | `baa3a30487efa53a01ab96fd52fb7c61a2a17c15f7c597653483e53296e7f3e5` |
+| `graph/project-graph.json` | project driver graph with live status | 1365609 | `92271bad67faec52dc5bc39edc541b508092d1dc75b701f8f43e9caa907dd123` |
+| `tools/build_graph.py` | regenerates graph structure from docs | 53213 | `64cc2c11bf3f398ad20b241e372d930e4787962d6b4a8acb36b5845a1c5f7f81` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 17596 | `5c9b7a782d245223726f860ca583d766929a6f5662b644adebee64d257ad426b` |
 | `tools/dossier_epr.py` | parses additive EPR authority and traceability | 9310 | `4b5e399ee1b4886662294e3780d7f0630195e29c8198256ff7719d5236591a18` |

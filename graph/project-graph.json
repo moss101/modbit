@@ -14719,10 +14719,11 @@
    "type": "imp_task",
    "title": "Rich MCP media results",
    "owner_label": "MCP Hub + Media",
+   "milestone_override": "DR-M5-001: rich MCP media results need the External Tool Hub and MCP gateway of M9.4",
    "requirement": "REQ-EV-0187",
    "disposition": "ADOPT",
    "subsystem": "media",
-   "milestone": "M5",
+   "milestone": "M9",
    "qual": "QUAL-EV-0187",
    "source": "docs/41",
    "status": "NOT_STARTED",
@@ -38571,7 +38572,7 @@
   },
   {
    "from": "IMP-EV-0187",
-   "to": "M5",
+   "to": "M9",
    "type": "scheduled_in"
   },
   {
@@ -47977,11 +47978,6 @@
   {
    "from": "BETA",
    "to": "IMP-EV-0186",
-   "type": "includes"
-  },
-  {
-   "from": "BETA",
-   "to": "IMP-EV-0187",
    "type": "includes"
   },
   {

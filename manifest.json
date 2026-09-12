@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 887,
+    "root_and_tooling": 888,
     "docs_bytes": 1083058
   },
   "sections": [
@@ -930,6 +930,11 @@
       "path": "docs/decisions/DR-M3-004-reschedule-web-content-isolation-to-m7.md",
       "bytes": 2915,
       "sha256": "c9c94e04bedcc346c082541cbb4a712010ed2c98c90d9e3f28799a02ea78d462"
+    },
+    {
+      "path": "docs/decisions/DR-M5-001-reschedule-mcp-media-to-m9.md",
+      "bytes": 2731,
+      "sha256": "496c9d80ff66916b11aa66e2fa3368e18a40ae472e5cd488699cd9b589cbd1de"
     },
     {
       "path": "docs/decisions/README.md",
@@ -5249,17 +5254,17 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 40828,
-      "sha256": "5440ef3300e42e32bf636f5fb7b86a659ec8ec283f89272d7a539cd99b18aaa4"
+      "sha256": "baa3a30487efa53a01ab96fd52fb7c61a2a17c15f7c597653483e53296e7f3e5"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1365570,
-      "sha256": "3b1c79d730b3ede5a17f43e27a191a3185ebac8a53c8d4ab7d03898b98cf094e"
+      "bytes": 1365609,
+      "sha256": "92271bad67faec52dc5bc39edc541b508092d1dc75b701f8f43e9caa907dd123"
     },
     {
       "path": "tools/build_graph.py",
-      "bytes": 53020,
-      "sha256": "cb5c9e0e1bf7c3327c0597e40a06725a7fa1c2529ee67a4540117cb73749b233"
+      "bytes": 53213,
+      "sha256": "64cc2c11bf3f398ad20b241e372d930e4787962d6b4a8acb36b5845a1c5f7f81"
     },
     {
       "path": "tools/build_manifest.py",
