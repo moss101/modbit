@@ -55,7 +55,7 @@ export interface Snapshot {
   state: string;
   generation: number;
   lastOffset: string;
-  tasks: { taskId: string; goalText: string; state: string; generation: number; createdAtMs: number }[];
+  tasks: { taskId: string; goalText: string; state: string; generation: number; createdAtMs: number; origin?: string; parentTaskId?: string | null }[];
 }
 
 export interface Event {
@@ -93,7 +93,18 @@ export function fromSnapshot(s: Snapshot): Model {
   m.sessionId = s.sessionId;
   m.cursor = s.lastOffset;
   for (const t of s.tasks) {
-    m.tasks.set(t.taskId, freshCard(t.taskId, t.goalText, t.state, t.generation, t.createdAtMs, (t as { origin?: string }).origin ?? ""));
+    m.tasks.set(t.taskId, freshCard(t.taskId, t.goalText, t.state, t.generation, t.createdAtMs, t.origin ?? ""));
+  }
+  // Children under their parents (M6.6): the snapshot names each
+  // subagent task's parent.
+  for (const t of s.tasks) {
+    if (t.parentTaskId) {
+      m.parents.set(t.taskId, t.parentTaskId);
+      const child = m.tasks.get(t.taskId);
+      if (child) m.tasks.set(t.taskId, { ...child, parentTaskId: t.parentTaskId });
+      const parent = m.tasks.get(t.parentTaskId);
+      if (parent) m.tasks.set(t.parentTaskId, { ...parent, children: withChild(parent.children, t.taskId), agents: { ...parent.agents } });
+    }
   }
   return m;
 }
