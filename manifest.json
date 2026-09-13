@@ -943,8 +943,8 @@
     },
     {
       "path": "docs/decisions/DR-M6-002-forge-adapter-live-github-half.md",
-      "bytes": 4831,
-      "sha256": "0b7b3206a40f7ea3fcdabd4f015c144d58a0e31dba5208513ad87585ef7633d9"
+      "bytes": 4918,
+      "sha256": "81b8eaa512708b90aac8d8f4e5cf2f83894aefefe97ed1a6c0e295ca6a0621b8"
     },
     {
       "path": "docs/decisions/README.md",

@@ -138,7 +138,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `docs/decisions/DR-M3-004-reschedule-web-content-isolation-to-m7.md` | source patch provenance | 2915 | `c9c94e04bedcc346c082541cbb4a712010ed2c98c90d9e3f28799a02ea78d462` |
 | `docs/decisions/DR-M5-001-reschedule-mcp-media-to-m9.md` | source patch provenance | 2731 | `496c9d80ff66916b11aa66e2fa3368e18a40ae472e5cd488699cd9b589cbd1de` |
 | `docs/decisions/DR-M6-001-vscode-adapter-live-model-half.md` | source patch provenance | 3909 | `4c8a9bcf3c18e23bbcc8d08c0e510786bf517102c9965ad56b331359fdfcd88c` |
-| `docs/decisions/DR-M6-002-forge-adapter-live-github-half.md` | source patch provenance | 4831 | `0b7b3206a40f7ea3fcdabd4f015c144d58a0e31dba5208513ad87585ef7633d9` |
+| `docs/decisions/DR-M6-002-forge-adapter-live-github-half.md` | source patch provenance | 4918 | `81b8eaa512708b90aac8d8f4e5cf2f83894aefefe97ed1a6c0e295ca6a0621b8` |
 | `docs/decisions/README.md` | source patch provenance | 3709 | `d4a98a1bf6fb2a5e595b20334e1c05d7f486f6f4b633836cdfa55e19db991ff3` |
 | `evidence/dossier-epr-v1.1/baseline.json` | retained evidence | 11128 | `ae11c9be07272788d2957bff45bc1333f879e121d2b5205ebc01ce780ec62543` |
 | `evidence/dossier-epr-v1.1/tests.log` | retained evidence | 2071 | `2f4bbebb6db1f0f0c6802f8dee65e5d6aa7933db6d1bda28a8acd70aa9bd88b3` |
