@@ -99,3 +99,15 @@ test("M6.6: a child named by dashed UUID text in a payload links to the card key
   assert.equal(m.tasks.get(hex)!.parentTaskId, "p");
   assert.equal(columns(m).waiting.length + columns(m).running.length + columns(m).needsAttention.length + columns(m).readyForReview.length + columns(m).completed.length, 1, "the child is never a top-level card");
 });
+
+test("REQ-EV-0046: a child's protected effect puts the running parent in Needs Attention with the evidence line", () => {
+  let m = emptyModel();
+  m = applyEvent(m, ev(1, "TaskCreated", { goal_text: "parent", origin: "desktop" }), "p");
+  m = applyEvent(m, ev(2, "TaskStarted"), "p");
+  m = applyEvent(m, ev(3, "SubagentProtectedEffect", { agent_id: "a1", child_task_id: "c", idempotency_key: "child-a", tool: "git.worktree.close", effect_class: "DESTRUCTIVE", ceiling: "REVERSIBLE_WRITE" }), "p");
+  assert.equal(m.tasks.get("p")!.latestEvidence, "child child-a reached a protected effect: git.worktree.close (DESTRUCTIVE)");
+  assert.equal(columns(m).running.length, 1);
+  m = applyEvent(m, ev(4, "TaskNeedsAttention", { reason: "subagent child-a reached a protected effect: decide" }), "p");
+  assert.equal(columns(m).needsAttention.length, 1);
+  assert.equal(columns(m).needsAttention[0]!.nextAction, "subagent child-a reached a protected effect: decide");
+});

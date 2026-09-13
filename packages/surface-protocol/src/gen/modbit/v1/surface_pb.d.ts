@@ -7025,6 +7025,94 @@ export declare type CapacityView = Message<"modbit.v1.CapacityView"> & {
 export declare const CapacityViewSchema: GenMessage<CapacityView>;
 
 /**
+ * @generated from message modbit.v1.GetAttention
+ */
+export declare type GetAttention = Message<"modbit.v1.GetAttention"> & {
+  /**
+   * @generated from field: modbit.v1.Id session_id = 1;
+   */
+  sessionId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.GetAttention.
+ * Use `create(GetAttentionSchema)` to create a new message.
+ */
+export declare const GetAttentionSchema: GenMessage<GetAttention>;
+
+/**
+ * @generated from message modbit.v1.AttentionItemView
+ */
+export declare type AttentionItemView = Message<"modbit.v1.AttentionItemView"> & {
+  /**
+   * APPROVAL | QUESTION | CAPACITY | STALL | RESTART | FAILURE | BLOCKER | CONFLICT | PROTECTED_EFFECT
+   *
+   * @generated from field: string kind = 1;
+   */
+  kind: string;
+
+  /**
+   * @generated from field: modbit.v1.Id task_id = 2;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * approval id | question id | agent id | diagnostic code | spawn key
+   *
+   * @generated from field: string reference = 3;
+   */
+  reference: string;
+
+  /**
+   * @generated from field: string reason = 4;
+   */
+  reason: string;
+
+  /**
+   * the command or tool that clears it
+   *
+   * @generated from field: string action = 5;
+   */
+  action: string;
+
+  /**
+   * the event that raised it (0 for an approval)
+   *
+   * @generated from field: uint64 since_offset = 6;
+   */
+  sinceOffset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.AttentionItemView.
+ * Use `create(AttentionItemViewSchema)` to create a new message.
+ */
+export declare const AttentionItemViewSchema: GenMessage<AttentionItemView>;
+
+/**
+ * @generated from message modbit.v1.AttentionView
+ */
+export declare type AttentionView = Message<"modbit.v1.AttentionView"> & {
+  /**
+   * @generated from field: repeated modbit.v1.AttentionItemView items = 1;
+   */
+  items: AttentionItemView[];
+
+  /**
+   * the log position the view was derived at
+   *
+   * @generated from field: uint64 last_offset = 2;
+   */
+  lastOffset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.AttentionView.
+ * Use `create(AttentionViewSchema)` to create a new message.
+ */
+export declare const AttentionViewSchema: GenMessage<AttentionView>;
+
+/**
  * Command acknowledgement.
  *
  * @generated from enum modbit.v1.CommandStatus

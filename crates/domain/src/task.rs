@@ -469,8 +469,14 @@ pub enum TaskEvent {
         work_node: String,
         /// The idempotency key the spawn carried.
         idempotency_key: String,
-        /// `FOREGROUND` | `BACKGROUND`.
+        /// `FOREGROUND` | `BACKGROUND` — the mode in force.
         mode: String,
+        /// REQ-EV-0180: why — `SEPARABLE` (the parent can go on without
+        /// this result: background), `BLOCKING` (the parent's own pending
+        /// work depends on the child's node: foreground whatever was
+        /// asked) or `REQUESTED` (foreground by the spawn's choice).
+        #[serde(default)]
+        scheduling: String,
     },
     /// `SubagentAdmissionRefused`: an admission step failed and everything
     /// taken before it was returned; nothing started (REQ-EV-0267). No
@@ -521,6 +527,30 @@ pub enum TaskEvent {
         unresolved_risks: Vec<String>,
         /// The child's branch, for the parent's merge.
         branch: String,
+    },
+    /// `SubagentProtectedEffect` (REQ-EV-0046, docs/14 "Agent-to-agent
+    /// communication"): a background child asked for an effect above its
+    /// capsule's ceiling. The child is refused before any effector — a
+    /// detached agent consumes grants but never opens an interactive
+    /// privilege expansion of its own — and the parent transitions to its
+    /// attention state (`TaskNeedsAttention` follows) to decide. On the
+    /// parent task; no state change.
+    SubagentProtectedEffect {
+        /// The child node.
+        agent_id: crate::AgentId,
+        /// The child's task.
+        child_task_id: crate::TaskId,
+        /// The idempotency key the spawn carried.
+        idempotency_key: String,
+        /// The tool the child asked for.
+        tool: String,
+        /// Its effect class (`PROTECTED_WRITE` | `EXTERNAL_SIDE_EFFECT` |
+        /// `SECRET_ACCESS` | `DESTRUCTIVE`).
+        effect_class: String,
+        /// The ceiling the capsule allows.
+        ceiling: String,
+        /// The model's call id, for the parent's reading of the child's log.
+        call_id: String,
     },
     /// `WorkNodesChanged` (M6.1, REQ-EV-0052 / 0120): a plan version
     /// created or changed work nodes; the nodes as they stand after the
@@ -1088,6 +1118,7 @@ impl TaskEvent {
             Self::SubagentAdmissionRefused { .. } => "SubagentAdmissionRefused",
             Self::SubagentCapsuleBound { .. } => "SubagentCapsuleBound",
             Self::SubagentResultRecorded { .. } => "SubagentResultRecorded",
+            Self::SubagentProtectedEffect { .. } => "SubagentProtectedEffect",
             Self::WorkNodesChanged { .. } => "WorkNodesChanged",
             Self::CapacityTicketGranted { .. } => "CapacityTicketGranted",
             Self::CapacityTicketReleased { .. } => "CapacityTicketReleased",
@@ -1228,6 +1259,7 @@ impl Task {
             | TaskEvent::SubagentAdmissionRefused { .. }
             | TaskEvent::SubagentCapsuleBound { .. }
             | TaskEvent::SubagentResultRecorded { .. }
+            | TaskEvent::SubagentProtectedEffect { .. }
             | TaskEvent::ContextEpochOpened { .. }
             | TaskEvent::CompactionStarted { .. }
             | TaskEvent::CompactionCommitted { .. }

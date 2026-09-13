@@ -1,0 +1,14 @@
+{
+ "task": "IMP-EV-0008",
+ "requirement": "REQ-EV-0008",
+ "qual": "QUAL-EV-0008",
+ "tests": [
+  "qual_ev_0008_0180_scheduling_follows_the_work_graph_and_attention_moves_without_a_restart"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "a slow child is moved BACKGROUND \u2192 RUNNING \u2192 BACKGROUND by two `agent.attend` calls while mid-run, then ends COMPLETED: its node's transitions are exactly ADMITTED\u2192BACKGROUND, BACKGROUND\u2192RUNNING, RUNNING\u2192BACKGROUND, BACKGROUND\u2192COMPLETED; its own log has one run, no suspension, no resume, and the offsets reported by the two controls did not go backwards; its write landed and its envelope was collected.",
+ "audit": "MISSING before: a child's attention mode was fixed at admission.",
+ "limitations": "Attention mode is a node-level fact for the parent and the Fleet; it does not change the child's budgets or priority.",
+ "ci": ""
+}

@@ -1,0 +1,16 @@
+{
+ "task": "IMP-EV-0265",
+ "requirement": "REQ-EV-0265",
+ "qual": "QUAL-EV-0265",
+ "tests": [
+  "qual_epr_017_acceptance_is_evidence_at_the_revision_and_never_erases_a_human_obligation",
+  "qual_epr_008_factual_risk_stays_strict_despite_passing_tests_and_stops_safely_unattended",
+  "qual_ev_0222_px_014_typed_question_suspends_the_run_and_the_answer_resumes_it"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "a low-risk edit completes with the gate's ACCEPT, no human and no independent review required (EPR-017); a change touching an auth module and a migration derives CRITICAL risk with independent review and a human decision required despite a passing check, and under the unattended profile stops safely instead of synthesizing a decision (EPR-008); an ambiguous change asks one typed question, suspends, and resumes from the answer, while a clear one asks nothing (PX-014).",
+ "audit": "PRESENT since PX-014 / EPR-008 / EPR-017 (docs/28 clarification policy, docs/27 \u00a7risk and acceptance): a typed question is asked only when the policy's ambiguity rule fires; the realized risk of the change decides whether independent review and a human decision are obligations; a low-risk change reaches Ready for Review with the gate's ACCEPT and nothing more. No code change in this task: the audit names the production path and the qualifications that already run on every CI push.",
+ "limitations": "The \"visual evidence review\" is the review surface's per-hunk decision (M2.9); screenshots as evidence arrive with the browser runtime.",
+ "ci": ""
+}

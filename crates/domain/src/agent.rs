@@ -645,6 +645,33 @@ impl WorkGraph {
             .collect()
     }
 
+    /// REQ-EV-0180: whether the parent needs `node`'s result before it can
+    /// go on — some pending work of its own (a node nobody owns, not over)
+    /// depends on `node`, directly or through other unowned nodes. A child
+    /// owning such a node is scheduled in the foreground; one whose node
+    /// nothing of the parent's waits for is separable and runs in the
+    /// background.
+    #[must_use]
+    pub fn blocks_parent(&self, node: &str) -> bool {
+        let mut frontier = vec![node.to_owned()];
+        let mut seen = std::collections::HashSet::new();
+        while let Some(id) = frontier.pop() {
+            if !seen.insert(id.clone()) {
+                continue;
+            }
+            for n in self.nodes.iter().filter(|n| n.depends_on.contains(&id)) {
+                if n.status.is_terminal() {
+                    continue;
+                }
+                if n.owner.is_none() {
+                    return true;
+                }
+                frontier.push(n.id.clone());
+            }
+        }
+        false
+    }
+
     /// One line per node for the model's harness state.
     #[must_use]
     pub fn summary(&self) -> Vec<String> {

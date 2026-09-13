@@ -481,6 +481,11 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
     let client_version = hello.hello.as_ref().and_then(|h| h.protocol_version);
     let ours = modbit_protocol::PROTOCOL_VERSION;
     let compatible = client_version.is_some_and(|v| v.major == ours.major);
+    // REQ-EV-0043: the ProtocolCapabilitySet for this client kind, fixed for
+    // the connection. What a client may ask for is not what a task may do:
+    // execution authority lives in the task's leases and policy.
+    let client_kind = hello.hello.as_ref().map(|h| h.client_kind).unwrap_or(0);
+    let capabilities = client_capabilities(client_kind);
     write_frame(
         &mut stream,
         &SurfaceFrame {
@@ -516,6 +521,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "GetWorkGraph",
                     "GetAgentGraph",
                     "GetCapacity",
+                    "GetAttention",
                     "AdmitRoutingPlan",
                     "CompileRoutingPlan",
                     "ConfigureProvider",
@@ -545,6 +551,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                 ]
                 .map(String::from)
                 .to_vec(),
+                client_capabilities: capabilities.iter().map(|c| (*c).to_owned()).collect(),
             })),
         },
     )
@@ -599,7 +606,22 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
         let Some(frame) = frame else { continue };
         match frame.body {
             Some(Body::Command(env)) => {
-                let ack = handle_command(&core, env).await;
+                // REQ-EV-0043: a command that needs a capability this client
+                // kind does not hold is refused at the transport, before the
+                // Core looks at the task; the task itself stays valid.
+                let ack = match required_client_capability(&env) {
+                    Some(need) if !capabilities.contains(&need) => reject(
+                        env.command_id.clone(),
+                        "CLIENT_CAPABILITY",
+                        format!(
+                            "`{}` needs the client capability `{need}`, which a {} client does not hold (it holds: {})",
+                            env.command_type,
+                            client_kind_label(client_kind),
+                            capabilities.join(", ")
+                        ),
+                    ),
+                    _ => handle_command(&core, env).await,
+                };
                 write_frame(
                     &mut stream,
                     &SurfaceFrame {
@@ -656,6 +678,111 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
 
 fn id16(id: &wire::Id) -> Option<[u8; 16]> {
     id.value.as_slice().try_into().ok()
+}
+
+/// REQ-EV-0043 (docs/30, docs/23): the ProtocolCapabilitySet by client kind.
+/// `task.author` and `events.subscribe` are the headless floor; the UI
+/// surfaces (`ui.selection`, `ui.code_view`) belong to clients that have
+/// them; human decisions (`approval.resolve`, `question.answer`,
+/// `review.decide`) to clients a person drives; a worker or a sandbox guest
+/// holds neither.
+fn client_capabilities(kind: i32) -> Vec<&'static str> {
+    use modbit_protocol::v1::ClientKind;
+    let kind = ClientKind::try_from(kind).unwrap_or(ClientKind::Unspecified);
+    match kind {
+        ClientKind::Desktop => vec![
+            "task.author",
+            "events.subscribe",
+            "session.control",
+            "approval.resolve",
+            "question.answer",
+            "review.decide",
+            "attachments.ingest",
+            "provider.configure",
+            "repository.trust",
+            "ui.selection",
+            "ui.code_view",
+        ],
+        ClientKind::IdeAdapter => vec![
+            "task.author",
+            "events.subscribe",
+            "session.control",
+            "approval.resolve",
+            "question.answer",
+            "review.decide",
+            "attachments.ingest",
+            "repository.trust",
+            "ui.selection",
+            "ui.code_view",
+        ],
+        ClientKind::Cli => vec![
+            "task.author",
+            "events.subscribe",
+            "session.control",
+            "approval.resolve",
+            "question.answer",
+            "review.decide",
+            "attachments.ingest",
+            "provider.configure",
+            "repository.trust",
+        ],
+        ClientKind::CloudWorker => vec!["task.author", "events.subscribe", "attachments.ingest"],
+        ClientKind::SandboxGuest | ClientKind::Unspecified => vec!["events.subscribe"],
+    }
+}
+
+fn client_kind_label(kind: i32) -> &'static str {
+    use modbit_protocol::v1::ClientKind;
+    match ClientKind::try_from(kind).unwrap_or(ClientKind::Unspecified) {
+        ClientKind::Desktop => "DESKTOP",
+        ClientKind::Cli => "CLI",
+        ClientKind::IdeAdapter => "IDE_ADAPTER",
+        ClientKind::CloudWorker => "CLOUD_WORKER",
+        ClientKind::SandboxGuest => "SANDBOX_GUEST",
+        ClientKind::Unspecified => "UNSPECIFIED",
+    }
+}
+
+/// The client capability a command needs, when it needs one beyond the
+/// headless floor. Read-only queries need none.
+fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
+    Some(match env.command_type.as_str() {
+        "SetTaskSelection" => {
+            let source = wire::SetTaskSelection::decode(env.payload.as_slice())
+                .map(|p| p.source)
+                .unwrap_or_default();
+            if source == "cli" {
+                "task.author"
+            } else {
+                "ui.selection"
+            }
+        }
+        "GetCodeView" => "ui.code_view",
+        "DecideReview" => "review.decide",
+        "ResolveApproval" => "approval.resolve",
+        "RespondToQuestion" | "AskSideQuestion" => "question.answer",
+        "ConfigureProvider" | "ActivateModelRegistry" | "ProbeModel" => "provider.configure",
+        "TrustRepository" => "repository.trust",
+        "EmergencyStop" => "session.control",
+        "IngestAttachment" | "AttachContextDocument" => "attachments.ingest",
+        "CreateSession"
+        | "CreateTask"
+        | "StartTask"
+        | "CancelTask"
+        | "QueueInput"
+        | "AcquireSessionLease"
+        | "InvokeTool"
+        | "UndoToolCall"
+        | "ForkTask"
+        | "RewindTask"
+        | "AdmitRoutingPlan"
+        | "CompileRoutingPlan"
+        | "PublishOutcomeBaseline"
+        | "AllowUnsupportedLanguage"
+        | "MaterializeOutcomeStatistics"
+        | "ReconcileToolCall" => "task.author",
+        _ => return None,
+    })
 }
 
 fn wire_id(b: &[u8; 16]) -> wire::Id {
@@ -2904,6 +3031,41 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             accept(cid, false, view.encode_to_vec())
         }
         "GetCapacity" => accept(cid, false, core.capacity.view().encode_to_vec()),
+        "GetAttention" => {
+            let Ok(p) = wire::GetAttention::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "GetAttention");
+            };
+            let Some(session_id) = p
+                .session_id
+                .as_ref()
+                .and_then(id16)
+                .map(SessionId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "session_id required");
+            };
+            let store = core.store.lock().await;
+            match store.session(&session_id) {
+                Ok(Some(_)) => {}
+                Ok(None) => return reject(cid, "UNKNOWN_SESSION", session_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            }
+            let items = crate::attention::attention(&store, session_id);
+            let view = wire::AttentionView {
+                items: items
+                    .into_iter()
+                    .map(|i| wire::AttentionItemView {
+                        kind: i.kind.to_owned(),
+                        task_id: Some(wire_id(i.task_id.as_bytes())),
+                        reference: i.reference,
+                        reason: i.reason,
+                        action: i.action,
+                        since_offset: i.since_offset,
+                    })
+                    .collect(),
+                last_offset: store.last_offset().unwrap_or(0),
+            };
+            accept(cid, false, view.encode_to_vec())
+        }
         "GetProtocolState" => {
             let Ok(p) = wire::GetProtocolState::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "GetProtocolState");

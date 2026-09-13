@@ -74,6 +74,17 @@ export declare type HelloAck = Message<"modbit.v1.HelloAck"> & {
    * @generated from field: repeated string supported_command_types = 5;
    */
   supportedCommandTypes: string[];
+
+  /**
+   * REQ-EV-0043: the ProtocolCapabilitySet this client kind holds on this
+   * connection — what the client may ask the Core for (UI surfaces, human
+   * decisions, provider setup), separate from the execution authority a
+   * task carries in its leases. A command outside the set is refused
+   * CLIENT_CAPABILITY; the task it names stays valid.
+   *
+   * @generated from field: repeated string client_capabilities = 6;
+   */
+  clientCapabilities: string[];
 };
 
 /**

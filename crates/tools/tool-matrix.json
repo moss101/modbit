@@ -556,6 +556,47 @@
       "test": "m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back"
     },
     {
+      "tool": "agent.attend",
+      "family": "agent",
+      "source_behaviors": [
+        "foreground/background transition"
+      ],
+      "owner": "core-runtime harness",
+      "effect": "ReadOnly",
+      "test": "qual_ev_0008_0180_scheduling_follows_the_work_graph_and_attention_moves_without_a_restart"
+    },
+    {
+      "tool": "agent.park",
+      "family": "agent",
+      "source_behaviors": [
+        "park a child during parent intervention"
+      ],
+      "owner": "core-runtime harness",
+      "effect": "ReadOnly",
+      "test": "qual_ev_0049_a_parked_child_survives_a_restart_and_resumes_from_the_same_state"
+    },
+    {
+      "tool": "agent.resume",
+      "family": "agent",
+      "source_behaviors": [
+        "resume a parked/suspended child"
+      ],
+      "owner": "core-runtime harness",
+      "effect": "ReadOnly",
+      "test": "qual_ev_0049_a_parked_child_survives_a_restart_and_resumes_from_the_same_state"
+    },
+    {
+      "tool": "agent.steer",
+      "family": "agent",
+      "source_behaviors": [
+        "typed follow-up / steer to a child",
+        "resume terminal child as a new attempt"
+      ],
+      "owner": "core-runtime harness",
+      "effect": "ReadOnly",
+      "test": "qual_ev_0050_0179_a_follow_up_continues_a_finished_child_as_a_new_attempt_on_its_lineage"
+    },
+    {
       "tool": "verify.run",
       "family": "task",
       "source_behaviors": [

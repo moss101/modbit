@@ -1,0 +1,14 @@
+{
+ "task": "IMP-EV-0180",
+ "requirement": "REQ-EV-0180",
+ "qual": "QUAL-EV-0180",
+ "tests": [
+  "qual_ev_0008_0180_scheduling_follows_the_work_graph_and_attention_moves_without_a_restart"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "the parent's plan has b depending on a and c standing alone; `child-a` (asked BACKGROUND) owns a: admitted FOREGROUND / BLOCKING and the spawn's own tool result carries the finished envelope; `child-c` owns c: admitted BACKGROUND / SEPARABLE and collected later with `agent.wait`.",
+ "audit": "PARTIAL before: `mode` was the spawn's word with BACKGROUND as the default, whatever the work graph said.",
+ "limitations": "The dependency read is the parent's own unowned pending work; a child blocked by another child's node is separable from the parent's point of view.",
+ "ci": ""
+}

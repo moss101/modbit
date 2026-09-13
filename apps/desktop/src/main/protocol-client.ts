@@ -25,6 +25,9 @@ import {
   GetRecoveryReportSchema,
   GetReviewBundleSchema,
   GetContextInspectorSchema,
+  GetAttentionSchema,
+  AttentionViewSchema,
+  type AttentionView,
   GetSessionSnapshotSchema,
   LanguageListSchema,
   ListLanguagesSchema,
@@ -273,6 +276,13 @@ export class CoreClient {
   async getSessionSnapshot(sessionId: string): Promise<SessionSnapshot> {
     const ack = await this.command("GetSessionSnapshot", toBinary(GetSessionSnapshotSchema, create(GetSessionSnapshotSchema, { sessionId: { value: unhex(sessionId) } })));
     return fromBinary(SessionSnapshotSchema, ack.result);
+  }
+
+  /** REQ-EV-0151 / 0275: every open attention item of a session, derived by
+   *  the Core from canonical unresolved state. */
+  async attention(sessionId: string): Promise<AttentionView> {
+    const ack = await this.command("GetAttention", toBinary(GetAttentionSchema, create(GetAttentionSchema, { sessionId: { value: unhex(sessionId) } })));
+    return fromBinary(AttentionViewSchema, ack.result);
   }
 
   async contextInspector(taskId: string): Promise<ContextInspectorView> {

@@ -537,6 +537,9 @@ async fn serve(broker: Arc<Broker>, mut stream: BoxedStream) -> Result<()> {
                     "protocol major mismatch".into()
                 },
                 supported_command_types: vec![],
+                // The broker's client is the Core; it negotiates no
+                // ProtocolCapabilitySet (REQ-EV-0043 is the surface's).
+                client_capabilities: vec![],
             })),
         },
     )

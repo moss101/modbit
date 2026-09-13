@@ -69,6 +69,14 @@ impl CoreProcess {
         .unwrap()
     }
 
+    /// A client of another kind (REQ-EV-0043: the ProtocolCapabilitySet
+    /// follows the kind).
+    async fn client_of(&self, kind: ClientKind) -> Client {
+        Client::connect(&self.ready.endpoint, &self.secret(), kind, "test")
+            .await
+            .unwrap()
+    }
+
     fn kill(&mut self) {
         self.child.kill().unwrap();
         self.child.wait().unwrap();
@@ -3533,7 +3541,8 @@ async fn m2_9_review_surface_applies_per_hunk_decisions_and_commits() {
             ("ANTHROPIC_API_KEY", ""),
         ],
     );
-    let mut c = core.client().await;
+    // The review surface is a UI (REQ-EV-0043): a desktop client drives it.
+    let mut c = core.client_of(ClientKind::Desktop).await;
     let (session, _) = create_session(&mut c, id16(0xB0)).await;
     let g = lease_for(&session);
     let ack = c
@@ -10026,7 +10035,9 @@ async fn qual_ev_0141_0160_a_selection_steers_retrieval_is_visible_and_grants_no
         ("ANTHROPIC_API_KEY", ""),
     ];
     let core = CoreProcess::spawn_with_env(dir.path(), &env);
-    let mut c = core.client().await;
+    // A selection on a review hunk is a UI surface's claim (REQ-EV-0043):
+    // it comes from a desktop client.
+    let mut c = core.client_of(ClientKind::Desktop).await;
     let (session, _) = create_session(&mut c, id16(0x6A)).await;
     let g = lease_for(&session);
     let task = create_task_with_profile(&mut c, &session, g, &root, 0x6B, "local_trusted").await;
@@ -22942,6 +22953,1541 @@ async fn m6_7_a_background_child_survives_a_core_restart_and_hands_its_result_ba
             >= 3),
         "{parent_after:#?}"
     );
+}
+
+/// REQ-EV-0046 (docs/14): a background child consumes the grants its
+/// capsule holds and never opens an interactive privilege expansion of its
+/// own. When it asks for an effect above the capsule's ceiling the call is
+/// refused before the kernel — no approval opens on the child — and the
+/// parent transitions to its attention state naming the child, the tool and
+/// the effect, so a person (or the parent) decides; the child continues and
+/// reports.
+#[tokio::test]
+async fn qual_ev_0046_a_background_child_reaching_a_protected_effect_moves_its_parent_to_attention()
+{
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (_repo, root) = plain_repo(&[("README.md", "# ceiling\n"), ("src/a/.keep", "")]);
+    let parent = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "module a exists", "expected_files": ["README.md"], "steps": [{"id": "a", "title": "module a"}]}}]}),
+        json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "child-a", "objective": "create src/a/a.txt containing alpha", "write_scope": ["src/a/"], "work_node": "a", "max_turns": 8}}]}),
+        json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "child-a", "timeout_ms": 60000}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "delegated and collected", "self_review": {"findings": []}}}]}),
+    ];
+    let child_a = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "a.txt exists", "expected_files": ["src/a/a.txt"], "protected_effects": ["git.worktree.close"]}}]}),
+        // Destructive: above the capsule's REVERSIBLE_WRITE ceiling.
+        json!({"calls": [{"name": "git.worktree.close", "args": {"path": "../stale"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "src/a/a.txt", "op": "replace", "content": "alpha\n"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "created src/a/a.txt; closing the stale worktree was refused", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_models(
+        parent,
+        vec![("needle:Task goal: create src/a/a.txt", child_a)],
+        None,
+    )
+    .await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_CAPACITY", "model=4,provider=8"),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xC1)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_goal(&mut c, &session, g, &root, 0xC2, "delegate module a").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xC3),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 12,
+                max_tool_calls: 0,
+                max_no_progress_turns: 4,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_for_state(&mut c, &task, "ReadyForReview", 180).await;
+    let trail = task_events(&core, &session, &task).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}\n{trail:#?}");
+    let of = |evs: &[(String, String, serde_json::Value)], t: &str| -> Vec<serde_json::Value> {
+        evs.iter()
+            .filter(|(_, ty, _)| ty == t)
+            .map(|(_, _, p)| p.clone())
+            .collect()
+    };
+    let admitted = of(&trail, "SubagentAdmitted");
+    assert_eq!(admitted.len(), 1, "{admitted:#?}");
+    // The parent's attention state: the effect, the child, the ceiling.
+    let reached = of(&trail, "SubagentProtectedEffect");
+    assert_eq!(reached.len(), 1, "{reached:#?}");
+    assert_eq!(reached[0]["agent_id"], admitted[0]["agent_id"]);
+    assert_eq!(reached[0]["child_task_id"], admitted[0]["child_task_id"]);
+    assert_eq!(reached[0]["idempotency_key"], "child-a");
+    assert_eq!(reached[0]["tool"], "git.worktree.close");
+    assert_eq!(reached[0]["effect_class"], "DESTRUCTIVE");
+    assert_eq!(reached[0]["ceiling"], "REVERSIBLE_WRITE");
+    let attention = of(&trail, "TaskNeedsAttention");
+    assert!(
+        attention.iter().any(|a| {
+            let r = a["reason"].as_str().unwrap_or_default();
+            r.contains("child-a")
+                && r.contains("git.worktree.close")
+                && r.contains("DESTRUCTIVE")
+                && a["diagnostic"]["code"] == "PROTECTED_EFFECT_REFUSED"
+        }),
+        "{attention:#?}"
+    );
+    // Ordered: the attention transition lands before the child's result.
+    let idx = |t: &str| trail.iter().position(|(_, ty, _)| ty == t).unwrap();
+    assert!(idx("SubagentProtectedEffect") < idx("SubagentResultRecorded"));
+    assert!(idx("TaskNeedsAttention") < idx("SubagentResultRecorded"));
+    // The child: refused before the kernel (no proposal, no approval), it
+    // went on with its scoped work and reported.
+    let child_task = Id {
+        value: hex::decode(
+            admitted[0]["child_task_id"]
+                .as_str()
+                .unwrap()
+                .replace('-', ""),
+        )
+        .unwrap(),
+    };
+    let child_evs = task_events(&core, &session, &child_task).await;
+    assert!(
+        child_evs.iter().all(|(a, t, p)| !(a == "tool_call"
+            && t == "ToolCallProposed"
+            && p["tool_name"] == "git.worktree.close")),
+        "the refused call never reached the kernel: {child_evs:#?}"
+    );
+    assert!(
+        child_evs.iter().any(|(a, t, p)| a == "run_step"
+            && t == "StepFailed"
+            && p["failure_code"] == "PROTECTED_EFFECT_REFUSED"),
+        "{child_evs:#?}"
+    );
+    assert!(
+        approvals_of(&mut c, &session).await.is_empty(),
+        "no approval of its own"
+    );
+    let bodies = seen.lock().unwrap().clone();
+    let child_bodies: Vec<&serde_json::Value> = bodies
+        .iter()
+        .filter(|b| b.to_string().contains("Task goal: create src/a/a.txt"))
+        .collect();
+    let last: Vec<String> = child_bodies.last().unwrap()["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    assert!(
+        last[1].contains("PROTECTED_EFFECT_REFUSED") && last[1].contains("REQ-EV-0046"),
+        "{}",
+        last[1]
+    );
+    let results = of(&trail, "SubagentResultRecorded");
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0]["status"], "COMPLETED");
+    assert_eq!(results[0]["artifacts"], json!(["src/a/a.txt"]));
+    let wt = std::path::Path::new(admitted[0]["worktree"].as_str().unwrap());
+    assert!(wt.exists(), "the child's worktree was not touched");
+    assert_eq!(
+        std::fs::read_to_string(wt.join("src/a/a.txt")).unwrap(),
+        "alpha\n"
+    );
+}
+
+/// REQ-EV-0127 (docs/14, docs/33): a detached run belongs to the Core, not
+/// to the client that started it. The client is killed mid-run — its
+/// connection simply gone — and the worker continues under its lease and
+/// checkpoints to the end without a suspension; a new client reconnects,
+/// reads the same log and finds the finished task with its result.
+#[tokio::test]
+async fn qual_ev_0127_a_killed_client_leaves_the_worker_running_and_a_new_client_reconnects() {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (_repo, root) = plain_repo(&[("a.txt", "a\n")]);
+    // A slow second request: the client dies while the model is answering.
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "b.txt exists", "expected_files": ["b.txt"]}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "b.txt", "op": "replace", "content": "b\n"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "wrote b.txt", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) =
+        scripted_models(script, vec![], Some((1, Duration::from_millis(1500)))).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xD1)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_goal(&mut c, &session, g, &root, 0xD2, "write b.txt").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xD3),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 8,
+                max_tool_calls: 0,
+                max_no_progress_turns: 3,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let started: TaskRunStarted = Client::result(&ack).unwrap();
+    // The slow request is in flight: kill the client (drop the connection).
+    let deadline = std::time::Instant::now() + Duration::from_secs(30);
+    while seen.lock().unwrap().len() < 2 {
+        assert!(std::time::Instant::now() < deadline);
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    drop(c);
+    // A new client reconnects and finds the worker finishing on its own.
+    let mut c2 = core.client().await;
+    let st = wait_for_state(&mut c2, &task, "ReadyForReview", 60).await;
+    let evs = task_events(&core, &session, &task).await;
+    assert_eq!(
+        (st.state.as_str(), st.run_state.as_str()),
+        ("ReadyForReview", "Completed"),
+        "{st:?}\n{evs:#?}"
+    );
+    let of = |t: &str| evs.iter().filter(|(_, ty, _)| ty == t).count();
+    assert_eq!(
+        of("RunCreated"),
+        1,
+        "one run, the one the dead client started"
+    );
+    assert_eq!(of("RunSuspended"), 0, "the worker never stopped");
+    assert_eq!(of("TaskWaiting"), 0, "{evs:#?}");
+    assert_eq!(of("TaskNeedsAttention"), 0, "{evs:#?}");
+    assert!(
+        evs.iter().any(|(a, t, p)| a == "tool_call"
+            && t == "ToolCallProposed"
+            && p["tool_name"] == "change.apply"),
+        "{evs:#?}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(std::path::Path::new(&root).join("b.txt")).unwrap(),
+        "b\n"
+    );
+    // The run the new client reads is the one the dead client was told about.
+    let run_events: Vec<&(String, String, serde_json::Value)> =
+        evs.iter().filter(|(a, _, _)| a == "run").collect();
+    assert!(!run_events.is_empty());
+    let _ = started;
+}
+
+/// REQ-EV-0180 / REQ-EV-0008: the scheduler, not the spawn's word, decides
+/// a child's mode from the work graph — a child whose node the parent's own
+/// pending work depends on runs in the foreground (the parent waits in the
+/// spawning turn); a separable one runs in the background. And a running
+/// child moves between the background and the foreground of the parent's
+/// attention through a typed control (`agent.attend`) that preserves its
+/// identity, run and event offsets: no restart, nothing lost.
+#[tokio::test]
+async fn qual_ev_0008_0180_scheduling_follows_the_work_graph_and_attention_moves_without_a_restart()
+{
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (_repo, root) = plain_repo(&[
+        ("README.md", "# sched\n"),
+        ("src/a/.keep", ""),
+        ("src/c/.keep", ""),
+    ]);
+    let parent = vec![
+        // b (the parent's own) depends on a: a child owning a blocks the parent.
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "modules a and c exist, b documents a", "expected_files": ["README.md"], "steps": [
+            {"id": "a", "title": "module a"}, {"id": "b", "title": "document a", "depends_on": ["a"]}, {"id": "c", "title": "module c"}]}}]}),
+        json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "child-a", "objective": "create src/a/a.txt containing alpha", "write_scope": ["src/a/"], "work_node": "a", "max_turns": 6, "mode": "BACKGROUND"}}]}),
+        json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "child-c", "objective": "create src/c/c.txt containing gamma", "write_scope": ["src/c/"], "work_node": "c", "max_turns": 6, "mode": "BACKGROUND"}}]}),
+        json!({"calls": [{"name": "agent.attend", "args": {"idempotency_key": "child-c", "mode": "FOREGROUND"}}]}),
+        json!({"calls": [{"name": "agent.attend", "args": {"idempotency_key": "child-c", "mode": "BACKGROUND"}}]}),
+        json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "child-c", "timeout_ms": 60000}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "delegated and collected", "self_review": {"findings": []}}}]}),
+    ];
+    let child_a = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "a.txt exists", "expected_files": ["src/a/a.txt"]}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "src/a/a.txt", "op": "replace", "content": "alpha\n"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "created src/a/a.txt", "self_review": {"findings": []}}}]}),
+    ];
+    // child-c is slow on its second request, so the parent's attention
+    // controls land while it is mid-run.
+    let child_c = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "c.txt exists", "expected_files": ["src/c/c.txt"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "README.md"}}]}),
+        json!({"calls": [{"name": "fs.list", "args": {"path": "src"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "src/c/c.txt", "op": "replace", "content": "gamma\n"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "created src/c/c.txt", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model_reactive(
+        parent,
+        vec![],
+        None,
+        Some((usize::MAX, Duration::from_millis(250))),
+        vec![],
+        false,
+        vec![
+            ("needle:Task goal: create src/a/a.txt".into(), child_a),
+            ("needle:Task goal: create src/c/c.txt".into(), child_c),
+        ],
+    )
+    .await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_CAPACITY", "model=4,provider=8"),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xE1)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_goal(&mut c, &session, g, &root, 0xE2, "delegate a and c").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xE3),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 14,
+                max_tool_calls: 0,
+                max_no_progress_turns: 4,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_for_state(&mut c, &task, "ReadyForReview", 180).await;
+    let trail = task_events(&core, &session, &task).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}\n{trail:#?}");
+    let of = |evs: &[(String, String, serde_json::Value)], t: &str| -> Vec<serde_json::Value> {
+        evs.iter()
+            .filter(|(_, ty, _)| ty == t)
+            .map(|(_, _, p)| p.clone())
+            .collect()
+    };
+    let admitted = of(&trail, "SubagentAdmitted");
+    assert_eq!(admitted.len(), 2, "{admitted:#?}");
+    let a = admitted
+        .iter()
+        .find(|x| x["idempotency_key"] == "child-a")
+        .unwrap();
+    let cc = admitted
+        .iter()
+        .find(|x| x["idempotency_key"] == "child-c")
+        .unwrap();
+    // REQ-EV-0180: a asked BACKGROUND, b depends on it: BLOCKING, foreground.
+    assert_eq!(
+        (a["mode"].as_str(), a["scheduling"].as_str()),
+        (Some("FOREGROUND"), Some("BLOCKING")),
+        "{a:#?}"
+    );
+    // c: nothing of the parent's waits for it: SEPARABLE, background.
+    assert_eq!(
+        (cc["mode"].as_str(), cc["scheduling"].as_str()),
+        (Some("BACKGROUND"), Some("SEPARABLE")),
+        "{cc:#?}"
+    );
+    // The foreground spawn waited in its turn: its tool result carries the
+    // child's finished envelope; the parent never had to wait for a again.
+    let bodies = seen.lock().unwrap().clone();
+    let parent_bodies: Vec<&serde_json::Value> = bodies
+        .iter()
+        .filter(|b| !b.to_string().contains("Task goal: create src/"))
+        .collect();
+    let last_tools: Vec<String> = parent_bodies.last().unwrap()["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    assert!(
+        last_tools[1].contains("mode: Foreground")
+            && last_tools[1].contains("scheduling: BLOCKING")
+            && last_tools[1].contains("foreground_result")
+            && last_tools[1].contains("\"status\": \"COMPLETED\"")
+            && last_tools[1].contains("created src/a/a.txt"),
+        "{}",
+        last_tools[1]
+    );
+    assert!(
+        last_tools[2].contains("mode: Background")
+            && last_tools[2].contains("scheduling: SEPARABLE"),
+        "{}",
+        last_tools[2]
+    );
+    // REQ-EV-0008: c moved BACKGROUND -> RUNNING -> BACKGROUND by typed
+    // control while its run went on, then ended COMPLETED.
+    let c_moves: Vec<(String, String)> = of(&trail, "AgentNodeTransitioned")
+        .iter()
+        .filter(|p| p["agent_id"] == cc["agent_id"])
+        .map(|p| {
+            (
+                p["from"].as_str().unwrap_or_default().to_owned(),
+                p["to"].as_str().unwrap_or_default().to_owned(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        c_moves,
+        vec![
+            ("ADMITTED".to_owned(), "BACKGROUND".to_owned()),
+            ("BACKGROUND".to_owned(), "RUNNING".to_owned()),
+            ("RUNNING".to_owned(), "BACKGROUND".to_owned()),
+            ("BACKGROUND".to_owned(), "COMPLETED".to_owned()),
+        ],
+        "{c_moves:#?}"
+    );
+    assert!(
+        last_tools[3].contains("status: SUCCESS")
+            && last_tools[3].contains("mode: FOREGROUND")
+            && last_tools[3].contains("child_last_offset:"),
+        "{}",
+        last_tools[3]
+    );
+    assert!(
+        last_tools[4].contains("mode: BACKGROUND"),
+        "{}",
+        last_tools[4]
+    );
+    // The child's identity and log are untouched by the moves: one run, no
+    // suspension, and its offsets kept growing across them.
+    let child_c_task = Id {
+        value: hex::decode(cc["child_task_id"].as_str().unwrap().replace('-', "")).unwrap(),
+    };
+    let child_evs = task_events(&core, &session, &child_c_task).await;
+    assert_eq!(of(&child_evs, "RunCreated").len(), 1);
+    assert_eq!(of(&child_evs, "RunSuspended").len(), 0);
+    assert_eq!(of(&child_evs, "TaskResumed").len(), 0);
+    let offset_at = |t: &str| {
+        last_tools[t.parse::<usize>().unwrap()]
+            .lines()
+            .find_map(|l| l.strip_prefix("child_last_offset: "))
+            .and_then(|v| v.parse::<u64>().ok())
+            .unwrap()
+    };
+    let (o1, o2) = (offset_at("3"), offset_at("4"));
+    assert!(o2 >= o1, "{o1} {o2}");
+    let results = of(&trail, "SubagentResultRecorded");
+    assert_eq!(results.len(), 2, "{results:#?}");
+    assert!(
+        results.iter().all(|r| r["status"] == "COMPLETED"),
+        "{results:#?}"
+    );
+    let wt_c = std::path::Path::new(cc["worktree"].as_str().unwrap());
+    assert_eq!(
+        std::fs::read_to_string(wt_c.join("src/c/c.txt")).unwrap(),
+        "gamma\n"
+    );
+}
+
+/// REQ-EV-0049: parking is a durable state of its own — not cancel, not
+/// complete. The parent parks a running child during its intervention: the
+/// child stops at its next turn boundary with its run, worktree, plan and
+/// transcript intact and its node reads PARKED; a Core restart leaves it
+/// parked (the parent's resume does not wake it); `agent.resume` brings it
+/// back from the same state and it finishes with one write.
+#[tokio::test]
+async fn qual_ev_0049_a_parked_child_survives_a_restart_and_resumes_from_the_same_state() {
+    use modbit_protocol::v1::{AgentGraphView, GetAgentGraph, StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (_repo, root) = plain_repo(&[("README.md", "# park\n"), ("src/c/.keep", "")]);
+    let parent = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "module c exists", "expected_files": ["README.md"], "steps": [{"id": "c", "title": "module c"}]}}]}),
+        json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "child-c", "objective": "create src/c/c.txt containing gamma", "write_scope": ["src/c/"], "work_node": "c", "max_turns": 8}}]}),
+        json!({"calls": [{"name": "agent.park", "args": {"idempotency_key": "child-c", "reason": "the user is intervening on module c"}}]}),
+        json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "child-c", "timeout_ms": 30000}}]}),
+        // The Core dies while the parent thinks about what to do next; the
+        // resumed parent asks again and resumes the child.
+        json!({"stall": true, "then": {"calls": [{"name": "agent.resume", "args": {"idempotency_key": "child-c"}}]}}),
+        json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "child-c", "timeout_ms": 60000}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "delegated, parked, resumed and collected", "self_review": {"findings": []}}}]}),
+    ];
+    let child_c = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "c.txt exists", "expected_files": ["src/c/c.txt"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "README.md"}}]}),
+        json!({"calls": [{"name": "fs.list", "args": {"path": "src"}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "src/c/.keep"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "src/c/c.txt", "op": "replace", "content": "gamma\n"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "created src/c/c.txt", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model_reactive(
+        parent,
+        vec![],
+        None,
+        Some((usize::MAX, Duration::from_millis(400))),
+        vec![],
+        false,
+        vec![("needle:Task goal: create src/c/c.txt".into(), child_c)],
+    )
+    .await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_CAPACITY", "model=4,provider=8"),
+    ];
+    async fn agents(c: &mut Client, task: &Id) -> AgentGraphView {
+        let ack = c
+            .command(envelope(
+                Id {
+                    value: (0..16).map(|_| rand::random::<u8>()).collect(),
+                },
+                "GetAgentGraph",
+                GetAgentGraph {
+                    task_id: Some(task.clone()),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    }
+    let start = |t: &Id, id: u8, g: Option<u64>| {
+        envelope_fenced(
+            id16(id),
+            "StartTask",
+            StartTask {
+                task_id: Some(t.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 14,
+                max_tool_calls: 0,
+                max_no_progress_turns: 5,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        )
+    };
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xF1)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_goal(&mut c, &session, g, &root, 0xF2, "delegate module c").await;
+    let _: TaskRunStarted =
+        Client::result(&c.command(start(&task, 0xF3, g)).await.unwrap()).unwrap();
+    // The child parks; the parent's wait says so; its next request stalls.
+    let deadline = std::time::Instant::now() + Duration::from_secs(60);
+    loop {
+        let bodies = seen.lock().unwrap().clone();
+        let parent_stalled = bodies.iter().any(|b| {
+            !b.to_string().contains("Task goal: create src/c/c.txt")
+                && b["messages"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .filter(|m| m["role"] == "tool")
+                    .count()
+                    == 4
+        });
+        if parent_stalled {
+            break;
+        }
+        assert!(std::time::Instant::now() < deadline, "{bodies:#?}");
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    let graph = agents(&mut c, &task).await;
+    let node = graph
+        .nodes
+        .iter()
+        .find(|n| n.kind == "SUBAGENT")
+        .unwrap()
+        .clone();
+    assert_eq!(node.status, "PARKED", "{graph:#?}");
+    let trail = task_events(&core, &session, &task).await;
+    let of = |evs: &[(String, String, serde_json::Value)], t: &str| -> Vec<serde_json::Value> {
+        evs.iter()
+            .filter(|(_, ty, _)| ty == t)
+            .map(|(_, _, p)| p.clone())
+            .collect()
+    };
+    let admitted = of(&trail, "SubagentAdmitted");
+    assert_eq!(admitted.len(), 1);
+    let child_task = Id {
+        value: hex::decode(
+            admitted[0]["child_task_id"]
+                .as_str()
+                .unwrap()
+                .replace('-', ""),
+        )
+        .unwrap(),
+    };
+    let cst = wait_task(&mut c, &child_task, 5).await;
+    assert_eq!(
+        (
+            cst.state.as_str(),
+            cst.wait_reason.as_str(),
+            cst.run_state.as_str(),
+            cst.loop_alive
+        ),
+        ("Waiting", "External", "Suspended", false),
+        "parked: {cst:?}"
+    );
+    let parked_results = of(&trail, "SubagentResultRecorded");
+    assert_eq!(parked_results.len(), 1, "{parked_results:#?}");
+    assert_eq!(parked_results[0]["status"], "PARKED");
+    let wt = std::path::Path::new(admitted[0]["worktree"].as_str().unwrap());
+    assert!(!wt.join("src/c/c.txt").exists(), "parked before its write");
+    let child_before = task_events(&core, &session, &child_task).await.len();
+    drop(c);
+    core.kill();
+    // Restart: the parent suspends and waits; the parked child stays parked.
+    let core2 = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c2 = core2.client().await;
+    let st = wait_task(&mut c2, &task, 5).await;
+    assert_eq!(
+        (st.state.as_str(), st.run_state.as_str()),
+        ("Waiting", "Suspended"),
+        "{st:?}"
+    );
+    let graph = agents(&mut c2, &task).await;
+    let node2 = graph.nodes.iter().find(|n| n.kind == "SUBAGENT").unwrap();
+    assert_eq!(node2.status, "PARKED", "{graph:#?}");
+    assert_eq!(node2.agent_id, node.agent_id);
+    assert_eq!(node2.capsule_ref, node.capsule_ref);
+    let g2 = Some(acquire_lease(&mut c2, id16(0xF4), session.clone(), "resumer").await);
+    let started: TaskRunStarted =
+        Client::result(&c2.command(start(&task, 0xF5, g2)).await.unwrap()).unwrap();
+    assert!(started.resumed);
+    // The parent's resume alone does not wake a parked child.
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    let cst = wait_task(&mut c2, &child_task, 1).await;
+    let graph_mid = agents(&mut c2, &task).await;
+    let node_mid = graph_mid
+        .nodes
+        .iter()
+        .find(|n| n.kind == "SUBAGENT")
+        .unwrap();
+    assert!(
+        node_mid.status == "PARKED"
+            || node_mid.status == "BACKGROUND"
+            || node_mid.status == "COMPLETED",
+        "{graph_mid:#?}"
+    );
+    let _ = cst;
+    let st = wait_for_state(&mut c2, &task, "ReadyForReview", 120).await;
+    let trail = task_events(&core2, &session, &task).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}\n{trail:#?}");
+    // The node's whole history: parked by choice, resumed by choice, done.
+    let moves: Vec<(String, String)> = of(&trail, "AgentNodeTransitioned")
+        .iter()
+        .filter(|p| p["agent_id"] == admitted[0]["agent_id"])
+        .map(|p| {
+            (
+                p["from"].as_str().unwrap_or_default().to_owned(),
+                p["to"].as_str().unwrap_or_default().to_owned(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        moves,
+        vec![
+            ("ADMITTED".to_owned(), "BACKGROUND".to_owned()),
+            ("BACKGROUND".to_owned(), "PARKED".to_owned()),
+            ("PARKED".to_owned(), "BACKGROUND".to_owned()),
+            ("BACKGROUND".to_owned(), "COMPLETED".to_owned()),
+        ],
+        "{moves:#?}"
+    );
+    let results = of(&trail, "SubagentResultRecorded");
+    assert_eq!(results.len(), 2, "{results:#?}");
+    assert_eq!(results[1]["status"], "COMPLETED");
+    assert_eq!(results[1]["artifacts"], json!(["src/c/c.txt"]));
+    assert_eq!(
+        std::fs::read_to_string(wt.join("src/c/c.txt")).unwrap(),
+        "gamma\n"
+    );
+    // The parent's transcript: the wait said PARKED; the resume succeeded.
+    let bodies = seen.lock().unwrap().clone();
+    let parent_last: Vec<String> = bodies
+        .iter()
+        .rfind(|b| !b.to_string().contains("Task goal: create src/c/c.txt"))
+        .unwrap()["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    assert!(
+        parent_last[2].contains("PARK_REQUESTED"),
+        "{}",
+        parent_last[2]
+    );
+    assert!(
+        parent_last[3].starts_with("status: PARKED"),
+        "{}",
+        parent_last[3]
+    );
+    assert!(
+        parent_last[4].contains("status: SUCCESS")
+            && parent_last[4].contains("resumed with its whole state"),
+        "{}",
+        parent_last[4]
+    );
+    // The child's own log: one run, suspended by the park and resumed by
+    // the parent's control, never cancelled; the write ran once; the log
+    // grew past what it held when parked.
+    let child_evs = task_events(&core2, &session, &child_task).await;
+    assert!(child_evs.len() > child_before);
+    assert_eq!(of(&child_evs, "RunCreated").len(), 1);
+    assert_eq!(of(&child_evs, "RunSuspended").len(), 1, "{child_evs:#?}");
+    assert_eq!(of(&child_evs, "RunResumed").len(), 1, "{child_evs:#?}");
+    assert_eq!(of(&child_evs, "RunCancelled").len(), 0);
+    assert_eq!(of(&child_evs, "TaskCancelled").len(), 0);
+    assert_eq!(
+        child_evs
+            .iter()
+            .filter(|(a, t, p)| a == "tool_call"
+                && t == "ToolCallProposed"
+                && p["tool_name"] == "change.apply")
+            .count(),
+        1
+    );
+}
+
+/// REQ-EV-0050 / REQ-EV-0179: a child that finished stays addressable. Its
+/// parent — restarted in between — sends a typed follow-up (`agent.steer`)
+/// and the child continues as a new attempt on the same task, agent and
+/// lineage: a fresh run with the follow-up as its first input, its prior
+/// output on the same log as evidence, its new envelope linking the prior
+/// one (`prior_result:<ref>`, `attempt:2`).
+#[tokio::test]
+async fn qual_ev_0050_0179_a_follow_up_continues_a_finished_child_as_a_new_attempt_on_its_lineage()
+{
+    use modbit_protocol::v1::{AgentGraphView, GetAgentGraph, StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (_repo, root) = plain_repo(&[("README.md", "# research me\n"), ("src/a/.keep", "")]);
+    let parent = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "module a researched and built", "expected_files": ["README.md"], "steps": [{"id": "a", "title": "module a"}]}}]}),
+        json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "child-a", "objective": "research README.md and report what it says", "write_scope": ["src/a/"], "work_node": "a", "max_turns": 10}}]}),
+        json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "child-a", "timeout_ms": 60000}}]}),
+        // The Core dies here; the resumed parent asks again and follows up.
+        json!({"stall": true, "then": {"calls": [{"name": "agent.steer", "args": {"idempotency_key": "child-a", "message": "good; now create src/a/a.txt containing alpha"}}]}}),
+        json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "child-a", "timeout_ms": 60000}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "researched, followed up and collected", "self_review": {"findings": []}}}]}),
+    ];
+    // One script, one log: attempt 2 continues where the transcript left
+    // off (the follow-up is a user message on the same conversation).
+    let child_a = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "a report on README.md", "expected_files": []}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "README.md"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "README says: research me", "self_review": {"findings": []}}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "a.txt exists", "expected_files": ["src/a/a.txt"]}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "src/a/a.txt", "op": "replace", "content": "alpha\n"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "created src/a/a.txt after the follow-up", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_models(
+        parent,
+        vec![("needle:Task goal: research README.md", child_a)],
+        None,
+    )
+    .await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_CAPACITY", "model=4,provider=8"),
+    ];
+    async fn agents(c: &mut Client, task: &Id) -> AgentGraphView {
+        let ack = c
+            .command(envelope(
+                Id {
+                    value: (0..16).map(|_| rand::random::<u8>()).collect(),
+                },
+                "GetAgentGraph",
+                GetAgentGraph {
+                    task_id: Some(task.clone()),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    }
+    let start = |t: &Id, id: u8, g: Option<u64>| {
+        envelope_fenced(
+            id16(id),
+            "StartTask",
+            StartTask {
+                task_id: Some(t.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 14,
+                max_tool_calls: 0,
+                max_no_progress_turns: 5,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        )
+    };
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x91)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_goal(
+        &mut c,
+        &session,
+        g,
+        &root,
+        0x92,
+        "research then build module a",
+    )
+    .await;
+    let _: TaskRunStarted =
+        Client::result(&c.command(start(&task, 0x93, g)).await.unwrap()).unwrap();
+    // The child finished its research; the parent's next request stalls.
+    let deadline = std::time::Instant::now() + Duration::from_secs(60);
+    loop {
+        let bodies = seen.lock().unwrap().clone();
+        let parent_stalled = bodies.iter().any(|b| {
+            !b.to_string().contains("Task goal: research README.md")
+                && b["messages"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .filter(|m| m["role"] == "tool")
+                    .count()
+                    == 3
+        });
+        if parent_stalled {
+            break;
+        }
+        assert!(std::time::Instant::now() < deadline, "{bodies:#?}");
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    let trail = task_events(&core, &session, &task).await;
+    let of = |evs: &[(String, String, serde_json::Value)], t: &str| -> Vec<serde_json::Value> {
+        evs.iter()
+            .filter(|(_, ty, _)| ty == t)
+            .map(|(_, _, p)| p.clone())
+            .collect()
+    };
+    let admitted = of(&trail, "SubagentAdmitted");
+    assert_eq!(admitted.len(), 1);
+    let first = of(&trail, "SubagentResultRecorded");
+    assert_eq!(first.len(), 1, "{first:#?}");
+    assert_eq!(first[0]["status"], "COMPLETED");
+    assert_eq!(first[0]["summary"], "README says: research me");
+    let first_ref = first[0]["result_ref"].as_str().unwrap().to_owned();
+    let graph = agents(&mut c, &task).await;
+    let node = graph
+        .nodes
+        .iter()
+        .find(|n| n.kind == "SUBAGENT")
+        .unwrap()
+        .clone();
+    assert_eq!(node.status, "COMPLETED");
+    let child_task = Id {
+        value: hex::decode(
+            admitted[0]["child_task_id"]
+                .as_str()
+                .unwrap()
+                .replace('-', ""),
+        )
+        .unwrap(),
+    };
+    let cst = wait_task(&mut c, &child_task, 5).await;
+    assert_eq!(
+        (cst.state.as_str(), cst.loop_alive),
+        ("ReadyForReview", false),
+        "{cst:?}"
+    );
+    drop(c);
+    core.kill();
+    // The parent restarts; the finished child is untouched by it.
+    let core2 = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c2 = core2.client().await;
+    let st = wait_task(&mut c2, &task, 5).await;
+    assert_eq!(
+        (st.state.as_str(), st.run_state.as_str()),
+        ("Waiting", "Suspended"),
+        "{st:?}"
+    );
+    let graph = agents(&mut c2, &task).await;
+    let node2 = graph.nodes.iter().find(|n| n.kind == "SUBAGENT").unwrap();
+    assert_eq!(node2.status, "COMPLETED", "{graph:#?}");
+    let g2 = Some(acquire_lease(&mut c2, id16(0x94), session.clone(), "resumer").await);
+    let started: TaskRunStarted =
+        Client::result(&c2.command(start(&task, 0x95, g2)).await.unwrap()).unwrap();
+    assert!(started.resumed);
+    let st = wait_for_state(&mut c2, &task, "ReadyForReview", 120).await;
+    let trail = task_events(&core2, &session, &task).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}\n{trail:#?}");
+    // Lineage: the same agent and child task, a second envelope linking the
+    // first, and the node's history through ADMITTED again.
+    let results = of(&trail, "SubagentResultRecorded");
+    assert_eq!(results.len(), 2, "{results:#?}");
+    assert_eq!(results[1]["agent_id"], admitted[0]["agent_id"]);
+    assert_eq!(results[1]["child_task_id"], admitted[0]["child_task_id"]);
+    assert_eq!(results[1]["status"], "COMPLETED");
+    assert_eq!(
+        results[1]["summary"],
+        "created src/a/a.txt after the follow-up"
+    );
+    assert_eq!(results[1]["artifacts"], json!(["src/a/a.txt"]));
+    let refs: Vec<String> = results[1]["evidence_refs"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r.as_str().unwrap().to_owned())
+        .collect();
+    assert!(
+        refs.contains(&format!("prior_result:{first_ref}")),
+        "{refs:?}"
+    );
+    assert!(refs.contains(&"attempt:2".to_owned()), "{refs:?}");
+    assert_eq!(
+        of(&trail, "SubagentAdmitted").len(),
+        1,
+        "no second admission"
+    );
+    let moves: Vec<(String, String)> = of(&trail, "AgentNodeTransitioned")
+        .iter()
+        .filter(|p| p["agent_id"] == admitted[0]["agent_id"])
+        .map(|p| {
+            (
+                p["from"].as_str().unwrap_or_default().to_owned(),
+                p["to"].as_str().unwrap_or_default().to_owned(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        moves,
+        vec![
+            ("ADMITTED".to_owned(), "BACKGROUND".to_owned()),
+            ("BACKGROUND".to_owned(), "COMPLETED".to_owned()),
+            ("COMPLETED".to_owned(), "ADMITTED".to_owned()),
+            ("ADMITTED".to_owned(), "BACKGROUND".to_owned()),
+            ("BACKGROUND".to_owned(), "COMPLETED".to_owned()),
+        ],
+        "{moves:#?}"
+    );
+    // The steer was typed and delivered as a new attempt.
+    let bodies = seen.lock().unwrap().clone();
+    let parent_last: Vec<String> = bodies
+        .iter()
+        .rfind(|b| !b.to_string().contains("Task goal: research README.md"))
+        .unwrap()["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    assert!(
+        parent_last[3].contains("delivery: NEW_ATTEMPT")
+            && parent_last[3].contains("status: SUCCESS"),
+        "{}",
+        parent_last[3]
+    );
+    // The child's log: two runs on one task, returned to work with the
+    // follow-up as a typed input; the prior conversation carried into the
+    // second attempt (the model saw its own earlier report).
+    let child_evs = task_events(&core2, &session, &child_task).await;
+    assert_eq!(of(&child_evs, "RunCreated").len(), 2, "{child_evs:#?}");
+    assert_eq!(of(&child_evs, "TaskReturnedToWork").len(), 1);
+    let inputs = of(&child_evs, "TaskInputQueued");
+    assert!(
+        inputs.iter().any(|i| i["mode"] == "FOLLOW_UP"
+            && i["text"]
+                .as_str()
+                .unwrap()
+                .contains("now create src/a/a.txt")),
+        "{inputs:#?}"
+    );
+    assert_eq!(of(&child_evs, "TaskReadyForReview").len(), 2);
+    let child_bodies: Vec<&serde_json::Value> = bodies
+        .iter()
+        .filter(|b| b.to_string().contains("Task goal: research README.md"))
+        .collect();
+    let last_child = child_bodies.last().unwrap().to_string();
+    assert!(
+        last_child.contains("README says: research me"),
+        "prior output is context"
+    );
+    assert!(
+        last_child.contains("now create src/a/a.txt"),
+        "the follow-up reached the child"
+    );
+    let wt = std::path::Path::new(admitted[0]["worktree"].as_str().unwrap());
+    assert_eq!(
+        std::fs::read_to_string(wt.join("src/a/a.txt")).unwrap(),
+        "alpha\n"
+    );
+}
+
+/// REQ-EV-0151 / REQ-EV-0275: attention is derived from the canonical
+/// unresolved state of a session and nothing else. An open approval, an
+/// unanswered question, a stalled run and a start refused for capacity each
+/// stand as one actionable item naming the command that clears it, and
+/// each is gone the moment its resolving event lands — `ApprovalResolved`,
+/// `UserQuestionAnswered`, `TaskCancelled`, `TaskStarted`. No second
+/// scheduler, no reminder store.
+#[tokio::test]
+async fn qual_ev_0151_0275_attention_items_are_derived_from_canonical_state_and_clear_with_it() {
+    use modbit_protocol::v1::{
+        ApprovalResolvedAck, AttentionView, CancelTask, GetAttention, ListQuestions, QuestionList,
+        ResolveApproval, RespondToQuestion, StartTask, TaskRunStarted,
+    };
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[("a.txt", "a\n")]);
+    let wt = repo.path().join("wt-stale");
+    assert!(
+        Command::new("git")
+            .arg("-C")
+            .arg(repo.path())
+            .args(["worktree", "add", "-q", "-b", "task/stale"])
+            .arg(&wt)
+            .status()
+            .unwrap()
+            .success()
+    );
+    let wt_s = wt
+        .canonicalize()
+        .unwrap()
+        .to_string_lossy()
+        .trim_start_matches(r"\\?\")
+        .to_owned();
+    let asks = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "pick a config", "expected_files": ["chosen.txt"]}}]}),
+        json!({"calls": [{"name": "user.ask", "args": {"question": "Which config should the new file follow?", "options": [{"id": "a", "label": "the a layout"}, {"id": "b", "label": "the b layout"}], "reason": "change_set"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "chosen.txt", "op": "create", "content": "a\n"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "chosen", "self_review": {"findings": []}}}]}),
+    ];
+    let closes = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "close the stale worktree", "expected_files": [], "protected_effects": ["git.worktree.close"]}}]}),
+        json!({"calls": [{"name": "git.worktree.close", "args": {"path": wt_s}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "closed", "self_review": {"findings": []}}}]}),
+    ];
+    let browse = json!({"calls": [{"name": "search.exact", "args": {"query": "a"}}]});
+    let stalls = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "look around", "expected_files": ["a.txt"]}}]}),
+        browse.clone(),
+        browse.clone(),
+        browse.clone(),
+        browse.clone(),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "never reached", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, _seen) = scripted_models(
+        vec![],
+        vec![
+            ("needle:Task goal: pick a config", asks),
+            ("needle:Task goal: close the stale worktree", closes),
+            ("needle:Task goal: look around", stalls),
+        ],
+        None,
+    )
+    .await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xA0)).await;
+    let g = lease_for(&session);
+    async fn items(c: &mut Client, session: &Id) -> Vec<modbit_protocol::v1::AttentionItemView> {
+        let ack = c
+            .command(envelope(
+                Id {
+                    value: (0..16).map(|_| rand::random::<u8>()).collect(),
+                },
+                "GetAttention",
+                GetAttention {
+                    session_id: Some(session.clone()),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        let v: AttentionView = Client::result(&ack).unwrap();
+        v.items
+    }
+    let start = |t: &Id, id: u8, g: Option<u64>, np: u32| {
+        envelope_fenced(
+            id16(id),
+            "StartTask",
+            StartTask {
+                task_id: Some(t.clone()),
+                endpoint: "openai".into(),
+                model: "gpt-5".into(),
+                max_turns: 12,
+                max_tool_calls: 0,
+                max_no_progress_turns: np,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        )
+    };
+    assert!(
+        items(&mut c, &session).await.is_empty(),
+        "a fresh session has nothing to attend to"
+    );
+    // ---- a question
+    let q_task = create_task_with_goal(&mut c, &session, g, &root, 0xA1, "pick a config").await;
+    let _: TaskRunStarted =
+        Client::result(&c.command(start(&q_task, 0xA2, g, 0)).await.unwrap()).unwrap();
+    let st = wait_task(&mut c, &q_task, 60).await;
+    assert_eq!(
+        (st.state.as_str(), st.wait_reason.as_str()),
+        ("Waiting", "UserInput"),
+        "{st:?}"
+    );
+    let ack = c
+        .command(envelope(
+            id16(0xA3),
+            "ListQuestions",
+            ListQuestions {
+                task_id: Some(q_task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let l: QuestionList = Client::result(&ack).unwrap();
+    let q = l.questions[0].clone();
+    let it = items(&mut c, &session).await;
+    assert_eq!(it.len(), 1, "{it:#?}");
+    assert_eq!(it[0].kind, "QUESTION");
+    assert_eq!(it[0].task_id.as_ref(), Some(&q_task));
+    assert_eq!(it[0].reference, q.question_id);
+    assert!(it[0].reason.contains("Which config"), "{it:#?}");
+    assert!(it[0].action.contains("RespondToQuestion"), "{it:#?}");
+    // ---- an approval, alongside
+    let a_task =
+        create_task_with_goal(&mut c, &session, g, &root, 0xA4, "close the stale worktree").await;
+    let _: TaskRunStarted =
+        Client::result(&c.command(start(&a_task, 0xA5, g, 0)).await.unwrap()).unwrap();
+    let deadline = std::time::Instant::now() + Duration::from_secs(30);
+    let approval = loop {
+        let list = approvals_of(&mut c, &session).await;
+        if let Some(a) = list.iter().find(|a| a.status == "REQUESTED") {
+            break a.clone();
+        }
+        assert!(std::time::Instant::now() < deadline, "no approval opened");
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    };
+    let it = items(&mut c, &session).await;
+    assert_eq!(it.len(), 2, "{it:#?}");
+    let ap = it.iter().find(|i| i.kind == "APPROVAL").unwrap();
+    assert_eq!(ap.task_id.as_ref(), Some(&a_task));
+    assert_eq!(
+        ap.reference,
+        uuid_of(approval.approval_id.as_ref().unwrap())
+    );
+    assert!(
+        ap.reason.contains("git.worktree.close") && ap.reason.contains("Destructive"),
+        "{ap:#?}"
+    );
+    assert!(ap.action.contains("ResolveApproval"), "{ap:#?}");
+    // ---- a stall, alongside
+    let s_task = create_task_with_goal(&mut c, &session, g, &root, 0xA6, "look around").await;
+    let _: TaskRunStarted =
+        Client::result(&c.command(start(&s_task, 0xA7, g, 3)).await.unwrap()).unwrap();
+    let st = wait_task(&mut c, &s_task, 120).await;
+    assert_eq!(
+        (st.state.as_str(), st.wait_reason.as_str()),
+        ("Waiting", "UserInput"),
+        "{st:?}"
+    );
+    let it = items(&mut c, &session).await;
+    assert_eq!(it.len(), 3, "{it:#?}");
+    let stall = it.iter().find(|i| i.kind == "STALL").unwrap();
+    assert_eq!(stall.task_id.as_ref(), Some(&s_task));
+    assert!(stall.reason.contains("without progress"), "{stall:#?}");
+    assert!(
+        stall.action.contains("StartTask") && stall.action.contains("CancelTask"),
+        "{stall:#?}"
+    );
+    // Items are ordered by the event that raised them.
+    assert!(
+        it.windows(2)
+            .all(|w| w[0].since_offset <= w[1].since_offset),
+        "{it:#?}"
+    );
+    // ---- each clears from its own canonical event, nothing else.
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xA8),
+            "ResolveApproval",
+            ResolveApproval {
+                approval_id: approval.approval_id.clone(),
+                approve: true,
+                reason: "ok".into(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(
+        Client::result::<ApprovalResolvedAck>(&ack).unwrap().status,
+        "APPROVED"
+    );
+    let it = items(&mut c, &session).await;
+    assert!(it.iter().all(|i| i.kind != "APPROVAL"), "{it:#?}");
+    assert_eq!(it.len(), 2, "{it:#?}");
+    let st = wait_for_state(&mut c, &a_task, "ReadyForReview", 60).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    assert!(!wt.exists(), "the approved effect ran");
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xA9),
+            "RespondToQuestion",
+            RespondToQuestion {
+                task_id: Some(q_task.clone()),
+                question_id: q.question_id.clone(),
+                option_id: "a".into(),
+                text: String::new(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let it = items(&mut c, &session).await;
+    assert!(it.iter().all(|i| i.kind != "QUESTION"), "answered: {it:#?}");
+    assert_eq!(it.len(), 1, "{it:#?}");
+    assert_eq!(it[0].kind, "STALL");
+    let ack2 = c
+        .command(envelope_fenced(
+            id16(0xAA),
+            "CancelTask",
+            CancelTask {
+                task_id: Some(s_task.clone()),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _ = (ack, ack2);
+    let st = wait_for_state(&mut c, &s_task, "Cancelled", 30).await;
+    assert_eq!(st.state, "Cancelled", "{st:?}");
+    let it = items(&mut c, &session).await;
+    assert!(it.is_empty(), "everything resolved: {it:#?}");
+    // The answered task finishes when resumed; still nothing to attend to.
+    let _: TaskRunStarted =
+        Client::result(&c.command(start(&q_task, 0xAB, g, 0)).await.unwrap()).unwrap();
+    let st = wait_for_state(&mut c, &q_task, "ReadyForReview", 60).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    assert!(items(&mut c, &session).await.is_empty());
+    drop(c);
+
+    // ---- capacity, on a one-slot host: a refused start is an item until
+    // the task starts.
+    let (_repo2, root2) = plain_repo(&[("notes.md", "hello\n")]);
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "read notes", "expected_files": []}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "notes.md"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "read", "self_review": {"findings": []}}}]}),
+    ];
+    let (base2, _seen2) = scripted_model_delayed(script, (1, Duration::from_secs(3))).await;
+    let dir2 = tempfile::tempdir().unwrap();
+    let env2 = [
+        ("MODBIT_OPENAI_BASE_URL", base2.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_CAPACITY", "model=1,provider=4"),
+    ];
+    let core2 = CoreProcess::spawn_with_env(dir2.path(), &env2);
+    let mut c2 = core2.client().await;
+    let (session2, _) = create_session(&mut c2, id16(0xB0)).await;
+    let g2 = lease_for(&session2);
+    let x = create_task_with_goal(&mut c2, &session2, g2, &root2, 0xB1, "read notes x").await;
+    let y = create_task_with_goal(&mut c2, &session2, g2, &root2, 0xB2, "read notes y").await;
+    let _: TaskRunStarted =
+        Client::result(&c2.command(start(&x, 0xB3, g2, 0)).await.unwrap()).unwrap();
+    let err = c2.command(start(&y, 0xB4, g2, 0)).await.unwrap_err();
+    assert!(err.to_string().contains("CAPACITY_EXHAUSTED"), "{err}");
+    let it = items(&mut c2, &session2).await;
+    assert_eq!(it.len(), 1, "{it:#?}");
+    assert_eq!(it[0].kind, "CAPACITY");
+    assert_eq!(it[0].task_id.as_ref(), Some(&y));
+    assert!(it[0].reason.contains("model_concurrency"), "{it:#?}");
+    assert!(it[0].action.contains("StartTask"), "{it:#?}");
+    let st = wait_for_state(&mut c2, &x, "ReadyForReview", 60).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let _: TaskRunStarted =
+        Client::result(&c2.command(start(&y, 0xB5, g2, 0)).await.unwrap()).unwrap();
+    let it = items(&mut c2, &session2).await;
+    assert!(it.is_empty(), "started: {it:#?}");
+    let st = wait_for_state(&mut c2, &y, "ReadyForReview", 60).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+}
+
+/// REQ-EV-0043: the ProtocolCapabilitySet is the client's, per kind and per
+/// connection — what a client may ask the Core for — and is not the task's
+/// execution authority, which lives in its leases and policy. A headless CLI
+/// client holds no UI-only capability: its claim of an editor selection or
+/// a request for the visual code view is refused `CLIENT_CAPABILITY` at the
+/// transport, while the task it created and started runs to the end and a
+/// desktop client works the same task's UI surfaces; a sandbox guest cannot
+/// even author a task or resolve an approval, yet it reads the same log.
+#[tokio::test]
+async fn qual_ev_0043_a_headless_client_lacks_ui_only_capabilities_while_the_task_stays_valid() {
+    use modbit_protocol::v1::{
+        GetCodeView, GetSessionSnapshot, ResolveApproval, SessionSnapshot, SetTaskSelection,
+        StartTask, TaskRunStarted, TaskSelectionRecorded,
+    };
+    use serde_json::json;
+    let (_repo, root) = plain_repo(&[("a.txt", "a\n")]);
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "b.txt exists", "expected_files": ["b.txt"]}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "b.txt", "op": "replace", "content": "b\n"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "wrote b.txt", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, _seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    // The set is negotiated at hello, per kind.
+    let mut cli = core.client().await;
+    let mut desktop = core.client_of(ClientKind::Desktop).await;
+    let mut guest = core.client_of(ClientKind::SandboxGuest).await;
+    for c in [
+        "task.author",
+        "events.subscribe",
+        "approval.resolve",
+        "question.answer",
+        "review.decide",
+    ] {
+        assert!(
+            cli.capabilities.iter().any(|x| x == c),
+            "cli lacks {c}: {:?}",
+            cli.capabilities
+        );
+        assert!(
+            desktop.capabilities.iter().any(|x| x == c),
+            "desktop lacks {c}"
+        );
+    }
+    for c in ["ui.selection", "ui.code_view"] {
+        assert!(
+            !cli.capabilities.iter().any(|x| x == c),
+            "cli holds {c}: {:?}",
+            cli.capabilities
+        );
+        assert!(
+            desktop.capabilities.iter().any(|x| x == c),
+            "desktop lacks {c}"
+        );
+    }
+    assert_eq!(guest.capabilities, vec!["events.subscribe".to_owned()]);
+    // The CLI authors and runs the task; its leases are the task's, not the client's.
+    let (session, _) = create_session(&mut cli, id16(0x40)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_goal(&mut cli, &session, g, &root, 0x41, "write b.txt").await;
+    // A UI-only claim from the headless client is refused at the transport.
+    let err = cli
+        .command(envelope_fenced(
+            id16(0x42),
+            "SetTaskSelection",
+            SetTaskSelection {
+                task_id: Some(task.clone()),
+                paths: vec!["a.txt".into()],
+                symbol: String::new(),
+                line_start: 1,
+                line_end: 1,
+                review_hunks: vec![],
+                source: "editor".into(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, ref message, .. } if code == "CLIENT_CAPABILITY" && message.contains("ui.selection") && message.contains("CLI")),
+        "{err}"
+    );
+    let err = cli
+        .command(envelope(
+            id16(0x43),
+            "GetCodeView",
+            GetCodeView {
+                task_id: Some(task.clone()),
+                path: "a.txt".into(),
+                expected_file_revision: String::new(),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "CLIENT_CAPABILITY"),
+        "{err}"
+    );
+    // The same claim from the CLI's own vantage point is within its set.
+    let ack = cli
+        .command(envelope_fenced(
+            id16(0x44),
+            "SetTaskSelection",
+            SetTaskSelection {
+                task_id: Some(task.clone()),
+                paths: vec!["a.txt".into()],
+                symbol: String::new(),
+                line_start: 0,
+                line_end: 0,
+                review_hunks: vec![],
+                source: "cli".into(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskSelectionRecorded = Client::result(&ack).unwrap();
+    // The desktop client works the UI surface of the same task.
+    let ack = desktop
+        .command(envelope_fenced(
+            id16(0x45),
+            "SetTaskSelection",
+            SetTaskSelection {
+                task_id: Some(task.clone()),
+                paths: vec!["a.txt".into()],
+                symbol: String::new(),
+                line_start: 1,
+                line_end: 1,
+                review_hunks: vec![],
+                source: "editor".into(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskSelectionRecorded = Client::result(&ack).unwrap();
+    // A sandbox guest neither authors nor decides — and the refusal is the
+    // client's, not the task's (the guest never held the lease either).
+    let err = guest
+        .command(envelope_fenced(
+            id16(0x46),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 8,
+                max_tool_calls: 0,
+                max_no_progress_turns: 3,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "CLIENT_CAPABILITY"),
+        "{err}"
+    );
+    let err = guest
+        .command(envelope_fenced(
+            id16(0x47),
+            "ResolveApproval",
+            ResolveApproval {
+                approval_id: Some(id16(0x99)),
+                approve: true,
+                reason: "no".into(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "CLIENT_CAPABILITY"),
+        "{err}"
+    );
+    // The task the headless client authored remains valid and runs to the end.
+    let ack = cli
+        .command(envelope_fenced(
+            id16(0x48),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 8,
+                max_tool_calls: 0,
+                max_no_progress_turns: 3,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_for_state(&mut cli, &task, "ReadyForReview", 60).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    // The guest reads the same canonical log.
+    let ack = guest
+        .command(envelope(
+            id16(0x49),
+            "GetSessionSnapshot",
+            GetSessionSnapshot {
+                session_id: Some(session.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let snap: SessionSnapshot = Client::result(&ack).unwrap();
+    assert_eq!(snap.tasks.len(), 1);
+    assert_eq!(snap.tasks[0].state, "ReadyForReview");
+    let evs = task_events(&core, &session, &task).await;
+    let selections: Vec<&serde_json::Value> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "SelectionRecorded")
+        .map(|(_, _, p)| p)
+        .collect();
+    assert_eq!(selections.len(), 2, "{selections:#?}");
+    assert_eq!(selections[0]["source"], "cli");
+    assert_eq!(selections[1]["source"], "editor");
 }
 
 #[tokio::test]

@@ -278,6 +278,11 @@ export function applyEvent(m: Model, e: Event, taskIdHint?: string): Model {
         case "SubagentAdmissionRefused":
           updated.latestEvidence = `delegation refused: ${String(p["code"] ?? "")} at ${String(p["stage"] ?? "")}`;
           break;
+        // REQ-EV-0046: a background child reached a protected effect; it was
+        // refused and the parent decides (TaskNeedsAttention follows).
+        case "SubagentProtectedEffect":
+          updated.latestEvidence = `child ${String(p["idempotency_key"] ?? "")} reached a protected effect: ${String(p["tool"] ?? "")} (${String(p["effect_class"] ?? "")})`;
+          break;
         case "SubagentResultRecorded": {
           const status = String(p["status"] ?? "");
           const summary = String(p["summary"] ?? "");

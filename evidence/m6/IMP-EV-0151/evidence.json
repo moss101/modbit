@@ -1,0 +1,15 @@
+{
+ "task": "IMP-EV-0151",
+ "requirement": "REQ-EV-0151",
+ "qual": "QUAL-EV-0151",
+ "tests": [
+  "qual_ev_0151_0275_attention_items_are_derived_from_canonical_state_and_clear_with_it",
+  "attention: a start refused for capacity is an item from the Core and clears when the task starts (apps/desktop/e2e/attention.spec.ts)"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "in one session a question, an approval and a stall stand as three items ordered by the event that raised them, each naming its task, reference and the clearing command; approving clears the approval (and the effect runs), answering clears the question, cancelling clears the stall \u2014 nothing else does; on a one-slot host a refused start is a CAPACITY item until the task starts; the packaged app renders the CAPACITY item from the Core and shows it gone when the second task starts.",
+ "audit": "PARTIAL before: the Fleet derived a Needs Attention column from `TaskNeedsAttention` and wait reasons in the renderer (M6.6); approvals and questions lived in their own lists and nothing aggregated them with an action.",
+ "limitations": "CONFLICT and PROTECTED_EFFECT items are covered by their own tests' events (M6.3 / REQ-EV-0046) and the projection rules, not by a timing-dependent E2E; the strip is a list with reasons and actions in words \u2014 the acting controls stay where they are (review, approvals, start).",
+ "ci": ""
+}

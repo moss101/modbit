@@ -39,5 +39,6 @@
   {"name": "restart_executing", "source": {"kind": "restart", "boundary": "EXECUTING", "message": "runtime restarted with 2 proposed tool call(s) not yet run", "unknown_calls": []}},
   {"name": "restart_turn_start", "source": {"kind": "restart", "boundary": "TURN_START", "message": "runtime restarted while the task was running", "unknown_calls": []}},
   {"name": "lease_lost", "source": {"kind": "lease_lost", "held": 2, "current": 3, "owner": "cli:shell-2"}},
-  {"name": "loop_capacity_lost", "source": {"kind": "loop", "code": "CAPACITY_LOST", "message": "ticket t-1: UNKNOWN_TICKET; re-acquire refused {\"code\":\"CAPACITY_EXHAUSTED\"}"}}
+  {"name": "loop_capacity_lost", "source": {"kind": "loop", "code": "CAPACITY_LOST", "message": "ticket t-1: UNKNOWN_TICKET; re-acquire refused {\"code\":\"CAPACITY_EXHAUSTED\"}"}},
+  {"name": "subagent_protected_effect_refused", "source": {"kind": "tool", "tool": "git.worktree.close", "status": "POLICY_DENIED", "code": "PROTECTED_EFFECT_REFUSED", "message": "subagent child-a reached a protected effect: git.worktree.close is DESTRUCTIVE, above its capsule ceiling REVERSIBLE_WRITE; it was refused without an approval of its own. Decide: do it from this task after review, or cancel the child (agent.cancel)", "result_ref": "", "timed_out": false, "cancelled": false}}
 ]

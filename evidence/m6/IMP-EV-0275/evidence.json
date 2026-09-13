@@ -1,0 +1,15 @@
+{
+ "task": "IMP-EV-0275",
+ "requirement": "REQ-EV-0275",
+ "qual": "QUAL-EV-0275",
+ "tests": [
+  "qual_ev_0151_0275_attention_items_are_derived_from_canonical_state_and_clear_with_it",
+  "attention: a start refused for capacity is an item from the Core and clears when the task starts (apps/desktop/e2e/attention.spec.ts)"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "every item exists exactly while the canonical fact it names is unresolved: an approval item is gone with `ApprovalResolved`, a question item with `UserQuestionAnswered` (even though the attention line that announced it still stands on the log), a stall item with `TaskCancelled`, a capacity item with `TaskStarted`; a fresh session has none; nothing is created by the client.",
+ "audit": "MISSING before: no reminder derivation existed; the renderer flagged tasks from events it happened to see.",
+ "limitations": "Deadlines are not a canonical fact on the log yet (no due-by on tasks); an item for one arrives when the Core records them.",
+ "ci": ""
+}

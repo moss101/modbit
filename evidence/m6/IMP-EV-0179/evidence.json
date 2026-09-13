@@ -1,0 +1,15 @@
+{
+ "task": "IMP-EV-0179",
+ "requirement": "REQ-EV-0179",
+ "qual": "QUAL-EV-0179",
+ "tests": [
+  "qual_ev_0050_0179_a_follow_up_continues_a_finished_child_as_a_new_attempt_on_its_lineage",
+  "m6_7_a_background_child_survives_a_core_restart_and_hands_its_result_back"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "the child completes, the Core is killed and restarted, the parent resumes (the finished child untouched by the restart: still COMPLETED, same agent id) and its re-asked turn sends the typed follow-up; the child continues on its own log with its prior output as context and evidence, ends a second time, and the parent collects the linked envelope.",
+ "audit": "PARTIAL before: a background child was resumable after a restart (M6.7) but not addressable once it had ended.",
+ "limitations": "A follow-up to a live child is delivered as a typed input; the parent reads the effect from the child's next envelope.",
+ "ci": ""
+}

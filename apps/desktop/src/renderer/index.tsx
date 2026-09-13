@@ -7,7 +7,7 @@
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { applyEvent, childrenOf, columns, emptyModel, fromSnapshot, type Event, type FleetColumn, type Model, type Snapshot, type TaskCard } from "./model.ts";
-import type { ContextInspectorSummary, ModbitBridge, ReviewBundleView, TaskEconomicsSummary } from "../preload/preload.ts";
+import type { AttentionItem, ContextInspectorSummary, ModbitBridge, ReviewBundleView, TaskEconomicsSummary } from "../preload/preload.ts";
 
 declare global {
   interface Window {
@@ -61,6 +61,19 @@ function App() {
   const [languages, setLanguages] = useState<{ language: string; tier: string; label: string }[]>([]);
   const [inspector, setInspector] = useState<ContextInspectorSummary | null>(null);
   const [economics, setEconomics] = useState<TaskEconomicsSummary | null>(null);
+  // REQ-EV-0151 / 0275: the Core's attention items — derived from canonical
+  // unresolved state, re-read after every task event, never invented here.
+  const [attentionItems, setAttentionItems] = useState<AttentionItem[]>([]);
+  const attentionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const refreshAttention = useCallback((sessionId: string) => {
+    if (attentionTimer.current) clearTimeout(attentionTimer.current);
+    attentionTimer.current = setTimeout(() => {
+      window.modbit
+        .attention(sessionId)
+        .then((a) => setAttentionItems(a.items))
+        .catch(() => {});
+    }, 150);
+  }, []);
   const [workspaceRoot, setWorkspaceRoot] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [reviewing, setReviewing] = useState<string | null>(null);
@@ -111,11 +124,12 @@ function App() {
         }
       }
       await window.modbit.subscribe(snap.sessionId, snap.lastOffset);
+      refreshAttention(snap.sessionId);
     } catch (e) {
       setError((e as Error).message);
       setScreen("error");
     }
-  }, []);
+  }, [refreshAttention]);
 
   useEffect(() => {
     const offEvent = window.modbit.onEvent((raw) => {
@@ -123,6 +137,7 @@ function App() {
       if (e.aggregateType !== "task" || !e.taskId) return;
       setModel((m) => applyEvent(m, e, e.taskId!));
       setScreen("populated");
+      if (e.sessionId) refreshAttention(e.sessionId);
       // docs/39 step 5: the first result opens the Review on the diff.
       if (e.eventType === "TaskReadyForReview") setAutoReview(e.taskId);
     });
@@ -483,6 +498,18 @@ function App() {
         </form>
         <div>
           <p className="sr-only" aria-live="polite">{attention} tasks need attention</p>
+          {attentionItems.length > 0 && (
+            <section className="attention" data-testid="attention" aria-label="attention items">
+              <h2>Attention ({attentionItems.length})</h2>
+              <ul>
+                {attentionItems.map((i) => (
+                  <li key={`${i.kind}:${i.taskId}:${i.reference}`} data-testid="attention-item" data-kind={i.kind} data-task-id={i.taskId}>
+                    <strong>{i.kind}</strong> · {i.reason} · <em>{i.action}</em>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
           {screen === "loading" && <p className="meta" data-testid="fleet-loading">Loading fleet from the Core…</p>}
           {screen === "empty" && <p className="empty" data-testid="fleet-empty">No tasks yet. Create one on the left.</p>}
           <div className="fleet" data-testid="fleet" data-screen={screen}>

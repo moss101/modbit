@@ -12,6 +12,7 @@ use std::process::ExitCode;
 mod agent_tools;
 mod agents;
 mod assurance;
+mod attention;
 mod baseline;
 mod branch;
 mod capacity;

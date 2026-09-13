@@ -27,7 +27,7 @@ Most turns see a small task-scoped direct surface. Procedural mode may expose `e
 | browser.network / console / capture | Browser | bounded evidence/targeted visual region | No | Browser Runtime |
 | computer.observe / action | Computer | approved native app state/action | action Yes | Computer Runtime |
 | agent.spawn | Agents | transactional child admission | capacity/capability | Agent Runtime |
-| agent.steer / park / resume / cancel | Agents | durable lifecycle controls | by policy | Agent Runtime |
+| agent.steer / park / resume / cancel / attend | Agents | durable lifecycle and attention controls | by policy | Agent Runtime |
 | agent.wait / result | Agents | await/read typed result envelope | No | Agent Runtime |
 | skill.list / load | Skills | discover/load approved procedural knowledge | No authority grant | Skill Registry |
 | external.list | External tools | discover eligible tools/resources | No | External Tool Hub |

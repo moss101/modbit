@@ -104,12 +104,23 @@ export interface TaskEconomicsSummary {
   contextTokensInjected: string;
 }
 
+/** One thing a person must act on (REQ-EV-0151 / 0275), from the Core. */
+export interface AttentionItem {
+  kind: string;
+  taskId: string;
+  reference: string;
+  reason: string;
+  action: string;
+  sinceOffset: string;
+}
+
 export interface ModbitBridge {
   coreStatus(): Promise<unknown>;
   localState(): Promise<{ sessionId?: string }>;
   languages(): Promise<{ language: string; tier: string; label: string; fixture: string; proven: string[]; provisional: string[]; notClaimed: string[]; note: string }[]>;
   contextInspector(taskId: string): Promise<ContextInspectorSummary>;
   taskEconomics(taskId: string): Promise<TaskEconomicsSummary>;
+  attention(sessionId: string): Promise<{ lastOffset: string; items: AttentionItem[] }>;
   setTaskSelection(
     sessionId: string,
     taskId: string,
@@ -141,6 +152,7 @@ const bridge: ModbitBridge = {
   languages: () => ipcRenderer.invoke("languages:list"),
   contextInspector: (taskId: string) => ipcRenderer.invoke("context:inspector", taskId),
   taskEconomics: (taskId: string) => ipcRenderer.invoke("task:economics", taskId),
+  attention: (sessionId: string) => ipcRenderer.invoke("attention:list", sessionId),
   setTaskSelection: (sessionId: string, taskId: string, selection: unknown) => ipcRenderer.invoke("task:select", sessionId, taskId, selection),
   createSession: () => ipcRenderer.invoke("session:create"),
   sessionSnapshot: (sessionId) => ipcRenderer.invoke("session:snapshot", sessionId),

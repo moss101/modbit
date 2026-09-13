@@ -93,6 +93,9 @@ pub type StartFuture<'a> = std::pin::Pin<
 /// Per-task control handle.
 struct Running {
     cancel: CancellationToken,
+    /// REQ-EV-0049: park at the next safe boundary — durable, resumable,
+    /// distinct from cancel.
+    park: CancellationToken,
 }
 
 /// Runtime state on the Core.
@@ -166,6 +169,9 @@ enum LoopEnd {
     /// The run's capacity ticket lapsed and could not be taken again (M6.2):
     /// the run waits for capacity at the next turn boundary.
     CapacityLost(String),
+    /// Parked by its parent (REQ-EV-0049): suspended at a turn boundary,
+    /// resumable with its whole state, never cancelled.
+    Parked,
 }
 
 impl Runtime {
@@ -403,16 +409,18 @@ impl Runtime {
                             );
                             drop(store);
                             let cancel = CancellationToken::new();
+                            let park = CancellationToken::new();
                             tasks.insert(
                                 task.task_id,
                                 Running {
                                     cancel: cancel.clone(),
+                                    park: park.clone(),
                                 },
                             );
                             let core2 = Arc::clone(core);
                             tokio::spawn(async move {
                                 let task_id = task.task_id;
-                                run_loop(core2.clone(), task, run_id, cfg, cancel).await;
+                                run_loop(core2.clone(), task, run_id, cfg, cancel, park).await;
                                 core2.runtime.tasks.lock().await.remove(&task_id);
                             });
                             return Ok((run_id, true));
@@ -474,10 +482,12 @@ impl Runtime {
             }
         };
         let cancel = CancellationToken::new();
+        let park = CancellationToken::new();
         tasks.insert(
             task.task_id,
             Running {
                 cancel: cancel.clone(),
+                park: park.clone(),
             },
         );
         let core2 = Arc::clone(core);
@@ -486,7 +496,7 @@ impl Runtime {
         let child_actor = actor.clone();
         tokio::spawn(async move {
             let task_id = task.task_id;
-            run_loop(core2.clone(), task, run_id, cfg, cancel).await;
+            run_loop(core2.clone(), task, run_id, cfg, cancel, park).await;
             core2.runtime.tasks.lock().await.remove(&task_id);
         });
         drop(tasks);
@@ -513,6 +523,18 @@ impl Runtime {
         match self.tasks.lock().await.get(task_id) {
             Some(r) => {
                 r.cancel.cancel();
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// REQ-EV-0049: request parking; the loop suspends at the next turn
+    /// boundary with its run intact. `false` when no loop is alive.
+    pub async fn park(&self, task_id: &TaskId) -> bool {
+        match self.tasks.lock().await.get(task_id) {
+            Some(r) => {
+                r.park.cancel();
                 true
             }
             None => false,
@@ -1573,7 +1595,8 @@ pub(crate) async fn rebuild(
                         "expected_artifacts": c.spec.expected_artifacts,
                         "branch": c.branch,
                         "worktree": c.worktree,
-                        "note": "you are a subagent inside this capsule: write only inside write_scope, finish with task.complete; your result goes to your parent as a typed envelope",
+                        "effect_ceiling": c.effect_ceiling,
+                        "note": "you are a subagent inside this capsule: write only inside write_scope, finish with task.complete; your result goes to your parent as a typed envelope; an effect above the capsule's ceiling is refused and reported to your parent, who decides",
                     }));
                 }
             }
@@ -2152,6 +2175,10 @@ fn projection(
                     | crate::agent_tools::WAIT_TOOL
                     | crate::agent_tools::RESULT_TOOL
                     | crate::agent_tools::CANCEL_TOOL
+                    | crate::agent_tools::ATTEND_TOOL
+                    | crate::agent_tools::PARK_TOOL
+                    | crate::agent_tools::RESUME_TOOL
+                    | crate::agent_tools::STEER_TOOL
             )
         })
         .collect();
@@ -2208,6 +2235,7 @@ async fn run_loop(
     run_id: RunId,
     mut cfg: StartConfig,
     cancel: CancellationToken,
+    park: CancellationToken,
 ) {
     let actor = Actor::Agent(format!("solver:{}", task.task_id));
     // Every state-advancing append of this loop is fenced by the lease
@@ -2323,6 +2351,10 @@ async fn run_loop(
     let end = 'outer: loop {
         if cancel.is_cancelled() {
             break LoopEnd::Cancelled;
+        }
+        // REQ-EV-0049: a park lands at the turn boundary, the run intact.
+        if park.is_cancelled() {
+            break LoopEnd::Parked;
         }
         // The projection follows the harness state: deferred tools activated
         // by `tool.search` appear with their schemas from this turn on.
@@ -3223,7 +3255,23 @@ async fn run_loop(
             } else {
                 (vec![], 0)
             };
+            // REQ-EV-0046: a detached child consumes the grants its capsule
+            // holds and never opens an interactive privilege expansion of
+            // its own. An effect above the capsule's ceiling — visible to
+            // the child or not — is refused here, before any effector, and
+            // the parent transitions to its attention state to decide.
+            let mut protected = if state.capsule.is_some() {
+                crate::agent_tools::protected_effect(&core, &task, &state, &call_id, &name, &actor)
+                    .await
+            } else {
+                None
+            };
             let (entry, step_type, failure_code) = match name.as_str() {
+                _ if protected.is_some() => (
+                    protected.take().expect("checked by the guard"),
+                    StepType::ToolCall,
+                    Some("PROTECTED_EFFECT_REFUSED".to_owned()),
+                ),
                 PLAN_TOOL => {
                     let (entry, ok) = handle_plan(
                         &core,
@@ -3517,6 +3565,48 @@ async fn run_loop(
                     )
                     .await;
                     progress = true;
+                    (r.entry, StepType::Handoff, r.failure_code)
+                }
+                crate::agent_tools::PARK_TOOL => {
+                    let r =
+                        crate::agent_tools::handle_park(&core, &task, &call_id, &arguments_json)
+                            .await;
+                    (r.entry, StepType::Handoff, r.failure_code)
+                }
+                crate::agent_tools::RESUME_TOOL => {
+                    let r = crate::agent_tools::handle_resume(
+                        &core,
+                        &task,
+                        cfg.lease_generation,
+                        &actor,
+                        &call_id,
+                        &arguments_json,
+                    )
+                    .await;
+                    (r.entry, StepType::Handoff, r.failure_code)
+                }
+                crate::agent_tools::STEER_TOOL => {
+                    let r = crate::agent_tools::handle_steer(
+                        &core,
+                        &task,
+                        cfg.lease_generation,
+                        &actor,
+                        &call_id,
+                        &arguments_json,
+                    )
+                    .await;
+                    (r.entry, StepType::Handoff, r.failure_code)
+                }
+                crate::agent_tools::ATTEND_TOOL => {
+                    let r = crate::agent_tools::handle_attend(
+                        &core,
+                        &task,
+                        lt,
+                        &actor,
+                        &call_id,
+                        &arguments_json,
+                    )
+                    .await;
                     (r.entry, StepType::Handoff, r.failure_code)
                 }
                 COMPLETE_TOOL if programs.any_running() => {
@@ -4201,6 +4291,10 @@ async fn run_loop(
             modbit_domain::agent::AgentStatus::Waiting,
             "waiting for capacity".into(),
         ),
+        LoopEnd::Parked => (
+            modbit_domain::agent::AgentStatus::Parked,
+            "parked by the parent (agent.park); resumable".into(),
+        ),
     };
     let fenced_end = matches!(end, LoopEnd::Fenced { .. });
     match end {
@@ -4597,6 +4691,38 @@ async fn run_loop(
                                 actor.clone(),
                             ),
                         ],
+                    ),
+                ],
+            );
+        }
+        LoopEnd::Parked => {
+            // Suspended like a restart would leave it, by choice: the run
+            // and its state stay for the resume; no attention is raised —
+            // parking is the parent's decision, not a fault.
+            let _ = append_batch(
+                &mut store,
+                &core,
+                lt,
+                vec![
+                    (
+                        AggregateType::Run,
+                        *run_id.as_bytes(),
+                        vec![typed(
+                            "RunSuspended",
+                            &RunEvent::RunSuspended,
+                            actor.clone(),
+                        )],
+                    ),
+                    (
+                        AggregateType::Task,
+                        *task.task_id.as_bytes(),
+                        vec![typed(
+                            "TaskWaiting",
+                            &TaskEvent::TaskWaiting {
+                                reason: WaitReason::External,
+                            },
+                            actor.clone(),
+                        )],
                     ),
                 ],
             );

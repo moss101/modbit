@@ -244,6 +244,16 @@ ipcMain.handle("languages:list", async () => {
   const r = await requireClient().listLanguages();
   return r.languages.map((l) => ({ language: l.language, tier: l.tier, label: l.label, fixture: l.fixture, proven: l.proven, provisional: l.provisional, notClaimed: l.notClaimed, note: l.note }));
 });
+// REQ-EV-0151 / 0275: attention items from the Core (canonical unresolved
+// state only), rendered as the board's attention strip.
+ipcMain.handle("attention:list", async (_e: IpcMainInvokeEvent, sessionId: unknown) => {
+  const sid = requireSessionId(sessionId);
+  const v = await requireClient().attention(sid);
+  return {
+    lastOffset: v.lastOffset.toString(),
+    items: v.items.map((i) => ({ kind: i.kind, taskId: Buffer.from(i.taskId?.value ?? []).toString("hex"), reference: i.reference, reason: i.reason, action: i.action, sinceOffset: i.sinceOffset.toString() })),
+  };
+});
 ipcMain.handle("session:create", async () => {
   const c = requireClient();
   const r = await c.createSession(freshId());

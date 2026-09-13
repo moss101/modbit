@@ -621,6 +621,22 @@
     "retryable": false,
     "user_action": "re-acquire the session lease (AcquireSessionLease) or let the current owner continue"
   },
+  "subagent_protected_effect_refused": {
+    "class": "POLICY",
+    "code": "PROTECTED_EFFECT_REFUSED",
+    "detail": "subagent child-a reached a protected effect: git.worktree.close is DESTRUCTIVE, above its capsule ceiling REVERSIBLE_WRITE; it was refused without an approval of its own. Decide: do it from this task after review, or cancel the child (agent.cancel)",
+    "evidence_refs": [],
+    "features": [
+      "class:policy",
+      "code:protected_effect_refused",
+      "not_retryable",
+      "source:tool",
+      "tool:git.worktree.close"
+    ],
+    "recovery_path": "the effect did not happen; the run continues without it",
+    "retryable": false,
+    "user_action": "widen the task's lease or profile if the effect is wanted"
+  },
   "test_run_failed": {
     "class": "APPLICATION",
     "code": "FAILED",

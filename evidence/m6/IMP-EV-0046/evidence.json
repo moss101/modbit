@@ -1,0 +1,16 @@
+{
+ "task": "IMP-EV-0046",
+ "requirement": "REQ-EV-0046",
+ "qual": "QUAL-EV-0046",
+ "tests": [
+  "qual_ev_0046_a_background_child_reaching_a_protected_effect_moves_its_parent_to_attention",
+  "REQ-EV-0046: a child's protected effect puts the running parent in Needs Attention with the evidence line (apps/desktop/src/renderer/model.test.ts)",
+  "qual_ev_0245_fault_corpus_produces_stable_diagnostic_features"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "A child's call above its capsule's effect ceiling is refused before the kernel with no approval of its own; the parent's log records SubagentProtectedEffect and TaskNeedsAttention naming the child, tool, effect and ceiling before the child's result; the child completes its scoped work; the Fleet reducer shows the parent in Needs Attention with the evidence line.",
+ "audit": "PARTIAL before: the ceiling and the compiled surface refused the child silently; nothing reached the parent or the board.",
+ "limitations": "The parent's next action is a decision in words; the child's node stays BACKGROUND while the parent decides.",
+ "ci": ""
+}

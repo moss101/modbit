@@ -1867,6 +1867,12 @@ pub fn load_live_tasks(tx: &rusqlite::Connection) -> Result<Vec<Task>> {
     load_tasks_in(tx, "state IN ('RUNNING', 'WAITING')")
 }
 
+/// Tasks that are not over — queued, running or waiting — the ones a
+/// person may still have to attend to (REQ-EV-0151).
+pub fn load_open_tasks(tx: &rusqlite::Connection) -> Result<Vec<Task>> {
+    load_tasks_in(tx, "state IN ('QUEUED', 'RUNNING', 'WAITING')")
+}
+
 fn load_tasks_in(tx: &rusqlite::Connection, filter: &str) -> Result<Vec<Task>> {
     let mut stmt = tx.prepare(&format!(
         "SELECT task_id FROM tasks WHERE {filter} ORDER BY created_at"

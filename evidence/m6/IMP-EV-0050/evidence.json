@@ -1,0 +1,14 @@
+{
+ "task": "IMP-EV-0050",
+ "requirement": "REQ-EV-0050",
+ "qual": "QUAL-EV-0050",
+ "tests": [
+  "qual_ev_0050_0179_a_follow_up_continues_a_finished_child_as_a_new_attempt_on_its_lineage"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "a research child completes (envelope 1: \"README says: research me\"); the parent sends `agent.steer` \"now create src/a/a.txt\": the child's node goes COMPLETED \u2192 ADMITTED \u2192 BACKGROUND \u2192 COMPLETED with no second admission, its task has two runs and one `TaskReturnedToWork`, the second model call carries the earlier report and the follow-up, the write lands, and envelope 2 links envelope 1 (`prior_result:<ref>`, `attempt:2`) on the same agent and child task.",
+ "audit": "MISSING before: a finished child could only be replaced by a new spawn under a new key.",
+ "limitations": "A follow-up to a `FAILED` / `CANCELLED` child reopens its task the same way (`TaskWaiting` + input); the reviewer's pending review of attempt 1 is superseded by attempt 2's.",
+ "ci": ""
+}

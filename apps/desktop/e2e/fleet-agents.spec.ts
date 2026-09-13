@@ -50,6 +50,15 @@ function scriptedModels(main: Reply[], byNeedle: [string, Reply[]][]): Promise<{
   });
 }
 
+/** Close the app; a hosted macOS runner once hung the second instance's
+ *  shutdown past the test budget, so the close is bounded and the process
+ *  killed when it does not exit. */
+async function closeApp(app: ElectronApplication): Promise<void> {
+  const proc = app.process();
+  await Promise.race([app.close(), new Promise<void>((r) => setTimeout(r, 20_000))]);
+  if (proc.exitCode === null && !proc.killed) proc.kill("SIGKILL");
+}
+
 function git(cwd: string, ...args: string[]): string {
   return execFileSync("git", ["-C", cwd, ...args], { encoding: "utf8" });
 }
@@ -116,12 +125,12 @@ test("fleet: a delegating parent shows its phase, agents and the nested child; t
     await expect(card.getByTestId("child-state")).toHaveText("ReadyForReview");
     await expect(page.getByTestId("task-card")).toHaveCount(1);
     // Restart the app: the board is rebuilt from the Core, children included.
-    await app.close();
+    await closeApp(app);
     const again = await launch(dataDir, env);
     await expect(again.page.getByTestId("column-readyForReview").getByTestId("task-card")).toHaveCount(1, { timeout: 30_000 });
     await expect(again.page.getByTestId("task-card")).toHaveCount(1);
     await expect(again.page.getByTestId("task-card").first().getByTestId("child-card")).toHaveCount(1);
-    await again.app.close();
+    await closeApp(again.app);
   } finally {
     server.close();
   }

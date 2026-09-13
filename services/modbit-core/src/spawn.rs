@@ -66,6 +66,9 @@ pub(crate) struct Spawned {
     pub work_node: String,
     /// True when the key named a child that already exists.
     pub reattached: bool,
+    /// The mode in force and why (REQ-EV-0180).
+    pub mode: SpawnMode,
+    pub scheduling: &'static str,
     /// Non-blocking conflict findings (M6.4) the parent is told.
     pub warnings: Vec<String>,
 }
@@ -169,6 +172,8 @@ pub(crate) async fn spawn(
                 branch: a.4,
                 work_node: a.5,
                 reattached: true,
+                mode: req.mode,
+                scheduling: "REATTACHED",
                 warnings: vec![],
             });
         }
@@ -523,12 +528,9 @@ pub(crate) async fn spawn(
         private_context_refs: vec![],
         mode: req.mode,
     };
-    let (capsule_ref, work_changed, ready) = {
+    let (_capsule_ref, work_changed, ready, blocking) = {
         let store = core.store.lock().await;
-        let capsule_ref = store
-            .objects()
-            .put(&serde_json::to_vec(&capsule).unwrap_or_default())
-            .unwrap_or_default();
+        let capsule_ref = String::new();
         // The work node the child owns: named by the spec, or created from
         // the objective.
         let mut graph = modbit_domain::agent::WorkGraph {
@@ -565,7 +567,25 @@ pub(crate) async fn spawn(
         for n in &mut work_changed {
             n.owner = Some(agent_id);
         }
-        (capsule_ref, work_changed, ready)
+        // REQ-EV-0180: background only when the parent can go on without
+        // this result — nothing of the parent's own pending work depends
+        // on the child's node. Otherwise the child is scheduled in the
+        // foreground whatever the spawn asked, and the record says why.
+        let blocking = graph.blocks_parent(&work_node);
+        (capsule_ref, work_changed, ready, blocking)
+    };
+    let (mode, scheduling) = match (req.mode, blocking) {
+        (SpawnMode::Background, true) => (SpawnMode::Foreground, "BLOCKING"),
+        (SpawnMode::Background, false) => (SpawnMode::Background, "SEPARABLE"),
+        (SpawnMode::Foreground, _) => (SpawnMode::Foreground, "REQUESTED"),
+    };
+    let capsule = AgentExecutionCapsule { mode, ..capsule };
+    let capsule_ref = {
+        let store = core.store.lock().await;
+        store
+            .objects()
+            .put(&serde_json::to_vec(&capsule).unwrap_or_default())
+            .unwrap_or_default()
     };
     let node = AgentNode {
         agent_id,
@@ -582,7 +602,7 @@ pub(crate) async fn spawn(
         owns: vec![work_node.clone()],
         child_task_id: Some(child_task_id),
     };
-    let mode_label = match req.mode {
+    let mode_label = match mode {
         SpawnMode::Foreground => "FOREGROUND",
         SpawnMode::Background => "BACKGROUND",
     };
@@ -617,6 +637,7 @@ pub(crate) async fn spawn(
                 work_node: work_node.clone(),
                 idempotency_key: req.idempotency_key.clone(),
                 mode: mode_label.into(),
+                scheduling: scheduling.into(),
             },
             actor.clone(),
         ));
@@ -740,13 +761,13 @@ pub(crate) async fn spawn(
                     &TaskEvent::AgentNodeTransitioned {
                         agent_id,
                         from: AgentStatus::Admitted,
-                        to: if req.mode == SpawnMode::Background {
+                        to: if mode == SpawnMode::Background {
                             AgentStatus::Background
                         } else {
                             AgentStatus::Running
                         },
                         run_id: Some(run_id),
-                        reason: format!("child run started ({mode_label})"),
+                        reason: format!("child run started ({mode_label}, {scheduling})"),
                     },
                     actor.clone(),
                 )],
@@ -760,6 +781,8 @@ pub(crate) async fn spawn(
                 branch: forked.branch,
                 work_node,
                 reattached: false,
+                mode,
+                scheduling,
                 warnings,
             })
         }
@@ -942,6 +965,7 @@ pub(crate) fn record_result(
         AgentStatus::Completed => "COMPLETED",
         AgentStatus::Failed => "FAILED",
         AgentStatus::Cancelled => "CANCELLED",
+        AgentStatus::Parked => "PARKED",
         _ => "WAITING",
     };
     // What the child changed in its worktree: every FileChanged on its
@@ -977,6 +1001,29 @@ pub(crate) fn record_result(
     {
         evidence_refs.push(format!("gate:{g}"));
     }
+    // REQ-EV-0050: a new attempt links the envelope it follows, so the
+    // lineage of results is on the log with the lineage of agents.
+    let attempt = store
+        .runs_for_task(&child.task_id)
+        .map(|r| r.len() as u32)
+        .unwrap_or(1)
+        .max(1);
+    if let Ok(events) = store.read_session(&child.session_id, 0, usize::MAX)
+        && let Some(prior) = events.iter().rev().find_map(|e| {
+            if e.envelope.task_id != Some(parent_task_id)
+                || e.envelope.event_type != "SubagentResultRecorded"
+            {
+                return None;
+            }
+            let p = store.payload(&e.envelope).ok()?;
+            (p["agent_id"].as_str() == Some(&agent_id.to_string()))
+                .then(|| p["result_ref"].as_str().unwrap_or_default().to_owned())
+        })
+        && !prior.is_empty()
+    {
+        evidence_refs.push(format!("prior_result:{prior}"));
+    }
+    evidence_refs.push(format!("attempt:{attempt}"));
     let mut unresolved: Vec<String> = state.open_failures.clone();
     if status != "COMPLETED" {
         unresolved.push(format!("ended {status}: {end_reason}"));
@@ -1037,7 +1084,10 @@ pub(crate) fn record_result(
         let from: AgentStatus =
             serde_json::from_value(serde_json::Value::String(from)).unwrap_or(AgentStatus::Running);
         let to = match end {
-            AgentStatus::Completed | AgentStatus::Failed | AgentStatus::Cancelled => end,
+            AgentStatus::Completed
+            | AgentStatus::Failed
+            | AgentStatus::Cancelled
+            | AgentStatus::Parked => end,
             _ => AgentStatus::Waiting,
         };
         if from != to && from.can_transition(to) {
@@ -1244,5 +1294,232 @@ pub(crate) async fn resume_suspended_children(
         if let Some(a) = admitted {
             let _ = resume_child(core, parent, &n, &a.0, &a.1, lease_generation, actor).await;
         }
+    }
+}
+
+/// REQ-EV-0050 / 0179 / 0009: a typed follow-up from the parent. A live
+/// child is steered (`TaskInputQueued` on its log, STEER interrupts its
+/// stream, FOLLOW_UP waits for the turn); a parked or suspended child gets
+/// the input and resumes; a child that ended — COMPLETED (its task with
+/// the reviewer), FAILED or CANCELLED — continues as a new attempt on the
+/// same task, node and lineage: the node returns to `ADMITTED` and a fresh
+/// run starts with the follow-up as its first input, its result envelope
+/// linking the prior one. Returns what happened, or a refusal.
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn follow_up_child(
+    core: &Arc<Core>,
+    parent: &Task,
+    node: &modbit_event_store::projections::AgentNodeRow,
+    child_task_id: &TaskId,
+    capsule_ref: &str,
+    lease_generation: u64,
+    message: &str,
+    live_mode: modbit_domain::task::InputMode,
+    actor: &Actor,
+) -> std::result::Result<String, (String, String)> {
+    use modbit_domain::task::InputMode;
+    let child = {
+        let store = core.store.lock().await;
+        store.task(child_task_id).ok().flatten()
+    };
+    let Some(child) = child else {
+        return Err(("UNKNOWN_TASK".into(), child_task_id.to_string()));
+    };
+    let input = |mode: InputMode, note: &str| {
+        typed(
+            "TaskInputQueued",
+            &TaskEvent::TaskInputQueued {
+                input_id: format!(
+                    "parent-{}-{}",
+                    node.agent_id,
+                    modbit_domain::Timestamp::now().0
+                ),
+                mode,
+                text: format!("From your parent ({note}): {message}"),
+            },
+            actor.clone(),
+        )
+    };
+    let child_lt = Lineage::task(core.tenant_id, child.session_id, child.task_id);
+    match node.status.as_str() {
+        "RUNNING" | "BACKGROUND" | "ADMITTED" => {
+            let mut store = core.store.lock().await;
+            append(
+                &mut store,
+                core,
+                child_lt,
+                AggregateType::Task,
+                *child.task_id.as_bytes(),
+                vec![input(
+                    live_mode,
+                    if live_mode == InputMode::Steer {
+                        "steer"
+                    } else {
+                        "follow-up"
+                    },
+                )],
+            )
+            .map_err(|e| ("STORE".to_owned(), e))?;
+            Ok(format!(
+                "status: SUCCESS\ndelivery: {}\nnote: the child is live; a STEER interrupts its current model call, a FOLLOW_UP lands after its turn",
+                if live_mode == InputMode::Steer {
+                    "STEERED"
+                } else {
+                    "QUEUED"
+                }
+            ))
+        }
+        "PARKED" | "WAITING" => {
+            {
+                let mut store = core.store.lock().await;
+                append(
+                    &mut store,
+                    core,
+                    child_lt,
+                    AggregateType::Task,
+                    *child.task_id.as_bytes(),
+                    vec![input(InputMode::FollowUp, "follow-up")],
+                )
+                .map_err(|e| ("STORE".to_owned(), e))?;
+            }
+            match resume_child(core, parent, node, child_task_id, capsule_ref, lease_generation, actor)
+                .await?
+            {
+                Some(run_id) => Ok(format!(
+                    "status: SUCCESS\ndelivery: RESUMED\nrun_id: {run_id}\nnote: the child resumed with its whole state and your follow-up as its next input"
+                )),
+                None => Ok("status: SUCCESS\ndelivery: QUEUED\nnote: the child is not resumable right now; the input waits on its log".into()),
+            }
+        }
+        "COMPLETED" | "FAILED" | "CANCELLED" => {
+            let from: AgentStatus =
+                serde_json::from_value(serde_json::Value::String(node.status.clone()))
+                    .unwrap_or(AgentStatus::Completed);
+            {
+                let mut store = core.store.lock().await;
+                let mut events = Vec::new();
+                if child.state == TaskState::ReadyForReview {
+                    events.push(typed(
+                        "TaskReturnedToWork",
+                        &TaskEvent::TaskReturnedToWork,
+                        actor.clone(),
+                    ));
+                }
+                events.push(typed(
+                    "TaskWaiting",
+                    &TaskEvent::TaskWaiting {
+                        reason: modbit_domain::task::WaitReason::UserInput,
+                    },
+                    actor.clone(),
+                ));
+                events.push(input(InputMode::FollowUp, "follow-up, a new attempt"));
+                append(
+                    &mut store,
+                    core,
+                    child_lt,
+                    AggregateType::Task,
+                    *child.task_id.as_bytes(),
+                    events,
+                )
+                .map_err(|e| ("STORE".to_owned(), e))?;
+                // The node comes back to ADMITTED: the same identity and
+                // lineage, a new attempt (REQ-EV-0050).
+                if from.can_transition(AgentStatus::Admitted) {
+                    append(
+                        &mut store,
+                        core,
+                        Lineage::task(core.tenant_id, parent.session_id, parent.task_id)
+                            .fenced(lease_generation),
+                        AggregateType::Task,
+                        *parent.task_id.as_bytes(),
+                        vec![typed(
+                            "AgentNodeTransitioned",
+                            &TaskEvent::AgentNodeTransitioned {
+                                agent_id: node.agent_id,
+                                from,
+                                to: AgentStatus::Admitted,
+                                run_id: None,
+                                reason: "follow-up from the parent: a new attempt on the same lineage (REQ-EV-0050)".into(),
+                            },
+                            actor.clone(),
+                        )],
+                    )
+                    .map_err(|e| ("STORE".to_owned(), e))?;
+                }
+            }
+            let child = {
+                let store = core.store.lock().await;
+                store.task(child_task_id).ok().flatten()
+            }
+            .ok_or_else(|| ("UNKNOWN_TASK".to_owned(), child_task_id.to_string()))?;
+            let capsule = {
+                let store = core.store.lock().await;
+                store
+                    .objects()
+                    .get(capsule_ref)
+                    .ok()
+                    .and_then(|b| serde_json::from_slice::<AgentExecutionCapsule>(&b).ok())
+            };
+            let (max_turns, max_tool_calls, mode) = capsule
+                .as_ref()
+                .map(|c| (c.max_turns, c.max_tool_calls, c.mode))
+                .unwrap_or((20, 0, SpawnMode::Background));
+            let cfg = StartConfig {
+                endpoint: node.endpoint.clone(),
+                model: node.model.clone(),
+                budgets: modbit_core_runtime::Budgets {
+                    max_turns: if max_turns == 0 { 20 } else { max_turns },
+                    max_tool_calls: if max_tool_calls == 0 {
+                        modbit_core_runtime::Budgets::default().max_tool_calls
+                    } else {
+                        max_tool_calls
+                    },
+                    max_consecutive_no_progress_turns: 3,
+                },
+                pinned: false,
+                plan_id: String::new(),
+                slot_id: String::new(),
+                skills: vec![],
+                lease_generation,
+                ticket_id: String::new(),
+            };
+            let child_actor = Actor::Agent(format!("subagent:{}", node.agent_id));
+            let (run_id, _) = core
+                .runtime
+                .start_boxed(core, child, cfg, lease_generation, child_actor)
+                .await?;
+            let to = if mode == SpawnMode::Background {
+                AgentStatus::Background
+            } else {
+                AgentStatus::Running
+            };
+            let mut store = core.store.lock().await;
+            let _ = append(
+                &mut store,
+                core,
+                Lineage::task(core.tenant_id, parent.session_id, parent.task_id)
+                    .fenced(lease_generation),
+                AggregateType::Task,
+                *parent.task_id.as_bytes(),
+                vec![typed(
+                    "AgentNodeTransitioned",
+                    &TaskEvent::AgentNodeTransitioned {
+                        agent_id: node.agent_id,
+                        from: AgentStatus::Admitted,
+                        to,
+                        run_id: Some(run_id),
+                        reason: "new attempt started with the parent's follow-up".into(),
+                    },
+                    actor.clone(),
+                )],
+            );
+            Ok(format!(
+                "status: SUCCESS\ndelivery: NEW_ATTEMPT\nrun_id: {run_id}\nnote: the child continues on its own task and lineage as a new attempt; its next envelope links the prior one; collect with agent.wait"
+            ))
+        }
+        other => Err((
+            "NOT_STEERABLE".into(),
+            format!("the child is {other}; steer a live, parked, suspended or ended child"),
+        )),
     }
 }

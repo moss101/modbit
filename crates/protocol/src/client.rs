@@ -78,6 +78,9 @@ pub struct Client {
     stream: BoxedStream,
     /// Negotiated protocol version from the Core.
     pub protocol_version: Option<crate::v1::ProtocolVersion>,
+    /// REQ-EV-0043: the ProtocolCapabilitySet the Core granted this
+    /// connection for its client kind.
+    pub capabilities: Vec<String>,
 }
 
 impl std::fmt::Debug for Client {
@@ -121,6 +124,7 @@ impl Client {
                 Ok(Self {
                     stream,
                     protocol_version: ack.protocol_version,
+                    capabilities: ack.client_capabilities,
                 })
             }
             Some(SurfaceFrame {

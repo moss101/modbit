@@ -791,6 +791,11 @@ impl EventStore {
         crate::projections::load_live_tasks(&self.conn)
     }
 
+    /// Tasks that are queued, running or waiting, oldest first.
+    pub fn open_tasks(&self) -> Result<Vec<modbit_domain::task::Task>> {
+        crate::projections::load_open_tasks(&self.conn)
+    }
+
     /// Runs of a task, newest attempt first.
     pub fn runs_for_task(&self, id: &TaskId) -> Result<Vec<modbit_domain::run::Run>> {
         crate::projections::load_runs_for_task(&self.conn, id)

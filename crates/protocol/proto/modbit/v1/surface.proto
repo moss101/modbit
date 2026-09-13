@@ -1586,3 +1586,26 @@ message CapacityView {
   int64 ttl_ms = 4;                // a ticket's lease without renewal
   repeated CapacityTicketView tickets = 5;
 }
+
+// ---- REQ-EV-0151 / REQ-EV-0275: attention items (docs/10 "Needs Attention",
+// docs/32). Derived from the canonical unresolved state of a session and
+// nothing else; an item exists while the fact it names is unresolved and is
+// gone the moment the resolving event lands. No second scheduler.
+
+message GetAttention {
+  Id session_id = 1;
+}
+
+message AttentionItemView {
+  string kind = 1;                 // APPROVAL | QUESTION | CAPACITY | STALL | RESTART | FAILURE | BLOCKER | CONFLICT | PROTECTED_EFFECT
+  Id task_id = 2;
+  string reference = 3;            // approval id | question id | agent id | diagnostic code | spawn key
+  string reason = 4;
+  string action = 5;               // the command or tool that clears it
+  uint64 since_offset = 6;         // the event that raised it (0 for an approval)
+}
+
+message AttentionView {
+  repeated AttentionItemView items = 1;
+  uint64 last_offset = 2;          // the log position the view was derived at
+}
