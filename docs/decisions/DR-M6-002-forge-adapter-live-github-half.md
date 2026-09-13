@@ -96,3 +96,7 @@ deferred to item 2.
 
 Revert the commits that introduce the tools, commands and the lease
 operations. Nothing on the log changes shape.
+
+## Landing
+
+The fake-forge half landed on `main` in c2441aa (PX-006, PX-007, PX-010).
