@@ -24946,8 +24946,54 @@
    ],
    "task_card": "docs/49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md#epr-007",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller or executor present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_epr_007_the_reviewer_slot_activates_on_the_gate_validates_findings_and_bounds_revision",
+    "test:qual_epr_006_a_quality_rejection_continues_the_run_on_the_prevalidated_stronger_slot",
+    "test:qual_epr_004_the_compiler_runs_through_core_and_identical_inputs_give_identical_plans",
+    "run:34751685250",
+    "commit:aa8e277",
+    "artifact:evidence/m6/EPR-007/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-13T10:43:16Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit recorded on the task card"
+    },
+    {
+     "at": "2026-09-13T10:43:16Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented on main"
+    },
+    {
+     "at": "2026-09-13T10:43:17Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the surface protocol / harness / renderer"
+    },
+    {
+     "at": "2026-09-13T10:43:17Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system tests named on the card"
+    },
+    {
+     "at": "2026-09-13T10:43:17Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34751685250 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-13T10:43:17Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "task card and CI record sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-13T10:43:17Z"
   },
   {
    "id": "EPR-008",
@@ -25515,8 +25561,52 @@
    ],
    "task_card": "docs/49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md#epr-018",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller or executor present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_epr_018_the_review_environment_is_sandboxed_confined_and_disposed",
+    "run:34751685250",
+    "commit:aa8e277",
+    "artifact:evidence/m6/EPR-018/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-13T10:43:16Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit recorded on the task card"
+    },
+    {
+     "at": "2026-09-13T10:43:16Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented on main"
+    },
+    {
+     "at": "2026-09-13T10:43:16Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the surface protocol / harness / renderer"
+    },
+    {
+     "at": "2026-09-13T10:43:16Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system tests named on the card"
+    },
+    {
+     "at": "2026-09-13T10:43:16Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34751685250 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-13T10:43:16Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "task card and CI record sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-13T10:43:16Z"
   },
   {
    "id": "EPR-019",
@@ -26766,8 +26856,53 @@
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-001",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
    "milestone_override": "DR-M2-002: the thin-client conformance suite lands with the external adapters (M6) on the M2 CLI/desktop clients",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:packages/ide-adapter-core/src/conformance.test.ts",
+    "test:m2_5_capability_kernel_gates_destructive_tools_behind_intent_bound_approvals",
+    "run:34751685250",
+    "commit:aa8e277",
+    "artifact:evidence/m6/PX-001/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-13T10:43:18Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit recorded on the task card"
+    },
+    {
+     "at": "2026-09-13T10:43:18Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented on main"
+    },
+    {
+     "at": "2026-09-13T10:43:18Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the surface protocol / harness / renderer"
+    },
+    {
+     "at": "2026-09-13T10:43:18Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system tests named on the card"
+    },
+    {
+     "at": "2026-09-13T10:43:18Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34751685250 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-13T10:43:18Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "task card and CI record sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-13T10:43:18Z"
   },
   {
    "id": "PX-002",
@@ -26791,8 +26926,53 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-002",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:packages/vscode-adapter/src/adapter.test.ts",
+    "test:packages/vscode-adapter/test/suite.ts",
+    "run:34751685250",
+    "commit:aa8e277",
+    "artifact:evidence/m6/PX-002/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-13T10:43:19Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit recorded on the task card"
+    },
+    {
+     "at": "2026-09-13T10:43:19Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented on main"
+    },
+    {
+     "at": "2026-09-13T10:43:19Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the surface protocol / harness / renderer"
+    },
+    {
+     "at": "2026-09-13T10:43:19Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system tests named on the card"
+    },
+    {
+     "at": "2026-09-13T10:43:19Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34751685250 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-13T10:43:19Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "task card and CI record sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-13T10:43:19Z"
   },
   {
    "id": "PX-004",
@@ -26816,8 +26996,52 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-004",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_px_004_external_diagnostics_are_provenance_bound_context_and_never_verification",
+    "run:34751685250",
+    "commit:aa8e277",
+    "artifact:evidence/m6/PX-004/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-13T10:43:18Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit recorded on the task card"
+    },
+    {
+     "at": "2026-09-13T10:43:18Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented on main"
+    },
+    {
+     "at": "2026-09-13T10:43:18Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the surface protocol / harness / renderer"
+    },
+    {
+     "at": "2026-09-13T10:43:19Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system tests named on the card"
+    },
+    {
+     "at": "2026-09-13T10:43:19Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34751685250 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-13T10:43:19Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "task card and CI record sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-13T10:43:19Z"
   },
   {
    "id": "PX-005",
@@ -26841,8 +27065,53 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-005",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_px_005_a_user_edit_lands_only_through_the_change_transaction",
+    "test:apps/desktop/e2e/user-patch.spec.ts",
+    "run:34751685250",
+    "commit:aa8e277",
+    "artifact:evidence/m6/PX-005/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-13T10:43:17Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit recorded on the task card"
+    },
+    {
+     "at": "2026-09-13T10:43:17Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented on main"
+    },
+    {
+     "at": "2026-09-13T10:43:17Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the surface protocol / harness / renderer"
+    },
+    {
+     "at": "2026-09-13T10:43:17Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system tests named on the card"
+    },
+    {
+     "at": "2026-09-13T10:43:18Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34751685250 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-13T10:43:18Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "task card and CI record sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-13T10:43:18Z"
   },
   {
    "id": "PX-006",

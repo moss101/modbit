@@ -5,10 +5,14 @@
  "tests": [
   "qual_px_004_external_diagnostics_are_provenance_bound_context_and_never_verification"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "aa8e277"
+ ],
+ "runs": [
+  "34751685250"
+ ],
  "proof": "a batch at the current workspace revision records one diagnostic whose file revision matches and drops one computed on other bytes; the batch object carries provenance external_ide, the revision, per-file revisions and the normalized record; a retry replays; another workspace revision is STALE_REVISION, a bad severity and a ../ path are MALFORMED, all on the log as ExternalDiagnosticsRejected; context.pack packs the file critical:diagnostic with retrieval_reasons diagnostic and external_ide; the run's verification plan records the batch under external_diagnostics and the COMPLETION run executes the repository's mandatory configured:typecheck (PASS) with no check from the batch.",
  "audit": "DOCUMENTED-ONLY before: the headless bridge produced canonical diagnostics from servers the Core runs; nothing let an editor hand its own in.",
  "limitations": "diagnostics reach the model through packed context, not as a distinct observation; batches are per task and per source; the VS Code adapter forwarding is PX-002.",
- "ci": ""
+ "ci": "evidence/m6/PX-004/ci-run-34751685250.json"
 }

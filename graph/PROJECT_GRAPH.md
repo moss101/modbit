@@ -62,7 +62,7 @@ flowchart LR
   M3["M3<br/>Context intelligence<br/>87/88 done"]
   M4["M4<br/>Durable recovery spine<br/>18/18 done"]
   M5["M5<br/>Procedural runtime and skills<br/>39/39 done"]
-  M6["M6<br/>Subagents/fleet<br/>47/58 done"]
+  M6["M6<br/>Subagents/fleet<br/>53/58 done"]
   M7["M7<br/>Live browser<br/>0/29 done"]
   M8["M8<br/>Cloud isolated execution<br/>0/28 done"]
   M9["M9<br/>Engineering memory/effects/security hardening<br/>0/32 done"]
@@ -110,7 +110,7 @@ Critical path (reliability spine): **M0 → M1 → M2 → M4**. Do not start bro
 | M3 Context intelligence | BLOCKED | yes | 9 | 79 | 87 | 1 | M2 | profile A/B/C benchmark plus retrieval-before-edit visible in task evidence. |
 | M4 Durable recovery spine | COMPLETE | yes | 6 | 12 | 18 | 0 | M2 | E2E-004/005/006/007/008. |
 | M5 Procedural runtime and skills | COMPLETE | yes | 7 | 32 | 39 | 0 | M2 | E2E-011/012; direct and procedural mode yield equivalent receipts/policy behavior. |
-| M6 Subagents/fleet | IN_PROGRESS | yes | 7 | 51 | 47 | 0 | M2, M4 | E2E-009/010 and user can supervise multiple tasks without raw-log polling. |
+| M6 Subagents/fleet | IN_PROGRESS | yes | 7 | 51 | 53 | 0 | M2, M4 | E2E-009/010 and user can supervise multiple tasks without raw-log polling. |
 | M7 Live browser | NOT_STARTED | yes | 8 | 21 | 0 | 0 | M2 | E2E-013..016. |
 | M8 Cloud isolated execution | NOT_STARTED | no | 9 | 19 | 0 | 0 | M4, M7 | E2E-017/018/024. |
 | M9 Engineering memory/effects/security hardening | NOT_STARTED | yes | 6 | 26 | 0 | 0 | M4, M5 | memory cannot be created from transcript without promotion; receipt chain verifies; threat tests pass. |
@@ -226,7 +226,7 @@ flowchart LR
   EPR_004["EPR-004<br/>Compile and validate one bounded conditional plan<br/>COMPLETE"]
   EPR_005["EPR-005<br/>Integrate initial execution and preserve direct baseline<br/>COMPLETE"]
   EPR_006["EPR-006<br/>Activate prevalidated escalation continuations<br/>COMPLETE"]
-  EPR_007["EPR-007<br/>Integrate isolated review and bounded revision<br/>NOT_STARTED"]
+  EPR_007["EPR-007<br/>Integrate isolated review and bounded revision<br/>COMPLETE"]
   EPR_008["EPR-008<br/>Derive factual policy-owned assurance requirements<br/>COMPLETE"]
   EPR_009["EPR-009<br/>Persist routing epochs and switch economics<br/>COMPLETE"]
   EPR_010["EPR-010<br/>Capture request, leg and gate accounting/outcomes<br/>NOT_STARTED"]
@@ -237,7 +237,7 @@ flowchart LR
   EPR_015["EPR-015<br/>Versioned Outcome Statistics materialization<br/>COMPLETE"]
   EPR_016["EPR-016<br/>Confidence-adjusted feasibility and cold start<br/>COMPLETE"]
   EPR_017["EPR-017<br/>Separate assurance classification and acceptance<br/>COMPLETE"]
-  EPR_018["EPR-018<br/>Isolated Non-Committing Reviewer environment<br/>NOT_STARTED"]
+  EPR_018["EPR-018<br/>Isolated Non-Committing Reviewer environment<br/>COMPLETE"]
   EPR_019["EPR-019<br/>Independent gate calibration release suite<br/>NOT_STARTED"]
   M2_9 --> EPR_000
   EPR_000 --> EPR_001
@@ -290,7 +290,7 @@ flowchart LR
 | EPR-004 | M3 / 1 | COMPLETE | model-gateway | EPR-014, EPR-016 | REQ-EPR-004 / QUAL-EPR-004 |
 | EPR-005 | M3 / 1-2 | COMPLETE | core-runtime | EPR-004 | REQ-EPR-005 / QUAL-EPR-005 |
 | EPR-006 | M5 / 3 | COMPLETE | core-runtime | EPR-017, EPR-009, M3.9 | REQ-EPR-006 / QUAL-EPR-006 |
-| EPR-007 | M6 / 4 | NOT_STARTED | core-runtime | EPR-018, M6.5 | REQ-EPR-007 / QUAL-EPR-007 |
+| EPR-007 | M6 / 4 | COMPLETE | core-runtime | EPR-018, M6.5 | REQ-EPR-007 / QUAL-EPR-007 |
 | EPR-008 | M4 / 2-4 | COMPLETE | effects-security | EPR-005, M4.6 | REQ-EPR-008 / QUAL-EPR-008 |
 | EPR-009 | M4 / 2-4 | COMPLETE | core-runtime | EPR-005, M4.6 | REQ-EPR-009 / QUAL-EPR-009 |
 | EPR-010 | M9 / 5 | NOT_STARTED | observability | EPR-007, EPR-009 | REQ-EPR-010 / QUAL-EPR-010 |
@@ -301,7 +301,7 @@ flowchart LR
 | EPR-015 | M3 / 1 | COMPLETE | eval-bench | EPR-002 | REQ-EPR-015 / QUAL-EPR-015 |
 | EPR-016 | M3 / 1 | COMPLETE | model-gateway | EPR-003, EPR-015 | REQ-EPR-016 / QUAL-EPR-016 |
 | EPR-017 | M4 / 2-3 | COMPLETE | verification | EPR-008, M4.6 | REQ-EPR-017 / QUAL-EPR-017 |
-| EPR-018 | M6 / 4 | NOT_STARTED | effects-security | EPR-006, M6.4 | REQ-EPR-018 / QUAL-EPR-018 |
+| EPR-018 | M6 / 4 | COMPLETE | effects-security | EPR-006, M6.4 | REQ-EPR-018 / QUAL-EPR-018 |
 | EPR-019 | M9 / 5 | NOT_STARTED | eval-bench | EPR-007, EPR-017, EPR-010 | REQ-EPR-019 / QUAL-EPR-019 |
 
 | Activation gate | State | Required tasks | Attestation evidence | Acceptance |
@@ -322,9 +322,9 @@ Releases are projections over work items and gates (docs/75). Readiness is compu
 
 | Release | State | Included work items | Complete | Blocked | Required gates | Rule |
 |---|---|---:|---:|---:|---|---|
-| ALPHA: Local coding loop and recovery spine | NOT_READY | 114 | 113 | 0 | none | / ALPHA / Local coding loop and recovery spine / M0, M1, M2, M4 / M2.10 / EPR- / — / — / |
-| BETA: Intelligence, fleet and browser | BLOCKED | 319 | 278 | 1 | none | / BETA / Intelligence, fleet and browser / M0, M1, M2, M3, M4, M5, M6, M7 / — / — / — / — / |
-| RELEASE_ZERO: Full end-to-end proof | BLOCKED | 401 | 278 | 1 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
+| ALPHA: Local coding loop and recovery spine | READY | 114 | 114 | 0 | none | / ALPHA / Local coding loop and recovery spine / M0, M1, M2, M4 / M2.10 / EPR- / — / — / |
+| BETA: Intelligence, fleet and browser | BLOCKED | 319 | 284 | 1 | none | / BETA / Intelligence, fleet and browser / M0, M1, M2, M3, M4, M5, M6, M7 / — / — / — / — / |
+| RELEASE_ZERO: Full end-to-end proof | BLOCKED | 401 | 284 | 1 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
 
 ## Scoped v1.1 supersessions and source provenance
 
