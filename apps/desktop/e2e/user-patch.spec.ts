@@ -152,6 +152,11 @@ test("inline patch: a one-hunk user edit lands through the Core's change transac
     await page.getByTestId("patch-apply").click();
     await expect(page.getByTestId("patch-result")).toContainText("refused", { timeout: 30_000 });
     await expect(page.getByTestId("patch-result")).toContainText("STALE_REVISION");
+    // PX-023: the Review's state is the stale candidate revision, with the
+    // Core's rejection as evidence and the reload as the next action.
+    await expect(page.getByTestId("review-state")).toHaveAttribute("data-kind", "error");
+    await expect(page.getByTestId("review-state-label")).toHaveText("stale candidate revision");
+    await expect(page.getByTestId("review-state-next")).toContainText("reload the review");
     expect(readFileSync(join(repo, "notes.txt"), "utf8")).toBe(candidate.replace("line 7\n", "line 7 edited by hand\n").replace("line 9\n", "line 9 from the shell\n"));
     // The CLI against a stale revision is refused the same way, and against a protected path.
     for (const args of [

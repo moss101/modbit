@@ -1,0 +1,19 @@
+{
+ "task": "PX-023",
+ "requirement": "REQ-PX-023",
+ "qual": "QUAL-PX-023",
+ "tests": [
+  "apps/desktop/e2e/states.spec.ts",
+  "apps/desktop/e2e/onboarding.spec.ts",
+  "apps/desktop/e2e/user-patch.spec.ts",
+  "apps/desktop/src/renderer/screens.test.ts",
+  "apps/desktop/src/renderer/notifications.test.ts"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "against the real Electron app and the real Core: provider down, Core restarting and recovered with the recovery report, reconnecting by cursor, unknown tool outcome under reconciliation after a kill before a write's commit, the agent's question answered on the card, a destructive effect approved on the card by its exact intent, the Review following the acceptance gate, a pull request denied then opened against a wire-faithful GitHub fake and a real bare remote, provider unavailable, NO_PROVIDER, repository missing, stale candidate revision — each state naming cause, next action and evidence; notifications only for attention, completion and failure, coalesced per task, deep-linked, opt-in OS delivery silent in quiet hours and read back from main's delivery log.",
+ "audit": "DOCUMENTED-ONLY before: banners only; run-aggregate events were dropped by the renderer and wire wait reasons never matched the reducer (both fixed).",
+ "limitations": "stale policy bundle, offline, daily budget, Browser rows and organization overrides wait for M7–M9 substrate (DR-M6-003); quality floor infeasible and policy-forbidden mode proven at the reducer level and in the surface suite.",
+ "decision_record": "DR-M6-003",
+ "ci": ""
+}

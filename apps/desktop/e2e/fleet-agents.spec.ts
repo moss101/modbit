@@ -120,7 +120,9 @@ test("fleet: a delegating parent shows its phase, agents and the nested child; t
     // The child ends: its result is the parent's latest evidence, the
     // agent counts settle, and the parent reaches Ready for Review.
     await expect(page.getByTestId("column-readyForReview").getByTestId("task-card")).toHaveCount(1, { timeout: 90_000 });
-    await expect(card.getByTestId("task-evidence")).toContainText("child completed: created src/a/a.txt");
+    // The latest evidence: the child's completion, or the acceptance gate
+    // the run evaluated right after it (run events reach the card, PX-023).
+    await expect(card.getByTestId("task-evidence")).toContainText(/child completed: created src\/a\/a\.txt|acceptance gate (ACCEPT|INCONCLUSIVE|REJECT)/);
     await expect(card.getByTestId("task-agents")).toHaveText("0/2");
     await expect(card.getByTestId("child-state")).toHaveText("ReadyForReview");
     await expect(page.getByTestId("task-card")).toHaveCount(1);
