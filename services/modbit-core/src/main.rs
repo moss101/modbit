@@ -9,6 +9,7 @@
 use std::path::PathBuf;
 use std::process::ExitCode;
 
+mod agent_profiles;
 mod agent_tools;
 mod agents;
 mod assurance;
@@ -25,6 +26,7 @@ mod languages;
 mod media_bridge;
 mod model_registry;
 mod onboarding;
+mod plans;
 mod probe;
 mod procedural;
 mod protocol;

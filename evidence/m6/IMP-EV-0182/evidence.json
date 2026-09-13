@@ -1,0 +1,14 @@
+{
+ "task": "IMP-EV-0182",
+ "requirement": "REQ-EV-0182",
+ "qual": "QUAL-EV-0182",
+ "tests": [
+  "qual_ev_0115_0182_0241_agent_profiles_compile_into_capsules_and_only_narrow"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "a Claude-style `code-reviewer.md` imports as a canonical profile with `source: claude` and tools `fs.read`, `search.regex`, `proc.exec`, `agent.spawn`, `Mystery`; a foreign file carrying `permissions` is refused at import; at admission the unknown and delegation tools are narrowed and named, never granted.",
+ "audit": "MISSING before: no import path for a foreign agent declaration existed.",
+ "limitations": "One foreign format (Claude Code agent files) is mapped; others fall back to the canonical schema.",
+ "ci": ""
+}

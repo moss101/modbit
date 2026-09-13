@@ -181,6 +181,10 @@ pub struct SubtaskSpec {
     /// The work node it will own; `None` = one is created from the objective.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub work_node: Option<WorkNodeId>,
+    /// A declarative agent profile to compile into the capsule
+    /// (REQ-EV-0115): its tools, model, default scope, budgets and context.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub profile: Option<String>,
 }
 
 /// How a child is scheduled with respect to the parent's attention
@@ -235,6 +239,16 @@ pub struct AgentExecutionCapsule {
     pub private_context_refs: Vec<String>,
     /// `FOREGROUND` | `BACKGROUND`.
     pub mode: SpawnMode,
+    /// The profile compiled in, when one was named (REQ-EV-0115).
+    #[serde(default)]
+    pub profile: String,
+    /// Tools the profile asked for that the compiler dropped, with why
+    /// (REQ-EV-0182 / 0241: a profile only ever narrows).
+    #[serde(default)]
+    pub narrowed_tools: Vec<String>,
+    /// Domain context from the profile's body.
+    #[serde(default)]
+    pub profile_context: String,
 }
 
 /// The typed result a child hands back (docs/14 "Agent-to-agent

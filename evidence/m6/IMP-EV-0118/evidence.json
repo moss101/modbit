@@ -1,0 +1,14 @@
+{
+ "task": "IMP-EV-0118",
+ "requirement": "REQ-EV-0118",
+ "qual": "QUAL-EV-0118",
+ "tests": [
+  "qual_ev_0118_a_reviewed_plan_version_is_the_one_the_resumed_run_executes"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "the model records v1 and asks a question; the plan browser lists v1 by the model and the turns executed under it; a person revises it to v2 (b.txt added, a note) \u2014 recorded as `PlanRevised` by `user_review` with `PlanAnnotated` beside it and the note queued as a typed follow-up; an invalid edit is refused `BAD_PLAN`; the answered task resumes, writes b.txt without a `PLAN_REVISION_REQUIRED` refusal, every resumed turn records `plan_version: 2`, and the browser shows v2 current with `executed_versions` ending in 2.",
+ "audit": "PARTIAL before: plan versions were objects on the log (`PlanRecorded` / `PlanRevised` since M2.7) but only the model wrote them, nothing listed them, and the version a turn executed under was not recorded.",
+ "limitations": "Annotations are notes on a version, not inline comments on steps; the desktop has no plan browser panel yet (the CLI and the protocol view do).",
+ "ci": ""
+}

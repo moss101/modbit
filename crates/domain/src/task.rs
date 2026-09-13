@@ -310,6 +310,20 @@ pub enum TaskEvent {
         /// Plan version (1 = original).
         version: u32,
     },
+    /// `PlanAnnotated` (REQ-EV-0118): a person's review note on a plan
+    /// version, outside the transcript; when it came with an edited plan
+    /// the `PlanRevised` before it carries the new version. No state
+    /// change.
+    PlanAnnotated {
+        /// The version annotated (the new one, when edited).
+        version: u32,
+        /// Object hash of that version's plan JSON.
+        plan_ref: String,
+        /// The note.
+        note: String,
+        /// `user_review` | `cli`.
+        provenance: String,
+    },
     /// `PlanRevised` with a scope delta; no state change.
     PlanRevised {
         /// Object hash of the plan JSON.
@@ -477,6 +491,12 @@ pub enum TaskEvent {
         /// asked) or `REQUESTED` (foreground by the spawn's choice).
         #[serde(default)]
         scheduling: String,
+        /// REQ-EV-0115: the profile compiled into the capsule, if any.
+        #[serde(default)]
+        profile: String,
+        /// The tools the profile asked for that were dropped, with why.
+        #[serde(default)]
+        narrowed_tools: Vec<String>,
     },
     /// `SubagentAdmissionRefused`: an admission step failed and everything
     /// taken before it was returned; nothing started (REQ-EV-0267). No
@@ -1101,6 +1121,7 @@ impl TaskEvent {
             Self::AttachmentIngested { .. } => "AttachmentIngested",
             Self::PlanRecorded { .. } => "PlanRecorded",
             Self::PlanRevised { .. } => "PlanRevised",
+            Self::PlanAnnotated { .. } => "PlanAnnotated",
             Self::UnsupportedLanguageOptInRecorded { .. } => "UnsupportedLanguageOptInRecorded",
             Self::ContextDocumentAttached { .. } => "ContextDocumentAttached",
             Self::SelectionRecorded { .. } => "SelectionRecorded",
@@ -1240,6 +1261,7 @@ impl Task {
             | TaskEvent::AttachmentIngested { .. }
             | TaskEvent::PlanRecorded { .. }
             | TaskEvent::PlanRevised { .. }
+            | TaskEvent::PlanAnnotated { .. }
             | TaskEvent::SelfReviewRecorded { .. }
             | TaskEvent::ToolsActivated { .. }
             | TaskEvent::ProgramStarted { .. }

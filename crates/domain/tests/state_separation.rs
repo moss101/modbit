@@ -60,6 +60,7 @@ fn a_failed_command_step_does_not_fail_the_turn_the_run_the_task_or_the_session(
         &TurnEvent::TurnPrepared {
             run_id: run.run_id,
             ordinal: 1,
+            plan_version: 0,
         },
         at,
     )

@@ -59,7 +59,8 @@ pub(crate) fn projections() -> Vec<modbit_providers::ToolProjection> {
                 "max_turns":{"type":"integer","minimum":1},
                 "max_tool_calls":{"type":"integer","minimum":0},
                 "work_node":{"type":"string"},
-                "mode":{"type":"string","enum":["BACKGROUND","FOREGROUND"]}
+                "mode":{"type":"string","enum":["BACKGROUND","FOREGROUND"]},
+                "profile":{"type":"string"}
             },"required":["idempotency_key","objective","write_scope"]}),
         },
         modbit_providers::ToolProjection {
@@ -331,7 +332,7 @@ pub(crate) async fn handle_spawn(
             // on runs in the foreground.
             let mode = s.mode;
             let mut text = format!(
-                "status: SUCCESS\nagent_id: {}\nchild_task_id: {}\nworktree: {}\nbranch: {}\nwork_node: {}\ncapsule_ref: {}\nticket_id: {}\nreattached: {}\nmode: {:?}\nscheduling: {}",
+                "status: SUCCESS\nagent_id: {}\nchild_task_id: {}\nworktree: {}\nbranch: {}\nwork_node: {}\ncapsule_ref: {}\nticket_id: {}\nreattached: {}\nmode: {:?}\nscheduling: {}{}",
                 s.agent_id,
                 s.child_task_id,
                 s.worktree,
@@ -341,7 +342,20 @@ pub(crate) async fn handle_spawn(
                 s.ticket_id,
                 s.reattached,
                 mode,
-                s.scheduling
+                s.scheduling,
+                if s.profile.is_empty() {
+                    String::new()
+                } else {
+                    format!(
+                        "\nprofile: {}\nnarrowed_tools: {}",
+                        s.profile,
+                        if s.narrowed_tools.is_empty() {
+                            "none".to_owned()
+                        } else {
+                            s.narrowed_tools.join("; ")
+                        }
+                    )
+                }
             );
             if !s.warnings.is_empty() {
                 text.push_str("\nconflict_warnings:\n");

@@ -35,6 +35,9 @@ pub const PROFILE_LOCAL_AUTONOMOUS: &str = "local_autonomous";
 pub const PROFILE_LOCAL_TRUSTED: &str = "local_trusted";
 /// Execution profile: isolated non-committing reviewer (docs/21).
 pub const PROFILE_REVIEW_ISOLATED: &str = "review_isolated";
+/// REQ-EV-0117 plan mode: reads only — no write, no shell, no worktree; the
+/// task's product is its plan, reviewed like any candidate.
+pub const PROFILE_PLAN: &str = "plan";
 
 /// Admin/device-level policy that lower authorities cannot weaken.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -66,6 +69,7 @@ impl Default for PolicyEnvelope {
             PROFILE_LOCAL_AUTONOMOUS.to_owned(),
             EffectClass::ReversibleWrite,
         );
+        profile_ceilings.insert(PROFILE_PLAN.to_owned(), EffectClass::ReadOnly);
         let mut profile_denied_capabilities = BTreeMap::new();
         profile_denied_capabilities.insert(
             PROFILE_REVIEW_ISOLATED.to_owned(),
@@ -371,6 +375,7 @@ pub fn default_lease_for_profile(
 ) -> (Vec<String>, Vec<String>, EffectClass) {
     let root = workspace_root.unwrap_or("<none>");
     let ops: Vec<&str> = match profile {
+        PROFILE_PLAN => vec!["fs.read", "git.read"],
         PROFILE_REVIEW_ISOLATED => vec!["fs.read", "fs.write", "git.read", "shell.exec"],
         PROFILE_LOCAL_AUTONOMOUS => vec![
             "fs.read",
@@ -389,6 +394,7 @@ pub fn default_lease_for_profile(
     };
     let ceiling = match profile {
         PROFILE_LOCAL_TRUSTED => EffectClass::Destructive,
+        PROFILE_PLAN => EffectClass::ReadOnly,
         _ => EffectClass::ReversibleWrite,
     };
     let resources = ops.iter().map(|o| format!("{o}:{root}/**")).collect();

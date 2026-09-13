@@ -1596,6 +1596,9 @@ pub(crate) async fn rebuild(
                         "branch": c.branch,
                         "worktree": c.worktree,
                         "effect_ceiling": c.effect_ceiling,
+                        "profile": c.profile,
+                        "profile_context": c.profile_context,
+                        "narrowed_tools": c.narrowed_tools,
                         "note": "you are a subagent inside this capsule: write only inside write_scope, finish with task.complete; your result goes to your parent as a typed envelope; an effect above the capsule's ceiling is refused and reported to your parent, who decides",
                     }));
                 }
@@ -2549,7 +2552,11 @@ async fn run_loop(
                 *turn_id.as_bytes(),
                 vec![typed(
                     "TurnPrepared",
-                    &TurnEvent::TurnPrepared { run_id, ordinal },
+                    &TurnEvent::TurnPrepared {
+                        run_id,
+                        ordinal,
+                        plan_version: state.plan.as_ref().map_or(0, |p| p.version),
+                    },
                     actor.clone(),
                 )],
             )

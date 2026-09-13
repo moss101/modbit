@@ -1,0 +1,14 @@
+{
+ "task": "IMP-EV-0115",
+ "requirement": "REQ-EV-0115",
+ "qual": "QUAL-EV-0115",
+ "tests": [
+  "qual_ev_0115_0182_0241_agent_profiles_compile_into_capsules_and_only_narrow"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "a `researcher` profile asking for `fs.read`, `search.exact`, `git.worktree.close`, `nonexistent.tool` and `agent.spawn` is compiled into a child whose projection holds exactly the first two: the destructive tool is dropped as above the child's ceiling, the unknown one as not served, the delegation tool as a child delegates nothing \u2014 each named in `SubagentAdmitted.narrowed_tools` and the spawn's result; the child runs on the profile's model (`gpt-5-mini`) while the parent keeps `gpt-5`, with the profile's write scope and its body in the capsule, and reports.",
+ "audit": "MISSING before: a child's tools came only from the spawn's `required_tools`; no reusable, file-defined profile existed.",
+ "limitations": "Profiles carry no per-profile policy layer (permissions come from policy); a profile's model must be served on the parent's endpoint.",
+ "ci": ""
+}

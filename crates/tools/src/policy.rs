@@ -71,14 +71,30 @@ pub struct ProfilePolicy;
 
 impl CapabilityPort for ProfilePolicy {
     fn decide(&self, req: &PolicyRequest) -> PolicyDecision {
-        if !["local_trusted", "review_isolated", "local_autonomous"]
-            .contains(&req.execution_profile.as_str())
+        if ![
+            "local_trusted",
+            "review_isolated",
+            "local_autonomous",
+            "plan",
+        ]
+        .contains(&req.execution_profile.as_str())
         {
             return PolicyDecision::Deny {
                 code: "PROFILE_UNSUPPORTED".into(),
                 reason: format!(
                     "execution profile `{}` is not served by this build",
                     req.execution_profile
+                ),
+                approval_required: false,
+            };
+        }
+        // REQ-EV-0117 plan mode: nothing but reads, whatever the workspace.
+        if req.execution_profile == "plan" && req.effect_class != EffectClass::ReadOnly {
+            return PolicyDecision::Deny {
+                code: "PLAN_MODE".into(),
+                reason: format!(
+                    "{:?} effects are absent in plan mode; the task's product is its plan",
+                    req.effect_class
                 ),
                 approval_required: false,
             };

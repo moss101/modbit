@@ -12,7 +12,12 @@ use crate::pipeline::InvokeContext;
 use crate::registry::{BoxFuture, Idempotency, Tool, ToolOutcome, ToolRegistry, ToolSpec};
 use crate::{EffectClass, Result};
 
-const PROFILES: &[&str] = &["local_trusted", "review_isolated", "local_autonomous"];
+const PROFILES: &[&str] = &[
+    "local_trusted",
+    "review_isolated",
+    "local_autonomous",
+    "plan",
+];
 
 fn spec(
     name: &str,

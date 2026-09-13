@@ -10,6 +10,7 @@ publish.workspace = true
 [dependencies]
 modbit-protocol.workspace = true
 modbit-skills.workspace = true
+modbit-domain.workspace = true
 prost.workspace = true
 rand.workspace = true
 tokio.workspace = true

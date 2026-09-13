@@ -11,6 +11,7 @@
 - `local_trusted` — runs against user-approved local workspace under host policy.
 - `cloud_isolated` — runs inside tenant-bound isolated MicroVM.
 - `review_isolated` — Isolated Non-Committing Reviewer profile (ADR-R-053, EPR-018). Processes run only inside a disposable review worktree: the canonical tracked tree is read-only, ephemeral writes are confined to that worktree, network and secret handles are denied by default, and Git commit/push, deploy and every external or persistent effect are refused. The process/tool budget is bounded and priced into the plan. The profile is realized by the same Execution Router on top of `local_trusted` or `cloud_isolated` isolation primitives and adds no broker or gateway; accept, cancel, timeout or crash kills its processes, revokes its handles and disposes the worktree. Trusted Core may export bounded evidence from the worktree through the existing artifact owner; the reviewer itself cannot persist anything.
+- `plan` — plan mode (REQ-EV-0117, as built): a `READ_ONLY` ceiling and a lease of `fs.read` / `git.read`; no write, shell or worktree tool is compiled into its surface and the policy port refuses any non-read effect under it; the task's product is its recorded plan, reviewed like any candidate (docs/14 "As built (REQ-EV-0117)").
 - Future profiles may be added through the same Execution Router; no tool changes required.
 
 ## Structured command contract

@@ -6889,6 +6889,222 @@ export declare type AgentGraphView = Message<"modbit.v1.AgentGraphView"> & {
 export declare const AgentGraphViewSchema: GenMessage<AgentGraphView>;
 
 /**
+ * @generated from message modbit.v1.GetPlan
+ */
+export declare type GetPlan = Message<"modbit.v1.GetPlan"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.GetPlan.
+ * Use `create(GetPlanSchema)` to create a new message.
+ */
+export declare const GetPlanSchema: GenMessage<GetPlan>;
+
+/**
+ * @generated from message modbit.v1.PlanAnnotationView
+ */
+export declare type PlanAnnotationView = Message<"modbit.v1.PlanAnnotationView"> & {
+  /**
+   * @generated from field: string note = 1;
+   */
+  note: string;
+
+  /**
+   * user_review | cli
+   *
+   * @generated from field: string provenance = 2;
+   */
+  provenance: string;
+
+  /**
+   * @generated from field: uint64 offset = 3;
+   */
+  offset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.PlanAnnotationView.
+ * Use `create(PlanAnnotationViewSchema)` to create a new message.
+ */
+export declare const PlanAnnotationViewSchema: GenMessage<PlanAnnotationView>;
+
+/**
+ * @generated from message modbit.v1.PlanVersionView
+ */
+export declare type PlanVersionView = Message<"modbit.v1.PlanVersionView"> & {
+  /**
+   * @generated from field: uint32 version = 1;
+   */
+  version: number;
+
+  /**
+   * object hash of the plan JSON
+   *
+   * @generated from field: string plan_ref = 2;
+   */
+  planRef: string;
+
+  /**
+   * @generated from field: string outcome = 3;
+   */
+  outcome: string;
+
+  /**
+   * @generated from field: repeated string expected_files = 4;
+   */
+  expectedFiles: string[];
+
+  /**
+   * @generated from field: repeated string verification = 5;
+   */
+  verification: string[];
+
+  /**
+   * @generated from field: repeated string protected_effects = 6;
+   */
+  protectedEffects: string[];
+
+  /**
+   * the work graph steps as recorded
+   *
+   * @generated from field: string steps_json = 7;
+   */
+  stepsJson: string;
+
+  /**
+   * model | user_review | cli
+   *
+   * @generated from field: string provenance = 8;
+   */
+  provenance: string;
+
+  /**
+   * the revision's reason, when any
+   *
+   * @generated from field: string reason = 9;
+   */
+  reason: string;
+
+  /**
+   * where it was recorded
+   *
+   * @generated from field: uint64 offset = 10;
+   */
+  offset: bigint;
+
+  /**
+   * @generated from field: repeated modbit.v1.PlanAnnotationView annotations = 11;
+   */
+  annotations: PlanAnnotationView[];
+};
+
+/**
+ * Describes the message modbit.v1.PlanVersionView.
+ * Use `create(PlanVersionViewSchema)` to create a new message.
+ */
+export declare const PlanVersionViewSchema: GenMessage<PlanVersionView>;
+
+/**
+ * @generated from message modbit.v1.PlanView
+ */
+export declare type PlanView = Message<"modbit.v1.PlanView"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: uint32 current_version = 2;
+   */
+  currentVersion: number;
+
+  /**
+   * @generated from field: repeated modbit.v1.PlanVersionView versions = 3;
+   */
+  versions: PlanVersionView[];
+
+  /**
+   * plan versions turns have run under, in order
+   *
+   * @generated from field: repeated uint32 executed_versions = 4;
+   */
+  executedVersions: number[];
+};
+
+/**
+ * Describes the message modbit.v1.PlanView.
+ * Use `create(PlanViewSchema)` to create a new message.
+ */
+export declare const PlanViewSchema: GenMessage<PlanView>;
+
+/**
+ * A person revises and/or annotates the plan of a task that is not running.
+ * `plan_json` empty = annotation only; otherwise the edited plan becomes the
+ * next version (provenance user_review) and the run resumes under it.
+ *
+ * @generated from message modbit.v1.RevisePlan
+ */
+export declare type RevisePlan = Message<"modbit.v1.RevisePlan"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: string note = 2;
+   */
+  note: string;
+
+  /**
+   * @generated from field: string plan_json = 3;
+   */
+  planJson: string;
+
+  /**
+   * user_review (default) | cli
+   *
+   * @generated from field: string provenance = 4;
+   */
+  provenance: string;
+};
+
+/**
+ * Describes the message modbit.v1.RevisePlan.
+ * Use `create(RevisePlanSchema)` to create a new message.
+ */
+export declare const RevisePlanSchema: GenMessage<RevisePlan>;
+
+/**
+ * @generated from message modbit.v1.PlanRevisedAck
+ */
+export declare type PlanRevisedAck = Message<"modbit.v1.PlanRevisedAck"> & {
+  /**
+   * @generated from field: uint32 version = 1;
+   */
+  version: number;
+
+  /**
+   * @generated from field: string plan_ref = 2;
+   */
+  planRef: string;
+
+  /**
+   * @generated from field: uint64 offset = 3;
+   */
+  offset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.PlanRevisedAck.
+ * Use `create(PlanRevisedAckSchema)` to create a new message.
+ */
+export declare const PlanRevisedAckSchema: GenMessage<PlanRevisedAck>;
+
+/**
  * @generated from message modbit.v1.GetCapacity
  */
 export declare type GetCapacity = Message<"modbit.v1.GetCapacity"> & {

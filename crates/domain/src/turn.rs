@@ -93,6 +93,10 @@ pub enum TurnEvent {
         run_id: RunId,
         /// Ordinal.
         ordinal: u32,
+        /// REQ-EV-0118: the plan version in force for this turn (0 = no
+        /// plan yet) — the exact version the execution ran under.
+        #[serde(default)]
+        plan_version: u32,
     },
     /// `ContextPackCompiled`.
     ContextPackCompiled {
@@ -190,7 +194,9 @@ impl Turn {
         at: Timestamp,
     ) -> Result<Self, crate::InvalidTransition> {
         match event {
-            TurnEvent::TurnPrepared { run_id, ordinal } => Ok(Self {
+            TurnEvent::TurnPrepared {
+                run_id, ordinal, ..
+            } => Ok(Self {
                 turn_id,
                 run_id: *run_id,
                 ordinal: *ordinal,
@@ -286,6 +292,7 @@ mod tests {
             &TurnEvent::TurnPrepared {
                 run_id: RunId::new(),
                 ordinal: 1,
+                plan_version: 0,
             },
             Timestamp(1),
         )

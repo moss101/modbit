@@ -522,6 +522,8 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "GetAgentGraph",
                     "GetCapacity",
                     "GetAttention",
+                    "GetPlan",
+                    "RevisePlan",
                     "AdmitRoutingPlan",
                     "CompileRoutingPlan",
                     "ConfigureProvider",
@@ -785,7 +787,7 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
     })
 }
 
-fn wire_id(b: &[u8; 16]) -> wire::Id {
+pub(crate) fn wire_id(b: &[u8; 16]) -> wire::Id {
     wire::Id { value: b.to_vec() }
 }
 
@@ -3031,6 +3033,83 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             accept(cid, false, view.encode_to_vec())
         }
         "GetCapacity" => accept(cid, false, core.capacity.view().encode_to_vec()),
+        "GetPlan" => {
+            let Ok(p) = wire::GetPlan::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "GetPlan");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let store = core.store.lock().await;
+            match store.task(&task_id) {
+                Ok(Some(_)) => {}
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            }
+            accept(
+                cid,
+                false,
+                crate::plans::view(&store, task_id).encode_to_vec(),
+            )
+        }
+        "RevisePlan" => {
+            let Ok(p) = wire::RevisePlan::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "RevisePlan");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            if p.note.trim().is_empty() && p.plan_json.trim().is_empty() {
+                return reject(cid, "BAD_PAYLOAD", "a note or an edited plan is required");
+            }
+            let task = {
+                let store = core.store.lock().await;
+                match store.task(&task_id) {
+                    Ok(Some(t)) => t,
+                    Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                }
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
+                return ack;
+            }
+            // A plan is edited between runs, never under a live loop.
+            if task.state == modbit_domain::task::TaskState::Running
+                || core.runtime.is_running(&task_id).await
+            {
+                return reject(
+                    cid,
+                    "TASK_RUNNING",
+                    "the task is running; steer it (QueueInput) or wait for its boundary",
+                );
+            }
+            let provenance = if p.provenance.trim().is_empty() {
+                "user_review".to_owned()
+            } else {
+                p.provenance.trim().to_owned()
+            };
+            let mut store = core.store.lock().await;
+            match crate::plans::revise(
+                &mut store,
+                core,
+                &task,
+                p.note.trim(),
+                p.plan_json.trim(),
+                &provenance,
+            ) {
+                Ok((version, plan_ref, offset)) => accept(
+                    cid,
+                    false,
+                    wire::PlanRevisedAck {
+                        version,
+                        plan_ref,
+                        offset,
+                    }
+                    .encode_to_vec(),
+                ),
+                Err((code, detail)) => reject(cid, &code, detail),
+            }
+        }
         "GetAttention" => {
             let Ok(p) = wire::GetAttention::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "GetAttention");

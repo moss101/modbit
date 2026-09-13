@@ -66,7 +66,7 @@ fn exit_for_state(state: &str) -> u8 {
     }
 }
 
-const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--skill <name>]... [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id>] [--apply --session <id>] | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | task work --task <id> | task agents --task <id> | capacity show | attention list --session <id> | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | skill install <dir> [--expect-hash <hex>] [--replace] | skill remove <name> | skill list | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
+const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--skill <name>]... [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id>] [--apply --session <id>] | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | task work --task <id> | task agents --task <id> | capacity show | attention list --session <id> | plan show --task <id> | plan revise --session <id> --task <id> [--plan-json <file>] [note] | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | agent install <file> [--from claude] [--replace] | agent list | skill install <dir> [--expect-hash <hex>] [--replace] | skill remove <name> | skill list | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
 
 fn parse_id(hex: &str) -> Result<Id, String> {
     let bytes = decode_hex(hex)
@@ -229,6 +229,49 @@ fn skill_command(data_dir: &str, rest: &[String]) -> Result<(), String> {
                 installed.signed,
                 installed.path.display()
             );
+            Ok(())
+        }
+        // REQ-EV-0115 / 0182 / 0241: declarative agent profiles, validated
+        // and compiled by the Core; an unsafe key is refused at install.
+        ["agent", "install", file, ..] => {
+            let root = std::path::Path::new(data_dir).join("agents");
+            let from = opt("--from");
+            let (p, path) = modbit_domain::agent_profile::install(
+                std::path::Path::new(file),
+                &root,
+                from,
+                words.contains(&"--replace"),
+            )
+            .map_err(|e| format!("install refused: {e}"))?;
+            println!(
+                "installed {} {} source={} tools=[{}] model={} path={}",
+                p.name,
+                p.version,
+                p.source,
+                p.tools.join(", "),
+                p.model,
+                path.display()
+            );
+            Ok(())
+        }
+        ["agent", "list"] => {
+            let root = std::path::Path::new(data_dir).join("agents");
+            let (ok, rejected) = modbit_domain::agent_profile::list(&[root]);
+            for (p, path) in &ok {
+                println!(
+                    "{} {} source={} tools=[{}] model={} scope=[{}] path={}",
+                    p.name,
+                    p.version,
+                    p.source,
+                    p.tools.join(", "),
+                    p.model,
+                    p.write_scope.join(", "),
+                    path.display()
+                );
+            }
+            for (path, e) in &rejected {
+                println!("rejected {}: {e}", path.display());
+            }
             Ok(())
         }
         ["skill", "remove", name] => {
@@ -1579,6 +1622,79 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                     t.generation
                 );
             }
+        }
+        // REQ-EV-0118: plan versions outside the transcript, reviewed and
+        // annotated by a person between runs.
+        ["plan", "show", "--task", tid] => {
+            let ack = client
+                .command(envelope(
+                    "GetPlan",
+                    modbit_protocol::v1::GetPlan {
+                        task_id: Some(parse_id(tid)?),
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let v: modbit_protocol::v1::PlanView =
+                Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "plan current_version={} executed=[{}]",
+                v.current_version,
+                v.executed_versions
+                    .iter()
+                    .map(u32::to_string)
+                    .collect::<Vec<_>>()
+                    .join(",")
+            );
+            for ver in &v.versions {
+                println!(
+                    "  v{} by {} ref={} at={} outcome={:?} files=[{}] reason={:?}",
+                    ver.version,
+                    ver.provenance,
+                    ver.plan_ref,
+                    ver.offset,
+                    ver.outcome,
+                    ver.expected_files.join(", "),
+                    ver.reason
+                );
+                for a in &ver.annotations {
+                    println!("    note ({}) at={}: {}", a.provenance, a.offset, a.note);
+                }
+            }
+        }
+        ["plan", "revise", "--session", sid, "--task", tid, rest @ ..] => {
+            let mut it = rest.iter();
+            let mut plan_json = String::new();
+            let mut note: Vec<&str> = Vec::new();
+            while let Some(w) = it.next() {
+                match *w {
+                    "--plan-json" => {
+                        let f = it.next().ok_or("--plan-json needs a file")?;
+                        plan_json = std::fs::read_to_string(f).map_err(|e| e.to_string())?;
+                    }
+                    other => note.push(other),
+                }
+            }
+            let sid = parse_id(sid)?;
+            let generation = join_lease(&mut client, &sid).await?;
+            let ack = client
+                .command(envelope_fenced(
+                    "RevisePlan",
+                    modbit_protocol::v1::RevisePlan {
+                        task_id: Some(parse_id(tid)?),
+                        note: note.join(" "),
+                        plan_json,
+                        provenance: "cli".into(),
+                    }
+                    .encode_to_vec(),
+                    Some(generation),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let r: modbit_protocol::v1::PlanRevisedAck =
+                Client::result(&ack).map_err(|e| e.to_string())?;
+            println!("plan v{} ref={} offset={}", r.version, r.plan_ref, r.offset);
         }
         ["attention", "list", "--session", sid] => {
             let ack = client

@@ -223,6 +223,7 @@ fn projections_follow_the_reducers_in_the_append_transaction_and_after_rebuild()
                     &TurnEvent::TurnPrepared {
                         run_id: run,
                         ordinal: 1,
+                        plan_version: 0,
                     },
                 ),
                 typed(

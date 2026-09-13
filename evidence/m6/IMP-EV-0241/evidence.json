@@ -1,0 +1,14 @@
+{
+ "task": "IMP-EV-0241",
+ "requirement": "REQ-EV-0241",
+ "qual": "QUAL-EV-0241",
+ "tests": [
+  "qual_ev_0115_0182_0241_agent_profiles_compile_into_capsules_and_only_narrow"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "`effect_ceiling: DESTRUCTIVE` and `lease: [...]` refuse the install naming the key, nothing written; a profile edited in place to add `permissions` is rejected by `list` and refuses the admission `PROFILE_INVALID` at stage `PROFILE` with nothing taken; a valid profile can only narrow the child's surface.",
+ "audit": "MISSING before: no profile validation existed.",
+ "limitations": "Bundles (several profiles shipped together) are a directory of profile files; no signing yet (skills have it).",
+ "ci": ""
+}

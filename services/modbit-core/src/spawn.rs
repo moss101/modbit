@@ -69,6 +69,9 @@ pub(crate) struct Spawned {
     /// The mode in force and why (REQ-EV-0180).
     pub mode: SpawnMode,
     pub scheduling: &'static str,
+    /// The profile compiled in and what it narrowed (REQ-EV-0115).
+    pub profile: String,
+    pub narrowed_tools: Vec<String>,
     /// Non-blocking conflict findings (M6.4) the parent is told.
     pub warnings: Vec<String>,
 }
@@ -95,7 +98,9 @@ pub(crate) async fn spawn(
     req: SpawnRequest,
     actor: &Actor,
 ) -> Result<Spawned, SpawnRefused> {
-    let parent = &req.parent;
+    let mut req = req;
+    let parent = req.parent.clone();
+    let parent = &parent;
     let lt = Lineage::run(
         core.tenant_id,
         parent.session_id,
@@ -110,6 +115,89 @@ pub(crate) async fn spawn(
             stage,
             rolled_back,
         };
+    // 0. The profile, when one is named (REQ-EV-0115 / 0182 / 0241): a
+    // declarative file compiled into the request — its tools narrowed to
+    // what the surface serves under the child's ceiling (never widened),
+    // its model when the gateway serves it, its scope and budgets when the
+    // spawn left them unset, its body as the child's domain context.
+    let mut profile_name = String::new();
+    let mut narrowed_tools: Vec<String> = Vec::new();
+    let mut profile_context = String::new();
+    if let Some(name) = req.spec.profile.clone().filter(|n| !n.trim().is_empty()) {
+        let roots = crate::agent_profiles::roots(core, parent);
+        let loaded = crate::agent_profiles::load(&roots, name.trim());
+        let profile = match loaded {
+            Ok(Some(p)) => p,
+            Ok(None) => {
+                let r = refuse(
+                    "PROFILE_UNKNOWN",
+                    format!(
+                        "no agent profile `{name}` under {}",
+                        roots
+                            .iter()
+                            .map(|r| r.display().to_string())
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    ),
+                    "PROFILE",
+                    vec![],
+                );
+                record_and_return(core, parent, lt, &req.idempotency_key, actor, r).await;
+                return Err(refuse(
+                    "PROFILE_UNKNOWN",
+                    format!("no agent profile `{name}`"),
+                    "PROFILE",
+                    vec![],
+                ));
+            }
+            Err(e) => {
+                let r = refuse("PROFILE_INVALID", e.to_string(), "PROFILE", vec![]);
+                record_and_return(core, parent, lt, &req.idempotency_key, actor, r).await;
+                return Err(refuse("PROFILE_INVALID", e.to_string(), "PROFILE", vec![]));
+            }
+        };
+        let compiled = crate::agent_profiles::compile(
+            core,
+            parent,
+            &profile,
+            modbit_domain::toolcall::EffectClass::ReversibleWrite,
+        );
+        if req.spec.required_tools.is_empty() {
+            req.spec.required_tools = compiled.tools.clone();
+        } else {
+            // The spawn's own list is intersected with the profile's.
+            req.spec
+                .required_tools
+                .retain(|t| compiled.tools.contains(t) || t.starts_with("fs.read"));
+        }
+        narrowed_tools = compiled.narrowed;
+        if req.spec.write_scope.is_empty() {
+            req.spec.write_scope = profile.write_scope.clone();
+        }
+        if req.spec.max_turns == 0 {
+            req.spec.max_turns = profile.max_turns;
+        }
+        if req.spec.max_tool_calls == 0 {
+            req.spec.max_tool_calls = profile.max_tool_calls;
+        }
+        if !profile.model.trim().is_empty() {
+            if core
+                .gateway
+                .capability(&req.binding.endpoint, profile.model.trim())
+                .is_some()
+            {
+                req.binding.model = profile.model.trim().to_owned();
+            } else {
+                narrowed_tools.push(format!(
+                    "model {}: not served by endpoint `{}`; the parent's binding stands",
+                    profile.model.trim(),
+                    req.binding.endpoint
+                ));
+            }
+        }
+        profile_name = profile.name.clone();
+        profile_context = profile.context.clone();
+    }
     let record_refusal = |core: &Core, r: &SpawnRefused| {
         let store = core.store.clone();
         let ev = typed(
@@ -174,6 +262,8 @@ pub(crate) async fn spawn(
                 reattached: true,
                 mode: req.mode,
                 scheduling: "REATTACHED",
+                profile: String::new(),
+                narrowed_tools: vec![],
                 warnings: vec![],
             });
         }
@@ -527,6 +617,9 @@ pub(crate) async fn spawn(
         allowed_modalities: vec!["text".into(), "image".into()],
         private_context_refs: vec![],
         mode: req.mode,
+        profile: profile_name.clone(),
+        narrowed_tools: narrowed_tools.clone(),
+        profile_context: profile_context.clone(),
     };
     let (_capsule_ref, work_changed, ready, blocking) = {
         let store = core.store.lock().await;
@@ -638,6 +731,8 @@ pub(crate) async fn spawn(
                 idempotency_key: req.idempotency_key.clone(),
                 mode: mode_label.into(),
                 scheduling: scheduling.into(),
+                profile: profile_name.clone(),
+                narrowed_tools: narrowed_tools.clone(),
             },
             actor.clone(),
         ));
@@ -783,6 +878,8 @@ pub(crate) async fn spawn(
                 reattached: false,
                 mode,
                 scheduling,
+                profile: profile_name,
+                narrowed_tools,
                 warnings,
             })
         }
@@ -1522,4 +1619,36 @@ pub(crate) async fn follow_up_child(
             format!("the child is {other}; steer a live, parked, suspended or ended child"),
         )),
     }
+}
+
+/// Record an admission refusal on the parent's log (the early stages,
+/// before anything is taken).
+async fn record_and_return(
+    core: &Arc<Core>,
+    parent: &Task,
+    lt: Lineage,
+    idempotency_key: &str,
+    actor: &Actor,
+    r: SpawnRefused,
+) {
+    let ev = typed(
+        "SubagentAdmissionRefused",
+        &TaskEvent::SubagentAdmissionRefused {
+            idempotency_key: idempotency_key.to_owned(),
+            code: r.code.clone(),
+            detail: r.detail.clone(),
+            stage: r.stage.to_owned(),
+            rolled_back: r.rolled_back.clone(),
+        },
+        actor.clone(),
+    );
+    let mut store = core.store.lock().await;
+    let _ = append(
+        &mut store,
+        core,
+        lt,
+        AggregateType::Task,
+        *parent.task_id.as_bytes(),
+        vec![ev],
+    );
 }

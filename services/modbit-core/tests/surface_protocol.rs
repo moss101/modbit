@@ -24490,6 +24490,630 @@ async fn qual_ev_0043_a_headless_client_lacks_ui_only_capabilities_while_the_tas
     assert_eq!(selections[1]["source"], "editor");
 }
 
+/// REQ-EV-0115 / 0182 / 0241: an agent profile is declarative, compiled
+/// configuration. Installing one validates it — a key that would widen
+/// authority is refused before anything is written; a Claude-style agent
+/// file imports into the canonical schema with its tools mapped. At
+/// admission the Core compiles the profile into the child's capsule and can
+/// only narrow: a tool above the child's ceiling, one the surface does not
+/// serve, or a delegation tool is dropped and named, the child's projection
+/// is the compiled set, its model is the profile's when the gateway serves
+/// it, and its domain context travels in the capsule. A profile that does
+/// not exist refuses the admission with nothing taken.
+#[tokio::test]
+async fn qual_ev_0115_0182_0241_agent_profiles_compile_into_capsules_and_only_narrow() {
+    use modbit_domain::agent_profile::{ProfileError, install, list};
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (_repo, root) = plain_repo(&[("README.md", "# profiles\n"), ("notes/.keep", "")]);
+    let dir = tempfile::tempdir().unwrap();
+    let agents = dir.path().join("agents");
+    let src = tempfile::tempdir().unwrap();
+    // The operator's profile: reads and searches; asks for more than it can
+    // have (a destructive tool, an unknown one, delegation).
+    std::fs::write(
+        src.path().join("researcher.md"),
+        "---\nname: researcher\nversion: 1\ndescription: reads and reports\ntools: [fs.read, search.exact, git.worktree.close, nonexistent.tool, agent.spawn]\nmodel: gpt-5-mini\nwrite_scope: [notes/]\nmax_turns: 6\n---\nRead first. Report what README says, in one line.\n",
+    )
+    .unwrap();
+    let (p, path) = install(&src.path().join("researcher.md"), &agents, None, false).unwrap();
+    assert_eq!(p.name, "researcher");
+    assert!(path.ends_with("researcher.md"));
+    // An unsafe key is refused at install: nothing written.
+    std::fs::write(
+        src.path().join("root.md"),
+        "---\nname: root\nversion: 1\ndescription: wants it all\ntools: [fs.read]\neffect_ceiling: DESTRUCTIVE\n---\n",
+    )
+    .unwrap();
+    let e = install(&src.path().join("root.md"), &agents, None, false).unwrap_err();
+    assert!(
+        matches!(e, ProfileError::UnsafeExpansion { ref key, .. } if key == "effect_ceiling"),
+        "{e}"
+    );
+    assert!(!agents.join("root.md").exists());
+    std::fs::write(
+        src.path().join("lease.md"),
+        "---\nname: leasy\nversion: 1\ndescription: mints a lease\nlease: [fs.write:/]\n---\n",
+    )
+    .unwrap();
+    assert!(matches!(
+        install(&src.path().join("lease.md"), &agents, None, false).unwrap_err(),
+        ProfileError::UnsafeExpansion { ref key, .. } if key == "lease"
+    ));
+    // A Claude-style agent file imports with its tools mapped (REQ-EV-0182).
+    std::fs::write(
+        src.path().join("code-reviewer.md"),
+        "---\nname: code-reviewer\ndescription: Reviews code for quality\ntools: Read, Grep, Bash, Task, Mystery\nmodel: sonnet\n---\nYou are a senior reviewer.\n",
+    )
+    .unwrap();
+    let (imported, _) = install(
+        &src.path().join("code-reviewer.md"),
+        &agents,
+        Some("claude"),
+        false,
+    )
+    .unwrap();
+    assert_eq!(imported.source, "claude");
+    assert_eq!(
+        imported.tools,
+        vec![
+            "fs.read",
+            "search.regex",
+            "proc.exec",
+            "agent.spawn",
+            "Mystery"
+        ]
+    );
+    let (listed, rejected) = list(std::slice::from_ref(&agents));
+    assert_eq!(
+        listed
+            .iter()
+            .map(|(p, _)| p.name.as_str())
+            .collect::<Vec<_>>(),
+        vec!["code-reviewer", "researcher"]
+    );
+    assert!(rejected.is_empty(), "{rejected:?}");
+    // Edited in place to widen: rejected on load, not honoured.
+    std::fs::write(
+        agents.join("sneaky.md"),
+        "---\nname: sneaky\nversion: 1\ndescription: edited in place\ntools: [fs.read]\npermissions: [all]\n---\n",
+    )
+    .unwrap();
+    let (_, rejected) = list(std::slice::from_ref(&agents));
+    assert_eq!(rejected.len(), 1, "{rejected:?}");
+
+    let parent = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "README researched", "expected_files": ["README.md"], "steps": [{"id": "a", "title": "research"}]}}]}),
+        json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "child-a", "objective": "research README.md and report", "write_scope": [], "work_node": "a", "profile": "researcher"}}]}),
+        json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "child-b", "objective": "do something", "write_scope": ["notes/"], "profile": "missing"}}]}),
+        json!({"calls": [{"name": "agent.spawn", "args": {"idempotency_key": "child-c", "objective": "widen it", "write_scope": ["notes/"], "profile": "sneaky"}}]}),
+        json!({"calls": [{"name": "agent.wait", "args": {"idempotency_key": "child-a", "timeout_ms": 60000}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "researched", "self_review": {"findings": []}}}]}),
+    ];
+    let child = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "a report", "expected_files": []}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "README.md"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "README says: profiles", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_models(
+        parent,
+        vec![("needle:Task goal: research README.md", child)],
+        None,
+    )
+    .await;
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_CAPACITY", "model=4,provider=8"),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x51)).await;
+    let g = lease_for(&session);
+    let task =
+        create_task_with_goal(&mut c, &session, g, &root, 0x52, "research with a profile").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x53),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5".into(),
+                max_turns: 12,
+                max_tool_calls: 0,
+                max_no_progress_turns: 4,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_for_state(&mut c, &task, "ReadyForReview", 180).await;
+    let trail = task_events(&core, &session, &task).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}\n{trail:#?}");
+    let of = |evs: &[(String, String, serde_json::Value)], t: &str| -> Vec<serde_json::Value> {
+        evs.iter()
+            .filter(|(_, ty, _)| ty == t)
+            .map(|(_, _, p)| p.clone())
+            .collect()
+    };
+    let admitted = of(&trail, "SubagentAdmitted");
+    assert_eq!(admitted.len(), 1, "{admitted:#?}");
+    let a = &admitted[0];
+    assert_eq!(a["profile"], "researcher");
+    assert_eq!(
+        a["write_scope"],
+        json!(["notes/"]),
+        "the profile's default scope"
+    );
+    let narrowed: Vec<String> = a["narrowed_tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|x| x.as_str().unwrap().to_owned())
+        .collect();
+    assert!(
+        narrowed
+            .iter()
+            .any(|n| n.starts_with("git.worktree.close:") && n.contains("ceiling")),
+        "{narrowed:?}"
+    );
+    assert!(
+        narrowed
+            .iter()
+            .any(|n| n.starts_with("nonexistent.tool:") && n.contains("not served")),
+        "{narrowed:?}"
+    );
+    assert!(
+        narrowed
+            .iter()
+            .any(|n| n.starts_with("agent.spawn:") && n.contains("delegates nothing")),
+        "{narrowed:?}"
+    );
+    assert_eq!(narrowed.len(), 3, "{narrowed:?}");
+    // The two profiles that cannot compile refuse the admission with
+    // nothing taken.
+    let refused = of(&trail, "SubagentAdmissionRefused");
+    assert_eq!(refused.len(), 2, "{refused:#?}");
+    let rb = refused
+        .iter()
+        .find(|r| r["idempotency_key"] == "child-b")
+        .unwrap();
+    assert_eq!(
+        (rb["code"].as_str(), rb["stage"].as_str()),
+        (Some("PROFILE_UNKNOWN"), Some("PROFILE"))
+    );
+    assert_eq!(rb["rolled_back"], json!([]));
+    let rc = refused
+        .iter()
+        .find(|r| r["idempotency_key"] == "child-c")
+        .unwrap();
+    assert_eq!(
+        (rc["code"].as_str(), rc["stage"].as_str()),
+        (Some("PROFILE_INVALID"), Some("PROFILE"))
+    );
+    assert!(
+        rc["detail"].as_str().unwrap().contains("permissions"),
+        "{rc:#?}"
+    );
+    // The child ran on the compiled set and the profile's model, with the
+    // profile's context in its capsule.
+    let bodies = seen.lock().unwrap().clone();
+    let child_bodies: Vec<&serde_json::Value> = bodies
+        .iter()
+        .filter(|b| b.to_string().contains("Task goal: research README.md"))
+        .collect();
+    assert!(!child_bodies.is_empty());
+    let tools: Vec<String> = child_bodies[0]["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|t| t["function"]["name"].as_str().map(str::to_owned))
+        .collect();
+    assert!(
+        tools.contains(&"fs.read".to_owned()) && tools.contains(&"search.exact".to_owned()),
+        "{tools:?}"
+    );
+    assert!(
+        !tools.iter().any(|t| t == "change.apply"
+            || t == "git.worktree.close"
+            || t.starts_with("agent.")
+            || t == "search.regex"),
+        "{tools:?}"
+    );
+    assert_eq!(child_bodies[0]["model"], "gpt-5-mini");
+    assert!(
+        child_bodies[0]
+            .to_string()
+            .contains("Read first. Report what README says"),
+        "profile context in the capsule"
+    );
+    let parent_bodies: Vec<&serde_json::Value> = bodies
+        .iter()
+        .filter(|b| !b.to_string().contains("Task goal: research README.md"))
+        .collect();
+    assert_eq!(
+        parent_bodies[0]["model"], "gpt-5",
+        "the parent keeps its own binding"
+    );
+    let results = of(&trail, "SubagentResultRecorded");
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0]["status"], "COMPLETED");
+    assert_eq!(results[0]["summary"], "README says: profiles");
+    // The spawn's result told the parent what was compiled and narrowed.
+    let last_parent: Vec<String> = parent_bodies.last().unwrap()["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    assert!(
+        last_parent[1].contains("profile: researcher")
+            && last_parent[1].contains("narrowed_tools: ")
+            && last_parent[1].contains("git.worktree.close"),
+        "{}",
+        last_parent[1]
+    );
+    assert!(
+        last_parent[2].contains("PROFILE_UNKNOWN"),
+        "{}",
+        last_parent[2]
+    );
+}
+
+/// REQ-EV-0117: plan mode is an execution profile (`plan`) whose ceiling is
+/// read-only: no write, shell or worktree tool is in the compiled surface,
+/// a write the model asks for anyway is refused before any effector, the
+/// plan is recorded outside the transcript and the task's product — the
+/// plan, no diff — goes to review like any candidate.
+#[tokio::test]
+async fn qual_ev_0117_plan_mode_has_no_write_and_its_plan_goes_to_review() {
+    use modbit_protocol::v1::{GetReviewBundle, ReviewBundle, StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (_repo, root) = plain_repo(&[("a.txt", "a\n")]);
+    let script = vec![
+        json!({"calls": [{"name": "fs.read", "args": {"path": "a.txt"}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "b.txt mirrors a.txt", "expected_files": ["b.txt"], "steps": [{"id": "s1", "title": "write b.txt"}]}}]}),
+        // Asked for anyway: absent from the surface, refused before the kernel.
+        json!({"calls": [{"name": "change.apply", "args": {"path": "b.txt", "op": "replace", "content": "a\n"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "planned: b.txt mirrors a.txt", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x17)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x18, "plan").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x19),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 8,
+                max_tool_calls: 0,
+                max_no_progress_turns: 4,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_for_state(&mut c, &task, "ReadyForReview", 60).await;
+    let evs = task_events(&core, &session, &task).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}\n{evs:#?}");
+    // The projection under `plan`: reads and the harness, never a write.
+    let bodies = seen.lock().unwrap().clone();
+    let tools: Vec<String> = bodies[0]["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|t| t["function"]["name"].as_str().map(str::to_owned))
+        .collect();
+    assert!(
+        tools.iter().any(|t| t == "fs.read") && tools.iter().any(|t| t == "plan.update"),
+        "{tools:?}"
+    );
+    // (`proc.exec` here is the procedural runtime over the projected tools,
+    // which are reads; shell-backed tools are `test.run` / `terminal.*`.)
+    assert!(
+        !tools.iter().any(|t| t == "change.apply"
+            || t == "change.batch"
+            || t == "fs.write"
+            || t == "test.run"
+            || t.starts_with("terminal.")
+            || t.starts_with("git.worktree")),
+        "{tools:?}"
+    );
+    // The write was refused before any effector and nothing changed.
+    let last: Vec<String> = bodies.last().unwrap()["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    assert!(
+        last[2].contains("TOOL_NOT_VISIBLE")
+            || last[2].contains("TOOL_NOT_PROJECTED")
+            || last[2].contains("PLAN_MODE"),
+        "{}",
+        last[2]
+    );
+    assert!(
+        evs.iter().all(|(a, t, p)| !(a == "tool_call"
+            && t == "ToolCallProposed"
+            && p["tool_name"] == "change.apply")),
+        "{evs:#?}"
+    );
+    assert!(!std::path::Path::new(&root).join("b.txt").exists());
+    // The plan is on the log outside the transcript, and the review holds
+    // the plan with no changed files.
+    assert!(
+        evs.iter()
+            .any(|(_, t, p)| t == "PlanRecorded" && p["version"] == 1),
+        "{evs:#?}"
+    );
+    let ack = c
+        .command(envelope(
+            id16(0x1A),
+            "GetReviewBundle",
+            GetReviewBundle {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let bundle: ReviewBundle = Client::result(&ack).unwrap();
+    assert!(bundle.files.is_empty(), "{bundle:?}");
+    // The lease says so too: a read-only ceiling.
+    let leases: Vec<&serde_json::Value> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "CapabilityLeaseGranted")
+        .map(|(_, _, p)| p)
+        .collect();
+    assert_eq!(leases[0]["effect_ceiling"], "READ_ONLY", "{leases:#?}");
+}
+
+/// REQ-EV-0118: plan versions live outside the transcript. A person reviews
+/// the plan between runs — edits it and leaves a note — the revision is the
+/// next version by user provenance with the note beside it, the resumed run
+/// executes under exactly that version (recorded on every turn) and its
+/// writes are judged against it.
+#[tokio::test]
+async fn qual_ev_0118_a_reviewed_plan_version_is_the_one_the_resumed_run_executes() {
+    use modbit_protocol::v1::{
+        GetPlan, ListQuestions, PlanRevisedAck, PlanView, QuestionList, RespondToQuestion,
+        RevisePlan, StartTask, TaskRunStarted,
+    };
+    use serde_json::json;
+    let (_repo, root) = plain_repo(&[("a.txt", "a\n")]);
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "a.txt is annotated", "expected_files": ["a.txt"], "steps": [{"id": "s1", "title": "annotate a.txt"}]}}]}),
+        json!({"calls": [{"name": "user.ask", "args": {"question": "Should b.txt be added too?", "options": [{"id": "yes", "label": "yes"}, {"id": "no", "label": "no"}], "reason": "change_set"}}]}),
+        // After the answer: b.txt is only in the reviewed plan (v2).
+        json!({"calls": [{"name": "change.apply", "args": {"path": "b.txt", "op": "replace", "content": "b\n"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "added b.txt as reviewed", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x1B)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_goal(&mut c, &session, g, &root, 0x1C, "annotate a.txt").await;
+    let start = StartTask {
+        task_id: Some(task.clone()),
+        endpoint: String::new(),
+        model: "gpt-5-mini".into(),
+        max_turns: 8,
+        max_tool_calls: 0,
+        max_no_progress_turns: 4,
+        skills: vec![],
+    }
+    .encode_to_vec();
+    let _: TaskRunStarted = Client::result(
+        &c.command(envelope_fenced(id16(0x1D), "StartTask", start.clone(), g))
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    let st = wait_task(&mut c, &task, 60).await;
+    assert_eq!(
+        (st.state.as_str(), st.wait_reason.as_str()),
+        ("Waiting", "UserInput"),
+        "{st:?}"
+    );
+    // The plan browser: one version, by the model, no annotation.
+    async fn plan_of(c: &mut Client, task: &Id, id: u8) -> PlanView {
+        let ack = c
+            .command(envelope(
+                id16(id),
+                "GetPlan",
+                GetPlan {
+                    task_id: Some(task.clone()),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    }
+    let v1 = plan_of(&mut c, &task, 0x1E).await;
+    assert_eq!(v1.current_version, 1);
+    assert_eq!(v1.versions.len(), 1);
+    assert_eq!(v1.versions[0].provenance, "model");
+    assert_eq!(v1.versions[0].expected_files, vec!["a.txt"]);
+    assert_eq!(
+        v1.executed_versions,
+        vec![0, 1],
+        "turn 1 ran before a plan, turn 2 under v1"
+    );
+    // Revising a running task is refused; reviewing a waiting one records
+    // the edit as v2 by the user with the note beside it.
+    let edited = json!({"outcome": "a.txt is annotated and b.txt added", "expected_files": ["a.txt", "b.txt"], "verification": [], "protected_effects": [], "steps": [{"id": "s1", "title": "annotate a.txt"}, {"id": "s2", "title": "add b.txt", "depends_on": ["s1"]}]});
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x1F),
+            "RevisePlan",
+            RevisePlan {
+                task_id: Some(task.clone()),
+                note: "also add b.txt; keep a.txt as planned".into(),
+                plan_json: edited.to_string(),
+                provenance: String::new(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let r: PlanRevisedAck = Client::result(&ack).unwrap();
+    assert_eq!(r.version, 2);
+    assert_eq!(r.plan_ref.len(), 64);
+    let v2 = plan_of(&mut c, &task, 0x20).await;
+    assert_eq!(v2.current_version, 2);
+    assert_eq!(v2.versions.len(), 2);
+    assert_eq!(v2.versions[1].provenance, "user_review");
+    assert_eq!(v2.versions[1].expected_files, vec!["a.txt", "b.txt"]);
+    assert_eq!(v2.versions[1].annotations.len(), 1);
+    assert_eq!(
+        v2.versions[1].annotations[0].note,
+        "also add b.txt; keep a.txt as planned"
+    );
+    assert!(v2.versions[1].steps_json.contains("\"s2\""));
+    // A bad edit is refused and records nothing.
+    let err = c
+        .command(envelope_fenced(
+            id16(0x21),
+            "RevisePlan",
+            RevisePlan {
+                task_id: Some(task.clone()),
+                note: String::new(),
+                plan_json: "{\"expected_files\": 3}".into(),
+                provenance: String::new(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "BAD_PLAN"),
+        "{err}"
+    );
+    // Answer and resume: the run executes under v2 — the write to b.txt,
+    // which v1 never named, is admitted; every turn records v2.
+    let ack = c
+        .command(envelope(
+            id16(0x22),
+            "ListQuestions",
+            ListQuestions {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let l: QuestionList = Client::result(&ack).unwrap();
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x23),
+            "RespondToQuestion",
+            RespondToQuestion {
+                task_id: Some(task.clone()),
+                question_id: l.questions[0].question_id.clone(),
+                option_id: "yes".into(),
+                text: String::new(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _ = ack;
+    let started: TaskRunStarted = Client::result(
+        &c.command(envelope_fenced(id16(0x24), "StartTask", start, g))
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    assert!(started.resumed);
+    let st = wait_for_state(&mut c, &task, "ReadyForReview", 60).await;
+    let evs = task_events(&core, &session, &task).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}\n{evs:#?}");
+    assert_eq!(
+        std::fs::read_to_string(std::path::Path::new(&root).join("b.txt")).unwrap(),
+        "b\n"
+    );
+    assert!(
+        evs.iter().all(|(a, t, p)| !(a == "run_step"
+            && t == "StepFailed"
+            && p["failure_code"] == "HARNESS_PLAN_REVISION_REQUIRED")),
+        "the reviewed plan admitted the write: {evs:#?}"
+    );
+    let v3 = plan_of(&mut c, &task, 0x25).await;
+    assert_eq!(v3.current_version, 2, "the model revised nothing further");
+    let executed = v3.executed_versions.clone();
+    assert!(
+        executed.len() >= 3 && executed[executed.len() - 1] == 2,
+        "{executed:?}"
+    );
+    assert!(
+        executed.iter().skip(2).all(|v| *v == 2),
+        "every resumed turn ran under v2: {executed:?}"
+    );
+    // The log says the same: a PlanRevised by the user, a PlanAnnotated on
+    // v2, the note delivered as a typed follow-up, and TurnPrepared v2.
+    assert!(
+        evs.iter()
+            .any(|(_, t, p)| t == "PlanRevised" && p["version"] == 2),
+        "{evs:#?}"
+    );
+    assert!(evs.iter().any(|(_, t, p)| t == "PlanAnnotated"
+        && p["version"] == 2
+        && p["provenance"] == "user_review"));
+    assert!(evs.iter().any(|(_, t, p)| {
+        t == "TaskInputQueued"
+            && p["text"]
+                .as_str()
+                .unwrap()
+                .contains("Plan review note on version 2")
+    }));
+    let turns: Vec<u64> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "TurnPrepared")
+        .map(|(_, _, p)| p["plan_version"].as_u64().unwrap_or(99))
+        .collect();
+    assert_eq!(turns.last(), Some(&2), "{turns:?}");
+    let bodies = seen.lock().unwrap().clone();
+    let last = bodies.last().unwrap().to_string();
+    assert!(
+        last.contains("Plan review note on version 2"),
+        "the note reached the model"
+    );
+}
+
 #[tokio::test]
 async fn m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back() {
     use modbit_protocol::v1::{

@@ -1557,6 +1557,57 @@ message AgentGraphView {
   repeated AgentNodeView nodes = 2;
 }
 
+// ---- REQ-EV-0118: plan versions outside the transcript, reviewed and
+// annotated by a person; the execution records the exact version it ran
+// under (TurnPrepared.plan_version).
+
+message GetPlan {
+  Id task_id = 1;
+}
+
+message PlanAnnotationView {
+  string note = 1;
+  string provenance = 2;           // user_review | cli
+  uint64 offset = 3;
+}
+
+message PlanVersionView {
+  uint32 version = 1;
+  string plan_ref = 2;             // object hash of the plan JSON
+  string outcome = 3;
+  repeated string expected_files = 4;
+  repeated string verification = 5;
+  repeated string protected_effects = 6;
+  string steps_json = 7;           // the work graph steps as recorded
+  string provenance = 8;           // model | user_review | cli
+  string reason = 9;               // the revision's reason, when any
+  uint64 offset = 10;              // where it was recorded
+  repeated PlanAnnotationView annotations = 11;
+}
+
+message PlanView {
+  Id task_id = 1;
+  uint32 current_version = 2;
+  repeated PlanVersionView versions = 3;
+  repeated uint32 executed_versions = 4; // plan versions turns have run under, in order
+}
+
+// A person revises and/or annotates the plan of a task that is not running.
+// `plan_json` empty = annotation only; otherwise the edited plan becomes the
+// next version (provenance user_review) and the run resumes under it.
+message RevisePlan {
+  Id task_id = 1;
+  string note = 2;
+  string plan_json = 3;
+  string provenance = 4;           // user_review (default) | cli
+}
+
+message PlanRevisedAck {
+  uint32 version = 1;
+  string plan_ref = 2;
+  uint64 offset = 3;
+}
+
 // ---- M6.2: capacity tickets (docs/14 "Capacity tickets", REQ-EV-0272).
 
 message GetCapacity {}

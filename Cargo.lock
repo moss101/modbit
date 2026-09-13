@@ -1796,6 +1796,7 @@ version = "0.0.0"
 dependencies = [
  "ed25519-dalek",
  "hex",
+ "modbit-domain",
  "modbit-protocol",
  "modbit-skills",
  "prost",
