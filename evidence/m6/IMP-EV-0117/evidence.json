@@ -5,10 +5,20 @@
  "tests": [
   "qual_ev_0117_plan_mode_has_no_write_and_its_plan_goes_to_review"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "a143f43"
+ ],
+ "runs": [
+  {
+   "id": "gha-34733315502",
+   "kind": "hosted CI on a143f43",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34733315502",
+   "log": "ci-run-34733315502.json"
+  }
+ ],
  "proof": "a task created under `plan` is offered reads and the harness and no `change.apply` / `change.batch` / `fs.write` / shell / worktree tool; the write the script asks for anyway is refused before the kernel (no `ToolCallProposed`), the file never appears, the plan is `PlanRecorded` v1, the lease says `READ_ONLY`, and the task reaches Ready for Review with an empty review bundle \u2014 the plan is the product.",
  "audit": "MISSING before: no read-only execution profile existed; a plan-only task had to be a normal task that happened not to write.",
  "limitations": "Whether a plan-mode result needs a human review before execution is the review surface's existing decision (every candidate is reviewed); no separate \"execute this plan\" command exists \u2014 a person starts a normal task with the reviewed plan (REQ-EV-0118).",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34733315502 (green on macOS, Linux and Windows at a143f43)"
 }

@@ -13020,8 +13020,52 @@
    "milestone": "M6",
    "qual": "QUAL-EV-0115",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0115_0182_0241_agent_profiles_compile_into_capsules_and_only_narrow",
+    "run:34733315502",
+    "commit:a143f43",
+    "artifact:evidence/m6/IMP-EV-0115/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-13T03:03:46Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit recorded on the task card"
+    },
+    {
+     "at": "2026-09-13T03:03:46Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented on main"
+    },
+    {
+     "at": "2026-09-13T03:03:46Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the surface protocol / harness / renderer"
+    },
+    {
+     "at": "2026-09-13T03:03:46Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system tests named on the card"
+    },
+    {
+     "at": "2026-09-13T03:03:46Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34733315502 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-13T03:03:46Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "task card and CI record sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-13T03:03:46Z"
   },
   {
    "id": "IMP-EV-0116",
@@ -13096,8 +13140,52 @@
    "milestone": "M6",
    "qual": "QUAL-EV-0117",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0117_plan_mode_has_no_write_and_its_plan_goes_to_review",
+    "run:34733315502",
+    "commit:a143f43",
+    "artifact:evidence/m6/IMP-EV-0117/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-13T03:03:47Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit recorded on the task card"
+    },
+    {
+     "at": "2026-09-13T03:03:47Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented on main"
+    },
+    {
+     "at": "2026-09-13T03:03:47Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the surface protocol / harness / renderer"
+    },
+    {
+     "at": "2026-09-13T03:03:47Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system tests named on the card"
+    },
+    {
+     "at": "2026-09-13T03:03:47Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34733315502 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-13T03:03:47Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "task card and CI record sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-13T03:03:47Z"
   },
   {
    "id": "IMP-EV-0118",
@@ -13110,8 +13198,52 @@
    "milestone": "M6",
    "qual": "QUAL-EV-0118",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0118_a_reviewed_plan_version_is_the_one_the_resumed_run_executes",
+    "run:34733315502",
+    "commit:a143f43",
+    "artifact:evidence/m6/IMP-EV-0118/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-13T03:03:47Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit recorded on the task card"
+    },
+    {
+     "at": "2026-09-13T03:03:47Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented on main"
+    },
+    {
+     "at": "2026-09-13T03:03:47Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the surface protocol / harness / renderer"
+    },
+    {
+     "at": "2026-09-13T03:03:47Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system tests named on the card"
+    },
+    {
+     "at": "2026-09-13T03:03:47Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34733315502 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-13T03:03:47Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "task card and CI record sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-13T03:03:47Z"
   },
   {
    "id": "IMP-EV-0119",
@@ -16178,8 +16310,52 @@
    "milestone": "M6",
    "qual": "QUAL-EV-0182",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0115_0182_0241_agent_profiles_compile_into_capsules_and_only_narrow",
+    "run:34733315502",
+    "commit:a143f43",
+    "artifact:evidence/m6/IMP-EV-0182/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-13T03:03:46Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit recorded on the task card"
+    },
+    {
+     "at": "2026-09-13T03:03:46Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented on main"
+    },
+    {
+     "at": "2026-09-13T03:03:46Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the surface protocol / harness / renderer"
+    },
+    {
+     "at": "2026-09-13T03:03:46Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system tests named on the card"
+    },
+    {
+     "at": "2026-09-13T03:03:46Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34733315502 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-13T03:03:46Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "task card and CI record sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-13T03:03:46Z"
   },
   {
    "id": "IMP-EV-0183",
@@ -18655,8 +18831,52 @@
    "milestone": "M6",
    "qual": "QUAL-EV-0241",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0115_0182_0241_agent_profiles_compile_into_capsules_and_only_narrow",
+    "run:34733315502",
+    "commit:a143f43",
+    "artifact:evidence/m6/IMP-EV-0241/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-13T03:03:46Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit recorded on the task card"
+    },
+    {
+     "at": "2026-09-13T03:03:46Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented on main"
+    },
+    {
+     "at": "2026-09-13T03:03:46Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired through the surface protocol / harness / renderer"
+    },
+    {
+     "at": "2026-09-13T03:03:46Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system tests named on the card"
+    },
+    {
+     "at": "2026-09-13T03:03:47Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34733315502 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-13T03:03:47Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "task card and CI record sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-13T03:03:47Z"
   },
   {
    "id": "IMP-EV-0242",

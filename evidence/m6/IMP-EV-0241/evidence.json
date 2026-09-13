@@ -5,10 +5,20 @@
  "tests": [
   "qual_ev_0115_0182_0241_agent_profiles_compile_into_capsules_and_only_narrow"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "a143f43"
+ ],
+ "runs": [
+  {
+   "id": "gha-34733315502",
+   "kind": "hosted CI on a143f43",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34733315502",
+   "log": "ci-run-34733315502.json"
+  }
+ ],
  "proof": "`effect_ceiling: DESTRUCTIVE` and `lease: [...]` refuse the install naming the key, nothing written; a profile edited in place to add `permissions` is rejected by `list` and refuses the admission `PROFILE_INVALID` at stage `PROFILE` with nothing taken; a valid profile can only narrow the child's surface.",
  "audit": "MISSING before: no profile validation existed.",
  "limitations": "Bundles (several profiles shipped together) are a directory of profile files; no signing yet (skills have it).",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34733315502 (green on macOS, Linux and Windows at a143f43)"
 }

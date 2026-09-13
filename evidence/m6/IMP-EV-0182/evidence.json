@@ -5,10 +5,20 @@
  "tests": [
   "qual_ev_0115_0182_0241_agent_profiles_compile_into_capsules_and_only_narrow"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "a143f43"
+ ],
+ "runs": [
+  {
+   "id": "gha-34733315502",
+   "kind": "hosted CI on a143f43",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34733315502",
+   "log": "ci-run-34733315502.json"
+  }
+ ],
  "proof": "a Claude-style `code-reviewer.md` imports as a canonical profile with `source: claude` and tools `fs.read`, `search.regex`, `proc.exec`, `agent.spawn`, `Mystery`; a foreign file carrying `permissions` is refused at import; at admission the unknown and delegation tools are narrowed and named, never granted.",
  "audit": "MISSING before: no import path for a foreign agent declaration existed.",
  "limitations": "One foreign format (Claude Code agent files) is mapped; others fall back to the canonical schema.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34733315502 (green on macOS, Linux and Windows at a143f43)"
 }
