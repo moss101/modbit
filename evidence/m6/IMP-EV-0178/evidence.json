@@ -5,10 +5,20 @@
  "tests": [
   "m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "b24e452"
+ ],
+ "runs": [
+  {
+   "id": "gha-34729744260",
+   "kind": "hosted CI on b24e452",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34729744260",
+   "log": "ci-run-34729744260.json"
+  }
+ ],
  "proof": "an explorer child admitted with `required_tools: [fs.read, fs.list, search.exact]` is offered `fs.read` and neither `change.apply` nor `agent.spawn`, and its write is refused as not projected; two builders admitted at the same time each run on their own task, worktree, branch and lease with `fs.write` narrowed to their scope; the three capsules are distinct objects on the parent's AgentGraph.",
  "audit": "PRESENT since M6.3: `SubtaskSpec.required_tools` narrows the child's projection inside its capsule; the binding (endpoint/model) is the capsule's; state is the child's own task log. Declarative named profiles (IMP-EV-0115/0182/0241) are not part of this task. No code change in this task.",
  "limitations": "Per-child model selection is the parent's binding today; a profile-driven model policy arrives with IMP-EV-0115.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34729744260 (green on macOS, Linux and Windows at b24e452)"
 }

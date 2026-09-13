@@ -5,10 +5,20 @@
  "tests": [
   "qual_ev_0049_a_parked_child_survives_a_restart_and_resumes_from_the_same_state"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "b24e452"
+ ],
+ "runs": [
+  {
+   "id": "gha-34729744260",
+   "kind": "hosted CI on b24e452",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34729744260",
+   "log": "ci-run-34729744260.json"
+  }
+ ],
  "proof": "the parent parks a slow child during its intervention: the child stops at its next turn boundary before its write, its task reads Waiting/External/Suspended with no live loop, the node PARKED, a `PARKED` envelope on the parent; the Core is killed and restarted: the node is still PARKED with the same agent id and capsule; the parent resumes and the child stays parked until the parent's `agent.resume`; then it continues on its own run (`RunResumed`, no `RunCancelled`), writes once, and the parent collects a COMPLETED envelope; the node's history is ADMITTED\u2192BACKGROUND\u2192PARKED\u2192BACKGROUND\u2192COMPLETED.",
  "audit": "MISSING before: a child could be cancelled (terminal) or left to a restart; nothing parked it by choice.",
  "limitations": "A park lands at the next turn boundary (a model call in flight finishes first); the parent parks and resumes \u2014 a user does it through the parent task.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34729744260 (green on macOS, Linux and Windows at b24e452)"
 }

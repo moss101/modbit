@@ -6,10 +6,20 @@
   "m2_7_steering_and_cancellation_apply_at_safe_boundaries",
   "qual_ev_0191_steering_policy_interrupts_replaces_coalesces_and_orders"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "b24e452"
+ ],
+ "runs": [
+  {
+   "id": "gha-34729744260",
+   "kind": "hosted CI on b24e452",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34729744260",
+   "log": "ci-run-34729744260.json"
+  }
+ ],
  "proof": "steering lands between steps as a durable `TaskSteered` and reaches the model as a user message; cancellation interrupts the in-flight stream at a deterministic boundary; COLLECT inputs coalesce after the current turn, FOLLOW_UP inputs become ordered separate turns, a STEER interrupts the stream and nothing from the interrupted response is applied; the next turn replays from the steer.",
  "audit": "PRESENT since M2.7 / QUAL-EV-0191: `QueueInput` (STEER | FOLLOW_UP | COLLECT), `CancelTask` and `TaskSteered` / `TaskInputQueued` are typed commands and events on the log; the loop applies them at safe boundaries and a STEER interrupts the in-flight stream. No code change in this task.",
  "limitations": "Steering a child agent goes through its parent (`agent.cancel`; follow-ups to a terminal child are IMP-EV-0050).",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34729744260 (green on macOS, Linux and Windows at b24e452)"
 }

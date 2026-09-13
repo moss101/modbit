@@ -6,10 +6,20 @@
   "qual_ev_0043_a_headless_client_lacks_ui_only_capabilities_while_the_task_stays_valid",
   "qual_ev_0141_0160_a_selection_steers_retrieval_is_visible_and_grants_no_write"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "b24e452"
+ ],
+ "runs": [
+  {
+   "id": "gha-34729744260",
+   "kind": "hosted CI on b24e452",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34729744260",
+   "log": "ci-run-34729744260.json"
+  }
+ ],
  "proof": "a CLI client's negotiated set holds `task.author`, `events.subscribe`, the human decisions and provider/repository setup but neither `ui.selection` nor `ui.code_view`: its editor-source selection and its code-view request are refused `CLIENT_CAPABILITY` naming the capability and the kind, while its `source: cli` selection is recorded; a desktop client records an editor selection on the same task; a sandbox guest (events only) can neither start the task nor resolve an approval, but reads the same snapshot; the task the CLI authored starts and reaches ReadyForReview \u2014 its authority is its own.",
  "audit": "MISSING before: the hello carried a client kind the Core did not act on; every connected client could ask for every command, and only the task's leases and policy stood between a client and an effect.",
  "limitations": "The set is fixed per connection from the client kind; a per-client negotiation of finer capabilities (an IDE without a code view) is not modelled.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34729744260 (green on macOS, Linux and Windows at b24e452)"
 }

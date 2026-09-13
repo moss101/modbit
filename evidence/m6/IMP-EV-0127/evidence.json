@@ -6,10 +6,20 @@
   "qual_ev_0127_a_killed_client_leaves_the_worker_running_and_a_new_client_reconnects",
   "m6_7_a_background_child_survives_a_core_restart_and_hands_its_result_back"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "b24e452"
+ ],
+ "runs": [
+  {
+   "id": "gha-34729744260",
+   "kind": "hosted CI on b24e452",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34729744260",
+   "log": "ci-run-34729744260.json"
+  }
+ ],
  "proof": "the client that started the run is dropped while the second model request is in flight; the worker finishes the plan \u2192 write \u2192 completion on its own \u2014 one `RunCreated`, no `RunSuspended`, no `TaskWaiting`, no attention \u2014 and a new client reconnecting to the same Core reads the finished task (ReadyForReview / Completed) with the write on disk.",
  "audit": "PRESENT since M2/M4 by construction (the run loop lives in the Core under the session lease, checkpoints and the protocol state; a client is a subscriber) and since M6.7 for children; this task adds the explicit qualification. No production code change.",
  "limitations": "A desktop-supervised Core exits with its supervising client by design and resumes on the next start (M6.7 covers that path); heartbeats are the lease renewal and capacity ticket renewal per turn.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34729744260 (green on macOS, Linux and Windows at b24e452)"
 }

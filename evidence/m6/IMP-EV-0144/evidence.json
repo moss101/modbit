@@ -5,10 +5,20 @@
  "tests": [
   "m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "b24e452"
+ ],
+ "runs": [
+  {
+   "id": "gha-34729744260",
+   "kind": "hosted CI on b24e452",
+   "result": "PASS: all 13 jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/34729744260",
+   "log": "ci-run-34729744260.json"
+  }
+ ],
  "proof": "builder `child-b` names `src/a/evil.txt` in its own plan and asks to write it: refused `WRITE_SCOPE_DENIED` before any effector (no `ToolCallProposed`), then writes `src/b/b.txt` inside its scope and completes; the explorer `child-e` sees no write tool at all. The coordinator collects typed envelopes and merges through the Change Engine \u2014 the builder never widened anything.",
  "audit": "PRESENT since M6.3 (docs/14 \"Transactional subagent admission\"): the coordinator is the primary, the contract is the `SubtaskSpec` (objective, artifacts, dependencies, scopes, tools, verification, budgets, work node), the builder is the child inside its `AgentExecutionCapsule`. No code change in this task: the audit names the production path and the qualification that already runs on every CI push.",
  "limitations": "A builder may propose a wider scope only through its result envelope; there is no in-flight scope negotiation.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/34729744260 (green on macOS, Linux and Windows at b24e452)"
 }
