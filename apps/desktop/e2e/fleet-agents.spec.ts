@@ -103,7 +103,9 @@ test("fleet: a delegating parent shows its phase, agents and the nested child; t
     // AgentNodeCreated / SubagentAdmitted, not from logs.
     await expect(card.getByTestId("task-children").getByTestId("child-card")).toHaveCount(1, { timeout: 60_000 });
     await expect(card.getByTestId("child-goal")).toHaveText("create src/a/a.txt containing alpha");
-    await expect(card.getByTestId("task-evidence")).toContainText("delegated child-a");
+    // A fast child may already have ended by now (a hosted macOS runner saw
+    // it): the evidence line is the delegation or the child's completion.
+    await expect(card.getByTestId("task-evidence")).toContainText(/delegated child-a|child completed: created src\/a\/a\.txt/);
     // The child is never a top-level card, in any column.
     await expect(page.getByTestId("task-card")).toHaveCount(1);
     // The child ends: its result is the parent's latest evidence, the
