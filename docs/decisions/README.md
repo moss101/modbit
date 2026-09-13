@@ -61,3 +61,4 @@ change of mind is a new record that names the old one in `supersedes`.
 | DR-M5-001 | Reschedule IMP-EV-0187 to M9 (rich MCP media results need the external MCP gateway of M9.4) | accepted | 2026-09-12 | none |
 | DR-M6-001 | The VS Code adapter seals on the real-extension-host and real-Core halves; the live-provider run of PX-E2E-002 waits for credentials | accepted | 2026-09-13 | none |
 | DR-M6-002 | The forge adapter, pull requests and issue intake seal on a wire-faithful GitHub fake; the real-repository run waits for a token | accepted | 2026-09-13 | none |
+| DR-M6-003 | The screen-state matrix seals on the rows the Core can force today; the rows whose substrate is M7–M9 are mapped now and forced when it exists | accepted | 2026-09-13 | none |

@@ -13,7 +13,10 @@ test("cards only reach Completed through a TaskCompleted event and events are id
   assert.equal(m.tasks.get("t1")!.generation, 2, "duplicate offset ignored");
   m = applyEvent(m, ev(3, "TaskStarted"), "t1");
   assert.equal(columns(m).running.length, 1);
-  m = applyEvent(m, ev(4, "TaskWaiting", { reason: "Approval" }), "t1");
+  // The wire spells the reason SCREAMING_SNAKE_CASE (`APPROVAL`, `USER_INPUT`); a snapshot spells it `Approval`.
+  m = applyEvent(m, ev(4, "TaskWaiting", { reason: "APPROVAL" }), "t1");
+  assert.equal(m.tasks.get("t1")!.waitReason, "Approval");
+  assert.equal(m.tasks.get("t1")!.phase, "awaitingHuman");
   assert.equal(columns(m).needsAttention[0]!.nextAction, "Approve or deny the pending effect");
   m = applyEvent(m, ev(5, "TaskResumed"), "t1");
   m = applyEvent(m, ev(6, "TaskReadyForReview"), "t1");

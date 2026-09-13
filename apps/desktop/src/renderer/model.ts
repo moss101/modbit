@@ -44,6 +44,39 @@ export interface TaskCard {
   risk: string | null;
   /** Child task ids, in admission order. */
   children: string[];
+  /** The latest typed diagnostic the Core attached to a `TaskNeedsAttention`
+   *  (REQ-EV-0073): class, code, what only the user can do, how the system
+   *  recovers, and the evidence refs. Null until one exists (PX-023). */
+  diagnostic: Diagnostic | null;
+  /** The approval the task waits on, from the approval aggregate's events:
+   *  the exact intent hash the decision binds (PX-023 "awaiting approval
+   *  with the exact intent"). Null when none is open. */
+  approval: { approvalId: string; toolName: string; effectClass: string; intentHash: string } | null;
+  /** What confidence-adjusted feasibility said of the run's plan
+   *  (`RoutingPlanAdmitted.feasibility`): `FEASIBLE`,
+   *  `QUALITY_FLOOR_INFEASIBLE` or `QUALITY_FLOOR_UNKNOWN`. */
+  feasibility: string | null;
+  /** The open typed question (`UserQuestionAsked`, REQ-EV-0222): what the
+   *  Task screen's "awaiting your answer" state offers. Null when none. */
+  question: { questionId: string; text: string; options: { id: string; label: string }[]; allowFreeText: boolean } | null;
+  /** The latest acceptance-gate verdict on the run (`AcceptanceGateEvaluated`,
+   *  REQ-EPR-017): what the Review screen's INCONCLUSIVE and REJECT states
+   *  name. Null until the gate has evaluated. */
+  gate: { verdict: string; missingEvidence: string[]; rejectReasons: string[]; gateRef: string; humanRequired: boolean; candidateRevision: string } | null;
+  /** Offsets of the events that put the card in its current state: the
+   *  evidence reference a degraded state names. */
+  lastOffset: string;
+}
+
+/** A typed diagnostic as the Core records it (docs/30 `TaskStatus`). */
+export interface Diagnostic {
+  class: string;
+  code: string;
+  detail: string;
+  userAction: string;
+  recoveryPath: string;
+  retryable: boolean;
+  evidenceRefs: string[];
 }
 
 function emptyCounts(): AgentCounts {
@@ -65,6 +98,10 @@ export interface Event {
   sessionId: string;
   payload: unknown;
   occurredAtMs: number;
+  /** The aggregate the event is on (hex); the approval id for approval events. */
+  aggregateId?: string;
+  /** `task`, `run`, `approval`, … */
+  aggregateType?: string;
 }
 
 export interface Model {
@@ -85,7 +122,7 @@ export function emptyModel(): Model {
 }
 
 function freshCard(taskId: string, goalText: string, state: string, generation: number, createdAtMs: number, origin: string): TaskCard {
-  return { taskId, goalText, state: normalizeState(state), waitReason: waitReasonOf(state), generation, createdAtMs, nextAction: null, attachments: 0, parentTaskId: null, origin, agents: emptyCounts(), phase: "drafting", latestEvidence: null, risk: null, children: [] };
+  return { taskId, goalText, state: normalizeState(state), waitReason: waitReasonOf(state), generation, createdAtMs, nextAction: null, attachments: 0, parentTaskId: null, origin, agents: emptyCounts(), phase: "drafting", latestEvidence: null, risk: null, children: [], diagnostic: null, approval: null, feasibility: null, question: null, gate: null, lastOffset: "0" };
 }
 
 export function fromSnapshot(s: Snapshot): Model {
@@ -171,6 +208,18 @@ function waitReasonOf(s: string): string | null {
   return m ? m[1]! : null;
 }
 
+/** A wait reason as the wire spells it (`USER_INPUT`, the event's
+ *  SCREAMING_SNAKE_CASE) or as a snapshot spells it (`UserInput`), to the
+ *  one form the cards use. */
+export function normalizeReason(r: string): string {
+  if (!r.includes("_") && r !== r.toUpperCase()) return r;
+  return r
+    .toLowerCase()
+    .split("_")
+    .map((w) => (w ? w[0]!.toUpperCase() + w.slice(1) : ""))
+    .join("");
+}
+
 /** The task id an event belongs to. Task events carry no aggregate id on the
  *  wire yet, so TaskCreated carries it in the ack; we key by the payload's
  *  correlation: the renderer learns task ids from CreateTask acks and
@@ -212,10 +261,12 @@ export function applyEvent(m: Model, e: Event, taskIdHint?: string): Model {
           updated.state = "Running";
           updated.waitReason = null;
           updated.nextAction = null;
+          updated.diagnostic = null;
+          if (updated.phase === "awaitingHuman") updated.phase = "drafting";
           break;
         case "TaskWaiting":
           updated.state = "Waiting";
-          updated.waitReason = String(p["reason"] ?? "External");
+          updated.waitReason = normalizeReason(String(p["reason"] ?? "External"));
           updated.nextAction = updated.waitReason === "Approval" ? "Approve or deny the pending effect" : updated.waitReason === "UserInput" ? "Answer the agent's question" : null;
           break;
         case "TaskReadyForReview":
@@ -236,10 +287,44 @@ export function applyEvent(m: Model, e: Event, taskIdHint?: string): Model {
         case "AttachmentIngested":
           updated.attachments = (card.attachments ?? 0) + 1;
           break;
-        case "TaskNeedsAttention":
+        case "TaskNeedsAttention": {
           updated.nextAction = String(p["reason"] ?? "Needs attention");
           if (updated.waitReason === "Capacity") updated.phase = "waitingCapacity";
+          const d = p["diagnostic"];
+          if (d && typeof d === "object") {
+            const x = d as Record<string, unknown>;
+            updated.diagnostic = {
+              class: String(x["class"] ?? ""),
+              code: String(x["code"] ?? ""),
+              detail: String(x["detail"] ?? ""),
+              userAction: String(x["user_action"] ?? ""),
+              recoveryPath: String(x["recovery_path"] ?? ""),
+              retryable: x["retryable"] === true,
+              evidenceRefs: Array.isArray(x["evidence_refs"]) ? (x["evidence_refs"] as unknown[]).map(String) : [],
+            };
+          }
           break;
+        }
+        // The approval aggregate's events carry the task id: the exact
+        // intent the decision binds is what the Task screen shows.
+        case "ApprovalRequested":
+          updated.approval = { approvalId: e.aggregateId ?? "", toolName: String(p["tool_name"] ?? ""), effectClass: normalizeReason(String(p["effect_class"] ?? "")), intentHash: String(p["intent_hash"] ?? "") };
+          break;
+        case "ApprovalResolved":
+          updated.approval = null;
+          break;
+        case "UserQuestionAsked": {
+          const options = Array.isArray(p["options"]) ? (p["options"] as Record<string, unknown>[]).map((o) => ({ id: String(o["id"] ?? ""), label: String(o["label"] ?? "") })) : [];
+          updated.question = { questionId: String(p["question_id"] ?? ""), text: String(p["question"] ?? ""), options, allowFreeText: p["allow_free_text"] === true };
+          break;
+        }
+        case "UserQuestionAnswered":
+          updated.question = null;
+          break;
+        case "RoutingPlanAdmitted":
+          updated.feasibility = String(p["feasibility"] ?? "");
+          break;
+
         // M6.6: the AgentGraph on the card — agents by status, children
         // nested under their parent, a child's trouble surfacing on the
         // parent as its next action.
@@ -305,11 +390,14 @@ export function applyEvent(m: Model, e: Event, taskIdHint?: string): Model {
           updated.phase = "verifying";
           updated.latestEvidence = `${String(p["stage"] ?? "")} verification ${String(p["status"] ?? "")}`;
           break;
-        case "AcceptanceGateEvaluated":
+        case "AcceptanceGateEvaluated": {
           updated.phase = "reviewing";
           updated.latestEvidence = `acceptance gate ${String(p["verdict"] ?? "")}`;
           if (p["human_required"] === true) updated.phase = "awaitingHuman";
+          const strings = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : []);
+          updated.gate = { verdict: String(p["verdict"] ?? ""), missingEvidence: strings(p["missing_evidence"]), rejectReasons: strings(p["reject_reasons"]), gateRef: String(p["gate_ref"] ?? ""), humanRequired: p["human_required"] === true, candidateRevision: String(p["candidate_revision"] ?? "") };
           break;
+        }
         case "ContinuationActivated":
           updated.phase = "escalating";
           updated.latestEvidence = `escalated to ${String(p["endpoint"] ?? "")}/${String(p["model"] ?? "")}`;
@@ -322,6 +410,7 @@ export function applyEvent(m: Model, e: Event, taskIdHint?: string): Model {
       }
       if (updated.state === "Waiting" && (updated.waitReason === "Approval" || updated.waitReason === "UserInput")) updated.phase = "awaitingHuman";
       if (updated.state === "Completed") updated.phase = "done";
+      updated.lastOffset = e.offset;
       next.tasks.set(target, updated);
       return next;
     }

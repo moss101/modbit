@@ -5,7 +5,7 @@
  * preload bridge. The renderer gets durable ids and Core events; it never gets
  * the socket, the secret, Node, or the filesystem.
  */
-import { app, BrowserWindow, ipcMain, safeStorage, session, type IpcMainInvokeEvent } from "electron";
+import { app, BrowserWindow, ipcMain, Notification, safeStorage, session, type IpcMainInvokeEvent } from "electron";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { CoreSupervisor, freshId, type CoreClient, type CoreStatus } from "@modbit/ide-adapter-core";
@@ -175,6 +175,14 @@ ipcMain.handle(
   },
 );
 
+// PX-023: the typed status of one task (REQ-EV-0073) — what a fresh
+// snapshot does not carry: the latest attention diagnostic, class, code,
+// the user's action, the recovery path and the evidence refs.
+ipcMain.handle("task:status", async (_e: IpcMainInvokeEvent, taskId: unknown) => {
+  const tid = requireTaskId(taskId);
+  const v = await requireClient().taskStatus(tid);
+  return { state: v.state, waitReason: v.waitReason, runState: v.runState, loopAlive: v.loopAlive, lastOffset: v.lastOffset.toString(), attentionReason: v.attentionReason, failureClass: v.failureClass, failureCode: v.failureCode, retryable: v.retryable, userAction: v.userAction, recoveryPath: v.recoveryPath, evidenceRefs: v.evidenceRefs };
+});
 // Context efficiency metrics (REQ-EV-0173): quality and economics together.
 ipcMain.handle("task:economics", async (_e: IpcMainInvokeEvent, taskId: unknown) => {
   const tid = requireTaskId(taskId);
@@ -367,6 +375,58 @@ ipcMain.handle("review:patch", async (_e: IpcMainInvokeEvent, sessionId: unknown
   });
   return { workspaceRevision: r.workspaceRevision.toString(), previousRevision: r.previousRevision.toString(), fileRevision: r.fileRevision, beforeHash: r.beforeHash, matchTier: r.matchTier, offset: r.offset.toString(), replayed: r.replayed };
 });
+// PX-007: the pull request from the accepted candidate. The first call
+// returns APPROVAL_PENDING (the push and the POST are one protected effect
+// bound to an intent hash); the renderer decides it through
+// `approval:resolve` and calls again for OPENED/UPDATED — or DENIED, which
+// leaves the branch local. The forge token never leaves the Core.
+ipcMain.handle("review:pullRequest", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown, expectedCandidateRevision: unknown, update: unknown) => {
+  const sid = requireSessionId(sessionId);
+  const tid = requireTaskId(taskId);
+  if (typeof expectedCandidateRevision !== "string" || !/^\d+$/.test(expectedCandidateRevision)) throw new Error("BAD_ARGUMENT: expectedCandidateRevision must be the revision the review accepted");
+  const c = requireClient();
+  if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
+  const a = await c.openPullRequest(sid, tid, BigInt(expectedCandidateRevision), { update: update === true });
+  return { status: a.status, approvalId: a.approvalId, intentHash: a.intentHash, number: a.number.toString(), url: a.url, branch: a.branch, headSha: a.headSha, candidateRevision: a.candidateRevision.toString(), receipts: a.effectReceiptIds.length, replayed: a.replayed, detail: a.detail };
+});
+// PX-001/PX-023: a decision on a protected effect names the intent hash the
+// person saw; the Core refuses any other (INTENT_MISMATCH).
+ipcMain.handle("approval:resolve", async (_e: IpcMainInvokeEvent, sessionId: unknown, approvalId: unknown, approve: unknown, reason: unknown, intentHash: unknown) => {
+  const sid = requireSessionId(sessionId);
+  // The Core names an approval as a UUID (hyphenated); the wire wants its bytes.
+  const aid = typeof approvalId === "string" ? approvalId.replace(/-/g, "") : "";
+  if (!/^[0-9a-f]{32}$/.test(aid)) throw new Error("BAD_ARGUMENT: approvalId");
+  if (typeof intentHash !== "string" || intentHash.length === 0 || intentHash.length > 128) throw new Error("BAD_ARGUMENT: intentHash must be the intent the approval showed");
+  const c = requireClient();
+  if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
+  const r = await c.resolveApproval(sid, aid, approve === true, typeof reason === "string" ? reason.slice(0, 2000) : "", intentHash);
+  return { approvalId: Buffer.from(r.approvalId?.value ?? []).toString("hex"), status: r.status, offset: r.offset.toString() };
+});
+// REQ-EV-0222 / PX-023: the person's answer to the agent's typed question
+// (an option id, or free text when the question allows it).
+ipcMain.handle("question:respond", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown, questionId: unknown, optionId: unknown, text: unknown) => {
+  const sid = requireSessionId(sessionId);
+  const tid = requireTaskId(taskId);
+  if (typeof questionId !== "string" || questionId.length === 0 || questionId.length > 128) throw new Error("BAD_ARGUMENT: questionId");
+  const c = requireClient();
+  if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
+  return c.respondToQuestion(sid, tid, questionId, typeof optionId === "string" ? optionId.slice(0, 128) : "", typeof text === "string" ? text.slice(0, 20_000) : "");
+});
+// PX-023 notification delivery: the renderer decides what warrants an OS
+// notification (opt-in per kind, quiet hours); main only hands the text to
+// the OS and keeps a bounded log of what it delivered (what the E2E reads
+// instead of watching the notification centre). No secret, no path, no
+// Core payload is in a notification: title and one line.
+const deliveredNotifications: { id: string; title: string; body: string; atMs: number; shown: boolean }[] = [];
+ipcMain.handle("notify:deliver", (_e: IpcMainInvokeEvent, id: unknown, title: unknown, body: unknown) => {
+  if (typeof id !== "string" || id.length > 128 || typeof title !== "string" || title.length > 200 || typeof body !== "string" || body.length > 1000) throw new Error("BAD_ARGUMENT: notification");
+  const shown = Notification.isSupported() && process.env.MODBIT_SUPPRESS_OS_NOTIFICATIONS !== "1";
+  if (shown) new Notification({ title, body, silent: true }).show();
+  deliveredNotifications.push({ id, title, body, atMs: Date.now(), shown });
+  if (deliveredNotifications.length > 200) deliveredNotifications.splice(0, deliveredNotifications.length - 200);
+  return { shown };
+});
+ipcMain.handle("notify:log", () => deliveredNotifications.slice());
 // ---- Onboarding (REQ-PX-022, docs/39): provider setup, repository trust,
 // starter tasks. The credential crosses main once, from the renderer's input
 // field to safeStorage and the Core; it is never returned to the renderer.
