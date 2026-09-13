@@ -258,6 +258,10 @@ message ResolveApproval {
   Id approval_id = 1;
   bool approve = 2;
   string reason = 3;
+  // The intent hash the person saw when deciding (PX-001, docs/29): when
+  // given, it must equal the approval's or the decision is refused
+  // INTENT_MISMATCH and nothing is recorded. A thin client always sends it.
+  string intent_hash = 4;
 }
 
 message ApprovalResolvedAck {
@@ -574,6 +578,81 @@ message ContextDocumentAttached {
   uint64 offset = 3;
   string trust = 4;         // UNTRUSTED_EXTERNAL_CONTENT
   bool replayed = 5;
+}
+
+// ---- External diagnostics intake (PX-004, docs/29, docs/18) ----
+
+// One diagnostic as an editor's language service reports it: zero-based
+// positions (LSP), a severity, a message, and the content hash of the file
+// it was computed on.
+message ExternalDiagnostic {
+  string path = 1;              // root-relative
+  uint32 line_start = 2;        // zero-based
+  uint32 char_start = 3;        // UTF-16 offset
+  uint32 line_end = 4;
+  uint32 char_end = 5;
+  string severity = 6;          // error | warning | information | hint
+  string code = 7;              // optional
+  string message = 8;
+  string file_revision = 9;     // sha256 of the file the diagnostic was computed on
+}
+
+// An adapter hands the Core what its editor's language services see, bound
+// to the workspace revision and per-file revisions it saw them at. The Core
+// normalizes them into canonical diagnostic records with provenance
+// external_ide; they inform retrieval (Context Pack provenance) and the
+// verification plan's inputs — never a verification result: a mandatory
+// check still runs in Modbit. A batch for another workspace revision is
+// discarded (STALE_REVISION); a diagnostic whose file moved on is dropped;
+// a malformed batch is refused before anything is persisted (MALFORMED).
+// Both refusals are on the task's log as ExternalDiagnosticsRejected.
+message SubmitExternalDiagnostics {
+  Id task_id = 1;
+  string source = 2;            // the language service / adapter identity (e.g. vscode:typescript-language-features)
+  string source_version = 3;
+  uint64 workspace_revision = 4;
+  repeated ExternalDiagnostic diagnostics = 5;
+}
+
+message ExternalDiagnosticsAck {
+  string batch_ref = 1;         // object hash of the normalized batch
+  uint32 recorded = 2;
+  uint32 discarded = 3;         // file revision moved on
+  uint64 offset = 4;
+  bool replayed = 5;
+}
+
+// ---- Constrained inline patch (PX-005, docs/20, docs/29) ----
+
+// A person's small direct edit, from the review surface or a thin client.
+// The only path is the canonical ChangeTransaction on the Workspace File
+// Service: the workspace revision the client saw is a precondition
+// (STALE_REVISION), the path is resolved through symlinks and checked
+// against the protected patterns before anything is opened
+// (PROTECTED_PATH / PATH_OUTSIDE_ROOT), `old` must match exactly once at a
+// ladder tier (NO_UNIQUE_MATCH), the loop must not be running
+// (TASK_RUNNING). Provenance user_direct_edit lands with one FileChanged on
+// the workspace log and one UserPatchApplied on the task's, and the
+// workspace revision advances once. No client holds a buffer: what is not
+// applied here does not exist. Idempotent by command_id like every command.
+message ApplyUserPatch {
+  Id task_id = 1;
+  string path = 2;                        // root-relative
+  uint64 expected_workspace_revision = 3; // required: the revision the client saw
+  string old = 4;                         // the text replaced (one hunk)
+  string new = 5;                         // its replacement (empty deletes it)
+  string expected_file_revision = 6;      // optional: sha256 the client saw; mismatch is STALE_REVISION
+  string source = 7;                      // review | cli | ide_adapter
+}
+
+message UserPatchAppliedAck {
+  uint64 workspace_revision = 1;   // after
+  uint64 previous_revision = 2;
+  string file_revision = 3;        // sha256 after (the new CodeReference file revision)
+  string before_hash = 4;          // sha256 before (references bound to it are stale)
+  string match_tier = 5;           // exact | whitespace_remap
+  uint64 offset = 6;               // UserPatchApplied event offset
+  bool replayed = 7;
 }
 
 // ---- Workspace context bridge (REQ-EV-0141 / 0160, docs/18) ----
@@ -1606,6 +1685,38 @@ message PlanRevisedAck {
   uint32 version = 1;
   string plan_ref = 2;
   uint64 offset = 3;
+}
+
+// ---- EPR-018: the Isolated Non-Committing Reviewer's disposable
+// environment (docs/27 §9.5, docs/21 review_isolated). Admission needs the
+// host's real sandbox; disposal ends processes, revokes the lease and removes
+// the worktree.
+
+message AdmitReviewEnvironment {
+  Id task_id = 1;                  // the candidate task
+  string revision = 2;             // empty = the repository's HEAD
+}
+
+message ReviewEnvironmentView {
+  string env_id = 1;
+  Id candidate_task_id = 2;
+  Id review_task_id = 3;
+  string worktree = 4;
+  string branch = 5;
+  string revision = 6;
+  Id lease_id = 7;
+  string sandbox = 8;              // seatbelt | seccomp-net
+}
+
+message DisposeReviewEnvironment {
+  string env_id = 1;
+  string reason = 2;
+}
+
+message ReviewEnvironmentDisposedAck {
+  string env_id = 1;
+  uint32 killed = 2;
+  bool worktree_removed = 3;
 }
 
 // ---- M6.2: capacity tickets (docs/14 "Capacity tickets", REQ-EV-0272).

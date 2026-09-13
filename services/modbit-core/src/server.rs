@@ -524,6 +524,8 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "GetAttention",
                     "GetPlan",
                     "RevisePlan",
+                    "AdmitReviewEnvironment",
+                    "DisposeReviewEnvironment",
                     "AdmitRoutingPlan",
                     "CompileRoutingPlan",
                     "ConfigureProvider",
@@ -545,6 +547,8 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "GetReviewBundle",
                     "GetCodeView",
                     "DecideReview",
+                    "ApplyUserPatch",
+                    "SubmitExternalDiagnostics",
                     "UndoToolCall",
                     "AskSideQuestion",
                     "ListQuestions",
@@ -761,6 +765,7 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         }
         "GetCodeView" => "ui.code_view",
         "DecideReview" => "review.decide",
+        "ApplyUserPatch" | "SubmitExternalDiagnostics" => "task.author",
         "ResolveApproval" => "approval.resolve",
         "RespondToQuestion" | "AskSideQuestion" => "question.answer",
         "ConfigureProvider" | "ActivateModelRegistry" | "ProbeModel" => "provider.configure",
@@ -782,7 +787,10 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         | "PublishOutcomeBaseline"
         | "AllowUnsupportedLanguage"
         | "MaterializeOutcomeStatistics"
-        | "ReconcileToolCall" => "task.author",
+        | "ReconcileToolCall"
+        | "RevisePlan"
+        | "AdmitReviewEnvironment"
+        | "DisposeReviewEnvironment" => "task.author",
         _ => return None,
     })
 }
@@ -1849,6 +1857,18 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             };
             if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
                 return ack;
+            }
+            // PX-001 (docs/29): the decision binds to the intent the person
+            // saw; a client that presents another one decides nothing.
+            if !p.intent_hash.is_empty() && p.intent_hash != approval.intent_hash {
+                return reject(
+                    cid,
+                    "INTENT_MISMATCH",
+                    format!(
+                        "the approval binds intent {} and the decision names {}; reload the approval before deciding",
+                        approval.intent_hash, p.intent_hash
+                    ),
+                );
             }
             if approval.state != modbit_domain::approval::ApprovalState::Requested {
                 return accept(
@@ -3033,6 +3053,86 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             accept(cid, false, view.encode_to_vec())
         }
         "GetCapacity" => accept(cid, false, core.capacity.view().encode_to_vec()),
+        "AdmitReviewEnvironment" => {
+            let Ok(p) = wire::AdmitReviewEnvironment::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "AdmitReviewEnvironment");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let task = {
+                let store = core.store.lock().await;
+                match store.task(&task_id) {
+                    Ok(Some(t)) => t,
+                    Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                }
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
+                return ack;
+            }
+            let actor = Actor::User(core.user_id);
+            match crate::review_env::admit(core, &task, &p.revision, &actor).await {
+                Ok(e) => accept(
+                    cid,
+                    false,
+                    wire::ReviewEnvironmentView {
+                        env_id: e.env_id,
+                        candidate_task_id: Some(wire_id(e.candidate_task_id.as_bytes())),
+                        review_task_id: Some(wire_id(e.review_task_id.as_bytes())),
+                        worktree: e.worktree,
+                        branch: e.branch,
+                        revision: e.revision,
+                        lease_id: Some(wire_id(e.lease_id.as_bytes())),
+                        sandbox: e.sandbox,
+                    }
+                    .encode_to_vec(),
+                ),
+                Err((code, detail)) => reject(cid, &code, detail),
+            }
+        }
+        "DisposeReviewEnvironment" => {
+            let Ok(p) = wire::DisposeReviewEnvironment::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "DisposeReviewEnvironment");
+            };
+            let found = {
+                let store = core.store.lock().await;
+                crate::review_env::find(&store, &p.env_id)
+            };
+            let Some(e) = found else {
+                return reject(cid, "UNKNOWN_ENVIRONMENT", p.env_id);
+            };
+            let session_id = {
+                let store = core.store.lock().await;
+                store
+                    .task(&e.candidate_task_id)
+                    .ok()
+                    .flatten()
+                    .map(|t| t.session_id)
+            };
+            if let Some(sid) = session_id
+                && let Err(ack) = require_lease(core, &cid, &env, &sid).await
+            {
+                return ack;
+            }
+            let actor = Actor::User(core.user_id);
+            let reason = if p.reason.trim().is_empty() {
+                "disposed by the client".to_owned()
+            } else {
+                p.reason.trim().to_owned()
+            };
+            let d = crate::review_env::dispose(core, &e, &reason, &actor).await;
+            accept(
+                cid,
+                false,
+                wire::ReviewEnvironmentDisposedAck {
+                    env_id: e.env_id,
+                    killed: d.killed,
+                    worktree_removed: d.worktree_removed,
+                }
+                .encode_to_vec(),
+            )
+        }
         "GetPlan" => {
             let Ok(p) = wire::GetPlan::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "GetPlan");
@@ -3723,6 +3823,61 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 Err((code, msg)) => reject(cid, &code, msg),
             }
         }
+        "ApplyUserPatch" => {
+            let Ok(p) = wire::ApplyUserPatch::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "ApplyUserPatch");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let session_id = match core.store.lock().await.task(&task_id) {
+                Ok(Some(t)) => t.session_id,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
+                return ack;
+            }
+            match crate::user_patch::apply(core, &p, command_id, record("ApplyUserPatch"), actor)
+                .await
+            {
+                Ok(v) => {
+                    let replayed = v.replayed;
+                    accept(cid, replayed, v.encode_to_vec())
+                }
+                Err((code, msg)) => reject(cid, &code, msg),
+            }
+        }
+        "SubmitExternalDiagnostics" => {
+            let Ok(p) = wire::SubmitExternalDiagnostics::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "SubmitExternalDiagnostics");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let session_id = match core.store.lock().await.task(&task_id) {
+                Ok(Some(t)) => t.session_id,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
+                return ack;
+            }
+            match crate::external_diagnostics::submit(
+                core,
+                &p,
+                record("SubmitExternalDiagnostics"),
+                actor,
+            )
+            .await
+            {
+                Ok(v) => {
+                    let replayed = v.replayed;
+                    accept(cid, replayed, v.encode_to_vec())
+                }
+                Err((code, msg)) => reject(cid, &code, msg),
+            }
+        }
         "GetRecoveryReport" => {
             let r = &core.recovery;
             accept(
@@ -3909,7 +4064,7 @@ fn split(outcome: CommandOutcome) -> (Vec<StoredEvent>, bool) {
     }
 }
 
-fn error_code(e: &modbit_event_store::Error) -> &'static str {
+pub(crate) fn error_code(e: &modbit_event_store::Error) -> &'static str {
     use modbit_event_store::Error::*;
     match e {
         SequenceConflict { .. } => "SEQUENCE_CONFLICT",

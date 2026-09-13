@@ -2,18 +2,30 @@
   "name": "@modbit/ide-adapter-core",
   "version": "0.0.0",
   "private": true,
-  "description": "shared thin-client library and conformance suite for IDE adapters",
+  "description": "shared thin-client library and conformance suite for SurfaceProtocol clients (desktop main, IDE adapters)",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
-    "test": "node --test \"src/**/*.test.ts\""
+    "test": "node --test \"src/**/*.test.ts\"",
+    "conformance": "node --test src/conformance.test.ts"
   },
   "modbit": {
     "owner": "desktop",
     "canonical": [],
-    "capabilities": []
+    "capabilities": [
+      {
+        "id": "thin-client.contract",
+        "requirements": [
+          "REQ-PX-001"
+        ]
+      }
+    ]
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "2.14.1",
+    "@modbit/surface-protocol": "workspace:*"
   }
 }

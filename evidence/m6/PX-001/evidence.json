@@ -1,0 +1,15 @@
+{
+ "task": "PX-001",
+ "requirement": "REQ-PX-001",
+ "qual": "QUAL-PX-001",
+ "tests": [
+  "packages/ide-adapter-core/src/conformance.test.ts",
+  "m2_5_capability_kernel_gates_destructive_tools_behind_intent_bound_approvals"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "on a real Core with a scripted model the shared protocol client and the CLI pass all six conformance cases (idempotency by command id, cursor replay after a dropped connection, attention rendering, intent-bound approval with INTENT_MISMATCH refused, verdict rendering, rejection paths surfaced verbatim); four deliberately broken clients fail at their case; the static scan passes the first-party clients under named exceptions, flags a fixture client linking simple-git/openai, reading OPENAI_API_KEY and spawning git, and modbit-cli's cargo metadata closure reaches no forbidden crate; the Core side of the binding is proven in m2_5.",
+ "audit": "PARTIAL before: the CLI and Electron main each spoke the protocol with their own client, ide-adapter-core was empty, no suite existed, ResolveApproval carried no intent hash.",
+ "limitations": "behavioral half needs a built Core (desktop-e2e job); session creation idempotency not tested on the CLI (no command id flag); renderer rendering covered by the desktop E2Es.",
+ "ci": ""
+}

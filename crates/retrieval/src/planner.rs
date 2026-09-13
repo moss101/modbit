@@ -72,6 +72,11 @@ pub struct PlanRequest {
     pub min_paths: usize,
     /// Diagnostic locations (path, 1-based line) to link.
     pub diagnostics: Vec<(String, u32)>,
+    /// An editor's diagnostic locations (PX-004): linked like Modbit's own,
+    /// named `external_ide` in the hit's reasons so the pack's provenance
+    /// says where the linkage came from.
+    #[serde(default)]
+    pub external_diagnostics: Vec<(String, u32)>,
     /// Highest level the plan may reach (benchmark profiles); `None` = L3.
     pub max_level: Option<Level>,
 }
@@ -328,6 +333,7 @@ fn fuse(
     query: &str,
     graph: &EvidenceGraph,
     diagnostics: &[(String, u32)],
+    external: &[(String, u32)],
 ) -> Vec<FusedHit> {
     let mut by_key: BTreeMap<(String, Option<(u64, u64)>), Fused> = BTreeMap::new();
     for c in candidates {
@@ -410,6 +416,15 @@ fn fuse(
             {
                 h.score += 0.03;
                 h.reasons.push("diagnostic".into());
+            }
+            // An editor's diagnostic (PX-004): the same linkage, its own name.
+            if external
+                .iter()
+                .any(|(p, l)| *p == h.path && h.lines.is_none_or(|(a, b)| (a..=b).contains(l)))
+            {
+                h.score += 0.03;
+                h.reasons.push("diagnostic".into());
+                h.reasons.push("external_ide".into());
             }
             // Dependency distance: a neighbour of a seed is evidence, but never
             // outranks a hit the query itself produced (benchmark M3.9: the
@@ -504,7 +519,13 @@ pub fn retrieve(src: &Sources<'_>, req: &PlanRequest) -> PlanResult {
         if lvl <= level {
             run_level(src, req, lvl, max, &mut cands, &mut res);
         }
-        res.hits = fuse(&cands, &req.query, src.graph, &req.diagnostics);
+        res.hits = fuse(
+            &cands,
+            &req.query,
+            src.graph,
+            &req.diagnostics,
+            &req.external_diagnostics,
+        );
         res.hits = cut(res.hits, max);
         res.coverage_paths = unique_paths(&res.hits);
         if lvl < level {

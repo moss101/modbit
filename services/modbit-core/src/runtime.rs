@@ -1632,12 +1632,22 @@ pub(crate) async fn rebuild(
             }
             "DiffInvariantViolated" => {
                 if payload["class"] == "FLAG" {
+                    let path = payload["paths"][0].as_str().unwrap_or_default().to_owned();
                     let f = format!(
                         "{} {}",
                         payload["invariant"].as_str().unwrap_or_default(),
-                        payload["paths"][0].as_str().unwrap_or_default()
+                        path
                     );
-                    if !state.open_flags.contains(&f) {
+                    // A flag on a path the plan in force at that point had
+                    // already declared was justified when it was recorded
+                    // (the completion stage records every violation, open
+                    // or not): it does not reopen on rebuild.
+                    let justified = state.plan.as_ref().is_some_and(|p| {
+                        p.expected_files.iter().any(|e| {
+                            *e == path || (e.ends_with('/') && path.starts_with(e.as_str()))
+                        })
+                    });
+                    if !justified && !state.open_flags.contains(&f) {
                         state.open_flags.push(f);
                     }
                 }
@@ -2045,7 +2055,11 @@ fn projection(
     // node has declared — read-only tools always, file writes once the plan
     // names files, protected effects once the plan names them. What is
     // withheld is told to the model with what to declare.
-    let scope = state.projection_scope("solver");
+    let scope = state.projection_scope(if crate::critique::is_review(task) {
+        "reviewer"
+    } else {
+        "solver"
+    });
     state.withheld_tools.clear();
     // Deferred tool search (REQ-EV-0134/0177/0229): the stable core is
     // projected with schemas; deferred tools are named by toolset in the
@@ -2140,8 +2154,11 @@ fn projection(
         )
     };
     // M6.3: the agent tools, for a primary only (a child of the maximum
-    // depth delegates nothing, REQ-EV-0051 / 0219).
-    if state.capsule.is_none() {
+    // depth delegates nothing, REQ-EV-0051 / 0219); a reviewer delegates
+    // nothing either and answers with `review.report` (REQ-EPR-007).
+    if crate::critique::is_review(task) {
+        tools.push(crate::critique::projection());
+    } else if state.capsule.is_none() {
         tools.extend(crate::agent_tools::projections());
     }
     tools.push(ToolProjection {
@@ -2416,7 +2433,11 @@ async fn run_loop(
             .visible_specs(Some(&task.execution_profile), lease.as_ref());
         let host_visible: Vec<String> = host_specs.iter().map(|s| s.name.clone()).collect();
         let deferred_visible: Vec<String> = {
-            let scope = state.projection_scope("solver");
+            let scope = state.projection_scope(if crate::critique::is_review(&task) {
+                "reviewer"
+            } else {
+                "solver"
+            });
             host_specs
                 .into_iter()
                 .filter(|s| {
@@ -3616,6 +3637,36 @@ async fn run_loop(
                     .await;
                     (r.entry, StepType::Handoff, r.failure_code)
                 }
+                crate::critique::REPORT_TOOL if crate::critique::is_review(&task) => {
+                    let (text, done) = crate::critique::handle_report(
+                        &core,
+                        &task,
+                        &mut state,
+                        &arguments_json,
+                        &actor,
+                    )
+                    .await;
+                    completed = done;
+                    let entry = TranscriptEntry::ToolResult {
+                        call_id: call_id.clone(),
+                        name: name.clone(),
+                        text,
+                        failure_signature: None,
+                        clears: vec![],
+                        wrote: None,
+                        progress: done,
+                        media: vec![],
+                    };
+                    (
+                        entry,
+                        StepType::SelfReview,
+                        if done {
+                            None
+                        } else {
+                            Some("REPORT_REFUSED".to_owned())
+                        },
+                    )
+                }
                 COMPLETE_TOOL if programs.any_running() => {
                     let entry = TranscriptEntry::ToolResult {
                         call_id: call_id.clone(),
@@ -4259,6 +4310,15 @@ async fn run_loop(
         },
         _ => end,
     };
+    // REQ-EPR-007: at the acceptance boundary, the plan's reviewer leg when
+    // the gate requires independent review — recorded on this run before it
+    // completes; the review itself runs on its own task.
+    let review_leg: Vec<NewEvent> =
+        if matches!(end, LoopEnd::ReadyForReview) && !crate::critique::is_review(&task) {
+            crate::critique::at_acceptance(&core, &task, run_id, &cfg, &state, lt, &actor).await
+        } else {
+            vec![]
+        };
     let mut store = core.store.lock().await;
     // M6.1: where the primary agent stands once this run is over.
     let agent_end: (modbit_domain::agent::AgentStatus, String) = match &end {
@@ -4304,6 +4364,11 @@ async fn run_loop(
         ),
     };
     let fenced_end = matches!(end, LoopEnd::Fenced { .. });
+    let review_ended_short = crate::critique::is_review(&task)
+        && !matches!(
+            end,
+            LoopEnd::ReadyForReview | LoopEnd::Fenced { .. } | LoopEnd::Parked
+        );
     match end {
         LoopEnd::Fenced {
             current_generation,
@@ -4367,31 +4432,45 @@ async fn run_loop(
             );
         }
         LoopEnd::ReadyForReview => {
+            let mut run_events = review_leg;
+            run_events.push(typed(
+                "RunCompleted",
+                &RunEvent::RunCompleted,
+                actor.clone(),
+            ));
+            // A review task's product is its report on the candidate's
+            // log; the task itself is over (REQ-EPR-007).
+            let review = crate::critique::is_review(&task);
+            let task_events = if review {
+                vec![typed(
+                    "TaskCompleted",
+                    &TaskEvent::TaskCompleted,
+                    actor.clone(),
+                )]
+            } else {
+                vec![typed(
+                    "TaskReadyForReview",
+                    &TaskEvent::TaskReadyForReview,
+                    actor.clone(),
+                )]
+            };
             let _ = append_batch(
                 &mut store,
                 &core,
                 lt,
                 vec![
-                    (
-                        AggregateType::Run,
-                        *run_id.as_bytes(),
-                        vec![typed(
-                            "RunCompleted",
-                            &RunEvent::RunCompleted,
-                            actor.clone(),
-                        )],
-                    ),
-                    (
-                        AggregateType::Task,
-                        *task.task_id.as_bytes(),
-                        vec![typed(
-                            "TaskReadyForReview",
-                            &TaskEvent::TaskReadyForReview,
-                            actor.clone(),
-                        )],
-                    ),
+                    (AggregateType::Run, *run_id.as_bytes(), run_events),
+                    (AggregateType::Task, *task.task_id.as_bytes(), task_events),
                 ],
             );
+            if review {
+                let core2 = Arc::clone(&core);
+                let t = task.clone();
+                let a = actor.clone();
+                tokio::spawn(async move {
+                    crate::critique::on_review_end(core2, t, a).await;
+                });
+            }
         }
         LoopEnd::Cancelled => {
             let _ = append_batch(
@@ -4734,6 +4813,16 @@ async fn run_loop(
                 ],
             );
         }
+    }
+    // REQ-EPR-007: a review task that ended any other way still disposes
+    // its environment and hands the candidate to a person.
+    if review_ended_short {
+        let core2 = Arc::clone(&core);
+        let t = task.clone();
+        let a = actor.clone();
+        tokio::spawn(async move {
+            crate::critique::on_review_end(core2, t, a).await;
+        });
     }
     // A stale owner writes audit only; the primary's status is advanced by
     // the lease holder when it resumes.
@@ -6450,6 +6539,16 @@ async fn verification_plan(
     // the plan says so; only the COMPLETION run supports acceptance.
     plan.limitations
         .push(modbit_retrieval::impact::HEURISTIC_LIMITATION.to_owned());
+    // PX-004: an editor's diagnostics at this revision are an input the
+    // plan names; they add no command and pass none.
+    if let Some(r) = task.workspace_root.as_deref()
+        && let Ok((ws, _)) = core.tools.workspace(r).await
+    {
+        let revision = ws.lock().await.revision().number;
+        let store = core.store.lock().await;
+        plan.external_diagnostics =
+            crate::external_diagnostics::plan_inputs(&store, task.task_id, revision);
+    }
     let plan_ref = {
         let store = core.store.lock().await;
         store
@@ -6889,6 +6988,8 @@ pub(crate) async fn run_verification(
                     "missing_evidence": gate.missing_evidence,
                     "reject_reasons": gate.reject_reasons,
                     "gate_ref": gate_ref,
+                    "independent_review_required": gate.independent_review_required,
+                    "human_required": gate.human_required,
                 }));
             }
             ok = !attribution.blocks_acceptance

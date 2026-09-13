@@ -668,6 +668,37 @@ function Review({ taskId, sessionId, onClose }: { taskId: string; sessionId: str
       setBusy(false);
     }
   };
+  // PX-005 (docs/20, docs/29): a constrained inline patch. The two fields
+  // are the command's arguments and nothing more — no buffer of the file
+  // lives here; the Core applies the edit at the revisions this review
+  // showed, or refuses it, and the review is re-read from the Core.
+  const [patching, setPatching] = useState<string | null>(null);
+  const [patchOld, setPatchOld] = useState("");
+  const [patchNew, setPatchNew] = useState("");
+  const [patchNote, setPatchNote] = useState<string | null>(null);
+  const openPatch = (path: string) => {
+    setPatching(patching === path ? null : path);
+    setPatchOld("");
+    setPatchNew("");
+    setPatchNote(null);
+  };
+  const applyPatch = async (path: string, fileRevision: string) => {
+    if (!bundle || busy) return;
+    setBusy(true);
+    setPatchNote(null);
+    try {
+      const r = await window.modbit.applyUserPatch(sessionId, taskId, { path, old: patchOld, new: patchNew, expectedWorkspaceRevision: bundle.workspaceRevision, expectedFileRevision: fileRevision });
+      setPatchNote(`applied at workspace revision ${r.workspaceRevision} (was ${r.previousRevision}) · file revision ${r.fileRevision.slice(0, 12)}`);
+      setPatching(null);
+      setPatchOld("");
+      setPatchNew("");
+      await load();
+    } catch (e) {
+      setPatchNote(`refused: ${(e as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
   const hunkCount = bundle ? bundle.files.reduce((n, f) => n + f.hunks.length, 0) : 0;
   const selectionNote = selectionError
     ? `selection not recorded: ${selectionError}`
@@ -700,6 +731,11 @@ function Review({ taskId, sessionId, onClose }: { taskId: string; sessionId: str
           {result}
         </div>
       )}
+      {patchNote && (
+        <div className="banner" data-kind={patchNote.startsWith("refused") ? "error" : "recovered"} role="status" data-testid="patch-result">
+          {patchNote}
+        </div>
+      )}
       {bundle && (
         <div className="review-body">
           <div>
@@ -708,7 +744,30 @@ function Review({ taskId, sessionId, onClose }: { taskId: string; sessionId: str
               <article className="file" key={f.path} data-testid="review-file" data-path={f.path}>
                 <h3>
                   {f.path} <span className="meta">{f.status === "A" ? "added" : f.status === "D" ? "deleted" : f.status === "R" ? "renamed" : "modified"} · file revision {f.fileRevision.slice(0, 12)}</span>
+                  {!f.binary && f.status !== "D" && (
+                    <button type="button" className="small" data-testid="file-patch" onClick={() => openPatch(f.path)} disabled={busy || result !== null || bundle.taskState !== "ReadyForReview"}>
+                      {patching === f.path ? "Cancel edit" : "Edit"}
+                    </button>
+                  )}
                 </h3>
+                {patching === f.path && (
+                  <div className="patch" data-testid="patch-panel" data-path={f.path}>
+                    <label>
+                      Replace
+                      <textarea data-testid="patch-old" value={patchOld} onChange={(e) => setPatchOld(e.target.value)} placeholder="the exact text to replace (one place)" />
+                    </label>
+                    <label>
+                      With
+                      <textarea data-testid="patch-new" value={patchNew} onChange={(e) => setPatchNew(e.target.value)} placeholder="its replacement" />
+                    </label>
+                    <div className="actions">
+                      <button type="button" data-testid="patch-apply" onClick={() => void applyPatch(f.path, f.fileRevision)} disabled={busy || patchOld.length === 0}>
+                        Apply at revision {bundle.workspaceRevision}
+                      </button>
+                      <span className="meta">through the Core's change transaction; nothing is kept here</span>
+                    </div>
+                  </div>
+                )}
                 {f.binary && <p className="meta">binary file</p>}
                 {f.hunks.map((h) => {
                   const key = `${f.path}#${h.index}`;

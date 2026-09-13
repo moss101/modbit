@@ -1,10 +1,8 @@
 /**
- * @modbit/vscode-adapter — first IDE adapter (Beta); a thin SurfaceProtocol client only.
- *
- * Canonical owner: surface team (desktop owner) (docs/12_REPOSITORY_AND_MODULE_LAYOUT.md).
- *
- * Created by milestone task M0.1 and carries no behavior yet. Behavior arrives
- * only through graph-scheduled tasks naming this package as owner; nothing here
- * may be read as an implemented feature.
+ * @modbit/vscode-adapter — the first IDE adapter (PX-002; docs/29): a thin
+ * SurfaceProtocol client on `@modbit/ide-adapter-core` hosted in the VS Code
+ * extension host. `adapter.ts` is the editor-independent part; `extension.ts`
+ * adds only VS Code hosting (commands, the task panel, diagnostics
+ * forwarding, persisted session and cursor). It owns nothing.
  */
-export {};
+export * from "./adapter.ts";

@@ -1,10 +1,14 @@
 /**
- * @modbit/ide-adapter-core — shared thin-client library and conformance suite for IDE adapters.
+ * @modbit/ide-adapter-core — the shared thin-client library and the
+ * conformance suite every SurfaceProtocol client passes before exposure
+ * (docs/29 "Thin-client conformance contract (PX-001)").
  *
- * Canonical owner: surface team (desktop owner) (docs/12_REPOSITORY_AND_MODULE_LAYOUT.md).
- *
- * Created by milestone task M0.1 and carries no behavior yet. Behavior arrives
- * only through graph-scheduled tasks naming this package as owner; nothing here
- * may be read as an implemented feature.
+ * Canonical owner: desktop (docs/12). The library speaks the protocol once —
+ * connection, handshake, commands idempotent by command id, events by cursor
+ * — for Electron main and for IDE adapters; the suite proves a client keeps
+ * the contract against a real Core and links no provider, filesystem, Git
+ * or policy code of its own.
  */
-export {};
+export * from "./client.ts";
+export * from "./supervisor.ts";
+export * from "./conformance.ts";

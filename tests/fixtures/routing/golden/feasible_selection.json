@@ -9,7 +9,7 @@
       "hard_eligible": true,
       "ineligible_reason": "",
       "lcb": 0.55,
-      "plan_id": "compiled:b225d1e3f0a05496546bd749",
+      "plan_id": "compiled:3bc1b45a4c5c71bb104fdc1a",
       "worst_case_cost_minor": 102
     },
     {
@@ -22,7 +22,7 @@
       "hard_eligible": true,
       "ineligible_reason": "",
       "lcb": 0.8200000000000001,
-      "plan_id": "compiled:fe4f8865dcffefec3b263a75",
+      "plan_id": "compiled:cdd5ba7630d0c3e580b2c67d",
       "worst_case_cost_minor": 112
     },
     {
@@ -35,7 +35,7 @@
       "hard_eligible": true,
       "ineligible_reason": "",
       "lcb": 0.55,
-      "plan_id": "compiled:73d290f0b496a7d795da4571",
+      "plan_id": "compiled:94c9ec58ee7603527effb085",
       "worst_case_cost_minor": 212
     },
     {
@@ -47,7 +47,7 @@
       "hard_eligible": true,
       "ineligible_reason": "",
       "lcb": 0.8,
-      "plan_id": "compiled:fbe3811d3aad0c5b4843cae9",
+      "plan_id": "compiled:83c942b1505bf055a25058d1",
       "worst_case_cost_minor": 110
     },
     {
@@ -60,7 +60,7 @@
       "hard_eligible": true,
       "ineligible_reason": "",
       "lcb": 0.8,
-      "plan_id": "compiled:30988ecff3ae7b092354c181",
+      "plan_id": "compiled:cc674e0f768db2cda22c0172",
       "worst_case_cost_minor": 220
     },
     {
@@ -72,24 +72,24 @@
       "hard_eligible": true,
       "ineligible_reason": "",
       "lcb": 0.93,
-      "plan_id": "compiled:eb35083f7c20d8fc118b4b3c",
+      "plan_id": "compiled:42a2460884c9f599edd9fef5",
       "worst_case_cost_minor": 210
     }
   ],
   "code": "FEASIBLE",
   "exclusions": [
-    "compiled:b225d1e3f0a05496546bd749: lower bound 0.550 is below tau 0.720",
-    "compiled:73d290f0b496a7d795da4571: no observation for escalation|gpt-5-mini|gpt-5-pro|acceptance|workspace|configured",
-    "compiled:30988ecff3ae7b092354c181: no observation for escalation|gpt-5|gpt-5-pro|acceptance|workspace|configured",
-    "compiled:fbe3811d3aad0c5b4843cae9: feasible, but an expected 110 minor units is not the lowest expected complete cost",
-    "compiled:eb35083f7c20d8fc118b4b3c: feasible, but an expected 210 minor units is not the lowest expected complete cost"
+    "compiled:3bc1b45a4c5c71bb104fdc1a: lower bound 0.550 is below tau 0.720",
+    "compiled:94c9ec58ee7603527effb085: no observation for escalation|gpt-5-mini|gpt-5-pro|acceptance|workspace|configured",
+    "compiled:cc674e0f768db2cda22c0172: no observation for escalation|gpt-5|gpt-5-pro|acceptance|workspace|configured",
+    "compiled:83c942b1505bf055a25058d1: feasible, but an expected 110 minor units is not the lowest expected complete cost",
+    "compiled:42a2460884c9f599edd9fef5: feasible, but an expected 210 minor units is not the lowest expected complete cost"
   ],
   "provenance": {
     "compiler_version": "compiler-2",
     "registry_generation": "registry-compile-1",
     "statistics_version": "stats-7"
   },
-  "selected": "compiled:fe4f8865dcffefec3b263a75",
+  "selected": "compiled:cdd5ba7630d0c3e580b2c67d",
   "slots": [
     "initial:openai/gpt-5-mini:Initial",
     "stronger:openai/gpt-5:QualityRejected"

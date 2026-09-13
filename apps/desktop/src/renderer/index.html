@@ -41,7 +41,11 @@
       .review-head button { margin-left: auto; }
       .review-body { display: grid; grid-template-columns: 1fr 360px; gap: 20px; }
       article.file { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin-bottom: 12px; }
-      article.file h3 { margin: 0 0 8px; font-size: 13px; }
+      article.file h3 { margin: 0 0 8px; font-size: 13px; display: flex; gap: 8px; align-items: baseline; }
+      article.file h3 button.small { margin-left: auto; font-size: 11px; padding: 1px 6px; }
+      .patch { display: grid; gap: 6px; margin: 0 0 8px; padding: 8px; border: 1px dashed var(--border, #888); font-size: 12px; }
+      .patch label { display: grid; gap: 2px; }
+      .patch textarea { min-height: 48px; font-family: ui-monospace, monospace; font-size: 12px; }
       .hunk { border: 1px solid var(--line); border-radius: 6px; margin-bottom: 8px; overflow: hidden; }
       .hunk[data-rejected="true"] { opacity: 0.6; border-style: dashed; }
       .hunk-head { display: flex; justify-content: space-between; padding: 4px 8px; background: var(--bg); font-size: 12px; }

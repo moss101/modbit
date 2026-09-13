@@ -117,7 +117,7 @@ async fn run_to_exit(
                 }
             }
             Event::Exited(e) => return (sid, out, err, e),
-            Event::Sessions(_) => {}
+            Event::Sessions(_) | Event::SandboxProbed(_) => {}
         }
     }
 }
@@ -205,7 +205,7 @@ async fn qual_ev_0019_0269_ten_megabytes_stream_in_bounded_chunks_and_output_ref
                 chunks += 1;
             }
             Event::Exited(e) => break e,
-            Event::Sessions(_) => {}
+            Event::Sessions(_) | Event::SandboxProbed(_) => {}
         }
     };
     assert_eq!(total, 10 * 1024 * 1024);

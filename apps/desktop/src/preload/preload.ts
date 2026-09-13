@@ -134,6 +134,8 @@ export interface ModbitBridge {
   reviewBundle(taskId: string): Promise<ReviewBundleView>;
   codeView(taskId: string, path: string, expectedFileRevision?: string): Promise<CodeView>;
   decideReview(sessionId: string, taskId: string, decision: "ACCEPT" | "RETURN", rejected: { path: string; index: number }[], note: string, expectedWorkspaceRevision: string): Promise<{ taskState: string; commit: string; reverted: string[]; workspaceRevision: string }>;
+  /** PX-005: a one-hunk direct edit through the Core's ChangeTransaction, bound to the revisions the review showed. */
+  applyUserPatch(sessionId: string, taskId: string, patch: { path: string; old: string; new: string; expectedWorkspaceRevision: string; expectedFileRevision: string }): Promise<{ workspaceRevision: string; previousRevision: string; fileRevision: string; beforeHash: string; matchTier: string; offset: string; replayed: boolean }>;
   subscribe(sessionId: string, afterOffset: string): Promise<void>;
   onEvent(cb: (e: unknown) => void): () => void;
   onCoreStatus(cb: (s: unknown) => void): () => void;
@@ -162,6 +164,7 @@ const bridge: ModbitBridge = {
   reviewBundle: (taskId) => ipcRenderer.invoke("review:bundle", taskId),
   codeView: (taskId, path, expectedFileRevision) => ipcRenderer.invoke("review:codeView", taskId, path, expectedFileRevision ?? ""),
   decideReview: (sessionId, taskId, decision, rejected, note, expectedWorkspaceRevision) => ipcRenderer.invoke("review:decide", sessionId, taskId, decision, rejected, note, expectedWorkspaceRevision),
+  applyUserPatch: (sessionId, taskId, patch) => ipcRenderer.invoke("review:patch", sessionId, taskId, patch),
   subscribe: (sessionId, afterOffset) => ipcRenderer.invoke("events:subscribe", sessionId, afterOffset),
   onEvent: (cb) => {
     const listener = (_: unknown, e: unknown) => cb(e);

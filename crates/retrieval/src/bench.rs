@@ -77,6 +77,7 @@ impl Profile {
             max_hits: k.max(1) * 3,
             min_paths: 0,
             diagnostics: vec![],
+            external_diagnostics: vec![],
             max_level,
         }
     }

@@ -726,7 +726,7 @@ async fn run_process(ctx: &InvokeContext, args: &Value, request_id: &str) -> Too
                 }
                 return o;
             }
-            Ok(Some(Event::Sessions(_))) => {}
+            Ok(Some(Event::Sessions(_))) | Ok(Some(Event::SandboxProbed(_))) => {}
             Ok(None) => {
                 return ToolOutcome {
                     unknown_outcome: Some(
@@ -1431,7 +1431,7 @@ tool!(
                     );
                     break;
                 }
-                Ok(Some(Event::Sessions(_))) => {}
+                Ok(Some(Event::Sessions(_))) | Ok(Some(Event::SandboxProbed(_))) => {}
                 Ok(None) => break,
                 Err(modbit_terminal::Error::Exec { code, message, .. }) => {
                     return ToolOutcome::fail(&code, message);

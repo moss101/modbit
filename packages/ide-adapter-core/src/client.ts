@@ -1,11 +1,15 @@
 /**
- * Node-side SurfaceProtocol client for Electron main (docs/30, docs/32).
- * Mirrors crates/protocol: 4-byte big-endian length + SurfaceFrame, 4 MiB
- * ceiling enforced before allocation, boot-secret handshake, commands with
- * acks, and a subscription that delivers stored events by offset.
+ * Node-side SurfaceProtocol client (docs/30, docs/32; the thin-client
+ * contract of docs/29, PX-001). Mirrors crates/protocol: 4-byte big-endian
+ * length + SurfaceFrame, 4 MiB ceiling enforced before allocation,
+ * boot-secret handshake, commands with acks, and a subscription that
+ * delivers stored events by offset.
  *
- * This is the only place in the desktop app that speaks to the Core; the
- * renderer never sees the socket, the secret, or Node.
+ * Electron main and every IDE adapter speak to the Core through this class
+ * and nothing else; a renderer or an editor never sees the socket, the
+ * secret, or Node. It owns no orchestration, context, Git state, policy or
+ * tool execution and holds no provider credential: every mutation is a
+ * command the Core decides, idempotent by the command id the caller keeps.
  */
 import { connect, type Socket } from "node:net";
 import { create, fromBinary, toBinary, type MessageInitShape } from "@bufbuild/protobuf";
@@ -21,6 +25,26 @@ import {
   CreateSessionSchema,
   CreateTaskSchema,
   DecideReviewSchema,
+  ListApprovalsSchema,
+  ApprovalListSchema,
+  type ApprovalList,
+  ResolveApprovalSchema,
+  ApprovalResolvedAckSchema,
+  type ApprovalResolvedAck,
+  GetTaskAssuranceSchema,
+  TaskAssuranceViewSchema,
+  type TaskAssuranceView,
+  GetTaskStatusSchema,
+  SubmitExternalDiagnosticsSchema,
+  QueueInputSchema,
+  InputQueuedSchema,
+  ExternalDiagnosticsAckSchema,
+  type ExternalDiagnosticsAck,
+  TaskStatusSchema,
+  type TaskStatus,
+  ApplyUserPatchSchema,
+  UserPatchAppliedAckSchema,
+  type UserPatchAppliedAck,
   GetCodeViewSchema,
   GetRecoveryReportSchema,
   GetReviewBundleSchema,
@@ -94,14 +118,18 @@ export function parseReadyLine(line: string): ReadyLine | null {
 }
 
 export class ProtocolError extends Error {
-  constructor(public code: string, message: string) {
+  readonly code: string;
+  constructor(code: string, message: string) {
     super(`${code}: ${message}`);
+    this.code = code;
   }
 }
 
 export class RejectedError extends Error {
-  constructor(public code: string, message: string) {
+  readonly code: string;
+  constructor(code: string, message: string) {
     super(`${code}: ${message}`);
+    this.code = code;
   }
 }
 
@@ -148,14 +176,20 @@ export class CoreClient {
   private decoder = new FrameDecoder();
   private pending: Pending[] = [];
   private closed = false;
+  /** The `CreateTask.origin` this client's kind implies (docs/30). */
+  readonly origin: "desktop" | "cli" | "ide_adapter";
   onEvent: ((e: StoredEventFrame) => void) | null = null;
   onClose: ((reason: string) => void) | null = null;
+
+  private constructor(kind: ClientKind) {
+    this.origin = kind === ClientKind.IDE_ADAPTER ? "ide_adapter" : kind === ClientKind.CLI ? "cli" : "desktop";
+  }
 
   static async connect(ready: ReadyLine, kind: ClientKind, build: string): Promise<CoreClient> {
     if (ready.protocol.major !== PROTOCOL_VERSION.major) {
       throw new ProtocolError("PROTOCOL_MISMATCH", `core speaks ${ready.protocol.major}.x, client ${PROTOCOL_VERSION.major}.x`);
     }
-    const c = new CoreClient();
+    const c = new CoreClient(kind);
     await c.open(ready, kind, build);
     return c;
   }
@@ -262,12 +296,27 @@ export class CoreClient {
     return r.leaseGeneration;
   }
 
+  /**
+   * Join the session's lease in force (docs/13 fencing; the CLI's reference
+   * behavior): a reconnecting client presents the generation the Core
+   * records, and acquires a new one only when none exists. Acquiring afresh
+   * would fence out the run this same person is waiting on.
+   */
+  async joinSessionLease(sessionId: string, owner: string): Promise<bigint> {
+    const snapshot = await this.getSessionSnapshot(sessionId);
+    if (snapshot.leaseGeneration > 0n) {
+      this.leases.set(sessionId, snapshot.leaseGeneration);
+      return snapshot.leaseGeneration;
+    }
+    return this.acquireSessionLease(sessionId, owner);
+  }
+
   leaseGeneration(sessionId: string): bigint | undefined {
     return this.leases.get(sessionId);
   }
 
   async createTask(sessionId: string, goalText: string, commandId?: Uint8Array, workspaceRoot = ""): Promise<{ taskId: string; offset: bigint; replayed: boolean }> {
-    const payload = toBinary(CreateTaskSchema, create(CreateTaskSchema, { sessionId: { value: unhex(sessionId) }, goalText, executionProfile: "local_trusted", origin: "desktop", workspaceRoot }));
+    const payload = toBinary(CreateTaskSchema, create(CreateTaskSchema, { sessionId: { value: unhex(sessionId) }, goalText, executionProfile: "local_trusted", origin: this.origin, workspaceRoot }));
     const ack = await this.command("CreateTask", payload, commandId, this.leases.get(sessionId));
     const r = fromBinary(TaskCreatedSchema, ack.result);
     return { taskId: hex(r.taskId?.value ?? new Uint8Array()), offset: r.offset, replayed: ack.status === CommandStatus.REPLAYED };
@@ -394,6 +443,79 @@ export class CoreClient {
     const payload = toBinary(DecideReviewSchema, create(DecideReviewSchema, { taskId: { value: unhex(taskId) }, decision, rejected: rejected.map((r) => ({ path: r.path, index: r.index })), note, expectedWorkspaceRevision }));
     const ack = await this.command("DecideReview", payload, undefined, this.leases.get(sessionId));
     return fromBinary(ReviewDecidedSchema, ack.result);
+  }
+
+  /** PX-005: a one-hunk direct edit through the Core's ChangeTransaction; the renderer keeps no buffer. */
+  async applyUserPatch(sessionId: string, taskId: string, p: { path: string; old: string; new: string; expectedWorkspaceRevision: bigint; expectedFileRevision: string }): Promise<UserPatchAppliedAck> {
+    const payload = toBinary(ApplyUserPatchSchema, create(ApplyUserPatchSchema, { taskId: { value: unhex(taskId) }, path: p.path, old: p.old, new: p.new, expectedWorkspaceRevision: p.expectedWorkspaceRevision, expectedFileRevision: p.expectedFileRevision, source: "review" }));
+    const ack = await this.command("ApplyUserPatch", payload, undefined, this.leases.get(sessionId));
+    return fromBinary(UserPatchAppliedAckSchema, ack.result);
+  }
+
+  async listApprovals(sessionId: string): Promise<ApprovalList> {
+    const ack = await this.command("ListApprovals", toBinary(ListApprovalsSchema, create(ListApprovalsSchema, { sessionId: { value: unhex(sessionId) } })));
+    return fromBinary(ApprovalListSchema, ack.result);
+  }
+
+  /**
+   * Decide a protected effect. The decision names the intent hash the person
+   * saw (PX-001, docs/29): the Core refuses INTENT_MISMATCH for any other,
+   * so a stale approval view can never approve a different effect.
+   */
+  async resolveApproval(sessionId: string, approvalId: string, approve: boolean, reason: string, intentHash: string, commandId?: Uint8Array): Promise<ApprovalResolvedAck> {
+    const payload = toBinary(ResolveApprovalSchema, create(ResolveApprovalSchema, { approvalId: { value: unhex(approvalId) }, approve, reason, intentHash }));
+    const ack = await this.command("ResolveApproval", payload, commandId, this.leases.get(sessionId));
+    return fromBinary(ApprovalResolvedAckSchema, ack.result);
+  }
+
+  async taskAssurance(taskId: string): Promise<TaskAssuranceView> {
+    const ack = await this.command("GetTaskAssurance", toBinary(GetTaskAssuranceSchema, create(GetTaskAssuranceSchema, { taskId: { value: unhex(taskId) } })));
+    return fromBinary(TaskAssuranceViewSchema, ack.result);
+  }
+
+  /**
+   * PX-004: hand the Core what the editor's language services see, bound to
+   * the workspace revision and the per-file content hashes they were computed
+   * on. Evidence for context and the verification plan's inputs — never a
+   * verification result. The Core refuses another revision (STALE_REVISION)
+   * and a malformed batch (MALFORMED).
+   */
+  async submitExternalDiagnostics(
+    sessionId: string,
+    taskId: string,
+    batch: {
+      source: string;
+      sourceVersion: string;
+      workspaceRevision: bigint;
+      diagnostics: { path: string; lineStart: number; charStart: number; lineEnd: number; charEnd: number; severity: "error" | "warning" | "information" | "hint"; code?: string; message: string; fileRevision: string }[];
+    },
+    commandId?: Uint8Array,
+  ): Promise<ExternalDiagnosticsAck> {
+    const payload = toBinary(
+      SubmitExternalDiagnosticsSchema,
+      create(SubmitExternalDiagnosticsSchema, {
+        taskId: { value: unhex(taskId) },
+        source: batch.source,
+        sourceVersion: batch.sourceVersion,
+        workspaceRevision: batch.workspaceRevision,
+        diagnostics: batch.diagnostics.map((d) => ({ path: d.path, lineStart: d.lineStart, charStart: d.charStart, lineEnd: d.lineEnd, charEnd: d.charEnd, severity: d.severity, code: d.code ?? "", message: d.message, fileRevision: d.fileRevision })),
+      }),
+    );
+    const ack = await this.command("SubmitExternalDiagnostics", payload, commandId, this.leases.get(sessionId));
+    return fromBinary(ExternalDiagnosticsAckSchema, ack.result);
+  }
+
+  /** Steer, collect for, or follow up a task (REQ-EV-0191): durable input the loop applies at its next boundary. */
+  async queueInput(sessionId: string, taskId: string, text: string, mode: "STEER" | "COLLECT" | "FOLLOW_UP" = "STEER", inputId = hex(freshId())): Promise<{ sequence: bigint; offset: bigint }> {
+    const payload = toBinary(QueueInputSchema, create(QueueInputSchema, { taskId: { value: unhex(taskId) }, inputId, mode, text }));
+    const ack = await this.command("QueueInput", payload, undefined, this.leases.get(sessionId));
+    const r = fromBinary(InputQueuedSchema, ack.result);
+    return { sequence: r.sequence, offset: r.offset };
+  }
+
+  async taskStatus(taskId: string): Promise<TaskStatus> {
+    const ack = await this.command("GetTaskStatus", toBinary(GetTaskStatusSchema, create(GetTaskStatusSchema, { taskId: { value: unhex(taskId) } })));
+    return fromBinary(TaskStatusSchema, ack.result);
   }
 
   subscribe(sessionId: string, afterOffset: bigint): void {

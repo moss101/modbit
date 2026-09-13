@@ -307,6 +307,48 @@ export declare type ListSessions = Message<"modbit.v1.ListSessions"> & {
 export declare const ListSessionsSchema: GenMessage<ListSessions>;
 
 /**
+ * EPR-018: whether this host confines review processes, and how.
+ *
+ * @generated from message modbit.v1.ProbeSandbox
+ */
+export declare type ProbeSandbox = Message<"modbit.v1.ProbeSandbox"> & {
+};
+
+/**
+ * Describes the message modbit.v1.ProbeSandbox.
+ * Use `create(ProbeSandboxSchema)` to create a new message.
+ */
+export declare const ProbeSandboxSchema: GenMessage<ProbeSandbox>;
+
+/**
+ * @generated from message modbit.v1.SandboxProbed
+ */
+export declare type SandboxProbed = Message<"modbit.v1.SandboxProbed"> & {
+  /**
+   * @generated from field: bool available = 1;
+   */
+  available: boolean;
+
+  /**
+   * seatbelt | seccomp-net | ""
+   *
+   * @generated from field: string kind = 2;
+   */
+  kind: string;
+
+  /**
+   * @generated from field: string detail = 3;
+   */
+  detail: string;
+};
+
+/**
+ * Describes the message modbit.v1.SandboxProbed.
+ * Use `create(SandboxProbedSchema)` to create a new message.
+ */
+export declare const SandboxProbedSchema: GenMessage<SandboxProbed>;
+
+/**
  * @generated from message modbit.v1.SessionInfo
  */
 export declare type SessionInfo = Message<"modbit.v1.SessionInfo"> & {
@@ -360,6 +402,13 @@ export declare type SessionInfo = Message<"modbit.v1.SessionInfo"> & {
    * @generated from field: int64 started_at_ms = 9;
    */
   startedAtMs: bigint;
+
+  /**
+   * EPR-018: a review environment ends its processes by it
+   *
+   * @generated from field: string cwd = 10;
+   */
+  cwd: string;
 };
 
 /**
@@ -489,6 +538,18 @@ export declare type ExecFrame = Message<"modbit.v1.ExecFrame"> & {
      */
     value: ExecError;
     case: "error";
+  } | {
+    /**
+     * @generated from field: modbit.v1.ProbeSandbox probe_sandbox = 13;
+     */
+    value: ProbeSandbox;
+    case: "probeSandbox";
+  } | {
+    /**
+     * @generated from field: modbit.v1.SandboxProbed sandbox_probed = 14;
+     */
+    value: SandboxProbed;
+    case: "sandboxProbed";
   } | { case: undefined; value?: undefined };
 };
 

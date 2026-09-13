@@ -1,0 +1,15 @@
+{
+ "task": "PX-005",
+ "requirement": "REQ-PX-005",
+ "qual": "QUAL-PX-005",
+ "tests": [
+  "qual_px_005_a_user_edit_lands_only_through_the_change_transaction",
+  "apps/desktop/e2e/user-patch.spec.ts"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "on a real worktree the review's edit lands as one FileChanged (provenance user_direct_edit, op user_direct_edit:edit, diff by reference, the command id where a tool call id would be) and one UserPatchApplied in one transaction; the workspace revision advances exactly once; GetCodeView bound to the old file revision reads stale; a replayed command id writes nothing; a stale workspace or file revision is refused STALE_REVISION with the file untouched; a symlink resolving to .env and .env itself are refused PROTECTED_PATH; an ambiguous target is NO_UNIQUE_MATCH. Desktop: the review's Edit panel applies at the revision shown, the file on disk is what the Core applied, the panel is empty afterwards and after a reload, a second window's edit makes the first window's stale edit fail STALE_REVISION, a client naming .env through the preload API is refused PROTECTED_PATH.",
+ "audit": "DOCUMENTED-ONLY before: the file service had the transaction, preconditions and path policy; no command let a person write through it; no user_direct_edit provenance anywhere.",
+ "limitations": "one text edit per command; the desktop offers the panel for candidate files while the Core's path policy gates any path named through the API; the CLI holds nothing between commands.",
+ "ci": ""
+}

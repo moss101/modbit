@@ -66,7 +66,7 @@ fn exit_for_state(state: &str) -> u8 {
     }
 }
 
-const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] <goal> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--skill <name>]... [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id>] [--apply --session <id>] | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | task work --task <id> | task agents --task <id> | capacity show | attention list --session <id> | plan show --task <id> | plan revise --session <id> --task <id> [--plan-json <file>] [note] | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | agent install <file> [--from claude] [--replace] | agent list | skill install <dir> [--expect-hash <hex>] [--replace] | skill remove <name> | skill list | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
+const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] [--command-id <hex>] <goal> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> [--intent <hash>] (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--skill <name>]... [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id>] [--apply --session <id>] | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | task work --task <id> | task agents --task <id> | capacity show | attention list --session <id> | plan show --task <id> | plan revise --session <id> --task <id> [--plan-json <file>] [note] | task patch --session <id> --task <id> --path <p> --revision <n> [--file-revision <sha>] (--old <text> | --old-file <f>) (--new <text> | --new-file <f>) | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | agent install <file> [--from claude] [--replace] | agent list | skill install <dir> [--expect-hash <hex>] [--replace] | skill remove <name> | skill list | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
 
 fn parse_id(hex: &str) -> Result<Id, String> {
     let bytes = decode_hex(hex)
@@ -420,12 +420,15 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
         ["task", "create", ..] => {
             let sid = parse_id(opt("--session").ok_or(USAGE)?)?;
             let workspace_root = opt("--workspace").unwrap_or_default().to_owned();
+            // PX-001 (docs/29): a caller that retries keeps its command id and
+            // gets the same task back, marked replayed — never a second task.
+            let command_id = opt("--command-id").map(parse_id).transpose()?;
             let mut goal_words = Vec::new();
             let mut skip = false;
             for w in words.iter().skip(2) {
                 if skip {
                     skip = false;
-                } else if *w == "--session" || *w == "--workspace" {
+                } else if *w == "--session" || *w == "--workspace" || *w == "--command-id" {
                     skip = true;
                 } else {
                     goal_words.push(*w);
@@ -436,24 +439,30 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 return Err(USAGE.into());
             }
             let lease = join_lease(&mut client, &sid).await?;
-            let ack = client
-                .command(envelope_fenced(
-                    "CreateTask",
-                    CreateTask {
-                        session_id: Some(sid),
-                        goal_text: goal,
-                        workspace_id: None,
-                        execution_profile: String::new(),
-                        origin: "cli".into(),
-                        workspace_root,
-                    }
-                    .encode_to_vec(),
-                    Some(lease),
-                ))
-                .await
-                .map_err(|e| e.to_string())?;
+            let mut env = envelope_fenced(
+                "CreateTask",
+                CreateTask {
+                    session_id: Some(sid),
+                    goal_text: goal,
+                    workspace_id: None,
+                    execution_profile: String::new(),
+                    origin: "cli".into(),
+                    workspace_root,
+                }
+                .encode_to_vec(),
+                Some(lease),
+            );
+            if let Some(id) = command_id {
+                env.command_id = Some(id);
+            }
+            let ack = client.command(env).await.map_err(|e| e.to_string())?;
+            let replayed = ack.status == modbit_protocol::v1::CommandStatus::Replayed as i32;
             let r: TaskCreated = Client::result(&ack).map_err(|e| e.to_string())?;
-            println!("task {}", encode_hex(&r.task_id.unwrap_or_default().value));
+            println!(
+                "task {}{}",
+                encode_hex(&r.task_id.unwrap_or_default().value),
+                if replayed { " replayed" } else { "" }
+            );
         }
         ["events", "tail", ..] => {
             let sid = parse_id(opt("--session").ok_or(USAGE)?)?;
@@ -617,6 +626,9 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 "deny" => false,
                 _ => return Err(USAGE.into()),
             };
+            // PX-001 (docs/29): the decision names the intent the person saw
+            // (`approval list` prints it); the Core refuses any other.
+            let intent_hash = opt("--intent").unwrap_or_default().to_owned();
             let lease = join_lease(&mut client, &sid).await?;
             let ack = client
                 .command(envelope_fenced(
@@ -625,6 +637,7 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                         approval_id: Some(approval_id),
                         approve,
                         reason,
+                        intent_hash,
                     }
                     .encode_to_vec(),
                     Some(lease),
@@ -1695,6 +1708,78 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
             let r: modbit_protocol::v1::PlanRevisedAck =
                 Client::result(&ack).map_err(|e| e.to_string())?;
             println!("plan v{} ref={} offset={}", r.version, r.plan_ref, r.offset);
+        }
+        // PX-005 (docs/20, docs/29): a one-hunk direct edit through the
+        // canonical ChangeTransaction. The shell holds no buffer: the text
+        // is an argument or a file, and what the Core refuses is not applied.
+        ["task", "patch", "--session", sid, "--task", tid, rest @ ..] => {
+            let mut it = rest.iter();
+            let (mut path, mut revision, mut file_revision) = (String::new(), 0u64, String::new());
+            let (mut old, mut new): (Option<String>, Option<String>) = (None, None);
+            while let Some(w) = it.next() {
+                let mut arg = |what: &str| -> Result<String, String> {
+                    it.next()
+                        .map(|s| (*s).to_owned())
+                        .ok_or_else(|| format!("{what} needs a value"))
+                };
+                match *w {
+                    "--path" => path = arg("--path")?,
+                    "--revision" => {
+                        revision = arg("--revision")?
+                            .parse()
+                            .map_err(|_| "--revision needs a number".to_owned())?;
+                    }
+                    "--file-revision" => file_revision = arg("--file-revision")?,
+                    "--old" => old = Some(arg("--old")?),
+                    "--new" => new = Some(arg("--new")?),
+                    "--old-file" => {
+                        old = Some(
+                            std::fs::read_to_string(arg("--old-file")?)
+                                .map_err(|e| e.to_string())?,
+                        );
+                    }
+                    "--new-file" => {
+                        new = Some(
+                            std::fs::read_to_string(arg("--new-file")?)
+                                .map_err(|e| e.to_string())?,
+                        );
+                    }
+                    other => return Err(format!("unknown argument `{other}`")),
+                }
+            }
+            let (Some(old), Some(new)) = (old, new) else {
+                return Err("task patch needs --old/--old-file and --new/--new-file".into());
+            };
+            let sid = parse_id(sid)?;
+            let generation = join_lease(&mut client, &sid).await?;
+            let ack = client
+                .command(envelope_fenced(
+                    "ApplyUserPatch",
+                    modbit_protocol::v1::ApplyUserPatch {
+                        task_id: Some(parse_id(tid)?),
+                        path,
+                        expected_workspace_revision: revision,
+                        old,
+                        new,
+                        expected_file_revision: file_revision,
+                        source: "cli".into(),
+                    }
+                    .encode_to_vec(),
+                    Some(generation),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let r: modbit_protocol::v1::UserPatchAppliedAck =
+                Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "patched workspace_revision={} (was {}) file_revision={} tier={} offset={}{}",
+                r.workspace_revision,
+                r.previous_revision,
+                r.file_revision,
+                r.match_tier,
+                r.offset,
+                if r.replayed { " (replayed)" } else { "" }
+            );
         }
         ["attention", "list", "--session", sid] => {
             let ack = client

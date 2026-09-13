@@ -1,0 +1,16 @@
+{
+ "task": "PX-002",
+ "requirement": "REQ-PX-002",
+ "qual": "QUAL-PX-002",
+ "tests": [
+  "packages/vscode-adapter/src/adapter.test.ts",
+  "packages/vscode-adapter/test/suite.ts"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "in the real VS Code 1.104.0 extension host the extension creates a task from the editor that runs to its protected effect on the real Core, forwards the built-in TypeScript service's diagnostic (an unsaved edit's batch dropped by file revision, the reverted document's recorded at the workspace revision), steers, decides the approval by the intent shown, opens and accepts the review with a commit, and the workspace holds exactly what the Core wrote; the adapter test restarts the editor mid-task, rejoins the same session from the persisted cursor with the task Waiting, refuses another intent INTENT_MISMATCH, approves, sees the RESTART attention item, resumes the suspended run, reviews and accepts; the static scan finds no forbidden code path.",
+ "audit": "DOCUMENTED-ONLY before: an M0 placeholder package.",
+ "limitations": "live-provider run waits for credentials (DR-M6-001); review as a read-only document with accept/return; diagnostics forwarded on command; test:host downloads VS Code per CI run.",
+ "decision_record": "DR-M6-001",
+ "ci": ""
+}

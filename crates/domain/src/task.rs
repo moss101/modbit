@@ -45,6 +45,9 @@ pub enum TaskOrigin {
     ForgeWebhook,
     /// Forked from another task at a checkpoint (REQ-EV-0077/0122).
     Fork,
+    /// The Isolated Non-Committing Reviewer's task (EPR-018, docs/27 §9.5):
+    /// a disposable review environment on a candidate revision.
+    Review,
     /// A subagent's task, admitted by a parent agent (M6.3, docs/14
     /// "Transactional subagent admission").
     Subagent,
@@ -324,6 +327,72 @@ pub enum TaskEvent {
         /// `user_review` | `cli`.
         provenance: String,
     },
+    /// `UserPatchApplied` (PX-005, docs/20 "Constrained inline patch",
+    /// docs/29): a person applied a small direct edit through the canonical
+    /// ChangeTransaction — revision precondition checked, path policy applied
+    /// after symlink resolution, one `FileChanged` on the workspace log, one
+    /// revision advance. No state change; thin clients consume it by cursor
+    /// and mark code references bound to `before_hash` stale.
+    UserPatchApplied {
+        /// Root-relative path.
+        path: String,
+        /// Content hash before.
+        before_hash: String,
+        /// Content hash after (the new file revision).
+        after_hash: String,
+        /// Workspace revision after the change.
+        workspace_revision: u64,
+        /// Workspace revision before it (the precondition the client gave).
+        previous_revision: u64,
+        /// Always `user_direct_edit`.
+        provenance: String,
+        /// `review` | `cli` | `ide_adapter`.
+        source: String,
+        /// Ladder tier the edit target was located at (`exact` |
+        /// `whitespace_remap`).
+        match_tier: String,
+        /// The command that made it (hex), the idempotency key.
+        command_id: String,
+    },
+    /// `ExternalDiagnosticsRecorded` (PX-004, docs/29): an adapter's
+    /// language-service diagnostics, normalized with provenance
+    /// `external_ide` and bound to the workspace revision and the per-file
+    /// revisions they were computed on; the batch is an object by hash.
+    /// Context and verification-plan input only — never a verification
+    /// result. No state change.
+    ExternalDiagnosticsRecorded {
+        /// Language service / adapter identity.
+        source: String,
+        /// Its version.
+        source_version: String,
+        /// Workspace revision the batch is bound to.
+        workspace_revision: u64,
+        /// Object hash of the normalized batch.
+        batch_ref: String,
+        /// Diagnostics recorded.
+        recorded: u32,
+        /// Diagnostics dropped because their file moved on.
+        discarded: u32,
+        /// Root-relative paths with recorded diagnostics.
+        paths: Vec<String>,
+        /// Always `external_ide`.
+        provenance: String,
+    },
+    /// `ExternalDiagnosticsRejected` (PX-004): a batch refused before
+    /// anything of it was persisted — `STALE_REVISION` (another workspace
+    /// revision) or `MALFORMED`. No state change.
+    ExternalDiagnosticsRejected {
+        /// Language service / adapter identity.
+        source: String,
+        /// Its version.
+        source_version: String,
+        /// Workspace revision the batch named.
+        workspace_revision: u64,
+        /// `STALE_REVISION` | `MALFORMED`.
+        code: String,
+        /// Why.
+        detail: String,
+    },
     /// `PlanRevised` with a scope delta; no state change.
     PlanRevised {
         /// Object hash of the plan JSON.
@@ -547,6 +616,97 @@ pub enum TaskEvent {
         unresolved_risks: Vec<String>,
         /// The child's branch, for the parent's merge.
         branch: String,
+    },
+    /// `ReviewEnvironmentAdmitted` (EPR-018, docs/27 §9.5): a disposable
+    /// review environment stands for this candidate task — a scratch
+    /// worktree at the candidate revision, its own review task under the
+    /// `review_isolated` profile, a lease confined to the scratch tree, the
+    /// host's real sandbox. On the candidate task; no state change.
+    ReviewEnvironmentAdmitted {
+        /// Environment id.
+        env_id: String,
+        /// The reviewer's task.
+        review_task_id: crate::TaskId,
+        /// The scratch worktree.
+        worktree: String,
+        /// The branch the scratch worktree is on.
+        branch: String,
+        /// The candidate revision it holds.
+        revision: String,
+        /// The confined lease.
+        lease_id: crate::CapabilityLeaseId,
+        /// `seatbelt` | `seccomp-net`.
+        sandbox: String,
+    },
+    /// `ReviewEnvironmentBound` (EPR-018): on the review task's own log,
+    /// the environment it runs in and the candidate it reviews. No state
+    /// change.
+    ReviewEnvironmentBound {
+        /// Environment id.
+        env_id: String,
+        /// The candidate task.
+        candidate_task_id: crate::TaskId,
+        /// The scratch worktree.
+        worktree: String,
+        /// The candidate revision it holds.
+        revision: String,
+    },
+    /// `ReviewEnvironmentDisposed` (EPR-018): the environment's processes
+    /// were ended, its lease revoked and its worktree removed. No state
+    /// change.
+    ReviewEnvironmentDisposed {
+        /// Environment id.
+        env_id: String,
+        /// Processes ended.
+        killed: u32,
+        /// Whether the worktree is gone.
+        worktree_removed: bool,
+        /// Why.
+        reason: String,
+    },
+    /// `ReviewerResultRecorded` (REQ-EPR-007, docs/27 §9.5): the Isolated
+    /// Non-Committing Reviewer's structured result for the candidate at a
+    /// revision — verdict, confidence, findings (each validated against the
+    /// tree at that revision, or marked unsupported), unresolved questions —
+    /// untrusted until validated, stale once the candidate moves. On the
+    /// candidate task; no state change.
+    ReviewerResultRecorded {
+        /// The review task.
+        review_task_id: crate::TaskId,
+        /// The review environment.
+        env_id: String,
+        /// The revision reviewed.
+        candidate_revision: u64,
+        /// `PASS` | `REVISE` | `BLOCK` | `UNCERTAIN`.
+        verdict: String,
+        /// 0..=100.
+        confidence: u32,
+        /// Object hash of the `ReviewerResult`.
+        result_ref: String,
+        /// Findings that resolved against the tree.
+        validated_findings: u32,
+        /// Findings that did not (kept as unresolved assertions).
+        unsupported_findings: u32,
+        /// Highest validated severity (`CRITICAL` | `HIGH` | `MEDIUM` | `LOW` | `NONE`).
+        highest_severity: String,
+        /// One line.
+        summary: String,
+    },
+    /// `RevisionActivated` (REQ-EPR-007): a bounded revision of the
+    /// candidate after a `REVISE` verdict — the task returned to work with
+    /// the validated findings as its typed input, a new attempt on the
+    /// reviser (or solver) binding. No state change (the transitions follow).
+    RevisionActivated {
+        /// Ordinal of this revision, 1-based.
+        revision: u32,
+        /// The plan's bound.
+        max_revisions: u32,
+        /// The reviewer result the revision answers.
+        result_ref: String,
+        /// Binding the revision runs on.
+        endpoint: String,
+        /// Model.
+        model: String,
     },
     /// `SubagentProtectedEffect` (REQ-EV-0046, docs/14 "Agent-to-agent
     /// communication"): a background child asked for an effect above its
@@ -1122,6 +1282,9 @@ impl TaskEvent {
             Self::PlanRecorded { .. } => "PlanRecorded",
             Self::PlanRevised { .. } => "PlanRevised",
             Self::PlanAnnotated { .. } => "PlanAnnotated",
+            Self::UserPatchApplied { .. } => "UserPatchApplied",
+            Self::ExternalDiagnosticsRecorded { .. } => "ExternalDiagnosticsRecorded",
+            Self::ExternalDiagnosticsRejected { .. } => "ExternalDiagnosticsRejected",
             Self::UnsupportedLanguageOptInRecorded { .. } => "UnsupportedLanguageOptInRecorded",
             Self::ContextDocumentAttached { .. } => "ContextDocumentAttached",
             Self::SelectionRecorded { .. } => "SelectionRecorded",
@@ -1140,6 +1303,11 @@ impl TaskEvent {
             Self::SubagentCapsuleBound { .. } => "SubagentCapsuleBound",
             Self::SubagentResultRecorded { .. } => "SubagentResultRecorded",
             Self::SubagentProtectedEffect { .. } => "SubagentProtectedEffect",
+            Self::ReviewEnvironmentAdmitted { .. } => "ReviewEnvironmentAdmitted",
+            Self::ReviewEnvironmentBound { .. } => "ReviewEnvironmentBound",
+            Self::ReviewerResultRecorded { .. } => "ReviewerResultRecorded",
+            Self::RevisionActivated { .. } => "RevisionActivated",
+            Self::ReviewEnvironmentDisposed { .. } => "ReviewEnvironmentDisposed",
             Self::WorkNodesChanged { .. } => "WorkNodesChanged",
             Self::CapacityTicketGranted { .. } => "CapacityTicketGranted",
             Self::CapacityTicketReleased { .. } => "CapacityTicketReleased",
@@ -1262,6 +1430,9 @@ impl Task {
             | TaskEvent::PlanRecorded { .. }
             | TaskEvent::PlanRevised { .. }
             | TaskEvent::PlanAnnotated { .. }
+            | TaskEvent::UserPatchApplied { .. }
+            | TaskEvent::ExternalDiagnosticsRecorded { .. }
+            | TaskEvent::ExternalDiagnosticsRejected { .. }
             | TaskEvent::SelfReviewRecorded { .. }
             | TaskEvent::ToolsActivated { .. }
             | TaskEvent::ProgramStarted { .. }
@@ -1282,6 +1453,11 @@ impl Task {
             | TaskEvent::SubagentCapsuleBound { .. }
             | TaskEvent::SubagentResultRecorded { .. }
             | TaskEvent::SubagentProtectedEffect { .. }
+            | TaskEvent::ReviewEnvironmentAdmitted { .. }
+            | TaskEvent::ReviewEnvironmentBound { .. }
+            | TaskEvent::ReviewerResultRecorded { .. }
+            | TaskEvent::RevisionActivated { .. }
+            | TaskEvent::ReviewEnvironmentDisposed { .. }
             | TaskEvent::ContextEpochOpened { .. }
             | TaskEvent::CompactionStarted { .. }
             | TaskEvent::CompactionCommitted { .. }

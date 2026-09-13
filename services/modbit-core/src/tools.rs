@@ -644,6 +644,12 @@ impl ToolHost {
                 graph: self.graph(r).await?,
                 knowledge: self.knowledge(r).await,
                 evidence: task_evidence(store, task_id).await,
+                external: {
+                    // Lock order: workspace, then store (as every writer does).
+                    let svc = ws.lock().await;
+                    let st = store.lock().await;
+                    crate::external_diagnostics::locations(&st, task_id, &svc)
+                },
                 selection: selection_of(store, task_id).await,
                 documents: attached_documents(store, task_id).await,
                 ledger: self.ledger(task_id).await,
@@ -1047,6 +1053,7 @@ impl ToolHost {
                 &changes,
                 &pre_bytes,
                 pre_revision,
+                "",
                 "",
             );
             let _ = root;
@@ -1625,6 +1632,8 @@ pub(crate) fn workspace_aggregate_id(root: &str) -> [u8; 16] {
 
 /// Build `FileChanged` events for the change records of one tool call:
 /// before/after content and a unified diff stored by reference, never bytes.
+/// `provenance` is empty for the tool host and `user_direct_edit` for a
+/// person's constrained inline patch (PX-005).
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn file_changed_events(
     objects: &ObjectStore,
@@ -1635,6 +1644,7 @@ pub(crate) fn file_changed_events(
     pre_bytes: &HashMap<String, Option<Vec<u8>>>,
     pre_revision: u64,
     op_prefix: &str,
+    provenance: &str,
 ) -> Vec<NewEvent> {
     use modbit_domain::workspace::WorkspaceEvent;
     let mut previous = pre_revision;
@@ -1676,6 +1686,7 @@ pub(crate) fn file_changed_events(
                 previous_revision: previous,
                 language: state_of(&c.path).language.clone(),
                 unsupported_language: state_of(&c.path).needs_opt_in,
+                provenance: provenance.to_owned(),
             },
             Actor::Core("tool-host".into()),
         ));
@@ -1738,6 +1749,9 @@ struct IndexPort {
     knowledge: Arc<Mutex<Option<modbit_retrieval::knowledge::KnowledgeArtifact>>>,
     /// Verification checks of the task's runs as (check id, status).
     evidence: Vec<(String, String)>,
+    /// An editor's diagnostics at the current revision (PX-004): linkage
+    /// with provenance `external_ide`, never evidence.
+    external: Vec<crate::external_diagnostics::Location>,
     /// What the user has selected (REQ-EV-0141 / 0160): retrieval prefers it.
     selection: Selection,
     /// Approved engineering documents attached to the task (REQ-EV-0161).
@@ -2121,6 +2135,11 @@ impl modbit_tools::SearchPort for IndexPort {
                     );
                 }
                 let diagnostics = failing_check_locations(&self.evidence, &symbols);
+                let external: Vec<(String, u32)> = self
+                    .external
+                    .iter()
+                    .map(|l| (l.path.clone(), l.line))
+                    .collect();
                 let plan = modbit_retrieval::planner::retrieve(
                     &modbit_retrieval::Sources {
                         index: &idx,
@@ -2136,6 +2155,7 @@ impl modbit_tools::SearchPort for IndexPort {
                         min_paths: usize::try_from(args["min_paths"].as_u64().unwrap_or(0))
                             .unwrap_or(0),
                         diagnostics,
+                        external_diagnostics: external,
                         max_level: None,
                     },
                 );
@@ -2313,6 +2333,11 @@ impl modbit_tools::SearchPort for IndexPort {
                     );
                 }
                 let diagnostics = failing_check_locations(&self.evidence, &symbols);
+                let external: Vec<(String, u32)> = self
+                    .external
+                    .iter()
+                    .map(|l| (l.path.clone(), l.line))
+                    .collect();
                 let plan = modbit_retrieval::planner::retrieve(
                     &modbit_retrieval::Sources {
                         index: &idx,
@@ -2327,6 +2352,7 @@ impl modbit_tools::SearchPort for IndexPort {
                         max_hits: req.max_hits,
                         min_paths: 0,
                         diagnostics,
+                        external_diagnostics: external,
                         max_level: None,
                     },
                 );

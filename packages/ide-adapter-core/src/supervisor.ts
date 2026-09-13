@@ -1,13 +1,13 @@
 /**
- * Spawns and supervises the local `modbit-core` process for this desktop
- * profile (docs/30: main is the only process permitted to connect; docs/33:
- * one Core per profile). On Core exit it respawns with backoff and reports
+ * Spawns and supervises the local `modbit-core` process for a profile
+ * (docs/30: the host process is the only one permitted to connect; docs/33:
+ * one Core per profile). Shared by Electron main and IDE adapters. On Core exit it respawns with backoff and reports
  * `restarting` / `connected` so the renderer can show the PX-023 degraded and
  * recovery states instead of inventing progress.
  */
 import { spawn, type ChildProcess } from "node:child_process";
 import { createInterface } from "node:readline";
-import { ClientKind, CoreClient, parseReadyLine, type ReadyLine } from "./protocol-client.js";
+import { ClientKind, CoreClient, parseReadyLine, type ReadyLine } from "./client.ts";
 
 export type CoreStatus =
   | { state: "starting"; restarts: number }
@@ -24,19 +24,33 @@ export interface SupervisorEvents {
 export class CoreSupervisor {
   private child: ChildProcess | null = null;
   private client: CoreClient | null = null;
+  private ready: ReadyLine | null = null;
   private restarts = 0;
   private stopped = false;
   status: CoreStatus = { state: "starting", restarts: 0 };
 
-  constructor(
-    private readonly binary: string,
-    private readonly dataDir: string,
-    private readonly events: SupervisorEvents,
-    private readonly build: string,
-  ) {}
+  private readonly binary: string;
+  private readonly dataDir: string;
+  private readonly events: SupervisorEvents;
+  private readonly build: string;
+  /** How this host presents itself to the Core (docs/30 client kinds). */
+  private readonly kind: ClientKind;
+
+  constructor(binary: string, dataDir: string, events: SupervisorEvents, build: string, kind: ClientKind = ClientKind.DESKTOP) {
+    this.binary = binary;
+    this.dataDir = dataDir;
+    this.events = events;
+    this.build = build;
+    this.kind = kind;
+  }
 
   current(): CoreClient | null {
     return this.client;
+  }
+
+  /** The ready line of the Core in service (for a second connection of this host), or null before one is. */
+  readyLine(): ReadyLine | null {
+    return this.ready;
   }
 
   async start(): Promise<void> {
@@ -87,8 +101,9 @@ export class CoreSupervisor {
       return;
     }
     try {
-      const client = await CoreClient.connect(ready, ClientKind.DESKTOP, this.build);
+      const client = await CoreClient.connect(ready, this.kind, this.build);
       this.client = client;
+      this.ready = ready;
       client.onClose = (reason) => {
         if (this.client === client) this.client = null;
         // An INVALID_CURSOR close means our subscription cursor was beyond the
@@ -166,6 +181,7 @@ export class CoreSupervisor {
     this.restartTimer = null;
     this.client?.close();
     this.client = null;
+    this.ready = null;
     if (this.child) {
       const child = this.child;
       this.child = null;

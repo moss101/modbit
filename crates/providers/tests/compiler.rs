@@ -158,6 +158,7 @@ fn input<'a>(
         risk_version: "risk-1".into(),
         expected_input_tokens: 40_000,
         current_binding: None,
+        include_reviewer: false,
     }
 }
 

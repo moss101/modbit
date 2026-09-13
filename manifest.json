@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 1048,
-    "docs_bytes": 1119957
+    "root_and_tooling": 1061,
+    "docs_bytes": 1138403
   },
   "sections": [
     {
@@ -194,8 +194,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Canonical Tool and Capability Inventory",
-      "bytes": 5875,
-      "sha256": "311157652d209676ade109e0b5de6c9b682bd22ea9a2c190905bd3929c00f6ae"
+      "bytes": 6011,
+      "sha256": "0415cac6a1bb10a1aae38cc41e200e217861965902f30ed7edb75f408b04e59a"
     },
     {
       "path": "docs/18_CONTEXT_RETRIEVAL_AND_ENGINEERING_KNOWLEDGE.md",
@@ -221,8 +221,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Workspace, Git, Worktrees, Diagnostics, and Trusted Code Surface",
-      "bytes": 4238,
-      "sha256": "71e5a6df1723eb19bfa3816eeb1bee5a5b73f3250ad53a2055fb65a1c79e6129"
+      "bytes": 5632,
+      "sha256": "12981015ae69e28a83f8c8ea04330a16e3c6d9c0ab70f7cb8af6fd581754b0d7"
     },
     {
       "path": "docs/21_TERMINAL_EXECUTION_AND_SANDBOX.md",
@@ -230,8 +230,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Terminal, Execution Router, and Sandbox Architecture",
-      "bytes": 6256,
-      "sha256": "979beee701bb92e83f7fe8061360965072188bb11d5a7129c2aed08fb40a2f63"
+      "bytes": 7146,
+      "sha256": "4cb83c68674835c87de5bc685f9c063757cb87845e0487251c00311cfdb60cc7"
     },
     {
       "path": "docs/22_BROWSER_AND_COMPUTER_USE.md",
@@ -284,8 +284,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Execution policy router and verified orchestration",
-      "bytes": 62043,
-      "sha256": "90252eb8df97c43a13af66fff39dc9fb90e8a98531329ec8eb5e2ac4af3d1d17"
+      "bytes": 67229,
+      "sha256": "3662f2a9a3704a61f8a1e9c259341ad02eb8f2721ebd885364c0b1d49eaf11be"
     },
     {
       "path": "docs/28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
@@ -302,8 +302,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Client surfaces and source-control integration",
-      "bytes": 7279,
-      "sha256": "4e378b45620945efedd7b8db3546d15ad72c247a894cb80cd650fddd70b5dae8"
+      "bytes": 14318,
+      "sha256": "2519a5bd2d4f643c180fd35941ae522052c6002631031199690b4856399e935b"
     },
     {
       "path": "docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md",
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 19267,
-      "sha256": "793654d10a70b66b16a395629e4aeefee3b5e4fb65e0df6fc963cbf96a1b2600"
+      "bytes": 22501,
+      "sha256": "3904c49a6d27a650fc4f5d53d17517d1f41fe730bb45c4fef41a79ba455b061e"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -329,8 +329,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Desktop Frontend Implementation",
-      "bytes": 8773,
-      "sha256": "a0604363a966e9b50c16d94b4d778ad0a2105828c0bc6b231a66e5caf48b4a23"
+      "bytes": 9340,
+      "sha256": "90dd9253b4ca3a7082d73feab716693fefcefd4645fa3c9494bcea8ca3b8609f"
     },
     {
       "path": "docs/33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md",
@@ -937,9 +937,14 @@
       "sha256": "496c9d80ff66916b11aa66e2fa3368e18a40ae472e5cd488699cd9b589cbd1de"
     },
     {
+      "path": "docs/decisions/DR-M6-001-vscode-adapter-live-model-half.md",
+      "bytes": 3909,
+      "sha256": "4c8a9bcf3c18e23bbcc8d08c0e510786bf517102c9965ad56b331359fdfcd88c"
+    },
+    {
       "path": "docs/decisions/README.md",
-      "bytes": 3214,
-      "sha256": "79a02d28bf269bb9555870f1a5c2b252b2a1e54ed5598fa16297205e3f07f44d"
+      "bytes": 3533,
+      "sha256": "dc31f0823296f05b9745b86d09b7cdf72e342734e48dafe0f348eb86c8a915f9"
     },
     {
       "path": "evidence/dossier-epr-v1.1/baseline.json",
@@ -5347,6 +5352,26 @@
       "sha256": "b1cc522f037f2027058b574b63c7d8850743f09d35598a95af92a761965bd37b"
     },
     {
+      "path": "evidence/m6/EPR-007/TASK_CARD.md",
+      "bytes": 4196,
+      "sha256": "88e7f9962fcbc266f4ed5a8d6580d78af32cad998d30fdce880c893eac4ace4d"
+    },
+    {
+      "path": "evidence/m6/EPR-007/evidence.json",
+      "bytes": 2295,
+      "sha256": "d3cec8977687c324f75801accbe737c3aa33ef3e83f71d0875b04bdd5bd96218"
+    },
+    {
+      "path": "evidence/m6/EPR-018/TASK_CARD.md",
+      "bytes": 3866,
+      "sha256": "17388937ea96e4278741045915d342618a4ab181c12fdc61060c86c485c35bce"
+    },
+    {
+      "path": "evidence/m6/EPR-018/evidence.json",
+      "bytes": 1887,
+      "sha256": "c86f2ad6cdcbe2ac2b9e4335206942f2e660b3c2f0dfb5233bb891d59e6f2bd4"
+    },
+    {
       "path": "evidence/m6/IMP-EV-0006/TASK_CARD.md",
       "bytes": 1837,
       "sha256": "0f31201074af753dad230b650e78cfbf099a8c456a0d15e034c796de7ebda591"
@@ -6050,6 +6075,46 @@
       "path": "evidence/m6/M6.7/evidence.json",
       "bytes": 1592,
       "sha256": "a8f8a01f7f3c0b4c9e43ad01524d22093fc6dd74720ed75be553971224a2d4ab"
+    },
+    {
+      "path": "evidence/m6/PX-001/TASK_CARD.md",
+      "bytes": 4694,
+      "sha256": "bfa4b4f08306ba8d7db51864f659a849749c4cfe65f50e5c1ff7fc2163bdf887"
+    },
+    {
+      "path": "evidence/m6/PX-001/evidence.json",
+      "bytes": 1305,
+      "sha256": "89c9ffdcbd4a2316e9fb1ba8c5157d206fc2d5a98a8899f7e6d05e360f63014e"
+    },
+    {
+      "path": "evidence/m6/PX-002/TASK_CARD.md",
+      "bytes": 4510,
+      "sha256": "a6847a9fa5e03af139f74a8b93f63b09c3a99ef9c01555582bb8f4933029f12f"
+    },
+    {
+      "path": "evidence/m6/PX-002/evidence.json",
+      "bytes": 1287,
+      "sha256": "76ae6f72f889f232b016bda8e6de882cb583fbf1c5c6b15bc52befb5b38d5ad0"
+    },
+    {
+      "path": "evidence/m6/PX-004/TASK_CARD.md",
+      "bytes": 4413,
+      "sha256": "494b59289328d7a534a79715ca7af43f3bb57860fd0467d7c499f22f820d9c9c"
+    },
+    {
+      "path": "evidence/m6/PX-004/evidence.json",
+      "bytes": 1263,
+      "sha256": "b2f39762928516bbc1a1444769523e4e42585d655dcf479230ce085f8e3d84e1"
+    },
+    {
+      "path": "evidence/m6/PX-005/TASK_CARD.md",
+      "bytes": 4164,
+      "sha256": "ce888ff9f78b99f617324a26617a2288000e86e1521dae64298c0019d8a62143"
+    },
+    {
+      "path": "evidence/m6/PX-005/evidence.json",
+      "bytes": 1528,
+      "sha256": "bbf85653ed7a8b8ddea684a9e5b59e00c2fa2c1b4a6f7007898da572f401b5e2"
     },
     {
       "path": "graph/PROJECT_GRAPH.md",

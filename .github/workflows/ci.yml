@@ -111,7 +111,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Build the real Core
-        run: cargo build --locked -p modbit-core -p modbit-execd
+        run: cargo build --locked -p modbit-core -p modbit-execd -p modbit-cli
       - name: Build desktop bundles
         run: pnpm --filter @modbit/desktop build
       - name: Warm the Electron binary (a cold download inside the test budget stalls macOS runners)
@@ -122,6 +122,24 @@ jobs:
             xvfb-run -a pnpm --filter @modbit/desktop exec electron --version || true
           else
             pnpm --filter @modbit/desktop exec electron --version || true
+          fi
+      - name: Thin-client conformance suite on the real Core (PX-001)
+        env:
+          MODBIT_CORE_BIN: ${{ github.workspace }}/target/debug/modbit-core${{ runner.os == 'Windows' && '.exe' || '' }}
+        run: pnpm --filter @modbit/ide-adapter-core conformance
+      - name: VS Code adapter against the real Core — restart and resume by cursor (PX-002)
+        env:
+          MODBIT_CORE_BIN: ${{ github.workspace }}/target/debug/modbit-core${{ runner.os == 'Windows' && '.exe' || '' }}
+        run: pnpm --filter @modbit/vscode-adapter test
+      - name: VS Code adapter in the real extension host (PX-002; Linux under xvfb)
+        shell: bash
+        env:
+          MODBIT_CORE_BIN: ${{ github.workspace }}/target/debug/modbit-core${{ runner.os == 'Windows' && '.exe' || '' }}
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            xvfb-run -a pnpm --filter @modbit/vscode-adapter test:host
+          else
+            pnpm --filter @modbit/vscode-adapter test:host
           fi
       - name: Playwright drives the Electron app (Linux under xvfb)
         shell: bash

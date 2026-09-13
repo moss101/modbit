@@ -55,11 +55,15 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::RoutingPlanView 
         let attempts = store
             .routing_attempts(&run.run_id, &p.plan_id)
             .unwrap_or_default();
-        for s in p
-            .slots
-            .iter()
-            .filter(|s| attempts.iter().any(|a| a.slot_id == s.slot_id))
-        {
+        // A reviewer or reviser leg runs on its own task (REQ-EPR-007): its
+        // activation on this run is what ran here.
+        let activations = store
+            .routing_activations(&run.run_id, &p.plan_id)
+            .unwrap_or_default();
+        for s in p.slots.iter().filter(|s| {
+            attempts.iter().any(|a| a.slot_id == s.slot_id)
+                || (s.role != "solver" && activations.iter().any(|a| a.slot_id == s.slot_id))
+        }) {
             let leg = (
                 s.role.clone(),
                 s.trigger.clone(),
@@ -165,10 +169,18 @@ fn admission_view(
 /// the roles joined.
 fn path_label(ran: &[(String, String, String)]) -> String {
     let roles: Vec<&str> = ran.iter().map(|(r, _, _)| r.as_str()).collect();
-    match roles.as_slice() {
-        [] => String::new(),
-        ["solver"] => "DIRECT".to_owned(),
-        ["solver", "solver"] if ran[1].1 == "QUALITY_REJECTED" => "CASCADE".to_owned(),
+    // REQ-EPR-007: an executed review or revision leg makes the path a
+    // CRITIQUE, beside the escalation label when both ran.
+    let critique = roles.iter().any(|r| *r == "reviewer" || *r == "reviser");
+    let solvers: Vec<&(String, String, String)> =
+        ran.iter().filter(|(r, _, _)| r == "solver").collect();
+    let cascade = solvers.len() >= 2 && solvers[1].1 == "QUALITY_REJECTED";
+    match (roles.as_slice(), critique, cascade) {
+        ([], _, _) => String::new(),
+        (_, true, true) => "CASCADE+CRITIQUE".to_owned(),
+        (_, true, false) => "CRITIQUE".to_owned(),
+        (["solver"], false, false) => "DIRECT".to_owned(),
+        (_, false, true) if roles.len() == 2 => "CASCADE".to_owned(),
         _ => roles.join("+").to_uppercase(),
     }
 }
@@ -697,6 +709,9 @@ pub(crate) fn compile_for_run(
         verification_reserve: money(cap / 10),
         assurance_available,
         manual_pin: pin,
+        // REQ-EPR-007: the reviewer slot rides along whenever the policy can
+        // require independent review and assurance can trigger it.
+        include_reviewer: assurance_available,
         harness: crate::baseline::build_digest(),
         policy_version: core.gateway.policy().version(),
         // The profiler is in shadow (REQ-EPR-003): it informs nothing yet, and

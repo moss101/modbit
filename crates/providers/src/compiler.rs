@@ -99,6 +99,12 @@ pub struct CompileInput<'a> {
     /// unless a cheaper feasible one saves at least the thresholds' switch
     /// cost. `None` at a fresh start (nothing to switch from).
     pub current_binding: Option<(String, String)>,
+    /// REQ-EPR-007: whether the assurance policy can require independent
+    /// review of this request, so every plan carries a prevalidated
+    /// reviewer slot (the cheapest eligible `reviewer`-role binding, a
+    /// different model than the opener when one exists) with
+    /// `Trigger::ReviewRequired` — activated only when the gate says so.
+    pub include_reviewer: bool,
 }
 
 /// One candidate the compiler considered, with everything a reader needs to
@@ -309,6 +315,7 @@ pub fn compile(input: &CompileInput<'_>) -> Result<Compiled, CompileRefused> {
     let assurance = input.assurance_available.to_string();
     let pin = format!("{:?}", input.manual_pin);
     let expected = input.expected_input_tokens.to_string();
+    let reviewer_flag = input.include_reviewer.to_string();
     let mut parts: Vec<&str> = vec![
         &registry.document_digest,
         &input.evidence.stats_version,
@@ -322,6 +329,7 @@ pub fn compile(input: &CompileInput<'_>) -> Result<Compiled, CompileRefused> {
         &pin,
         &input.harness,
         &expected,
+        &reviewer_flag,
     ];
     // Only a re-evaluation carries a binding in force; a fresh compile
     // digests exactly as before the field existed.
@@ -478,6 +486,50 @@ pub fn compile(input: &CompileInput<'_>) -> Result<Compiled, CompileRefused> {
                 ));
             }
         }
+        // REQ-EPR-007: the reviewer slot every plan carries when review can
+        // be required — prevalidated here, activated only by the gate.
+        let reviewer: Option<Slot> = if input.include_reviewer {
+            let mut best: Option<(u64, &RegistryEntry)> = None;
+            for e in &registry.document.entries {
+                if binding_exclusion(e, input, "reviewer").is_some() {
+                    continue;
+                }
+                let cost = worst_case_minor(e, input.expected_input_tokens, output_tokens(e))?;
+                let same_as_opener = e.endpoint == opener.endpoint && e.model == opener.model;
+                // Prefer a different model than the opener; among those the
+                // cheapest; the opener's own model only when nothing else
+                // holds the role.
+                let rank = (same_as_opener, cost);
+                if best.is_none_or(|(c, b)| {
+                    let b_same = b.endpoint == opener.endpoint && b.model == opener.model;
+                    rank < (b_same, c)
+                }) {
+                    best = Some((cost, e));
+                }
+            }
+            best.map(|(cost, e)| {
+                let mut s = make_slot(
+                    "reviewer",
+                    e,
+                    Some("initial"),
+                    Trigger::ReviewRequired,
+                    cost,
+                );
+                s.role = "reviewer".into();
+                s
+            })
+        } else {
+            None
+        };
+        let shapes: Vec<(String, Vec<Slot>, Option<&RegistryEntry>)> = shapes
+            .into_iter()
+            .map(|(label, mut slots, continuation)| {
+                if let Some(r) = &reviewer {
+                    slots.push(r.clone());
+                }
+                (label, slots, continuation)
+            })
+            .collect();
         for (label, slots, continuation) in shapes {
             let reserved: u64 = slots.iter().map(|s| s.budget.reserved.minor_units).sum();
             let worst_case = reserved
@@ -500,7 +552,11 @@ pub fn compile(input: &CompileInput<'_>) -> Result<Compiled, CompileRefused> {
                 input_digest: input_digest.clone(),
                 slots,
                 max_total_attempts: 4,
-                max_revisions: if continuation.is_some() { 1 } else { 0 },
+                max_revisions: if continuation.is_some() || reviewer.is_some() {
+                    1
+                } else {
+                    0
+                },
                 verification_reserve: input.verification_reserve.clone(),
                 total_budget: money(worst_case.max(zero.minor_units)),
                 content_digest: String::new(),
@@ -539,8 +595,14 @@ pub fn compile(input: &CompileInput<'_>) -> Result<Compiled, CompileRefused> {
             // not. With no evidence the continuation is expected in full.
             let expected = {
                 let first = plan.slots[0].budget.reserved.minor_units;
+                // The reviewer's reserve is in the worst case (the cap is
+                // checked against it) but not in the expected cost: it is
+                // paid only when the gate requires a review, which no
+                // statistic here predicts, and it must not tilt the choice
+                // of opener (REQ-EPR-007).
                 let rest: u64 = plan.slots[1..]
                     .iter()
+                    .filter(|s| s.role == "solver")
                     .map(|s| s.budget.reserved.minor_units)
                     .sum();
                 let p_first = input

@@ -8,8 +8,7 @@
 import { app, BrowserWindow, ipcMain, safeStorage, session, type IpcMainInvokeEvent } from "electron";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { CoreSupervisor, type CoreStatus } from "./core-supervisor.js";
-import { freshId, type CoreClient } from "./protocol-client.js";
+import { CoreSupervisor, freshId, type CoreClient, type CoreStatus } from "@modbit/ide-adapter-core";
 import { serializeEvent, type WireEvent } from "./events.js";
 
 const dataDir = process.env.MODBIT_DATA_DIR ?? join(app.getPath("userData"), "modbit");
@@ -96,7 +95,7 @@ const supervisor = new CoreSupervisor(
       // and tell the renderer exactly what the Core recovered (docs/39 PX-023).
       const local = loadLocalState();
       void handProviderToCore(c);
-      if (local.sessionId) void c.acquireSessionLease(local.sessionId, `desktop ${app.getVersion()}`).catch(() => {});
+      if (local.sessionId) void c.joinSessionLease(local.sessionId, `desktop ${app.getVersion()}`).catch(() => {});
       if (subscription) c.subscribe(subscription.sessionId, subscription.cursor);
       void c
         .getRecoveryReport()
@@ -279,14 +278,14 @@ ipcMain.handle("task:create", async (_e: IpcMainInvokeEvent, sessionId: unknown,
   // The renderer supplies a stable command id so a retry after a crash replays instead of duplicating.
   const cid = typeof commandIdHex === "string" && HEX32.test(commandIdHex) ? new Uint8Array(Buffer.from(commandIdHex, "hex")) : freshId();
   const c = requireClient();
-  if (c.leaseGeneration(sid) === undefined) await c.acquireSessionLease(sid, `desktop ${app.getVersion()}`);
+  if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
   return c.createTask(sid, g, cid, root);
 });
 ipcMain.handle("task:start", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown) => {
   const sid = requireSessionId(sessionId);
   const tid = requireTaskId(taskId);
   const c = requireClient();
-  if (c.leaseGeneration(sid) === undefined) await c.acquireSessionLease(sid, `desktop ${app.getVersion()}`);
+  if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
   return c.startTask(sid, tid);
 });
 // REQ-EV-0190: attach a local file to a task. Main reads the bytes (bounded)
@@ -301,7 +300,7 @@ ipcMain.handle("task:attach", async (_e: IpcMainInvokeEvent, sessionId: unknown,
   const data = readFileSync(abs);
   if (data.byteLength === 0 || data.byteLength > MAX_ATTACHMENT_BYTES) throw new Error(`BAD_ARGUMENT: attachment must be 1..${MAX_ATTACHMENT_BYTES} bytes`);
   const c = requireClient();
-  if (c.leaseGeneration(sid) === undefined) await c.acquireSessionLease(sid, `desktop ${app.getVersion()}`);
+  if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
   return c.ingestAttachment(sid, tid, abs.split(/[\\/]/).pop() ?? "attachment", new Uint8Array(data));
 });
 // Review surface (docs/20): immutable, revision-bound payloads from the Core.
@@ -341,9 +340,29 @@ ipcMain.handle("review:decide", async (_e: IpcMainInvokeEvent, sessionId: unknow
   const n = typeof note === "string" && note.length <= 20_000 ? note : "";
   const rev = typeof expectedWorkspaceRevision === "string" && /^\d+$/.test(expectedWorkspaceRevision) ? BigInt(expectedWorkspaceRevision) : 0n;
   const c = requireClient();
-  if (c.leaseGeneration(sid) === undefined) await c.acquireSessionLease(sid, `desktop ${app.getVersion()}`);
+  if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
   const d = await c.decideReview(sid, tid, decision, rej, n, rev);
   return { taskState: d.taskState, commit: d.commit, reverted: d.reverted, workspaceRevision: d.workspaceRevision.toString() };
+});
+// PX-005 (docs/20, docs/29): a person's one-hunk edit goes to the Core's
+// ChangeTransaction bound to the revisions the review showed; main holds
+// nothing of it after the call.
+ipcMain.handle("review:patch", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown, patch: unknown) => {
+  const sid = requireSessionId(sessionId);
+  const tid = requireTaskId(taskId);
+  const x = (patch ?? {}) as { path?: unknown; old?: unknown; new?: unknown; expectedWorkspaceRevision?: unknown; expectedFileRevision?: unknown };
+  if (typeof x.old !== "string" || typeof x.new !== "string" || x.old.length === 0 || x.old.length > 262_144 || x.new.length > 262_144) throw new Error("BAD_ARGUMENT: patch needs old (non-empty) and new text, at most 256 KiB each");
+  if (typeof x.expectedWorkspaceRevision !== "string" || !/^\d+$/.test(x.expectedWorkspaceRevision)) throw new Error("BAD_ARGUMENT: expectedWorkspaceRevision must be the revision the review showed");
+  const c = requireClient();
+  if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
+  const r = await c.applyUserPatch(sid, tid, {
+    path: requireRelativePath(x.path),
+    old: x.old,
+    new: x.new,
+    expectedWorkspaceRevision: BigInt(x.expectedWorkspaceRevision),
+    expectedFileRevision: typeof x.expectedFileRevision === "string" ? x.expectedFileRevision : "",
+  });
+  return { workspaceRevision: r.workspaceRevision.toString(), previousRevision: r.previousRevision.toString(), fileRevision: r.fileRevision, beforeHash: r.beforeHash, matchTier: r.matchTier, offset: r.offset.toString(), replayed: r.replayed };
 });
 // ---- Onboarding (REQ-PX-022, docs/39): provider setup, repository trust,
 // starter tasks. The credential crosses main once, from the renderer's input
@@ -387,7 +406,7 @@ ipcMain.handle("onboarding:trust", async (_e: IpcMainInvokeEvent, sessionId: unk
   const abs = resolve(root);
   if (!existsSync(abs)) throw new Error("REPOSITORY_MISSING: that folder does not exist on this machine");
   const c = requireClient();
-  if (c.leaseGeneration(sid) === undefined) await c.acquireSessionLease(sid, `desktop ${app.getVersion()}`);
+  if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
   const r = await c.trustRepository(sid, abs);
   return { workspaceRoot: abs, offset: r.offset };
 });

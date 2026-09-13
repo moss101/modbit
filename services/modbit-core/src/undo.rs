@@ -158,6 +158,7 @@ pub(crate) async fn apply(
                 &pre_bytes,
                 pre_revision,
                 "undo:",
+                "",
             );
             let mut st = core.store.lock().await;
             append_file_events(&mut st, tenant_id, session_id, task_id, root, events)?;

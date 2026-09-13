@@ -56,6 +56,9 @@ struct Session {
     id: String,
     request_id: String,
     argv: Vec<String>,
+    /// Working directory (EPR-018: a review environment's processes are
+    /// found and ended by it).
+    cwd: String,
     log_path: PathBuf,
     /// Bytes written to the log (cursor high-water mark); watchers wake on change.
     written: watch::Sender<u64>,
@@ -87,6 +90,8 @@ struct SessionMeta {
     id: String,
     request_id: String,
     argv: Vec<String>,
+    #[serde(default)]
+    cwd: String,
     started_at_ms: i64,
     /// Exit, once known.
     exited: Option<ExitMeta>,
@@ -132,6 +137,7 @@ impl Session {
             id: self.id.clone(),
             request_id: self.request_id.clone(),
             argv: self.argv.clone(),
+            cwd: self.cwd.clone(),
             started_at_ms: self.started_at_ms,
             exited,
             generation: self.generation.load(Ordering::SeqCst),
@@ -263,6 +269,7 @@ fn load_sessions(data_dir: &Path) -> Vec<Arc<Session>> {
             id: meta.id.clone(),
             request_id: meta.request_id.clone(),
             argv: meta.argv.clone(),
+            cwd: meta.cwd.clone(),
             log_path,
             written,
             running: AtomicBool::new(false),
@@ -591,7 +598,13 @@ async fn serve(broker: Arc<Broker>, mut stream: BoxedStream) -> Result<()> {
                         spawn_forwarder(Arc::clone(&session), 0, tx.clone(), g);
                     }
                     Err(e) => {
-                        let _ = tx.send(err_frame(&rid, "EXEC_FAILED", e.to_string())).await;
+                        let text = e.to_string();
+                        let code = if text.starts_with("SANDBOX_UNAVAILABLE") {
+                            "SANDBOX_UNAVAILABLE"
+                        } else {
+                            "EXEC_FAILED"
+                        };
+                        let _ = tx.send(err_frame(&rid, code, text)).await;
                     }
                 }
             }
@@ -659,6 +672,22 @@ async fn serve(broker: Arc<Broker>, mut stream: BoxedStream) -> Result<()> {
                     let _ = tx.send(err_frame("", "UNKNOWN_SESSION", session_id)).await;
                 }
             }
+            Some(Body::ProbeSandbox(_)) => {
+                let kind = review_sandbox::available();
+                let _ = tx
+                    .send(ExecFrame {
+                        body: Some(Body::SandboxProbed(modbit_protocol::v1::SandboxProbed {
+                            available: kind.is_some(),
+                            kind: kind.unwrap_or_default().to_owned(),
+                            detail: match kind {
+                                Some("seatbelt") => "macOS sandbox-exec: no network; writes only under the worktree and the temp dirs".into(),
+                                Some("seccomp-net") => "Linux seccomp filter: no network; writes are the lease's to confine".into(),
+                                _ => "no review sandbox on this host (macOS sandbox-exec or Linux seccomp required)".into(),
+                            },
+                        })),
+                    })
+                    .await;
+            }
             Some(Body::List(_)) => {
                 let sessions = broker.sessions.lock().await;
                 let mut list: Vec<SessionInfo> = Vec::new();
@@ -674,6 +703,7 @@ async fn serve(broker: Arc<Broker>, mut stream: BoxedStream) -> Result<()> {
                         status: s.status().into(),
                         replay_generation: s.generation.load(Ordering::SeqCst),
                         started_at_ms: s.started_at_ms,
+                        cwd: s.cwd.clone(),
                     });
                 }
                 list.sort_by(|a, b| a.session_id.cmp(&b.session_id));
@@ -701,8 +731,10 @@ async fn kill(s: &Arc<Session>) {
     match k.take() {
         Some(Killer::Child(child)) => {
             if let Some(c) = child.lock().await.as_mut() {
-                // Windows: kill the whole tree, or a grandchild keeps the output
-                // pipes open and the exit is never observed (REQ-EV-0221 cancel).
+                // Kill the whole tree, or a grandchild keeps the output
+                // pipes open and the exit is never observed (REQ-EV-0221
+                // cancel): Windows by job-less tree kill, Unix by the
+                // process group the child was started in.
                 #[cfg(windows)]
                 if let Some(pid) = c.id() {
                     let _ = tokio::process::Command::new("taskkill")
@@ -710,15 +742,38 @@ async fn kill(s: &Arc<Session>) {
                         .output()
                         .await;
                 }
+                #[cfg(unix)]
+                if let Some(pid) = c.id() {
+                    kill_group(pid);
+                }
                 let _ = c.start_kill();
             }
         }
         Some(Killer::Pty(child)) => {
             if let Some(c) = child.lock().expect("pty child").as_mut() {
+                // The PTY made the child a session leader: its group is its pid.
+                #[cfg(unix)]
+                if let Some(pid) = c.process_id() {
+                    kill_group(pid);
+                }
                 let _ = c.kill();
             }
         }
         None => {}
+    }
+}
+
+/// SIGKILL every process in the group a child was started in (Unix).
+// SAFETY exception (workspace `unsafe_code = "deny"`, noted in Cargo.toml):
+// one killpg call on a process group this broker created.
+#[cfg(unix)]
+#[allow(unsafe_code)]
+fn kill_group(pid: u32) {
+    let Ok(pid) = i32::try_from(pid) else {
+        return;
+    };
+    unsafe {
+        libc::killpg(pid, libc::SIGKILL);
     }
 }
 
@@ -837,6 +892,16 @@ impl Broker {
         if !cwd.is_dir() {
             anyhow::bail!("cwd `{}` is not a directory", cwd.display());
         }
+        // EPR-018 (docs/27 §9.5, docs/21 `review_isolated`): a review
+        // process runs inside the disposable review environment — no
+        // network, no inherited environment, no secret-looking variable,
+        // writes confined to its worktree where the host can confine them —
+        // or not at all: an unsupported host admits no review process.
+        let req = if req.execution_profile == "review_isolated" {
+            review_sandbox::wrap(req, &cwd)?
+        } else {
+            req
+        };
         let id = encode_hex(&(0..8).map(|_| rand::random::<u8>()).collect::<Vec<_>>());
         let log_path = self.data_dir.join("sessions").join(format!("{id}.log"));
         let index_path = self.data_dir.join("sessions").join(format!("{id}.idx"));
@@ -848,6 +913,7 @@ impl Broker {
             id: id.clone(),
             request_id: req.request_id.clone(),
             argv: req.argv.clone(),
+            cwd: cwd.to_string_lossy().into_owned(),
             log_path,
             written,
             running: AtomicBool::new(true),
@@ -920,6 +986,12 @@ impl Broker {
         }
         cmd.envs(&req.env);
         cmd.kill_on_drop(true);
+        // Its own process group, so a cancel ends what the command started
+        // too (a shell's child, a test runner's workers): a grandchild left
+        // alive would hold the output pipes and the exit would never be
+        // observed (REQ-EV-0221; EPR-018 disposal).
+        #[cfg(unix)]
+        cmd.process_group(0);
         let mut child = cmd
             .spawn()
             .with_context(|| format!("spawning {:?}", req.argv))?;
@@ -1166,5 +1238,118 @@ impl Broker {
         s.write_meta().await;
         // Wake forwarders so they deliver the exit.
         s.written.send_modify(|_| {});
+    }
+}
+
+/// EPR-018: the host's review sandbox — a real OS confinement or none.
+pub(crate) mod review_sandbox {
+    use std::path::Path;
+    use std::sync::OnceLock;
+
+    use modbit_protocol::v1::ExecRequest;
+
+    /// What this host can confine a review process with: `seatbelt`
+    /// (macOS `sandbox-exec`: no network, writes only under the worktree
+    /// and the temp dirs), `seccomp-net` (Linux seccomp filter installed by
+    /// this broker re-executing itself as the launcher: no network; writes
+    /// are the lease's to confine), or nothing.
+    pub fn available() -> Option<&'static str> {
+        static PROBE: OnceLock<Option<&'static str>> = OnceLock::new();
+        *PROBE.get_or_init(probe)
+    }
+
+    fn probe() -> Option<&'static str> {
+        if std::env::var_os("MODBIT_REVIEW_SANDBOX_DISABLE").is_some() {
+            return None;
+        }
+        #[cfg(target_os = "macos")]
+        {
+            let ok = std::process::Command::new("/usr/bin/sandbox-exec")
+                .args([
+                    "-p",
+                    "(version 1)(allow default)(deny network*)",
+                    "/usr/bin/true",
+                ])
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .status()
+                .is_ok_and(|s| s.success());
+            return ok.then_some("seatbelt");
+        }
+        #[cfg(target_os = "linux")]
+        {
+            // The launcher is this binary; the check is a process it started
+            // failing to open an inet socket.
+            let Ok(exe) = std::env::current_exe() else {
+                return None;
+            };
+            let ok = std::process::Command::new(&exe)
+                .arg("--review-sandbox-exec")
+                .arg("--")
+                .arg(&exe)
+                .arg("--review-sandbox-selfcheck")
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .status()
+                .is_ok_and(|s| s.success());
+            return ok.then_some("seccomp-net");
+        }
+        #[allow(unreachable_code)]
+        None
+    }
+
+    /// Whether an environment variable name looks like a credential.
+    fn secret_like(key: &str) -> bool {
+        let k = key.to_ascii_uppercase();
+        [
+            "KEY",
+            "TOKEN",
+            "SECRET",
+            "PASSWORD",
+            "PASSWD",
+            "CREDENTIAL",
+            "AUTH",
+        ]
+        .iter()
+        .any(|m| k.contains(m))
+            || k.starts_with("MODBIT_")
+    }
+
+    /// The request as the sandbox runs it, or why it cannot.
+    pub fn wrap(req: ExecRequest, cwd: &Path) -> anyhow::Result<ExecRequest> {
+        let Some(kind) = available() else {
+            anyhow::bail!(
+                "SANDBOX_UNAVAILABLE: this host has no review sandbox (macOS sandbox-exec or Linux seccomp); a review process cannot be admitted here"
+            );
+        };
+        let mut req = req;
+        // Deny-default environment: nothing inherited, nothing secret-like.
+        req.inherit_env = false;
+        req.env.retain(|k, _| !secret_like(k));
+        let argv = std::mem::take(&mut req.argv);
+        req.argv = match kind {
+            "seatbelt" => {
+                let cwd_s = cwd.to_string_lossy().replace('"', "");
+                let profile = format!(
+                    "(version 1)(allow default)(deny network*)(deny file-write*)(allow file-write* (subpath \"{cwd_s}\"))(allow file-write* (subpath \"/private/tmp\"))(allow file-write* (subpath \"/private/var/folders\"))(allow file-write* (subpath \"/tmp\"))(allow file-write* (subpath \"/dev\"))"
+                );
+                let mut v = vec!["/usr/bin/sandbox-exec".to_owned(), "-p".to_owned(), profile];
+                v.extend(argv);
+                v
+            }
+            _ => {
+                let exe = std::env::current_exe().map_err(|e| {
+                    anyhow::anyhow!("SANDBOX_UNAVAILABLE: locating the launcher: {e}")
+                })?;
+                let mut v = vec![
+                    exe.to_string_lossy().into_owned(),
+                    "--review-sandbox-exec".to_owned(),
+                    "--".to_owned(),
+                ];
+                v.extend(argv);
+                v
+            }
+        };
+        Ok(req)
     }
 }

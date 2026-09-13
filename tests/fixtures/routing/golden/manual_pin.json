@@ -9,7 +9,7 @@
       "hard_eligible": true,
       "ineligible_reason": "",
       "lcb": 0.93,
-      "plan_id": "compiled:12262eacfacb41a69cdf8e90",
+      "plan_id": "compiled:195023cb19490bae8041c31a",
       "worst_case_cost_minor": 210
     }
   ],
@@ -23,7 +23,7 @@
     "registry_generation": "registry-compile-1",
     "statistics_version": "stats-7"
   },
-  "selected": "compiled:12262eacfacb41a69cdf8e90",
+  "selected": "compiled:195023cb19490bae8041c31a",
   "slots": [
     "initial:openai/gpt-5-pro:Initial"
   ],

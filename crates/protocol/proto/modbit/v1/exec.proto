@@ -75,6 +75,15 @@ message Cancel {
 
 message ListSessions {}
 
+// EPR-018: whether this host confines review processes, and how.
+message ProbeSandbox {}
+
+message SandboxProbed {
+  bool available = 1;
+  string kind = 2;                    // seatbelt | seccomp-net | ""
+  string detail = 3;
+}
+
 message SessionInfo {
   string session_id = 1;
   string request_id = 2;
@@ -88,6 +97,7 @@ message SessionInfo {
   string status = 7;
   uint64 replay_generation = 8;       // the newest attach generation seen
   int64 started_at_ms = 9;
+  string cwd = 10;                    // EPR-018: a review environment ends its processes by it
 }
 
 message SessionList {
@@ -114,5 +124,7 @@ message ExecFrame {
     ListSessions list = 10;
     SessionList sessions = 11;
     ExecError error = 12;
+    ProbeSandbox probe_sandbox = 13;
+    SandboxProbed sandbox_probed = 14;
   }
 }

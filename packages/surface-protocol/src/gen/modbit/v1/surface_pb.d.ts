@@ -1022,6 +1022,15 @@ export declare type ResolveApproval = Message<"modbit.v1.ResolveApproval"> & {
    * @generated from field: string reason = 3;
    */
   reason: string;
+
+  /**
+   * The intent hash the person saw when deciding (PX-001, docs/29): when
+   * given, it must equal the approval's or the decision is refused
+   * INTENT_MISMATCH and nothing is recorded. A thin client always sends it.
+   *
+   * @generated from field: string intent_hash = 4;
+   */
+  intentHash: string;
 };
 
 /**
@@ -2431,6 +2440,292 @@ export declare type ContextDocumentAttached = Message<"modbit.v1.ContextDocument
  * Use `create(ContextDocumentAttachedSchema)` to create a new message.
  */
 export declare const ContextDocumentAttachedSchema: GenMessage<ContextDocumentAttached>;
+
+/**
+ * One diagnostic as an editor's language service reports it: zero-based
+ * positions (LSP), a severity, a message, and the content hash of the file
+ * it was computed on.
+ *
+ * @generated from message modbit.v1.ExternalDiagnostic
+ */
+export declare type ExternalDiagnostic = Message<"modbit.v1.ExternalDiagnostic"> & {
+  /**
+   * root-relative
+   *
+   * @generated from field: string path = 1;
+   */
+  path: string;
+
+  /**
+   * zero-based
+   *
+   * @generated from field: uint32 line_start = 2;
+   */
+  lineStart: number;
+
+  /**
+   * UTF-16 offset
+   *
+   * @generated from field: uint32 char_start = 3;
+   */
+  charStart: number;
+
+  /**
+   * @generated from field: uint32 line_end = 4;
+   */
+  lineEnd: number;
+
+  /**
+   * @generated from field: uint32 char_end = 5;
+   */
+  charEnd: number;
+
+  /**
+   * error | warning | information | hint
+   *
+   * @generated from field: string severity = 6;
+   */
+  severity: string;
+
+  /**
+   * optional
+   *
+   * @generated from field: string code = 7;
+   */
+  code: string;
+
+  /**
+   * @generated from field: string message = 8;
+   */
+  message: string;
+
+  /**
+   * sha256 of the file the diagnostic was computed on
+   *
+   * @generated from field: string file_revision = 9;
+   */
+  fileRevision: string;
+};
+
+/**
+ * Describes the message modbit.v1.ExternalDiagnostic.
+ * Use `create(ExternalDiagnosticSchema)` to create a new message.
+ */
+export declare const ExternalDiagnosticSchema: GenMessage<ExternalDiagnostic>;
+
+/**
+ * An adapter hands the Core what its editor's language services see, bound
+ * to the workspace revision and per-file revisions it saw them at. The Core
+ * normalizes them into canonical diagnostic records with provenance
+ * external_ide; they inform retrieval (Context Pack provenance) and the
+ * verification plan's inputs — never a verification result: a mandatory
+ * check still runs in Modbit. A batch for another workspace revision is
+ * discarded (STALE_REVISION); a diagnostic whose file moved on is dropped;
+ * a malformed batch is refused before anything is persisted (MALFORMED).
+ * Both refusals are on the task's log as ExternalDiagnosticsRejected.
+ *
+ * @generated from message modbit.v1.SubmitExternalDiagnostics
+ */
+export declare type SubmitExternalDiagnostics = Message<"modbit.v1.SubmitExternalDiagnostics"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * the language service / adapter identity (e.g. vscode:typescript-language-features)
+   *
+   * @generated from field: string source = 2;
+   */
+  source: string;
+
+  /**
+   * @generated from field: string source_version = 3;
+   */
+  sourceVersion: string;
+
+  /**
+   * @generated from field: uint64 workspace_revision = 4;
+   */
+  workspaceRevision: bigint;
+
+  /**
+   * @generated from field: repeated modbit.v1.ExternalDiagnostic diagnostics = 5;
+   */
+  diagnostics: ExternalDiagnostic[];
+};
+
+/**
+ * Describes the message modbit.v1.SubmitExternalDiagnostics.
+ * Use `create(SubmitExternalDiagnosticsSchema)` to create a new message.
+ */
+export declare const SubmitExternalDiagnosticsSchema: GenMessage<SubmitExternalDiagnostics>;
+
+/**
+ * @generated from message modbit.v1.ExternalDiagnosticsAck
+ */
+export declare type ExternalDiagnosticsAck = Message<"modbit.v1.ExternalDiagnosticsAck"> & {
+  /**
+   * object hash of the normalized batch
+   *
+   * @generated from field: string batch_ref = 1;
+   */
+  batchRef: string;
+
+  /**
+   * @generated from field: uint32 recorded = 2;
+   */
+  recorded: number;
+
+  /**
+   * file revision moved on
+   *
+   * @generated from field: uint32 discarded = 3;
+   */
+  discarded: number;
+
+  /**
+   * @generated from field: uint64 offset = 4;
+   */
+  offset: bigint;
+
+  /**
+   * @generated from field: bool replayed = 5;
+   */
+  replayed: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.ExternalDiagnosticsAck.
+ * Use `create(ExternalDiagnosticsAckSchema)` to create a new message.
+ */
+export declare const ExternalDiagnosticsAckSchema: GenMessage<ExternalDiagnosticsAck>;
+
+/**
+ * A person's small direct edit, from the review surface or a thin client.
+ * The only path is the canonical ChangeTransaction on the Workspace File
+ * Service: the workspace revision the client saw is a precondition
+ * (STALE_REVISION), the path is resolved through symlinks and checked
+ * against the protected patterns before anything is opened
+ * (PROTECTED_PATH / PATH_OUTSIDE_ROOT), `old` must match exactly once at a
+ * ladder tier (NO_UNIQUE_MATCH), the loop must not be running
+ * (TASK_RUNNING). Provenance user_direct_edit lands with one FileChanged on
+ * the workspace log and one UserPatchApplied on the task's, and the
+ * workspace revision advances once. No client holds a buffer: what is not
+ * applied here does not exist. Idempotent by command_id like every command.
+ *
+ * @generated from message modbit.v1.ApplyUserPatch
+ */
+export declare type ApplyUserPatch = Message<"modbit.v1.ApplyUserPatch"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * root-relative
+   *
+   * @generated from field: string path = 2;
+   */
+  path: string;
+
+  /**
+   * required: the revision the client saw
+   *
+   * @generated from field: uint64 expected_workspace_revision = 3;
+   */
+  expectedWorkspaceRevision: bigint;
+
+  /**
+   * the text replaced (one hunk)
+   *
+   * @generated from field: string old = 4;
+   */
+  old: string;
+
+  /**
+   * its replacement (empty deletes it)
+   *
+   * @generated from field: string new = 5;
+   */
+  new: string;
+
+  /**
+   * optional: sha256 the client saw; mismatch is STALE_REVISION
+   *
+   * @generated from field: string expected_file_revision = 6;
+   */
+  expectedFileRevision: string;
+
+  /**
+   * review | cli | ide_adapter
+   *
+   * @generated from field: string source = 7;
+   */
+  source: string;
+};
+
+/**
+ * Describes the message modbit.v1.ApplyUserPatch.
+ * Use `create(ApplyUserPatchSchema)` to create a new message.
+ */
+export declare const ApplyUserPatchSchema: GenMessage<ApplyUserPatch>;
+
+/**
+ * @generated from message modbit.v1.UserPatchAppliedAck
+ */
+export declare type UserPatchAppliedAck = Message<"modbit.v1.UserPatchAppliedAck"> & {
+  /**
+   * after
+   *
+   * @generated from field: uint64 workspace_revision = 1;
+   */
+  workspaceRevision: bigint;
+
+  /**
+   * @generated from field: uint64 previous_revision = 2;
+   */
+  previousRevision: bigint;
+
+  /**
+   * sha256 after (the new CodeReference file revision)
+   *
+   * @generated from field: string file_revision = 3;
+   */
+  fileRevision: string;
+
+  /**
+   * sha256 before (references bound to it are stale)
+   *
+   * @generated from field: string before_hash = 4;
+   */
+  beforeHash: string;
+
+  /**
+   * exact | whitespace_remap
+   *
+   * @generated from field: string match_tier = 5;
+   */
+  matchTier: string;
+
+  /**
+   * UserPatchApplied event offset
+   *
+   * @generated from field: uint64 offset = 6;
+   */
+  offset: bigint;
+
+  /**
+   * @generated from field: bool replayed = 7;
+   */
+  replayed: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.UserPatchAppliedAck.
+ * Use `create(UserPatchAppliedAckSchema)` to create a new message.
+ */
+export declare const UserPatchAppliedAckSchema: GenMessage<UserPatchAppliedAck>;
 
 /**
  * What the user currently has selected. Context, never authority: a selection
@@ -7103,6 +7398,131 @@ export declare type PlanRevisedAck = Message<"modbit.v1.PlanRevisedAck"> & {
  * Use `create(PlanRevisedAckSchema)` to create a new message.
  */
 export declare const PlanRevisedAckSchema: GenMessage<PlanRevisedAck>;
+
+/**
+ * @generated from message modbit.v1.AdmitReviewEnvironment
+ */
+export declare type AdmitReviewEnvironment = Message<"modbit.v1.AdmitReviewEnvironment"> & {
+  /**
+   * the candidate task
+   *
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * empty = the repository's HEAD
+   *
+   * @generated from field: string revision = 2;
+   */
+  revision: string;
+};
+
+/**
+ * Describes the message modbit.v1.AdmitReviewEnvironment.
+ * Use `create(AdmitReviewEnvironmentSchema)` to create a new message.
+ */
+export declare const AdmitReviewEnvironmentSchema: GenMessage<AdmitReviewEnvironment>;
+
+/**
+ * @generated from message modbit.v1.ReviewEnvironmentView
+ */
+export declare type ReviewEnvironmentView = Message<"modbit.v1.ReviewEnvironmentView"> & {
+  /**
+   * @generated from field: string env_id = 1;
+   */
+  envId: string;
+
+  /**
+   * @generated from field: modbit.v1.Id candidate_task_id = 2;
+   */
+  candidateTaskId?: Id | undefined;
+
+  /**
+   * @generated from field: modbit.v1.Id review_task_id = 3;
+   */
+  reviewTaskId?: Id | undefined;
+
+  /**
+   * @generated from field: string worktree = 4;
+   */
+  worktree: string;
+
+  /**
+   * @generated from field: string branch = 5;
+   */
+  branch: string;
+
+  /**
+   * @generated from field: string revision = 6;
+   */
+  revision: string;
+
+  /**
+   * @generated from field: modbit.v1.Id lease_id = 7;
+   */
+  leaseId?: Id | undefined;
+
+  /**
+   * seatbelt | seccomp-net
+   *
+   * @generated from field: string sandbox = 8;
+   */
+  sandbox: string;
+};
+
+/**
+ * Describes the message modbit.v1.ReviewEnvironmentView.
+ * Use `create(ReviewEnvironmentViewSchema)` to create a new message.
+ */
+export declare const ReviewEnvironmentViewSchema: GenMessage<ReviewEnvironmentView>;
+
+/**
+ * @generated from message modbit.v1.DisposeReviewEnvironment
+ */
+export declare type DisposeReviewEnvironment = Message<"modbit.v1.DisposeReviewEnvironment"> & {
+  /**
+   * @generated from field: string env_id = 1;
+   */
+  envId: string;
+
+  /**
+   * @generated from field: string reason = 2;
+   */
+  reason: string;
+};
+
+/**
+ * Describes the message modbit.v1.DisposeReviewEnvironment.
+ * Use `create(DisposeReviewEnvironmentSchema)` to create a new message.
+ */
+export declare const DisposeReviewEnvironmentSchema: GenMessage<DisposeReviewEnvironment>;
+
+/**
+ * @generated from message modbit.v1.ReviewEnvironmentDisposedAck
+ */
+export declare type ReviewEnvironmentDisposedAck = Message<"modbit.v1.ReviewEnvironmentDisposedAck"> & {
+  /**
+   * @generated from field: string env_id = 1;
+   */
+  envId: string;
+
+  /**
+   * @generated from field: uint32 killed = 2;
+   */
+  killed: number;
+
+  /**
+   * @generated from field: bool worktree_removed = 3;
+   */
+  worktreeRemoved: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.ReviewEnvironmentDisposedAck.
+ * Use `create(ReviewEnvironmentDisposedAckSchema)` to create a new message.
+ */
+export declare const ReviewEnvironmentDisposedAckSchema: GenMessage<ReviewEnvironmentDisposedAck>;
 
 /**
  * @generated from message modbit.v1.GetCapacity

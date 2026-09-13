@@ -207,6 +207,21 @@ fn task_items(store: &EventStore, t: &Task) -> Vec<AttentionItem> {
                 "CAPACITY",
                 "wait: the run continues when a ticket is granted; free capacity or raise MODBIT_CAPACITY".to_owned(),
             ),
+            // A restart while the task awaited an approval suspended the run:
+            // resolving the approval does not re-enter it, a StartTask does
+            // (REQ-EV-0073 `RESTART_AWAITING_APPROVAL`). Without a restart the
+            // live approval item stands alone: the run re-enters the same call.
+            WaitReason::Approval
+                if class == "RESTART"
+                    || code.starts_with("RESTART")
+                    || text.contains("runtime restarted") =>
+            {
+                (
+                    "RESTART",
+                    "resolve the open approval, then StartTask to resume at the recorded boundary"
+                        .to_owned(),
+                )
+            }
             WaitReason::Approval => (
                 "APPROVAL",
                 "resolve the pending approval; the run re-enters the same call".to_owned(),

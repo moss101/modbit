@@ -415,6 +415,37 @@ pub enum RunEvent {
         /// The note the continuation reads in its transcript.
         note: String,
     },
+    /// `ReviewLegActivated` (REQ-EPR-007, docs/27 §9.5): the plan's
+    /// prevalidated reviewer slot activated for the candidate at a
+    /// revision the Acceptance Gate could not accept without independent
+    /// review — inside the EPR-018 environment, on its own review task, with
+    /// a brief that carries the request, the acceptance criteria, the
+    /// candidate diff and the static evidence and nothing of the solver's
+    /// reasoning. The path is CRITIQUE from here.
+    ReviewLegActivated {
+        /// The plan whose slot activated.
+        plan_id: String,
+        /// The reviewer slot.
+        slot_id: String,
+        /// Its activation ordinal.
+        activation: u32,
+        /// Reviewer binding.
+        endpoint: String,
+        /// Reviewer model.
+        model: String,
+        /// The candidate revision under review.
+        candidate_revision: u64,
+        /// The gate record that required the review.
+        gate_ref: String,
+        /// The review environment.
+        env_id: String,
+        /// The review task.
+        review_task_id: crate::TaskId,
+        /// Object hash of the brief the reviewer received.
+        brief_ref: String,
+        /// Money this activation reserves.
+        reserved_minor: u64,
+    },
     /// `AcceptanceGateEvaluated` (REQ-EPR-017, docs/27 §9.4): whether the
     /// evidence at the candidate revision satisfies the required assurance,
     /// decided independently of the risk classification. No state change.
@@ -490,6 +521,7 @@ impl RunEvent {
             Self::DiffInvariantViolated { .. } => "DiffInvariantViolated",
             Self::RealizedRiskDerived { .. } => "RealizedRiskDerived",
             Self::ContinuationActivated { .. } => "ContinuationActivated",
+            Self::ReviewLegActivated { .. } => "ReviewLegActivated",
             Self::AcceptanceGateEvaluated { .. } => "AcceptanceGateEvaluated",
             Self::RouteReevaluated { .. } => "RouteReevaluated",
         }
@@ -576,7 +608,8 @@ impl Run {
             | RunEvent::DiffInvariantViolated { .. }
             | RunEvent::RealizedRiskDerived { .. }
             | RunEvent::RouteReevaluated { .. }
-            | RunEvent::ContinuationActivated { .. } => {
+            | RunEvent::ContinuationActivated { .. }
+            | RunEvent::ReviewLegActivated { .. } => {
                 if self.state.is_terminal() {
                     return Err(crate::InvalidTransition {
                         aggregate: "Run",

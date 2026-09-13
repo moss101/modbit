@@ -23,6 +23,26 @@ pub struct CheckCommand {
     pub reporter_file: Option<String>,
 }
 
+/// An adapter's diagnostics batch the plan was derived with (PX-004): an
+/// input that says where an editor's language service saw problems at this
+/// revision. It targets nothing by itself and passes nothing: every
+/// mandatory command runs regardless of what the batch reports.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ExternalDiagnosticsInput {
+    /// Language service / adapter identity.
+    pub source: String,
+    /// Its version.
+    pub source_version: String,
+    /// Workspace revision the batch is bound to (the plan's revision).
+    pub workspace_revision: u64,
+    /// Object hash of the normalized batch.
+    pub batch_ref: String,
+    /// Diagnostics in the batch.
+    pub count: u32,
+    /// Root-relative paths named.
+    pub paths: Vec<String>,
+}
+
 /// The derived plan.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct VerificationPlan {
@@ -40,6 +60,10 @@ pub struct VerificationPlan {
     pub environment_inputs: Vec<String>,
     /// Limitations stated in the plan (missing runners, narrowed scope).
     pub limitations: Vec<String>,
+    /// External diagnostics batches at the plan's revision (PX-004), an
+    /// input the plan was derived with; empty on plans made without any.
+    #[serde(default)]
+    pub external_diagnostics: Vec<ExternalDiagnosticsInput>,
 }
 
 /// The checks a repository declares for itself in `.modbit/verification.json`
@@ -191,5 +215,6 @@ pub fn derive(
         declared_changes: vec![],
         environment_inputs: env_inputs,
         limitations,
+        external_diagnostics: vec![],
     }
 }

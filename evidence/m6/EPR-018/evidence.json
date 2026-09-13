@@ -1,0 +1,14 @@
+{
+ "task": "EPR-018",
+ "requirement": "REQ-EPR-018",
+ "qual": "QUAL-EPR-018",
+ "tests": [
+  "qual_epr_018_the_review_environment_is_sandboxed_confined_and_disposed"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "on macOS (seatbelt) and Linux (seccomp-net) a candidate task gets a review environment: a scratch worktree at HEAD on `modbit/review-<env>`, a review task under `review_isolated` carrying no fork/capsule/context pack, a lease reading the canonical tree and writing only the scratch tree; a write lands in the scratch `a.txt` while the canonical one is untouched, a write named by canonical path is refused, a process asked to inherit the environment sees neither `OPENAI_API_KEY` nor `MODBIT_TEST_SECRET`, a loopback connection to the model server is `DENIED`, and disposal kills the 120 s sleeper (`killed ≥ 1`, seen exited from the candidate's listing), removes the worktree and branch, cancels the review task, revokes the lease (a later read is refused) and records it all on the candidate's log; on Windows admission refuses `SANDBOX_UNAVAILABLE` with nothing taken.",
+ "audit": "PARTIAL before: the `review_isolated` profile existed (a lease without `git.worktree`) but no environment was provisioned, no process was confined and nothing was disposed.",
+ "limitations": "Linux confines network only (seccomp filter: `socket(2)` refused for every family but `AF_UNIX`, `io_uring_setup(2)` refused, `no_new_privs`); write confinement there is the lease's (macOS confines both); scratch-tree `git commit` is possible inside the disposable worktree and disposed with it (no push: no network, no `git.write` capability). The first build wrapped Linux processes in `unshare -rn`; hosted Ubuntu 24.04 refuses unprivileged user namespaces, so the probe answered SANDBOX_UNAVAILABLE on the Linux runner (run 34734605112) and the seccomp launcher replaced it.",
+ "ci": ""
+}

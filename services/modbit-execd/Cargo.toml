@@ -22,6 +22,9 @@ sha2.workspace = true
 subtle.workspace = true
 tokio.workspace = true
 
+[target.'cfg(unix)'.dependencies]
+libc = "0.2.189"
+
 [dev-dependencies]
 tempfile.workspace = true
 hex.workspace = true

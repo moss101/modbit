@@ -122,6 +122,7 @@ fn req(q: &str) -> PlanRequest {
         max_hits: 20,
         min_paths: 0,
         diagnostics: vec![],
+        external_diagnostics: vec![],
         max_level: None,
     }
 }

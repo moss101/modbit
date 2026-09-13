@@ -18,8 +18,10 @@ mod baseline;
 mod branch;
 mod capacity;
 mod checkpoint;
+mod critique;
 mod economics;
 mod escalation;
+mod external_diagnostics;
 mod gate;
 mod inspector;
 mod languages;
@@ -31,6 +33,7 @@ mod probe;
 mod procedural;
 mod protocol;
 mod review;
+mod review_env;
 mod routing;
 mod rules;
 mod runtime;
@@ -42,6 +45,7 @@ mod statistics;
 mod subagent;
 mod tools;
 mod undo;
+mod user_patch;
 mod verify;
 
 fn usage() -> &'static str {

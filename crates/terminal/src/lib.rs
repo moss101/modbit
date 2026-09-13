@@ -51,6 +51,8 @@ pub enum Event {
     Exited(ProcessExited),
     /// Session listing.
     Sessions(Vec<SessionInfo>),
+    /// EPR-018: the host's review sandbox, or none.
+    SandboxProbed(modbit_protocol::v1::SandboxProbed),
 }
 
 /// An authenticated connection to `modbit-execd`.
@@ -154,6 +156,12 @@ impl ExecClient {
             .await
     }
 
+    /// EPR-018: ask whether the broker's host confines review processes.
+    pub async fn probe_sandbox(&mut self) -> Result<()> {
+        self.send(Body::ProbeSandbox(modbit_protocol::v1::ProbeSandbox {}))
+            .await
+    }
+
     /// Next event; `None` when the broker closes.
     pub async fn next(&mut self) -> Result<Option<Event>> {
         loop {
@@ -171,6 +179,9 @@ impl ExecClient {
                 Some(ExecFrame {
                     body: Some(Body::Sessions(l)),
                 }) => Ok(Some(Event::Sessions(l.sessions))),
+                Some(ExecFrame {
+                    body: Some(Body::SandboxProbed(p)),
+                }) => Ok(Some(Event::SandboxProbed(p))),
                 Some(ExecFrame {
                     body: Some(Body::Error(e)),
                 }) => Err(Error::Exec {

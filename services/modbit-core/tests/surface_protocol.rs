@@ -1561,12 +1561,44 @@ async fn m2_5_capability_kernel_gates_destructive_tools_behind_intent_bound_appr
                 approval_id: Some(approval_id.clone()),
                 approve: true,
                 reason: "ok".into(),
+                intent_hash: String::new(),
             }
             .encode_to_vec(),
         ))
         .await
         .unwrap_err();
     assert!(matches!(err, ClientError::Rejected { ref code, .. } if code == "LEASE_REQUIRED"));
+    // PX-001 (docs/29): the decision binds to the intent the person saw; a
+    // decision naming another intent is refused and the approval stays open.
+    assert_eq!(a.intent_hash.len(), 64, "{a:?}");
+    let other_intent = format!(
+        "{}{}",
+        if a.intent_hash.starts_with('0') {
+            "1"
+        } else {
+            "0"
+        },
+        &a.intent_hash[1..]
+    );
+    let err = c
+        .command(envelope_fenced(
+            id16(0x2E),
+            "ResolveApproval",
+            ResolveApproval {
+                approval_id: Some(approval_id.clone()),
+                approve: true,
+                reason: "ok".into(),
+                intent_hash: other_intent,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "INTENT_MISMATCH"),
+        "{err}"
+    );
     let ack = c
         .command(envelope_fenced(
             id16(0x26),
@@ -1575,6 +1607,7 @@ async fn m2_5_capability_kernel_gates_destructive_tools_behind_intent_bound_appr
                 approval_id: Some(approval_id.clone()),
                 approve: true,
                 reason: "ok".into(),
+                intent_hash: a.intent_hash.clone(),
             }
             .encode_to_vec(),
             g,
@@ -1667,6 +1700,7 @@ async fn m2_5_capability_kernel_gates_destructive_tools_behind_intent_bound_appr
                 }),
                 approve: false,
                 reason: "keep it".into(),
+                intent_hash: String::new(),
             }
             .encode_to_vec(),
             g,
@@ -2505,11 +2539,41 @@ async fn task_events(
     task: &Id,
 ) -> Vec<(String, String, serde_json::Value)> {
     let mut s = core.client().await;
+    // Everything the log holds now is read before the idle cut applies: a
+    // loaded host can pause a long replay for longer than the idle window,
+    // and a truncated replay would read as missing events.
+    let floor = {
+        let ack = s
+            .command(envelope(
+                Id {
+                    value: (0..16).map(|_| rand::random::<u8>()).collect(),
+                },
+                "GetSessionSnapshot",
+                GetSessionSnapshot {
+                    session_id: Some(session.clone()),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        Client::result::<SessionSnapshot>(&ack)
+            .map(|snap| snap.last_offset)
+            .unwrap_or(0)
+    };
     s.subscribe(session.clone(), 0).await.unwrap();
     let mut out = Vec::new();
-    while let Ok(Ok(Some(e))) =
-        tokio::time::timeout(Duration::from_millis(400), s.next_event()).await
-    {
+    let mut seen = 0u64;
+    let deadline = std::time::Instant::now() + Duration::from_secs(60);
+    loop {
+        let wait = if seen < floor {
+            deadline.saturating_duration_since(std::time::Instant::now())
+        } else {
+            Duration::from_millis(400)
+        };
+        let Ok(Ok(Some(e))) = tokio::time::timeout(wait, s.next_event()).await else {
+            break;
+        };
+        seen = e.offset;
         let ev = e.event.unwrap();
         if ev.task_id.as_ref() == Some(task) {
             let p: serde_json::Value = serde_json::from_slice(&ev.payload).unwrap_or_default();
@@ -4270,6 +4334,7 @@ async fn qual_ev_0194_approvals_are_canonical_and_never_resolved_by_the_model() 
                 approval_id: Some(approval.clone()),
                 approve: false,
                 reason: "no".into(),
+                intent_hash: String::new(),
             }
             .encode_to_vec(),
             g,
@@ -4289,6 +4354,7 @@ async fn qual_ev_0194_approvals_are_canonical_and_never_resolved_by_the_model() 
                 approval_id: Some(approval.clone()),
                 approve: true,
                 reason: "yes".into(),
+                intent_hash: String::new(),
             }
             .encode_to_vec(),
             g2,
@@ -13875,10 +13941,12 @@ async fn qual_epr_004_the_compiler_runs_through_core_and_identical_inputs_give_i
     let plan: modbit_domain::routing::ConditionalExecutionPlan =
         serde_json::from_value(plan_json).unwrap();
     let ledger = modbit_core_runtime::admission::RunLedger::empty("USD", 2);
+    // (The plan does carry a prevalidated reviewer slot, REQ-EPR-007; a
+    // reviser it never declared is what cannot be activated.)
     let err = modbit_core_runtime::admission::admit_activation(
         &plan,
         &ledger,
-        "reviewer",
+        "reviser",
         modbit_domain::routing::Trigger::ReviewRequired,
     )
     .unwrap_err();
@@ -15143,6 +15211,7 @@ async fn qual_ev_0055_e2e_004_core_crash_during_approval_restores_the_same_appro
                 approval_id: approval.approval_id.clone(),
                 approve: true,
                 reason: "ok".into(),
+                intent_hash: String::new(),
             }
             .encode_to_vec(),
             g2,
@@ -16826,6 +16895,7 @@ async fn qual_m4_6_e2e_005_a_protected_effect_of_unknown_outcome_is_held_for_the
                 approval_id: approval.approval_id.clone(),
                 approve: true,
                 reason: "ok".into(),
+                intent_hash: String::new(),
             }
             .encode_to_vec(),
             g,
@@ -19653,6 +19723,7 @@ async fn qual_m5_e2e_012_a_program_composes_governed_tools_in_the_isolate() {
                 approval_id: approval.approval_id.clone(),
                 approve: false,
                 reason: "not this worktree".into(),
+                intent_hash: String::new(),
             }
             .encode_to_vec(),
             g,
@@ -21833,7 +21904,19 @@ async fn qual_epr_006_a_quality_rejection_continues_the_run_on_the_prevalidated_
     assert!(of(&evs, "ContinuationActivated").is_empty());
     let v1 = routing(&mut c, &task, 0x64).await;
     assert_eq!(v1.path_label, "DIRECT", "{v1:?}");
-    assert_eq!(v1.slots.len(), 1, "the compiled plan opened direct: {v1:?}");
+    // The compiled plan opened direct — one solver slot — with the
+    // prevalidated reviewer slot riding along (REQ-EPR-007), unactivated.
+    assert_eq!(
+        v1.slots.iter().filter(|s| s.role == "solver").count(),
+        1,
+        "the compiled plan opened direct: {v1:?}"
+    );
+    assert!(
+        v1.slots
+            .iter()
+            .any(|s| s.role == "reviewer" && s.activations == 0),
+        "{v1:?}"
+    );
     let run_id = of(&evs, "RoutingPlanCompiled")
         .into_iter()
         .filter_map(|p| serde_json::from_value::<ConditionalExecutionPlan>(p["plan"].clone()).ok())
@@ -24152,6 +24235,7 @@ async fn qual_ev_0151_0275_attention_items_are_derived_from_canonical_state_and_
                 approval_id: approval.approval_id.clone(),
                 approve: true,
                 reason: "ok".into(),
+                intent_hash: String::new(),
             }
             .encode_to_vec(),
             g,
@@ -24432,6 +24516,7 @@ async fn qual_ev_0043_a_headless_client_lacks_ui_only_capabilities_while_the_tas
                 approval_id: Some(id16(0x99)),
                 approve: true,
                 reason: "no".into(),
+                intent_hash: String::new(),
             }
             .encode_to_vec(),
             g,
@@ -25114,6 +25199,794 @@ async fn qual_ev_0118_a_reviewed_plan_version_is_the_one_the_resumed_run_execute
     );
 }
 
+/// EPR-018 (docs/27 §9.5, docs/21 `review_isolated`, docs/49): the
+/// Isolated Non-Committing Reviewer's environment is real. Admission takes
+/// the host's actual sandbox or refuses; the environment is a scratch
+/// worktree at the candidate revision with its own review task and a lease
+/// confined to it; inside it, writes land in the scratch tree and never the
+/// canonical one, a process cannot reach the network and sees no inherited
+/// or secret-looking environment, and nothing of the solver's reasoning is
+/// carried; disposal ends its processes, revokes its lease, cancels its
+/// task and removes the worktree and branch — with the record on the
+/// candidate's log.
+#[tokio::test]
+async fn qual_epr_018_the_review_environment_is_sandboxed_confined_and_disposed() {
+    use modbit_protocol::v1::{
+        AdmitReviewEnvironment, DisposeReviewEnvironment, ReviewEnvironmentDisposedAck,
+        ReviewEnvironmentView,
+    };
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[("README.md", "# canonical\n"), ("a.txt", "a\n")]);
+    let (base, _seen) = scripted_model(vec![], None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", "sk-test-not-for-review"),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_TEST_SECRET", "hunter2"),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x81)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_goal(&mut c, &session, g, &root, 0x82, "the candidate").await;
+    let admit = c
+        .command(envelope_fenced(
+            id16(0x83),
+            "AdmitReviewEnvironment",
+            AdmitReviewEnvironment {
+                task_id: Some(task.clone()),
+                revision: String::new(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await;
+    if cfg!(windows) {
+        // No review sandbox on this host: no environment, nothing taken.
+        let err = admit.unwrap_err();
+        assert!(
+            matches!(err, ClientError::Rejected { ref code, .. } if code == "SANDBOX_UNAVAILABLE"),
+            "{err}"
+        );
+        assert!(!dir.path().join("review").exists());
+        let evs = task_events(&core, &session, &task).await;
+        assert!(evs.iter().all(|(_, t, _)| t != "ReviewEnvironmentAdmitted"));
+        return;
+    }
+    let e: ReviewEnvironmentView = Client::result(&admit.unwrap()).unwrap();
+    assert!(
+        e.sandbox == "seatbelt" || e.sandbox == "seccomp-net",
+        "{e:?}"
+    );
+    assert_eq!(e.candidate_task_id.as_ref(), Some(&task));
+    let review_task = e.review_task_id.clone().unwrap();
+    let scratch = std::path::Path::new(&e.worktree);
+    assert!(
+        scratch.starts_with(dir.path().join("review").canonicalize().unwrap()) || scratch.exists(),
+        "{e:?}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(scratch.join("a.txt")).unwrap(),
+        "a\n"
+    );
+    assert!(e.branch.starts_with("modbit/review-"));
+    // The review task: its own, under review_isolated, carrying nothing.
+    let rst = wait_task(&mut c, &review_task, 5).await;
+    assert_eq!(rst.state, "Queued", "{rst:?}");
+    let revs = task_events(&core, &session, &review_task).await;
+    let created = revs.iter().find(|(_, t, _)| t == "TaskCreated").unwrap();
+    assert_eq!(created.2["execution_profile"], "review_isolated");
+    assert_eq!(created.2["origin"], "review");
+    assert_eq!(created.2["workspace_root"], e.worktree);
+    assert!(
+        revs.iter().all(|(_, t, _)| t != "TaskForked"
+            && t != "SubagentCapsuleBound"
+            && t != "ContextPackCompiled"),
+        "carries nothing: {revs:#?}"
+    );
+    let lease = revs
+        .iter()
+        .find(|(_, t, _)| t == "CapabilityLeaseGranted")
+        .unwrap();
+    let resources: Vec<String> = lease.2["resources"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r.as_str().unwrap().to_owned())
+        .collect();
+    let canonical = std::path::Path::new(&root)
+        .canonicalize()
+        .unwrap()
+        .to_string_lossy()
+        .trim_start_matches(r"\\?\")
+        .to_owned();
+    assert!(
+        resources
+            .iter()
+            .any(|r| r == &format!("fs.read:{canonical}/**")),
+        "{resources:?}"
+    );
+    assert!(
+        resources
+            .iter()
+            .any(|r| r == &format!("fs.write:{}/**", e.worktree)),
+        "{resources:?}"
+    );
+    assert!(
+        !resources
+            .iter()
+            .any(|r| r.starts_with("fs.write:") && r.contains(&canonical)),
+        "canonical is read-only: {resources:?}"
+    );
+    assert!(
+        !resources.iter().any(|r| r.starts_with("git.worktree:")),
+        "{resources:?}"
+    );
+    assert_eq!(lease.2["effect_ceiling"], "REVERSIBLE_WRITE");
+    // Ephemeral writes land in the scratch tree, never the canonical one.
+    let r = invoke_tool(
+        &mut c,
+        &review_task,
+        g,
+        0x84,
+        0xC1,
+        "change.apply",
+        r#"{"path":"a.txt","op":"replace","content":"reviewed\n"}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    assert_eq!(
+        std::fs::read_to_string(scratch.join("a.txt")).unwrap(),
+        "reviewed\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("a.txt")).unwrap(),
+        "a\n",
+        "canonical untouched"
+    );
+    // No canonical mutation by name either: a path outside the scratch tree
+    // is not the review task's to write.
+    let r = invoke_tool(
+        &mut c,
+        &review_task,
+        g,
+        0x85,
+        0xC2,
+        "change.apply",
+        &json!({"path": format!("{canonical}/README.md"), "op": "replace", "content": "x\n"})
+            .to_string(),
+    )
+    .await;
+    assert_ne!(r.status, "SUCCESS", "{r:?}");
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("README.md")).unwrap(),
+        "# canonical\n"
+    );
+    // Processes: no inherited or secret-looking environment, even when asked
+    // for; no network, even loopback.
+    let r = invoke_tool(
+        &mut c,
+        &review_task,
+        g,
+        0x86,
+        0xC3,
+        "test.run",
+        r#"{"argv":["sh","-c","env"],"inherit_env":true,"timeout_ms":20000}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let env_out = so.to_string();
+    assert!(
+        !env_out.contains("hunter2")
+            && !env_out.contains("sk-test-not-for-review")
+            && !env_out.contains("MODBIT_TEST_SECRET"),
+        "{env_out}"
+    );
+    let port = base.rsplit(':').next().unwrap();
+    let probe = format!(
+        // The sandbox may refuse the socket itself (seccomp: EPERM at
+        // creation) or the connection (seatbelt): both are DENIED.
+        "import socket,sys\ntry:\n    s=socket.socket()\n    s.settimeout(3)\n    s.connect(('127.0.0.1', {port}))\n    print('CONNECTED')\nexcept Exception as e:\n    print('DENIED', type(e).__name__)\n"
+    );
+    let r = invoke_tool(
+        &mut c,
+        &review_task,
+        g,
+        0x87,
+        0xC4,
+        "test.run",
+        &json!({"argv": ["python3", "-c", probe], "inherit_env": false, "timeout_ms": 20000})
+            .to_string(),
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let out = so["checks"][0]["message_excerpt"]
+        .as_str()
+        .unwrap_or_default()
+        .to_owned();
+    assert!(
+        out.contains("DENIED") && !out.contains("CONNECTED"),
+        "network is denied inside the sandbox: {so}"
+    );
+    // A process that would outlive the review is ended by disposal.
+    let r = invoke_tool(
+        &mut c,
+        &review_task,
+        g,
+        0x88,
+        0xC5,
+        "shell.start",
+        r#"{"argv":["sh","-c","sleep 120"],"inherit_env":false,"timeout_ms":600000}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let handle = so["session_id"].as_str().unwrap().to_owned();
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x89),
+            "DisposeReviewEnvironment",
+            DisposeReviewEnvironment {
+                env_id: e.env_id.clone(),
+                reason: "review over".into(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let d: ReviewEnvironmentDisposedAck = Client::result(&ack).unwrap();
+    assert!(d.killed >= 1, "{d:?}");
+    assert!(d.worktree_removed, "{d:?}");
+    assert!(!scratch.exists(), "the scratch tree is gone");
+    let branches = Command::new("git")
+        .arg("-C")
+        .arg(repo.path())
+        .args(["branch", "--list", "modbit/review-*"])
+        .output()
+        .unwrap();
+    assert!(
+        String::from_utf8_lossy(&branches.stdout).trim().is_empty(),
+        "{:?}",
+        branches
+    );
+    // The sleeper is gone (seen from the candidate's own read-only listing).
+    let r = invoke_tool(&mut c, &task, g, 0x8A, 0xC6, "shell.list", "{}").await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let sleeper = so["sessions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["session_id"] == handle)
+        .cloned()
+        .unwrap();
+    assert_eq!(sleeper["running"], false, "{sleeper:?}");
+    // The review task ended and its lease is revoked: nothing runs there again.
+    let rst = wait_task(&mut c, &review_task, 5).await;
+    assert_eq!(rst.state, "Cancelled", "{rst:?}");
+    let after = c
+        .command(envelope_fenced(
+            id16(0x8B),
+            "InvokeTool",
+            modbit_protocol::v1::InvokeTool {
+                task_id: Some(review_task.clone()),
+                tool_name: "fs.read".into(),
+                arguments_json: r#"{"path":"a.txt"}"#.into(),
+                tool_call_id: Some(id16(0xC7)),
+                output_budget_bytes: 0,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await;
+    match after {
+        Err(e) => assert!(matches!(e, ClientError::Rejected { .. }), "{e}"),
+        Ok(ack) => {
+            let r: modbit_protocol::v1::ToolInvoked = Client::result(&ack).unwrap();
+            assert_ne!(r.status, "SUCCESS", "{r:?}");
+        }
+    }
+    // The candidate's log holds the whole story.
+    let evs = task_events(&core, &session, &task).await;
+    let admitted = evs
+        .iter()
+        .find(|(_, t, _)| t == "ReviewEnvironmentAdmitted")
+        .unwrap();
+    assert_eq!(admitted.2["env_id"], e.env_id);
+    assert_eq!(admitted.2["sandbox"], e.sandbox);
+    let disposed = evs
+        .iter()
+        .find(|(_, t, _)| t == "ReviewEnvironmentDisposed")
+        .unwrap();
+    assert!(disposed.2["killed"].as_u64().unwrap() >= 1);
+    assert_eq!(disposed.2["worktree_removed"], true);
+    assert_eq!(disposed.2["reason"], "review over");
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("a.txt")).unwrap(),
+        "a\n",
+        "canonical still untouched"
+    );
+}
+
+/// REQ-EPR-007 (docs/27 §9.5, §9.6, docs/49 EPR-007): the compiled plan
+/// carries a prevalidated reviewer slot; it activates only once the static
+/// evidence is in and the Acceptance Gate says the candidate needs
+/// independent review — inside the EPR-018 environment, on its own review
+/// task, with a brief that carries the request, the criteria, the diff and
+/// the static evidence and nothing of the solver's reasoning. The reviewer's
+/// findings are validated at the candidate revision (a phantom path stays
+/// unsupported); a REVISE returns the candidate to work as a bounded
+/// revision with the validated findings; the revised candidate's review is
+/// a new one and its PASS discharges the review obligation through the
+/// gate, leaving the human obligation standing. The path is CRITIQUE.
+#[tokio::test]
+async fn qual_epr_007_the_reviewer_slot_activates_on_the_gate_validates_findings_and_bounds_revision()
+ {
+    use ed25519_dalek::{Signer, SigningKey};
+    use modbit_protocol::v1::{
+        ActivateModelRegistry, GetRoutingPlan, ModelRegistryView, RoutingPlanView, StartTask,
+        TaskRunStarted,
+    };
+    use modbit_providers::registry::{
+        Economics, Governance, Latency, QualityFloor, REGISTRY_SCHEMA_VERSION, RegistryDocument,
+        RegistryEntry, SignedRegistry,
+    };
+    use serde_json::json;
+    let key = SigningKey::from_bytes(&[31u8; 32]);
+    let key_hex = hex::encode(key.verifying_key().to_bytes());
+    let now = modbit_domain::Timestamp::now().0;
+    let entry = |model: &str, roles: &[&str], input: u64, output: u64| RegistryEntry {
+        endpoint: "openai".into(),
+        provider: "openai".into(),
+        family: "gpt-5".into(),
+        model: model.into(),
+        roles: roles.iter().map(|r| (*r).to_owned()).collect(),
+        input_modalities: vec!["text".into()],
+        context_tokens: 400_000,
+        max_output_tokens: 64_000,
+        tools: true,
+        vision: false,
+        reasoning: true,
+        structured_output: true,
+        economics: Economics {
+            input_per_mtok_minor: input,
+            output_per_mtok_minor: output,
+            currency: "USD".into(),
+            scale: 2,
+            cached_input_per_mtok_minor: None,
+            cache_write_per_mtok_minor: None,
+            cache_ttl_ms: None,
+        },
+        latency: Latency {
+            p50_ms: 900,
+            p95_ms: 4_200,
+        },
+        governance: Governance {
+            data_residency: "us".into(),
+            retains_prompts: false,
+            allowed_profiles: vec![],
+        },
+        revoked: false,
+    };
+    let document = RegistryDocument {
+        schema_version: REGISTRY_SCHEMA_VERSION,
+        registry_generation: "registry-critique".into(),
+        stats_version: "stats-1".into(),
+        issued_at_ms: now - 60_000,
+        expires_at_ms: now + 86_400_000,
+        quality_floors: vec![QualityFloor {
+            mode: "auto".into(),
+            min_quality: 0.72,
+            max_cost_minor: 5_000,
+            currency: "USD".into(),
+            scale: 2,
+        }],
+        entries: vec![
+            entry("gpt-5-mini", &["solver"], 25, 200),
+            entry("gpt-5", &["solver", "reviewer"], 125, 1_000),
+        ],
+    };
+    let signed = {
+        let json = serde_json::to_string(&document).unwrap();
+        serde_json::to_string(&SignedRegistry {
+            key_id: "ops".into(),
+            signature_hex: hex::encode(key.sign(json.as_bytes()).to_bytes()),
+            document_json: json,
+        })
+        .unwrap()
+    };
+    // An auth change with a migration: the realized risk is CRITICAL, so the
+    // gate requires independent review (and a human) — EPR-008's shape.
+    let login = "def login(u, p):\n    return u == 'a'\n";
+    let files: [(&str, &str); 5] = [
+        ("src/auth/login.py", login),
+        ("db/migrations/001_init.sql", "create table t (id int);\n"),
+        (
+            "tests/test_login.py",
+            "def test_login():\n    assert True\n",
+        ),
+        ("check.sh", "grep -q 'validated' src/auth/login.py\n"),
+        (
+            ".modbit/verification.json",
+            "{\"commands\": [{\"id\": \"gate\", \"argv\": [\"sh\", \"check.sh\"]}]}",
+        ),
+    ];
+    let (repo, root) = plain_repo(&files);
+    let hash = sha256_of(login.as_bytes());
+    let solver = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "validate the login and add the migration", "expected_files": ["src/auth/login.py", "db/migrations/002_add.sql"], "verification": ["sh check.sh"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "src/auth/login.py"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "src/auth/login.py", "op": "replace", "content": "def login(u, p):\n    # validated\n    return u == 'a' and p\n", "expected_content_hash": hash}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "db/migrations/002_add.sql", "op": "create", "content": "alter table t add column name text;\n"}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "validate the login and add the migration", "expected_files": ["src/auth/login.py", "db/migrations/002_add.sql"], "verification": ["sh check.sh"], "reason": "the migration is authored by hand: there is no generator in this repository"}}]}),
+        json!({"calls": [{"name": "test.run", "args": {"argv": ["sh", "check.sh"], "inherit_env": true}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "validated login, migration added", "self_review": {"findings": []}, "verification": ["sh check.sh"]}}]}),
+        // The revision (a new attempt on the same transcript, after the
+        // reviewer's findings arrive as a user message).
+        json!({"calls": [{"name": "change.apply", "args": {"path": "src/auth/login.py", "op": "replace", "content": "import hashlib\n# REVIEWED-HASH\ndef login(u, p):\n    # validated\n    return u == 'a' and hashlib.sha256(p.encode()).hexdigest() == STORED\n"}}]}),
+        json!({"calls": [{"name": "test.run", "args": {"argv": ["sh", "check.sh"], "inherit_env": true}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "password compared against a stored hash, as reviewed", "self_review": {"findings": []}, "verification": ["sh check.sh"]}}]}),
+    ];
+    // The reviewer (gpt-5): reads the candidate, runs the check in its
+    // sandbox, reports. Its first review finds the truthiness check and a
+    // phantom path; a read that shows the hashed comparison passes.
+    let reviewer = vec![
+        json!({"calls": [{"name": "fs.read", "args": {"path": "src/auth/login.py"}}]}),
+        json!({"calls": [{"name": "shell.exec", "args": {"argv": ["sh", "check.sh"], "inherit_env": false}}]}),
+        json!({"calls": [{"name": "review.report", "args": {"verdict": "REVISE", "confidence": 80, "summary": "the password is only truthiness-checked", "findings": [
+            {"id": "f1", "severity": "HIGH", "category": "security", "path": "src/auth/login.py", "line": 3, "claim": "`and p` only checks the password is non-empty", "evidence_refs": ["src/auth/login.py:3"], "suggested_action": "compare against a stored hash"},
+            {"id": "f2", "severity": "LOW", "category": "style", "path": "src/auth/phantom.py", "line": 1, "claim": "unused import", "evidence_refs": [], "suggested_action": "remove it"}
+        ], "unresolved_questions": ["where is the stored hash kept?"]}}]}),
+    ];
+    let (base, seen) = scripted_model_reactive(
+        solver,
+        vec![],
+        None,
+        None,
+        vec![(
+            "REVIEWED-HASH".into(),
+            json!({"calls": [{"name": "review.report", "args": {"verdict": "PASS", "confidence": 90, "summary": "the password is compared against a stored hash", "findings": [], "unresolved_questions": []}}]}),
+        )],
+        false,
+        vec![("gpt-5".into(), reviewer)],
+    )
+    .await;
+    let dir = tempfile::tempdir().unwrap();
+    let keys = format!("ops:{key_hex}");
+    let env: Vec<(&str, &str)> = vec![
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_REGISTRY_KEYS", keys.as_str()),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let ack = c
+        .command(envelope(
+            id16(0x70),
+            "ActivateModelRegistry",
+            ActivateModelRegistry {
+                signed_json: signed.clone(),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let r: ModelRegistryView = Client::result(&ack).unwrap();
+    assert!(r.active, "{r:?}");
+    let (session, _) = create_session(&mut c, id16(0x71)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x72, "local_trusted").await;
+    let start = StartTask {
+        task_id: Some(task.clone()),
+        endpoint: String::new(),
+        model: String::new(),
+        max_turns: 20,
+        max_tool_calls: 0,
+        max_no_progress_turns: 4,
+        skills: vec![],
+    }
+    .encode_to_vec();
+    let _: TaskRunStarted = Client::result(
+        &c.command(envelope_fenced(id16(0x73), "StartTask", start, g))
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    let st = wait_for_state(&mut c, &task, "ReadyForReview", 120).await;
+    let evs = task_events(&core, &session, &task).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}\n{evs:#?}");
+    let of = |evs: &[(String, String, serde_json::Value)], t: &str| -> Vec<serde_json::Value> {
+        evs.iter()
+            .filter(|(_, ty, _)| ty == t)
+            .map(|(_, _, p)| p.clone())
+            .collect()
+    };
+    // 1. The compiled plan carries the reviewer slot, prevalidated: the
+    //    cheaper opener, the reviewer on the other model.
+    let plans = of(&evs, "RoutingPlanCompiled");
+    let plan = &plans[0]["plan"];
+    let slots = plan["slots"].as_array().unwrap();
+    let reviewer_slot = slots
+        .iter()
+        .find(|s| s["role"] == "reviewer")
+        .expect("a reviewer slot");
+    assert_eq!(reviewer_slot["trigger"], "REVIEW_REQUIRED");
+    assert_eq!(reviewer_slot["model"], "gpt-5");
+    assert_eq!(reviewer_slot["predecessor"], "initial");
+    assert_eq!(slots[0]["model"], "gpt-5-mini");
+    assert_eq!(plan["max_revisions"], 1);
+    // The gate required review at the first completion.
+    let gates = of(&evs, "AcceptanceGateEvaluated");
+    assert!(
+        gates[0]["independent_review_required"]
+            .as_bool()
+            .unwrap_or(false)
+            || gates[0]["verdict"] != "ACCEPT",
+        "{gates:#?}"
+    );
+    let review_re: Vec<serde_json::Value> = of(&evs, "RouteReevaluated")
+        .into_iter()
+        .filter(|d| d["boundary"] == "REVIEW")
+        .collect();
+    assert!(!review_re.is_empty(), "{evs:#?}");
+    if cfg!(windows) {
+        // No review sandbox on this host: the slot stays unactivated, the
+        // obligation stands for a person, nothing was taken.
+        assert_eq!(review_re[0]["decision"], "STAY", "{review_re:#?}");
+        assert!(
+            review_re[0]["reason"]
+                .as_str()
+                .unwrap()
+                .contains("SANDBOX_UNAVAILABLE"),
+            "{review_re:#?}"
+        );
+        assert!(of(&evs, "ReviewLegActivated").is_empty());
+        return;
+    }
+    // 2. The reviewer leg activated on the run, before it completed, in a
+    //    real environment; its brief carried the request, the criteria, the
+    //    diff and the static evidence — and no solver reasoning.
+    assert_eq!(review_re[0]["decision"], "SWITCH", "{review_re:#?}");
+    // (The reviewer may already have answered by now; the first leg is the
+    // one this run activated.)
+    let legs = of(&evs, "ReviewLegActivated");
+    assert!(!legs.is_empty(), "{evs:#?}");
+    assert_eq!(legs[0]["slot_id"], "reviewer");
+    assert_eq!(legs[0]["model"], "gpt-5");
+    let env_admitted = of(&evs, "ReviewEnvironmentAdmitted");
+    assert!(!env_admitted.is_empty());
+    assert_eq!(legs[0]["env_id"], env_admitted[0]["env_id"]);
+    let run_events: Vec<&(String, String, serde_json::Value)> =
+        evs.iter().filter(|(a, _, _)| a == "run").collect();
+    let leg_at = run_events
+        .iter()
+        .position(|(_, t, _)| t == "ReviewLegActivated")
+        .unwrap();
+    let done_at = run_events
+        .iter()
+        .position(|(_, t, _)| t == "RunCompleted")
+        .unwrap();
+    assert!(
+        leg_at < done_at,
+        "the leg is on the run before it completes"
+    );
+    // 3. The reviewer worked and reported; findings validated at the
+    //    revision, the phantom one unsupported; the candidate went back to
+    //    work as revision 1 of 1 with only the validated finding, and was
+    //    reviewed again: PASS.
+    let deadline = std::time::Instant::now() + Duration::from_secs(180);
+    loop {
+        let evs = task_events(&core, &session, &task).await;
+        let results = of(&evs, "ReviewerResultRecorded");
+        let st = wait_task(&mut c, &task, 1).await;
+        if results.len() >= 2 && st.state == "ReadyForReview" && !st.loop_alive {
+            break;
+        }
+        if std::time::Instant::now() >= deadline || (!st.loop_alive && st.state != "ReadyForReview")
+        {
+            let bodies = seen.lock().unwrap().clone();
+            let solver_last: Vec<String> = bodies
+                .iter()
+                .rfind(|b| b["model"] != "gpt-5")
+                .map(|b| {
+                    b["messages"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .filter(|m| m["role"] == "tool")
+                        .map(|m| {
+                            m["content"]
+                                .as_str()
+                                .unwrap_or_default()
+                                .chars()
+                                .take(600)
+                                .collect()
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
+            panic!(
+                "{st:?}\nsolver tool results: {solver_last:#?}\nevents: {}",
+                evs.len()
+            );
+        }
+        tokio::time::sleep(Duration::from_millis(200)).await;
+    }
+    let evs = task_events(&core, &session, &task).await;
+    let results = of(&evs, "ReviewerResultRecorded");
+    assert_eq!(results.len(), 2, "{results:#?}");
+    assert_eq!(results[0]["verdict"], "REVISE");
+    assert_eq!(results[0]["validated_findings"], 1);
+    assert_eq!(results[0]["unsupported_findings"], 1);
+    assert_eq!(results[0]["highest_severity"], "HIGH");
+    assert_eq!(results[1]["verdict"], "PASS");
+    assert!(
+        results[1]["candidate_revision"].as_u64().unwrap()
+            > results[0]["candidate_revision"].as_u64().unwrap(),
+        "a new revision was reviewed: {results:#?}"
+    );
+    let revisions = of(&evs, "RevisionActivated");
+    assert_eq!(revisions.len(), 1, "{revisions:#?}");
+    assert_eq!(revisions[0]["revision"], 1);
+    assert_eq!(revisions[0]["max_revisions"], 1);
+    assert_eq!(
+        revisions[0]["model"], "gpt-5-mini",
+        "no reviser slot: the solver's binding"
+    );
+    let inputs = of(&evs, "TaskInputQueued");
+    let revision_input = inputs
+        .iter()
+        .find(|i| {
+            i["input_id"]
+                .as_str()
+                .unwrap()
+                .starts_with("review-revision-1")
+        })
+        .unwrap();
+    let text = revision_input["text"].as_str().unwrap();
+    assert!(
+        text.contains("`and p` only checks") && text.contains("src/auth/login.py:3"),
+        "{text}"
+    );
+    assert!(
+        !text.contains("phantom"),
+        "the unsupported finding is not a finding: {text}"
+    );
+    assert_eq!(of(&evs, "TaskReturnedToWork").len(), 1);
+    let decisions = of(&evs, "ReviewDecisionRecorded");
+    assert_eq!(decisions.len(), 2, "{decisions:#?}");
+    assert_eq!(
+        (
+            decisions[0]["decision"].as_str(),
+            decisions[0]["provenance"].as_str()
+        ),
+        (Some("RETURN"), Some("independent_reviewer"))
+    );
+    assert_eq!(
+        (
+            decisions[1]["decision"].as_str(),
+            decisions[1]["provenance"].as_str()
+        ),
+        (Some("ACCEPT"), Some("independent_reviewer"))
+    );
+    // The gate after the PASS: independent review satisfied at the current
+    // revision; the human obligation still stands (never erased).
+    let gates = of(&evs, "AcceptanceGateEvaluated");
+    let last_gate = gates
+        .iter()
+        .rev()
+        .find(|g| g["trigger"] == "INDEPENDENT_REVIEW")
+        .expect("a gate re-evaluated on the review");
+    let a = task_assurance(&mut c, &task).await;
+    let gate = a.acceptance.clone().unwrap();
+    assert!(
+        gate.evidence
+            .iter()
+            .any(|e| e.kind == "independent_review" && e.status == "PASS"),
+        "{gate:?}"
+    );
+    assert!(gate.human_required, "{gate:?}");
+    let _ = last_gate;
+    // The environments were disposed; the canonical tree holds only the
+    // solver's work; the reviewer's runs happened in the scratch trees.
+    let disposed = of(&evs, "ReviewEnvironmentDisposed");
+    assert_eq!(disposed.len(), 2, "{disposed:#?}");
+    for d in &disposed {
+        assert_eq!(d["worktree_removed"], true, "{d:#?}");
+    }
+    assert!(
+        !dir.path()
+            .join("review")
+            .read_dir()
+            .map(|mut d| d.next().is_some())
+            .unwrap_or(false),
+        "no scratch tree left"
+    );
+    assert!(
+        std::fs::read_to_string(repo.path().join("src/auth/login.py"))
+            .unwrap()
+            .contains("REVIEWED-HASH")
+    );
+    // The reviewer saw the brief and no solver reasoning: its first request
+    // carries the goal and the brief as user messages, no assistant turn
+    // and none of the solver's tool arguments.
+    let bodies = seen.lock().unwrap().clone();
+    let reviewer_bodies: Vec<&serde_json::Value> =
+        bodies.iter().filter(|b| b["model"] == "gpt-5").collect();
+    assert!(reviewer_bodies.len() >= 3, "{}", reviewer_bodies.len());
+    let first = &reviewer_bodies[0]["messages"];
+    let roles: Vec<&str> = first
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|m| m["role"].as_str().unwrap())
+        .collect();
+    assert!(!roles.contains(&"assistant"), "{roles:?}");
+    let first_text = first.to_string();
+    assert!(
+        first_text.contains("[REVIEW BRIEF]")
+            && first_text.contains("src/auth/login.py")
+            && first_text.contains("Acceptance criteria"),
+        "{first_text}"
+    );
+    assert!(
+        !first_text.contains("expected_content_hash")
+            && !first_text.contains("validated login, migration added"),
+        "no solver tool arguments or completion talk: {first_text}"
+    );
+    let tools: Vec<String> = reviewer_bodies[0]["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|t| t["function"]["name"].as_str().map(str::to_owned))
+        .collect();
+    assert!(
+        tools.iter().any(|t| t == "review.report")
+            && tools.iter().any(|t| t == "fs.read")
+            && tools.iter().any(|t| t == "shell.exec"),
+        "{tools:?}"
+    );
+    assert!(
+        !tools
+            .iter()
+            .any(|t| t.starts_with("agent.") || t.starts_with("git.worktree")),
+        "{tools:?}"
+    );
+    // The reviewer's check ran in its sandbox and passed there.
+    let review_check = reviewer_bodies.iter().find_map(|b| {
+        b["messages"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|m| m["role"] == "tool")
+            .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+            .find(|t| t.contains("exit_code") && t.contains("status: SUCCESS"))
+    });
+    assert!(
+        review_check.is_some(),
+        "the reviewer's check ran in its sandbox: {reviewer_bodies:#?}"
+    );
+    // 4. The path the first run earned: CRITIQUE.
+    let ack = c
+        .command(envelope(
+            id16(0x74),
+            "GetRoutingPlan",
+            GetRoutingPlan {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let v: RoutingPlanView = Client::result(&ack).unwrap();
+    assert_eq!(v.path_label, "CRITIQUE", "{v:?}");
+}
+
 #[tokio::test]
 async fn m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back() {
     use modbit_protocol::v1::{
@@ -25720,4 +26593,553 @@ async fn m6_3_subagents_are_admitted_transactionally_and_hand_typed_results_back
     );
     core3.kill();
     let _ = repo3;
+}
+
+/// QUAL-PX-005 / PX-E2E-005 (docs/20 "Constrained inline patch", docs/29): a
+/// person's one-hunk edit lands on a real worktree only through the
+/// canonical ChangeTransaction — the workspace revision the client saw is a
+/// precondition, provenance `user_direct_edit` is recorded on the workspace
+/// log and the task's, the workspace revision advances once, and a code
+/// reference bound to the old file revision reads stale. An edit against a
+/// stale revision is refused with nothing written; an edit named by a
+/// symlink that resolves to a protected path is denied after resolution; a
+/// retry with the same command id replays the record and writes nothing.
+#[tokio::test]
+async fn qual_px_005_a_user_edit_lands_only_through_the_change_transaction() {
+    use modbit_protocol::v1::{ApplyUserPatch, CodeViewModel, GetCodeView, UserPatchAppliedAck};
+    let original = (1..=12)
+        .map(|i| format!("line {i}"))
+        .collect::<Vec<_>>()
+        .join("\n")
+        + "\n";
+    let (repo, root) = plain_repo(&[("notes.txt", &original), (".env", "SECRET=1\n")]);
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(repo.path().join(".env"), repo.path().join("link.txt")).unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn(dir.path());
+    let mut c = core.client_of(ClientKind::Desktop).await;
+    let (session, _) = create_session(&mut c, id16(0x51)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_goal(&mut c, &session, g, &root, 0x52, "notes").await;
+    async fn code_view(c: &mut Client, task: &Id, id: u8, expected: &str) -> CodeViewModel {
+        let ack = c
+            .command(envelope(
+                id16(id),
+                "GetCodeView",
+                GetCodeView {
+                    task_id: Some(task.clone()),
+                    path: "notes.txt".into(),
+                    expected_file_revision: expected.to_owned(),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    }
+    let before = code_view(&mut c, &task, 0x53, "").await;
+    assert!(!before.stale && before.text == original, "{before:?}");
+    let patch = |id: u8, path: &str, revision: u64, old: &str, new: &str, file_rev: &str| {
+        envelope_fenced(
+            id16(id),
+            "ApplyUserPatch",
+            ApplyUserPatch {
+                task_id: Some(task.clone()),
+                path: path.to_owned(),
+                expected_workspace_revision: revision,
+                old: old.to_owned(),
+                new: new.to_owned(),
+                expected_file_revision: file_rev.to_owned(),
+                source: "review".into(),
+            }
+            .encode_to_vec(),
+            g,
+        )
+    };
+    // The edit lands: one hunk, through the file service, revision advanced.
+    let ack = c
+        .command(patch(
+            0x54,
+            "notes.txt",
+            before.workspace_revision,
+            "line 7\n",
+            "line 7 edited by hand\n",
+            &before.file_revision,
+        ))
+        .await
+        .unwrap();
+    let applied: UserPatchAppliedAck = Client::result(&ack).unwrap();
+    assert_eq!(applied.previous_revision, before.workspace_revision);
+    assert_eq!(applied.workspace_revision, before.workspace_revision + 1);
+    assert_eq!(applied.before_hash, before.file_revision);
+    assert_eq!(applied.match_tier, "exact");
+    assert!(!applied.replayed);
+    let edited = original.replace("line 7\n", "line 7 edited by hand\n");
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("notes.txt")).unwrap(),
+        edited
+    );
+    // Provenance on both logs: the task's UserPatchApplied and the
+    // workspace's FileChanged carry user_direct_edit and the command id.
+    let evs = task_events(&core, &session, &task).await;
+    let up = evs
+        .iter()
+        .find(|(_, t, _)| t == "UserPatchApplied")
+        .map(|(_, _, p)| p.clone())
+        .expect("UserPatchApplied on the task log");
+    assert_eq!(up["provenance"], "user_direct_edit");
+    assert_eq!(up["source"], "review");
+    assert_eq!(up["path"], "notes.txt");
+    assert_eq!(up["before_hash"], before.file_revision);
+    assert_eq!(up["after_hash"], applied.file_revision);
+    assert_eq!(up["workspace_revision"], applied.workspace_revision);
+    assert_eq!(up["command_id"], hex::encode(id16(0x54).value));
+    let fc = evs
+        .iter()
+        .find(|(a, t, _)| a == "workspace" && t == "FileChanged")
+        .map(|(_, _, p)| p.clone())
+        .expect("FileChanged on the workspace log");
+    assert_eq!(fc["provenance"], "user_direct_edit");
+    assert_eq!(fc["op"], "user_direct_edit:edit");
+    assert_eq!(fc["after_hash"], applied.file_revision);
+    assert_eq!(fc["previous_revision"], before.workspace_revision);
+    assert!(fc["diff_ref"].as_str().is_some_and(|d| !d.is_empty()));
+    assert_eq!(
+        evs.iter().filter(|(_, t, _)| t == "FileChanged").count(),
+        1,
+        "one change, one event"
+    );
+    // A code reference bound to the old file revision is stale; the current
+    // one is not.
+    let stale = code_view(&mut c, &task, 0x55, &before.file_revision).await;
+    assert!(
+        stale.stale && stale.file_revision == applied.file_revision,
+        "{stale:?}"
+    );
+    assert_eq!(stale.workspace_revision, applied.workspace_revision);
+    let fresh = code_view(&mut c, &task, 0x56, &applied.file_revision).await;
+    assert!(!fresh.stale && fresh.text == edited);
+    // A retry with the same command id replays the record: nothing written twice.
+    let ack = c
+        .command(patch(
+            0x54,
+            "notes.txt",
+            before.workspace_revision,
+            "line 7\n",
+            "line 7 edited by hand\n",
+            &before.file_revision,
+        ))
+        .await
+        .unwrap();
+    let again: UserPatchAppliedAck = Client::result(&ack).unwrap();
+    assert!(again.replayed && again.workspace_revision == applied.workspace_revision);
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("notes.txt")).unwrap(),
+        edited
+    );
+    // Stale: the client's revision is behind; nothing is written.
+    let err = c
+        .command(patch(
+            0x57,
+            "notes.txt",
+            before.workspace_revision,
+            "line 3\n",
+            "line 3 stale\n",
+            "",
+        ))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "STALE_REVISION"),
+        "{err}"
+    );
+    let err = c
+        .command(patch(
+            0x58,
+            "notes.txt",
+            applied.workspace_revision,
+            "line 3\n",
+            "line 3 stale\n",
+            &before.file_revision,
+        ))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "STALE_REVISION"),
+        "{err}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("notes.txt")).unwrap(),
+        edited
+    );
+    // Protected: a path that resolves to a protected file is denied after
+    // symlink resolution (docs/23), and the protected file itself is too.
+    #[cfg(unix)]
+    {
+        let err = c
+            .command(patch(
+                0x59,
+                "link.txt",
+                applied.workspace_revision,
+                "SECRET=1",
+                "SECRET=2",
+                "",
+            ))
+            .await
+            .unwrap_err();
+        assert!(
+            matches!(err, ClientError::Rejected { ref code, .. } if code == "PROTECTED_PATH"),
+            "{err}"
+        );
+    }
+    let err = c
+        .command(patch(
+            0x5A,
+            ".env",
+            applied.workspace_revision,
+            "SECRET=1",
+            "SECRET=2",
+            "",
+        ))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "PROTECTED_PATH"),
+        "{err}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join(".env")).unwrap(),
+        "SECRET=1\n"
+    );
+    // An ambiguous target is refused: the edit must be one hunk.
+    let err = c
+        .command(patch(
+            0x5B,
+            "notes.txt",
+            applied.workspace_revision,
+            "line 1",
+            "line one",
+            "",
+        ))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "NO_UNIQUE_MATCH"),
+        "{err}"
+    );
+    // The workspace moved exactly once and only the hand edit is on the log.
+    let after = code_view(&mut c, &task, 0x5C, "").await;
+    assert_eq!(after.workspace_revision, applied.workspace_revision);
+    let evs = task_events(&core, &session, &task).await;
+    assert_eq!(
+        evs.iter()
+            .filter(|(_, t, _)| t == "UserPatchApplied")
+            .count(),
+        1
+    );
+}
+
+/// QUAL-PX-004 / PX-E2E-004 (docs/29, docs/18): an adapter's language-service
+/// diagnostics enter the Core with provenance `external_ide`, bound to the
+/// workspace and file revisions they were computed on: a valid batch is
+/// normalized and recorded (a diagnostic whose file moved on is dropped), it
+/// reaches retrieval as diagnostic linkage the Context Pack's provenance
+/// names, and the verification plan records it as an input — while the
+/// mandatory typecheck the repository configures still runs in Modbit. A
+/// stale batch is discarded and a malformed one refused before anything is
+/// persisted, both on the log; a retry replays the record.
+#[tokio::test]
+async fn qual_px_004_external_diagnostics_are_provenance_bound_context_and_never_verification() {
+    use modbit_protocol::v1::{
+        CodeViewModel, ExternalDiagnostic, ExternalDiagnosticsAck, GetCodeView, GetReviewBundle,
+        ReviewBundle, StartTask, SubmitExternalDiagnostics, TaskRunStarted,
+    };
+    let app = "export function total(q: number, unit: number) {\n  return q * unit;\n}\n";
+    let (repo, root) = plain_repo(&[
+        ("src/app.ts", app),
+        ("src/other.ts", "export const other = 1;\n"),
+        (
+            ".modbit/verification.json",
+            r#"{"commands":[{"id":"typecheck","argv":["git","--version"],"mandatory":true}]}"#,
+        ),
+    ]);
+    let app_hash = {
+        use sha2::Digest;
+        hex::encode(sha2::Sha256::digest(app.as_bytes()))
+    };
+    let script = vec![
+        serde_json::json!({"calls": [{"name": "fs.read", "args": {"path": "src/app.ts"}}]}),
+        serde_json::json!({"calls": [{"name": "plan.update", "args": {"outcome": "guard the total", "expected_files": ["src/app.ts"], "protected_effects": []}}]}),
+        serde_json::json!({"calls": [{"name": "change.apply", "args": {"path": "src/app.ts", "op": "replace", "content": "export function total(q: number, unit: number) {\n  if (q < 0) throw new Error('negative');\n  return q * unit;\n}\n"}}]}),
+        serde_json::json!({"calls": [{"name": "task.complete", "args": {"summary": "guarded", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, _) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn_with_env(dir.path(), &[("MODBIT_OPENAI_BASE_URL", &base)]);
+    let mut c = core.client_of(ClientKind::Desktop).await;
+    let (session, _) = create_session(&mut c, id16(0x61)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_goal(&mut c, &session, g, &root, 0x62, "guard the total").await;
+    let ack = c
+        .command(envelope(
+            id16(0x63),
+            "GetCodeView",
+            GetCodeView {
+                task_id: Some(task.clone()),
+                path: "src/app.ts".into(),
+                expected_file_revision: String::new(),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let view: CodeViewModel = Client::result(&ack).unwrap();
+    assert_eq!(view.file_revision, app_hash);
+    let revision = view.workspace_revision;
+    let diag = |path: &str, line: u32, severity: &str, message: &str, file_revision: &str| {
+        ExternalDiagnostic {
+            path: path.to_owned(),
+            line_start: line,
+            char_start: 2,
+            line_end: line,
+            char_end: 10,
+            severity: severity.to_owned(),
+            code: "TS2345".to_owned(),
+            message: message.to_owned(),
+            file_revision: file_revision.to_owned(),
+        }
+    };
+    let submit = |id: u8, revision: u64, diagnostics: Vec<ExternalDiagnostic>| {
+        envelope_fenced(
+            id16(id),
+            "SubmitExternalDiagnostics",
+            SubmitExternalDiagnostics {
+                task_id: Some(task.clone()),
+                source: "vscode:typescript-language-features".into(),
+                source_version: "5.4.0".into(),
+                workspace_revision: revision,
+                diagnostics,
+            }
+            .encode_to_vec(),
+            g,
+        )
+    };
+    // A valid batch: one diagnostic on the file as it is, one computed on
+    // other bytes of another file (dropped, counted).
+    let ack = c
+        .command(submit(
+            0x64,
+            revision,
+            vec![
+                diag("src/app.ts", 1, "error", "q may be negative", &app_hash),
+                diag("src/other.ts", 0, "warning", "unused", &"ab".repeat(32)),
+            ],
+        ))
+        .await
+        .unwrap();
+    let recorded: ExternalDiagnosticsAck = Client::result(&ack).unwrap();
+    assert_eq!(
+        (recorded.recorded, recorded.discarded),
+        (1, 1),
+        "{recorded:?}"
+    );
+    assert!(!recorded.replayed && recorded.batch_ref.len() == 64);
+    let batch: serde_json::Value =
+        serde_json::from_str(&read_object(&mut c, id16(0x65), &recorded.batch_ref).await).unwrap();
+    assert_eq!(batch["provenance"], "external_ide");
+    assert_eq!(batch["workspace_revision"], revision);
+    assert_eq!(batch["file_revisions"]["src/app.ts"], app_hash);
+    assert_eq!(batch["diagnostics"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        batch["diagnostics"][0]["source"],
+        "external_ide:vscode:typescript-language-features"
+    );
+    assert_eq!(batch["diagnostics"][0]["range"]["start"]["line"], 1);
+    // A retry replays the record.
+    let ack = c
+        .command(submit(
+            0x64,
+            revision,
+            vec![
+                diag("src/app.ts", 1, "error", "q may be negative", &app_hash),
+                diag("src/other.ts", 0, "warning", "unused", &"ab".repeat(32)),
+            ],
+        ))
+        .await
+        .unwrap();
+    let again: ExternalDiagnosticsAck = Client::result(&ack).unwrap();
+    assert!(
+        again.replayed && again.batch_ref == recorded.batch_ref,
+        "{again:?}"
+    );
+    // Stale: another workspace revision is discarded, on the log.
+    let err = c
+        .command(submit(
+            0x66,
+            revision + 7,
+            vec![diag("src/app.ts", 1, "error", "stale", &app_hash)],
+        ))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "STALE_REVISION"),
+        "{err}"
+    );
+    // Malformed: refused before persistence, on the log.
+    let err = c
+        .command(submit(
+            0x67,
+            revision,
+            vec![diag("src/app.ts", 1, "fatal", "bad severity", &app_hash)],
+        ))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "MALFORMED"),
+        "{err}"
+    );
+    let err = c
+        .command(submit(
+            0x68,
+            revision,
+            vec![diag("../etc/passwd", 1, "error", "escape", &app_hash)],
+        ))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "MALFORMED"),
+        "{err}"
+    );
+    let evs = task_events(&core, &session, &task).await;
+    let recorded_evs: Vec<_> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "ExternalDiagnosticsRecorded")
+        .collect();
+    assert_eq!(recorded_evs.len(), 1, "{evs:#?}");
+    let p = &recorded_evs[0].2;
+    assert_eq!(p["provenance"], "external_ide");
+    assert_eq!(p["batch_ref"], recorded.batch_ref);
+    assert_eq!(p["paths"], serde_json::json!(["src/app.ts"]));
+    assert_eq!(
+        (p["recorded"].as_u64(), p["discarded"].as_u64()),
+        (Some(1), Some(1))
+    );
+    let rejected: Vec<String> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "ExternalDiagnosticsRejected")
+        .map(|(_, _, p)| p["code"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    assert_eq!(
+        rejected,
+        vec!["STALE_REVISION", "MALFORMED", "MALFORMED"],
+        "{evs:#?}"
+    );
+    // Context: the diagnostic links retrieval to the file, and the pack's
+    // provenance names where the linkage came from.
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0x69,
+        0xD1,
+        "context.pack",
+        r#"{"query":"total unit","token_budget":400}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let so: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let entry = so["pack"]["entries"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|e| e["provenance"]["path"] == "src/app.ts")
+        .cloned()
+        .unwrap_or_else(|| panic!("src/app.ts packed: {so}"));
+    let reasons = entry["provenance"]["retrieval_reasons"].as_array().unwrap();
+    assert!(
+        reasons.iter().any(|r| r == "external_ide") && reasons.iter().any(|r| r == "diagnostic"),
+        "{entry}"
+    );
+    assert_eq!(entry["reason"], "critical:diagnostic", "{entry}");
+    // The run: the plan names the batch as an input and the repository's
+    // mandatory typecheck runs in Modbit regardless of what the batch says.
+    let start = StartTask {
+        task_id: Some(task.clone()),
+        endpoint: "openai".into(),
+        model: "gpt-5".into(),
+        max_turns: 20,
+        max_tool_calls: 0,
+        max_no_progress_turns: 4,
+        skills: vec![],
+    }
+    .encode_to_vec();
+    let _: TaskRunStarted = Client::result(
+        &c.command(envelope_fenced(id16(0x6A), "StartTask", start, g))
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    let st = wait_for_state(&mut c, &task, "ReadyForReview", 180).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let evs = task_events(&core, &session, &task).await;
+    let runs: Vec<&serde_json::Value> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "VerificationRunRecorded")
+        .map(|(_, _, p)| p)
+        .collect();
+    let completion = runs
+        .iter()
+        .find(|p| p["stage"] == "COMPLETION")
+        .unwrap_or_else(|| panic!("a COMPLETION run: {runs:#?}"));
+    let checks = completion["checks"].as_array().unwrap();
+    // The configured command's check id names what ran (the adapter's id),
+    // the plan's command id names what was configured.
+    let typecheck = checks
+        .iter()
+        .find(|c| {
+            c["check_id"]
+                .as_str()
+                .is_some_and(|id| id.starts_with("configured_command:git --version"))
+        })
+        .unwrap_or_else(|| panic!("the configured typecheck ran: {checks:#?}"));
+    assert_eq!(typecheck["status"], "PASS", "{typecheck}");
+    assert!(
+        checks.iter().all(|c| !c["check_id"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("external")),
+        "no check comes from the batch: {checks:#?}"
+    );
+    let plan: serde_json::Value = serde_json::from_str(
+        &read_object(&mut c, id16(0x6B), completion["plan_ref"].as_str().unwrap()).await,
+    )
+    .unwrap();
+    let inputs = plan["external_diagnostics"].as_array().unwrap();
+    assert_eq!(inputs.len(), 1, "{plan}");
+    assert_eq!(inputs[0]["source"], "vscode:typescript-language-features");
+    assert_eq!(inputs[0]["batch_ref"], recorded.batch_ref);
+    assert_eq!(inputs[0]["workspace_revision"], revision);
+    assert!(
+        plan["commands"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|c| c["id"] == "configured:typecheck" && c["mandatory"] == true),
+        "{plan}"
+    );
+    // After the edit the file moved on: the batch no longer links anything.
+    let ack = c
+        .command(envelope(
+            id16(0x6C),
+            "GetReviewBundle",
+            GetReviewBundle {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let bundle: ReviewBundle = Client::result(&ack).unwrap();
+    assert!(bundle.workspace_revision > revision);
+    let _ = repo;
 }

@@ -131,7 +131,10 @@ toml = "1.1.5"
 # Denied, not forbidden: the sanctioned exceptions are the handle
 # inheritance fixes in apps/cli (Windows) and services/modbit-core (Windows
 # handle flags, Unix FD_CLOEXEC), each a scoped `#[allow(unsafe_code)]` with
-# a SAFETY note: a spawned child must not keep its parent's pipes open.
+# a SAFETY note: a spawned child must not keep its parent's pipes open; and
+# the Linux review sandbox in services/modbit-execd (seccomp_net.rs: prctl
+# to install the no-network filter, one socket call in its self-check) and
+# its Unix process-group kill (broker.rs `kill_group`: one killpg call).
 unsafe_code = "deny"
 missing_docs = "warn"
 unused_crate_dependencies = "allow"

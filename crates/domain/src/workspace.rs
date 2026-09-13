@@ -7,14 +7,19 @@ use serde::{Deserialize, Serialize};
 use crate::ids::{TaskId, ToolCallId};
 
 /// Events on the `Workspace` aggregate (id: the worktree id digest).
+// A log event is built once and serialized; its in-memory size is not
+// what matters here.
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum WorkspaceEvent {
-    /// One file changed by a tool call.
+    /// One file changed by a tool call — or by a person's direct edit
+    /// (PX-005), which carries `provenance: user_direct_edit`.
     FileChanged {
         /// Task.
         task_id: TaskId,
-        /// Tool call that produced the change.
+        /// Tool call that produced the change; for a person's direct edit,
+        /// the id of the `ApplyUserPatch` command that made it.
         tool_call_id: ToolCallId,
         /// Root-relative path.
         path: String,
@@ -44,6 +49,12 @@ pub enum WorkspaceEvent {
         /// because the product claims nothing about the language (docs/76).
         #[serde(default)]
         unsupported_language: bool,
+        /// Who made the change: empty for the tool host (an agent's tool
+        /// call), `user_direct_edit` for a person's constrained inline patch
+        /// (PX-005, docs/20, docs/29). Empty on events written before the
+        /// field existed.
+        #[serde(default)]
+        provenance: String,
     },
     /// Files a verification stage created inside the workspace (docs/64 §4):
     /// bytecode caches, reporter files, build output. They are not the

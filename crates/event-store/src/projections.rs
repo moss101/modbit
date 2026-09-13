@@ -1873,6 +1873,15 @@ pub fn load_open_tasks(tx: &rusqlite::Connection) -> Result<Vec<Task>> {
     load_tasks_in(tx, "state IN ('QUEUED', 'RUNNING', 'WAITING')")
 }
 
+/// Tasks that are not terminal — queued, running, waiting or with the
+/// reviewer (EPR-007: a candidate under review is ready for review).
+pub fn load_unfinished_tasks(tx: &rusqlite::Connection) -> Result<Vec<Task>> {
+    load_tasks_in(
+        tx,
+        "state IN ('QUEUED', 'RUNNING', 'WAITING', 'READY_FOR_REVIEW')",
+    )
+}
+
 fn load_tasks_in(tx: &rusqlite::Connection, filter: &str) -> Result<Vec<Task>> {
     let mut stmt = tx.prepare(&format!(
         "SELECT task_id FROM tasks WHERE {filter} ORDER BY created_at"

@@ -1,19 +1,92 @@
 {
   "name": "@modbit/vscode-adapter",
+  "displayName": "Modbit",
+  "publisher": "modbit",
   "version": "0.0.0",
   "private": true,
-  "description": "first IDE adapter (Beta); a thin SurfaceProtocol client only",
+  "description": "Modbit for VS Code \u2014 the first IDE adapter (Beta): a thin SurfaceProtocol client that creates, steers, approves and reviews tasks on the local Core and forwards the editor's diagnostics with revision provenance; it owns nothing",
   "type": "module",
+  "engines": {
+    "vscode": "^1.104.0"
+  },
+  "main": "./dist/extension.cjs",
+  "activationEvents": [
+    "workspaceContains:**/*"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "modbit.createTask",
+        "title": "Modbit: Create Task"
+      },
+      {
+        "command": "modbit.steer",
+        "title": "Modbit: Steer Task"
+      },
+      {
+        "command": "modbit.approve",
+        "title": "Modbit: Decide Approval"
+      },
+      {
+        "command": "modbit.review",
+        "title": "Modbit: Open Review"
+      },
+      {
+        "command": "modbit.decideReview",
+        "title": "Modbit: Decide Review"
+      },
+      {
+        "command": "modbit.forwardDiagnostics",
+        "title": "Modbit: Forward Diagnostics"
+      },
+      {
+        "command": "modbit.resume",
+        "title": "Modbit: Resume Task"
+      }
+    ],
+    "views": {
+      "explorer": [
+        {
+          "id": "modbit.tasks",
+          "name": "Modbit Tasks"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Modbit",
+      "properties": {
+        "modbit.coreBinary": {
+          "type": "string",
+          "default": "modbit-core",
+          "description": "Path to the modbit-core binary the adapter spawns for this profile (MODBIT_CORE_BIN overrides)."
+        }
+      }
+    }
+  },
   "exports": {
     ".": "./src/index.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
-    "test": "node --test \"src/**/*.test.ts\""
+    "test": "node --test \"src/**/*.test.ts\"",
+    "build": "node build.mjs",
+    "test:host": "node build.mjs && node dist/test/run.cjs"
   },
   "modbit": {
     "owner": "desktop",
     "canonical": [],
     "capabilities": []
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "2.14.1",
+    "@modbit/ide-adapter-core": "workspace:*",
+    "@modbit/surface-protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/mocha": "10.0.10",
+    "@types/vscode": "1.104.0",
+    "@vscode/test-electron": "2.5.2",
+    "esbuild": "0.28.2",
+    "mocha": "11.7.1"
   }
 }

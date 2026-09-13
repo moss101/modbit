@@ -456,29 +456,36 @@ impl EventStore {
         cmd: CommandRecord,
         req: AppendRequest,
     ) -> Result<CommandOutcome> {
+        self.execute_command_all(cmd, vec![req])
+    }
+
+    /// What an earlier execution of this command appended, when there was
+    /// one: the outcome a retry replays. For a command whose effect is not
+    /// only events (PX-005: a file write), the caller asks this before
+    /// acting, so a retry re-does nothing. The same id with a different
+    /// request is a conflict.
+    pub fn prior_command(&self, cmd: &CommandRecord) -> Result<Option<CommandOutcome>> {
+        prior_outcome(&self.conn, cmd)
+    }
+
+    /// [`Self::execute_command`] over several aggregates in one transaction
+    /// (docs/19 "one transaction"): the requests land together under the
+    /// one command record, or not at all.
+    pub fn execute_command_all(
+        &mut self,
+        cmd: CommandRecord,
+        reqs: Vec<AppendRequest>,
+    ) -> Result<CommandOutcome> {
         let tx = self
             .conn
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
-        let prior: Option<(String, Option<i64>, Option<i64>)> = tx
-            .query_row(
-                "SELECT request_hash, first_event_offset, last_event_offset FROM commands WHERE command_id = ?1",
-                params![cmd.command_id.as_bytes().as_slice()],
-                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
-            )
-            .optional()?;
-        if let Some((hash, first, last)) = prior {
-            if hash != cmd.request_hash {
-                return Err(Error::IdempotencyConflict {
-                    command_id: hex::encode(cmd.command_id.as_bytes()),
-                });
-            }
-            let events = match (first, last) {
-                (Some(f), Some(l)) => read_range(&tx, f as u64, l as u64)?,
-                _ => Vec::new(),
-            };
-            return Ok(CommandOutcome::Replayed(events));
+        if let Some(replayed) = prior_outcome(&tx, &cmd)? {
+            return Ok(replayed);
         }
-        let events = append_in(&tx, &self.objects, req)?;
+        let mut events = Vec::new();
+        for req in reqs {
+            events.extend(append_in(&tx, &self.objects, req)?);
+        }
         tx.execute(
             "INSERT INTO commands (command_id, tenant_id, command_type, request_hash, first_event_offset, last_event_offset, accepted_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
             params![
@@ -794,6 +801,12 @@ impl EventStore {
     /// Tasks that are queued, running or waiting, oldest first.
     pub fn open_tasks(&self) -> Result<Vec<modbit_domain::task::Task>> {
         crate::projections::load_open_tasks(&self.conn)
+    }
+
+    /// Tasks that are not terminal (queued, running, waiting, ready for
+    /// review), oldest first.
+    pub fn unfinished_tasks(&self) -> Result<Vec<modbit_domain::task::Task>> {
+        crate::projections::load_unfinished_tasks(&self.conn)
     }
 
     /// Runs of a task, newest attempt first.
@@ -1167,6 +1180,32 @@ pub enum CommandOutcome {
     Applied(Vec<StoredEvent>),
     /// Already executed earlier; these are the events it appended then.
     Replayed(Vec<StoredEvent>),
+}
+
+/// The recorded outcome of `cmd` when it already ran: `Replayed` with the
+/// events it appended, or a conflict when the id was used for another
+/// request.
+fn prior_outcome(conn: &Connection, cmd: &CommandRecord) -> Result<Option<CommandOutcome>> {
+    let prior: Option<(String, Option<i64>, Option<i64>)> = conn
+        .query_row(
+            "SELECT request_hash, first_event_offset, last_event_offset FROM commands WHERE command_id = ?1",
+            params![cmd.command_id.as_bytes().as_slice()],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )
+        .optional()?;
+    let Some((hash, first, last)) = prior else {
+        return Ok(None);
+    };
+    if hash != cmd.request_hash {
+        return Err(Error::IdempotencyConflict {
+            command_id: hex::encode(cmd.command_id.as_bytes()),
+        });
+    }
+    let events = match (first, last) {
+        (Some(f), Some(l)) => read_range(conn, f as u64, l as u64)?,
+        _ => Vec::new(),
+    };
+    Ok(Some(CommandOutcome::Replayed(events)))
 }
 
 /// Events with `offset` in `[first, last]`.

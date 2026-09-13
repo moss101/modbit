@@ -1953,6 +1953,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "hex",
+ "libc",
  "modbit-domain",
  "modbit-protocol",
  "modbit-terminal",

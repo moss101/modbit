@@ -528,6 +528,7 @@ pub(crate) async fn restore(
             &pre_bytes,
             pre_revision,
             "checkpoint:",
+            "",
         );
         let mut st = core.store.lock().await;
         append_file_events(

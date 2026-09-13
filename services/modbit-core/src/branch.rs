@@ -378,6 +378,7 @@ pub(crate) async fn fork(
                 &pre_bytes,
                 pre_revision,
                 "fork:",
+                "",
             );
             let mut st = core.store.lock().await;
             append_file_events(

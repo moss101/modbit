@@ -5,11 +5,17 @@
 //! cancel. It is not authorized to create capabilities or decide policy.
 //!
 //! Usage: `modbit-execd --data-dir <dir>`
+//!
+//! On Linux it is also its own review-sandbox launcher (EPR-018):
+//! `modbit-execd --review-sandbox-exec -- <argv...>` runs `argv` with no
+//! network, and `--review-sandbox-selfcheck` reports whether that holds.
 
 use std::path::PathBuf;
 use std::process::ExitCode;
 
 mod broker;
+#[cfg(target_os = "linux")]
+mod seccomp_net;
 
 fn main() -> ExitCode {
     let mut data_dir: Option<PathBuf> = None;
@@ -18,6 +24,24 @@ fn main() -> ExitCode {
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
         match a.as_str() {
+            #[cfg(target_os = "linux")]
+            "--review-sandbox-exec" => {
+                let argv: Vec<std::ffi::OsString> = std::env::args_os()
+                    .skip_while(|a| a != "--")
+                    .skip(1)
+                    .collect();
+                let e = seccomp_net::launch(argv);
+                eprintln!("modbit-execd: review sandbox: {e}");
+                return ExitCode::from(126);
+            }
+            #[cfg(target_os = "linux")]
+            "--review-sandbox-selfcheck" => {
+                return if seccomp_net::selfcheck() {
+                    ExitCode::SUCCESS
+                } else {
+                    ExitCode::from(1)
+                };
+            }
             "--data-dir" => data_dir = args.next().map(PathBuf::from),
             "--tether-stdin" => tether_stdin = true,
             "--orphan-grace-secs" => {

@@ -597,6 +597,16 @@
       "test": "qual_ev_0050_0179_a_follow_up_continues_a_finished_child_as_a_new_attempt_on_its_lineage"
     },
     {
+      "tool": "review.report",
+      "family": "review",
+      "source_behaviors": [
+        "reviewer verdict and findings"
+      ],
+      "owner": "core-runtime harness (critique)",
+      "effect": "ReadOnly",
+      "test": "qual_epr_007_the_reviewer_slot_activates_on_the_gate_validates_findings_and_bounds_revision"
+    },
+    {
       "tool": "verify.run",
       "family": "task",
       "source_behaviors": [
