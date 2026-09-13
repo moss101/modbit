@@ -529,6 +529,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "AdmitRoutingPlan",
                     "CompileRoutingPlan",
                     "ConfigureProvider",
+                    "ConfigureForge",
                     "TrustRepository",
                     "ListStarterTasks",
                     "ActivateModelRegistry",
@@ -549,6 +550,8 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "DecideReview",
                     "ApplyUserPatch",
                     "SubmitExternalDiagnostics",
+                    "OpenPullRequest",
+                    "UpdatePullRequest",
                     "UndoToolCall",
                     "AskSideQuestion",
                     "ListQuestions",
@@ -766,9 +769,12 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         "GetCodeView" => "ui.code_view",
         "DecideReview" => "review.decide",
         "ApplyUserPatch" | "SubmitExternalDiagnostics" => "task.author",
+        "OpenPullRequest" | "UpdatePullRequest" => "review.decide",
         "ResolveApproval" => "approval.resolve",
         "RespondToQuestion" | "AskSideQuestion" => "question.answer",
-        "ConfigureProvider" | "ActivateModelRegistry" | "ProbeModel" => "provider.configure",
+        "ConfigureProvider" | "ActivateModelRegistry" | "ProbeModel" | "ConfigureForge" => {
+            "provider.configure"
+        }
         "TrustRepository" => "repository.trust",
         "EmergencyStop" => "session.control",
         "IngestAttachment" | "AttachContextDocument" => "attachments.ingest",
@@ -937,9 +943,6 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             else {
                 return reject(cid, "BAD_PAYLOAD", "session_id required");
             };
-            if p.goal_text.trim().is_empty() {
-                return reject(cid, "BAD_PAYLOAD", "goal_text required");
-            }
             let origin = match p.origin.as_str() {
                 "desktop" => TaskOrigin::Desktop,
                 "cli" => TaskOrigin::Cli,
@@ -948,9 +951,54 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 "forge_webhook" => TaskOrigin::ForgeWebhook,
                 other => return reject(cid, "BAD_PAYLOAD", format!("unknown origin `{other}`")),
             };
+            if p.goal_text.trim().is_empty() && origin != TaskOrigin::ForgeIssue {
+                return reject(cid, "BAD_PAYLOAD", "goal_text required");
+            }
             if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
                 return ack;
             }
+            // PX-010: a task from an issue reads the issue first — through the
+            // forge adapter, on the Core's token and egress pin — so an
+            // unreadable issue is a clear refusal and no task. The text is
+            // data: attached as an untrusted context document, never policy.
+            let issue = if origin == TaskOrigin::ForgeIssue {
+                if p.issue_url.trim().is_empty() {
+                    return reject(
+                        cid,
+                        "BAD_PAYLOAD",
+                        "issue_url required with origin forge_issue",
+                    );
+                }
+                let Some(cfg) = core.tools.forge.get() else {
+                    return reject(
+                        cid,
+                        "NO_FORGE",
+                        "no forge is configured for this Core (ConfigureForge)",
+                    );
+                };
+                match modbit_tools::forge::read_issue(&cfg, p.issue_url.trim()).await {
+                    Ok(v) => Some(v),
+                    Err((code, msg)) => {
+                        return reject(
+                            cid,
+                            "FORGE_ISSUE_UNREADABLE",
+                            format!("{code}: {msg} (no task was created)"),
+                        );
+                    }
+                }
+            } else {
+                None
+            };
+            let goal_text = if p.goal_text.trim().is_empty() {
+                let v = issue.as_ref().expect("an issue when the goal is empty");
+                format!(
+                    "{} (#{})",
+                    v["title"].as_str().unwrap_or("issue"),
+                    v["number"].as_u64().unwrap_or(0)
+                )
+            } else {
+                p.goal_text.clone()
+            };
             let workspace_id = p
                 .workspace_id
                 .as_ref()
@@ -964,6 +1012,83 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 Ok(None) => return reject(cid, "UNKNOWN_SESSION", session_id.to_string()),
                 Err(e) => return reject(cid, error_code(&e), e.to_string()),
             }
+            // The issue as an attached document (REQ-EV-0161) and the record
+            // of where the task came from, in the same batch as its creation.
+            let mut intake_events = Vec::new();
+            if let Some(v) = &issue {
+                use sha2::Digest;
+                let text = format!(
+                    "# {}\n\nissue #{} by {} ({}) — {}\nlabels: {}\n\n{}\n",
+                    v["title"].as_str().unwrap_or_default(),
+                    v["number"].as_u64().unwrap_or(0),
+                    v["author"].as_str().unwrap_or_default(),
+                    v["state"].as_str().unwrap_or_default(),
+                    v["url"].as_str().unwrap_or_default(),
+                    v["labels"]
+                        .as_array()
+                        .map(|l| l
+                            .iter()
+                            .filter_map(|x| x.as_str())
+                            .collect::<Vec<_>>()
+                            .join(", "))
+                        .unwrap_or_default(),
+                    v["body"].as_str().unwrap_or_default()
+                );
+                let document_id = hex::encode(sha2::Sha256::digest(text.as_bytes()));
+                let content_ref = match store.objects().put(text.as_bytes()) {
+                    Ok(r) => r,
+                    Err(e) => return reject(cid, "OBJECT_STORE", e.to_string()),
+                };
+                intake_events.push(typed(
+                    "ContextDocumentAttached",
+                    &TaskEvent::ContextDocumentAttached {
+                        document_id: document_id.clone(),
+                        source: format!("forge_issue:{}", p.issue_url.trim()),
+                        title: v["title"].as_str().unwrap_or_default().to_owned(),
+                        content_ref,
+                        byte_length: text.len() as u64,
+                        trust: "UNTRUSTED_EXTERNAL_CONTENT".into(),
+                    },
+                    actor.clone(),
+                ));
+                intake_events.push(typed(
+                    "TaskCreatedFromIssue",
+                    &TaskEvent::TaskCreatedFromIssue {
+                        url: p.issue_url.trim().to_owned(),
+                        number: v["number"].as_u64().unwrap_or(0),
+                        title: v["title"].as_str().unwrap_or_default().to_owned(),
+                        provenance: "forge_issue".into(),
+                        document_id,
+                    },
+                    actor.clone(),
+                ));
+            }
+            let mut events = vec![
+                typed(
+                    "TaskCreated",
+                    &TaskEvent::TaskCreated {
+                        session_id,
+                        goal_text: goal_text.clone(),
+                        workspace_id,
+                        workspace_root: if p.workspace_root.is_empty() {
+                            None
+                        } else {
+                            Some(p.workspace_root.clone())
+                        },
+                        base_revision: None,
+                        execution_profile: if p.execution_profile.is_empty() {
+                            "local_trusted".into()
+                        } else {
+                            p.execution_profile.clone()
+                        },
+                        policy_profile_id: None,
+                        origin,
+                    },
+                    actor.clone(),
+                ),
+                typed("TaskQueued", &TaskEvent::TaskQueued, actor.clone()),
+            ];
+            events.extend(intake_events);
             let req = AppendRequest {
                 tenant_id: core.tenant_id,
                 session_id,
@@ -974,31 +1099,7 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 aggregate_type: AggregateType::Task,
                 aggregate_id: *task_id.as_bytes(),
                 expected_sequence: Some(0),
-                events: vec![
-                    typed(
-                        "TaskCreated",
-                        &TaskEvent::TaskCreated {
-                            session_id,
-                            goal_text: p.goal_text.clone(),
-                            workspace_id,
-                            workspace_root: if p.workspace_root.is_empty() {
-                                None
-                            } else {
-                                Some(p.workspace_root.clone())
-                            },
-                            base_revision: None,
-                            execution_profile: if p.execution_profile.is_empty() {
-                                "local_trusted".into()
-                            } else {
-                                p.execution_profile.clone()
-                            },
-                            policy_profile_id: None,
-                            origin,
-                        },
-                        actor.clone(),
-                    ),
-                    typed("TaskQueued", &TaskEvent::TaskQueued, actor.clone()),
-                ],
+                events,
             };
             let profile = if p.execution_profile.is_empty() {
                 "local_trusted".to_owned()
@@ -1062,6 +1163,7 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                         TaskCreated {
                             task_id: Some(wire_id(task_id.as_bytes())),
                             offset,
+                            goal_text,
                         }
                         .encode_to_vec(),
                     )
@@ -3368,6 +3470,56 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 Err((code, msg)) => reject(cid, &code, msg),
             }
         }
+        "ConfigureForge" => {
+            // Not journaled, for the same reason as ConfigureProvider: the
+            // request carries a credential. The Core holds it in memory and
+            // answers with everything but the token.
+            let Ok(p) = wire::ConfigureForge::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "ConfigureForge");
+            };
+            if p.forge != "github" {
+                return reject(
+                    cid,
+                    "UNSUPPORTED_FORGE",
+                    format!("`{}` is not a forge this build reaches (github)", p.forge),
+                );
+            }
+            let api_base = if p.api_base_url.trim().is_empty() {
+                "https://api.github.com".to_owned()
+            } else {
+                p.api_base_url.trim().trim_end_matches('/').to_owned()
+            };
+            if !(api_base.starts_with("https://")
+                || api_base.starts_with("http://127.0.0.1")
+                || api_base.starts_with("http://localhost"))
+            {
+                return reject(
+                    cid,
+                    "BAD_PAYLOAD",
+                    "api_base_url must be https (or a loopback test host)",
+                );
+            }
+            let cfg = modbit_tools::forge::ForgeConfig {
+                kind: "github".into(),
+                api_base,
+                web_host: if p.web_host.trim().is_empty() {
+                    "github.com".to_owned()
+                } else {
+                    p.web_host.trim().to_owned()
+                },
+                token: (!p.token.trim().is_empty()).then(|| p.token.trim().to_owned()),
+            };
+            let egress = cfg.egress_target();
+            let view = wire::ForgeConfigured {
+                forge: cfg.kind.clone(),
+                api_base_url: cfg.api_base.clone(),
+                web_host: cfg.web_host.clone(),
+                token_held: cfg.token.is_some(),
+                egress,
+            };
+            core.tools.forge.set(cfg);
+            accept(cid, false, view.encode_to_vec())
+        }
         "TrustRepository" => {
             let Ok(p) = wire::TrustRepository::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "TrustRepository");
@@ -3868,6 +4020,71 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 &p,
                 record("SubmitExternalDiagnostics"),
                 actor,
+            )
+            .await
+            {
+                Ok(v) => {
+                    let replayed = v.replayed;
+                    accept(cid, replayed, v.encode_to_vec())
+                }
+                Err((code, msg)) => reject(cid, &code, msg),
+            }
+        }
+        "OpenPullRequest" | "UpdatePullRequest" => {
+            let update = env.command_type == "UpdatePullRequest";
+            let (task_id, expected, base, title, remote) = if update {
+                let Ok(p) = wire::UpdatePullRequest::decode(env.payload.as_slice()) else {
+                    return reject(cid, "BAD_PAYLOAD", "UpdatePullRequest");
+                };
+                (
+                    p.task_id,
+                    p.expected_candidate_revision,
+                    String::new(),
+                    String::new(),
+                    p.remote,
+                )
+            } else {
+                let Ok(p) = wire::OpenPullRequest::decode(env.payload.as_slice()) else {
+                    return reject(cid, "BAD_PAYLOAD", "OpenPullRequest");
+                };
+                (
+                    p.task_id,
+                    p.expected_candidate_revision,
+                    p.base,
+                    p.title,
+                    p.remote,
+                )
+            };
+            let Some(task_id) = task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            if expected == 0 {
+                return reject(
+                    cid,
+                    "BAD_PAYLOAD",
+                    "expected_candidate_revision required: the pull request is bound to the revision the review accepted",
+                );
+            }
+            let session_id = match core.store.lock().await.task(&task_id) {
+                Ok(Some(t)) => t.session_id,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
+                return ack;
+            }
+            match crate::pull_request::run(
+                core,
+                crate::pull_request::Request {
+                    task_id,
+                    expected_candidate_revision: expected,
+                    base: &base,
+                    title: &title,
+                    remote: &remote,
+                    actor,
+                    lease_generation: env.expected_generation,
+                },
+                update,
             )
             .await
             {

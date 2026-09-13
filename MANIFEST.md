@@ -14,14 +14,14 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | Section | Range | Files | Bytes |
 |---|---|---:|---:|
 | Authority and orientation | 00–09 | 8 | 65205 |
-| Architecture and subsystems | 10–29 | 20 | 267867 |
-| Implementation specifications | 30–39 | 10 | 100378 |
+| Architecture and subsystems | 10–29 | 20 | 272945 |
+| Implementation specifications | 30–39 | 10 | 101564 |
 | Requirements, tasks and traceability | 40–49 | 10 | 351596 |
 | Verification and testing | 50–69 | 15 | 203744 |
 | Delivery and operations | 70–79 | 7 | 33831 |
 | Agent process and governance | 80–97 | 18 | 109299 |
 | Live state | 98–99 | 1 | 6744 |
-| **Total docs** | | **89** | **1138664** |
+| **Total docs** | | **89** | **1144928** |
 
 ## Specification files (`docs/`)
 
@@ -54,8 +54,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 26 | `docs/26_SKILL_REGISTRY_AND_EVOLUTION.md` | Skill Registry and Evolution Integration — Skill Evolution Without a Second Runtime | architecture | 11590 | `e5b69188c09e95c66a4bb2b42549e00b5f55790b81c163d29f892c62d6a1eec3` |
 | 27 | `docs/27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md` | Execution policy router and verified orchestration | architecture | 67229 | `3662f2a9a3704a61f8a1e9c259341ad02eb8f2721ebd885364c0b1d49eaf11be` |
 | 28 | `docs/28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md` | Agent competence: planning, verification and repair | architecture | 12521 | `2dbf6183340ee6a0ba808eef2dd1eea147e41a75dc18e5a3ee77c5bfec117e57` |
-| 29 | `docs/29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md` | Client surfaces and source-control integration | architecture | 14318 | `2519a5bd2d4f643c180fd35941ae522052c6002631031199690b4856399e935b` |
-| 30 | `docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md` | Protocol, APIs, and Event Schemas | implementation | 22501 | `3904c49a6d27a650fc4f5d53d17517d1f41fe730bb45c4fef41a79ba455b061e` |
+| 29 | `docs/29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md` | Client surfaces and source-control integration | architecture | 19396 | `e8dfb4882be729bca302e318bd397062dade6157845db6999211ac67f9232b79` |
+| 30 | `docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md` | Protocol, APIs, and Event Schemas | implementation | 23687 | `7555a8221a046d42ef6c921abddb559ea6b1dbc3db0a8c8d79b89c04fdfd0a43` |
 | 31 | `docs/31_DATABASE_AND_STORAGE_SCHEMA.md` | Database and Storage Schema | implementation | 13930 | `ba8817151a4efeb8ef03b50818275577f21de86242413b53ea3492638d8cda9e` |
 | 32 | `docs/32_DESKTOP_FRONTEND_IMPLEMENTATION.md` | Desktop Frontend Implementation | implementation | 9340 | `90dd9253b4ca3a7082d73feab716693fefcefd4645fa3c9494bcea8ca3b8609f` |
 | 33 | `docs/33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md` | Core and Cloud Backend Implementation | implementation | 8354 | `2313aa0669345474cd26c835f917594c3dd572411bbd7a01dd6c0370f5c4011f` |
@@ -138,7 +138,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `docs/decisions/DR-M3-004-reschedule-web-content-isolation-to-m7.md` | source patch provenance | 2915 | `c9c94e04bedcc346c082541cbb4a712010ed2c98c90d9e3f28799a02ea78d462` |
 | `docs/decisions/DR-M5-001-reschedule-mcp-media-to-m9.md` | source patch provenance | 2731 | `496c9d80ff66916b11aa66e2fa3368e18a40ae472e5cd488699cd9b589cbd1de` |
 | `docs/decisions/DR-M6-001-vscode-adapter-live-model-half.md` | source patch provenance | 3909 | `4c8a9bcf3c18e23bbcc8d08c0e510786bf517102c9965ad56b331359fdfcd88c` |
-| `docs/decisions/README.md` | source patch provenance | 3533 | `dc31f0823296f05b9745b86d09b7cdf72e342734e48dafe0f348eb86c8a915f9` |
+| `docs/decisions/DR-M6-002-forge-adapter-live-github-half.md` | source patch provenance | 4831 | `0b7b3206a40f7ea3fcdabd4f015c144d58a0e31dba5208513ad87585ef7633d9` |
+| `docs/decisions/README.md` | source patch provenance | 3709 | `d4a98a1bf6fb2a5e595b20334e1c05d7f486f6f4b633836cdfa55e19db991ff3` |
 | `evidence/dossier-epr-v1.1/baseline.json` | retained evidence | 11128 | `ae11c9be07272788d2957bff45bc1333f879e121d2b5205ebc01ce780ec62543` |
 | `evidence/dossier-epr-v1.1/tests.log` | retained evidence | 2071 | `2f4bbebb6db1f0f0c6802f8dee65e5d6aa7933db6d1bda28a8acd70aa9bd88b3` |
 | `evidence/dossier-epr-v1.1/validation.json` | retained evidence | 14010 | `288bf2fff83122240110c926d18d8ef616a9257fc62bc54eb70b536088dfbfb5` |
@@ -1179,6 +1180,12 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m6/PX-005/TASK_CARD.md` | retained evidence | 4164 | `ce888ff9f78b99f617324a26617a2288000e86e1521dae64298c0019d8a62143` |
 | `evidence/m6/PX-005/ci-run-34751685250.json` | retained evidence | 39186 | `6343ad21fe55a9dfbe514e38fa3f4194bc04e2fbfd112fa2d172db81a3674ff5` |
 | `evidence/m6/PX-005/evidence.json` | retained evidence | 1602 | `7ee661f52e2ee44eca5a612571656c95fc7b427cb3cd9d5ba832633a8fee4f20` |
+| `evidence/m6/PX-006/TASK_CARD.md` | retained evidence | 3857 | `5b92e2984be24d7e449776ea71dda51e8aed34507a854919ee1601c528775829` |
+| `evidence/m6/PX-006/evidence.json` | retained evidence | 1769 | `8bebe8654f5dc5d6c984aedfc52f5ea3a4a47f88b382f0a4feeb27da88fcefcb` |
+| `evidence/m6/PX-007/TASK_CARD.md` | retained evidence | 3261 | `f4ed338a9a6c640100beee2e1430c1ac3adcff172cdc4ef194d5e826cd95bb4d` |
+| `evidence/m6/PX-007/evidence.json` | retained evidence | 1513 | `5969c5762a0ea0a0f50156d1d7c414ca071e2e9cd40aa3a66ad02a4ac8175580` |
+| `evidence/m6/PX-010/TASK_CARD.md` | retained evidence | 3053 | `fb8c801e9fc2900ee77aaa093a5f43b94f101eba6343648ee94c71b622454a1b` |
+| `evidence/m6/PX-010/evidence.json` | retained evidence | 1429 | `8eb4289e34bb25b25b0073b1d9615b9a22f4c2512f5001565912dc78e978c1be` |
 | `graph/PROJECT_GRAPH.md` | human view of the graph | 40785 | `d4dc92225617d0888e58586082c1fb583c857c04b3ca4ae0fd49b979f005ec46` |
 | `graph/project-graph.json` | project driver graph with live status | 1443176 | `abab72bf23c458a3a41093b38ecd917b0368ffea02948c19b21b4f980ff9e228` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 53213 | `64cc2c11bf3f398ad20b241e372d930e4787962d6b4a8acb36b5845a1c5f7f81` |

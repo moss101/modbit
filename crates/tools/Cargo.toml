@@ -18,6 +18,7 @@ modbit-protocol.workspace = true
 modbit-terminal.workspace = true
 modbit-workspace.workspace = true
 png = "0.18"
+reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
@@ -38,4 +39,5 @@ capabilities = [
   { id = "tools.registry", requirements = ["REQ-EV-0079", "REQ-EV-0217"] },
   { id = "tools.pipeline", requirements = ["REQ-EV-0239", "REQ-EV-0080"] },
   { id = "tools.output_ref", requirements = ["REQ-EV-0269"] },
+  { id = "tools.forge", requirements = ["REQ-PX-006"] },
 ]

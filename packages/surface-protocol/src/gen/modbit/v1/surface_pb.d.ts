@@ -114,6 +114,18 @@ export declare type CreateTask = Message<"modbit.v1.CreateTask"> & {
    * @generated from field: string workspace_root = 6;
    */
   workspaceRoot: string;
+
+  /**
+   * PX-010: with origin forge_issue, the issue the task is made from. The
+   * Core reads it through the forge adapter before creating anything: an
+   * unreadable issue is FORGE_ISSUE_UNREADABLE and no task exists; a readable
+   * one becomes the goal (when goal_text is empty) and an attached context
+   * document with trust UNTRUSTED_EXTERNAL_CONTENT and provenance forge_issue
+   * — data the loop sees, never authority over policy or capabilities.
+   *
+   * @generated from field: string issue_url = 7;
+   */
+  issueUrl: string;
 };
 
 /**
@@ -233,6 +245,13 @@ export declare type TaskCreated = Message<"modbit.v1.TaskCreated"> & {
    * @generated from field: uint64 offset = 2;
    */
   offset: bigint;
+
+  /**
+   * the goal as recorded (from the issue when made from one, PX-010)
+   *
+   * @generated from field: string goal_text = 3;
+   */
+  goalText: string;
 };
 
 /**
@@ -2600,6 +2619,161 @@ export declare type ExternalDiagnosticsAck = Message<"modbit.v1.ExternalDiagnost
  * Use `create(ExternalDiagnosticsAckSchema)` to create a new message.
  */
 export declare const ExternalDiagnosticsAckSchema: GenMessage<ExternalDiagnosticsAck>;
+
+/**
+ * Open a pull request for the reviewed candidate: the Core points a
+ * dedicated branch (`modbit/pr-<task>`) at the accepted commit, and — once
+ * the protected external effect is approved — pushes it through the typed
+ * Git operation and opens the pull request through `forge.pr.create` under
+ * the task's lease, with the evidence summary as the body. The first call
+ * returns APPROVAL_PENDING with the approval to decide (nothing pushed); the
+ * same call after the decision pushes and opens (or reports the denial,
+ * with no branch on the remote). Bound to the exact candidate revision the
+ * review accepted: another revision is STALE_REVISION.
+ *
+ * @generated from message modbit.v1.OpenPullRequest
+ */
+export declare type OpenPullRequest = Message<"modbit.v1.OpenPullRequest"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * the workspace revision the review accepted
+   *
+   * @generated from field: uint64 expected_candidate_revision = 2;
+   */
+  expectedCandidateRevision: bigint;
+
+  /**
+   * empty = the repository's current branch
+   *
+   * @generated from field: string base = 3;
+   */
+  base: string;
+
+  /**
+   * empty = the review's note or the task's goal
+   *
+   * @generated from field: string title = 4;
+   */
+  title: string;
+
+  /**
+   * empty = origin
+   *
+   * @generated from field: string remote = 5;
+   */
+  remote: string;
+};
+
+/**
+ * Describes the message modbit.v1.OpenPullRequest.
+ * Use `create(OpenPullRequestSchema)` to create a new message.
+ */
+export declare const OpenPullRequestSchema: GenMessage<OpenPullRequest>;
+
+/**
+ * Update the pull request of a task after a later reviewed revision: push
+ * the branch again and PATCH the body with the new evidence summary.
+ *
+ * @generated from message modbit.v1.UpdatePullRequest
+ */
+export declare type UpdatePullRequest = Message<"modbit.v1.UpdatePullRequest"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: uint64 expected_candidate_revision = 2;
+   */
+  expectedCandidateRevision: bigint;
+
+  /**
+   * @generated from field: string remote = 3;
+   */
+  remote: string;
+};
+
+/**
+ * Describes the message modbit.v1.UpdatePullRequest.
+ * Use `create(UpdatePullRequestSchema)` to create a new message.
+ */
+export declare const UpdatePullRequestSchema: GenMessage<UpdatePullRequest>;
+
+/**
+ * @generated from message modbit.v1.PullRequestAck
+ */
+export declare type PullRequestAck = Message<"modbit.v1.PullRequestAck"> & {
+  /**
+   * APPROVAL_PENDING | OPENED | UPDATED | DENIED
+   *
+   * @generated from field: string status = 1;
+   */
+  status: string;
+
+  /**
+   * when APPROVAL_PENDING (or consumed)
+   *
+   * @generated from field: string approval_id = 2;
+   */
+  approvalId: string;
+
+  /**
+   * what the approval binds
+   *
+   * @generated from field: string intent_hash = 3;
+   */
+  intentHash: string;
+
+  /**
+   * @generated from field: uint64 number = 4;
+   */
+  number: bigint;
+
+  /**
+   * @generated from field: string url = 5;
+   */
+  url: string;
+
+  /**
+   * @generated from field: string branch = 6;
+   */
+  branch: string;
+
+  /**
+   * @generated from field: string head_sha = 7;
+   */
+  headSha: string;
+
+  /**
+   * @generated from field: uint64 candidate_revision = 8;
+   */
+  candidateRevision: bigint;
+
+  /**
+   * @generated from field: repeated string effect_receipt_ids = 9;
+   */
+  effectReceiptIds: string[];
+
+  /**
+   * @generated from field: bool replayed = 10;
+   */
+  replayed: boolean;
+
+  /**
+   * @generated from field: string detail = 11;
+   */
+  detail: string;
+};
+
+/**
+ * Describes the message modbit.v1.PullRequestAck.
+ * Use `create(PullRequestAckSchema)` to create a new message.
+ */
+export declare const PullRequestAckSchema: GenMessage<PullRequestAck>;
 
 /**
  * A person's small direct edit, from the review surface or a thin client.
@@ -5032,6 +5206,87 @@ export declare type ConfigureProvider = Message<"modbit.v1.ConfigureProvider"> &
  * Use `create(ConfigureProviderSchema)` to create a new message.
  */
 export declare const ConfigureProviderSchema: GenMessage<ConfigureProvider>;
+
+/**
+ * The forge `forge.*` may reach (PX-006, docs/23, docs/29): one API host,
+ * one token in the Core's custody. Not journaled: the token crosses the
+ * wire once, is held in memory and never returned, logged or stored.
+ *
+ * @generated from message modbit.v1.ConfigureForge
+ */
+export declare type ConfigureForge = Message<"modbit.v1.ConfigureForge"> & {
+  /**
+   * github
+   *
+   * @generated from field: string forge = 1;
+   */
+  forge: string;
+
+  /**
+   * the credential; empty clears it
+   *
+   * @generated from field: string token = 2;
+   */
+  token: string;
+
+  /**
+   * optional (empty = https://api.github.com)
+   *
+   * @generated from field: string api_base_url = 3;
+   */
+  apiBaseUrl: string;
+
+  /**
+   * optional (empty = github.com)
+   *
+   * @generated from field: string web_host = 4;
+   */
+  webHost: string;
+};
+
+/**
+ * Describes the message modbit.v1.ConfigureForge.
+ * Use `create(ConfigureForgeSchema)` to create a new message.
+ */
+export declare const ConfigureForgeSchema: GenMessage<ConfigureForge>;
+
+/**
+ * @generated from message modbit.v1.ForgeConfigured
+ */
+export declare type ForgeConfigured = Message<"modbit.v1.ForgeConfigured"> & {
+  /**
+   * @generated from field: string forge = 1;
+   */
+  forge: string;
+
+  /**
+   * @generated from field: string api_base_url = 2;
+   */
+  apiBaseUrl: string;
+
+  /**
+   * @generated from field: string web_host = 3;
+   */
+  webHost: string;
+
+  /**
+   * @generated from field: bool token_held = 4;
+   */
+  tokenHeld: boolean;
+
+  /**
+   * the one host:port the lease names
+   *
+   * @generated from field: string egress = 5;
+   */
+  egress: string;
+};
+
+/**
+ * Describes the message modbit.v1.ForgeConfigured.
+ * Use `create(ForgeConfiguredSchema)` to create a new message.
+ */
+export declare const ForgeConfiguredSchema: GenMessage<ForgeConfigured>;
 
 /**
  * @generated from message modbit.v1.ProviderConfigured

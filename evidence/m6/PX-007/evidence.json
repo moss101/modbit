@@ -1,0 +1,15 @@
+{
+ "task": "PX-007",
+ "requirement": "REQ-PX-007",
+ "qual": "QUAL-PX-007",
+ "tests": [
+  "qual_px_007_a_reviewed_result_opens_and_updates_a_pull_request_as_approved_receipted_effects"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "on a task under review at revision R1: the first `OpenPullRequest` is `APPROVAL_PENDING` with the intent hash and no branch reaches the remote; a denial leaves no branch and the next call is a new attempt; approved, the branch `modbit/pr-<task>` is on the bare remote at the candidate commit, PR #1 is open with a body carrying the evidence summary (revision, verification) on base `main`, one receipt; `expected_candidate_revision` R1+1 is `STALE_REVISION`; R1 again replays `OPENED` #1; after `RETURN` and a further run to R2, `UpdatePullRequest` is approved, pushes a new snapshot and PATCHes PR #1 with the R2 summary and a second receipt; the log holds one `ForgePullRequestOpened`, one `ForgePullRequestUpdated`, two receipts; every forge call carried the token.",
+ "audit": "DOCUMENTED-ONLY before: the review decided and committed locally; no push, no pull request, no typed remote operation in `crates/git`.",
+ "limitations": "the real-repository run waits for a token (DR-M6-002); after acceptance the branch stays at the snapshot commit of the same tree until a later revision moves it; the review surface's button and `modbit-cli pr open|update` land with PX-023's screen work — the surface command is what they call.",
+ "decision_record": "DR-M6-002",
+ "ci": ""
+}

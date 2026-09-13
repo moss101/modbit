@@ -66,7 +66,7 @@ fn exit_for_state(state: &str) -> u8 {
     }
 }
 
-const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] [--command-id <hex>] <goal> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> [--intent <hash>] (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--skill <name>]... [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id>] [--apply --session <id>] | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | task work --task <id> | task agents --task <id> | capacity show | attention list --session <id> | plan show --task <id> | plan revise --session <id> --task <id> [--plan-json <file>] [note] | task patch --session <id> --task <id> --path <p> --revision <n> [--file-revision <sha>] (--old <text> | --old-file <f>) (--new <text> | --new-file <f>) | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | agent install <file> [--from claude] [--replace] | agent list | skill install <dir> [--expect-hash <hex>] [--replace] | skill remove <name> | skill list | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
+const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] [--command-id <hex>] <goal> | task from-issue --session <id> [--workspace <dir>] [--command-id <hex>] <issue-url> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> [--intent <hash>] (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--skill <name>]... [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id>] [--apply --session <id>] | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | task work --task <id> | task agents --task <id> | capacity show | attention list --session <id> | plan show --task <id> | plan revise --session <id> --task <id> [--plan-json <file>] [note] | task patch --session <id> --task <id> --path <p> --revision <n> [--file-revision <sha>] (--old <text> | --old-file <f>) (--new <text> | --new-file <f>) | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | agent install <file> [--from claude] [--replace] | agent list | skill install <dir> [--expect-hash <hex>] [--replace] | skill remove <name> | skill list | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
 
 fn parse_id(hex: &str) -> Result<Id, String> {
     let bytes = decode_hex(hex)
@@ -448,6 +448,7 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                     execution_profile: String::new(),
                     origin: "cli".into(),
                     workspace_root,
+                    issue_url: String::new(),
                 }
                 .encode_to_vec(),
                 Some(lease),
@@ -461,6 +462,46 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
             println!(
                 "task {}{}",
                 encode_hex(&r.task_id.unwrap_or_default().value),
+                if replayed { " replayed" } else { "" }
+            );
+        }
+        // PX-010 (docs/29): a task from a forge issue. The Core reads the
+        // issue through the forge adapter first; an unreadable one is a
+        // refusal and no task; the text enters as untrusted context.
+        ["task", "from-issue", ..] => {
+            let sid = parse_id(opt("--session").ok_or(USAGE)?)?;
+            let workspace_root = opt("--workspace").unwrap_or_default().to_owned();
+            let command_id = opt("--command-id").map(parse_id).transpose()?;
+            let url = positionals(&words, 2)
+                .into_iter()
+                .find(|w| w.starts_with("http"))
+                .ok_or(USAGE)?
+                .to_owned();
+            let lease = join_lease(&mut client, &sid).await?;
+            let mut env = envelope_fenced(
+                "CreateTask",
+                CreateTask {
+                    session_id: Some(sid),
+                    goal_text: String::new(),
+                    workspace_id: None,
+                    execution_profile: String::new(),
+                    origin: "forge_issue".into(),
+                    workspace_root,
+                    issue_url: url,
+                }
+                .encode_to_vec(),
+                Some(lease),
+            );
+            if let Some(id) = command_id {
+                env.command_id = Some(id);
+            }
+            let ack = client.command(env).await.map_err(|e| e.to_string())?;
+            let replayed = ack.status == modbit_protocol::v1::CommandStatus::Replayed as i32;
+            let r: TaskCreated = Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "task {} goal={:?}{}",
+                encode_hex(&r.task_id.unwrap_or_default().value),
+                r.goal_text,
                 if replayed { " replayed" } else { "" }
             );
         }

@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 1067,
-    "docs_bytes": 1138664
+    "root_and_tooling": 1074,
+    "docs_bytes": 1144928
   },
   "sections": [
     {
@@ -302,8 +302,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Client surfaces and source-control integration",
-      "bytes": 14318,
-      "sha256": "2519a5bd2d4f643c180fd35941ae522052c6002631031199690b4856399e935b"
+      "bytes": 19396,
+      "sha256": "e8dfb4882be729bca302e318bd397062dade6157845db6999211ac67f9232b79"
     },
     {
       "path": "docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md",
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 22501,
-      "sha256": "3904c49a6d27a650fc4f5d53d17517d1f41fe730bb45c4fef41a79ba455b061e"
+      "bytes": 23687,
+      "sha256": "7555a8221a046d42ef6c921abddb559ea6b1dbc3db0a8c8d79b89c04fdfd0a43"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -942,9 +942,14 @@
       "sha256": "4c8a9bcf3c18e23bbcc8d08c0e510786bf517102c9965ad56b331359fdfcd88c"
     },
     {
+      "path": "docs/decisions/DR-M6-002-forge-adapter-live-github-half.md",
+      "bytes": 4831,
+      "sha256": "0b7b3206a40f7ea3fcdabd4f015c144d58a0e31dba5208513ad87585ef7633d9"
+    },
+    {
       "path": "docs/decisions/README.md",
-      "bytes": 3533,
-      "sha256": "dc31f0823296f05b9745b86d09b7cdf72e342734e48dafe0f348eb86c8a915f9"
+      "bytes": 3709,
+      "sha256": "d4a98a1bf6fb2a5e595b20334e1c05d7f486f6f4b633836cdfa55e19db991ff3"
     },
     {
       "path": "evidence/dossier-epr-v1.1/baseline.json",
@@ -6145,6 +6150,36 @@
       "path": "evidence/m6/PX-005/evidence.json",
       "bytes": 1602,
       "sha256": "7ee661f52e2ee44eca5a612571656c95fc7b427cb3cd9d5ba832633a8fee4f20"
+    },
+    {
+      "path": "evidence/m6/PX-006/TASK_CARD.md",
+      "bytes": 3857,
+      "sha256": "5b92e2984be24d7e449776ea71dda51e8aed34507a854919ee1601c528775829"
+    },
+    {
+      "path": "evidence/m6/PX-006/evidence.json",
+      "bytes": 1769,
+      "sha256": "8bebe8654f5dc5d6c984aedfc52f5ea3a4a47f88b382f0a4feeb27da88fcefcb"
+    },
+    {
+      "path": "evidence/m6/PX-007/TASK_CARD.md",
+      "bytes": 3261,
+      "sha256": "f4ed338a9a6c640100beee2e1430c1ac3adcff172cdc4ef194d5e826cd95bb4d"
+    },
+    {
+      "path": "evidence/m6/PX-007/evidence.json",
+      "bytes": 1513,
+      "sha256": "5969c5762a0ea0a0f50156d1d7c414ca071e2e9cd40aa3a66ad02a4ac8175580"
+    },
+    {
+      "path": "evidence/m6/PX-010/TASK_CARD.md",
+      "bytes": 3053,
+      "sha256": "fb8c801e9fc2900ee77aaa093a5f43b94f101eba6343648ee94c71b622454a1b"
+    },
+    {
+      "path": "evidence/m6/PX-010/evidence.json",
+      "bytes": 1429,
+      "sha256": "8eb4289e34bb25b25b0073b1d9615b9a22f4c2512f5001565912dc78e978c1be"
     },
     {
       "path": "graph/PROJECT_GRAPH.md",

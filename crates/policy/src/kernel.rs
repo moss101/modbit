@@ -384,12 +384,17 @@ pub fn default_lease_for_profile(
             "git.worktree",
             "shell.exec",
         ],
+        // The trusted profile also reaches the configured forge (PX-006,
+        // docs/23): egress to its one API host and the use of its one token
+        // handle — approval-bound for every write, refused elsewhere.
         _ => vec![
             "fs.read",
             "fs.write",
             "git.read",
             "git.worktree",
             "shell.exec",
+            "network.egress",
+            "secret.use",
         ],
     };
     let ceiling = match profile {
@@ -397,7 +402,14 @@ pub fn default_lease_for_profile(
         PROFILE_PLAN => EffectClass::ReadOnly,
         _ => EffectClass::ReversibleWrite,
     };
-    let resources = ops.iter().map(|o| format!("{o}:{root}/**")).collect();
+    let resources = ops
+        .iter()
+        .map(|o| match *o {
+            "network.egress" => "network.egress:forge-api:443".to_owned(),
+            "secret.use" => "secret.use:forge-token -> forge-api".to_owned(),
+            _ => format!("{o}:{root}/**"),
+        })
+        .collect();
     (
         resources,
         ops.into_iter().map(str::to_owned).collect(),

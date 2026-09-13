@@ -90,12 +90,14 @@ fn lease_is_authority_not_tool_name() {
         ))),
         "ALLOW"
     );
-    let net = caps(&["network.egress"]);
+    // A capability no default lease grants (deploy) is refused however the
+    // tool is named; the trusted profile's forge egress (PX-006) is leased.
+    let deploy = caps(&["deploy"]);
     assert_eq!(
         code(&k.decide(&req(
-            "http.get",
+            "cloud.deploy",
             EffectClass::ReadOnly,
-            &net,
+            &deploy,
             "local_trusted",
             Some(&l)
         ))),

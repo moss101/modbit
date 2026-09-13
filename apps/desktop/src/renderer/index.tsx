@@ -58,6 +58,10 @@ function App() {
   const [recovered, setRecovered] = useState<string | null>(null);
   const [recovery, setRecovery] = useState<RecoveryInfo | null>(null);
   const [goal, setGoal] = useState("");
+  // PX-010: a task made from a forge issue. The URL is the only input; the
+  // Core reads the issue, names the task after it and attaches its text as
+  // untrusted context. An unreadable issue is a refusal and no task.
+  const [issueUrl, setIssueUrl] = useState("");
   const [languages, setLanguages] = useState<{ language: string; tier: string; label: string }[]>([]);
   const [inspector, setInspector] = useState<ContextInspectorSummary | null>(null);
   const [economics, setEconomics] = useState<TaskEconomicsSummary | null>(null);
@@ -180,7 +184,8 @@ function App() {
     async (ev: React.FormEvent) => {
       ev.preventDefault();
       const text = goal.trim();
-      if (!text || submitting) return;
+      const issue = issueUrl.trim();
+      if ((!text && !issue) || submitting) return;
       setSubmitting(true);
       setError(null);
       // Stable command id: a retry after a crash replays instead of duplicating (docs/30).
@@ -199,23 +204,24 @@ function App() {
           const t = await window.modbit.trustRepository(sessionId, root);
           setTrusted(t.workspaceRoot);
         }
-        const r = await window.modbit.createTask(sessionId, text, commandId, root);
+        const r = await window.modbit.createTask(sessionId, text, commandId, root, issue || undefined);
         // Render from the durable id the Core returned; the events will follow.
         setModel((m) => {
           if (m.tasks.has(r.taskId)) return m;
           const tasks = new Map(m.tasks);
-          tasks.set(r.taskId, { taskId: r.taskId, goalText: text, state: "Queued", waitReason: "Capacity", generation: 2, createdAtMs: Date.now(), nextAction: null, attachments: 0, parentTaskId: null, origin: "desktop", agents: { total: 0, running: 0, background: 0, waiting: 0, done: 0, failed: 0 }, phase: "drafting", latestEvidence: null, risk: null, children: [] } as TaskCard);
+          tasks.set(r.taskId, { taskId: r.taskId, goalText: r.goalText || text, state: "Queued", waitReason: "Capacity", generation: 2, createdAtMs: Date.now(), nextAction: null, attachments: issue ? 1 : 0, parentTaskId: null, origin: issue ? "forge_issue" : "desktop", agents: { total: 0, running: 0, background: 0, waiting: 0, done: 0, failed: 0 }, phase: "drafting", latestEvidence: null, risk: null, children: [] } as TaskCard);
           return { ...m, tasks };
         });
         setScreen("populated");
         setGoal("");
+        setIssueUrl("");
       } catch (e) {
         setError((e as Error).message);
       } finally {
         setSubmitting(false);
       }
     },
-    [goal, workspaceRoot, submitting, trusted],
+    [goal, issueUrl, workspaceRoot, submitting, trusted],
   );
 
   const startTask = useCallback(async (taskId: string) => {
@@ -483,6 +489,8 @@ function App() {
           <h2 style={{ margin: 0, fontSize: 14 }}>New Task</h2>
           <label htmlFor="goal" className="meta">Goal</label>
           <textarea id="goal" data-testid="goal" value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="What should the agent achieve?" disabled={core.state !== "connected"} />
+          <label htmlFor="issue-url" className="meta">Or from an issue (a GitHub issue URL; its text enters as untrusted context)</label>
+          <input id="issue-url" data-testid="issue-url" value={issueUrl} onChange={(e) => setIssueUrl(e.target.value)} placeholder="https://github.com/owner/repo/issues/123" disabled={core.state !== "connected"} />
           <label htmlFor="workspace" className="meta">Workspace root (a local Git checkout; empty for a Work space)</label>
           <input id="workspace" data-testid="workspace" value={workspaceRoot} onChange={(e) => setWorkspaceRoot(e.target.value)} placeholder="/path/to/repo" disabled={core.state !== "connected"} />
           <div className="meta">Execution: local_trusted · Origin: desktop · Running here trusts this repository, scoped to it, if it is not trusted yet.</div>
@@ -491,7 +499,7 @@ function App() {
               No provider is set up: a task can be created but will not start until step 2 above is done.
             </div>
           )}
-          <button type="submit" data-testid="run" disabled={core.state !== "connected" || submitting || !goal.trim()}>
+          <button type="submit" data-testid="run" disabled={core.state !== "connected" || submitting || (!goal.trim() && !issueUrl.trim())}>
             {submitting ? "Creating…" : "Run"}
           </button>
           {core.state !== "connected" && <div className="meta">Task creation is disabled until the Core is connected.</div>}

@@ -490,6 +490,78 @@
         "fs.read"
       ],
       "test": "qual_px_040_harness_contracts_bound_observations_page_results_and_fail_closed_headless"
+    },
+    {
+      "tool": "forge.issue.read",
+      "family": "forge",
+      "source_behaviors": [
+        "gh issue view",
+        "GitHub issue read (MCP github server)"
+      ],
+      "owner": "External Tool Hub (forge adapter)",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "network.egress"
+      ],
+      "test": "qual_px_006_the_forge_adapter_reads_and_writes_github_behind_leases_effects_receipts_and_idempotency_keys"
+    },
+    {
+      "tool": "forge.pr.create",
+      "family": "forge",
+      "source_behaviors": [
+        "gh pr create",
+        "GitHub create pull request (MCP github server)"
+      ],
+      "owner": "External Tool Hub (forge adapter)",
+      "effect": "ExternalSideEffect",
+      "capabilities": [
+        "network.egress",
+        "secret.use"
+      ],
+      "test": "qual_px_006_the_forge_adapter_reads_and_writes_github_behind_leases_effects_receipts_and_idempotency_keys"
+    },
+    {
+      "tool": "forge.pr.update",
+      "family": "forge",
+      "source_behaviors": [
+        "gh pr edit",
+        "GitHub update pull request (MCP github server)"
+      ],
+      "owner": "External Tool Hub (forge adapter)",
+      "effect": "ExternalSideEffect",
+      "capabilities": [
+        "network.egress",
+        "secret.use"
+      ],
+      "test": "qual_px_006_the_forge_adapter_reads_and_writes_github_behind_leases_effects_receipts_and_idempotency_keys"
+    },
+    {
+      "tool": "forge.pr.comments.read",
+      "family": "forge",
+      "source_behaviors": [
+        "gh pr view --comments",
+        "GitHub pull request review comments (MCP github server)"
+      ],
+      "owner": "External Tool Hub (forge adapter)",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "network.egress"
+      ],
+      "test": "qual_px_006_the_forge_adapter_reads_and_writes_github_behind_leases_effects_receipts_and_idempotency_keys"
+    },
+    {
+      "tool": "forge.ci.status",
+      "family": "forge",
+      "source_behaviors": [
+        "gh pr checks",
+        "GitHub check runs (MCP github server)"
+      ],
+      "owner": "External Tool Hub (forge adapter)",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "network.egress"
+      ],
+      "test": "qual_px_006_the_forge_adapter_reads_and_writes_github_behind_leases_effects_receipts_and_idempotency_keys"
     }
   ],
   "harness": [
@@ -704,6 +776,11 @@
       "namespace": "test",
       "inventory_ref": "test.run",
       "justification": "configured real tests with a normalized TestReport"
+    },
+    {
+      "namespace": "forge",
+      "inventory_ref": "forge.issue.read / forge.pr.comments.read / forge.ci.status",
+      "justification": "a forge API is a distinct effector with protected external effects that existing tools plus a skill cannot express safely (docs/17 new-tool rule, DR-PX-2026-09-05); reads return untrusted provenance-bound data, writes are approval-bound receipted effects behind leases, idempotency keys and a broker-held token"
     }
   ],
   "namespaces_note": "REQ-EV-0230 build/buy lint: every registered tool namespace names the docs/17 canonical inventory row it realizes and why it exists as a tool rather than a skill over existing tools; a new namespace without a row here, or whose inventory_ref is not in docs/17, fails qual_ev_0230."

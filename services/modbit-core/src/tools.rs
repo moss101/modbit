@@ -350,6 +350,8 @@ pub struct ToolHost {
     /// One workspace service per approved root, kept so revisions stay monotonic in-process.
     workspaces: Mutex<HashMap<PathBuf, Arc<Mutex<WorkspaceService>>>>,
     state_dir: PathBuf,
+    /// The forge `forge.*` may reach and the token in this Core's custody (PX-006).
+    pub forge: crate::forge::ForgeCustody,
 }
 
 impl ToolHost {
@@ -357,6 +359,7 @@ impl ToolHost {
     pub fn new(data_dir: &Path, replay_generation: u64) -> Result<Self> {
         let mut registry = ToolRegistry::new();
         modbit_tools::direct::register_direct(&mut registry).map_err(|e| anyhow::anyhow!("{e}"))?;
+        modbit_tools::forge::register_forge(&mut registry).map_err(|e| anyhow::anyhow!("{e}"))?;
         let runtime = ToolRuntime::new(registry, Arc::new(ProfilePolicy));
         let execd = match spawn_execd(data_dir, replay_generation) {
             Ok(e) => Some(e),
@@ -381,6 +384,7 @@ impl ToolHost {
             diag_baselines: Mutex::new(HashMap::new()),
             language_servers: Arc::new(std::sync::Mutex::new(HashMap::new())),
             state_dir: data_dir.join("workspaces"),
+            forge: crate::forge::ForgeCustody::from_env(),
         })
     }
 
@@ -808,6 +812,14 @@ impl ToolHost {
             artifacts,
             tool_call_id: None,
             journal: Some(journal),
+            forge: self.forge.get(),
+            forge_ledger: Some(Arc::new(crate::forge::LogLedger {
+                store: Arc::clone(store),
+                tenant_id,
+                session_id,
+                task_id,
+                actor: actor.clone(),
+            })),
         };
         // REQ-EV-0106: snapshot the write targets so every successful write can
         // land a revision-bound FileChanged event with content and diff refs.

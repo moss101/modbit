@@ -128,7 +128,7 @@ export interface ModbitBridge {
   ): Promise<{ offset: string }>;
   createSession(): Promise<string>;
   sessionSnapshot(sessionId: string): Promise<unknown>;
-  createTask(sessionId: string, goal: string, commandIdHex: string, workspaceRoot?: string): Promise<{ taskId: string; offset: bigint; replayed: boolean }>;
+  createTask(sessionId: string, goal: string, commandIdHex: string, workspaceRoot?: string, issueUrl?: string): Promise<{ taskId: string; offset: bigint; replayed: boolean; goalText: string }>;
   startTask(sessionId: string, taskId: string): Promise<{ runId: string; resumed: boolean; endpoint: string; model: string }>;
   attachFile(sessionId: string, taskId: string, filePath: string): Promise<{ attachmentId: string; kind: string; mime: string; contentRef: string; offset: string; replayed: boolean }>;
   reviewBundle(taskId: string): Promise<ReviewBundleView>;
@@ -158,7 +158,7 @@ const bridge: ModbitBridge = {
   setTaskSelection: (sessionId: string, taskId: string, selection: unknown) => ipcRenderer.invoke("task:select", sessionId, taskId, selection),
   createSession: () => ipcRenderer.invoke("session:create"),
   sessionSnapshot: (sessionId) => ipcRenderer.invoke("session:snapshot", sessionId),
-  createTask: (sessionId, goal, commandIdHex, workspaceRoot) => ipcRenderer.invoke("task:create", sessionId, goal, commandIdHex, workspaceRoot ?? ""),
+  createTask: (sessionId, goal, commandIdHex, workspaceRoot, issueUrl) => ipcRenderer.invoke("task:create", sessionId, goal, commandIdHex, workspaceRoot ?? "", issueUrl ?? ""),
   startTask: (sessionId, taskId) => ipcRenderer.invoke("task:start", sessionId, taskId),
   attachFile: (sessionId, taskId, filePath) => ipcRenderer.invoke("task:attach", sessionId, taskId, filePath),
   reviewBundle: (taskId) => ipcRenderer.invoke("review:bundle", taskId),

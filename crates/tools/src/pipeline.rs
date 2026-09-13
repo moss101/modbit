@@ -157,6 +157,11 @@ pub struct InvokeContext {
     pub tool_call_id: Option<ToolCallId>,
     /// Write-ahead dispatch journal, when the host keeps one (M4.1).
     pub journal: Option<Arc<dyn DispatchJournal>>,
+    /// The forge the host lets `forge.*` reach (PX-006): one API host, the
+    /// token in the host's custody. `None` = no forge configured.
+    pub forge: Option<Arc<crate::forge::ForgeConfig>>,
+    /// The host's record of forge effects by idempotency key (PX-006).
+    pub forge_ledger: Option<Arc<dyn crate::forge::ForgeLedger>>,
 }
 
 /// Status of a tool call result (docs/30 `ToolCallResult.status` plus the

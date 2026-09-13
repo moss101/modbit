@@ -393,6 +393,62 @@ pub enum TaskEvent {
         /// Why.
         detail: String,
     },
+    /// `ForgePullRequestOpened` (PX-006/007, docs/29): a pull request the
+    /// forge adapter opened for this task under an idempotency key — the
+    /// record a retry of the same key answers from. No state change.
+    ForgePullRequestOpened {
+        /// The key the create named.
+        idempotency_key: String,
+        /// Repository owner.
+        owner: String,
+        /// Repository.
+        repo: String,
+        /// Pull request number.
+        number: u64,
+        /// Web URL.
+        url: String,
+        /// Head branch.
+        head: String,
+        /// Head commit.
+        head_sha: String,
+        /// Base branch.
+        base: String,
+        /// The adapter's result as returned.
+        result: serde_json::Value,
+    },
+    /// `ForgePullRequestUpdated` (PX-006/007): a pull request the adapter
+    /// updated under an idempotency key. No state change.
+    ForgePullRequestUpdated {
+        /// The key the update named.
+        idempotency_key: String,
+        /// Repository owner.
+        owner: String,
+        /// Repository.
+        repo: String,
+        /// Pull request number.
+        number: u64,
+        /// Web URL.
+        url: String,
+        /// State after the update.
+        state: String,
+        /// The adapter's result as returned.
+        result: serde_json::Value,
+    },
+    /// `TaskCreatedFromIssue` (PX-010, docs/29): the task was made from a
+    /// forge issue the Core read at creation; its text is the attached
+    /// context document beside this event (untrusted). No state change.
+    TaskCreatedFromIssue {
+        /// The issue's web URL.
+        url: String,
+        /// Issue number.
+        number: u64,
+        /// Issue title.
+        title: String,
+        /// Always `forge_issue`.
+        provenance: String,
+        /// sha256 of the attached text (the `ContextDocumentAttached` document id).
+        document_id: String,
+    },
     /// `PlanRevised` with a scope delta; no state change.
     PlanRevised {
         /// Object hash of the plan JSON.
@@ -1285,6 +1341,9 @@ impl TaskEvent {
             Self::UserPatchApplied { .. } => "UserPatchApplied",
             Self::ExternalDiagnosticsRecorded { .. } => "ExternalDiagnosticsRecorded",
             Self::ExternalDiagnosticsRejected { .. } => "ExternalDiagnosticsRejected",
+            Self::ForgePullRequestOpened { .. } => "ForgePullRequestOpened",
+            Self::ForgePullRequestUpdated { .. } => "ForgePullRequestUpdated",
+            Self::TaskCreatedFromIssue { .. } => "TaskCreatedFromIssue",
             Self::UnsupportedLanguageOptInRecorded { .. } => "UnsupportedLanguageOptInRecorded",
             Self::ContextDocumentAttached { .. } => "ContextDocumentAttached",
             Self::SelectionRecorded { .. } => "SelectionRecorded",
@@ -1433,6 +1492,9 @@ impl Task {
             | TaskEvent::UserPatchApplied { .. }
             | TaskEvent::ExternalDiagnosticsRecorded { .. }
             | TaskEvent::ExternalDiagnosticsRejected { .. }
+            | TaskEvent::ForgePullRequestOpened { .. }
+            | TaskEvent::ForgePullRequestUpdated { .. }
+            | TaskEvent::TaskCreatedFromIssue { .. }
             | TaskEvent::SelfReviewRecorded { .. }
             | TaskEvent::ToolsActivated { .. }
             | TaskEvent::ProgramStarted { .. }

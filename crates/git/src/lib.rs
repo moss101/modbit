@@ -623,6 +623,58 @@ impl Repo {
         run(&self.dir, &["update-ref", "-d", &snapshot.reference]).map(|_| ())
     }
 
+    /// The URL a remote is configured with (the spelling in the
+    /// configuration; `insteadOf` rewrites apply when git connects, not here).
+    pub fn remote_url(&self, remote: &str) -> Result<String> {
+        run(
+            &self.dir,
+            &["config", "--get", &format!("remote.{remote}.url")],
+        )
+        .map(|s| s.trim().to_owned())
+    }
+
+    /// Point `branch` at `revision` (created or moved), without checking it out.
+    pub fn set_branch(&self, branch: &str, revision: &str) -> Result<()> {
+        run(&self.dir, &["branch", "-f", "--no-track", branch, revision]).map(|_| ())
+    }
+
+    /// Push `branch` to `remote` (PX-007: the typed branch push; no shell).
+    /// `force` updates a remote branch that already exists at another commit.
+    pub fn push_branch(&self, remote: &str, branch: &str, force: bool) -> Result<String> {
+        let refspec = format!("refs/heads/{branch}:refs/heads/{branch}");
+        let mut args = vec!["push", "--porcelain", "--no-verify"];
+        if force {
+            args.push("--force");
+        }
+        args.push(remote);
+        args.push(&refspec);
+        run(&self.dir, &args)
+    }
+
+    /// The commit a remote branch is at, as this repository last saw it
+    /// (`git ls-remote`; no fetch of objects).
+    pub fn remote_branch_head(&self, remote: &str, branch: &str) -> Result<Option<String>> {
+        let out = run(
+            &self.dir,
+            &[
+                "ls-remote",
+                "--heads",
+                remote,
+                &format!("refs/heads/{branch}"),
+            ],
+        )?;
+        Ok(out
+            .lines()
+            .next()
+            .and_then(|l| l.split_whitespace().next())
+            .map(str::to_owned))
+    }
+
+    /// The commit a revision resolves to.
+    pub fn rev_parse(&self, revision: &str) -> Result<String> {
+        run(&self.dir, &["rev-parse", "--verify", revision]).map(|s| s.trim().to_owned())
+    }
+
     /// Whether a ref exists.
     pub fn ref_exists(&self, reference: &str) -> bool {
         run(&self.dir, &["rev-parse", "--verify", "-q", reference]).is_ok()

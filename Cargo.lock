@@ -2172,6 +2172,7 @@ dependencies = [
  "modbit-terminal",
  "modbit-workspace",
  "png",
+ "reqwest",
  "serde",
  "serde_json",
  "sha2 0.11.0",

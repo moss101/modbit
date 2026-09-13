@@ -34,6 +34,13 @@ message CreateTask {
   string execution_profile = 4;
   string origin = 5;  // desktop | cli | ide_adapter | forge_issue | forge_webhook
   string workspace_root = 6;  // canonical path of the user-approved workspace (empty = general Work space)
+  // PX-010: with origin forge_issue, the issue the task is made from. The
+  // Core reads it through the forge adapter before creating anything: an
+  // unreadable issue is FORGE_ISSUE_UNREADABLE and no task exists; a readable
+  // one becomes the goal (when goal_text is empty) and an attached context
+  // document with trust UNTRUSTED_EXTERNAL_CONTENT and provenance forge_issue
+  // — data the loop sees, never authority over policy or capabilities.
+  string issue_url = 7;
 }
 
 message GetSessionSnapshot {
@@ -71,6 +78,7 @@ message SessionCreated {
 message TaskCreated {
   Id task_id = 1;
   uint64 offset = 2;
+  string goal_text = 3;   // the goal as recorded (from the issue when made from one, PX-010)
 }
 
 message TaskView {
@@ -620,6 +628,47 @@ message ExternalDiagnosticsAck {
   uint32 discarded = 3;         // file revision moved on
   uint64 offset = 4;
   bool replayed = 5;
+}
+
+// ---- Pull requests from a reviewed result (PX-007, docs/20, docs/29) ----
+
+// Open a pull request for the reviewed candidate: the Core points a
+// dedicated branch (`modbit/pr-<task>`) at the accepted commit, and — once
+// the protected external effect is approved — pushes it through the typed
+// Git operation and opens the pull request through `forge.pr.create` under
+// the task's lease, with the evidence summary as the body. The first call
+// returns APPROVAL_PENDING with the approval to decide (nothing pushed); the
+// same call after the decision pushes and opens (or reports the denial,
+// with no branch on the remote). Bound to the exact candidate revision the
+// review accepted: another revision is STALE_REVISION.
+message OpenPullRequest {
+  Id task_id = 1;
+  uint64 expected_candidate_revision = 2;  // the workspace revision the review accepted
+  string base = 3;                         // empty = the repository's current branch
+  string title = 4;                        // empty = the review's note or the task's goal
+  string remote = 5;                       // empty = origin
+}
+
+// Update the pull request of a task after a later reviewed revision: push
+// the branch again and PATCH the body with the new evidence summary.
+message UpdatePullRequest {
+  Id task_id = 1;
+  uint64 expected_candidate_revision = 2;
+  string remote = 3;
+}
+
+message PullRequestAck {
+  string status = 1;              // APPROVAL_PENDING | OPENED | UPDATED | DENIED
+  string approval_id = 2;         // when APPROVAL_PENDING (or consumed)
+  string intent_hash = 3;         // what the approval binds
+  uint64 number = 4;
+  string url = 5;
+  string branch = 6;
+  string head_sha = 7;
+  uint64 candidate_revision = 8;
+  repeated string effect_receipt_ids = 9;
+  bool replayed = 10;
+  string detail = 11;
 }
 
 // ---- Constrained inline patch (PX-005, docs/20, docs/29) ----
@@ -1173,6 +1222,24 @@ message ConfigureProvider {
   string provider = 1;             // openai | anthropic
   string api_key = 2;              // the credential; empty clears it
   string base_url = 3;             // optional: a compatible endpoint (empty = the provider's own)
+}
+
+// The forge `forge.*` may reach (PX-006, docs/23, docs/29): one API host,
+// one token in the Core's custody. Not journaled: the token crosses the
+// wire once, is held in memory and never returned, logged or stored.
+message ConfigureForge {
+  string forge = 1;                // github
+  string token = 2;                // the credential; empty clears it
+  string api_base_url = 3;         // optional (empty = https://api.github.com)
+  string web_host = 4;             // optional (empty = github.com)
+}
+
+message ForgeConfigured {
+  string forge = 1;
+  string api_base_url = 2;
+  string web_host = 3;
+  bool token_held = 4;
+  string egress = 5;               // the one host:port the lease names
 }
 
 message ProviderConfigured {

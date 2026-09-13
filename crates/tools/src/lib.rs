@@ -18,6 +18,7 @@
 #![forbid(unsafe_code)]
 
 pub mod direct;
+pub mod forge;
 pub mod media;
 pub mod notebook;
 pub mod pipeline;

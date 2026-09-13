@@ -315,11 +315,12 @@ export class CoreClient {
     return this.leases.get(sessionId);
   }
 
-  async createTask(sessionId: string, goalText: string, commandId?: Uint8Array, workspaceRoot = ""): Promise<{ taskId: string; offset: bigint; replayed: boolean }> {
-    const payload = toBinary(CreateTaskSchema, create(CreateTaskSchema, { sessionId: { value: unhex(sessionId) }, goalText, executionProfile: "local_trusted", origin: this.origin, workspaceRoot }));
+  /** Create a task; with `issueUrl` (PX-010) the origin is `forge_issue` and the Core reads the issue first — an unreadable one is refused and no task exists. */
+  async createTask(sessionId: string, goalText: string, commandId?: Uint8Array, workspaceRoot = "", issueUrl?: string): Promise<{ taskId: string; offset: bigint; replayed: boolean; goalText: string }> {
+    const payload = toBinary(CreateTaskSchema, create(CreateTaskSchema, { sessionId: { value: unhex(sessionId) }, goalText, executionProfile: "local_trusted", origin: issueUrl ? "forge_issue" : this.origin, workspaceRoot, issueUrl: issueUrl ?? "" }));
     const ack = await this.command("CreateTask", payload, commandId, this.leases.get(sessionId));
     const r = fromBinary(TaskCreatedSchema, ack.result);
-    return { taskId: hex(r.taskId?.value ?? new Uint8Array()), offset: r.offset, replayed: ack.status === CommandStatus.REPLAYED };
+    return { taskId: hex(r.taskId?.value ?? new Uint8Array()), offset: r.offset, replayed: ack.status === CommandStatus.REPLAYED, goalText: r.goalText };
   }
 
   async getSessionSnapshot(sessionId: string): Promise<SessionSnapshot> {

@@ -271,15 +271,18 @@ ipcMain.handle("session:snapshot", async (_e: IpcMainInvokeEvent, sessionId: unk
     tasks: s.tasks.map((t) => ({ taskId: Buffer.from(t.taskId?.value ?? []).toString("hex"), goalText: t.goalText, state: t.state, generation: Number(t.generation), createdAtMs: Number(t.createdAt?.seconds ?? 0n) * 1000, origin: t.origin, parentTaskId: t.parentTaskId ? Buffer.from(t.parentTaskId.value).toString("hex") : null })),
   };
 });
-ipcMain.handle("task:create", async (_e: IpcMainInvokeEvent, sessionId: unknown, goal: unknown, commandIdHex: unknown, workspaceRoot: unknown) => {
+ipcMain.handle("task:create", async (_e: IpcMainInvokeEvent, sessionId: unknown, goal: unknown, commandIdHex: unknown, workspaceRoot: unknown, issueUrl: unknown) => {
   const sid = requireSessionId(sessionId);
-  const g = requireGoal(goal);
+  // PX-010: from an issue, the goal may be empty (the Core names the task after it).
+  const issue = typeof issueUrl === "string" && issueUrl.trim().length > 0 ? issueUrl.trim() : undefined;
+  if (issue !== undefined && (issue.length > 2_000 || !/^https:\/\/[^\s/]+\/[^\s/]+\/[^\s/]+\/issues\/\d+$/.test(issue))) throw new Error("BAD_ARGUMENT: issue URL must be https://<host>/<owner>/<repo>/issues/<number>");
+  const g = issue !== undefined && (typeof goal !== "string" || goal.trim().length === 0) ? "" : requireGoal(goal);
   const root = optionalWorkspaceRoot(workspaceRoot);
   // The renderer supplies a stable command id so a retry after a crash replays instead of duplicating.
   const cid = typeof commandIdHex === "string" && HEX32.test(commandIdHex) ? new Uint8Array(Buffer.from(commandIdHex, "hex")) : freshId();
   const c = requireClient();
   if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
-  return c.createTask(sid, g, cid, root);
+  return c.createTask(sid, g, cid, root, issue);
 });
 ipcMain.handle("task:start", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown) => {
   const sid = requireSessionId(sessionId);
