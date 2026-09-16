@@ -27994,8 +27994,56 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-023",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:apps/desktop/e2e/states.spec.ts",
+    "test:apps/desktop/e2e/onboarding.spec.ts",
+    "test:apps/desktop/e2e/user-patch.spec.ts",
+    "test:apps/desktop/src/renderer/screens.test.ts",
+    "test:apps/desktop/src/renderer/notifications.test.ts",
+    "run:35125325188",
+    "commit:09fd028",
+    "artifact:evidence/m6/PX-023/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-16T17:17:08Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: see TASK_CARD.md existing-code audit (banners only; run events dropped; wire wait reasons unmatched)"
+    },
+    {
+     "at": "2026-09-16T17:17:08Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented on wip/m6-backlog"
+    },
+    {
+     "at": "2026-09-16T17:17:08Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired into the renderer, main and the shared client"
+    },
+    {
+     "at": "2026-09-16T17:17:08Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real Electron app against the real Core: states.spec.ts, onboarding.spec.ts, user-patch.spec.ts"
+    },
+    {
+     "at": "2026-09-16T17:17:09Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 35125325188 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-16T17:17:09Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed; M7–M9 substrate rows deferred by DR-M6-003"
+    }
+   ],
+   "status_changed_on": "2026-09-16T17:17:09Z"
   },
   {
    "id": "PX-024",
