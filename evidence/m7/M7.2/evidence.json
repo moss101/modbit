@@ -15,10 +15,15 @@
   "references_are_stable_across_versions_and_dom_node_ids",
   "a_removed_or_changed_element_resolves_stale_never_to_another_node"
  ],
- "batch_commits": [],
- "runs": [],
- "proof": "the host's accessibility tree with its DOM links and boxes compiled into entities with stable references (role, name, landmark path, ordinal — never a DOM node id), the page's text as untrusted data; a reference resolves again after a re-render with fresh node ids; a renamed element's reference is TARGET_STALE with only the look-alike named — on the real Core with a re-rendering fake host and in the real app on a real page re-served mutated.",
+ "batch_commits": [
+  "8b825dc",
+  "cc5e95e"
+ ],
+ "runs": [
+  "35143904650"
+ ],
+ "proof": "the host's accessibility tree with its DOM links and boxes compiled into entities with stable references (role, name, landmark path, ordinal \u2014 never a DOM node id), the page's text as untrusted data; a reference resolves again after a re-render with fresh node ids; a renamed element's reference is TARGET_STALE with only the look-alike named \u2014 on the real Core with a re-rendering fake host and in the real app on a real page re-served mutated.",
  "audit": "MISSING before: the raw bounded AX tree of M7.1.",
  "limitations": "network and richer control state, deltas, actions and the transition graph follow (M7.3/M7.4); boxes for the first 80 actionable nodes; ordinals change on reorder.",
- "ci": ""
+ "ci": "evidence/m7/M7.2/ci-run-35143904650.json"
 }

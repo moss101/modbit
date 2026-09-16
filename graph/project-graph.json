@@ -3392,8 +3392,55 @@
    "milestone": "M7",
    "order": 0,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_m7_1_a_browser_session_is_hosted_by_the_desktop_and_driven_through_the_cdp_bridge",
+    "test:apps/desktop/e2e/browser.spec.ts",
+    "test:control_lease_fences_stale_agent_input",
+    "test:only_http_and_https_are_navigable",
+    "run:35143904650",
+    "commit:cc5e95e",
+    "artifact:evidence/m7/M7.1/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-16T20:15:22Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: MISSING before (the M0 browser stub)"
+    },
+    {
+     "at": "2026-09-16T20:15:22Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented on wip/m6-backlog"
+    },
+    {
+     "at": "2026-09-16T20:15:22Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired: protocol, Core registry, tools, Electron host, renderer panel"
+    },
+    {
+     "at": "2026-09-16T20:15:22Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real Core with a fake host over the real protocol; real app with a real page"
+    },
+    {
+     "at": "2026-09-16T20:15:23Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 35143904650 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-16T20:15:23Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-16T20:15:23Z"
   },
   {
    "id": "M7.2",
@@ -3403,8 +3450,55 @@
    "milestone": "M7",
    "order": 1,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_m7_2_entities_carry_stable_references_and_a_changed_element_resolves_stale",
+    "test:apps/desktop/e2e/browser.spec.ts",
+    "test:references_are_stable_across_versions_and_dom_node_ids",
+    "test:a_removed_or_changed_element_resolves_stale_never_to_another_node",
+    "run:35143904650",
+    "commit:cc5e95e",
+    "artifact:evidence/m7/M7.2/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-16T20:15:23Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: MISSING before (raw bounded AX tree of M7.1)"
+    },
+    {
+     "at": "2026-09-16T20:15:23Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented on wip/m6-backlog"
+    },
+    {
+     "at": "2026-09-16T20:15:23Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired: compiler in crates/browser, tools, host snapshot"
+    },
+    {
+     "at": "2026-09-16T20:15:23Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real Core with a re-rendering fake host; real app on a real page re-served mutated"
+    },
+    {
+     "at": "2026-09-16T20:15:23Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 35143904650 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-16T20:15:23Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-16T20:15:23Z"
   },
   {
    "id": "M7.3",
@@ -28066,8 +28160,54 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-024",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:apps/desktop/e2e/keyboard.spec.ts",
+    "test:apps/desktop/src/renderer/keyboard.test.ts",
+    "test:apps/desktop/src/renderer/diff.test.ts",
+    "run:35143904650",
+    "commit:cc5e95e",
+    "artifact:evidence/m6/PX-024/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-16T20:15:22Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: see TASK_CARD.md (focusable cards and one live region; the suite found the fleet displayed under the Review, nested landmarks, unreachable scrollable regions)"
+    },
+    {
+     "at": "2026-09-16T20:15:22Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented on wip/m6-backlog"
+    },
+    {
+     "at": "2026-09-16T20:15:22Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired into the renderer, main and the shared client"
+    },
+    {
+     "at": "2026-09-16T20:15:22Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real Electron app on the real Core by keyboard only; axe-core on every screen"
+    },
+    {
+     "at": "2026-09-16T20:15:22Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 35143904650 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-16T20:15:22Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed; browser control waits for M7 (DR-M6-003)"
+    }
+   ],
+   "status_changed_on": "2026-09-16T20:15:22Z"
   },
   {
    "id": "PX-025",
