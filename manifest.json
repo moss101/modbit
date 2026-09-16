@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 1081,
-    "docs_bytes": 1150219
+    "root_and_tooling": 1087,
+    "docs_bytes": 1158810
   },
   "sections": [
     {
@@ -239,8 +239,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Browser and Computer-Use Architecture",
-      "bytes": 3961,
-      "sha256": "a7e441d9bc60785aea7dcc62fe8cef5946f3aa2551665368a360d4ec3519220b"
+      "bytes": 8713,
+      "sha256": "228d5571ff88ec645644a863384c97a549b3bf3739d5b027c2958516cdb650a3"
     },
     {
       "path": "docs/23_SECURITY_POLICY_EFFECT_LEDGER.md",
@@ -329,8 +329,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Desktop Frontend Implementation",
-      "bytes": 9340,
-      "sha256": "90dd9253b4ca3a7082d73feab716693fefcefd4645fa3c9494bcea8ca3b8609f"
+      "bytes": 10097,
+      "sha256": "a9b12b816ccbb0e4a34681ca32e0ba7efbfff75685a05cb37ad28f6b2eed697d"
     },
     {
       "path": "docs/33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md",
@@ -392,8 +392,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "UX flows, onboarding and interaction budgets",
-      "bytes": 11887,
-      "sha256": "3e2952fe0ec19720f1328928448576083f8637ac697c7911d7de6184bd61688c"
+      "bytes": 14969,
+      "sha256": "f6d7f0fa2e24cf1bc317544c3c57f2a73fb6741c66a6169ba61824128f40acf7"
     },
     {
       "path": "docs/40_EVIDENCE_DERIVED_REQUIREMENT_LEDGER.md",
@@ -948,8 +948,8 @@
     },
     {
       "path": "docs/decisions/DR-M6-003-screen-state-matrix-later-substrate.md",
-      "bytes": 5758,
-      "sha256": "5c54d0a69d84806b1b8665b2080d2a504c046b9364604d4dafb4a0dd6bd0190c"
+      "bytes": 6065,
+      "sha256": "d5b9169099842bd4dfc0e61e42f8499b026cc42ac1821749ccd3a630c6761d36"
     },
     {
       "path": "docs/decisions/README.md",
@@ -6215,6 +6215,36 @@
       "path": "evidence/m6/PX-023/evidence.json",
       "bytes": 1666,
       "sha256": "f48fa92dc76cbfaca8e348b90e0379788c46fa3873587a70274c5edb018d1df3"
+    },
+    {
+      "path": "evidence/m6/PX-024/TASK_CARD.md",
+      "bytes": 5256,
+      "sha256": "4cca96e5b3d1009b0afe93b684f836153cee272948ba0914545b4b6034a0a373"
+    },
+    {
+      "path": "evidence/m6/PX-024/evidence.json",
+      "bytes": 1238,
+      "sha256": "e2ce45331ad186ee3b940e70f3a705b25a90981f53c7df8571b7df406513fc14"
+    },
+    {
+      "path": "evidence/m7/M7.1/TASK_CARD.md",
+      "bytes": 7521,
+      "sha256": "94e26b4c687aadf713b28eeef0c9f4dc27304feecbd0d468b818831a9a5a4a02"
+    },
+    {
+      "path": "evidence/m7/M7.1/evidence.json",
+      "bytes": 1237,
+      "sha256": "91960e970e8a5d921ab46bfe4adcc983a5b388533986fc1d08dc0ccb1d0eaa9d"
+    },
+    {
+      "path": "evidence/m7/M7.2/TASK_CARD.md",
+      "bytes": 5049,
+      "sha256": "86ce1478c8b1bb4f3bab0f8f7c4c274f9762207c63d06bd277495992db72cdb2"
+    },
+    {
+      "path": "evidence/m7/M7.2/evidence.json",
+      "bytes": 1193,
+      "sha256": "acca7801acabd59e0a7b7db8fb67cbaf0c488e8b458c98707d24a78b7f0956d2"
     },
     {
       "path": "graph/PROJECT_GRAPH.md",

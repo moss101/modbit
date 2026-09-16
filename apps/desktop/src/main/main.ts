@@ -10,8 +10,13 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { CoreSupervisor, freshId, type CoreClient, type CoreStatus } from "@modbit/ide-adapter-core";
 import { serializeEvent, type WireEvent } from "./events.js";
+import { BrowserHost } from "./browser.js";
 
 const dataDir = process.env.MODBIT_DATA_DIR ?? join(app.getPath("userData"), "modbit");
+// A profile named by MODBIT_DATA_DIR is a whole profile: the renderer's
+// storage (preferences, caches) lives under it too, so two profiles — or
+// two E2E runs — never share what one viewer stored (PX-024).
+if (process.env.MODBIT_DATA_DIR) app.setPath("userData", join(dataDir, "electron"));
 const coreBin = process.env.MODBIT_CORE_BIN ?? resolve(app.getAppPath(), "..", "..", "target", "debug", process.platform === "win32" ? "modbit-core.exe" : "modbit-core");
 mkdirSync(dataDir, { recursive: true });
 
@@ -97,6 +102,8 @@ const supervisor = new CoreSupervisor(
       void handProviderToCore(c);
       if (local.sessionId) void c.joinSessionLease(local.sessionId, `desktop ${app.getVersion()}`).catch(() => {});
       if (subscription) c.subscribe(subscription.sessionId, subscription.cursor);
+      // M7.1: the views this process still holds attach again to their sessions.
+      void browserHost.reattachAll();
       void c
         .getRecoveryReport()
         .then((r) =>
@@ -119,6 +126,14 @@ const supervisor = new CoreSupervisor(
 );
 
 const HEX32 = /^[0-9a-f]{32}$/;
+
+// M7.1: the browser host — one sandboxed WebContentsView per browser
+// session, attached to the Core over this process's client connection.
+const browserHost = new BrowserHost(
+  () => win,
+  () => supervisor.current(),
+  (channel, payload) => send(channel, payload),
+);
 function requireClient(): CoreClient {
   const c = supervisor.current();
   if (!c) throw new Error("CORE_UNAVAILABLE: the local Core is restarting; your last persisted state is shown");
@@ -299,6 +314,25 @@ ipcMain.handle("task:start", async (_e: IpcMainInvokeEvent, sessionId: unknown, 
   if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
   return c.startTask(sid, tid);
 });
+// PX-024: cancel and steer the focused task from the keyboard. Cancel is
+// confirmed in the renderer before it reaches here; steering queues one
+// line of input under the session lease (QueueInput STEER).
+ipcMain.handle("task:cancel", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown) => {
+  const sid = requireSessionId(sessionId);
+  const tid = requireTaskId(taskId);
+  const c = requireClient();
+  if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
+  return c.cancelTask(sid, tid);
+});
+ipcMain.handle("task:steer", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown, text: unknown) => {
+  const sid = requireSessionId(sessionId);
+  const tid = requireTaskId(taskId);
+  if (typeof text !== "string" || text.trim().length === 0 || text.length > 20_000) throw new Error("BAD_ARGUMENT: text");
+  const c = requireClient();
+  if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
+  const r = await c.queueInput(sid, tid, text, "STEER");
+  return { sequence: r.sequence.toString(), offset: r.offset.toString() };
+});
 // REQ-EV-0190: attach a local file to a task. Main reads the bytes (bounded)
 // and the Core normalizes them; the renderer never sees a filesystem.
 const MAX_ATTACHMENT_BYTES = 3 * 1024 * 1024;
@@ -412,6 +446,47 @@ ipcMain.handle("question:respond", async (_e: IpcMainInvokeEvent, sessionId: unk
   if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
   return c.respondToQuestion(sid, tid, questionId, typeof optionId === "string" ? optionId.slice(0, 128) : "", typeof text === "string" ? text.slice(0, 20_000) : "");
 });
+// ---- M7.1 browser sessions (docs/22): the renderer asks main to open a
+// session for a task and to place the view; everything the page does stays
+// in main's sandboxed view and the Core's log.
+ipcMain.handle("browser:open", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown) => {
+  const sid = requireSessionId(sessionId);
+  const tid = requireTaskId(taskId);
+  const c = requireClient();
+  if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
+  return browserHost.open(sid, tid);
+});
+ipcMain.handle("browser:show", (_e: IpcMainInvokeEvent, browserSessionId: unknown, bounds: unknown) => {
+  if (typeof browserSessionId !== "string" || !HEX32.test(browserSessionId)) throw new Error("BAD_ARGUMENT: browserSessionId");
+  const b = (bounds ?? {}) as { x?: unknown; y?: unknown; width?: unknown; height?: unknown };
+  const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= 20_000 ? v : null);
+  const rect = { x: n(b.x), y: n(b.y), width: n(b.width), height: n(b.height) };
+  if (rect.x === null || rect.y === null || rect.width === null || rect.height === null) throw new Error("BAD_ARGUMENT: bounds");
+  return browserHost.show(browserSessionId, rect as { x: number; y: number; width: number; height: number });
+});
+ipcMain.handle("browser:hide", (_e: IpcMainInvokeEvent, browserSessionId: unknown) => {
+  if (typeof browserSessionId !== "string" || !HEX32.test(browserSessionId)) throw new Error("BAD_ARGUMENT: browserSessionId");
+  browserHost.hide(browserSessionId);
+});
+ipcMain.handle("browser:close", async (_e: IpcMainInvokeEvent, browserSessionId: unknown) => {
+  if (typeof browserSessionId !== "string" || !HEX32.test(browserSessionId)) throw new Error("BAD_ARGUMENT: browserSessionId");
+  await browserHost.close(browserSessionId);
+});
+ipcMain.handle("browser:describe", (_e: IpcMainInvokeEvent, browserSessionId: unknown) => {
+  if (typeof browserSessionId !== "string" || !HEX32.test(browserSessionId)) throw new Error("BAD_ARGUMENT: browserSessionId");
+  return browserHost.describe(browserSessionId);
+});
+ipcMain.handle("browser:session", async (_e: IpcMainInvokeEvent, browserSessionId: unknown, taskId: unknown) => {
+  if (typeof browserSessionId !== "string" || !HEX32.test(browserSessionId)) throw new Error("BAD_ARGUMENT: browserSessionId");
+  const tid = requireTaskId(taskId);
+  const v = await requireClient().browserSession(browserSessionId, tid);
+  return { browserSessionId, taskId: tid, partition: v.partition, controller: v.controller, leaseGeneration: v.leaseGeneration.toString(), hostAttached: v.hostAttached, hostKind: v.hostKind, url: v.url, title: v.title, stateVersion: v.stateVersion.toString(), fingerprint: v.fingerprint, closed: v.closed };
+});
+ipcMain.handle("browser:log", () => browserHost.log.slice());
+ipcMain.handle("browser:probe", (_e: IpcMainInvokeEvent, browserSessionId: unknown) => {
+  if (typeof browserSessionId !== "string" || !HEX32.test(browserSessionId)) throw new Error("BAD_ARGUMENT: browserSessionId");
+  return browserHost.probe(browserSessionId);
+});
 // PX-023 notification delivery: the renderer decides what warrants an OS
 // notification (opt-in per kind, quiet hours); main only hands the text to
 // the OS and keeps a bounded log of what it delivered (what the E2E reads
@@ -522,6 +597,7 @@ app.on("window-all-closed", () => {
 // Quitting (window close, Cmd+Q, or a harness closing the app) must stop the
 // Core child and the socket, or the main process lingers.
 app.on("before-quit", () => {
+  browserHost.closeAll();
   supervisor.stop();
 });
 export type { WireEvent };

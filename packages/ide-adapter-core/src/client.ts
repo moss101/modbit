@@ -90,6 +90,20 @@ import {
   type PullRequestAck,
   RespondToQuestionSchema,
   QuestionRespondedSchema,
+  CancelTaskSchema,
+  TaskCancelRequestedSchema,
+  OpenBrowserSessionSchema,
+  BrowserSessionOpenedSchema,
+  AttachBrowserHostSchema,
+  BrowserHostAttachedSchema,
+  BrowserHostResponseSchema,
+  BrowserHostRespondedSchema,
+  GetBrowserSessionSchema,
+  BrowserSessionViewSchema,
+  CloseBrowserSessionSchema,
+  BrowserSessionClosedSchema,
+  type BrowserHostRequest,
+  type BrowserSessionView,
   type TaskEconomicsView,
   type LanguageList,
   type CommandAck,
@@ -185,6 +199,13 @@ export class CoreClient {
   /** The `CreateTask.origin` this client's kind implies (docs/30). */
   readonly origin: "desktop" | "cli" | "ide_adapter";
   onEvent: ((e: StoredEventFrame) => void) | null = null;
+  /**
+   * M7.1: a request the Core sends to the browser host this connection
+   * attached (docs/22). The host answers with `respondBrowserHost`; a
+   * request for a session this client did not attach is answered with an
+   * error by the client itself so the Core never waits on it.
+   */
+  onBrowserRequest: ((r: BrowserHostRequest) => void) | null = null;
   onClose: ((reason: string) => void) | null = null;
 
   private constructor(kind: ClientKind) {
@@ -255,6 +276,12 @@ export class CoreClient {
       case "event":
         this.onEvent?.(f.body.value);
         return;
+      case "browserRequest": {
+        const r = f.body.value;
+        if (this.onBrowserRequest) this.onBrowserRequest(r);
+        else void this.respondBrowserHost(r.requestId, { kind: "error", code: "NO_HOST", message: "this client hosts no browser" }).catch(() => {});
+        return;
+      }
       case "error":
         this.fail(`${f.body.value.code}: ${f.body.value.message}`);
         return;
@@ -532,6 +559,45 @@ export class CoreClient {
     const ack = await this.command("QueueInput", payload, undefined, this.leases.get(sessionId));
     const r = fromBinary(InputQueuedSchema, ack.result);
     return { sequence: r.sequence, offset: r.offset };
+  }
+
+  // ---- M7.1 browser session and host bridge (docs/22) ----
+
+  /** Open a browser session for a task (its control lease starts with the agent). Requires the session lease. */
+  async openBrowserSession(sessionId: string, taskId: string): Promise<{ browserSessionId: string; partition: string; controller: string; leaseGeneration: bigint; offset: bigint }> {
+    const ack = await this.command("OpenBrowserSession", toBinary(OpenBrowserSessionSchema, create(OpenBrowserSessionSchema, { taskId: { value: unhex(taskId) } })), undefined, this.leases.get(sessionId));
+    const r = fromBinary(BrowserSessionOpenedSchema, ack.result);
+    return { browserSessionId: hex(r.browserSessionId?.value ?? new Uint8Array()), partition: r.partition, controller: r.controller, leaseGeneration: r.leaseGeneration, offset: r.offset };
+  }
+
+  /** Attach this connection as the session's host: BrowserHostRequest frames arrive on `onBrowserRequest` from now on. */
+  async attachBrowserHost(browserSessionId: string, host: { hostKind: string; partition: string; sandboxed: boolean; contextIsolated: boolean; nodeIntegration: boolean; taskId: string }): Promise<{ leaseGeneration: bigint; offset: bigint }> {
+    const { taskId, ...rest } = host;
+    const ack = await this.command("AttachBrowserHost", toBinary(AttachBrowserHostSchema, create(AttachBrowserHostSchema, { browserSessionId: { value: unhex(browserSessionId) }, taskId: { value: unhex(taskId) }, ...rest })));
+    const r = fromBinary(BrowserHostAttachedSchema, ack.result);
+    return { leaseGeneration: r.leaseGeneration, offset: r.offset };
+  }
+
+  /** Answer one BrowserHostRequest (the response is modbit-browser's HostResponse as JSON). */
+  async respondBrowserHost(requestId: string, response: unknown): Promise<{ delivered: boolean }> {
+    const ack = await this.command("BrowserHostResponse", toBinary(BrowserHostResponseSchema, create(BrowserHostResponseSchema, { requestId, responseJson: JSON.stringify(response) })));
+    return { delivered: fromBinary(BrowserHostRespondedSchema, ack.result).delivered };
+  }
+
+  async browserSession(browserSessionId: string, taskId?: string): Promise<BrowserSessionView> {
+    const ack = await this.command("GetBrowserSession", toBinary(GetBrowserSessionSchema, create(GetBrowserSessionSchema, { browserSessionId: { value: unhex(browserSessionId) }, ...(taskId ? { taskId: { value: unhex(taskId) } } : {}) })));
+    return fromBinary(BrowserSessionViewSchema, ack.result);
+  }
+
+  async closeBrowserSession(sessionId: string, browserSessionId: string): Promise<{ offset: bigint }> {
+    const ack = await this.command("CloseBrowserSession", toBinary(CloseBrowserSessionSchema, create(CloseBrowserSessionSchema, { browserSessionId: { value: unhex(browserSessionId) } })), undefined, this.leases.get(sessionId));
+    return { offset: fromBinary(BrowserSessionClosedSchema, ack.result).offset };
+  }
+
+  /** Cancel a task: the run stops at its next safe boundary; the task's events record it. Requires the session lease. */
+  async cancelTask(sessionId: string, taskId: string): Promise<{ wasRunning: boolean }> {
+    const ack = await this.command("CancelTask", toBinary(CancelTaskSchema, create(CancelTaskSchema, { taskId: { value: unhex(taskId) } })), undefined, this.leases.get(sessionId));
+    return { wasRunning: fromBinary(TaskCancelRequestedSchema, ack.result).wasRunning };
   }
 
   /** REQ-EV-0222: answer the agent's typed question; the run resumes with StartTask. */

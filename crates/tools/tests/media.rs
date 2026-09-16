@@ -240,6 +240,7 @@ async fn fs_read_returns_media_envelopes_through_the_registry() {
         journal: None,
         forge: None,
         forge_ledger: None,
+        browser: None,
     };
     let mut registry = ToolRegistry::new();
     modbit_tools::direct::register_direct(&mut registry).unwrap();

@@ -162,6 +162,10 @@ pub struct InvokeContext {
     pub forge: Option<Arc<crate::forge::ForgeConfig>>,
     /// The host's record of forge effects by idempotency key (PX-006).
     pub forge_ledger: Option<Arc<dyn crate::forge::ForgeLedger>>,
+    /// The browser sessions the host holds for tasks (M7.1, docs/22):
+    /// `browser.*` reach the task's live Chromium through it. `None` = no
+    /// browser host in this build.
+    pub browser: Option<Arc<dyn modbit_browser::BrowserPort>>,
 }
 
 /// Status of a tool call result (docs/30 `ToolCallResult.status` plus the

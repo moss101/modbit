@@ -352,14 +352,22 @@ pub struct ToolHost {
     state_dir: PathBuf,
     /// The forge `forge.*` may reach and the token in this Core's custody (PX-006).
     pub forge: crate::forge::ForgeCustody,
+    /// The browser sessions `browser.*` reach through their hosts (M7.1).
+    pub browser: Arc<dyn modbit_browser::BrowserPort>,
 }
 
 impl ToolHost {
     /// Build the host: direct tools, default policy, broker.
-    pub fn new(data_dir: &Path, replay_generation: u64) -> Result<Self> {
+    pub fn new(
+        data_dir: &Path,
+        replay_generation: u64,
+        browser: Arc<dyn modbit_browser::BrowserPort>,
+    ) -> Result<Self> {
         let mut registry = ToolRegistry::new();
         modbit_tools::direct::register_direct(&mut registry).map_err(|e| anyhow::anyhow!("{e}"))?;
         modbit_tools::forge::register_forge(&mut registry).map_err(|e| anyhow::anyhow!("{e}"))?;
+        modbit_tools::browser::register_browser(&mut registry)
+            .map_err(|e| anyhow::anyhow!("{e}"))?;
         let runtime = ToolRuntime::new(registry, Arc::new(ProfilePolicy));
         let execd = match spawn_execd(data_dir, replay_generation) {
             Ok(e) => Some(e),
@@ -385,6 +393,7 @@ impl ToolHost {
             language_servers: Arc::new(std::sync::Mutex::new(HashMap::new())),
             state_dir: data_dir.join("workspaces"),
             forge: crate::forge::ForgeCustody::from_env(),
+            browser,
         })
     }
 
@@ -820,6 +829,7 @@ impl ToolHost {
                 task_id,
                 actor: actor.clone(),
             })),
+            browser: Some(Arc::clone(&self.browser)),
         };
         // REQ-EV-0106: snapshot the write targets so every successful write can
         // land a revision-bound FileChanged event with content and diff refs.
@@ -1272,6 +1282,38 @@ impl ToolHost {
                     serde_json::Value::String(result_ref.clone()),
                 );
             }
+        }
+        // M7.1: a navigation the agent made is the task's record of where
+        // its browser session is (untrusted URL and title), beside the
+        // call's outcome.
+        if result.status == ToolStatus::Success
+            && tool_name == "browser.navigate"
+            && let Some(session) = self.browser.session_for(task_id).await
+        {
+            let o = &result.structured_output;
+            let state = modbit_browser::PageState {
+                url: o["url"].as_str().unwrap_or_default().to_owned(),
+                title: o["title"].as_str().unwrap_or_default().to_owned(),
+                ready: o["ready"].as_bool().unwrap_or(false),
+                state_version: o["state_version"].as_u64().unwrap_or(0),
+            };
+            let lease_generation = self
+                .browser
+                .lease(session)
+                .await
+                .map_or(0, |l| l.generation);
+            retrieval_events.push(typed_task_event(
+                "BrowserNavigated",
+                &modbit_domain::task::TaskEvent::BrowserNavigated {
+                    browser_session_id: session.to_string(),
+                    url: state.url.clone(),
+                    title: state.title.clone(),
+                    state_version: state.state_version,
+                    fingerprint: state.fingerprint(),
+                    lease_generation,
+                },
+                &actor,
+            ));
         }
         // Everything the outcome implies — the retrieval and terminal records,
         // the call's outcome, the approval it opened, the files it changed —

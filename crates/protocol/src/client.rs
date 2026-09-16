@@ -81,6 +81,9 @@ pub struct Client {
     /// REQ-EV-0043: the ProtocolCapabilitySet the Core granted this
     /// connection for its client kind.
     pub capabilities: Vec<String>,
+    /// M7.1: browser-host requests that arrived while another frame was
+    /// awaited; `next_browser_request` drains them first.
+    browser_requests: std::collections::VecDeque<crate::v1::BrowserHostRequest>,
 }
 
 impl std::fmt::Debug for Client {
@@ -125,6 +128,7 @@ impl Client {
                     stream,
                     protocol_version: ack.protocol_version,
                     capabilities: ack.client_capabilities,
+                    browser_requests: std::collections::VecDeque::new(),
                 })
             }
             Some(SurfaceFrame {
@@ -174,7 +178,41 @@ impl Client {
                 Some(SurfaceFrame {
                     body: Some(Body::Event(_)),
                 }) => continue,
+                // A browser-host request may interleave once this connection hosts a session.
+                Some(SurfaceFrame {
+                    body: Some(Body::BrowserRequest(r)),
+                }) => self.browser_requests.push_back(r),
                 None => return Err(ClientError::Refused("connection closed".into())),
+                Some(other) => return Err(ClientError::Unexpected(format!("{other:?}"))),
+            }
+        }
+    }
+
+    /// M7.1: the next request the Core sends this connection as a browser
+    /// host (blocks until one arrives); `None` when the Core closes.
+    pub async fn next_browser_request(
+        &mut self,
+    ) -> Result<Option<crate::v1::BrowserHostRequest>, ClientError> {
+        if let Some(r) = self.browser_requests.pop_front() {
+            return Ok(Some(r));
+        }
+        loop {
+            match read_frame(&mut self.stream).await? {
+                Some(SurfaceFrame {
+                    body: Some(Body::BrowserRequest(r)),
+                }) => return Ok(Some(r)),
+                Some(SurfaceFrame {
+                    body: Some(Body::Error(e)),
+                }) => {
+                    return Err(ClientError::Protocol {
+                        code: e.code,
+                        message: e.message,
+                    });
+                }
+                None => return Ok(None),
+                Some(SurfaceFrame {
+                    body: Some(Body::Event(_) | Body::CommandAck(_)),
+                }) => continue,
                 Some(other) => return Err(ClientError::Unexpected(format!("{other:?}"))),
             }
         }
@@ -218,6 +256,9 @@ impl Client {
                 Some(SurfaceFrame {
                     body: Some(Body::CommandAck(_)),
                 }) => continue,
+                Some(SurfaceFrame {
+                    body: Some(Body::BrowserRequest(r)),
+                }) => self.browser_requests.push_back(r),
                 Some(other) => return Err(ClientError::Unexpected(format!("{other:?}"))),
             }
         }

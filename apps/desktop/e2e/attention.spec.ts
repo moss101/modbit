@@ -107,6 +107,9 @@ test("attention: a start refused for capacity is an item from the Core and clear
     // The first finishes; starting the second clears the item from its
     // canonical event (TaskStarted), nothing else.
     await expect(page.getByTestId("column-readyForReview").getByTestId("task-card")).toHaveCount(1, { timeout: 60_000 });
+    // The first result opened the Review over the fleet (docs/39 step 5); back to the board.
+    await expect(page.getByTestId("review")).toBeVisible({ timeout: 15_000 });
+    await page.getByTestId("review-close").click();
     await expect(item).toHaveCount(1);
     await two.getByTestId("task-start").click();
     await expect(page.getByTestId("attention-item")).toHaveCount(0, { timeout: 30_000 });

@@ -7,9 +7,11 @@
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { applyEvent, childrenOf, columns, emptyModel, fromSnapshot, type Event, type FleetColumn, type Model, type Snapshot, type TaskCard } from "./model.ts";
-import { fleetState, newTaskState, reviewState, settingsState, taskState, type ScreenState as DerivedScreenState } from "./screens.ts";
+import { browserState, fleetState, newTaskState, reviewState, settingsState, taskState, type ScreenState as DerivedScreenState } from "./screens.ts";
 import { DEFAULT_PREFERENCES, deriveNotifications, newSince, osDeliveryDue, type Notification as AppNotification, type NotificationKind, type NotificationPreferences } from "./notifications.ts";
-import type { AttentionItem, ContextInspectorSummary, ModbitBridge, PullRequestAckView, ReviewBundleView, TaskEconomicsSummary } from "../preload/preload.ts";
+import { commandFor, isActivatable, isEditable, SHORTCUTS, type Command } from "./keyboard.ts";
+import { splitRows } from "./diff.ts";
+import type { AttentionItem, BrowserSessionSummary, ContextInspectorSummary, ModbitBridge, PullRequestAckView, ReviewBundleView, TaskEconomicsSummary } from "../preload/preload.ts";
 
 declare global {
   interface Window {
@@ -66,9 +68,17 @@ function loadPreferences(): NotificationPreferences {
 
 /** PX-023: one screen's state, with cause, next action and evidence when it
  *  is not the plain populated state. Every screen renders one. */
+const KIND_MARK: Record<DerivedScreenState["kind"], string> = { empty: "○", loading: "…", populated: "●", error: "✖", degraded: "⚠", recovery: "↻" };
 function StateLine({ state, testid }: { state: DerivedScreenState; testid: string }) {
+  // The kind is in the text (a mark and the word), never in colour alone.
+  // `data-seen` keeps the labels this line has shown, in order: a state
+  // that lasts a moment (a Core back in a second) is still on record.
+  const seen = useRef<string[]>([]);
+  if (seen.current[seen.current.length - 1] !== `${state.kind}:${state.label}`) seen.current = [...seen.current.slice(-19), `${state.kind}:${state.label}`];
   return (
-    <div className="meta state" data-testid={testid} data-screen={state.screen} data-kind={state.kind} role={state.kind === "error" ? "alert" : "status"}>
+    <div className="meta state" data-testid={testid} data-screen={state.screen} data-kind={state.kind} data-seen={seen.current.join("|")} role={state.kind === "error" ? "alert" : "status"} aria-label={`${state.kind}: ${state.label}`}>
+      <span aria-hidden="true">{KIND_MARK[state.kind]} </span>
+      <span className="sr-only">{state.kind}: </span>
       <span data-testid={`${testid}-label`}>{state.label}</span>
       {state.cause && (
         <>
@@ -123,6 +133,8 @@ function App() {
   const [workspaceRoot, setWorkspaceRoot] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [reviewing, setReviewing] = useState<string | null>(null);
+  // M7.1: the browser session shown over the fleet (one task's live view).
+  const [browsing, setBrowsing] = useState<{ taskId: string; browserSessionId: string | null; error: string | null } | null>(null);
   // Onboarding (REQ-PX-022, docs/39): three steps, each a working control.
   const [provider, setProvider] = useState<{ configured: boolean; endpoints: string[]; stored: boolean; provider: string; keychainAvailable: boolean } | null>(null);
   const [providerKind, setProviderKind] = useState<"openai" | "anthropic">("openai");
@@ -137,6 +149,15 @@ function App() {
   const [starters, setStarters] = useState<{ stacks: string[]; tasks: { id: string; title: string; goalText: string; stack: string }[] } | null>(null);
   const [autoReview, setAutoReview] = useState<string | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
+  // PX-024: the keyboard model's state — the type-ahead filter, the help
+  // panel, a pending confirmation before an irreversible effect, the card
+  // focus to retain across state changes, the live region's announcement.
+  const [filter, setFilter] = useState("");
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [confirm, setConfirm] = useState<{ kind: "approve" | "cancel"; taskId: string; text: string } | null>(null);
+  const focusedTask = useRef<string | null>(null);
+  const [announcement, setAnnouncement] = useState("");
+  const seenAttention = useRef<Set<string>>(new Set());
   const [prefs, setPrefs] = useState<NotificationPreferences>(loadPreferences);
   const [delivered, setDelivered] = useState<string[]>([]);
   const previousNotifications = useRef<AppNotification[]>([]);
@@ -312,6 +333,42 @@ function App() {
     }
   }, []);
 
+  // M7.1: open (or reuse) the task's browser session; the view is placed by
+  // the Browser panel once it is on screen.
+  const openBrowser = useCallback(async (taskId: string) => {
+    const sessionId = modelRef.current.sessionId;
+    if (!sessionId) return;
+    setBrowsing({ taskId, browserSessionId: null, error: null });
+    try {
+      const r = await window.modbit.openBrowser(sessionId, taskId);
+      setBrowsing({ taskId, browserSessionId: r.browserSessionId, error: null });
+    } catch (e) {
+      setBrowsing({ taskId, browserSessionId: null, error: (e as Error).message });
+    }
+  }, []);
+
+  // PX-024 focus retention: a card that moves between columns on a Core
+  // event is re-mounted by React; the focus it held comes back to it.
+  useEffect(() => {
+    const id = focusedTask.current;
+    if (!id || reviewing) return;
+    const active = document.activeElement;
+    if (active && active !== document.body && active.closest('[data-testid="task-card"]')) return;
+    if (active && active !== document.body && active.getAttribute("data-testid") !== "task-card") return;
+    const el = document.querySelector<HTMLElement>(`[data-testid="task-card"][data-task-id="${id}"]`);
+    el?.focus({ preventScroll: true });
+  }, [model, reviewing]);
+  // PX-024 live region: every new attention item is announced once, in
+  // words (kind, task, reason) — never by colour alone.
+  useEffect(() => {
+    const fresh = attentionItems.filter((i) => !seenAttention.current.has(`${i.kind}:${i.taskId}:${i.reference}`));
+    for (const i of fresh) seenAttention.current.add(`${i.kind}:${i.taskId}:${i.reference}`);
+    if (fresh.length === 0) return;
+    const i = fresh[fresh.length - 1]!;
+    const goal = modelRef.current.tasks.get(i.taskId)?.goalText ?? i.taskId.slice(0, 8);
+    setAnnouncement(`${fresh.length > 1 ? `${fresh.length} tasks need attention; latest: ` : "Needs attention: "}${i.kind.toLowerCase().replace(/_/g, " ")} on ${goal}: ${i.reason}`);
+  }, [attentionItems]);
+
   useEffect(() => {
     if (autoReview && !reviewing) {
       setReviewing(autoReview);
@@ -396,6 +453,152 @@ function App() {
 
   const cols = useMemo(() => columns(model), [model]);
   const attention = cols.needsAttention.length;
+  const visible = useCallback((cards: TaskCard[]) => (filter.trim() ? cards.filter((t) => t.goalText.toLowerCase().includes(filter.trim().toLowerCase())) : cards), [filter]);
+  const focusedCard = () => document.activeElement?.closest<HTMLElement>('[data-testid="task-card"]') ?? null;
+  const cardsOf = (column: Element) => [...column.querySelectorAll<HTMLElement>(':scope > [data-testid="task-card"]')];
+  const runFleetCommand = useCallback(
+    async (cmd: Command) => {
+      const sessionId = modelRef.current.sessionId;
+      // The focused task: its card, or an attention item or notification
+      // about it (approve, deny, cancel and steer act on that task).
+      const taskId = document.activeElement?.closest("[data-task-id]")?.getAttribute("data-task-id") ?? null;
+      const card = focusedCard() ?? (taskId ? document.querySelector<HTMLElement>(`[data-testid="task-card"][data-task-id="${taskId}"]`) : null);
+      const task = taskId ? modelRef.current.tasks.get(taskId) : undefined;
+      switch (cmd) {
+        case "newTask":
+          document.getElementById("goal")?.focus();
+          return;
+        case "search":
+          document.querySelector<HTMLElement>('[data-testid="search"]')?.focus();
+          return;
+        case "help":
+          setHelpOpen((h) => !h);
+          return;
+        case "jumpAttention": {
+          const target = document.querySelector<HTMLElement>('[data-testid="attention-item"]') ?? document.querySelector<HTMLElement>('[data-testid="attention"]') ?? document.querySelector<HTMLElement>('[data-testid="column-needsAttention"]');
+          target?.focus();
+          return;
+        }
+        case "jumpRunning": {
+          const column = document.querySelector<HTMLElement>('[data-testid="column-running"]');
+          (column ? (cardsOf(column)[0] ?? column) : null)?.focus();
+          return;
+        }
+        case "next":
+        case "previous": {
+          const column = card?.parentElement ?? document.querySelector<HTMLElement>('[data-testid="task-card"]')?.parentElement;
+          if (!column) return;
+          const cards = cardsOf(column);
+          const i = card ? cards.indexOf(card) : -1;
+          const target = cards[i < 0 ? 0 : Math.min(cards.length - 1, Math.max(0, i + (cmd === "next" ? 1 : -1)))];
+          target?.focus();
+          return;
+        }
+        case "columnNext":
+        case "columnPrevious": {
+          const columns = [...document.querySelectorAll<HTMLElement>('[data-testid^="column-"]')];
+          const focused = focusedCard();
+          const current = focused?.parentElement ?? null;
+          const step = cmd === "columnNext" ? 1 : -1;
+          // From outside the board: the first (→) or last (←) column with cards.
+          const from = current ? columns.indexOf(current) : step > 0 ? -1 : columns.length;
+          for (let j = from + step; j >= 0 && j < columns.length; j += step) {
+            const cards = cardsOf(columns[j]!);
+            if (cards.length) {
+              const index = current && focused ? cardsOf(current).indexOf(focused) : 0;
+              cards[Math.min(cards.length - 1, Math.max(0, index))]!.focus();
+              return;
+            }
+          }
+          return;
+        }
+        case "open":
+          if (!task) return;
+          if (task.state === "ReadyForReview" || task.state === "Completed") setReviewing(task.taskId);
+          else card?.querySelector<HTMLElement>("button:not(:disabled)")?.focus();
+          return;
+        case "approve":
+        case "deny": {
+          if (!task?.approval || !sessionId || task.state !== "Waiting" || task.waitReason !== "Approval") return;
+          const irreversible = task.approval.effectClass === "Destructive" || task.approval.effectClass === "ExternalSideEffect";
+          if (cmd === "approve" && irreversible) {
+            setConfirm({ kind: "approve", taskId: task.taskId, text: `Approve ${task.approval.toolName} (${task.approval.effectClass}, intent ${task.approval.intentHash.slice(0, 12)}…) on “${task.goalText}”? This effect cannot be undone.` });
+            return;
+          }
+          await window.modbit.resolveApproval(sessionId, task.approval.approvalId, cmd === "approve", `${cmd === "approve" ? "approved" : "denied"} from the keyboard`, task.approval.intentHash).catch((e: Error) => setError(e.message));
+          return;
+        }
+        case "cancelTask":
+          if (!task || !sessionId || task.state === "Completed" || task.state === "Cancelled" || task.state === "Failed") return;
+          setConfirm({ kind: "cancel", taskId: task.taskId, text: `Cancel “${task.goalText}”? The run stops at its next safe boundary; the task cannot be resumed.` });
+          return;
+        case "steerTask":
+          card?.querySelector<HTMLElement>('[data-testid="task-steer"]')?.focus();
+          return;
+        case "confirm": {
+          const c = confirm;
+          if (!c || !sessionId) return;
+          setConfirm(null);
+          const t = modelRef.current.tasks.get(c.taskId);
+          // The focus belongs to this task through the state change its
+          // effect causes (the card re-mounts in another column).
+          focusedTask.current = c.taskId;
+          document.querySelector<HTMLElement>(`[data-testid="task-card"][data-task-id="${c.taskId}"]`)?.focus();
+          try {
+            if (c.kind === "cancel") await window.modbit.cancelTask(sessionId, c.taskId);
+            else if (t?.approval) await window.modbit.resolveApproval(sessionId, t.approval.approvalId, true, "approved from the keyboard, confirmed", t.approval.intentHash);
+          } catch (e) {
+            setError((e as Error).message);
+          }
+          document.querySelector<HTMLElement>(`[data-testid="task-card"][data-task-id="${c.taskId}"]`)?.focus();
+          return;
+        }
+        case "back": {
+          if (confirm) {
+            setConfirm(null);
+            document.querySelector<HTMLElement>(`[data-testid="task-card"][data-task-id="${confirm.taskId}"]`)?.focus();
+            return;
+          }
+          if (helpOpen) {
+            setHelpOpen(false);
+            return;
+          }
+          if (reviewing) {
+            // The retention effect focuses the card once the fleet is shown again.
+            focusedTask.current = reviewing;
+            setReviewing(null);
+            return;
+          }
+          if (browsing) {
+            focusedTask.current = browsing.taskId;
+            setBrowsing(null);
+            return;
+          }
+          if (isEditable(document.activeElement)) (document.activeElement as HTMLElement).blur();
+          return;
+        }
+        default:
+          return;
+      }
+    },
+    [confirm, helpOpen, reviewing, browsing],
+  );
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      // Enter and Space on a button or a checkbox are that control's.
+      if ((e.key === "Enter" || e.key === " ") && isActivatable(document.activeElement) && confirm === null) return;
+      const cmd = commandFor(e, { editable: isEditable(document.activeElement), screen: reviewing ? "review" : "fleet", confirming: confirm !== null, isMac: navigator.platform.toUpperCase().includes("MAC") });
+      if (!cmd) return;
+      // Over the browser panel only the global shortcuts and Escape apply.
+      if (browsing && !["back", "help", "newTask", "search", "confirm"].includes(cmd)) return;
+      // The Review handles its own change navigation (hunk*, split, failing).
+      if (["hunkNext", "hunkPrevious", "hunkToggle", "toggleSplit", "jumpFailing"].includes(cmd)) return;
+      e.preventDefault();
+      void runFleetCommand(cmd);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [runFleetCommand, reviewing, confirm, browsing]);
   const tasks = useMemo(() => [...model.tasks.values()], [model]);
   // PX-023: the screen states, each derived from what the Core said.
   const fleet = useMemo(() => fleetState({ core, loaded: screen === "loading" ? "loading" : screen === "empty" ? "empty" : "populated", error, recovery: recovery ? { bootGeneration: Number(recovery.bootGeneration), eventsVerified: Number(recovery.eventsVerified), aggregatesVerified: Number(recovery.aggregatesVerified), sessions: Number(recovery.sessions), tasks: Number(recovery.tasks), projectionsRebuilt: recovery.projectionsRebuilt, notes: recovery.notes, recoveryMs: Number(recovery.recoveryMs) } : null, recoveredBanner: recovered !== null, tasks }), [core, screen, error, recovery, recovered, tasks]);
@@ -449,7 +652,30 @@ function App() {
           {core.state === "connected" ? `Core connected (pid ${core.pid})` : core.state === "restarting" ? `Core restarting…` : core.state === "failed" ? "Core failed" : "Core starting…"}
         </span>
       </header>
+      <div role="region" aria-label="Status and notifications">
       <StateLine state={fleet} testid="fleet-state" />
+      <p className="sr-only" role="status" aria-live="polite" data-testid="live-attention">{announcement}</p>
+      {confirm && (
+        <div className="banner" data-kind="error" role="alertdialog" aria-modal="false" aria-labelledby="confirm-text" data-testid="confirm" data-confirm-kind={confirm.kind} data-task-id={confirm.taskId}>
+          <strong id="confirm-text">{confirm.text}</strong>{" "}
+          <span className="meta">Enter confirms · Escape cancels</span>{" "}
+          <button type="button" className="small" data-testid="confirm-yes" onClick={() => void runFleetCommand("confirm")}>Confirm</button>{" "}
+          <button type="button" className="small" data-testid="confirm-no" onClick={() => void runFleetCommand("back")}>Cancel</button>
+        </div>
+      )}
+      {helpOpen && (
+        <section className="banner" data-kind="info" role="dialog" aria-label="Keyboard shortcuts" data-testid="help">
+          <strong>Keyboard</strong>
+          <ul>
+            {SHORTCUTS.map((s) => (
+              <li key={s.command + s.keys}>
+                <kbd>{s.keys}</kbd> — {s.what}
+              </li>
+            ))}
+          </ul>
+          <button type="button" className="small" onClick={() => setHelpOpen(false)}>Close</button>
+        </section>
+      )}
       {notifications.length > 0 && (
         <section className="notifications" data-testid="notifications" aria-label="notifications" aria-live="polite">
           <ul>
@@ -523,7 +749,6 @@ function App() {
           <strong>Error</strong> — {error}. <button type="button" onClick={() => void load()}>Retry</button>
         </div>
       )}
-      {reviewing && model.sessionId && <Review taskId={reviewing} sessionId={model.sessionId} card={model.tasks.get(reviewing) ?? null} onClose={() => setReviewing(null)} />}
       {onboarding && (
         <section className="welcome" data-testid="welcome" aria-label="Welcome">
           <h2 style={{ margin: 0, fontSize: 16 }}>Welcome to Modbit</h2>
@@ -615,7 +840,10 @@ function App() {
           )}
         </section>
       )}
-      <main hidden={reviewing !== null}>
+      </div>
+      {reviewing && model.sessionId && <Review taskId={reviewing} sessionId={model.sessionId} card={model.tasks.get(reviewing) ?? null} onClose={() => void runFleetCommand("back")} />}
+      {browsing && !reviewing && <Browser browsing={browsing} card={model.tasks.get(browsing.taskId) ?? null} onReopen={() => void openBrowser(browsing.taskId)} onClose={() => void runFleetCommand("back")} />}
+      <main hidden={reviewing !== null || browsing !== null}>
         <div className="side">
           <form className="composer" onSubmit={submit} aria-label="New Task">
             <h2 style={{ margin: 0, fontSize: 14 }}>New Task</h2>
@@ -665,13 +893,15 @@ function App() {
           </section>
         </div>
         <div>
+          <label htmlFor="search" className="sr-only">Filter tasks</label>
+          <input id="search" data-testid="search" type="search" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter tasks (/)" aria-label="Filter tasks by goal" />
           <p className="sr-only" aria-live="polite">{attention} tasks need attention</p>
           {attentionItems.length > 0 && (
-            <section className="attention" data-testid="attention" aria-label="attention items">
+            <section className="attention" data-testid="attention" aria-label="attention items" tabIndex={-1}>
               <h2>Attention ({attentionItems.length})</h2>
               <ul>
                 {attentionItems.map((i) => (
-                  <li key={`${i.kind}:${i.taskId}:${i.reference}`} data-testid="attention-item" data-kind={i.kind} data-task-id={i.taskId}>
+                  <li key={`${i.kind}:${i.taskId}:${i.reference}`} data-testid="attention-item" data-kind={i.kind} data-task-id={i.taskId} tabIndex={-1}>
                     <strong>{i.kind}</strong> · {i.reason} · <em>{i.action}</em>
                   </li>
                 ))}
@@ -682,11 +912,11 @@ function App() {
           {screen === "empty" && <p className="empty" data-testid="fleet-empty">No tasks yet. Create one on the left.</p>}
           <div className="fleet" data-testid="fleet" data-screen={screen}>
             {COLUMNS.map((c) => (
-              <section className="column" key={c.key} aria-label={c.title} data-testid={`column-${c.key}`}>
+              <section className="column" key={c.key} aria-label={`${c.title}, ${cols[c.key].length} task(s)`} data-testid={`column-${c.key}`} tabIndex={-1}>
                 <h2>
                   {c.title} <span aria-hidden="true">({cols[c.key].length})</span>
                 </h2>
-                {cols[c.key].length === 0 ? <p className="empty">None</p> : cols[c.key].map((t) => <Card key={t.taskId} card={t} children={childrenOf(model, t.taskId)} state={taskState({ card: t, core, attention: attentionItems })} sessionId={model.sessionId} onStart={startTask} onReview={(id) => setReviewing(id)} />)}
+                {cols[c.key].length === 0 ? <p className="empty">None</p> : visible(cols[c.key]).map((t) => <Card key={t.taskId} card={t} children={childrenOf(model, t.taskId)} state={taskState({ card: t, core, attention: attentionItems })} sessionId={model.sessionId} onFocus={(id) => (focusedTask.current = id)} onStart={startTask} onReview={(id) => setReviewing(id)} onBrowser={(id) => void openBrowser(id)} />)}
               </section>
             ))}
           </div>
@@ -710,7 +940,20 @@ const PHASE_LABEL: Record<TaskCard["phase"], string> = {
 /** PRD "Home / Fleet" card (M6.6): goal, state, phase, active agents, risk,
  *  latest evidence, next required action, and the subagents nested under
  *  their parent — every fact from a Core event. */
-function Card({ card, children, state, sessionId, onStart, onReview }: { card: TaskCard; children?: TaskCard[]; state: DerivedScreenState; sessionId: string | null; onStart: (id: string) => void; onReview: (id: string) => void }) {
+function Card({ card, children, state, sessionId, onFocus, onStart, onReview, onBrowser }: { card: TaskCard; children?: TaskCard[]; state: DerivedScreenState; sessionId: string | null; onFocus: (id: string) => void; onStart: (id: string) => void; onReview: (id: string) => void; onBrowser: (id: string) => void }) {
+  // PX-024: one line of steering input on the card (QueueInput STEER).
+  const [steer, setSteer] = useState("");
+  const [steerNote, setSteerNote] = useState<string | null>(null);
+  const sendSteer = async () => {
+    if (!sessionId || !steer.trim()) return;
+    try {
+      const r = await window.modbit.steerTask(sessionId, card.taskId, steer.trim());
+      setSteerNote(`steered at offset ${r.offset}`);
+      setSteer("");
+    } catch (e) {
+      setSteerNote(`refused: ${(e as Error).message}`);
+    }
+  };
   // PX-023 "awaiting approval with the exact intent" / "awaiting your
   // answer": the decision names the intent hash the Core showed (the Core
   // refuses any other), the answer names the question; both are the
@@ -748,7 +991,7 @@ function Card({ card, children, state, sessionId, onStart, onReview }: { card: T
   const startable = card.state === "Queued" || (card.state === "Waiting" && card.waitReason !== "Approval" && card.waitReason !== "Capacity");
   const active = card.agents.running + card.agents.background;
   return (
-    <article className="card" tabIndex={0} data-testid="task-card" data-task-id={card.taskId} data-state={card.state} data-phase={card.phase}>
+    <article className="card" tabIndex={0} data-testid="task-card" data-task-id={card.taskId} data-state={card.state} data-phase={card.phase} aria-label={`${card.goalText}: ${card.state}${card.waitReason ? ` waiting on ${card.waitReason}` : ""}, ${PHASE_LABEL[card.phase]}`} onFocus={() => onFocus(card.taskId)}>
       <div>{card.goalText}</div>
       <div className="meta">
         state: <span data-testid="task-state">{card.state}</span>
@@ -803,7 +1046,7 @@ function Card({ card, children, state, sessionId, onStart, onReview }: { card: T
           ))}
           {card.question.allowFreeText && (
             <>
-              <input data-testid="task-answer-text" value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="your answer" disabled={deciding} />
+              <input data-testid="task-answer-text" aria-label="Your answer" value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="your answer" disabled={deciding} />
               <button type="button" className="small" data-testid="task-answer-send" onClick={() => void respond("", answer)} disabled={deciding || !answer.trim()}>
                 Answer
               </button>
@@ -814,6 +1057,16 @@ function Card({ card, children, state, sessionId, onStart, onReview }: { card: T
       {decisionNote && (
         <div className="meta" role="status" data-testid="task-decision">
           {decisionNote}
+        </div>
+      )}
+      {(card.state === "Running" || card.state === "Waiting" || card.state === "Queued") && (
+        <div className="decision">
+          <input data-testid="task-steer" aria-label={`Steer ${card.goalText}`} value={steer} onChange={(e) => setSteer(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void sendSteer(); } }} placeholder="steer (s), Enter sends" />
+          {steerNote && (
+            <span className="meta" role="status" data-testid="task-steer-note">
+              {steerNote}
+            </span>
+          )}
         </div>
       )}
       {children && children.length > 0 && (
@@ -837,8 +1090,99 @@ function Card({ card, children, state, sessionId, onStart, onReview }: { card: T
             Review
           </button>
         )}
+        {card.state !== "Completed" && card.state !== "Cancelled" && card.state !== "Failed" && (
+          <button type="button" data-testid="task-browser" onClick={() => onBrowser(card.taskId)}>
+            Browser
+          </button>
+        )}
       </div>
     </article>
+  );
+}
+
+/** Browser panel (M7.1, docs/22): the task's live Chromium session — main's
+ *  sandboxed view placed over the placeholder below; the URL, title and
+ *  state version are what the host reports, the lease what the Core
+ *  records. The page's content never reaches this renderer. */
+function Browser({ browsing, card, onReopen, onClose }: { browsing: { taskId: string; browserSessionId: string | null; error: string | null }; card: TaskCard | null; onReopen: () => void; onClose: () => void }) {
+  const [host, setHost] = useState<{ attached: boolean; shown: boolean; url: string; title: string; stateVersion: number } | null>(null);
+  const [core, setCore] = useState<BrowserSessionSummary | null>(null);
+  const [gone, setGone] = useState<string | null>(null);
+  const [probe, setProbe] = useState<{ node_reachable: boolean; partition: string; sandboxed: boolean; context_isolated: boolean } | null>(null);
+  const placeholder = useRef<HTMLDivElement>(null);
+  const bsid = browsing.browserSessionId;
+  const taskId = card?.taskId ?? null;
+  // Place the view over the placeholder and keep it there through resizes.
+  useEffect(() => {
+    if (!bsid) return;
+    const place = () => {
+      const r = placeholder.current?.getBoundingClientRect();
+      if (!r) return;
+      void window.modbit.showBrowser(bsid, { x: r.left, y: r.top, width: r.width, height: r.height }).catch(() => {});
+    };
+    place();
+    const ro = new ResizeObserver(place);
+    if (placeholder.current) ro.observe(placeholder.current);
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    const refresh = () => {
+      void window.modbit.describeBrowser(bsid).then(setHost).catch(() => setHost(null));
+      if (taskId) void window.modbit.browserSession(bsid, taskId).then(setCore).catch(() => {});
+    };
+    refresh();
+    void window.modbit.probeBrowser(bsid).then((p) => setProbe(p ? { node_reachable: p.node_reachable, partition: p.partition, sandboxed: p.sandboxed, context_isolated: p.context_isolated } : null)).catch(() => {});
+    const off = window.modbit.onBrowserState((raw) => {
+      const s = raw as { browserSessionId: string; gone?: string };
+      if (s.browserSessionId !== bsid) return;
+      if (s.gone) setGone(s.gone);
+      refresh();
+    });
+    return () => {
+      off();
+      ro.disconnect();
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+      void window.modbit.hideBrowser(bsid).catch(() => {});
+    };
+  }, [bsid, taskId]);
+  const state = browserState({ opening: !bsid && !browsing.error, error: browsing.error, host, gone, controller: core?.controller ?? "AGENT" });
+  return (
+    <section className="review browser" data-testid="browser" aria-label="Browser" role="main" data-browser-session-id={bsid ?? ""}>
+      <div className="review-head">
+        <h2 style={{ margin: 0 }}>Browser</h2>
+        <span className="meta" data-testid="browser-meta">
+          {card ? `task ${card.taskId.slice(0, 8)} · ${card.goalText}` : ""}
+          {core ? ` · ${core.controller.toLowerCase()} holds control (generation ${core.leaseGeneration})` : ""}
+        </span>
+        <button type="button" data-testid="browser-close" onClick={onClose} aria-keyshortcuts="Escape">
+          Back to fleet
+        </button>
+      </div>
+      <StateLine state={state} testid="browser-state" />
+      {(gone || (host && !host.attached)) && (
+        <div className="actions">
+          <button type="button" data-testid="browser-reopen" onClick={onReopen}>
+            Reopen session
+          </button>
+        </div>
+      )}
+      <div className="meta" data-testid="browser-page">
+        {"url: "}
+        <span data-testid="browser-url">{host?.url ?? ""}</span>
+        {" · title: "}
+        <span data-testid="browser-title">{host?.title ?? ""}</span>
+        {" · state "}
+        <span data-testid="browser-version">{host?.stateVersion ?? 0}</span>
+        {core?.url ? ` · recorded on the Core: ${core.url} (state ${core.stateVersion}, ${core.fingerprint.slice(0, 12)})` : ""}
+        {" · page content is untrusted and never enters this window"}
+      </div>
+      {probe && (
+        <div className="meta" data-testid="browser-isolation" data-node-reachable={probe.node_reachable ? "true" : "false"}>
+          isolation: partition {probe.partition} · sandbox {probe.sandboxed ? "on" : "off"} · context isolation {probe.context_isolated ? "on" : "off"} · Node reachable from the page: {probe.node_reachable ? "YES" : "no"}
+        </div>
+      )}
+      <div ref={placeholder} className="browser-view" data-testid="browser-view" aria-label="the live page (rendered by the host's sandboxed view)" />
+    </section>
   );
 }
 
@@ -908,6 +1252,12 @@ function Review({ taskId, sessionId, card, onClose }: { taskId: string; sessionI
   useEffect(() => {
     void load();
   }, [load]);
+  // PX-024: the Review takes the focus when it opens (the fleet is hidden
+  // behind it); Escape or "Back to fleet" returns it to the card.
+  const section = useRef<HTMLElement>(null);
+  useEffect(() => {
+    section.current?.focus();
+  }, []);
   const toggle = (key: string) =>
     setRejected((r) => {
       const n = new Set(r);
@@ -954,6 +1304,59 @@ function Review({ taskId, sessionId, card, onClose }: { taskId: string; sessionI
   // lives here; the Core applies the edit at the revisions this review
   // showed, or refuses it, and the review is re-read from the Core.
   const [patching, setPatching] = useState<string | null>(null);
+  // PX-024 review navigation: next/previous change (focus moves between
+  // hunks), expand or collapse the focused hunk, unified or split, jump to
+  // the failing check. Every hunk and check is focusable; nothing is
+  // reachable by mouse only.
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [split, setSplit] = useState(false);
+  const hunkElements = () => [...document.querySelectorAll<HTMLElement>('[data-testid="review-hunk"]')];
+  const focusedHunk = () => document.activeElement?.closest<HTMLElement>('[data-testid="review-hunk"]') ?? null;
+  const toggleCollapsed = (key: string) =>
+    setCollapsed((c) => {
+      const next = new Set(c);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const cmd = commandFor(e, { editable: isEditable(document.activeElement), screen: "review", confirming: false, isMac: navigator.platform.toUpperCase().includes("MAC") });
+      if (!cmd) return;
+      switch (cmd) {
+        case "hunkNext":
+        case "hunkPrevious": {
+          e.preventDefault();
+          const hunks = hunkElements();
+          const i = hunks.indexOf(focusedHunk()!);
+          hunks[i < 0 ? 0 : Math.min(hunks.length - 1, Math.max(0, i + (cmd === "hunkNext" ? 1 : -1)))]?.focus();
+          return;
+        }
+        case "hunkToggle": {
+          const h = focusedHunk();
+          // Enter on a control inside the hunk (a checkbox, a button) is that control's.
+          if (!h || (e.key === "Enter" && document.activeElement !== h)) return;
+          e.preventDefault();
+          toggleCollapsed(h.getAttribute("data-hunk") ?? "");
+          return;
+        }
+        case "toggleSplit":
+          e.preventDefault();
+          setSplit((v) => !v);
+          return;
+        case "jumpFailing": {
+          e.preventDefault();
+          const failing = document.querySelector<HTMLElement>('[data-testid="review-check"][data-status="FAIL"]');
+          (failing ?? document.querySelector<HTMLElement>('[data-testid="review-verification"]'))?.focus();
+          return;
+        }
+        default:
+          return;
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   const [patchOld, setPatchOld] = useState("");
   const [patchNew, setPatchNew] = useState("");
   const [patchNote, setPatchNote] = useState<string | null>(null);
@@ -996,9 +1399,12 @@ function Review({ taskId, sessionId, card, onClose }: { taskId: string; sessionI
       ? `${context.size} hunk(s) given to retrieval as context`
       : null;
   return (
-    <section className="review" data-testid="review" aria-label="Review">
+    <section className="review" data-testid="review" aria-label="Review" role="main" tabIndex={-1} ref={section}>
       <div className="review-head">
         <h2 style={{ margin: 0 }}>Review</h2>
+        <button type="button" className="small" data-testid="review-split" aria-pressed={split} onClick={() => setSplit((v) => !v)}>
+          {split ? "Unified (u)" : "Split (u)"}
+        </button>
         <span className="meta" data-testid="review-meta">
           {selectionNote && (
             <span className="meta" data-testid="review-selection">
@@ -1007,7 +1413,7 @@ function Review({ taskId, sessionId, card, onClose }: { taskId: string; sessionI
           )}
           {bundle ? `task ${taskId.slice(0, 8)} · ${bundle.taskState} · workspace revision ${bundle.workspaceRevision} · base ${bundle.baseCommit.slice(0, 8)} · ${bundle.files.length} file(s), ${hunkCount} hunk(s), ${bundle.receipts} receipt(s)` : "loading from the Core…"}
         </span>
-        <button type="button" data-testid="review-close" onClick={onClose}>
+        <button type="button" data-testid="review-close" onClick={onClose} aria-keyshortcuts="Escape">
           Back to fleet
         </button>
       </div>
@@ -1064,9 +1470,13 @@ function Review({ taskId, sessionId, card, onClose }: { taskId: string; sessionI
                   const key = `${f.path}#${h.index}`;
                   const isRejected = rejected.has(key);
                   return (
-                    <div className="hunk" key={key} data-testid="review-hunk" data-hunk={key} data-rejected={isRejected}>
+                    <div className="hunk" key={key} data-testid="review-hunk" data-hunk={key} data-rejected={isRejected} data-collapsed={collapsed.has(key)} tabIndex={0} role="group" aria-label={`${f.path} ${h.header}${isRejected ? ", rejected" : ""}${collapsed.has(key) ? ", collapsed" : ""}`}>
                       <div className="hunk-head">
                         <code>{h.header}</code>
+                        {isRejected && <span className="meta">rejected</span>}
+                        <button type="button" className="small" data-testid="hunk-toggle" aria-expanded={!collapsed.has(key)} onClick={() => toggleCollapsed(key)}>
+                          {collapsed.has(key) ? "Expand" : "Collapse"}
+                        </button>
                         <label>
                           <input type="checkbox" data-testid="hunk-reject" checked={isRejected} onChange={() => toggle(key)} disabled={result !== null} /> reject
                         </label>
@@ -1074,27 +1484,54 @@ function Review({ taskId, sessionId, card, onClose }: { taskId: string; sessionI
                           <input type="checkbox" data-testid="hunk-context" checked={context.has(key)} onChange={() => void toggleContext(key)} disabled={result !== null} /> context
                         </label>
                       </div>
-                      <pre>
-                        {h.lines.map((l, i) => (
-                          <span key={i} className={l.startsWith("+") ? "add" : l.startsWith("-") ? "del" : "ctx"}>
-                            {l}
-                            {"\n"}
-                          </span>
-                        ))}
-                      </pre>
+                      {collapsed.has(key) ? (
+                        <p className="meta" data-testid="hunk-collapsed">
+                          {h.lines.filter((l) => l.startsWith("+")).length} added, {h.lines.filter((l) => l.startsWith("-")).length} removed line(s) — collapsed
+                        </p>
+                      ) : split ? (
+                        <table className="split" data-testid="hunk-split" aria-label="split view">
+                          <tbody>
+                            {splitRows(h.lines).map((r, i) => (
+                              <tr key={i}>
+                                <td className={r.left === null ? "gap" : r.left.startsWith("-") ? "del" : "ctx"}>{r.left ?? ""}</td>
+                                <td className={r.right === null ? "gap" : r.right.startsWith("+") ? "add" : "ctx"}>{r.right ?? ""}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      ) : (
+                        <pre data-testid="hunk-unified">
+                          {h.lines.map((l, i) => (
+                            <span key={i} className={l.startsWith("+") ? "add" : l.startsWith("-") ? "del" : "ctx"}>
+                              {l}
+                              {"\n"}
+                            </span>
+                          ))}
+                        </pre>
+                      )}
                     </div>
                   );
                 })}
               </article>
             ))}
           </div>
-          <aside>
+          <aside role="region" aria-label="Evidence and decision">
             <h3>Verification</h3>
             {bundle.verificationRuns.length === 0 && <p className="empty">No verification runs recorded.</p>}
-            <ul data-testid="review-verification">
+            <ul data-testid="review-verification" tabIndex={-1} aria-label="verification runs">
               {bundle.verificationRuns.map((v) => (
                 <li key={v.id}>
                   <strong>{v.stage}</strong> {v.status} · {v.checks.filter((c) => c.status === "PASS").length}/{v.checks.length} pass · {v.candidateRevision}
+                  {v.checks.some((c) => c.status !== "PASS") && (
+                    <ul>
+                      {v.checks.filter((c) => c.status !== "PASS").map((c) => (
+                        <li key={c.id} data-testid="review-check" data-status={c.status} tabIndex={-1}>
+                          {c.status === "FAIL" ? "✖ failed: " : `${c.status.toLowerCase()}: `}
+                          {c.id}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </li>
               ))}
             </ul>
@@ -1129,11 +1566,11 @@ function Review({ taskId, sessionId, card, onClose }: { taskId: string; sessionI
               </>
             )}
             <h3>Plan</h3>
-            <pre className="small" data-testid="review-plan">{bundle.planJson || "(no plan recorded)"}</pre>
+            <pre className="small" data-testid="review-plan" tabIndex={0} aria-label="plan">{bundle.planJson || "(no plan recorded)"}</pre>
             <h3>Self-review</h3>
-            <pre className="small">{bundle.selfReviewJson || "(none)"}</pre>
+            <pre className="small" tabIndex={0} aria-label="self-review">{bundle.selfReviewJson || "(none)"}</pre>
             <h3>Evidence</h3>
-            <ul className="small" data-testid="review-evidence">
+            <ul className="small" data-testid="review-evidence" tabIndex={0} aria-label="evidence links">
               {bundle.evidenceLinks.map((e) => (
                 <li key={e}>{e}</li>
               ))}

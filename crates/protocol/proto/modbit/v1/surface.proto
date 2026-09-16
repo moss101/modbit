@@ -126,6 +126,9 @@ message SurfaceFrame {
     SubscribeEvents subscribe = 5;
     StoredEventFrame event = 6;
     ProtocolError error = 7;
+    // M7.1 (docs/22): a request the Core sends to the browser host attached
+    // on this connection; the host answers with a BrowserHostResponse command.
+    BrowserHostRequest browser_request = 8;
   }
 }
 
@@ -1837,4 +1840,89 @@ message AttentionItemView {
 message AttentionView {
   repeated AttentionItemView items = 1;
   uint64 last_offset = 2;          // the log position the view was derived at
+}
+
+// ---- M7.1 Browser session and host bridge (docs/22 "Local browser") ----
+
+// Open a browser session for a task. The Core records the session and its
+// control lease (agent, generation 1); no Chromium runs until a host
+// attaches. Requires the session lease.
+message OpenBrowserSession {
+  Id task_id = 1;
+}
+
+message BrowserSessionOpened {
+  Id browser_session_id = 1;
+  string partition = 2;          // the session partition a host must use (persist:modbit-browser-<id>)
+  string controller = 3;         // AGENT | USER
+  uint64 lease_generation = 4;
+  uint64 offset = 5;
+}
+
+// The browser host (Electron main; a `browser.host` client capability)
+// attaches its sandboxed WebContentsView to the session on this
+// connection: from now on BrowserHostRequest frames arrive here and the
+// host answers each with BrowserHostResponse. One host per session; a
+// second attach replaces the first (the old connection stops receiving).
+message AttachBrowserHost {
+  Id browser_session_id = 1;
+  string host_kind = 2;          // electron-main
+  string partition = 3;          // the partition the view was created in
+  bool sandboxed = 4;            // renderer sandbox on
+  bool context_isolated = 5;     // context isolation on
+  bool node_integration = 6;     // must be false
+  Id task_id = 7;                // the session's task (rebuilds the record after a Core restart)
+}
+
+message BrowserHostAttached {
+  Id browser_session_id = 1;
+  uint64 lease_generation = 2;
+  uint64 offset = 3;
+}
+
+// Server → host: one typed request (modbit-browser HostRequest as JSON).
+message BrowserHostRequest {
+  string request_id = 1;
+  Id browser_session_id = 2;
+  uint64 lease_generation = 3;   // the lease the request was issued under
+  string request_json = 4;
+}
+
+// Host → server: the answer (modbit-browser HostResponse as JSON).
+message BrowserHostResponse {
+  string request_id = 1;
+  string response_json = 2;
+}
+
+message BrowserHostResponded {
+  bool delivered = 1;            // false = no request with that id was pending
+}
+
+message GetBrowserSession {
+  Id browser_session_id = 1;
+  Id task_id = 2;
+}
+
+message BrowserSessionView {
+  Id browser_session_id = 1;
+  Id task_id = 2;
+  string partition = 3;
+  string controller = 4;
+  uint64 lease_generation = 5;
+  bool host_attached = 6;
+  string host_kind = 7;
+  string url = 8;                // last recorded (untrusted page state)
+  string title = 9;
+  uint64 state_version = 10;
+  string fingerprint = 11;
+  bool closed = 12;
+}
+
+message CloseBrowserSession {
+  Id browser_session_id = 1;
+}
+
+message BrowserSessionClosed {
+  Id browser_session_id = 1;
+  uint64 offset = 2;
 }

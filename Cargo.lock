@@ -1776,7 +1776,12 @@ dependencies = [
 name = "modbit-browser"
 version = "0.0.0"
 dependencies = [
+ "hex",
  "modbit-domain",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "uuid",
 ]
 
 [[package]]
@@ -1855,6 +1860,7 @@ dependencies = [
  "libc",
  "modbit-bench-context-economics",
  "modbit-bench-outcome-statistics",
+ "modbit-browser",
  "modbit-checkpoint",
  "modbit-compaction",
  "modbit-context",
@@ -2166,6 +2172,7 @@ dependencies = [
  "hex",
  "jsonschema",
  "lopdf",
+ "modbit-browser",
  "modbit-domain",
  "modbit-git",
  "modbit-protocol",

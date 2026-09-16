@@ -75,6 +75,12 @@ request from the Review.
    in the surface suite; a registry publication path (M9) will force the
    quality-floor row through the packaged app.
 
+PX-024's keyboard model has the same two gaps: "take or return browser
+control" is the Browser screen (M7), and "pause focused task" has no Core
+command in M6 — the keyboard offers cancel (confirmed) and steer; a pause
+command, if the product wants one, is a Core change for the milestone that
+needs it.
+
 ## Migration
 
 None: renderer-only derivations, three additive IPC channels

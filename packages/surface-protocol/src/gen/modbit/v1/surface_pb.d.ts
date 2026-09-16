@@ -457,6 +457,15 @@ export declare type SurfaceFrame = Message<"modbit.v1.SurfaceFrame"> & {
      */
     value: ProtocolError;
     case: "error";
+  } | {
+    /**
+     * M7.1 (docs/22): a request the Core sends to the browser host attached
+     * on this connection; the host answers with a BrowserHostResponse command.
+     *
+     * @generated from field: modbit.v1.BrowserHostRequest browser_request = 8;
+     */
+    value: BrowserHostRequest;
+    case: "browserRequest";
   } | { case: undefined; value?: undefined };
 };
 
@@ -8002,6 +8011,363 @@ export declare type AttentionView = Message<"modbit.v1.AttentionView"> & {
  * Use `create(AttentionViewSchema)` to create a new message.
  */
 export declare const AttentionViewSchema: GenMessage<AttentionView>;
+
+/**
+ * Open a browser session for a task. The Core records the session and its
+ * control lease (agent, generation 1); no Chromium runs until a host
+ * attaches. Requires the session lease.
+ *
+ * @generated from message modbit.v1.OpenBrowserSession
+ */
+export declare type OpenBrowserSession = Message<"modbit.v1.OpenBrowserSession"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.OpenBrowserSession.
+ * Use `create(OpenBrowserSessionSchema)` to create a new message.
+ */
+export declare const OpenBrowserSessionSchema: GenMessage<OpenBrowserSession>;
+
+/**
+ * @generated from message modbit.v1.BrowserSessionOpened
+ */
+export declare type BrowserSessionOpened = Message<"modbit.v1.BrowserSessionOpened"> & {
+  /**
+   * @generated from field: modbit.v1.Id browser_session_id = 1;
+   */
+  browserSessionId?: Id | undefined;
+
+  /**
+   * the session partition a host must use (persist:modbit-browser-<id>)
+   *
+   * @generated from field: string partition = 2;
+   */
+  partition: string;
+
+  /**
+   * AGENT | USER
+   *
+   * @generated from field: string controller = 3;
+   */
+  controller: string;
+
+  /**
+   * @generated from field: uint64 lease_generation = 4;
+   */
+  leaseGeneration: bigint;
+
+  /**
+   * @generated from field: uint64 offset = 5;
+   */
+  offset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.BrowserSessionOpened.
+ * Use `create(BrowserSessionOpenedSchema)` to create a new message.
+ */
+export declare const BrowserSessionOpenedSchema: GenMessage<BrowserSessionOpened>;
+
+/**
+ * The browser host (Electron main; a `browser.host` client capability)
+ * attaches its sandboxed WebContentsView to the session on this
+ * connection: from now on BrowserHostRequest frames arrive here and the
+ * host answers each with BrowserHostResponse. One host per session; a
+ * second attach replaces the first (the old connection stops receiving).
+ *
+ * @generated from message modbit.v1.AttachBrowserHost
+ */
+export declare type AttachBrowserHost = Message<"modbit.v1.AttachBrowserHost"> & {
+  /**
+   * @generated from field: modbit.v1.Id browser_session_id = 1;
+   */
+  browserSessionId?: Id | undefined;
+
+  /**
+   * electron-main
+   *
+   * @generated from field: string host_kind = 2;
+   */
+  hostKind: string;
+
+  /**
+   * the partition the view was created in
+   *
+   * @generated from field: string partition = 3;
+   */
+  partition: string;
+
+  /**
+   * renderer sandbox on
+   *
+   * @generated from field: bool sandboxed = 4;
+   */
+  sandboxed: boolean;
+
+  /**
+   * context isolation on
+   *
+   * @generated from field: bool context_isolated = 5;
+   */
+  contextIsolated: boolean;
+
+  /**
+   * must be false
+   *
+   * @generated from field: bool node_integration = 6;
+   */
+  nodeIntegration: boolean;
+
+  /**
+   * the session's task (rebuilds the record after a Core restart)
+   *
+   * @generated from field: modbit.v1.Id task_id = 7;
+   */
+  taskId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.AttachBrowserHost.
+ * Use `create(AttachBrowserHostSchema)` to create a new message.
+ */
+export declare const AttachBrowserHostSchema: GenMessage<AttachBrowserHost>;
+
+/**
+ * @generated from message modbit.v1.BrowserHostAttached
+ */
+export declare type BrowserHostAttached = Message<"modbit.v1.BrowserHostAttached"> & {
+  /**
+   * @generated from field: modbit.v1.Id browser_session_id = 1;
+   */
+  browserSessionId?: Id | undefined;
+
+  /**
+   * @generated from field: uint64 lease_generation = 2;
+   */
+  leaseGeneration: bigint;
+
+  /**
+   * @generated from field: uint64 offset = 3;
+   */
+  offset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.BrowserHostAttached.
+ * Use `create(BrowserHostAttachedSchema)` to create a new message.
+ */
+export declare const BrowserHostAttachedSchema: GenMessage<BrowserHostAttached>;
+
+/**
+ * Server → host: one typed request (modbit-browser HostRequest as JSON).
+ *
+ * @generated from message modbit.v1.BrowserHostRequest
+ */
+export declare type BrowserHostRequest = Message<"modbit.v1.BrowserHostRequest"> & {
+  /**
+   * @generated from field: string request_id = 1;
+   */
+  requestId: string;
+
+  /**
+   * @generated from field: modbit.v1.Id browser_session_id = 2;
+   */
+  browserSessionId?: Id | undefined;
+
+  /**
+   * the lease the request was issued under
+   *
+   * @generated from field: uint64 lease_generation = 3;
+   */
+  leaseGeneration: bigint;
+
+  /**
+   * @generated from field: string request_json = 4;
+   */
+  requestJson: string;
+};
+
+/**
+ * Describes the message modbit.v1.BrowserHostRequest.
+ * Use `create(BrowserHostRequestSchema)` to create a new message.
+ */
+export declare const BrowserHostRequestSchema: GenMessage<BrowserHostRequest>;
+
+/**
+ * Host → server: the answer (modbit-browser HostResponse as JSON).
+ *
+ * @generated from message modbit.v1.BrowserHostResponse
+ */
+export declare type BrowserHostResponse = Message<"modbit.v1.BrowserHostResponse"> & {
+  /**
+   * @generated from field: string request_id = 1;
+   */
+  requestId: string;
+
+  /**
+   * @generated from field: string response_json = 2;
+   */
+  responseJson: string;
+};
+
+/**
+ * Describes the message modbit.v1.BrowserHostResponse.
+ * Use `create(BrowserHostResponseSchema)` to create a new message.
+ */
+export declare const BrowserHostResponseSchema: GenMessage<BrowserHostResponse>;
+
+/**
+ * @generated from message modbit.v1.BrowserHostResponded
+ */
+export declare type BrowserHostResponded = Message<"modbit.v1.BrowserHostResponded"> & {
+  /**
+   * false = no request with that id was pending
+   *
+   * @generated from field: bool delivered = 1;
+   */
+  delivered: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.BrowserHostResponded.
+ * Use `create(BrowserHostRespondedSchema)` to create a new message.
+ */
+export declare const BrowserHostRespondedSchema: GenMessage<BrowserHostResponded>;
+
+/**
+ * @generated from message modbit.v1.GetBrowserSession
+ */
+export declare type GetBrowserSession = Message<"modbit.v1.GetBrowserSession"> & {
+  /**
+   * @generated from field: modbit.v1.Id browser_session_id = 1;
+   */
+  browserSessionId?: Id | undefined;
+
+  /**
+   * @generated from field: modbit.v1.Id task_id = 2;
+   */
+  taskId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.GetBrowserSession.
+ * Use `create(GetBrowserSessionSchema)` to create a new message.
+ */
+export declare const GetBrowserSessionSchema: GenMessage<GetBrowserSession>;
+
+/**
+ * @generated from message modbit.v1.BrowserSessionView
+ */
+export declare type BrowserSessionView = Message<"modbit.v1.BrowserSessionView"> & {
+  /**
+   * @generated from field: modbit.v1.Id browser_session_id = 1;
+   */
+  browserSessionId?: Id | undefined;
+
+  /**
+   * @generated from field: modbit.v1.Id task_id = 2;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: string partition = 3;
+   */
+  partition: string;
+
+  /**
+   * @generated from field: string controller = 4;
+   */
+  controller: string;
+
+  /**
+   * @generated from field: uint64 lease_generation = 5;
+   */
+  leaseGeneration: bigint;
+
+  /**
+   * @generated from field: bool host_attached = 6;
+   */
+  hostAttached: boolean;
+
+  /**
+   * @generated from field: string host_kind = 7;
+   */
+  hostKind: string;
+
+  /**
+   * last recorded (untrusted page state)
+   *
+   * @generated from field: string url = 8;
+   */
+  url: string;
+
+  /**
+   * @generated from field: string title = 9;
+   */
+  title: string;
+
+  /**
+   * @generated from field: uint64 state_version = 10;
+   */
+  stateVersion: bigint;
+
+  /**
+   * @generated from field: string fingerprint = 11;
+   */
+  fingerprint: string;
+
+  /**
+   * @generated from field: bool closed = 12;
+   */
+  closed: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.BrowserSessionView.
+ * Use `create(BrowserSessionViewSchema)` to create a new message.
+ */
+export declare const BrowserSessionViewSchema: GenMessage<BrowserSessionView>;
+
+/**
+ * @generated from message modbit.v1.CloseBrowserSession
+ */
+export declare type CloseBrowserSession = Message<"modbit.v1.CloseBrowserSession"> & {
+  /**
+   * @generated from field: modbit.v1.Id browser_session_id = 1;
+   */
+  browserSessionId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.CloseBrowserSession.
+ * Use `create(CloseBrowserSessionSchema)` to create a new message.
+ */
+export declare const CloseBrowserSessionSchema: GenMessage<CloseBrowserSession>;
+
+/**
+ * @generated from message modbit.v1.BrowserSessionClosed
+ */
+export declare type BrowserSessionClosed = Message<"modbit.v1.BrowserSessionClosed"> & {
+  /**
+   * @generated from field: modbit.v1.Id browser_session_id = 1;
+   */
+  browserSessionId?: Id | undefined;
+
+  /**
+   * @generated from field: uint64 offset = 2;
+   */
+  offset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.BrowserSessionClosed.
+ * Use `create(BrowserSessionClosedSchema)` to create a new message.
+ */
+export declare const BrowserSessionClosedSchema: GenMessage<BrowserSessionClosed>;
 
 /**
  * Command acknowledgement.

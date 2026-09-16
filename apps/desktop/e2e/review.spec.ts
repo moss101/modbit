@@ -88,7 +88,9 @@ test("review surface: per-hunk decision commits exactly the user's choice and su
     await expect(card.getByTestId("task-state")).toHaveText("Queued");
     await card.getByTestId("task-start").click();
     await expect(page.getByTestId("column-readyForReview").getByTestId("task-card")).toHaveCount(1, { timeout: 60_000 });
-    await page.getByTestId("task-review").click();
+    // The first result opens the Review itself (docs/39 step 5); the fleet
+    // is behind it until "Back to fleet".
+    await expect(page.getByTestId("review")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId("review-meta")).toContainText("ReadyForReview");
     await expect(page.getByTestId("review-hunk")).toHaveCount(2);
     await expect(page.getByTestId("review-verification")).toContainText("BASELINE");

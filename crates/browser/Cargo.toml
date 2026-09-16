@@ -9,6 +9,11 @@ publish.workspace = true
 
 [dependencies]
 modbit-domain.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+hex.workspace = true
+uuid.workspace = true
 
 [lints]
 workspace = true
@@ -20,4 +25,7 @@ workspace = true
 [package.metadata.modbit]
 owner = "browser"
 canonical = ["browser-runtime"]
-capabilities = []
+capabilities = [
+  { id = "browser.session", requirements = ["REQ-EV-0276"] },
+  { id = "browser.host_boundary", requirements = ["REQ-EV-0110"] },
+]

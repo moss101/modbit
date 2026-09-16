@@ -562,6 +562,48 @@
         "network.egress"
       ],
       "test": "qual_px_006_the_forge_adapter_reads_and_writes_github_behind_leases_effects_receipts_and_idempotency_keys"
+    },
+    {
+      "tool": "browser.navigate",
+      "family": "browser",
+      "source_behaviors": [
+        "Playwright page.goto",
+        "Claude in Chrome navigate"
+      ],
+      "owner": "Browser Runtime (host bridge, docs/22)",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "browser.control"
+      ],
+      "test": "qual_m7_1_a_browser_session_is_hosted_by_the_desktop_and_driven_through_the_cdp_bridge"
+    },
+    {
+      "tool": "browser.snapshot",
+      "family": "browser",
+      "source_behaviors": [
+        "Playwright accessibility.snapshot / aria refs",
+        "Claude in Chrome read_page (ref_N)"
+      ],
+      "owner": "Browser Runtime (host bridge, docs/22)",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "browser.control"
+      ],
+      "test": "qual_m7_2_entities_carry_stable_references_and_a_changed_element_resolves_stale"
+    },
+    {
+      "tool": "browser.inspect",
+      "family": "browser",
+      "source_behaviors": [
+        "Playwright locator resolution (stale element handling)",
+        "Claude in Chrome find"
+      ],
+      "owner": "Semantic Browser Compiler (crates/browser::compiler)",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "browser.control"
+      ],
+      "test": "qual_m7_2_entities_carry_stable_references_and_a_changed_element_resolves_stale"
     }
   ],
   "harness": [
@@ -781,6 +823,11 @@
       "namespace": "forge",
       "inventory_ref": "forge.issue.read / forge.pr.comments.read / forge.ci.status",
       "justification": "a forge API is a distinct effector with protected external effects that existing tools plus a skill cannot express safely (docs/17 new-tool rule, DR-PX-2026-09-05); reads return untrusted provenance-bound data, writes are approval-bound receipted effects behind leases, idempotency keys and a broker-held token"
+    },
+    {
+      "namespace": "browser",
+      "inventory_ref": "browser.navigate / snapshot",
+      "justification": "the task's live Chromium session is a distinct effector the Core reaches only through its host's CDP bridge (docs/22 locked direction: Chromium as the engine, the same session the person sees); page content is untrusted, navigation is confined to http(s) and fenced by the control lease — not expressible as a skill over existing tools"
     }
   ],
   "namespaces_note": "REQ-EV-0230 build/buy lint: every registered tool namespace names the docs/17 canonical inventory row it realizes and why it exists as a tool rather than a skill over existing tools; a new namespace without a row here, or whose inventory_ref is not in docs/17, fails qual_ev_0230."

@@ -14,6 +14,7 @@ jsonschema.workspace = true
 lopdf = { version = "0.44", default-features = false }
 modbit-domain.workspace = true
 modbit-git.workspace = true
+modbit-browser.workspace = true
 modbit-protocol.workspace = true
 modbit-terminal.workspace = true
 modbit-workspace.workspace = true
@@ -40,4 +41,5 @@ capabilities = [
   { id = "tools.pipeline", requirements = ["REQ-EV-0239", "REQ-EV-0080"] },
   { id = "tools.output_ref", requirements = ["REQ-EV-0269"] },
   { id = "tools.forge", requirements = ["REQ-PX-006"] },
+  { id = "tools.browser", requirements = ["REQ-EV-0276", "REQ-EV-0284"] },
 ]

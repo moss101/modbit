@@ -377,16 +377,21 @@ pub fn default_lease_for_profile(
     let ops: Vec<&str> = match profile {
         PROFILE_PLAN => vec!["fs.read", "git.read"],
         PROFILE_REVIEW_ISOLATED => vec!["fs.read", "fs.write", "git.read", "shell.exec"],
+        // The autonomous profile drives the task's browser session (M7.1,
+        // docs/22): the host's sandboxed view, http(s) only, under the
+        // session's control lease.
         PROFILE_LOCAL_AUTONOMOUS => vec![
             "fs.read",
             "fs.write",
             "git.read",
             "git.worktree",
             "shell.exec",
+            "browser.control",
         ],
         // The trusted profile also reaches the configured forge (PX-006,
         // docs/23): egress to its one API host and the use of its one token
-        // handle — approval-bound for every write, refused elsewhere.
+        // handle — approval-bound for every write, refused elsewhere — and
+        // the task's browser session (M7.1).
         _ => vec![
             "fs.read",
             "fs.write",
@@ -395,6 +400,7 @@ pub fn default_lease_for_profile(
             "shell.exec",
             "network.egress",
             "secret.use",
+            "browser.control",
         ],
     };
     let ceiling = match profile {
@@ -407,6 +413,7 @@ pub fn default_lease_for_profile(
         .map(|o| match *o {
             "network.egress" => "network.egress:forge-api:443".to_owned(),
             "secret.use" => "secret.use:forge-token -> forge-api".to_owned(),
+            "browser.control" => "browser.control:task-session".to_owned(),
             _ => format!("{o}:{root}/**"),
         })
         .collect();

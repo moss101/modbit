@@ -6483,11 +6483,14 @@ async fn execute_tool(
             state.candidate_revision = Some(rev);
         }
         // docs/28 §5: a transaction, a verification, a retrieval record, a plan
-        // revision or a question is progress; browsing is not.
+        // revision or a question is progress; browsing is not — a navigation
+        // that lands a `BrowserNavigated` record (M7.1) is, reading the page
+        // again is not.
         let progress = r.status == ToolStatus::Success
             && (wrote.is_some()
                 || is_check
                 || name == "fs.read"
+                || name == "browser.navigate"
                 || name.starts_with("lsp.")
                 || name.starts_with("git.worktree"));
         return TranscriptEntry::ToolResult {

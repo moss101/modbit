@@ -1,0 +1,17 @@
+{
+ "task": "PX-024",
+ "requirement": "REQ-PX-024",
+ "qual": "QUAL-PX-024",
+ "tests": [
+  "apps/desktop/e2e/keyboard.spec.ts",
+  "apps/desktop/src/renderer/keyboard.test.ts",
+  "apps/desktop/src/renderer/diff.test.ts"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "the real Electron app against the real Core driven by keyboard only: global shortcuts, list and review navigation, an approval of a destructive effect confirmed by Enter and declined by Escape, a cancellation confirmed, focus retained across the Core's column moves and across the Review opening and closing, the live region announcing the attention change in words, every state line's kind in text, axe-core 4.10 (WCAG 2.x A/AA + best practices) with no violation on eight screens/states.",
+ "audit": "DOCUMENTED-ONLY before: focusable cards and one live region; the suite found the fleet still displayed under the Review, content outside landmarks, nested landmarks and unreachable scrollable regions (all fixed).",
+ "limitations": "browser control waits for M7 (DR-M6-003); no pause command in the Core (cancel and steer offered); failing-check jump verified with the fallback focus; OS menu accelerators not registered.",
+ "decision_record": "DR-M6-003",
+ "ci": ""
+}

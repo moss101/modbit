@@ -1,0 +1,24 @@
+{
+ "task": "M7.1",
+ "requirements": [
+  "docs/22 Local browser",
+  "docs/22 Prompt-injection isolation",
+  "REQ-EV-0110",
+  "REQ-EV-0276"
+ ],
+ "scenarios": [
+  "E2E-013 (session half)"
+ ],
+ "tests": [
+  "qual_m7_1_a_browser_session_is_hosted_by_the_desktop_and_driven_through_the_cdp_bridge",
+  "apps/desktop/e2e/browser.spec.ts",
+  "control_lease_fences_stale_agent_input",
+  "only_http_and_https_are_navigable"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "a task's browser session opened on the real Core, hosted by a sandboxed WebContentsView in the real Electron app (its own partition, no Node, context isolation) attached over the authenticated socket, driven by the agent's browser.navigate and browser.snapshot through the CDP bridge against a real HTTP page; page content reaches the model tagged untrusted; file: is refused before the host; a lost host fails the call; the record survives a Core restart; a headless client cannot host and an un-isolated view is not accepted.",
+ "audit": "MISSING before: the M0 browser stub only.",
+ "limitations": "entities/references (M7.2), deltas (M7.3), actions (M7.4), visual fallback (M7.5), takeover surface (M7.6) follow; one host per session; cloud browser is M8.",
+ "ci": ""
+}

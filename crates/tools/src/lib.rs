@@ -17,6 +17,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod browser;
 pub mod direct;
 pub mod forge;
 pub mod media;

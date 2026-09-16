@@ -9,7 +9,7 @@
  */
 import type { Diagnostic, TaskCard } from "./model.ts";
 
-export type ScreenName = "fleet" | "newTask" | "task" | "review" | "settings";
+export type ScreenName = "fleet" | "newTask" | "task" | "review" | "settings" | "browser";
 export type StateKind = "empty" | "loading" | "populated" | "error" | "degraded" | "recovery";
 
 export interface ScreenState {
@@ -196,6 +196,26 @@ export function reviewState(input: ReviewInputs): ScreenState {
   }
   if (input.bundle.files.length === 0) return state("review", "empty", "the candidate has no changes");
   return state("review", "populated", `${input.bundle.files.length} file(s) at revision ${input.bundle.workspaceRevision}`);
+}
+
+/** Browser (M7.1, docs/39 "Browser" row: the takeover and visual-fallback
+ *  states arrive with M7.6 and M7.5; DR-M6-003). */
+export function browserState(input: { opening: boolean; error: string | null; host: { attached: boolean; shown: boolean; url: string; title: string; stateVersion: number } | null; gone: string | null; controller: string }): ScreenState {
+  if (input.error) {
+    return state("browser", "error", "browser session refused", { cause: input.error, nextAction: "read the cause; open the session again", evidence: "the Core's or the host's rejection" });
+  }
+  if (input.gone) {
+    return state("browser", "degraded", "session lost", { cause: `the page's renderer process is gone: ${input.gone}`, nextAction: "reopen the session (the same partition keeps its cookies and storage) or close it", evidence: `host report: ${input.gone}` });
+  }
+  if (input.opening || !input.host) return state("browser", "loading", "opening the session");
+  if (!input.host.attached) {
+    return state("browser", "degraded", "host not attached", { cause: "the view is not attached to the Core's session (the Core restarted or refused the attach)", nextAction: "the host attaches again when the Core is back; otherwise reopen", evidence: `state version ${input.host.stateVersion}` });
+  }
+  if (input.controller === "USER") {
+    return state("browser", "degraded", "takeover active", { cause: "you hold control of the session; agent input is blocked, observation is not", nextAction: "return control to let the agent act again", evidence: "control lease" });
+  }
+  if (!input.host.url || input.host.url === "about:blank") return state("browser", "empty", "no page yet");
+  return state("browser", "populated", `${input.host.title || input.host.url} · state ${input.host.stateVersion}`);
 }
 
 /** Settings (credential custody). */

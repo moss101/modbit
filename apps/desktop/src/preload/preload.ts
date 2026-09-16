@@ -48,6 +48,20 @@ export interface TaskStatusView {
   recoveryPath: string;
   evidenceRefs: string[];
 }
+export interface BrowserSessionSummary {
+  browserSessionId: string;
+  taskId: string;
+  partition: string;
+  controller: string;
+  leaseGeneration: string;
+  hostAttached: boolean;
+  hostKind: string;
+  url: string;
+  title: string;
+  stateVersion: string;
+  fingerprint: string;
+  closed: boolean;
+}
 export interface PullRequestAckView {
   status: string;
   approvalId: string;
@@ -169,8 +183,22 @@ export interface ModbitBridge {
   openPullRequest(sessionId: string, taskId: string, expectedCandidateRevision: string, update: boolean): Promise<PullRequestAckView>;
   /** PX-001: decide a protected effect, naming the intent hash shown. */
   resolveApproval(sessionId: string, approvalId: string, approve: boolean, reason: string, intentHash: string): Promise<{ approvalId: string; status: string; offset: string }>;
+  /** PX-024: cancel the task (confirmed in the renderer) and steer it with one line of input. */
+  cancelTask(sessionId: string, taskId: string): Promise<{ wasRunning: boolean }>;
+  steerTask(sessionId: string, taskId: string, text: string): Promise<{ sequence: string; offset: string }>;
   /** REQ-EV-0222: answer the agent's typed question (option id or free text); resume with startTask. */
   respondToQuestion(sessionId: string, taskId: string, questionId: string, optionId: string, text: string): Promise<{ questionId: string; alreadyAnswered: boolean }>;
+  /** M7.1 (docs/22): the task's browser session — opened on the Core, hosted by main's sandboxed view, placed where the renderer says. */
+  openBrowser(sessionId: string, taskId: string): Promise<{ browserSessionId: string; partition: string; leaseGeneration: string }>;
+  showBrowser(browserSessionId: string, bounds: { x: number; y: number; width: number; height: number }): Promise<boolean>;
+  hideBrowser(browserSessionId: string): Promise<void>;
+  closeBrowser(browserSessionId: string): Promise<void>;
+  describeBrowser(browserSessionId: string): Promise<{ browserSessionId: string; taskId: string; partition: string; attached: boolean; shown: boolean; url: string; title: string; stateVersion: number } | null>;
+  browserSession(browserSessionId: string, taskId: string): Promise<BrowserSessionSummary>;
+  browserLog(): Promise<{ browserSessionId: string; kind: string; ok: boolean; code: string; atMs: number }[]>;
+  /** The isolation report asked of the hosted page itself (Node, require, Electron: none reachable). */
+  probeBrowser(browserSessionId: string): Promise<{ kind: string; node_reachable: boolean; partition: string; sandboxed: boolean; context_isolated: boolean } | null>;
+  onBrowserState(cb: (s: unknown) => void): () => void;
   /** PX-023: hand one notification to the OS (main keeps a delivery log). */
   deliverNotification(id: string, title: string, body: string): Promise<{ shown: boolean }>;
   notificationLog(): Promise<{ id: string; title: string; body: string; atMs: number; shown: boolean }[]>;
@@ -207,6 +235,21 @@ const bridge: ModbitBridge = {
   openPullRequest: (sessionId, taskId, expectedCandidateRevision, update) => ipcRenderer.invoke("review:pullRequest", sessionId, taskId, expectedCandidateRevision, update),
   resolveApproval: (sessionId, approvalId, approve, reason, intentHash) => ipcRenderer.invoke("approval:resolve", sessionId, approvalId, approve, reason, intentHash),
   respondToQuestion: (sessionId, taskId, questionId, optionId, text) => ipcRenderer.invoke("question:respond", sessionId, taskId, questionId, optionId, text),
+  cancelTask: (sessionId, taskId) => ipcRenderer.invoke("task:cancel", sessionId, taskId),
+  steerTask: (sessionId, taskId, text) => ipcRenderer.invoke("task:steer", sessionId, taskId, text),
+  openBrowser: (sessionId, taskId) => ipcRenderer.invoke("browser:open", sessionId, taskId),
+  showBrowser: (browserSessionId, bounds) => ipcRenderer.invoke("browser:show", browserSessionId, bounds),
+  hideBrowser: (browserSessionId) => ipcRenderer.invoke("browser:hide", browserSessionId),
+  closeBrowser: (browserSessionId) => ipcRenderer.invoke("browser:close", browserSessionId),
+  describeBrowser: (browserSessionId) => ipcRenderer.invoke("browser:describe", browserSessionId),
+  browserSession: (browserSessionId, taskId) => ipcRenderer.invoke("browser:session", browserSessionId, taskId),
+  browserLog: () => ipcRenderer.invoke("browser:log"),
+  probeBrowser: (browserSessionId) => ipcRenderer.invoke("browser:probe", browserSessionId),
+  onBrowserState: (cb) => {
+    const listener = (_e: unknown, s: unknown) => cb(s);
+    ipcRenderer.on("browser:state", listener);
+    return () => ipcRenderer.removeListener("browser:state", listener);
+  },
   deliverNotification: (id, title, body) => ipcRenderer.invoke("notify:deliver", id, title, body),
   notificationLog: () => ipcRenderer.invoke("notify:log"),
   subscribe: (sessionId, afterOffset) => ipcRenderer.invoke("events:subscribe", sessionId, afterOffset),

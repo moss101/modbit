@@ -64,6 +64,8 @@ pub struct Core {
     /// Capacity tickets (M6.2, REQ-EV-0272): the host's resource vector
     /// and the tickets alive against it.
     pub(crate) capacity: crate::capacity::Capacity,
+    /// Browser sessions and their hosts (M7.1, docs/22).
+    pub(crate) browser: Arc<crate::browser::BrowserSessions>,
 }
 
 /// Bounded number of events per subscription batch (REQ-EV-0108).
@@ -152,6 +154,7 @@ pub async fn run(data_dir: PathBuf, idle_exit_secs: Option<u64>) -> Result<()> {
     let endpoint = Endpoint::for_dir(&data_dir, &nonce).context("choosing local endpoint")?;
     let (tx, _) = watch::channel(start);
     let boot_generation = recovery.boot_generation;
+    let browser = Arc::new(crate::browser::BrowserSessions::default());
     let core = Arc::new(Core {
         store: Arc::new(Mutex::new(store)),
         last_offset: tx,
@@ -160,7 +163,12 @@ pub async fn run(data_dir: PathBuf, idle_exit_secs: Option<u64>) -> Result<()> {
         user_id: UserId::from_bytes([0xB1; 16]),
         recovery,
         started_at: Timestamp::now(),
-        tools: crate::tools::ToolHost::new(&data_dir, boot_generation).context("tool host")?,
+        tools: crate::tools::ToolHost::new(
+            &data_dir,
+            boot_generation,
+            crate::browser::port(&browser),
+        )
+        .context("tool host")?,
         gateway: modbit_providers::ProviderGateway::new(modbit_providers::endpoints_from_env())
             .with_policy(modbit_providers::OrgModelPolicy::from_env()),
         runtime: crate::runtime::Runtime::default(),
@@ -177,6 +185,7 @@ pub async fn run(data_dir: PathBuf, idle_exit_secs: Option<u64>) -> Result<()> {
         capacity: crate::capacity::from_env()
             .map_err(|e| anyhow::anyhow!("{e}"))
             .context("capacity")?,
+        browser,
     });
     let _ = std::fs::remove_file(data_dir.join("core.ready"));
     let listener = Listener::bind(&endpoint)
@@ -572,21 +581,54 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
     // 2. Command / subscription loop. A subscription streams events between commands.
     let mut subscription: Option<(SessionId, u64)> = None;
     let mut rx = core.last_offset.subscribe();
+    // M7.1: this connection's number and, once it attaches as a browser
+    // host, the queue of requests the Core wants written to it.
+    let connection = CONNECTIONS.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
+    let mut host_rx: Option<tokio::sync::mpsc::Receiver<wire::BrowserHostRequest>> = None;
+    let outcome = serve_frames(
+        &core,
+        &mut stream,
+        &capabilities,
+        client_kind,
+        &mut subscription,
+        &mut rx,
+        connection,
+        &mut host_rx,
+    )
+    .await;
+    core.browser.connection_closed(connection).await;
+    outcome
+}
+
+/// Connection counter (a host is tied to the connection it attached on).
+static CONNECTIONS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+#[allow(clippy::too_many_arguments)]
+async fn serve_frames(
+    core: &Arc<Core>,
+    stream: &mut BoxedStream,
+    capabilities: &[&str],
+    client_kind: i32,
+    subscription: &mut Option<(SessionId, u64)>,
+    rx: &mut watch::Receiver<u64>,
+    connection: u64,
+    host_rx: &mut Option<tokio::sync::mpsc::Receiver<wire::BrowserHostRequest>>,
+) -> Result<()> {
     loop {
         // Drain any events the subscriber has not seen yet, in bounded batches.
-        if let Some((session, ref mut after)) = subscription {
+        if let Some((session, after)) = subscription.as_mut() {
             loop {
                 let batch = core
                     .store
                     .lock()
                     .await
-                    .read_session(&session, *after, BATCH)?;
+                    .read_session(session, *after, BATCH)?;
                 if batch.is_empty() {
                     break;
                 }
                 for ev in &batch {
                     write_frame(
-                        &mut stream,
+                        stream,
                         &SurfaceFrame {
                             body: Some(Body::Event(to_wire(ev))),
                         },
@@ -597,18 +639,28 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
             }
         }
         let frame = tokio::select! {
-            f = read_frame(&mut stream) => match f {
+            f = read_frame(stream) => match f {
                 Ok(Some(f)) => Some(f),
                 Ok(None) => return Ok(()),
                 Err(e @ (FrameError::TooLarge { .. } | FrameError::Malformed(_) | FrameError::EmptyBody)) => {
                     let code = if matches!(e, FrameError::TooLarge { .. }) { "FRAME_TOO_LARGE" } else { "MALFORMED_FRAME" };
-                    let _ = write_frame(&mut stream, &error_frame(code, e.to_string())).await;
+                    let _ = write_frame(stream, &error_frame(code, e.to_string())).await;
                     return Ok(());
                 }
                 Err(e) => return Err(e.into()),
             },
             changed = rx.changed(), if subscription.is_some() => {
                 if changed.is_err() { return Ok(()); }
+                None
+            }
+            // M7.1: a request for the browser host attached on this connection.
+            req = async { host_rx.as_mut().expect("guarded").recv().await }, if host_rx.is_some() => {
+                match req {
+                    Some(r) => {
+                        write_frame(stream, &SurfaceFrame { body: Some(Body::BrowserRequest(r)) }).await?;
+                    }
+                    None => { *host_rx = None; }
+                }
                 None
             }
         };
@@ -629,10 +681,20 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                             capabilities.join(", ")
                         ),
                     ),
-                    _ => handle_command(&core, env).await,
+                    // M7.1: attaching a host binds this connection's writer to
+                    // the session, so it is handled here, not in handle_command.
+                    _ if env.command_type == "AttachBrowserHost" => {
+                        let (tx, new_rx) = tokio::sync::mpsc::channel(32);
+                        let ack = attach_browser_host(core, env, tx, connection).await;
+                        if ack.status == wire::CommandStatus::Accepted as i32 {
+                            *host_rx = Some(new_rx);
+                        }
+                        ack
+                    }
+                    _ => handle_command(core, env).await,
                 };
                 write_frame(
-                    &mut stream,
+                    stream,
                     &SurfaceFrame {
                         body: Some(Body::CommandAck(ack)),
                     },
@@ -645,7 +707,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
             })) => {
                 let Some(sid) = session_id.and_then(|id| id16(&id)) else {
                     write_frame(
-                        &mut stream,
+                        stream,
                         &error_frame("BAD_SUBSCRIBE", "session_id must be 16 bytes"),
                     )
                     .await?;
@@ -656,18 +718,18 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                 let last = core.store.lock().await.last_offset()?;
                 if after_offset > last {
                     write_frame(
-                        &mut stream,
+                        stream,
                         &error_frame("INVALID_CURSOR", format!("after_offset {after_offset} is beyond the log ({last}); rehydrate from a snapshot")),
                     )
                     .await?;
                     return Ok(());
                 }
-                subscription = Some((SessionId::from_bytes(sid), after_offset));
+                *subscription = Some((SessionId::from_bytes(sid), after_offset));
                 rx.mark_changed();
             }
             Some(Body::ClientHello(_)) => {
                 write_frame(
-                    &mut stream,
+                    stream,
                     &error_frame("DUPLICATE_HELLO", "handshake already completed"),
                 )
                 .await?;
@@ -675,7 +737,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
             }
             other => {
                 write_frame(
-                    &mut stream,
+                    stream,
                     &error_frame("UNEXPECTED_FRAME", format!("{other:?}")),
                 )
                 .await?;
@@ -711,6 +773,9 @@ fn client_capabilities(kind: i32) -> Vec<&'static str> {
             "repository.trust",
             "ui.selection",
             "ui.code_view",
+            // M7.1: only the desktop hosts a browser (a sandboxed
+            // WebContentsView in Electron main); a headless client cannot.
+            "browser.host",
         ],
         ClientKind::IdeAdapter => vec![
             "task.author",
@@ -777,6 +842,8 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         }
         "TrustRepository" => "repository.trust",
         "EmergencyStop" => "session.control",
+        "AttachBrowserHost" | "BrowserHostResponse" => "browser.host",
+        "OpenBrowserSession" | "CloseBrowserSession" => "task.author",
         "IngestAttachment" | "AttachContextDocument" => "attachments.ingest",
         "CreateSession"
         | "CreateTask"
@@ -829,6 +896,162 @@ fn to_wire(ev: &StoredEvent) -> StoredEventFrame {
             }),
         }),
     }
+}
+
+/// The session record, rebuilt from the task's events when this Core has
+/// not seen it since its start (M7.1).
+async fn browser_session_record(
+    core: &Arc<Core>,
+    bsid: modbit_browser::BrowserSessionId,
+    task_id: Option<&wire::Id>,
+) -> Result<crate::browser::SessionRecord, Box<dyn FnOnce(Option<wire::Id>) -> CommandAck + Send>> {
+    if let Some(rec) = core.browser.get(bsid).await {
+        return Ok(rec);
+    }
+    let Some(task_id) = task_id.and_then(id16).map(TaskId::from_bytes) else {
+        return Err(Box::new(move |cid| {
+            reject(
+                cid,
+                "NO_SUCH_SESSION",
+                format!(
+                    "browser session {bsid} is not open in this Core (name task_id to rebuild it)"
+                ),
+            )
+        }));
+    };
+    let (task, events) = {
+        let store = core.store.lock().await;
+        let task = match store.task(&task_id) {
+            Ok(Some(t)) => t,
+            Ok(None) => {
+                return Err(Box::new(move |cid| {
+                    reject(cid, "UNKNOWN_TASK", task_id.to_string())
+                }));
+            }
+            Err(e) => {
+                let (code, msg) = (error_code(&e).to_owned(), e.to_string());
+                return Err(Box::new(move |cid| reject(cid, &code, msg)));
+            }
+        };
+        (task, crate::browser::task_events(&store, task_id))
+    };
+    match crate::browser::from_events(bsid, task_id, task.session_id, &events) {
+        Some(rec) => {
+            core.browser.restore(bsid, rec.clone()).await;
+            Ok(rec)
+        }
+        None => Err(Box::new(move |cid| {
+            reject(
+                cid,
+                "NO_SUCH_SESSION",
+                format!("task {task_id} has no browser session {bsid}"),
+            )
+        })),
+    }
+}
+
+/// M7.1: a `browser.host` client binds this connection to a session.
+async fn attach_browser_host(
+    core: &Arc<Core>,
+    env: CommandEnvelope,
+    tx: tokio::sync::mpsc::Sender<wire::BrowserHostRequest>,
+    connection: u64,
+) -> CommandAck {
+    let cid = env.command_id.clone();
+    let Ok(p) = wire::AttachBrowserHost::decode(env.payload.as_slice()) else {
+        return reject(cid, "BAD_PAYLOAD", "AttachBrowserHost");
+    };
+    let Some(bsid) = p
+        .browser_session_id
+        .as_ref()
+        .and_then(id16)
+        .map(modbit_browser::BrowserSessionId::from_bytes)
+    else {
+        return reject(cid, "BAD_PAYLOAD", "browser_session_id required");
+    };
+    // The host states how the view is isolated (docs/22: Node disabled,
+    // strict context isolation, the renderer sandbox); a view without
+    // them never becomes the agent's browser.
+    if p.node_integration || !p.context_isolated || !p.sandboxed {
+        return reject(
+            cid,
+            "HOST_NOT_ISOLATED",
+            format!(
+                "the view must run sandboxed with context isolation and without Node (sandboxed={}, context_isolated={}, node_integration={})",
+                p.sandboxed, p.context_isolated, p.node_integration
+            ),
+        );
+    }
+    let rec = match browser_session_record(core, bsid, p.task_id.as_ref()).await {
+        Ok(r) => r,
+        Err(ack) => return ack(cid),
+    };
+    if rec.closed {
+        return reject(cid, "SESSION_CLOSED", bsid.to_string());
+    }
+    if p.partition != rec.partition {
+        return reject(
+            cid,
+            "PARTITION_MISMATCH",
+            format!(
+                "the view is in `{}`; the session's partition is `{}`",
+                p.partition, rec.partition
+            ),
+        );
+    }
+    let host_kind = if p.host_kind.is_empty() {
+        "unknown".to_owned()
+    } else {
+        p.host_kind.clone()
+    };
+    let Some(lease) = core
+        .browser
+        .attach(
+            bsid,
+            crate::browser::HostLink {
+                kind: host_kind.clone(),
+                tx,
+                connection,
+            },
+        )
+        .await
+    else {
+        return reject(cid, "NO_SUCH_SESSION", bsid.to_string());
+    };
+    let offset = match crate::runtime::append_batch(
+        &mut *core.store.lock().await,
+        core,
+        crate::runtime::Lineage::task(core.tenant_id, rec.session_id, rec.task_id),
+        vec![(
+            AggregateType::Task,
+            *rec.task_id.as_bytes(),
+            vec![crate::runtime::typed(
+                "BrowserHostAttached",
+                &TaskEvent::BrowserHostAttached {
+                    browser_session_id: bsid.to_string(),
+                    host_kind,
+                    partition: p.partition,
+                    sandboxed: p.sandboxed,
+                    context_isolated: p.context_isolated,
+                    node_integration: p.node_integration,
+                },
+                Actor::User(core.user_id),
+            )],
+        )],
+    ) {
+        Ok(o) => o,
+        Err(e) => return reject(cid, "STORE", e),
+    };
+    accept(
+        cid,
+        false,
+        wire::BrowserHostAttached {
+            browser_session_id: p.browser_session_id,
+            lease_generation: lease.generation,
+            offset,
+        }
+        .encode_to_vec(),
+    )
 }
 
 fn reject(command_id: Option<wire::Id>, code: &str, message: impl Into<String>) -> CommandAck {
@@ -3788,6 +4011,184 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 ),
                 Err((code, msg)) => reject(cid, &code, msg),
             }
+        }
+        // ---- M7.1 browser sessions (docs/22) ----
+        "OpenBrowserSession" => {
+            let Ok(p) = wire::OpenBrowserSession::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "OpenBrowserSession");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let task = match core.store.lock().await.task(&task_id) {
+                Ok(Some(t)) => t,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
+                return ack;
+            }
+            // One open session per task: opening again answers the one there is.
+            if let Some(existing) = core.browser.session_for_task(task_id).await
+                && let Some(rec) = core.browser.get(existing).await
+            {
+                return accept(
+                    cid,
+                    true,
+                    wire::BrowserSessionOpened {
+                        browser_session_id: Some(wire::Id {
+                            value: existing.as_bytes().to_vec(),
+                        }),
+                        partition: rec.partition,
+                        controller: "AGENT".into(),
+                        lease_generation: rec.lease.generation,
+                        offset: 0,
+                    }
+                    .encode_to_vec(),
+                );
+            }
+            // The session id is the command id: a replayed command names the same session.
+            let bsid = modbit_browser::BrowserSessionId::from_bytes(command_id);
+            let rec = core.browser.open(bsid, task_id, task.session_id).await;
+            let offset = match crate::runtime::append_batch(
+                &mut *core.store.lock().await,
+                core,
+                crate::runtime::Lineage::task(core.tenant_id, task.session_id, task_id),
+                vec![(
+                    AggregateType::Task,
+                    *task_id.as_bytes(),
+                    vec![crate::runtime::typed(
+                        "BrowserSessionOpened",
+                        &TaskEvent::BrowserSessionOpened {
+                            browser_session_id: bsid.to_string(),
+                            partition: rec.partition.clone(),
+                        },
+                        actor.clone(),
+                    )],
+                )],
+            ) {
+                Ok(o) => o,
+                Err(e) => return reject(cid, "STORE", e),
+            };
+            accept(
+                cid,
+                false,
+                wire::BrowserSessionOpened {
+                    browser_session_id: Some(wire::Id {
+                        value: bsid.as_bytes().to_vec(),
+                    }),
+                    partition: rec.partition,
+                    controller: "AGENT".into(),
+                    lease_generation: rec.lease.generation,
+                    offset,
+                }
+                .encode_to_vec(),
+            )
+        }
+        "BrowserHostResponse" => {
+            let Ok(p) = wire::BrowserHostResponse::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "BrowserHostResponse");
+            };
+            let response: modbit_browser::HostResponse =
+                match serde_json::from_str(&p.response_json) {
+                    Ok(r) => r,
+                    Err(e) => {
+                        return reject(cid, "BAD_PAYLOAD", format!("response_json: {e}"));
+                    }
+                };
+            let delivered = core.browser.deliver(&p.request_id, response).await;
+            accept(
+                cid,
+                false,
+                wire::BrowserHostResponded { delivered }.encode_to_vec(),
+            )
+        }
+        "GetBrowserSession" => {
+            let Ok(p) = wire::GetBrowserSession::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "GetBrowserSession");
+            };
+            let Some(bsid) = p
+                .browser_session_id
+                .as_ref()
+                .and_then(id16)
+                .map(modbit_browser::BrowserSessionId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "browser_session_id required");
+            };
+            let rec = match browser_session_record(core, bsid, p.task_id.as_ref()).await {
+                Ok(r) => r,
+                Err(ack) => return ack(cid),
+            };
+            accept(cid, false, crate::browser::view(bsid, &rec).encode_to_vec())
+        }
+        "CloseBrowserSession" => {
+            let Ok(p) = wire::CloseBrowserSession::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "CloseBrowserSession");
+            };
+            let Some(bsid) = p
+                .browser_session_id
+                .as_ref()
+                .and_then(id16)
+                .map(modbit_browser::BrowserSessionId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "browser_session_id required");
+            };
+            let Some(rec) = core.browser.get(bsid).await else {
+                return reject(cid, "NO_SUCH_SESSION", bsid.to_string());
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &rec.session_id).await {
+                return ack;
+            }
+            if rec.closed {
+                return accept(
+                    cid,
+                    true,
+                    wire::BrowserSessionClosed {
+                        browser_session_id: p.browser_session_id,
+                        offset: 0,
+                    }
+                    .encode_to_vec(),
+                );
+            }
+            // The host releases its view; whatever it answers, the session is closed here.
+            let _ = tokio::time::timeout(
+                std::time::Duration::from_secs(5),
+                modbit_browser::BrowserPort::request(
+                    core.browser.as_ref(),
+                    bsid,
+                    modbit_browser::HostRequest::Close,
+                ),
+            )
+            .await;
+            core.browser.close(bsid).await;
+            let offset = match crate::runtime::append_batch(
+                &mut *core.store.lock().await,
+                core,
+                crate::runtime::Lineage::task(core.tenant_id, rec.session_id, rec.task_id),
+                vec![(
+                    AggregateType::Task,
+                    *rec.task_id.as_bytes(),
+                    vec![crate::runtime::typed(
+                        "BrowserSessionClosed",
+                        &TaskEvent::BrowserSessionClosed {
+                            browser_session_id: bsid.to_string(),
+                        },
+                        actor.clone(),
+                    )],
+                )],
+            ) {
+                Ok(o) => o,
+                Err(e) => return reject(cid, "STORE", e),
+            };
+            accept(
+                cid,
+                false,
+                wire::BrowserSessionClosed {
+                    browser_session_id: p.browser_session_id,
+                    offset,
+                }
+                .encode_to_vec(),
+            )
         }
         "CancelTask" => {
             let Ok(p) = wire::CancelTask::decode(env.payload.as_slice()) else {

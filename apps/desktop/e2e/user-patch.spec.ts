@@ -92,7 +92,8 @@ test("inline patch: a one-hunk user edit lands through the Core's change transac
     await expect(card.getByTestId("task-state")).toHaveText("Queued");
     await card.getByTestId("task-start").click();
     await expect(page.getByTestId("column-readyForReview").getByTestId("task-card")).toHaveCount(1, { timeout: 60_000 });
-    await page.getByTestId("task-review").click();
+    // The first result opens the Review itself (docs/39 step 5).
+    await expect(page.getByTestId("review")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId("review-meta")).toContainText("ReadyForReview");
     const metaBefore = await page.getByTestId("review-meta").textContent();
     const revisionBefore = Number(/workspace revision (\d+)/.exec(metaBefore ?? "")?.[1]);

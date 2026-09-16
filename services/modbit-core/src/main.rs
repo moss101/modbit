@@ -16,6 +16,7 @@ mod assurance;
 mod attention;
 mod baseline;
 mod branch;
+mod browser;
 mod capacity;
 mod checkpoint;
 mod critique;

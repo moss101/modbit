@@ -449,6 +449,53 @@ pub enum TaskEvent {
         /// sha256 of the attached text (the `ContextDocumentAttached` document id).
         document_id: String,
     },
+    /// `BrowserSessionOpened` (M7.1, docs/22): the task has a browser
+    /// session — one live Chromium session a host holds for it, in its own
+    /// partition, with a control lease starting with the agent. No state change.
+    BrowserSessionOpened {
+        /// The session.
+        browser_session_id: String,
+        /// The session partition the host's view must use.
+        partition: String,
+    },
+    /// `BrowserHostAttached` (M7.1): a host attached its view to the session
+    /// over the authenticated surface socket (REQ-EV-0110), stating how the
+    /// view is isolated. No state change.
+    BrowserHostAttached {
+        /// The session.
+        browser_session_id: String,
+        /// `electron-main`.
+        host_kind: String,
+        /// The partition the view was created in.
+        partition: String,
+        /// Renderer sandbox on.
+        sandboxed: bool,
+        /// Context isolation on.
+        context_isolated: bool,
+        /// Node integration (must be false).
+        node_integration: bool,
+    },
+    /// `BrowserNavigated` (M7.1): the session's page state after a
+    /// navigation the agent made (untrusted URL and title). No state change.
+    BrowserNavigated {
+        /// The session.
+        browser_session_id: String,
+        /// URL.
+        url: String,
+        /// Title (page content).
+        title: String,
+        /// The host's state version.
+        state_version: u64,
+        /// Fingerprint of the state.
+        fingerprint: String,
+        /// The control lease generation the navigation ran under.
+        lease_generation: u64,
+    },
+    /// `BrowserSessionClosed` (M7.1): the session's view is released. No state change.
+    BrowserSessionClosed {
+        /// The session.
+        browser_session_id: String,
+    },
     /// `PlanRevised` with a scope delta; no state change.
     PlanRevised {
         /// Object hash of the plan JSON.
@@ -1344,6 +1391,10 @@ impl TaskEvent {
             Self::ForgePullRequestOpened { .. } => "ForgePullRequestOpened",
             Self::ForgePullRequestUpdated { .. } => "ForgePullRequestUpdated",
             Self::TaskCreatedFromIssue { .. } => "TaskCreatedFromIssue",
+            Self::BrowserSessionOpened { .. } => "BrowserSessionOpened",
+            Self::BrowserHostAttached { .. } => "BrowserHostAttached",
+            Self::BrowserNavigated { .. } => "BrowserNavigated",
+            Self::BrowserSessionClosed { .. } => "BrowserSessionClosed",
             Self::UnsupportedLanguageOptInRecorded { .. } => "UnsupportedLanguageOptInRecorded",
             Self::ContextDocumentAttached { .. } => "ContextDocumentAttached",
             Self::SelectionRecorded { .. } => "SelectionRecorded",
@@ -1495,6 +1546,10 @@ impl Task {
             | TaskEvent::ForgePullRequestOpened { .. }
             | TaskEvent::ForgePullRequestUpdated { .. }
             | TaskEvent::TaskCreatedFromIssue { .. }
+            | TaskEvent::BrowserSessionOpened { .. }
+            | TaskEvent::BrowserHostAttached { .. }
+            | TaskEvent::BrowserNavigated { .. }
+            | TaskEvent::BrowserSessionClosed { .. }
             | TaskEvent::SelfReviewRecorded { .. }
             | TaskEvent::ToolsActivated { .. }
             | TaskEvent::ProgramStarted { .. }
