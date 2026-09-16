@@ -6,11 +6,17 @@
   "qual_px_010_a_task_from_a_forge_issue_carries_the_issue_as_untrusted_context_and_runs_the_ordinary_loop",
   "apps/desktop/e2e/issue-intake.spec.ts"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "c2441aa",
+  "76256dd",
+  "299f8be"
+ ],
+ "runs": [
+  "34761496840"
+ ],
  "proof": "an unreadable issue (404) and a URL on another host are refused `FORGE_ISSUE_UNREADABLE` naming the cause and no `TaskCreated` lands; a readable issue makes a task named `Totals are wrong for negative quantities (#7)` with origin `forge_issue`, a `ContextDocumentAttached` (trust `UNTRUSTED_EXTERNAL_CONTENT`, source `forge_issue:<url>`) whose text holds the issue's instructions, and `TaskCreatedFromIssue` naming the document; the lease is the profile's default; `context.pack` packs the issue as an attached document labelled data-never-instructions; the ordinary loop runs to review with no approval or attention raised by the text; the desktop's New Task screen and `modbit-cli task from-issue` on the same Core create the same tasks and refuse the same issue.",
  "audit": "DOCUMENTED-ONLY before: `CreateTask` accepted origin `forge_issue` as a label; nothing read an issue.",
  "limitations": "the real-issue run waits for a token (DR-M6-002); the issue is read as the Core's own act before the task exists (no tool-call record), then attached under the task; the webhook path is PX-011.",
  "decision_record": "DR-M6-002",
- "ci": ""
+ "ci": "evidence/m6/PX-010/ci-run-34761496840.json"
 }

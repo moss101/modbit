@@ -3,7 +3,7 @@
  "product": "Modbit",
  "edition": "V3.3 EPR v1.1",
  "authority_date": "2026-09-05",
- "generated_on": "2026-09-13",
+ "generated_on": "2026-09-16",
  "generator": "tools/build_graph.py",
  "status_vocabulary": [
   "NOT_STARTED",
@@ -27135,8 +27135,53 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-006",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_px_006_the_forge_adapter_reads_and_writes_github_behind_leases_effects_receipts_and_idempotency_keys",
+    "test:qual_ev_0217_compatibility_matrix_covers_every_registered_tool_with_owner_effect_and_test",
+    "run:34761496840",
+    "commit:299f8be",
+    "artifact:evidence/m6/PX-006/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-16T16:55:23Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: see TASK_CARD.md existing-code audit"
+    },
+    {
+     "at": "2026-09-16T16:55:23Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented on wip/m6-backlog"
+    },
+    {
+     "at": "2026-09-16T16:55:23Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired into the Core, CLI and desktop"
+    },
+    {
+     "at": "2026-09-16T16:55:39Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real Core against the wire-faithful GitHub fake and a real bare remote"
+    },
+    {
+     "at": "2026-09-16T16:55:39Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34761496840 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-16T16:55:39Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed; live GitHub half deferred by DR-M6-002"
+    }
+   ],
+   "status_changed_on": "2026-09-16T16:55:39Z"
   },
   {
    "id": "PX-007",
@@ -27160,8 +27205,52 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-007",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_px_007_a_reviewed_result_opens_and_updates_a_pull_request_as_approved_receipted_effects",
+    "run:34761496840",
+    "commit:299f8be",
+    "artifact:evidence/m6/PX-007/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-16T16:55:39Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: see TASK_CARD.md existing-code audit"
+    },
+    {
+     "at": "2026-09-16T16:55:39Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented on wip/m6-backlog"
+    },
+    {
+     "at": "2026-09-16T16:55:39Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired into the Core, CLI and desktop"
+    },
+    {
+     "at": "2026-09-16T16:55:39Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real Core against the wire-faithful GitHub fake and a real bare remote"
+    },
+    {
+     "at": "2026-09-16T16:55:39Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34761496840 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-16T16:55:39Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed; live GitHub half deferred by DR-M6-002"
+    }
+   ],
+   "status_changed_on": "2026-09-16T16:55:39Z"
   },
   {
    "id": "PX-008",
@@ -27235,8 +27324,53 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-010",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_px_010_a_task_from_a_forge_issue_carries_the_issue_as_untrusted_context_and_runs_the_ordinary_loop",
+    "test:apps/desktop/e2e/issue-intake.spec.ts",
+    "run:34761496840",
+    "commit:299f8be",
+    "artifact:evidence/m6/PX-010/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-16T16:55:39Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: see TASK_CARD.md existing-code audit"
+    },
+    {
+     "at": "2026-09-16T16:55:39Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented on wip/m6-backlog"
+    },
+    {
+     "at": "2026-09-16T16:55:39Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired into the Core, CLI and desktop"
+    },
+    {
+     "at": "2026-09-16T16:55:39Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real Core against the wire-faithful GitHub fake and a real bare remote"
+    },
+    {
+     "at": "2026-09-16T16:55:39Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 34761496840 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-16T16:55:40Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed; live GitHub half deferred by DR-M6-002"
+    }
+   ],
+   "status_changed_on": "2026-09-16T16:55:40Z"
   },
   {
    "id": "PX-011",

@@ -2,13 +2,13 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-09-13",
+  "generated_on": "2026-09-16",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 1074,
-    "docs_bytes": 1144928
+    "root_and_tooling": 1077,
+    "docs_bytes": 1145057
   },
   "sections": [
     {
@@ -851,8 +851,8 @@
       "section": "live-state",
       "section_title": "Live state",
       "title": "Build Manifest",
-      "bytes": 6744,
-      "sha256": "fff06eba1593e6df7b65b03c45db464b479405105adc1682a5d1dfda1dad515f"
+      "bytes": 6873,
+      "sha256": "b4e792b4d81dd7c4ecb0998d3ff2907074e707241bf99e83eb52ab3c5bc6507b"
     }
   ],
   "root_and_tooling": [
@@ -6153,43 +6153,58 @@
     },
     {
       "path": "evidence/m6/PX-006/TASK_CARD.md",
-      "bytes": 3857,
-      "sha256": "5b92e2984be24d7e449776ea71dda51e8aed34507a854919ee1601c528775829"
+      "bytes": 3990,
+      "sha256": "b916db6d083948a8a151ee027c2b2e06604e3b4a5f84564370bd62ca500f507f"
+    },
+    {
+      "path": "evidence/m6/PX-006/ci-run-34761496840.json",
+      "bytes": 39186,
+      "sha256": "159ddd7a13c16036e1d88834e377b4506a18e6bab00a369bd1384b5c531fd0b6"
     },
     {
       "path": "evidence/m6/PX-006/evidence.json",
-      "bytes": 1769,
-      "sha256": "8bebe8654f5dc5d6c984aedfc52f5ea3a4a47f88b382f0a4feeb27da88fcefcb"
+      "bytes": 1880,
+      "sha256": "5ae1be19bcf02a5d44f5ab893ea11b52b952aecbfb76d13b8b262af060f0a2d6"
     },
     {
       "path": "evidence/m6/PX-007/TASK_CARD.md",
-      "bytes": 3261,
-      "sha256": "f4ed338a9a6c640100beee2e1430c1ac3adcff172cdc4ef194d5e826cd95bb4d"
+      "bytes": 3394,
+      "sha256": "5732c16fa72fbe67c3d61a7c84b8d93c2862f8144329c4b68731eb8aa8bad96b"
+    },
+    {
+      "path": "evidence/m6/PX-007/ci-run-34761496840.json",
+      "bytes": 39186,
+      "sha256": "159ddd7a13c16036e1d88834e377b4506a18e6bab00a369bd1384b5c531fd0b6"
     },
     {
       "path": "evidence/m6/PX-007/evidence.json",
-      "bytes": 1513,
-      "sha256": "5969c5762a0ea0a0f50156d1d7c414ca071e2e9cd40aa3a66ad02a4ac8175580"
+      "bytes": 1616,
+      "sha256": "e92aae3f9cb4ec04e3d3f9c8d39a4f084a356e42dd51268344e047a88ccedf12"
     },
     {
       "path": "evidence/m6/PX-010/TASK_CARD.md",
-      "bytes": 3053,
-      "sha256": "fb8c801e9fc2900ee77aaa093a5f43b94f101eba6343648ee94c71b622454a1b"
+      "bytes": 3186,
+      "sha256": "184cc3a906cb58faf8d6cbdc4d0e8a9a038d6bc2bcd6dc54b0e20bb10088f8f1"
+    },
+    {
+      "path": "evidence/m6/PX-010/ci-run-34761496840.json",
+      "bytes": 39186,
+      "sha256": "159ddd7a13c16036e1d88834e377b4506a18e6bab00a369bd1384b5c531fd0b6"
     },
     {
       "path": "evidence/m6/PX-010/evidence.json",
-      "bytes": 1429,
-      "sha256": "8eb4289e34bb25b25b0073b1d9615b9a22f4c2512f5001565912dc78e978c1be"
+      "bytes": 1529,
+      "sha256": "7e8779ac9f2f4d52a2b3f3a9dc4ab67690e6f3a89f543afd188841d373f56106"
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 40785,
-      "sha256": "d4dc92225617d0888e58586082c1fb583c857c04b3ca4ae0fd49b979f005ec46"
+      "sha256": "b871bd94cf8037ff3652811cd63003930f48bedb2f08c72e15a23fa5bc04f8a8"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1443176,
-      "sha256": "abab72bf23c458a3a41093b38ecd917b0368ffea02948c19b21b4f980ff9e228"
+      "bytes": 1447063,
+      "sha256": "69fc6090de50e9694116fbb9460fa5217c98ff6994891f7fc9ed31494e3e90ad"
     },
     {
       "path": "tools/build_graph.py",

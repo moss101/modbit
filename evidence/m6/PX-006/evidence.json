@@ -6,11 +6,17 @@
   "qual_px_006_the_forge_adapter_reads_and_writes_github_behind_leases_effects_receipts_and_idempotency_keys",
   "qual_ev_0217_compatibility_matrix_covers_every_registered_tool_with_owner_effect_and_test"
  ],
- "batch_commits": [],
- "runs": [],
- "proof": "against the GitHub fake: `forge.issue.read` returns provenance `forge_issue` data tagged `UNTRUSTED_EXTERNAL_CONTENT` with the bearer token on the wire and no token in the result and no receipt; a URL on another host is `EGRESS_DENIED` and a credential-looking argument `TOKEN_IN_ARGUMENTS`, both before anything is sent; `forge.pr.create` is `APPROVAL_PENDING` until approved (nothing sent), then opens PR #1 with one receipt; the same idempotency key again replays from the log with no create sent; a key the log does not know meets the forge's `422 already exists` and reconciles to PR #1 — one pull request throughout; `forge.pr.update` is approved, receipted and PATCHes; comments and check runs read as untrusted data; every request carried the Core's token, no event carries it; `ForgePullRequestOpened` × 2 (two keys, one PR) and `ForgePullRequestUpdated` × 1 on the log; a `review_isolated` task is refused by the kernel with nothing sent.",
+ "batch_commits": [
+  "c2441aa",
+  "76256dd",
+  "299f8be"
+ ],
+ "runs": [
+  "34761496840"
+ ],
+ "proof": "against the GitHub fake: `forge.issue.read` returns provenance `forge_issue` data tagged `UNTRUSTED_EXTERNAL_CONTENT` with the bearer token on the wire and no token in the result and no receipt; a URL on another host is `EGRESS_DENIED` and a credential-looking argument `TOKEN_IN_ARGUMENTS`, both before anything is sent; `forge.pr.create` is `APPROVAL_PENDING` until approved (nothing sent), then opens PR #1 with one receipt; the same idempotency key again replays from the log with no create sent; a key the log does not know meets the forge's `422 already exists` and reconciles to PR #1 \u2014 one pull request throughout; `forge.pr.update` is approved, receipted and PATCHes; comments and check runs read as untrusted data; every request carried the Core's token, no event carries it; `ForgePullRequestOpened` \u00d7 2 (two keys, one PR) and `ForgePullRequestUpdated` \u00d7 1 on the log; a `review_isolated` task is refused by the kernel with nothing sent.",
  "audit": "DOCUMENTED-ONLY before: docs/17 admitted the family (DR-PX-2026-09-05); no `forge.*` tool, no forge configuration, no credential custody for a forge, `crates/secrets` empty, the External Tool Hub (M9.4) unbuilt.",
  "limitations": "the real GitHub test repository run waits for a token (DR-M6-002); the token custody is the Core's memory-only custody until the M8.6 secret broker; other forges are not implemented.",
  "decision_record": "DR-M6-002",
- "ci": ""
+ "ci": "evidence/m6/PX-006/ci-run-34761496840.json"
 }

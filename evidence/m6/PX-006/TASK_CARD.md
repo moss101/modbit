@@ -32,4 +32,4 @@ Named tests (run on macOS, Linux and Windows by `.github/workflows/ci.yml`):
 ## Evidence
 
 - `evidence.json` in this directory (commits, hosted CI run, test names)
-- CI run json copy alongside
+- CI run json copy alongside: `ci-run-34761496840.json` (main at 299f8be; the change commit c2441aa, the DR landing note 76256dd and its manifest reseal 299f8be)
