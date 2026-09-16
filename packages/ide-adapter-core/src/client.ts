@@ -84,6 +84,12 @@ import {
   RepositoryTrustedSchema,
   ListStarterTasksSchema,
   StarterTaskListSchema,
+  OpenPullRequestSchema,
+  UpdatePullRequestSchema,
+  PullRequestAckSchema,
+  type PullRequestAck,
+  RespondToQuestionSchema,
+  QuestionRespondedSchema,
   type TaskEconomicsView,
   type LanguageList,
   type CommandAck,
@@ -469,6 +475,20 @@ export class CoreClient {
     return fromBinary(ApprovalResolvedAckSchema, ack.result);
   }
 
+  /**
+   * PX-007: open (or update) the task's pull request from the accepted
+   * candidate. The first call returns APPROVAL_PENDING with the approval
+   * that binds the push and the POST; after the approval is resolved the
+   * same call (same revision) returns OPENED/UPDATED — or DENIED, which
+   * leaves the branch local. Every attempt is a receipt in the log.
+   */
+  async openPullRequest(sessionId: string, taskId: string, expectedCandidateRevision: bigint, opts: { base?: string; title?: string; remote?: string; update?: boolean } = {}): Promise<PullRequestAck> {
+    const fields = { taskId: { value: unhex(taskId) }, expectedCandidateRevision, base: opts.base ?? "", title: opts.title ?? "", remote: opts.remote ?? "" };
+    const payload = opts.update ? toBinary(UpdatePullRequestSchema, create(UpdatePullRequestSchema, fields)) : toBinary(OpenPullRequestSchema, create(OpenPullRequestSchema, fields));
+    const ack = await this.command(opts.update ? "UpdatePullRequest" : "OpenPullRequest", payload, undefined, this.leases.get(sessionId));
+    return fromBinary(PullRequestAckSchema, ack.result);
+  }
+
   async taskAssurance(taskId: string): Promise<TaskAssuranceView> {
     const ack = await this.command("GetTaskAssurance", toBinary(GetTaskAssuranceSchema, create(GetTaskAssuranceSchema, { taskId: { value: unhex(taskId) } })));
     return fromBinary(TaskAssuranceViewSchema, ack.result);
@@ -512,6 +532,14 @@ export class CoreClient {
     const ack = await this.command("QueueInput", payload, undefined, this.leases.get(sessionId));
     const r = fromBinary(InputQueuedSchema, ack.result);
     return { sequence: r.sequence, offset: r.offset };
+  }
+
+  /** REQ-EV-0222: answer the agent's typed question; the run resumes with StartTask. */
+  async respondToQuestion(sessionId: string, taskId: string, questionId: string, optionId: string, text: string): Promise<{ questionId: string; alreadyAnswered: boolean }> {
+    const payload = toBinary(RespondToQuestionSchema, create(RespondToQuestionSchema, { taskId: { value: unhex(taskId) }, questionId, optionId, text }));
+    const ack = await this.command("RespondToQuestion", payload, undefined, this.leases.get(sessionId));
+    const r = fromBinary(QuestionRespondedSchema, ack.result);
+    return { questionId: r.questionId, alreadyAnswered: r.alreadyAnswered };
   }
 
   async taskStatus(taskId: string): Promise<TaskStatus> {

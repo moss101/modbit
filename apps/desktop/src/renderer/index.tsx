@@ -7,7 +7,9 @@
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { applyEvent, childrenOf, columns, emptyModel, fromSnapshot, type Event, type FleetColumn, type Model, type Snapshot, type TaskCard } from "./model.ts";
-import type { AttentionItem, ContextInspectorSummary, ModbitBridge, ReviewBundleView, TaskEconomicsSummary } from "../preload/preload.ts";
+import { fleetState, newTaskState, reviewState, settingsState, taskState, type ScreenState as DerivedScreenState } from "./screens.ts";
+import { DEFAULT_PREFERENCES, deriveNotifications, newSince, osDeliveryDue, type Notification as AppNotification, type NotificationKind, type NotificationPreferences } from "./notifications.ts";
+import type { AttentionItem, ContextInspectorSummary, ModbitBridge, PullRequestAckView, ReviewBundleView, TaskEconomicsSummary } from "../preload/preload.ts";
 
 declare global {
   interface Window {
@@ -50,6 +52,46 @@ function hex32(): string {
   return Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
 }
 
+const PREFS_KEY = "modbit.notifications";
+function loadPreferences(): NotificationPreferences {
+  try {
+    const raw = localStorage.getItem(PREFS_KEY);
+    if (!raw) return DEFAULT_PREFERENCES;
+    const p = JSON.parse(raw) as Partial<NotificationPreferences>;
+    return { os: { ...DEFAULT_PREFERENCES.os, ...(p.os ?? {}) }, quietHours: p.quietHours ?? null };
+  } catch {
+    return DEFAULT_PREFERENCES;
+  }
+}
+
+/** PX-023: one screen's state, with cause, next action and evidence when it
+ *  is not the plain populated state. Every screen renders one. */
+function StateLine({ state, testid }: { state: DerivedScreenState; testid: string }) {
+  return (
+    <div className="meta state" data-testid={testid} data-screen={state.screen} data-kind={state.kind} role={state.kind === "error" ? "alert" : "status"}>
+      <span data-testid={`${testid}-label`}>{state.label}</span>
+      {state.cause && (
+        <>
+          {" · cause: "}
+          <span data-testid={`${testid}-cause`}>{state.cause}</span>
+        </>
+      )}
+      {state.nextAction && (
+        <>
+          {" · next: "}
+          <strong data-testid={`${testid}-next`}>{state.nextAction}</strong>
+        </>
+      )}
+      {state.evidence && (
+        <>
+          {" · evidence: "}
+          <span data-testid={`${testid}-evidence`}>{state.evidence}</span>
+        </>
+      )}
+    </div>
+  );
+}
+
 function App() {
   const [core, setCore] = useState<CoreStatus>({ state: "starting", restarts: 0 });
   const [model, setModel] = useState<Model>(emptyModel);
@@ -82,7 +124,7 @@ function App() {
   const [submitting, setSubmitting] = useState(false);
   const [reviewing, setReviewing] = useState<string | null>(null);
   // Onboarding (REQ-PX-022, docs/39): three steps, each a working control.
-  const [provider, setProvider] = useState<{ configured: boolean; endpoints: string[]; keychainAvailable: boolean } | null>(null);
+  const [provider, setProvider] = useState<{ configured: boolean; endpoints: string[]; stored: boolean; provider: string; keychainAvailable: boolean } | null>(null);
   const [providerKind, setProviderKind] = useState<"openai" | "anthropic">("openai");
   const [providerKey, setProviderKey] = useState("");
   const [providerUrl, setProviderUrl] = useState("");
@@ -94,6 +136,10 @@ function App() {
   const [trustError, setTrustError] = useState<string | null>(null);
   const [starters, setStarters] = useState<{ stacks: string[]; tasks: { id: string; title: string; goalText: string; stack: string }[] } | null>(null);
   const [autoReview, setAutoReview] = useState<string | null>(null);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [prefs, setPrefs] = useState<NotificationPreferences>(loadPreferences);
+  const [delivered, setDelivered] = useState<string[]>([]);
+  const previousNotifications = useRef<AppNotification[]>([]);
   const modelRef = useRef(model);
   modelRef.current = model;
   const wasRestarting = useRef(false);
@@ -110,9 +156,35 @@ function App() {
         return;
       }
       const snap = (await window.modbit.sessionSnapshot(local.sessionId)) as Snapshot;
+      const prev = modelRef.current;
+      if (prev.sessionId === snap.sessionId && prev.cursor !== "0") {
+        // Reconnect by cursor (docs/32, PX-023): the cards stay as they are
+        // and the stream resumes from the last offset this renderer applied,
+        // so what the Core appended while away — its recovery's waits and
+        // diagnostics included — is replayed, not lost behind a snapshot.
+        setScreen(prev.tasks.size === 0 ? "empty" : "populated");
+        await window.modbit.subscribe(snap.sessionId, prev.cursor);
+        refreshAttention(snap.sessionId);
+        return;
+      }
       const m = fromSnapshot(snap);
       setModel(m);
       setScreen(m.tasks.size === 0 ? "empty" : "populated");
+      // A snapshot carries states, not the typed diagnostics behind a wait
+      // or a failure (REQ-EV-0073): read those from the Core's task status
+      // so a degraded state after an app restart still names its cause.
+      const statuses = await Promise.all([...m.tasks.values()].filter((t) => t.state === "Waiting" || t.state === "Failed").map(async (t) => [t.taskId, await window.modbit.taskStatus(t.taskId).catch(() => null)] as const));
+      if (statuses.length > 0) {
+        setModel((cur) => {
+          const tasks = new Map(cur.tasks);
+          for (const [id, st] of statuses) {
+            const c = tasks.get(id);
+            if (!st || !st.failureClass || !c || c.diagnostic) continue;
+            tasks.set(id, { ...c, diagnostic: { class: st.failureClass, code: st.failureCode, detail: st.attentionReason, userAction: st.userAction, recoveryPath: st.recoveryPath, retryable: st.retryable, evidenceRefs: st.evidenceRefs }, nextAction: c.nextAction ?? st.attentionReason, lastOffset: st.lastOffset });
+          }
+          return { ...cur, tasks };
+        });
+      }
       // Context Inspector for the newest task, when it has compiled a pack.
       const newest = [...m.tasks.values()].sort((a, b) => b.createdAtMs - a.createdAtMs)[0];
       if (newest) {
@@ -138,7 +210,10 @@ function App() {
   useEffect(() => {
     const offEvent = window.modbit.onEvent((raw) => {
       const e = raw as Event & { taskId: string | null; aggregateType: string; eventType?: string };
-      if (e.aggregateType !== "task" || !e.taskId) return;
+      // Task events, and the run and approval aggregates' events the Core
+      // stamps with the task id (phase, gate verdict, feasibility, the
+      // approval's intent); everything else is not a card's business.
+      if (!e.taskId || !["task", "run", "approval"].includes(e.aggregateType)) return;
       setModel((m) => applyEvent(m, e, e.taskId!));
       setScreen("populated");
       if (e.sessionId) refreshAttention(e.sessionId);
@@ -209,14 +284,16 @@ function App() {
         setModel((m) => {
           if (m.tasks.has(r.taskId)) return m;
           const tasks = new Map(m.tasks);
-          tasks.set(r.taskId, { taskId: r.taskId, goalText: r.goalText || text, state: "Queued", waitReason: "Capacity", generation: 2, createdAtMs: Date.now(), nextAction: null, attachments: issue ? 1 : 0, parentTaskId: null, origin: issue ? "forge_issue" : "desktop", agents: { total: 0, running: 0, background: 0, waiting: 0, done: 0, failed: 0 }, phase: "drafting", latestEvidence: null, risk: null, children: [] } as TaskCard);
+          tasks.set(r.taskId, { taskId: r.taskId, goalText: r.goalText || text, state: "Queued", waitReason: "Capacity", generation: 2, createdAtMs: Date.now(), nextAction: null, attachments: issue ? 1 : 0, parentTaskId: null, origin: issue ? "forge_issue" : "desktop", agents: { total: 0, running: 0, background: 0, waiting: 0, done: 0, failed: 0 }, phase: "drafting", latestEvidence: null, risk: null, children: [], diagnostic: null, approval: null, feasibility: null, question: null, gate: null, lastOffset: "0" } as TaskCard);
           return { ...m, tasks };
         });
         setScreen("populated");
         setGoal("");
         setIssueUrl("");
+        setCreateError(null);
       } catch (e) {
         setError((e as Error).message);
+        setCreateError((e as Error).message);
       } finally {
         setSubmitting(false);
       }
@@ -303,7 +380,7 @@ function App() {
         setModel((m) => {
           if (m.tasks.has(r.taskId)) return m;
           const tasks = new Map(m.tasks);
-          tasks.set(r.taskId, { taskId: r.taskId, goalText, state: "Queued", waitReason: "Capacity", generation: 2, createdAtMs: Date.now(), nextAction: null, attachments: 0, parentTaskId: null, origin: "desktop", agents: { total: 0, running: 0, background: 0, waiting: 0, done: 0, failed: 0 }, phase: "drafting", latestEvidence: null, risk: null, children: [] } as TaskCard);
+          tasks.set(r.taskId, { taskId: r.taskId, goalText, state: "Queued", waitReason: "Capacity", generation: 2, createdAtMs: Date.now(), nextAction: null, attachments: 0, parentTaskId: null, origin: "desktop", agents: { total: 0, running: 0, background: 0, waiting: 0, done: 0, failed: 0 }, phase: "drafting", latestEvidence: null, risk: null, children: [], diagnostic: null, approval: null, feasibility: null, question: null, gate: null, lastOffset: "0" } as TaskCard);
           return { ...m, tasks };
         });
         setScreen("populated");
@@ -319,6 +396,45 @@ function App() {
 
   const cols = useMemo(() => columns(model), [model]);
   const attention = cols.needsAttention.length;
+  const tasks = useMemo(() => [...model.tasks.values()], [model]);
+  // PX-023: the screen states, each derived from what the Core said.
+  const fleet = useMemo(() => fleetState({ core, loaded: screen === "loading" ? "loading" : screen === "empty" ? "empty" : "populated", error, recovery: recovery ? { bootGeneration: Number(recovery.bootGeneration), eventsVerified: Number(recovery.eventsVerified), aggregatesVerified: Number(recovery.aggregatesVerified), sessions: Number(recovery.sessions), tasks: Number(recovery.tasks), projectionsRebuilt: recovery.projectionsRebuilt, notes: recovery.notes, recoveryMs: Number(recovery.recoveryMs) } : null, recoveredBanner: recovered !== null, tasks }), [core, screen, error, recovery, recovered, tasks]);
+  const composer = useMemo(() => newTaskState({ core, provider: provider ? { configured: provider.configured } : null, trusted, workspaceRoot, lastError: createError }), [core, provider, trusted, workspaceRoot, createError]);
+  const settings = useMemo(() => settingsState({ provider: provider ? { keychainAvailable: provider.keychainAvailable, configured: provider.configured } : null, organizationOverrides: [] }), [provider]);
+  // PX-023: the notifications the fleet warrants, coalesced per task and
+  // collapsed on a burst; OS delivery only for what is new, opted in and
+  // outside quiet hours. Main logs what it delivered.
+  const notifications = useMemo(() => deriveNotifications(tasks, attentionItems), [tasks, attentionItems]);
+  useEffect(() => {
+    const fresh = newSince(previousNotifications.current, notifications);
+    previousNotifications.current = notifications;
+    const due = fresh.filter((n) => osDeliveryDue(n, prefs, new Date().getHours()));
+    if (due.length === 0) return;
+    for (const n of due) {
+      void window.modbit
+        .deliverNotification(n.id, n.title, `${n.reason} — ${n.nextAction}`)
+        .then(() => setDelivered((d) => [...d, `${n.id}:${n.reason}`]))
+        .catch(() => {});
+    }
+  }, [notifications, prefs]);
+  const savePrefs = useCallback((next: NotificationPreferences) => {
+    setPrefs(next);
+    try {
+      localStorage.setItem(PREFS_KEY, JSON.stringify(next));
+    } catch {
+      // per-viewer convenience only; nothing depends on it persisting
+    }
+  }, []);
+  const open = useCallback((link: AppNotification["deepLink"]) => {
+    if (link.screen === "review" && link.taskId) {
+      setReviewing(link.taskId);
+      return;
+    }
+    setReviewing(null);
+    const target = link.screen === "task" && link.taskId ? document.querySelector<HTMLElement>(`[data-testid="task-card"][data-task-id="${link.taskId}"]`) : document.querySelector<HTMLElement>('[data-testid="attention"]');
+    target?.scrollIntoView({ block: "center" });
+    target?.focus();
+  }, []);
   // docs/39 "Empty states": no provider keeps the welcome up with step 2
   // highlighted whatever else exists; a provider with no trusted repository
   // and no tasks keeps it up with step 3.
@@ -333,6 +449,21 @@ function App() {
           {core.state === "connected" ? `Core connected (pid ${core.pid})` : core.state === "restarting" ? `Core restarting…` : core.state === "failed" ? "Core failed" : "Core starting…"}
         </span>
       </header>
+      <StateLine state={fleet} testid="fleet-state" />
+      {notifications.length > 0 && (
+        <section className="notifications" data-testid="notifications" aria-label="notifications" aria-live="polite">
+          <ul>
+            {notifications.map((n) => (
+              <li key={n.id} data-testid="notification" data-kind={n.kind} data-id={n.id} data-coalesced={n.coalesced} data-count={n.count ?? 1} data-delivered={delivered.includes(`${n.id}:${n.reason}`) ? "true" : "false"}>
+                <strong>{n.title}</strong> · {n.reason} · <em>{n.nextAction}</em>{" "}
+                <button type="button" className="small" data-testid="notification-open" onClick={() => open(n.deepLink)}>
+                  Open {n.deepLink.screen}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       {inspector && inspector.packId !== "" && (
         <div className="banner" data-kind="info" data-testid="context-inspector">
           <strong>Context</strong> — {inspector.entries.filter((e) => e.injected).length} of {inspector.entries.length} fragment(s) injected, {inspector.tokenUsed}/{inspector.tokenBudget} tokens, {inspector.omittedCount} omitted
@@ -392,7 +523,7 @@ function App() {
           <strong>Error</strong> — {error}. <button type="button" onClick={() => void load()}>Retry</button>
         </div>
       )}
-      {reviewing && model.sessionId && <Review taskId={reviewing} sessionId={model.sessionId} onClose={() => setReviewing(null)} />}
+      {reviewing && model.sessionId && <Review taskId={reviewing} sessionId={model.sessionId} card={model.tasks.get(reviewing) ?? null} onClose={() => setReviewing(null)} />}
       {onboarding && (
         <section className="welcome" data-testid="welcome" aria-label="Welcome">
           <h2 style={{ margin: 0, fontSize: 16 }}>Welcome to Modbit</h2>
@@ -485,25 +616,54 @@ function App() {
         </section>
       )}
       <main hidden={reviewing !== null}>
-        <form className="composer" onSubmit={submit} aria-label="New Task">
-          <h2 style={{ margin: 0, fontSize: 14 }}>New Task</h2>
-          <label htmlFor="goal" className="meta">Goal</label>
-          <textarea id="goal" data-testid="goal" value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="What should the agent achieve?" disabled={core.state !== "connected"} />
-          <label htmlFor="issue-url" className="meta">Or from an issue (a GitHub issue URL; its text enters as untrusted context)</label>
-          <input id="issue-url" data-testid="issue-url" value={issueUrl} onChange={(e) => setIssueUrl(e.target.value)} placeholder="https://github.com/owner/repo/issues/123" disabled={core.state !== "connected"} />
-          <label htmlFor="workspace" className="meta">Workspace root (a local Git checkout; empty for a Work space)</label>
-          <input id="workspace" data-testid="workspace" value={workspaceRoot} onChange={(e) => setWorkspaceRoot(e.target.value)} placeholder="/path/to/repo" disabled={core.state !== "connected"} />
-          <div className="meta">Execution: local_trusted · Origin: desktop · Running here trusts this repository, scoped to it, if it is not trusted yet.</div>
-          {provider !== null && !provider.configured && (
-            <div className="meta" role="status" data-testid="composer-no-provider">
-              No provider is set up: a task can be created but will not start until step 2 above is done.
+        <div className="side">
+          <form className="composer" onSubmit={submit} aria-label="New Task">
+            <h2 style={{ margin: 0, fontSize: 14 }}>New Task</h2>
+            <label htmlFor="goal" className="meta">Goal</label>
+            <textarea id="goal" data-testid="goal" value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="What should the agent achieve?" disabled={core.state !== "connected"} />
+            <label htmlFor="issue-url" className="meta">Or from an issue (a GitHub issue URL; its text enters as untrusted context)</label>
+            <input id="issue-url" data-testid="issue-url" value={issueUrl} onChange={(e) => setIssueUrl(e.target.value)} placeholder="https://github.com/owner/repo/issues/123" disabled={core.state !== "connected"} />
+            <label htmlFor="workspace" className="meta">Workspace root (a local Git checkout; empty for a Work space)</label>
+            <input id="workspace" data-testid="workspace" value={workspaceRoot} onChange={(e) => setWorkspaceRoot(e.target.value)} placeholder="/path/to/repo" disabled={core.state !== "connected"} />
+            <div className="meta">Execution: local_trusted · Origin: desktop · Running here trusts this repository, scoped to it, if it is not trusted yet.</div>
+            {provider !== null && !provider.configured && (
+              <div className="meta" role="status" data-testid="composer-no-provider">
+                No provider is set up: a task can be created but will not start until step 2 above is done.
+              </div>
+            )}
+            <button type="submit" data-testid="run" disabled={core.state !== "connected" || submitting || (!goal.trim() && !issueUrl.trim())}>
+              {submitting ? "Creating…" : "Run"}
+            </button>
+            {core.state !== "connected" && <div className="meta">Task creation is disabled until the Core is connected.</div>}
+            <StateLine state={composer} testid="composer-state" />
+          </form>
+          <section className="settings" data-testid="settings" aria-label="Settings">
+            <h2 style={{ margin: 0, fontSize: 14 }}>Settings</h2>
+            <div className="meta">
+              Credentials: {provider === null ? "loading…" : provider.configured ? `${provider.stored ? "provider key in the OS keychain" : "provider key held for this session only"} (${provider.provider})` : "no provider key"}; the Core holds keys in memory only and never shows one again.
             </div>
-          )}
-          <button type="submit" data-testid="run" disabled={core.state !== "connected" || submitting || (!goal.trim() && !issueUrl.trim())}>
-            {submitting ? "Creating…" : "Run"}
-          </button>
-          {core.state !== "connected" && <div className="meta">Task creation is disabled until the Core is connected.</div>}
-        </form>
+            <StateLine state={settings} testid="settings-state" />
+            <fieldset data-testid="notification-preferences">
+              <legend className="meta">OS notifications (off until you opt in; the in-app list is always on)</legend>
+              {(["attention", "completion", "failure"] as NotificationKind[]).map((k) => (
+                <label key={k} className="meta">
+                  <input type="checkbox" data-testid={`notify-${k}`} checked={prefs.os[k]} onChange={(e) => savePrefs({ ...prefs, os: { ...prefs.os, [k]: e.target.checked } })} /> {k}
+                </label>
+              ))}
+              <label className="meta">
+                <input type="checkbox" data-testid="notify-quiet" checked={prefs.quietHours !== null} onChange={(e) => savePrefs({ ...prefs, quietHours: e.target.checked ? { start: 22, end: 7 } : null })} /> quiet hours
+              </label>
+              {prefs.quietHours && (
+                <span className="meta">
+                  {" from "}
+                  <input type="number" min={0} max={23} data-testid="notify-quiet-start" value={prefs.quietHours.start} onChange={(e) => savePrefs({ ...prefs, quietHours: { start: Number(e.target.value), end: prefs.quietHours!.end } })} />
+                  {" to "}
+                  <input type="number" min={0} max={23} data-testid="notify-quiet-end" value={prefs.quietHours.end} onChange={(e) => savePrefs({ ...prefs, quietHours: { start: prefs.quietHours!.start, end: Number(e.target.value) } })} />
+                </span>
+              )}
+            </fieldset>
+          </section>
+        </div>
         <div>
           <p className="sr-only" aria-live="polite">{attention} tasks need attention</p>
           {attentionItems.length > 0 && (
@@ -526,7 +686,7 @@ function App() {
                 <h2>
                   {c.title} <span aria-hidden="true">({cols[c.key].length})</span>
                 </h2>
-                {cols[c.key].length === 0 ? <p className="empty">None</p> : cols[c.key].map((t) => <Card key={t.taskId} card={t} children={childrenOf(model, t.taskId)} onStart={startTask} onReview={(id) => setReviewing(id)} />)}
+                {cols[c.key].length === 0 ? <p className="empty">None</p> : cols[c.key].map((t) => <Card key={t.taskId} card={t} children={childrenOf(model, t.taskId)} state={taskState({ card: t, core, attention: attentionItems })} sessionId={model.sessionId} onStart={startTask} onReview={(id) => setReviewing(id)} />)}
               </section>
             ))}
           </div>
@@ -550,8 +710,42 @@ const PHASE_LABEL: Record<TaskCard["phase"], string> = {
 /** PRD "Home / Fleet" card (M6.6): goal, state, phase, active agents, risk,
  *  latest evidence, next required action, and the subagents nested under
  *  their parent — every fact from a Core event. */
-function Card({ card, children, onStart, onReview }: { card: TaskCard; children?: TaskCard[]; onStart: (id: string) => void; onReview: (id: string) => void }) {
-  const startable = card.state === "Queued" || (card.state === "Waiting" && card.waitReason === "UserInput");
+function Card({ card, children, state, sessionId, onStart, onReview }: { card: TaskCard; children?: TaskCard[]; state: DerivedScreenState; sessionId: string | null; onStart: (id: string) => void; onReview: (id: string) => void }) {
+  // PX-023 "awaiting approval with the exact intent" / "awaiting your
+  // answer": the decision names the intent hash the Core showed (the Core
+  // refuses any other), the answer names the question; both are the
+  // Core's records, not the renderer's.
+  const [deciding, setDeciding] = useState(false);
+  const [decisionNote, setDecisionNote] = useState<string | null>(null);
+  const [answer, setAnswer] = useState("");
+  const decide = async (approve: boolean) => {
+    if (!sessionId || !card.approval || deciding) return;
+    setDeciding(true);
+    try {
+      const r = await window.modbit.resolveApproval(sessionId, card.approval.approvalId, approve, approve ? "approved on the task card" : "denied on the task card", card.approval.intentHash);
+      setDecisionNote(`${r.status.toLowerCase()} at offset ${r.offset}`);
+    } catch (e) {
+      setDecisionNote(`refused: ${(e as Error).message}`);
+    } finally {
+      setDeciding(false);
+    }
+  };
+  const respond = async (optionId: string, text: string) => {
+    if (!sessionId || !card.question || deciding) return;
+    setDeciding(true);
+    try {
+      const r = await window.modbit.respondToQuestion(sessionId, card.taskId, card.question.questionId, optionId, text);
+      setDecisionNote(r.alreadyAnswered ? "already answered" : `answered question ${r.questionId.slice(0, 8)}; resume to continue`);
+      setAnswer("");
+    } catch (e) {
+      setDecisionNote(`refused: ${(e as Error).message}`);
+    } finally {
+      setDeciding(false);
+    }
+  };
+  // A queued task starts; a waiting task resumes with StartTask unless it
+  // waits on an approval (decide it) or capacity (the Core grants it).
+  const startable = card.state === "Queued" || (card.state === "Waiting" && card.waitReason !== "Approval" && card.waitReason !== "Capacity");
   const active = card.agents.running + card.agents.background;
   return (
     <article className="card" tabIndex={0} data-testid="task-card" data-task-id={card.taskId} data-state={card.state} data-phase={card.phase}>
@@ -585,6 +779,43 @@ function Card({ card, children, onStart, onReview }: { card: TaskCard; children?
           next: <strong>{card.nextAction}</strong>
         </div>
       )}
+      <StateLine state={state} testid="task-screen-state" />
+      {card.state === "Waiting" && card.waitReason === "Approval" && card.approval && (
+        <div className="decision" data-testid="task-approval" data-approval-id={card.approval.approvalId}>
+          <span className="meta">
+            {card.approval.toolName} asks for a {card.approval.effectClass} effect · intent <code data-testid="task-approval-intent">{card.approval.intentHash.slice(0, 16)}</code>
+          </span>{" "}
+          <button type="button" className="small" data-testid="task-approve" onClick={() => void decide(true)} disabled={deciding}>
+            Approve
+          </button>{" "}
+          <button type="button" className="small" data-testid="task-deny" onClick={() => void decide(false)} disabled={deciding}>
+            Deny
+          </button>
+        </div>
+      )}
+      {card.question && (
+        <div className="decision" data-testid="task-question" data-question-id={card.question.questionId}>
+          <span className="meta" data-testid="task-question-text">{card.question.text}</span>{" "}
+          {card.question.options.map((o) => (
+            <button type="button" className="small" key={o.id} data-testid="task-answer-option" data-option-id={o.id} onClick={() => void respond(o.id, "")} disabled={deciding}>
+              {o.label}
+            </button>
+          ))}
+          {card.question.allowFreeText && (
+            <>
+              <input data-testid="task-answer-text" value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="your answer" disabled={deciding} />
+              <button type="button" className="small" data-testid="task-answer-send" onClick={() => void respond("", answer)} disabled={deciding || !answer.trim()}>
+                Answer
+              </button>
+            </>
+          )}
+        </div>
+      )}
+      {decisionNote && (
+        <div className="meta" role="status" data-testid="task-decision">
+          {decisionNote}
+        </div>
+      )}
       {children && children.length > 0 && (
         <ul className="children" data-testid="task-children" aria-label="subagents">
           {children.map((c) => (
@@ -613,9 +844,51 @@ function Card({ card, children, onStart, onReview }: { card: TaskCard; children?
 
 /** Review screen (docs/20 "Trusted Code Surface", REQ-EV-0036): every fact on it
  *  is a revision-bound payload from the Core; the renderer holds no buffers. */
-function Review({ taskId, sessionId, onClose }: { taskId: string; sessionId: string; onClose: () => void }) {
+function Review({ taskId, sessionId, card, onClose }: { taskId: string; sessionId: string; card: TaskCard | null; onClose: () => void }) {
   const [bundle, setBundle] = useState<ReviewBundleView | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  // PX-007: the pull request from this candidate. The ack's states are the
+  // screen's: APPROVAL_PENDING (decide the intent shown), OPENED/UPDATED
+  // (the URL), DENIED (the branch stays local; a receipt exists).
+  const [pr, setPr] = useState<PullRequestAckView | null>(null);
+  const [prBusy, setPrBusy] = useState(false);
+  const [prError, setPrError] = useState<string | null>(null);
+  // The revision the pull request names: the one this review showed, which
+  // is the one an acceptance records as the candidate.
+  const candidateRevision = useRef<string | null>(null);
+  const openPullRequest = async (update: boolean) => {
+    if (!bundle || prBusy) return;
+    setPrBusy(true);
+    setPrError(null);
+    try {
+      candidateRevision.current ??= bundle.workspaceRevision;
+      setPr(await window.modbit.openPullRequest(sessionId, taskId, candidateRevision.current, update));
+    } catch (e) {
+      setPrError((e as Error).message);
+    } finally {
+      setPrBusy(false);
+    }
+  };
+  const decidePullRequest = async (approve: boolean) => {
+    if (!pr || pr.status !== "APPROVAL_PENDING" || prBusy) return;
+    setPrBusy(true);
+    setPrError(null);
+    try {
+      const r = await window.modbit.resolveApproval(sessionId, pr.approvalId, approve, approve ? "approved from the review" : "denied from the review", pr.intentHash);
+      if (approve) {
+        // Approved: the same call now pushes and opens, under that approval.
+        setPr(await window.modbit.openPullRequest(sessionId, taskId, candidateRevision.current ?? bundle!.workspaceRevision, false));
+      } else {
+        // Denied: terminal for this attempt; the branch stays local. A later
+        // "Try again" is a new attempt with a new approval.
+        setPr({ ...pr, status: "DENIED", detail: `approval ${r.approvalId.slice(0, 8)} denied at offset ${r.offset}: the branch stays local, nothing reached the forge`, receipts: 0 });
+      }
+    } catch (e) {
+      setPrError((e as Error).message);
+    } finally {
+      setPrBusy(false);
+    }
+  };
   const [rejected, setRejected] = useState<Set<string>>(new Set());
   // REQ-EV-0141: hunks the reviewer marks as context. This changes what
   // retrieval prefers and nothing else — it cannot edit or accept anything.
@@ -708,6 +981,15 @@ function Review({ taskId, sessionId, onClose }: { taskId: string; sessionId: str
     }
   };
   const hunkCount = bundle ? bundle.files.reduce((n, f) => n + f.hunks.length, 0) : 0;
+  const state = reviewState({
+    loading: bundle === null && err === null,
+    // A refused patch (STALE_REVISION: the review shown is behind the
+    // workspace) is this screen's error until the review is reloaded.
+    error: err ?? prError ?? (patchNote?.startsWith("refused") ? patchNote : null),
+    bundle,
+    gate: card?.gate ?? null,
+    pullRequest: pr ? { status: pr.status, detail: pr.detail, evidence: pr.status === "DENIED" && pr.receipts === 0 ? `approval ${pr.approvalId.slice(0, 8)}` : `${pr.receipts} receipt(s)${pr.url ? `; ${pr.url}` : ""}` } : null,
+  });
   const selectionNote = selectionError
     ? `selection not recorded: ${selectionError}`
     : context.size > 0
@@ -729,6 +1011,7 @@ function Review({ taskId, sessionId, onClose }: { taskId: string; sessionId: str
           Back to fleet
         </button>
       </div>
+      <StateLine state={state} testid="review-state" />
       {err && (
         <div className="banner" data-kind="error" role="alert" data-testid="review-error">
           <strong>Error</strong> — {err} <button type="button" onClick={() => void load()}>Reload</button>
@@ -864,6 +1147,46 @@ function Review({ taskId, sessionId, onClose }: { taskId: string; sessionId: str
               <button type="button" data-testid="review-return" onClick={() => void decide("RETURN")} disabled={busy || result !== null || bundle.taskState !== "ReadyForReview"}>
                 Return to work
               </button>
+            </div>
+            <h3>Pull request</h3>
+            <div className="meta">The push and the forge write are one protected effect: it runs only after you approve the exact intent shown, with the token the Core holds.</div>
+            <div className="actions" data-testid="pull-request" data-status={pr?.status ?? "NONE"}>
+              {(!pr || pr.status === "DENIED" || pr.status === "FAILED") && (
+                <button type="button" data-testid="pr-open" onClick={() => void openPullRequest(false)} disabled={prBusy || (bundle.taskState !== "ReadyForReview" && !result?.startsWith("Accepted") && bundle.taskState !== "Completed")}>
+                  {prBusy ? "Asking the Core…" : pr ? "Try again" : "Open pull request"}
+                </button>
+              )}
+              {pr?.status === "APPROVAL_PENDING" && (
+                <span data-testid="pr-approval">
+                  <span className="meta">
+                    approve intent <code data-testid="pr-intent">{pr.intentHash.slice(0, 16)}</code> (branch {pr.branch}, revision {pr.candidateRevision})?
+                  </span>{" "}
+                  <button type="button" data-testid="pr-approve" onClick={() => void decidePullRequest(true)} disabled={prBusy}>
+                    Approve and push
+                  </button>{" "}
+                  <button type="button" data-testid="pr-deny" onClick={() => void decidePullRequest(false)} disabled={prBusy}>
+                    Deny
+                  </button>
+                </span>
+              )}
+              {(pr?.status === "OPENED" || pr?.status === "UPDATED") && (
+                <span className="meta" data-testid="pr-result">
+                  {pr.status === "OPENED" ? "opened" : "updated"} #{pr.number} at {pr.url} · head {pr.headSha.slice(0, 12)} · {pr.receipts} receipt(s){pr.replayed ? " · replayed" : ""}{" "}
+                  <button type="button" className="small" data-testid="pr-update" onClick={() => void openPullRequest(true)} disabled={prBusy}>
+                    Update
+                  </button>
+                </span>
+              )}
+              {pr?.status === "DENIED" && (
+                <span className="meta" role="status" data-testid="pr-denied">
+                  denied: {pr.detail}
+                </span>
+              )}
+              {prError && (
+                <span className="meta" role="alert" data-testid="pr-error">
+                  {prError}
+                </span>
+              )}
             </div>
           </aside>
         </div>

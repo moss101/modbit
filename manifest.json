@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 1077,
-    "docs_bytes": 1145057
+    "root_and_tooling": 1080,
+    "docs_bytes": 1150112
   },
   "sections": [
     {
@@ -392,8 +392,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "UX flows, onboarding and interaction budgets",
-      "bytes": 6832,
-      "sha256": "675100f531e76a11374f7b367f144214017ab12d7670daf9f21a30b131a6d562"
+      "bytes": 11887,
+      "sha256": "3e2952fe0ec19720f1328928448576083f8637ac697c7911d7de6184bd61688c"
     },
     {
       "path": "docs/40_EVIDENCE_DERIVED_REQUIREMENT_LEDGER.md",
@@ -947,9 +947,14 @@
       "sha256": "81b8eaa512708b90aac8d8f4e5cf2f83894aefefe97ed1a6c0e295ca6a0621b8"
     },
     {
+      "path": "docs/decisions/DR-M6-003-screen-state-matrix-later-substrate.md",
+      "bytes": 5758,
+      "sha256": "5c54d0a69d84806b1b8665b2080d2a504c046b9364604d4dafb4a0dd6bd0190c"
+    },
+    {
       "path": "docs/decisions/README.md",
-      "bytes": 3709,
-      "sha256": "d4a98a1bf6fb2a5e595b20334e1c05d7f486f6f4b633836cdfa55e19db991ff3"
+      "bytes": 3901,
+      "sha256": "9bb9d01065dbca3babd78cdfa104e763f5bcfee319dd8a426bb48905d982b67a"
     },
     {
       "path": "evidence/dossier-epr-v1.1/baseline.json",
@@ -6195,6 +6200,16 @@
       "path": "evidence/m6/PX-010/evidence.json",
       "bytes": 1529,
       "sha256": "7e8779ac9f2f4d52a2b3f3a9dc4ab67690e6f3a89f543afd188841d373f56106"
+    },
+    {
+      "path": "evidence/m6/PX-023/TASK_CARD.md",
+      "bytes": 6394,
+      "sha256": "17d004ce3e769cecab0db0ffd0b173db7b4e4e3b14423a5d576918bc8799dcad"
+    },
+    {
+      "path": "evidence/m6/PX-023/evidence.json",
+      "bytes": 1586,
+      "sha256": "1be70b10e07c8724e7d9a968fe59deba439eb7ee80e92ed54f4ec82d6e139990"
     },
     {
       "path": "graph/PROJECT_GRAPH.md",

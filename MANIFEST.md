@@ -15,13 +15,13 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 |---|---|---:|---:|
 | Authority and orientation | 00–09 | 8 | 65205 |
 | Architecture and subsystems | 10–29 | 20 | 272945 |
-| Implementation specifications | 30–39 | 10 | 101564 |
+| Implementation specifications | 30–39 | 10 | 106619 |
 | Requirements, tasks and traceability | 40–49 | 10 | 351596 |
 | Verification and testing | 50–69 | 15 | 203744 |
 | Delivery and operations | 70–79 | 7 | 33831 |
 | Agent process and governance | 80–97 | 18 | 109299 |
 | Live state | 98–99 | 1 | 6873 |
-| **Total docs** | | **89** | **1145057** |
+| **Total docs** | | **89** | **1150112** |
 
 ## Specification files (`docs/`)
 
@@ -64,7 +64,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 36 | `docs/36_BUILD_BUY_DEPENDENCY_AND_LICENSE_POLICY.md` | Build / Buy / Dependency / License Decisions | implementation | 3363 | `538f768996bec4254231f7671517e68bea6cf529f51b60588a5b2dd91007071a` |
 | 37 | `docs/37_EXISTING_CODE_DONOR_AND_REUSE_POLICY.md` | Existing-Code Donor and Reuse Policy | implementation | 3835 | `4dfad8325e6ed11e390952f46ff14caf6fa30fc72142f1ae58e32a22a620d4ee` |
 | 38 | `docs/38_EXECUTION_POLICY_CONTRACTS_AND_ALGORITHMS.md` | Execution policy contracts and algorithms | implementation | 24554 | `4cf67ccec6005ec83478e6677a265d1fc79ce1241e4d8abce566784c01c1e4d3` |
-| 39 | `docs/39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md` | UX flows, onboarding and interaction budgets | implementation | 6832 | `675100f531e76a11374f7b367f144214017ab12d7670daf9f21a30b131a6d562` |
+| 39 | `docs/39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md` | UX flows, onboarding and interaction budgets | implementation | 11887 | `3e2952fe0ec19720f1328928448576083f8637ac697c7911d7de6184bd61688c` |
 | 40 | `docs/40_EVIDENCE_DERIVED_REQUIREMENT_LEDGER.md` | Evidence-Derived Requirement Ledger — Build Edition | requirements | 76383 | `d673606834f48960f015f4719c0b6fd956988469c39348aa859c4c0d91e20336` |
 | 41 | `docs/41_EVIDENCE_DERIVED_IMPLEMENTATION_TASKS.md` | Evidence-Derived Implementation Tasks | requirements | 149169 | `90aadd632622877351db607f6c521b6b7d121ad55690ef0f313680b31dd26311` |
 | 42 | `docs/42_EVIDENCE_DERIVED_QUALIFICATION_TEST_MATRIX.md` | Evidence-Derived Qualification Test Matrix | requirements | 49179 | `9bb8430c3b2cf0e06a7caf7caf1b40ae3ccd61dc07f36475029b557bb94ad292` |
@@ -139,7 +139,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `docs/decisions/DR-M5-001-reschedule-mcp-media-to-m9.md` | source patch provenance | 2731 | `496c9d80ff66916b11aa66e2fa3368e18a40ae472e5cd488699cd9b589cbd1de` |
 | `docs/decisions/DR-M6-001-vscode-adapter-live-model-half.md` | source patch provenance | 3909 | `4c8a9bcf3c18e23bbcc8d08c0e510786bf517102c9965ad56b331359fdfcd88c` |
 | `docs/decisions/DR-M6-002-forge-adapter-live-github-half.md` | source patch provenance | 4918 | `81b8eaa512708b90aac8d8f4e5cf2f83894aefefe97ed1a6c0e295ca6a0621b8` |
-| `docs/decisions/README.md` | source patch provenance | 3709 | `d4a98a1bf6fb2a5e595b20334e1c05d7f486f6f4b633836cdfa55e19db991ff3` |
+| `docs/decisions/DR-M6-003-screen-state-matrix-later-substrate.md` | source patch provenance | 5758 | `5c54d0a69d84806b1b8665b2080d2a504c046b9364604d4dafb4a0dd6bd0190c` |
+| `docs/decisions/README.md` | source patch provenance | 3901 | `9bb9d01065dbca3babd78cdfa104e763f5bcfee319dd8a426bb48905d982b67a` |
 | `evidence/dossier-epr-v1.1/baseline.json` | retained evidence | 11128 | `ae11c9be07272788d2957bff45bc1333f879e121d2b5205ebc01ce780ec62543` |
 | `evidence/dossier-epr-v1.1/tests.log` | retained evidence | 2071 | `2f4bbebb6db1f0f0c6802f8dee65e5d6aa7933db6d1bda28a8acd70aa9bd88b3` |
 | `evidence/dossier-epr-v1.1/validation.json` | retained evidence | 14010 | `288bf2fff83122240110c926d18d8ef616a9257fc62bc54eb70b536088dfbfb5` |
@@ -1189,6 +1190,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m6/PX-010/TASK_CARD.md` | retained evidence | 3186 | `184cc3a906cb58faf8d6cbdc4d0e8a9a038d6bc2bcd6dc54b0e20bb10088f8f1` |
 | `evidence/m6/PX-010/ci-run-34761496840.json` | retained evidence | 39186 | `159ddd7a13c16036e1d88834e377b4506a18e6bab00a369bd1384b5c531fd0b6` |
 | `evidence/m6/PX-010/evidence.json` | retained evidence | 1529 | `7e8779ac9f2f4d52a2b3f3a9dc4ab67690e6f3a89f543afd188841d373f56106` |
+| `evidence/m6/PX-023/TASK_CARD.md` | retained evidence | 6394 | `17d004ce3e769cecab0db0ffd0b173db7b4e4e3b14423a5d576918bc8799dcad` |
+| `evidence/m6/PX-023/evidence.json` | retained evidence | 1586 | `1be70b10e07c8724e7d9a968fe59deba439eb7ee80e92ed54f4ec82d6e139990` |
 | `graph/PROJECT_GRAPH.md` | human view of the graph | 40785 | `b871bd94cf8037ff3652811cd63003930f48bedb2f08c72e15a23fa5bc04f8a8` |
 | `graph/project-graph.json` | project driver graph with live status | 1447063 | `69fc6090de50e9694116fbb9460fa5217c98ff6994891f7fc9ed31494e3e90ad` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 53213 | `64cc2c11bf3f398ad20b241e372d930e4787962d6b4a8acb36b5845a1c5f7f81` |

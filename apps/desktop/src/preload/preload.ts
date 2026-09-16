@@ -34,6 +34,33 @@ export interface ReviewBundleView {
   receipts: number;
   evidenceLinks: string[];
 }
+export interface TaskStatusView {
+  state: string;
+  waitReason: string;
+  runState: string;
+  loopAlive: boolean;
+  lastOffset: string;
+  attentionReason: string;
+  failureClass: string;
+  failureCode: string;
+  retryable: boolean;
+  userAction: string;
+  recoveryPath: string;
+  evidenceRefs: string[];
+}
+export interface PullRequestAckView {
+  status: string;
+  approvalId: string;
+  intentHash: string;
+  number: string;
+  url: string;
+  branch: string;
+  headSha: string;
+  candidateRevision: string;
+  receipts: number;
+  replayed: boolean;
+  detail: string;
+}
 export interface CodeView {
   workspaceRevision: string;
   fileRevision: string;
@@ -120,6 +147,8 @@ export interface ModbitBridge {
   languages(): Promise<{ language: string; tier: string; label: string; fixture: string; proven: string[]; provisional: string[]; notClaimed: string[]; note: string }[]>;
   contextInspector(taskId: string): Promise<ContextInspectorSummary>;
   taskEconomics(taskId: string): Promise<TaskEconomicsSummary>;
+  /** PX-023: the typed task status (REQ-EV-0073) a snapshot does not carry. */
+  taskStatus(taskId: string): Promise<TaskStatusView>;
   attention(sessionId: string): Promise<{ lastOffset: string; items: AttentionItem[] }>;
   setTaskSelection(
     sessionId: string,
@@ -136,6 +165,15 @@ export interface ModbitBridge {
   decideReview(sessionId: string, taskId: string, decision: "ACCEPT" | "RETURN", rejected: { path: string; index: number }[], note: string, expectedWorkspaceRevision: string): Promise<{ taskState: string; commit: string; reverted: string[]; workspaceRevision: string }>;
   /** PX-005: a one-hunk direct edit through the Core's ChangeTransaction, bound to the revisions the review showed. */
   applyUserPatch(sessionId: string, taskId: string, patch: { path: string; old: string; new: string; expectedWorkspaceRevision: string; expectedFileRevision: string }): Promise<{ workspaceRevision: string; previousRevision: string; fileRevision: string; beforeHash: string; matchTier: string; offset: string; replayed: boolean }>;
+  /** PX-007: open or update the task's pull request from the accepted candidate; APPROVAL_PENDING first, then OPENED/UPDATED or DENIED. */
+  openPullRequest(sessionId: string, taskId: string, expectedCandidateRevision: string, update: boolean): Promise<PullRequestAckView>;
+  /** PX-001: decide a protected effect, naming the intent hash shown. */
+  resolveApproval(sessionId: string, approvalId: string, approve: boolean, reason: string, intentHash: string): Promise<{ approvalId: string; status: string; offset: string }>;
+  /** REQ-EV-0222: answer the agent's typed question (option id or free text); resume with startTask. */
+  respondToQuestion(sessionId: string, taskId: string, questionId: string, optionId: string, text: string): Promise<{ questionId: string; alreadyAnswered: boolean }>;
+  /** PX-023: hand one notification to the OS (main keeps a delivery log). */
+  deliverNotification(id: string, title: string, body: string): Promise<{ shown: boolean }>;
+  notificationLog(): Promise<{ id: string; title: string; body: string; atMs: number; shown: boolean }[]>;
   subscribe(sessionId: string, afterOffset: string): Promise<void>;
   onEvent(cb: (e: unknown) => void): () => void;
   onCoreStatus(cb: (s: unknown) => void): () => void;
@@ -154,6 +192,7 @@ const bridge: ModbitBridge = {
   languages: () => ipcRenderer.invoke("languages:list"),
   contextInspector: (taskId: string) => ipcRenderer.invoke("context:inspector", taskId),
   taskEconomics: (taskId: string) => ipcRenderer.invoke("task:economics", taskId),
+  taskStatus: (taskId: string) => ipcRenderer.invoke("task:status", taskId),
   attention: (sessionId: string) => ipcRenderer.invoke("attention:list", sessionId),
   setTaskSelection: (sessionId: string, taskId: string, selection: unknown) => ipcRenderer.invoke("task:select", sessionId, taskId, selection),
   createSession: () => ipcRenderer.invoke("session:create"),
@@ -165,6 +204,11 @@ const bridge: ModbitBridge = {
   codeView: (taskId, path, expectedFileRevision) => ipcRenderer.invoke("review:codeView", taskId, path, expectedFileRevision ?? ""),
   decideReview: (sessionId, taskId, decision, rejected, note, expectedWorkspaceRevision) => ipcRenderer.invoke("review:decide", sessionId, taskId, decision, rejected, note, expectedWorkspaceRevision),
   applyUserPatch: (sessionId, taskId, patch) => ipcRenderer.invoke("review:patch", sessionId, taskId, patch),
+  openPullRequest: (sessionId, taskId, expectedCandidateRevision, update) => ipcRenderer.invoke("review:pullRequest", sessionId, taskId, expectedCandidateRevision, update),
+  resolveApproval: (sessionId, approvalId, approve, reason, intentHash) => ipcRenderer.invoke("approval:resolve", sessionId, approvalId, approve, reason, intentHash),
+  respondToQuestion: (sessionId, taskId, questionId, optionId, text) => ipcRenderer.invoke("question:respond", sessionId, taskId, questionId, optionId, text),
+  deliverNotification: (id, title, body) => ipcRenderer.invoke("notify:deliver", id, title, body),
+  notificationLog: () => ipcRenderer.invoke("notify:log"),
   subscribe: (sessionId, afterOffset) => ipcRenderer.invoke("events:subscribe", sessionId, afterOffset),
   onEvent: (cb) => {
     const listener = (_: unknown, e: unknown) => cb(e);

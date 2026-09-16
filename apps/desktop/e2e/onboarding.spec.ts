@@ -152,6 +152,10 @@ test("onboarding: an invalid key, an unreachable endpoint and a missing reposito
     try {
       // No provider: a task can be created from the composer but does not start.
       await expect(page.getByTestId("composer-no-provider")).toBeVisible();
+      // PX-023: the New Task screen's degraded state names the missing provider.
+      await expect(page.getByTestId("composer-state")).toHaveAttribute("data-kind", "degraded");
+      await expect(page.getByTestId("composer-state-label")).toHaveText("provider unavailable");
+      await expect(page.getByTestId("composer-state-next")).toContainText("provider is set up");
       const repo = smallRepo();
       await page.getByTestId("goal").fill("summarise");
       await page.getByTestId("workspace").fill(repo);
@@ -160,6 +164,8 @@ test("onboarding: an invalid key, an unreachable endpoint and a missing reposito
       await expect(card.getByTestId("task-state")).toHaveText("Queued", { timeout: 15_000 });
       await card.getByTestId("task-start").click();
       await expect(page.getByTestId("banner-error")).toContainText("NO_PROVIDER", { timeout: 15_000 });
+      await expect(page.getByTestId("fleet-state")).toHaveAttribute("data-kind", "error");
+      await expect(page.getByTestId("fleet-state-cause")).toContainText("NO_PROVIDER");
       // An invalid key: the provider refuses it and the step says so.
       await page.getByTestId("provider-key").fill("sk-invalid");
       await page.getByTestId("provider-url").fill(url);
@@ -187,6 +193,9 @@ test("onboarding: an invalid key, an unreachable endpoint and a missing reposito
       await page.getByTestId("workspace").fill(join(tmpdir(), "modbit-no-such-repository-" + Date.now()));
       await page.getByTestId("run").click();
       await expect(page.getByTestId("banner-error")).toContainText("does not exist", { timeout: 15_000 });
+      await expect(page.getByTestId("composer-state")).toHaveAttribute("data-kind", "error");
+      await expect(page.getByTestId("composer-state-label")).toHaveText("repository untrusted or missing");
+      await expect(page.getByTestId("composer-state-cause")).toContainText("REPOSITORY_MISSING");
       // And the task that could not start before starts now that a provider
       // exists and its repository was trusted by the composer.
       await card.getByTestId("task-start").click();
