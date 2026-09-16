@@ -210,7 +210,11 @@ test("keyboard: every screen by keyboard only — shortcuts, list and review nav
     // ReadyForReview within one poll; while it is Running the focus is on
     // the moved card (the same retention the attention move proved above).
     await expect(alpha.getByTestId("task-state")).toHaveText(/Running|ReadyForReview/, { timeout: 60_000 });
-    if ((await alpha.getByTestId("task-state").textContent()) === "Running") await expectFocusedTask(page, alphaId, "focus survives Waiting → Running (the card moves columns)");
+    // While it is Running the focus is on the moved card; the moment it is
+    // ReadyForReview the Review takes the focus (checked below).
+    await expect
+      .poll(async () => ((await alpha.getByTestId("task-state").textContent()) === "Running" ? await focusedTaskId(page) : alphaId), { message: "focus survives Waiting → Running (the card moves columns)", timeout: 60_000 })
+      .toBe(alphaId);
     // The first result opens the Review on the diff (docs/39): the focus
     // moves into it; Escape returns to the card.
     await expect(page.getByTestId("column-readyForReview").getByTestId("task-card").filter({ hasText: "alpha task" })).toHaveCount(1, { timeout: 90_000 });
