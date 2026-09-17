@@ -480,6 +480,10 @@ pub enum TaskEvent {
     BrowserNavigated {
         /// The session.
         browser_session_id: String,
+        /// The tool call this record belongs to (IMP-EV-0147: browser
+        /// evidence links to its run step through the call; empty before it).
+        #[serde(default)]
+        tool_call_id: String,
         /// URL.
         url: String,
         /// Title (page content).
@@ -516,6 +520,10 @@ pub enum TaskEvent {
     BrowserActionPerformed {
         /// The session.
         browser_session_id: String,
+        /// The tool call this record belongs to (IMP-EV-0147: browser
+        /// evidence links to its run step through the call; empty before it).
+        #[serde(default)]
+        tool_call_id: String,
         /// The entity's reference.
         reference: String,
         /// `click` | `fill` | `select` | `check` | `uncheck` | `press`.
@@ -549,6 +557,10 @@ pub enum TaskEvent {
     BrowserRegionCaptured {
         /// The session.
         browser_session_id: String,
+        /// The tool call this record belongs to (IMP-EV-0147: browser
+        /// evidence links to its run step through the call; empty before it).
+        #[serde(default)]
+        tool_call_id: String,
         /// The region's reference.
         reference: String,
         /// Role (`canvas`, `image`, …).
@@ -571,6 +583,10 @@ pub enum TaskEvent {
     BrowserCredentialFilled {
         /// The session.
         browser_session_id: String,
+        /// The tool call this record belongs to (IMP-EV-0147: browser
+        /// evidence links to its run step through the call; empty before it).
+        #[serde(default)]
+        tool_call_id: String,
         /// The credential's handle.
         credential: String,
         /// The origin it is bound to (the page's origin at the fill).
@@ -614,6 +630,10 @@ pub enum TaskEvent {
     BrowserPageObserved {
         /// The session.
         browser_session_id: String,
+        /// The tool call this record belongs to (IMP-EV-0147: browser
+        /// evidence links to its run step through the call; empty before it).
+        #[serde(default)]
+        tool_call_id: String,
         /// The host's state version.
         state_version: u64,
         /// Content fingerprint of the compiled page.

@@ -258,7 +258,7 @@ pub enum HostResponse {
     },
     /// The host could not do it.
     Error {
-        /// `NO_SUCH_SESSION`, `NAVIGATION_BLOCKED`, `CDP`, `TIMEOUT`, `USER_HAS_CONTROL`, …
+        /// `NO_SUCH_SESSION`, `NAVIGATION_BLOCKED`, `CDP`, `TIMEOUT`, `HUMAN_ACTIVE`, …
         code: String,
         /// Detail (untrusted when it quotes the page).
         message: String,
@@ -349,6 +349,26 @@ pub trait BrowserPort: Send + Sync {
         let _ = origin;
         Box::pin(async { Vec::new() })
     }
+
+    /// Record a transition the session observed (IMP-EV-0280).
+    fn remember_transition<'a>(
+        &'a self,
+        session: BrowserSessionId,
+        transition: KnownTransition,
+    ) -> BoxFuture<'a, ()> {
+        let _ = (session, transition);
+        Box::pin(async {})
+    }
+
+    /// The transitions known from a page at `fingerprint` (IMP-EV-0280).
+    fn transitions_from<'a>(
+        &'a self,
+        session: BrowserSessionId,
+        fingerprint: &'a str,
+    ) -> BoxFuture<'a, Vec<KnownTransition>> {
+        let _ = (session, fingerprint);
+        Box::pin(async { Vec::new() })
+    }
 }
 
 /// A credential the host holds for one origin (M7.8, docs/22
@@ -366,6 +386,28 @@ pub struct CredentialHandle {
     pub origin: String,
     /// The account name (not secret; it may be filled and read back).
     pub username: String,
+}
+
+/// A transition the session observed (IMP-EV-0280, docs/22 "Verification"):
+/// from a page at one fingerprint, an action on a reference led to a page
+/// at another — evidence and a cache for the model, never authority: a
+/// changed page has another fingerprint and no transition applies to it.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct KnownTransition {
+    /// The page's fingerprint before the action.
+    pub from_fingerprint: String,
+    /// The entity acted on.
+    pub reference: String,
+    /// `click` | `fill` | …
+    pub action: String,
+    /// The page's fingerprint after.
+    pub to_fingerprint: String,
+    /// The URL after.
+    pub to_url: String,
+    /// Whether the action's declared postcondition held (`None`: none declared).
+    pub verified: Option<bool>,
+    /// How many times this transition was observed.
+    pub times: u32,
 }
 
 /// The origin (`scheme://host[:port]`, lower-case) of an http(s) URL.

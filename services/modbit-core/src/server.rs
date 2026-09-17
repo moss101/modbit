@@ -1010,7 +1010,7 @@ async fn attach_browser_host(
     } else {
         p.host_kind.clone()
     };
-    let Some(lease) = core
+    let lease = match core
         .browser
         .attach(
             bsid,
@@ -1021,8 +1021,20 @@ async fn attach_browser_host(
             },
         )
         .await
-    else {
-        return reject(cid, "NO_SUCH_SESSION", bsid.to_string());
+    {
+        Ok(l) => l,
+        Err(crate::browser::AttachRefusal::NoSuchSession) => {
+            return reject(cid, "NO_SUCH_SESSION", bsid.to_string());
+        }
+        Err(crate::browser::AttachRefusal::HostConflict { kind }) => {
+            // IMP-EV-0084 / IMP-EV-0110: one controller per session — a
+            // second host, on another connection, does not take it over.
+            return reject(
+                cid,
+                "HOST_CONFLICT",
+                format!("a {kind} host already holds browser session {bsid} on a live connection"),
+            );
+        }
     };
     let offset = match crate::runtime::append_batch(
         &mut *core.store.lock().await,

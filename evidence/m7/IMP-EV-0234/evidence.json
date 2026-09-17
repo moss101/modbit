@@ -1,0 +1,15 @@
+{
+ "task": "IMP-EV-0234",
+ "requirement": "REQ-EV-0234",
+ "qual": "QUAL-EV-0234",
+ "tests": [
+  "qual_ev_0082_0234_0277_0282_an_accessible_form_needs_no_pixels_and_a_canvas_escalates_explicitly",
+  "qual_m7_5_a_visual_region_is_captured_targeted_and_clicked_by_a_point_with_the_fallback_on_record"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "`qual_ev_0082_0234_0277_0282_…`: the accessible fixture completes with zero captures; the canvas fixture escalates once, region-only, with the reason.",
+ "audit": "IMPLEMENTED by M7.2 (structural snapshot) and M7.5 (targeted capture)",
+ "limitations": "A full-page screenshot as last-resort diagnostic evidence is not offered as a tool.",
+ "ci": ""
+}

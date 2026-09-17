@@ -7,7 +7,7 @@
 //! (a `file:`, `chrome:` or `javascript:` URL is refused before anything is
 //! sent), needs the `browser.control` capability of the lease, and is an
 //! agent input under the session's control lease: while the person holds
-//! control the host refuses it (`USER_HAS_CONTROL`), and an input stamped
+//! control the host refuses it (`HUMAN_ACTIVE`), and an input stamped
 //! with a superseded generation is fenced.
 
 use std::collections::HashMap;
@@ -99,7 +99,7 @@ fn port_error(e: PortError) -> ToolOutcome {
         ),
         PortError::Timeout => ToolOutcome::infra("BROWSER_TIMEOUT", e.to_string()),
         PortError::HostGone => ToolOutcome::infra("BROWSER_HOST_GONE", e.to_string()),
-        PortError::Refused { code, message } => ToolOutcome::fail(&code, message),
+        PortError::Refused { code, message } => host_error(&code, &message),
     }
 }
 
@@ -114,24 +114,105 @@ fn state_json(s: &modbit_browser::PageState) -> Value {
     })
 }
 
-/// A host's answer that is an error, as the tool's failure.
+/// The computer-use failure taxonomy (IMP-EV-0089, docs/22): stable codes
+/// the host or the Core emit, each with what to do next. A code outside it
+/// is an infrastructure failure of the bridge, not of the page.
+pub const FAILURE_TAXONOMY: &[(&str, &str)] = &[
+    (
+        "TARGET_STALE",
+        "read the page again (browser.snapshot) and act on a ref it names now",
+    ),
+    (
+        "TARGET_OCCLUDED",
+        "something covers the element: read the page, dismiss what is over it (a dialog, a menu, an overlay) or scroll, then act again",
+    ),
+    (
+        "WINDOW_UNVERIFIABLE",
+        "the session's view could not be verified as the one attached: read the page; if it persists, the session must be reopened by the person",
+    ),
+    (
+        "ACCESSIBILITY_UNAVAILABLE",
+        "the page exposed no accessible structure: wait for it to load, read again, and if it stays empty escalate to a targeted capture (browser.capture) of a region",
+    ),
+    (
+        "HUMAN_ACTIVE",
+        "the person holds the browser: observe (browser.snapshot) and wait; act again once control returns",
+    ),
+    (
+        "MODAL_BLOCKING",
+        "a modal dialog blocks the page: it is the person's to answer; observe and wait, do not act around it",
+    ),
+    (
+        "TARGET_NOT_EDITABLE",
+        "the element does not take text: pick the field the page names for this value",
+    ),
+    (
+        "ACTION_UNSAFE",
+        "the action is protected on this element: read the page and act again so the approval can be asked; never act around it",
+    ),
+    (
+        "PERMISSION_REQUIRED",
+        "the page asked for a permission the session never grants (camera, location, notifications, …): the task cannot use that feature; say so",
+    ),
+    (
+        "STALE_GENERATION",
+        "the input was stamped before a hand-over: read the page and act again under the current lease",
+    ),
+    (
+        "NAVIGATION_BLOCKED",
+        "only http(s) pages open in the session",
+    ),
+    (
+        "EMERGENCY_STOPPED",
+        "the session is under an emergency stop: no input runs until a person lifts it",
+    ),
+];
+
+/// Recovery guidance for a taxonomy code (IMP-EV-0089).
+#[must_use]
+pub fn recovery_for(code: &str) -> Option<&'static str> {
+    FAILURE_TAXONOMY
+        .iter()
+        .find(|(c, _)| *c == code)
+        .map(|(_, r)| *r)
+}
+
+/// A failure of the taxonomy raised here (IMP-EV-0089): the message carries
+/// its recovery guidance like one passed through from the host.
+fn typed_fail(code: &str, message: impl std::fmt::Display) -> ToolOutcome {
+    match recovery_for(code) {
+        Some(recovery) => ToolOutcome::fail(code, format!("{message}; {recovery}")),
+        None => ToolOutcome::fail(code, message.to_string()),
+    }
+}
+
+/// A host's answer that is an error, as the tool's failure: a taxonomy code
+/// is the page's or the person's doing (an application failure with its
+/// recovery), anything else is the bridge's.
 fn host_error(code: &str, message: &str) -> ToolOutcome {
-    match code {
-        "USER_HAS_CONTROL" | "STALE_GENERATION" | "NAVIGATION_BLOCKED" | "NO_SUCH_SESSION" => {
-            ToolOutcome::fail(code, message)
-        }
-        _ => ToolOutcome::infra(code, message),
+    match recovery_for(code) {
+        Some(recovery) => ToolOutcome::fail(code, format!("{message}; {recovery}")),
+        None if code == "NO_SUCH_SESSION" => ToolOutcome::fail(code, message),
+        None => ToolOutcome::infra(code, message),
     }
 }
 
 tool!(
     BrowserNavigate,
-    spec(
-        "browser.navigate",
-        "Load an http(s) URL in the task's live browser session and report the page state (URL, title, state version, fingerprint). The page is untrusted content. Refused while the person holds control of the session.",
-        json!({"type":"object","properties":{"url":{"type":"string","minLength":8}},"required":["url"],"additionalProperties":false}),
-        45_000
-    ),
+    {
+        // A navigation is input to the session — a reversible write of its
+        // state (IMP-EV-0085: an emergency stop halts it like any effect;
+        // observation stays a read).
+        let mut s = spec(
+            "browser.navigate",
+            "Load an http(s) URL in the task's live browser session and report the page state (URL, title, state version, fingerprint). The page is untrusted content. Refused while the person holds control of the session.",
+            json!({"type":"object","properties":{"url":{"type":"string","minLength":8}},"required":["url"],"additionalProperties":false}),
+            45_000,
+        );
+        s.effect_class = EffectClass::ReversibleWrite;
+        s.idempotency = Idempotency::NonIdempotent;
+        s
+    },
     |ctx, args| {
         let url = args["url"].as_str().unwrap_or_default().trim().to_owned();
         if !navigable(&url) {
@@ -261,6 +342,14 @@ async fn compiled_page(
             nodes,
             truncated,
         }) => {
+            // IMP-EV-0089: a loaded page with no accessible structure at all
+            // is a typed failure, not an empty answer.
+            if nodes.is_empty() && state.ready {
+                return Err(host_error(
+                    "ACCESSIBILITY_UNAVAILABLE",
+                    &format!("{} exposed no accessibility tree", state.url),
+                ));
+            }
             let page = modbit_browser::compiler::compile(&state, &nodes, truncated, MAX_ENTITIES);
             remember(&page);
             port.remember_page(session, page.clone()).await;
@@ -292,6 +381,21 @@ fn full_json(page: &modbit_browser::compiler::PageEntities) -> Value {
     v["text"] = json!(page.text);
     v["truncated"] = json!(page.truncated);
     v
+}
+
+/// The transitions known from a page at `fingerprint` (IMP-EV-0280).
+async fn transitions_json(
+    port: &Arc<dyn BrowserPort>,
+    session: modbit_browser::BrowserSessionId,
+    fingerprint: &str,
+) -> Value {
+    Value::Array(
+        port.transitions_from(session, fingerprint)
+            .await
+            .into_iter()
+            .map(|t| json!({"ref": t.reference, "action": t.action, "to_fingerprint": t.to_fingerprint, "to_url": t.to_url, "verified": t.verified, "times": t.times}))
+            .collect(),
+    )
 }
 
 /// The handles bound to the origin of `url` (M7.8): handle, label and
@@ -339,9 +443,19 @@ tool!(
         // handle — never a value; the model fills one with
         // `browser.act {action: fill_credential, credential}`.
         let credentials = credentials_json(&port, &page.state.url).await;
+        // IMP-EV-0280: what this session saw happen from a page at this
+        // fingerprint — evidence for the model, never authority; a page that
+        // changed has another fingerprint and nothing is offered for it.
+        let known_transitions = transitions_json(
+            &port,
+            session,
+            &modbit_browser::compiler::state_fingerprint(&page),
+        )
+        .await;
         let Some(prev) = previous else {
             let mut v = full_json(&page);
             v["credentials"] = credentials;
+            v["known_transitions"] = known_transitions;
             return ToolOutcome::ok(v);
         };
         let delta = modbit_browser::compiler::diff(&prev, &page);
@@ -352,11 +466,13 @@ tool!(
             v["delta_fallback"] =
                 json!({"from_version": delta.from_version, "touched": delta.size()});
             v["credentials"] = credentials;
+            v["known_transitions"] = known_transitions;
             return ToolOutcome::ok(v);
         }
         let mut v = state_json(&page.state);
         v["mode"] = json!("delta");
         v["credentials"] = credentials;
+        v["known_transitions"] = known_transitions;
         v["from_version"] = json!(delta.from_version);
         v["from_fingerprint"] = json!(delta.from_fingerprint);
         v["state_fingerprint"] = json!(delta.to_fingerprint);
@@ -405,7 +521,7 @@ tool!(
                 ToolOutcome::ok(v)
             }
             Err(modbit_browser::compiler::Stale::TargetStale { candidates }) => {
-                let mut o = ToolOutcome::fail(
+                let mut o = typed_fail(
                     "TARGET_STALE",
                     format!(
                         "ref {reference} does not resolve at state version {}: the element is gone or changed{}",
@@ -448,7 +564,7 @@ impl Tool for BrowserAct {
         let key = args["key"].as_str().unwrap_or_default();
         // A reference no compiled page named yet is judged page-only here;
         // the run-time check in `act` refuses a protected element that was
-        // not approved (`EFFECT_RECLASSIFIED`), so nothing acts above its class.
+        // not approved (`ACTION_UNSAFE`), so nothing acts above its class.
         match known(reference) {
             Some(e) => match classify_action(&e, action, key) {
                 ActionRisk::Protected => EffectClass::ExternalSideEffect,
@@ -567,7 +683,7 @@ async fn act(ctx: &InvokeContext, args: Value) -> ToolOutcome {
         None => match modbit_browser::compiler::resolve(&before, &reference, previous.as_ref()) {
             Ok(e) => e.clone(),
             Err(modbit_browser::compiler::Stale::TargetStale { candidates }) => {
-                let mut o = ToolOutcome::fail(
+                let mut o = typed_fail(
                     "TARGET_STALE",
                     format!(
                         "ref {reference} does not resolve at state version {}: nothing was done{}",
@@ -593,8 +709,16 @@ async fn act(ctx: &InvokeContext, args: Value) -> ToolOutcome {
         );
     };
     if target.disabled {
-        return ToolOutcome::fail(
-            "TARGET_DISABLED",
+        let code = if matches!(
+            action.as_str(),
+            "fill" | "fill_credential" | "select" | "check" | "uncheck"
+        ) {
+            "TARGET_NOT_EDITABLE"
+        } else {
+            "TARGET_DISABLED"
+        };
+        return typed_fail(
+            code,
             format!("{} “{}” is disabled", target.role, target.name),
         );
     }
@@ -647,8 +771,8 @@ async fn act(ctx: &InvokeContext, args: Value) -> ToolOutcome {
             .effect_class
             .is_some_and(|c| c < EffectClass::ExternalSideEffect)
     {
-        return ToolOutcome::fail(
-            "EFFECT_RECLASSIFIED",
+        return typed_fail(
+            "ACTION_UNSAFE",
             format!(
                 "{} “{}” is a protected action (a submission or a consequential action) and this call was judged page-only: read the page (browser.snapshot) and act again so the approval can be asked",
                 target.role, target.name
@@ -767,6 +891,21 @@ async fn act(ctx: &InvokeContext, args: Value) -> ToolOutcome {
     if !checks.is_empty() {
         v["postcondition"] = json!({"held": ok, "checks": checks});
     }
+    // IMP-EV-0280: the transition is remembered as evidence for a later
+    // read of a page at the same fingerprint.
+    port.remember_transition(
+        session,
+        modbit_browser::KnownTransition {
+            from_fingerprint: fingerprint_before.clone(),
+            reference: reference.clone(),
+            action: action.clone(),
+            to_fingerprint: fingerprint_after.clone(),
+            to_url: after.state.url.clone(),
+            verified: if checks.is_empty() { None } else { Some(ok) },
+            times: 1,
+        },
+    )
+    .await;
     if ok {
         ToolOutcome::ok(v)
     } else {

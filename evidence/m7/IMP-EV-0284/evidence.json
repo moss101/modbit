@@ -1,0 +1,15 @@
+{
+ "task": "IMP-EV-0284",
+ "requirement": "REQ-EV-0284",
+ "qual": "QUAL-EV-0284",
+ "tests": [
+  "qual_m7_7_hostile_page_and_readme_are_data_the_key_never_leaves_and_the_forbidden_tool_stays_unavailable",
+  "apps/desktop/e2e/browser.spec.ts"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "`qual_m7_7_…`: hostile page and README are data; the forbidden tool stays unavailable; no secret leaves.",
+ "audit": "IMPLEMENTED by M7.7",
+ "limitations": "See M7.7.",
+ "ci": ""
+}

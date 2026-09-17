@@ -1,0 +1,15 @@
+{
+ "task": "IMP-EV-0277",
+ "requirement": "REQ-EV-0277",
+ "qual": "QUAL-EV-0277",
+ "tests": [
+  "qual_ev_0082_0234_0277_0282_an_accessible_form_needs_no_pixels_and_a_canvas_escalates_explicitly",
+  "qual_m7_2_entities_carry_stable_references_and_a_changed_element_resolves_stale"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "`qual_ev_0082_0234_0277_0282_…`: the accessible workflow completes without screenshot or OCR; `qual_m7_2_…`: entities with stable references and boxes.",
+ "audit": "IMPLEMENTED by M7.2 (AX + DOM node links + layout boxes compiled into entities)",
+ "limitations": "Network state is not fused into the representation (URL, title, entities, text and boxes are).",
+ "ci": ""
+}

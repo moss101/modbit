@@ -1,0 +1,16 @@
+{
+ "task": "IMP-EV-0084",
+ "requirement": "REQ-EV-0084",
+ "qual": "QUAL-EV-0084",
+ "tests": [
+  "qual_ev_0110_0084_a_forged_peer_cannot_attach_and_a_second_host_gets_the_conflict",
+  "qual_m7_6_taking_control_blocks_agent_input_at_once_and_returning_it_moves_the_lease",
+  "apps/desktop/src/main/lease.test.ts"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "`qual_ev_0110_0084_…`: the desktop host attaches; a second desktop connection is refused `HOST_CONFLICT` naming the holder; once the first connection is gone the session can be hosted again; two `BrowserHostAttached` records, none for the refused attempts. `qual_m7_6_…`: the agent's input is refused while the person holds the lease.",
+ "audit": "PARTIAL before: the control lease (M7.6) held one controller between the agent and the person; a second host connection silently replaced the first",
+ "limitations": "Sessions are per task; two tasks never share one browser session, so the lock between workers is structural (one session, one task, one host).",
+ "ci": ""
+}

@@ -108,6 +108,7 @@ MILESTONE_OVERRIDES = {
     "IMP-EV-0284": ("M7", "DR-M3-004: prompt-injection isolation in web content needs the web tool family the tool matrix defers to the browser milestone (REQ-EV-0088/0147)"),
     # DR-M5-001: rich MCP media results need the external MCP gateway (M9.4).
     "IMP-EV-0187": ("M9", "DR-M5-001: rich MCP media results need the External Tool Hub and MCP gateway of M9.4"),
+    "IMP-EV-0281": ("M9", "DR-M7-001: site-declared structured tools are MCP servers a site declares; the gateway that lists and calls them is M9.4"),
     "IMP-EV-0242": ("M4", "DR-M0-005: QUAL-EV-0242 (restart loses no durable truth while the hook process resets) needs the durable store, hook bus and kill-point recovery suite of M1/M4; scheduled after its owner label's default milestone"),
     # DR-M1-006: twelve M1-labelled tasks whose qualifications need M2–M6 runtime.
     "IMP-EV-0035": ("M3", "DR-M1-006: Context Inspector needs PromptEnvelope context ids (M2.7/M3)"),

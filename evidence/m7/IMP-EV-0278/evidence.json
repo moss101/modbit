@@ -1,0 +1,16 @@
+{
+ "task": "IMP-EV-0278",
+ "requirement": "REQ-EV-0278",
+ "qual": "QUAL-EV-0278",
+ "tests": [
+  "qual_m7_2_entities_carry_stable_references_and_a_changed_element_resolves_stale",
+  "a_removed_or_changed_element_resolves_stale_never_to_another_node",
+  "references_are_stable_across_versions_and_dom_node_ids"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "`qual_m7_2_…`: a re-render keeps the reference; a renamed element's reference is `TARGET_STALE`, never another node; `a_removed_or_changed_element_resolves_stale_never_to_another_node`.",
+ "audit": "IMPLEMENTED by M7.2",
+ "limitations": "Ordinals move on reorder.",
+ "ci": ""
+}

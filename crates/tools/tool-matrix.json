@@ -571,12 +571,13 @@
         "Claude in Chrome navigate"
       ],
       "owner": "Browser Runtime (host bridge, docs/22)",
-      "effect": "ReadOnly",
+      "effect": "ReversibleWrite",
       "capabilities": [
         "browser.control"
       ],
       "test": "qual_m7_1_a_browser_session_is_hosted_by_the_desktop_and_driven_through_the_cdp_bridge",
-      "injection_note": "M7.7: every observation is scanned for instruction-shaped passages; a hit is marked injection_suspected on the answer and journaled as SecurityEventRecorded (qual_m7_7_hostile_page_and_readme_are_data_the_key_never_leaves_and_the_forbidden_tool_stays_unavailable)"
+      "injection_note": "M7.7: every observation is scanned for instruction-shaped passages; a hit is marked injection_suspected on the answer and journaled as SecurityEventRecorded (qual_m7_7_hostile_page_and_readme_are_data_the_key_never_leaves_and_the_forbidden_tool_stays_unavailable)",
+      "effect_note": "a navigation is input to the session, a reversible write of its state (IMP-EV-0085: halted by an emergency stop like any effect); reads stay ReadOnly"
     },
     {
       "tool": "browser.snapshot",

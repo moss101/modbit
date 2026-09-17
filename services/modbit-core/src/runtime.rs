@@ -3237,7 +3237,7 @@ async fn run_loop(
         // ---- Actions
         let mut progress = false;
         // M7.6: a turn in which the agent's input was refused because the
-        // person holds the browser (`USER_HAS_CONTROL`) is the agent waiting
+        // person holds the browser (`HUMAN_ACTIVE`) is the agent waiting
         // on a person, not stalling — it neither resets nor spends the
         // no-progress budget.
         let mut yielded_to_person = false;
@@ -4071,8 +4071,7 @@ async fn run_loop(
                                     ..
                                 } => {
                                     progress |= *p;
-                                    yielded_to_person |=
-                                        text.contains("error_code: USER_HAS_CONTROL");
+                                    yielded_to_person |= text.contains("error_code: HUMAN_ACTIVE");
                                     failure_signature.clone()
                                 }
                                 _ => None,
@@ -6098,6 +6097,47 @@ async fn handle_plan(
     }
 }
 
+/// IMP-EV-0086: the visual fallback actions of `task` whose post-state was
+/// never verified — no postcondition declared, or one that failed and was
+/// not redone with one that held on the same reference — as refusal reasons.
+async fn unverified_visual_fallbacks(core: &Core, task_id: TaskId) -> Vec<String> {
+    let events = {
+        let store = core.store.lock().await;
+        crate::browser::task_events(&store, task_id)
+    };
+    let acts: Vec<&serde_json::Value> = events
+        .iter()
+        .filter(|e| e["__type"] == "BrowserActionPerformed")
+        .collect();
+    let mut out = Vec::new();
+    for (i, a) in acts.iter().enumerate() {
+        if a["visual_fallback"].is_null() || a["postcondition_held"] == true {
+            continue;
+        }
+        let reference = a["reference"].as_str().unwrap_or_default();
+        let redone = acts[i + 1..]
+            .iter()
+            .any(|b| b["reference"] == reference && b["postcondition_held"] == true);
+        if redone {
+            continue;
+        }
+        let at = a["visual_fallback"]["at"].clone();
+        out.push(format!(
+            "VISUAL_FALLBACK_UNVERIFIED: the {} at {} on {} ({}) {}; a raw-input fallback is evidence only with its post-state verified — act again with `expect` (a postcondition that holds), then complete",
+            a["action"].as_str().unwrap_or("click"),
+            at,
+            reference,
+            a["role"].as_str().unwrap_or_default(),
+            if a["postcondition_held"].is_null() {
+                "declared no postcondition"
+            } else {
+                "declared a postcondition that did not hold"
+            }
+        ));
+    }
+    out
+}
+
 async fn handle_complete(
     core: &Core,
     task: &Task,
@@ -6151,7 +6191,17 @@ async fn handle_complete(
     precheck_state
         .open_failures
         .retain(|f| !f.starts_with("verify:") && !f.starts_with("completion:"));
-    let precheck = precheck_state.check_completion(unresolved);
+    let mut precheck = precheck_state.check_completion(unresolved);
+    // IMP-EV-0086 (docs/22 "Verification"): a visual fallback — a click at
+    // a point inside a captured region — is evidence only with its post-state
+    // verified; one that declared no postcondition, or whose postcondition
+    // did not hold and was never redone verified, blocks completion.
+    let unverified = unverified_visual_fallbacks(core, task.task_id).await;
+    if precheck.is_ok() && !unverified.is_empty() {
+        precheck = Err(HarnessRefusal::CompletionBlocked {
+            reasons: unverified,
+        });
+    }
     let verdict = if precheck.is_ok() {
         // docs/14 §8 (M4.3): a checkpoint before the COMPLETION run, so the
         // candidate the run judges is recoverable exactly as it was.

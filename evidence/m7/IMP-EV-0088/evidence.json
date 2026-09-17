@@ -1,0 +1,16 @@
+{
+ "task": "IMP-EV-0088",
+ "requirement": "REQ-EV-0088",
+ "qual": "QUAL-EV-0088",
+ "tests": [
+  "qual_m7_8_a_credential_is_filled_by_handle_into_its_bound_origin_only_and_the_value_never_crosses",
+  "qual_m7_4_actions_run_by_reference_under_the_effect_they_carry_and_check_their_postconditions",
+  "submissions_and_consequential_actions_are_protected_fields_and_tabs_are_not"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "`qual_m7_8_…`: the credential fill opens an approval (`ExternalSideEffect`) before the host is asked; the refused fills open none. `qual_m7_4_…`: the submission asks approval; a field does not. `qual_ev_0089_…`: a protected action on a reference judged page-only is `ACTION_UNSAFE`.",
+ "audit": "PARTIAL before: `classify_action` (M7.4) elevated submissions and consequential names; a credential fill was page-only",
+ "limitations": "Risk words are English; the context dimension is the landmark path (a form) and the data dimension is the credential handle — no per-site policy yet.",
+ "ci": ""
+}

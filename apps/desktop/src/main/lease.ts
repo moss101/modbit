@@ -6,9 +6,9 @@
  *  lease this host knows (`current`, held by `controller`). Pure, so it is
  *  testable: a stale generation is refused even when the agent holds
  *  control again — an input from before a takeover never lands after it. */
-export function admitsAgentInput(requestGeneration: number, current: number, controller: "AGENT" | "USER"): { ok: true } | { ok: false; code: "USER_HAS_CONTROL" | "STALE_GENERATION" } {
+export function admitsAgentInput(requestGeneration: number, current: number, controller: "AGENT" | "USER"): { ok: true } | { ok: false; code: "HUMAN_ACTIVE" | "STALE_GENERATION" } {
   if (requestGeneration < current) return { ok: false, code: "STALE_GENERATION" };
-  if (controller === "USER") return { ok: false, code: "USER_HAS_CONTROL" };
+  if (controller === "USER") return { ok: false, code: "HUMAN_ACTIVE" };
   return { ok: true };
 }
 

@@ -50,6 +50,20 @@ pub(crate) struct SessionRecord {
     pub known: HashMap<String, modbit_browser::compiler::Entity>,
     /// The page last compiled (M7.3: what the next delta starts from).
     pub last_page: Option<modbit_browser::compiler::PageEntities>,
+    /// Transitions observed in this session (IMP-EV-0280; bounded), keyed
+    /// by the fingerprint before, the reference and the action.
+    pub transitions: Vec<modbit_browser::KnownTransition>,
+}
+
+/// Why a host could not attach.
+#[derive(Debug)]
+pub(crate) enum AttachRefusal {
+    NoSuchSession,
+    /// Another live host connection holds the session (IMP-EV-0084: one
+    /// controller per session; IMP-EV-0110: a second peer cannot take it).
+    HostConflict {
+        kind: String,
+    },
 }
 
 /// The registry: sessions and the requests awaiting a host's answer.
@@ -108,6 +122,7 @@ impl BrowserSessions {
             closed: false,
             known: HashMap::new(),
             last_page: None,
+            transitions: Vec::new(),
         };
         self.sessions.lock().await.insert(id, rec.clone());
         rec
@@ -126,11 +141,19 @@ impl BrowserSessions {
         &self,
         id: BrowserSessionId,
         link: HostLink,
-    ) -> Option<ControlLease> {
+    ) -> Result<ControlLease, AttachRefusal> {
         let mut s = self.sessions.lock().await;
-        let rec = s.get_mut(&id)?;
+        let rec = s.get_mut(&id).ok_or(AttachRefusal::NoSuchSession)?;
+        if let Some(h) = &rec.host
+            && h.connection != link.connection
+            && !h.tx.is_closed()
+        {
+            return Err(AttachRefusal::HostConflict {
+                kind: h.kind.clone(),
+            });
+        }
         rec.host = Some(link);
-        Some(rec.lease)
+        Ok(rec.lease)
     }
 
     /// Hand control to `to` (M7.6): the lease moves to a new generation
@@ -246,7 +269,7 @@ impl BrowserPort for BrowserSessions {
             ) && !lease.admits_agent_input(lease.generation)
             {
                 return Err(PortError::Refused {
-                    code: "USER_HAS_CONTROL".into(),
+                    code: "HUMAN_ACTIVE".into(),
                     message: format!(
                         "the person holds control of the session (lease generation {})",
                         lease.generation
@@ -325,6 +348,53 @@ impl BrowserPort for BrowserSessions {
                 .await
                 .get(&session)
                 .and_then(|r| r.last_page.clone())
+        })
+    }
+
+    fn remember_transition<'a>(
+        &'a self,
+        session: BrowserSessionId,
+        t: modbit_browser::KnownTransition,
+    ) -> BoxFuture<'a, ()> {
+        Box::pin(async move {
+            if let Some(rec) = self.sessions.lock().await.get_mut(&session) {
+                if let Some(k) = rec.transitions.iter_mut().find(|k| {
+                    k.from_fingerprint == t.from_fingerprint
+                        && k.reference == t.reference
+                        && k.action == t.action
+                }) {
+                    k.times += 1;
+                    k.to_fingerprint = t.to_fingerprint;
+                    k.to_url = t.to_url;
+                    k.verified = t.verified.or(k.verified);
+                } else {
+                    if rec.transitions.len() >= 2000 {
+                        rec.transitions.remove(0);
+                    }
+                    rec.transitions.push(t);
+                }
+            }
+        })
+    }
+
+    fn transitions_from<'a>(
+        &'a self,
+        session: BrowserSessionId,
+        fingerprint: &'a str,
+    ) -> BoxFuture<'a, Vec<modbit_browser::KnownTransition>> {
+        Box::pin(async move {
+            self.sessions
+                .lock()
+                .await
+                .get(&session)
+                .map(|r| {
+                    r.transitions
+                        .iter()
+                        .filter(|t| t.from_fingerprint == fingerprint)
+                        .cloned()
+                        .collect()
+                })
+                .unwrap_or_default()
         })
     }
 
@@ -422,7 +492,31 @@ pub(crate) fn from_events(
                     closed: false,
                     known: HashMap::new(),
                     last_page: None,
+                    transitions: Vec::new(),
                 });
+            }
+            // IMP-EV-0280: transitions the session observed are rebuilt from
+            // the log too — evidence survives a restart; a changed page will
+            // not match their fingerprint.
+            "BrowserActionPerformed" => {
+                if let Some(r) = rec.as_mut()
+                    && let (Some(from), Some(to)) = (
+                        e["fingerprint_before"].as_str(),
+                        e["fingerprint_after"].as_str(),
+                    )
+                    && !from.is_empty()
+                    && !to.is_empty()
+                {
+                    r.transitions.push(modbit_browser::KnownTransition {
+                        from_fingerprint: from.to_owned(),
+                        reference: e["reference"].as_str().unwrap_or_default().to_owned(),
+                        action: e["action"].as_str().unwrap_or_default().to_owned(),
+                        to_fingerprint: to.to_owned(),
+                        to_url: String::new(),
+                        verified: e["postcondition_held"].as_bool(),
+                        times: 1,
+                    });
+                }
             }
             "BrowserNavigated" => {
                 if let Some(r) = rec.as_mut() {

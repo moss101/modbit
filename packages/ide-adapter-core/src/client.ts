@@ -103,6 +103,8 @@ import {
   CloseBrowserSessionSchema,
   BrowserSessionClosedSchema,
   SetBrowserControlSchema,
+  EmergencyStopSchema,
+  EmergencyStoppedSchema,
   RegisterBrowserCredentialSchema,
   BrowserCredentialRegisteredSchema,
   ForgetBrowserCredentialSchema,
@@ -619,6 +621,13 @@ export class CoreClient {
   async closeBrowserSession(sessionId: string, browserSessionId: string): Promise<{ offset: bigint }> {
     const ack = await this.command("CloseBrowserSession", toBinary(CloseBrowserSessionSchema, create(CloseBrowserSessionSchema, { browserSessionId: { value: unhex(browserSessionId) } })), undefined, this.leases.get(sessionId));
     return { offset: fromBinary(BrowserSessionClosedSchema, ack.result).offset };
+  }
+
+  /** IMP-EV-0085 (session.control): block every new effect in the session and revoke its leases; the reason is on the log. */
+  async emergencyStop(sessionId: string, reason: string): Promise<{ leasesRevoked: number; offset: bigint }> {
+    const ack = await this.command("EmergencyStop", toBinary(EmergencyStopSchema, create(EmergencyStopSchema, { sessionId: { value: unhex(sessionId) }, reason })), undefined, this.leases.get(sessionId));
+    const r = fromBinary(EmergencyStoppedSchema, ack.result);
+    return { leasesRevoked: r.leasesRevoked, offset: r.offset };
   }
 
   /** Cancel a task: the run stops at its next safe boundary; the task's events record it. Requires the session lease. */

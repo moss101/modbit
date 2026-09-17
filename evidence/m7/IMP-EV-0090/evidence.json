@@ -1,0 +1,15 @@
+{
+ "task": "IMP-EV-0090",
+ "requirement": "REQ-EV-0090",
+ "qual": "QUAL-EV-0090",
+ "tests": [
+  "apps/desktop/e2e/browser.spec.ts",
+  "qual_ev_0089_every_failure_code_of_the_taxonomy_is_emitted_with_its_recovery"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "`browser.spec.ts` faults test (real app): a secret placed in the OS clipboard before the agent types is intact after the fills and appears in no model text; a div that takes no text is refused before replacement; a real field takes the typed value with its postcondition.",
+ "audit": "IMPLEMENTED by construction since M7.4 (text enters through `Input.insertText`, never the clipboard); the destination check is new",
+ "limitations": "The clipboard assertion runs only where the runner offers a clipboard.",
+ "ci": ""
+}

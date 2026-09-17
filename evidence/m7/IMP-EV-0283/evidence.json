@@ -1,0 +1,15 @@
+{
+ "task": "IMP-EV-0283",
+ "requirement": "REQ-EV-0283",
+ "qual": "QUAL-EV-0283",
+ "tests": [
+  "qual_m7_6_taking_control_blocks_agent_input_at_once_and_returning_it_moves_the_lease",
+  "apps/desktop/e2e/browser.spec.ts"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "`qual_m7_6_…` and the `browser.spec.ts` takeover test: the person takes over mid-run with no browser restart, types into the same view, and the agent resumes after control returns at the next generation.",
+ "audit": "IMPLEMENTED by M7.6 (one session shared by the panel and the agent; takeover moves the lease); preemption by activity by IMP-EV-0087",
+ "limitations": "Dock/expand/pop-out/remote viewers are not built: the one view is placed over the panel's placeholder.",
+ "ci": ""
+}

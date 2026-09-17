@@ -208,6 +208,8 @@ export interface ModbitBridge {
   setBrowserControl(browserSessionId: string, controller: "AGENT" | "USER"): Promise<{ controller: string; leaseGeneration: number; changed: boolean }>;
   typeAsPerson(browserSessionId: string, text: string): Promise<boolean>;
   browserSession(browserSessionId: string, taskId: string): Promise<BrowserSessionSummary>;
+  /** IMP-EV-0085: the emergency stop — the host halts agent input at once, the Core blocks every new effect and revokes the leases. */
+  emergencyStop(sessionId: string, reason: string): Promise<{ leasesRevoked: number; offset: string }>;
   /** M7.8: the credential broker — add binds a secret to an origin (the secret crosses once; a handle comes back); list and remove never carry a secret. */
   addCredential(label: string, origin: string, username: string, secret: string): Promise<CredentialHandle>;
   listCredentials(): Promise<CredentialHandle[]>;
@@ -264,6 +266,7 @@ const bridge: ModbitBridge = {
   probeBrowser: (browserSessionId) => ipcRenderer.invoke("browser:probe", browserSessionId),
   setBrowserControl: (browserSessionId, controller) => ipcRenderer.invoke("browser:control", browserSessionId, controller),
   typeAsPerson: (browserSessionId, text) => ipcRenderer.invoke("browser:typeAsPerson", browserSessionId, text),
+  emergencyStop: (sessionId, reason) => ipcRenderer.invoke("browser:emergencyStop", sessionId, reason),
   addCredential: (label, origin, username, secret) => ipcRenderer.invoke("credential:add", label, origin, username, secret),
   listCredentials: () => ipcRenderer.invoke("credential:list"),
   removeCredential: (handle) => ipcRenderer.invoke("credential:remove", handle),

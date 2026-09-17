@@ -850,7 +850,7 @@ function App() {
       )}
       </div>
       {reviewing && model.sessionId && <Review taskId={reviewing} sessionId={model.sessionId} card={model.tasks.get(reviewing) ?? null} onClose={() => void runFleetCommand("back")} />}
-      {browsing && !reviewing && <Browser browsing={browsing} card={model.tasks.get(browsing.taskId) ?? null} onReopen={() => void openBrowser(browsing.taskId)} onClose={() => void runFleetCommand("back")} />}
+      {browsing && !reviewing && <Browser browsing={browsing} card={model.tasks.get(browsing.taskId) ?? null} sessionId={model.sessionId} onReopen={() => void openBrowser(browsing.taskId)} onClose={() => void runFleetCommand("back")} />}
       <main hidden={reviewing !== null || browsing !== null}>
         <div className="side">
           <form className="composer" onSubmit={submit} aria-label="New Task">
@@ -1173,9 +1173,22 @@ function Card({ card, children, state, sessionId, onFocus, onStart, onReview, on
  *  sandboxed view placed over the placeholder below; the URL, title and
  *  state version are what the host reports, the lease what the Core
  *  records. The page's content never reaches this renderer. */
-function Browser({ browsing, card, onReopen, onClose }: { browsing: { taskId: string; browserSessionId: string | null; error: string | null }; card: TaskCard | null; onReopen: () => void; onClose: () => void }) {
-  const [host, setHost] = useState<{ attached: boolean; shown: boolean; url: string; title: string; stateVersion: number; leaseGeneration: number; controller: "AGENT" | "USER" } | null>(null);
+function Browser({ browsing, card, sessionId, onReopen, onClose }: { browsing: { taskId: string; browserSessionId: string | null; error: string | null }; card: TaskCard | null; sessionId: string | null; onReopen: () => void; onClose: () => void }) {
+  const [host, setHost] = useState<{ attached: boolean; shown: boolean; url: string; title: string; stateVersion: number; leaseGeneration: number; controller: "AGENT" | "USER"; stopped?: string | null; humanInputAt?: number } | null>(null);
   const [controlBusy, setControlBusy] = useState(false);
+  const [stopped, setStopped] = useState<string | null>(null);
+  // IMP-EV-0085: the emergency stop — the host's input halts at once, the
+  // Core blocks every new effect; the reason is on the log.
+  const emergencyStop = async () => {
+    if (!sessionId || controlBusy) return;
+    setControlBusy(true);
+    try {
+      await window.modbit.emergencyStop(sessionId, "stopped from the Browser panel");
+      setStopped("stopped from the Browser panel");
+    } finally {
+      setControlBusy(false);
+    }
+  };
   // M7.6: take or return control — the lease moves, the same session stays.
   const setControl = async (controller: "AGENT" | "USER") => {
     if (!bsid || controlBusy) return;
@@ -1252,6 +1265,14 @@ function Browser({ browsing, card, onReopen, onClose }: { browsing: { taskId: st
         <span className="meta">
           {host?.controller === "USER" ? "you hold control: the agent's input is blocked, it can still observe" : "the agent holds control: your typing into the page is yours to do, its actions are its own"} · lease generation {host?.leaseGeneration ?? 0}
         </span>
+        <button type="button" data-testid="browser-emergency-stop" onClick={() => void emergencyStop()} disabled={controlBusy || !sessionId || !!(stopped ?? host?.stopped)}>
+          Emergency stop
+        </button>
+        {(stopped ?? host?.stopped) && (
+          <span className="meta" role="status" data-testid="browser-stopped">
+            ⚠ emergency stop: {stopped ?? host?.stopped} — no agent input runs until a new session lease is taken
+          </span>
+        )}
       </div>
       {(gone || (host && !host.attached)) && (
         <div className="actions">

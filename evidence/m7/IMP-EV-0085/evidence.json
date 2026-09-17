@@ -1,0 +1,15 @@
+{
+ "task": "IMP-EV-0085",
+ "requirement": "REQ-EV-0085",
+ "qual": "QUAL-EV-0085",
+ "tests": [
+  "qual_ev_0085_an_emergency_stop_halts_browser_input_before_the_host_with_the_reason_on_record",
+  "apps/desktop/e2e/browser.spec.ts"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "`qual_ev_0085_…` (real Core): after the stop the next navigation and action are refused before the host (nothing more reaches it), observation continued before, and `EmergencyStopActivated` carries the reason. `browser.spec.ts` (real app): the button on the panel fences the host (`emergency-stop` in its log, no `act` after it) and the Core refuses the agent's next input.",
+ "audit": "PARTIAL before: `EmergencyStop` blocked effects at the kernel; a navigation was a read, and the host had no stop of its own",
+ "limitations": "A stop is for the session's life (the Core never lifts it); an action already in flight completes within the host's bound.",
+ "ci": ""
+}

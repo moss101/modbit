@@ -1,0 +1,15 @@
+{
+ "task": "IMP-EV-0276",
+ "requirement": "REQ-EV-0276",
+ "qual": "QUAL-EV-0276",
+ "tests": [
+  "apps/desktop/e2e/browser.spec.ts",
+  "qual_m7_1_a_browser_session_is_hosted_by_the_desktop_and_driven_through_the_cdp_bridge"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "`browser.spec.ts` (real app): a real page with a form, a canvas, a POST sign-in and a hostile page executes with standard Chromium behaviour; `qual_m7_1_…` on the real Core.",
+ "audit": "IMPLEMENTED by M7.1 (a real Chromium `WebContentsView` driven through CDP; no engine of Modbit's own)",
+ "limitations": "The fixture is a local page, not a hosted SaaS.",
+ "ci": ""
+}

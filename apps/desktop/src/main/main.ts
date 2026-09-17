@@ -94,6 +94,9 @@ const supervisor = new CoreSupervisor(
       c.onEvent = (e) => {
         const ev = serializeEvent(e);
         if (subscription) subscription.cursor = BigInt(ev.offset);
+        // IMP-EV-0085: an emergency stop anyone raised on the session halts
+        // the browser host's input at once, independent of the Core's loop.
+        if (ev.eventType === "EmergencyStopActivated" && ev.sessionId) browserHost.emergencyStop(ev.sessionId, String((ev.payload as { reason?: unknown } | null)?.reason ?? "emergency stop"));
         send("core:event", ev);
       };
       // Recovery: re-take the session lease (a new generation fences any stale
@@ -497,6 +500,15 @@ ipcMain.handle("browser:session", async (_e: IpcMainInvokeEvent, browserSessionI
   return { browserSessionId, taskId: tid, partition: v.partition, controller: v.controller, leaseGeneration: v.leaseGeneration.toString(), hostAttached: v.hostAttached, hostKind: v.hostKind, url: v.url, title: v.title, stateVersion: v.stateVersion.toString(), fingerprint: v.fingerprint, closed: v.closed };
 });
 ipcMain.handle("browser:log", () => browserHost.log.slice());
+// IMP-EV-0085: the person's emergency stop — the host fences its input
+// first (no model loop in the way), then the Core blocks every new effect.
+ipcMain.handle("browser:emergencyStop", async (_e: IpcMainInvokeEvent, sessionId: unknown, reason: unknown) => {
+  const sid = requireSessionId(sessionId);
+  const why = typeof reason === "string" && reason.length <= 200 ? reason : "emergency stop";
+  browserHost.emergencyStop(sid, why);
+  const r = await requireClient().emergencyStop(sid, why);
+  return { leasesRevoked: r.leasesRevoked, offset: r.offset.toString() };
+});
 // M7.6: the person takes or returns control of the session (the same
 // session; the agent's input is blocked while they hold it).
 ipcMain.handle("browser:control", (_e: IpcMainInvokeEvent, browserSessionId: unknown, controller: unknown) => {

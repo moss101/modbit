@@ -20783,10 +20783,11 @@
    "type": "imp_task",
    "title": "Native browser-native structured-action research/site tools precedence",
    "owner_label": "MCP/Browser Gateway",
+   "milestone_override": "DR-M7-001: site-declared structured tools are MCP servers a site declares; the gateway that lists and calls them is M9.4",
    "requirement": "REQ-EV-0281",
    "disposition": "ADAPT",
    "subsystem": "browser",
-   "milestone": "M7",
+   "milestone": "M9",
    "qual": "QUAL-EV-0281",
    "source": "docs/41",
    "status": "NOT_STARTED",
@@ -43130,7 +43131,7 @@
   },
   {
    "from": "IMP-EV-0281",
-   "to": "M7",
+   "to": "M9",
    "type": "scheduled_in"
   },
   {
@@ -51686,11 +51687,6 @@
   {
    "from": "BETA",
    "to": "IMP-EV-0280",
-   "type": "includes"
-  },
-  {
-   "from": "BETA",
-   "to": "IMP-EV-0281",
    "type": "includes"
   },
   {

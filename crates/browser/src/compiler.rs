@@ -904,7 +904,17 @@ pub fn classify_action(entity: &Entity, action: &str, key: &str) -> ActionRisk {
     let name = entity.name.to_ascii_lowercase();
     let in_form = entity.path.iter().any(|p| p.starts_with("form:"));
     match action {
-        "fill" | "fill_credential" | "select" | "check" | "uncheck" => ActionRisk::PageOnly,
+        "fill" | "select" | "check" | "uncheck" => ActionRisk::PageOnly,
+        // IMP-EV-0088: a credential entering a page is risk by its data,
+        // whatever the field — the person approves the exact intent (the
+        // handle, the field, the origin).
+        "fill_credential" => {
+            if entity.kind == EntityKind::Field {
+                ActionRisk::Protected
+            } else {
+                ActionRisk::PageOnly
+            }
+        }
         // Enter inside a form submits it.
         "press" => {
             if key.eq_ignore_ascii_case("enter") && in_form {

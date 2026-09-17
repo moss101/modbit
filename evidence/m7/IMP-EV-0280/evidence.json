@@ -1,0 +1,14 @@
+{
+ "task": "IMP-EV-0280",
+ "requirement": "REQ-EV-0280",
+ "qual": "QUAL-EV-0280",
+ "tests": [
+  "qual_ev_0280_a_known_transition_is_offered_for_the_same_fingerprint_and_not_for_a_changed_page"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "`qual_ev_0280_…` (real Core): after a verified click, a fresh read of the same page (same fingerprint) offers the transition with its verification and destination; a changed page (another fingerprint) offers nothing; the record is rebuilt after a Core restart.",
+ "audit": "MISSING before: transitions were on the log (M7.4) but never offered back",
+ "limitations": "Transitions are per session (not shared across tasks or sites); the model may reuse one, the runtime never replays one on its own.",
+ "ci": ""
+}

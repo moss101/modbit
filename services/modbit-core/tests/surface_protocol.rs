@@ -29811,7 +29811,7 @@ async fn qual_m7_6_taking_control_blocks_agent_input_at_once_and_returning_it_mo
         .unwrap(),
     )
     .unwrap();
-    assert_eq!(r.error_code.as_str(), "USER_HAS_CONTROL", "{r:?}");
+    assert_eq!(r.error_code.as_str(), "HUMAN_ACTIVE", "{r:?}");
     let r: modbit_protocol::v1::ToolInvoked = Client::result(
         &c.command(invoke(0xBC, "browser.snapshot", json!({})))
             .await
@@ -30221,7 +30221,7 @@ async fn qual_m7_8_a_credential_is_filled_by_handle_into_its_bound_origin_only_a
     use modbit_protocol::v1::{
         AttachBrowserHost, BrowserCredentialForgotten, BrowserCredentialRegistered,
         BrowserHostAttached, BrowserHostResponse, BrowserSessionOpened, ForgetBrowserCredential,
-        OpenBrowserSession, RegisterBrowserCredential, StartTask, TaskRunStarted,
+        OpenBrowserSession, RegisterBrowserCredential, ResolveApproval, StartTask, TaskRunStarted,
     };
     use serde_json::json;
     let (repo, root) = plain_repo(&[("README.md", "# browse\n")]);
@@ -30412,9 +30412,55 @@ async fn qual_m7_8_a_credential_is_filled_by_handle_into_its_bound_origin_only_a
         .await
         .unwrap();
     let _: TaskRunStarted = Client::result(&ack).unwrap();
-    let st = wait_for_state(&mut c, &task, "ReadyForReview", 120).await;
-    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    // IMP-EV-0088: a credential entering a field is a protected action — the
+    // person approves the exact intent (the handle, the field, the origin)
+    // before the tool runs; what the tool then refuses (an unknown handle,
+    // the wrong origin) is a safe no-op after the approval; a credential
+    // "into" a button is judged page-only and refused without one.
+    let mut approved = 0;
+    let deadline = std::time::Instant::now() + Duration::from_secs(120);
+    loop {
+        let st = task_status(&mut c, 0xDD, &task).await;
+        if st.state == "ReadyForReview" {
+            break;
+        }
+        assert!(std::time::Instant::now() < deadline, "{st:?}");
+        let list = approvals_of(&mut c, &session).await;
+        if let Some(a) = list.iter().find(|a| a.status == "REQUESTED") {
+            assert_eq!(a.tool_name, "browser.act");
+            assert_eq!(a.effect_class, "ExternalSideEffect", "{a:?}");
+            let ack = c
+                .command(envelope_fenced(
+                    Id {
+                        value: (0..16).map(|_| rand::random::<u8>()).collect(),
+                    },
+                    "ResolveApproval",
+                    ResolveApproval {
+                        approval_id: a.approval_id.clone(),
+                        approve: true,
+                        reason: "sign in with the bound credential".into(),
+                        intent_hash: a.intent_hash.clone(),
+                    }
+                    .encode_to_vec(),
+                    g,
+                ))
+                .await
+                .unwrap();
+            assert_eq!(
+                Client::result::<modbit_protocol::v1::ApprovalResolvedAck>(&ack)
+                    .unwrap()
+                    .status,
+                "APPROVED"
+            );
+            approved += 1;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
     host_task.abort();
+    assert_eq!(
+        approved, 3,
+        "the unknown handle, the other origin and the fill that ran asked; the button did not"
+    );
     // The host saw exactly one credential fill, at the bound origin, by
     // handle; the refused fills never reached it.
     let served = served.lock().unwrap().clone();
@@ -30519,5 +30565,1153 @@ async fn qual_m7_8_a_credential_is_filled_by_handle_into_its_bound_origin_only_a
     )
     .unwrap();
     assert!(!again.existed);
+    drop(repo);
+}
+
+/// A fake browser host for the IMP-EV batch: serves one page per URL from a
+/// table, answers acts with a scripted error code when the table says so,
+/// and records every request. Runs until aborted.
+fn fake_host_serving(
+    mut host: Client,
+    pages: std::collections::HashMap<String, serde_json::Value>,
+    act_errors: std::collections::HashMap<i64, (String, String)>,
+    after_act: std::collections::HashMap<i64, serde_json::Value>,
+) -> (
+    tokio::task::JoinHandle<()>,
+    std::sync::Arc<std::sync::Mutex<Vec<serde_json::Value>>>,
+) {
+    use modbit_protocol::v1::BrowserHostResponse;
+    use serde_json::json;
+    let served: std::sync::Arc<std::sync::Mutex<Vec<serde_json::Value>>> = Default::default();
+    let served2 = served.clone();
+    let task = tokio::spawn(async move {
+        let mut url = "about:blank".to_owned();
+        let mut version = 0u64;
+        // The page as an action left it (until the next navigation).
+        let mut current: Option<serde_json::Value> = None;
+        while let Some(req) = host.next_browser_request().await.unwrap() {
+            let r: serde_json::Value = serde_json::from_str(&req.request_json).unwrap();
+            served2.lock().unwrap().push(r.clone());
+            let state = |url: &str, v: u64| json!({"url": url, "title": "Page", "ready": true, "state_version": v});
+            let response = match r["kind"].as_str().unwrap() {
+                "navigate" => {
+                    url = r["url"].as_str().unwrap().to_owned();
+                    version += 1;
+                    current = None;
+                    json!({"kind": "state", "state": state(&url, version)})
+                }
+                "snapshot" => {
+                    let nodes = current
+                        .clone()
+                        .or_else(|| pages.get(&url).cloned())
+                        .unwrap_or_else(|| json!([]));
+                    json!({"kind": "snapshot", "state": state(&url, version), "nodes": nodes, "truncated": false})
+                }
+                "act" => {
+                    let node = r["backend_dom_node_id"].as_i64().unwrap_or(0);
+                    if let Some((code, message)) = act_errors.get(&node) {
+                        json!({"kind": "error", "code": code, "message": message})
+                    } else {
+                        version += 1;
+                        if let Some(p) = after_act.get(&node) {
+                            current = Some(p.clone());
+                        }
+                        json!({"kind": "acted", "state": state(&url, version), "navigated": false, "detail": "done"})
+                    }
+                }
+                "capture" => {
+                    json!({"kind": "capture", "state": state(&url, version), "png_base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "clip": r["clip"]})
+                }
+                "close" => break,
+                other => json!({"kind": "error", "code": "UNSUPPORTED", "message": other}),
+            };
+            host.command(envelope(
+                Id {
+                    value: (0..16).map(|_| rand::random::<u8>()).collect(),
+                },
+                "BrowserHostResponse",
+                BrowserHostResponse {
+                    request_id: req.request_id,
+                    response_json: response.to_string(),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        }
+    });
+    (task, served)
+}
+
+/// Open a browser session for `task` and attach `host` to it; the session id.
+async fn open_and_attach(
+    c: &mut Client,
+    host: &mut Client,
+    task: &Id,
+    g: Option<u64>,
+    seed: u8,
+) -> Id {
+    use modbit_protocol::v1::{
+        AttachBrowserHost, BrowserHostAttached, BrowserSessionOpened, OpenBrowserSession,
+    };
+    let opened: BrowserSessionOpened = Client::result(
+        &c.command(envelope_fenced(
+            id16(seed),
+            "OpenBrowserSession",
+            OpenBrowserSession {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+    let bsid = opened.browser_session_id.clone().unwrap();
+    let _: BrowserHostAttached = Client::result(
+        &host
+            .command(envelope(
+                id16(seed.wrapping_add(1)),
+                "AttachBrowserHost",
+                AttachBrowserHost {
+                    browser_session_id: Some(bsid.clone()),
+                    host_kind: "test-host".into(),
+                    partition: opened.partition.clone(),
+                    sandboxed: true,
+                    context_isolated: true,
+                    node_integration: false,
+                    task_id: Some(task.clone()),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    bsid
+}
+
+/// Call a browser tool directly (InvokeTool) as the agent would.
+async fn invoke_browser(
+    c: &mut Client,
+    task: &Id,
+    g: Option<u64>,
+    name: &str,
+    args: serde_json::Value,
+) -> modbit_protocol::v1::ToolInvoked {
+    Client::result(
+        &c.command(envelope_fenced(
+            Id {
+                value: (0..16).map(|_| rand::random::<u8>()).collect(),
+            },
+            "InvokeTool",
+            modbit_protocol::v1::InvokeTool {
+                task_id: Some(task.clone()),
+                tool_name: name.into(),
+                arguments_json: args.to_string(),
+                tool_call_id: Some(Id {
+                    value: (0..16).map(|_| rand::random::<u8>()).collect(),
+                }),
+                output_budget_bytes: 0,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap(),
+    )
+    .unwrap()
+}
+
+/// IMP-EV-0110 / IMP-EV-0084 (docs/22 "Local browser"): the browser is
+/// behind the authenticated peer boundary — a client kind without
+/// `browser.host` cannot attach at all; a second host cannot take a session
+/// another live host holds (one controller per session); once the first
+/// host's connection is gone the session can be hosted again.
+#[tokio::test]
+async fn qual_ev_0110_0084_a_forged_peer_cannot_attach_and_a_second_host_gets_the_conflict() {
+    use modbit_protocol::v1::{
+        AttachBrowserHost, BrowserHostAttached, BrowserSessionOpened, OpenBrowserSession,
+    };
+    let (repo, root) = plain_repo(&[("README.md", "# browse\n")]);
+    let dir = tempfile::tempdir().unwrap();
+    let env = [("OPENAI_API_KEY", ""), ("ANTHROPIC_API_KEY", "")];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xE5)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xE6, "local_trusted").await;
+    let opened: BrowserSessionOpened = Client::result(
+        &c.command(envelope_fenced(
+            id16(0xE7),
+            "OpenBrowserSession",
+            OpenBrowserSession {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+    let bsid = opened.browser_session_id.clone().unwrap();
+    let attach = |seed: u8, partition: &str| {
+        envelope(
+            id16(seed),
+            "AttachBrowserHost",
+            AttachBrowserHost {
+                browser_session_id: Some(bsid.clone()),
+                host_kind: "test-host".into(),
+                partition: partition.into(),
+                sandboxed: true,
+                context_isolated: true,
+                node_integration: false,
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        )
+    };
+    // The forged peer: the CLI kind holds no `browser.host` — refused at the transport.
+    let err = c
+        .command(attach(0xE8, &opened.partition))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(&err, ClientError::Rejected { code, message, .. } if code == "CLIENT_CAPABILITY" && message.contains("browser.host")),
+        "{err}"
+    );
+    // The desktop host attaches; a second desktop connection cannot take the session.
+    let mut host1 = core.client_of(ClientKind::Desktop).await;
+    let _: BrowserHostAttached = Client::result(
+        &host1
+            .command(attach(0xE9, &opened.partition))
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    let mut host2 = core.client_of(ClientKind::Desktop).await;
+    let err = host2
+        .command(attach(0xEA, &opened.partition))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(&err, ClientError::Rejected { code, message, .. } if code == "HOST_CONFLICT" && message.contains("test-host")),
+        "{err}"
+    );
+    // Nor with a partition that is not the session's, on any connection.
+    let err = host2
+        .command(attach(0xEB, "persist:modbit-browser-forged"))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(&err, ClientError::Rejected { code, .. } if code == "PARTITION_MISMATCH" || code == "HOST_CONFLICT"),
+        "{err}"
+    );
+    // The first host's connection ends: the session can be hosted again.
+    drop(host1);
+    let deadline = std::time::Instant::now() + Duration::from_secs(20);
+    loop {
+        match host2.command(attach(0xEC, &opened.partition)).await {
+            Ok(ack) => {
+                let _: BrowserHostAttached = Client::result(&ack).unwrap();
+                break;
+            }
+            Err(ClientError::Rejected { code, .. }) if code == "HOST_CONFLICT" => {
+                assert!(
+                    std::time::Instant::now() < deadline,
+                    "the session stayed held after its host's connection closed"
+                );
+                tokio::time::sleep(Duration::from_millis(100)).await;
+            }
+            Err(e) => panic!("{e}"),
+        }
+    }
+    let evs = task_events(&core, &session, &task).await;
+    assert_eq!(
+        evs.iter()
+            .filter(|(_, ty, _)| ty == "BrowserHostAttached")
+            .count(),
+        2,
+        "two hosts attached, in turn; the forged and the conflicting attempts left no record"
+    );
+    drop(repo);
+}
+
+/// IMP-EV-0085 (docs/22; docs/23 "emergency stop"): an emergency stop halts
+/// the agent's browser input at once — the next navigation and the next
+/// action are refused by the kernel before anything reaches the host —
+/// observation continues, and the reason is on the log.
+#[tokio::test]
+async fn qual_ev_0085_an_emergency_stop_halts_browser_input_before_the_host_with_the_reason_on_record()
+ {
+    use modbit_protocol::v1::{EmergencyStop, EmergencyStopped};
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[("README.md", "# browse\n")]);
+    let dir = tempfile::tempdir().unwrap();
+    let env = [("OPENAI_API_KEY", ""), ("ANTHROPIC_API_KEY", "")];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xE5)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xE6, "local_trusted").await;
+    let mut host = core.client_of(ClientKind::Desktop).await;
+    let _bsid = open_and_attach(&mut c, &mut host, &task, g, 0xE7).await;
+    let pages = std::collections::HashMap::from([(
+        "https://app.test/a".to_owned(),
+        json!([
+            {"id": "1", "parent": null, "role": "RootWebArea", "name": "Page"},
+            {"id": "2", "parent": "1", "role": "main", "name": ""},
+            {"id": "3", "parent": "2", "role": "textbox", "name": "Email", "backend_dom_node_id": 3},
+        ]),
+    )]);
+    let (host_task, served) =
+        fake_host_serving(host, pages, Default::default(), Default::default());
+    let r = invoke_browser(
+        &mut c,
+        &task,
+        g,
+        "browser.navigate",
+        json!({"url": "https://app.test/a"}),
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let r = invoke_browser(&mut c, &task, g, "browser.snapshot", json!({})).await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let email =
+        modbit_browser::compiler::reference_of("textbox", "Email", &["main:".to_owned()], 0);
+    let before = served.lock().unwrap().len();
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xE8),
+            "EmergencyStop",
+            EmergencyStop {
+                session_id: Some(session.clone()),
+                reason: "the person hit stop on the Browser panel".into(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: EmergencyStopped = Client::result(&ack).unwrap();
+    // Input halts before the host: the navigation and the action are refused
+    // by the kernel; the session's leases are revoked with the stop, so the
+    // task's own lease no longer admits an effect either.
+    let r = invoke_browser(
+        &mut c,
+        &task,
+        g,
+        "browser.navigate",
+        json!({"url": "https://app.test/b"}),
+    )
+    .await;
+    assert!(
+        r.error_code == "EMERGENCY_STOP" || r.error_code.contains("LEASE"),
+        "{r:?}"
+    );
+    let r = invoke_browser(
+        &mut c,
+        &task,
+        g,
+        "browser.act",
+        json!({"ref": email, "action": "fill", "value": "x"}),
+    )
+    .await;
+    assert!(
+        r.error_code == "EMERGENCY_STOP" || r.error_code.contains("LEASE"),
+        "{r:?}"
+    );
+    assert_eq!(
+        served.lock().unwrap().len(),
+        before,
+        "nothing reached the host after the stop: {:?}",
+        served.lock().unwrap()
+    );
+    host_task.abort();
+    // The reason is on the session's log.
+    let mut s = core.client().await;
+    s.subscribe(session.clone(), 0).await.unwrap();
+    let mut reason = None;
+    let deadline = std::time::Instant::now() + Duration::from_secs(20);
+    while std::time::Instant::now() < deadline {
+        let Ok(Ok(Some(e))) =
+            tokio::time::timeout(Duration::from_millis(500), s.next_event()).await
+        else {
+            break;
+        };
+        let ev = e.event.unwrap();
+        if ev.event_type == "EmergencyStopActivated" {
+            let p: serde_json::Value = serde_json::from_slice(&ev.payload).unwrap_or_default();
+            reason = p["payload"]["reason"].as_str().map(str::to_owned);
+            break;
+        }
+    }
+    assert_eq!(
+        reason.as_deref(),
+        Some("the person hit stop on the Browser panel")
+    );
+    drop(repo);
+}
+
+/// IMP-EV-0089 (docs/22): the computer-use failure taxonomy — every code is
+/// emitted as the call's outcome with its recovery guidance, from the Core
+/// (a stale reference, a disabled field, a page with no accessible
+/// structure, a protected action judged page-only, the person holding the
+/// browser) or passed through from the host (an occluded target, a modal
+/// dialog, an unverifiable window, a permission the page asked for, a
+/// destination that takes no text).
+#[tokio::test]
+async fn qual_ev_0089_every_failure_code_of_the_taxonomy_is_emitted_with_its_recovery() {
+    use modbit_protocol::v1::{BrowserControlChanged, SetBrowserControl};
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[("README.md", "# browse\n")]);
+    let dir = tempfile::tempdir().unwrap();
+    let env = [("OPENAI_API_KEY", ""), ("ANTHROPIC_API_KEY", "")];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xE5)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xE6, "local_trusted").await;
+    let mut host = core.client_of(ClientKind::Desktop).await;
+    let bsid = open_and_attach(&mut c, &mut host, &task, g, 0xE7).await;
+    let form = ["main:".to_owned(), "form:Pay".to_owned()];
+    let nodes = json!([
+        {"id": "1", "parent": null, "role": "RootWebArea", "name": "Page"},
+        {"id": "2", "parent": "1", "role": "main", "name": ""},
+        {"id": "10", "parent": "2", "role": "button", "name": "Locate", "backend_dom_node_id": 10},
+        {"id": "3", "parent": "2", "role": "form", "name": "Pay"},
+        {"id": "4", "parent": "3", "role": "textbox", "name": "Amount", "backend_dom_node_id": 4},
+        {"id": "5", "parent": "3", "role": "textbox", "name": "Note", "backend_dom_node_id": 5, "disabled": true},
+        {"id": "6", "parent": "3", "role": "button", "name": "Pay now", "backend_dom_node_id": 6},
+        {"id": "7", "parent": "3", "role": "textbox", "name": "Covered", "backend_dom_node_id": 7},
+        {"id": "8", "parent": "3", "role": "textbox", "name": "Behind dialog", "backend_dom_node_id": 8},
+        {"id": "9", "parent": "3", "role": "textbox", "name": "Gone window", "backend_dom_node_id": 9},
+        {"id": "11", "parent": "3", "role": "textbox", "name": "Static", "backend_dom_node_id": 11},
+    ]);
+    let pages = std::collections::HashMap::from([
+        ("https://app.test/pay".to_owned(), nodes),
+        ("https://app.test/empty".to_owned(), json!([])),
+    ]);
+    let act_errors = std::collections::HashMap::from([
+        (
+            7i64,
+            (
+                "TARGET_OCCLUDED".to_owned(),
+                "an overlay covers it".to_owned(),
+            ),
+        ),
+        (
+            8,
+            ("MODAL_BLOCKING".to_owned(), "a confirm() is up".to_owned()),
+        ),
+        (
+            9,
+            (
+                "WINDOW_UNVERIFIABLE".to_owned(),
+                "the view is gone".to_owned(),
+            ),
+        ),
+        (
+            10,
+            (
+                "PERMISSION_REQUIRED".to_owned(),
+                "the page asked for geolocation".to_owned(),
+            ),
+        ),
+        (11, ("TARGET_NOT_EDITABLE".to_owned(), "a div".to_owned())),
+    ]);
+    let (host_task, _served) = fake_host_serving(host, pages, act_errors, Default::default());
+    let r#ref =
+        |role: &str, name: &str| modbit_browser::compiler::reference_of(role, name, &form, 0);
+    let r = invoke_browser(
+        &mut c,
+        &task,
+        g,
+        "browser.navigate",
+        json!({"url": "https://app.test/pay"}),
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    // ACTION_UNSAFE: a protected action on a reference this Core never named
+    // yet (judged page-only before the page was read) — refused, never run.
+    let r = invoke_browser(
+        &mut c,
+        &task,
+        g,
+        "browser.act",
+        json!({"ref": r#ref("button", "Pay now"), "action": "click"}),
+    )
+    .await;
+    assert_eq!(r.error_code, "ACTION_UNSAFE", "{r:?}");
+    assert!(r.error_message.contains("read the page"), "{r:?}");
+    let r = invoke_browser(
+        &mut c,
+        &task,
+        g,
+        "browser.snapshot",
+        json!({"mode": "full"}),
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let mut seen: Vec<(String, String)> = Vec::new();
+    let mut expect = |r: modbit_protocol::v1::ToolInvoked, code: &str| {
+        assert_eq!(r.error_code, code, "{r:?}");
+        let recovery = modbit_tools::browser::recovery_for(code).unwrap();
+        assert!(r.error_message.contains(recovery), "{code}: {r:?}");
+        seen.push((code.to_owned(), r.error_message.clone()));
+    };
+    // TARGET_STALE: a reference that is not on the page.
+    let r = invoke_browser(
+        &mut c,
+        &task,
+        g,
+        "browser.act",
+        json!({"ref": r#ref("textbox", "Nowhere"), "action": "fill", "value": "x"}),
+    )
+    .await;
+    expect(r, "TARGET_STALE");
+    // TARGET_NOT_EDITABLE, from the Core: a disabled field takes no text.
+    let r = invoke_browser(
+        &mut c,
+        &task,
+        g,
+        "browser.act",
+        json!({"ref": r#ref("textbox", "Note"), "action": "fill", "value": "x"}),
+    )
+    .await;
+    expect(r, "TARGET_NOT_EDITABLE");
+    // From the host, each with its recovery appended by the Core.
+    for (name, action, code) in [
+        ("Covered", "fill", "TARGET_OCCLUDED"),
+        ("Behind dialog", "fill", "MODAL_BLOCKING"),
+        ("Gone window", "fill", "WINDOW_UNVERIFIABLE"),
+        ("Static", "fill", "TARGET_NOT_EDITABLE"),
+    ] {
+        let r = invoke_browser(
+            &mut c,
+            &task,
+            g,
+            "browser.act",
+            json!({"ref": r#ref("textbox", name), "action": action, "value": "x"}),
+        )
+        .await;
+        expect(r, code);
+    }
+    let r = invoke_browser(
+        &mut c,
+        &task,
+        g,
+        "browser.act",
+        // (Outside the form: a plain page-only button, no approval in the way.)
+        json!({"ref": modbit_browser::compiler::reference_of("button", "Locate", &["main:".to_owned()], 0), "action": "click"}),
+    )
+    .await;
+    expect(r, "PERMISSION_REQUIRED");
+    // HUMAN_ACTIVE: the person holds the browser.
+    let taken: BrowserControlChanged = Client::result(
+        &c.command(envelope_fenced(
+            id16(0xEE),
+            "SetBrowserControl",
+            SetBrowserControl {
+                browser_session_id: Some(bsid.clone()),
+                controller: "USER".into(),
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(taken.controller, "USER");
+    let r = invoke_browser(
+        &mut c,
+        &task,
+        g,
+        "browser.act",
+        json!({"ref": r#ref("textbox", "Amount"), "action": "fill", "value": "x"}),
+    )
+    .await;
+    expect(r, "HUMAN_ACTIVE");
+    let _: BrowserControlChanged = Client::result(
+        &c.command(envelope_fenced(
+            id16(0xEF),
+            "SetBrowserControl",
+            SetBrowserControl {
+                browser_session_id: Some(bsid.clone()),
+                controller: "AGENT".into(),
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+    // ACCESSIBILITY_UNAVAILABLE: a loaded page with no accessible structure.
+    let r = invoke_browser(
+        &mut c,
+        &task,
+        g,
+        "browser.navigate",
+        json!({"url": "https://app.test/empty"}),
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let r = invoke_browser(
+        &mut c,
+        &task,
+        g,
+        "browser.snapshot",
+        json!({"mode": "full"}),
+    )
+    .await;
+    expect(r, "ACCESSIBILITY_UNAVAILABLE");
+    host_task.abort();
+    let codes: Vec<&str> = seen.iter().map(|(c, _)| c.as_str()).collect();
+    for c in [
+        "TARGET_STALE",
+        "TARGET_OCCLUDED",
+        "WINDOW_UNVERIFIABLE",
+        "ACCESSIBILITY_UNAVAILABLE",
+        "HUMAN_ACTIVE",
+        "MODAL_BLOCKING",
+        "TARGET_NOT_EDITABLE",
+        "PERMISSION_REQUIRED",
+    ] {
+        assert!(codes.contains(&c), "{codes:?}");
+    }
+    // Every one is an application failure of the page or the person, never
+    // an infrastructure failure of the bridge — the run continues.
+    let evs = task_events(&core, &session, &task).await;
+    let failed: Vec<String> = evs
+        .iter()
+        .filter(|(_, ty, _)| ty == "ToolCallFailed")
+        .map(|(_, _, p)| p["failure_code"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    assert!(
+        failed
+            .iter()
+            .all(|c| c != "BROWSER_PROTOCOL" && !c.starts_with("BROWSER_")),
+        "{failed:?}"
+    );
+    drop(repo);
+}
+
+/// IMP-EV-0280 (docs/22 "Verification"): what the session saw happen — an
+/// action on a page at one fingerprint leading to a page at another — is
+/// offered on the next read of a page at the same fingerprint as a known
+/// transition (evidence, with its verification), and not at all for a page
+/// that changed; the record survives a Core restart.
+#[tokio::test]
+async fn qual_ev_0280_a_known_transition_is_offered_for_the_same_fingerprint_and_not_for_a_changed_page()
+ {
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[("README.md", "# browse\n")]);
+    let dir = tempfile::tempdir().unwrap();
+    let env = [("OPENAI_API_KEY", ""), ("ANTHROPIC_API_KEY", "")];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xE5)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xE6, "local_trusted").await;
+    let mut host = core.client_of(ClientKind::Desktop).await;
+    let bsid = open_and_attach(&mut c, &mut host, &task, g, 0xE7).await;
+    let page = |button: &str| {
+        json!([
+            {"id": "1", "parent": null, "role": "RootWebArea", "name": "Page"},
+            {"id": "2", "parent": "1", "role": "main", "name": ""},
+            {"id": "3", "parent": "2", "role": "textbox", "name": "Search", "backend_dom_node_id": 3},
+            {"id": "4", "parent": "2", "role": "button", "name": button, "backend_dom_node_id": 4},
+        ])
+    };
+    let pages = std::collections::HashMap::from([
+        ("https://app.test/a".to_owned(), page("Go")),
+        ("https://app.test/changed".to_owned(), page("Go now")),
+    ]);
+    // The click on Go shows results (the page after the transition).
+    let results = json!([
+        {"id": "1", "parent": null, "role": "RootWebArea", "name": "Page"},
+        {"id": "2", "parent": "1", "role": "main", "name": ""},
+        {"id": "3", "parent": "2", "role": "textbox", "name": "Search", "backend_dom_node_id": 3},
+        {"id": "4", "parent": "2", "role": "button", "name": "Go", "backend_dom_node_id": 4},
+        {"id": "5", "parent": "2", "role": "heading", "name": "Results"},
+    ]);
+    let after_act = std::collections::HashMap::from([(4i64, results)]);
+    let (host_task, _served) = fake_host_serving(host, pages, Default::default(), after_act);
+    let go = modbit_browser::compiler::reference_of("button", "Go", &["main:".to_owned()], 0);
+    let r = invoke_browser(
+        &mut c,
+        &task,
+        g,
+        "browser.navigate",
+        json!({"url": "https://app.test/a"}),
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let r = invoke_browser(&mut c, &task, g, "browser.snapshot", json!({})).await;
+    let first: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(
+        first["known_transitions"],
+        json!([]),
+        "nothing known yet: {first}"
+    );
+    let fingerprint = first["state_fingerprint"].as_str().unwrap().to_owned();
+    // The action, with a postcondition that holds: the transition is recorded verified.
+    let r = invoke_browser(
+        &mut c,
+        &task,
+        g,
+        "browser.act",
+        json!({"ref": go, "action": "click", "expect": {"changed": true}}),
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let acted: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(acted["fingerprint_before"], json!(fingerprint));
+    // Back on the same page (a fresh navigation restores the fingerprint): the
+    // transition is offered, with what it led to and that it was verified.
+    let r = invoke_browser(
+        &mut c,
+        &task,
+        g,
+        "browser.navigate",
+        json!({"url": "https://app.test/a"}),
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let r = invoke_browser(
+        &mut c,
+        &task,
+        g,
+        "browser.snapshot",
+        json!({"mode": "full"}),
+    )
+    .await;
+    let again: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(again["state_fingerprint"], json!(fingerprint), "{again}");
+    let known = again["known_transitions"].as_array().unwrap();
+    assert_eq!(known.len(), 1, "{again}");
+    assert_eq!(known[0]["ref"], json!(go));
+    assert_eq!(known[0]["action"], "click");
+    assert_eq!(known[0]["verified"], true);
+    assert_eq!(known[0]["to_fingerprint"], acted["state_fingerprint"]);
+    // A changed page has another fingerprint: nothing is offered for it.
+    let r = invoke_browser(
+        &mut c,
+        &task,
+        g,
+        "browser.navigate",
+        json!({"url": "https://app.test/changed"}),
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let r = invoke_browser(
+        &mut c,
+        &task,
+        g,
+        "browser.snapshot",
+        json!({"mode": "full"}),
+    )
+    .await;
+    let changed: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_ne!(changed["state_fingerprint"], json!(fingerprint));
+    assert_eq!(changed["known_transitions"], json!([]), "{changed}");
+    host_task.abort();
+    // After a restart the record is rebuilt from the log.
+    core.kill();
+    let core2 = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c2 = core2.client().await;
+    let g2 = acquire_lease(&mut c2, id16(0xF0), session.clone(), "again").await;
+    let mut host2 = core2.client_of(ClientKind::Desktop).await;
+    let _: modbit_protocol::v1::BrowserHostAttached = Client::result(
+        &host2
+            .command(envelope(
+                id16(0xF1),
+                "AttachBrowserHost",
+                modbit_protocol::v1::AttachBrowserHost {
+                    browser_session_id: Some(bsid.clone()),
+                    host_kind: "test-host".into(),
+                    partition: format!(
+                        "persist:modbit-browser-{}",
+                        bsid.value
+                            .iter()
+                            .map(|b| format!("{b:02x}"))
+                            .collect::<String>()
+                    ),
+                    sandboxed: true,
+                    context_isolated: true,
+                    node_integration: false,
+                    task_id: Some(task.clone()),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    let pages = std::collections::HashMap::from([("https://app.test/a".to_owned(), page("Go"))]);
+    let (host_task2, _) = fake_host_serving(host2, pages, Default::default(), Default::default());
+    let r = invoke_browser(
+        &mut c2,
+        &task,
+        Some(g2),
+        "browser.navigate",
+        json!({"url": "https://app.test/a"}),
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let r = invoke_browser(
+        &mut c2,
+        &task,
+        Some(g2),
+        "browser.snapshot",
+        json!({"mode": "full"}),
+    )
+    .await;
+    let after: serde_json::Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let known = after["known_transitions"].as_array().unwrap();
+    assert_eq!(known.len(), 1, "rebuilt from the log: {after}");
+    assert_eq!(known[0]["verified"], true);
+    host_task2.abort();
+    drop(repo);
+}
+
+/// IMP-EV-0086 (docs/22 "Verification"): a raw-input fallback — a click at
+/// a point inside a captured region — is evidence only with its post-state
+/// verified. One without a postcondition is on the log with none, and the
+/// completion verifier refuses the task until the action is redone with a
+/// postcondition that holds.
+#[tokio::test]
+async fn qual_ev_0086_a_visual_fallback_without_a_verified_postcondition_blocks_completion() {
+    use modbit_browser::compiler::reference_of;
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[("README.md", "# browse\n")]);
+    let canvas = reference_of("visual:canvas", "", &["main:".to_owned()], 0);
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "the colour is picked", "expected_files": []}}]}),
+        json!({"calls": [{"name": "browser.navigate", "args": {"url": "https://app.test/picker"}}]}),
+        json!({"calls": [{"name": "browser.snapshot", "args": {}}]}),
+        json!({"calls": [{"name": "browser.capture", "args": {"ref": canvas, "reason": "drawn picker"}}]}),
+        // The fallback click without any postcondition.
+        json!({"calls": [{"name": "browser.act", "args": {"ref": canvas, "action": "click", "at": {"x": 150, "y": 20}}}]}),
+        // Completion: refused — the fallback is unverified.
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "picked", "self_review": {"findings": []}}}]}),
+        // Redone with a postcondition that holds; then completion.
+        json!({"calls": [{"name": "browser.act", "args": {"ref": canvas, "action": "click", "at": {"x": 150, "y": 20}, "expect": {"text_contains": "picked: green"}}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "picked green, verified", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xE5)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xE6, "local_trusted").await;
+    let mut host = core.client_of(ClientKind::Desktop).await;
+    let _bsid = open_and_attach(&mut c, &mut host, &task, g, 0xE7).await;
+    let picker = |picked: &str| {
+        json!([
+            {"id": "1", "parent": null, "role": "RootWebArea", "name": "Picker"},
+            {"id": "2", "parent": "1", "role": "main", "name": ""},
+            {"id": "3", "parent": "2", "role": "canvas", "name": "", "backend_dom_node_id": 44, "bounds": {"x": 10, "y": 40, "width": 200, "height": 40}},
+            {"id": "4", "parent": "2", "role": "paragraph", "name": picked},
+        ])
+    };
+    let pages = std::collections::HashMap::from([(
+        "https://app.test/picker".to_owned(),
+        picker("picked: nothing"),
+    )]);
+    let after_act = std::collections::HashMap::from([(44i64, picker("picked: green"))]);
+    let (host_task, _served) = fake_host_serving(host, pages, Default::default(), after_act);
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xE9),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: "openai".into(),
+                model: "gpt-5".into(),
+                max_turns: 0,
+                max_tool_calls: 0,
+                max_no_progress_turns: 8,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_for_state(&mut c, &task, "ReadyForReview", 120).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    host_task.abort();
+    let bodies = seen.lock().unwrap().clone();
+    let texts: Vec<String> = bodies.last().unwrap()["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .map(|m| match &m["content"] {
+            serde_json::Value::String(s) => s.clone(),
+            other => other.to_string(),
+        })
+        .collect();
+    // (The accepted completion is the run's end: no request follows it.)
+    assert_eq!(texts.len(), 7, "{texts:#?}");
+    assert!(
+        texts[4].contains("status: SUCCESS") && texts[4].contains("\"visual_fallback\""),
+        "{}",
+        texts[4]
+    );
+    assert!(
+        texts[5].contains("COMPLETION_REFUSED")
+            && texts[5].contains("VISUAL_FALLBACK_UNVERIFIED")
+            && texts[5].contains("declared no postcondition"),
+        "{}",
+        texts[5]
+    );
+    assert!(texts[6].contains("\"held\":true"), "{}", texts[6]);
+    let evs = task_events(&core, &session, &task).await;
+    let acts: Vec<serde_json::Value> = evs
+        .iter()
+        .filter(|(_, ty, _)| ty == "BrowserActionPerformed")
+        .map(|(_, _, p)| p.clone())
+        .collect();
+    assert_eq!(acts.len(), 2, "{acts:#?}");
+    assert!(acts[0]["postcondition_held"].is_null() && !acts[0]["visual_fallback"].is_null());
+    assert_eq!(acts[1]["postcondition_held"], true);
+    assert!(
+        acts.iter()
+            .all(|a| !a["tool_call_id"].as_str().unwrap_or_default().is_empty()),
+        "IMP-EV-0147: every record names its call"
+    );
+    drop(repo);
+}
+
+/// IMP-EV-0082 / IMP-EV-0234 / IMP-EV-0277 / IMP-EV-0282 (docs/22 "Action
+/// hierarchy", "Locked direction"): the ladder is deterministic → accessible
+/// → visual. An accessible form is completed from its semantic state with no
+/// pixel at all — the host is never asked to capture; a drawn control
+/// escalates explicitly, region-only, with the reason on record, and only
+/// then.
+#[tokio::test]
+async fn qual_ev_0082_0234_0277_0282_an_accessible_form_needs_no_pixels_and_a_canvas_escalates_explicitly()
+ {
+    use modbit_browser::compiler::reference_of;
+    use modbit_protocol::v1::{ResolveApproval, StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[("README.md", "# browse\n")]);
+    let form = ["main:".to_owned(), "form:Sign up".to_owned()];
+    let name = reference_of("textbox", "Name", &form, 0);
+    let plan_choice = reference_of("combobox", "Plan", &form, 0);
+    let terms = reference_of("checkbox", "I agree", &form, 0);
+    let submit = reference_of("button", "Create account", &form, 0);
+    let canvas = reference_of("visual:canvas", "", &["main:".to_owned()], 0);
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "the account is created and the colour picked", "expected_files": []}}]}),
+        json!({"calls": [{"name": "browser.navigate", "args": {"url": "https://app.test/signup"}}]}),
+        json!({"calls": [{"name": "browser.snapshot", "args": {}}]}),
+        json!({"calls": [{"name": "browser.act", "args": {"ref": name, "action": "fill", "value": "Ada", "expect": {"value": {"ref": name, "equals": "Ada"}}}}]}),
+        json!({"calls": [{"name": "browser.act", "args": {"ref": plan_choice, "action": "select", "value": "Pro"}}]}),
+        json!({"calls": [{"name": "browser.act", "args": {"ref": terms, "action": "check"}}]}),
+        json!({"calls": [{"name": "browser.act", "args": {"ref": submit, "action": "click", "expect": {"text_contains": "Welcome, Ada"}}}]}),
+        json!({"calls": [{"name": "browser.navigate", "args": {"url": "https://app.test/picker"}}]}),
+        json!({"calls": [{"name": "browser.snapshot", "args": {"mode": "full"}}]}),
+        json!({"calls": [{"name": "browser.capture", "args": {"ref": canvas, "reason": "the picker is drawn; no control names the colours"}}]}),
+        json!({"calls": [{"name": "browser.act", "args": {"ref": canvas, "action": "click", "at": {"x": 150, "y": 20}, "expect": {"text_contains": "picked: green"}}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "signed up and picked green", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xE5)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xE6, "local_trusted").await;
+    let mut host = core.client_of(ClientKind::Desktop).await;
+    let _bsid = open_and_attach(&mut c, &mut host, &task, g, 0xE7).await;
+    let signup = |name_value: &str, plan: &str, agreed: bool, welcomed: bool| {
+        let mut nodes = vec![
+            json!({"id": "1", "parent": null, "role": "RootWebArea", "name": "Sign up"}),
+            json!({"id": "2", "parent": "1", "role": "main", "name": ""}),
+            json!({"id": "3", "parent": "2", "role": "form", "name": "Sign up"}),
+            json!({"id": "4", "parent": "3", "role": "textbox", "name": "Name", "value": name_value, "backend_dom_node_id": 4}),
+            json!({"id": "5", "parent": "3", "role": "combobox", "name": "Plan", "value": plan, "backend_dom_node_id": 5}),
+            json!({"id": "6", "parent": "3", "role": "checkbox", "name": "I agree", "value": if agreed { "true" } else { "false" }, "backend_dom_node_id": 6}),
+            json!({"id": "7", "parent": "3", "role": "button", "name": "Create account", "backend_dom_node_id": 7}),
+        ];
+        if welcomed {
+            nodes
+                .push(json!({"id": "8", "parent": "2", "role": "heading", "name": "Welcome, Ada"}));
+        }
+        serde_json::Value::Array(nodes)
+    };
+    let picker = |picked: &str| {
+        json!([
+            {"id": "1", "parent": null, "role": "RootWebArea", "name": "Picker"},
+            {"id": "2", "parent": "1", "role": "main", "name": ""},
+            {"id": "3", "parent": "2", "role": "canvas", "name": "", "backend_dom_node_id": 44, "bounds": {"x": 10, "y": 40, "width": 200, "height": 40}},
+            {"id": "4", "parent": "2", "role": "paragraph", "name": picked},
+        ])
+    };
+    let pages = std::collections::HashMap::from([
+        (
+            "https://app.test/signup".to_owned(),
+            signup("", "Free", false, false),
+        ),
+        (
+            "https://app.test/picker".to_owned(),
+            picker("picked: nothing"),
+        ),
+    ]);
+    // Each action leaves the form as a person would find it after it.
+    let after_act = std::collections::HashMap::from([
+        (4i64, signup("Ada", "Free", false, false)),
+        (5, signup("Ada", "Pro", false, false)),
+        (6, signup("Ada", "Pro", true, false)),
+        (7, signup("Ada", "Pro", true, true)),
+        (44, picker("picked: green")),
+    ]);
+    let (host_task, served) = fake_host_serving(host, pages, Default::default(), after_act);
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xE9),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: "openai".into(),
+                model: "gpt-5".into(),
+                max_turns: 0,
+                max_tool_calls: 0,
+                max_no_progress_turns: 8,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    // The submission is the protected action: approve its exact intent.
+    let deadline = std::time::Instant::now() + Duration::from_secs(90);
+    let approval = loop {
+        let list = approvals_of(&mut c, &session).await;
+        if let Some(a) = list.iter().find(|a| a.status == "REQUESTED") {
+            break a.clone();
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "no approval opened for the submission"
+        );
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    };
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xEA),
+            "ResolveApproval",
+            ResolveApproval {
+                approval_id: approval.approval_id.clone(),
+                approve: true,
+                reason: "create the account".into(),
+                intent_hash: approval.intent_hash.clone(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(
+        Client::result::<modbit_protocol::v1::ApprovalResolvedAck>(&ack)
+            .unwrap()
+            .status,
+        "APPROVED"
+    );
+    let st = wait_for_state(&mut c, &task, "ReadyForReview", 120).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    host_task.abort();
+    // The host's record: the accessible form never asked for a pixel; the
+    // one capture came after the picker, for the canvas's box only.
+    let served = served.lock().unwrap().clone();
+    let picker_at = served
+        .iter()
+        .position(|r| r["kind"] == "navigate" && r["url"] == "https://app.test/picker")
+        .unwrap();
+    assert!(
+        served[..picker_at].iter().all(|r| r["kind"] != "capture"),
+        "zero screenshot dependency on the accessible form: {served:#?}"
+    );
+    let captures: Vec<&serde_json::Value> = served[picker_at..]
+        .iter()
+        .filter(|r| r["kind"] == "capture")
+        .collect();
+    assert_eq!(captures.len(), 1, "{served:#?}");
+    assert_eq!(
+        captures[0]["clip"],
+        json!({"x": 10, "y": 40, "width": 200, "height": 40})
+    );
+    let bodies = seen.lock().unwrap().clone();
+    let texts: Vec<String> = bodies.last().unwrap()["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .map(|m| match &m["content"] {
+            serde_json::Value::String(s) => s.clone(),
+            other => other.to_string(),
+        })
+        .collect();
+    assert_eq!(texts.len(), 11, "{texts:#?}");
+    for i in [3, 4, 5, 6] {
+        assert!(texts[i].contains("status: SUCCESS"), "[{i}] {}", texts[i]);
+    }
+    assert!(texts[3].contains("\"held\":true"), "{}", texts[3]);
+    assert!(
+        texts[6].contains("\"held\":true") && texts[6].contains("Welcome, Ada"),
+        "{}",
+        texts[6]
+    );
+    assert!(
+        texts[9].contains("\"mime\":\"image/png\"")
+            && texts[9].contains("no control names the colours"),
+        "{}",
+        texts[9]
+    );
+    assert!(
+        texts[10].contains("\"visual_fallback\"") && texts[10].contains("\"held\":true"),
+        "{}",
+        texts[10]
+    );
+    // The log: the capture is on record with its reason and egress reference,
+    // bound to its call (IMP-EV-0147); no capture before it.
+    let evs = task_events(&core, &session, &task).await;
+    let captured: Vec<serde_json::Value> = evs
+        .iter()
+        .filter(|(_, ty, _)| ty == "BrowserRegionCaptured")
+        .map(|(_, _, p)| p.clone())
+        .collect();
+    assert_eq!(captured.len(), 1, "{captured:#?}");
+    assert_eq!(captured[0]["egress_ref"].as_str().unwrap().len(), 64);
+    assert!(
+        !captured[0]["tool_call_id"]
+            .as_str()
+            .unwrap_or_default()
+            .is_empty()
+    );
     drop(repo);
 }

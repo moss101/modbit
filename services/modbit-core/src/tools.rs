@@ -1409,6 +1409,7 @@ impl ToolHost {
                 "BrowserNavigated",
                 &modbit_domain::task::TaskEvent::BrowserNavigated {
                     browser_session_id: session.to_string(),
+                    tool_call_id: tool_call_id.to_string(),
                     url: state.url.clone(),
                     title: state.title.clone(),
                     state_version: state.state_version,
@@ -1439,6 +1440,7 @@ impl ToolHost {
                 "BrowserActionPerformed",
                 &modbit_domain::task::TaskEvent::BrowserActionPerformed {
                     browser_session_id: session.to_string(),
+                    tool_call_id: tool_call_id.to_string(),
                     reference: o["ref"].as_str().unwrap_or_default().to_owned(),
                     action: o["action"].as_str().unwrap_or_default().to_owned(),
                     role: o["target"]["role"].as_str().unwrap_or_default().to_owned(),
@@ -1471,6 +1473,7 @@ impl ToolHost {
                     "BrowserCredentialFilled",
                     &modbit_domain::task::TaskEvent::BrowserCredentialFilled {
                         browser_session_id: session.to_string(),
+                        tool_call_id: tool_call_id.to_string(),
                         credential: handle.to_owned(),
                         origin: modbit_browser::origin_of(o["url"].as_str().unwrap_or_default())
                             .unwrap_or_default(),
@@ -1497,6 +1500,7 @@ impl ToolHost {
                 "BrowserRegionCaptured",
                 &modbit_domain::task::TaskEvent::BrowserRegionCaptured {
                     browser_session_id: session.to_string(),
+                    tool_call_id: tool_call_id.to_string(),
                     reference: o["ref"].as_str().unwrap_or_default().to_owned(),
                     role: o["role"].as_str().unwrap_or_default().to_owned(),
                     reason: o["reason"].as_str().unwrap_or_default().to_owned(),
@@ -1523,6 +1527,7 @@ impl ToolHost {
                 "BrowserPageObserved",
                 &modbit_domain::task::TaskEvent::BrowserPageObserved {
                     browser_session_id: session.to_string(),
+                    tool_call_id: tool_call_id.to_string(),
                     state_version: o["state_version"].as_u64().unwrap_or(0),
                     state_fingerprint: o["state_fingerprint"]
                         .as_str()

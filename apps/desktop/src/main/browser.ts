@@ -30,6 +30,16 @@ export interface HostedSession {
   controller: "AGENT" | "USER";
   /** The bounds the view was last shown at (a hidden view keeps its layout). */
   lastBounds: { x: number; y: number; width: number; height: number };
+  /** IMP-EV-0083: the exact web contents attached — verified before every request. */
+  webContentsId: number;
+  /** IMP-EV-0089: a JavaScript dialog the page opened is up (`MODAL_BLOCKING`). */
+  dialogOpen: boolean;
+  /** IMP-EV-0089: the dialog the page opened during the current action (type and message), if any. */
+  dialogSeen: { type: string; message: string } | null;
+  /** IMP-EV-0089: permissions the page asked for during the current action (all denied). */
+  permissionsAsked: string[];
+  /** IMP-EV-0087: when the person last acted in the view (ms epoch), 0 = never. */
+  humanInputAt: number;
 }
 
 interface PageState {
@@ -49,6 +59,9 @@ type HostRequest =
   | { kind: "close" };
 
 const HOST_KIND = "electron-main";
+
+/** IMP-EV-0089: what takes text — a text-like input, a textarea or an editable element, enabled and writable. */
+const EDITABLE_CHECK = "function() { const t = this.tagName; const notText = ['button','submit','checkbox','radio','file','image','reset','range','color']; const ok = (t === 'INPUT' && !notText.includes((this.type || 'text').toLowerCase())) || t === 'TEXTAREA' || this.isContentEditable === true; if (!ok) return 'NOT_A_TEXT_FIELD:' + t + (this.type ? '/' + this.type : ''); if (this.disabled) return 'DISABLED'; if (this.readOnly) return 'READ_ONLY'; return 'ok'; }";
 
 export class BrowserHost {
   private readonly sessions = new Map<string, HostedSession>();
@@ -87,7 +100,7 @@ export class BrowserHost {
         enableWebSQL: false,
       },
     });
-    const hosted: HostedSession = { browserSessionId: opened.browserSessionId, taskId, sessionId, partition: opened.partition, view, stateVersion: 0, attached: false, shown: false, leaseGeneration: Number(opened.leaseGeneration), controller: opened.controller === "USER" ? "USER" : "AGENT", lastBounds: { x: 0, y: 0, width: 1024, height: 768 } };
+    const hosted: HostedSession = { browserSessionId: opened.browserSessionId, taskId, sessionId, partition: opened.partition, view, stateVersion: 0, attached: false, shown: false, leaseGeneration: Number(opened.leaseGeneration), controller: opened.controller === "USER" ? "USER" : "AGENT", lastBounds: { x: 0, y: 0, width: 1024, height: 768 }, webContentsId: view.webContents.id, dialogOpen: false, dialogSeen: null, permissionsAsked: [], humanInputAt: 0 };
     this.harden(hosted);
     this.sessions.set(hosted.browserSessionId, hosted);
     // A document exists from the start (the CDP session needs a target);
@@ -112,11 +125,53 @@ export class BrowserHost {
     wc.on("did-navigate-in-page", () => this.bump(h));
     wc.on("did-finish-load", () => this.bump(h));
     wc.on("render-process-gone", (_e, details) => this.notify("browser:state", { browserSessionId: h.browserSessionId, gone: details.reason }));
+    // IMP-EV-0087: the person's own input into the view (a real key, not
+    // the agent's CDP input, which never reaches this hook while the host
+    // dispatches it) takes control for the person at once; the agent's
+    // next input is refused (`HUMAN_ACTIVE`) until control is returned.
+    wc.on("before-input-event", (_e, input) => {
+      if (this.agentInputInFlight > 0 || Date.now() < this.agentInputUntil || input.type !== "keyDown") return;
+      void this.preempt(h);
+    });
     const s = electronSession.fromPartition(h.partition);
-    s.setPermissionRequestHandler((_wc, _permission, cb) => cb(false));
+    s.setPermissionRequestHandler((_wc, permission, cb) => {
+      // IMP-EV-0089: a permission the page asks for is denied and named
+      // on the action that provoked it (`PERMISSION_REQUIRED`).
+      if (!h.permissionsAsked.includes(permission)) h.permissionsAsked.push(permission);
+      cb(false);
+    });
     s.setPermissionCheckHandler(() => false);
     s.on("will-download", (e) => e.preventDefault());
     s.setDevicePermissionHandler(() => false);
+  }
+
+  /** Agent CDP input being dispatched right now (the person's hook ignores it). */
+  private agentInputInFlight = 0;
+  /** IMP-EV-0085: sessions under an emergency stop, enforced by the host itself, independent of the Core's loop (a stop is for the session's life). */
+  private readonly stoppedSessions = new Map<string, string>();
+  /** Agent input dispatched by this host in the last moments (the person's hook ignores what arrives inside it). */
+  private agentInputUntil = 0;
+
+  /** IMP-EV-0087: the person acted in the view — control moves to them on the Core and here. */
+  private async preempt(h: HostedSession): Promise<void> {
+    h.humanInputAt = Date.now();
+    if (h.controller === "USER") return;
+    h.controller = "USER";
+    const c = this.client();
+    if (!c) return;
+    try {
+      const r = await c.setBrowserControl(h.sessionId, h.browserSessionId, h.taskId, "USER");
+      h.leaseGeneration = Math.max(h.leaseGeneration, Number(r.leaseGeneration));
+      this.notify("browser:state", { browserSessionId: h.browserSessionId, ...this.state(h), controller: "USER", leaseGeneration: h.leaseGeneration, preempted: true });
+    } catch {
+      // The Core will learn on the next hand-over; the host's own fence holds.
+    }
+  }
+
+  /** IMP-EV-0085: halt every agent input this host would deliver for the session, at once, with the reason on record. */
+  emergencyStop(sessionId: string, reason: string): void {
+    this.stoppedSessions.set(sessionId, reason || "emergency stop");
+    this.log.push({ browserSessionId: sessionId, kind: "emergency-stop", ok: true, code: reason || "emergency stop", generation: 0, atMs: Date.now() });
   }
 
   private bump(h: HostedSession): void {
@@ -174,11 +229,11 @@ export class BrowserHost {
   }
 
   /** What this host holds (for the renderer and the E2E). */
-  describe(browserSessionId: string): { browserSessionId: string; taskId: string; partition: string; attached: boolean; shown: boolean; url: string; title: string; stateVersion: number; leaseGeneration: number; controller: "AGENT" | "USER" } | null {
+  describe(browserSessionId: string): { browserSessionId: string; taskId: string; partition: string; attached: boolean; shown: boolean; url: string; title: string; stateVersion: number; leaseGeneration: number; controller: "AGENT" | "USER"; webContentsId: number; osProcessId: number; humanInputAt: number; stopped: string | null } | null {
     const h = this.sessions.get(browserSessionId);
     if (!h || h.view.webContents.isDestroyed()) return null;
     const s = this.state(h);
-    return { browserSessionId: h.browserSessionId, taskId: h.taskId, partition: h.partition, attached: h.attached, shown: h.shown, url: s.url, title: s.title, stateVersion: h.stateVersion, leaseGeneration: h.leaseGeneration, controller: h.controller };
+    return { browserSessionId: h.browserSessionId, taskId: h.taskId, partition: h.partition, attached: h.attached, shown: h.shown, url: s.url, title: s.title, stateVersion: h.stateVersion, leaseGeneration: h.leaseGeneration, controller: h.controller, webContentsId: h.webContentsId, osProcessId: h.view.webContents.isDestroyed() ? 0 : h.view.webContents.getOSProcessId(), humanInputAt: h.humanInputAt, stopped: this.stoppedSessions.get(h.sessionId) ?? null };
   }
 
   /**
@@ -249,11 +304,19 @@ export class BrowserHost {
     }
     const answer = async (): Promise<unknown> => {
       if (!h || h.view.webContents.isDestroyed()) return { kind: "error", code: "NO_SUCH_SESSION", message: `this host holds no view for ${bsid}` };
-      // Agent input under the control lease (M7.6): the generation the Core
-      // stamped must be the one this host holds, and the agent must hold control.
+      // IMP-EV-0083: the view answering is exactly the one attached — the
+      // same web contents, alive; a page's title or URL never stands in for it.
+      if (h.view.webContents.id !== h.webContentsId) return { kind: "error", code: "WINDOW_UNVERIFIABLE", message: `the session's view is not the web contents attached (${h.webContentsId})` };
       if (req.kind === "navigate" || req.kind === "act") {
+        // IMP-EV-0085: under an emergency stop no input runs, whatever the Core's loop does.
+        const stop = this.stoppedSessions.get(h.sessionId);
+        if (stop !== undefined) return { kind: "error", code: "EMERGENCY_STOPPED", message: stop };
+        // Agent input under the control lease (M7.6): the generation the Core
+        // stamped must be the one this host holds, and the agent must hold control.
         const verdict = admitsAgentInput(Number(r.leaseGeneration), h.leaseGeneration, h.controller);
-        if (!verdict.ok) return { kind: "error", code: verdict.code, message: verdict.code === "USER_HAS_CONTROL" ? `the person holds control (lease generation ${h.leaseGeneration}); agent input is blocked, observation is not` : `input stamped with lease generation ${r.leaseGeneration} is fenced: the session is at ${h.leaseGeneration}` };
+        if (!verdict.ok) return { kind: "error", code: verdict.code, message: verdict.code === "HUMAN_ACTIVE" ? `the person holds control (lease generation ${h.leaseGeneration}); agent input is blocked, observation is not` : `input stamped with lease generation ${r.leaseGeneration} is fenced: the session is at ${h.leaseGeneration}` };
+        // IMP-EV-0089: a modal dialog the page opened is the person's to answer.
+        if (h.dialogOpen) return { kind: "error", code: "MODAL_BLOCKING", message: "the page has a dialog open (alert, confirm or prompt); it is the person's to answer" };
       }
       switch (req.kind) {
         case "navigate":
@@ -261,6 +324,9 @@ export class BrowserHost {
         case "state":
           return { kind: "state", state: this.state(h) };
         case "snapshot":
+          // IMP-EV-0089: a JavaScript dialog holds the renderer; no tree can
+          // be read until the person answers it.
+          if (h.dialogOpen) return { kind: "error", code: "MODAL_BLOCKING", message: "the page has a dialog open (alert, confirm or prompt); it is the person's to answer" };
           return this.snapshot(h, req.max_nodes);
         case "capture":
           return this.capture(h, req.clip);
@@ -304,7 +370,23 @@ export class BrowserHost {
 
   private async cdp(wc: WebContents): Promise<Electron.Debugger> {
     const d = wc.debugger;
-    if (!d.isAttached()) d.attach("1.3");
+    if (!d.isAttached()) {
+      d.attach("1.3");
+      // IMP-EV-0089: a JavaScript dialog is a modal the agent cannot act
+      // around; the host records it open and closed.
+      d.on("message", (_e, method, params) => {
+        const h = [...this.sessions.values()].find((x) => x.view.webContents === wc);
+        if (!h) return;
+        if (method === "Page.javascriptDialogOpening") {
+          const p = params as { type?: unknown; message?: unknown } | undefined;
+          h.dialogOpen = true;
+          h.dialogSeen = { type: String(p?.type ?? "dialog"), message: String(p?.message ?? "").slice(0, 200) };
+          this.log.push({ browserSessionId: h.browserSessionId, kind: "dialog", ok: true, code: String(p?.type ?? "open"), generation: h.leaseGeneration, atMs: Date.now() });
+        }
+        if (method === "Page.javascriptDialogClosed") h.dialogOpen = false;
+      });
+      await d.sendCommand("Page.enable").catch(() => {});
+    }
     return d;
   }
 
@@ -435,6 +517,8 @@ export class BrowserHost {
       return { kind: "error", code: "TARGET_GONE", message: `the element is no longer in the document (${(e as Error).message.slice(0, 120)})` };
     }
     const versionBefore = h.stateVersion;
+    h.permissionsAsked.length = 0;
+    h.dialogSeen = null;
     const call = async (fn: string, args: unknown[] = []) => (await d.sendCommand("Runtime.callFunctionOn", { objectId, functionDeclaration: fn, arguments: args.map((a) => ({ value: a })), returnByValue: true })) as { result: { value?: unknown }; exceptionDetails?: { text?: string } };
     // A navigation the action starts is watched from before the action is
     // dispatched: a local page can start and finish its load between the
@@ -464,7 +548,7 @@ export class BrowserHost {
       if (navStarted) {
         if (!navDone) await Promise.race([new Promise<void>((r) => (onNavDone = r)), sleep(8_000)]);
       } else {
-        await sleep(150);
+        await sleep(250);
       }
       return navStarted || h.stateVersion !== versionBefore;
     };
@@ -491,27 +575,51 @@ export class BrowserHost {
           }
         }
         await d.sendCommand("DOM.scrollIntoViewIfNeeded", { backendNodeId }).catch(() => {});
-        const bm = (await d.sendCommand("DOM.getBoxModel", { backendNodeId })) as { model: { border: number[] } };
-        const q = bm.model.border;
-        // The centre of the box, or the point the model chose inside it
-        // (a visual region, M7.5) — clamped to the box, never outside it.
-        const left = Math.min(q[0]!, q[2]!, q[4]!, q[6]!);
-        const top = Math.min(q[1]!, q[3]!, q[5]!, q[7]!);
-        const right = Math.max(q[0]!, q[2]!, q[4]!, q[6]!);
-        const bottom = Math.max(q[1]!, q[3]!, q[5]!, q[7]!);
-        const x = at ? Math.min(right - 1, Math.max(left, left + at[0])) : (left + right) / 2;
-        const y = at ? Math.min(bottom - 1, Math.max(top, top + at[1])) : (top + bottom) / 2;
-        await d.sendCommand("Input.dispatchMouseEvent", { type: "mouseMoved", x, y });
-        await d.sendCommand("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount: 1 });
-        await d.sendCommand("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount: 1 });
+        // The element's box in viewport coordinates (what a click and a
+        // hit test both use); the centre, or the point the model chose
+        // inside it (a visual region, M7.5) — clamped to the box, never outside it.
+        const box = await call("function() { const r = this.getBoundingClientRect(); return { left: r.left, top: r.top, right: r.right, bottom: r.bottom }; }");
+        const b = box.result.value as { left: number; top: number; right: number; bottom: number } | undefined;
+        if (!b || b.right - b.left <= 0 || b.bottom - b.top <= 0) return { kind: "error", code: "TARGET_OCCLUDED", message: "the element has no visible box (hidden or collapsed)" };
+        const x = at ? Math.min(b.right - 1, Math.max(b.left, b.left + at[0])) : (b.left + b.right) / 2;
+        const y = at ? Math.min(b.bottom - 1, Math.max(b.top, b.top + at[1])) : (b.top + b.bottom) / 2;
+        // IMP-EV-0089: what is at the point must be the element or inside it —
+        // an overlay, a menu or a dialog over it makes the click TARGET_OCCLUDED.
+        const hit = await call("function(x, y) { const el = document.elementFromPoint(x, y); if (!el) return 'NONE'; return (el === this || this.contains(el) || el.contains(this)) ? 'ok' : (el.tagName + (el.id ? '#' + el.id : '')); }", [x, y]);
+        if (hit.result.value !== "ok") return { kind: "error", code: "TARGET_OCCLUDED", message: `${hit.result.value === "NONE" ? "nothing" : String(hit.result.value)} is at the click point, over the element` };
+        this.agentInputInFlight += 1;
+        try {
+          // A click whose handler opens a dialog holds the renderer, and the
+          // input's acknowledgement with it: the dispatch is not waited for
+          // past a bound — the dialog is reported on the next request.
+          const bounded = <T,>(p: Promise<T>) => Promise.race([p, new Promise<void>((r) => setTimeout(r, 1_500))]);
+          await bounded(d.sendCommand("Input.dispatchMouseEvent", { type: "mouseMoved", x, y }));
+          await bounded(d.sendCommand("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount: 1 }));
+          await bounded(d.sendCommand("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount: 1 }));
+        } finally {
+          this.agentInputInFlight -= 1;
+          this.agentInputUntil = Date.now() + 250;
+        }
         detail = `${action} at ${Math.round(x)},${Math.round(y)}`;
         break;
       }
       case "fill": {
-        await d.sendCommand("DOM.focus", { backendNodeId });
-        await call("function() { if ('value' in this) { this.value = ''; this.dispatchEvent(new Event('input', {bubbles:true})); } }");
-        if (value.length > 0) await d.sendCommand("Input.insertText", { text: value });
-        await call("function() { this.dispatchEvent(new Event('change', {bubbles:true})); }");
+        // IMP-EV-0089 / IMP-EV-0090: the destination is verified as a text
+        // entry before anything is replaced (never a button, a checkbox, a
+        // read-only or disabled field); text goes in as typed input, never
+        // through the clipboard.
+        const editable = await call(EDITABLE_CHECK);
+        if (editable.result.value !== "ok") return { kind: "error", code: "TARGET_NOT_EDITABLE", message: `the element does not take text (${String(editable.result.value)})` };
+        this.agentInputInFlight += 1;
+        try {
+          await d.sendCommand("DOM.focus", { backendNodeId });
+          await call("function() { if ('value' in this) { this.value = ''; this.dispatchEvent(new Event('input', {bubbles:true})); } else if (this.isContentEditable) { this.textContent = ''; } }");
+          if (value.length > 0) await d.sendCommand("Input.insertText", { text: value });
+          await call("function() { this.dispatchEvent(new Event('change', {bubbles:true})); }");
+        } finally {
+          this.agentInputInFlight -= 1;
+          this.agentInputUntil = Date.now() + 250;
+        }
         detail = `inserted ${value.length} chars`;
         break;
       }
@@ -529,12 +637,18 @@ export class BrowserHost {
         })();
         const secret = credentialHandle ? this.secretFor(credentialHandle, pageOrigin) : null;
         if (secret === null) return { kind: "error", code: "CREDENTIAL_UNAVAILABLE", message: `no credential ${credentialHandle ?? ""} for ${pageOrigin || "this page"}` };
-        const tag = await call("function() { return (this.tagName === 'INPUT' || this.tagName === 'TEXTAREA') ? 'ok' : 'NOT_INPUT'; }");
-        if (tag.result.value !== "ok") return { kind: "error", code: "CREDENTIAL_TARGET_NOT_FIELD", message: "a credential is filled into an input" };
-        await d.sendCommand("DOM.focus", { backendNodeId });
-        await call("function() { this.value = ''; this.dispatchEvent(new Event('input', {bubbles:true})); }");
-        await d.sendCommand("Input.insertText", { text: secret });
-        await call("function() { this.dispatchEvent(new Event('change', {bubbles:true})); }");
+        const tag = await call(EDITABLE_CHECK);
+        if (tag.result.value !== "ok") return { kind: "error", code: "TARGET_NOT_EDITABLE", message: `a credential is filled into a text field (${String(tag.result.value)})` };
+        this.agentInputInFlight += 1;
+        try {
+          await d.sendCommand("DOM.focus", { backendNodeId });
+          await call("function() { this.value = ''; this.dispatchEvent(new Event('input', {bubbles:true})); }");
+          await d.sendCommand("Input.insertText", { text: secret });
+          await call("function() { this.dispatchEvent(new Event('change', {bubbles:true})); }");
+        } finally {
+          this.agentInputInFlight -= 1;
+          this.agentInputUntil = Date.now() + 250;
+        }
         detail = `filled credential ${credentialHandle}`;
         break;
       }
@@ -550,8 +664,14 @@ export class BrowserHost {
         const code = codes[key];
         if (code === undefined) return { kind: "error", code: "UNSUPPORTED_KEY", message: key };
         const text = key === "Enter" ? "\r" : key === "Space" ? " " : undefined;
-        await d.sendCommand("Input.dispatchKeyEvent", { type: text ? "keyDown" : "rawKeyDown", key, code: key, windowsVirtualKeyCode: code, nativeVirtualKeyCode: code, ...(text ? { text } : {}) });
-        await d.sendCommand("Input.dispatchKeyEvent", { type: "keyUp", key, code: key, windowsVirtualKeyCode: code, nativeVirtualKeyCode: code });
+        this.agentInputInFlight += 1;
+        try {
+          await d.sendCommand("Input.dispatchKeyEvent", { type: text ? "keyDown" : "rawKeyDown", key, code: key, windowsVirtualKeyCode: code, nativeVirtualKeyCode: code, ...(text ? { text } : {}) });
+          await d.sendCommand("Input.dispatchKeyEvent", { type: "keyUp", key, code: key, windowsVirtualKeyCode: code, nativeVirtualKeyCode: code });
+        } finally {
+          this.agentInputInFlight -= 1;
+          this.agentInputUntil = Date.now() + 250;
+        }
         detail = `pressed ${key}`;
         break;
       }
@@ -559,6 +679,23 @@ export class BrowserHost {
         return { kind: "error", code: "UNSUPPORTED_ACTION", message: action };
     }
     const navigated = await settle();
+    // IMP-EV-0089: a permission the action provoked was denied; the action
+    // is reported as needing it, so the model does not chase a feature the
+    // session never grants.
+    if (h.permissionsAsked.length > 0) {
+      const asked = h.permissionsAsked.splice(0);
+      return { kind: "error", code: "PERMISSION_REQUIRED", message: `the page asked for ${asked.join(", ")} after the ${action}; the session grants no permission` };
+    }
+    // IMP-EV-0089: a dialog the action opened is the person's to answer —
+    // it stays up in the view when the page has one; a view without a
+    // window to show it in has it dismissed unanswered by Chromium (a
+    // confirm answers "no", a prompt nothing). Either way the action is
+    // reported as blocked by the modal, with what it asked.
+    if (h.dialogSeen) {
+      const d = h.dialogSeen;
+      h.dialogSeen = null;
+      return { kind: "error", code: "MODAL_BLOCKING", message: `the ${action} opened a ${d.type} dialog (${JSON.stringify(d.message)}); it is the person's to answer${h.dialogOpen ? " and is still open" : " and was dismissed unanswered"}` };
+    }
     return { kind: "acted", state: this.state(h), navigated, detail };
   }
 

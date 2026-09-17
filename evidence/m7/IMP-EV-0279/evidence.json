@@ -1,0 +1,15 @@
+{
+ "task": "IMP-EV-0279",
+ "requirement": "REQ-EV-0279",
+ "qual": "QUAL-EV-0279",
+ "tests": [
+  "qual_m7_3_page_reads_after_the_first_are_bounded_deltas_between_fingerprints",
+  "a_delta_is_bounded_to_what_changed_and_applies_to_the_same_page"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "`qual_m7_3_…`: a long flow's deltas are a fraction of the page and applying them reproduces the page (state equivalence); `a_delta_is_bounded_to_what_changed_and_applies_to_the_same_page`.",
+ "audit": "IMPLEMENTED by M7.3",
+ "limitations": "Token reduction is measured in bytes of the observation.",
+ "ci": ""
+}
