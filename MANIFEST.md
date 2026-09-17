@@ -20,8 +20,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | Verification and testing | 50–69 | 15 | 203744 |
 | Delivery and operations | 70–79 | 7 | 33831 |
 | Agent process and governance | 80–97 | 18 | 109299 |
-| Live state | 98–99 | 1 | 8076 |
-| **Total docs** | | **89** | **1197943** |
+| Live state | 98–99 | 1 | 8278 |
+| **Total docs** | | **89** | **1198145** |
 
 ## Specification files (`docs/`)
 
@@ -115,7 +115,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 95 | `docs/95_EPR_V1_1_DOSSIER_TASK_AND_HANDOFF.md` | EPR v1.1 dossier task and handoff | governance | 10525 | `264069b600baf40d1e54d2f89be7e9804a8b77c0dbf3ddb0a9dca41111582413` |
 | 96 | `docs/96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md` | Dossier governance maintenance task and handoff | governance | 9070 | `af650309e48dd7fd60dd6d286c460ed7c3128a2201964078c7f50aea385bfb8c` |
 | 97 | `docs/97_DOSSIER_MAINTENANCE_LOG.md` | Dossier maintenance log | governance | 43736 | `ae48c1832a920977def82d1ba4b7d492d4281c60a3723beaef613d3144c97073` |
-| 98 | `docs/98_BUILD_MANIFEST.md` | Build Manifest | live-state | 8076 | `54f0e562dbb62c436a5e5ab429084cc46ceaa7078bb7b8d15654689e51562706` |
+| 98 | `docs/98_BUILD_MANIFEST.md` | Build Manifest | live-state | 8278 | `78a2ede66b045238eeef3b0bbb6aab6b680540c9302636d98d871f0723e32986` |
 
 ## Root governing files and tooling
 
@@ -1281,18 +1281,30 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m7/M7.8/TASK_CARD.md` | retained evidence | 4900 | `c82be386b93814544829b670f6fe0b78dd27373e34db37cbc1c3b83c59dd3f12` |
 | `evidence/m7/M7.8/ci-run-35179264882.json` | retained evidence | 39150 | `91208f78fc4ac7e2b552bed5ef264a1152763372f9035397843612e4a64021ce` |
 | `evidence/m7/M7.8/evidence.json` | retained evidence | 1280 | `e73166314be690fe49e8654fceb6e384b29f1f8c104f4bf2da8d0d017c6dfd29` |
+| `evidence/m8/IMP-EV-0285/TASK_CARD.md` | retained evidence | 1780 | `599add501c115ed36faf435c67b64f06e213f5189d1c7f1e69cde5e84999d728` |
+| `evidence/m8/IMP-EV-0285/evidence.json` | retained evidence | 852 | `a75791e4731ebfc22c5e0ee072336afad1dfbec174c44db6e7be0e381be65314` |
+| `evidence/m8/IMP-EV-0286/TASK_CARD.md` | retained evidence | 1818 | `caaad903c4ecff47d310bab88be6b634b3816adbcbd3ca6be7c1ad51afa17b01` |
+| `evidence/m8/IMP-EV-0286/evidence.json` | retained evidence | 891 | `55a660441e7c7a37478477d251218eb0c23102809e10e45d39df8c11bd15629a` |
+| `evidence/m8/IMP-EV-0287/TASK_CARD.md` | retained evidence | 1700 | `7d6a30a97434297ae10aa65034222f9215e6de3926d6f93b4cc2158f6d759e18` |
+| `evidence/m8/IMP-EV-0287/evidence.json` | retained evidence | 968 | `2b4d5a08f3f9ee10d88af5720ef4ce6c348ca12e87c1d5d2c2787999c2506b7b` |
+| `evidence/m8/IMP-EV-0290/TASK_CARD.md` | retained evidence | 1889 | `3cb2dd0511c67341d91a07709a6a6554830962b60486ac0a87637bb76276261a` |
+| `evidence/m8/IMP-EV-0290/evidence.json` | retained evidence | 1118 | `f35807a6b917693b404a31892bdf1c44a91d6b3e299555b8d192529053073f0f` |
+| `evidence/m8/IMP-EV-0291/TASK_CARD.md` | retained evidence | 1696 | `7b889520c9b9f9b4986caff2a02fc68e2f6eb81b09418cfd1289f89de211e58b` |
+| `evidence/m8/IMP-EV-0291/evidence.json` | retained evidence | 948 | `0a02a8320c06ae92e6a32d8d600918611181cdfceecc238578881c8ce79ffd1f` |
 | `evidence/m8/M8.1/TASK_CARD.md` | retained evidence | 6182 | `be161ceb9804953444a48ca4c62668ede09d7f0dfd91595cab038ed83939afc0` |
 | `evidence/m8/M8.1/ci-run-35206770516.json` | retained evidence | 41449 | `d796e82a0a45ee95ecf3f80684ca433613f24b292c49034db18dd8bad7934c57` |
 | `evidence/m8/M8.1/evidence.json` | retained evidence | 1870 | `b2f563d20094f4d0abb18ccc9e16b6347304b1de476113a5a8c73ccc48bdac79` |
 | `evidence/m8/M8.2/TASK_CARD.md` | retained evidence | 5775 | `06e1e563bbc8fd872684ffae4e0eed7867562bc6d77e9b578af840e55bffa6eb` |
 | `evidence/m8/M8.2/ci-run-35206770516.json` | retained evidence | 41449 | `d796e82a0a45ee95ecf3f80684ca433613f24b292c49034db18dd8bad7934c57` |
 | `evidence/m8/M8.2/evidence.json` | retained evidence | 1488 | `7a5b9e8bdd4fbb9ff2a60dee34221379132d1f4ba5b1aa0242cd9cd00be53b1d` |
-| `evidence/m8/M8.3/TASK_CARD.md` | retained evidence | 5463 | `ab0dbde3006c077f0d2d7c24a1074df6bdb80d9e4d5a161ef97f57e90b6d3aab` |
-| `evidence/m8/M8.3/evidence.json` | retained evidence | 1878 | `c76f4eeb2096c95376d9beb42bcbe1d4de1689a77b7cbb8e5640c0c81dba01c5` |
-| `evidence/m8/M8.4/TASK_CARD.md` | retained evidence | 4083 | `7e9b7000fc25d5fb20e6424aa44d34343f10769c66388c9ce4d1dea65583adb7` |
-| `evidence/m8/M8.4/evidence.json` | retained evidence | 1399 | `acf06275d5217dcbba0f85ad1349ed41776323c4d2cbeff8a522a4fb25642e01` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 40752 | `b2d67d4b47391c77ef9849fcd51fd3618b3d1044bd8ee210f5dd9ad5ace23c14` |
-| `graph/project-graph.json` | project driver graph with live status | 1492529 | `362ff555a0e129a6c1ab198f5966a53e159c2cf2c4ab490340946e4590397ed1` |
+| `evidence/m8/M8.3/TASK_CARD.md` | retained evidence | 5676 | `cc3d3b725934d3ceb4d7aa223ed45dd1206283fadf747b1c48af12510c5fed81` |
+| `evidence/m8/M8.3/ci-run-35218388282.json` | retained evidence | 42304 | `6ea58e5a51e41614e35b651ec6e9ec48b1c5dec3173836622bce09cbc37c72b1` |
+| `evidence/m8/M8.3/evidence.json` | retained evidence | 1968 | `ec9cf3b205f696761cd874f20f7ba68fbc7a2ff8c53c3969b86e1a530ab99355` |
+| `evidence/m8/M8.4/TASK_CARD.md` | retained evidence | 4296 | `dbe974c8d1f398587401ad53fbe7391e8a4115fe374b6011fee36cb1da6436a2` |
+| `evidence/m8/M8.4/ci-run-35218388282.json` | retained evidence | 42304 | `6ea58e5a51e41614e35b651ec6e9ec48b1c5dec3173836622bce09cbc37c72b1` |
+| `evidence/m8/M8.4/evidence.json` | retained evidence | 1489 | `d8c5736237e824d02533a4a66dfdcd3fe056566f5c637049374e12c9e2f50fcb` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 40746 | `b0723ffec15c28fc4636fd1ef96a754a73f82f4a4c1d77a51cb8b5fec03159c5` |
+| `graph/project-graph.json` | project driver graph with live status | 1502965 | `33ee9a2da3c40415b0053b0fe28e5986f091d971f798161d7a1a09b3cee71d07` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 53364 | `b1a026685406fab72ca15d0e75000645daab1cb0e32f9b82cff648542f866d5d` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 17596 | `5c9b7a782d245223726f860ca583d766929a6f5662b644adebee64d257ad426b` |

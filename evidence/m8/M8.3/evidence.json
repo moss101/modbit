@@ -26,10 +26,14 @@
   "a_policy_has_no_network_unless_granted_and_protects_control_paths",
   "paths_normalize_lexically_and_map_onto_the_host"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "69b80b6"
+ ],
+ "runs": [
+  "35218388282"
+ ],
  "proof": "a real Firecracker MicroVM boots the real modbit-guest image and passes the backend contract over vsock (processes, policy-bound filesystem, no network interface, authenticated and replay-safe calls); the same suite passes on the reference backend, which says it isolates nothing; the gateway provisions only for the worker holding the session lease at its generation, binds every sandbox to its tenant, and denies and audits cross-tenant use.",
  "audit": "MISSING before: the gateway and guest skeletons refused to run; crates/sandbox carried no behavior.",
  "limitations": "egress grants refused until M8.6; bearer worker identity (mTLS is deployment config); no jailer; image signing is M8.4; Core tools through the gateway are M8.5.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/35218388282"
 }

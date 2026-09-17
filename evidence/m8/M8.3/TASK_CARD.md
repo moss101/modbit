@@ -36,4 +36,4 @@ Named tests (the hosted `cloud` job runs all three against Postgres and a KVM Mi
 ## Evidence
 
 - `evidence.json` in this directory (commits, hosted CI run, test names)
-- CI run json copy alongside
+- CI run json copy alongside: `ci-run-35218388282.json` (hosted run 35218388282 at 69b80b6, all 14 jobs green on attempt 2 — the first attempt lost `qual_m4_2_e2e_006` to a slow Windows runner, unrelated to this work, and passed on re-run)

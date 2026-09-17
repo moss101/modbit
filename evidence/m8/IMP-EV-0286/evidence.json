@@ -1,0 +1,22 @@
+{
+ "task": "IMP-EV-0286",
+ "requirements": [
+  "REQ-EV-0286"
+ ],
+ "scenarios": [
+  "QUAL-EV-0286 \u2014 Cross-tenant sandbox handle use is denied and audited."
+ ],
+ "tests": [
+  "qual_m8_3_the_gateway_binds_sandboxes_to_the_tenant_and_the_workers_session_lease"
+ ],
+ "batch_commits": [
+  "69b80b6"
+ ],
+ "runs": [
+  "35218388282"
+ ],
+ "proof": "`qual_m8_3_the_gateway_binds_sandboxes_to_the_tenant_and_the_workers_session_lease` (no token and a bad token 401; a non-holder 403; a stale generation 409; another tenant naming the session 403 and audited; another tenant's call, read and destroy on the sandbox 404 and audited on that tenant; another worker of the tenant 403; a destroyed handle 410).",
+ "audit": "MISSING before M8.3",
+ "limitations": "Worker identity is a bearer token; mTLS is deployment configuration.",
+ "ci": "https://github.com/moss101/modbit/actions/runs/35218388282"
+}

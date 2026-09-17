@@ -1,0 +1,27 @@
+{
+ "task": "IMP-EV-0290",
+ "requirements": [
+  "REQ-EV-0290"
+ ],
+ "scenarios": [
+  "QUAL-EV-0290 \u2014 Attempt protected host/control path write fails."
+ ],
+ "tests": [
+  "fs_protected_path_refused",
+  "fs_outside_workspace_refused",
+  "fs_traversal_refused",
+  "fs_control_path_unreadable",
+  "a_policy_has_no_network_unless_granted_and_protects_control_paths",
+  "paths_normalize_lexically_and_map_onto_the_host"
+ ],
+ "batch_commits": [
+  "69b80b6"
+ ],
+ "runs": [
+  "35218388282"
+ ],
+ "proof": "Conformance steps `fs_protected_path_refused`, `fs_outside_workspace_refused`, `fs_traversal_refused`, `fs_control_path_unreadable` on the MicroVM and the reference backend; the gateway test's protected write refused through the gateway; unit `a_policy_has_no_network_unless_granted_and_protects_control_paths`, `paths_normalize_lexically_and_map_onto_the_host`.",
+ "audit": "MISSING before M8.3",
+ "limitations": "Enforced by the guest's own file operations in this build; mount-level pinning of protected paths against processes lands with M8.5.",
+ "ci": "https://github.com/moss101/modbit/actions/runs/35218388282"
+}

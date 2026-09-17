@@ -1,0 +1,24 @@
+{
+ "task": "IMP-EV-0287",
+ "requirements": [
+  "REQ-EV-0287"
+ ],
+ "scenarios": [
+  "QUAL-EV-0287 \u2014 Guest cannot reach internal/control-plane endpoints by default."
+ ],
+ "tests": [
+  "qual_m8_3_a_firecracker_microvm_boots_the_guest_and_passes_the_backend_contract",
+  "net_control_plane_unreachable",
+  "a_policy_has_no_network_unless_granted_and_protects_control_paths"
+ ],
+ "batch_commits": [
+  "69b80b6"
+ ],
+ "runs": [
+  "35218388282"
+ ],
+ "proof": "`qual_m8_3_a_firecracker_microvm_boots_the_guest_and_passes_the_backend_contract` step `net_control_plane_unreachable`: a connect to the cloud metadata endpoint from inside the MicroVM fails (no route) \u2014 asserted of the isolating backend; unit `a_policy_has_no_network_unless_granted_and_protects_control_paths`.",
+ "audit": "MISSING before M8.3",
+ "limitations": "Explicit egress grants (tap device, host firewall) arrive with M8.6.",
+ "ci": "https://github.com/moss101/modbit/actions/runs/35218388282"
+}

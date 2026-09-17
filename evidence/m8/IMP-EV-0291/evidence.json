@@ -1,0 +1,24 @@
+{
+ "task": "IMP-EV-0291",
+ "requirements": [
+  "REQ-EV-0291"
+ ],
+ "scenarios": [
+  "QUAL-EV-0291 \u2014 Backend contract test can run against local reference backend and MicroVM substrate backend."
+ ],
+ "tests": [
+  "qual_m8_3_the_reference_backend_passes_the_backend_contract",
+  "qual_m8_3_a_firecracker_microvm_boots_the_guest_and_passes_the_backend_contract",
+  "cloud"
+ ],
+ "batch_commits": [
+  "69b80b6"
+ ],
+ "runs": [
+  "35218388282"
+ ],
+ "proof": "`qual_m8_3_the_reference_backend_passes_the_backend_contract` (every OS) and `qual_m8_3_a_firecracker_microvm_boots_the_guest_and_passes_the_backend_contract` (the hosted `cloud` job): the same suite, the same steps, both pass; the reference backend says it isolates nothing.",
+ "audit": "MISSING before M8.3",
+ "limitations": "One MicroVM substrate is implemented; a second adapter would exercise the boundary further.",
+ "ci": "https://github.com/moss101/modbit/actions/runs/35218388282"
+}

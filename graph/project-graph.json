@@ -3960,8 +3960,51 @@
    "milestone": "M8",
    "order": 2,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:69b80b6",
+    "run:35218388282",
+    "artifact:evidence/m8/M8.3/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T13:49:37Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Sandbox Gateway, backend boundary, Firecracker MicroVM substrate, modbit-guest: existing-code audit (MISSING: M0 skeletons)"
+    },
+    {
+     "at": "2026-09-17T13:49:37Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "Sandbox Gateway, backend boundary, Firecracker MicroVM substrate, modbit-guest: implemented on wip/m6-backlog, landed on main at 69b80b6"
+    },
+    {
+     "at": "2026-09-17T13:49:38Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Sandbox Gateway, backend boundary, Firecracker MicroVM substrate, modbit-guest: production wiring in place"
+    },
+    {
+     "at": "2026-09-17T13:49:38Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Sandbox Gateway, backend boundary, Firecracker MicroVM substrate, modbit-guest: real Firecracker MicroVM, real Postgres, every OS"
+    },
+    {
+     "at": "2026-09-17T13:49:38Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "Sandbox Gateway, backend boundary, Firecracker MicroVM substrate, modbit-guest: hosted CI run 35218388282 green on every job"
+    },
+    {
+     "at": "2026-09-17T13:49:38Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Sandbox Gateway, backend boundary, Firecracker MicroVM substrate, modbit-guest: sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-17T13:49:38Z"
   },
   {
    "id": "M8.4",
@@ -3971,8 +4014,51 @@
    "milestone": "M8",
    "order": 3,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:69b80b6",
+    "run:35218388282",
+    "artifact:evidence/m8/M8.4/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T13:49:38Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "signed, versioned guest images: existing-code audit (MISSING: M0 skeletons)"
+    },
+    {
+     "at": "2026-09-17T13:49:38Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "signed, versioned guest images: implemented on wip/m6-backlog, landed on main at 69b80b6"
+    },
+    {
+     "at": "2026-09-17T13:49:38Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "signed, versioned guest images: production wiring in place"
+    },
+    {
+     "at": "2026-09-17T13:49:38Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "signed, versioned guest images: real Firecracker MicroVM, real Postgres, every OS"
+    },
+    {
+     "at": "2026-09-17T13:49:38Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "signed, versioned guest images: hosted CI run 35218388282 green on every job"
+    },
+    {
+     "at": "2026-09-17T13:49:38Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "signed, versioned guest images: sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-17T13:49:38Z"
   },
   {
    "id": "M8.5",
@@ -21837,8 +21923,51 @@
    "milestone": "M8",
    "qual": "QUAL-EV-0285",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:69b80b6",
+    "run:35218388282",
+    "artifact:evidence/m8/IMP-EV-0285/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T13:49:38Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "MicroVM substrate: a real Firecracker MicroVM boots the guest image and passes the contract: existing-code audit (MISSING: M0 skeletons)"
+    },
+    {
+     "at": "2026-09-17T13:49:38Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "MicroVM substrate: a real Firecracker MicroVM boots the guest image and passes the contract: implemented on wip/m6-backlog, landed on main at 69b80b6"
+    },
+    {
+     "at": "2026-09-17T13:49:38Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "MicroVM substrate: a real Firecracker MicroVM boots the guest image and passes the contract: production wiring in place"
+    },
+    {
+     "at": "2026-09-17T13:49:39Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "MicroVM substrate: a real Firecracker MicroVM boots the guest image and passes the contract: real Firecracker MicroVM, real Postgres, every OS"
+    },
+    {
+     "at": "2026-09-17T13:49:39Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "MicroVM substrate: a real Firecracker MicroVM boots the guest image and passes the contract: hosted CI run 35218388282 green on every job"
+    },
+    {
+     "at": "2026-09-17T13:49:39Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "MicroVM substrate: a real Firecracker MicroVM boots the guest image and passes the contract: sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-17T13:49:39Z"
   },
   {
    "id": "IMP-EV-0286",
@@ -21851,8 +21980,51 @@
    "milestone": "M8",
    "qual": "QUAL-EV-0286",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:69b80b6",
+    "run:35218388282",
+    "artifact:evidence/m8/IMP-EV-0286/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T13:49:39Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "tenant-bound gateway: cross-tenant handle use denied and audited: existing-code audit (MISSING: M0 skeletons)"
+    },
+    {
+     "at": "2026-09-17T13:49:39Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "tenant-bound gateway: cross-tenant handle use denied and audited: implemented on wip/m6-backlog, landed on main at 69b80b6"
+    },
+    {
+     "at": "2026-09-17T13:49:39Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tenant-bound gateway: cross-tenant handle use denied and audited: production wiring in place"
+    },
+    {
+     "at": "2026-09-17T13:49:39Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "tenant-bound gateway: cross-tenant handle use denied and audited: real Firecracker MicroVM, real Postgres, every OS"
+    },
+    {
+     "at": "2026-09-17T13:49:39Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "tenant-bound gateway: cross-tenant handle use denied and audited: hosted CI run 35218388282 green on every job"
+    },
+    {
+     "at": "2026-09-17T13:49:39Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "tenant-bound gateway: cross-tenant handle use denied and audited: sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-17T13:49:39Z"
   },
   {
    "id": "IMP-EV-0287",
@@ -21865,8 +22037,51 @@
    "milestone": "M8",
    "qual": "QUAL-EV-0287",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:69b80b6",
+    "run:35218388282",
+    "artifact:evidence/m8/IMP-EV-0287/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T13:49:39Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "deny-by-default network: the control plane is unreachable from the MicroVM: existing-code audit (MISSING: M0 skeletons)"
+    },
+    {
+     "at": "2026-09-17T13:49:39Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "deny-by-default network: the control plane is unreachable from the MicroVM: implemented on wip/m6-backlog, landed on main at 69b80b6"
+    },
+    {
+     "at": "2026-09-17T13:49:39Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "deny-by-default network: the control plane is unreachable from the MicroVM: production wiring in place"
+    },
+    {
+     "at": "2026-09-17T13:49:39Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "deny-by-default network: the control plane is unreachable from the MicroVM: real Firecracker MicroVM, real Postgres, every OS"
+    },
+    {
+     "at": "2026-09-17T13:49:39Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "deny-by-default network: the control plane is unreachable from the MicroVM: hosted CI run 35218388282 green on every job"
+    },
+    {
+     "at": "2026-09-17T13:49:39Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "deny-by-default network: the control plane is unreachable from the MicroVM: sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-17T13:49:39Z"
   },
   {
    "id": "IMP-EV-0288",
@@ -21907,8 +22122,51 @@
    "milestone": "M8",
    "qual": "QUAL-EV-0290",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:69b80b6",
+    "run:35218388282",
+    "artifact:evidence/m8/IMP-EV-0290/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T13:49:39Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "protected-path enforcement in the guest: existing-code audit (MISSING: M0 skeletons)"
+    },
+    {
+     "at": "2026-09-17T13:49:39Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "protected-path enforcement in the guest: implemented on wip/m6-backlog, landed on main at 69b80b6"
+    },
+    {
+     "at": "2026-09-17T13:49:39Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "protected-path enforcement in the guest: production wiring in place"
+    },
+    {
+     "at": "2026-09-17T13:49:40Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "protected-path enforcement in the guest: real Firecracker MicroVM, real Postgres, every OS"
+    },
+    {
+     "at": "2026-09-17T13:49:40Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "protected-path enforcement in the guest: hosted CI run 35218388282 green on every job"
+    },
+    {
+     "at": "2026-09-17T13:49:40Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "protected-path enforcement in the guest: sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-17T13:49:40Z"
   },
   {
    "id": "IMP-EV-0291",
@@ -21921,8 +22179,51 @@
    "milestone": "M8",
    "qual": "QUAL-EV-0291",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:69b80b6",
+    "run:35218388282",
+    "artifact:evidence/m8/IMP-EV-0291/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T13:49:38Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "replaceable sandbox backend boundary: one contract suite on the reference and MicroVM backends: existing-code audit (MISSING: M0 skeletons)"
+    },
+    {
+     "at": "2026-09-17T13:49:38Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "replaceable sandbox backend boundary: one contract suite on the reference and MicroVM backends: implemented on wip/m6-backlog, landed on main at 69b80b6"
+    },
+    {
+     "at": "2026-09-17T13:49:38Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "replaceable sandbox backend boundary: one contract suite on the reference and MicroVM backends: production wiring in place"
+    },
+    {
+     "at": "2026-09-17T13:49:38Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "replaceable sandbox backend boundary: one contract suite on the reference and MicroVM backends: real Firecracker MicroVM, real Postgres, every OS"
+    },
+    {
+     "at": "2026-09-17T13:49:38Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "replaceable sandbox backend boundary: one contract suite on the reference and MicroVM backends: hosted CI run 35218388282 green on every job"
+    },
+    {
+     "at": "2026-09-17T13:49:38Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "replaceable sandbox backend boundary: one contract suite on the reference and MicroVM backends: sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-17T13:49:38Z"
   },
   {
    "id": "QUAL-EV-0001",
