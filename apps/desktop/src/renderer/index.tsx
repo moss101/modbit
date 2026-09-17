@@ -11,7 +11,7 @@ import { browserState, fleetState, newTaskState, reviewState, settingsState, tas
 import { DEFAULT_PREFERENCES, deriveNotifications, newSince, osDeliveryDue, type Notification as AppNotification, type NotificationKind, type NotificationPreferences } from "./notifications.ts";
 import { commandFor, isActivatable, isEditable, SHORTCUTS, type Command } from "./keyboard.ts";
 import { splitRows } from "./diff.ts";
-import type { AttentionItem, BrowserSessionSummary, ContextInspectorSummary, ModbitBridge, PullRequestAckView, ReviewBundleView, TaskEconomicsSummary } from "../preload/preload.ts";
+import type { AttentionItem, BrowserSessionSummary, ContextInspectorSummary, CredentialHandle, ModbitBridge, PullRequestAckView, ReviewBundleView, TaskEconomicsSummary } from "../preload/preload.ts";
 
 declare global {
   interface Window {
@@ -137,6 +137,13 @@ function App() {
   const [browsing, setBrowsing] = useState<{ taskId: string; browserSessionId: string | null; error: string | null } | null>(null);
   // Onboarding (REQ-PX-022, docs/39): three steps, each a working control.
   const [provider, setProvider] = useState<{ configured: boolean; endpoints: string[]; stored: boolean; provider: string; keychainAvailable: boolean } | null>(null);
+  // M7.8: the credential broker's handles (never a value) and the add form.
+  const [credentials, setCredentials] = useState<CredentialHandle[]>([]);
+  const [credentialForm, setCredentialForm] = useState({ label: "", origin: "", username: "", secret: "" });
+  const [credentialError, setCredentialError] = useState<string | null>(null);
+  const refreshCredentials = useCallback(() => {
+    void window.modbit.listCredentials().then(setCredentials).catch(() => {});
+  }, []);
   const [providerKind, setProviderKind] = useState<"openai" | "anthropic">("openai");
   const [providerKey, setProviderKey] = useState("");
   const [providerUrl, setProviderUrl] = useState("");
@@ -251,6 +258,7 @@ function App() {
         // whether that happened before this screen mounted or after.
         void window.modbit.languages().then(setLanguages).catch(() => {});
         void window.modbit.providerStatus().then(setProvider).catch(() => {});
+        refreshCredentials();
         if (wasRestarting.current) {
           wasRestarting.current = false;
           setRecovered(`Core reconnected after restart ${s.restarts}`);
@@ -871,6 +879,59 @@ function App() {
               Credentials: {provider === null ? "loading…" : provider.configured ? `${provider.stored ? "provider key in the OS keychain" : "provider key held for this session only"} (${provider.provider})` : "no provider key"}; the Core holds keys in memory only and never shows one again.
             </div>
             <StateLine state={settings} testid="settings-state" />
+            <fieldset data-testid="credentials">
+              <legend className="meta">Login credentials (bound to one origin; the agent fills them by handle and never sees a value)</legend>
+              {credentials.length === 0 ? (
+                <div className="meta" data-testid="credentials-empty">None yet.</div>
+              ) : (
+                <ul data-testid="credential-list">
+                  {credentials.map((c) => (
+                    <li key={c.handle} className="meta" data-testid="credential" data-handle={c.handle} data-origin={c.origin}>
+                      <code>{c.handle}</code> · {c.label} · {c.origin} · {c.username || "(no account name)"} · {c.persisted ? "in the OS keychain" : "held for this session only"}{" "}
+                      <button type="button" data-testid="credential-remove" onClick={() => void window.modbit.removeCredential(c.handle).then(refreshCredentials)}>
+                        Forget
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <form
+                data-testid="credential-form"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  setCredentialError(null);
+                  const f = credentialForm;
+                  void window.modbit
+                    .addCredential(f.label, f.origin, f.username, f.secret)
+                    .then(() => {
+                      setCredentialForm({ label: "", origin: "", username: "", secret: "" });
+                      refreshCredentials();
+                    })
+                    .catch((err: Error) => setCredentialError(err.message));
+                }}
+              >
+                <label className="meta">
+                  Label <input data-testid="credential-label" value={credentialForm.label} onChange={(e) => setCredentialForm({ ...credentialForm, label: e.target.value })} />
+                </label>{" "}
+                <label className="meta">
+                  Origin <input data-testid="credential-origin" placeholder="https://host[:port]" value={credentialForm.origin} onChange={(e) => setCredentialForm({ ...credentialForm, origin: e.target.value })} />
+                </label>{" "}
+                <label className="meta">
+                  Account <input data-testid="credential-username" value={credentialForm.username} onChange={(e) => setCredentialForm({ ...credentialForm, username: e.target.value })} />
+                </label>{" "}
+                <label className="meta">
+                  Secret <input data-testid="credential-secret" type="password" value={credentialForm.secret} onChange={(e) => setCredentialForm({ ...credentialForm, secret: e.target.value })} />
+                </label>{" "}
+                <button type="submit" data-testid="credential-add" disabled={core.state !== "connected" || !credentialForm.label.trim() || !credentialForm.origin.trim() || !credentialForm.secret}>
+                  Add credential
+                </button>
+                {credentialError && (
+                  <div className="meta" role="alert" data-testid="credential-error">
+                    {credentialError}
+                  </div>
+                )}
+              </form>
+            </fieldset>
             <fieldset data-testid="notification-preferences">
               <legend className="meta">OS notifications (off until you opt in; the in-app list is always on)</legend>
               {(["attention", "completion", "failure"] as NotificationKind[]).map((k) => (
@@ -998,6 +1059,14 @@ function Card({ card, children, state, sessionId, onFocus, onStart, onReview, on
         {card.waitReason ? ` · waiting on ${card.waitReason}` : ""} · gen {card.generation} · local_trusted
         {" · attachments "}
         <span data-testid="task-attachments">{card.attachments ?? 0}</span>
+        {card.security?.length ? (
+          <>
+            {" · security "}
+            <span data-testid="task-security" data-count={card.security.length} title={card.security.map((s) => `${s.kind} in ${s.toolName}: ${s.patterns.join(", ")} (${s.action.toLowerCase()})`).join("\n")}>
+              {card.security.filter((s) => s.action === "BLOCKED").length} blocked, {card.security.filter((s) => s.action === "MARKED").length} marked
+            </span>
+          </>
+        ) : null}
       </div>
       <div className="meta">
         phase: <span data-testid="task-phase">{PHASE_LABEL[card.phase]}</span>
@@ -1105,7 +1174,18 @@ function Card({ card, children, state, sessionId, onFocus, onStart, onReview, on
  *  state version are what the host reports, the lease what the Core
  *  records. The page's content never reaches this renderer. */
 function Browser({ browsing, card, onReopen, onClose }: { browsing: { taskId: string; browserSessionId: string | null; error: string | null }; card: TaskCard | null; onReopen: () => void; onClose: () => void }) {
-  const [host, setHost] = useState<{ attached: boolean; shown: boolean; url: string; title: string; stateVersion: number } | null>(null);
+  const [host, setHost] = useState<{ attached: boolean; shown: boolean; url: string; title: string; stateVersion: number; leaseGeneration: number; controller: "AGENT" | "USER" } | null>(null);
+  const [controlBusy, setControlBusy] = useState(false);
+  // M7.6: take or return control — the lease moves, the same session stays.
+  const setControl = async (controller: "AGENT" | "USER") => {
+    if (!bsid || controlBusy) return;
+    setControlBusy(true);
+    try {
+      await window.modbit.setBrowserControl(bsid, controller);
+    } finally {
+      setControlBusy(false);
+    }
+  };
   const [core, setCore] = useState<BrowserSessionSummary | null>(null);
   const [gone, setGone] = useState<string | null>(null);
   const [probe, setProbe] = useState<{ node_reachable: boolean; partition: string; sandboxed: boolean; context_isolated: boolean } | null>(null);
@@ -1145,7 +1225,7 @@ function Browser({ browsing, card, onReopen, onClose }: { browsing: { taskId: st
       void window.modbit.hideBrowser(bsid).catch(() => {});
     };
   }, [bsid, taskId]);
-  const state = browserState({ opening: !bsid && !browsing.error, error: browsing.error, host, gone, controller: core?.controller ?? "AGENT" });
+  const state = browserState({ opening: !bsid && !browsing.error, error: browsing.error, host, gone, controller: host?.controller ?? core?.controller ?? "AGENT" });
   return (
     <section className="review browser" data-testid="browser" aria-label="Browser" role="main" data-browser-session-id={bsid ?? ""}>
       <div className="review-head">
@@ -1159,6 +1239,20 @@ function Browser({ browsing, card, onReopen, onClose }: { browsing: { taskId: st
         </button>
       </div>
       <StateLine state={state} testid="browser-state" />
+      <div className="actions" data-testid="browser-control" data-controller={host?.controller ?? "AGENT"} data-lease-generation={host?.leaseGeneration ?? 0}>
+        {host?.controller === "USER" ? (
+          <button type="button" data-testid="browser-return-control" onClick={() => void setControl("AGENT")} disabled={controlBusy || !bsid}>
+            Return control to the agent
+          </button>
+        ) : (
+          <button type="button" data-testid="browser-take-control" onClick={() => void setControl("USER")} disabled={controlBusy || !bsid}>
+            Take control
+          </button>
+        )}
+        <span className="meta">
+          {host?.controller === "USER" ? "you hold control: the agent's input is blocked, it can still observe" : "the agent holds control: your typing into the page is yours to do, its actions are its own"} · lease generation {host?.leaseGeneration ?? 0}
+        </span>
+      </div>
       {(gone || (host && !host.attached)) && (
         <div className="actions">
           <button type="button" data-testid="browser-reopen" onClick={onReopen}>

@@ -51,6 +51,10 @@ export function run(): Promise<void> {
       const row = adapter.tasks.get(taskId);
       assert.ok(row && row.origin === "ide_adapter", JSON.stringify(row));
       await until("the approval", 240_000, async () => (await adapter.approvals()).find((a) => a.status === "REQUESTED") ?? null);
+      // The approval's request and the task's wait are two events; the
+      // adapter applies them in order, and a poll that saw the approval first
+      // sees the wait a moment later (hosted macOS).
+      await until("the task waiting on it", 30_000, async () => (adapter.tasks.get(taskId)?.state === "Waiting" ? true : null));
       assert.equal(adapter.tasks.get(taskId)?.state, "Waiting");
     });
 

@@ -239,7 +239,24 @@ fn spawn_or_reattach(data_dir: &Path, replay_generation: u64) -> Result<Execd> {
         .append(true)
         .open(execd_dir.join("execd.log"))
         .context("opening execd.log")?;
-    let mut child = Command::new(&bin)
+    // M7.7 (docs/23): the broker never holds a credential of this Core —
+    // a shell it runs cannot print what it was never given.
+    let mut command = Command::new(&bin);
+    for (k, _) in std::env::vars() {
+        let n = k.to_ascii_uppercase();
+        if n.ends_with("_API_KEY")
+            || n.ends_with("_TOKEN")
+            || n.ends_with("_SECRET")
+            || n.ends_with("_SECRET_KEY")
+            || n.ends_with("_ACCESS_KEY")
+            || n.ends_with("_PRIVATE_KEY")
+            || n.contains("PASSWORD")
+            || n.contains("PASSPHRASE")
+        {
+            command.env_remove(&k);
+        }
+    }
+    let mut child = command
         .arg("--data-dir")
         .arg(&execd_dir)
         .arg("--orphan-grace-secs")
@@ -354,6 +371,10 @@ pub struct ToolHost {
     pub forge: crate::forge::ForgeCustody,
     /// The browser sessions `browser.*` reach through their hosts (M7.1).
     pub browser: Arc<dyn modbit_browser::BrowserPort>,
+    /// The provider gateway, for the credentials in its custody (M7.7):
+    /// read at each call so a call's arguments can be refused for carrying
+    /// one; never stored anywhere else.
+    gateway: modbit_providers::ProviderGateway,
 }
 
 impl ToolHost {
@@ -362,6 +383,7 @@ impl ToolHost {
         data_dir: &Path,
         replay_generation: u64,
         browser: Arc<dyn modbit_browser::BrowserPort>,
+        gateway: modbit_providers::ProviderGateway,
     ) -> Result<Self> {
         let mut registry = ToolRegistry::new();
         modbit_tools::direct::register_direct(&mut registry).map_err(|e| anyhow::anyhow!("{e}"))?;
@@ -394,7 +416,25 @@ impl ToolHost {
             state_dir: data_dir.join("workspaces"),
             forge: crate::forge::ForgeCustody::from_env(),
             browser,
+            gateway,
         })
+    }
+
+    /// Every credential this Core holds (M7.7, docs/22 "Prompt-injection
+    /// isolation"): the provider keys the gateway can present and the forge
+    /// token. Memory only; the pipeline compares, never records.
+    fn secrets_in_custody(&self) -> Vec<String> {
+        let mut out: Vec<String> = self
+            .gateway
+            .endpoints()
+            .iter()
+            .filter_map(|e| e.credential.resolve())
+            .collect();
+        if let Some(t) = self.forge.get().and_then(|f| f.token.clone()) {
+            out.push(t);
+        }
+        out.retain(|s| s.len() >= 8);
+        out
     }
 
     pub(crate) async fn workspace(
@@ -750,6 +790,15 @@ impl ToolHost {
         // its arguments, before anything is validated, decided or run. A
         // Core that dies from here on finds the call and re-enters it by id.
         let prior_state = existing.as_ref().map(|c| c.state);
+        // M7.7: arguments carrying a credential in this Core's custody are
+        // never written anywhere — not even as the write-ahead record's
+        // argument object; the pipeline refuses the call by its hash.
+        let secrets_in_custody = self.secrets_in_custody();
+        let carries_secret = serde_json::from_str::<serde_json::Value>(arguments_json)
+            .ok()
+            .is_some_and(|v| {
+                modbit_tools::pipeline::carries_secret(&v, &secrets_in_custody).is_some()
+            });
         if existing.is_none() {
             let spec = self
                 .runtime
@@ -757,7 +806,11 @@ impl ToolHost {
                 .get(tool_name)
                 .map(|t| t.spec().clone());
             let mut st = store.lock().await;
-            let arguments_ref = st.objects().put(arguments_json.as_bytes()).ok();
+            let arguments_ref = if carries_secret {
+                None
+            } else {
+                st.objects().put(arguments_json.as_bytes()).ok()
+            };
             let req = AppendRequest {
                 tenant_id,
                 session_id,
@@ -830,6 +883,8 @@ impl ToolHost {
                 actor: actor.clone(),
             })),
             browser: Some(Arc::clone(&self.browser)),
+            effect_class: None,
+            secrets_in_custody,
         };
         // REQ-EV-0106: snapshot the write targets so every successful write can
         // land a revision-bound FileChanged event with content and diff refs.
@@ -856,6 +911,54 @@ impl ToolHost {
         // retrieval record an edit of that path needs (PX-015). Records bind to
         // the bytes: the file's content hash after the call.
         let mut retrieval_events = Vec::new();
+        // M7.7 (docs/22 "Prompt-injection isolation", REQ-EV-0284): what a
+        // tool returned is data. A passage in it shaped like instructions to
+        // the agent is marked on the observation the model sees
+        // (`injection_suspected`) and recorded as a security event, whether
+        // or not a model is swayed; a call refused for carrying a credential
+        // is recorded the same way. The record names the shape, never a secret.
+        if result.status == ToolStatus::Success
+            && let Some(o) = result.structured_output.as_object_mut()
+        {
+            let mut parts: Vec<String> = Vec::new();
+            collect_strings(&serde_json::Value::Object(o.clone()), &mut parts);
+            let findings = modbit_browser::injection::scan_all(parts.iter().map(String::as_str));
+            if !findings.is_empty() {
+                o.insert(
+                    "injection_suspected".into(),
+                    serde_json::to_value(&findings).unwrap_or_default(),
+                );
+                retrieval_events.push(typed_task_event(
+                    "SecurityEventRecorded",
+                    &modbit_domain::task::TaskEvent::SecurityEventRecorded {
+                        kind: "PROMPT_INJECTION_SUSPECTED".into(),
+                        tool_name: tool_name.to_owned(),
+                        tool_call_id: tool_call_id.to_string(),
+                        patterns: findings.iter().map(|f| f.shape.clone()).collect(),
+                        detail: findings
+                            .first()
+                            .map(|f| f.excerpt.clone())
+                            .unwrap_or_default(),
+                        action: "MARKED".into(),
+                    },
+                    &actor,
+                ));
+            }
+        }
+        if result.error_code.as_deref() == Some("SECRET_EXFILTRATION_BLOCKED") {
+            retrieval_events.push(typed_task_event(
+                "SecurityEventRecorded",
+                &modbit_domain::task::TaskEvent::SecurityEventRecorded {
+                    kind: "SECRET_EXFILTRATION_BLOCKED".into(),
+                    tool_name: tool_name.to_owned(),
+                    tool_call_id: tool_call_id.to_string(),
+                    patterns: vec!["CREDENTIAL_IN_ARGUMENTS".into()],
+                    detail: result.error_message.clone().unwrap_or_default(),
+                    action: "BLOCKED".into(),
+                },
+                &actor,
+            ));
+        }
         if result.status == ToolStatus::Success
             && let Some(ws) = &ctx.workspace
         {
@@ -1315,6 +1418,127 @@ impl ToolHost {
                 &actor,
             ));
         }
+        // M7.4: an action on the page is on the log as the transition it
+        // caused, by fingerprints, with its postcondition (REQ-EV-0280) —
+        // when it ran (a refused or stale action is the call's outcome only).
+        if tool_name == "browser.act"
+            && matches!(
+                result.status,
+                ToolStatus::Success | ToolStatus::ApplicationFailure
+            )
+            && result.structured_output.get("fingerprint_before").is_some()
+            && let Some(session) = self.browser.session_for(task_id).await
+        {
+            let o = &result.structured_output;
+            let lease_generation = self
+                .browser
+                .lease(session)
+                .await
+                .map_or(0, |l| l.generation);
+            retrieval_events.push(typed_task_event(
+                "BrowserActionPerformed",
+                &modbit_domain::task::TaskEvent::BrowserActionPerformed {
+                    browser_session_id: session.to_string(),
+                    reference: o["ref"].as_str().unwrap_or_default().to_owned(),
+                    action: o["action"].as_str().unwrap_or_default().to_owned(),
+                    role: o["target"]["role"].as_str().unwrap_or_default().to_owned(),
+                    name: o["target"]["name"].as_str().unwrap_or_default().to_owned(),
+                    effect_class: format!(
+                        "{:?}",
+                        outcome
+                            .effect_class
+                            .unwrap_or(modbit_domain::toolcall::EffectClass::ReversibleWrite)
+                    ),
+                    fingerprint_before: o["fingerprint_before"]
+                        .as_str()
+                        .unwrap_or_default()
+                        .to_owned(),
+                    fingerprint_after: o["state_fingerprint"]
+                        .as_str()
+                        .unwrap_or_default()
+                        .to_owned(),
+                    navigated: o["navigated"].as_bool().unwrap_or(false),
+                    postcondition_held: o["postcondition"]["held"].as_bool(),
+                    lease_generation,
+                    visual_fallback: o.get("visual_fallback").filter(|v| !v.is_null()).cloned(),
+                },
+                &actor,
+            ));
+            // M7.8: a credential filled by handle — the handle, the origin
+            // and the field; the value was never here.
+            if let Some(handle) = o["credential"].as_str().filter(|_| o["filled"] == true) {
+                retrieval_events.push(typed_task_event(
+                    "BrowserCredentialFilled",
+                    &modbit_domain::task::TaskEvent::BrowserCredentialFilled {
+                        browser_session_id: session.to_string(),
+                        credential: handle.to_owned(),
+                        origin: modbit_browser::origin_of(o["url"].as_str().unwrap_or_default())
+                            .unwrap_or_default(),
+                        reference: o["ref"].as_str().unwrap_or_default().to_owned(),
+                        role: o["target"]["role"].as_str().unwrap_or_default().to_owned(),
+                        name: o["target"]["name"].as_str().unwrap_or_default().to_owned(),
+                        state_version: o["state_version"].as_u64().unwrap_or(0),
+                        lease_generation,
+                    },
+                    &actor,
+                ));
+            }
+        }
+        // M7.5: a targeted capture is on the log with the region, the
+        // reason and the image's reference — the fallback, as evidence.
+        if result.status == ToolStatus::Success
+            && tool_name == "browser.capture"
+            && let Some(session) = self.browser.session_for(task_id).await
+        {
+            let o = &result.structured_output;
+            let b = &o["bounds"];
+            let n = |k: &str| b[k].as_u64().unwrap_or(0) as u32;
+            retrieval_events.push(typed_task_event(
+                "BrowserRegionCaptured",
+                &modbit_domain::task::TaskEvent::BrowserRegionCaptured {
+                    browser_session_id: session.to_string(),
+                    reference: o["ref"].as_str().unwrap_or_default().to_owned(),
+                    role: o["role"].as_str().unwrap_or_default().to_owned(),
+                    reason: o["reason"].as_str().unwrap_or_default().to_owned(),
+                    bounds: [n("x"), n("y"), n("width"), n("height")],
+                    egress_ref: o["media"]["egress_ref"]
+                        .as_str()
+                        .unwrap_or_default()
+                        .to_owned(),
+                    state_version: o["state_version"].as_u64().unwrap_or(0),
+                    fingerprint: o["fingerprint"].as_str().unwrap_or_default().to_owned(),
+                },
+                &actor,
+            ));
+        }
+        // M7.3: every read of the page is on the log by fingerprint, with
+        // what changed since the last one — the delta stream.
+        if result.status == ToolStatus::Success
+            && tool_name == "browser.snapshot"
+            && let Some(session) = self.browser.session_for(task_id).await
+        {
+            let o = &result.structured_output;
+            let count = |k: &str| o[k].as_array().map_or(0, |a| a.len() as u64);
+            retrieval_events.push(typed_task_event(
+                "BrowserPageObserved",
+                &modbit_domain::task::TaskEvent::BrowserPageObserved {
+                    browser_session_id: session.to_string(),
+                    state_version: o["state_version"].as_u64().unwrap_or(0),
+                    state_fingerprint: o["state_fingerprint"]
+                        .as_str()
+                        .unwrap_or_default()
+                        .to_owned(),
+                    entity_hash: o["entity_hash"].as_str().unwrap_or_default().to_owned(),
+                    mode: o["mode"].as_str().unwrap_or("full").to_owned(),
+                    entity_count: o["entity_count"].as_u64().unwrap_or(0),
+                    added: count("added"),
+                    removed: count("removed"),
+                    changed: count("changed"),
+                    url: o["url"].as_str().unwrap_or_default().to_owned(),
+                },
+                &actor,
+            ));
+        }
         // Everything the outcome implies — the retrieval and terminal records,
         // the call's outcome, the approval it opened, the files it changed —
         // lands in one transaction (docs/19; M4.6): a kill between them can
@@ -1631,6 +1855,19 @@ pub(crate) fn read_workspace_file(ws: &WorkspaceService, path: &str) -> Option<V
 }
 
 /// A typed Task event as a `NewEvent` (mirrors the runtime's `typed`).
+/// Every string leaf of a tool's observation, bounded (M7.7).
+fn collect_strings(v: &serde_json::Value, out: &mut Vec<String>) {
+    if out.len() >= 4096 {
+        return;
+    }
+    match v {
+        serde_json::Value::String(s) => out.push(s.chars().take(2000).collect()),
+        serde_json::Value::Array(a) => a.iter().for_each(|x| collect_strings(x, out)),
+        serde_json::Value::Object(o) => o.values().for_each(|x| collect_strings(x, out)),
+        _ => {}
+    }
+}
+
 fn typed_task_event(
     event_type: &str,
     payload: &modbit_domain::task::TaskEvent,

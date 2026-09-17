@@ -1918,6 +1918,50 @@ message BrowserSessionView {
   bool closed = 12;
 }
 
+// M7.6 (docs/22 "Live user takeover"): hand control of the session to the
+// person (USER) or back to the agent (AGENT). Taking control blocks agent
+// input at once (observation continues); every hand-over increments the
+// lease generation so an agent input stamped with an older generation is
+// fenced by the host. Requires the session lease.
+message SetBrowserControl {
+  Id browser_session_id = 1;
+  string controller = 2;         // AGENT | USER
+  Id task_id = 3;
+}
+
+message BrowserControlChanged {
+  Id browser_session_id = 1;
+  string controller = 2;
+  uint64 lease_generation = 3;
+  bool changed = 4;              // false = already held by that controller
+  uint64 offset = 5;
+}
+
+// M7.8 (docs/22 "Credentials"): the desktop registers the credentials it
+// holds — handle, label, origin, account name; never the secret — so the
+// Core can offer them to the agent by handle and check the origin binding
+// of a fill. Not journaled; the host registers again on reconnect.
+message RegisterBrowserCredential {
+  string handle = 1;             // cred_…
+  string label = 2;
+  string origin = 3;             // scheme://host[:port]
+  string username = 4;
+}
+
+message BrowserCredentialRegistered {
+  string handle = 1;
+  string origin = 2;
+}
+
+message ForgetBrowserCredential {
+  string handle = 1;
+}
+
+message BrowserCredentialForgotten {
+  string handle = 1;
+  bool existed = 2;
+}
+
 message CloseBrowserSession {
   Id browser_session_id = 1;
 }

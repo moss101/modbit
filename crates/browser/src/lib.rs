@@ -15,6 +15,7 @@
 //! Dependency direction is enforced by `tools/architecture-lint`.
 
 pub mod compiler;
+pub mod injection;
 
 use std::fmt;
 use std::future::Future;
@@ -134,6 +135,31 @@ pub enum HostRequest {
         /// Region in CSS pixels; `None` = the viewport.
         clip: Option<Clip>,
     },
+    /// Act on one element the compiler resolved at this version (M7.4):
+    /// the host targets the DOM node, performs the action as a person
+    /// would (a real click at the element's box, real key events, text
+    /// insertion), waits for the page to settle and reports the state.
+    Act {
+        /// The DOM node behind the entity at the version it was resolved at.
+        backend_dom_node_id: i64,
+        /// `click` | `fill` | `select` | `check` | `uncheck` | `press`.
+        action: String,
+        /// The text to fill or the option to select.
+        #[serde(default)]
+        value: String,
+        /// The key to press (`Enter`, `Tab`, `Escape`, `ArrowDown`, …).
+        #[serde(default)]
+        key: String,
+        /// For a click on a visual region (M7.5): where inside the element's
+        /// box, in CSS pixels from its top-left; `None` = its centre.
+        #[serde(default)]
+        at: Option<(u32, u32)>,
+        /// For `fill_credential` (M7.8, docs/22 "Credentials"): the handle
+        /// of the credential the host fills from its own custody. The
+        /// value never crosses this protocol in either direction.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        credential_handle: Option<String>,
+    },
     /// Whether the session's document can reach Node or Electron
     /// privileges (must be false; a host answers from the page itself).
     Isolation,
@@ -209,6 +235,15 @@ pub enum HostResponse {
         png_base64: String,
         /// The region captured.
         clip: Option<Clip>,
+    },
+    /// The outcome of an `Act`.
+    Acted {
+        /// The page after the action settled.
+        state: PageState,
+        /// Whether the action started a navigation the host saw settle.
+        navigated: bool,
+        /// What the host actually did (`click at 120,44`, `inserted 9 chars`, …).
+        detail: String,
     },
     /// Isolation report from inside the document.
     Isolation {
@@ -296,6 +331,61 @@ pub trait BrowserPort: Send + Sync {
         session: BrowserSessionId,
         reference: &'a str,
     ) -> BoxFuture<'a, Option<compiler::Entity>>;
+
+    /// The page last compiled for `session` (what a delta starts from).
+    fn last_page<'a>(
+        &'a self,
+        session: BrowserSessionId,
+    ) -> BoxFuture<'a, Option<compiler::PageEntities>>;
+
+    /// The credential registered under `handle` (M7.8), if any.
+    fn credential<'a>(&'a self, handle: &'a str) -> BoxFuture<'a, Option<CredentialHandle>> {
+        let _ = handle;
+        Box::pin(async { None })
+    }
+
+    /// The credentials bound to `origin` (M7.8).
+    fn credentials_for<'a>(&'a self, origin: &'a str) -> BoxFuture<'a, Vec<CredentialHandle>> {
+        let _ = origin;
+        Box::pin(async { Vec::new() })
+    }
+}
+
+/// A credential the host holds for one origin (M7.8, docs/22
+/// "Credentials"): what the Core and the model know of it — a handle, a
+/// label, the origin it is bound to and the account name. The secret stays
+/// with the broker (the desktop's keychain custody); only the host fills it,
+/// only into a field of a page at that origin.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CredentialHandle {
+    /// Opaque handle (`cred_…`).
+    pub handle: String,
+    /// A label the person chose.
+    pub label: String,
+    /// `scheme://host[:port]` the credential is bound to.
+    pub origin: String,
+    /// The account name (not secret; it may be filled and read back).
+    pub username: String,
+}
+
+/// The origin (`scheme://host[:port]`, lower-case) of an http(s) URL.
+#[must_use]
+pub fn origin_of(url: &str) -> Option<String> {
+    let u = url.trim();
+    let (scheme, rest) = u.split_once("://")?;
+    if !scheme.eq_ignore_ascii_case("http") && !scheme.eq_ignore_ascii_case("https") {
+        return None;
+    }
+    let host = rest.split(['/', '?', '#']).next()?;
+    let host = host.rsplit('@').next()?;
+    if host.is_empty() {
+        return None;
+    }
+    Some(format!(
+        "{}://{}",
+        scheme.to_ascii_lowercase(),
+        host.to_ascii_lowercase()
+    ))
 }
 
 /// URL schemes a session may be navigated to by the agent (docs/22: page
@@ -315,6 +405,20 @@ pub fn navigable(url: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn origin_is_scheme_host_and_port_only() {
+        assert_eq!(
+            origin_of("https://App.Test:8443/login?next=/x#f").as_deref(),
+            Some("https://app.test:8443")
+        );
+        assert_eq!(
+            origin_of("http://127.0.0.1:3000/").as_deref(),
+            Some("http://127.0.0.1:3000")
+        );
+        assert_eq!(origin_of("file:///etc/hosts"), None);
+        assert_eq!(origin_of("https://"), None);
+    }
 
     #[test]
     fn control_lease_fences_stale_agent_input() {

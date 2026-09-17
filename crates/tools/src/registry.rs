@@ -109,6 +109,16 @@ pub trait Tool: Send + Sync {
     fn spec(&self) -> &ToolSpec;
     /// Execute against the real effector. Arguments are already schema-valid.
     fn invoke<'a>(&'a self, ctx: &'a InvokeContext, args: Value) -> BoxFuture<'a, ToolOutcome>;
+    /// The effect class of one call, from its (schema-valid) arguments: the
+    /// registered class by default; a tool whose effect depends on what it
+    /// is asked to do (a browser action that submits a form is an external
+    /// effect, one that fills a field is not — docs/17 "Yes by effect")
+    /// classifies here, and the kernel judges the class it returns. It can
+    /// only raise the class above the registered one, never lower it.
+    fn effect_of(&self, args: &Value) -> EffectClass {
+        let _ = args;
+        self.spec().effect_class
+    }
 }
 
 /// The registry.

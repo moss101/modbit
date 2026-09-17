@@ -1,0 +1,22 @@
+{
+ "task": "M7.7",
+ "requirements": [
+  "docs/22 Prompt-injection isolation",
+  "REQ-EV-0284",
+  "docs/23"
+ ],
+ "scenarios": [
+  "E2E-016"
+ ],
+ "tests": [
+  "qual_m7_7_hostile_page_and_readme_are_data_the_key_never_leaves_and_the_forbidden_tool_stays_unavailable",
+  "apps/desktop/e2e/browser.spec.ts",
+  "instruction_shaped_passages_are_found_and_ordinary_text_is_not"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "hostile page text and a hostile README come back tagged untrusted and marked injection_suspected with their shapes, each marking a security event; the broker's children inherit no credential (node -e prints key=unset); a tool call carrying the provider key is refused before policy (SECRET_EXFILTRATION_BLOCKED, the value never on the log); the forge tool the page asks for stays unavailable; no lease widens; the agent finishes the user's task — on the real Core with a fake host and in the real app.",
+ "audit": "PARTIAL before: page strings tagged, but no marking, the broker inherited the key, arguments could carry a credential, no security event.",
+ "limitations": "fixed English shapes; substring value match; only the Core's own credentials.",
+ "ci": ""
+}

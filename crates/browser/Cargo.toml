@@ -28,4 +28,5 @@ canonical = ["browser-runtime"]
 capabilities = [
   { id = "browser.session", requirements = ["REQ-EV-0276"] },
   { id = "browser.host_boundary", requirements = ["REQ-EV-0110"] },
+  { id = "browser.injection_detection", requirements = ["REQ-EV-0284"] },
 ]

@@ -666,11 +666,23 @@ impl ProviderGateway {
             Ok(r) => r,
             Err(e) => {
                 let msg = redact(&e.to_string());
+                // Nothing of a response was seen: a connection that could
+                // not be made, or one from the pool the server had already
+                // closed (a keep-alive idle cut lands exactly this way after
+                // a long approval wait), is retried under the same bounded
+                // budget — the request carries its own id for the provider
+                // to deduplicate. A failure once the request is in flight
+                // toward a response is not replayed (below).
                 return if e.is_timeout() {
                     Attempt::Timeout
                 } else if e.is_connect() {
                     Attempt::Retryable {
                         code: "CONNECT_FAILED".into(),
+                        message: msg,
+                    }
+                } else if e.is_request() && !e.is_body() && !e.is_decode() {
+                    Attempt::Retryable {
+                        code: "TRANSPORT".into(),
                         message: msg,
                     }
                 } else {

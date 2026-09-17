@@ -1,7 +1,7 @@
 # Modbit Dossier Manifest — V3.3 EPR v1.1
 
 > **Authority date:** 2026-09-05  
-> **Generated:** 2026-09-16 by `tools/build_manifest.py`  
+> **Generated:** 2026-09-17 by `tools/build_manifest.py`  
 > **Scope:** every specification file in `docs/` plus the root governing files and tooling. The previous `99_MANIFEST.md` covered only 39 Part 2 files; this manifest covers all 89 docs.
 > **Machine-readable twin:** `manifest.json` (same content, same hashes).
 
@@ -14,14 +14,14 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | Section | Range | Files | Bytes |
 |---|---|---:|---:|
 | Authority and orientation | 00–09 | 8 | 65205 |
-| Architecture and subsystems | 10–29 | 20 | 277697 |
-| Implementation specifications | 30–39 | 10 | 110458 |
+| Architecture and subsystems | 10–29 | 20 | 290146 |
+| Implementation specifications | 30–39 | 10 | 111303 |
 | Requirements, tasks and traceability | 40–49 | 10 | 351596 |
 | Verification and testing | 50–69 | 15 | 203744 |
 | Delivery and operations | 70–79 | 7 | 33831 |
 | Agent process and governance | 80–97 | 18 | 109299 |
 | Live state | 98–99 | 1 | 7318 |
-| **Total docs** | | **89** | **1159148** |
+| **Total docs** | | **89** | **1172442** |
 
 ## Specification files (`docs/`)
 
@@ -47,7 +47,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 19 | `docs/19_DURABLE_STATE_MEMORY_COMPACTION_CHECKPOINTS.md` | Durable State, Memory, Compaction, and Checkpoints | architecture | 13748 | `a56bb1e31611a229e1e1f786406cb3d7b31e5d21836c578be2a8c5cf2ca20ada` |
 | 20 | `docs/20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md` | Workspace, Git, Worktrees, Diagnostics, and Trusted Code Surface | architecture | 5632 | `12981015ae69e28a83f8c8ea04330a16e3c6d9c0ab70f7cb8af6fd581754b0d7` |
 | 21 | `docs/21_TERMINAL_EXECUTION_AND_SANDBOX.md` | Terminal, Execution Router, and Sandbox Architecture | architecture | 7146 | `4cb83c68674835c87de5bc685f9c063757cb87845e0487251c00311cfdb60cc7` |
-| 22 | `docs/22_BROWSER_AND_COMPUTER_USE.md` | Browser and Computer-Use Architecture | architecture | 8713 | `228d5571ff88ec645644a863384c97a549b3bf3739d5b027c2958516cdb650a3` |
+| 22 | `docs/22_BROWSER_AND_COMPUTER_USE.md` | Browser and Computer-Use Architecture | architecture | 21162 | `e03bb5cbcd655d27da3a699ce45f6fb463105a011d05cb1ce8c4cb4d5ee632d4` |
 | 23 | `docs/23_SECURITY_POLICY_EFFECT_LEDGER.md` | Security, Policy, Capabilities, Secrets, and Effect Ledger | architecture | 8725 | `4ee252f2d0f2192c45f142b4fd07e7bc1d9f2334436678fa445d420ea87c1e10` |
 | 24 | `docs/24_CLOUD_CONTROL_PLANE_AND_SYNC.md` | Cloud Control Plane, Remote Execution, and Sync | architecture | 5065 | `50516f6c15cc4353f2960c6a488cb706a706bdc6b2853b35dfb6c930df7c2eeb` |
 | 25 | `docs/25_MULTIMODAL_MEDIA_AND_NOTEBOOK_RUNTIME.md` | Multimodal, Media and Notebook Runtime | architecture | 8001 | `8f711ffd6294c377dbba537086356fc869d171240d6ccdf5bef5a0c2d5b9ba3e` |
@@ -64,7 +64,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 36 | `docs/36_BUILD_BUY_DEPENDENCY_AND_LICENSE_POLICY.md` | Build / Buy / Dependency / License Decisions | implementation | 3363 | `538f768996bec4254231f7671517e68bea6cf529f51b60588a5b2dd91007071a` |
 | 37 | `docs/37_EXISTING_CODE_DONOR_AND_REUSE_POLICY.md` | Existing-Code Donor and Reuse Policy | implementation | 3835 | `4dfad8325e6ed11e390952f46ff14caf6fa30fc72142f1ae58e32a22a620d4ee` |
 | 38 | `docs/38_EXECUTION_POLICY_CONTRACTS_AND_ALGORITHMS.md` | Execution policy contracts and algorithms | implementation | 24554 | `4cf67ccec6005ec83478e6677a265d1fc79ce1241e4d8abce566784c01c1e4d3` |
-| 39 | `docs/39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md` | UX flows, onboarding and interaction budgets | implementation | 14969 | `f6d7f0fa2e24cf1bc317544c3c57f2a73fb6741c66a6169ba61824128f40acf7` |
+| 39 | `docs/39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md` | UX flows, onboarding and interaction budgets | implementation | 15814 | `d941a887e6775d6c756b91470cb52b702d383d777451f87cda4b55f2454fd4a2` |
 | 40 | `docs/40_EVIDENCE_DERIVED_REQUIREMENT_LEDGER.md` | Evidence-Derived Requirement Ledger — Build Edition | requirements | 76383 | `d673606834f48960f015f4719c0b6fd956988469c39348aa859c4c0d91e20336` |
 | 41 | `docs/41_EVIDENCE_DERIVED_IMPLEMENTATION_TASKS.md` | Evidence-Derived Implementation Tasks | requirements | 149169 | `90aadd632622877351db607f6c521b6b7d121ad55690ef0f313680b31dd26311` |
 | 42 | `docs/42_EVIDENCE_DERIVED_QUALIFICATION_TEST_MATRIX.md` | Evidence-Derived Qualification Test Matrix | requirements | 49179 | `9bb8430c3b2cf0e06a7caf7caf1b40ae3ccd61dc07f36475029b557bb94ad292` |
@@ -1202,8 +1202,20 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m7/M7.2/TASK_CARD.md` | retained evidence | 5162 | `54c179d3283e1c0ac303f7712e16c9dae3c15c88da626128749a48c85741fe39` |
 | `evidence/m7/M7.2/ci-run-35143904650.json` | retained evidence | 39186 | `7a565f82785f95aac02f1af4101b4c76156a691dd3328f21faeeb2a3647b3c5e` |
 | `evidence/m7/M7.2/evidence.json` | retained evidence | 1284 | `be8290c8e3cf2b0d36bc684e7bf8b0b4660f2e4d7498e12a5b3d5890191f4633` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 40776 | `c750467d8f03ec92798cc7a8735fca3a834c1dad378ddf4b1bb60d9896f3a187` |
-| `graph/project-graph.json` | project driver graph with live status | 1452769 | `1be3bcff3b5242fc24004a46e65ae59aface0a1e0855241d5ba1a7dbee75fb88` |
+| `evidence/m7/M7.3/TASK_CARD.md` | retained evidence | 4174 | `f81168b1fc2cc9ec2ce7dfe71fd2ce83afe9b20d6edd68c5a68c1502d574cbc3` |
+| `evidence/m7/M7.3/evidence.json` | retained evidence | 1090 | `8167816e5ab30e9c8bff114f8945484686a10ed470dda0c0f29f643e6e38856b` |
+| `evidence/m7/M7.4/TASK_CARD.md` | retained evidence | 5496 | `59742e8084318b70c7806673a013f438707641c1d1c483e2e9f6ec162eaad387` |
+| `evidence/m7/M7.4/evidence.json` | retained evidence | 1219 | `7bbd7997fb754ee7317743f6d4949e278757f94ff1362b1efb48d266e84baf9b` |
+| `evidence/m7/M7.5/TASK_CARD.md` | retained evidence | 5007 | `3bc27ef63645a5958fb9ccdc5b5e15c862daa76fe318a209d15585be1b7de424` |
+| `evidence/m7/M7.5/evidence.json` | retained evidence | 1026 | `9f1c1cea0376c610f9760972cd1179dd8b5f0948f426cd6ae279b7903709827b` |
+| `evidence/m7/M7.6/TASK_CARD.md` | retained evidence | 4989 | `2e866484fdce41e6d3a2e47611cf5848969b5122a5d8b74bb1cf1c27a611cc20` |
+| `evidence/m7/M7.6/evidence.json` | retained evidence | 1141 | `47ecfcad6df04707172fd61b58acceb6070c66f320d623dff951dfaf6a0d340c` |
+| `evidence/m7/M7.7/TASK_CARD.md` | retained evidence | 4551 | `2178034c1ac242bcded90a2fea89322edc28f681e30caf2b03c5b3952109034b` |
+| `evidence/m7/M7.7/evidence.json` | retained evidence | 1186 | `f002a896230c05b5a40af0d35f2a51360713788a711b012ccf6acd21fa2253aa` |
+| `evidence/m7/M7.8/TASK_CARD.md` | retained evidence | 4900 | `c82be386b93814544829b670f6fe0b78dd27373e34db37cbc1c3b83c59dd3f12` |
+| `evidence/m7/M7.8/evidence.json` | retained evidence | 1208 | `e9ff56735497ce6f6688724ad7cef820b8afe940097e55ede012c07c5a13f7f7` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 40776 | `5cbd093d123c648f7ca7c7654d4682ca111690fbe885957c81342210ef1f3c82` |
+| `graph/project-graph.json` | project driver graph with live status | 1452769 | `7f441805905bc177ac577a310787ae5114af000a289b2a14726a2626b81f6cd7` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 53213 | `64cc2c11bf3f398ad20b241e372d930e4787962d6b4a8acb36b5845a1c5f7f81` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 17596 | `5c9b7a782d245223726f860ca583d766929a6f5662b644adebee64d257ad426b` |

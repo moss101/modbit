@@ -575,7 +575,8 @@
       "capabilities": [
         "browser.control"
       ],
-      "test": "qual_m7_1_a_browser_session_is_hosted_by_the_desktop_and_driven_through_the_cdp_bridge"
+      "test": "qual_m7_1_a_browser_session_is_hosted_by_the_desktop_and_driven_through_the_cdp_bridge",
+      "injection_note": "M7.7: every observation is scanned for instruction-shaped passages; a hit is marked injection_suspected on the answer and journaled as SecurityEventRecorded (qual_m7_7_hostile_page_and_readme_are_data_the_key_never_leaves_and_the_forbidden_tool_stays_unavailable)"
     },
     {
       "tool": "browser.snapshot",
@@ -589,7 +590,8 @@
       "capabilities": [
         "browser.control"
       ],
-      "test": "qual_m7_2_entities_carry_stable_references_and_a_changed_element_resolves_stale"
+      "test": "qual_m7_2_entities_carry_stable_references_and_a_changed_element_resolves_stale",
+      "injection_note": "M7.7: every observation is scanned for instruction-shaped passages; a hit is marked injection_suspected on the answer and journaled as SecurityEventRecorded (qual_m7_7_hostile_page_and_readme_are_data_the_key_never_leaves_and_the_forbidden_tool_stays_unavailable)"
     },
     {
       "tool": "browser.inspect",
@@ -603,7 +605,38 @@
       "capabilities": [
         "browser.control"
       ],
-      "test": "qual_m7_2_entities_carry_stable_references_and_a_changed_element_resolves_stale"
+      "test": "qual_m7_2_entities_carry_stable_references_and_a_changed_element_resolves_stale",
+      "injection_note": "M7.7: every observation is scanned for instruction-shaped passages; a hit is marked injection_suspected on the answer and journaled as SecurityEventRecorded (qual_m7_7_hostile_page_and_readme_are_data_the_key_never_leaves_and_the_forbidden_tool_stays_unavailable)"
+    },
+    {
+      "tool": "browser.act",
+      "family": "browser",
+      "source_behaviors": [
+        "Playwright locator.click / fill / selectOption / check / press",
+        "Claude in Chrome computer (click, type) + form_input",
+        "1Password / browser password managers: fill by handle (M7.8, docs/22 Credentials)"
+      ],
+      "owner": "Browser Runtime (host bridge) + Semantic Browser Compiler (resolution, risk, postconditions)",
+      "effect": "ReversibleWrite",
+      "capabilities": [
+        "browser.control"
+      ],
+      "test": "qual_m7_4_actions_run_by_reference_under_the_effect_they_carry_and_check_their_postconditions",
+      "effect_note": "per call (Tool::effect_of): ExternalSideEffect for a submission or a consequential action, judged by the compiler's risk classification of the resolved entity; never below the registered class; fill_credential (M7.8) fills a broker-held credential by handle into a field at its bound origin only — the host fills from its own custody, the value never crosses the protocol (qual_m7_8_a_credential_is_filled_by_handle_into_its_bound_origin_only_and_the_value_never_crosses)"
+    },
+    {
+      "tool": "browser.capture",
+      "family": "browser",
+      "source_behaviors": [
+        "Playwright locator.screenshot (clip)",
+        "Claude in Chrome computer zoom (region)"
+      ],
+      "owner": "Browser Runtime (host bridge) + Media Pipeline (docs/25)",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "browser.control"
+      ],
+      "test": "qual_m7_5_a_visual_region_is_captured_targeted_and_clicked_by_a_point_with_the_fallback_on_record"
     }
   ],
   "harness": [

@@ -33,7 +33,10 @@ const CLIENTS = [
   },
   {
     root: join(repoRoot, "apps", "desktop"),
-    allow: [{ file: "src/main/main.ts", specifier: "node:fs", why: "profile-local desktop state (the session id) under the app's own data dir; never a workspace file" }],
+    allow: [
+      { file: "src/main/main.ts", specifier: "node:fs", why: "profile-local desktop state (the session id) under the app's own data dir; never a workspace file" },
+      { file: "src/main/credentials.ts", specifier: "node:fs", why: "M7.8: the credential broker's ciphertext records (safeStorage) under the app's own data dir; never a workspace file" },
+    ],
   },
   { root: join(repoRoot, "packages", "vscode-adapter"), allow: [] },
 ];

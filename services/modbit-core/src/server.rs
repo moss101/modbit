@@ -155,6 +155,8 @@ pub async fn run(data_dir: PathBuf, idle_exit_secs: Option<u64>) -> Result<()> {
     let (tx, _) = watch::channel(start);
     let boot_generation = recovery.boot_generation;
     let browser = Arc::new(crate::browser::BrowserSessions::default());
+    let gateway = modbit_providers::ProviderGateway::new(modbit_providers::endpoints_from_env())
+        .with_policy(modbit_providers::OrgModelPolicy::from_env());
     let core = Arc::new(Core {
         store: Arc::new(Mutex::new(store)),
         last_offset: tx,
@@ -167,10 +169,10 @@ pub async fn run(data_dir: PathBuf, idle_exit_secs: Option<u64>) -> Result<()> {
             &data_dir,
             boot_generation,
             crate::browser::port(&browser),
+            gateway.clone(),
         )
         .context("tool host")?,
-        gateway: modbit_providers::ProviderGateway::new(modbit_providers::endpoints_from_env())
-            .with_policy(modbit_providers::OrgModelPolicy::from_env()),
+        gateway,
         runtime: crate::runtime::Runtime::default(),
         data_dir: data_dir.clone(),
         assurance_policy: {
@@ -842,8 +844,12 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         }
         "TrustRepository" => "repository.trust",
         "EmergencyStop" => "session.control",
-        "AttachBrowserHost" | "BrowserHostResponse" => "browser.host",
+        "AttachBrowserHost"
+        | "BrowserHostResponse"
+        | "RegisterBrowserCredential"
+        | "ForgetBrowserCredential" => "browser.host",
         "OpenBrowserSession" | "CloseBrowserSession" => "task.author",
+        "SetBrowserControl" => "session.control",
         "IngestAttachment" | "AttachContextDocument" => "attachments.ingest",
         "CreateSession"
         | "CreateTask"
@@ -4103,6 +4109,68 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 wire::BrowserHostResponded { delivered }.encode_to_vec(),
             )
         }
+        "RegisterBrowserCredential" => {
+            // M7.8: handle metadata only — a value in any field is refused.
+            let Ok(p) = wire::RegisterBrowserCredential::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "RegisterBrowserCredential");
+            };
+            if !p.handle.starts_with("cred_") || p.handle.len() < 9 || p.handle.len() > 64 {
+                return reject(cid, "BAD_PAYLOAD", "handle must be `cred_<id>`");
+            }
+            let Some(origin) = modbit_browser::origin_of(&p.origin) else {
+                return reject(
+                    cid,
+                    "BAD_ORIGIN",
+                    format!("`{}` is not an http(s) origin", p.origin),
+                );
+            };
+            if origin != p.origin.trim() {
+                return reject(
+                    cid,
+                    "BAD_ORIGIN",
+                    format!("origin must be exactly `{origin}` (scheme://host[:port])"),
+                );
+            }
+            if p.label.len() > 200 || p.username.len() > 200 {
+                return reject(
+                    cid,
+                    "BAD_PAYLOAD",
+                    "label and username are at most 200 bytes",
+                );
+            }
+            core.browser
+                .register_credential(modbit_browser::CredentialHandle {
+                    handle: p.handle.clone(),
+                    label: p.label,
+                    origin: origin.clone(),
+                    username: p.username,
+                })
+                .await;
+            accept(
+                cid,
+                false,
+                wire::BrowserCredentialRegistered {
+                    handle: p.handle,
+                    origin,
+                }
+                .encode_to_vec(),
+            )
+        }
+        "ForgetBrowserCredential" => {
+            let Ok(p) = wire::ForgetBrowserCredential::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "ForgetBrowserCredential");
+            };
+            let existed = core.browser.forget_credential(&p.handle).await;
+            accept(
+                cid,
+                !existed,
+                wire::BrowserCredentialForgotten {
+                    handle: p.handle,
+                    existed,
+                }
+                .encode_to_vec(),
+            )
+        }
         "GetBrowserSession" => {
             let Ok(p) = wire::GetBrowserSession::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "GetBrowserSession");
@@ -4120,6 +4188,84 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 Err(ack) => return ack(cid),
             };
             accept(cid, false, crate::browser::view(bsid, &rec).encode_to_vec())
+        }
+        "SetBrowserControl" => {
+            let Ok(p) = wire::SetBrowserControl::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "SetBrowserControl");
+            };
+            let Some(bsid) = p
+                .browser_session_id
+                .as_ref()
+                .and_then(id16)
+                .map(modbit_browser::BrowserSessionId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "browser_session_id required");
+            };
+            let to = match p.controller.as_str() {
+                "AGENT" => modbit_browser::Controller::Agent,
+                "USER" => modbit_browser::Controller::User,
+                other => {
+                    return reject(
+                        cid,
+                        "BAD_PAYLOAD",
+                        format!("controller must be AGENT or USER, not `{other}`"),
+                    );
+                }
+            };
+            let rec = match browser_session_record(core, bsid, p.task_id.as_ref()).await {
+                Ok(r) => r,
+                Err(ack) => return ack(cid),
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &rec.session_id).await {
+                return ack;
+            }
+            if rec.closed {
+                return reject(cid, "SESSION_CLOSED", bsid.to_string());
+            }
+            let Some((lease, changed)) = core.browser.hand_control(bsid, to).await else {
+                return reject(cid, "NO_SUCH_SESSION", bsid.to_string());
+            };
+            let controller = match lease.controller {
+                modbit_browser::Controller::Agent => "AGENT",
+                modbit_browser::Controller::User => "USER",
+            };
+            let offset = if changed {
+                match crate::runtime::append_batch(
+                    &mut *core.store.lock().await,
+                    core,
+                    crate::runtime::Lineage::task(core.tenant_id, rec.session_id, rec.task_id),
+                    vec![(
+                        AggregateType::Task,
+                        *rec.task_id.as_bytes(),
+                        vec![crate::runtime::typed(
+                            "BrowserControlChanged",
+                            &TaskEvent::BrowserControlChanged {
+                                browser_session_id: bsid.to_string(),
+                                controller: controller.into(),
+                                lease_generation: lease.generation,
+                            },
+                            actor.clone(),
+                        )],
+                    )],
+                ) {
+                    Ok(o) => o,
+                    Err(e) => return reject(cid, "STORE", e),
+                }
+            } else {
+                0
+            };
+            accept(
+                cid,
+                !changed,
+                wire::BrowserControlChanged {
+                    browser_session_id: p.browser_session_id,
+                    controller: controller.into(),
+                    lease_generation: lease.generation,
+                    changed,
+                    offset,
+                }
+                .encode_to_vec(),
+            )
         }
         "CloseBrowserSession" => {
             let Ok(p) = wire::CloseBrowserSession::decode(env.payload.as_slice()) else {

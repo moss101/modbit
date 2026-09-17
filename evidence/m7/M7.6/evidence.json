@@ -1,0 +1,23 @@
+{
+ "task": "M7.6",
+ "requirements": [
+  "docs/22 Live user takeover",
+  "REQ-EV-0283",
+  "REQ-EV-0087 (browser half)"
+ ],
+ "scenarios": [
+  "E2E-015"
+ ],
+ "tests": [
+  "qual_m7_6_taking_control_blocks_agent_input_at_once_and_returning_it_moves_the_lease",
+  "apps/desktop/e2e/browser.spec.ts",
+  "apps/desktop/src/main/lease.test.ts",
+  "control_lease_fences_stale_agent_input"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "the person takes control of the same live session from the panel: the lease moves to a new generation, the agent's navigation and actions are refused at the Core and fenced at the host while its reads still run; the person types into the view and the agent reads it; returning control moves the generation again and the agent's action lands; every change is on the log and survives a restart — on the real Core, the host's rule, and the real app.",
+ "audit": "PARTIAL before: the lease type and the Core-side refusal existed without a hand-over, an event, a UI or host fencing.",
+ "limitations": "hand-overs are explicit buttons; preemption on raw activity is the computer-use half (IMP-EV-0087).",
+ "ci": ""
+}

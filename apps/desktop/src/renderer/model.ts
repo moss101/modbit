@@ -30,6 +30,11 @@ export interface TaskCard {
   createdAtMs: number;
   nextAction: string | null;
   attachments: number;
+  /** Security events the Core recorded on this task (M7.7): an
+   *  instruction-shaped passage marked in what a tool returned, a call
+   *  refused for carrying a credential. The shape and the runtime's answer,
+   *  never a secret. */
+  security?: { kind: string; toolName: string; patterns: string[]; action: string }[];
   /** `subagent` cards nest under their parent (M6.6); null for a top-level task. */
   parentTaskId: string | null;
   /** Where the task came from (`cli`, `desktop`, `subagent`, …). */
@@ -286,6 +291,9 @@ export function applyEvent(m: Model, e: Event, taskIdHint?: string): Model {
           break;
         case "AttachmentIngested":
           updated.attachments = (card.attachments ?? 0) + 1;
+          break;
+        case "SecurityEventRecorded":
+          updated.security = [...(card.security ?? []), { kind: String(p["kind"] ?? ""), toolName: String(p["tool_name"] ?? ""), patterns: Array.isArray(p["patterns"]) ? (p["patterns"] as unknown[]).map(String) : [], action: String(p["action"] ?? "") }];
           break;
         case "TaskNeedsAttention": {
           updated.nextAction = String(p["reason"] ?? "Needs attention");

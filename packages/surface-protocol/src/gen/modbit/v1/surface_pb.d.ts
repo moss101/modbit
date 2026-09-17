@@ -8333,6 +8333,176 @@ export declare type BrowserSessionView = Message<"modbit.v1.BrowserSessionView">
 export declare const BrowserSessionViewSchema: GenMessage<BrowserSessionView>;
 
 /**
+ * M7.6 (docs/22 "Live user takeover"): hand control of the session to the
+ * person (USER) or back to the agent (AGENT). Taking control blocks agent
+ * input at once (observation continues); every hand-over increments the
+ * lease generation so an agent input stamped with an older generation is
+ * fenced by the host. Requires the session lease.
+ *
+ * @generated from message modbit.v1.SetBrowserControl
+ */
+export declare type SetBrowserControl = Message<"modbit.v1.SetBrowserControl"> & {
+  /**
+   * @generated from field: modbit.v1.Id browser_session_id = 1;
+   */
+  browserSessionId?: Id | undefined;
+
+  /**
+   * AGENT | USER
+   *
+   * @generated from field: string controller = 2;
+   */
+  controller: string;
+
+  /**
+   * @generated from field: modbit.v1.Id task_id = 3;
+   */
+  taskId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.SetBrowserControl.
+ * Use `create(SetBrowserControlSchema)` to create a new message.
+ */
+export declare const SetBrowserControlSchema: GenMessage<SetBrowserControl>;
+
+/**
+ * @generated from message modbit.v1.BrowserControlChanged
+ */
+export declare type BrowserControlChanged = Message<"modbit.v1.BrowserControlChanged"> & {
+  /**
+   * @generated from field: modbit.v1.Id browser_session_id = 1;
+   */
+  browserSessionId?: Id | undefined;
+
+  /**
+   * @generated from field: string controller = 2;
+   */
+  controller: string;
+
+  /**
+   * @generated from field: uint64 lease_generation = 3;
+   */
+  leaseGeneration: bigint;
+
+  /**
+   * false = already held by that controller
+   *
+   * @generated from field: bool changed = 4;
+   */
+  changed: boolean;
+
+  /**
+   * @generated from field: uint64 offset = 5;
+   */
+  offset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.BrowserControlChanged.
+ * Use `create(BrowserControlChangedSchema)` to create a new message.
+ */
+export declare const BrowserControlChangedSchema: GenMessage<BrowserControlChanged>;
+
+/**
+ * M7.8 (docs/22 "Credentials"): the desktop registers the credentials it
+ * holds — handle, label, origin, account name; never the secret — so the
+ * Core can offer them to the agent by handle and check the origin binding
+ * of a fill. Not journaled; the host registers again on reconnect.
+ *
+ * @generated from message modbit.v1.RegisterBrowserCredential
+ */
+export declare type RegisterBrowserCredential = Message<"modbit.v1.RegisterBrowserCredential"> & {
+  /**
+   * cred_…
+   *
+   * @generated from field: string handle = 1;
+   */
+  handle: string;
+
+  /**
+   * @generated from field: string label = 2;
+   */
+  label: string;
+
+  /**
+   * scheme://host[:port]
+   *
+   * @generated from field: string origin = 3;
+   */
+  origin: string;
+
+  /**
+   * @generated from field: string username = 4;
+   */
+  username: string;
+};
+
+/**
+ * Describes the message modbit.v1.RegisterBrowserCredential.
+ * Use `create(RegisterBrowserCredentialSchema)` to create a new message.
+ */
+export declare const RegisterBrowserCredentialSchema: GenMessage<RegisterBrowserCredential>;
+
+/**
+ * @generated from message modbit.v1.BrowserCredentialRegistered
+ */
+export declare type BrowserCredentialRegistered = Message<"modbit.v1.BrowserCredentialRegistered"> & {
+  /**
+   * @generated from field: string handle = 1;
+   */
+  handle: string;
+
+  /**
+   * @generated from field: string origin = 2;
+   */
+  origin: string;
+};
+
+/**
+ * Describes the message modbit.v1.BrowserCredentialRegistered.
+ * Use `create(BrowserCredentialRegisteredSchema)` to create a new message.
+ */
+export declare const BrowserCredentialRegisteredSchema: GenMessage<BrowserCredentialRegistered>;
+
+/**
+ * @generated from message modbit.v1.ForgetBrowserCredential
+ */
+export declare type ForgetBrowserCredential = Message<"modbit.v1.ForgetBrowserCredential"> & {
+  /**
+   * @generated from field: string handle = 1;
+   */
+  handle: string;
+};
+
+/**
+ * Describes the message modbit.v1.ForgetBrowserCredential.
+ * Use `create(ForgetBrowserCredentialSchema)` to create a new message.
+ */
+export declare const ForgetBrowserCredentialSchema: GenMessage<ForgetBrowserCredential>;
+
+/**
+ * @generated from message modbit.v1.BrowserCredentialForgotten
+ */
+export declare type BrowserCredentialForgotten = Message<"modbit.v1.BrowserCredentialForgotten"> & {
+  /**
+   * @generated from field: string handle = 1;
+   */
+  handle: string;
+
+  /**
+   * @generated from field: bool existed = 2;
+   */
+  existed: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.BrowserCredentialForgotten.
+ * Use `create(BrowserCredentialForgottenSchema)` to create a new message.
+ */
+export declare const BrowserCredentialForgottenSchema: GenMessage<BrowserCredentialForgotten>;
+
+/**
  * @generated from message modbit.v1.CloseBrowserSession
  */
 export declare type CloseBrowserSession = Message<"modbit.v1.CloseBrowserSession"> & {

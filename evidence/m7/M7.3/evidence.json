@@ -1,0 +1,23 @@
+{
+ "task": "M7.3",
+ "requirements": [
+  "docs/22 Semantic Browser Compiler (state fingerprint, delta)",
+  "REQ-EV-0279",
+  "REQ-EV-0280"
+ ],
+ "scenarios": [
+  "QUAL-EV-0279",
+  "QUAL-EV-0280 (fingerprint half)"
+ ],
+ "tests": [
+  "qual_m7_3_page_reads_after_the_first_are_bounded_deltas_between_fingerprints",
+  "apps/desktop/e2e/browser.spec.ts",
+  "a_delta_is_bounded_to_what_changed_and_applies_to_the_same_page"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "after the first read, browser.snapshot answers with the bounded delta between two content fingerprints (added, removed, changed entities; text; URL/title), equivalent to re-reading; an unchanged read costs a fraction; a replaced page rehydrates in full; mode full is honoured; every read is a BrowserPageObserved on the log — on the real Core with a forty-message fake inbox and in the real app on a real page.",
+ "audit": "MISSING before: full page on every read.",
+ "limitations": "host version counts navigations/loads (mutations found at the next read); transition reuse needs M7.4; fixed fallback share.",
+ "ci": ""
+}

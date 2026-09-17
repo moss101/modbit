@@ -102,6 +102,12 @@ import {
   BrowserSessionViewSchema,
   CloseBrowserSessionSchema,
   BrowserSessionClosedSchema,
+  SetBrowserControlSchema,
+  RegisterBrowserCredentialSchema,
+  BrowserCredentialRegisteredSchema,
+  ForgetBrowserCredentialSchema,
+  BrowserCredentialForgottenSchema,
+  BrowserControlChangedSchema,
   type BrowserHostRequest,
   type BrowserSessionView,
   type TaskEconomicsView,
@@ -587,6 +593,27 @@ export class CoreClient {
   async browserSession(browserSessionId: string, taskId?: string): Promise<BrowserSessionView> {
     const ack = await this.command("GetBrowserSession", toBinary(GetBrowserSessionSchema, create(GetBrowserSessionSchema, { browserSessionId: { value: unhex(browserSessionId) }, ...(taskId ? { taskId: { value: unhex(taskId) } } : {}) })));
     return fromBinary(BrowserSessionViewSchema, ack.result);
+  }
+
+  /** M7.6: hand control of the session to the person (`USER`) or back to the agent (`AGENT`); the lease generation moves on every hand-over. */
+  async setBrowserControl(sessionId: string, browserSessionId: string, taskId: string, controller: "AGENT" | "USER"): Promise<{ controller: string; leaseGeneration: bigint; changed: boolean; offset: bigint }> {
+    const ack = await this.command("SetBrowserControl", toBinary(SetBrowserControlSchema, create(SetBrowserControlSchema, { browserSessionId: { value: unhex(browserSessionId) }, controller, taskId: { value: unhex(taskId) } })), undefined, this.leases.get(sessionId));
+    const r = fromBinary(BrowserControlChangedSchema, ack.result);
+    return { controller: r.controller, leaseGeneration: r.leaseGeneration, changed: r.changed, offset: r.offset };
+  }
+
+  /** M7.8 (docs/22 "Credentials"): register a credential the host holds —
+   *  handle, label, origin, account name; never the secret — so the Core can
+   *  offer it to the agent by handle and bind a fill to its origin. */
+  async registerBrowserCredential(c: { handle: string; label: string; origin: string; username: string }): Promise<{ handle: string; origin: string }> {
+    const ack = await this.command("RegisterBrowserCredential", toBinary(RegisterBrowserCredentialSchema, create(RegisterBrowserCredentialSchema, c)));
+    const r = fromBinary(BrowserCredentialRegisteredSchema, ack.result);
+    return { handle: r.handle, origin: r.origin };
+  }
+
+  async forgetBrowserCredential(handle: string): Promise<{ existed: boolean }> {
+    const ack = await this.command("ForgetBrowserCredential", toBinary(ForgetBrowserCredentialSchema, create(ForgetBrowserCredentialSchema, { handle })));
+    return { existed: fromBinary(BrowserCredentialForgottenSchema, ack.result).existed };
   }
 
   async closeBrowserSession(sessionId: string, browserSessionId: string): Promise<{ offset: bigint }> {

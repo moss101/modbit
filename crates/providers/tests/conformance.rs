@@ -48,6 +48,10 @@ enum Script {
     Sse(Vec<(Option<&'static str>, String, u64)>),
     /// SSE frames, then close the socket without finishing.
     SseThenDrop(Vec<(Option<&'static str>, String, u64)>),
+    /// SSE frames (a complete answer), keep the connection alive, then close
+    /// it as soon as the next request arrives on it without answering — a
+    /// pooled connection the server gave up on.
+    SseThenDropNext(Vec<(Option<&'static str>, String, u64)>),
     /// Never answer.
     Stall,
 }
@@ -156,6 +160,16 @@ async fn fake(scripts: Vec<Script>) -> FakeProvider {
                     }
                     Some(Script::SseThenDrop(frames)) => {
                         let _ = write_frames(&mut sock, frames).await;
+                        drop(sock);
+                    }
+                    Some(Script::SseThenDropNext(frames)) => {
+                        let _ = write_frames(&mut sock, frames).await;
+                        let _ = sock.write_all(b"0\r\n\r\n").await;
+                        // The next request on this connection is read, then the
+                        // connection is closed without a byte of an answer.
+                        let mut tmp = [0u8; 4096];
+                        let _ = tokio::time::timeout(Duration::from_secs(10), sock.read(&mut tmp))
+                            .await;
                         drop(sock);
                     }
                 }
@@ -574,6 +588,71 @@ async fn rate_limit_is_retried_within_bounds_and_then_reported() {
     assert_eq!(server.seen.lock().unwrap().len(), 5);
     assert_eq!(gw.health("ep").rate_limited, 1);
     assert_eq!(gw1.health("ep").rate_limited, 2);
+}
+
+/// A pooled keep-alive connection the server closes under the client (an
+/// idle cut after a long wait for an approval; seen on hosted Windows) fails
+/// the send before any byte of a response: the request is retried on a new
+/// connection under the bounded budget, counted as a retry, and completes.
+#[tokio::test]
+async fn a_pooled_connection_the_server_closed_is_retried_before_any_response() {
+    let server = fake(vec![
+        Script::SseThenDropNext(openai_text_stream(&["first"])),
+        Script::Sse(openai_text_stream(&["second"])),
+    ])
+    .await;
+    let gw = ProviderGateway::new(vec![endpoint(
+        "ep",
+        ProviderKind::OpenAi,
+        &server.base_url,
+        SecretHandle::None,
+        2,
+    )]);
+    let s = gw
+        .stream(
+            request(
+                "ep",
+                "m-plain",
+                vec![Message::text(Role::User, "hi")],
+                false,
+                10_000,
+            ),
+            &Requirements::default(),
+            CancellationToken::new(),
+        )
+        .unwrap();
+    assert_eq!(text_of(&collect(s).await), "first");
+    // The pool holds the connection; the server drops it on the next request.
+    let s = gw
+        .stream(
+            request(
+                "ep",
+                "m-plain",
+                vec![Message::text(Role::User, "again")],
+                false,
+                10_000,
+            ),
+            &Requirements::default(),
+            CancellationToken::new(),
+        )
+        .unwrap();
+    let route = Arc::clone(&s.route);
+    let events = collect(s).await;
+    assert_eq!(text_of(&events), "second", "{events:?}");
+    assert!(
+        !events.iter().any(|e| matches!(e, ModelEvent::Error { .. })),
+        "{events:?}"
+    );
+    // The dropped request never reached the script (the fake reads and
+    // closes); the retry did. Whether the dead connection was noticed by the
+    // pool before the send or failed the send, the answer is the same.
+    let retries = route.lock().unwrap().retries;
+    assert!(retries <= 1, "at most one retry: {retries}");
+    assert_eq!(
+        server.seen.lock().unwrap().len(),
+        2,
+        "the first answer and the retried request"
+    );
 }
 
 #[tokio::test]

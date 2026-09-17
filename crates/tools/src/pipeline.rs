@@ -166,6 +166,17 @@ pub struct InvokeContext {
     /// `browser.*` reach the task's live Chromium through it. `None` = no
     /// browser host in this build.
     pub browser: Option<Arc<dyn modbit_browser::BrowserPort>>,
+    /// The effect class this call was judged under (set by the pipeline
+    /// before the effector runs): a tool whose effect is per call checks
+    /// at run time that what it is about to do is not above it.
+    pub effect_class: Option<crate::EffectClass>,
+    /// Credentials in the host's custody (M7.7, docs/22 "Prompt-injection
+    /// isolation"): a call whose arguments carry one of these values is
+    /// refused before policy and before any effect
+    /// (`SECRET_EXFILTRATION_BLOCKED`) — a secret never leaves the Core
+    /// through a tool, whatever asked for it. Held in memory only; never
+    /// journaled, printed or compared as anything but a substring.
+    pub secrets_in_custody: Vec<String>,
 }
 
 /// Status of a tool call result (docs/30 `ToolCallResult.status` plus the
@@ -261,6 +272,41 @@ impl Verdict {
 }
 
 /// Canonical JSON: keys sorted, no whitespace.
+/// The JSON path of the first string in `args` containing one of `secrets`
+/// (values shorter than 8 bytes are never matched: a short token would
+/// match ordinary text).
+#[must_use]
+pub fn carries_secret(args: &Value, secrets: &[String]) -> Option<String> {
+    fn walk(v: &Value, path: &str, secrets: &[String]) -> Option<String> {
+        match v {
+            Value::String(s) => secrets
+                .iter()
+                .any(|k| k.len() >= 8 && s.contains(k.as_str()))
+                .then(|| path.to_owned()),
+            Value::Array(a) => a
+                .iter()
+                .enumerate()
+                .find_map(|(i, x)| walk(x, &format!("{path}[{i}]"), secrets)),
+            Value::Object(o) => o.iter().find_map(|(k, x)| {
+                walk(
+                    x,
+                    &if path.is_empty() {
+                        k.clone()
+                    } else {
+                        format!("{path}.{k}")
+                    },
+                    secrets,
+                )
+            }),
+            _ => None,
+        }
+    }
+    if secrets.iter().all(|k| k.len() < 8) {
+        return None;
+    }
+    walk(args, "", secrets)
+}
+
 fn canonical(v: &Value) -> String {
     fn sort(v: &Value) -> Value {
         match v {
@@ -432,6 +478,23 @@ impl ToolRuntime {
             outcome: "ok".into(),
         });
 
+        // The call's effect class: what the tool says of these arguments, never
+        // below the registered class (a tool cannot talk its way down).
+        let effect_class = tool.effect_of(&args).max(spec.effect_class);
+
+        // M7.7: arguments carrying a credential of the host are refused
+        // before the kernel is asked — no approval, no effect, and the
+        // record names the refusal, not the value.
+        if let Some(field) = carries_secret(&args, &ctx.secrets_in_custody) {
+            verdict.deny(
+                "SECRET_EXFILTRATION_BLOCKED",
+                &format!(
+                    "the arguments of `{}` (at `{field}`) carry a credential in the Core's custody; a secret never leaves the Core through a tool call, whatever content asked for it",
+                    spec.name
+                ),
+            );
+        }
+
         // 3. policy (arguments are never shown to the kernel as text)
         let port: &dyn CapabilityPort = match &ctx.kernel {
             Some(k) => k.as_ref(),
@@ -439,7 +502,7 @@ impl ToolRuntime {
         };
         let decision = port.decide(&PolicyRequest {
             tool_name: spec.name.clone(),
-            effect_class: spec.effect_class,
+            effect_class,
             required_capabilities: spec.required_capabilities.clone(),
             execution_profile: ctx.execution_profile.clone(),
             has_workspace: ctx.workspace.is_some(),
@@ -480,7 +543,7 @@ impl ToolRuntime {
                 ),
                 stages,
                 policy: Some(decision),
-                effect_class: Some(spec.effect_class),
+                effect_class: Some(effect_class),
                 tool_version: Some(spec.version.clone()),
             };
         }
@@ -495,7 +558,7 @@ impl ToolRuntime {
                 ),
                 stages,
                 policy: Some(decision),
-                effect_class: Some(spec.effect_class),
+                effect_class: Some(effect_class),
                 tool_version: Some(spec.version.clone()),
             };
         }
@@ -507,7 +570,7 @@ impl ToolRuntime {
                 tool_call_id,
                 tool_name: spec.name.clone(),
                 tool_version: spec.version.clone(),
-                effect_class: spec.effect_class,
+                effect_class,
                 arguments_hash: args_hash.clone(),
                 decision: decision.clone(),
             };
@@ -525,7 +588,7 @@ impl ToolRuntime {
                     ),
                     stages,
                     policy: Some(decision),
-                    effect_class: Some(spec.effect_class),
+                    effect_class: Some(effect_class),
                     tool_version: Some(spec.version.clone()),
                 };
             }
@@ -537,6 +600,7 @@ impl ToolRuntime {
         // 5. execute against the real effector
         let mut call_ctx = ctx.clone();
         call_ctx.tool_call_id = Some(tool_call_id);
+        call_ctx.effect_class = Some(effect_class);
         let outcome: ToolOutcome = tool.invoke(&call_ctx, args).await;
         stages.push(StageRecord {
             stage: "execute".into(),
@@ -629,7 +693,7 @@ impl ToolRuntime {
             result,
             stages,
             policy: Some(decision),
-            effect_class: Some(spec.effect_class),
+            effect_class: Some(effect_class),
             tool_version: Some(spec.version),
         }
     }

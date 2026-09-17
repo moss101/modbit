@@ -2,13 +2,13 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-09-16",
+  "generated_on": "2026-09-17",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 1090,
-    "docs_bytes": 1159148
+    "root_and_tooling": 1102,
+    "docs_bytes": 1172442
   },
   "sections": [
     {
@@ -239,8 +239,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Browser and Computer-Use Architecture",
-      "bytes": 8713,
-      "sha256": "228d5571ff88ec645644a863384c97a549b3bf3739d5b027c2958516cdb650a3"
+      "bytes": 21162,
+      "sha256": "e03bb5cbcd655d27da3a699ce45f6fb463105a011d05cb1ce8c4cb4d5ee632d4"
     },
     {
       "path": "docs/23_SECURITY_POLICY_EFFECT_LEDGER.md",
@@ -392,8 +392,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "UX flows, onboarding and interaction budgets",
-      "bytes": 14969,
-      "sha256": "f6d7f0fa2e24cf1bc317544c3c57f2a73fb6741c66a6169ba61824128f40acf7"
+      "bytes": 15814,
+      "sha256": "d941a887e6775d6c756b91470cb52b702d383d777451f87cda4b55f2454fd4a2"
     },
     {
       "path": "docs/40_EVIDENCE_DERIVED_REQUIREMENT_LEDGER.md",
@@ -6262,14 +6262,74 @@
       "sha256": "be8290c8e3cf2b0d36bc684e7bf8b0b4660f2e4d7498e12a5b3d5890191f4633"
     },
     {
+      "path": "evidence/m7/M7.3/TASK_CARD.md",
+      "bytes": 4174,
+      "sha256": "f81168b1fc2cc9ec2ce7dfe71fd2ce83afe9b20d6edd68c5a68c1502d574cbc3"
+    },
+    {
+      "path": "evidence/m7/M7.3/evidence.json",
+      "bytes": 1090,
+      "sha256": "8167816e5ab30e9c8bff114f8945484686a10ed470dda0c0f29f643e6e38856b"
+    },
+    {
+      "path": "evidence/m7/M7.4/TASK_CARD.md",
+      "bytes": 5496,
+      "sha256": "59742e8084318b70c7806673a013f438707641c1d1c483e2e9f6ec162eaad387"
+    },
+    {
+      "path": "evidence/m7/M7.4/evidence.json",
+      "bytes": 1219,
+      "sha256": "7bbd7997fb754ee7317743f6d4949e278757f94ff1362b1efb48d266e84baf9b"
+    },
+    {
+      "path": "evidence/m7/M7.5/TASK_CARD.md",
+      "bytes": 5007,
+      "sha256": "3bc27ef63645a5958fb9ccdc5b5e15c862daa76fe318a209d15585be1b7de424"
+    },
+    {
+      "path": "evidence/m7/M7.5/evidence.json",
+      "bytes": 1026,
+      "sha256": "9f1c1cea0376c610f9760972cd1179dd8b5f0948f426cd6ae279b7903709827b"
+    },
+    {
+      "path": "evidence/m7/M7.6/TASK_CARD.md",
+      "bytes": 4989,
+      "sha256": "2e866484fdce41e6d3a2e47611cf5848969b5122a5d8b74bb1cf1c27a611cc20"
+    },
+    {
+      "path": "evidence/m7/M7.6/evidence.json",
+      "bytes": 1141,
+      "sha256": "47ecfcad6df04707172fd61b58acceb6070c66f320d623dff951dfaf6a0d340c"
+    },
+    {
+      "path": "evidence/m7/M7.7/TASK_CARD.md",
+      "bytes": 4551,
+      "sha256": "2178034c1ac242bcded90a2fea89322edc28f681e30caf2b03c5b3952109034b"
+    },
+    {
+      "path": "evidence/m7/M7.7/evidence.json",
+      "bytes": 1186,
+      "sha256": "f002a896230c05b5a40af0d35f2a51360713788a711b012ccf6acd21fa2253aa"
+    },
+    {
+      "path": "evidence/m7/M7.8/TASK_CARD.md",
+      "bytes": 4900,
+      "sha256": "c82be386b93814544829b670f6fe0b78dd27373e34db37cbc1c3b83c59dd3f12"
+    },
+    {
+      "path": "evidence/m7/M7.8/evidence.json",
+      "bytes": 1208,
+      "sha256": "e9ff56735497ce6f6688724ad7cef820b8afe940097e55ede012c07c5a13f7f7"
+    },
+    {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 40776,
-      "sha256": "c750467d8f03ec92798cc7a8735fca3a834c1dad378ddf4b1bb60d9896f3a187"
+      "sha256": "5cbd093d123c648f7ca7c7654d4682ca111690fbe885957c81342210ef1f3c82"
     },
     {
       "path": "graph/project-graph.json",
       "bytes": 1452769,
-      "sha256": "1be3bcff3b5242fc24004a46e65ae59aface0a1e0855241d5ba1a7dbee75fb88"
+      "sha256": "7f441805905bc177ac577a310787ae5114af000a289b2a14726a2626b81f6cd7"
     },
     {
       "path": "tools/build_graph.py",

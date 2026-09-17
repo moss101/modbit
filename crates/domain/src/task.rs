@@ -491,10 +491,147 @@ pub enum TaskEvent {
         /// The control lease generation the navigation ran under.
         lease_generation: u64,
     },
+    /// `BrowserControlChanged` (M7.6, docs/22 "Live user takeover"): who
+    /// holds the session's control lease and the generation it moved to;
+    /// agent input stamped with an older generation is fenced. No state change.
+    BrowserControlChanged {
+        /// The session.
+        browser_session_id: String,
+        /// `AGENT` | `USER`.
+        controller: String,
+        /// The generation after the hand-over.
+        lease_generation: u64,
+    },
     /// `BrowserSessionClosed` (M7.1): the session's view is released. No state change.
     BrowserSessionClosed {
         /// The session.
         browser_session_id: String,
+    },
+    /// `BrowserActionPerformed` (M7.4, docs/22 "Action hierarchy",
+    /// "Verification"; REQ-EV-0280): the agent acted on an entity — what it
+    /// acted on (identity, never a node id), what the host did, the state
+    /// fingerprints before and after, and whether the declared
+    /// postcondition held. The observed transition, as evidence. No state
+    /// change.
+    BrowserActionPerformed {
+        /// The session.
+        browser_session_id: String,
+        /// The entity's reference.
+        reference: String,
+        /// `click` | `fill` | `select` | `check` | `uncheck` | `press`.
+        action: String,
+        /// Role of the target.
+        role: String,
+        /// Name of the target (untrusted).
+        name: String,
+        /// Effect class the call ran under (`REVERSIBLE_WRITE` | `EXTERNAL_SIDE_EFFECT`).
+        effect_class: String,
+        /// Fingerprint before.
+        fingerprint_before: String,
+        /// Fingerprint after.
+        fingerprint_after: String,
+        /// Whether the action navigated.
+        navigated: bool,
+        /// Whether the postcondition held (`None` when none was declared).
+        postcondition_held: Option<bool>,
+        /// The control lease generation the action ran under.
+        lease_generation: u64,
+        /// A click placed from a captured region (M7.5): the point inside
+        /// the region's box and the reason for the fallback.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        visual_fallback: Option<serde_json::Value>,
+    },
+    /// `BrowserRegionCaptured` (M7.5, docs/22 rung 4 and "V2 media
+    /// interaction"): the agent fell back to vision on one region of the
+    /// page — which region, why the semantic state was insufficient, the
+    /// box captured (never the whole page) and the image's egress
+    /// reference. No state change.
+    BrowserRegionCaptured {
+        /// The session.
+        browser_session_id: String,
+        /// The region's reference.
+        reference: String,
+        /// Role (`canvas`, `image`, …).
+        role: String,
+        /// Why.
+        reason: String,
+        /// The box captured, `x,y,width,height` in CSS pixels.
+        bounds: [u32; 4],
+        /// The egress copy's object reference.
+        egress_ref: String,
+        /// The page's state version.
+        state_version: u64,
+        /// The page's fingerprint at capture.
+        fingerprint: String,
+    },
+    /// `BrowserCredentialFilled` (M7.8, docs/22 "Credentials"): a credential
+    /// the person bound to an origin was filled by handle into a field of a
+    /// page at that origin by the host, from its own custody. The handle,
+    /// the origin and the field — never the value. No state change.
+    BrowserCredentialFilled {
+        /// The session.
+        browser_session_id: String,
+        /// The credential's handle.
+        credential: String,
+        /// The origin it is bound to (the page's origin at the fill).
+        origin: String,
+        /// The field's reference, role and name.
+        reference: String,
+        /// The field's role.
+        role: String,
+        /// The field's accessible name.
+        name: String,
+        /// The page's state version at the fill.
+        state_version: u64,
+        /// The control lease generation the request carried.
+        lease_generation: u64,
+    },
+    /// M7.7 (docs/22 "Prompt-injection isolation", REQ-EV-0284): a
+    /// security-relevant attempt the runtime saw and answered — content
+    /// shaped like instructions to the agent in what a tool returned
+    /// (`PROMPT_INJECTION_SUSPECTED`: marked, never obeyed), or a tool call
+    /// whose arguments carried a credential in the Core's custody
+    /// (`SECRET_EXFILTRATION_BLOCKED`: refused before any effect). The
+    /// record names the shape, never the secret.
+    SecurityEventRecorded {
+        /// `PROMPT_INJECTION_SUSPECTED` | `SECRET_EXFILTRATION_BLOCKED`.
+        kind: String,
+        /// Where it came from: the tool whose observation or arguments carried it.
+        tool_name: String,
+        /// The call.
+        tool_call_id: String,
+        /// The shapes matched (`OVERRIDE_INSTRUCTIONS`, `EXFILTRATE_SECRET`, …) or the field.
+        patterns: Vec<String>,
+        /// A bounded, whitespace-normalized excerpt (untrusted) or the refusal.
+        detail: String,
+        /// What the runtime did: `MARKED` (the observation carries the finding) or `BLOCKED`.
+        action: String,
+    },
+    /// `BrowserPageObserved` (M7.3, docs/22 "state fingerprint / delta"):
+    /// the agent read the page — in full or as the delta since its last
+    /// read — and this is the state it saw, by fingerprint. The delta stream
+    /// on the log: what changed between reads, as counts. No state change.
+    BrowserPageObserved {
+        /// The session.
+        browser_session_id: String,
+        /// The host's state version.
+        state_version: u64,
+        /// Content fingerprint of the compiled page.
+        state_fingerprint: String,
+        /// Identity hash of the entity set.
+        entity_hash: String,
+        /// `full` | `delta`.
+        mode: String,
+        /// Entities in the page.
+        entity_count: u64,
+        /// Entities added since the previous read (delta).
+        added: u64,
+        /// Entities removed since the previous read (delta).
+        removed: u64,
+        /// Entities changed since the previous read (delta).
+        changed: u64,
+        /// URL (untrusted).
+        url: String,
     },
     /// `PlanRevised` with a scope delta; no state change.
     PlanRevised {
@@ -1395,6 +1532,12 @@ impl TaskEvent {
             Self::BrowserHostAttached { .. } => "BrowserHostAttached",
             Self::BrowserNavigated { .. } => "BrowserNavigated",
             Self::BrowserSessionClosed { .. } => "BrowserSessionClosed",
+            Self::BrowserControlChanged { .. } => "BrowserControlChanged",
+            Self::BrowserPageObserved { .. } => "BrowserPageObserved",
+            Self::BrowserActionPerformed { .. } => "BrowserActionPerformed",
+            Self::BrowserRegionCaptured { .. } => "BrowserRegionCaptured",
+            Self::SecurityEventRecorded { .. } => "SecurityEventRecorded",
+            Self::BrowserCredentialFilled { .. } => "BrowserCredentialFilled",
             Self::UnsupportedLanguageOptInRecorded { .. } => "UnsupportedLanguageOptInRecorded",
             Self::ContextDocumentAttached { .. } => "ContextDocumentAttached",
             Self::SelectionRecorded { .. } => "SelectionRecorded",
@@ -1550,6 +1693,12 @@ impl Task {
             | TaskEvent::BrowserHostAttached { .. }
             | TaskEvent::BrowserNavigated { .. }
             | TaskEvent::BrowserSessionClosed { .. }
+            | TaskEvent::BrowserControlChanged { .. }
+            | TaskEvent::BrowserPageObserved { .. }
+            | TaskEvent::BrowserActionPerformed { .. }
+            | TaskEvent::BrowserRegionCaptured { .. }
+            | TaskEvent::SecurityEventRecorded { .. }
+            | TaskEvent::BrowserCredentialFilled { .. }
             | TaskEvent::SelfReviewRecorded { .. }
             | TaskEvent::ToolsActivated { .. }
             | TaskEvent::ProgramStarted { .. }

@@ -113,6 +113,43 @@ struct ExitMeta {
     lost: bool,
 }
 
+/// Whether an environment variable is one that carries a credential (M7.7,
+/// docs/22 "Prompt-injection isolation", docs/23): a child process never
+/// inherits it, whatever a command asks — the broker holds no secret a
+/// shell could print. Names are matched by their shape, so a new provider's
+/// key is covered before anyone lists it.
+fn secret_bearing(name: &str) -> bool {
+    let n = name.to_ascii_uppercase();
+    n.ends_with("_API_KEY")
+        || n.ends_with("_TOKEN")
+        || n.ends_with("_SECRET")
+        || n.ends_with("_SECRET_KEY")
+        || n.ends_with("_ACCESS_KEY")
+        || n.ends_with("_PRIVATE_KEY")
+        || n.contains("PASSWORD")
+        || n.contains("PASSPHRASE")
+        || n == "OPENAI_API_KEY"
+        || n == "ANTHROPIC_API_KEY"
+        || n == "MODBIT_GITHUB_TOKEN"
+        || n == "GITHUB_TOKEN"
+        || n == "GH_TOKEN"
+}
+
+/// The value of a secret-bearing variable this broker's own environment
+/// holds: a command whose requested environment carries such a value is
+/// refused before it runs (the model never legitimately knows one).
+fn leaks_own_secret(env: &std::collections::HashMap<String, String>) -> Option<String> {
+    let own: Vec<(String, String)> = std::env::vars()
+        .filter(|(k, v)| secret_bearing(k) && v.len() >= 8)
+        .collect();
+    for (k, v) in env {
+        if let Some((name, _)) = own.iter().find(|(_, secret)| v.contains(secret.as_str())) {
+            return Some(format!("{k} carries the value of {name}"));
+        }
+    }
+    None
+}
+
 fn now_ms() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -959,6 +996,11 @@ impl Broker {
         stdin_open: bool,
         started: Instant,
     ) -> Result<()> {
+        if let Some(why) = leaks_own_secret(&req.env) {
+            anyhow::bail!(
+                "SECRET_IN_ENV: {why}; a command never carries a credential of this broker"
+            );
+        }
         let mut cmd = tokio::process::Command::new(&req.argv[0]);
         cmd.args(&req.argv[1..])
             .current_dir(cwd)
@@ -983,8 +1025,15 @@ impl Broker {
                     cmd.env(k, v);
                 }
             }
+        } else {
+            // Inherited or not, no credential of this process reaches a child.
+            for (k, _) in std::env::vars() {
+                if secret_bearing(&k) {
+                    cmd.env_remove(&k);
+                }
+            }
         }
-        cmd.envs(&req.env);
+        cmd.envs(req.env.iter().filter(|(k, _)| !secret_bearing(k)));
         cmd.kill_on_drop(true);
         // Its own process group, so a cancel ends what the command started
         // too (a shell's child, a test runner's workers): a grandchild left
@@ -1095,6 +1144,11 @@ impl Broker {
         cwd: &Path,
         started: Instant,
     ) -> Result<()> {
+        if let Some(why) = leaks_own_secret(&req.env) {
+            anyhow::bail!(
+                "SECRET_IN_ENV: {why}; a command never carries a credential of this broker"
+            );
+        }
         use portable_pty::{CommandBuilder, PtySize, native_pty_system};
         let pty = native_pty_system();
         let pair = pty
@@ -1121,8 +1175,15 @@ impl Broker {
                     cmd.env(k, v);
                 }
             }
+        } else {
+            // Inherited or not, no credential of this process reaches a child.
+            for (k, _) in std::env::vars() {
+                if secret_bearing(&k) {
+                    cmd.env_remove(&k);
+                }
+            }
         }
-        for (k, v) in &req.env {
+        for (k, v) in req.env.iter().filter(|(k, _)| !secret_bearing(k)) {
             cmd.env(k, v);
         }
         let child = pair

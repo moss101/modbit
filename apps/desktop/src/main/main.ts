@@ -11,6 +11,7 @@ import { join, resolve } from "node:path";
 import { CoreSupervisor, freshId, type CoreClient, type CoreStatus } from "@modbit/ide-adapter-core";
 import { serializeEvent, type WireEvent } from "./events.js";
 import { BrowserHost } from "./browser.js";
+import { CredentialStore } from "./credentials.js";
 
 const dataDir = process.env.MODBIT_DATA_DIR ?? join(app.getPath("userData"), "modbit");
 // A profile named by MODBIT_DATA_DIR is a whole profile: the renderer's
@@ -100,6 +101,7 @@ const supervisor = new CoreSupervisor(
       // and tell the renderer exactly what the Core recovered (docs/39 PX-023).
       const local = loadLocalState();
       void handProviderToCore(c);
+      void handCredentialsToCore(c);
       if (local.sessionId) void c.joinSessionLease(local.sessionId, `desktop ${app.getVersion()}`).catch(() => {});
       if (subscription) c.subscribe(subscription.sessionId, subscription.cursor);
       // M7.1: the views this process still holds attach again to their sessions.
@@ -129,10 +131,22 @@ const HEX32 = /^[0-9a-f]{32}$/;
 
 // M7.1: the browser host — one sandboxed WebContentsView per browser
 // session, attached to the Core over this process's client connection.
+// M7.8 (docs/22 "Credentials"): the credential broker — login secrets in
+// safeStorage custody, bound to an origin; the Core learns handles only.
+const credentials = new CredentialStore(join(dataDir, "credentials.enc"), {
+  available: () => safeStorage.isEncryptionAvailable(),
+  encrypt: (p) => safeStorage.encryptString(p).toString("base64"),
+  decrypt: (c) => safeStorage.decryptString(Buffer.from(c, "base64")),
+});
+/** Register every handle with a (re)started Core: handle, label, origin, account name. */
+async function handCredentialsToCore(c: CoreClient): Promise<void> {
+  for (const h of credentials.list()) await c.registerBrowserCredential({ handle: h.handle, label: h.label, origin: h.origin, username: h.username }).catch(() => {});
+}
 const browserHost = new BrowserHost(
   () => win,
   () => supervisor.current(),
   (channel, payload) => send(channel, payload),
+  (handle, pageOrigin) => credentials.secretFor(handle, pageOrigin),
 );
 function requireClient(): CoreClient {
   const c = supervisor.current();
@@ -483,6 +497,19 @@ ipcMain.handle("browser:session", async (_e: IpcMainInvokeEvent, browserSessionI
   return { browserSessionId, taskId: tid, partition: v.partition, controller: v.controller, leaseGeneration: v.leaseGeneration.toString(), hostAttached: v.hostAttached, hostKind: v.hostKind, url: v.url, title: v.title, stateVersion: v.stateVersion.toString(), fingerprint: v.fingerprint, closed: v.closed };
 });
 ipcMain.handle("browser:log", () => browserHost.log.slice());
+// M7.6: the person takes or returns control of the session (the same
+// session; the agent's input is blocked while they hold it).
+ipcMain.handle("browser:control", (_e: IpcMainInvokeEvent, browserSessionId: unknown, controller: unknown) => {
+  if (typeof browserSessionId !== "string" || !HEX32.test(browserSessionId)) throw new Error("BAD_ARGUMENT: browserSessionId");
+  if (controller !== "AGENT" && controller !== "USER") throw new Error("BAD_ARGUMENT: controller must be AGENT or USER");
+  return browserHost.setControl(browserSessionId, controller);
+});
+// The person's own typing into the view (what the E2E uses to type as the person while it holds control).
+ipcMain.handle("browser:typeAsPerson", (_e: IpcMainInvokeEvent, browserSessionId: unknown, text: unknown) => {
+  if (typeof browserSessionId !== "string" || !HEX32.test(browserSessionId)) throw new Error("BAD_ARGUMENT: browserSessionId");
+  if (typeof text !== "string" || text.length > 200) throw new Error("BAD_ARGUMENT: text");
+  return browserHost.typeAsPerson(browserSessionId, text);
+});
 ipcMain.handle("browser:probe", (_e: IpcMainInvokeEvent, browserSessionId: unknown) => {
   if (typeof browserSessionId !== "string" || !HEX32.test(browserSessionId)) throw new Error("BAD_ARGUMENT: browserSessionId");
   return browserHost.probe(browserSessionId);
@@ -502,6 +529,25 @@ ipcMain.handle("notify:deliver", (_e: IpcMainInvokeEvent, id: unknown, title: un
   return { shown };
 });
 ipcMain.handle("notify:log", () => deliveredNotifications.slice());
+// ---- Credentials (M7.8): the secret crosses main once, from the renderer's
+// input to safeStorage; what comes back is a handle. The Core is told the
+// handle, label, origin and account name.
+ipcMain.handle("credential:add", async (_e: IpcMainInvokeEvent, label: unknown, origin: unknown, username: unknown, secret: unknown) => {
+  if (typeof label !== "string" || label.length > 200) throw new Error("BAD_ARGUMENT: label");
+  if (typeof origin !== "string" || origin.length > 2048) throw new Error("BAD_ARGUMENT: origin");
+  if (typeof username !== "string" || username.length > 200) throw new Error("BAD_ARGUMENT: username");
+  if (typeof secret !== "string" || secret.length === 0 || secret.length > 4096 || secret.includes("\0")) throw new Error("BAD_ARGUMENT: secret");
+  const h = credentials.add(label, origin, username, secret);
+  await requireClient().registerBrowserCredential({ handle: h.handle, label: h.label, origin: h.origin, username: h.username });
+  return h;
+});
+ipcMain.handle("credential:list", () => credentials.list());
+ipcMain.handle("credential:remove", async (_e: IpcMainInvokeEvent, handle: unknown) => {
+  if (typeof handle !== "string" || !/^cred_[0-9a-f]{12}$/.test(handle)) throw new Error("BAD_ARGUMENT: handle");
+  const removed = credentials.remove(handle);
+  await requireClient().forgetBrowserCredential(handle).catch(() => {});
+  return { removed };
+});
 // ---- Onboarding (REQ-PX-022, docs/39): provider setup, repository trust,
 // starter tasks. The credential crosses main once, from the renderer's input
 // field to safeStorage and the Core; it is never returned to the renderer.

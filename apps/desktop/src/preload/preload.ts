@@ -48,6 +48,16 @@ export interface TaskStatusView {
   recoveryPath: string;
   evidenceRefs: string[];
 }
+/** M7.8: a credential the broker holds — never its value. */
+export interface CredentialHandle {
+  handle: string;
+  label: string;
+  origin: string;
+  username: string;
+  /** false = the OS offered no encryption; the secret lives in memory only until the app quits. */
+  persisted: boolean;
+}
+
 export interface BrowserSessionSummary {
   browserSessionId: string;
   taskId: string;
@@ -193,9 +203,16 @@ export interface ModbitBridge {
   showBrowser(browserSessionId: string, bounds: { x: number; y: number; width: number; height: number }): Promise<boolean>;
   hideBrowser(browserSessionId: string): Promise<void>;
   closeBrowser(browserSessionId: string): Promise<void>;
-  describeBrowser(browserSessionId: string): Promise<{ browserSessionId: string; taskId: string; partition: string; attached: boolean; shown: boolean; url: string; title: string; stateVersion: number } | null>;
+  describeBrowser(browserSessionId: string): Promise<{ browserSessionId: string; taskId: string; partition: string; attached: boolean; shown: boolean; url: string; title: string; stateVersion: number; leaseGeneration: number; controller: "AGENT" | "USER" } | null>;
+  /** M7.6: take (USER) or return (AGENT) control of the session; the lease generation moves on every hand-over. */
+  setBrowserControl(browserSessionId: string, controller: "AGENT" | "USER"): Promise<{ controller: string; leaseGeneration: number; changed: boolean }>;
+  typeAsPerson(browserSessionId: string, text: string): Promise<boolean>;
   browserSession(browserSessionId: string, taskId: string): Promise<BrowserSessionSummary>;
-  browserLog(): Promise<{ browserSessionId: string; kind: string; ok: boolean; code: string; atMs: number }[]>;
+  /** M7.8: the credential broker — add binds a secret to an origin (the secret crosses once; a handle comes back); list and remove never carry a secret. */
+  addCredential(label: string, origin: string, username: string, secret: string): Promise<CredentialHandle>;
+  listCredentials(): Promise<CredentialHandle[]>;
+  removeCredential(handle: string): Promise<{ removed: boolean }>;
+  browserLog(): Promise<{ browserSessionId: string; kind: string; ok: boolean; code: string; generation: number; atMs: number }[]>;
   /** The isolation report asked of the hosted page itself (Node, require, Electron: none reachable). */
   probeBrowser(browserSessionId: string): Promise<{ kind: string; node_reachable: boolean; partition: string; sandboxed: boolean; context_isolated: boolean } | null>;
   onBrowserState(cb: (s: unknown) => void): () => void;
@@ -245,6 +262,11 @@ const bridge: ModbitBridge = {
   browserSession: (browserSessionId, taskId) => ipcRenderer.invoke("browser:session", browserSessionId, taskId),
   browserLog: () => ipcRenderer.invoke("browser:log"),
   probeBrowser: (browserSessionId) => ipcRenderer.invoke("browser:probe", browserSessionId),
+  setBrowserControl: (browserSessionId, controller) => ipcRenderer.invoke("browser:control", browserSessionId, controller),
+  typeAsPerson: (browserSessionId, text) => ipcRenderer.invoke("browser:typeAsPerson", browserSessionId, text),
+  addCredential: (label, origin, username, secret) => ipcRenderer.invoke("credential:add", label, origin, username, secret),
+  listCredentials: () => ipcRenderer.invoke("credential:list"),
+  removeCredential: (handle) => ipcRenderer.invoke("credential:remove", handle),
   onBrowserState: (cb) => {
     const listener = (_e: unknown, s: unknown) => cb(s);
     ipcRenderer.on("browser:state", listener);

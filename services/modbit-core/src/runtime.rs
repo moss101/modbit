@@ -3236,6 +3236,11 @@ async fn run_loop(
         };
         // ---- Actions
         let mut progress = false;
+        // M7.6: a turn in which the agent's input was refused because the
+        // person holds the browser (`USER_HAS_CONTROL`) is the agent waiting
+        // on a person, not stalling — it neither resets nor spends the
+        // no-progress budget.
+        let mut yielded_to_person = false;
         let mut completed = false;
         let mut pending_question: Option<String> = None;
         let mut escalation: Option<RepairEscalation> = None;
@@ -4062,9 +4067,12 @@ async fn run_loop(
                                 TranscriptEntry::ToolResult {
                                     failure_signature,
                                     progress: p,
+                                    text,
                                     ..
                                 } => {
                                     progress |= *p;
+                                    yielded_to_person |=
+                                        text.contains("error_code: USER_HAS_CONTROL");
                                     failure_signature.clone()
                                 }
                                 _ => None,
@@ -4245,6 +4253,9 @@ async fn run_loop(
         }
         if progress {
             state.no_progress_turns = 0;
+        } else if yielded_to_person {
+            // The person is acting in the browser; the agent's refused input
+            // is not a stall (docs/22 "Live user takeover").
         } else {
             state.no_progress_turns += 1;
             if state.no_progress_turns >= state.budgets.max_consecutive_no_progress_turns {
@@ -6491,6 +6502,7 @@ async fn execute_tool(
                 || is_check
                 || name == "fs.read"
                 || name == "browser.navigate"
+                || name == "browser.act"
                 || name.starts_with("lsp.")
                 || name.starts_with("git.worktree"));
         return TranscriptEntry::ToolResult {

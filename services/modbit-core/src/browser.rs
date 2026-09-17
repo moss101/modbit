@@ -48,6 +48,8 @@ pub(crate) struct SessionRecord {
     /// Every entity a compiled page of this session has named, by
     /// reference (M7.2; bounded).
     pub known: HashMap<String, modbit_browser::compiler::Entity>,
+    /// The page last compiled (M7.3: what the next delta starts from).
+    pub last_page: Option<modbit_browser::compiler::PageEntities>,
 }
 
 /// The registry: sessions and the requests awaiting a host's answer.
@@ -55,6 +57,22 @@ pub(crate) struct SessionRecord {
 pub struct BrowserSessions {
     sessions: Mutex<HashMap<BrowserSessionId, SessionRecord>>,
     pending: Mutex<HashMap<String, (BrowserSessionId, oneshot::Sender<HostResponse>)>>,
+    /// The credential handles a host registered (M7.8, docs/22
+    /// "Credentials"): handle, label, origin, account name — never a value.
+    /// Memory only; a host registers them again when it reconnects.
+    credentials: Mutex<HashMap<String, modbit_browser::CredentialHandle>>,
+}
+
+impl BrowserSessions {
+    /// Register (or replace) a credential handle (M7.8).
+    pub(crate) async fn register_credential(&self, c: modbit_browser::CredentialHandle) {
+        self.credentials.lock().await.insert(c.handle.clone(), c);
+    }
+
+    /// Forget a credential handle (M7.8).
+    pub(crate) async fn forget_credential(&self, handle: &str) -> bool {
+        self.credentials.lock().await.remove(handle).is_some()
+    }
 }
 
 /// How long the Core waits for a host's answer.
@@ -89,6 +107,7 @@ impl BrowserSessions {
             state: PageState::default(),
             closed: false,
             known: HashMap::new(),
+            last_page: None,
         };
         self.sessions.lock().await.insert(id, rec.clone());
         rec
@@ -112,6 +131,20 @@ impl BrowserSessions {
         let rec = s.get_mut(&id)?;
         rec.host = Some(link);
         Some(rec.lease)
+    }
+
+    /// Hand control to `to` (M7.6): the lease moves to a new generation
+    /// unless `to` already holds it. Returns the lease and whether it moved.
+    pub(crate) async fn hand_control(
+        &self,
+        id: BrowserSessionId,
+        to: modbit_browser::Controller,
+    ) -> Option<(ControlLease, bool)> {
+        let mut s = self.sessions.lock().await;
+        let rec = s.get_mut(&id)?;
+        let before = rec.lease;
+        rec.lease = rec.lease.handed_to(to);
+        Some((rec.lease, rec.lease != before))
     }
 
     pub(crate) async fn record_state(&self, id: BrowserSessionId, state: PageState) {
@@ -207,8 +240,10 @@ impl BrowserPort for BrowserSessions {
             };
             // An agent input under the user's control is refused here, before
             // it reaches the host (docs/22: takeover blocks input at once).
-            if matches!(request, HostRequest::Navigate { .. })
-                && !lease.admits_agent_input(lease.generation)
+            if matches!(
+                request,
+                HostRequest::Navigate { .. } | HostRequest::Act { .. }
+            ) && !lease.admits_agent_input(lease.generation)
             {
                 return Err(PortError::Refused {
                     code: "USER_HAS_CONTROL".into(),
@@ -272,10 +307,49 @@ impl BrowserPort for BrowserSessions {
                 if rec.known.len() > 4000 {
                     rec.known.clear();
                 }
-                for e in page.entities {
-                    rec.known.insert(e.reference.clone(), e);
+                for e in &page.entities {
+                    rec.known.insert(e.reference.clone(), e.clone());
                 }
+                rec.last_page = Some(page);
             }
+        })
+    }
+
+    fn last_page<'a>(
+        &'a self,
+        session: BrowserSessionId,
+    ) -> BoxFuture<'a, Option<modbit_browser::compiler::PageEntities>> {
+        Box::pin(async move {
+            self.sessions
+                .lock()
+                .await
+                .get(&session)
+                .and_then(|r| r.last_page.clone())
+        })
+    }
+
+    fn credential<'a>(
+        &'a self,
+        handle: &'a str,
+    ) -> BoxFuture<'a, Option<modbit_browser::CredentialHandle>> {
+        Box::pin(async move { self.credentials.lock().await.get(handle).cloned() })
+    }
+
+    fn credentials_for<'a>(
+        &'a self,
+        origin: &'a str,
+    ) -> BoxFuture<'a, Vec<modbit_browser::CredentialHandle>> {
+        Box::pin(async move {
+            let mut out: Vec<_> = self
+                .credentials
+                .lock()
+                .await
+                .values()
+                .filter(|c| c.origin == origin)
+                .cloned()
+                .collect();
+            out.sort_by(|a, b| a.handle.cmp(&b.handle));
+            out
         })
     }
 
@@ -347,6 +421,7 @@ pub(crate) fn from_events(
                     state: PageState::default(),
                     closed: false,
                     known: HashMap::new(),
+                    last_page: None,
                 });
             }
             "BrowserNavigated" => {
@@ -356,6 +431,18 @@ pub(crate) fn from_events(
                         title: e["title"].as_str().unwrap_or_default().to_owned(),
                         ready: true,
                         state_version: e["state_version"].as_u64().unwrap_or(0),
+                    };
+                }
+            }
+            "BrowserControlChanged" => {
+                if let Some(r) = rec.as_mut() {
+                    r.lease = ControlLease {
+                        controller: if e["controller"].as_str() == Some("USER") {
+                            modbit_browser::Controller::User
+                        } else {
+                            modbit_browser::Controller::Agent
+                        },
+                        generation: e["lease_generation"].as_u64().unwrap_or(r.lease.generation),
                     };
                 }
             }
