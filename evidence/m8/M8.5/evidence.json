@@ -18,10 +18,14 @@
   "qual_m8_3_a_firecracker_microvm_boots_the_guest_and_passes_the_backend_contract",
   "qual_m8_3_the_reference_backend_passes_the_backend_contract"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "c63e3ce"
+ ],
+ "runs": [
+  "35249710305"
+ ],
  "proof": "typed, capability-bound guest calls for processes (start, follow from a cursor, stdin, cancel, PTY) and directories, with output kept in a bounded ring so a lost link is relinked and replayed; a MicroVM pins protected paths read-only against processes; the Core's shell.exec, test.run, fs.read, fs.list and fs.stat act inside a cloud_isolated task's sandbox, which is provisioned at StartTask, named on the log and released when the task ends.",
  "audit": "PARTIAL before: one-shot exec and file reads/writes only; no sandbox path in the Core's tools.",
  "limitations": "change engine, worktrees, search and verification not yet through the sandbox (M8.7); sandbox loss recovery is M8.9; PTY streaming to a viewer is M8.8.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/35249710305"
 }

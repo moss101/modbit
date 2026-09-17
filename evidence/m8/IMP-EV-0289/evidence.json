@@ -1,0 +1,25 @@
+{
+ "task": "IMP-EV-0289",
+ "requirements": [
+  "REQ-EV-0289"
+ ],
+ "scenarios": [
+  "QUAL-EV-0289 \u2014 Unknown/stale RPC version/capability is rejected."
+ ],
+ "tests": [
+  "a_guest_of_another_protocol_major_or_missing_a_method_is_refused_before_admission",
+  "the_guest_that_comes_up_must_be_the_one_the_manifest_names",
+  "qual_m8_3_a_firecracker_microvm_boots_the_guest_and_passes_the_backend_contract",
+  "qual_m8_3_the_reference_backend_passes_the_backend_contract"
+ ],
+ "batch_commits": [
+  "c63e3ce"
+ ],
+ "runs": [
+  "35249710305"
+ ],
+ "proof": "versioned typed guest RPC; another protocol major, a missing method, another image version, an unauthenticated or replayed call, or a capability that does not cover the call are refused.",
+ "audit": "MISSING before M8.3",
+ "limitations": "git helpers, artifact transfer, browser discovery follow",
+ "ci": "https://github.com/moss101/modbit/actions/runs/35249710305"
+}

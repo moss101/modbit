@@ -33,4 +33,4 @@ Processes, PTYs and directory operations as typed, capability-bound guest calls 
 ## Evidence
 
 - `evidence.json` in this directory (commits, hosted CI run, test names)
-- CI run json copy alongside
+- CI run json copy alongside: `ci-run-35249710305.json` (hosted run 35249710305 at c63e3ce, all 14 jobs green)

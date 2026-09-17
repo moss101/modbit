@@ -4068,8 +4068,51 @@
    "milestone": "M8",
    "order": 4,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:c63e3ce",
+    "run:35249710305",
+    "artifact:evidence/m8/M8.5/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T17:19:10Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "typed guest process/fs/PTY RPC; the Core tools inside the sandbox: existing-code audit"
+    },
+    {
+     "at": "2026-09-17T17:19:10Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "typed guest process/fs/PTY RPC; the Core tools inside the sandbox: implemented on wip/m6-backlog, landed on main at c63e3ce"
+    },
+    {
+     "at": "2026-09-17T17:19:10Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "typed guest process/fs/PTY RPC; the Core tools inside the sandbox: production wiring in place"
+    },
+    {
+     "at": "2026-09-17T17:19:10Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "typed guest process/fs/PTY RPC; the Core tools inside the sandbox: real Firecracker MicroVM, real Postgres, every OS"
+    },
+    {
+     "at": "2026-09-17T17:19:10Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "typed guest process/fs/PTY RPC; the Core tools inside the sandbox: hosted CI run 35249710305 green on every job"
+    },
+    {
+     "at": "2026-09-17T17:19:10Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "typed guest process/fs/PTY RPC; the Core tools inside the sandbox: sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-17T17:19:10Z"
   },
   {
    "id": "M8.6",
@@ -22108,8 +22151,51 @@
    "milestone": "M8",
    "qual": "QUAL-EV-0289",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:c63e3ce",
+    "run:35249710305",
+    "artifact:evidence/m8/IMP-EV-0289/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T17:19:10Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "typed capability/effect-bound guest RPC: unknown or stale version or capability refused: existing-code audit"
+    },
+    {
+     "at": "2026-09-17T17:19:10Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "typed capability/effect-bound guest RPC: unknown or stale version or capability refused: implemented on wip/m6-backlog, landed on main at c63e3ce"
+    },
+    {
+     "at": "2026-09-17T17:19:10Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "typed capability/effect-bound guest RPC: unknown or stale version or capability refused: production wiring in place"
+    },
+    {
+     "at": "2026-09-17T17:19:10Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "typed capability/effect-bound guest RPC: unknown or stale version or capability refused: real Firecracker MicroVM, real Postgres, every OS"
+    },
+    {
+     "at": "2026-09-17T17:19:11Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "typed capability/effect-bound guest RPC: unknown or stale version or capability refused: hosted CI run 35249710305 green on every job"
+    },
+    {
+     "at": "2026-09-17T17:19:11Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "typed capability/effect-bound guest RPC: unknown or stale version or capability refused: sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-17T17:19:11Z"
   },
   {
    "id": "IMP-EV-0290",
