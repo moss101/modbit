@@ -5,10 +5,9 @@
 //! `/init` and a static userland, no tenant data and no secret); the
 //! workspace is a per-sandbox ext4 image built from the workspace source
 //! and attached read-write; the channel is vsock (a Unix socket on the host
-//! that Firecracker bridges into the guest). Network: a guest gets no
-//! interface unless its policy grants egress — and this backend serves no
-//! egress yet (a tap device and a host firewall the gateway does not manage
-//! in this build), so such a policy is refused rather than served open.
+//! that Firecracker bridges into the guest). Network: a guest never gets a
+//! network interface; what its policy grants leaves through the gateway's
+//! egress broker over a second vsock port (M8.6), on the host side.
 //! Every step is the substrate's own API over its socket; nothing is
 //! simulated: without `/dev/kvm`, `firecracker`, the kernel and the root
 //! image the backend refuses to provision.
@@ -104,6 +103,9 @@ impl MicrovmConfig {
         None
     }
 }
+
+/// The host vsock port the guest's egress proxy connects to (M8.6).
+pub const EGRESS_PORT: u32 = 5001;
 
 /// The MicroVM backend.
 pub struct MicrovmBackend {
@@ -308,9 +310,7 @@ impl SandboxBackend for MicrovmBackend {
             if let Some(why) = self.cfg.unavailable_reason() {
                 return Err(SandboxError::Substrate(why));
             }
-            if policy.network_interface {
-                return Err(SandboxError::Unsupported("egress grants need a tap device and a host firewall this gateway does not manage yet; the guest gets no network interface".into()));
-            }
+
             // The image on disk is still the one the publisher signed.
             image::check_image(&self.image.manifest, &self.cfg.rootfs)?;
             let dir = self.cfg.work_dir.join(sandbox_id);
@@ -326,6 +326,25 @@ impl SandboxBackend for MicrovmBackend {
             let console = dir.join("console.log");
             let _ = std::fs::remove_file(&api_sock);
             let _ = std::fs::remove_file(&vsock);
+            // Egress (M8.6): guest-initiated vsock connections to host port
+            // 5001 arrive on `<uds>_5001`; the broker serves what arrives.
+            // Bound before the boot so nothing the guest opens is missed.
+            let egress_rx = if policy.egress_proxy {
+                let path = dir.join(format!("v.sock_{}", EGRESS_PORT));
+                let _ = std::fs::remove_file(&path);
+                let listener = tokio::net::UnixListener::bind(&path)?;
+                let (tx, rx) = tokio::sync::mpsc::channel::<super::Channel>(64);
+                tokio::spawn(async move {
+                    while let Ok((s, _)) = listener.accept().await {
+                        if tx.send(Box::new(s)).await.is_err() {
+                            break;
+                        }
+                    }
+                });
+                Some(rx)
+            } else {
+                None
+            };
             let log = std::fs::File::create(&console)?;
             let mut child = Command::new(&self.cfg.firecracker_bin)
                 .arg("--api-sock")
@@ -360,7 +379,7 @@ impl SandboxBackend for MicrovmBackend {
                     "/boot-source",
                     serde_json::json!({
                         "kernel_image_path": self.cfg.kernel,
-                        "boot_args": format!("console=ttyS0 reboot=k panic=1 pci=off root=/dev/vda ro init=/init modbit.vsock_port={} modbit.workspace_dev=/dev/vdb modbit.sandbox_id={sandbox_id}", self.cfg.vsock_port),
+                        "boot_args": format!("console=ttyS0 reboot=k panic=1 pci=off root=/dev/vda ro init=/init modbit.vsock_port={} modbit.egress_port={EGRESS_PORT} modbit.workspace_dev=/dev/vdb modbit.sandbox_id={sandbox_id}", self.cfg.vsock_port),
                     }),
                 )
                 .await?;
@@ -428,6 +447,7 @@ impl SandboxBackend for MicrovmBackend {
                 backend: "microvm",
                 isolated: true,
                 detail: format!("firecracker pid {pid}; console {}", console.display()),
+                egress: egress_rx,
             })
         })
     }

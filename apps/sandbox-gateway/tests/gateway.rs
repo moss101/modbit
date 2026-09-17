@@ -11,6 +11,7 @@
 //!   the worker's session lease, cross-tenant use denied and audited.
 
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use modbit_domain::{SessionId, TaskId, TenantId};
@@ -43,14 +44,101 @@ fn workspace(dir: &Path) -> PathBuf {
     ws
 }
 
+/// Two host-side HTTP servers for the egress steps (M8.6): one the policy
+/// admits (`hello from allowed`), one it does not; and the credentialed
+/// target that answers `authorized: true` only with the real secret.
+struct EgressStack {
+    allowed: std::net::SocketAddr,
+    denied: std::net::SocketAddr,
+    target: std::net::SocketAddr,
+    secret: String,
+    /// What the target saw in `Authorization` (never printed to the guest).
+    seen: Arc<Mutex<Vec<String>>>,
+}
+
+async fn egress_stack() -> EgressStack {
+    use axum::{Router, routing::get};
+    async fn bind(app: Router) -> std::net::SocketAddr {
+        let l = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let a = l.local_addr().unwrap();
+        tokio::spawn(async move {
+            let _ = axum::serve(l, app).await;
+        });
+        a
+    }
+    let secret = format!("real-secret-{}", uuid::Uuid::now_v7().simple());
+    let seen: Arc<Mutex<Vec<String>>> = Default::default();
+    let allowed =
+        bind(Router::new().route("/hello", get(|| async { "hello from allowed\n" }))).await;
+    let denied = bind(Router::new().route("/hello", get(|| async { "hello from denied\n" }))).await;
+    let expected = format!("Bearer {secret}");
+    let seen2 = Arc::clone(&seen);
+    let target = bind(Router::new().route(
+        "/user",
+        get(move |headers: axum::http::HeaderMap| {
+            let expected = expected.clone();
+            let seen = Arc::clone(&seen2);
+            async move {
+                let got = headers
+                    .get("authorization")
+                    .and_then(|v| v.to_str().ok())
+                    .unwrap_or_default()
+                    .to_owned();
+                seen.lock().unwrap().push(got.clone());
+                if got == expected {
+                    (
+                        axum::http::StatusCode::OK,
+                        "{\"login\":\"ada\",\"authorized\":true}",
+                    )
+                } else {
+                    (
+                        axum::http::StatusCode::UNAUTHORIZED,
+                        "{\"authorized\":false}",
+                    )
+                }
+            }
+        }),
+    ))
+    .await;
+    EgressStack {
+        allowed,
+        denied,
+        target,
+        secret,
+        seen,
+    }
+}
+
 fn spec(ws: &Path) -> SandboxSpec {
+    spec_with(ws, None)
+}
+
+fn spec_with(ws: &Path, eg: Option<&EgressStack>) -> SandboxSpec {
+    let network = match eg {
+        Some(e) => NetworkPolicy {
+            egress: vec![modbit_sandbox::policy::EgressRule {
+                host: "127.0.0.1".into(),
+                port: e.allowed.port(),
+                capability: "network.egress".into(),
+            }],
+            credentials: vec![modbit_sandbox::policy::CredentialGrant {
+                handle: "forge-token".into(),
+                virtual_host: "forge.modbit.internal".into(),
+                target_url: format!("http://{}", e.target),
+                header: "Authorization".into(),
+                value_prefix: "Bearer ".into(),
+                capability: "secret.use".into(),
+            }],
+        },
+        None => NetworkPolicy::default(),
+    };
     SandboxSpec {
         tenant_id: TenantId::new(),
         session_id: SessionId::new(),
         task_id: TaskId::new(),
         workspace_source: ws.to_path_buf(),
         protected_paths: vec![".git/hooks".into()],
-        network: NetworkPolicy::default(),
+        network,
         resources: Resources {
             max_output_bytes: 64 * 1024,
             exec_timeout_ms: 30_000,
@@ -63,6 +151,12 @@ fn spec(ws: &Path) -> SandboxSpec {
 /// Probes for a POSIX guest (busybox in the MicroVM image, the host's shell
 /// on the reference backend) and for a Windows host.
 fn fixture(ws: &Path) -> Fixture {
+    fixture_with(ws, None, false)
+}
+
+/// `busybox`: the guest's userland is BusyBox (the MicroVM image) rather
+/// than the host's (`curl` on macOS and Windows, `wget`/`curl` on Linux).
+fn fixture_with(ws: &Path, eg: Option<&EgressStack>, busybox: bool) -> Fixture {
     let sh = |cmd: &str| -> Vec<String> {
         if cfg!(windows) {
             vec!["cmd".into(), "/C".into(), cmd.into()]
@@ -70,8 +164,37 @@ fn fixture(ws: &Path) -> Fixture {
             vec!["/bin/sh".into(), "-c".into(), cmd.into()]
         }
     };
+    let fetch: Vec<String> = if busybox {
+        vec!["/usr/bin/wget".into(), "-qO-".into()]
+    } else if cfg!(windows) {
+        vec!["curl.exe".into(), "-s".into()]
+    } else {
+        vec!["/usr/bin/curl".into(), "-s".into()]
+    };
+    let egress = eg.map(|e| modbit_sandbox::conformance::EgressFixture {
+        allowed_url: format!("http://{}/hello", e.allowed),
+        denied_url: format!("http://{}/hello", e.denied),
+        denied_tunnel_url: format!("https://{}/hello", e.denied),
+        credentialed_url: "http://forge.modbit.internal/user".into(),
+        secret: e.secret.clone(),
+        secrets: [("forge-token".to_owned(), e.secret.clone())]
+            .into_iter()
+            .collect(),
+        fetch,
+        // BusyBox wget has no TLS and sends `https://` as a proxied GET; the
+        // tunnel is asked for directly.
+        tunnel: busybox.then(|| {
+            vec![
+                "/bin/sh".into(),
+                "-c".into(),
+                "printf 'CONNECT %s HTTP/1.1\r\nHost: %s\r\n\r\n' \"$0\" \"$0\" | /usr/bin/nc 127.0.0.1 3128".into(),
+            ]
+        }),
+    });
     Fixture {
-        spec: spec(ws),
+        spec: spec_with(ws, eg),
+        env_probe: if cfg!(windows) { sh("set") } else { sh("env") },
+        egress,
         exec_probe: if cfg!(windows) {
             sh("echo hello& exit 3")
         } else {
@@ -196,8 +319,21 @@ async fn assert_conformance(
     backend: &dyn SandboxBackend,
     ws: &Path,
 ) -> modbit_sandbox::conformance::Report {
+    assert_conformance_with(backend, ws, false).await
+}
+
+async fn assert_conformance_with(
+    backend: &dyn SandboxBackend,
+    ws: &Path,
+    busybox: bool,
+) -> modbit_sandbox::conformance::Report {
+    // The egress servers live for the suite; the broker's audit and the
+    // target's view of the secret are checked by the suite's own steps and
+    // here (the target saw the real secret exactly as injected).
+    let eg = egress_stack().await;
+    let fx = fixture_with(ws, Some(&eg), busybox);
     // A hang anywhere in the substrate fails the suite, never the job.
-    let outcome = tokio::time::timeout(Duration::from_secs(600), run(backend, &fixture(ws)))
+    let outcome = tokio::time::timeout(Duration::from_secs(600), run(backend, &fx))
         .await
         .expect("the suite finished within ten minutes");
     let report = match outcome {
@@ -208,6 +344,11 @@ async fn assert_conformance(
             panic!("suite ran: {e}");
         }
     };
+    let seen = eg.seen.lock().unwrap().clone();
+    assert!(
+        seen.iter().any(|a| a == &format!("Bearer {}", eg.secret)),
+        "the credentialed target saw the injected secret: {seen:?}"
+    );
     eprintln!("{}", serde_json::to_string_pretty(&report).unwrap());
     if !report.passed() {
         dump_consoles(ws.parent().unwrap_or(ws));
@@ -314,7 +455,7 @@ async fn qual_m8_3_a_firecracker_microvm_boots_the_guest_and_passes_the_backend_
         ..cfg.clone()
     })
     .expect("the signed root image verifies");
-    let report = assert_conformance(&backend, &ws).await;
+    let report = assert_conformance_with(&backend, &ws, true).await;
     assert_eq!((report.backend, report.isolated), ("microvm", true));
     assert_eq!(
         report.guest_version,

@@ -384,9 +384,17 @@ pub fn default_lease_for_profile(
         PROFILE_PLAN => vec!["fs.read", "git.read"],
         PROFILE_REVIEW_ISOLATED => vec!["fs.read", "fs.write", "git.read", "shell.exec"],
         // The cloud profile's tools act inside the task's sandbox (M8.5,
-        // docs/21): its files and its processes; no host browser, no forge
-        // egress until the credential broker and egress policy (M8.6).
-        PROFILE_CLOUD_ISOLATED => vec!["fs.read", "fs.write", "git.read", "shell.exec"],
+        // docs/21): its files and its processes, and — through the
+        // gateway's egress broker (M8.6) — the configured forge's API host
+        // with the token handle it holds; no host browser.
+        PROFILE_CLOUD_ISOLATED => vec![
+            "fs.read",
+            "fs.write",
+            "git.read",
+            "shell.exec",
+            "network.egress",
+            "secret.use",
+        ],
         // The autonomous profile drives the task's browser session (M7.1,
         // docs/22): the host's sandboxed view, http(s) only, under the
         // session's control lease.

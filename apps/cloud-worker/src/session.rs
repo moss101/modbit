@@ -239,6 +239,26 @@ async fn host_inner(
             return End::Failed(format!("sandbox gateway: {e}"));
         }
     }
+    // 0c. The forge (M8.6): its API host and token into the Core's
+    // custody, memory only; a cloud task reaches it through the broker.
+    if let Some(f) = &cfg.forge {
+        let ack = c
+            .command(envelope(
+                "ConfigureForge",
+                wire::ConfigureForge {
+                    forge: "github".into(),
+                    token: f.token.clone(),
+                    api_base_url: f.api_base_url.clone(),
+                    web_host: String::new(),
+                }
+                .encode_to_vec(),
+                None,
+            ))
+            .await;
+        if let Err(e) = ack {
+            return End::Failed(format!("forge: {e}"));
+        }
+    }
     let mut st = load_state(dir);
     // 1. The cloud log into the local Core (verbatim, chain-checked there).
     if let Err(e) = import_cloud_events(store, &mut c, tenant, sid, &mut st, dir).await {

@@ -14,14 +14,14 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | Section | Range | Files | Bytes |
 |---|---|---:|---:|
 | Authority and orientation | 00–09 | 8 | 65205 |
-| Architecture and subsystems | 10–29 | 20 | 308967 |
-| Implementation specifications | 30–39 | 10 | 122387 |
+| Architecture and subsystems | 10–29 | 20 | 311430 |
+| Implementation specifications | 30–39 | 10 | 123428 |
 | Requirements, tasks and traceability | 40–49 | 10 | 351596 |
 | Verification and testing | 50–69 | 15 | 203744 |
 | Delivery and operations | 70–79 | 7 | 33831 |
 | Agent process and governance | 80–97 | 18 | 109299 |
 | Live state | 98–99 | 1 | 8432 |
-| **Total docs** | | **89** | **1203461** |
+| **Total docs** | | **89** | **1206965** |
 
 ## Specification files (`docs/`)
 
@@ -46,7 +46,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 18 | `docs/18_CONTEXT_RETRIEVAL_AND_ENGINEERING_KNOWLEDGE.md` | Context, Retrieval, and Engineering Knowledge Engine | architecture | 5728 | `c6a362588d301b22d0f57bd11accecd6af33a9a5f7abc391afb15d7bef6f2303` |
 | 19 | `docs/19_DURABLE_STATE_MEMORY_COMPACTION_CHECKPOINTS.md` | Durable State, Memory, Compaction, and Checkpoints | architecture | 13748 | `a56bb1e31611a229e1e1f786406cb3d7b31e5d21836c578be2a8c5cf2ca20ada` |
 | 20 | `docs/20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md` | Workspace, Git, Worktrees, Diagnostics, and Trusted Code Surface | architecture | 5632 | `12981015ae69e28a83f8c8ea04330a16e3c6d9c0ab70f7cb8af6fd581754b0d7` |
-| 21 | `docs/21_TERMINAL_EXECUTION_AND_SANDBOX.md` | Terminal, Execution Router, and Sandbox Architecture | architecture | 15484 | `07bb8bbf8ba371f66aade2ed340a54aaef35e0c53ae5975f079576c44fac0ee5` |
+| 21 | `docs/21_TERMINAL_EXECUTION_AND_SANDBOX.md` | Terminal, Execution Router, and Sandbox Architecture | architecture | 17947 | `4aa58778d1fd2c724f5e1f6db7636d25407b60049b2da036e055a9515757dacc` |
 | 22 | `docs/22_BROWSER_AND_COMPUTER_USE.md` | Browser and Computer-Use Architecture | architecture | 25330 | `999b3eef349ee449dfc9de7ab1d9b2a1ec477c94a53495be8d9a38c76220d56f` |
 | 23 | `docs/23_SECURITY_POLICY_EFFECT_LEDGER.md` | Security, Policy, Capabilities, Secrets, and Effect Ledger | architecture | 8725 | `4ee252f2d0f2192c45f142b4fd07e7bc1d9f2334436678fa445d420ea87c1e10` |
 | 24 | `docs/24_CLOUD_CONTROL_PLANE_AND_SYNC.md` | Cloud Control Plane, Remote Execution, and Sync | architecture | 11380 | `5394680c0825cc33ddee819cd9af8bc958344e1cd2c9649722de0490fbb1c79c` |
@@ -55,10 +55,10 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 27 | `docs/27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md` | Execution policy router and verified orchestration | architecture | 67229 | `3662f2a9a3704a61f8a1e9c259341ad02eb8f2721ebd885364c0b1d49eaf11be` |
 | 28 | `docs/28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md` | Agent competence: planning, verification and repair | architecture | 12521 | `2dbf6183340ee6a0ba808eef2dd1eea147e41a75dc18e5a3ee77c5bfec117e57` |
 | 29 | `docs/29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md` | Client surfaces and source-control integration | architecture | 19396 | `e8dfb4882be729bca302e318bd397062dade6157845db6999211ac67f9232b79` |
-| 30 | `docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md` | Protocol, APIs, and Event Schemas | implementation | 29049 | `65b3971a2bb8af5c67f2f5648ac97d857985448cfb0b389b0a3b103d9baa7bdb` |
+| 30 | `docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md` | Protocol, APIs, and Event Schemas | implementation | 29491 | `3e4feaf93c63eb87e2fd9e61b305d161ff7a5667f46a4eab6ce638ea0828d948` |
 | 31 | `docs/31_DATABASE_AND_STORAGE_SCHEMA.md` | Database and Storage Schema | implementation | 14957 | `6b0faeb70e7a403fa52c00d1dbd0771e78e16a00cf43de879fc5d42be0a76c8f` |
 | 32 | `docs/32_DESKTOP_FRONTEND_IMPLEMENTATION.md` | Desktop Frontend Implementation | implementation | 10097 | `a9b12b816ccbb0e4a34681ca32e0ba7efbfff75685a05cb37ad28f6b2eed697d` |
-| 33 | `docs/33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md` | Core and Cloud Backend Implementation | implementation | 12471 | `7bffc4939c2c699aefaa867ad1fda8ef014f5f273ae30c551269b0cf6907e23b` |
+| 33 | `docs/33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md` | Core and Cloud Backend Implementation | implementation | 13070 | `eea38039af96f496e086a2d2bed3d52933c2e242c4443fec190b6ce7e9626f59` |
 | 34 | `docs/34_OBSERVABILITY_COST_AND_OPERATIONS_DATA.md` | Observability, Cost, and Operations Data | implementation | 5702 | `4fbb53f587aca00d3b90626f3af21efc95f7241976877e45948ce6b2de5a9bf6` |
 | 35 | `docs/35_DEPENDENCY_AND_BINDING_DECISIONS.md` | Dependency and Binding Decisions | implementation | 2545 | `037a85253201401822bde5ff76b0b6625057099995d06b30c0d1aec4e572b1f9` |
 | 36 | `docs/36_BUILD_BUY_DEPENDENCY_AND_LICENSE_POLICY.md` | Build / Buy / Dependency / License Decisions | implementation | 3363 | `538f768996bec4254231f7671517e68bea6cf529f51b60588a5b2dd91007071a` |
@@ -1308,6 +1308,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m8/M8.5/TASK_CARD.md` | retained evidence | 5252 | `072612da2ecc7a79e7bf0a364dc7cbd6cbab813a63315b26aae3e2517cb831e5` |
 | `evidence/m8/M8.5/ci-run-35249710305.json` | retained evidence | 42304 | `50dc9690a9540b46d822d12a082add89e5743d8c84853148f346e7e4e2d92b18` |
 | `evidence/m8/M8.5/evidence.json` | retained evidence | 1788 | `38adbb8baebfc1dfc335f81c66c85da56414b389bcb79e1964aca55da2bca8e3` |
+| `evidence/m8/M8.6/TASK_CARD.md` | retained evidence | 5570 | `4928c0d77fde5028a8861e0ca71b01bba1bfbbae43d7f40e2bbe71d9dd525df4` |
+| `evidence/m8/M8.6/evidence.json` | retained evidence | 1681 | `d09dda1508b4b05199d3db41bf94df066c1a36a67a6ed00b6577ef3e086e050f` |
 | `graph/PROJECT_GRAPH.md` | human view of the graph | 40745 | `a1953d9e98e4d2d52583f169f6c28467c592e761a314d16e96d3b0b1e742310f` |
 | `graph/project-graph.json` | project driver graph with live status | 1506002 | `2307801e3d0f33a685cdd9fbbd13c92e0d22df77630227c7f907c7d7b3d3d05e` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 53364 | `b1a026685406fab72ca15d0e75000645daab1cb0e32f9b82cff648542f866d5d` |

@@ -22,6 +22,7 @@
 use std::process::ExitCode;
 
 mod procs;
+mod proxy;
 mod serve;
 
 #[cfg(target_os = "linux")]
@@ -31,6 +32,7 @@ fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let mut listen: Option<String> = None;
     let mut workspace_host: Option<String> = None;
+    let mut egress_host: Option<String> = None;
     let mut i = 0;
     while i < args.len() {
         match args[i].as_str() {
@@ -40,6 +42,10 @@ fn main() -> ExitCode {
             }
             "--workspace-host" => {
                 workspace_host = args.get(i + 1).cloned();
+                i += 2;
+            }
+            "--egress-host" => {
+                egress_host = args.get(i + 1).cloned();
                 i += 2;
             }
             other => {
@@ -61,6 +67,9 @@ fn main() -> ExitCode {
     match (listen, workspace_host) {
         (Some(addr), ws) => {
             let mapping = ws.map(std::path::PathBuf::from);
+            if let Some(e) = egress_host {
+                serve::set_broker(proxy::BrokerAddr::Tcp(e));
+            }
             match rt.block_on(serve::serve_tcp(&addr, mapping)) {
                 Ok(()) => ExitCode::SUCCESS,
                 Err(e) => {

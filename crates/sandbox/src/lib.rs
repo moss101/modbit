@@ -28,6 +28,8 @@ pub mod backend;
 #[cfg(feature = "client")]
 pub mod client;
 pub mod conformance;
+#[cfg(feature = "client")]
+pub mod egress;
 pub mod image;
 pub mod link;
 pub mod policy;

@@ -45,6 +45,11 @@ pub struct ProvisionRequest {
     pub protected_paths: Vec<String>,
     /// Resource bounds (JSON object; the gateway's defaults for what is absent).
     pub resources: Value,
+    /// Egress the task's lease grants (M8.6).
+    pub egress: Vec<crate::policy::EgressRule>,
+    /// Credentialed virtual hosts with the secrets the broker will hold
+    /// (memory only; they cross to the gateway once).
+    pub credentials: Vec<(crate::policy::CredentialGrant, String)>,
 }
 
 impl GatewayClient {
@@ -92,7 +97,11 @@ impl GatewayClient {
                 "/v1/sandboxes",
                 json!({
                     "tenant_id": req.tenant_id, "session_id": req.session_id, "task_id": req.task_id, "lease_generation": req.lease_generation,
-                    "spec": {"workspace_source": req.workspace_source, "protected_paths": req.protected_paths, "resources": req.resources},
+                    "spec": {
+                        "workspace_source": req.workspace_source, "protected_paths": req.protected_paths, "resources": req.resources,
+                        "egress": req.egress.iter().map(|r| json!({"host": r.host, "port": r.port, "capability": r.capability})).collect::<Vec<_>>(),
+                        "credentials": req.credentials.iter().map(|(c, secret)| json!({"handle": c.handle, "virtual_host": c.virtual_host, "target_url": c.target_url, "header": c.header, "value_prefix": c.value_prefix, "capability": c.capability, "secret": secret})).collect::<Vec<_>>(),
+                    },
                 }),
             )
             .await?;
@@ -112,6 +121,22 @@ impl GatewayClient {
                 .as_str()
                 .unwrap_or("/workspace")
                 .to_owned(),
+            egress: v["policy"]["egress"]
+                .as_array()
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|x| x.as_str().map(str::to_owned))
+                        .collect()
+                })
+                .unwrap_or_default(),
+            credentials: v["policy"]["credentials"]
+                .as_array()
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|x| x.as_str().map(str::to_owned))
+                        .collect()
+                })
+                .unwrap_or_default(),
         };
         Ok(Arc::new(SandboxHandle {
             client: self.clone(),

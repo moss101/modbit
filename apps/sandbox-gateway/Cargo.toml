@@ -10,7 +10,7 @@ publish.workspace = true
 [dependencies]
 modbit-domain.workspace = true
 modbit-policy.workspace = true
-modbit-sandbox.workspace = true
+modbit-sandbox = { workspace = true, features = ["client"] }
 modbit-protocol.workspace = true
 modbit-event-store = { workspace = true, features = ["cloud"] }
 axum.workspace = true

@@ -32,6 +32,10 @@ message GuestPolicy {
   uint64 max_output_bytes = 4;            // per exec, per stream
   uint32 max_processes = 5;
   uint64 exec_timeout_ms = 6;             // ceiling a call may ask for
+  // M8.6: the guest runs a local HTTP proxy (127.0.0.1:3128) and points
+  // its processes at it; every connection goes to the gateway's egress
+  // broker over the private channel, which decides by the policy.
+  bool egress_proxy = 7;
 }
 
 // The gateway admits the guest (or refuses it: version, methods).

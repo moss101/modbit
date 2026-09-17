@@ -89,14 +89,26 @@ impl SandboxBackend for ReferenceBackend {
         policy: &'a CompiledPolicy,
     ) -> BoxFuture<'a, Result<Provisioned>> {
         Box::pin(async move {
-            if policy.network_interface {
-                // The host's network is the guest's; an egress allow-list
-                // cannot be enforced here, so a policy that grants one is
-                // refused rather than served unenforced.
-                return Err(SandboxError::Unsupported(
-                    "the reference backend cannot enforce an egress allow-list".into(),
-                ));
-            }
+            // Egress (M8.6): the guest's proxy connects to a loopback
+            // listener of this sandbox's own; the broker serves what arrives.
+            // (The host's network is still the guest's here — the reference
+            // backend isolates nothing — but the policy is exercised.)
+            let (egress_addr, egress_rx) = if policy.egress_proxy {
+                let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+                let addr = listener.local_addr()?;
+                let (tx, rx) = tokio::sync::mpsc::channel::<super::Channel>(64);
+                tokio::spawn(async move {
+                    while let Ok((s, _)) = listener.accept().await {
+                        let _ = s.set_nodelay(true);
+                        if tx.send(Box::new(s)).await.is_err() {
+                            break;
+                        }
+                    }
+                });
+                (Some(addr.to_string()), Some(rx))
+            } else {
+                (None, None)
+            };
             if let Some(image) = &self.image {
                 image::check_image(&image.manifest, &self.guest_bin)?;
             }
@@ -111,6 +123,9 @@ impl SandboxBackend for ReferenceBackend {
                 .arg(&ws)
                 .env_clear()
                 .env("PATH", std::env::var("PATH").unwrap_or_default());
+            if let Some(a) = &egress_addr {
+                cmd.arg("--egress-host").arg(a);
+            }
             // Windows processes need the system root (and a temp dir) to
             // load their runtime; nothing else of the host's environment
             // reaches the guest.
@@ -167,6 +182,7 @@ impl SandboxBackend for ReferenceBackend {
                 backend: "reference",
                 isolated: false,
                 detail: format!("pid {pid}; workspace {}", ws.display()),
+                egress: egress_rx,
             })
         })
     }

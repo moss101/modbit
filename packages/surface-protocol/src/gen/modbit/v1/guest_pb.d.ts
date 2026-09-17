@@ -115,6 +115,15 @@ export declare type GuestPolicy = Message<"modbit.v1.GuestPolicy"> & {
    * @generated from field: uint64 exec_timeout_ms = 6;
    */
   execTimeoutMs: bigint;
+
+  /**
+   * M8.6: the guest runs a local HTTP proxy (127.0.0.1:3128) and points
+   * its processes at it; every connection goes to the gateway's egress
+   * broker over the private channel, which decides by the policy.
+   *
+   * @generated from field: bool egress_proxy = 7;
+   */
+  egressProxy: boolean;
 };
 
 /**

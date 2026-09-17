@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 1196,
-    "docs_bytes": 1203461
+    "root_and_tooling": 1198,
+    "docs_bytes": 1206965
   },
   "sections": [
     {
@@ -230,8 +230,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Terminal, Execution Router, and Sandbox Architecture",
-      "bytes": 15484,
-      "sha256": "07bb8bbf8ba371f66aade2ed340a54aaef35e0c53ae5975f079576c44fac0ee5"
+      "bytes": 17947,
+      "sha256": "4aa58778d1fd2c724f5e1f6db7636d25407b60049b2da036e055a9515757dacc"
     },
     {
       "path": "docs/22_BROWSER_AND_COMPUTER_USE.md",
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 29049,
-      "sha256": "65b3971a2bb8af5c67f2f5648ac97d857985448cfb0b389b0a3b103d9baa7bdb"
+      "bytes": 29491,
+      "sha256": "3e4feaf93c63eb87e2fd9e61b305d161ff7a5667f46a4eab6ce638ea0828d948"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -338,8 +338,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Core and Cloud Backend Implementation",
-      "bytes": 12471,
-      "sha256": "7bffc4939c2c699aefaa867ad1fda8ef014f5f273ae30c551269b0cf6907e23b"
+      "bytes": 13070,
+      "sha256": "eea38039af96f496e086a2d2bed3d52933c2e242c4443fec190b6ce7e9626f59"
     },
     {
       "path": "docs/34_OBSERVABILITY_COST_AND_OPERATIONS_DATA.md",
@@ -6790,6 +6790,16 @@
       "path": "evidence/m8/M8.5/evidence.json",
       "bytes": 1788,
       "sha256": "38adbb8baebfc1dfc335f81c66c85da56414b389bcb79e1964aca55da2bca8e3"
+    },
+    {
+      "path": "evidence/m8/M8.6/TASK_CARD.md",
+      "bytes": 5570,
+      "sha256": "4928c0d77fde5028a8861e0ca71b01bba1bfbbae43d7f40e2bbe71d9dd525df4"
+    },
+    {
+      "path": "evidence/m8/M8.6/evidence.json",
+      "bytes": 1681,
+      "sha256": "d09dda1508b4b05199d3db41bf94df066c1a36a67a6ed00b6577ef3e086e050f"
     },
     {
       "path": "graph/PROJECT_GRAPH.md",

@@ -9,7 +9,7 @@
 //! refuses write mode).
 
 /// The schema version this build writes.
-pub const CLOUD_SCHEMA_VERSION: i32 = 3;
+pub const CLOUD_SCHEMA_VERSION: i32 = 4;
 
 /// Ordered migrations `(version, name, sql)`.
 pub const MIGRATIONS: &[(i32, &str, &str)] = &[
@@ -171,6 +171,24 @@ CREATE TABLE IF NOT EXISTS sandboxes (
   updated_at_ms BIGINT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS sandboxes_by_session ON sandboxes(tenant_id, session_id);
+",
+    ),
+    (
+        4,
+        "cloud-v4: the egress broker's audit — every admission and refusal per sandbox (M8.6)",
+        r"
+CREATE TABLE IF NOT EXISTS sandbox_egress (
+  egress_id BIGSERIAL PRIMARY KEY,
+  sandbox_id UUID NOT NULL,
+  tenant_id UUID NOT NULL,
+  kind TEXT NOT NULL,
+  destination TEXT NOT NULL,
+  allowed BOOLEAN NOT NULL,
+  capability TEXT NOT NULL,
+  detail TEXT NOT NULL,
+  at_ms BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS sandbox_egress_by_sandbox ON sandbox_egress(sandbox_id, egress_id);
 ",
     ),
 ];

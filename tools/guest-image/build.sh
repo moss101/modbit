@@ -15,8 +15,12 @@ trap 'rm -rf "$root"' EXIT
 mkdir -p "$root"/{bin,dev,proc,sys,tmp,run,workspace,etc,usr/bin,lib}
 install -m 0755 "$guest" "$root/init"
 install -m 0755 "$busybox" "$root/bin/busybox"
-for a in sh echo cat ls uname sleep yes head tail id env mkdir printf true false ps ln cp mv rm grep wc touch date hostname; do
+# The applets a task's processes reach for (the same names under /usr/bin,
+# where hosts keep them): the shell, the file tools, and — for egress
+# through the sandbox's proxy (M8.6) — wget and nc.
+for a in sh echo cat ls uname sleep yes head tail id env mkdir printf true false ps ln cp mv rm grep wc touch date hostname wget nc sed awk tr cut sort which basename dirname find xargs ip ifconfig; do
   ln -s busybox "$root/bin/$a"
+  ln -s ../../bin/busybox "$root/usr/bin/$a"
 done
 echo modbit-guest > "$root/etc/hostname"
 printf 'root:x:0:0:root:/:/bin/sh\n' > "$root/etc/passwd"

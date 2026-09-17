@@ -24,7 +24,9 @@ use modbit_domain::{SessionId, TaskId, TenantId};
 use modbit_protocol::v1 as wire;
 use modbit_sandbox::auth::WorkerClaims;
 use modbit_sandbox::link::GuestLink;
-use modbit_sandbox::policy::{EgressRule, NetworkPolicy, Resources, SandboxSpec, compile};
+use modbit_sandbox::policy::{
+    CredentialGrant, EgressRule, NetworkPolicy, Resources, SandboxSpec, compile,
+};
 use modbit_sandbox::{SandboxError, backend::Channel};
 use serde_json::{Value, json};
 
@@ -99,6 +101,7 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/v1/sandboxes/{sandbox_id}", get(record).delete(destroy))
         .route("/v1/sandboxes/{sandbox_id}/calls", post(call))
         .route("/v1/sandboxes/{sandbox_id}/relink", post(relink))
+        .route("/v1/sandboxes/{sandbox_id}/egress", get(egress))
         .with_state(state)
 }
 
@@ -195,6 +198,41 @@ async fn owned(
     }
 }
 
+/// The credential grants of a provision body, with the secrets they carry
+/// (memory only from here on).
+fn credentials_of(
+    v: &Value,
+) -> (
+    Vec<CredentialGrant>,
+    std::collections::HashMap<String, String>,
+) {
+    let mut grants = Vec::new();
+    let mut secrets = std::collections::HashMap::new();
+    if let Some(a) = v["spec"]["credentials"].as_array() {
+        for c in a {
+            let (Some(handle), Some(virtual_host), Some(target_url)) = (
+                c["handle"].as_str(),
+                c["virtual_host"].as_str(),
+                c["target_url"].as_str(),
+            ) else {
+                continue;
+            };
+            grants.push(CredentialGrant {
+                handle: handle.to_owned(),
+                virtual_host: virtual_host.to_owned(),
+                target_url: target_url.to_owned(),
+                header: c["header"].as_str().unwrap_or("Authorization").to_owned(),
+                value_prefix: c["value_prefix"].as_str().unwrap_or("Bearer ").to_owned(),
+                capability: c["capability"].as_str().unwrap_or("secret.use").to_owned(),
+            });
+            if let Some(secret) = c["secret"].as_str() {
+                secrets.insert(handle.to_owned(), secret.to_owned());
+            }
+        }
+    }
+    (grants, secrets)
+}
+
 fn spec_of(
     v: &Value,
     tenant: TenantId,
@@ -257,7 +295,10 @@ fn spec_of(
         task_id: task,
         workspace_source: workspace_source.into(),
         protected_paths,
-        network: NetworkPolicy { egress },
+        network: NetworkPolicy {
+            egress,
+            credentials: credentials_of(v).0,
+        },
         resources,
     })
 }
@@ -320,13 +361,29 @@ async fn provision(
     let spec = spec_of(&body, tenant, session, task)?;
     let policy = compile(&spec)?;
     let sandbox_id = uuid::Uuid::now_v7();
-    let provisioned = st
+    let mut provisioned = st
         .backend
         .provision(&sandbox_id.to_string(), &policy)
         .await?;
     let backend = provisioned.backend;
     let isolated = provisioned.isolated;
     let detail = provisioned.detail.clone();
+    // M8.6: the egress broker for this sandbox — the policy's grants and
+    // the secrets the provision carried, in memory only.
+    st.tenants
+        .lock()
+        .await
+        .insert(sandbox_id.to_string(), tenant);
+    let broker = provisioned.egress.take().map(|rx| {
+        let (_, secrets) = credentials_of(&body);
+        let broker = modbit_sandbox::egress::EgressBroker::new(
+            &sandbox_id.to_string(),
+            spec.network.clone(),
+            secrets,
+            Arc::clone(&st.audit) as Arc<dyn modbit_sandbox::egress::EgressAudit>,
+        );
+        tokio::spawn(broker.serve(rx))
+    });
     let link: GuestLink<Channel> = match GuestLink::admit(
         provisioned.channel,
         &sandbox_id.to_string(),
@@ -367,6 +424,7 @@ async fn provision(
             worker_id: w.worker_id.clone(),
             hello: hello.clone(),
             policy: policy.clone(),
+            broker,
         }),
     );
     Ok((
@@ -375,7 +433,7 @@ async fn provision(
             "sandbox_id": sandbox_id.to_string(),
             "backend": backend,
             "isolated": isolated,
-            "policy": {"workspace_root": policy.workspace_root, "protected_paths": policy.protected_paths, "network_interface": policy.network_interface},
+            "policy": {"workspace_root": policy.workspace_root, "protected_paths": policy.protected_paths, "network_interface": policy.network_interface, "egress_proxy": policy.egress_proxy, "egress": policy.egress.iter().map(|r| format!("{}:{}", r.host, r.port)).collect::<Vec<_>>(), "credentials": policy.spec.network.credentials.iter().map(|c| c.virtual_host.clone()).collect::<Vec<_>>()},
             "guest": {"version": hello.guest_version, "protocol": format!("{}.{}", hello.protocol_major, hello.protocol_minor), "methods": hello.methods, "boot_id": hello.boot_id},
             "image": st.backend.image().map(|m| json!({"kind": m.kind, "sha256": m.sha256, "guest_version": m.guest_version})),
         })),
@@ -673,6 +731,47 @@ async fn call(
     Ok(Json(out))
 }
 
+/// `GET /v1/sandboxes/{id}/egress?tenant_id=`: the broker's audit for a
+/// sandbox — every admission and refusal (M8.6).
+async fn egress(
+    State(st): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Query(q): Query<std::collections::HashMap<String, String>>,
+) -> ApiResult<Json<Value>> {
+    let w = worker(&st, &headers)?;
+    let tenant = q
+        .get("tenant_id")
+        .and_then(|s| TenantId::parse(s).ok())
+        .ok_or_else(|| ApiError::bad("tenant_id is required"))?;
+    let sandbox = sandbox_id_of(&id)?;
+    let Some(_rec) = st.store.sandbox(tenant, sandbox).await? else {
+        st.store
+            .record_denial(
+                Some(tenant),
+                None,
+                &format!("sandbox:{sandbox}"),
+                &format!(
+                    "worker {} of tenant {tenant} read the egress audit of a sandbox that is not the tenant's",
+                    w.worker_id
+                ),
+            )
+            .await?;
+        return Err(ApiError::new(
+            StatusCode::NOT_FOUND,
+            "NOT_FOUND",
+            format!("sandbox {sandbox}"),
+        ));
+    };
+    let live = st.audit.records(&sandbox.to_string());
+    let stored = st.store.egress_audit(tenant, sandbox).await?;
+    Ok(Json(json!({
+        "sandbox_id": sandbox.to_string(),
+        "records": live.iter().map(|r| json!({"kind": r.kind, "destination": r.destination, "allowed": r.allowed, "capability": r.capability, "detail": r.detail, "at_ms": r.at_ms})).collect::<Vec<_>>(),
+        "stored": stored.len(),
+    })))
+}
+
 /// `POST /v1/sandboxes/{id}/relink {tenant_id}`: replace a lost link to a
 /// live guest — a fresh channel from the backend, admitted anew (a new
 /// credential); the guest's processes and their output are untouched.
@@ -715,8 +814,11 @@ async fn destroy(
         .and_then(|s| TenantId::parse(s).ok())
         .ok_or_else(|| ApiError::bad("tenant_id is required"))?;
     let sandbox = sandbox_id_of(&id)?;
-    let (rec, _live) = owned(&st, tenant, &w.worker_id, sandbox).await?;
+    let (rec, live) = owned(&st, tenant, &w.worker_id, sandbox).await?;
     st.live.lock().await.remove(&sandbox);
+    if let Some(b) = &live.broker {
+        b.abort();
+    }
     st.backend.destroy(&sandbox.to_string()).await?;
     st.store
         .set_sandbox_state(tenant, sandbox, "DESTROYED", &rec.detail)

@@ -29,6 +29,12 @@ pub struct SandboxIdentity {
     pub boot_id: String,
     /// The workspace root inside the guest.
     pub workspace_root: String,
+    /// The egress the broker admits (`host:port`), for the record.
+    #[serde(default)]
+    pub egress: Vec<String>,
+    /// The credentialed virtual hosts, for the record (handles, never secrets).
+    #[serde(default)]
+    pub credentials: Vec<String>,
 }
 
 /// A task's sandbox.

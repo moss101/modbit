@@ -1400,6 +1400,49 @@ impl CloudStore {
         Ok(n == 1)
     }
 
+    /// Record one egress decision of the broker (M8.6).
+    #[allow(clippy::too_many_arguments)]
+    pub async fn record_egress(
+        &self,
+        sandbox: uuid::Uuid,
+        tenant: TenantId,
+        kind: &str,
+        destination: &str,
+        allowed: bool,
+        capability: &str,
+        detail: &str,
+        at_ms: i64,
+    ) -> Result<()> {
+        let client = self.pool.get().await?;
+        client
+            .execute(
+                "INSERT INTO sandbox_egress (sandbox_id, tenant_id, kind, destination, allowed, capability, detail, at_ms) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+                &[&sandbox, &tenant_uuid(tenant), &kind, &destination, &allowed, &capability, &detail, &at_ms],
+            )
+            .await?;
+        Ok(())
+    }
+
+    /// The egress audit of a sandbox within its tenant:
+    /// `(kind, destination, allowed, capability, detail, at_ms)`.
+    pub async fn egress_audit(
+        &self,
+        tenant: TenantId,
+        sandbox: uuid::Uuid,
+    ) -> Result<Vec<(String, String, bool, String, String, i64)>> {
+        let client = self.pool.get().await?;
+        let rows = client
+            .query(
+                "SELECT kind, destination, allowed, capability, detail, at_ms FROM sandbox_egress WHERE tenant_id = $1 AND sandbox_id = $2 ORDER BY egress_id ASC",
+                &[&tenant_uuid(tenant), &sandbox],
+            )
+            .await?;
+        Ok(rows
+            .iter()
+            .map(|r| (r.get(0), r.get(1), r.get(2), r.get(3), r.get(4), r.get(5)))
+            .collect())
+    }
+
     /// Denials recorded for a tenant (audit read).
     pub async fn denials(&self, tenant: TenantId) -> Result<Vec<(String, String)>> {
         let client = self.pool.get().await?;

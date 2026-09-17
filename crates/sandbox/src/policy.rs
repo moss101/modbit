@@ -20,11 +20,70 @@ pub struct EgressRule {
     pub capability: String,
 }
 
-/// Network policy: nothing unless granted.
+/// A credential the broker injects for a virtual host (M8.6, docs/21
+/// "dynamic credential handles via broker injection"): a process inside
+/// the guest addresses `virtual_host` over plain HTTP through the local
+/// proxy; the broker forwards to `target_url` over TLS with `header`
+/// carrying the secret it holds under `handle`. The guest never sees the
+/// secret, the target or TLS.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct CredentialGrant {
+    /// The handle the guest knows the credential by.
+    pub handle: String,
+    /// The host name a guest process addresses (`forge.modbit.internal`).
+    pub virtual_host: String,
+    /// Where the broker forwards (`https://api.github.com`).
+    pub target_url: String,
+    /// The header the secret goes in (`Authorization`).
+    pub header: String,
+    /// A prefix for the header value (`Bearer `).
+    pub value_prefix: String,
+    /// The capability that granted it (audit).
+    pub capability: String,
+}
+
+/// Network policy: nothing unless granted (M8.6: what is granted is served
+/// by the gateway's egress broker over the sandbox's private channel —
+/// the guest gets no network interface either way).
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct NetworkPolicy {
-    /// Permitted destinations; empty = no network interface at all.
+    /// Permitted destinations for tunnels and plain HTTP.
     pub egress: Vec<EgressRule>,
+    /// Credentialed virtual hosts.
+    pub credentials: Vec<CredentialGrant>,
+}
+
+impl NetworkPolicy {
+    /// Whether anything at all may leave the sandbox.
+    #[must_use]
+    pub fn grants_anything(&self) -> bool {
+        !self.egress.is_empty() || !self.credentials.is_empty()
+    }
+
+    /// The rule that admits `host:port`, if any (a rule's host matches
+    /// exactly or as a `*.suffix` wildcard; port 0 in a rule means any).
+    #[must_use]
+    pub fn admits(&self, host: &str, port: u16) -> Option<&EgressRule> {
+        let host = host.to_ascii_lowercase();
+        self.egress.iter().find(|r| {
+            let rh = r.host.to_ascii_lowercase();
+            let host_ok = if let Some(suffix) = rh.strip_prefix("*.") {
+                host == suffix || host.ends_with(&format!(".{suffix}"))
+            } else {
+                host == rh
+            };
+            host_ok && (r.port == 0 || r.port == port)
+        })
+    }
+
+    /// The credential grant for a virtual host, if any.
+    #[must_use]
+    pub fn credential_for(&self, virtual_host: &str) -> Option<&CredentialGrant> {
+        let h = virtual_host.to_ascii_lowercase();
+        self.credentials
+            .iter()
+            .find(|c| c.virtual_host.to_ascii_lowercase() == h)
+    }
 }
 
 /// Resource bounds.
@@ -97,10 +156,15 @@ pub struct CompiledPolicy {
     pub protected_paths: Vec<String>,
     /// Guest-side: readable beyond the workspace.
     pub readable_roots: Vec<String>,
-    /// Substrate-side: whether the guest gets a network interface at all.
+    /// Substrate-side: whether the guest gets a network interface at all
+    /// (never, in this build: what egress is granted goes through the
+    /// broker over the private channel).
     pub network_interface: bool,
-    /// Substrate-side: the egress allow-list (empty with no interface).
+    /// Substrate-side: the egress allow-list the broker enforces.
     pub egress: Vec<EgressRule>,
+    /// Guest-side: whether the guest runs its local egress proxy and points
+    /// its processes at it (any grant at all).
+    pub egress_proxy: bool,
 }
 
 /// Compile a spec. Refuses a protected path that escapes the workspace.
@@ -123,8 +187,9 @@ pub fn compile(spec: &SandboxSpec) -> crate::Result<CompiledPolicy> {
         workspace_root: GUEST_WORKSPACE.to_owned(),
         protected_paths: protected,
         readable_roots: vec!["/usr".into(), "/lib".into(), "/bin".into(), "/tmp".into()],
-        network_interface: !spec.network.egress.is_empty(),
+        network_interface: false,
         egress: spec.network.egress.clone(),
+        egress_proxy: spec.network.grants_anything(),
     })
 }
 
@@ -139,6 +204,7 @@ impl CompiledPolicy {
             max_output_bytes: self.spec.resources.max_output_bytes,
             max_processes: self.spec.resources.max_processes,
             exec_timeout_ms: self.spec.resources.exec_timeout_ms,
+            egress_proxy: self.egress_proxy,
         }
     }
 }
@@ -269,11 +335,34 @@ mod tests {
         );
         let mut s = spec();
         s.network.egress.push(EgressRule {
-            host: "api.github.com".into(),
+            host: "*.npmjs.org".into(),
             port: 443,
-            capability: "forge.read".into(),
+            capability: "network.egress".into(),
         });
-        assert!(compile(&s).unwrap().network_interface);
+        let c = compile(&s).unwrap();
+        assert!(
+            !c.network_interface,
+            "no interface: egress goes through the broker"
+        );
+        assert!(c.egress_proxy);
+        assert!(s.network.admits("registry.npmjs.org", 443).is_some());
+        assert!(s.network.admits("npmjs.org", 443).is_some());
+        assert!(
+            s.network
+                .admits("evil.npmjs.org.attacker.net", 443)
+                .is_none()
+        );
+        assert!(s.network.admits("registry.npmjs.org", 80).is_none());
+        s.network.credentials.push(CredentialGrant {
+            handle: "forge-token".into(),
+            virtual_host: "forge.modbit.internal".into(),
+            target_url: "https://api.github.com".into(),
+            header: "Authorization".into(),
+            value_prefix: "Bearer ".into(),
+            capability: "secret.use".into(),
+        });
+        assert!(s.network.credential_for("FORGE.modbit.internal").is_some());
+        assert!(s.network.credential_for("api.github.com").is_none());
         let mut bad = spec();
         bad.protected_paths.push("../x".into());
         assert!(compile(&bad).is_err());

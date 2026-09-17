@@ -52,6 +52,27 @@ pub struct Config {
     /// `cloud_isolated` (M8.5); the worker token is held in memory and
     /// crosses to the Core once.
     pub sandbox_gateway: Option<SandboxGatewayConfig>,
+    /// The forge each hosted Core reaches (M8.6: its API host is the egress
+    /// a cloud task's lease grants, its token the credential the broker
+    /// injects); the token is held in memory and crosses to the Core once.
+    pub forge: Option<ForgeConfig>,
+}
+
+/// The forge a worker's Cores are configured with (M8.6).
+#[derive(Clone)]
+pub struct ForgeConfig {
+    /// API base URL (`https://api.github.com`).
+    pub api_base_url: String,
+    /// The token.
+    pub token: String,
+}
+
+impl std::fmt::Debug for ForgeConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ForgeConfig")
+            .field("api_base_url", &self.api_base_url)
+            .finish_non_exhaustive()
+    }
 }
 
 /// The Sandbox Gateway a worker's Cores reach (M8.5).
@@ -96,7 +117,8 @@ impl Config {
     /// `MODBIT_CLOUD_WORKER_ID`, `MODBIT_CLOUD_WORKER_DATA_DIR`,
     /// `MODBIT_CORE_BIN`, `MODBIT_CLOUD_WORKER_ENDPOINT`, `MODBIT_CLOUD_WORKER_MODEL`,
     /// `MODBIT_CLOUD_WORKER_PROVIDER` with `_API_KEY` and `_BASE_URL`,
-    /// `MODBIT_SANDBOX_GATEWAY_URL` with `MODBIT_SANDBOX_WORKER_TOKEN`).
+    /// `MODBIT_SANDBOX_GATEWAY_URL` with `MODBIT_SANDBOX_WORKER_TOKEN`,
+    /// `MODBIT_CLOUD_WORKER_FORGE_TOKEN` with `_API_BASE_URL`).
     pub fn from_env() -> anyhow::Result<Self> {
         let database_url = std::env::var("MODBIT_CLOUD_DATABASE_URL")
             .map_err(|_| anyhow::anyhow!("MODBIT_CLOUD_DATABASE_URL is required"))?;
@@ -149,6 +171,14 @@ impl Config {
                 .map(|base_url| SandboxGatewayConfig {
                     base_url,
                     worker_token: std::env::var("MODBIT_SANDBOX_WORKER_TOKEN").unwrap_or_default(),
+                }),
+            forge: std::env::var("MODBIT_CLOUD_WORKER_FORGE_TOKEN")
+                .ok()
+                .filter(|s| !s.is_empty())
+                .map(|token| ForgeConfig {
+                    api_base_url: std::env::var("MODBIT_CLOUD_WORKER_FORGE_API_BASE_URL")
+                        .unwrap_or_else(|_| "https://api.github.com".into()),
+                    token,
                 }),
         })
     }

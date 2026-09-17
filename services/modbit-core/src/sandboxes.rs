@@ -41,6 +41,51 @@ pub async fn ensure_for_task(
             "a cloud_isolated task needs a workspace root to seed its sandbox".into(),
         ));
     };
+    // M8.6: what the task's lease lets leave the sandbox — the configured
+    // forge's API host when the lease carries `network.egress`, and the
+    // forge token as a credentialed virtual host when it carries
+    // `secret.use`; the token crosses to the gateway's broker once and
+    // never enters the guest.
+    let ops: Vec<String> = core
+        .store
+        .lock()
+        .await
+        .leases_for_task(&task.task_id)
+        .unwrap_or_default()
+        .into_iter()
+        .flat_map(|l| l.operations)
+        .collect();
+    let mut egress = Vec::new();
+    let mut credentials = Vec::new();
+    if let Some(forge) = core.tools.forge.get() {
+        let target = forge.egress_target();
+        let (host, port) = target
+            .rsplit_once(':')
+            .map(|(h, p)| (h.to_owned(), p.parse::<u16>().unwrap_or(443)))
+            .unwrap_or((target.clone(), 443));
+        if ops.iter().any(|o| o == "network.egress") {
+            egress.push(modbit_sandbox::policy::EgressRule {
+                host,
+                port,
+                capability: "network.egress".into(),
+            });
+        }
+        if ops.iter().any(|o| o == "secret.use")
+            && let Some(token) = &forge.token
+        {
+            credentials.push((
+                modbit_sandbox::policy::CredentialGrant {
+                    handle: "forge-token".into(),
+                    virtual_host: "forge.modbit.internal".into(),
+                    target_url: forge.api_base.trim_end_matches('/').to_owned(),
+                    header: "Authorization".into(),
+                    value_prefix: "Bearer ".into(),
+                    capability: "secret.use".into(),
+                },
+                token.clone(),
+            ));
+        }
+    }
     let req = ProvisionRequest {
         tenant_id: custody.tenant_id.clone(),
         session_id: task.session_id.to_string(),
@@ -49,6 +94,8 @@ pub async fn ensure_for_task(
         workspace_source: root.to_owned(),
         protected_paths: vec![".git/hooks".into()],
         resources: serde_json::json!({}),
+        egress,
+        credentials,
     };
     let handle = match custody.client.provision(&req).await {
         Ok(h) => h,
@@ -75,6 +122,8 @@ pub async fn ensure_for_task(
             boot_id: id.boot_id.clone(),
             workspace_root: id.workspace_root.clone(),
             lease_generation: custody.lease_generation,
+            egress: id.egress.clone(),
+            credentials: id.credentials.clone(),
         },
         actor.clone(),
     );

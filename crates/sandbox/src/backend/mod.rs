@@ -40,6 +40,10 @@ pub struct Provisioned {
     pub isolated: bool,
     /// Backend detail for the audit (the VM's console log path, the child's pid).
     pub detail: String,
+    /// Channels the guest opens towards the host for egress (M8.6): one per
+    /// client connection of the guest's local proxy; the gateway's broker
+    /// consumes them. `None` when the policy grants no egress.
+    pub egress: Option<tokio::sync::mpsc::Receiver<Channel>>,
 }
 
 /// What isolates a guest.

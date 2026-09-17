@@ -4,6 +4,8 @@
 //! through a real guest; a backend passes when every step holds. Network
 //! isolation is asserted only of a backend that claims to isolate.
 
+#[cfg(feature = "client")]
+use std::sync::Arc;
 use std::time::Duration;
 
 use modbit_protocol::v1::{self as wire, guest_call, guest_reply};
@@ -42,6 +44,39 @@ pub struct Fixture {
     /// A shell command line that tries to write `.git/hooks/pre-commit`
     /// under the workspace and exits non-zero when it cannot.
     pub write_hook_probe: Vec<String>,
+    /// A command line printing the process environment (`env`).
+    pub env_probe: Vec<String>,
+    /// Egress (M8.6): the destinations the suite fetches through the
+    /// guest's proxy and the secrets the broker holds; `None` skips the
+    /// egress steps (the spec grants nothing).
+    pub egress: Option<EgressFixture>,
+}
+
+/// What the egress steps need (M8.6).
+pub struct EgressFixture {
+    /// A URL on a host the spec admits (`http://127.0.0.1:<port>/hello`),
+    /// answering `hello from allowed`.
+    pub allowed_url: String,
+    /// A URL on a host the spec does not admit.
+    pub denied_url: String,
+    /// An `https://` URL the spec does not admit (a CONNECT tunnel).
+    pub denied_tunnel_url: String,
+    /// A URL on the credentialed virtual host (`http://forge.modbit.internal/user`),
+    /// whose target answers `"authorized":true` only with the real secret.
+    pub credentialed_url: String,
+    /// The secret the broker holds under the grant's handle.
+    pub secret: String,
+    /// The secrets by handle.
+    pub secrets: std::collections::HashMap<String, String>,
+    /// A command line fetching a URL's body to stdout (`wget -qO- <url>` on
+    /// BusyBox, `curl -s <url>` elsewhere); the URL is appended.
+    pub fetch: Vec<String>,
+    /// A command line asking the sandbox's proxy for a CONNECT tunnel to a
+    /// `host:port` (appended) and printing the proxy's answer — for a
+    /// userland whose fetcher does not tunnel `https://` itself (BusyBox
+    /// wget sends it as a plain proxied GET). `None`: `fetch` of
+    /// `denied_tunnel_url` tunnels (curl does).
+    pub tunnel: Option<Vec<String>>,
 }
 
 /// One step's outcome.
@@ -95,7 +130,9 @@ pub async fn run(backend: &dyn SandboxBackend, fx: &Fixture) -> Result<Report> {
     let policy: CompiledPolicy = compile(&fx.spec)?;
     let sandbox_id = format!("conf-{}", uuid::Uuid::now_v7().simple());
     let task = fx.spec.task_id.to_string();
-    let provisioned = backend.provision(&sandbox_id, &policy).await?;
+    let mut provisioned = backend.provision(&sandbox_id, &policy).await?;
+    #[allow(unused_mut, unused_variables)]
+    let mut egress_rx = provisioned.egress.take();
     let mut steps = Vec::new();
     let mut push =
         |name: &'static str, ok: bool, detail: String| steps.push(Step { name, ok, detail });
@@ -628,6 +665,175 @@ pub async fn run(backend: &dyn SandboxBackend, fx: &Fixture) -> Result<Report> {
         refusal_code(&r) == "OUTSIDE_WORKSPACE",
         refusal_code(&r),
     );
+    // M8.6 — egress through the guest's proxy and the host's broker: an
+    // admitted plain-HTTP destination is reached, a destination outside
+    // the allow-list is refused (HTTP and CONNECT alike), a credentialed
+    // virtual host is reached with the secret injected by the broker while
+    // the guest never held it; every decision is on the audit.
+    #[cfg(feature = "client")]
+    if let Some(eg) = &fx.egress {
+        let audit = Arc::new(crate::egress::MemoryAudit::default());
+        let broker_task = egress_rx.take().map(|rx| {
+            let broker = crate::egress::EgressBroker::new(
+                &sandbox_id,
+                fx.spec.network.clone(),
+                eg.secrets.clone(),
+                Arc::clone(&audit) as Arc<dyn crate::egress::EgressAudit>,
+            );
+            tokio::spawn(broker.serve(rx))
+        });
+        push(
+            "egress_broker_channel",
+            broker_task.is_some(),
+            "the backend handed the broker the guest's egress channels".into(),
+        );
+        let fetch = |url: &str| -> Vec<String> {
+            let mut v = eg.fetch.clone();
+            v.push(url.to_owned());
+            v
+        };
+        let r = link
+            .exec(
+                &task,
+                "eff-20",
+                wire::GuestExec {
+                    argv: fetch(&eg.allowed_url),
+                    cwd: policy.workspace_root.clone(),
+                    env: fx.exec_env.clone(),
+                    timeout_ms: 20_000,
+                    stdin: vec![],
+                },
+            )
+            .await;
+        push(
+            "egress_allowed_http",
+            r.as_ref()
+                .is_ok_and(|r| String::from_utf8_lossy(&r.stdout).contains("hello from allowed")),
+            format!("{r:?}"),
+        );
+        let r = link
+            .exec(
+                &task,
+                "eff-21",
+                wire::GuestExec {
+                    argv: fetch(&eg.denied_url),
+                    cwd: policy.workspace_root.clone(),
+                    env: fx.exec_env.clone(),
+                    timeout_ms: 20_000,
+                    stdin: vec![],
+                },
+            )
+            .await;
+        push(
+            "egress_denied_http",
+            r.as_ref()
+                .is_ok_and(|r| !String::from_utf8_lossy(&r.stdout).contains("hello")),
+            format!("{r:?}"),
+        );
+        // With a tunnel probe the proxy's refusal is in the answer; a
+        // tunnelling fetcher fails instead.
+        let (tunnel_argv, direct_probe) = match &eg.tunnel {
+            Some(argv) => {
+                let mut v = argv.clone();
+                let host = eg
+                    .denied_tunnel_url
+                    .trim_start_matches("https://")
+                    .split('/')
+                    .next()
+                    .unwrap_or_default()
+                    .to_owned();
+                v.push(host);
+                (v, true)
+            }
+            None => (fetch(&eg.denied_tunnel_url), false),
+        };
+        let tunnel_ok = |r: &wire::GuestExecResult| {
+            if direct_probe {
+                String::from_utf8_lossy(&r.stdout).contains("403")
+            } else {
+                r.exit_code != 0
+            }
+        };
+        let r = link
+            .exec(
+                &task,
+                "eff-22",
+                wire::GuestExec {
+                    argv: tunnel_argv,
+                    cwd: policy.workspace_root.clone(),
+                    env: fx.exec_env.clone(),
+                    timeout_ms: 20_000,
+                    stdin: vec![],
+                },
+            )
+            .await;
+        push(
+            "egress_denied_tunnel",
+            r.as_ref().is_ok_and(tunnel_ok),
+            format!("{r:?}"),
+        );
+        let r = link
+            .exec(
+                &task,
+                "eff-23",
+                wire::GuestExec {
+                    argv: fetch(&eg.credentialed_url),
+                    cwd: policy.workspace_root.clone(),
+                    env: fx.exec_env.clone(),
+                    timeout_ms: 20_000,
+                    stdin: vec![],
+                },
+            )
+            .await;
+        let body = r
+            .as_ref()
+            .map(|r| String::from_utf8_lossy(&r.stdout).into_owned())
+            .unwrap_or_default();
+        push(
+            "egress_credentialed",
+            body.contains("\"authorized\":true") && !body.contains(&eg.secret),
+            format!("{r:?}"),
+        );
+        // The guest never held the secret: its environment and its output
+        // never carried it (the process saw the proxy, nothing more).
+        let r = link
+            .exec(
+                &task,
+                "eff-24",
+                wire::GuestExec {
+                    argv: fx.env_probe.clone(),
+                    cwd: policy.workspace_root.clone(),
+                    env: fx.exec_env.clone(),
+                    timeout_ms: 20_000,
+                    stdin: vec![],
+                },
+            )
+            .await;
+        let env_text = r
+            .as_ref()
+            .map(|r| String::from_utf8_lossy(&r.stdout).into_owned())
+            .unwrap_or_default();
+        push(
+            "egress_secret_never_in_guest",
+            !env_text.contains(&eg.secret) && env_text.contains("http_proxy=http://127.0.0.1:3128"),
+            format!("{env_text:?}"),
+        );
+        let records = audit.records(&sandbox_id);
+        let allowed_http = records.iter().any(|x| x.kind == "http" && x.allowed);
+        let denied_http = records.iter().any(|x| x.kind == "http" && !x.allowed);
+        let denied_tunnel = records.iter().any(|x| x.kind == "tunnel" && !x.allowed);
+        let credentialed = records
+            .iter()
+            .any(|x| x.kind == "credentialed" && x.allowed && !x.capability.is_empty());
+        push(
+            "egress_audited",
+            allowed_http && denied_http && denied_tunnel && credentialed,
+            format!("{records:?}"),
+        );
+        if let Some(t) = broker_task {
+            t.abort();
+        }
+    }
     // authentication: an unsigned call and a replayed call are refused
     let unsigned = wire::GuestCall {
         call_id: uuid::Uuid::now_v7().to_string(),

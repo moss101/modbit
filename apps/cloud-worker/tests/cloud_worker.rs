@@ -210,6 +210,71 @@ fn worker_config(
     lease_ttl: Duration,
     gateway: &Gateway,
 ) -> Config {
+    worker_config_with(store, id, data_dir, model_base, lease_ttl, gateway, None)
+}
+
+/// A fake forge on loopback (M8.6): answers `/user` with `authorized: true`
+/// only when the `Authorization` header carries the real token, and keeps
+/// what it saw.
+struct FakeForge {
+    base_url: String,
+    token: String,
+    seen: Arc<Mutex<Vec<String>>>,
+}
+
+async fn fake_forge() -> FakeForge {
+    use axum::{Router, routing::get};
+    let token = format!("ghp-real-{}", uuid::Uuid::now_v7().simple());
+    let expected = format!("Bearer {token}");
+    let seen: Arc<Mutex<Vec<String>>> = Default::default();
+    let seen2 = Arc::clone(&seen);
+    let app = Router::new().route(
+        "/user",
+        get(move |headers: axum::http::HeaderMap| {
+            let expected = expected.clone();
+            let seen = Arc::clone(&seen2);
+            async move {
+                let got = headers
+                    .get("authorization")
+                    .and_then(|v| v.to_str().ok())
+                    .unwrap_or_default()
+                    .to_owned();
+                seen.lock().unwrap().push(got.clone());
+                if got == expected {
+                    (
+                        axum::http::StatusCode::OK,
+                        "{\"login\":\"ada\",\"authorized\":true}",
+                    )
+                } else {
+                    (
+                        axum::http::StatusCode::UNAUTHORIZED,
+                        "{\"authorized\":false}",
+                    )
+                }
+            }
+        }),
+    );
+    let l = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = l.local_addr().unwrap();
+    tokio::spawn(async move {
+        let _ = axum::serve(l, app).await;
+    });
+    FakeForge {
+        base_url: format!("http://{addr}"),
+        token,
+        seen,
+    }
+}
+
+fn worker_config_with(
+    store: &CloudStoreConfig,
+    id: &str,
+    data_dir: &std::path::Path,
+    model_base: &str,
+    lease_ttl: Duration,
+    gateway: &Gateway,
+    forge: Option<&FakeForge>,
+) -> Config {
     Config {
         store: store.clone(),
         worker_id: id.into(),
@@ -229,6 +294,10 @@ fn worker_config(
             base_url: gateway.base_url.clone(),
             worker_token: gateway.token_for(id),
         }),
+        forge: forge.map(|f| modbit_cloud_worker::ForgeConfig {
+            api_base_url: f.base_url.clone(),
+            token: f.token.clone(),
+        }),
     }
 }
 
@@ -243,6 +312,16 @@ fn guest_bin() -> PathBuf {
     } else {
         "modbit-guest"
     })
+}
+
+async fn gw_get(gateway: &Gateway, worker: &str, path: &str) -> (u16, Value) {
+    let r = reqwest::Client::new()
+        .get(format!("{}{path}", gateway.base_url))
+        .bearer_auth(gateway.token_for(worker))
+        .send()
+        .await
+        .unwrap();
+    (r.status().as_u16(), r.json().await.unwrap_or(Value::Null))
 }
 
 /// The Sandbox Gateway the workers' Cores provision from (M8.5): the
@@ -758,7 +837,11 @@ async fn qual_m8_5_a_cloud_isolated_tasks_tools_act_inside_its_sandbox_and_the_s
             {"name": "fs.list", "args": {"path": "."}},
             {"name": "fs.stat", "args": {"path": "summary.txt"}},
             {"name": "fs.read", "args": {"path": "../../etc/passwd"}},
-            {"name": "shell.exec", "args": {"argv": ["/bin/sh", "-c", "echo x > .git/hooks/pre-commit && echo wrote-hook || echo hook-refused"]}}
+            {"name": "shell.exec", "args": {"argv": ["/bin/sh", "-c", "echo x > .git/hooks/pre-commit && echo wrote-hook || echo hook-refused"]}},
+            // M8.6: the forge through the broker with the token it holds; a
+            // destination the lease does not grant is refused.
+            {"name": "shell.exec", "args": {"argv": ["/bin/sh", "-c", "FETCH=$(command -v wget >/dev/null 2>&1 && echo 'wget -qO-' || echo 'curl -s'); $FETCH http://forge.modbit.internal/user; echo; env | grep -i proxy | sort"]}},
+            {"name": "shell.exec", "args": {"argv": ["/bin/sh", "-c", "FETCH=$(command -v wget >/dev/null 2>&1 && echo 'wget -qO-' || echo 'curl -s'); $FETCH http://127.0.0.1:9/hello || echo egress-refused"]}}
         ]}),
         json!({"calls": [{"name": "task.complete", "args": {"summary": "summarized", "self_review": {"findings": []}}}]}),
     ];
@@ -791,6 +874,7 @@ async fn qual_m8_5_a_cloud_isolated_tasks_tools_act_inside_its_sandbox_and_the_s
     };
     let root = repo(&data.join("repo"));
     let gateway = Gateway::start(&store_cfg, &data.join("gateway")).await;
+    let forge = fake_forge().await;
     let (_, created) = api
         .post(
             &a,
@@ -802,13 +886,14 @@ async fn qual_m8_5_a_cloud_isolated_tasks_tools_act_inside_its_sandbox_and_the_s
     let (s, task) = api.post(&a, &format!("/v1/sessions/{sid}/tasks"), json!({"command_id": uuid::Uuid::now_v7().to_string(), "goal_text": "summarize the notes", "execution_profile": "cloud_isolated", "workspace_root": root})).await;
     assert_eq!(s, 201, "{task}");
     let tid = task["task_id"].as_str().unwrap().to_owned();
-    let worker = start(worker_config(
+    let worker = start(worker_config_with(
         &store_cfg,
         "worker-s",
         &data.join("w"),
         &model_base,
         Duration::from_secs(10),
         &gateway,
+        Some(&forge),
     ))
     .await
     .expect("worker");
@@ -849,8 +934,8 @@ async fn qual_m8_5_a_cloud_isolated_tasks_tools_act_inside_its_sandbox_and_the_s
     );
     let sandbox_id = payload["sandbox_id"].as_str().unwrap().to_owned();
     assert!(
-        !payload.to_string().to_lowercase().contains("credential"),
-        "{payload}"
+        !payload.to_string().contains(&forge.token) && !payload.to_string().contains("secret"),
+        "no secret on the log: {payload}"
     );
     // What the model saw: every tool result came from inside the guest.
     let bodies = seen.lock().unwrap().clone();
@@ -910,6 +995,52 @@ async fn qual_m8_5_a_cloud_isolated_tasks_tools_act_inside_its_sandbox_and_the_s
             "{hook}"
         );
     }
+    // M8.6: the forge answered through the broker with the token the guest
+    // never held (its environment shows the proxy, nothing more); an
+    // ungranted destination was refused; the lease's grants are on the log
+    // and the broker's audit has both decisions.
+    let forge_text = &tool_texts[7];
+    assert!(
+        (forge_text.contains("\"authorized\":true") || forge_text.contains("authorized\\\":true"))
+            && forge_text.contains("http_proxy=http://127.0.0.1:3128")
+            && !forge_text.contains(&forge.token),
+        "the forge through the broker, the token never in the guest: {forge_text}"
+    );
+    let denied_text = &tool_texts[8];
+    assert!(
+        denied_text.contains("egress-refused") || !denied_text.contains("hello"),
+        "{denied_text}"
+    );
+    let seen = forge.seen.lock().unwrap().clone();
+    assert!(
+        seen.iter().any(|h| h == &format!("Bearer {}", forge.token)),
+        "the fake forge saw the real token from the broker: {seen:?}"
+    );
+    assert!(
+        payload["credentials"]
+            .as_array()
+            .is_some_and(|c| c.iter().any(|v| v == "forge.modbit.internal")),
+        "{payload}"
+    );
+    assert!(
+        payload["egress"].as_array().is_some_and(|e| !e.is_empty()),
+        "{payload}"
+    );
+    let (s, audit) = gw_get(
+        &gateway,
+        "worker-s",
+        &format!("/v1/sandboxes/{sandbox_id}/egress?tenant_id={tenant}"),
+    )
+    .await;
+    assert_eq!(s, 200, "{audit}");
+    let records = audit["records"].as_array().unwrap();
+    assert!(
+        records
+            .iter()
+            .any(|r| r["kind"] == "credentialed" && r["allowed"] == true),
+        "{audit}"
+    );
+    assert!(records.iter().any(|r| r["allowed"] == false), "{audit}");
     // The sandbox lives while the task does; a cancel ends the task and
     // releases it, on the cloud log.
     let c_cancel = uuid::Uuid::now_v7().to_string();

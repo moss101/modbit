@@ -13,6 +13,44 @@ use modbit_sandbox::policy::{map_to_host, normalize, read_allowed, write_allowed
 use modbit_sandbox::{GUEST_PROTOCOL_MAJOR, GUEST_PROTOCOL_MINOR, auth};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
+static BROKER: std::sync::OnceLock<crate::proxy::BrokerAddr> = std::sync::OnceLock::new();
+static PROXY_STARTED: std::sync::OnceLock<()> = std::sync::OnceLock::new();
+
+/// Where the egress broker is, from here (set once at start).
+pub fn set_broker(addr: crate::proxy::BrokerAddr) {
+    let _ = BROKER.set(addr);
+}
+
+/// Start the local egress proxy once, when the admitted policy grants egress.
+fn start_proxy_if_granted(policy: &wire::GuestPolicy) -> bool {
+    if !policy.egress_proxy {
+        return false;
+    }
+    let Some(addr) = BROKER.get().cloned() else {
+        eprintln!("modbit-guest: the policy grants egress but no broker address is known here");
+        return false;
+    };
+    if PROXY_STARTED.set(()).is_ok() {
+        tokio::spawn(async move {
+            if let Err(e) = crate::proxy::serve(addr).await {
+                eprintln!("modbit-guest: egress proxy: {e}");
+            }
+        });
+    }
+    true
+}
+
+/// The environment a process gets so its HTTP clients use the local proxy.
+fn proxy_env() -> Vec<String> {
+    let url = format!("http://{}", crate::proxy::PROXY_ADDR);
+    vec![
+        format!("http_proxy={url}"),
+        format!("https_proxy={url}"),
+        format!("HTTP_PROXY={url}"),
+        format!("HTTPS_PROXY={url}"),
+    ]
+}
+
 /// The methods this guest implements.
 pub const METHODS: &[&str] = &[
     "health",
@@ -23,6 +61,7 @@ pub const METHODS: &[&str] = &[
     "proc",
     "pty",
     "fs.dir",
+    "net.egress",
 ];
 
 /// Serve on a loopback TCP listener (the reference backend), announcing
@@ -118,6 +157,7 @@ pub async fn serve_stream<S: AsyncRead + AsyncWrite + Unpin>(
     if mapping.is_none() {
         enforce_protected_mounts(&policy);
     }
+    let egress = start_proxy_if_granted(&policy);
     let admitted = GuestFrame {
         body: Some(guest_frame::Body::Admitted(wire::GuestAdmitted {
             sandbox_id: admit.sandbox_id.clone(),
@@ -136,6 +176,7 @@ pub async fn serve_stream<S: AsyncRead + AsyncWrite + Unpin>(
         mapping,
         running: 0,
         procs,
+        egress,
     };
     while let Some(frame) = read_message::<_, GuestFrame>(&mut stream)
         .await
@@ -169,6 +210,8 @@ struct Guest {
     mapping: Option<PathBuf>,
     running: u32,
     procs: Arc<ProcTable>,
+    /// Whether the policy grants egress (the proxy runs; processes get it).
+    egress: bool,
 }
 
 fn refusal(call_id: &str, code: &str, message: impl Into<String>) -> wire::GuestReply {
@@ -402,7 +445,7 @@ impl Guest {
         let cwd = self.host_path(&cwd_guest);
         let mut cmd = tokio::process::Command::new(&e.argv[0]);
         cmd.args(&e.argv[1..]).current_dir(&cwd).env_clear();
-        for kv in &e.env {
+        for kv in self.process_env(&e.env) {
             if let Some((k, v)) = kv.split_once('=') {
                 cmd.env(k, v);
             }
@@ -476,6 +519,21 @@ impl Guest {
 }
 
 impl Guest {
+    /// The environment a process gets: exactly what the call names, plus
+    /// the local proxy when egress is granted and the call set no proxy.
+    fn process_env(&self, named: &[String]) -> Vec<String> {
+        let mut env: Vec<String> = named.to_vec();
+        if self.egress
+            && !named.iter().any(|kv| {
+                let l = kv.to_ascii_lowercase();
+                l.starts_with("http_proxy=") || l.starts_with("https_proxy=")
+            })
+        {
+            env.extend(proxy_env());
+        }
+        env
+    }
+
     fn resolve_cwd(&self, cwd: &str) -> Result<PathBuf, (&'static str, String)> {
         let cwd_guest = if cwd.is_empty() {
             self.policy.workspace_root.clone()
@@ -510,10 +568,11 @@ impl Guest {
             Ok(c) => c,
             Err((code, msg)) => return refusal(id, code, msg),
         };
+        let env = self.process_env(&p.env);
         let spec = StartSpec {
             argv: &p.argv,
             cwd,
-            env: &p.env,
+            env: &env,
             timeout: Duration::from_millis(timeout_ms),
             pty: p.pty,
             size: (

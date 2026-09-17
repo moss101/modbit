@@ -644,6 +644,13 @@ pub enum TaskEvent {
         workspace_root: String,
         /// The worker's cloud session lease generation it was issued under.
         lease_generation: u64,
+        /// The egress the broker admits for it (`host:port`; M8.6).
+        #[serde(default)]
+        egress: Vec<String>,
+        /// The credentialed virtual hosts the broker serves it (M8.6) —
+        /// the hosts, never the handles' secrets.
+        #[serde(default)]
+        credentials: Vec<String>,
     },
     /// `SandboxReleased` (M8.5): the task ended and its sandbox was
     /// destroyed. No state change.

@@ -128,18 +128,83 @@ pub struct Live {
     pub hello: modbit_protocol::v1::GuestHello,
     /// The policy it was admitted under (a relink admits under the same).
     pub policy: modbit_sandbox::CompiledPolicy,
+    /// The egress broker's task (M8.6), ended with the sandbox.
+    pub broker: Option<tokio::task::JoinHandle<()>>,
+}
+
+/// The broker's audit, persisted through the store (M8.6): records are
+/// queued and written off the broker's path; the gateway also keeps the
+/// live view for `/v1/sandboxes/{id}/egress`.
+pub struct StoreAudit {
+    tx: tokio::sync::mpsc::UnboundedSender<(String, modbit_sandbox::egress::EgressRecord)>,
+    memory: modbit_sandbox::egress::MemoryAudit,
+}
+
+impl StoreAudit {
+    fn new(
+        store: Arc<CloudStore>,
+        tenants: Arc<tokio::sync::Mutex<HashMap<String, modbit_domain::TenantId>>>,
+    ) -> Arc<Self> {
+        let (tx, mut rx) =
+            tokio::sync::mpsc::unbounded_channel::<(String, modbit_sandbox::egress::EgressRecord)>(
+            );
+        tokio::spawn(async move {
+            while let Some((sandbox, r)) = rx.recv().await {
+                let tenant = tenants.lock().await.get(&sandbox).copied();
+                let (Some(tenant), Ok(id)) = (tenant, uuid::Uuid::parse_str(&sandbox)) else {
+                    continue;
+                };
+                if let Err(e) = store
+                    .record_egress(
+                        id,
+                        tenant,
+                        &r.kind,
+                        &r.destination,
+                        r.allowed,
+                        &r.capability,
+                        &r.detail,
+                        r.at_ms,
+                    )
+                    .await
+                {
+                    eprintln!("modbit-sandbox-gateway: recording egress for {sandbox}: {e}");
+                }
+            }
+        });
+        Arc::new(Self {
+            tx,
+            memory: modbit_sandbox::egress::MemoryAudit::default(),
+        })
+    }
+
+    /// The live records of a sandbox.
+    #[must_use]
+    pub fn records(&self, sandbox_id: &str) -> Vec<modbit_sandbox::egress::EgressRecord> {
+        self.memory.records(sandbox_id)
+    }
+}
+
+impl modbit_sandbox::egress::EgressAudit for StoreAudit {
+    fn record(&self, sandbox_id: &str, record: modbit_sandbox::egress::EgressRecord) {
+        self.memory.record(sandbox_id, record.clone());
+        let _ = self.tx.send((sandbox_id.to_owned(), record));
+    }
 }
 
 /// Shared state.
 pub struct AppState {
     /// The store.
-    pub store: CloudStore,
+    pub store: Arc<CloudStore>,
     /// Worker tokens.
     pub worker_key: WorkerKey,
     /// The backend.
     pub backend: Arc<dyn SandboxBackend>,
     /// Live sandboxes by id.
     pub live: tokio::sync::Mutex<HashMap<uuid::Uuid, Arc<Live>>>,
+    /// The egress audit (M8.6).
+    pub audit: Arc<StoreAudit>,
+    /// Sandbox → tenant, for the audit writer.
+    pub tenants: Arc<tokio::sync::Mutex<HashMap<String, modbit_domain::TenantId>>>,
 }
 
 /// A running gateway.
@@ -208,11 +273,17 @@ pub async fn serve(cfg: Config) -> anyhow::Result<Served> {
             }
         }
     };
+    let store = Arc::new(store);
+    let tenants: Arc<tokio::sync::Mutex<HashMap<String, modbit_domain::TenantId>>> =
+        Default::default();
+    let audit = StoreAudit::new(Arc::clone(&store), Arc::clone(&tenants));
     let state = Arc::new(AppState {
         store,
         worker_key,
         backend,
         live: tokio::sync::Mutex::new(HashMap::new()),
+        audit,
+        tenants,
     });
     let app = routes::router(Arc::clone(&state));
     let listener = tokio::net::TcpListener::bind(&cfg.bind).await?;

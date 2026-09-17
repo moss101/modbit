@@ -80,6 +80,16 @@ pub async fn run_as_init() -> std::io::Result<()> {
         }
     }
     let _ = nix::unistd::sethostname("modbit-guest");
+    // The loopback interface is down until something raises it; the
+    // guest's own egress proxy listens on it (M8.6).
+    match std::process::Command::new("/bin/ip")
+        .args(["link", "set", "lo", "up"])
+        .status()
+    {
+        Ok(st) if st.success() => eprintln!("modbit-guest: lo up"),
+        Ok(st) => eprintln!("modbit-guest: ip link set lo up: {st}"),
+        Err(e) => eprintln!("modbit-guest: ip link set lo up: {e}"),
+    }
     let workspace_dev = cmdline_value("modbit.workspace_dev").unwrap_or_else(|| "/dev/vdb".into());
     let _ = std::fs::create_dir_all("/workspace");
     let started = Instant::now();
@@ -111,6 +121,10 @@ pub async fn run_as_init() -> std::io::Result<()> {
     let port: u32 = cmdline_value("modbit.vsock_port")
         .and_then(|p| p.parse().ok())
         .unwrap_or(5000);
+    let egress_port: u32 = cmdline_value("modbit.egress_port")
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(5001);
+    crate::serve::set_broker(crate::proxy::BrokerAddr::Vsock(egress_port));
     let boot_id = uuid::Uuid::now_v7().to_string();
     let procs = std::sync::Arc::new(crate::procs::ProcTable::default());
     eprintln!(
@@ -134,7 +148,7 @@ pub async fn run_as_init() -> std::io::Result<()> {
             }
         };
         stream.set_nonblocking(true)?;
-        let stream = VsockAsync(tokio::io::unix::AsyncFd::new(stream)?);
+        let stream = VsockAsync::new(stream)?;
         eprintln!("modbit-guest: vsock link accepted");
         let procs = std::sync::Arc::clone(&procs);
         let boot_id = boot_id.clone();
@@ -148,7 +162,14 @@ pub async fn run_as_init() -> std::io::Result<()> {
 }
 
 /// A vsock stream driven by tokio's `AsyncFd`.
-struct VsockAsync(tokio::io::unix::AsyncFd<vsock::VsockStream>);
+pub(crate) struct VsockAsync(tokio::io::unix::AsyncFd<vsock::VsockStream>);
+
+impl VsockAsync {
+    /// Wrap a non-blocking vsock stream.
+    pub(crate) fn new(s: vsock::VsockStream) -> std::io::Result<Self> {
+        Ok(Self(tokio::io::unix::AsyncFd::new(s)?))
+    }
+}
 
 impl tokio::io::AsyncRead for VsockAsync {
     fn poll_read(
