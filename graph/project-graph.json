@@ -3,7 +3,7 @@
  "product": "Modbit",
  "edition": "V3.3 EPR v1.1",
  "authority_date": "2026-09-05",
- "generated_on": "2026-09-17",
+ "generated_on": "2026-09-18",
  "generator": "tools/build_graph.py",
  "status_vocabulary": [
   "NOT_STARTED",
@@ -4178,8 +4178,52 @@
    "milestone": "M8",
    "order": 6,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_m8_7_a_local_task_hands_off_to_the_cloud_and_continues_from_its_checkpoint_in_a_sandbox",
+    "run:35268427152",
+    "commit:cd2d6aa",
+    "artifact:evidence/m8/M8.7/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T22:52:48Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: MISSING before — StartCloudHandoff and /v1/handoffs were names only"
+    },
+    {
+     "at": "2026-09-17T22:52:48Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "export, admission, materialization, rebind"
+    },
+    {
+     "at": "2026-09-17T22:52:48Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "local Core → Cloud API → worker → sandbox"
+    },
+    {
+     "at": "2026-09-17T22:52:48Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "end to end on real components"
+    },
+    {
+     "at": "2026-09-17T22:52:48Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS/Linux/Windows incl. the Firecracker cloud job"
+    },
+    {
+     "at": "2026-09-17T22:52:48Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-17T22:52:48Z"
   },
   {
    "id": "M8.8",
@@ -11615,8 +11659,52 @@
    "milestone": "M8",
    "qual": "QUAL-EV-0063",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_m8_7_a_local_task_hands_off_to_the_cloud_and_continues_from_its_checkpoint_in_a_sandbox",
+    "run:35268427152",
+    "commit:cd2d6aa",
+    "artifact:evidence/m8/IMP-EV-0063/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T22:52:49Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: MISSING before — StartCloudHandoff and /v1/handoffs were names only"
+    },
+    {
+     "at": "2026-09-17T22:52:49Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "export, admission, materialization, rebind"
+    },
+    {
+     "at": "2026-09-17T22:52:49Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "local Core → Cloud API → worker → sandbox"
+    },
+    {
+     "at": "2026-09-17T22:52:49Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "end to end on real components"
+    },
+    {
+     "at": "2026-09-17T22:52:49Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS/Linux/Windows incl. the Firecracker cloud job"
+    },
+    {
+     "at": "2026-09-17T22:52:49Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-17T22:52:49Z"
   },
   {
    "id": "IMP-EV-0064",

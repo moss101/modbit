@@ -15,10 +15,14 @@
  "tests": [
   "qual_m8_7_a_local_task_hands_off_to_the_cloud_and_continues_from_its_checkpoint_in_a_sandbox"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "cd2d6aa"
+ ],
+ "runs": [
+  "35268427152"
+ ],
  "proof": "ExportHandoff parks the run at its boundary, captures a checkpoint and writes events.jsonl, objects/, repo.bundle and manifest.json (capabilities, secret handles, checkpoint and git identity) — no secret value in any part; POST /v1/handoffs verifies capability parity, imports the log verbatim under the cloud tenant, stores the admitted manifest (bundle_hash) and journals TaskHandoffAdmitted; the worker materializes the worktree from the bundle and the checkpoint, imports the objects, rebinds the task to its workspace under cloud_isolated (the laptop's lease retired, the cloud profile's granted) and StartTask provisions the sandbox and resumes the run with the same transcript.",
  "audit": "MISSING before: StartCloudHandoff and /v1/handoffs were names only.",
  "limitations": "part-by-part upload; cloud_isolated only; nothing synced back to the laptop; fixed cloud capability set.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/35268427152"
 }

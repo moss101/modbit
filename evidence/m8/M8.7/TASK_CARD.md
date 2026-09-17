@@ -33,4 +33,4 @@ A task started on the laptop continues in the cloud from its checkpoint: the sam
 ## Evidence
 
 - `evidence.json` in this directory (commits, hosted CI run, test names)
-- CI run json copy alongside
+- CI run json copy alongside: `ci-run-35268427152.json` — hosted run 35268427152 at cd2d6aa on main (attempt 2: a macOS desktop E2E approval-state flake re-run), green on macOS, Linux and Windows; the cloud job on a real Firecracker MicroVM
