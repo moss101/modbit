@@ -6,10 +6,20 @@
   "qual_ev_0085_an_emergency_stop_halts_browser_input_before_the_host_with_the_reason_on_record",
   "apps/desktop/e2e/browser.spec.ts"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "8a00521"
+ ],
+ "runs": [
+  {
+   "id": "gha-35186313808",
+   "kind": "hosted CI on 8a00521 (main)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/35186313808",
+   "log": "ci-run-35186313808.json"
+  }
+ ],
  "proof": "`qual_ev_0085_…` (real Core): after the stop the next navigation and action are refused before the host (nothing more reaches it), observation continued before, and `EmergencyStopActivated` carries the reason. `browser.spec.ts` (real app): the button on the panel fences the host (`emergency-stop` in its log, no `act` after it) and the Core refuses the agent's next input.",
  "audit": "PARTIAL before: `EmergencyStop` blocked effects at the kernel; a navigation was a read, and the host had no stop of its own",
  "limitations": "A stop is for the session's life (the Core never lifts it); an action already in flight completes within the host's bound.",
- "ci": ""
+ "ci": "evidence/m7/IMP-EV-0085/ci-run-35186313808.json"
 }

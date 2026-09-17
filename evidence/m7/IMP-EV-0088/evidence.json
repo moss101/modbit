@@ -7,10 +7,20 @@
   "qual_m7_4_actions_run_by_reference_under_the_effect_they_carry_and_check_their_postconditions",
   "submissions_and_consequential_actions_are_protected_fields_and_tabs_are_not"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "8a00521"
+ ],
+ "runs": [
+  {
+   "id": "gha-35186313808",
+   "kind": "hosted CI on 8a00521 (main)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/35186313808",
+   "log": "ci-run-35186313808.json"
+  }
+ ],
  "proof": "`qual_m7_8_…`: the credential fill opens an approval (`ExternalSideEffect`) before the host is asked; the refused fills open none. `qual_m7_4_…`: the submission asks approval; a field does not. `qual_ev_0089_…`: a protected action on a reference judged page-only is `ACTION_UNSAFE`.",
  "audit": "PARTIAL before: `classify_action` (M7.4) elevated submissions and consequential names; a credential fill was page-only",
  "limitations": "Risk words are English; the context dimension is the landmark path (a form) and the data dimension is the credential handle — no per-site policy yet.",
- "ci": ""
+ "ci": "evidence/m7/IMP-EV-0088/ci-run-35186313808.json"
 }

@@ -5,10 +5,20 @@
  "tests": [
   "qual_ev_0280_a_known_transition_is_offered_for_the_same_fingerprint_and_not_for_a_changed_page"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "8a00521"
+ ],
+ "runs": [
+  {
+   "id": "gha-35186313808",
+   "kind": "hosted CI on 8a00521 (main)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/35186313808",
+   "log": "ci-run-35186313808.json"
+  }
+ ],
  "proof": "`qual_ev_0280_…` (real Core): after a verified click, a fresh read of the same page (same fingerprint) offers the transition with its verification and destination; a changed page (another fingerprint) offers nothing; the record is rebuilt after a Core restart.",
  "audit": "MISSING before: transitions were on the log (M7.4) but never offered back",
  "limitations": "Transitions are per session (not shared across tasks or sites); the model may reuse one, the runtime never replays one on its own.",
- "ci": ""
+ "ci": "evidence/m7/IMP-EV-0280/ci-run-35186313808.json"
 }

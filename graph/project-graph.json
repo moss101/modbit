@@ -12176,8 +12176,54 @@
    "milestone": "M7",
    "qual": "QUAL-EV-0082",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0082_0234_0277_0282_an_accessible_form_needs_no_pixels_and_a_canvas_escalates_explicitly",
+    "test:apps/desktop/e2e/browser.spec.ts",
+    "test:qual_m7_5_a_visual_region_is_captured_targeted_and_clicked_by_a_point_with_the_fallback_on_record",
+    "run:35186313808",
+    "commit:8a00521",
+    "artifact:evidence/m7/IMP-EV-0082/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T05:51:34Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: IMPLEMENTED by M7.2–M7.5"
+    },
+    {
+     "at": "2026-09-17T05:51:34Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 8a00521 (M7.1–M7.8 and the evidence-derived batch)"
+    },
+    {
+     "at": "2026-09-17T05:51:34Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring named on the card"
+    },
+    {
+     "at": "2026-09-17T05:51:35Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification on the real Core and the real app (see card)"
+    },
+    {
+     "at": "2026-09-17T05:51:35Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 35186313808 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-17T05:51:35Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
+    }
+   ],
+   "status_changed_on": "2026-09-17T05:51:35Z"
   },
   {
    "id": "IMP-EV-0083",
@@ -12190,8 +12236,54 @@
    "milestone": "M7",
    "qual": "QUAL-EV-0083",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:apps/desktop/e2e/browser.spec.ts",
+    "test:qual_ev_0089_every_failure_code_of_the_taxonomy_is_emitted_with_its_recovery",
+    "test:qual_ev_0110_0084_a_forged_peer_cannot_attach_and_a_second_host_gets_the_conflict",
+    "run:35186313808",
+    "commit:8a00521",
+    "artifact:evidence/m7/IMP-EV-0083/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T05:51:35Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: PARTIAL before: a session was bound to its partition"
+    },
+    {
+     "at": "2026-09-17T05:51:35Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 8a00521 (M7.1–M7.8 and the evidence-derived batch)"
+    },
+    {
+     "at": "2026-09-17T05:51:35Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring named on the card"
+    },
+    {
+     "at": "2026-09-17T05:51:35Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification on the real Core and the real app (see card)"
+    },
+    {
+     "at": "2026-09-17T05:51:35Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 35186313808 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-17T05:51:35Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
+    }
+   ],
+   "status_changed_on": "2026-09-17T05:51:35Z"
   },
   {
    "id": "IMP-EV-0084",
@@ -12204,8 +12296,54 @@
    "milestone": "M7",
    "qual": "QUAL-EV-0084",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0110_0084_a_forged_peer_cannot_attach_and_a_second_host_gets_the_conflict",
+    "test:qual_m7_6_taking_control_blocks_agent_input_at_once_and_returning_it_moves_the_lease",
+    "test:apps/desktop/src/main/lease.test.ts",
+    "run:35186313808",
+    "commit:8a00521",
+    "artifact:evidence/m7/IMP-EV-0084/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T05:51:35Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: PARTIAL before: the control lease"
+    },
+    {
+     "at": "2026-09-17T05:51:35Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 8a00521 (M7.1–M7.8 and the evidence-derived batch)"
+    },
+    {
+     "at": "2026-09-17T05:51:35Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring named on the card"
+    },
+    {
+     "at": "2026-09-17T05:51:35Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification on the real Core and the real app (see card)"
+    },
+    {
+     "at": "2026-09-17T05:51:35Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 35186313808 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-17T05:51:35Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
+    }
+   ],
+   "status_changed_on": "2026-09-17T05:51:35Z"
   },
   {
    "id": "IMP-EV-0085",
@@ -12218,8 +12356,53 @@
    "milestone": "M7",
    "qual": "QUAL-EV-0085",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0085_an_emergency_stop_halts_browser_input_before_the_host_with_the_reason_on_record",
+    "test:apps/desktop/e2e/browser.spec.ts",
+    "run:35186313808",
+    "commit:8a00521",
+    "artifact:evidence/m7/IMP-EV-0085/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T05:51:35Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: PARTIAL before: `EmergencyStop` blocked effects at the kernel"
+    },
+    {
+     "at": "2026-09-17T05:51:35Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 8a00521 (M7.1–M7.8 and the evidence-derived batch)"
+    },
+    {
+     "at": "2026-09-17T05:51:36Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring named on the card"
+    },
+    {
+     "at": "2026-09-17T05:51:36Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification on the real Core and the real app (see card)"
+    },
+    {
+     "at": "2026-09-17T05:51:36Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 35186313808 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-17T05:51:36Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
+    }
+   ],
+   "status_changed_on": "2026-09-17T05:51:36Z"
   },
   {
    "id": "IMP-EV-0086",
@@ -12232,8 +12415,53 @@
    "milestone": "M7",
    "qual": "QUAL-EV-0086",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0086_a_visual_fallback_without_a_verified_postcondition_blocks_completion",
+    "test:qual_m7_5_a_visual_region_is_captured_targeted_and_clicked_by_a_point_with_the_fallback_on_record",
+    "run:35186313808",
+    "commit:8a00521",
+    "artifact:evidence/m7/IMP-EV-0086/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T05:51:36Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: PARTIAL before: the visual fallback recorded modality, reason and target"
+    },
+    {
+     "at": "2026-09-17T05:51:36Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 8a00521 (M7.1–M7.8 and the evidence-derived batch)"
+    },
+    {
+     "at": "2026-09-17T05:51:36Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring named on the card"
+    },
+    {
+     "at": "2026-09-17T05:51:36Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification on the real Core and the real app (see card)"
+    },
+    {
+     "at": "2026-09-17T05:51:36Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 35186313808 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-17T05:51:36Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
+    }
+   ],
+   "status_changed_on": "2026-09-17T05:51:36Z"
   },
   {
    "id": "IMP-EV-0087",
@@ -12246,8 +12474,53 @@
    "milestone": "M7",
    "qual": "QUAL-EV-0087",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:apps/desktop/e2e/browser.spec.ts",
+    "test:qual_m7_6_taking_control_blocks_agent_input_at_once_and_returning_it_moves_the_lease",
+    "run:35186313808",
+    "commit:8a00521",
+    "artifact:evidence/m7/IMP-EV-0087/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T05:51:36Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: PARTIAL before: the takeover was explicit"
+    },
+    {
+     "at": "2026-09-17T05:51:36Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 8a00521 (M7.1–M7.8 and the evidence-derived batch)"
+    },
+    {
+     "at": "2026-09-17T05:51:36Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring named on the card"
+    },
+    {
+     "at": "2026-09-17T05:51:36Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification on the real Core and the real app (see card)"
+    },
+    {
+     "at": "2026-09-17T05:51:36Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 35186313808 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-17T05:51:36Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
+    }
+   ],
+   "status_changed_on": "2026-09-17T05:51:36Z"
   },
   {
    "id": "IMP-EV-0088",
@@ -12261,8 +12534,54 @@
    "milestone": "M7",
    "qual": "QUAL-EV-0088",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_m7_8_a_credential_is_filled_by_handle_into_its_bound_origin_only_and_the_value_never_crosses",
+    "test:qual_m7_4_actions_run_by_reference_under_the_effect_they_carry_and_check_their_postconditions",
+    "test:submissions_and_consequential_actions_are_protected_fields_and_tabs_are_not",
+    "run:35186313808",
+    "commit:8a00521",
+    "artifact:evidence/m7/IMP-EV-0088/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T05:51:36Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: PARTIAL before: `classify_action`"
+    },
+    {
+     "at": "2026-09-17T05:51:37Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 8a00521 (M7.1–M7.8 and the evidence-derived batch)"
+    },
+    {
+     "at": "2026-09-17T05:51:37Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring named on the card"
+    },
+    {
+     "at": "2026-09-17T05:51:37Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification on the real Core and the real app (see card)"
+    },
+    {
+     "at": "2026-09-17T05:51:37Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 35186313808 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-17T05:51:37Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
+    }
+   ],
+   "status_changed_on": "2026-09-17T05:51:37Z"
   },
   {
    "id": "IMP-EV-0089",
@@ -12275,8 +12594,53 @@
    "milestone": "M7",
    "qual": "QUAL-EV-0089",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0089_every_failure_code_of_the_taxonomy_is_emitted_with_its_recovery",
+    "test:apps/desktop/e2e/browser.spec.ts",
+    "run:35186313808",
+    "commit:8a00521",
+    "artifact:evidence/m7/IMP-EV-0089/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T05:51:37Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: PARTIAL before: `TARGET_STALE`, `TARGET_DISABLED`, `USER_HAS_CONTROL`, `EFFECT_RECLASSIFIED` existed under their own names"
+    },
+    {
+     "at": "2026-09-17T05:51:37Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 8a00521 (M7.1–M7.8 and the evidence-derived batch)"
+    },
+    {
+     "at": "2026-09-17T05:51:37Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring named on the card"
+    },
+    {
+     "at": "2026-09-17T05:51:37Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification on the real Core and the real app (see card)"
+    },
+    {
+     "at": "2026-09-17T05:51:37Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 35186313808 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-17T05:51:37Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
+    }
+   ],
+   "status_changed_on": "2026-09-17T05:51:37Z"
   },
   {
    "id": "IMP-EV-0090",
@@ -12289,8 +12653,53 @@
    "milestone": "M7",
    "qual": "QUAL-EV-0090",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:apps/desktop/e2e/browser.spec.ts",
+    "test:qual_ev_0089_every_failure_code_of_the_taxonomy_is_emitted_with_its_recovery",
+    "run:35186313808",
+    "commit:8a00521",
+    "artifact:evidence/m7/IMP-EV-0090/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T05:51:37Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: IMPLEMENTED by construction since M7.4"
+    },
+    {
+     "at": "2026-09-17T05:51:37Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 8a00521 (M7.1–M7.8 and the evidence-derived batch)"
+    },
+    {
+     "at": "2026-09-17T05:51:37Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring named on the card"
+    },
+    {
+     "at": "2026-09-17T05:51:37Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification on the real Core and the real app (see card)"
+    },
+    {
+     "at": "2026-09-17T05:51:37Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 35186313808 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-17T05:51:37Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
+    }
+   ],
+   "status_changed_on": "2026-09-17T05:51:37Z"
   },
   {
    "id": "IMP-EV-0091",
@@ -13197,8 +13606,53 @@
    "milestone": "M7",
    "qual": "QUAL-EV-0110",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0110_0084_a_forged_peer_cannot_attach_and_a_second_host_gets_the_conflict",
+    "test:qual_m7_1_a_browser_session_is_hosted_by_the_desktop_and_driven_through_the_cdp_bridge",
+    "run:35186313808",
+    "commit:8a00521",
+    "artifact:evidence/m7/IMP-EV-0110/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T05:51:38Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: IMPLEMENTED by M7.1"
+    },
+    {
+     "at": "2026-09-17T05:51:38Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 8a00521 (M7.1–M7.8 and the evidence-derived batch)"
+    },
+    {
+     "at": "2026-09-17T05:51:38Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring named on the card"
+    },
+    {
+     "at": "2026-09-17T05:51:38Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification on the real Core and the real app (see card)"
+    },
+    {
+     "at": "2026-09-17T05:51:38Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 35186313808 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-17T05:51:38Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
+    }
+   ],
+   "status_changed_on": "2026-09-17T05:51:38Z"
   },
   {
    "id": "IMP-EV-0111",
@@ -14913,8 +15367,53 @@
    "milestone": "M7",
    "qual": "QUAL-EV-0147",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0082_0234_0277_0282_an_accessible_form_needs_no_pixels_and_a_canvas_escalates_explicitly",
+    "test:qual_ev_0086_a_visual_fallback_without_a_verified_postcondition_blocks_completion",
+    "run:35186313808",
+    "commit:8a00521",
+    "artifact:evidence/m7/IMP-EV-0147/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T05:51:38Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: PARTIAL before: browser evidence events carried fingerprints and egress references but no link to their call"
+    },
+    {
+     "at": "2026-09-17T05:51:38Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 8a00521 (M7.1–M7.8 and the evidence-derived batch)"
+    },
+    {
+     "at": "2026-09-17T05:51:38Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring named on the card"
+    },
+    {
+     "at": "2026-09-17T05:51:38Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification on the real Core and the real app (see card)"
+    },
+    {
+     "at": "2026-09-17T05:51:38Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 35186313808 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-17T05:51:38Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
+    }
+   ],
+   "status_changed_on": "2026-09-17T05:51:38Z"
   },
   {
    "id": "IMP-EV-0150",
@@ -18996,8 +19495,53 @@
    "milestone": "M7",
    "qual": "QUAL-EV-0234",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0082_0234_0277_0282_an_accessible_form_needs_no_pixels_and_a_canvas_escalates_explicitly",
+    "test:qual_m7_5_a_visual_region_is_captured_targeted_and_clicked_by_a_point_with_the_fallback_on_record",
+    "run:35186313808",
+    "commit:8a00521",
+    "artifact:evidence/m7/IMP-EV-0234/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T05:51:38Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: IMPLEMENTED by M7.2"
+    },
+    {
+     "at": "2026-09-17T05:51:38Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 8a00521 (M7.1–M7.8 and the evidence-derived batch)"
+    },
+    {
+     "at": "2026-09-17T05:51:38Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring named on the card"
+    },
+    {
+     "at": "2026-09-17T05:51:38Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification on the real Core and the real app (see card)"
+    },
+    {
+     "at": "2026-09-17T05:51:38Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 35186313808 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-17T05:51:39Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
+    }
+   ],
+   "status_changed_on": "2026-09-17T05:51:39Z"
   },
   {
    "id": "IMP-EV-0237",
@@ -20719,8 +21263,53 @@
    "milestone": "M7",
    "qual": "QUAL-EV-0276",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:apps/desktop/e2e/browser.spec.ts",
+    "test:qual_m7_1_a_browser_session_is_hosted_by_the_desktop_and_driven_through_the_cdp_bridge",
+    "run:35186313808",
+    "commit:8a00521",
+    "artifact:evidence/m7/IMP-EV-0276/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T05:51:39Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: IMPLEMENTED by M7.1"
+    },
+    {
+     "at": "2026-09-17T05:51:39Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 8a00521 (M7.1–M7.8 and the evidence-derived batch)"
+    },
+    {
+     "at": "2026-09-17T05:51:39Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring named on the card"
+    },
+    {
+     "at": "2026-09-17T05:51:39Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification on the real Core and the real app (see card)"
+    },
+    {
+     "at": "2026-09-17T05:51:39Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 35186313808 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-17T05:51:39Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
+    }
+   ],
+   "status_changed_on": "2026-09-17T05:51:39Z"
   },
   {
    "id": "IMP-EV-0277",
@@ -20733,8 +21322,53 @@
    "milestone": "M7",
    "qual": "QUAL-EV-0277",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0082_0234_0277_0282_an_accessible_form_needs_no_pixels_and_a_canvas_escalates_explicitly",
+    "test:qual_m7_2_entities_carry_stable_references_and_a_changed_element_resolves_stale",
+    "run:35186313808",
+    "commit:8a00521",
+    "artifact:evidence/m7/IMP-EV-0277/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T05:51:39Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: IMPLEMENTED by M7.2"
+    },
+    {
+     "at": "2026-09-17T05:51:39Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 8a00521 (M7.1–M7.8 and the evidence-derived batch)"
+    },
+    {
+     "at": "2026-09-17T05:51:39Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring named on the card"
+    },
+    {
+     "at": "2026-09-17T05:51:39Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification on the real Core and the real app (see card)"
+    },
+    {
+     "at": "2026-09-17T05:51:39Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 35186313808 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-17T05:51:39Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
+    }
+   ],
+   "status_changed_on": "2026-09-17T05:51:39Z"
   },
   {
    "id": "IMP-EV-0278",
@@ -20747,8 +21381,54 @@
    "milestone": "M7",
    "qual": "QUAL-EV-0278",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_m7_2_entities_carry_stable_references_and_a_changed_element_resolves_stale",
+    "test:a_removed_or_changed_element_resolves_stale_never_to_another_node",
+    "test:references_are_stable_across_versions_and_dom_node_ids",
+    "run:35186313808",
+    "commit:8a00521",
+    "artifact:evidence/m7/IMP-EV-0278/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T05:51:39Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: IMPLEMENTED by M7.2"
+    },
+    {
+     "at": "2026-09-17T05:51:39Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 8a00521 (M7.1–M7.8 and the evidence-derived batch)"
+    },
+    {
+     "at": "2026-09-17T05:51:39Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring named on the card"
+    },
+    {
+     "at": "2026-09-17T05:51:39Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification on the real Core and the real app (see card)"
+    },
+    {
+     "at": "2026-09-17T05:51:39Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 35186313808 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-17T05:51:40Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
+    }
+   ],
+   "status_changed_on": "2026-09-17T05:51:40Z"
   },
   {
    "id": "IMP-EV-0279",
@@ -20761,8 +21441,53 @@
    "milestone": "M7",
    "qual": "QUAL-EV-0279",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_m7_3_page_reads_after_the_first_are_bounded_deltas_between_fingerprints",
+    "test:a_delta_is_bounded_to_what_changed_and_applies_to_the_same_page",
+    "run:35186313808",
+    "commit:8a00521",
+    "artifact:evidence/m7/IMP-EV-0279/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T05:51:40Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: IMPLEMENTED by M7.3"
+    },
+    {
+     "at": "2026-09-17T05:51:40Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 8a00521 (M7.1–M7.8 and the evidence-derived batch)"
+    },
+    {
+     "at": "2026-09-17T05:51:40Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring named on the card"
+    },
+    {
+     "at": "2026-09-17T05:51:40Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification on the real Core and the real app (see card)"
+    },
+    {
+     "at": "2026-09-17T05:51:40Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 35186313808 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-17T05:51:40Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
+    }
+   ],
+   "status_changed_on": "2026-09-17T05:51:40Z"
   },
   {
    "id": "IMP-EV-0280",
@@ -20775,8 +21500,52 @@
    "milestone": "M7",
    "qual": "QUAL-EV-0280",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0280_a_known_transition_is_offered_for_the_same_fingerprint_and_not_for_a_changed_page",
+    "run:35186313808",
+    "commit:8a00521",
+    "artifact:evidence/m7/IMP-EV-0280/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T05:51:40Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: MISSING before: transitions were on the log"
+    },
+    {
+     "at": "2026-09-17T05:51:40Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 8a00521 (M7.1–M7.8 and the evidence-derived batch)"
+    },
+    {
+     "at": "2026-09-17T05:51:40Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring named on the card"
+    },
+    {
+     "at": "2026-09-17T05:51:40Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification on the real Core and the real app (see card)"
+    },
+    {
+     "at": "2026-09-17T05:51:40Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 35186313808 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-17T05:51:40Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
+    }
+   ],
+   "status_changed_on": "2026-09-17T05:51:40Z"
   },
   {
    "id": "IMP-EV-0281",
@@ -20804,8 +21573,53 @@
    "milestone": "M7",
    "qual": "QUAL-EV-0282",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_ev_0082_0234_0277_0282_an_accessible_form_needs_no_pixels_and_a_canvas_escalates_explicitly",
+    "test:a_canvas_and_an_unlabeled_image_are_visual_regions_a_labeled_image_is_not",
+    "run:35186313808",
+    "commit:8a00521",
+    "artifact:evidence/m7/IMP-EV-0282/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T05:51:40Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: IMPLEMENTED by M7.5"
+    },
+    {
+     "at": "2026-09-17T05:51:40Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 8a00521 (M7.1–M7.8 and the evidence-derived batch)"
+    },
+    {
+     "at": "2026-09-17T05:51:40Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring named on the card"
+    },
+    {
+     "at": "2026-09-17T05:51:40Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification on the real Core and the real app (see card)"
+    },
+    {
+     "at": "2026-09-17T05:51:41Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 35186313808 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-17T05:51:41Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
+    }
+   ],
+   "status_changed_on": "2026-09-17T05:51:41Z"
   },
   {
    "id": "IMP-EV-0283",
@@ -20818,8 +21632,53 @@
    "milestone": "M7",
    "qual": "QUAL-EV-0283",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_m7_6_taking_control_blocks_agent_input_at_once_and_returning_it_moves_the_lease",
+    "test:apps/desktop/e2e/browser.spec.ts",
+    "run:35186313808",
+    "commit:8a00521",
+    "artifact:evidence/m7/IMP-EV-0283/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T05:51:41Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: IMPLEMENTED by M7.6"
+    },
+    {
+     "at": "2026-09-17T05:51:41Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 8a00521 (M7.1–M7.8 and the evidence-derived batch)"
+    },
+    {
+     "at": "2026-09-17T05:51:41Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring named on the card"
+    },
+    {
+     "at": "2026-09-17T05:51:41Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification on the real Core and the real app (see card)"
+    },
+    {
+     "at": "2026-09-17T05:51:41Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 35186313808 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-17T05:51:41Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
+    }
+   ],
+   "status_changed_on": "2026-09-17T05:51:41Z"
   },
   {
    "id": "IMP-EV-0284",
@@ -20833,8 +21692,53 @@
    "milestone": "M7",
    "qual": "QUAL-EV-0284",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_m7_7_hostile_page_and_readme_are_data_the_key_never_leaves_and_the_forbidden_tool_stays_unavailable",
+    "test:apps/desktop/e2e/browser.spec.ts",
+    "run:35186313808",
+    "commit:8a00521",
+    "artifact:evidence/m7/IMP-EV-0284/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T05:51:41Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: IMPLEMENTED by M7.7"
+    },
+    {
+     "at": "2026-09-17T05:51:41Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented in 8a00521 (M7.1–M7.8 and the evidence-derived batch)"
+    },
+    {
+     "at": "2026-09-17T05:51:41Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring named on the card"
+    },
+    {
+     "at": "2026-09-17T05:51:41Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real-system qualification on the real Core and the real app (see card)"
+    },
+    {
+     "at": "2026-09-17T05:51:41Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 35186313808 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-17T05:51:41Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: card, evidence.json and CI run json alongside"
+    }
+   ],
+   "status_changed_on": "2026-09-17T05:51:41Z"
   },
   {
    "id": "IMP-EV-0285",

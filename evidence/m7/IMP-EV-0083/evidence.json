@@ -7,10 +7,20 @@
   "qual_ev_0089_every_failure_code_of_the_taxonomy_is_emitted_with_its_recovery",
   "qual_ev_0110_0084_a_forged_peer_cannot_attach_and_a_second_host_gets_the_conflict"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "8a00521"
+ ],
+ "runs": [
+  {
+   "id": "gha-35186313808",
+   "kind": "hosted CI on 8a00521 (main)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/35186313808",
+   "log": "ci-run-35186313808.json"
+  }
+ ],
  "proof": "`browser.spec.ts` prompt-injection test (real app): a page whose title claims to be another is driven and reported under the identity of the exact web contents attached — the host's `webContentsId` and `osProcessId` equal the real view's, the partition is the session's; the title changes nothing. `qual_ev_0089_…`: a host that cannot verify its view answers `WINDOW_UNVERIFIABLE`, an application failure with its recovery, never a click elsewhere.",
  "audit": "PARTIAL before: a session was bound to its partition (M7.1) and a host to its connection; the answering view was not re-verified per request",
  "limitations": "Identity is the browser's own web contents; there is no approved-application registry for OS windows outside the browser in this build.",
- "ci": ""
+ "ci": "evidence/m7/IMP-EV-0083/ci-run-35186313808.json"
 }

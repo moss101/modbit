@@ -6,10 +6,20 @@
   "qual_ev_0086_a_visual_fallback_without_a_verified_postcondition_blocks_completion",
   "qual_m7_5_a_visual_region_is_captured_targeted_and_clicked_by_a_point_with_the_fallback_on_record"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "8a00521"
+ ],
+ "runs": [
+  {
+   "id": "gha-35186313808",
+   "kind": "hosted CI on 8a00521 (main)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/35186313808",
+   "log": "ci-run-35186313808.json"
+  }
+ ],
  "proof": "`qual_ev_0086_…` (real Core, scripted model): a point click without `expect` succeeds and is on the log unverified; completion is refused naming it; the click redone with a postcondition that holds lets completion through; both records name their call.",
  "audit": "PARTIAL before: the visual fallback recorded modality, reason and target (M7.5) and verified a declared postcondition; nothing rejected a fallback that declared none",
  "limitations": "Verification is the declared postcondition (URL, text, value, change); the verifier does not judge whether the postcondition was the right one.",
- "ci": ""
+ "ci": "evidence/m7/IMP-EV-0086/ci-run-35186313808.json"
 }

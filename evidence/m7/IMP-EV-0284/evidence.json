@@ -6,10 +6,20 @@
   "qual_m7_7_hostile_page_and_readme_are_data_the_key_never_leaves_and_the_forbidden_tool_stays_unavailable",
   "apps/desktop/e2e/browser.spec.ts"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "8a00521"
+ ],
+ "runs": [
+  {
+   "id": "gha-35186313808",
+   "kind": "hosted CI on 8a00521 (main)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/35186313808",
+   "log": "ci-run-35186313808.json"
+  }
+ ],
  "proof": "`qual_m7_7_…`: hostile page and README are data; the forbidden tool stays unavailable; no secret leaves.",
  "audit": "IMPLEMENTED by M7.7",
  "limitations": "See M7.7.",
- "ci": ""
+ "ci": "evidence/m7/IMP-EV-0284/ci-run-35186313808.json"
 }

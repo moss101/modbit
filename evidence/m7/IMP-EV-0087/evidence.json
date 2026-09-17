@@ -6,10 +6,20 @@
   "apps/desktop/e2e/browser.spec.ts",
   "qual_m7_6_taking_control_blocks_agent_input_at_once_and_returning_it_moves_the_lease"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "8a00521"
+ ],
+ "runs": [
+  {
+   "id": "gha-35186313808",
+   "kind": "hosted CI on 8a00521 (main)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/35186313808",
+   "log": "ci-run-35186313808.json"
+  }
+ ],
  "proof": "`browser.spec.ts` preemption test (real app): with the agent's run live, a key from the person moves the lease to generation 2 and the panel to USER; the agent's fill is refused `HUMAN_ACTIVE` and never reaches the host; control returned (generation 3) lets the fill land with its postcondition.",
  "audit": "PARTIAL before: the takeover was explicit (a button, M7.6); the person's activity in the view did not move the lease",
  "limitations": "Mouse activity in the view is not observed by Electron before the page (no `before-input-event` for pointer input); keyboard is; a cooldown beyond the explicit return of control is not enforced.",
- "ci": ""
+ "ci": "evidence/m7/IMP-EV-0087/ci-run-35186313808.json"
 }

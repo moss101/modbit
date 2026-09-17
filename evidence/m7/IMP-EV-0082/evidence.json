@@ -7,10 +7,20 @@
   "apps/desktop/e2e/browser.spec.ts",
   "qual_m7_5_a_visual_region_is_captured_targeted_and_clicked_by_a_point_with_the_fallback_on_record"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "8a00521"
+ ],
+ "runs": [
+  {
+   "id": "gha-35186313808",
+   "kind": "hosted CI on 8a00521 (main)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/35186313808",
+   "log": "ci-run-35186313808.json"
+  }
+ ],
  "proof": "`qual_ev_0082_0234_0277_0282_…` (real Core, fake host): a sign-up form is filled, selected, checked and submitted (under approval) from semantic state alone — the host is never asked for a pixel before the drawn picker; the canvas escalates explicitly to one region capture with the reason on record, then a point click verified by postcondition. `browser.spec.ts` (real app): the login form completes with no capture; the canvas picker is captured region-only.",
  "audit": "IMPLEMENTED by M7.2–M7.5 (this card ladders the requirement and adds the ladder proof in one run)",
  "limitations": "No OS-level (non-browser) deterministic integration exists in this build: the ladder's first rung is the browser's semantic state; raw input is the point click inside a captured region.",
- "ci": ""
+ "ci": "evidence/m7/IMP-EV-0082/ci-run-35186313808.json"
 }

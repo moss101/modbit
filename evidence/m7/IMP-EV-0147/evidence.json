@@ -6,10 +6,20 @@
   "qual_ev_0082_0234_0277_0282_an_accessible_form_needs_no_pixels_and_a_canvas_escalates_explicitly",
   "qual_ev_0086_a_visual_fallback_without_a_verified_postcondition_blocks_completion"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "8a00521"
+ ],
+ "runs": [
+  {
+   "id": "gha-35186313808",
+   "kind": "hosted CI on 8a00521 (main)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/35186313808",
+   "log": "ci-run-35186313808.json"
+  }
+ ],
  "proof": "`qual_ev_0082_0234_0277_0282_…` and `qual_ev_0086_…`: every `BrowserRegionCaptured` / `BrowserActionPerformed` names its call; the capture's egress reference is a 64-hex object; the click's verification claim (`postcondition_held`) sits on the same record.",
  "audit": "PARTIAL before: browser evidence events carried fingerprints and egress references but no link to their call",
  "limitations": "Browser evidence links to the run through the call, not to a workspace revision (the browser is not the workspace).",
- "ci": ""
+ "ci": "evidence/m7/IMP-EV-0147/ci-run-35186313808.json"
 }

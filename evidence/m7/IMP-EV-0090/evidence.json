@@ -6,10 +6,20 @@
   "apps/desktop/e2e/browser.spec.ts",
   "qual_ev_0089_every_failure_code_of_the_taxonomy_is_emitted_with_its_recovery"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "8a00521"
+ ],
+ "runs": [
+  {
+   "id": "gha-35186313808",
+   "kind": "hosted CI on 8a00521 (main)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/35186313808",
+   "log": "ci-run-35186313808.json"
+  }
+ ],
  "proof": "`browser.spec.ts` faults test (real app): a secret placed in the OS clipboard before the agent types is intact after the fills and appears in no model text; a div that takes no text is refused before replacement; a real field takes the typed value with its postcondition.",
  "audit": "IMPLEMENTED by construction since M7.4 (text enters through `Input.insertText`, never the clipboard); the destination check is new",
  "limitations": "The clipboard assertion runs only where the runner offers a clipboard.",
- "ci": ""
+ "ci": "evidence/m7/IMP-EV-0090/ci-run-35186313808.json"
 }

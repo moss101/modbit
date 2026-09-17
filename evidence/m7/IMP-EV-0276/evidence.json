@@ -6,10 +6,20 @@
   "apps/desktop/e2e/browser.spec.ts",
   "qual_m7_1_a_browser_session_is_hosted_by_the_desktop_and_driven_through_the_cdp_bridge"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "8a00521"
+ ],
+ "runs": [
+  {
+   "id": "gha-35186313808",
+   "kind": "hosted CI on 8a00521 (main)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/35186313808",
+   "log": "ci-run-35186313808.json"
+  }
+ ],
  "proof": "`browser.spec.ts` (real app): a real page with a form, a canvas, a POST sign-in and a hostile page executes with standard Chromium behaviour; `qual_m7_1_…` on the real Core.",
  "audit": "IMPLEMENTED by M7.1 (a real Chromium `WebContentsView` driven through CDP; no engine of Modbit's own)",
  "limitations": "The fixture is a local page, not a hosted SaaS.",
- "ci": ""
+ "ci": "evidence/m7/IMP-EV-0276/ci-run-35186313808.json"
 }

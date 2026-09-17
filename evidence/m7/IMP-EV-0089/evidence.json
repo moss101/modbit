@@ -6,10 +6,20 @@
   "qual_ev_0089_every_failure_code_of_the_taxonomy_is_emitted_with_its_recovery",
   "apps/desktop/e2e/browser.spec.ts"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "8a00521"
+ ],
+ "runs": [
+  {
+   "id": "gha-35186313808",
+   "kind": "hosted CI on 8a00521 (main)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/35186313808",
+   "log": "ci-run-35186313808.json"
+  }
+ ],
  "proof": "`qual_ev_0089_…` (real Core, fake host): each code is the call's outcome with its recovery text — from the Core (stale, disabled, empty tree, unsafe, human active) and from the host (occluded, modal, window, permission, not editable) — and none is an infrastructure failure. `browser.spec.ts` faults test (real page): an overlay, a div, a geolocation request and an alert produce the codes on a real Chromium.",
  "audit": "PARTIAL before: `TARGET_STALE`, `TARGET_DISABLED`, `USER_HAS_CONTROL`, `EFFECT_RECLASSIFIED` existed under their own names; no occlusion, modal, window, accessibility or permission code",
  "limitations": "`HUMAN_ACTIVE` and `ACTION_UNSAFE` were `USER_HAS_CONTROL` and `EFFECT_RECLASSIFIED` in the M7.4/M7.6 cards' text.",
- "ci": ""
+ "ci": "evidence/m7/IMP-EV-0089/ci-run-35186313808.json"
 }

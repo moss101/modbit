@@ -6,10 +6,20 @@
   "qual_ev_0082_0234_0277_0282_an_accessible_form_needs_no_pixels_and_a_canvas_escalates_explicitly",
   "qual_m7_5_a_visual_region_is_captured_targeted_and_clicked_by_a_point_with_the_fallback_on_record"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "8a00521"
+ ],
+ "runs": [
+  {
+   "id": "gha-35186313808",
+   "kind": "hosted CI on 8a00521 (main)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/35186313808",
+   "log": "ci-run-35186313808.json"
+  }
+ ],
  "proof": "`qual_ev_0082_0234_0277_0282_…`: the accessible fixture completes with zero captures; the canvas fixture escalates once, region-only, with the reason.",
  "audit": "IMPLEMENTED by M7.2 (structural snapshot) and M7.5 (targeted capture)",
  "limitations": "A full-page screenshot as last-resort diagnostic evidence is not offered as a tool.",
- "ci": ""
+ "ci": "evidence/m7/IMP-EV-0234/ci-run-35186313808.json"
 }

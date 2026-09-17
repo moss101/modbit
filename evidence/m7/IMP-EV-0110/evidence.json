@@ -6,10 +6,20 @@
   "qual_ev_0110_0084_a_forged_peer_cannot_attach_and_a_second_host_gets_the_conflict",
   "qual_m7_1_a_browser_session_is_hosted_by_the_desktop_and_driven_through_the_cdp_bridge"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "8a00521"
+ ],
+ "runs": [
+  {
+   "id": "gha-35186313808",
+   "kind": "hosted CI on 8a00521 (main)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/35186313808",
+   "log": "ci-run-35186313808.json"
+  }
+ ],
  "proof": "`qual_ev_0110_0084_…`: the CLI kind is refused `CLIENT_CAPABILITY` naming `browser.host`; a second desktop connection is refused `HOST_CONFLICT`; a wrong partition is refused; the session is hosted again only once the holder's connection is gone. `qual_m7_1_…`: an un-isolated view is refused `HOST_NOT_ISOLATED`.",
  "audit": "IMPLEMENTED by M7.1 (authenticated surface, `browser.host` capability, `HOST_NOT_ISOLATED`, `PARTITION_MISMATCH`); the take-over refusal is new",
  "limitations": "Peer identity is the authenticated connection's client kind and the boot secret; there is no per-host certificate.",
- "ci": ""
+ "ci": "evidence/m7/IMP-EV-0110/ci-run-35186313808.json"
 }

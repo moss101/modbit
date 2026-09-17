@@ -6,10 +6,20 @@
   "qual_ev_0082_0234_0277_0282_an_accessible_form_needs_no_pixels_and_a_canvas_escalates_explicitly",
   "a_canvas_and_an_unlabeled_image_are_visual_regions_a_labeled_image_is_not"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "8a00521"
+ ],
+ "runs": [
+  {
+   "id": "gha-35186313808",
+   "kind": "hosted CI on 8a00521 (main)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/35186313808",
+   "log": "ci-run-35186313808.json"
+  }
+ ],
  "proof": "`qual_ev_0082_0234_0277_0282_…`: the form does not escalate; the canvas does, to its own box only.",
  "audit": "IMPLEMENTED by M7.5",
  "limitations": "Regions are detected by role.",
- "ci": ""
+ "ci": "evidence/m7/IMP-EV-0282/ci-run-35186313808.json"
 }

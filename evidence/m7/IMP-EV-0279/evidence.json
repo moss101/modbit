@@ -6,10 +6,20 @@
   "qual_m7_3_page_reads_after_the_first_are_bounded_deltas_between_fingerprints",
   "a_delta_is_bounded_to_what_changed_and_applies_to_the_same_page"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "8a00521"
+ ],
+ "runs": [
+  {
+   "id": "gha-35186313808",
+   "kind": "hosted CI on 8a00521 (main)",
+   "result": "PASS: all jobs green on macOS, Linux and Windows",
+   "url": "https://github.com/moss101/modbit/actions/runs/35186313808",
+   "log": "ci-run-35186313808.json"
+  }
+ ],
  "proof": "`qual_m7_3_…`: a long flow's deltas are a fraction of the page and applying them reproduces the page (state equivalence); `a_delta_is_bounded_to_what_changed_and_applies_to_the_same_page`.",
  "audit": "IMPLEMENTED by M7.3",
  "limitations": "Token reduction is measured in bytes of the observation.",
- "ci": ""
+ "ci": "evidence/m7/IMP-EV-0279/ci-run-35186313808.json"
 }
