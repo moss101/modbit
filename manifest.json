@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 1191,
-    "docs_bytes": 1198145
+    "root_and_tooling": 1193,
+    "docs_bytes": 1203307
   },
   "sections": [
     {
@@ -230,8 +230,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Terminal, Execution Router, and Sandbox Architecture",
-      "bytes": 12540,
-      "sha256": "ecd613916a083b23f34939f411fb56cb0103164221b82e6a5874a0f1e8ebd408"
+      "bytes": 15484,
+      "sha256": "07bb8bbf8ba371f66aade2ed340a54aaef35e0c53ae5975f079576c44fac0ee5"
     },
     {
       "path": "docs/22_BROWSER_AND_COMPUTER_USE.md",
@@ -257,8 +257,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Cloud Control Plane, Remote Execution, and Sync",
-      "bytes": 11105,
-      "sha256": "e4f16e0b8072867e1567a8ae63857c58b1edfc1e17ce90adad1156f5f237f72b"
+      "bytes": 11380,
+      "sha256": "5394680c0825cc33ddee819cd9af8bc958344e1cd2c9649722de0490fbb1c79c"
     },
     {
       "path": "docs/25_MULTIMODAL_MEDIA_AND_NOTEBOOK_RUNTIME.md",
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 27684,
-      "sha256": "110712d445254dd1ee934279da73eb6eaf96ef90086b96af62058f3d2dfa9381"
+      "bytes": 29049,
+      "sha256": "65b3971a2bb8af5c67f2f5648ac97d857985448cfb0b389b0a3b103d9baa7bdb"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -356,8 +356,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Dependency and Binding Decisions",
-      "bytes": 1967,
-      "sha256": "4def6bb25476c02a443305b4433c8444f980ba7cb4dc7c18399518d225c244f2"
+      "bytes": 2545,
+      "sha256": "037a85253201401822bde5ff76b0b6625057099995d06b30c0d1aec4e572b1f9"
     },
     {
       "path": "docs/36_BUILD_BUY_DEPENDENCY_AND_LICENSE_POLICY.md",
@@ -6765,6 +6765,16 @@
       "path": "evidence/m8/M8.4/evidence.json",
       "bytes": 1489,
       "sha256": "d8c5736237e824d02533a4a66dfdcd3fe056566f5c637049374e12c9e2f50fcb"
+    },
+    {
+      "path": "evidence/m8/M8.5/TASK_CARD.md",
+      "bytes": 5170,
+      "sha256": "84e4266578b308f2b98127e649da46853423c8e28bbeb72f96f82be4a3f8bdc5"
+    },
+    {
+      "path": "evidence/m8/M8.5/evidence.json",
+      "bytes": 1698,
+      "sha256": "40c33b611de7d3920d3381df6f6d867d063ea059b7267462fbec5f3ca0f4c1bc"
     },
     {
       "path": "graph/PROJECT_GRAPH.md",

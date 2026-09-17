@@ -26,7 +26,7 @@ pub struct ReferenceBackend {
     guest_bin: PathBuf,
     work_dir: PathBuf,
     image: Option<VerifiedImage>,
-    children: Mutex<HashMap<String, Child>>,
+    children: Mutex<HashMap<String, (Child, String)>>,
 }
 
 impl ReferenceBackend {
@@ -160,7 +160,7 @@ impl SandboxBackend for ReferenceBackend {
             self.children
                 .lock()
                 .expect("children")
-                .insert(sandbox_id.to_owned(), child);
+                .insert(sandbox_id.to_owned(), (child, addr.clone()));
             Ok(Provisioned {
                 sandbox_id: sandbox_id.to_owned(),
                 channel: Box::new(stream),
@@ -171,10 +171,29 @@ impl SandboxBackend for ReferenceBackend {
         })
     }
 
+    fn reconnect<'a>(&'a self, sandbox_id: &'a str) -> BoxFuture<'a, Result<super::Channel>> {
+        Box::pin(async move {
+            let addr = self
+                .children
+                .lock()
+                .expect("children")
+                .get(sandbox_id)
+                .map(|(_, a)| a.clone());
+            let Some(addr) = addr else {
+                return Err(SandboxError::Guest(format!(
+                    "no live guest for sandbox {sandbox_id}"
+                )));
+            };
+            let stream = tokio::net::TcpStream::connect(&addr).await?;
+            stream.set_nodelay(true)?;
+            Ok(Box::new(stream) as super::Channel)
+        })
+    }
+
     fn destroy<'a>(&'a self, sandbox_id: &'a str) -> BoxFuture<'a, Result<()>> {
         Box::pin(async move {
             let child = self.children.lock().expect("children").remove(sandbox_id);
-            if let Some(mut c) = child {
+            if let Some((mut c, _)) = child {
                 let _ = c.start_kill();
                 let _ = c.wait().await;
             }

@@ -624,6 +624,44 @@ pub enum TaskEvent {
         /// The control lease generation the request carried.
         lease_generation: u64,
     },
+    /// `SandboxLeaseAcquired` (M8.5, docs/21 "Sandbox substrate boundary",
+    /// docs/30): the task's sandbox was provisioned through the Sandbox
+    /// Gateway and admitted; its tools act inside it from here on. The
+    /// identity of the sandbox — never a credential. No state change.
+    SandboxLeaseAcquired {
+        /// The gateway's sandbox id.
+        sandbox_id: String,
+        /// `microvm` | `reference`.
+        backend: String,
+        /// Whether the backend isolates.
+        isolated: bool,
+        /// The verified image's guest version (empty when unverified).
+        #[serde(default)]
+        image_version: String,
+        /// The guest's boot id.
+        boot_id: String,
+        /// The workspace root inside the guest.
+        workspace_root: String,
+        /// The worker's cloud session lease generation it was issued under.
+        lease_generation: u64,
+    },
+    /// `SandboxReleased` (M8.5): the task ended and its sandbox was
+    /// destroyed. No state change.
+    SandboxReleased {
+        /// The sandbox.
+        sandbox_id: String,
+        /// Why (`task_completed` | `task_cancelled` | `task_failed`).
+        reason: String,
+    },
+    /// `SandboxLost` (M8.5, docs/21 "Sandbox recovery"): the sandbox stopped
+    /// answering; in-flight calls are unknown until reconciled (M8.9 brings
+    /// the recovery). No state change.
+    SandboxLost {
+        /// The sandbox.
+        sandbox_id: String,
+        /// What was observed.
+        detail: String,
+    },
     /// M7.7 (docs/22 "Prompt-injection isolation", REQ-EV-0284): a
     /// security-relevant attempt the runtime saw and answered — content
     /// shaped like instructions to the agent in what a tool returned
@@ -1583,6 +1621,9 @@ impl TaskEvent {
             Self::BrowserRegionCaptured { .. } => "BrowserRegionCaptured",
             Self::SecurityEventRecorded { .. } => "SecurityEventRecorded",
             Self::BrowserCredentialFilled { .. } => "BrowserCredentialFilled",
+            Self::SandboxLeaseAcquired { .. } => "SandboxLeaseAcquired",
+            Self::SandboxReleased { .. } => "SandboxReleased",
+            Self::SandboxLost { .. } => "SandboxLost",
             Self::UnsupportedLanguageOptInRecorded { .. } => "UnsupportedLanguageOptInRecorded",
             Self::ContextDocumentAttached { .. } => "ContextDocumentAttached",
             Self::SelectionRecorded { .. } => "SelectionRecorded",
@@ -1747,6 +1788,7 @@ impl Task {
             | TaskEvent::TaskResumeRequested { .. }
             | TaskEvent::TaskCancelRequested { .. }
             | TaskEvent::BrowserCredentialFilled { .. }
+            | TaskEvent::SandboxLeaseAcquired { .. }
             | TaskEvent::SelfReviewRecorded { .. }
             | TaskEvent::ToolsActivated { .. }
             | TaskEvent::ProgramStarted { .. }
@@ -1803,6 +1845,10 @@ impl Task {
                 }
                 None
             }
+            // A sandbox is given back after the task ended (M8.5), and one
+            // may be lost at any time: the records of the substrate's
+            // lifecycle land whatever the task's state.
+            TaskEvent::SandboxReleased { .. } | TaskEvent::SandboxLost { .. } => None,
         };
         if let Some(to) = next {
             self.state = self.state.transition(to)?;

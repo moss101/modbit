@@ -5267,6 +5267,85 @@ export declare type ConfigureForge = Message<"modbit.v1.ConfigureForge"> & {
 export declare const ConfigureForgeSchema: GenMessage<ConfigureForge>;
 
 /**
+ * The Sandbox Gateway a Cloud Core Worker's Core provisions from (M8.5,
+ * docs/21, docs/24 "Sandbox Gateway"): the worker hands its Core the
+ * gateway's URL, its own bearer token and the cloud session lease
+ * generation the gateway checks. Not journaled: the token is held in
+ * memory and never returned, logged or stored.
+ *
+ * @generated from message modbit.v1.ConfigureSandboxGateway
+ */
+export declare type ConfigureSandboxGateway = Message<"modbit.v1.ConfigureSandboxGateway"> & {
+  /**
+   * @generated from field: string base_url = 1;
+   */
+  baseUrl: string;
+
+  /**
+   * the credential; empty clears the gateway
+   *
+   * @generated from field: string worker_token = 2;
+   */
+  workerToken: string;
+
+  /**
+   * @generated from field: string worker_id = 3;
+   */
+  workerId: string;
+
+  /**
+   * the tenant as the gateway knows it (uuid)
+   *
+   * @generated from field: string tenant_id = 4;
+   */
+  tenantId: string;
+
+  /**
+   * the worker's cloud session lease generation
+   *
+   * @generated from field: uint64 lease_generation = 5;
+   */
+  leaseGeneration: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.ConfigureSandboxGateway.
+ * Use `create(ConfigureSandboxGatewaySchema)` to create a new message.
+ */
+export declare const ConfigureSandboxGatewaySchema: GenMessage<ConfigureSandboxGateway>;
+
+/**
+ * @generated from message modbit.v1.SandboxGatewayConfigured
+ */
+export declare type SandboxGatewayConfigured = Message<"modbit.v1.SandboxGatewayConfigured"> & {
+  /**
+   * @generated from field: string base_url = 1;
+   */
+  baseUrl: string;
+
+  /**
+   * @generated from field: string worker_id = 2;
+   */
+  workerId: string;
+
+  /**
+   * @generated from field: uint64 lease_generation = 3;
+   */
+  leaseGeneration: bigint;
+
+  /**
+   * @generated from field: bool token_held = 4;
+   */
+  tokenHeld: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.SandboxGatewayConfigured.
+ * Use `create(SandboxGatewayConfiguredSchema)` to create a new message.
+ */
+export declare const SandboxGatewayConfiguredSchema: GenMessage<SandboxGatewayConfigured>;
+
+/**
  * @generated from message modbit.v1.ForgeConfigured
  */
 export declare type ForgeConfigured = Message<"modbit.v1.ForgeConfigured"> & {

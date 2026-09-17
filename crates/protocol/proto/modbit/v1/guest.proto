@@ -19,7 +19,7 @@ message GuestHello {
   uint32 protocol_major = 1;       // the guest RPC protocol it implements
   uint32 protocol_minor = 2;
   string guest_version = 3;        // the guest binary's version
-  repeated string methods = 4;     // health | exec | fs.read | fs.write | net.probe
+  repeated string methods = 4;     // health | exec | fs.read | fs.write | net.probe | proc | pty | fs.dir (M8.5)
   string boot_id = 5;              // unique per boot
 }
 
@@ -58,7 +58,7 @@ message GuestCall {
   string call_id = 1;              // unique; doubles as the nonce
   string task_id = 2;              // what this call acts for
   string effect_id = 3;            // the ledgered effect (empty for reads)
-  string capability = 4;           // proc.exec | fs.read | fs.write | net.probe | health
+  string capability = 4;           // proc.exec | fs.read | fs.write | fs.dir | net.probe | health | pty
   bytes auth = 5;                  // HMAC-SHA256(credential, call_id || capability || body)
   oneof body {
     GuestHealth health = 10;
@@ -66,6 +66,17 @@ message GuestCall {
     GuestReadFile read_file = 12;
     GuestWriteFile write_file = 13;
     GuestNetProbe net_probe = 14;
+    // M8.5
+    GuestProcStart proc_start = 20;
+    GuestProcFollow proc_follow = 21;
+    GuestProcWrite proc_write = 22;
+    GuestProcCancel proc_cancel = 23;
+    GuestPtyResize pty_resize = 24;
+    GuestListDir list_dir = 30;
+    GuestStat stat = 31;
+    GuestMkdir mkdir = 32;
+    GuestRemove remove = 33;
+    GuestRename rename = 34;
   }
 }
 
@@ -106,6 +117,13 @@ message GuestReply {
     GuestFileWritten written = 13;
     GuestNetProbeResult probe = 14;
     GuestRefusal refusal = 15;
+    // M8.5
+    GuestProcStarted proc_started = 20;
+    GuestProcOutput proc_output = 21;
+    GuestProcAck proc_ack = 22;
+    GuestDirListing listing = 30;
+    GuestStatResult stat = 31;
+    GuestFsDone fs_done = 32;
   }
 }
 
@@ -154,4 +172,115 @@ message GuestFrame {
     GuestCall call = 5;
     GuestReply reply = 6;
   }
+}
+
+// ---- M8.5: typed process, filesystem and PTY RPC ------------------------
+// Processes are started and then followed: output is kept in a bounded
+// ring inside the guest with a cursor, so a follower that detaches (a
+// gateway link lost, a worker handed over) attaches again and replays from
+// its cursor (docs/21 "PTY attach/replay"). A PTY-backed process is the
+// same call with `pty` set.
+
+message GuestProcStart {
+  repeated string argv = 1;
+  string cwd = 2;
+  repeated string env = 3;         // KEY=VALUE; nothing inherited
+  uint64 timeout_ms = 4;           // wall-clock ceiling; 0 = the policy's
+  bool pty = 5;
+  uint32 cols = 6;
+  uint32 rows = 7;
+  bool stdin_open = 8;             // keep stdin open for GuestProcWrite
+}
+
+message GuestProcStarted {
+  string proc_id = 1;
+  uint32 pid = 2;
+}
+
+// Follow a process: output after `after_cursor` (up to `max_bytes`), waiting
+// up to `wait_ms` for more when there is none yet; the exit when it has one.
+message GuestProcFollow {
+  string proc_id = 1;
+  uint64 after_cursor = 2;
+  uint64 max_bytes = 3;
+  uint64 wait_ms = 4;
+}
+
+message GuestProcOutput {
+  string proc_id = 1;
+  bytes data = 2;                  // stdout and stderr interleaved as produced (a PTY has one stream)
+  uint64 cursor = 3;               // the cursor after `data`
+  bool truncated = 4;              // bytes before `after_cursor` fell out of the ring
+  bool running = 5;
+  optional int32 exit_code = 6;
+  bool timed_out = 7;
+  bool cancelled = 8;
+  uint64 total_bytes = 9;          // produced so far
+}
+
+message GuestProcWrite {
+  string proc_id = 1;
+  bytes data = 2;
+  bool close_stdin = 3;
+}
+
+message GuestProcCancel {
+  string proc_id = 1;
+}
+
+message GuestPtyResize {
+  string proc_id = 1;
+  uint32 cols = 2;
+  uint32 rows = 3;
+}
+
+message GuestProcAck {
+  string proc_id = 1;
+}
+
+message GuestListDir {
+  string path = 1;
+  uint32 max_entries = 2;
+}
+
+message GuestDirEntry {
+  string name = 1;
+  string kind = 2;                 // file | dir | symlink | other
+  uint64 size = 3;
+  int64 modified_ms = 4;
+}
+
+message GuestDirListing {
+  repeated GuestDirEntry entries = 1;
+  bool truncated = 2;
+}
+
+message GuestStat {
+  string path = 1;
+}
+
+message GuestStatResult {
+  bool exists = 1;
+  string kind = 2;
+  uint64 size = 3;
+  int64 modified_ms = 4;
+  uint32 mode = 5;
+}
+
+message GuestMkdir {
+  string path = 1;
+}
+
+message GuestRemove {
+  string path = 1;
+  bool recursive = 2;
+}
+
+message GuestRename {
+  string from = 1;
+  string to = 2;
+}
+
+message GuestFsDone {
+  string path = 1;
 }

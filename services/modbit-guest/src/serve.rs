@@ -2,7 +2,10 @@
 
 use std::collections::HashSet;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
+
+use crate::procs::{ProcTable, StartSpec};
 
 use modbit_protocol::framing::{read_message, write_message};
 use modbit_protocol::v1::{self as wire, GuestFrame, guest_call, guest_frame, guest_reply};
@@ -11,7 +14,16 @@ use modbit_sandbox::{GUEST_PROTOCOL_MAJOR, GUEST_PROTOCOL_MINOR, auth};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 /// The methods this guest implements.
-pub const METHODS: &[&str] = &["health", "exec", "fs.read", "fs.write", "net.probe"];
+pub const METHODS: &[&str] = &[
+    "health",
+    "exec",
+    "fs.read",
+    "fs.write",
+    "net.probe",
+    "proc",
+    "pty",
+    "fs.dir",
+];
 
 /// Serve on a loopback TCP listener (the reference backend), announcing
 /// the address on stdout.
@@ -21,16 +33,21 @@ pub async fn serve_tcp(addr: &str, mapping: Option<PathBuf>) -> std::io::Result<
     println!("ready listen={local}");
     let boot_id = uuid::Uuid::now_v7().to_string();
     let started = Instant::now();
+    let procs = Arc::new(ProcTable::default());
     loop {
         let (stream, _) = listener.accept().await?;
         stream.set_nodelay(true)?;
         let mapping = mapping.clone();
         let boot_id = boot_id.clone();
-        // One gateway link at a time: a new connection is served after the
-        // previous ended (the gateway reconnects after a link loss).
-        if let Err(e) = serve_stream(stream, mapping, &boot_id, started).await {
-            eprintln!("modbit-guest: link ended: {e}");
-        }
+        // Every link is served on its own task: a relink after a lost
+        // channel is admitted at once, whatever the old channel's fate;
+        // the processes and their output are shared and survive the link.
+        let procs = Arc::clone(&procs);
+        tokio::spawn(async move {
+            if let Err(e) = serve_stream(stream, mapping, &boot_id, started, procs).await {
+                eprintln!("modbit-guest: link ended: {e}");
+            }
+        });
     }
 }
 
@@ -40,6 +57,7 @@ pub async fn serve_stream<S: AsyncRead + AsyncWrite + Unpin>(
     mapping: Option<PathBuf>,
     boot_id: &str,
     started: Instant,
+    procs: Arc<ProcTable>,
 ) -> std::io::Result<()> {
     let hello = GuestFrame {
         body: Some(guest_frame::Body::Hello(wire::GuestHello {
@@ -53,6 +71,7 @@ pub async fn serve_stream<S: AsyncRead + AsyncWrite + Unpin>(
     write_message(&mut stream, &hello)
         .await
         .map_err(std::io::Error::other)?;
+    eprintln!("modbit-guest: hello sent on a new link");
     let admit = read_message::<_, GuestFrame>(&mut stream)
         .await
         .map_err(std::io::Error::other)?;
@@ -92,6 +111,13 @@ pub async fn serve_stream<S: AsyncRead + AsyncWrite + Unpin>(
     if admit.credential.len() < 16 {
         return Err(std::io::Error::other("admission without a credential"));
     }
+    // A MicroVM guest also pins the protected paths at the mount level, so
+    // a process it runs cannot write them either (REQ-EV-0290); the
+    // reference backend, which isolates nothing, enforces them only in its
+    // own file operations.
+    if mapping.is_none() {
+        enforce_protected_mounts(&policy);
+    }
     let admitted = GuestFrame {
         body: Some(guest_frame::Body::Admitted(wire::GuestAdmitted {
             sandbox_id: admit.sandbox_id.clone(),
@@ -109,6 +135,7 @@ pub async fn serve_stream<S: AsyncRead + AsyncWrite + Unpin>(
         started,
         mapping,
         running: 0,
+        procs,
     };
     while let Some(frame) = read_message::<_, GuestFrame>(&mut stream)
         .await
@@ -141,6 +168,7 @@ struct Guest {
     /// backend); `None` when the guest owns its root (a MicroVM).
     mapping: Option<PathBuf>,
     running: u32,
+    procs: Arc<ProcTable>,
 }
 
 fn refusal(call_id: &str, code: &str, message: impl Into<String>) -> wire::GuestReply {
@@ -240,6 +268,16 @@ impl Guest {
             Some(guest_call::Body::ReadFile(_)) => "fs.read",
             Some(guest_call::Body::WriteFile(_)) => "fs.write",
             Some(guest_call::Body::NetProbe(_)) => "net.probe",
+            Some(guest_call::Body::ProcStart(p)) if p.pty => "pty",
+            Some(guest_call::Body::ProcStart(_))
+            | Some(guest_call::Body::ProcFollow(_))
+            | Some(guest_call::Body::ProcWrite(_))
+            | Some(guest_call::Body::ProcCancel(_)) => "proc.exec",
+            Some(guest_call::Body::PtyResize(_)) => "pty",
+            Some(guest_call::Body::ListDir(_)) | Some(guest_call::Body::Stat(_)) => "fs.read",
+            Some(guest_call::Body::Mkdir(_))
+            | Some(guest_call::Body::Remove(_))
+            | Some(guest_call::Body::Rename(_)) => "fs.write",
             None => "",
         };
         if !expected.is_empty() && call.capability != expected {
@@ -258,7 +296,7 @@ impl Guest {
                 guest_reply::Body::Health(wire::GuestHealthReport {
                     boot_id: self.boot_id.clone(),
                     uptime_ms: self.started.elapsed().as_millis() as u64,
-                    processes: self.running,
+                    processes: self.running + self.procs.running(),
                     kernel: kernel_release(),
                 }),
             ),
@@ -266,6 +304,16 @@ impl Guest {
             Some(guest_call::Body::ReadFile(r)) => self.read_file(&id, &r),
             Some(guest_call::Body::WriteFile(w)) => self.write_file(&id, &w),
             Some(guest_call::Body::NetProbe(p)) => self.net_probe(&id, &p).await,
+            Some(guest_call::Body::ProcStart(p)) => self.proc_start(&id, p).await,
+            Some(guest_call::Body::ProcFollow(f)) => self.proc_follow(&id, &f).await,
+            Some(guest_call::Body::ProcWrite(w)) => self.proc_write(&id, &w).await,
+            Some(guest_call::Body::ProcCancel(c)) => self.proc_cancel(&id, &c).await,
+            Some(guest_call::Body::PtyResize(r)) => self.pty_resize(&id, &r),
+            Some(guest_call::Body::ListDir(l)) => self.list_dir(&id, &l),
+            Some(guest_call::Body::Stat(st)) => self.stat(&id, &st),
+            Some(guest_call::Body::Mkdir(m)) => self.mkdir(&id, &m),
+            Some(guest_call::Body::Remove(r)) => self.remove(&id, &r),
+            Some(guest_call::Body::Rename(r)) => self.rename(&id, &r),
             None => refusal(&id, "BAD_CALL", "empty call body"),
         }
     }
@@ -424,6 +472,320 @@ impl Guest {
             id,
             guest_reply::Body::Probe(wire::GuestNetProbeResult { reachable, error }),
         )
+    }
+}
+
+impl Guest {
+    fn resolve_cwd(&self, cwd: &str) -> Result<PathBuf, (&'static str, String)> {
+        let cwd_guest = if cwd.is_empty() {
+            self.policy.workspace_root.clone()
+        } else {
+            normalize(cwd)
+        };
+        read_allowed(&self.policy, &cwd_guest)?;
+        Ok(self.host_path(&cwd_guest))
+    }
+
+    async fn proc_start(&mut self, id: &str, p: wire::GuestProcStart) -> wire::GuestReply {
+        if p.argv.is_empty() {
+            return refusal(id, "BAD_CALL", "argv is empty");
+        }
+        let ceiling = self.policy.exec_timeout_ms.max(1);
+        let timeout_ms = if p.timeout_ms == 0 {
+            ceiling
+        } else {
+            p.timeout_ms
+        };
+        if timeout_ms > ceiling {
+            return refusal(
+                id,
+                "LIMIT_EXCEEDED",
+                format!("timeout {timeout_ms} ms is above the ceiling {ceiling}"),
+            );
+        }
+        if self.running + self.procs.running() >= self.policy.max_processes.max(1) {
+            return refusal(id, "LIMIT_EXCEEDED", "too many processes");
+        }
+        let cwd = match self.resolve_cwd(&p.cwd) {
+            Ok(c) => c,
+            Err((code, msg)) => return refusal(id, code, msg),
+        };
+        let spec = StartSpec {
+            argv: &p.argv,
+            cwd,
+            env: &p.env,
+            timeout: Duration::from_millis(timeout_ms),
+            pty: p.pty,
+            size: (
+                u16::try_from(p.cols).unwrap_or(120),
+                u16::try_from(p.rows).unwrap_or(40),
+            ),
+            stdin_open: p.stdin_open,
+        };
+        match self.procs.start(spec).await {
+            Ok(proc) => reply(
+                id,
+                guest_reply::Body::ProcStarted(wire::GuestProcStarted {
+                    proc_id: proc.id.clone(),
+                    pid: proc.pid,
+                }),
+            ),
+            Err(e) => refusal(id, "BAD_CALL", format!("start `{}`: {e}", p.argv[0])),
+        }
+    }
+
+    async fn proc_follow(&self, id: &str, f: &wire::GuestProcFollow) -> wire::GuestReply {
+        let Some(proc) = self.procs.get(&f.proc_id) else {
+            return refusal(id, "BAD_CALL", format!("no process `{}`", f.proc_id));
+        };
+        let max = if f.max_bytes == 0 {
+            self.policy.max_output_bytes
+        } else {
+            f.max_bytes.min(self.policy.max_output_bytes)
+        } as usize;
+        let wait = Duration::from_millis(f.wait_ms.min(30_000));
+        let out = proc.follow(f.after_cursor, max, wait).await;
+        reply(id, guest_reply::Body::ProcOutput(out))
+    }
+
+    async fn proc_write(&self, id: &str, w: &wire::GuestProcWrite) -> wire::GuestReply {
+        let Some(proc) = self.procs.get(&w.proc_id) else {
+            return refusal(id, "BAD_CALL", format!("no process `{}`", w.proc_id));
+        };
+        match proc.write_stdin(&w.data, w.close_stdin).await {
+            Ok(()) => reply(
+                id,
+                guest_reply::Body::ProcAck(wire::GuestProcAck {
+                    proc_id: w.proc_id.clone(),
+                }),
+            ),
+            Err(e) => refusal(id, "BAD_CALL", format!("stdin: {e}")),
+        }
+    }
+
+    async fn proc_cancel(&self, id: &str, c: &wire::GuestProcCancel) -> wire::GuestReply {
+        let Some(proc) = self.procs.get(&c.proc_id) else {
+            return refusal(id, "BAD_CALL", format!("no process `{}`", c.proc_id));
+        };
+        proc.cancel().await;
+        reply(
+            id,
+            guest_reply::Body::ProcAck(wire::GuestProcAck {
+                proc_id: c.proc_id.clone(),
+            }),
+        )
+    }
+
+    fn pty_resize(&self, id: &str, r: &wire::GuestPtyResize) -> wire::GuestReply {
+        let Some(proc) = self.procs.get(&r.proc_id) else {
+            return refusal(id, "BAD_CALL", format!("no process `{}`", r.proc_id));
+        };
+        match proc.resize(
+            u16::try_from(r.cols).unwrap_or(120),
+            u16::try_from(r.rows).unwrap_or(40),
+        ) {
+            Ok(()) => reply(
+                id,
+                guest_reply::Body::ProcAck(wire::GuestProcAck {
+                    proc_id: r.proc_id.clone(),
+                }),
+            ),
+            Err(e) => refusal(id, "BAD_CALL", format!("resize: {e}")),
+        }
+    }
+
+    fn list_dir(&self, id: &str, l: &wire::GuestListDir) -> wire::GuestReply {
+        let resolved = self.resolved_guest_path(&l.path);
+        if let Err((code, msg)) = read_allowed(&self.policy, &resolved) {
+            return refusal(id, code, msg);
+        }
+        let host = self.host_path(&resolved);
+        let max = if l.max_entries == 0 {
+            10_000
+        } else {
+            l.max_entries as usize
+        };
+        let rd = match std::fs::read_dir(&host) {
+            Ok(rd) => rd,
+            Err(e) => return refusal(id, "BAD_CALL", format!("list `{}`: {e}", l.path)),
+        };
+        let mut entries = Vec::new();
+        let mut truncated = false;
+        for e in rd.flatten() {
+            if entries.len() >= max {
+                truncated = true;
+                break;
+            }
+            let meta = e.metadata().ok();
+            let ft = e.file_type().ok();
+            entries.push(wire::GuestDirEntry {
+                name: e.file_name().to_string_lossy().into_owned(),
+                kind: match ft {
+                    Some(t) if t.is_dir() => "dir".into(),
+                    Some(t) if t.is_file() => "file".into(),
+                    Some(t) if t.is_symlink() => "symlink".into(),
+                    _ => "other".into(),
+                },
+                size: meta.as_ref().map(|m| m.len()).unwrap_or(0),
+                modified_ms: modified_ms(meta.as_ref()),
+            });
+        }
+        entries.sort_by(|a, b| a.name.cmp(&b.name));
+        reply(
+            id,
+            guest_reply::Body::Listing(wire::GuestDirListing { entries, truncated }),
+        )
+    }
+
+    fn stat(&self, id: &str, st: &wire::GuestStat) -> wire::GuestReply {
+        let resolved = self.resolved_guest_path(&st.path);
+        if let Err((code, msg)) = read_allowed(&self.policy, &resolved) {
+            return refusal(id, code, msg);
+        }
+        let host = self.host_path(&resolved);
+        let out = match std::fs::symlink_metadata(&host) {
+            Ok(m) => wire::GuestStatResult {
+                exists: true,
+                kind: if m.is_dir() {
+                    "dir".into()
+                } else if m.is_file() {
+                    "file".into()
+                } else if m.file_type().is_symlink() {
+                    "symlink".into()
+                } else {
+                    "other".into()
+                },
+                size: m.len(),
+                modified_ms: modified_ms(Some(&m)),
+                mode: mode_of(&m),
+            },
+            Err(_) => wire::GuestStatResult {
+                exists: false,
+                kind: String::new(),
+                size: 0,
+                modified_ms: 0,
+                mode: 0,
+            },
+        };
+        reply(id, guest_reply::Body::Stat(out))
+    }
+
+    fn mkdir(&self, id: &str, m: &wire::GuestMkdir) -> wire::GuestReply {
+        let resolved = self.resolved_guest_path(&m.path);
+        if let Err((code, msg)) = write_allowed(&self.policy, &resolved) {
+            return refusal(id, code, msg);
+        }
+        match std::fs::create_dir_all(self.host_path(&resolved)) {
+            Ok(()) => reply(
+                id,
+                guest_reply::Body::FsDone(wire::GuestFsDone { path: resolved }),
+            ),
+            Err(e) => refusal(id, "BAD_CALL", format!("mkdir `{}`: {e}", m.path)),
+        }
+    }
+
+    fn remove(&self, id: &str, r: &wire::GuestRemove) -> wire::GuestReply {
+        let resolved = self.resolved_guest_path(&r.path);
+        if let Err((code, msg)) = write_allowed(&self.policy, &resolved) {
+            return refusal(id, code, msg);
+        }
+        if normalize(&resolved) == normalize(&self.policy.workspace_root) {
+            return refusal(
+                id,
+                "PROTECTED_PATH",
+                "the workspace root itself is not removable",
+            );
+        }
+        let host = self.host_path(&resolved);
+        let res = match std::fs::symlink_metadata(&host) {
+            Ok(m) if m.is_dir() && r.recursive => std::fs::remove_dir_all(&host),
+            Ok(m) if m.is_dir() => std::fs::remove_dir(&host),
+            Ok(_) => std::fs::remove_file(&host),
+            Err(e) => Err(e),
+        };
+        match res {
+            Ok(()) => reply(
+                id,
+                guest_reply::Body::FsDone(wire::GuestFsDone { path: resolved }),
+            ),
+            Err(e) => refusal(id, "BAD_CALL", format!("remove `{}`: {e}", r.path)),
+        }
+    }
+
+    fn rename(&self, id: &str, r: &wire::GuestRename) -> wire::GuestReply {
+        let from = self.resolved_guest_path(&r.from);
+        let to = self.resolved_guest_path(&r.to);
+        for p in [&from, &to] {
+            if let Err((code, msg)) = write_allowed(&self.policy, p) {
+                return refusal(id, code, msg);
+            }
+        }
+        match std::fs::rename(self.host_path(&from), self.host_path(&to)) {
+            Ok(()) => reply(
+                id,
+                guest_reply::Body::FsDone(wire::GuestFsDone { path: to }),
+            ),
+            Err(e) => refusal(id, "BAD_CALL", format!("rename `{}`: {e}", r.from)),
+        }
+    }
+}
+
+/// Bind-mount every existing protected path under the workspace onto
+/// itself read-only (Linux; a no-op elsewhere, and where a mount fails the
+/// guest says so on its console and keeps enforcing in its own calls).
+#[cfg(target_os = "linux")]
+fn enforce_protected_mounts(policy: &wire::GuestPolicy) {
+    use nix::mount::{MsFlags, mount};
+    let ws = policy.workspace_root.trim_end_matches('/');
+    for p in &policy.protected_paths {
+        if !p.starts_with(&format!("{ws}/")) || !std::path::Path::new(p).exists() {
+            continue;
+        }
+        let bind = mount(
+            Some(p.as_str()),
+            p.as_str(),
+            None::<&str>,
+            MsFlags::MS_BIND,
+            None::<&str>,
+        );
+        let ro = bind.and_then(|()| {
+            mount(
+                None::<&str>,
+                p.as_str(),
+                None::<&str>,
+                MsFlags::MS_BIND | MsFlags::MS_REMOUNT | MsFlags::MS_RDONLY,
+                None::<&str>,
+            )
+        });
+        match ro {
+            Ok(()) => eprintln!("modbit-guest: protected path {p} pinned read-only"),
+            Err(e) => eprintln!("modbit-guest: pinning {p} read-only: {e}"),
+        }
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+fn enforce_protected_mounts(_policy: &wire::GuestPolicy) {}
+
+fn modified_ms(meta: Option<&std::fs::Metadata>) -> i64 {
+    meta.and_then(|m| m.modified().ok())
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0)
+}
+
+#[cfg(unix)]
+fn mode_of(m: &std::fs::Metadata) -> u32 {
+    use std::os::unix::fs::PermissionsExt;
+    m.permissions().mode()
+}
+
+#[cfg(not(unix))]
+fn mode_of(m: &std::fs::Metadata) -> u32 {
+    if m.permissions().readonly() {
+        0o444
+    } else {
+        0o666
     }
 }
 

@@ -2138,6 +2138,8 @@ dependencies = [
  "modbit-domain",
  "modbit-event-store",
  "modbit-protocol",
+ "modbit-sandbox",
+ "modbit-sandbox-gateway",
  "prost",
  "reqwest",
  "serde",
@@ -2196,6 +2198,7 @@ dependencies = [
  "modbit-protocol-state",
  "modbit-providers",
  "modbit-retrieval",
+ "modbit-sandbox",
  "modbit-skills",
  "modbit-terminal",
  "modbit-tools",
@@ -2322,6 +2325,7 @@ dependencies = [
  "modbit-protocol",
  "modbit-sandbox",
  "nix 0.29.0",
+ "portable-pty",
  "prost",
  "tokio",
  "uuid",
@@ -2455,6 +2459,7 @@ dependencies = [
 name = "modbit-sandbox"
 version = "0.0.0"
 dependencies = [
+ "base64",
  "ed25519-dalek",
  "hex",
  "hmac",
@@ -2462,6 +2467,7 @@ dependencies = [
  "modbit-protocol",
  "prost",
  "rand 0.10.2",
+ "reqwest",
  "serde",
  "serde_json",
  "sha2 0.11.0",
@@ -2538,6 +2544,7 @@ dependencies = [
  "modbit-domain",
  "modbit-git",
  "modbit-protocol",
+ "modbit-sandbox",
  "modbit-terminal",
  "modbit-workspace",
  "png",

@@ -126,6 +126,8 @@ pub struct Live {
     pub worker_id: String,
     /// The guest's hello, for the record.
     pub hello: modbit_protocol::v1::GuestHello,
+    /// The policy it was admitted under (a relink admits under the same).
+    pub policy: modbit_sandbox::CompiledPolicy,
 }
 
 /// Shared state.

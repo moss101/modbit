@@ -49,7 +49,7 @@ export declare type GuestHello = Message<"modbit.v1.GuestHello"> & {
   guestVersion: string;
 
   /**
-   * health | exec | fs.read | fs.write | net.probe
+   * health | exec | fs.read | fs.write | net.probe | proc | pty | fs.dir (M8.5)
    *
    * @generated from field: repeated string methods = 4;
    */
@@ -237,7 +237,7 @@ export declare type GuestCall = Message<"modbit.v1.GuestCall"> & {
   effectId: string;
 
   /**
-   * proc.exec | fs.read | fs.write | net.probe | health
+   * proc.exec | fs.read | fs.write | fs.dir | net.probe | health | pty
    *
    * @generated from field: string capability = 4;
    */
@@ -283,6 +283,68 @@ export declare type GuestCall = Message<"modbit.v1.GuestCall"> & {
      */
     value: GuestNetProbe;
     case: "netProbe";
+  } | {
+    /**
+     * M8.5
+     *
+     * @generated from field: modbit.v1.GuestProcStart proc_start = 20;
+     */
+    value: GuestProcStart;
+    case: "procStart";
+  } | {
+    /**
+     * @generated from field: modbit.v1.GuestProcFollow proc_follow = 21;
+     */
+    value: GuestProcFollow;
+    case: "procFollow";
+  } | {
+    /**
+     * @generated from field: modbit.v1.GuestProcWrite proc_write = 22;
+     */
+    value: GuestProcWrite;
+    case: "procWrite";
+  } | {
+    /**
+     * @generated from field: modbit.v1.GuestProcCancel proc_cancel = 23;
+     */
+    value: GuestProcCancel;
+    case: "procCancel";
+  } | {
+    /**
+     * @generated from field: modbit.v1.GuestPtyResize pty_resize = 24;
+     */
+    value: GuestPtyResize;
+    case: "ptyResize";
+  } | {
+    /**
+     * @generated from field: modbit.v1.GuestListDir list_dir = 30;
+     */
+    value: GuestListDir;
+    case: "listDir";
+  } | {
+    /**
+     * @generated from field: modbit.v1.GuestStat stat = 31;
+     */
+    value: GuestStat;
+    case: "stat";
+  } | {
+    /**
+     * @generated from field: modbit.v1.GuestMkdir mkdir = 32;
+     */
+    value: GuestMkdir;
+    case: "mkdir";
+  } | {
+    /**
+     * @generated from field: modbit.v1.GuestRemove remove = 33;
+     */
+    value: GuestRemove;
+    case: "remove";
+  } | {
+    /**
+     * @generated from field: modbit.v1.GuestRename rename = 34;
+     */
+    value: GuestRename;
+    case: "rename";
   } | { case: undefined; value?: undefined };
 };
 
@@ -467,6 +529,44 @@ export declare type GuestReply = Message<"modbit.v1.GuestReply"> & {
      */
     value: GuestRefusal;
     case: "refusal";
+  } | {
+    /**
+     * M8.5
+     *
+     * @generated from field: modbit.v1.GuestProcStarted proc_started = 20;
+     */
+    value: GuestProcStarted;
+    case: "procStarted";
+  } | {
+    /**
+     * @generated from field: modbit.v1.GuestProcOutput proc_output = 21;
+     */
+    value: GuestProcOutput;
+    case: "procOutput";
+  } | {
+    /**
+     * @generated from field: modbit.v1.GuestProcAck proc_ack = 22;
+     */
+    value: GuestProcAck;
+    case: "procAck";
+  } | {
+    /**
+     * @generated from field: modbit.v1.GuestDirListing listing = 30;
+     */
+    value: GuestDirListing;
+    case: "listing";
+  } | {
+    /**
+     * @generated from field: modbit.v1.GuestStatResult stat = 31;
+     */
+    value: GuestStatResult;
+    case: "stat";
+  } | {
+    /**
+     * @generated from field: modbit.v1.GuestFsDone fs_done = 32;
+     */
+    value: GuestFsDone;
+    case: "fsDone";
   } | { case: undefined; value?: undefined };
 };
 
@@ -689,4 +789,465 @@ export declare type GuestFrame = Message<"modbit.v1.GuestFrame"> & {
  * Use `create(GuestFrameSchema)` to create a new message.
  */
 export declare const GuestFrameSchema: GenMessage<GuestFrame>;
+
+/**
+ * @generated from message modbit.v1.GuestProcStart
+ */
+export declare type GuestProcStart = Message<"modbit.v1.GuestProcStart"> & {
+  /**
+   * @generated from field: repeated string argv = 1;
+   */
+  argv: string[];
+
+  /**
+   * @generated from field: string cwd = 2;
+   */
+  cwd: string;
+
+  /**
+   * KEY=VALUE; nothing inherited
+   *
+   * @generated from field: repeated string env = 3;
+   */
+  env: string[];
+
+  /**
+   * wall-clock ceiling; 0 = the policy's
+   *
+   * @generated from field: uint64 timeout_ms = 4;
+   */
+  timeoutMs: bigint;
+
+  /**
+   * @generated from field: bool pty = 5;
+   */
+  pty: boolean;
+
+  /**
+   * @generated from field: uint32 cols = 6;
+   */
+  cols: number;
+
+  /**
+   * @generated from field: uint32 rows = 7;
+   */
+  rows: number;
+
+  /**
+   * keep stdin open for GuestProcWrite
+   *
+   * @generated from field: bool stdin_open = 8;
+   */
+  stdinOpen: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.GuestProcStart.
+ * Use `create(GuestProcStartSchema)` to create a new message.
+ */
+export declare const GuestProcStartSchema: GenMessage<GuestProcStart>;
+
+/**
+ * @generated from message modbit.v1.GuestProcStarted
+ */
+export declare type GuestProcStarted = Message<"modbit.v1.GuestProcStarted"> & {
+  /**
+   * @generated from field: string proc_id = 1;
+   */
+  procId: string;
+
+  /**
+   * @generated from field: uint32 pid = 2;
+   */
+  pid: number;
+};
+
+/**
+ * Describes the message modbit.v1.GuestProcStarted.
+ * Use `create(GuestProcStartedSchema)` to create a new message.
+ */
+export declare const GuestProcStartedSchema: GenMessage<GuestProcStarted>;
+
+/**
+ * Follow a process: output after `after_cursor` (up to `max_bytes`), waiting
+ * up to `wait_ms` for more when there is none yet; the exit when it has one.
+ *
+ * @generated from message modbit.v1.GuestProcFollow
+ */
+export declare type GuestProcFollow = Message<"modbit.v1.GuestProcFollow"> & {
+  /**
+   * @generated from field: string proc_id = 1;
+   */
+  procId: string;
+
+  /**
+   * @generated from field: uint64 after_cursor = 2;
+   */
+  afterCursor: bigint;
+
+  /**
+   * @generated from field: uint64 max_bytes = 3;
+   */
+  maxBytes: bigint;
+
+  /**
+   * @generated from field: uint64 wait_ms = 4;
+   */
+  waitMs: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.GuestProcFollow.
+ * Use `create(GuestProcFollowSchema)` to create a new message.
+ */
+export declare const GuestProcFollowSchema: GenMessage<GuestProcFollow>;
+
+/**
+ * @generated from message modbit.v1.GuestProcOutput
+ */
+export declare type GuestProcOutput = Message<"modbit.v1.GuestProcOutput"> & {
+  /**
+   * @generated from field: string proc_id = 1;
+   */
+  procId: string;
+
+  /**
+   * stdout and stderr interleaved as produced (a PTY has one stream)
+   *
+   * @generated from field: bytes data = 2;
+   */
+  data: Uint8Array;
+
+  /**
+   * the cursor after `data`
+   *
+   * @generated from field: uint64 cursor = 3;
+   */
+  cursor: bigint;
+
+  /**
+   * bytes before `after_cursor` fell out of the ring
+   *
+   * @generated from field: bool truncated = 4;
+   */
+  truncated: boolean;
+
+  /**
+   * @generated from field: bool running = 5;
+   */
+  running: boolean;
+
+  /**
+   * @generated from field: optional int32 exit_code = 6;
+   */
+  exitCode?: number | undefined;
+
+  /**
+   * @generated from field: bool timed_out = 7;
+   */
+  timedOut: boolean;
+
+  /**
+   * @generated from field: bool cancelled = 8;
+   */
+  cancelled: boolean;
+
+  /**
+   * produced so far
+   *
+   * @generated from field: uint64 total_bytes = 9;
+   */
+  totalBytes: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.GuestProcOutput.
+ * Use `create(GuestProcOutputSchema)` to create a new message.
+ */
+export declare const GuestProcOutputSchema: GenMessage<GuestProcOutput>;
+
+/**
+ * @generated from message modbit.v1.GuestProcWrite
+ */
+export declare type GuestProcWrite = Message<"modbit.v1.GuestProcWrite"> & {
+  /**
+   * @generated from field: string proc_id = 1;
+   */
+  procId: string;
+
+  /**
+   * @generated from field: bytes data = 2;
+   */
+  data: Uint8Array;
+
+  /**
+   * @generated from field: bool close_stdin = 3;
+   */
+  closeStdin: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.GuestProcWrite.
+ * Use `create(GuestProcWriteSchema)` to create a new message.
+ */
+export declare const GuestProcWriteSchema: GenMessage<GuestProcWrite>;
+
+/**
+ * @generated from message modbit.v1.GuestProcCancel
+ */
+export declare type GuestProcCancel = Message<"modbit.v1.GuestProcCancel"> & {
+  /**
+   * @generated from field: string proc_id = 1;
+   */
+  procId: string;
+};
+
+/**
+ * Describes the message modbit.v1.GuestProcCancel.
+ * Use `create(GuestProcCancelSchema)` to create a new message.
+ */
+export declare const GuestProcCancelSchema: GenMessage<GuestProcCancel>;
+
+/**
+ * @generated from message modbit.v1.GuestPtyResize
+ */
+export declare type GuestPtyResize = Message<"modbit.v1.GuestPtyResize"> & {
+  /**
+   * @generated from field: string proc_id = 1;
+   */
+  procId: string;
+
+  /**
+   * @generated from field: uint32 cols = 2;
+   */
+  cols: number;
+
+  /**
+   * @generated from field: uint32 rows = 3;
+   */
+  rows: number;
+};
+
+/**
+ * Describes the message modbit.v1.GuestPtyResize.
+ * Use `create(GuestPtyResizeSchema)` to create a new message.
+ */
+export declare const GuestPtyResizeSchema: GenMessage<GuestPtyResize>;
+
+/**
+ * @generated from message modbit.v1.GuestProcAck
+ */
+export declare type GuestProcAck = Message<"modbit.v1.GuestProcAck"> & {
+  /**
+   * @generated from field: string proc_id = 1;
+   */
+  procId: string;
+};
+
+/**
+ * Describes the message modbit.v1.GuestProcAck.
+ * Use `create(GuestProcAckSchema)` to create a new message.
+ */
+export declare const GuestProcAckSchema: GenMessage<GuestProcAck>;
+
+/**
+ * @generated from message modbit.v1.GuestListDir
+ */
+export declare type GuestListDir = Message<"modbit.v1.GuestListDir"> & {
+  /**
+   * @generated from field: string path = 1;
+   */
+  path: string;
+
+  /**
+   * @generated from field: uint32 max_entries = 2;
+   */
+  maxEntries: number;
+};
+
+/**
+ * Describes the message modbit.v1.GuestListDir.
+ * Use `create(GuestListDirSchema)` to create a new message.
+ */
+export declare const GuestListDirSchema: GenMessage<GuestListDir>;
+
+/**
+ * @generated from message modbit.v1.GuestDirEntry
+ */
+export declare type GuestDirEntry = Message<"modbit.v1.GuestDirEntry"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * file | dir | symlink | other
+   *
+   * @generated from field: string kind = 2;
+   */
+  kind: string;
+
+  /**
+   * @generated from field: uint64 size = 3;
+   */
+  size: bigint;
+
+  /**
+   * @generated from field: int64 modified_ms = 4;
+   */
+  modifiedMs: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.GuestDirEntry.
+ * Use `create(GuestDirEntrySchema)` to create a new message.
+ */
+export declare const GuestDirEntrySchema: GenMessage<GuestDirEntry>;
+
+/**
+ * @generated from message modbit.v1.GuestDirListing
+ */
+export declare type GuestDirListing = Message<"modbit.v1.GuestDirListing"> & {
+  /**
+   * @generated from field: repeated modbit.v1.GuestDirEntry entries = 1;
+   */
+  entries: GuestDirEntry[];
+
+  /**
+   * @generated from field: bool truncated = 2;
+   */
+  truncated: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.GuestDirListing.
+ * Use `create(GuestDirListingSchema)` to create a new message.
+ */
+export declare const GuestDirListingSchema: GenMessage<GuestDirListing>;
+
+/**
+ * @generated from message modbit.v1.GuestStat
+ */
+export declare type GuestStat = Message<"modbit.v1.GuestStat"> & {
+  /**
+   * @generated from field: string path = 1;
+   */
+  path: string;
+};
+
+/**
+ * Describes the message modbit.v1.GuestStat.
+ * Use `create(GuestStatSchema)` to create a new message.
+ */
+export declare const GuestStatSchema: GenMessage<GuestStat>;
+
+/**
+ * @generated from message modbit.v1.GuestStatResult
+ */
+export declare type GuestStatResult = Message<"modbit.v1.GuestStatResult"> & {
+  /**
+   * @generated from field: bool exists = 1;
+   */
+  exists: boolean;
+
+  /**
+   * @generated from field: string kind = 2;
+   */
+  kind: string;
+
+  /**
+   * @generated from field: uint64 size = 3;
+   */
+  size: bigint;
+
+  /**
+   * @generated from field: int64 modified_ms = 4;
+   */
+  modifiedMs: bigint;
+
+  /**
+   * @generated from field: uint32 mode = 5;
+   */
+  mode: number;
+};
+
+/**
+ * Describes the message modbit.v1.GuestStatResult.
+ * Use `create(GuestStatResultSchema)` to create a new message.
+ */
+export declare const GuestStatResultSchema: GenMessage<GuestStatResult>;
+
+/**
+ * @generated from message modbit.v1.GuestMkdir
+ */
+export declare type GuestMkdir = Message<"modbit.v1.GuestMkdir"> & {
+  /**
+   * @generated from field: string path = 1;
+   */
+  path: string;
+};
+
+/**
+ * Describes the message modbit.v1.GuestMkdir.
+ * Use `create(GuestMkdirSchema)` to create a new message.
+ */
+export declare const GuestMkdirSchema: GenMessage<GuestMkdir>;
+
+/**
+ * @generated from message modbit.v1.GuestRemove
+ */
+export declare type GuestRemove = Message<"modbit.v1.GuestRemove"> & {
+  /**
+   * @generated from field: string path = 1;
+   */
+  path: string;
+
+  /**
+   * @generated from field: bool recursive = 2;
+   */
+  recursive: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.GuestRemove.
+ * Use `create(GuestRemoveSchema)` to create a new message.
+ */
+export declare const GuestRemoveSchema: GenMessage<GuestRemove>;
+
+/**
+ * @generated from message modbit.v1.GuestRename
+ */
+export declare type GuestRename = Message<"modbit.v1.GuestRename"> & {
+  /**
+   * @generated from field: string from = 1;
+   */
+  from: string;
+
+  /**
+   * @generated from field: string to = 2;
+   */
+  to: string;
+};
+
+/**
+ * Describes the message modbit.v1.GuestRename.
+ * Use `create(GuestRenameSchema)` to create a new message.
+ */
+export declare const GuestRenameSchema: GenMessage<GuestRename>;
+
+/**
+ * @generated from message modbit.v1.GuestFsDone
+ */
+export declare type GuestFsDone = Message<"modbit.v1.GuestFsDone"> & {
+  /**
+   * @generated from field: string path = 1;
+   */
+  path: string;
+};
+
+/**
+ * Describes the message modbit.v1.GuestFsDone.
+ * Use `create(GuestFsDoneSchema)` to create a new message.
+ */
+export declare const GuestFsDoneSchema: GenMessage<GuestFsDone>;
 

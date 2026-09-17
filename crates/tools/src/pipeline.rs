@@ -166,6 +166,10 @@ pub struct InvokeContext {
     /// `browser.*` reach the task's live Chromium through it. `None` = no
     /// browser host in this build.
     pub browser: Option<Arc<dyn modbit_browser::BrowserPort>>,
+    /// The task's sandbox under `cloud_isolated` (M8.5, docs/21): the tools
+    /// with a sandbox path act inside it instead of the host's workspace
+    /// and broker. `None` = the task runs on the host.
+    pub sandbox: Option<Arc<dyn modbit_sandbox::port::SandboxPort>>,
     /// The effect class this call was judged under (set by the pipeline
     /// before the effector runs): a tool whose effect is per call checks
     /// at run time that what it is about to do is not above it.

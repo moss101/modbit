@@ -85,6 +85,7 @@ fn fixture(exec: Option<ExecTarget>) -> Fixture {
         forge: None,
         forge_ledger: None,
         browser: None,
+        sandbox: None,
         effect_class: None,
         secrets_in_custody: vec![],
     };
@@ -209,6 +210,7 @@ async fn qual_ev_0239_0080_denial_is_monotonic_and_argument_text_cannot_bypass_p
         forge: None,
         forge_ledger: None,
         browser: None,
+        sandbox: None,
         effect_class: None,
         secrets_in_custody: vec![],
     };

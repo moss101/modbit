@@ -31,6 +31,17 @@ pub struct Fixture {
     pub exec_env: Vec<String>,
     /// A host and port on the control plane the guest must not reach.
     pub control_endpoint: (String, u16),
+    /// A shell command line that prints `line 1` … `line 5`, one every
+    /// ~300 ms, then exits 0 (M8.5: followed with replay across links).
+    pub lines_probe: Vec<String>,
+    /// A shell command line that reads one line from stdin and prints it
+    /// prefixed with `got:` (M8.5: stdin to a followed process).
+    pub echo_stdin_probe: Vec<String>,
+    /// Whether the guest can open a PTY (`false` on a Windows host).
+    pub pty: bool,
+    /// A shell command line that tries to write `.git/hooks/pre-commit`
+    /// under the workspace and exits non-zero when it cannot.
+    pub write_hook_probe: Vec<String>,
 }
 
 /// One step's outcome.
@@ -103,6 +114,7 @@ pub async fn run(backend: &dyn SandboxBackend, fx: &Fixture) -> Result<Report> {
     .await?;
     link.set_call_timeout(Duration::from_secs(30));
     let guest_version = link.hello.guest_version.clone();
+    let boot_id = link.hello.boot_id.clone();
     push(
         "negotiated",
         link.hello.protocol_major == crate::GUEST_PROTOCOL_MAJOR,
@@ -282,6 +294,32 @@ pub async fn run(backend: &dyn SandboxBackend, fx: &Fixture) -> Result<Report> {
         refusal_code(&r) == "OUTSIDE_WORKSPACE",
         refusal_code(&r),
     );
+    // A process cannot write a protected path either, where the backend
+    // isolates (a MicroVM pins them read-only at the mount level); the
+    // reference backend enforces protected paths in its own calls only.
+    let r = link
+        .exec(
+            &task,
+            "eff-9b",
+            wire::GuestExec {
+                argv: fx.write_hook_probe.clone(),
+                cwd: policy.workspace_root.clone(),
+                env: fx.exec_env.clone(),
+                timeout_ms: 20_000,
+                stdin: vec![],
+            },
+        )
+        .await;
+    let refused = r.as_ref().is_ok_and(|r| r.exit_code != 0);
+    push(
+        "proc_protected_path_enforced",
+        if backend.isolates() {
+            refused
+        } else {
+            r.is_ok()
+        },
+        format!("{r:?} (asserted: {})", backend.isolates()),
+    );
     // network: the control plane is unreachable from an isolated guest
     let p = link
         .net_probe(&task, &fx.control_endpoint.0, fx.control_endpoint.1, 3_000)
@@ -295,6 +333,300 @@ pub async fn run(backend: &dyn SandboxBackend, fx: &Fixture) -> Result<Report> {
             p.is_ok()
         },
         format!("{p:?} (asserted: {})", backend.isolates()),
+    );
+    // M8.5 — followed processes: output after a cursor, the exit, and a
+    // replay across a lost link: the link is dropped mid-run, a new channel
+    // is admitted (a new credential), and the follow resumes from the
+    // cursor with nothing re-run and nothing lost.
+    let started = link
+        .proc_start(
+            &task,
+            "eff-10",
+            wire::GuestProcStart {
+                argv: fx.lines_probe.clone(),
+                cwd: policy.workspace_root.clone(),
+                env: fx.exec_env.clone(),
+                timeout_ms: 20_000,
+                pty: false,
+                cols: 0,
+                rows: 0,
+                stdin_open: false,
+            },
+        )
+        .await;
+    let proc_id = started
+        .as_ref()
+        .map(|p| p.proc_id.clone())
+        .unwrap_or_default();
+    push(
+        "proc_start",
+        started.as_ref().is_ok_and(|p| !p.proc_id.is_empty()),
+        format!("{started:?}"),
+    );
+    let first = link.proc_follow(&task, &proc_id, 0, 0, 5_000).await;
+    let cursor = first.as_ref().map(|o| o.cursor).unwrap_or(0);
+    push(
+        "proc_follow_first",
+        first
+            .as_ref()
+            .is_ok_and(|o| String::from_utf8_lossy(&o.data).contains("line 1") && o.running),
+        format!("{first:?}"),
+    );
+    // Drop the link mid-run; the guest keeps the process and its output.
+    let old_channel = link.into_inner();
+    drop(old_channel);
+    let fresh = backend.reconnect(&sandbox_id).await?;
+    let mut link: GuestLink<Channel> = GuestLink::admit_image(
+        fresh,
+        &sandbox_id,
+        &policy,
+        Duration::from_secs(30),
+        backend.image(),
+    )
+    .await?;
+    link.set_call_timeout(Duration::from_secs(30));
+    push(
+        "relinked",
+        link.hello.boot_id == boot_id,
+        format!("same boot {}", link.hello.boot_id),
+    );
+    let mut all = first.as_ref().map(|o| o.data.clone()).unwrap_or_default();
+    let mut cur = cursor;
+    let mut exit = None;
+    let mut truncated = false;
+    for _ in 0..40 {
+        let Ok(o) = link.proc_follow(&task, &proc_id, cur, 0, 3_000).await else {
+            break;
+        };
+        all.extend_from_slice(&o.data);
+        cur = o.cursor;
+        truncated |= o.truncated;
+        if !o.running {
+            exit = o.exit_code;
+            break;
+        }
+    }
+    let text = String::from_utf8_lossy(&all).into_owned();
+    push(
+        "proc_replay_across_links",
+        (1..=5).all(|i| text.contains(&format!("line {i}")))
+            && text.matches("line 3").count() == 1
+            && exit == Some(0)
+            && !truncated,
+        format!("exit {exit:?} truncated {truncated} text {text:?}"),
+    );
+    // A replay from cursor 0 of an exited process returns the whole output again.
+    let again = link.proc_follow(&task, &proc_id, 0, 0, 100).await;
+    push(
+        "proc_replay_from_start",
+        again
+            .as_ref()
+            .is_ok_and(|o| String::from_utf8_lossy(&o.data).contains("line 5") && !o.running),
+        format!("{again:?}"),
+    );
+    // stdin to a followed process, then cancel of a long one.
+    let started = link
+        .proc_start(
+            &task,
+            "eff-11",
+            wire::GuestProcStart {
+                argv: fx.echo_stdin_probe.clone(),
+                cwd: policy.workspace_root.clone(),
+                env: fx.exec_env.clone(),
+                timeout_ms: 20_000,
+                pty: false,
+                cols: 0,
+                rows: 0,
+                stdin_open: true,
+            },
+        )
+        .await;
+    let pid2 = started
+        .as_ref()
+        .map(|p| p.proc_id.clone())
+        .unwrap_or_default();
+    let w = link
+        .proc_write(&task, &pid2, b"hello stdin\n".to_vec(), true)
+        .await;
+    let mut got = Vec::new();
+    let mut cur = 0;
+    let mut running = true;
+    for _ in 0..20 {
+        let Ok(o) = link.proc_follow(&task, &pid2, cur, 0, 3_000).await else {
+            break;
+        };
+        got.extend_from_slice(&o.data);
+        cur = o.cursor;
+        running = o.running;
+        if !running {
+            break;
+        }
+    }
+    push(
+        "proc_stdin",
+        w.is_ok() && !running && String::from_utf8_lossy(&got).contains("got:hello stdin"),
+        format!("{w:?} {:?}", String::from_utf8_lossy(&got)),
+    );
+    let started = link
+        .proc_start(
+            &task,
+            "eff-12",
+            wire::GuestProcStart {
+                argv: fx.sleep_probe.clone(),
+                cwd: policy.workspace_root.clone(),
+                env: fx.exec_env.clone(),
+                timeout_ms: 20_000,
+                pty: false,
+                cols: 0,
+                rows: 0,
+                stdin_open: false,
+            },
+        )
+        .await;
+    let pid3 = started
+        .as_ref()
+        .map(|p| p.proc_id.clone())
+        .unwrap_or_default();
+    let c = link.proc_cancel(&task, &pid3).await;
+    let after = link.proc_follow(&task, &pid3, 0, 0, 2_000).await;
+    push(
+        "proc_cancel",
+        c.is_ok() && after.as_ref().is_ok_and(|o| !o.running && o.cancelled),
+        format!("{c:?} {after:?}"),
+    );
+    // PTY: the same call with a window; output arrives as one stream; resize is accepted.
+    if fx.pty {
+        let started = link
+            .proc_start(
+                &task,
+                "eff-13",
+                wire::GuestProcStart {
+                    argv: fx.exec_probe.clone(),
+                    cwd: policy.workspace_root.clone(),
+                    env: fx.exec_env.clone(),
+                    timeout_ms: 20_000,
+                    pty: true,
+                    cols: 80,
+                    rows: 24,
+                    stdin_open: false,
+                },
+            )
+            .await;
+        let pid4 = started
+            .as_ref()
+            .map(|p| p.proc_id.clone())
+            .unwrap_or_default();
+        let rs = link.pty_resize(&task, &pid4, 100, 30).await;
+        let mut out = Vec::new();
+        let mut cur = 0;
+        let mut code = None;
+        for _ in 0..20 {
+            let Ok(o) = link.proc_follow(&task, &pid4, cur, 0, 3_000).await else {
+                break;
+            };
+            out.extend_from_slice(&o.data);
+            cur = o.cursor;
+            if !o.running {
+                code = o.exit_code;
+                break;
+            }
+        }
+        push(
+            "pty",
+            started.is_ok() && String::from_utf8_lossy(&out).contains("hello") && code == Some(3),
+            format!(
+                "{started:?} resize {rs:?} exit {code:?} {:?}",
+                String::from_utf8_lossy(&out)
+            ),
+        );
+    } else {
+        push("pty", true, "not applicable on this host".into());
+    }
+    // Directory operations under the policy.
+    let m = link
+        .mkdir(
+            &task,
+            "eff-14",
+            &format!("{}/dir/sub", policy.workspace_root),
+        )
+        .await;
+    let w = link
+        .write_file(
+            &task,
+            "eff-15",
+            &format!("{}/dir/sub/a.txt", policy.workspace_root),
+            b"a".to_vec(),
+        )
+        .await;
+    let l = link
+        .list_dir(&task, &format!("{}/dir", policy.workspace_root), 0)
+        .await;
+    let st = link
+        .stat(&task, &format!("{}/dir/sub/a.txt", policy.workspace_root))
+        .await;
+    let rn = link
+        .rename(
+            &task,
+            "eff-16",
+            &format!("{}/dir/sub/a.txt", policy.workspace_root),
+            &format!("{}/dir/b.txt", policy.workspace_root),
+        )
+        .await;
+    let st2 = link
+        .stat(&task, &format!("{}/dir/sub/a.txt", policy.workspace_root))
+        .await;
+    let rm = link
+        .remove(
+            &task,
+            "eff-17",
+            &format!("{}/dir", policy.workspace_root),
+            true,
+        )
+        .await;
+    let st3 = link
+        .stat(&task, &format!("{}/dir", policy.workspace_root))
+        .await;
+    push(
+        "fs_dir_ops",
+        m.is_ok()
+            && w.is_ok()
+            && l.as_ref()
+                .is_ok_and(|l| l.entries.iter().any(|e| e.name == "sub" && e.kind == "dir"))
+            && st
+                .as_ref()
+                .is_ok_and(|s| s.exists && s.kind == "file" && s.size == 1)
+            && rn.is_ok()
+            && st2.as_ref().is_ok_and(|s| !s.exists)
+            && rm.is_ok()
+            && st3.as_ref().is_ok_and(|s| !s.exists),
+        format!("{m:?} {w:?} {l:?} {st:?} {rn:?} {st2:?} {rm:?} {st3:?}"),
+    );
+    let r = link
+        .remove(
+            &task,
+            "eff-18",
+            &format!("{}/.git/hooks", policy.workspace_root),
+            true,
+        )
+        .await;
+    push(
+        "fs_dir_protected_refused",
+        refusal_code(&r) == "PROTECTED_PATH",
+        refusal_code(&r),
+    );
+    let r = link
+        .remove(&task, "eff-19", &policy.workspace_root, true)
+        .await;
+    push(
+        "fs_workspace_root_not_removable",
+        refusal_code(&r) == "PROTECTED_PATH",
+        refusal_code(&r),
+    );
+    let r = link.list_dir(&task, "/etc", 0).await;
+    push(
+        "fs_dir_outside_refused",
+        refusal_code(&r) == "OUTSIDE_WORKSPACE",
+        refusal_code(&r),
     );
     // authentication: an unsigned call and a replayed call are refused
     let unsigned = wire::GuestCall {

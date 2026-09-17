@@ -218,6 +218,27 @@ async fn host_inner(
             return End::Failed(format!("provider: {e}"));
         }
     }
+    // 0b. The Sandbox Gateway (M8.5), with the cloud lease generation the
+    // gateway checks against the store; the token stays in memory.
+    if let Some(g) = &cfg.sandbox_gateway {
+        let ack = c
+            .command(envelope(
+                "ConfigureSandboxGateway",
+                wire::ConfigureSandboxGateway {
+                    base_url: g.base_url.clone(),
+                    worker_token: g.worker_token.clone(),
+                    worker_id: cfg.worker_id.clone(),
+                    tenant_id: tenant.to_string(),
+                    lease_generation: lease.generation,
+                }
+                .encode_to_vec(),
+                None,
+            ))
+            .await;
+        if let Err(e) = ack {
+            return End::Failed(format!("sandbox gateway: {e}"));
+        }
+    }
     let mut st = load_state(dir);
     // 1. The cloud log into the local Core (verbatim, chain-checked there).
     if let Err(e) = import_cloud_events(store, &mut c, tenant, sid, &mut st, dir).await {

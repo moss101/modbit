@@ -19,6 +19,65 @@ const PROFILES: &[&str] = &[
     "plan",
 ];
 
+/// The profiles of a tool that also has a sandbox path (M8.5, docs/21):
+/// under `cloud_isolated` it acts inside the task's sandbox through the
+/// [`modbit_sandbox::port::SandboxPort`] the host attached, never on the
+/// host's workspace or broker.
+const SANDBOXED_PROFILES: &[&str] = &[
+    "local_trusted",
+    "review_isolated",
+    "local_autonomous",
+    "plan",
+    "cloud_isolated",
+];
+
+fn sandboxed(mut spec: ToolSpec) -> ToolSpec {
+    spec.execution_profiles = SANDBOXED_PROFILES.iter().map(|s| (*s).to_owned()).collect();
+    spec
+}
+
+/// The task's sandbox, when this call runs under `cloud_isolated`.
+fn sandbox_of(ctx: &InvokeContext) -> Option<&Arc<dyn modbit_sandbox::port::SandboxPort>> {
+    if ctx.execution_profile == "cloud_isolated" {
+        ctx.sandbox.as_ref()
+    } else {
+        None
+    }
+}
+
+fn no_sandbox() -> ToolOutcome {
+    ToolOutcome::infra(
+        "NO_SANDBOX",
+        "the task runs under cloud_isolated but no sandbox is attached to it",
+    )
+}
+
+/// A workspace-relative path as the guest sees it.
+fn guest_path(root: &str, rel: &str) -> String {
+    let rel = rel.trim_start_matches('/');
+    if rel.is_empty() {
+        root.to_owned()
+    } else {
+        format!("{}/{rel}", root.trim_end_matches('/'))
+    }
+}
+
+fn sandbox_err(e: modbit_sandbox::SandboxError) -> ToolOutcome {
+    match e {
+        modbit_sandbox::SandboxError::Refused { code, message } => match code.as_str() {
+            "OUTSIDE_WORKSPACE" => ToolOutcome::fail("PATH_OUTSIDE_ROOT", message),
+            "PROTECTED_PATH" => ToolOutcome::fail("PATH_PROTECTED", message),
+            "LIMIT_EXCEEDED" => ToolOutcome::fail("LIMIT_EXCEEDED", message),
+            "BAD_CALL" => ToolOutcome::fail("IO", message),
+            other => ToolOutcome::fail(other, message),
+        },
+        other => ToolOutcome {
+            unknown_outcome: Some(format!("the sandbox did not answer: {other}")),
+            ..ToolOutcome::infra("SANDBOX_UNAVAILABLE", other.to_string())
+        },
+    }
+}
+
 fn spec(
     name: &str,
     description: &str,
@@ -109,15 +168,36 @@ fn no_workspace() -> ToolOutcome {
 
 tool!(
     FsList,
-    spec(
+    sandboxed(spec(
         "fs.list",
         "List a directory inside the workspace (non-recursive).",
         EffectClass::ReadOnly,
         json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"],"additionalProperties":false}),
         &["fs.read"],
         Idempotency::Idempotent
-    ),
+    )),
     |ctx, args| {
+        if ctx.execution_profile == "cloud_isolated" {
+            let Some(sb) = sandbox_of(ctx) else {
+                return no_sandbox();
+            };
+            let root = sb.identity().workspace_root.clone();
+            return match sb
+                .list_dir(
+                    &ctx.task_id.to_string(),
+                    &guest_path(&root, &s(&args, "path")),
+                    0,
+                )
+                .await
+            {
+                Ok(l) => ToolOutcome::ok(json!({
+                    "entries": l.entries.iter().map(|e| json!({"name": e.name, "kind": e.kind, "size": e.size, "modified_ms": e.modified_ms})).collect::<Vec<_>>(),
+                    "truncated": l.truncated,
+                    "sandbox": sb.identity().sandbox_id,
+                })),
+                Err(e) => sandbox_err(e),
+            };
+        }
         let Some(ws) = &ctx.workspace else {
             return no_workspace();
         };
@@ -130,15 +210,41 @@ tool!(
 
 tool!(
     FsRead,
-    spec(
+    sandboxed(spec(
         "fs.read",
         "Read a file inside the workspace; returns content, content_hash and workspace_revision.",
         EffectClass::ReadOnly,
         json!({"type":"object","properties":{"path":{"type":"string"},"max_bytes":{"type":"integer","minimum":1},"pages":{"type":"array","items":{"type":"integer","minimum":1},"minItems":2,"maxItems":2},"region":{"type":"object","properties":{"x":{"type":"integer","minimum":0},"y":{"type":"integer","minimum":0},"width":{"type":"integer","minimum":1},"height":{"type":"integer","minimum":1}},"required":["x","y","width","height"],"additionalProperties":false}},"required":["path"],"additionalProperties":false}),
         &["fs.read"],
         Idempotency::Idempotent
-    ),
+    )),
     |ctx, args| {
+        if ctx.execution_profile == "cloud_isolated" {
+            let Some(sb) = sandbox_of(ctx) else {
+                return no_sandbox();
+            };
+            let root = sb.identity().workspace_root.clone();
+            let path = s(&args, "path");
+            let max = args.get("max_bytes").and_then(Value::as_u64).unwrap_or(0);
+            return match sb
+                .read_file(&ctx.task_id.to_string(), &guest_path(&root, &path), max)
+                .await
+            {
+                Ok(f) => {
+                    let mut h = Sha256::new();
+                    h.update(&f.content);
+                    ToolOutcome::ok(json!({
+                        "path": path,
+                        "content": String::from_utf8_lossy(&f.content),
+                        "content_hash": hex::encode(h.finalize()),
+                        "byte_length": f.content.len(),
+                        "truncated": f.truncated,
+                        "sandbox": sb.identity().sandbox_id,
+                    }))
+                }
+                Err(e) => sandbox_err(e),
+            };
+        }
         let Some(ws) = &ctx.workspace else {
             return no_workspace();
         };
@@ -238,15 +344,33 @@ tool!(
 
 tool!(
     FsStat,
-    spec(
+    sandboxed(spec(
         "fs.stat",
         "Stat a path inside the workspace.",
         EffectClass::ReadOnly,
         json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"],"additionalProperties":false}),
         &["fs.read"],
         Idempotency::Idempotent
-    ),
+    )),
     |ctx, args| {
+        if ctx.execution_profile == "cloud_isolated" {
+            let Some(sb) = sandbox_of(ctx) else {
+                return no_sandbox();
+            };
+            let root = sb.identity().workspace_root.clone();
+            return match sb
+                .stat(
+                    &ctx.task_id.to_string(),
+                    &guest_path(&root, &s(&args, "path")),
+                )
+                .await
+            {
+                Ok(st) => ToolOutcome::ok(
+                    json!({"exists": st.exists, "kind": st.kind, "size": st.size, "modified_ms": st.modified_ms, "mode": st.mode, "sandbox": sb.identity().sandbox_id}),
+                ),
+                Err(e) => sandbox_err(e),
+            };
+        }
         let Some(ws) = &ctx.workspace else {
             return no_workspace();
         };
@@ -607,7 +731,111 @@ tool!(
 );
 
 /// Run a structured command through the broker; returns (outcome, exit code).
+/// `shell.exec` inside the task's sandbox (M8.5): the same contract, the
+/// guest's process — nothing of the host's environment reaches it.
+async fn run_process_in_sandbox(
+    ctx: &InvokeContext,
+    sb: &Arc<dyn modbit_sandbox::port::SandboxPort>,
+    args: &Value,
+    request_id: &str,
+) -> ToolOutcome {
+    let argv: Vec<String> = args
+        .get("argv")
+        .and_then(Value::as_array)
+        .map(|a| {
+            a.iter()
+                .filter_map(Value::as_str)
+                .map(str::to_owned)
+                .collect()
+        })
+        .unwrap_or_default();
+    if argv.is_empty() {
+        return ToolOutcome::fail("ARGV_REQUIRED", "argv must not be empty");
+    }
+    let root = sb.identity().workspace_root.clone();
+    let cwd = guest_path(&root, args.get("cwd").and_then(Value::as_str).unwrap_or(""));
+    let mut env: Vec<String> = args
+        .get("env")
+        .and_then(Value::as_object)
+        .map(|m| {
+            m.iter()
+                .filter_map(|(k, v)| v.as_str().map(|v| format!("{k}={v}")))
+                .collect()
+        })
+        .unwrap_or_default();
+    if !env.iter().any(|kv| kv.starts_with("PATH=")) {
+        env.push("PATH=/usr/local/bin:/usr/bin:/bin".into());
+    }
+    let started = std::time::Instant::now();
+    let r = sb
+        .exec(
+            &ctx.task_id.to_string(),
+            request_id,
+            modbit_protocol::v1::GuestExec {
+                argv: argv.clone(),
+                cwd,
+                env,
+                timeout_ms: args
+                    .get("timeout_ms")
+                    .and_then(Value::as_u64)
+                    .unwrap_or(60_000),
+                stdin: args
+                    .get("stdin")
+                    .and_then(Value::as_str)
+                    .map(|s| s.as_bytes().to_vec())
+                    .unwrap_or_default(),
+            },
+        )
+        .await;
+    let x = match r {
+        Ok(x) => x,
+        Err(e) => return sandbox_err(e),
+    };
+    let budget = ctx.output_budget_bytes as usize;
+    let preview = String::from_utf8_lossy(&x.stdout[..x.stdout.len().min(budget)]).into_owned();
+    let exit_code = (!x.timed_out).then_some(x.exit_code);
+    let ok = exit_code == Some(0) && !x.timed_out;
+    let mut o = ToolOutcome {
+        ok,
+        structured_output: json!({
+            "argv": argv, "session_id": request_id, "exit_code": exit_code, "signal": Value::Null, "timed_out": x.timed_out, "cancelled": false,
+            "duration_ms": x.duration_ms.max(started.elapsed().as_millis() as u64), "output_ref": Value::Null, "total_bytes": x.stdout.len() + x.stderr.len(),
+            "stdout_preview": preview, "stdout_truncated": x.stdout_truncated || x.stdout.len() > budget,
+            "sandbox": sb.identity().sandbox_id,
+        }),
+        stdout: Some(x.stdout),
+        stderr: if x.stderr.is_empty() {
+            None
+        } else {
+            Some(x.stderr)
+        },
+        workspace_revision_after: None,
+        error_code: None,
+        error_message: None,
+        infra_failure: false,
+        unknown_outcome: None,
+    };
+    if !ok {
+        o.error_code = Some(if x.timed_out {
+            "TIMEOUT".into()
+        } else {
+            "NON_ZERO_EXIT".into()
+        });
+        o.error_message = Some(format!(
+            "exit_code={exit_code:?} timed_out={} cancelled=false",
+            x.timed_out
+        ));
+    }
+    o
+}
+
 async fn run_process(ctx: &InvokeContext, args: &Value, request_id: &str) -> ToolOutcome {
+    if ctx.execution_profile == "cloud_isolated" {
+        let Some(sb) = sandbox_of(ctx) else {
+            return no_sandbox();
+        };
+        return run_process_in_sandbox(ctx, sb, args, request_id).await;
+    }
     let Some(target) = &ctx.exec else {
         return ToolOutcome::infra("NO_BROKER", "no terminal broker is attached to this Core");
     };
@@ -1624,14 +1852,14 @@ fn request_id(ctx: &InvokeContext, args: &Value, prefix: &str) -> String {
 
 tool!(
     ShellExec,
-    spec(
+    sandboxed(spec(
         "shell.exec",
         "Run a structured argv command in the workspace through the durable broker; non-zero exit is a result.",
         EffectClass::ReversibleWrite,
         serde_json::from_str(SHELL_SCHEMA).expect("schema"),
         &["shell.exec"],
         Idempotency::NonIdempotent
-    ),
+    )),
     |ctx, args| {
         let rid = request_id(ctx, &args, "shell");
         run_process(ctx, &args, &rid).await
@@ -1640,14 +1868,14 @@ tool!(
 
 tool!(
     TestRun,
-    spec(
+    sandboxed(spec(
         "test.run",
         "Run the configured test command and return a normalized TestReport (configured_command adapter, HEURISTIC confidence) with the raw OutputRef.",
         EffectClass::ReversibleWrite,
         serde_json::from_str(SHELL_SCHEMA).expect("schema"),
         &["shell.exec"],
         Idempotency::NonIdempotent
-    ),
+    )),
     |ctx, args| {
         let rid = request_id(ctx, &args, "test");
         let started = std::time::Instant::now();

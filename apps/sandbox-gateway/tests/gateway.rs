@@ -105,6 +105,27 @@ fn fixture(ws: &Path) -> Fixture {
         // The cloud metadata endpoint: the classic control-plane address a
         // guest must not reach (docs/21: deny-by-default sandbox-to-internal).
         control_endpoint: ("169.254.169.254".into(), 80),
+        lines_probe: if cfg!(windows) {
+            sh("for %i in (1 2 3 4 5) do @(echo line %i& ping -n 2 127.0.0.1 >nul)")
+        } else {
+            sh("for i in 1 2 3 4 5; do echo line $i; sleep 1; done")
+        },
+        echo_stdin_probe: if cfg!(windows) {
+            vec![
+                "cmd".into(),
+                "/V:ON".into(),
+                "/C".into(),
+                "set /p l=& echo got:!l!".into(),
+            ]
+        } else {
+            sh("read l; echo got:$l")
+        },
+        pty: !cfg!(windows),
+        write_hook_probe: if cfg!(windows) {
+            sh("echo x > .git\\hooks\\pre-commit")
+        } else {
+            sh("echo x > .git/hooks/pre-commit")
+        },
     }
 }
 
@@ -121,7 +142,11 @@ fn signed_by_test(
         sha256,
         size,
         guest_version: guest_version.into(),
-        guest_protocol: "1.0".into(),
+        guest_protocol: format!(
+            "{}.{}",
+            modbit_sandbox::GUEST_PROTOCOL_MAJOR,
+            modbit_sandbox::GUEST_PROTOCOL_MINOR
+        ),
         kernel_sha256: String::new(),
         built_from: "gateway.rs".into(),
         built_at_ms: 1,
@@ -137,16 +162,56 @@ fn guest_version() -> String {
     env!("CARGO_PKG_VERSION").to_owned()
 }
 
+/// Print every MicroVM console log under `dir` (the guest's own words when
+/// a step failed inside the substrate).
+fn dump_consoles(dir: &Path) {
+    fn walk(d: &Path, out: &mut Vec<PathBuf>) {
+        if let Ok(rd) = std::fs::read_dir(d) {
+            for e in rd.flatten() {
+                let p = e.path();
+                if p.is_dir() {
+                    walk(&p, out);
+                } else if p
+                    .file_name()
+                    .is_some_and(|n| n == "console.log" || n == "guest.log")
+                {
+                    out.push(p);
+                }
+            }
+        }
+    }
+    let mut logs = Vec::new();
+    walk(dir, &mut logs);
+    for p in logs {
+        let text = std::fs::read_to_string(&p).unwrap_or_default();
+        let tail: Vec<&str> = text.lines().rev().take(60).collect();
+        eprintln!("---- {} (last {} lines) ----", p.display(), tail.len());
+        for l in tail.into_iter().rev() {
+            eprintln!("{l}");
+        }
+    }
+}
+
 async fn assert_conformance(
     backend: &dyn SandboxBackend,
     ws: &Path,
 ) -> modbit_sandbox::conformance::Report {
     // A hang anywhere in the substrate fails the suite, never the job.
-    let report = tokio::time::timeout(Duration::from_secs(600), run(backend, &fixture(ws)))
+    let outcome = tokio::time::timeout(Duration::from_secs(600), run(backend, &fixture(ws)))
         .await
-        .expect("the suite finished within ten minutes")
-        .expect("suite ran");
+        .expect("the suite finished within ten minutes");
+    let report = match outcome {
+        Ok(r) => r,
+        Err(e) => {
+            // The substrate's own record of what happened, before the verdict.
+            dump_consoles(ws.parent().unwrap_or(ws));
+            panic!("suite ran: {e}");
+        }
+    };
     eprintln!("{}", serde_json::to_string_pretty(&report).unwrap());
+    if !report.passed() {
+        dump_consoles(ws.parent().unwrap_or(ws));
+    }
     assert!(
         report.passed(),
         "failed steps on {}: {:?}",
@@ -522,7 +587,7 @@ async fn qual_m8_3_the_gateway_binds_sandboxes_to_the_tenant_and_the_workers_ses
         (created["backend"].as_str(), created["isolated"].as_bool()),
         (Some("reference"), Some(false))
     );
-    assert_eq!(created["guest"]["protocol"], "1.0");
+    assert_eq!(created["guest"]["protocol"], "1.1");
     assert_eq!(
         created["image"]["guest_version"], created["guest"]["version"],
         "the sandbox reports the verified image the guest came from: {created}"

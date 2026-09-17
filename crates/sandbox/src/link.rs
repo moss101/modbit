@@ -344,6 +344,255 @@ impl<S: AsyncRead + AsyncWrite + Unpin + Send> GuestLink<S> {
         }
     }
 
+    fn expect_refusal_or<T>(
+        what: &str,
+        body: ReplyBody,
+        pick: impl FnOnce(ReplyBody) -> Option<T>,
+    ) -> Result<T> {
+        match body {
+            ReplyBody::Refusal(r) => Err(SandboxError::Refused {
+                code: r.code,
+                message: r.message,
+            }),
+            other => {
+                let dbg = format!("{other:?}");
+                pick(other).ok_or_else(|| {
+                    SandboxError::Protocol(format!("unexpected reply to {what}: {dbg}"))
+                })
+            }
+        }
+    }
+
+    /// Start a followed process (M8.5).
+    pub async fn proc_start(
+        &mut self,
+        task_id: &str,
+        effect_id: &str,
+        start: wire::GuestProcStart,
+    ) -> Result<wire::GuestProcStarted> {
+        let cap = if start.pty { "pty" } else { "proc.exec" };
+        let body = self
+            .call(
+                task_id,
+                effect_id,
+                cap,
+                guest_call::Body::ProcStart(start),
+                Duration::ZERO,
+            )
+            .await?;
+        Self::expect_refusal_or("proc_start", body, |b| match b {
+            ReplyBody::ProcStarted(p) => Some(p),
+            _ => None,
+        })
+    }
+
+    /// Follow a process from a cursor, waiting up to `wait_ms` for output.
+    pub async fn proc_follow(
+        &mut self,
+        task_id: &str,
+        proc_id: &str,
+        after_cursor: u64,
+        max_bytes: u64,
+        wait_ms: u64,
+    ) -> Result<wire::GuestProcOutput> {
+        let body = self
+            .call(
+                task_id,
+                "",
+                "proc.exec",
+                guest_call::Body::ProcFollow(wire::GuestProcFollow {
+                    proc_id: proc_id.into(),
+                    after_cursor,
+                    max_bytes,
+                    wait_ms,
+                }),
+                Duration::from_millis(wait_ms),
+            )
+            .await?;
+        Self::expect_refusal_or("proc_follow", body, |b| match b {
+            ReplyBody::ProcOutput(o) => Some(o),
+            _ => None,
+        })
+    }
+
+    /// Feed a process's stdin.
+    pub async fn proc_write(
+        &mut self,
+        task_id: &str,
+        proc_id: &str,
+        data: Vec<u8>,
+        close_stdin: bool,
+    ) -> Result<()> {
+        let body = self
+            .call(
+                task_id,
+                "",
+                "proc.exec",
+                guest_call::Body::ProcWrite(wire::GuestProcWrite {
+                    proc_id: proc_id.into(),
+                    data,
+                    close_stdin,
+                }),
+                Duration::ZERO,
+            )
+            .await?;
+        Self::expect_refusal_or("proc_write", body, |b| {
+            matches!(b, ReplyBody::ProcAck(_)).then_some(())
+        })
+    }
+
+    /// Cancel a process.
+    pub async fn proc_cancel(&mut self, task_id: &str, proc_id: &str) -> Result<()> {
+        let body = self
+            .call(
+                task_id,
+                "",
+                "proc.exec",
+                guest_call::Body::ProcCancel(wire::GuestProcCancel {
+                    proc_id: proc_id.into(),
+                }),
+                Duration::ZERO,
+            )
+            .await?;
+        Self::expect_refusal_or("proc_cancel", body, |b| {
+            matches!(b, ReplyBody::ProcAck(_)).then_some(())
+        })
+    }
+
+    /// Resize a PTY.
+    pub async fn pty_resize(
+        &mut self,
+        task_id: &str,
+        proc_id: &str,
+        cols: u32,
+        rows: u32,
+    ) -> Result<()> {
+        let body = self
+            .call(
+                task_id,
+                "",
+                "pty",
+                guest_call::Body::PtyResize(wire::GuestPtyResize {
+                    proc_id: proc_id.into(),
+                    cols,
+                    rows,
+                }),
+                Duration::ZERO,
+            )
+            .await?;
+        Self::expect_refusal_or("pty_resize", body, |b| {
+            matches!(b, ReplyBody::ProcAck(_)).then_some(())
+        })
+    }
+
+    /// List a directory.
+    pub async fn list_dir(
+        &mut self,
+        task_id: &str,
+        path: &str,
+        max_entries: u32,
+    ) -> Result<wire::GuestDirListing> {
+        let body = self
+            .call(
+                task_id,
+                "",
+                "fs.read",
+                guest_call::Body::ListDir(wire::GuestListDir {
+                    path: path.into(),
+                    max_entries,
+                }),
+                Duration::ZERO,
+            )
+            .await?;
+        Self::expect_refusal_or("list_dir", body, |b| match b {
+            ReplyBody::Listing(l) => Some(l),
+            _ => None,
+        })
+    }
+
+    /// Stat a path.
+    pub async fn stat(&mut self, task_id: &str, path: &str) -> Result<wire::GuestStatResult> {
+        let body = self
+            .call(
+                task_id,
+                "",
+                "fs.read",
+                guest_call::Body::Stat(wire::GuestStat { path: path.into() }),
+                Duration::ZERO,
+            )
+            .await?;
+        Self::expect_refusal_or("stat", body, |b| match b {
+            ReplyBody::Stat(st) => Some(st),
+            _ => None,
+        })
+    }
+
+    /// Make a directory (and its parents).
+    pub async fn mkdir(&mut self, task_id: &str, effect_id: &str, path: &str) -> Result<()> {
+        let body = self
+            .call(
+                task_id,
+                effect_id,
+                "fs.write",
+                guest_call::Body::Mkdir(wire::GuestMkdir { path: path.into() }),
+                Duration::ZERO,
+            )
+            .await?;
+        Self::expect_refusal_or("mkdir", body, |b| {
+            matches!(b, ReplyBody::FsDone(_)).then_some(())
+        })
+    }
+
+    /// Remove a path.
+    pub async fn remove(
+        &mut self,
+        task_id: &str,
+        effect_id: &str,
+        path: &str,
+        recursive: bool,
+    ) -> Result<()> {
+        let body = self
+            .call(
+                task_id,
+                effect_id,
+                "fs.write",
+                guest_call::Body::Remove(wire::GuestRemove {
+                    path: path.into(),
+                    recursive,
+                }),
+                Duration::ZERO,
+            )
+            .await?;
+        Self::expect_refusal_or("remove", body, |b| {
+            matches!(b, ReplyBody::FsDone(_)).then_some(())
+        })
+    }
+
+    /// Rename a path.
+    pub async fn rename(
+        &mut self,
+        task_id: &str,
+        effect_id: &str,
+        from: &str,
+        to: &str,
+    ) -> Result<()> {
+        let body = self
+            .call(
+                task_id,
+                effect_id,
+                "fs.write",
+                guest_call::Body::Rename(wire::GuestRename {
+                    from: from.into(),
+                    to: to.into(),
+                }),
+                Duration::ZERO,
+            )
+            .await?;
+        Self::expect_refusal_or("rename", body, |b| {
+            matches!(b, ReplyBody::FsDone(_)).then_some(())
+        })
+    }
+
     /// Send a call exactly as given — no signing, the caller's `call_id` —
     /// and return the raw reply (the conformance suite proves refusals of
     /// unauthenticated and replayed calls this way).

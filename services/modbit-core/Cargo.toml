@@ -21,6 +21,7 @@ modbit-providers.workspace = true
 modbit-terminal.workspace = true
 modbit-tools.workspace = true
 modbit-browser.workspace = true
+modbit-sandbox = { workspace = true, features = ["client"] }
 modbit-procedural-runtime.workspace = true
 modbit-skills.workspace = true
 modbit-workspace.workspace = true

@@ -16,9 +16,12 @@ fn cmdline_value(key: &str) -> Option<String> {
 }
 
 fn mount_fs(source: &str, target: &str, fstype: &str, flags: MsFlags, data: Option<&str>) {
-    let _ = std::fs::create_dir_all(target);
-    if let Err(e) = mount(Some(source), target, Some(fstype), flags, data) {
-        eprintln!("modbit-guest: mount {fstype} on {target}: {e}");
+    if let Err(e) = std::fs::create_dir_all(target) {
+        eprintln!("modbit-guest: creating {target}: {e}");
+    }
+    match mount(Some(source), target, Some(fstype), flags, data) {
+        Ok(()) => eprintln!("modbit-guest: mounted {fstype} on {target}"),
+        Err(e) => eprintln!("modbit-guest: mount {fstype} on {target}: {e}"),
     }
 }
 
@@ -46,6 +49,14 @@ pub async fn run_as_init() -> std::io::Result<()> {
         MsFlags::MS_NOSUID,
         Some("mode=0755"),
     );
+    // PTY slaves live on devpts (M8.5): `/dev/pts/N` for every PTY opened.
+    mount_fs(
+        "devpts",
+        "/dev/pts",
+        "devpts",
+        MsFlags::MS_NOSUID | MsFlags::MS_NOEXEC,
+        Some("mode=0620,ptmxmode=0666"),
+    );
     mount_fs(
         "tmpfs",
         "/tmp",
@@ -60,6 +71,14 @@ pub async fn run_as_init() -> std::io::Result<()> {
         MsFlags::MS_NOSUID | MsFlags::MS_NODEV,
         Some("mode=0755"),
     );
+    // PTYs: `posix_openpt` opens `/dev/ptmx`; where devtmpfs did not
+    // create it, the devpts multiplexer stands in for it.
+    if !Path::new("/dev/ptmx").exists() {
+        match std::os::unix::fs::symlink("pts/ptmx", "/dev/ptmx") {
+            Ok(()) => eprintln!("modbit-guest: /dev/ptmx -> pts/ptmx"),
+            Err(e) => eprintln!("modbit-guest: creating /dev/ptmx: {e}"),
+        }
+    }
     let _ = nix::unistd::sethostname("modbit-guest");
     let workspace_dev = cmdline_value("modbit.workspace_dev").unwrap_or_else(|| "/dev/vdb".into());
     let _ = std::fs::create_dir_all("/workspace");
@@ -93,6 +112,7 @@ pub async fn run_as_init() -> std::io::Result<()> {
         .and_then(|p| p.parse().ok())
         .unwrap_or(5000);
     let boot_id = uuid::Uuid::now_v7().to_string();
+    let procs = std::sync::Arc::new(crate::procs::ProcTable::default());
     eprintln!(
         "modbit-guest: init up; sandbox {}; listening on vsock port {port}",
         cmdline_value("modbit.sandbox_id").unwrap_or_default()
@@ -115,9 +135,15 @@ pub async fn run_as_init() -> std::io::Result<()> {
         };
         stream.set_nonblocking(true)?;
         let stream = VsockAsync(tokio::io::unix::AsyncFd::new(stream)?);
-        if let Err(e) = crate::serve::serve_stream(stream, None, &boot_id, started).await {
-            eprintln!("modbit-guest: link ended: {e}");
-        }
+        eprintln!("modbit-guest: vsock link accepted");
+        let procs = std::sync::Arc::clone(&procs);
+        let boot_id = boot_id.clone();
+        tokio::spawn(async move {
+            if let Err(e) = crate::serve::serve_stream(stream, None, &boot_id, started, procs).await
+            {
+                eprintln!("modbit-guest: link ended: {e}");
+            }
+        });
     }
 }
 

@@ -494,10 +494,13 @@ impl Runtime {
         let resume_children = resumed && task.origin != modbit_domain::task::TaskOrigin::Subagent;
         let parent = task.clone();
         let child_actor = actor.clone();
+        let loop_actor = actor.clone();
         tokio::spawn(async move {
             let task_id = task.task_id;
             run_loop(core2.clone(), task, run_id, cfg, cancel, park).await;
             core2.runtime.tasks.lock().await.remove(&task_id);
+            // M8.5: a task that ended gives its sandbox back.
+            crate::sandboxes::release_if_ended(&core2, task_id, &loop_actor).await;
         });
         drop(tasks);
         // M6.7: a resumed parent brings back the background children a

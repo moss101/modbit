@@ -375,6 +375,26 @@ pub struct ToolHost {
     /// read at each call so a call's arguments can be refused for carrying
     /// one; never stored anywhere else.
     gateway: modbit_providers::ProviderGateway,
+    /// The Sandbox Gateway this Core provisions from under `cloud_isolated`
+    /// (M8.5; set by `ConfigureSandboxGateway`, memory only: the worker
+    /// token is never journaled or logged).
+    pub sandbox_gateway: Mutex<Option<SandboxGatewayCustody>>,
+    /// The sandbox each `cloud_isolated` task runs in, from `StartTask`
+    /// until the task ends.
+    pub sandboxes: Mutex<HashMap<TaskId, Arc<modbit_sandbox::client::SandboxHandle>>>,
+}
+
+/// The Sandbox Gateway a Cloud Core Worker's Core reaches (M8.5).
+#[derive(Clone)]
+pub struct SandboxGatewayCustody {
+    /// The client (base URL and the worker's bearer token, in memory).
+    pub client: modbit_sandbox::client::GatewayClient,
+    /// The tenant this Core serves, as the gateway knows it.
+    pub tenant_id: String,
+    /// The worker's cloud session lease generation (the gateway checks it).
+    pub lease_generation: u64,
+    /// The worker's id (for the record).
+    pub worker_id: String,
 }
 
 impl ToolHost {
@@ -417,6 +437,8 @@ impl ToolHost {
             forge: crate::forge::ForgeCustody::from_env(),
             browser,
             gateway,
+            sandbox_gateway: Mutex::new(None),
+            sandboxes: Mutex::new(HashMap::new()),
         })
     }
 
@@ -883,6 +905,13 @@ impl ToolHost {
                 actor: actor.clone(),
             })),
             browser: Some(Arc::clone(&self.browser)),
+            sandbox: self
+                .sandboxes
+                .lock()
+                .await
+                .get(&task_id)
+                .cloned()
+                .map(|h| h as Arc<dyn modbit_sandbox::port::SandboxPort>),
             effect_class: None,
             secrets_in_custody,
         };

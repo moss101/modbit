@@ -1238,6 +1238,26 @@ message ConfigureForge {
   string web_host = 4;             // optional (empty = github.com)
 }
 
+// The Sandbox Gateway a Cloud Core Worker's Core provisions from (M8.5,
+// docs/21, docs/24 "Sandbox Gateway"): the worker hands its Core the
+// gateway's URL, its own bearer token and the cloud session lease
+// generation the gateway checks. Not journaled: the token is held in
+// memory and never returned, logged or stored.
+message ConfigureSandboxGateway {
+  string base_url = 1;
+  string worker_token = 2;         // the credential; empty clears the gateway
+  string worker_id = 3;
+  string tenant_id = 4;            // the tenant as the gateway knows it (uuid)
+  uint64 lease_generation = 5;     // the worker's cloud session lease generation
+}
+
+message SandboxGatewayConfigured {
+  string base_url = 1;
+  string worker_id = 2;
+  uint64 lease_generation = 3;
+  bool token_held = 4;
+}
+
 message ForgeConfigured {
   string forge = 1;
   string api_base_url = 2;

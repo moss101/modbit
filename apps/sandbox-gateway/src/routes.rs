@@ -98,6 +98,7 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/v1/sandboxes", post(provision))
         .route("/v1/sandboxes/{sandbox_id}", get(record).delete(destroy))
         .route("/v1/sandboxes/{sandbox_id}/calls", post(call))
+        .route("/v1/sandboxes/{sandbox_id}/relink", post(relink))
         .with_state(state)
 }
 
@@ -365,6 +366,7 @@ async fn provision(
             tenant_id: tenant,
             worker_id: w.worker_id.clone(),
             hello: hello.clone(),
+            policy: policy.clone(),
         }),
     );
     Ok((
@@ -517,6 +519,151 @@ async fn call(
                 .await?;
             json!({"kind": "net.probe", "reachable": p.reachable, "error": p.error})
         }
+        // M8.5: followed processes, PTYs and directory operations.
+        "proc.start" => {
+            let argv: Vec<String> = c["argv"]
+                .as_array()
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|x| x.as_str().map(str::to_owned))
+                        .collect()
+                })
+                .unwrap_or_default();
+            if argv.is_empty() {
+                return Err(ApiError::bad("call.argv is required"));
+            }
+            let env: Vec<String> = c["env"]
+                .as_array()
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|x| x.as_str().map(str::to_owned))
+                        .collect()
+                })
+                .unwrap_or_default();
+            let p = link
+                .proc_start(
+                    &task_id,
+                    &effect_id,
+                    wire::GuestProcStart {
+                        argv,
+                        cwd: c["cwd"].as_str().unwrap_or_default().to_owned(),
+                        env,
+                        timeout_ms: c["timeout_ms"].as_u64().unwrap_or(0),
+                        pty: c["pty"].as_bool().unwrap_or(false),
+                        cols: c["cols"].as_u64().unwrap_or(120) as u32,
+                        rows: c["rows"].as_u64().unwrap_or(40) as u32,
+                        stdin_open: c["stdin_open"].as_bool().unwrap_or(false),
+                    },
+                )
+                .await?;
+            json!({"kind": "proc.start", "proc_id": p.proc_id, "pid": p.pid})
+        }
+        "proc.follow" => {
+            let proc_id = c["proc_id"]
+                .as_str()
+                .ok_or_else(|| ApiError::bad("call.proc_id is required"))?;
+            let o = link
+                .proc_follow(
+                    &task_id,
+                    proc_id,
+                    c["after_cursor"].as_u64().unwrap_or(0),
+                    c["max_bytes"].as_u64().unwrap_or(0),
+                    c["wait_ms"].as_u64().unwrap_or(1_000),
+                )
+                .await?;
+            json!({
+                "kind": "proc.follow", "proc_id": o.proc_id, "data_base64": base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &o.data),
+                "cursor": o.cursor, "truncated": o.truncated, "running": o.running, "exit_code": o.exit_code, "timed_out": o.timed_out, "cancelled": o.cancelled, "total_bytes": o.total_bytes,
+            })
+        }
+        "proc.write" => {
+            let proc_id = c["proc_id"]
+                .as_str()
+                .ok_or_else(|| ApiError::bad("call.proc_id is required"))?;
+            let data = match c["data_base64"].as_str() {
+                Some(b) => base64::Engine::decode(&base64::engine::general_purpose::STANDARD, b)
+                    .map_err(|_| ApiError::bad("call.data_base64"))?,
+                None => c["data"].as_str().unwrap_or_default().as_bytes().to_vec(),
+            };
+            link.proc_write(
+                &task_id,
+                proc_id,
+                data,
+                c["close_stdin"].as_bool().unwrap_or(false),
+            )
+            .await?;
+            json!({"kind": "proc.write", "proc_id": proc_id})
+        }
+        "proc.cancel" => {
+            let proc_id = c["proc_id"]
+                .as_str()
+                .ok_or_else(|| ApiError::bad("call.proc_id is required"))?;
+            link.proc_cancel(&task_id, proc_id).await?;
+            json!({"kind": "proc.cancel", "proc_id": proc_id})
+        }
+        "pty.resize" => {
+            let proc_id = c["proc_id"]
+                .as_str()
+                .ok_or_else(|| ApiError::bad("call.proc_id is required"))?;
+            link.pty_resize(
+                &task_id,
+                proc_id,
+                c["cols"].as_u64().unwrap_or(120) as u32,
+                c["rows"].as_u64().unwrap_or(40) as u32,
+            )
+            .await?;
+            json!({"kind": "pty.resize", "proc_id": proc_id})
+        }
+        "fs.list" => {
+            let path = c["path"]
+                .as_str()
+                .ok_or_else(|| ApiError::bad("call.path is required"))?;
+            let l = link
+                .list_dir(
+                    &task_id,
+                    path,
+                    c["max_entries"].as_u64().unwrap_or(0) as u32,
+                )
+                .await?;
+            json!({"kind": "fs.list", "entries": l.entries.iter().map(|e| json!({"name": e.name, "kind": e.kind, "size": e.size, "modified_ms": e.modified_ms})).collect::<Vec<_>>(), "truncated": l.truncated})
+        }
+        "fs.stat" => {
+            let path = c["path"]
+                .as_str()
+                .ok_or_else(|| ApiError::bad("call.path is required"))?;
+            let st_ = link.stat(&task_id, path).await?;
+            json!({"kind": "fs.stat", "exists": st_.exists, "file_kind": st_.kind, "size": st_.size, "modified_ms": st_.modified_ms, "mode": st_.mode})
+        }
+        "fs.mkdir" => {
+            let path = c["path"]
+                .as_str()
+                .ok_or_else(|| ApiError::bad("call.path is required"))?;
+            link.mkdir(&task_id, &effect_id, path).await?;
+            json!({"kind": "fs.mkdir", "path": path})
+        }
+        "fs.remove" => {
+            let path = c["path"]
+                .as_str()
+                .ok_or_else(|| ApiError::bad("call.path is required"))?;
+            link.remove(
+                &task_id,
+                &effect_id,
+                path,
+                c["recursive"].as_bool().unwrap_or(false),
+            )
+            .await?;
+            json!({"kind": "fs.remove", "path": path})
+        }
+        "fs.rename" => {
+            let from = c["from"]
+                .as_str()
+                .ok_or_else(|| ApiError::bad("call.from is required"))?;
+            let to = c["to"]
+                .as_str()
+                .ok_or_else(|| ApiError::bad("call.to is required"))?;
+            link.rename(&task_id, &effect_id, from, to).await?;
+            json!({"kind": "fs.rename", "from": from, "to": to})
+        }
         other => {
             return Err(ApiError::bad(format!(
                 "call.kind `{other}` is not a guest method"
@@ -524,6 +671,36 @@ async fn call(
         }
     };
     Ok(Json(out))
+}
+
+/// `POST /v1/sandboxes/{id}/relink {tenant_id}`: replace a lost link to a
+/// live guest — a fresh channel from the backend, admitted anew (a new
+/// credential); the guest's processes and their output are untouched.
+async fn relink(
+    State(st): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(body): Json<Value>,
+) -> ApiResult<Json<Value>> {
+    let w = worker(&st, &headers)?;
+    let tenant = tenant_of(&body)?;
+    let sandbox = sandbox_id_of(&id)?;
+    let (rec, live) = owned(&st, tenant, &w.worker_id, sandbox).await?;
+    let policy = live.policy.clone();
+    let fresh = st.backend.reconnect(&sandbox.to_string()).await?;
+    let new_link: GuestLink<Channel> = GuestLink::admit_image(
+        fresh,
+        &sandbox.to_string(),
+        &policy,
+        Duration::from_secs(30),
+        st.backend.image(),
+    )
+    .await?;
+    let boot_id = new_link.hello.boot_id.clone();
+    *live.link.lock().await = new_link;
+    Ok(Json(
+        json!({"sandbox_id": sandbox.to_string(), "state": rec.state, "boot_id": boot_id, "same_boot": boot_id == live.hello.boot_id}),
+    ))
 }
 
 async fn destroy(

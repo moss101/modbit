@@ -48,6 +48,27 @@ pub struct Config {
     /// the Core's own environment). The key is held in this process's
     /// memory and crosses to the Core once; it is never logged or stored.
     pub provider: Option<ProviderConfig>,
+    /// The Sandbox Gateway each hosted Core provisions from under
+    /// `cloud_isolated` (M8.5); the worker token is held in memory and
+    /// crosses to the Core once.
+    pub sandbox_gateway: Option<SandboxGatewayConfig>,
+}
+
+/// The Sandbox Gateway a worker's Cores reach (M8.5).
+#[derive(Clone)]
+pub struct SandboxGatewayConfig {
+    /// Base URL.
+    pub base_url: String,
+    /// The worker's bearer token.
+    pub worker_token: String,
+}
+
+impl std::fmt::Debug for SandboxGatewayConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SandboxGatewayConfig")
+            .field("base_url", &self.base_url)
+            .finish_non_exhaustive()
+    }
 }
 
 /// A provider endpoint for the hosted Cores (docs/24 "Cloud Core Worker").
@@ -74,7 +95,8 @@ impl Config {
     /// From the environment (`MODBIT_CLOUD_DATABASE_URL`, `MODBIT_CLOUD_S3_*`,
     /// `MODBIT_CLOUD_WORKER_ID`, `MODBIT_CLOUD_WORKER_DATA_DIR`,
     /// `MODBIT_CORE_BIN`, `MODBIT_CLOUD_WORKER_ENDPOINT`, `MODBIT_CLOUD_WORKER_MODEL`,
-    /// `MODBIT_CLOUD_WORKER_PROVIDER` with `_API_KEY` and `_BASE_URL`).
+    /// `MODBIT_CLOUD_WORKER_PROVIDER` with `_API_KEY` and `_BASE_URL`,
+    /// `MODBIT_SANDBOX_GATEWAY_URL` with `MODBIT_SANDBOX_WORKER_TOKEN`).
     pub fn from_env() -> anyhow::Result<Self> {
         let database_url = std::env::var("MODBIT_CLOUD_DATABASE_URL")
             .map_err(|_| anyhow::anyhow!("MODBIT_CLOUD_DATABASE_URL is required"))?;
@@ -120,6 +142,13 @@ impl Config {
                         .unwrap_or_default(),
                     base_url: std::env::var("MODBIT_CLOUD_WORKER_PROVIDER_BASE_URL")
                         .unwrap_or_default(),
+                }),
+            sandbox_gateway: std::env::var("MODBIT_SANDBOX_GATEWAY_URL")
+                .ok()
+                .filter(|s| !s.is_empty())
+                .map(|base_url| SandboxGatewayConfig {
+                    base_url,
+                    worker_token: std::env::var("MODBIT_SANDBOX_WORKER_TOKEN").unwrap_or_default(),
                 }),
         })
     }

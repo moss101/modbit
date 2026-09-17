@@ -21,6 +21,7 @@
 
 use std::process::ExitCode;
 
+mod procs;
 mod serve;
 
 #[cfg(target_os = "linux")]

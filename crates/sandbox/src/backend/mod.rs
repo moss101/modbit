@@ -62,6 +62,10 @@ pub trait SandboxBackend: Send + Sync {
     ) -> BoxFuture<'a, Result<Provisioned>>;
     /// Tear a guest down; idempotent.
     fn destroy<'a>(&'a self, sandbox_id: &'a str) -> BoxFuture<'a, Result<()>>;
+    /// A fresh channel to a guest already booted (a link that was lost is
+    /// replaced; the guest, its processes and their output are unchanged
+    /// and the new link is admitted anew — M8.5 attach/replay).
+    fn reconnect<'a>(&'a self, sandbox_id: &'a str) -> BoxFuture<'a, Result<Channel>>;
 }
 
 /// Copy a directory tree (the workspace source into a sandbox's own copy).

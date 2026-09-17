@@ -25,10 +25,13 @@
 
 pub mod auth;
 pub mod backend;
+#[cfg(feature = "client")]
+pub mod client;
 pub mod conformance;
 pub mod image;
 pub mod link;
 pub mod policy;
+pub mod port;
 
 pub use policy::{CompiledPolicy, EgressRule, NetworkPolicy, Resources, SandboxSpec};
 
@@ -36,10 +39,20 @@ pub use policy::{CompiledPolicy, EgressRule, NetworkPolicy, Resources, SandboxSp
 /// compatibility": guest and gateway negotiate before admission).
 pub const GUEST_PROTOCOL_MAJOR: u32 = 1;
 /// Minor version.
-pub const GUEST_PROTOCOL_MINOR: u32 = 0;
+pub const GUEST_PROTOCOL_MINOR: u32 = 1;
 
-/// The methods a guest must offer to be admitted for a task.
-pub const REQUIRED_METHODS: &[&str] = &["health", "exec", "fs.read", "fs.write", "net.probe"];
+/// The methods a guest must offer to be admitted for a task (1.1 adds the
+/// followed processes, PTYs and directory operations of M8.5).
+pub const REQUIRED_METHODS: &[&str] = &[
+    "health",
+    "exec",
+    "fs.read",
+    "fs.write",
+    "net.probe",
+    "proc",
+    "pty",
+    "fs.dir",
+];
 
 /// Errors at the boundary.
 #[derive(Debug, thiserror::Error)]

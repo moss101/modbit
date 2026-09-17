@@ -19,7 +19,7 @@ use std::process::Stdio;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
-use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::UnixStream;
 use tokio::process::{Child, Command};
 
@@ -251,11 +251,31 @@ fn make_ext4(src: &Path, img: &Path, size_mib: u32) -> Result<()> {
 async fn connect_vsock(uds: &Path, port: u32) -> std::io::Result<UnixStream> {
     let mut s = UnixStream::connect(uds).await?;
     s.write_all(format!("CONNECT {port}\n").as_bytes()).await?;
-    let mut line = String::new();
-    let mut r = BufReader::new(&mut s);
-    tokio::time::timeout(Duration::from_secs(5), r.read_line(&mut line))
-        .await
-        .map_err(|_| std::io::Error::other("vsock connect: no answer"))??;
+    // The answer line is read a byte at a time: the guest's first frame
+    // (its hello) can follow `OK` at once, and a buffered read would
+    // swallow it.
+    let mut line = Vec::new();
+    let answer = tokio::time::timeout(Duration::from_secs(5), async {
+        let mut b = [0u8; 1];
+        loop {
+            let n = s.read(&mut b).await?;
+            if n == 0 {
+                break;
+            }
+            if b[0] == b'\n' {
+                break;
+            }
+            line.push(b[0]);
+            if line.len() > 64 {
+                break;
+            }
+        }
+        Ok::<(), std::io::Error>(())
+    })
+    .await
+    .map_err(|_| std::io::Error::other("vsock connect: no answer"));
+    answer??;
+    let line = String::from_utf8_lossy(&line).into_owned();
     if line.starts_with("OK ") {
         Ok(s)
     } else {
@@ -409,6 +429,19 @@ impl SandboxBackend for MicrovmBackend {
                 isolated: true,
                 detail: format!("firecracker pid {pid}; console {}", console.display()),
             })
+        })
+    }
+
+    fn reconnect<'a>(&'a self, sandbox_id: &'a str) -> BoxFuture<'a, Result<super::Channel>> {
+        Box::pin(async move {
+            if !self.vms.lock().expect("vms").contains_key(sandbox_id) {
+                return Err(SandboxError::Guest(format!(
+                    "no live MicroVM for sandbox {sandbox_id}"
+                )));
+            }
+            let vsock = self.cfg.work_dir.join(sandbox_id).join("v.sock");
+            let stream = connect_vsock(&vsock, self.cfg.vsock_port).await?;
+            Ok(Box::new(stream) as super::Channel)
         })
     }
 

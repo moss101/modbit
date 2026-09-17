@@ -21,6 +21,12 @@ thiserror.workspace = true
 uuid.workspace = true
 hex.workspace = true
 ed25519-dalek.workspace = true
+# The gateway client (M8.5) — what a Core links; the guest never does.
+reqwest = { workspace = true, optional = true }
+base64 = { workspace = true, optional = true }
+
+[features]
+client = ["dep:reqwest", "dep:base64"]
 
 [dev-dependencies]
 tempfile.workspace = true

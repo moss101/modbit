@@ -17,7 +17,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use modbit_cloud_api::{Config as ApiConfig, serve};
-use modbit_cloud_worker::{Config, Hosting, ProviderConfig, start};
+use modbit_cloud_worker::{Config, Hosting, ProviderConfig, SandboxGatewayConfig, start};
 use modbit_event_store::cloud::{CloudStoreConfig, S3Config};
 use serde_json::{Value, json};
 
@@ -129,7 +129,13 @@ async fn scripted_model(script: Vec<Value>) -> (String, Arc<Mutex<Vec<Value>>>) 
             let script = Arc::clone(&script);
             let seen = seen2.clone();
             async move {
-                let results = body["messages"].as_array().map_or(0, |m| m.iter().filter(|x| x["role"] == "tool").count());
+                // The n-th step answers the n-th request that follows a tool-calling
+                // turn (a step may carry several calls).
+                let results = body["messages"].as_array().map_or(0, |m| {
+                    m.iter()
+                        .filter(|x| x["role"] == "assistant" && !x["tool_calls"].is_null())
+                        .count()
+                });
                 seen.lock().unwrap().push(body.clone());
                 let step = script.get(results).cloned().unwrap_or(json!({}));
                 let mut out = String::new();
@@ -202,6 +208,7 @@ fn worker_config(
     data_dir: &std::path::Path,
     model_base: &str,
     lease_ttl: Duration,
+    gateway: &Gateway,
 ) -> Config {
     Config {
         store: store.clone(),
@@ -218,6 +225,112 @@ fn worker_config(
             api_key: String::new(),
             base_url: model_base.to_owned(),
         }),
+        sandbox_gateway: Some(SandboxGatewayConfig {
+            base_url: gateway.base_url.clone(),
+            worker_token: gateway.token_for(id),
+        }),
+    }
+}
+
+fn guest_bin() -> PathBuf {
+    if let Ok(p) = std::env::var("MODBIT_GUEST_BIN") {
+        return PathBuf::from(p);
+    }
+    let exe = std::env::current_exe().expect("test exe");
+    let dir = exe.parent().and_then(|p| p.parent()).expect("target/debug");
+    dir.join(if cfg!(windows) {
+        "modbit-guest.exe"
+    } else {
+        "modbit-guest"
+    })
+}
+
+/// The Sandbox Gateway the workers' Cores provision from (M8.5): the
+/// MicroVM backend where the job provides Firecracker, the kernel and the
+/// signed image; the reference backend (its guest signed by a key of the
+/// test's own) elsewhere.
+struct Gateway {
+    base_url: String,
+    served: modbit_sandbox_gateway::Served,
+    /// `microvm` | `reference`.
+    backend: &'static str,
+}
+
+impl Gateway {
+    async fn start(store: &CloudStoreConfig, dir: &std::path::Path) -> Self {
+        std::fs::create_dir_all(dir).unwrap();
+        #[cfg(unix)]
+        let microvm = modbit_sandbox::backend::microvm::MicrovmConfig::from_env()
+            .filter(|c| c.unavailable_reason().is_none())
+            .map(|c| modbit_sandbox::backend::microvm::MicrovmConfig {
+                work_dir: dir.join("vms"),
+                ..c
+            });
+        #[cfg(not(unix))]
+        let microvm: Option<()> = None;
+        let (backend, kind) = match microvm {
+            #[cfg(unix)]
+            Some(c) => (modbit_sandbox_gateway::BackendChoice::Microvm(c), "microvm"),
+            _ => {
+                let bin = guest_bin();
+                assert!(bin.is_file(), "modbit-guest at {}", bin.display());
+                let key = modbit_sandbox::image::fresh_signing_key();
+                let (sha256, size) = modbit_sandbox::image::sha256_file(&bin).unwrap();
+                let manifest = modbit_sandbox::image::ImageManifest {
+                    kind: "reference-guest".into(),
+                    sha256,
+                    size,
+                    guest_version: env!("CARGO_PKG_VERSION").into(),
+                    guest_protocol: format!(
+                        "{}.{}",
+                        modbit_sandbox::GUEST_PROTOCOL_MAJOR,
+                        modbit_sandbox::GUEST_PROTOCOL_MINOR
+                    ),
+                    kernel_sha256: String::new(),
+                    built_from: "cloud_worker.rs".into(),
+                    built_at_ms: 1,
+                };
+                let signed = modbit_sandbox::image::sign(&manifest, "test-publisher", &key);
+                let path = dir.join("guest.manifest.json");
+                std::fs::write(&path, serde_json::to_string(&signed).unwrap()).unwrap();
+                (
+                    modbit_sandbox_gateway::BackendChoice::Reference {
+                        guest_bin: bin,
+                        work_dir: dir.join("sandboxes"),
+                        manifest: Some(path),
+                        trusted_keys: vec![(
+                            "test-publisher".to_owned(),
+                            key.verifying_key().to_bytes(),
+                        )],
+                    },
+                    "reference",
+                )
+            }
+        };
+        let served = modbit_sandbox_gateway::serve(modbit_sandbox_gateway::Config {
+            store: store.clone(),
+            worker_key: None,
+            bind: "127.0.0.1:0".into(),
+            backend,
+        })
+        .await
+        .expect("gateway");
+        eprintln!("test gateway: {kind} backend at {}", served.addr);
+        Self {
+            base_url: format!("http://{}", served.addr),
+            served,
+            backend: kind,
+        }
+    }
+
+    fn token_for(&self, worker_id: &str) -> String {
+        self.served
+            .state
+            .worker_key
+            .issue(&modbit_sandbox::auth::WorkerClaims {
+                worker_id: worker_id.into(),
+                exp_ms: i64::MAX,
+            })
     }
 }
 
@@ -237,8 +350,9 @@ async fn qual_m8_2_a_worker_claims_the_lease_runs_the_task_relays_commands_mirro
     );
     let script = vec![
         json!({"calls": [{"name": "plan.update", "args": {"outcome": "the notes are read", "expected_files": []}}]}),
-        // A host tool under cloud_isolated: no sandbox in this build serves it — refused, never run.
-        json!({"calls": [{"name": "shell.exec", "args": {"argv": ["printenv"], "inherit_env": true}}]}),
+        // A process under cloud_isolated runs inside the task's sandbox (M8.5):
+        // nothing of the worker's environment is there.
+        json!({"calls": [{"name": "shell.exec", "args": {"argv": ["/bin/sh", "-c", "env; echo sandboxed=$(hostname 2>/dev/null || echo unknown)"], "inherit_env": true}}]}),
         json!({"calls": [{"name": "task.complete", "args": {"summary": "read the notes", "self_review": {"findings": []}}}]}),
     ];
     let (model_base, seen) = scripted_model(script).await;
@@ -280,6 +394,7 @@ async fn qual_m8_2_a_worker_claims_the_lease_runs_the_task_relays_commands_mirro
         Err(_) => keep.path().to_path_buf(),
     };
     let root = repo(&data.join("repo"));
+    let gateway = Gateway::start(&store_cfg, &data.join("gateway")).await;
     let (_, created) = api
         .post(
             &a,
@@ -304,6 +419,7 @@ async fn qual_m8_2_a_worker_claims_the_lease_runs_the_task_relays_commands_mirro
         &data.join("a"),
         &model_base,
         Duration::from_secs(10),
+        &gateway,
     ))
     .await
     .expect("worker a");
@@ -371,9 +487,16 @@ async fn qual_m8_2_a_worker_claims_the_lease_runs_the_task_relays_commands_mirro
         .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
         .collect();
     assert!(
-        tool_texts[1].contains("TOOL_NOT_VISIBLE"),
-        "a host tool is outside the surface `cloud_isolated` compiles in this build (no sandbox serves it yet): {}",
+        tool_texts[1].contains("status: SUCCESS")
+            && !tool_texts[1].contains("MODBIT_")
+            && !tool_texts[1].contains("OPENAI_"),
+        "the process ran inside the sandbox with nothing of the worker's environment ({} backend): {}",
+        gateway.backend,
         tool_texts[1]
+    );
+    assert!(
+        types.iter().any(|t| t == "SandboxLeaseAcquired"),
+        "the task's sandbox is on the cloud log: {types:?}"
     );
     // Relayed commands: while worker A holds the session the API records
     // them pending; the worker executes them on its Core; the log shows it.
@@ -503,6 +626,7 @@ async fn qual_m8_2_a_worker_claims_the_lease_runs_the_task_relays_commands_mirro
         &data.join("b"),
         &model_base,
         Duration::from_secs(10),
+        &gateway,
     ))
     .await
     .expect("worker b");
@@ -601,4 +725,237 @@ async fn qual_m8_2_a_worker_claims_the_lease_runs_the_task_relays_commands_mirro
             .all(|e| e["envelope"]["integrity_hash"].as_str().unwrap().len() == 64)
     );
     let _ = store;
+}
+
+/// M8.5 (docs/21 "`modbit-guest`", "Sandbox substrate boundary"; docs/24
+/// "Cloud Core Worker"; REQ-EV-0289): a `cloud_isolated` task's tools act
+/// inside its sandbox — a process runs in the guest (on the MicroVM
+/// backend, under the MicroVM's kernel), a file it writes there is what
+/// `fs.read` reads back, `fs.list` and `fs.stat` see the guest's workspace
+/// — the sandbox's identity is on the cloud log, and a cancel releases it.
+#[tokio::test]
+async fn qual_m8_5_a_cloud_isolated_tasks_tools_act_inside_its_sandbox_and_the_sandbox_is_released_when_the_task_ends()
+ {
+    let Some(store_cfg) = store_config().await else {
+        eprintln!(
+            "SKIPPED: MODBIT_CLOUD_TEST_DATABASE_URL unset (the hosted cloud job runs this against Postgres and a sandbox)"
+        );
+        return;
+    };
+    assert!(
+        core_bin().exists(),
+        "modbit-core at {}",
+        core_bin().display()
+    );
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "the notes are summarized in the sandbox", "expected_files": ["summary.txt"]}}]}),
+        // One turn of work in the guest: a process writes a file, the file
+        // tools read it back; a path outside the workspace and a write to a
+        // protected path are refused by the guest's policy.
+        json!({"calls": [
+            {"name": "shell.exec", "args": {"argv": ["/bin/sh", "-c", "uname -r; cat NOTES.md > summary.txt; echo written-in-guest >> summary.txt; pwd"]}},
+            {"name": "fs.read", "args": {"path": "summary.txt"}},
+            {"name": "fs.list", "args": {"path": "."}},
+            {"name": "fs.stat", "args": {"path": "summary.txt"}},
+            {"name": "fs.read", "args": {"path": "../../etc/passwd"}},
+            {"name": "shell.exec", "args": {"argv": ["/bin/sh", "-c", "echo x > .git/hooks/pre-commit && echo wrote-hook || echo hook-refused"]}}
+        ]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "summarized", "self_review": {"findings": []}}}]}),
+    ];
+    let (model_base, seen) = scripted_model(script).await;
+    let served = serve(ApiConfig {
+        store: store_cfg.clone(),
+        token_key: None,
+        bind: "127.0.0.1:0".into(),
+        rate_capacity: 500,
+        rate_per_second: 100.0,
+    })
+    .await
+    .expect("api");
+    let api = Api {
+        base: format!("http://{}", served.addr),
+        http: reqwest::Client::new(),
+        served,
+    };
+    let store = &api.served.state.store;
+    let tenant = store.create_tenant("sandbox-test").await.unwrap();
+    let (_p, secret) = store.create_principal(tenant, "user", "ada").await.unwrap();
+    let (_, tok) = api
+        .post("", "/v1/auth/token", json!({"secret": secret}))
+        .await;
+    let a = tok["access_token"].as_str().unwrap().to_owned();
+    let keep = tempfile::tempdir().unwrap();
+    let data = match std::env::var("MODBIT_CLOUD_WORKER_TEST_KEEP_DIR") {
+        Ok(d) => std::path::PathBuf::from(d).join("m85"),
+        Err(_) => keep.path().to_path_buf(),
+    };
+    let root = repo(&data.join("repo"));
+    let gateway = Gateway::start(&store_cfg, &data.join("gateway")).await;
+    let (_, created) = api
+        .post(
+            &a,
+            "/v1/sessions",
+            json!({"command_id": uuid::Uuid::now_v7().to_string()}),
+        )
+        .await;
+    let sid = created["session_id"].as_str().unwrap().to_owned();
+    let (s, task) = api.post(&a, &format!("/v1/sessions/{sid}/tasks"), json!({"command_id": uuid::Uuid::now_v7().to_string(), "goal_text": "summarize the notes", "execution_profile": "cloud_isolated", "workspace_root": root})).await;
+    assert_eq!(s, 201, "{task}");
+    let tid = task["task_id"].as_str().unwrap().to_owned();
+    let worker = start(worker_config(
+        &store_cfg,
+        "worker-s",
+        &data.join("w"),
+        &model_base,
+        Duration::from_secs(10),
+        &gateway,
+    ))
+    .await
+    .expect("worker");
+    until("the task to reach review", 180, async || {
+        let (_, v) = api.get(&a, &format!("/v1/sessions/{sid}")).await;
+        (v["tasks"][0]["state"] == "READY_FOR_REVIEW").then_some(())
+    })
+    .await;
+    // The sandbox's identity is on the cloud log, no credential with it.
+    let (_, evs) = api
+        .get(
+            &a,
+            &format!("/v1/events?session_id={sid}&after=0&limit=1000"),
+        )
+        .await;
+    let events = evs["events"].as_array().unwrap();
+    let lease = events
+        .iter()
+        .find(|e| e["envelope"]["event_type"] == "SandboxLeaseAcquired")
+        .expect("SandboxLeaseAcquired on the cloud log");
+    let payload = &lease["payload"];
+    assert_eq!(
+        payload["backend"].as_str(),
+        Some(gateway.backend),
+        "{payload}"
+    );
+    assert_eq!(
+        payload["isolated"].as_bool(),
+        Some(gateway.backend == "microvm")
+    );
+    assert_eq!(payload["workspace_root"], "/workspace");
+    assert!(
+        !payload["image_version"]
+            .as_str()
+            .unwrap_or_default()
+            .is_empty(),
+        "the verified image is named: {payload}"
+    );
+    let sandbox_id = payload["sandbox_id"].as_str().unwrap().to_owned();
+    assert!(
+        !payload.to_string().to_lowercase().contains("credential"),
+        "{payload}"
+    );
+    // What the model saw: every tool result came from inside the guest.
+    let bodies = seen.lock().unwrap().clone();
+    let last = bodies.last().unwrap();
+    let tool_texts: Vec<String> = last["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    eprintln!("tool results:\n{}", tool_texts.join("\n----\n"));
+    let exec = &tool_texts[1];
+    assert!(
+        exec.contains("status: SUCCESS") && exec.contains("/workspace"),
+        "the process ran in the guest's workspace: {exec}"
+    );
+    if gateway.backend == "microvm" {
+        assert!(
+            exec.contains("6.1.155"),
+            "the process ran under the MicroVM's kernel: {exec}"
+        );
+    }
+    assert!(
+        exec.contains(&format!("\"sandbox\": \"{sandbox_id}\"")) || exec.contains(&sandbox_id),
+        "the result names the sandbox: {exec}"
+    );
+    let read = &tool_texts[2];
+    assert!(
+        read.contains("# notes") && read.contains("written-in-guest"),
+        "fs.read reads what the guest process wrote: {read}"
+    );
+    let list = &tool_texts[3];
+    assert!(
+        list.contains("summary.txt") && list.contains("NOTES.md"),
+        "fs.list sees the guest's workspace: {list}"
+    );
+    let stat = &tool_texts[4];
+    assert!(
+        stat.contains("\"exists\":true") && stat.contains("\"kind\":\"file\""),
+        "{stat}"
+    );
+    let outside = &tool_texts[5];
+    assert!(
+        outside.contains("PATH_OUTSIDE_ROOT") || outside.contains("OUTSIDE_WORKSPACE"),
+        "a path outside the workspace is refused by the guest: {outside}"
+    );
+    let hook = &tool_texts[6];
+    if gateway.backend == "microvm" {
+        assert!(
+            hook.contains("hook-refused"),
+            "a protected path cannot be written even by a process in the MicroVM: {hook}"
+        );
+    } else {
+        assert!(
+            hook.contains("wrote-hook") || hook.contains("hook-refused"),
+            "{hook}"
+        );
+    }
+    // The sandbox lives while the task does; a cancel ends the task and
+    // releases it, on the cloud log.
+    let c_cancel = uuid::Uuid::now_v7().to_string();
+    let (s, _) = api
+        .post(
+            &a,
+            &format!("/v1/tasks/{tid}:cancel"),
+            json!({"command_id": c_cancel}),
+        )
+        .await;
+    assert_eq!(s, 202);
+    until("the sandbox to be released", 60, async || {
+        let (_, v) = api
+            .get(
+                &a,
+                &format!("/v1/events?session_id={sid}&after=0&limit=1000"),
+            )
+            .await;
+        v["events"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|e| {
+                e["envelope"]["event_type"] == "SandboxReleased"
+                    && e["payload"]["sandbox_id"] == sandbox_id.as_str()
+            })
+            .then_some(())
+    })
+    .await;
+    let (s, rec) = api
+        .http
+        .get(format!(
+            "{}/v1/sandboxes/{sandbox_id}?tenant_id={tenant}",
+            gateway.base_url
+        ))
+        .bearer_auth(gateway.token_for("worker-s"))
+        .send()
+        .await
+        .map(|r| (r.status().as_u16(), r))
+        .unwrap();
+    let rec: Value = rec.json().await.unwrap();
+    assert_eq!(
+        (s, rec["state"].as_str()),
+        (200, Some("DESTROYED")),
+        "{rec}"
+    );
+    worker.stop().await;
+    gateway.served.stop();
 }

@@ -241,6 +241,7 @@ async fn fs_read_returns_media_envelopes_through_the_registry() {
         forge: None,
         forge_ledger: None,
         browser: None,
+        sandbox: None,
         effect_class: None,
         secrets_in_custody: vec![],
     };

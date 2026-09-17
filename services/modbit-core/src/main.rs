@@ -40,6 +40,7 @@ mod review_env;
 mod routing;
 mod rules;
 mod runtime;
+mod sandboxes;
 mod server;
 mod side;
 mod skills;

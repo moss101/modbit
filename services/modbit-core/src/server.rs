@@ -545,6 +545,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "CompileRoutingPlan",
                     "ConfigureProvider",
                     "ConfigureForge",
+                    "ConfigureSandboxGateway",
                     "TrustRepository",
                     "ListStarterTasks",
                     "ActivateModelRegistry",
@@ -822,6 +823,7 @@ fn client_capabilities(kind: i32) -> Vec<&'static str> {
             "provider.configure",
             "repository.trust",
             "session.mirror",
+            "sandbox.configure",
         ],
         ClientKind::SandboxGuest | ClientKind::Unspecified => vec!["events.subscribe"],
     }
@@ -862,6 +864,7 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         "ConfigureProvider" | "ActivateModelRegistry" | "ProbeModel" | "ConfigureForge" => {
             "provider.configure"
         }
+        "ConfigureSandboxGateway" => "sandbox.configure",
         "TrustRepository" => "repository.trust",
         "EmergencyStop" => "session.control",
         "AttachBrowserHost"
@@ -3879,6 +3882,55 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             core.tools.forge.set(cfg);
             accept(cid, false, view.encode_to_vec())
         }
+        "ConfigureSandboxGateway" => {
+            // Not journaled: the request carries the worker's credential.
+            let Ok(p) = wire::ConfigureSandboxGateway::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "ConfigureSandboxGateway");
+            };
+            if p.worker_token.trim().is_empty() || p.base_url.trim().is_empty() {
+                *core.tools.sandbox_gateway.lock().await = None;
+                return accept(
+                    cid,
+                    false,
+                    wire::SandboxGatewayConfigured {
+                        base_url: String::new(),
+                        worker_id: String::new(),
+                        lease_generation: 0,
+                        token_held: false,
+                    }
+                    .encode_to_vec(),
+                );
+            }
+            let base = p.base_url.trim().trim_end_matches('/').to_owned();
+            let loopback = base.starts_with("http://127.0.0.1")
+                || base.starts_with("http://localhost")
+                || base.starts_with("http://[::1]");
+            if !base.starts_with("https://") && !loopback {
+                return reject(
+                    cid,
+                    "BAD_PAYLOAD",
+                    "base_url must be https (or a loopback test host)",
+                );
+            }
+            let custody = crate::tools::SandboxGatewayCustody {
+                client: modbit_sandbox::client::GatewayClient::new(&base, p.worker_token.trim()),
+                tenant_id: p.tenant_id.clone(),
+                lease_generation: p.lease_generation,
+                worker_id: p.worker_id.clone(),
+            };
+            *core.tools.sandbox_gateway.lock().await = Some(custody);
+            accept(
+                cid,
+                false,
+                wire::SandboxGatewayConfigured {
+                    base_url: base,
+                    worker_id: p.worker_id,
+                    lease_generation: p.lease_generation,
+                    token_held: true,
+                }
+                .encode_to_vec(),
+            )
+        }
         "TrustRepository" => {
             let Ok(p) = wire::TrustRepository::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "TrustRepository");
@@ -4062,6 +4114,67 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 );
             }
             let lease_generation = env.expected_generation.unwrap_or(0);
+            // A task materialized from the cloud log (M8.2: created by the
+            // Cloud API, not by this Core's CreateTask) has no capability
+            // lease yet; it gets its profile's default one here, exactly as
+            // CreateTask grants it, before anything runs under it.
+            {
+                let mut store = core.store.lock().await;
+                let has_lease = store
+                    .leases_for_task(&task_id)
+                    .map(|l| !l.is_empty())
+                    .unwrap_or(false);
+                if !has_lease {
+                    let (resources, operations, effect_ceiling) =
+                        modbit_policy::default_lease_for_profile(
+                            &task.execution_profile,
+                            task.workspace_root.as_deref(),
+                        );
+                    let lease_id = modbit_domain::CapabilityLeaseId::new();
+                    let grant = AppendRequest {
+                        tenant_id: core.tenant_id,
+                        session_id: task.session_id,
+                        task_id: Some(task_id),
+                        run_id: None,
+                        turn_id: None,
+                        step_id: None,
+                        aggregate_type: AggregateType::CapabilityLease,
+                        aggregate_id: *lease_id.as_bytes(),
+                        expected_sequence: Some(0),
+                        events: vec![typed(
+                            "CapabilityLeaseGranted",
+                            &CapabilityLeaseEvent::CapabilityLeaseGranted {
+                                tenant_id: core.tenant_id,
+                                task_id,
+                                agent_id: None,
+                                resources,
+                                operations,
+                                effect_ceiling,
+                                execution_profile: task.execution_profile.clone(),
+                                generation: 1,
+                                expires_at: None,
+                            },
+                            actor.clone(),
+                        )],
+                    };
+                    match store.append(grant) {
+                        Ok(stored) => {
+                            if let Some(last) = stored.last() {
+                                core.last_offset.send_replace(last.offset);
+                            }
+                        }
+                        Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                    }
+                }
+            }
+            // M8.5: a `cloud_isolated` task runs inside a sandbox the
+            // gateway issues for it; without one the run does not start.
+            if task.execution_profile == modbit_policy::kernel::PROFILE_CLOUD_ISOLATED
+                && let Err((code, why)) =
+                    crate::sandboxes::ensure_for_task(core, &task, &actor).await
+            {
+                return reject(cid, &code, why);
+            }
             // Model policy: request → environment defaults → first registered.
             let endpoints = core.gateway.endpoints();
             // A named endpoint must be registered in this Core: a provider
@@ -4528,6 +4641,9 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                     }
                     Err(e) => return reject(cid, error_code(&e), e.to_string()),
                 }
+            }
+            if !was_running {
+                crate::sandboxes::release_if_ended(core, task_id, &actor).await;
             }
             accept(
                 cid,
