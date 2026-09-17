@@ -4122,8 +4122,53 @@
    "milestone": "M8",
    "order": 5,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_m8_3_a_firecracker_microvm_boots_the_guest_and_passes_the_backend_contract",
+    "test:qual_m8_5_a_cloud_isolated_tasks_tools_act_inside_its_sandbox_and_the_sandbox_is_released_when_the_task_ends",
+    "run:35261713872",
+    "commit:8d3bb8d",
+    "artifact:evidence/m8/M8.6/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T19:12:37Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: MISSING before — no path out of a guest; egress grants refused"
+    },
+    {
+     "at": "2026-09-17T19:12:37Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "broker, policy grants, guest proxy, gateway audit, Core grants from lease"
+    },
+    {
+     "at": "2026-09-17T19:12:37Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "gateway broker per sandbox; Core ConfigureForge custody → grants; guest proxy"
+    },
+    {
+     "at": "2026-09-17T19:12:37Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "conformance egress steps on MicroVM and reference; worker end to end"
+    },
+    {
+     "at": "2026-09-17T19:12:38Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on macOS/Linux/Windows incl. the Firecracker cloud job"
+    },
+    {
+     "at": "2026-09-17T19:12:38Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-17T19:12:38Z"
   },
   {
    "id": "M8.7",

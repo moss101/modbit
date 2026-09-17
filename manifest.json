@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 1198,
-    "docs_bytes": 1206965
+    "root_and_tooling": 1199,
+    "docs_bytes": 1207166
   },
   "sections": [
     {
@@ -851,8 +851,8 @@
       "section": "live-state",
       "section_title": "Live state",
       "title": "Build Manifest",
-      "bytes": 8432,
-      "sha256": "cd60428411f0850669ef23eba4dd1a71dc9b8304819801dafc34a263044617b6"
+      "bytes": 8633,
+      "sha256": "f41759f1befd125844ffacdaefdf05a80ad6ab20bec7ae7169a5d88c93b422e4"
     }
   ],
   "root_and_tooling": [
@@ -6793,23 +6793,28 @@
     },
     {
       "path": "evidence/m8/M8.6/TASK_CARD.md",
-      "bytes": 5570,
-      "sha256": "4928c0d77fde5028a8861e0ca71b01bba1bfbbae43d7f40e2bbe71d9dd525df4"
+      "bytes": 5837,
+      "sha256": "553f9580df99b1b91072e3025292ef069e40d594526ef994cca137df3f55a095"
+    },
+    {
+      "path": "evidence/m8/M8.6/ci-run-35261713872.json",
+      "bytes": 42325,
+      "sha256": "7de6367c113caa98ec547a1478ce5e4ea7e2834697b12f77e1332725be7efe2a"
     },
     {
       "path": "evidence/m8/M8.6/evidence.json",
-      "bytes": 1681,
-      "sha256": "d09dda1508b4b05199d3db41bf94df066c1a36a67a6ed00b6577ef3e086e050f"
+      "bytes": 1771,
+      "sha256": "7fafccd7bdc6fa7692b6df1626f2aa59ba7d36344e1c7f085e47dc6331809230"
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 40745,
-      "sha256": "a1953d9e98e4d2d52583f169f6c28467c592e761a314d16e96d3b0b1e742310f"
+      "bytes": 40742,
+      "sha256": "2b6dbb3b20e6bfcfa28cb7b93b89effca4649eea90b973640bf389226b381a27"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1506002,
-      "sha256": "2307801e3d0f33a685cdd9fbbd13c92e0d22df77630227c7f907c7d7b3d3d05e"
+      "bytes": 1507429,
+      "sha256": "8ad8c037ba86ac30a381f1e9699615491e7605f3aafa70edb36f8dff2d4feb50"
     },
     {
       "path": "tools/build_graph.py",

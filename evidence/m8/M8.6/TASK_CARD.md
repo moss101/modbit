@@ -33,4 +33,4 @@ Egress from a sandbox only by explicit grant, decided and recorded by the gatewa
 ## Evidence
 
 - `evidence.json` in this directory (commits, hosted CI run, test names)
-- CI run json copy alongside
+- CI run json copy alongside: `ci-run-35261713872.json` — hosted run 35261713872 at 8d3bb8d on main, green on macOS, Linux and Windows (the cloud job: real Postgres + MinIO, a real Firecracker MicroVM with the signed image, every conformance step incl. the egress steps; the worker end to end)

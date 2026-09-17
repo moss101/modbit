@@ -18,10 +18,14 @@
   "qual_m8_5_a_cloud_isolated_tasks_tools_act_inside_its_sandbox_and_the_sandbox_is_released_when_the_task_ends",
   "a_policy_has_no_network_unless_granted_and_protects_control_paths"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "8d3bb8d"
+ ],
+ "runs": [
+  "35261713872"
+ ],
  "proof": "a guest has no network interface; its local proxy opens one channel per connection to the gateway's egress broker, which admits by explicit rule or credential grant, tunnels or relays admitted destinations, performs credentialed requests against the real target with the secret it holds injected, refuses everything else and records every decision; the Core derives a cloud task's grants from its lease and forge custody, and the secret never enters the guest, the sandbox record or the log.",
  "audit": "MISSING before: no path out of a guest; egress grants refused.",
  "limitations": "brokered HTTP only (no raw sockets/UDP/DNS); plain HTTP to a credentialed virtual host inside the guest; grants from the lease and forge custody only.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/35261713872"
 }
