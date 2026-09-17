@@ -45,6 +45,7 @@ members = [
     "services/modbit-guest",
     "services/modbit-core",
     "tools/architecture-lint",
+    "tools/guest-image",
     "tools/protocol-fixtures",
 ]
 
@@ -135,6 +136,11 @@ axum = { version = "0.8.9", features = ["ws", "json", "http1", "tokio", "query"]
 tower-http = { version = "0.6", features = ["request-id", "trace", "limit"] }
 hmac = "0.13"
 base64 = "0.22"
+# The sandbox guest (M8.3, docs/21 "modbit-guest"): PID 1 of a MicroVM
+# (mounts, hostname, power-off) and the vsock channel to the gateway.
+nix = { version = "0.29", features = ["mount", "hostname", "reboot", "fs"] }
+vsock = "0.5"
+modbit-sandbox-gateway = { path = "apps/sandbox-gateway" }
 
 [workspace.lints.rust]
 # Denied, not forbidden: the sanctioned exceptions are the handle

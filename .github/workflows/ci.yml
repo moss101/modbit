@@ -87,9 +87,45 @@ jobs:
           for i in $(seq 1 30); do docker exec modbit-cloud-pg pg_isready -U modbit && break; sleep 1; done
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:9009/minio/health/live && break; sleep 1; done
           docker run --rm --network host --entrypoint sh quay.io/minio/mc:latest -c "mc alias set local http://127.0.0.1:9009 modbit modbitsecret && mc mb -p local/modbit-test"
-      - name: Build the real modbit-core the cloud worker hosts (M8.2)
-        run: cargo build --locked -p modbit-core -p modbit-execd
-      - name: Cloud API and worker qualification (M8.1, M8.2 — real Postgres, real MinIO, real modbit-core)
+      - name: Build the real modbit-core the cloud worker hosts (M8.2) and the guest the reference backend runs (M8.3)
+        run: cargo build --locked -p modbit-core -p modbit-execd -p modbit-guest
+      - name: Sandbox substrate (M8.3) — Firecracker v1.17.0, the Firecracker CI kernel 6.1.155, BusyBox 1.35.0, pinned and checksummed; KVM for the runner
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p substrate && cd substrate
+          gh release download v1.17.0 -R firecracker-microvm/firecracker -p 'firecracker-v1.17.0-x86_64.tgz' --clobber
+          echo "06094a1108ae9e82aa4c23a775aa92758f53f1175d422270d9d6162cb9ade558  firecracker-v1.17.0-x86_64.tgz" | sha256sum -c -
+          tar xzf firecracker-v1.17.0-x86_64.tgz
+          install -m 0755 release-v1.17.0-x86_64/firecracker-v1.17.0-x86_64 firecracker
+          curl -sSfL -o vmlinux https://s3.amazonaws.com/spec.ccfc.min/firecracker-ci/v1.15/x86_64/vmlinux-6.1.155
+          echo "e20e46d0c36c55c0d1014eb20576171b3f3d922260d9f792017aeff53af3d4f2  vmlinux" | sha256sum -c -
+          curl -sSfL -o busybox https://busybox.net/downloads/binaries/1.35.0-x86_64-linux-musl/busybox
+          echo "6e123e7f3202a8c1e9b1f94d8941580a25135382b99e8d3e34fb858bba311348  busybox" | sha256sum -c -
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -la /dev/kvm
+          ./firecracker --version
+      - name: Guest image (M8.3) — modbit-guest as a static musl /init over a BusyBox userland
+        run: |
+          set -euo pipefail
+          rustup target add x86_64-unknown-linux-musl
+          cargo build --locked --release -p modbit-guest --target x86_64-unknown-linux-musl
+          tools/guest-image/build.sh target/x86_64-unknown-linux-musl/release/modbit-guest substrate/busybox substrate/rootfs.ext4 64
+      - name: Sign the guest images (M8.4) — a publisher key minted for this job; the gateway trusts only it
+        run: |
+          set -euo pipefail
+          cargo build --locked -p guest-image-tool
+          keys=$(target/debug/guest-image-tool keygen --out substrate/publisher.key --key-id ci-publisher)
+          echo "MODBIT_GUEST_IMAGE_KEYS=$keys" >> "$GITHUB_ENV"
+          version=$(cargo pkgid -p modbit-guest | sed 's/.*[#@]//')
+          target/debug/guest-image-tool sign --key substrate/publisher.key --key-id ci-publisher --kind microvm-rootfs --image substrate/rootfs.ext4 --guest-version "$version" --kernel substrate/vmlinux --built-from "$GITHUB_SHA" --out substrate/rootfs.manifest.json
+          target/debug/guest-image-tool sign --key substrate/publisher.key --key-id ci-publisher --kind reference-guest --image target/debug/modbit-guest --guest-version "$version" --built-from "$GITHUB_SHA" --out substrate/guest.manifest.json
+          target/debug/guest-image-tool verify --manifest substrate/rootfs.manifest.json --image substrate/rootfs.ext4 --keys "$keys"
+          target/debug/guest-image-tool verify --manifest substrate/guest.manifest.json --image target/debug/modbit-guest --keys "$keys"
+      - name: Cloud API, worker, sandbox backend and gateway qualification (M8.1–M8.4 — real Postgres, real MinIO, real modbit-core, real Firecracker MicroVM, signed images)
         env:
           MODBIT_CLOUD_TEST_DATABASE_URL: postgres://modbit:modbit@127.0.0.1:5439/modbit
           MODBIT_CLOUD_TEST_S3_ENDPOINT: http://127.0.0.1:9009
@@ -97,10 +133,16 @@ jobs:
           MODBIT_CLOUD_TEST_S3_ACCESS_KEY_ID: modbit
           MODBIT_CLOUD_TEST_S3_SECRET_ACCESS_KEY: modbitsecret
           MODBIT_CORE_BIN: ${{ github.workspace }}/target/debug/modbit-core
+          MODBIT_GUEST_BIN: ${{ github.workspace }}/target/debug/modbit-guest
+          MODBIT_FIRECRACKER_BIN: ${{ github.workspace }}/substrate/firecracker
+          MODBIT_GUEST_KERNEL: ${{ github.workspace }}/substrate/vmlinux
+          MODBIT_GUEST_ROOTFS: ${{ github.workspace }}/substrate/rootfs.ext4
+          MODBIT_GUEST_IMAGE_MANIFEST: ${{ github.workspace }}/substrate/rootfs.manifest.json
+          MODBIT_GUEST_BIN_MANIFEST: ${{ github.workspace }}/substrate/guest.manifest.json
         shell: bash
         run: |
           set -o pipefail
-          cargo test --locked -p modbit-cloud-api -p modbit-cloud-worker -- --nocapture 2>&1 | tee cloud-tests.log
+          cargo test --locked -p modbit-cloud-api -p modbit-cloud-worker -p modbit-sandbox -p modbit-sandbox-gateway -- --nocapture 2>&1 | tee cloud-tests.log
           if grep -q "SKIPPED" cloud-tests.log; then echo "the cloud qualification skipped itself"; exit 1; fi
 
   node:

@@ -9,7 +9,7 @@
 //! refuses write mode).
 
 /// The schema version this build writes.
-pub const CLOUD_SCHEMA_VERSION: i32 = 2;
+pub const CLOUD_SCHEMA_VERSION: i32 = 3;
 
 /// Ordered migrations `(version, name, sql)`.
 pub const MIGRATIONS: &[(i32, &str, &str)] = &[
@@ -150,6 +150,27 @@ ALTER TABLE commands ADD COLUMN IF NOT EXISTS session_id UUID;
 ALTER TABLE commands ADD COLUMN IF NOT EXISTS body JSONB;
 ALTER TABLE commands ADD COLUMN IF NOT EXISTS completed_at_ms BIGINT;
 CREATE INDEX IF NOT EXISTS commands_pending ON commands(session_id, recorded_at_ms) WHERE status = 'PENDING';
+",
+    ),
+    (
+        3,
+        "cloud-v3: sandbox leases the Sandbox Gateway issues per tenant, session, task and worker (M8.3)",
+        r"
+CREATE TABLE IF NOT EXISTS sandboxes (
+  sandbox_id UUID PRIMARY KEY,
+  tenant_id UUID NOT NULL REFERENCES tenants(tenant_id),
+  session_id UUID NOT NULL,
+  task_id UUID NOT NULL,
+  worker_id TEXT NOT NULL,
+  lease_generation BIGINT NOT NULL,
+  backend TEXT NOT NULL,
+  isolated BOOLEAN NOT NULL,
+  state TEXT NOT NULL,
+  detail TEXT NOT NULL DEFAULT '',
+  created_at_ms BIGINT NOT NULL,
+  updated_at_ms BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS sandboxes_by_session ON sandboxes(tenant_id, session_id);
 ",
     ),
 ];

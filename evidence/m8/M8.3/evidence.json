@@ -1,0 +1,35 @@
+{
+ "task": "M8.3",
+ "requirements": [
+  "docs/21 Sandbox substrate boundary / modbit-guest",
+  "docs/24 Sandbox Gateway",
+  "docs/33 Sandbox Gateway",
+  "docs/30 Version compatibility",
+  "REQ-EV-0285",
+  "REQ-EV-0286",
+  "REQ-EV-0287",
+  "REQ-EV-0290",
+  "REQ-EV-0291"
+ ],
+ "scenarios": [
+  "backend contract suite on a real Firecracker MicroVM over KVM (hosted cloud job)",
+  "backend contract suite on the reference backend (every OS)",
+  "gateway tenant and lease binding over a real Postgres"
+ ],
+ "tests": [
+  "qual_m8_3_a_firecracker_microvm_boots_the_guest_and_passes_the_backend_contract",
+  "qual_m8_3_the_reference_backend_passes_the_backend_contract",
+  "qual_m8_3_the_gateway_binds_sandboxes_to_the_tenant_and_the_workers_session_lease",
+  "a_guest_of_another_protocol_major_or_missing_a_method_is_refused_before_admission",
+  "a_call_verifies_under_its_credential_only_and_a_change_breaks_it",
+  "a_worker_token_verifies_until_it_expires",
+  "a_policy_has_no_network_unless_granted_and_protects_control_paths",
+  "paths_normalize_lexically_and_map_onto_the_host"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "a real Firecracker MicroVM boots the real modbit-guest image and passes the backend contract over vsock (processes, policy-bound filesystem, no network interface, authenticated and replay-safe calls); the same suite passes on the reference backend, which says it isolates nothing; the gateway provisions only for the worker holding the session lease at its generation, binds every sandbox to its tenant, and denies and audits cross-tenant use.",
+ "audit": "MISSING before: the gateway and guest skeletons refused to run; crates/sandbox carried no behavior.",
+ "limitations": "egress grants refused until M8.6; bearer worker identity (mTLS is deployment config); no jailer; image signing is M8.4; Core tools through the gateway are M8.5.",
+ "ci": ""
+}

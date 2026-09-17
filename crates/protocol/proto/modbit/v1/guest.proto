@@ -1,0 +1,157 @@
+// Sandbox Gateway <-> `modbit-guest` wire protocol (M8.3; docs/21 "Sandbox
+// substrate boundary", "`modbit-guest`"; docs/33 "Sandbox Gateway"; docs/30
+// "Version compatibility": guest and gateway negotiate their method set
+// before a sandbox is admitted). Same length-prefixed framing as the local
+// SurfaceProtocol, carried on the substrate's private channel (vsock into a
+// MicroVM, a Unix socket for the reference backend). The guest never decides
+// policy: it enforces the policy the gateway admitted it with and refuses
+// everything else. Every call after admission is authenticated with the
+// ephemeral credential the gateway issued (an HMAC over the call), so a
+// frame that did not come from the gateway that admitted the guest is
+// refused, and every call names the task, effect and capability it acts
+// under (REQ-EV-0289).
+syntax = "proto3";
+
+package modbit.v1;
+
+// The guest speaks first: what it is and what it can do.
+message GuestHello {
+  uint32 protocol_major = 1;       // the guest RPC protocol it implements
+  uint32 protocol_minor = 2;
+  string guest_version = 3;        // the guest binary's version
+  repeated string methods = 4;     // health | exec | fs.read | fs.write | net.probe
+  string boot_id = 5;              // unique per boot
+}
+
+// The compiled sandbox policy the guest enforces (docs/21: protected paths,
+// writable roots, resource bounds; the substrate enforces network and mounts).
+message GuestPolicy {
+  string workspace_root = 1;              // the one writable tree
+  repeated string protected_paths = 2;    // never written, whatever the call
+  repeated string readable_roots = 3;     // beyond the workspace, read-only
+  uint64 max_output_bytes = 4;            // per exec, per stream
+  uint32 max_processes = 5;
+  uint64 exec_timeout_ms = 6;             // ceiling a call may ask for
+}
+
+// The gateway admits the guest (or refuses it: version, methods).
+message GuestAdmit {
+  uint32 protocol_major = 1;       // what the gateway speaks
+  uint32 protocol_minor = 2;
+  bytes credential = 3;            // ephemeral; HMAC key for every later frame
+  string sandbox_id = 4;
+  GuestPolicy policy = 5;
+}
+
+message GuestAdmitted {
+  string sandbox_id = 1;
+  string boot_id = 2;
+}
+
+message GuestRefused {
+  string code = 1;                 // PROTOCOL_UNSUPPORTED | METHOD_MISSING | BAD_FRAME
+  string message = 2;
+}
+
+// One call from the gateway to the guest.
+message GuestCall {
+  string call_id = 1;              // unique; doubles as the nonce
+  string task_id = 2;              // what this call acts for
+  string effect_id = 3;            // the ledgered effect (empty for reads)
+  string capability = 4;           // proc.exec | fs.read | fs.write | net.probe | health
+  bytes auth = 5;                  // HMAC-SHA256(credential, call_id || capability || body)
+  oneof body {
+    GuestHealth health = 10;
+    GuestExec exec = 11;
+    GuestReadFile read_file = 12;
+    GuestWriteFile write_file = 13;
+    GuestNetProbe net_probe = 14;
+  }
+}
+
+message GuestHealth {}
+
+message GuestExec {
+  repeated string argv = 1;
+  string cwd = 2;
+  repeated string env = 3;         // KEY=VALUE; nothing inherited
+  uint64 timeout_ms = 4;
+  bytes stdin = 5;
+}
+
+message GuestReadFile {
+  string path = 1;
+  uint64 max_bytes = 2;
+}
+
+message GuestWriteFile {
+  string path = 1;
+  bytes content = 2;
+}
+
+// Whether the guest can open a TCP connection (proves the network policy).
+message GuestNetProbe {
+  string host = 1;
+  uint32 port = 2;
+  uint64 timeout_ms = 3;
+}
+
+message GuestReply {
+  string call_id = 1;
+  bytes auth = 2;                  // HMAC-SHA256(credential, call_id || body)
+  oneof body {
+    GuestHealthReport health = 10;
+    GuestExecResult exec = 11;
+    GuestFileContent file = 12;
+    GuestFileWritten written = 13;
+    GuestNetProbeResult probe = 14;
+    GuestRefusal refusal = 15;
+  }
+}
+
+message GuestHealthReport {
+  string boot_id = 1;
+  uint64 uptime_ms = 2;
+  uint32 processes = 3;
+  string kernel = 4;               // uname -r, "" where unknown
+}
+
+message GuestExecResult {
+  int32 exit_code = 1;
+  bytes stdout = 2;
+  bytes stderr = 3;
+  bool stdout_truncated = 4;
+  bool stderr_truncated = 5;
+  bool timed_out = 6;
+  uint64 duration_ms = 7;
+}
+
+message GuestFileContent {
+  bytes content = 1;
+  bool truncated = 2;
+}
+
+message GuestFileWritten {
+  uint64 bytes = 1;
+}
+
+message GuestNetProbeResult {
+  bool reachable = 1;
+  string error = 2;                // the OS error when not
+}
+
+message GuestRefusal {
+  string code = 1;                 // UNAUTHENTICATED | REPLAYED | PROTECTED_PATH | OUTSIDE_WORKSPACE | METHOD_MISSING | LIMIT_EXCEEDED | BAD_CALL
+  string message = 2;
+}
+
+message GuestFrame {
+  oneof body {
+    GuestHello hello = 1;
+    GuestAdmit admit = 2;
+    GuestAdmitted admitted = 3;
+    GuestRefused refused = 4;
+    GuestCall call = 5;
+    GuestReply reply = 6;
+  }
+}

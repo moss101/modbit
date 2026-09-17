@@ -9,6 +9,21 @@ publish.workspace = true
 
 [dependencies]
 modbit-domain.workspace = true
+modbit-protocol.workspace = true
+tokio.workspace = true
+prost.workspace = true
+hmac.workspace = true
+sha2.workspace = true
+rand.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+uuid.workspace = true
+hex.workspace = true
+ed25519-dalek.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
 
 [lints]
 workspace = true
@@ -16,8 +31,11 @@ workspace = true
 # Module registration parsed by `architecture-lint modules` (M0.4, docs/45, docs/81).
 # owner: subsystem node id in graph/project-graph.json; canonical: doc 81 single-owner
 # systems this crate is THE implementation of (at most one member per system);
-# capabilities: production capabilities with their requirement ids (none yet).
+# capabilities: production capabilities with their requirement ids.
 [package.metadata.modbit]
 owner = "sandbox-cloud"
 canonical = ["sandbox-gateway-abstraction"]
-capabilities = []
+capabilities = [
+  { id = "sandbox.backend", requirements = ["REQ-EV-0291", "REQ-EV-0285"] },
+  { id = "sandbox.policy", requirements = ["REQ-EV-0287", "REQ-EV-0290"] },
+]

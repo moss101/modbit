@@ -183,6 +183,31 @@ pub struct CloudEvent {
     pub payload: serde_json::Value,
 }
 
+/// A sandbox the gateway provisioned (M8.3).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SandboxRecord {
+    /// Id.
+    pub sandbox_id: uuid::Uuid,
+    /// Tenant.
+    pub tenant_id: TenantId,
+    /// Session.
+    pub session_id: SessionId,
+    /// Task.
+    pub task_id: TaskId,
+    /// The worker that holds it.
+    pub worker_id: String,
+    /// The session lease generation it was issued under.
+    pub lease_generation: u64,
+    /// `microvm` | `reference`.
+    pub backend: String,
+    /// Whether the backend isolates.
+    pub isolated: bool,
+    /// `READY` | `DESTROYED` | `LOST`.
+    pub state: String,
+    /// Backend detail.
+    pub detail: String,
+}
+
 /// A session lease a worker claimed (docs/33 "Cloud worker lifecycle").
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ClaimedLease {
@@ -1288,6 +1313,91 @@ impl CloudStore {
             )
             .await?;
         Ok(())
+    }
+
+    /// Record a sandbox the gateway provisioned (M8.3, docs/24 "Sandbox
+    /// Gateway": the mapping from tenant/session/task to a substrate lease).
+    #[allow(clippy::too_many_arguments)]
+    pub async fn record_sandbox(
+        &self,
+        sandbox: uuid::Uuid,
+        tenant: TenantId,
+        session: SessionId,
+        task: TaskId,
+        worker_id: &str,
+        lease_generation: u64,
+        backend: &str,
+        isolated: bool,
+        state: &str,
+        detail: &str,
+    ) -> Result<()> {
+        let client = self.pool.get().await?;
+        let now = now_ms();
+        client
+            .execute(
+                "INSERT INTO sandboxes (sandbox_id, tenant_id, session_id, task_id, worker_id, lease_generation, backend, isolated, state, detail, created_at_ms, updated_at_ms) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $11)",
+                &[
+                    &sandbox,
+                    &tenant_uuid(tenant),
+                    &uuid_of(session.as_bytes()),
+                    &uuid_of(task.as_bytes()),
+                    &worker_id,
+                    &(lease_generation as i64),
+                    &backend,
+                    &isolated,
+                    &state,
+                    &detail,
+                    &now,
+                ],
+            )
+            .await?;
+        Ok(())
+    }
+
+    /// A sandbox within its tenant: `(session, task, worker, generation,
+    /// backend, isolated, state)`; `None` for another tenant's or unknown.
+    pub async fn sandbox(
+        &self,
+        tenant: TenantId,
+        sandbox: uuid::Uuid,
+    ) -> Result<Option<SandboxRecord>> {
+        let client = self.pool.get().await?;
+        let row = client
+            .query_opt(
+                "SELECT session_id, task_id, worker_id, lease_generation, backend, isolated, state, detail FROM sandboxes WHERE tenant_id = $1 AND sandbox_id = $2",
+                &[&tenant_uuid(tenant), &sandbox],
+            )
+            .await?;
+        Ok(row.map(|r| SandboxRecord {
+            sandbox_id: sandbox,
+            tenant_id: tenant,
+            session_id: SessionId::from_bytes(*r.get::<_, uuid::Uuid>(0).as_bytes()),
+            task_id: TaskId::from_bytes(*r.get::<_, uuid::Uuid>(1).as_bytes()),
+            worker_id: r.get(2),
+            lease_generation: r.get::<_, i64>(3) as u64,
+            backend: r.get(4),
+            isolated: r.get(5),
+            state: r.get(6),
+            detail: r.get(7),
+        }))
+    }
+
+    /// Move a sandbox to `state`.
+    pub async fn set_sandbox_state(
+        &self,
+        tenant: TenantId,
+        sandbox: uuid::Uuid,
+        state: &str,
+        detail: &str,
+    ) -> Result<bool> {
+        let client = self.pool.get().await?;
+        let n = client
+            .execute(
+                "UPDATE sandboxes SET state = $1, detail = $2, updated_at_ms = $3 WHERE tenant_id = $4 AND sandbox_id = $5",
+                &[&state, &detail, &now_ms(), &tenant_uuid(tenant), &sandbox],
+            )
+            .await?;
+        Ok(n == 1)
     }
 
     /// Denials recorded for a tenant (audit read).

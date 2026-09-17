@@ -1,0 +1,27 @@
+{
+ "task": "M8.4",
+ "requirements": [
+  "docs/21 Sandbox substrate boundary (immutable, versioned image) / modbit-guest",
+  "docs/30 Version compatibility",
+  "docs/02 MOD-SBX-001",
+  "REQ-EV-0285",
+  "REQ-EV-0289"
+ ],
+ "scenarios": [
+  "a job-signed root image boots on a real Firecracker MicroVM; forged, tampered and stale images are refused",
+  "the same refusals on the reference backend on every OS"
+ ],
+ "tests": [
+  "qual_m8_3_a_firecracker_microvm_boots_the_guest_and_passes_the_backend_contract",
+  "qual_m8_3_the_reference_backend_passes_the_backend_contract",
+  "qual_m8_3_the_gateway_binds_sandboxes_to_the_tenant_and_the_workers_session_lease",
+  "a_manifest_verifies_under_its_publisher_key_only_and_binds_the_image_bytes",
+  "the_guest_that_comes_up_must_be_the_one_the_manifest_names"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "Ed25519-signed image manifests: the gateway boots only an image whose manifest verifies under a trusted publisher key, whose bytes hash to what the manifest names (re-checked at every boot) and whose kernel is the one it was built for; the guest that comes up must report the manifest's version and protocol or it is refused at admission; proven on a real MicroVM and on the reference backend.",
+ "audit": "MISSING before: any image at the configured path booted.",
+ "limitations": "per-run publisher key in CI; no transparency log.",
+ "ci": ""
+}

@@ -1224,6 +1224,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "guest-image-tool"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "ed25519-dalek",
+ "hex",
+ "modbit-sandbox",
+ "serde_json",
+]
+
+[[package]]
 name = "h2"
 version = "0.4.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1933,6 +1944,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "memoffset"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "488016bfae457b036d996092f6cb448677611ce4449e970ceaf42695203f218a"
+dependencies = [
+ "autocfg",
+]
+
+[[package]]
 name = "micromap"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2297,8 +2317,15 @@ dependencies = [
 name = "modbit-guest"
 version = "0.0.0"
 dependencies = [
+ "hex",
  "modbit-domain",
  "modbit-protocol",
+ "modbit-sandbox",
+ "nix 0.29.0",
+ "prost",
+ "tokio",
+ "uuid",
+ "vsock",
 ]
 
 [[package]]
@@ -2428,16 +2455,43 @@ dependencies = [
 name = "modbit-sandbox"
 version = "0.0.0"
 dependencies = [
+ "ed25519-dalek",
+ "hex",
+ "hmac",
  "modbit-domain",
+ "modbit-protocol",
+ "prost",
+ "rand 0.10.2",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "tempfile",
+ "thiserror 2.0.20",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]
 name = "modbit-sandbox-gateway"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
+ "axum",
+ "base64",
+ "hex",
  "modbit-domain",
+ "modbit-event-store",
  "modbit-policy",
+ "modbit-protocol",
  "modbit-sandbox",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "tokio-postgres",
+ "tower-http",
+ "uuid",
 ]
 
 [[package]]
@@ -2547,6 +2601,31 @@ dependencies = [
  "cfg-if",
  "cfg_aliases 0.1.1",
  "libc",
+]
+
+[[package]]
+name = "nix"
+version = "0.29.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "71e2746dc3a24dd78b3cfcb7be93368c6de9963d30f43a6a73998a9cf4b17b46"
+dependencies = [
+ "bitflags 2.13.1",
+ "cfg-if",
+ "cfg_aliases 0.2.2",
+ "libc",
+]
+
+[[package]]
+name = "nix"
+version = "0.31.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cf20d2fde8ff38632c426f1165ed7436270b44f199fc55284c38276f9db47c3d"
+dependencies = [
+ "bitflags 2.13.1",
+ "cfg-if",
+ "cfg_aliases 0.2.2",
+ "libc",
+ "memoffset",
 ]
 
 [[package]]
@@ -2856,7 +2935,7 @@ dependencies = [
  "lazy_static",
  "libc",
  "log",
- "nix",
+ "nix 0.28.0",
  "serial2",
  "shared_library",
  "shell-words",
@@ -4646,6 +4725,16 @@ name = "vsimd"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5c3082ca00d5a5ef149bb8b555a72ae84c9c59f7250f013ac822ac2e49b19c64"
+
+[[package]]
+name = "vsock"
+version = "0.5.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6ba782755fc073877e567c2253c0be48e4aa9a254c232d36d3985dfae0bd5205"
+dependencies = [
+ "libc",
+ "nix 0.31.3",
+]
 
 [[package]]
 name = "walkdir"
