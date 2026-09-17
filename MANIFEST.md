@@ -20,8 +20,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | Verification and testing | 50–69 | 15 | 203744 |
 | Delivery and operations | 70–79 | 7 | 33831 |
 | Agent process and governance | 80–97 | 18 | 109299 |
-| Live state | 98–99 | 1 | 7872 |
-| **Total docs** | | **89** | **1189032** |
+| Live state | 98–99 | 1 | 8076 |
+| **Total docs** | | **89** | **1189236** |
 
 ## Specification files (`docs/`)
 
@@ -115,7 +115,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 95 | `docs/95_EPR_V1_1_DOSSIER_TASK_AND_HANDOFF.md` | EPR v1.1 dossier task and handoff | governance | 10525 | `264069b600baf40d1e54d2f89be7e9804a8b77c0dbf3ddb0a9dca41111582413` |
 | 96 | `docs/96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md` | Dossier governance maintenance task and handoff | governance | 9070 | `af650309e48dd7fd60dd6d286c460ed7c3128a2201964078c7f50aea385bfb8c` |
 | 97 | `docs/97_DOSSIER_MAINTENANCE_LOG.md` | Dossier maintenance log | governance | 43736 | `ae48c1832a920977def82d1ba4b7d492d4281c60a3723beaef613d3144c97073` |
-| 98 | `docs/98_BUILD_MANIFEST.md` | Build Manifest | live-state | 7872 | `916049acb3ee838321f13423f5a948b1e0bfde19b7da043795b00c001243632f` |
+| 98 | `docs/98_BUILD_MANIFEST.md` | Build Manifest | live-state | 8076 | `54f0e562dbb62c436a5e5ab429084cc46ceaa7078bb7b8d15654689e51562706` |
 
 ## Root governing files and tooling
 
@@ -1281,12 +1281,14 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m7/M7.8/TASK_CARD.md` | retained evidence | 4900 | `c82be386b93814544829b670f6fe0b78dd27373e34db37cbc1c3b83c59dd3f12` |
 | `evidence/m7/M7.8/ci-run-35179264882.json` | retained evidence | 39150 | `91208f78fc4ac7e2b552bed5ef264a1152763372f9035397843612e4a64021ce` |
 | `evidence/m7/M7.8/evidence.json` | retained evidence | 1280 | `e73166314be690fe49e8654fceb6e384b29f1f8c104f4bf2da8d0d017c6dfd29` |
-| `evidence/m8/M8.1/TASK_CARD.md` | retained evidence | 6100 | `261dd87fa2381d89d5185bf71c6c30eb1304bccdda2aecd3e906269b3d3e8be5` |
-| `evidence/m8/M8.1/evidence.json` | retained evidence | 1777 | `0e21f65805b98bd362ba3d0a76077bb41330f676e8a49defb10dd75f3939c47e` |
-| `evidence/m8/M8.2/TASK_CARD.md` | retained evidence | 5693 | `9dfabc603a8c388cd81b386f9e04a05cedada72207a7902f820c7f406876f6e6` |
-| `evidence/m8/M8.2/evidence.json` | retained evidence | 1398 | `1603855fe38d505a2f89ea2197f33f3c99ff90659950afa27fb6f382acf809c9` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 40758 | `24047841acbe1bfeec81dcd466ffeeb331f844f890b1c5f715396d8bfd8067e3` |
-| `graph/project-graph.json` | project driver graph with live status | 1489489 | `6da0709dd1d1e3ff6e6d40b718574766421121c1a9f1e932dd48e9707571929d` |
+| `evidence/m8/M8.1/TASK_CARD.md` | retained evidence | 6182 | `be161ceb9804953444a48ca4c62668ede09d7f0dfd91595cab038ed83939afc0` |
+| `evidence/m8/M8.1/ci-run-35206770516.json` | retained evidence | 41449 | `d796e82a0a45ee95ecf3f80684ca433613f24b292c49034db18dd8bad7934c57` |
+| `evidence/m8/M8.1/evidence.json` | retained evidence | 1870 | `b2f563d20094f4d0abb18ccc9e16b6347304b1de476113a5a8c73ccc48bdac79` |
+| `evidence/m8/M8.2/TASK_CARD.md` | retained evidence | 5775 | `06e1e563bbc8fd872684ffae4e0eed7867562bc6d77e9b578af840e55bffa6eb` |
+| `evidence/m8/M8.2/ci-run-35206770516.json` | retained evidence | 41449 | `d796e82a0a45ee95ecf3f80684ca433613f24b292c49034db18dd8bad7934c57` |
+| `evidence/m8/M8.2/evidence.json` | retained evidence | 1488 | `7a5b9e8bdd4fbb9ff2a60dee34221379132d1f4ba5b1aa0242cd9cd00be53b1d` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 40752 | `b2d67d4b47391c77ef9849fcd51fd3618b3d1044bd8ee210f5dd9ad5ace23c14` |
+| `graph/project-graph.json` | project driver graph with live status | 1492529 | `362ff555a0e129a6c1ab198f5966a53e159c2cf2c4ab490340946e4590397ed1` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 53364 | `b1a026685406fab72ca15d0e75000645daab1cb0e32f9b82cff648542f866d5d` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 17596 | `5c9b7a782d245223726f860ca583d766929a6f5662b644adebee64d257ad426b` |

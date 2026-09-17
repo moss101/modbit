@@ -64,7 +64,7 @@ flowchart LR
   M5["M5<br/>Procedural runtime and skills<br/>39/39 done"]
   M6["M6<br/>Subagents/fleet<br/>58/58 done"]
   M7["M7<br/>Live browser<br/>28/28 done"]
-  M8["M8<br/>Cloud isolated execution<br/>0/28 done"]
+  M8["M8<br/>Cloud isolated execution<br/>2/28 done"]
   M9["M9<br/>Engineering memory/effects/security hardening<br/>0/33 done"]
   M10["M10<br/>Release hardening<br/>0/22 done"]
   M0 --> M1
@@ -93,7 +93,7 @@ flowchart LR
   style M5 fill:#dcfce7,stroke:#16a34a,color:#111827
   style M6 fill:#dcfce7,stroke:#16a34a,color:#111827
   style M7 fill:#dcfce7,stroke:#16a34a,color:#111827
-  style M8 fill:#f3f4f6,stroke:#9ca3af,color:#111827
+  style M8 fill:#fef3c7,stroke:#d97706,color:#111827
   style M9 fill:#f3f4f6,stroke:#9ca3af,color:#111827
   style M10 fill:#f3f4f6,stroke:#9ca3af,color:#111827
 ```
@@ -112,7 +112,7 @@ Critical path (reliability spine): **M0 → M1 → M2 → M4**. Do not start bro
 | M5 Procedural runtime and skills | COMPLETE | yes | 7 | 32 | 39 | 0 | M2 | E2E-011/012; direct and procedural mode yield equivalent receipts/policy behavior. |
 | M6 Subagents/fleet | COMPLETE | yes | 7 | 51 | 58 | 0 | M2, M4 | E2E-009/010 and user can supervise multiple tasks without raw-log polling. |
 | M7 Live browser | COMPLETE | yes | 8 | 20 | 28 | 0 | M2 | E2E-013..016. |
-| M8 Cloud isolated execution | NOT_STARTED | yes | 9 | 19 | 0 | 0 | M4, M7 | E2E-017/018/024. |
+| M8 Cloud isolated execution | IN_PROGRESS | yes | 9 | 19 | 2 | 0 | M4, M7 | E2E-017/018/024. |
 | M9 Engineering memory/effects/security hardening | NOT_STARTED | yes | 6 | 27 | 0 | 0 | M4, M5 | memory cannot be created from transcript without promotion; receipt chain verifies; threat tests pass. |
 | M10 Release hardening | NOT_STARTED | no | 7 | 15 | 0 | 0 | M3, M5, M6, M7, M8, M9 | full Release Zero proof + package evidence + EPR gates A–G SATISFIED. |
 
@@ -324,7 +324,7 @@ Releases are projections over work items and gates (docs/75). Readiness is compu
 |---|---|---:|---:|---:|---|---|
 | ALPHA: Local coding loop and recovery spine | READY | 114 | 114 | 0 | none | / ALPHA / Local coding loop and recovery spine / M0, M1, M2, M4 / M2.10 / EPR- / — / — / |
 | BETA: Intelligence, fleet and browser | BLOCKED | 318 | 317 | 1 | none | / BETA / Intelligence, fleet and browser / M0, M1, M2, M3, M4, M5, M6, M7 / — / — / — / — / |
-| RELEASE_ZERO: Full end-to-end proof | BLOCKED | 401 | 317 | 1 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
+| RELEASE_ZERO: Full end-to-end proof | BLOCKED | 401 | 319 | 1 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
 
 ## Scoped v1.1 supersessions and source provenance
 
@@ -475,8 +475,8 @@ flowchart LR
 
 | Task | Status | Title | Acceptance / note |
 |---|---|---|---|
-| `M8.1` | NOT_STARTED | Cloud API/Postgres/object store |  |
-| `M8.2` | NOT_STARTED | cloud session kernel lease + worker |  |
+| `M8.1` | COMPLETE | Cloud API/Postgres/object store |  |
+| `M8.2` | COMPLETE | cloud session kernel lease + worker |  |
 | `M8.3` | NOT_STARTED | Sandbox Gateway + sandbox substrate adapter |  |
 | `M8.4` | NOT_STARTED | signed/versioned `modbit-guest` |  |
 | `M8.5` | NOT_STARTED | typed guest process/fs/PTy RPC |  |

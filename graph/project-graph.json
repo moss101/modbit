@@ -3852,8 +3852,51 @@
    "milestone": "M8",
    "order": 0,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:7748eed",
+    "run:35206770516",
+    "artifact:evidence/m8/M8.1/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T10:05:39Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Cloud API over Postgres and an S3-compatible object store: existing-code audit (MISSING: the M0 skeleton refused to run)"
+    },
+    {
+     "at": "2026-09-17T10:05:39Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "Cloud API over Postgres and an S3-compatible object store: implemented on wip/m6-backlog, landed on main at 7748eed"
+    },
+    {
+     "at": "2026-09-17T10:05:39Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Cloud API over Postgres and an S3-compatible object store: production wiring in place"
+    },
+    {
+     "at": "2026-09-17T10:05:40Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "Cloud API over Postgres and an S3-compatible object store: real Postgres 16, MinIO and modbit-core in the hosted cloud job"
+    },
+    {
+     "at": "2026-09-17T10:05:40Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "Cloud API over Postgres and an S3-compatible object store: hosted CI run 35206770516 green on every job"
+    },
+    {
+     "at": "2026-09-17T10:05:40Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Cloud API over Postgres and an S3-compatible object store: sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-17T10:05:40Z"
   },
   {
    "id": "M8.2",
@@ -3863,8 +3906,51 @@
    "milestone": "M8",
    "order": 1,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "commit:7748eed",
+    "run:35206770516",
+    "artifact:evidence/m8/M8.2/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T10:05:40Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "cloud session kernel lease and the Cloud Core Worker over the real modbit-core: existing-code audit (MISSING: the M0 skeleton refused to run)"
+    },
+    {
+     "at": "2026-09-17T10:05:40Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "cloud session kernel lease and the Cloud Core Worker over the real modbit-core: implemented on wip/m6-backlog, landed on main at 7748eed"
+    },
+    {
+     "at": "2026-09-17T10:05:40Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "cloud session kernel lease and the Cloud Core Worker over the real modbit-core: production wiring in place"
+    },
+    {
+     "at": "2026-09-17T10:05:40Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "cloud session kernel lease and the Cloud Core Worker over the real modbit-core: real Postgres 16, MinIO and modbit-core in the hosted cloud job"
+    },
+    {
+     "at": "2026-09-17T10:05:40Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "cloud session kernel lease and the Cloud Core Worker over the real modbit-core: hosted CI run 35206770516 green on every job"
+    },
+    {
+     "at": "2026-09-17T10:05:40Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "cloud session kernel lease and the Cloud Core Worker over the real modbit-core: sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-17T10:05:40Z"
   },
   {
    "id": "M8.3",

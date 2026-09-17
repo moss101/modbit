@@ -40,4 +40,4 @@ Named tests (the hosted `cloud` job on ubuntu-latest runs them against Postgres 
 ## Evidence
 
 - `evidence.json` in this directory (commits, hosted CI run, test names)
-- CI run json copy alongside
+- CI run json copy alongside: `ci-run-35206770516.json` (hosted run 35206770516 at 7748eed, all 14 jobs green)

@@ -21,10 +21,14 @@
   "a_token_verifies_under_its_key_only_and_expires",
   "a_bucket_admits_its_capacity_then_refuses_until_refilled"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "7748eed"
+ ],
+ "runs": [
+  "35206770516"
+ ],
  "proof": "the real Cloud API over a real Postgres 16 and a real MinIO: token issuance and refresh rotation with replay revocation; idempotent commands by command_id; the canonical log with the local store's envelope, sequence and hash chain, projections and the command ledger in one transaction; cursor replay and a WSS stream that replays then delivers live with a resume cursor; approvals bound to intent; ranged output reads and signed artifact URLs; tenants never crossing, every attempt audited; generation-fenced session leases; per-principal rate limits.",
  "audit": "MISSING before: the M0 skeleton refused to run.",
- "limitations": "secret→token identity (no OIDC yet); NoTls to Postgres; handoffs follow; commands for a held session are relayed to its worker (M8.2).",
- "ci": ""
+ "limitations": "secret\u2192token identity (no OIDC yet); NoTls to Postgres; handoffs follow; commands for a held session are relayed to its worker (M8.2).",
+ "ci": "https://github.com/moss101/modbit/actions/runs/35206770516"
 }
