@@ -63,7 +63,7 @@ flowchart LR
   M4["M4<br/>Durable recovery spine<br/>18/18 done"]
   M5["M5<br/>Procedural runtime and skills<br/>39/39 done"]
   M6["M6<br/>Subagents/fleet<br/>58/58 done"]
-  M7["M7<br/>Live browser<br/>2/29 done"]
+  M7["M7<br/>Live browser<br/>8/29 done"]
   M8["M8<br/>Cloud isolated execution<br/>0/28 done"]
   M9["M9<br/>Engineering memory/effects/security hardening<br/>0/32 done"]
   M10["M10<br/>Release hardening<br/>0/22 done"]
@@ -111,7 +111,7 @@ Critical path (reliability spine): **M0 → M1 → M2 → M4**. Do not start bro
 | M4 Durable recovery spine | COMPLETE | yes | 6 | 12 | 18 | 0 | M2 | E2E-004/005/006/007/008. |
 | M5 Procedural runtime and skills | COMPLETE | yes | 7 | 32 | 39 | 0 | M2 | E2E-011/012; direct and procedural mode yield equivalent receipts/policy behavior. |
 | M6 Subagents/fleet | COMPLETE | yes | 7 | 51 | 58 | 0 | M2, M4 | E2E-009/010 and user can supervise multiple tasks without raw-log polling. |
-| M7 Live browser | IN_PROGRESS | yes | 8 | 21 | 2 | 0 | M2 | E2E-013..016. |
+| M7 Live browser | IN_PROGRESS | yes | 8 | 21 | 8 | 0 | M2 | E2E-013..016. |
 | M8 Cloud isolated execution | NOT_STARTED | no | 9 | 19 | 0 | 0 | M4, M7 | E2E-017/018/024. |
 | M9 Engineering memory/effects/security hardening | NOT_STARTED | yes | 6 | 26 | 0 | 0 | M4, M5 | memory cannot be created from transcript without promotion; receipt chain verifies; threat tests pass. |
 | M10 Release hardening | NOT_STARTED | no | 7 | 15 | 0 | 0 | M3, M5, M6, M7, M8, M9 | full Release Zero proof + package evidence + EPR gates A–G SATISFIED. |
@@ -323,8 +323,8 @@ Releases are projections over work items and gates (docs/75). Readiness is compu
 | Release | State | Included work items | Complete | Blocked | Required gates | Rule |
 |---|---|---:|---:|---:|---|---|
 | ALPHA: Local coding loop and recovery spine | READY | 114 | 114 | 0 | none | / ALPHA / Local coding loop and recovery spine / M0, M1, M2, M4 / M2.10 / EPR- / — / — / |
-| BETA: Intelligence, fleet and browser | BLOCKED | 319 | 291 | 1 | none | / BETA / Intelligence, fleet and browser / M0, M1, M2, M3, M4, M5, M6, M7 / — / — / — / — / |
-| RELEASE_ZERO: Full end-to-end proof | BLOCKED | 401 | 291 | 1 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
+| BETA: Intelligence, fleet and browser | BLOCKED | 319 | 297 | 1 | none | / BETA / Intelligence, fleet and browser / M0, M1, M2, M3, M4, M5, M6, M7 / — / — / — / — / |
+| RELEASE_ZERO: Full end-to-end proof | BLOCKED | 401 | 297 | 1 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
 
 ## Scoped v1.1 supersessions and source provenance
 
@@ -464,12 +464,12 @@ flowchart LR
 |---|---|---|---|
 | `M7.1` | COMPLETE | local sandboxed WebContents session + CDP bridge |  |
 | `M7.2` | COMPLETE | AX/DOM/layout semantic entities and stable IDs |  |
-| `M7.3` | NOT_STARTED | state fingerprints + delta stream |  |
-| `M7.4` | NOT_STARTED | semantic actions and postconditions |  |
-| `M7.5` | NOT_STARTED | targeted screenshot/vision fallback |  |
-| `M7.6` | NOT_STARTED | control lease/takeover |  |
-| `M7.7` | NOT_STARTED | prompt-injection provenance isolation |  |
-| `M7.8` | NOT_STARTED | credential handle fill path |  |
+| `M7.3` | COMPLETE | state fingerprints + delta stream |  |
+| `M7.4` | COMPLETE | semantic actions and postconditions |  |
+| `M7.5` | COMPLETE | targeted screenshot/vision fallback |  |
+| `M7.6` | COMPLETE | control lease/takeover |  |
+| `M7.7` | COMPLETE | prompt-injection provenance isolation |  |
+| `M7.8` | COMPLETE | credential handle fill path |  |
 
 ### M8 — Cloud isolated execution
 

@@ -14,10 +14,14 @@
   "apps/desktop/src/main/credentials.test.ts",
   "origin_is_scheme_host_and_port_only"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "dd8166a"
+ ],
+ "runs": [
+  "35179264882"
+ ],
  "proof": "a credential the person binds to an origin in Settings lives in safeStorage custody; the Core and the model hold a handle; the snapshot offers it for the page's origin; browser.act fill_credential is refused at any other origin, for an unknown handle or a non-field before the host; the host fills the real field from its custody with no value on the wire; the fill is on the log by handle; the site receives the credential in the approved POST; no transcript, log or settings text carries the value — on the real Core with a fake host and in the real app.",
  "audit": "MISSING before: no broker, no handles, no fill path.",
  "limitations": "one secret per handle; origin-bound; the Core's handle registry is memory-only (re-registered on reconnect).",
- "ci": ""
+ "ci": "evidence/m7/M7.8/ci-run-35179264882.json"
 }

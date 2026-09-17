@@ -16,10 +16,14 @@
   "apps/desktop/e2e/browser.spec.ts",
   "submissions_and_consequential_actions_are_protected_fields_and_tabs_are_not"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "dd8166a"
+ ],
+ "runs": [
+  "35179264882"
+ ],
  "proof": "browser.act acts on entities by reference under the effect the action carries — a fill runs at once with its postcondition, a submission is an external effect approved by intent on the card and run once, a dead action fails its postcondition with the action recorded, a stale reference does nothing — with the transition on the log; on the real Core with a fake host and in the real app on a real form landing on the welcome page.",
  "audit": "MISSING before: reading only; one effect class per tool.",
  "limitations": "first-cut risk classification (IMP-EV-0088 refines); select by text/value; no drag/hover/upload/scroll; settle window 400 ms / 150 ms.",
- "ci": ""
+ "ci": "evidence/m7/M7.4/ci-run-35179264882.json"
 }

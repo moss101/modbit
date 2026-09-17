@@ -3508,8 +3508,54 @@
    "milestone": "M7",
    "order": 2,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_m7_3_page_reads_after_the_first_are_bounded_deltas_between_fingerprints",
+    "test:apps/desktop/e2e/browser.spec.ts",
+    "test:a_delta_is_bounded_to_what_changed_and_applies_to_the_same_page",
+    "run:35179264882",
+    "commit:dd8166a",
+    "artifact:evidence/m7/M7.3/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T04:00:34Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: MISSING before (every read was a full page)"
+    },
+    {
+     "at": "2026-09-17T04:00:34Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented on wip/m6-backlog"
+    },
+    {
+     "at": "2026-09-17T04:00:34Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired: fingerprints and diffs in crates/browser::compiler, delta reads in browser.snapshot, BrowserPageObserved on the log"
+    },
+    {
+     "at": "2026-09-17T04:00:34Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real Core with a fake host re-rendering a long page; real app on a real page re-served mutated"
+    },
+    {
+     "at": "2026-09-17T04:00:34Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 35179264882 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-17T04:00:34Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-17T04:00:34Z"
   },
   {
    "id": "M7.4",
@@ -3519,8 +3565,54 @@
    "milestone": "M7",
    "order": 3,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_m7_4_actions_run_by_reference_under_the_effect_they_carry_and_check_their_postconditions",
+    "test:apps/desktop/e2e/browser.spec.ts",
+    "test:submissions_and_consequential_actions_are_protected_fields_and_tabs_are_not",
+    "run:35179264882",
+    "commit:dd8166a",
+    "artifact:evidence/m7/M7.4/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T04:00:34Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: MISSING before (reads only; no action path)"
+    },
+    {
+     "at": "2026-09-17T04:00:34Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented on wip/m6-backlog"
+    },
+    {
+     "at": "2026-09-17T04:00:34Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired: browser.act by reference with per-call effect (Tool::effect_of), postconditions, host CDP actions, BrowserActionPerformed"
+    },
+    {
+     "at": "2026-09-17T04:00:34Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real Core with a fake host (fill, stale target, protected submit under approval); real app on a real form with the approval on the card"
+    },
+    {
+     "at": "2026-09-17T04:00:34Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 35179264882 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-17T04:00:34Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-17T04:00:34Z"
   },
   {
    "id": "M7.5",
@@ -3530,8 +3622,54 @@
    "milestone": "M7",
    "order": 4,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_m7_5_a_visual_region_is_captured_targeted_and_clicked_by_a_point_with_the_fallback_on_record",
+    "test:apps/desktop/e2e/browser.spec.ts",
+    "test:a_canvas_and_an_unlabeled_image_are_visual_regions_a_labeled_image_is_not",
+    "run:35179264882",
+    "commit:dd8166a",
+    "artifact:evidence/m7/M7.5/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T04:00:34Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: MISSING before (no visual region, capture or point click)"
+    },
+    {
+     "at": "2026-09-17T04:00:34Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented on wip/m6-backlog"
+    },
+    {
+     "at": "2026-09-17T04:00:35Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired: visual regions on the snapshot, browser.capture through the media pipeline, point clicks with visual_fallback, BrowserRegionCaptured"
+    },
+    {
+     "at": "2026-09-17T04:00:35Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real Core with a fake host (region, clip, image part, point click); real app on a real canvas picker"
+    },
+    {
+     "at": "2026-09-17T04:00:35Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 35179264882 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-17T04:00:35Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-17T04:00:35Z"
   },
   {
    "id": "M7.6",
@@ -3541,8 +3679,55 @@
    "milestone": "M7",
    "order": 5,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_m7_6_taking_control_blocks_agent_input_at_once_and_returning_it_moves_the_lease",
+    "test:apps/desktop/e2e/browser.spec.ts",
+    "test:apps/desktop/src/main/lease.test.ts",
+    "test:control_lease_fences_stale_agent_input",
+    "run:35179264882",
+    "commit:dd8166a",
+    "artifact:evidence/m7/M7.6/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T04:00:35Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: PARTIAL before (the lease and its generation existed; no hand-over, no fencing at the host)"
+    },
+    {
+     "at": "2026-09-17T04:00:35Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented on wip/m6-backlog"
+    },
+    {
+     "at": "2026-09-17T04:00:35Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired: SetBrowserControl/BrowserControlChanged, USER_HAS_CONTROL at the Core, STALE_GENERATION at the host, take/return control on the panel"
+    },
+    {
+     "at": "2026-09-17T04:00:35Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real Core (refused input never reaches the host; generations move; rebuilt after a restart); the host rule unit-tested; real app takeover"
+    },
+    {
+     "at": "2026-09-17T04:00:35Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 35179264882 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-17T04:00:35Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-17T04:00:35Z"
   },
   {
    "id": "M7.7",
@@ -3552,8 +3737,54 @@
    "milestone": "M7",
    "order": 6,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_m7_7_hostile_page_and_readme_are_data_the_key_never_leaves_and_the_forbidden_tool_stays_unavailable",
+    "test:apps/desktop/e2e/browser.spec.ts",
+    "test:instruction_shaped_passages_are_found_and_ordinary_text_is_not",
+    "run:35179264882",
+    "commit:dd8166a",
+    "artifact:evidence/m7/M7.7/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T04:00:35Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: PARTIAL before (page strings tagged; no marking, the broker inherited the key, arguments could carry a credential)"
+    },
+    {
+     "at": "2026-09-17T04:00:35Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented on wip/m6-backlog"
+    },
+    {
+     "at": "2026-09-17T04:00:35Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired: injection scan on every observation with SecurityEventRecorded, credential-free broker children, SECRET_EXFILTRATION_BLOCKED before policy and before the write-ahead put, system rule 6, the card count"
+    },
+    {
+     "at": "2026-09-17T04:00:35Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real Core with a hostile page, a hostile README and a real provider key in the environment; real app on a real hostile page"
+    },
+    {
+     "at": "2026-09-17T04:00:35Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 35179264882 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-17T04:00:35Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-17T04:00:35Z"
   },
   {
    "id": "M7.8",
@@ -3563,8 +3794,55 @@
    "milestone": "M7",
    "order": 7,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_m7_8_a_credential_is_filled_by_handle_into_its_bound_origin_only_and_the_value_never_crosses",
+    "test:apps/desktop/e2e/browser.spec.ts",
+    "test:apps/desktop/src/main/credentials.test.ts",
+    "test:origin_is_scheme_host_and_port_only",
+    "run:35179264882",
+    "commit:dd8166a",
+    "artifact:evidence/m7/M7.8/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-17T04:00:35Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: MISSING before (no broker, no handles, no fill path)"
+    },
+    {
+     "at": "2026-09-17T04:00:36Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented on wip/m6-backlog"
+    },
+    {
+     "at": "2026-09-17T04:00:36Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired: desktop CredentialStore (safeStorage), RegisterBrowserCredential/ForgetBrowserCredential, credentials on the snapshot, browser.act fill_credential with origin binding, BrowserCredentialFilled"
+    },
+    {
+     "at": "2026-09-17T04:00:36Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real Core with a fake host (handle offered, refusals before the host, the fill by handle); real app with a real password field and a real POST"
+    },
+    {
+     "at": "2026-09-17T04:00:36Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 35179264882 green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-17T04:00:36Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-17T04:00:36Z"
   },
   {
    "id": "M8.1",

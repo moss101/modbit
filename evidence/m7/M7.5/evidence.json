@@ -14,10 +14,14 @@
   "apps/desktop/e2e/browser.spec.ts",
   "a_canvas_and_an_unlabeled_image_are_visual_regions_a_labeled_image_is_not"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "dd8166a"
+ ],
+ "runs": [
+  "35179264882"
+ ],
  "proof": "the compiler marks a canvas (and unlabeled images) as visual regions with the reason and box; browser.capture captures that region only through the media pipeline and the model receives it as an image; browser.act clicks a point inside it with the postcondition verified; the capture and the visual click are on the log — on the real Core with a fake host and in the real app on a real canvas picker.",
  "audit": "MISSING before: no visual region, capture or point click.",
  "limitations": "regions by role only; no downscale; clicks only on regions.",
- "ci": ""
+ "ci": "evidence/m7/M7.5/ci-run-35179264882.json"
 }
