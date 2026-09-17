@@ -14,7 +14,8 @@
 
 #![forbid(unsafe_code)]
 
-mod core_process;
+pub mod core_process;
+mod handoff;
 mod session;
 
 use std::path::PathBuf;

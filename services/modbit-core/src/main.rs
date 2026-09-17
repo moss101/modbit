@@ -25,6 +25,7 @@ mod escalation;
 mod external_diagnostics;
 mod forge;
 mod gate;
+mod handoff;
 mod inspector;
 mod languages;
 mod media_bridge;

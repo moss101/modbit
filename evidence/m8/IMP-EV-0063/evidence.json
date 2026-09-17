@@ -1,0 +1,16 @@
+{
+ "task": "IMP-EV-0063",
+ "requirements": ["REQ-EV-0063", "QUAL-EV-0063", "docs/21 Handoff local → cloud"],
+ "scenarios": [
+  "the bundle transfers the log, the objects, the git delta and the checkpoint, the required capabilities and the secret handles; it carries no secret value; the cloud negotiates capabilities before admission"
+ ],
+ "tests": [
+  "qual_m8_7_a_local_task_hands_off_to_the_cloud_and_continues_from_its_checkpoint_in_a_sandbox"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "every bundle file scanned for the laptop's provider key and forge token: neither present; secret_handles names forge-token; CAPABILITY_PARITY refuses a bundle needing browser.control; the continuation has the laptop's plan, transcript, edit and history.",
+ "audit": "MISSING before M8.7.",
+ "limitations": "as M8.7's.",
+ "ci": ""
+}

@@ -1,0 +1,24 @@
+{
+ "task": "M8.7",
+ "requirements": [
+  "docs/21 Handoff local → cloud",
+  "docs/24 Sync model (checkpoint handoff bundles; one log)",
+  "docs/30 POST /v1/handoffs",
+  "REQ-EV-0063",
+  "docs/02 secrets custody"
+ ],
+ "scenarios": [
+  "a local Core's task is parked, checkpointed and bundled; the bundle carries no secret value and names the forge token as a handle",
+  "the Cloud API refuses a bundle needing browser.control (CAPABILITY_PARITY), admits the real one, replays the admission",
+  "a worker materializes the continuation (bundle clone, checkpoint files, objects, rebind to cloud_isolated) and runs it inside a sandbox to READY_FOR_REVIEW with the laptop's transcript, edit and history"
+ ],
+ "tests": [
+  "qual_m8_7_a_local_task_hands_off_to_the_cloud_and_continues_from_its_checkpoint_in_a_sandbox"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "ExportHandoff parks the run at its boundary, captures a checkpoint and writes events.jsonl, objects/, repo.bundle and manifest.json (capabilities, secret handles, checkpoint and git identity) — no secret value in any part; POST /v1/handoffs verifies capability parity, imports the log verbatim under the cloud tenant, stores the admitted manifest (bundle_hash) and journals TaskHandoffAdmitted; the worker materializes the worktree from the bundle and the checkpoint, imports the objects, rebinds the task to its workspace under cloud_isolated (the laptop's lease retired, the cloud profile's granted) and StartTask provisions the sandbox and resumes the run with the same transcript.",
+ "audit": "MISSING before: StartCloudHandoff and /v1/handoffs were names only.",
+ "limitations": "part-by-part upload; cloud_isolated only; nothing synced back to the laptop; fixed cloud capability set.",
+ "ci": ""
+}

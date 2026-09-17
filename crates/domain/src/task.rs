@@ -652,6 +652,47 @@ pub enum TaskEvent {
         #[serde(default)]
         credentials: Vec<String>,
     },
+    /// `TaskHandedOff` (M8.7, docs/21 "Handoff local → cloud"): this Core
+    /// exported the task — its log, its objects, an immutable workspace
+    /// checkpoint over the repository's bundle — for a cloud continuation
+    /// and parked it; the bundle carries no raw secret. No state change.
+    TaskHandedOff {
+        /// The bundle's manifest hash (content-addressed).
+        bundle_hash: String,
+        /// The workspace checkpoint the bundle carries.
+        checkpoint_id: String,
+        /// Git HEAD at export.
+        git_head: String,
+        /// The capabilities the continuation needs (what the run has used).
+        capabilities: Vec<String>,
+        /// The secret handles the continuation names (never their values).
+        secret_handles: Vec<String>,
+    },
+    /// `TaskHandoffAdmitted` (M8.7): the cloud admitted the handoff — the
+    /// continuation's capabilities are within what `cloud_isolated` serves
+    /// — and holds the bundle; a worker resumes the task from it. No state
+    /// change.
+    TaskHandoffAdmitted {
+        /// The bundle's manifest hash.
+        bundle_hash: String,
+        /// The tenant the task came from (as its envelopes say).
+        from_tenant: String,
+        /// The capabilities checked.
+        capabilities: Vec<String>,
+    },
+    /// `TaskWorkspaceRebound` (M8.7): the task's workspace is now this root
+    /// (a worker materialized the handoff bundle here). No state change;
+    /// the projection's `workspace_root` follows.
+    TaskWorkspaceRebound {
+        /// The new root.
+        workspace_root: String,
+        /// Why (`handoff`).
+        reason: String,
+        /// The execution profile from here on (`cloud_isolated` for a
+        /// continuation in the cloud); empty keeps the task's.
+        #[serde(default)]
+        execution_profile: String,
+    },
     /// `SandboxReleased` (M8.5): the task ended and its sandbox was
     /// destroyed. No state change.
     SandboxReleased {
@@ -1629,6 +1670,9 @@ impl TaskEvent {
             Self::SecurityEventRecorded { .. } => "SecurityEventRecorded",
             Self::BrowserCredentialFilled { .. } => "BrowserCredentialFilled",
             Self::SandboxLeaseAcquired { .. } => "SandboxLeaseAcquired",
+            Self::TaskHandedOff { .. } => "TaskHandedOff",
+            Self::TaskHandoffAdmitted { .. } => "TaskHandoffAdmitted",
+            Self::TaskWorkspaceRebound { .. } => "TaskWorkspaceRebound",
             Self::SandboxReleased { .. } => "SandboxReleased",
             Self::SandboxLost { .. } => "SandboxLost",
             Self::UnsupportedLanguageOptInRecorded { .. } => "UnsupportedLanguageOptInRecorded",
@@ -1796,6 +1840,8 @@ impl Task {
             | TaskEvent::TaskCancelRequested { .. }
             | TaskEvent::BrowserCredentialFilled { .. }
             | TaskEvent::SandboxLeaseAcquired { .. }
+            | TaskEvent::TaskHandedOff { .. }
+            | TaskEvent::TaskHandoffAdmitted { .. }
             | TaskEvent::SelfReviewRecorded { .. }
             | TaskEvent::ToolsActivated { .. }
             | TaskEvent::ProgramStarted { .. }
@@ -1856,6 +1902,21 @@ impl Task {
             // may be lost at any time: the records of the substrate's
             // lifecycle land whatever the task's state.
             TaskEvent::SandboxReleased { .. } | TaskEvent::SandboxLost { .. } => None,
+            // The workspace moved (M8.7): the projection follows.
+            TaskEvent::TaskWorkspaceRebound {
+                workspace_root,
+                execution_profile,
+                ..
+            } => {
+                if self.state.is_terminal() {
+                    return Err(invalid(&self.state, event.event_type()));
+                }
+                self.workspace_root = Some(workspace_root.clone());
+                if !execution_profile.is_empty() {
+                    self.execution_profile = execution_profile.clone();
+                }
+                None
+            }
         };
         if let Some(to) = next {
             self.state = self.state.transition(to)?;

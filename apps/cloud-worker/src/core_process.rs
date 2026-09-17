@@ -22,16 +22,31 @@ pub struct CoreProcess {
 impl CoreProcess {
     /// Spawn a Core for `tenant` over `data_dir`; its stderr goes to `core.log` there.
     pub fn spawn(core_bin: &Path, data_dir: &Path, tenant: TenantId) -> anyhow::Result<Self> {
+        Self::spawn_with(core_bin, data_dir, Some(tenant))
+    }
+
+    /// Spawn a Core in the local profile's tenant (a laptop's Core; the
+    /// handoff qualification's origin, M8.7).
+    pub fn spawn_local(core_bin: &Path, data_dir: &Path) -> anyhow::Result<Self> {
+        Self::spawn_with(core_bin, data_dir, None)
+    }
+
+    fn spawn_with(
+        core_bin: &Path,
+        data_dir: &Path,
+        tenant: Option<TenantId>,
+    ) -> anyhow::Result<Self> {
         std::fs::create_dir_all(data_dir)?;
         let log = std::fs::OpenOptions::new()
             .create(true)
             .append(true)
             .open(data_dir.join("core.log"))?;
-        let mut child = Command::new(core_bin)
-            .arg("--data-dir")
-            .arg(data_dir)
-            .arg("--tenant-id")
-            .arg(tenant.to_string())
+        let mut cmd = Command::new(core_bin);
+        cmd.arg("--data-dir").arg(data_dir);
+        if let Some(t) = tenant {
+            cmd.arg("--tenant-id").arg(t.to_string());
+        }
+        let mut child = cmd
             .arg("--tether-stdin")
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -67,12 +82,17 @@ impl CoreProcess {
 
     /// A cloud-worker client on this Core.
     pub async fn client(&self) -> anyhow::Result<Client> {
+        self.client_as(ClientKind::CloudWorker).await
+    }
+
+    /// A client of `kind` on this Core.
+    pub async fn client_as(&self, kind: ClientKind) -> anyhow::Result<Client> {
         let secret = decode_hex(&self.ready.boot_secret_hex)
             .ok_or_else(|| anyhow::anyhow!("bad ready line"))?;
         Ok(Client::connect(
             &self.ready.endpoint,
             &secret,
-            ClientKind::CloudWorker,
+            kind,
             concat!("modbit-cloud-worker ", env!("CARGO_PKG_VERSION")),
         )
         .await?)

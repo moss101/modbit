@@ -53,13 +53,17 @@ fn fresh_id() -> wire::Id {
     }
 }
 
-fn id_of(bytes: &[u8; 16]) -> wire::Id {
+pub(crate) fn id_of(bytes: &[u8; 16]) -> wire::Id {
     wire::Id {
         value: bytes.to_vec(),
     }
 }
 
-fn envelope(command_type: &str, payload: Vec<u8>, generation: Option<u64>) -> CommandEnvelope {
+pub(crate) fn envelope(
+    command_type: &str,
+    payload: Vec<u8>,
+    generation: Option<u64>,
+) -> CommandEnvelope {
     envelope_with_id(fresh_id(), command_type, payload, generation)
 }
 
@@ -285,6 +289,7 @@ async fn host_inner(
     };
     // 3. The loop.
     let mut started: HashSet<[u8; 16]> = HashSet::new();
+    let mut handoffs_ready: HashSet<[u8; 16]> = HashSet::new();
     loop {
         if *fenced.borrow() {
             core.stop();
@@ -335,8 +340,48 @@ async fn host_inner(
                 }
             }
         }
+        // Handoffs admitted on the log get their workspace here (M8.7).
+        match crate::handoff::pending(store, tenant, sid).await {
+            Ok(pending) => {
+                for p in pending {
+                    if handoffs_ready.contains(p.task_id.as_bytes()) {
+                        continue;
+                    }
+                    let hdir = dir.join("handoffs").join(p.task_id.to_string());
+                    match crate::handoff::materialize(
+                        store,
+                        &mut c,
+                        tenant,
+                        sid,
+                        local_generation,
+                        &p,
+                        &hdir,
+                    )
+                    .await
+                    {
+                        Ok(_) => {
+                            handoffs_ready.insert(*p.task_id.as_bytes());
+                        }
+                        Err(e) => eprintln!(
+                            "modbit-cloud-worker[{}]: handoff of {}: {e}",
+                            cfg.worker_id, p.task_id
+                        ),
+                    }
+                }
+            }
+            Err(e) => eprintln!("modbit-cloud-worker[{}]: handoffs: {e}", cfg.worker_id),
+        }
         // Queued tasks run.
-        if let Err(e) = start_queued(&mut c, cfg, sid, local_generation, &mut started).await {
+        if let Err(e) = start_queued(
+            &mut c,
+            cfg,
+            sid,
+            local_generation,
+            &mut started,
+            &handoffs_ready,
+        )
+        .await
+        {
             eprintln!("modbit-cloud-worker[{}]: start: {e}", cfg.worker_id);
         }
         tokio::select! {
@@ -383,7 +428,13 @@ async fn import_cloud_events(
         let ack = c
             .command(envelope(
                 "ImportMirroredEvents",
-                wire::ImportMirroredEvents { events }.encode_to_vec(),
+                wire::ImportMirroredEvents {
+                    events,
+                    // The cloud scoped the session's log to this tenant; a
+                    // handoff's envelopes carry their origin tenant (M8.7).
+                    admitted_handoff: true,
+                }
+                .encode_to_vec(),
                 None,
             ))
             .await?;
@@ -588,6 +639,7 @@ async fn start_queued(
     sid: SessionId,
     generation: u64,
     started: &mut HashSet<[u8; 16]>,
+    handoffs_ready: &HashSet<[u8; 16]>,
 ) -> anyhow::Result<()> {
     let ack = c
         .command(envelope(
@@ -608,7 +660,11 @@ async fn start_queued(
         else {
             continue;
         };
-        if t.state != "Queued" || started.contains(&id) {
+        // Queued tasks run; a task a handoff parked (`Waiting(External)`)
+        // resumes once its workspace is here (M8.7).
+        let resumable =
+            t.state == "Queued" || (t.state.starts_with("Waiting") && handoffs_ready.contains(&id));
+        if !resumable || started.contains(&id) {
             continue;
         }
         let mut trusted_once = false;

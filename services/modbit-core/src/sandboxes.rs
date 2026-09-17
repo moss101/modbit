@@ -53,6 +53,7 @@ pub async fn ensure_for_task(
         .leases_for_task(&task.task_id)
         .unwrap_or_default()
         .into_iter()
+        .filter(|l| l.is_valid(modbit_domain::Timestamp::now()))
         .flat_map(|l| l.operations)
         .collect();
     let mut egress = Vec::new();

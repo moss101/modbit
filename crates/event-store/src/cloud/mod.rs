@@ -742,6 +742,111 @@ impl CloudStore {
         })
     }
 
+    /// Import a handoff's log into this tenant (M8.7, docs/21 "Handoff
+    /// local → cloud"): the envelopes verbatim — their ids, sequences,
+    /// integrity hashes and the origin tenant inside them — each continuing
+    /// its aggregate's chain here, stored and projected under `tenant`. The
+    /// session must be new to this tenant or already the same log (an event
+    /// already present is skipped; a fork is refused). No lease is needed:
+    /// nobody holds the session yet.
+    pub async fn import_handoff(
+        &self,
+        tenant: TenantId,
+        session: SessionId,
+        events: Vec<(EventEnvelope, serde_json::Value)>,
+    ) -> Result<Appended> {
+        let mut client = self.pool.get().await?;
+        let tx = client.transaction().await?;
+        let tenant_u = tenant_uuid(tenant);
+        let session_u = uuid_of(session.as_bytes());
+        let other = tx
+            .query_opt(
+                "SELECT tenant_id FROM sessions WHERE session_id = $1 AND tenant_id <> $2",
+                &[&session_u, &tenant_u],
+            )
+            .await?;
+        if other.is_some() {
+            return Err(CloudError::NotFound(format!("session {session}")));
+        }
+        let cursor = tx
+            .query_opt(
+                "SELECT last_session_offset FROM sessions WHERE session_id = $1 AND tenant_id = $2 FOR UPDATE",
+                &[&session_u, &tenant_u],
+            )
+            .await?;
+        let mut session_offset: i64 = cursor.map_or(0, |r| r.get(0));
+        let mut first = None;
+        let mut last = 0i64;
+        let mut stored = Vec::new();
+        for (env, payload) in events {
+            if env.session_id != session {
+                return Err(CloudError::Integrity(format!(
+                    "event {} is not of this session",
+                    env.event_id
+                )));
+            }
+            let present = tx
+                .query_opt(
+                    "SELECT 1 FROM events WHERE (envelope->>'event_id') = $1",
+                    &[&env.event_id.to_string()],
+                )
+                .await?;
+            if present.is_some() {
+                continue;
+            }
+            let (head, previous) = aggregate_head(&tx, &env.aggregate_id).await?;
+            if env.sequence != head + 1 {
+                return Err(CloudError::SequenceConflict {
+                    aggregate: hex::encode(env.aggregate_id),
+                    expected: head + 1,
+                    actual: env.sequence,
+                });
+            }
+            if crate::store::chain_hash(&previous, &env) != env.integrity_hash {
+                return Err(CloudError::Integrity(format!(
+                    "handoff event {} (sequence {}) does not continue its aggregate's chain",
+                    env.event_id, env.sequence
+                )));
+            }
+            if let PayloadRef::Object { object_hash, .. } = &env.payload {
+                let bytes = payload.to_string();
+                let hash = self
+                    .put_object_tx(&tx, tenant, bytes.as_bytes(), "application/json")
+                    .await?;
+                if &hash != object_hash {
+                    return Err(CloudError::Integrity(format!(
+                        "payload of {} does not match its object hash",
+                        env.event_id
+                    )));
+                }
+            }
+            session_offset += 1;
+            let offset = insert_event_as(&tx, tenant, &env, session_offset, &payload).await?;
+            first.get_or_insert(offset);
+            last = offset;
+            stored.push((env, payload));
+        }
+        for (env, payload) in &stored {
+            project_as(&tx, tenant, env, payload).await?;
+        }
+        tx.execute(
+            "UPDATE sessions SET last_session_offset = $1, updated_at_ms = $2 WHERE session_id = $3",
+            &[&session_offset, &now_ms(), &session_u],
+        )
+        .await?;
+        if !stored.is_empty() {
+            let note = serde_json::json!({"session_id": session.to_string(), "session_offset": session_offset}).to_string();
+            tx.execute("SELECT pg_notify('modbit_events', $1)", &[&note])
+                .await?;
+        }
+        tx.commit().await?;
+        Ok(Appended {
+            first_offset: first.unwrap_or(0) as u64,
+            last_offset: last as u64,
+            session_offset: session_offset as u64,
+        })
+    }
+
     /// Record a rejected command (so a retry answers the same way).
     pub async fn record_rejection(
         &self,
@@ -1511,13 +1616,25 @@ async fn insert_event(
     session_offset: i64,
     payload: &serde_json::Value,
 ) -> Result<i64> {
+    insert_event_as(tx, env.tenant_id, env, session_offset, payload).await
+}
+
+/// `insert_event` scoped to `tenant` (a handoff's envelopes keep their
+/// origin tenant inside; the row belongs to the admitting tenant).
+async fn insert_event_as(
+    tx: &Transaction<'_>,
+    tenant: TenantId,
+    env: &EventEnvelope,
+    session_offset: i64,
+    payload: &serde_json::Value,
+) -> Result<i64> {
     let (inline, payload_ref): (Option<serde_json::Value>, Option<String>) = match &env.payload {
         PayloadRef::Inline { payload } => (Some(payload.clone()), None),
         PayloadRef::Object { object_hash, .. } => (None, Some(object_hash.clone())),
     };
     let _ = payload;
     let params: [&(dyn ToSql + Sync); 13] = [
-        &uuid_of(env.tenant_id.as_bytes()),
+        &uuid_of(tenant.as_bytes()),
         &uuid_of(env.session_id.as_bytes()),
         &session_offset,
         &env.task_id.map(|t| uuid_of(t.as_bytes())),
@@ -1548,8 +1665,18 @@ async fn project(
     env: &EventEnvelope,
     payload: &serde_json::Value,
 ) -> Result<()> {
+    project_as(tx, env.tenant_id, env, payload).await
+}
+
+/// `project` scoped to `tenant`.
+async fn project_as(
+    tx: &Transaction<'_>,
+    tenant_id: TenantId,
+    env: &EventEnvelope,
+    payload: &serde_json::Value,
+) -> Result<()> {
     let at = env.occurred_at;
-    let tenant = uuid_of(env.tenant_id.as_bytes());
+    let tenant = uuid_of(tenant_id.as_bytes());
     let invalid = |e: modbit_domain::InvalidTransition| {
         CloudError::InvalidTransition(format!("{e} (sequence {})", env.sequence))
     };

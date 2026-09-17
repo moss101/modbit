@@ -546,6 +546,9 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "ConfigureProvider",
                     "ConfigureForge",
                     "ConfigureSandboxGateway",
+                    "ExportHandoff",
+                    "RebindTaskWorkspace",
+                    "ImportObjects",
                     "TrustRepository",
                     "ListStarterTasks",
                     "ActivateModelRegistry",
@@ -865,6 +868,8 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
             "provider.configure"
         }
         "ConfigureSandboxGateway" => "sandbox.configure",
+        "ExportHandoff" => "task.author",
+        "RebindTaskWorkspace" | "ImportObjects" => "session.mirror",
         "TrustRepository" => "repository.trust",
         "EmergencyStop" => "session.control",
         "AttachBrowserHost"
@@ -1495,8 +1500,11 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                             return reject(cid, "BAD_PAYLOAD", format!("envelope_json: {err}"));
                         }
                     };
-                if envelope.tenant_id != core.tenant_id {
-                    // This Core serves one tenant; another tenant's log is not its business.
+                if envelope.tenant_id != core.tenant_id && !p.admitted_handoff {
+                    // This Core serves one tenant; another tenant's log is not its
+                    // business — unless the cloud admitted it as a handoff (M8.7),
+                    // in which case the envelopes keep their origin tenant as
+                    // provenance and the cloud has scoped them to this tenant.
                     return reject(
                         cid,
                         "TENANT_MISMATCH",
@@ -3882,6 +3890,155 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             core.tools.forge.set(cfg);
             accept(cid, false, view.encode_to_vec())
         }
+        "ExportHandoff" => {
+            let Ok(p) = wire::ExportHandoff::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "ExportHandoff");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            if p.out_dir.trim().is_empty() {
+                return reject(cid, "BAD_PAYLOAD", "out_dir required");
+            }
+            let task = match core.store.lock().await.task(&task_id) {
+                Ok(Some(t)) => t,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
+                return ack;
+            }
+            let out = std::path::PathBuf::from(p.out_dir.trim());
+            let exported = crate::handoff::export(core, task_id, &actor, &out).await;
+            match exported {
+                Ok(x) => accept(
+                    cid,
+                    false,
+                    wire::HandoffExported {
+                        task_id: Some(wire_id(task_id.as_bytes())),
+                        bundle_dir: out.to_string_lossy().into_owned(),
+                        manifest_json: x.manifest.to_string(),
+                        manifest_hash: x.manifest_hash,
+                        parts: x.parts,
+                    }
+                    .encode_to_vec(),
+                ),
+                Err((code, why)) => reject(cid, code.as_str(), why),
+            }
+        }
+        "RebindTaskWorkspace" => {
+            let Ok(p) = wire::RebindTaskWorkspace::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "RebindTaskWorkspace");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            if !std::path::Path::new(&p.workspace_root).is_dir() {
+                return reject(
+                    cid,
+                    "REPOSITORY_MISSING",
+                    format!("`{}` is not a directory on this machine", p.workspace_root),
+                );
+            }
+            let task = match core.store.lock().await.task(&task_id) {
+                Ok(Some(t)) => t,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
+                return ack;
+            }
+            let ev = typed(
+                "TaskWorkspaceRebound",
+                &TaskEvent::TaskWorkspaceRebound {
+                    workspace_root: p.workspace_root.clone(),
+                    reason: if p.reason.is_empty() {
+                        "handoff".into()
+                    } else {
+                        p.reason.clone()
+                    },
+                    execution_profile: p.execution_profile.clone(),
+                },
+                actor.clone(),
+            );
+            let mut store = core.store.lock().await;
+            // A profile change retires the leases granted under the old one
+            // (M8.7): a lease is valid under one profile, and the kernel
+            // denies every tool under another. StartTask grants the new
+            // profile's default lease before the continuation runs.
+            if !p.execution_profile.is_empty() && p.execution_profile != task.execution_profile {
+                let leases = match store.leases_for_task(&task_id) {
+                    Ok(l) => l,
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                };
+                for l in leases.into_iter().filter(|l| l.is_valid(Timestamp::now())) {
+                    if let Err(e) = store.append(AppendRequest {
+                        tenant_id: core.tenant_id,
+                        session_id: task.session_id,
+                        task_id: Some(task_id),
+                        run_id: None,
+                        turn_id: None,
+                        step_id: None,
+                        aggregate_type: AggregateType::CapabilityLease,
+                        aggregate_id: *l.lease_id.as_bytes(),
+                        expected_sequence: None,
+                        events: vec![typed(
+                            "CapabilityLeaseRevoked",
+                            &CapabilityLeaseEvent::CapabilityLeaseRevoked {
+                                reason: format!(
+                                    "handoff: the task continues under `{}`, not `{}`",
+                                    p.execution_profile, l.execution_profile
+                                ),
+                            },
+                            actor.clone(),
+                        )],
+                    }) {
+                        return reject(cid, error_code(&e), e.to_string());
+                    }
+                }
+            }
+            match store.append(AppendRequest {
+                tenant_id: core.tenant_id,
+                session_id: task.session_id,
+                task_id: Some(task_id),
+                run_id: None,
+                turn_id: None,
+                step_id: None,
+                aggregate_type: AggregateType::Task,
+                aggregate_id: *task_id.as_bytes(),
+                expected_sequence: None,
+                events: vec![ev],
+            }) {
+                Ok(stored) => {
+                    let offset = stored.last().map(|e| e.offset).unwrap_or(0);
+                    core.last_offset.send_replace(offset);
+                    accept(
+                        cid,
+                        false,
+                        wire::TaskWorkspaceRebound {
+                            task_id: Some(wire_id(task_id.as_bytes())),
+                            offset,
+                        }
+                        .encode_to_vec(),
+                    )
+                }
+                Err(e) => reject(cid, error_code(&e), e.to_string()),
+            }
+        }
+        "ImportObjects" => {
+            let Ok(p) = wire::ImportObjects::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "ImportObjects");
+            };
+            let store = core.store.lock().await;
+            let mut hashes = Vec::with_capacity(p.objects.len());
+            for bytes in &p.objects {
+                match store.objects().put(bytes) {
+                    Ok(h) => hashes.push(h),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                }
+            }
+            accept(cid, false, wire::ObjectsImported { hashes }.encode_to_vec())
+        }
         "ConfigureSandboxGateway" => {
             // Not journaled: the request carries the worker's credential.
             let Ok(p) = wire::ConfigureSandboxGateway::decode(env.payload.as_slice()) else {
@@ -4117,12 +4274,19 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             // A task materialized from the cloud log (M8.2: created by the
             // Cloud API, not by this Core's CreateTask) has no capability
             // lease yet; it gets its profile's default one here, exactly as
-            // CreateTask grants it, before anything runs under it.
+            // CreateTask grants it, before anything runs under it. So does a
+            // task handed off into another profile (M8.7): its laptop lease
+            // was retired at the rebind.
             {
                 let mut store = core.store.lock().await;
                 let has_lease = store
                     .leases_for_task(&task_id)
-                    .map(|l| !l.is_empty())
+                    .map(|l| {
+                        l.iter().any(|l| {
+                            l.execution_profile == task.execution_profile
+                                && l.is_valid(Timestamp::now())
+                        })
+                    })
                     .unwrap_or(false);
                 if !has_lease {
                     let (resources, operations, effect_ceiling) =

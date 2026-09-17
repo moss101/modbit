@@ -167,6 +167,8 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/v1/commands/{command_id}", get(get_command))
         .route("/v1/outputs/{hash}", get(output))
         .route("/v1/artifacts/{hash}", get(artifact))
+        .route("/v1/objects", axum::routing::put(put_object))
+        .route("/v1/handoffs", post(handoff))
         .route("/v1/stream", get(crate::stream::stream))
         .route_layer(middleware::from_fn_with_state(
             Arc::clone(&state),
@@ -179,7 +181,7 @@ pub fn router(state: Arc<AppState>) -> Router {
         .merge(authed)
         .layer(middleware::from_fn(stamp_request_id))
         .layer(tower_http::limit::RequestBodyLimitLayer::new(
-            4 * 1024 * 1024,
+            64 * 1024 * 1024,
         ))
         .with_state(state)
 }
@@ -860,6 +862,210 @@ async fn output(
 }
 
 /// `GET /v1/artifacts/{hash}`: metadata and a short-lived access grant.
+/// `PUT /v1/objects` (M8.7): a content-addressed object into the tenant's
+/// store; the body is the bytes, the answer its hash. A handoff bundle's
+/// parts arrive this way before the handoff names them.
+async fn put_object(
+    State(state): State<Arc<AppState>>,
+    ext: axum::Extension<Caller>,
+    headers: HeaderMap,
+    body: Bytes,
+) -> ApiResult<(StatusCode, Json<Value>)> {
+    let p = caller(&ext);
+    if body.is_empty() {
+        return Err(ApiError::bad("an object has bytes"));
+    }
+    let mime = headers
+        .get(header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("application/octet-stream")
+        .to_owned();
+    let hash = state.store.put_object(p.tenant_id, &body, &mime).await?;
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({"hash": hash, "bytes": body.len()})),
+    ))
+}
+
+/// What `cloud_isolated` serves a continuation (docs/21 "Execution
+/// profiles" as built): the capability parity a handoff is checked against.
+pub const CLOUD_CAPABILITIES: &[&str] = &[
+    "fs.read",
+    "fs.write",
+    "git.read",
+    "shell.exec",
+    "network.egress",
+    "secret.use",
+];
+
+/// `POST /v1/handoffs {command_id, manifest, parts: {events.jsonl: hash, repo.bundle?: hash, manifest.json: hash}}`
+/// (M8.7, docs/21 "Handoff local → cloud"; docs/30): admit a local task's
+/// continuation. Cloud admission verifies capability parity before the
+/// execution owner switches: a continuation needing what `cloud_isolated`
+/// does not serve (a browser session, say) is refused `CAPABILITY_PARITY`.
+/// Then the session's log is imported verbatim, `TaskHandoffAdmitted` is
+/// recorded on the task, and the session is marked ready for a worker.
+async fn handoff(
+    State(state): State<Arc<AppState>>,
+    ext: axum::Extension<Caller>,
+    Json(body): Json<Value>,
+) -> ApiResult<Response> {
+    let p = caller(&ext);
+    let cid = command_id(&body)?;
+    if let Some(r) = replay(&state, p.tenant_id, cid).await? {
+        return Ok(r);
+    }
+    let manifest = &body["manifest"];
+    if manifest["kind"] != "modbit-handoff" {
+        return Err(ApiError::bad("manifest.kind must be modbit-handoff"));
+    }
+    let sid = parse_id(
+        manifest["session_id"].as_str().unwrap_or_default(),
+        |s| SessionId::parse(s).ok(),
+        "manifest.session_id",
+    )?;
+    let tid = parse_id(
+        manifest["task_id"].as_str().unwrap_or_default(),
+        |s| TaskId::parse(s).ok(),
+        "manifest.task_id",
+    )?;
+    let capabilities: Vec<String> = manifest["capabilities"]
+        .as_array()
+        .map(|a| {
+            a.iter()
+                .filter_map(|c| c.as_str().map(str::to_owned))
+                .collect()
+        })
+        .unwrap_or_default();
+    let missing: Vec<&String> = capabilities
+        .iter()
+        .filter(|c| !CLOUD_CAPABILITIES.contains(&c.as_str()))
+        .collect();
+    if !missing.is_empty() {
+        let result = json!({"code": "CAPABILITY_PARITY", "missing": missing});
+        state
+            .store
+            .record_rejection(
+                p.tenant_id,
+                cid,
+                "Handoff",
+                "CAPABILITY_PARITY",
+                result.clone(),
+            )
+            .await?;
+        return Err(ApiError::new(
+            StatusCode::CONFLICT,
+            "CAPABILITY_PARITY",
+            format!(
+                "the continuation needs {:?}, which cloud_isolated does not serve",
+                missing
+            ),
+        ));
+    }
+    let Some(events_hash) = body["parts"]["events.jsonl"].as_str() else {
+        return Err(ApiError::bad(
+            "parts[\"events.jsonl\"] (an uploaded object's hash) is required",
+        ));
+    };
+    let Some(manifest_hash) = body["parts"]["manifest.json"].as_str() else {
+        return Err(ApiError::bad(
+            "parts[\"manifest.json\"] (an uploaded object's hash) is required",
+        ));
+    };
+    let raw = match state.store.get_object(p.tenant_id, events_hash).await {
+        Ok(b) => b,
+        Err(CloudError::NotFound(_)) => {
+            return Err(ApiError::new(
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "PART_MISSING",
+                format!("events.jsonl {events_hash} was not uploaded to this tenant"),
+            ));
+        }
+        Err(e) => return Err(e.into()),
+    };
+    let mut events = Vec::new();
+    for line in String::from_utf8_lossy(&raw).lines() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        let v: Value =
+            serde_json::from_str(line).map_err(|e| ApiError::bad(format!("events.jsonl: {e}")))?;
+        let env: modbit_domain::event::EventEnvelope =
+            serde_json::from_value(v["envelope"].clone())
+                .map_err(|e| ApiError::bad(format!("events.jsonl envelope: {e}")))?;
+        events.push((env, v["payload"].clone()));
+    }
+    if !events
+        .iter()
+        .any(|(e, _)| e.aggregate_id == *tid.as_bytes())
+    {
+        return Err(ApiError::bad(
+            "the log carries no event of manifest.task_id",
+        ));
+    }
+    let from_tenant = events
+        .first()
+        .map(|(e, _)| e.tenant_id.to_string())
+        .unwrap_or_default();
+    // The admitted manifest: the local manifest plus where its parts are
+    // in this tenant's store — what a worker materializes from.
+    let mut admitted = manifest.clone();
+    admitted["parts"] = body["parts"].clone();
+    admitted["admitted_by"] = json!(p.principal_id.to_string());
+    admitted["local_manifest_hash"] = json!(manifest_hash);
+    let admitted_bytes = serde_json::to_vec(&admitted).map_err(|e| ApiError::bad(e.to_string()))?;
+    let bundle_hash = state
+        .store
+        .put_object(p.tenant_id, &admitted_bytes, "application/json")
+        .await?;
+    let imported = state
+        .store
+        .import_handoff(p.tenant_id, sid, events)
+        .await
+        .map_err(|e| match e {
+            CloudError::Integrity(m) => {
+                ApiError::new(StatusCode::CONFLICT, "HANDOFF_LOG_INTEGRITY", m)
+            }
+            CloudError::SequenceConflict { .. } => {
+                ApiError::new(StatusCode::CONFLICT, "HANDOFF_LOG_FORK", e.to_string())
+            }
+            other => other.into(),
+        })?;
+    let ev = new_event(
+        "TaskHandoffAdmitted",
+        &TaskEvent::TaskHandoffAdmitted {
+            bundle_hash: bundle_hash.clone(),
+            from_tenant: from_tenant.clone(),
+            capabilities: capabilities.clone(),
+        },
+        api_actor(&p),
+    )?;
+    let result = json!({
+        "session_id": sid.to_string(), "task_id": tid.to_string(), "bundle_hash": bundle_hash, "local_manifest_hash": manifest_hash,
+        "imported_through": imported.session_offset, "capabilities": capabilities,
+    });
+    state
+        .store
+        .append(
+            AppendRequest {
+                tenant_id: p.tenant_id,
+                session_id: sid,
+                task_id: Some(tid),
+                run_id: None,
+                turn_id: None,
+                step_id: None,
+                aggregate_type: AggregateType::Task,
+                aggregate_id: *tid.as_bytes(),
+                expected_sequence: None,
+                events: vec![ev],
+            },
+            Some((cid, "Handoff", result.clone())),
+        )
+        .await?;
+    state.store.mark_ready(p.tenant_id, sid).await?;
+    Ok((StatusCode::CREATED, Json(result)).into_response())
+}
+
 async fn artifact(
     State(state): State<Arc<AppState>>,
     ext: axum::Extension<Caller>,

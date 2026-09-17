@@ -1569,6 +1569,49 @@ message TaskAssuranceView {
 // the plan, answered questions, retrieval evidence its worktree still
 // matches, and the source's latest context. Pending approvals and
 // unfinished tool calls are never carried.
+// M8.7 (docs/21 "Handoff local → cloud"): export a task for a cloud
+// continuation. The Core parks the run at its next boundary, takes a
+// checkpoint, and writes the bundle — the session's log verbatim, every
+// object it references, the repository's bundle, the checkpoint and a
+// manifest naming the capabilities the continuation needs and the secret
+// handles it names (never their values) — into `out_dir`.
+message ExportHandoff {
+  Id task_id = 1;
+  string out_dir = 2;
+}
+
+message HandoffExported {
+  Id task_id = 1;
+  string bundle_dir = 2;
+  string manifest_json = 3;        // the manifest as written
+  string manifest_hash = 4;        // sha256 of manifest.json
+  repeated string parts = 5;       // file names in bundle_dir the manifest names
+}
+
+// M8.7: a worker materialized a handoff bundle's workspace here; the task
+// runs from this root from now on (journaled `TaskWorkspaceRebound`).
+message RebindTaskWorkspace {
+  Id task_id = 1;
+  string workspace_root = 2;
+  string reason = 3;               // handoff
+  string execution_profile = 4;    // the profile from here on; empty keeps the task's
+}
+
+message TaskWorkspaceRebound {
+  Id task_id = 1;
+  uint64 offset = 2;
+}
+
+// M8.7: objects a handoff bundle carried (transcripts, outputs, checkpoint
+// blobs) into this Core's content-addressed store; returns the hashes.
+message ImportObjects {
+  repeated bytes objects = 1;
+}
+
+message ObjectsImported {
+  repeated string hashes = 1;
+}
+
 message ForkTask {
   Id task_id = 1;                  // the source task
   string checkpoint_id = 2;        // "" = the source's current checkpoint
@@ -1995,6 +2038,10 @@ message MirroredEvent {
 
 message ImportMirroredEvents {
   repeated MirroredEvent events = 1;
+  // M8.7: the batch comes from a handoff the cloud admitted — its
+  // envelopes keep the tenant they were written under (their provenance);
+  // the cloud has scoped them to this Core's tenant already.
+  bool admitted_handoff = 2;
 }
 
 message MirroredEventsImported {

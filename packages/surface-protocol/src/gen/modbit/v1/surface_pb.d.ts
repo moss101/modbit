@@ -6780,7 +6780,170 @@ export declare const TaskAssuranceViewSchema: GenMessage<TaskAssuranceView>;
  * the plan, answered questions, retrieval evidence its worktree still
  * matches, and the source's latest context. Pending approvals and
  * unfinished tool calls are never carried.
+ * M8.7 (docs/21 "Handoff local → cloud"): export a task for a cloud
+ * continuation. The Core parks the run at its next boundary, takes a
+ * checkpoint, and writes the bundle — the session's log verbatim, every
+ * object it references, the repository's bundle, the checkpoint and a
+ * manifest naming the capabilities the continuation needs and the secret
+ * handles it names (never their values) — into `out_dir`.
  *
+ * @generated from message modbit.v1.ExportHandoff
+ */
+export declare type ExportHandoff = Message<"modbit.v1.ExportHandoff"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: string out_dir = 2;
+   */
+  outDir: string;
+};
+
+/**
+ * Describes the message modbit.v1.ExportHandoff.
+ * Use `create(ExportHandoffSchema)` to create a new message.
+ */
+export declare const ExportHandoffSchema: GenMessage<ExportHandoff>;
+
+/**
+ * @generated from message modbit.v1.HandoffExported
+ */
+export declare type HandoffExported = Message<"modbit.v1.HandoffExported"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: string bundle_dir = 2;
+   */
+  bundleDir: string;
+
+  /**
+   * the manifest as written
+   *
+   * @generated from field: string manifest_json = 3;
+   */
+  manifestJson: string;
+
+  /**
+   * sha256 of manifest.json
+   *
+   * @generated from field: string manifest_hash = 4;
+   */
+  manifestHash: string;
+
+  /**
+   * file names in bundle_dir the manifest names
+   *
+   * @generated from field: repeated string parts = 5;
+   */
+  parts: string[];
+};
+
+/**
+ * Describes the message modbit.v1.HandoffExported.
+ * Use `create(HandoffExportedSchema)` to create a new message.
+ */
+export declare const HandoffExportedSchema: GenMessage<HandoffExported>;
+
+/**
+ * M8.7: a worker materialized a handoff bundle's workspace here; the task
+ * runs from this root from now on (journaled `TaskWorkspaceRebound`).
+ *
+ * @generated from message modbit.v1.RebindTaskWorkspace
+ */
+export declare type RebindTaskWorkspace = Message<"modbit.v1.RebindTaskWorkspace"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: string workspace_root = 2;
+   */
+  workspaceRoot: string;
+
+  /**
+   * handoff
+   *
+   * @generated from field: string reason = 3;
+   */
+  reason: string;
+
+  /**
+   * the profile from here on; empty keeps the task's
+   *
+   * @generated from field: string execution_profile = 4;
+   */
+  executionProfile: string;
+};
+
+/**
+ * Describes the message modbit.v1.RebindTaskWorkspace.
+ * Use `create(RebindTaskWorkspaceSchema)` to create a new message.
+ */
+export declare const RebindTaskWorkspaceSchema: GenMessage<RebindTaskWorkspace>;
+
+/**
+ * @generated from message modbit.v1.TaskWorkspaceRebound
+ */
+export declare type TaskWorkspaceRebound = Message<"modbit.v1.TaskWorkspaceRebound"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: uint64 offset = 2;
+   */
+  offset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.TaskWorkspaceRebound.
+ * Use `create(TaskWorkspaceReboundSchema)` to create a new message.
+ */
+export declare const TaskWorkspaceReboundSchema: GenMessage<TaskWorkspaceRebound>;
+
+/**
+ * M8.7: objects a handoff bundle carried (transcripts, outputs, checkpoint
+ * blobs) into this Core's content-addressed store; returns the hashes.
+ *
+ * @generated from message modbit.v1.ImportObjects
+ */
+export declare type ImportObjects = Message<"modbit.v1.ImportObjects"> & {
+  /**
+   * @generated from field: repeated bytes objects = 1;
+   */
+  objects: Uint8Array[];
+};
+
+/**
+ * Describes the message modbit.v1.ImportObjects.
+ * Use `create(ImportObjectsSchema)` to create a new message.
+ */
+export declare const ImportObjectsSchema: GenMessage<ImportObjects>;
+
+/**
+ * @generated from message modbit.v1.ObjectsImported
+ */
+export declare type ObjectsImported = Message<"modbit.v1.ObjectsImported"> & {
+  /**
+   * @generated from field: repeated string hashes = 1;
+   */
+  hashes: string[];
+};
+
+/**
+ * Describes the message modbit.v1.ObjectsImported.
+ * Use `create(ObjectsImportedSchema)` to create a new message.
+ */
+export declare const ObjectsImportedSchema: GenMessage<ObjectsImported>;
+
+/**
  * @generated from message modbit.v1.ForkTask
  */
 export declare type ForkTask = Message<"modbit.v1.ForkTask"> & {
@@ -8627,6 +8790,15 @@ export declare type ImportMirroredEvents = Message<"modbit.v1.ImportMirroredEven
    * @generated from field: repeated modbit.v1.MirroredEvent events = 1;
    */
   events: MirroredEvent[];
+
+  /**
+   * M8.7: the batch comes from a handoff the cloud admitted — its
+   * envelopes keep the tenant they were written under (their provenance);
+   * the cloud has scoped them to this Core's tenant already.
+   *
+   * @generated from field: bool admitted_handoff = 2;
+   */
+  admittedHandoff: boolean;
 };
 
 /**

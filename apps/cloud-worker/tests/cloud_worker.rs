@@ -19,6 +19,7 @@ use std::time::{Duration, Instant};
 use modbit_cloud_api::{Config as ApiConfig, serve};
 use modbit_cloud_worker::{Config, Hosting, ProviderConfig, SandboxGatewayConfig, start};
 use modbit_event_store::cloud::{CloudStoreConfig, S3Config};
+use prost::Message;
 use serde_json::{Value, json};
 
 /// A database of this test's own on the configured server (the API's
@@ -119,15 +120,31 @@ fn core_bin() -> PathBuf {
 /// A scripted OpenAI-compatible provider: the n-th request (by the number
 /// of tool results it carries) answers with the n-th step's tool calls.
 async fn scripted_model(script: Vec<Value>) -> (String, Arc<Mutex<Vec<Value>>>) {
+    let (base, seen, _gate) = scripted_model_gated(script).await;
+    (base, seen)
+}
+
+/// A scripted model whose steps marked `{"gate": true}` are held until the
+/// test opens the gate (a run parked mid-model-call, for the handoff).
+async fn scripted_model_gated(
+    script: Vec<Value>,
+) -> (String, Arc<Mutex<Vec<Value>>>, Arc<tokio::sync::Notify>) {
     use axum::{Router, routing::post};
     let seen: Arc<Mutex<Vec<Value>>> = Default::default();
     let seen2 = seen.clone();
     let script = Arc::new(script);
+    let gate = Arc::new(tokio::sync::Notify::new());
+    let gate2 = Arc::clone(&gate);
+    // A conversation that arrives with history (a handoff's continuation)
+    // starts the script at its first request.
+    let base: Arc<Mutex<Option<usize>>> = Default::default();
     let app = Router::new().route(
         "/v1/chat/completions",
         post(move |axum::Json(body): axum::Json<Value>| {
             let script = Arc::clone(&script);
             let seen = seen2.clone();
+            let gate = Arc::clone(&gate2);
+            let base = Arc::clone(&base);
             async move {
                 // The n-th step answers the n-th request that follows a tool-calling
                 // turn (a step may carry several calls).
@@ -137,7 +154,12 @@ async fn scripted_model(script: Vec<Value>) -> (String, Arc<Mutex<Vec<Value>>>) 
                         .count()
                 });
                 seen.lock().unwrap().push(body.clone());
+                let offset = *base.lock().unwrap().get_or_insert(results);
+                let results = results.saturating_sub(offset);
                 let step = script.get(results).cloned().unwrap_or(json!({}));
+                if step["gate"].as_bool().unwrap_or(false) {
+                    gate.notified().await;
+                }
                 let mut out = String::new();
                 let calls = step["calls"].as_array().cloned().unwrap_or_default();
                 for (i, c) in calls.iter().enumerate() {
@@ -158,7 +180,7 @@ async fn scripted_model(script: Vec<Value>) -> (String, Arc<Mutex<Vec<Value>>>) 
     tokio::spawn(async move {
         let _ = axum::serve(listener, app).await;
     });
-    (format!("http://{addr}"), seen)
+    (format!("http://{addr}"), seen, gate)
 }
 
 struct Api {
@@ -1089,4 +1111,534 @@ async fn qual_m8_5_a_cloud_isolated_tasks_tools_act_inside_its_sandbox_and_the_s
     );
     worker.stop().await;
     gateway.served.stop();
+}
+
+/// One command on a Core, fenced by `generation` when given.
+async fn cmd<T: prost::Message + Default>(
+    c: &mut modbit_protocol::client::Client,
+    kind: &str,
+    payload: Vec<u8>,
+    generation: Option<u64>,
+) -> Result<T, modbit_protocol::client::ClientError> {
+    let env = modbit_protocol::v1::CommandEnvelope {
+        command_id: Some(modbit_protocol::v1::Id {
+            value: uuid::Uuid::now_v7().as_bytes().to_vec(),
+        }),
+        tenant_id: None,
+        user_id: None,
+        session_id: None,
+        aggregate_id: None,
+        expected_generation: generation,
+        command_type: kind.into(),
+        schema_version: 1,
+        payload,
+        issued_at: None,
+    };
+    let ack = c.command(env).await?;
+    modbit_protocol::client::Client::result(&ack)
+}
+
+/// M8.7 (docs/21 "Handoff local → cloud"; docs/24 "Sync model"; docs/30
+/// `POST /v1/handoffs`): a task that began on a local Core — its log, its
+/// objects, the repository and the worktree exactly as it was — continues
+/// in the cloud: exported as a bundle (no raw secret in it), admitted by
+/// the API after the capability-parity check, materialized by a worker
+/// into a sandbox, resumed by the same runtime from the same log; a
+/// continuation that needs what the cloud does not serve is refused.
+#[tokio::test]
+async fn qual_m8_7_a_local_task_hands_off_to_the_cloud_and_continues_from_its_checkpoint_in_a_sandbox()
+ {
+    let Some(store_cfg) = store_config().await else {
+        eprintln!(
+            "SKIPPED: MODBIT_CLOUD_TEST_DATABASE_URL unset (the hosted cloud job runs this against Postgres and a sandbox)"
+        );
+        return;
+    };
+    assert!(
+        core_bin().exists(),
+        "modbit-core at {}",
+        core_bin().display()
+    );
+    let keep = tempfile::tempdir().unwrap();
+    let data = match std::env::var("MODBIT_CLOUD_WORKER_TEST_KEEP_DIR") {
+        Ok(d) => std::path::PathBuf::from(d).join("m87"),
+        Err(_) => keep.path().to_path_buf(),
+    };
+    let root = repo(&data.join("laptop-repo"));
+    // ---- the laptop: a local Core runs the task's first turns ----
+    let local_script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "summary.md written from the notes", "expected_files": ["summary.md"]}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "summary.md", "op": "replace", "content": "handed off from the laptop\n"}}]}),
+        // Held until the test has asked for the handoff: the run parks at
+        // this turn's boundary.
+        json!({"gate": true, "calls": []}),
+    ];
+    let (local_model, _local_seen, gate) = scripted_model_gated(local_script).await;
+    let laptop = modbit_cloud_worker::core_process::CoreProcess::spawn_local(
+        &core_bin(),
+        &data.join("laptop-core"),
+    )
+    .expect("local core");
+    let mut lc = laptop
+        .client_as(modbit_protocol::v1::ClientKind::Cli)
+        .await
+        .expect("local client");
+    // The laptop holds two secrets the bundle must never carry: the
+    // provider key and the forge token (QUAL-EV-0063).
+    let laptop_api_key = "sk-laptop-4f9c2a7e1b3d5c6e8f0a1b2c3d4e5f60";
+    let laptop_forge_token = "ghp_laptopforgetoken0123456789abcdefXYZ";
+    let _: modbit_protocol::v1::ProviderConfigured = cmd(
+        &mut lc,
+        "ConfigureProvider",
+        modbit_protocol::v1::ConfigureProvider {
+            provider: "openai".into(),
+            api_key: laptop_api_key.into(),
+            base_url: local_model.clone(),
+        }
+        .encode_to_vec(),
+        None,
+    )
+    .await
+    .expect("provider");
+    let _: modbit_protocol::v1::ForgeConfigured = cmd(
+        &mut lc,
+        "ConfigureForge",
+        modbit_protocol::v1::ConfigureForge {
+            forge: "github".into(),
+            token: laptop_forge_token.into(),
+            api_base_url: String::new(),
+            web_host: String::new(),
+        }
+        .encode_to_vec(),
+        None,
+    )
+    .await
+    .expect("forge");
+    let created: modbit_protocol::v1::SessionCreated = cmd(
+        &mut lc,
+        "CreateSession",
+        modbit_protocol::v1::CreateSession { space_id: None }.encode_to_vec(),
+        None,
+    )
+    .await
+    .expect("session");
+    let local_sid = created.session_id.clone().unwrap();
+    let lease: modbit_protocol::v1::SessionLeaseAcquired = cmd(
+        &mut lc,
+        "AcquireSessionLease",
+        modbit_protocol::v1::AcquireSessionLease {
+            session_id: Some(local_sid.clone()),
+            owner: "laptop".into(),
+        }
+        .encode_to_vec(),
+        None,
+    )
+    .await
+    .expect("lease");
+    let g = Some(lease.lease_generation);
+    let task: modbit_protocol::v1::TaskCreated = cmd(
+        &mut lc,
+        "CreateTask",
+        modbit_protocol::v1::CreateTask {
+            session_id: Some(local_sid.clone()),
+            goal_text: "summarize the notes into summary.md".into(),
+            workspace_id: None,
+            execution_profile: "local_trusted".into(),
+            origin: "cli".into(),
+            workspace_root: root.clone(),
+            issue_url: String::new(),
+        }
+        .encode_to_vec(),
+        g,
+    )
+    .await
+    .expect("task");
+    let local_tid = task.task_id.clone().unwrap();
+    let tid = modbit_domain::TaskId::from_bytes(local_tid.value.clone().try_into().unwrap());
+    let sid = modbit_domain::SessionId::from_bytes(local_sid.value.clone().try_into().unwrap());
+    let _: modbit_protocol::v1::TaskRunStarted = cmd(
+        &mut lc,
+        "StartTask",
+        modbit_protocol::v1::StartTask {
+            task_id: Some(local_tid.clone()),
+            endpoint: "openai".into(),
+            model: "gpt-5".into(),
+            max_turns: 0,
+            max_tool_calls: 0,
+            max_no_progress_turns: 0,
+            skills: vec![],
+        }
+        .encode_to_vec(),
+        g,
+    )
+    .await
+    .expect("started");
+    // The edit landed on the laptop's worktree.
+    until("the laptop's edit to land", 120, async || {
+        std::fs::read_to_string(std::path::Path::new(&root).join("summary.md"))
+            .ok()
+            .filter(|s| s.contains("handed off"))
+            .map(|_| ())
+    })
+    .await;
+    // ---- the handoff: export, park, upload, admit ----
+    let bundle_dir = data.join("bundle");
+    // The export parks the run: its pending model call is released so the
+    // loop reaches the boundary.
+    let mut lc2 = laptop
+        .client_as(modbit_protocol::v1::ClientKind::Cli)
+        .await
+        .expect("local client 2");
+    let export_task = tokio::spawn({
+        let payload = modbit_protocol::v1::ExportHandoff {
+            task_id: Some(local_tid.clone()),
+            out_dir: bundle_dir.to_string_lossy().into_owned(),
+        }
+        .encode_to_vec();
+        async move {
+            cmd::<modbit_protocol::v1::HandoffExported>(&mut lc2, "ExportHandoff", payload, g).await
+        }
+    });
+    tokio::time::sleep(Duration::from_millis(800)).await;
+    gate.notify_waiters();
+    let exported = export_task.await.unwrap().expect("exported");
+    let manifest: Value = serde_json::from_str(&exported.manifest_json).unwrap();
+    assert_eq!(manifest["kind"], "modbit-handoff");
+    assert!(manifest["git"]["bundle"].as_bool().unwrap(), "{manifest}");
+    assert!(
+        manifest["capabilities"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|c| c == "fs.write"),
+        "{manifest}"
+    );
+    assert!(
+        !manifest["capabilities"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|c| c == "browser.control"),
+        "{manifest}"
+    );
+    assert!(
+        exported.parts.iter().any(|p| p == "repo.bundle")
+            && exported.parts.iter().any(|p| p == "events.jsonl")
+    );
+    // The export's own record follows the bundle: the bundle carries the
+    // laptop's run up to the checkpoint, not the handoff itself.
+    let bundle_text = std::fs::read_to_string(bundle_dir.join("events.jsonl")).unwrap();
+    assert!(
+        !bundle_text.contains("\"TaskHandedOff\""),
+        "the export's own record follows the bundle"
+    );
+    assert!(
+        bundle_text.contains("\"CheckpointCommitted\"") && bundle_text.contains("\"RunSuspended\""),
+        "the bundle carries the checkpoint and the park"
+    );
+    // Nothing secret-shaped left the laptop: the bundle is the log, the
+    // objects, the repository and the manifest, and no byte of either
+    // secret is in any of them (QUAL-EV-0063); the secret handle is.
+    let mut bundle_files = Vec::new();
+    for entry in std::fs::read_dir(&bundle_dir).unwrap().flatten() {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        assert!(
+            ["events.jsonl", "repo.bundle", "manifest.json", "objects"].contains(&name.as_str()),
+            "{name}"
+        );
+        if entry.path().is_dir() {
+            bundle_files.extend(
+                std::fs::read_dir(entry.path())
+                    .unwrap()
+                    .flatten()
+                    .map(|e| e.path()),
+            );
+        } else {
+            bundle_files.push(entry.path());
+        }
+    }
+    assert!(bundle_files.len() >= 4, "{bundle_files:?}");
+    for f in &bundle_files {
+        let bytes = std::fs::read(f).unwrap();
+        for secret in [laptop_api_key, laptop_forge_token] {
+            assert!(
+                !bytes.windows(secret.len()).any(|w| w == secret.as_bytes()),
+                "a secret value is in the bundle: {}",
+                f.display()
+            );
+        }
+    }
+    assert!(
+        manifest["secret_handles"]
+            .as_array()
+            .is_some_and(|h| h.iter().any(|h| h == "forge-token")),
+        "the handle, not the value: {manifest}"
+    );
+    // The laptop's log says so.
+    let snap: modbit_protocol::v1::SessionSnapshot = cmd(
+        &mut lc,
+        "GetSessionSnapshot",
+        modbit_protocol::v1::GetSessionSnapshot {
+            session_id: Some(local_sid.clone()),
+        }
+        .encode_to_vec(),
+        None,
+    )
+    .await
+    .unwrap();
+    assert!(
+        snap.tasks[0].state.starts_with("Waiting"),
+        "parked: {}",
+        snap.tasks[0].state
+    );
+    // ---- the cloud: API, gateway, worker ----
+    let served = serve(ApiConfig {
+        store: store_cfg.clone(),
+        token_key: None,
+        bind: "127.0.0.1:0".into(),
+        rate_capacity: 500,
+        rate_per_second: 100.0,
+    })
+    .await
+    .expect("api");
+    let api = Api {
+        base: format!("http://{}", served.addr),
+        http: reqwest::Client::new(),
+        served,
+    };
+    let store = &api.served.state.store;
+    let tenant = store.create_tenant("handoff-test").await.unwrap();
+    let (_p, secret) = store.create_principal(tenant, "user", "ada").await.unwrap();
+    let (_, tok) = api
+        .post("", "/v1/auth/token", json!({"secret": secret}))
+        .await;
+    let a = tok["access_token"].as_str().unwrap().to_owned();
+    // Upload the parts.
+    let mut parts = serde_json::Map::new();
+    for name in ["events.jsonl", "repo.bundle", "manifest.json"] {
+        let bytes = std::fs::read(bundle_dir.join(name)).unwrap();
+        let r = api
+            .http
+            .put(format!("{}/v1/objects", api.base))
+            .bearer_auth(&a)
+            .body(bytes)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(r.status().as_u16(), 201, "{name}");
+        let v: Value = r.json().await.unwrap();
+        parts.insert(name.to_owned(), v["hash"].clone());
+    }
+    for entry in std::fs::read_dir(bundle_dir.join("objects"))
+        .unwrap()
+        .flatten()
+    {
+        let bytes = std::fs::read(entry.path()).unwrap();
+        let r = api
+            .http
+            .put(format!("{}/v1/objects", api.base))
+            .bearer_auth(&a)
+            .body(bytes)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(r.status().as_u16(), 201);
+        let v: Value = r.json().await.unwrap();
+        assert_eq!(
+            v["hash"].as_str().unwrap(),
+            entry.file_name().to_string_lossy(),
+            "content-addressed on both sides"
+        );
+    }
+    // Parity: a continuation that needs the browser is refused.
+    let mut needs_browser = manifest.clone();
+    needs_browser["capabilities"] = json!(["fs.read", "browser.control"]);
+    let (s, e) = api.post(&a, "/v1/handoffs", json!({"command_id": uuid::Uuid::now_v7().to_string(), "manifest": needs_browser, "parts": parts})).await;
+    assert_eq!(
+        (s, e["code"].as_str()),
+        (409, Some("CAPABILITY_PARITY")),
+        "{e}"
+    );
+    // Admitted.
+    let c_handoff = uuid::Uuid::now_v7().to_string();
+    let (s, admitted) = api
+        .post(
+            &a,
+            "/v1/handoffs",
+            json!({"command_id": c_handoff, "manifest": manifest, "parts": parts}),
+        )
+        .await;
+    assert_eq!(s, 201, "{admitted}");
+    assert_eq!(admitted["task_id"].as_str().unwrap(), tid.to_string());
+    let (s, again) = api
+        .post(
+            &a,
+            "/v1/handoffs",
+            json!({"command_id": c_handoff, "manifest": manifest, "parts": parts}),
+        )
+        .await;
+    assert_eq!(
+        (s, again["bundle_hash"].as_str()),
+        (200, admitted["bundle_hash"].as_str()),
+        "a retry replays the recorded admission: {again}"
+    );
+    let (_, evs) = api
+        .get(
+            &a,
+            &format!("/v1/events?session_id={sid}&after=0&limit=1000"),
+        )
+        .await;
+    let types: Vec<String> = evs["events"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| e["envelope"]["event_type"].as_str().unwrap().to_owned())
+        .collect();
+    assert_eq!(types[0], "SessionCreated");
+    // The bundle's log ends where the laptop parked; the admission follows
+    // it here (the laptop's own `TaskHandedOff` records the export there).
+    assert!(
+        types.iter().any(|t| t == "TaskHandoffAdmitted"),
+        "{types:?}"
+    );
+    assert!(
+        types.iter().any(|t| t == "CheckpointCommitted")
+            && types.iter().any(|t| t == "RunSuspended"),
+        "the checkpoint before the handoff and the parked run are on the log: {types:?}"
+    );
+    assert!(
+        types
+            .iter()
+            .any(|t| t == "FileChanged" || t == "ToolCallSucceeded"),
+        "the laptop's run is on the cloud log: {types:?}"
+    );
+    // The cloud's continuation: a worker with a sandbox.
+    let cloud_script = vec![
+        json!({"calls": [
+            {"name": "fs.read", "args": {"path": "summary.md"}},
+            // The guest image has no git: the repository is read as files.
+            {"name": "shell.exec", "args": {"argv": ["/bin/sh", "-c", "cat .git/HEAD; ls .git/refs/heads; cat summary.md"]}}
+        ]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "continued in the cloud", "self_review": {"findings": []}}}]}),
+    ];
+    let (cloud_model, cloud_seen) = scripted_model(cloud_script).await;
+    let gateway = Gateway::start(&store_cfg, &data.join("gateway")).await;
+    let worker = start(worker_config(
+        &store_cfg,
+        "worker-h",
+        &data.join("w"),
+        &cloud_model,
+        Duration::from_secs(10),
+        &gateway,
+    ))
+    .await
+    .expect("worker");
+    until(
+        "the continuation to reach review in the cloud",
+        240,
+        async || {
+            let (_, v) = api.get(&a, &format!("/v1/sessions/{sid}")).await;
+            (v["tasks"][0]["state"] == "READY_FOR_REVIEW").then_some(())
+        },
+    )
+    .await;
+    let (_, evs) = api
+        .get(
+            &a,
+            &format!("/v1/events?session_id={sid}&after=0&limit=2000"),
+        )
+        .await;
+    let types: Vec<String> = evs["events"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| e["envelope"]["event_type"].as_str().unwrap().to_owned())
+        .collect();
+    for needed in [
+        "TaskHandoffAdmitted",
+        "TaskWorkspaceRebound",
+        "TaskResumed",
+        "RunResumed",
+        "SandboxLeaseAcquired",
+        "TaskReadyForReview",
+    ] {
+        assert!(
+            types.iter().any(|t| t == needed),
+            "{needed} on the cloud log: {types:?}"
+        );
+    }
+    let bodies = cloud_seen.lock().unwrap().clone();
+    let last = bodies.last().unwrap();
+    let tool_texts: Vec<String> = last["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    eprintln!("cloud tool results:\n{}", tool_texts.join("\n----\n"));
+    // The continuation's conversation carries the laptop's turns (the plan
+    // and the edit are in the messages the cloud model saw).
+    assert!(
+        last["messages"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|m| m["content"]
+                .as_str()
+                .is_some_and(|c| c.contains("plan version 1 recorded"))),
+        "the laptop's transcript continued in the cloud"
+    );
+    // The cloud's own two tool results come after the laptop's two.
+    let cloud_texts: Vec<&String> = tool_texts.iter().skip(2).collect();
+    assert_eq!(
+        cloud_texts.len(),
+        2,
+        "the cloud turn's results: {tool_texts:?}"
+    );
+    assert!(
+        cloud_texts.iter().all(|t| t.contains("status: SUCCESS")),
+        "the cloud's tools ran in the sandbox: {cloud_texts:?}"
+    );
+    let read = cloud_texts[0];
+    assert!(
+        read.contains("handed off from the laptop"),
+        "the worktree arrived exactly: {read}"
+    );
+    let git_text = cloud_texts[1];
+    assert!(
+        git_text.contains("ref: refs/heads/") && git_text.contains("handed off from the laptop"),
+        "the repository arrived in the sandbox with its branch checked out: {git_text}"
+    );
+    // The history itself, on the worker's materialized workspace (the
+    // sandbox was seeded from it): the laptop's commit, and the edit
+    // uncommitted, as it was.
+    let ws = data
+        .join("w")
+        .join("sessions")
+        .join(sid.to_string())
+        .join("handoffs")
+        .join(tid.to_string())
+        .join("workspace");
+    let log = std::process::Command::new("git")
+        .args(["-C", &ws.display().to_string(), "log", "--oneline"])
+        .output()
+        .unwrap();
+    assert!(
+        String::from_utf8_lossy(&log.stdout).contains("base"),
+        "the repository's history arrived: {}",
+        String::from_utf8_lossy(&log.stdout)
+    );
+    let status = std::process::Command::new("git")
+        .args(["-C", &ws.display().to_string(), "status", "--short"])
+        .output()
+        .unwrap();
+    assert!(
+        String::from_utf8_lossy(&status.stdout).contains("summary.md"),
+        "the dirty edit is uncommitted, as it was: {}",
+        String::from_utf8_lossy(&status.stdout)
+    );
+    worker.stop().await;
+    gateway.served.stop();
+    laptop.stop();
 }
