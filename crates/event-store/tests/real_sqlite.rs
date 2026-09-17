@@ -510,3 +510,74 @@ fn evidence_search_scopes_by_tenant_run_and_step() {
             .is_empty()
     );
 }
+
+/// M8.2 (docs/24 "Sync model", docs/33 "Cloud worker lifecycle"): another
+/// owner's log is imported verbatim — ids, sequences, actors, payloads and
+/// integrity hashes unchanged — and it must continue each aggregate's chain
+/// here: a second import of the same events writes nothing, an envelope
+/// whose hash does not continue the chain is refused with the whole batch,
+/// and after the import the local store's own appends chain on.
+#[test]
+fn qual_m8_2_imported_envelopes_are_verbatim_chain_checked_and_idempotent() {
+    let src_dir = tempfile::tempdir().unwrap();
+    let dst_dir = tempfile::tempdir().unwrap();
+    let session = SessionId::new();
+    let a = *TaskId::new().as_bytes();
+    let b = *TaskId::new().as_bytes();
+    let mut src = EventStore::open(src_dir.path()).unwrap();
+    src.append(req(
+        session,
+        a,
+        None,
+        vec![ev("A1", json!({"n": 1})), ev("A2", json!({"n": 2}))],
+    ))
+    .unwrap();
+    src.append(req(session, b, None, vec![ev("B1", json!({"n": 3}))]))
+        .unwrap();
+    src.append(req(session, a, None, vec![ev("A3", json!({"n": 4}))]))
+        .unwrap();
+    let exported: Vec<_> = src
+        .read_session(&session, 0, 100)
+        .unwrap()
+        .into_iter()
+        .map(|e| {
+            let payload = src.payload(&e.envelope).unwrap();
+            (e.envelope, payload)
+        })
+        .collect();
+    assert_eq!(exported.len(), 4);
+
+    let mut dst = EventStore::open(dst_dir.path()).unwrap();
+    let (imported, present, last) = dst.import_envelopes(exported.clone()).unwrap();
+    assert_eq!((imported, present, last), (4, 0, 4));
+    let mirrored = dst.read_session(&session, 0, 100).unwrap();
+    for (ours, theirs) in mirrored.iter().zip(&exported) {
+        assert_eq!(ours.envelope.event_id, theirs.0.event_id);
+        assert_eq!(ours.envelope.sequence, theirs.0.sequence);
+        assert_eq!(ours.envelope.integrity_hash, theirs.0.integrity_hash);
+        assert_eq!(ours.envelope.event_type, theirs.0.event_type);
+        assert_eq!(dst.payload(&ours.envelope).unwrap(), theirs.1);
+    }
+    assert_eq!(dst.verify_aggregate(&a).unwrap(), 3);
+    assert_eq!(dst.verify_aggregate(&b).unwrap(), 1);
+    // Idempotent: the same batch again writes nothing.
+    let (imported, present, last) = dst.import_envelopes(exported.clone()).unwrap();
+    assert_eq!((imported, present, last), (0, 4, 4));
+    // A fork: an envelope continuing the sequence but not the hash is
+    // refused, and nothing of its batch is written.
+    let mut forged = exported[3].0.clone();
+    forged.event_id = modbit_domain::EventId::new();
+    forged.sequence = 4;
+    forged.integrity_hash = "0".repeat(64);
+    let err = dst
+        .import_envelopes(vec![(forged, json!({"n": 5}))])
+        .unwrap_err();
+    assert!(matches!(err, Error::Integrity { .. }), "{err:?}");
+    assert_eq!(dst.read_session(&session, 0, 100).unwrap().len(), 4);
+    // The local store chains its own appends on the imported prefix.
+    let stored = dst
+        .append(req(session, a, Some(3), vec![ev("A4", json!({"n": 6}))]))
+        .unwrap();
+    assert_eq!(stored[0].envelope.sequence, 4);
+    assert_eq!(dst.verify_aggregate(&a).unwrap(), 4);
+}

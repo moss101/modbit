@@ -89,6 +89,7 @@ message TaskView {
   google.protobuf.Timestamp created_at = 5;
   string origin = 6;               // desktop | cli | ide_adapter | forge_issue | forge_webhook | fork | subagent (M6.6)
   Id parent_task_id = 7;           // the parent of a subagent's task (M6.3); absent otherwise
+  string workspace_root = 8;       // the task's workspace root (M8.2: a worker starts the task there); empty when none
 }
 
 message SessionSnapshot {
@@ -1960,6 +1961,41 @@ message ForgetBrowserCredential {
 message BrowserCredentialForgotten {
   string handle = 1;
   bool existed = 2;
+}
+
+// M8.2 (docs/24 "Cloud Core Worker", docs/33 "Cloud worker lifecycle"): a
+// Cloud Core Worker materializes the session's cloud log in its local Core
+// — each envelope verbatim (id, sequence, actor, payload, integrity hash),
+// continuing its aggregate's chain here or refused as a whole. Only the
+// cloud-worker client kind holds `session.mirror`.
+message MirroredEvent {
+  string envelope_json = 1;      // modbit-domain EventEnvelope as JSON
+  string payload_json = 2;       // the payload (inline or the object's bytes)
+}
+
+message ImportMirroredEvents {
+  repeated MirroredEvent events = 1;
+}
+
+message MirroredEventsImported {
+  uint32 imported = 1;
+  uint32 already_present = 2;
+  uint64 last_offset = 3;
+}
+
+// M8.2: the session's events after a local offset as full envelopes (actor,
+// per-aggregate sequence, integrity hash) with their payloads — what the
+// worker mirrors to the cloud log. `session.mirror` only.
+message ReadMirrorEvents {
+  Id session_id = 1;
+  uint64 after_offset = 2;
+  uint32 limit = 3;              // 0 = 500
+}
+
+message MirrorEvents {
+  repeated MirroredEvent events = 1;
+  repeated uint64 offsets = 2;   // the local offset of each event, in order
+  uint64 last_offset = 3;        // the store's last offset (the cursor when caught up)
 }
 
 message CloseBrowserSession {

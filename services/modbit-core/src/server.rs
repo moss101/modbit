@@ -114,8 +114,15 @@ async fn require_lease(
     }
 }
 
-/// Run the daemon until the listener fails or the process is signalled.
-pub async fn run(data_dir: PathBuf, idle_exit_secs: Option<u64>) -> Result<()> {
+/// Run the daemon until the listener fails or the process is signalled, as
+/// `tenant` (M8.2: a Cloud Core Worker's Core serves the cloud tenant whose
+/// log it materializes); `None` is the local profile's tenant.
+pub async fn run_as(
+    data_dir: PathBuf,
+    idle_exit_secs: Option<u64>,
+    tenant: Option<TenantId>,
+) -> Result<()> {
+    let tenant_id = tenant.unwrap_or_else(|| TenantId::from_bytes([0xA1; 16]));
     std::fs::create_dir_all(&data_dir)?;
     acquire_singleton_lock(&data_dir)?;
     let mut store = EventStore::open(&data_dir.join("core")).context("opening core store")?;
@@ -137,11 +144,8 @@ pub async fn run(data_dir: PathBuf, idle_exit_secs: Option<u64>) -> Result<()> {
         }
     );
     // Interrupted agent loops suspend at a turn boundary (docs/14); nothing re-executes.
-    let suspended = crate::runtime::reconcile_after_restart(
-        &mut store,
-        TenantId::from_bytes([0xA1; 16]),
-        recovery.boot_generation,
-    );
+    let suspended =
+        crate::runtime::reconcile_after_restart(&mut store, tenant_id, recovery.boot_generation);
     if !suspended.is_empty() {
         eprintln!(
             "modbit-core: suspended {} running task(s) after restart",
@@ -161,7 +165,7 @@ pub async fn run(data_dir: PathBuf, idle_exit_secs: Option<u64>) -> Result<()> {
         store: Arc::new(Mutex::new(store)),
         last_offset: tx,
         boot_secret: boot_secret.clone(),
-        tenant_id: TenantId::from_bytes([0xA1; 16]),
+        tenant_id,
         user_id: UserId::from_bytes([0xB1; 16]),
         recovery,
         started_at: Timestamp::now(),
@@ -802,7 +806,23 @@ fn client_capabilities(kind: i32) -> Vec<&'static str> {
             "provider.configure",
             "repository.trust",
         ],
-        ClientKind::CloudWorker => vec!["task.author", "events.subscribe", "attachments.ingest"],
+        // M8.2: the Cloud Core Worker acts for the cloud's principals on its
+        // local Core — it authors and controls tasks, decides approvals and
+        // answers questions as the API relays them, trusts the workspace a
+        // principal named for a task, and mirrors the cloud log in
+        // (`session.mirror`); it hosts no browser and no UI.
+        ClientKind::CloudWorker => vec![
+            "task.author",
+            "events.subscribe",
+            "attachments.ingest",
+            "session.control",
+            "approval.resolve",
+            "question.answer",
+            "review.decide",
+            "provider.configure",
+            "repository.trust",
+            "session.mirror",
+        ],
         ClientKind::SandboxGuest | ClientKind::Unspecified => vec!["events.subscribe"],
     }
 }
@@ -850,6 +870,7 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         | "ForgetBrowserCredential" => "browser.host",
         "OpenBrowserSession" | "CloseBrowserSession" => "task.author",
         "SetBrowserControl" => "session.control",
+        "ImportMirroredEvents" | "ReadMirrorEvents" => "session.mirror",
         "IngestAttachment" | "AttachContextDocument" => "attachments.ingest",
         "CreateSession"
         | "CreateTask"
@@ -1412,6 +1433,102 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 Err(e) => reject(cid, error_code(&e), e.to_string()),
             }
         }
+        "ReadMirrorEvents" => {
+            let Ok(p) = wire::ReadMirrorEvents::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "ReadMirrorEvents");
+            };
+            let Some(sid) = p
+                .session_id
+                .as_ref()
+                .and_then(id16)
+                .map(SessionId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "session_id required");
+            };
+            let limit = if p.limit == 0 { 500 } else { p.limit.min(2000) } as usize;
+            let store = core.store.lock().await;
+            let events = match store.read_session(&sid, p.after_offset, limit) {
+                Ok(e) => e,
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            let last_offset = store.last_offset().unwrap_or(0);
+            let mut out = Vec::with_capacity(events.len());
+            let mut offsets = Vec::with_capacity(events.len());
+            for e in events {
+                let payload = match store.payload(&e.envelope) {
+                    Ok(v) => v,
+                    Err(err) => return reject(cid, error_code(&err), err.to_string()),
+                };
+                out.push(wire::MirroredEvent {
+                    envelope_json: serde_json::to_string(&e.envelope).unwrap_or_default(),
+                    payload_json: payload.to_string(),
+                });
+                offsets.push(e.offset);
+            }
+            drop(store);
+            accept(
+                cid,
+                false,
+                wire::MirrorEvents {
+                    events: out,
+                    offsets,
+                    last_offset,
+                }
+                .encode_to_vec(),
+            )
+        }
+        "ImportMirroredEvents" => {
+            // M8.2: the cloud log, verbatim, into this Core — every envelope
+            // must continue its aggregate's chain; one refusal writes nothing.
+            let Ok(p) = wire::ImportMirroredEvents::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "ImportMirroredEvents");
+            };
+            let mut events = Vec::with_capacity(p.events.len());
+            for e in &p.events {
+                let envelope: modbit_domain::event::EventEnvelope =
+                    match serde_json::from_str(&e.envelope_json) {
+                        Ok(v) => v,
+                        Err(err) => {
+                            return reject(cid, "BAD_PAYLOAD", format!("envelope_json: {err}"));
+                        }
+                    };
+                if envelope.tenant_id != core.tenant_id {
+                    // This Core serves one tenant; another tenant's log is not its business.
+                    return reject(
+                        cid,
+                        "TENANT_MISMATCH",
+                        format!(
+                            "event {} belongs to tenant {}",
+                            envelope.event_id, envelope.tenant_id
+                        ),
+                    );
+                }
+                let payload: serde_json::Value = match serde_json::from_str(&e.payload_json) {
+                    Ok(v) => v,
+                    Err(err) => return reject(cid, "BAD_PAYLOAD", format!("payload_json: {err}")),
+                };
+                events.push((envelope, payload));
+            }
+            let outcome = core.store.lock().await.import_envelopes(events);
+            match outcome {
+                Ok((imported, already_present, last_offset)) => {
+                    if imported > 0 {
+                        core.last_offset.send_replace(last_offset);
+                    }
+                    accept(
+                        cid,
+                        imported == 0,
+                        wire::MirroredEventsImported {
+                            imported,
+                            already_present,
+                            last_offset,
+                        }
+                        .encode_to_vec(),
+                    )
+                }
+                Err(e) => reject(cid, error_code(&e), e.to_string()),
+            }
+        }
         "GetSessionSnapshot" => {
             let Ok(p) = wire::GetSessionSnapshot::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "GetSessionSnapshot");
@@ -1475,6 +1592,7 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                             parent_task_id: parents
                                 .get(t.task_id.as_bytes())
                                 .map(|p| wire_id(p.as_bytes())),
+                            workspace_root: t.workspace_root.clone().unwrap_or_default(),
                         });
                     }
                 }

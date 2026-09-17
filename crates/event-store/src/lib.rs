@@ -26,6 +26,8 @@
 
 #![forbid(unsafe_code)]
 
+#[cfg(feature = "cloud")]
+pub mod cloud;
 pub mod migrations;
 pub mod objects;
 pub mod projections;

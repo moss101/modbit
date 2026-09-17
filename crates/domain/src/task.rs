@@ -239,6 +239,28 @@ pub enum TaskEvent {
     },
     /// `TaskCancelled`.
     TaskCancelled,
+    /// `TaskPauseRequested` (M8.1, docs/30 `:pause`): the person asked the
+    /// execution owner to pause at its next safe boundary; no state change
+    /// (the owner records the wait it enters).
+    TaskPauseRequested {
+        /// Who asked.
+        requested_by: String,
+    },
+    /// `TaskResumeRequested` (M8.1, docs/30 `:resume`): the person asked
+    /// the execution owner to resume; no state change.
+    TaskResumeRequested {
+        /// Who asked.
+        requested_by: String,
+    },
+    /// `TaskCancelRequested` (M8.1, docs/30 `:cancel`): the person asked
+    /// the execution owner to cancel at its next safe boundary; no state
+    /// change (`TaskCancelled` follows from the owner).
+    TaskCancelRequested {
+        /// Who asked.
+        requested_by: String,
+        /// Reason text.
+        reason: String,
+    },
     /// `TaskSteered`: durable steering input recorded; no state change.
     TaskSteered {
         /// Steering text.
@@ -1534,6 +1556,9 @@ impl TaskEvent {
             Self::TaskFailed { .. } => "TaskFailed",
             Self::TaskCancelled => "TaskCancelled",
             Self::TaskSteered { .. } => "TaskSteered",
+            Self::TaskPauseRequested { .. } => "TaskPauseRequested",
+            Self::TaskResumeRequested { .. } => "TaskResumeRequested",
+            Self::TaskCancelRequested { .. } => "TaskCancelRequested",
             Self::TaskNeedsAttention { .. } => "TaskNeedsAttention",
             Self::TaskInputQueued { .. } => "TaskInputQueued",
             Self::UserQuestionAsked { .. } => "UserQuestionAsked",
@@ -1718,6 +1743,9 @@ impl Task {
             | TaskEvent::BrowserActionPerformed { .. }
             | TaskEvent::BrowserRegionCaptured { .. }
             | TaskEvent::SecurityEventRecorded { .. }
+            | TaskEvent::TaskPauseRequested { .. }
+            | TaskEvent::TaskResumeRequested { .. }
+            | TaskEvent::TaskCancelRequested { .. }
             | TaskEvent::BrowserCredentialFilled { .. }
             | TaskEvent::SelfReviewRecorded { .. }
             | TaskEvent::ToolsActivated { .. }

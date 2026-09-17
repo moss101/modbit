@@ -207,7 +207,7 @@ impl std::fmt::Debug for EventStore {
     }
 }
 
-fn canonical_content(e: &EventEnvelope) -> Vec<u8> {
+pub(crate) fn canonical_content(e: &EventEnvelope) -> Vec<u8> {
     // Deterministic byte string over every field except integrity_hash.
     let mut v = Vec::new();
     v.extend_from_slice(e.event_id.as_bytes());
@@ -258,7 +258,7 @@ fn canonical_content(e: &EventEnvelope) -> Vec<u8> {
 }
 
 /// `sha256(previous_hash || canonical content)`.
-fn chain_hash(previous: &str, e: &EventEnvelope) -> String {
+pub(crate) fn chain_hash(previous: &str, e: &EventEnvelope) -> String {
     let mut h = Sha256::new();
     h.update(previous.as_bytes());
     h.update(canonical_content(e));
@@ -368,6 +368,136 @@ impl EventStore {
         tx.commit()?;
         self.fault.after_commit(&out);
         Ok(out)
+    }
+
+    /// Import events another owner of the session recorded — the cloud
+    /// log a Cloud Core Worker materializes locally (M8.2, docs/24 "Cloud
+    /// Core Worker", docs/33 "Cloud worker lifecycle"). Each envelope is
+    /// taken verbatim (its id, sequence, actor, payload and integrity hash);
+    /// it must continue its aggregate's chain here — the next sequence, the
+    /// hash recomputed over the previous one — or nothing of the batch is
+    /// written. An envelope already present (same event id) is skipped.
+    /// Projections are applied as for any append. Returns
+    /// `(imported, already_present, last_offset)`.
+    pub fn import_envelopes(
+        &mut self,
+        events: Vec<(EventEnvelope, serde_json::Value)>,
+    ) -> Result<(u32, u32, u64)> {
+        let tx = self
+            .conn
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let mut imported = 0u32;
+        let mut present = 0u32;
+        let mut last = self_last_offset(&tx)?;
+        let mut out = Vec::new();
+        for (env, payload) in events {
+            let exists: Option<i64> = tx
+                .query_row(
+                    "SELECT offset FROM events WHERE event_id = ?1",
+                    params![env.event_id.as_bytes().as_slice()],
+                    |r| r.get(0),
+                )
+                .optional()?;
+            if exists.is_some() {
+                present += 1;
+                continue;
+            }
+            let (current, previous_hash) = {
+                let row: Option<(i64, String)> = tx
+                    .query_row(
+                        "SELECT sequence, integrity_hash FROM events WHERE aggregate_id = ?1 ORDER BY sequence DESC LIMIT 1",
+                        params![env.aggregate_id.as_slice()],
+                        |r| Ok((r.get(0)?, r.get(1)?)),
+                    )
+                    .optional()?;
+                row.map(|(s, h)| (s as u64, h))
+                    .unwrap_or((0, String::new()))
+            };
+            if env.sequence != current + 1 {
+                return Err(Error::SequenceConflict {
+                    aggregate: hex::encode(env.aggregate_id),
+                    expected: current + 1,
+                    actual: env.sequence,
+                });
+            }
+            let recomputed = chain_hash(&previous_hash, &env);
+            if recomputed != env.integrity_hash {
+                return Err(Error::Integrity {
+                    aggregate: hex::encode(env.aggregate_id),
+                    sequence: env.sequence,
+                    detail: format!(
+                        "imported event {} does not continue its aggregate's chain",
+                        env.event_id
+                    ),
+                });
+            }
+            // The payload: inline as recorded, or into this store's objects.
+            match &env.payload {
+                PayloadRef::Object { object_hash, .. } => {
+                    let bytes = payload.to_string();
+                    let hash = self.objects.put(bytes.as_bytes())?;
+                    if &hash != object_hash {
+                        return Err(Error::Integrity {
+                            aggregate: hex::encode(env.aggregate_id),
+                            sequence: env.sequence,
+                            detail: format!(
+                                "imported payload of {} does not match its object hash",
+                                env.event_id
+                            ),
+                        });
+                    }
+                }
+                PayloadRef::Inline { .. } => {}
+            }
+            let (actor_type, actor_id) = actor_columns(&env.actor);
+            let (inline, object_hash, byte_length) = match &env.payload {
+                PayloadRef::Inline { payload } => (Some(payload.to_string()), None, None),
+                PayloadRef::Object {
+                    object_hash,
+                    byte_length,
+                } => (None, Some(object_hash.clone()), Some(*byte_length as i64)),
+            };
+            tx.execute(
+                "INSERT INTO events (event_id, tenant_id, session_id, task_id, run_id, turn_id, step_id, aggregate_type, aggregate_id, sequence, event_type, schema_version, occurred_at, actor_type, actor_id, causation_id, correlation_id, payload_inline, payload_object_hash, payload_byte_length, integrity_hash)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21)",
+                params![
+                    env.event_id.as_bytes().as_slice(),
+                    env.tenant_id.as_bytes().as_slice(),
+                    env.session_id.as_bytes().as_slice(),
+                    opt_blob(env.task_id.map(|x| *x.as_bytes())),
+                    opt_blob(env.run_id.map(|x| *x.as_bytes())),
+                    opt_blob(env.turn_id.map(|x| *x.as_bytes())),
+                    opt_blob(env.step_id.map(|x| *x.as_bytes())),
+                    env.aggregate_type.as_str(),
+                    env.aggregate_id.as_slice(),
+                    env.sequence as i64,
+                    &env.event_type,
+                    env.schema_version,
+                    env.occurred_at.millis(),
+                    actor_type,
+                    actor_id,
+                    opt_blob(env.causation_id.map(|x| *x.as_bytes())),
+                    opt_blob(env.correlation_id.map(|x| *x.as_bytes())),
+                    inline,
+                    object_hash,
+                    byte_length,
+                    &env.integrity_hash,
+                ],
+            )?;
+            let offset = tx.last_insert_rowid() as u64;
+            last = offset;
+            let stored = StoredEvent {
+                offset,
+                envelope: env,
+            };
+            crate::projections::apply(&tx, &stored, &self.objects)?;
+            out.push(stored);
+            imported += 1;
+        }
+        self.fault.before_commit(&out);
+        tx.commit()?;
+        self.fault.after_commit(&out);
+        Ok((imported, present, last))
     }
 
     /// Append several requests — different aggregates — in one transaction
@@ -1206,6 +1336,11 @@ fn prior_outcome(conn: &Connection, cmd: &CommandRecord) -> Result<Option<Comman
         _ => Vec::new(),
     };
     Ok(Some(CommandOutcome::Replayed(events)))
+}
+
+fn self_last_offset(conn: &Connection) -> Result<u64> {
+    let v: Option<i64> = conn.query_row("SELECT MAX(offset) FROM events", [], |r| r.get(0))?;
+    Ok(v.unwrap_or(0) as u64)
 }
 
 /// Events with `offset` in `[first, last]`.

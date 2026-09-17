@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 1169,
-    "docs_bytes": 1177164
+    "root_and_tooling": 1173,
+    "docs_bytes": 1189032
   },
   "sections": [
     {
@@ -257,8 +257,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Cloud Control Plane, Remote Execution, and Sync",
-      "bytes": 5065,
-      "sha256": "50516f6c15cc4353f2960c6a488cb706a706bdc6b2853b35dfb6c930df7c2eeb"
+      "bytes": 9979,
+      "sha256": "460356cfd0177286f6296fbae506acc5260c1a93a88f047fabf29badfce0c0fd"
     },
     {
       "path": "docs/25_MULTIMODAL_MEDIA_AND_NOTEBOOK_RUNTIME.md",
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 23687,
-      "sha256": "7555a8221a046d42ef6c921abddb559ea6b1dbc3db0a8c8d79b89c04fdfd0a43"
+      "bytes": 26603,
+      "sha256": "4755c57dd2f14c6a0edaf740439ef48fed13bc7fd0a9408c4386fe6970bfa2e0"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -320,8 +320,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Database and Storage Schema",
-      "bytes": 13930,
-      "sha256": "ba8817151a4efeb8ef03b50818275577f21de86242413b53ea3492638d8cda9e"
+      "bytes": 14957,
+      "sha256": "6b0faeb70e7a403fa52c00d1dbd0771e78e16a00cf43de879fc5d42be0a76c8f"
     },
     {
       "path": "docs/32_DESKTOP_FRONTEND_IMPLEMENTATION.md",
@@ -338,8 +338,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Core and Cloud Backend Implementation",
-      "bytes": 8354,
-      "sha256": "2313aa0669345474cd26c835f917594c3dd572411bbd7a01dd6c0370f5c4011f"
+      "bytes": 11365,
+      "sha256": "d5148341935d05846492cdc1c879495352d531e543ced2a20a81a3d22dcaa642"
     },
     {
       "path": "docs/34_OBSERVABILITY_COST_AND_OPERATIONS_DATA.md",
@@ -6655,6 +6655,26 @@
       "path": "evidence/m7/M7.8/evidence.json",
       "bytes": 1280,
       "sha256": "e73166314be690fe49e8654fceb6e384b29f1f8c104f4bf2da8d0d017c6dfd29"
+    },
+    {
+      "path": "evidence/m8/M8.1/TASK_CARD.md",
+      "bytes": 6100,
+      "sha256": "261dd87fa2381d89d5185bf71c6c30eb1304bccdda2aecd3e906269b3d3e8be5"
+    },
+    {
+      "path": "evidence/m8/M8.1/evidence.json",
+      "bytes": 1777,
+      "sha256": "0e21f65805b98bd362ba3d0a76077bb41330f676e8a49defb10dd75f3939c47e"
+    },
+    {
+      "path": "evidence/m8/M8.2/TASK_CARD.md",
+      "bytes": 5693,
+      "sha256": "9dfabc603a8c388cd81b386f9e04a05cedada72207a7902f820c7f406876f6e6"
+    },
+    {
+      "path": "evidence/m8/M8.2/evidence.json",
+      "bytes": 1398,
+      "sha256": "1603855fe38d505a2f89ea2197f33f3c99ff90659950afa27fb6f382acf809c9"
     },
     {
       "path": "graph/PROJECT_GRAPH.md",

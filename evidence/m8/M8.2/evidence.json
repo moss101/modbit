@@ -1,0 +1,23 @@
+{
+ "task": "M8.2",
+ "requirements": [
+  "docs/24 Cloud Core Worker / Sync model",
+  "docs/33 Session kernel lease / Cloud worker lifecycle",
+  "docs/31 session_leases / commands",
+  "REQ-EV-0109"
+ ],
+ "scenarios": [
+  "cloud worker qualification (hosted cloud job: Postgres 16 + MinIO + real modbit-core + scripted provider)"
+ ],
+ "tests": [
+  "qual_m8_2_a_worker_claims_the_lease_runs_the_task_relays_commands_mirrors_the_log_and_a_successor_resumes_fenced",
+  "qual_m8_1_leases_fence_by_generation_and_an_append_is_all_or_nothing",
+  "qual_m8_1_commands_are_idempotent_events_replay_by_cursor_and_tenants_never_cross"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "two real workers over a real Postgres, MinIO and modbit-core: a worker claims the fenced lease, materializes the cloud log into its Core, runs the task with a real provider transport, mirrors every journaled event back in order with the chain intact, executes relayed commands and completes them after the mirror, is fenced when its lease expires under it; the successor claims at the next generation, imports the whole log without duplication and resumes.",
+ "audit": "MISSING before: the M0 skeleton refused to run; the Core had no tenant flag and no mirror commands.",
+ "limitations": "workspace on the worker host until the sandbox (M8.3+); pause/resume refused PAUSE_UNSUPPORTED; no heartbeat metrics export.",
+ "ci": ""
+}

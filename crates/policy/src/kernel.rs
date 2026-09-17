@@ -38,6 +38,11 @@ pub const PROFILE_REVIEW_ISOLATED: &str = "review_isolated";
 /// REQ-EV-0117 plan mode: reads only — no write, no shell, no worktree; the
 /// task's product is its plan, reviewed like any candidate.
 pub const PROFILE_PLAN: &str = "plan";
+/// Execution profile: a task a Cloud Core Worker runs inside a tenant-bound
+/// isolated sandbox (docs/21 "Execution profiles", M8): the sandbox confines
+/// effects, so the profile's ceiling is the trusted one; its tools are the
+/// guest-backed ones (M8.3–M8.5) — a direct host tool does not serve it.
+pub const PROFILE_CLOUD_ISOLATED: &str = "cloud_isolated";
 
 /// Admin/device-level policy that lower authorities cannot weaken.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -70,6 +75,7 @@ impl Default for PolicyEnvelope {
             EffectClass::ReversibleWrite,
         );
         profile_ceilings.insert(PROFILE_PLAN.to_owned(), EffectClass::ReadOnly);
+        profile_ceilings.insert(PROFILE_CLOUD_ISOLATED.to_owned(), EffectClass::Destructive);
         let mut profile_denied_capabilities = BTreeMap::new();
         profile_denied_capabilities.insert(
             PROFILE_REVIEW_ISOLATED.to_owned(),
@@ -404,7 +410,7 @@ pub fn default_lease_for_profile(
         ],
     };
     let ceiling = match profile {
-        PROFILE_LOCAL_TRUSTED => EffectClass::Destructive,
+        PROFILE_LOCAL_TRUSTED | PROFILE_CLOUD_ISOLATED => EffectClass::Destructive,
         PROFILE_PLAN => EffectClass::ReadOnly,
         _ => EffectClass::ReversibleWrite,
     };

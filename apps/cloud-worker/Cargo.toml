@@ -10,16 +10,29 @@ publish.workspace = true
 [dependencies]
 modbit-domain.workspace = true
 modbit-protocol.workspace = true
-modbit-core-runtime.workspace = true
+modbit-event-store = { workspace = true, features = ["cloud"] }
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+prost.workspace = true
+uuid.workspace = true
+anyhow.workspace = true
+hex.workspace = true
+
+[dev-dependencies]
+modbit-cloud-api.workspace = true
+reqwest.workspace = true
+tempfile.workspace = true
+axum.workspace = true
+tokio-postgres.workspace = true
 
 [lints]
 workspace = true
 
 # Module registration parsed by `architecture-lint modules` (M0.4, docs/45, docs/81).
-# owner: subsystem node id in graph/project-graph.json; canonical: doc 81 single-owner
-# systems this crate is THE implementation of (at most one member per system);
-# capabilities: production capabilities with their requirement ids (none yet).
 [package.metadata.modbit]
 owner = "sandbox-cloud"
 canonical = []
-capabilities = []
+capabilities = [
+  { id = "cloud.worker", requirements = ["REQ-EV-0109"] },
+]

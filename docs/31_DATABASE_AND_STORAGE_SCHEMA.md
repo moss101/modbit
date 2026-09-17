@@ -104,6 +104,8 @@ Each chunk stores path, byte/line span, content hash, language, AST anchor and e
 
 Postgres mirrors canonical session/task/event/protocol/effect structures with `tenant_id` present on every tenant resource and row-level application authorization. Postgres event append and projection update occur in one transaction. Object payloads are stored in encrypted S3-compatible storage.
 
+As built (M8.1, `crates/event-store/src/cloud/schema.rs`, cloud schema v1, applied under an advisory lock and recorded with its checksum in `cloud_schema`): `tenants`, `principals` (kind, label, hashed secret), `refresh_tokens` (hashed, expiry, `rotated_to`, revocation), `sessions` (state, generation, `last_session_offset`, the domain object as `doc`), `events` (`event_offset` bigserial, `session_offset` unique per session, aggregate type/id/sequence unique, the envelope as JSONB, inline `payload` or `payload_ref` above the 64 KiB inline ceiling), `tasks` and `approvals` (state indexed, `doc`), `commands` (status, code, result, first/last offset), `session_leases` (worker, generation, heartbeat, expiry, ready), `objects` (per-tenant content hash → key, length, mime) and `denials` (audit). Protocol state and effect receipts mirror with the worker (M8.2). Objects live under `tenants/<tenant>/objects/<hash>` in the bucket (MinIO in CI); without a bucket configured they are held in Postgres for development only.
+
 ## Retention
 
 - Event/protocol/effect data: durable until explicit account/enterprise retention policy deletion.

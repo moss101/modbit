@@ -1,16 +1,26 @@
-//! `modbit-cloud-api` — Rust HTTP/WSS API service.
-//!
-//! Created by milestone task M0.1. No runtime is wired in this build, so the
-//! binary refuses to run instead of simulating success (docs/82 no-placeholder
-//! production evidence gate).
+//! `modbit-cloud-api` — Rust HTTP/WSS API service (M8.1; docs/24, docs/30).
 
 use std::process::ExitCode;
 
-fn main() -> ExitCode {
-    eprintln!(
-        "{} {}: no runtime is wired in this build (milestone M0); refusing to run",
-        env!("CARGO_PKG_NAME"),
-        env!("CARGO_PKG_VERSION")
-    );
-    ExitCode::FAILURE
+#[tokio::main]
+async fn main() -> ExitCode {
+    let cfg = match modbit_cloud_api::Config::from_env() {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("modbit-cloud-api: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+    match modbit_cloud_api::serve(cfg).await {
+        Ok(served) => {
+            eprintln!("modbit-cloud-api: listening on {}", served.addr);
+            let _ = tokio::signal::ctrl_c().await;
+            served.stop();
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("modbit-cloud-api: {e:#}");
+            ExitCode::FAILURE
+        }
+    }
 }

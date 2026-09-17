@@ -16,6 +16,20 @@ serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
 thiserror.workspace = true
+# The cloud mirror (M8.1, docs/24 "Postgres", "Object storage"): only the
+# cloud services turn this on; the local Core stays SQLite-only.
+tokio-postgres = { workspace = true, optional = true }
+deadpool-postgres = { workspace = true, optional = true }
+object_store = { workspace = true, optional = true }
+uuid = { workspace = true, optional = true }
+rand = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
+bytes = { workspace = true, optional = true }
+futures-util = { workspace = true, optional = true }
+reqwest = { workspace = true, optional = true }
+
+[features]
+cloud = ["dep:tokio-postgres", "dep:deadpool-postgres", "dep:object_store", "dep:uuid", "dep:rand", "dep:tokio", "dep:bytes", "dep:futures-util", "dep:reqwest"]
 
 [dev-dependencies]
 tempfile.workspace = true
@@ -27,4 +41,7 @@ workspace = true
 [package.metadata.modbit]
 owner = "domain-events"
 canonical = ["event-state"]
-capabilities = [{ id = "events.append", requirements = ["REQ-EV-0010", "REQ-EV-0101"] }]
+capabilities = [
+  { id = "events.append", requirements = ["REQ-EV-0010", "REQ-EV-0101"] },
+  { id = "cloud.store", requirements = ["REQ-EV-0109"] },
+]

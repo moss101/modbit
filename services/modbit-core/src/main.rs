@@ -52,19 +52,30 @@ mod user_patch;
 mod verify;
 
 fn usage() -> &'static str {
-    "usage: modbit-core --data-dir <dir> [--tether-stdin] [--idle-exit-secs N]"
+    "usage: modbit-core --data-dir <dir> [--tether-stdin] [--idle-exit-secs N] [--tenant-id <uuid>]"
 }
 
 fn main() -> ExitCode {
     let mut data_dir: Option<PathBuf> = None;
     let mut tether_stdin = false;
     let mut idle_exit_secs: Option<u64> = None;
+    let mut tenant: Option<modbit_domain::TenantId> = None;
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
         match a.as_str() {
             "--data-dir" => data_dir = args.next().map(PathBuf::from),
             "--tether-stdin" => tether_stdin = true,
             "--idle-exit-secs" => idle_exit_secs = args.next().and_then(|v| v.parse().ok()),
+            // M8.2: a Cloud Core Worker's Core serves the cloud tenant it mirrors.
+            "--tenant-id" => {
+                tenant = match args.next().map(|v| modbit_domain::TenantId::parse(&v)) {
+                    Some(Ok(t)) => Some(t),
+                    _ => {
+                        eprintln!("modbit-core: --tenant-id needs a uuid\n{}", usage());
+                        return ExitCode::from(2);
+                    }
+                }
+            }
             "-h" | "--help" => {
                 println!("{}", usage());
                 return ExitCode::SUCCESS;
@@ -117,7 +128,7 @@ fn main() -> ExitCode {
             return ExitCode::from(1);
         }
     };
-    let code = match rt.block_on(server::run(data_dir, idle_exit_secs)) {
+    let code = match rt.block_on(server::run_as(data_dir, idle_exit_secs, tenant)) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             eprintln!("modbit-core: {e:#}");

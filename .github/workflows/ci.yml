@@ -69,6 +69,40 @@ jobs:
           for m in packages/*/package.json apps/desktop/package.json; do args+=(--ts-manifest "$m"); done
           cargo run --locked -p architecture-lint -- modules --repo . --manifest-path Cargo.toml --graph graph/project-graph.json --rules tools/architecture-lint/rules.toml "${args[@]}"
 
+  cloud:
+    name: cloud CI_COMPATIBLE (ubuntu-latest, real Postgres and S3-compatible storage)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Install pinned Rust toolchain (rust-toolchain.toml)
+        run: |
+          rustup show
+          cargo --version
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - name: Start Postgres 16 and MinIO (docs/24 — Postgres and S3-compatible object storage)
+        run: |
+          docker run -d --name modbit-cloud-pg -e POSTGRES_PASSWORD=modbit -e POSTGRES_USER=modbit -e POSTGRES_DB=modbit -p 127.0.0.1:5439:5432 postgres:16-alpine
+          docker run -d --name modbit-cloud-minio -e MINIO_ROOT_USER=modbit -e MINIO_ROOT_PASSWORD=modbitsecret -p 127.0.0.1:9009:9000 quay.io/minio/minio:latest server /data
+          for i in $(seq 1 30); do docker exec modbit-cloud-pg pg_isready -U modbit && break; sleep 1; done
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:9009/minio/health/live && break; sleep 1; done
+          docker run --rm --network host --entrypoint sh quay.io/minio/mc:latest -c "mc alias set local http://127.0.0.1:9009 modbit modbitsecret && mc mb -p local/modbit-test"
+      - name: Build the real modbit-core the cloud worker hosts (M8.2)
+        run: cargo build --locked -p modbit-core -p modbit-execd
+      - name: Cloud API and worker qualification (M8.1, M8.2 — real Postgres, real MinIO, real modbit-core)
+        env:
+          MODBIT_CLOUD_TEST_DATABASE_URL: postgres://modbit:modbit@127.0.0.1:5439/modbit
+          MODBIT_CLOUD_TEST_S3_ENDPOINT: http://127.0.0.1:9009
+          MODBIT_CLOUD_TEST_S3_BUCKET: modbit-test
+          MODBIT_CLOUD_TEST_S3_ACCESS_KEY_ID: modbit
+          MODBIT_CLOUD_TEST_S3_SECRET_ACCESS_KEY: modbitsecret
+          MODBIT_CORE_BIN: ${{ github.workspace }}/target/debug/modbit-core
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo test --locked -p modbit-cloud-api -p modbit-cloud-worker -- --nocapture 2>&1 | tee cloud-tests.log
+          if grep -q "SKIPPED" cloud-tests.log; then echo "the cloud qualification skipped itself"; exit 1; fi
+
   node:
     name: node CI_COMPATIBLE (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -219,7 +253,7 @@ jobs:
 
   ci-compatible:
     name: CI_COMPATIBLE summary (not release-grade)
-    needs: [rust, node, desktop-e2e, protocol-roundtrip, locked-files, dossier]
+    needs: [rust, node, cloud, desktop-e2e, protocol-roundtrip, locked-files, dossier]
     runs-on: ubuntu-latest
     timeout-minutes: 75
     steps:

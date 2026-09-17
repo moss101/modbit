@@ -302,6 +302,13 @@ export declare type TaskView = Message<"modbit.v1.TaskView"> & {
    * @generated from field: modbit.v1.Id parent_task_id = 7;
    */
   parentTaskId?: Id | undefined;
+
+  /**
+   * the task's workspace root (M8.2: a worker starts the task there); empty when none
+   *
+   * @generated from field: string workspace_root = 8;
+   */
+  workspaceRoot: string;
 };
 
 /**
@@ -8501,6 +8508,141 @@ export declare type BrowserCredentialForgotten = Message<"modbit.v1.BrowserCrede
  * Use `create(BrowserCredentialForgottenSchema)` to create a new message.
  */
 export declare const BrowserCredentialForgottenSchema: GenMessage<BrowserCredentialForgotten>;
+
+/**
+ * M8.2 (docs/24 "Cloud Core Worker", docs/33 "Cloud worker lifecycle"): a
+ * Cloud Core Worker materializes the session's cloud log in its local Core
+ * — each envelope verbatim (id, sequence, actor, payload, integrity hash),
+ * continuing its aggregate's chain here or refused as a whole. Only the
+ * cloud-worker client kind holds `session.mirror`.
+ *
+ * @generated from message modbit.v1.MirroredEvent
+ */
+export declare type MirroredEvent = Message<"modbit.v1.MirroredEvent"> & {
+  /**
+   * modbit-domain EventEnvelope as JSON
+   *
+   * @generated from field: string envelope_json = 1;
+   */
+  envelopeJson: string;
+
+  /**
+   * the payload (inline or the object's bytes)
+   *
+   * @generated from field: string payload_json = 2;
+   */
+  payloadJson: string;
+};
+
+/**
+ * Describes the message modbit.v1.MirroredEvent.
+ * Use `create(MirroredEventSchema)` to create a new message.
+ */
+export declare const MirroredEventSchema: GenMessage<MirroredEvent>;
+
+/**
+ * @generated from message modbit.v1.ImportMirroredEvents
+ */
+export declare type ImportMirroredEvents = Message<"modbit.v1.ImportMirroredEvents"> & {
+  /**
+   * @generated from field: repeated modbit.v1.MirroredEvent events = 1;
+   */
+  events: MirroredEvent[];
+};
+
+/**
+ * Describes the message modbit.v1.ImportMirroredEvents.
+ * Use `create(ImportMirroredEventsSchema)` to create a new message.
+ */
+export declare const ImportMirroredEventsSchema: GenMessage<ImportMirroredEvents>;
+
+/**
+ * @generated from message modbit.v1.MirroredEventsImported
+ */
+export declare type MirroredEventsImported = Message<"modbit.v1.MirroredEventsImported"> & {
+  /**
+   * @generated from field: uint32 imported = 1;
+   */
+  imported: number;
+
+  /**
+   * @generated from field: uint32 already_present = 2;
+   */
+  alreadyPresent: number;
+
+  /**
+   * @generated from field: uint64 last_offset = 3;
+   */
+  lastOffset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.MirroredEventsImported.
+ * Use `create(MirroredEventsImportedSchema)` to create a new message.
+ */
+export declare const MirroredEventsImportedSchema: GenMessage<MirroredEventsImported>;
+
+/**
+ * M8.2: the session's events after a local offset as full envelopes (actor,
+ * per-aggregate sequence, integrity hash) with their payloads — what the
+ * worker mirrors to the cloud log. `session.mirror` only.
+ *
+ * @generated from message modbit.v1.ReadMirrorEvents
+ */
+export declare type ReadMirrorEvents = Message<"modbit.v1.ReadMirrorEvents"> & {
+  /**
+   * @generated from field: modbit.v1.Id session_id = 1;
+   */
+  sessionId?: Id | undefined;
+
+  /**
+   * @generated from field: uint64 after_offset = 2;
+   */
+  afterOffset: bigint;
+
+  /**
+   * 0 = 500
+   *
+   * @generated from field: uint32 limit = 3;
+   */
+  limit: number;
+};
+
+/**
+ * Describes the message modbit.v1.ReadMirrorEvents.
+ * Use `create(ReadMirrorEventsSchema)` to create a new message.
+ */
+export declare const ReadMirrorEventsSchema: GenMessage<ReadMirrorEvents>;
+
+/**
+ * @generated from message modbit.v1.MirrorEvents
+ */
+export declare type MirrorEvents = Message<"modbit.v1.MirrorEvents"> & {
+  /**
+   * @generated from field: repeated modbit.v1.MirroredEvent events = 1;
+   */
+  events: MirroredEvent[];
+
+  /**
+   * the local offset of each event, in order
+   *
+   * @generated from field: repeated uint64 offsets = 2;
+   */
+  offsets: bigint[];
+
+  /**
+   * the store's last offset (the cursor when caught up)
+   *
+   * @generated from field: uint64 last_offset = 3;
+   */
+  lastOffset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.MirrorEvents.
+ * Use `create(MirrorEventsSchema)` to create a new message.
+ */
+export declare const MirrorEventsSchema: GenMessage<MirrorEvents>;
 
 /**
  * @generated from message modbit.v1.CloseBrowserSession
