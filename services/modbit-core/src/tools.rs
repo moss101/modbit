@@ -369,10 +369,14 @@ pub struct ToolHost {
     state_dir: PathBuf,
     /// The forge `forge.*` may reach and the token in this Core's custody (PX-006).
     pub forge: crate::forge::ForgeCustody,
-    /// The External Tool Hub `external.*` reach (M9.4): the configured MCP
-    /// servers, the pooled transports and the credentials in this Core's
-    /// custody.
+    /// The External Tool Hub `external.*` reach (M9.4): the pooled
+    /// transports and the credentials in this Core's custody.
     pub mcp: Arc<crate::mcp::McpHub>,
+    /// The admin/project/user configuration resolved and pinned per task
+    /// (REQ-EV-0039, REQ-EV-0128).
+    pub configurations: crate::config::Configurations,
+    /// Where this Core's own configuration and profile live.
+    data_dir: std::path::PathBuf,
     /// The browser sessions `browser.*` reach through their hosts (M7.1).
     pub browser: Arc<dyn modbit_browser::BrowserPort>,
     /// The provider gateway, for the credentials in its custody (M7.7):
@@ -458,6 +462,8 @@ impl ToolHost {
             state_dir: data_dir.join("workspaces"),
             forge: crate::forge::ForgeCustody::from_env(),
             mcp,
+            configurations: crate::config::Configurations::default(),
+            data_dir: data_dir.to_path_buf(),
             browser,
             gateway,
             sandbox_gateway: Mutex::new(None),
@@ -752,6 +758,13 @@ impl ToolHost {
             StoreArtifacts(store.lock().await.objects().clone()),
         ));
         let lease_id = lease.as_ref().map(|l| l.lease_id);
+        // M9.4 (REQ-EV-0128): what the task's lease grants decides which
+        // external servers it may reach at all — a server is not a way
+        // around a capability the task does not hold.
+        let lease_ops: Vec<String> = lease
+            .as_ref()
+            .map(|l| l.operations.clone())
+            .unwrap_or_default();
         let port = KernelPort {
             kernel: CapabilityKernel::default(),
             lease,
@@ -865,6 +878,16 @@ impl ToolHost {
         // never written anywhere — not even as the write-ahead record's
         // argument object; the pipeline refuses the call by its hash.
         let secrets_in_custody = self.secrets_in_custody();
+        let secrets_in_custody_for_hub = secrets_in_custody.clone();
+        // M9.4 (REQ-EV-0039/0128): the admin/project/user configuration in
+        // force for this task, resolved once and pinned.
+        let task_config = self.configurations.for_task(
+            task_id,
+            &self.data_dir,
+            root.as_ref()
+                .map(|p| p.to_string_lossy().into_owned())
+                .as_deref(),
+        );
         let carries_secret = serde_json::from_str::<serde_json::Value>(arguments_json)
             .ok()
             .is_some_and(|v| {
@@ -1012,6 +1035,11 @@ impl ToolHost {
             // task — the tenant and workspace that decide which pooled
             // transports it may touch, and the identity every call carries
             // to the server and back into the audit.
+            // M9.4 (REQ-EV-0128): the servers come from the task's resolved
+            // configuration (admin over project over user, with provenance),
+            // the lease decides which of them it may reach, and the Core's
+            // custody set is what must never come back out of a server's
+            // answer.
             external: Some(Arc::new(
                 self.mcp.for_task(
                     &tenant_id.to_string(),
@@ -1023,6 +1051,12 @@ impl ToolHost {
                         task_id: task_id.to_string(),
                         turn_id: turn_id.map(|t| t.to_string()),
                         call_id: String::new(),
+                    },
+                    crate::mcp::TaskScope {
+                        servers: crate::mcp::servers_from(&task_config),
+                        refused_servers: crate::mcp::refused_servers(&task_config),
+                        lease_ops,
+                        secrets: secrets_in_custody_for_hub,
                     },
                 ),
             ) as Arc<dyn modbit_mcp::McpPort>),
@@ -1099,6 +1133,67 @@ impl ToolHost {
                 },
                 &actor,
             ));
+        }
+        // M9.4 (REQ-EV-0128 audit): what an external server tried that the
+        // host refused is security evidence on the task, not a log line.
+        if tool_name.starts_with("external.") {
+            let structured = &result.structured_output;
+            let refusals: Vec<String> = structured["servers"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .flat_map(|server| {
+                    let name = server["server"].as_str().unwrap_or_default().to_owned();
+                    server["refused_tools"]
+                        .as_array()
+                        .into_iter()
+                        .flatten()
+                        .map(move |r| {
+                            format!(
+                                "{name}.{}: {}",
+                                r["name"].as_str().unwrap_or_default(),
+                                r["code"].as_str().unwrap_or_default()
+                            )
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .collect();
+            if !refusals.is_empty() {
+                retrieval_events.push(typed_task_event(
+                    "SecurityEventRecorded",
+                    &modbit_domain::task::TaskEvent::SecurityEventRecorded {
+                        kind: "EXTERNAL_DECLARATION_REFUSED".into(),
+                        tool_name: tool_name.to_owned(),
+                        tool_call_id: tool_call_id.to_string(),
+                        patterns: refusals.iter().take(16).cloned().collect(),
+                        detail: format!(
+                            "{} declared tool(s) refused by the host's bounds",
+                            refusals.len()
+                        ),
+                        action: "REFUSED".into(),
+                    },
+                    &actor,
+                ));
+            }
+            if let Some(n) = structured["redacted_secrets"].as_u64()
+                && n > 0
+            {
+                retrieval_events.push(typed_task_event(
+                    "SecurityEventRecorded",
+                    &modbit_domain::task::TaskEvent::SecurityEventRecorded {
+                        kind: "SECRET_IN_EXTERNAL_RESULT".into(),
+                        tool_name: tool_name.to_owned(),
+                        tool_call_id: tool_call_id.to_string(),
+                        patterns: vec!["CREDENTIAL_IN_RESULT".into()],
+                        detail: format!(
+                            "`{}` repeated a credential in this Core's custody; {n} occurrence(s) replaced before the answer reached the model",
+                            structured["server"].as_str().unwrap_or_default()
+                        ),
+                        action: "REDACTED".into(),
+                    },
+                    &actor,
+                ));
+            }
         }
         if result.status == ToolStatus::Success
             && let Some(ws) = &ctx.workspace

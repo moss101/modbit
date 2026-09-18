@@ -194,6 +194,9 @@ pub async fn release_if_ended(core: &Arc<Core>, task_id: TaskId, actor: &Actor) 
         b.remove(&task_id);
     }
     core.tools.environments.forget(&task_id);
+    // M9.4 (REQ-EV-0128): the configuration a task was pinned to goes with
+    // it, so a later task reads the layers as they are then.
+    core.tools.configurations.release(task_id);
     let Some(handle) = handle else {
         return;
     };
