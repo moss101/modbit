@@ -227,6 +227,35 @@ impl SandboxHandle {
         Ok(())
     }
 
+    /// Hand the sandbox a fresh secret and lifetime for a credential handle
+    /// it already grants (REQ-EV-0288 "dynamic credential handles"): a task
+    /// that outlives one short lifetime is renewed rather than given a
+    /// standing secret. The value crosses once and is held in the gateway's
+    /// memory; nothing of it reaches the guest.
+    pub async fn renew_credential(
+        &self,
+        handle: &str,
+        secret: &str,
+        expires_at_ms: i64,
+    ) -> Result<()> {
+        let (status, v) = self
+            .client
+            .post(
+                &format!("/v1/sandboxes/{}/credentials", self.identity.sandbox_id),
+                json!({
+                    "tenant_id": self.tenant_id,
+                    "handle": handle,
+                    "secret": secret,
+                    "expires_at_ms": expires_at_ms,
+                }),
+            )
+            .await?;
+        if status != 200 {
+            return Err(gateway_error(status, &v));
+        }
+        Ok(())
+    }
+
     /// Replace a lost link to the guest.
     pub async fn relink(&self) -> Result<bool> {
         let (status, v) = self

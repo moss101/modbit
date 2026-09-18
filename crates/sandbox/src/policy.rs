@@ -40,6 +40,28 @@ pub struct CredentialGrant {
     pub value_prefix: String,
     /// The capability that granted it (audit).
     pub capability: String,
+    /// When the grant stops being injectable, in milliseconds since the
+    /// epoch (REQ-EV-0288: a guest receives a **short-lived** scoped handle,
+    /// never a standing secret). The gateway stamps one when the
+    /// provisioner does not, so a grant carrying a secret without a
+    /// lifetime cannot exist; at the moment it passes, the broker refuses
+    /// the injection and drops the secret from its memory.
+    #[serde(default)]
+    pub expires_at_ms: i64,
+}
+
+impl CredentialGrant {
+    /// Whether the grant may still be injected at `now_ms`.
+    #[must_use]
+    pub fn live_at(&self, now_ms: i64) -> bool {
+        self.expires_at_ms > now_ms
+    }
+
+    /// How much longer the grant has at `now_ms` (0 once it has passed).
+    #[must_use]
+    pub fn remaining_ms(&self, now_ms: i64) -> i64 {
+        (self.expires_at_ms - now_ms).max(0)
+    }
 }
 
 /// Network policy: nothing unless granted (M8.6: what is granted is served
@@ -370,6 +392,7 @@ mod tests {
             header: "Authorization".into(),
             value_prefix: "Bearer ".into(),
             capability: "secret.use".into(),
+            expires_at_ms: 1,
         });
         assert!(s.network.credential_for("FORGE.modbit.internal").is_some());
         assert!(s.network.credential_for("api.github.com").is_none());
