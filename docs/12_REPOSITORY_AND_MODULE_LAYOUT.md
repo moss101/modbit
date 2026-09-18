@@ -29,6 +29,7 @@ modbit/
 │  ├─ checkpoint/               # workspace/runtime checkpoint epochs
 │  ├─ compaction/               # context history compaction epochs
 │  ├─ memory/                   # governed engineering memory
+│  ├─ mcp/                      # external tool (MCP) protocol, bounded untrusted discovery, pool keys
 │  ├─ effects/                  # receipts, hash chain, evidence refs
 │  ├─ policy/                   # capabilities, approvals, protected paths, PolicyEnvelope, RealizedRisk
 │  ├─ providers/                # model/embedding adapters, registry, profiler, conditional plan compiler
@@ -78,6 +79,7 @@ modbit/
 └─ tools/
    ├─ architecture-lint/
    ├─ evidence-check/
+   ├─ mcp-testserver/          # a conformant MCP server over stdio: the real counterparty of the external-tool suites
    └─ release-gate/
 ```
 

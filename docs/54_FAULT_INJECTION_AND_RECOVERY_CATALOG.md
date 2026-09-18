@@ -26,7 +26,7 @@ At minimum the release suite must exercise:
 22. duplicate subagent spawn request after retry.
 23. conflicting subagent edits race.
 24. context index stale relative to active worktree.
-25. MCP/external tool server disconnects during call.
+25. MCP/external tool server disconnects during call. *As built (M9.4):* every request is registered before it is sent; when the transport ends, a read that never got an answer fails `EXTERNAL_TRANSPORT_LOST` and an effectful call is reported `EXTERNAL_OUTCOME_UNKNOWN` — the host never claims the effect did not happen — and the dead transport is never handed out again (`qual_ev_0104_0193_...`).
 26. secret broker token expires during protected operation.
 27. cancellation races tool completion.
 28. user edit races staged patch apply.

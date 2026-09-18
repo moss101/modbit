@@ -31,6 +31,7 @@ modbit-retrieval.workspace = true
 modbit-context.workspace = true
 modbit-compaction.workspace = true
 modbit-memory.workspace = true
+modbit-mcp.workspace = true
 modbit-diagnostics.workspace = true
 modbit-bench-outcome-statistics.workspace = true
 modbit-observability.workspace = true

@@ -2198,6 +2198,7 @@ dependencies = [
  "modbit-domain",
  "modbit-event-store",
  "modbit-git",
+ "modbit-mcp",
  "modbit-memory",
  "modbit-observability",
  "modbit-policy",
@@ -2341,6 +2342,27 @@ dependencies = [
  "tokio",
  "uuid",
  "vsock",
+]
+
+[[package]]
+name = "modbit-mcp"
+version = "0.0.0"
+dependencies = [
+ "base64",
+ "hex",
+ "jsonschema",
+ "modbit-domain",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+]
+
+[[package]]
+name = "modbit-mcp-testserver"
+version = "0.0.0"
+dependencies = [
+ "base64",
+ "serde_json",
 ]
 
 [[package]]
@@ -2563,6 +2585,7 @@ dependencies = [
  "modbit-browser",
  "modbit-domain",
  "modbit-git",
+ "modbit-mcp",
  "modbit-protocol",
  "modbit-sandbox",
  "modbit-terminal",

@@ -1,0 +1,27 @@
+[package]
+name = "modbit-mcp-testserver"
+description = "A conformant MCP server over stdio: the real external server the MCP gateway suites run against (docs/56 `MCP | real MCP test server`)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "modbit-mcp-testserver"
+path = "src/main.rs"
+
+[dependencies]
+serde_json.workspace = true
+base64.workspace = true
+
+[lints]
+workspace = true
+
+# Module registration parsed by `architecture-lint modules` (M0.4, docs/45, docs/81).
+# Test substrate, not product: it owns no subsystem capability and implements
+# no canonical system — it is the real counterparty the MCP suites need.
+[package.metadata.modbit]
+owner = "external-tools"
+canonical = []
+capabilities = []
