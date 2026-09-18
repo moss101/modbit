@@ -83,12 +83,24 @@ fn now_ms() -> i64 {
         .unwrap_or(0)
 }
 
+/// What the broker will do for a credentialed virtual host.
+enum CredentialLookup {
+    /// The host is not credentialed.
+    NotCredentialed,
+    /// Inject this grant's secret.
+    Ready(Box<crate::policy::CredentialGrant>, String),
+    /// Refuse, with the reason the audit records.
+    Refused(Box<crate::policy::CredentialGrant>, &'static str),
+}
+
 /// The broker for one sandbox.
 pub struct EgressBroker {
     sandbox_id: String,
-    policy: NetworkPolicy,
-    /// Secrets by handle — memory only.
-    secrets: HashMap<String, String>,
+    policy: std::sync::Mutex<NetworkPolicy>,
+    /// Secrets by handle — memory only, and only while the grant that
+    /// named them is live (REQ-EV-0288): the moment a grant's lifetime
+    /// passes, the secret is dropped here, not merely refused.
+    secrets: std::sync::Mutex<HashMap<String, String>>,
     audit: Arc<dyn EgressAudit>,
 }
 
@@ -103,10 +115,61 @@ impl EgressBroker {
     ) -> Arc<Self> {
         Arc::new(Self {
             sandbox_id: sandbox_id.to_owned(),
-            policy,
-            secrets,
+            policy: std::sync::Mutex::new(policy),
+            secrets: std::sync::Mutex::new(secrets),
             audit,
         })
+    }
+
+    /// Hand the broker a fresh secret and lifetime for a handle it already
+    /// grants (REQ-EV-0288 "dynamic credential handles"): a task that
+    /// outlives one short lifetime is renewed rather than given a standing
+    /// secret. Returns false when the sandbox has no grant under `handle`.
+    pub fn renew(&self, handle: &str, secret: String, expires_at_ms: i64) -> bool {
+        let mut policy = self.policy.lock().unwrap_or_else(|e| e.into_inner());
+        let Some(grant) = policy.credentials.iter_mut().find(|c| c.handle == handle) else {
+            return false;
+        };
+        grant.expires_at_ms = expires_at_ms;
+        self.secrets
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(handle.to_owned(), secret);
+        true
+    }
+
+    /// What the broker will do for a virtual host: inject, refuse with a
+    /// reason, or nothing (the host is not credentialed at all). An expired
+    /// grant drops its secret here and now — it stops existing, not merely
+    /// stops being used (REQ-EV-0288).
+    fn live_credential(&self, host: &str) -> CredentialLookup {
+        let grant = {
+            let policy = self.policy.lock().unwrap_or_else(|e| e.into_inner());
+            match policy.credential_for(host) {
+                Some(g) => Box::new(g.clone()),
+                None => return CredentialLookup::NotCredentialed,
+            }
+        };
+        if !grant.live_at(now_ms()) {
+            self.secrets
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .remove(&grant.handle);
+            return CredentialLookup::Refused(
+                grant,
+                "the credential handle has expired; the secret is dropped and a fresh one must be granted",
+            );
+        }
+        let secret = self
+            .secrets
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(&grant.handle)
+            .cloned();
+        match secret {
+            Some(secret) => CredentialLookup::Ready(grant, secret),
+            None => CredentialLookup::Refused(grant, "no secret is held under the handle"),
+        }
     }
 
     /// Serve every channel the guest opens, until the receiver ends.
@@ -147,7 +210,13 @@ impl EgressBroker {
         match verb {
             "TUNNEL" => {
                 let (host, port) = split_host_port(rest, 443);
-                match self.policy.admits(&host, port) {
+                let rule = self
+                    .policy
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .admits(&host, port)
+                    .cloned();
+                match rule {
                     Some(rule) => {
                         let cap = rule.capability.clone();
                         match tokio::net::TcpStream::connect((host.as_str(), port)).await {
@@ -189,34 +258,36 @@ impl EgressBroker {
             }
             "HTTP" => {
                 let (host, port) = split_host_port(rest, 80);
-                if let Some(grant) = self.policy.credential_for(&host) {
-                    let Some(secret) = self.secrets.get(&grant.handle) else {
+                match self.live_credential(&host) {
+                    CredentialLookup::Ready(grant, secret) => {
+                        let mut inner = r.into_inner();
+                        inner.write_all(b"OK\r\n").await?;
                         self.record(
                             "credentialed",
                             &host,
-                            false,
+                            true,
                             &grant.capability,
-                            "no secret is held under the handle",
+                            &format!("forwarded to {}", grant.target_url),
                         );
+                        return forward_credentialed(inner, &grant, &secret).await;
+                    }
+                    CredentialLookup::Refused(grant, detail) => {
+                        self.record("credentialed", &host, false, &grant.capability, detail);
                         let mut inner = r.into_inner();
                         return inner
-                            .write_all(b"DENIED no secret is held under the handle\r\n")
+                            .write_all(format!("DENIED {detail}\r\n").as_bytes())
                             .await;
-                    };
-                    let mut inner = r.into_inner();
-                    inner.write_all(b"OK\r\n").await?;
-                    let grant = grant.clone();
-                    let secret = secret.clone();
-                    self.record(
-                        "credentialed",
-                        &host,
-                        true,
-                        &grant.capability,
-                        &format!("forwarded to {}", grant.target_url),
-                    );
-                    forward_credentialed(inner, &grant, &secret).await
-                } else {
-                    match self.policy.admits(&host, port) {
+                    }
+                    CredentialLookup::NotCredentialed => {}
+                }
+                {
+                    let rule = self
+                        .policy
+                        .lock()
+                        .unwrap_or_else(|e| e.into_inner())
+                        .admits(&host, port)
+                        .cloned();
+                    match rule {
                         Some(rule) => {
                             let cap = rule.capability.clone();
                             match tokio::net::TcpStream::connect((host.as_str(), port)).await {

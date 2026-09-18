@@ -133,6 +133,9 @@ pub struct Live {
     pub policy: modbit_sandbox::CompiledPolicy,
     /// The egress broker's task (M8.6), ended with the sandbox.
     pub broker: Option<tokio::task::JoinHandle<()>>,
+    /// The broker itself (M9.3, REQ-EV-0288), so a live sandbox can be
+    /// handed a fresh secret and lifetime for a handle it already grants.
+    pub egress: Option<Arc<modbit_sandbox::egress::EgressBroker>>,
 }
 
 /// The broker's audit, persisted through the store (M8.6): records are

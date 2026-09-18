@@ -1,0 +1,12 @@
+{
+ "task": "IMP-EV-0288",
+ "requirements": ["REQ-EV-0288", "QUAL-EV-0288", "docs/21 dynamic credential handles", "docs/23 Secrets"],
+ "scenarios": ["every grant the gateway provisions carries an expiry it stamped or capped, and the compiled policy the backend builds the guest from names the virtual host and holds no value", "the guest reaches the credentialed virtual host and neither its output nor its environment carries the secret", "once the lifetime passes the same request is refused, the audit names the expiry, and the secret is dropped from the broker's memory", "renewing the handle with a fresh lifetime makes the same request work again", "renewal is refused for a handle the sandbox does not already grant"],
+ "tests": ["apps/sandbox-gateway/tests/gateway.rs::qual_m8_3_the_reference_backend_passes_the_backend_contract", "apps/sandbox-gateway/tests/gateway.rs::qual_m8_3_a_firecracker_microvm_boots_the_guest_and_passes_the_backend_contract", "crates/sandbox policy::tests"],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "the five credential steps are part of every backend's conformance contract, and the suite fails if a report is missing one — a backend cannot pass without proving the handle expires and renews.",
+ "audit": "PARTIAL before: M8.6 built the injection and proved the guest never holds the secret; the grant had no lifetime, no expiry enforcement and no renewal.",
+ "limitations": "renewal is the Core's, so a stopped Core lets the handle expire; wall-clock expiry; the value is re-sent rather than rotated; the route's authorization path is covered by the Postgres-backed tenancy suite.",
+ "ci": ""
+}

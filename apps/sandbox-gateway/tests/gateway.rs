@@ -128,6 +128,13 @@ fn spec_with(ws: &Path, eg: Option<&EgressStack>) -> SandboxSpec {
                 header: "Authorization".into(),
                 value_prefix: "Bearer ".into(),
                 capability: "secret.use".into(),
+                // REQ-EV-0288: short-lived by construction. The contract
+                // expires and renews it explicitly rather than waiting.
+                expires_at_ms: std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| i64::try_from(d.as_millis()).unwrap_or(i64::MAX))
+                    .unwrap_or_default()
+                    + 5 * 60 * 1000,
             }],
         },
         None => NetworkPolicy::default(),
@@ -353,6 +360,22 @@ async fn assert_conformance_with(
         seen.iter().any(|a| a == &format!("Bearer {}", eg.secret)),
         "the credentialed target saw the injected secret: {seen:?}"
     );
+    // REQ-EV-0288: the short-lived-handle steps are part of every backend's
+    // contract, not an optional extra — a report without them is a report
+    // that did not prove the handle expires.
+    for name in [
+        "egress_credentialed",
+        "egress_secret_never_in_guest",
+        "credential_handle_is_short_lived_and_absent_from_the_policy",
+        "credential_handle_expires",
+        "credential_handle_renews",
+    ] {
+        assert!(
+            report.steps.iter().any(|s| s.name == name),
+            "the contract ran `{name}`: {:?}",
+            report.steps.iter().map(|s| s.name).collect::<Vec<_>>()
+        );
+    }
     eprintln!("{}", serde_json::to_string_pretty(&report).unwrap());
     if !report.passed() {
         dump_consoles(ws.parent().unwrap_or(ws));

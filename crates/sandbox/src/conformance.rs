@@ -683,15 +683,15 @@ pub async fn run(backend: &dyn SandboxBackend, fx: &Fixture) -> Result<Report> {
     #[cfg(feature = "client")]
     if let Some(eg) = &fx.egress {
         let audit = Arc::new(crate::egress::MemoryAudit::default());
-        let broker_task = egress_rx.take().map(|rx| {
-            let broker = crate::egress::EgressBroker::new(
-                &sandbox_id,
-                fx.spec.network.clone(),
-                eg.secrets.clone(),
-                Arc::clone(&audit) as Arc<dyn crate::egress::EgressAudit>,
-            );
-            tokio::spawn(broker.serve(rx))
-        });
+        let broker = crate::egress::EgressBroker::new(
+            &sandbox_id,
+            fx.spec.network.clone(),
+            eg.secrets.clone(),
+            Arc::clone(&audit) as Arc<dyn crate::egress::EgressAudit>,
+        );
+        let broker_task = egress_rx
+            .take()
+            .map(|rx| tokio::spawn(Arc::clone(&broker).serve(rx)));
         push(
             "egress_broker_channel",
             broker_task.is_some(),
@@ -839,6 +839,107 @@ pub async fn run(backend: &dyn SandboxBackend, fx: &Fixture) -> Result<Report> {
             "egress_audited",
             allowed_http && denied_http && denied_tunnel && credentialed,
             format!("{records:?}"),
+        );
+        // REQ-EV-0288: nothing the substrate provisions from carries the
+        // secret. The compiled policy — the artifact the backend builds the
+        // guest out of — names the virtual host and the handle and holds no
+        // value, and every grant in it is short-lived: an expiry that is
+        // set and still ahead. A guest image built from this cannot contain
+        // a standing provider secret because the policy it is built from
+        // never had one.
+        let policy_text = serde_json::to_string(&policy).unwrap_or_default();
+        let grants = &policy.spec.network.credentials;
+        let short_lived = !grants.is_empty()
+            && grants.iter().all(|g| {
+                g.expires_at_ms > 0
+                    && g.remaining_ms(
+                        std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .map(|d| i64::try_from(d.as_millis()).unwrap_or(i64::MAX))
+                            .unwrap_or_default(),
+                    ) > 0
+            });
+        push(
+            "credential_handle_is_short_lived_and_absent_from_the_policy",
+            short_lived
+                && !policy_text.contains(&eg.secret)
+                && grants.iter().all(|g| policy_text.contains(&g.virtual_host)),
+            format!(
+                "grants: {:?}",
+                grants
+                    .iter()
+                    .map(|g| (g.handle.as_str(), g.expires_at_ms))
+                    .collect::<Vec<_>>()
+            ),
+        );
+        // REQ-EV-0288: the handle the guest reaches its credential through
+        // is short-lived. Expire it and the very same request stops being
+        // injected — the secret is dropped from the broker's memory, the
+        // refusal names the expiry, and nothing of the secret is in what the
+        // guest gets back. Renewing the handle makes the same request work
+        // again: a task that outlives one lifetime is renewed rather than
+        // given a standing secret.
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| i64::try_from(d.as_millis()).unwrap_or(i64::MAX))
+            .unwrap_or_default();
+        for (handle, secret) in &eg.secrets {
+            broker.renew(handle, secret.clone(), now - 1);
+        }
+        let r = link
+            .exec(
+                &task,
+                "eff-25",
+                wire::GuestExec {
+                    argv: fetch(&eg.credentialed_url),
+                    cwd: policy.workspace_root.clone(),
+                    env: fx.exec_env.clone(),
+                    timeout_ms: 20_000,
+                    stdin: vec![],
+                },
+            )
+            .await;
+        let expired_body = r
+            .as_ref()
+            .map(|r| String::from_utf8_lossy(&r.stdout).into_owned())
+            .unwrap_or_default();
+        let expired_record = audit
+            .records(&sandbox_id)
+            .into_iter()
+            .any(|x| x.kind == "credentialed" && !x.allowed && x.detail.contains("expired"));
+        push(
+            "credential_handle_expires",
+            !expired_body.contains("\"authorized\":true")
+                && !expired_body.contains(&eg.secret)
+                && expired_record,
+            format!("{expired_body:?}"),
+        );
+        // And once expired it is really gone: renewing with a fresh
+        // lifetime is what brings it back, not waiting.
+        for (handle, secret) in &eg.secrets {
+            broker.renew(handle, secret.clone(), now + 60_000);
+        }
+        let r = link
+            .exec(
+                &task,
+                "eff-26",
+                wire::GuestExec {
+                    argv: fetch(&eg.credentialed_url),
+                    cwd: policy.workspace_root.clone(),
+                    env: fx.exec_env.clone(),
+                    timeout_ms: 20_000,
+                    stdin: vec![],
+                },
+            )
+            .await;
+        let renewed_body = r
+            .as_ref()
+            .map(|r| String::from_utf8_lossy(&r.stdout).into_owned())
+            .unwrap_or_default();
+        push(
+            "credential_handle_renews",
+            renewed_body.contains("\"authorized\":true") && !renewed_body.contains(&eg.secret),
+            format!("{renewed_body:?}"),
         );
         if let Some(t) = broker_task {
             t.abort();

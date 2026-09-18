@@ -82,6 +82,12 @@ pub async fn ensure_for_task(
                     header: "Authorization".into(),
                     value_prefix: "Bearer ".into(),
                     capability: "secret.use".into(),
+                    // REQ-EV-0288: the Core asks for a short lifetime; the
+                    // gateway caps it at the host's own ceiling. A task
+                    // that outlives it is renewed, never given a standing
+                    // secret.
+                    expires_at_ms: modbit_domain::Timestamp::now().0
+                        + crate::sandboxes::CREDENTIAL_TTL_MS,
                 },
                 token.clone(),
             ));
@@ -94,6 +100,7 @@ pub async fn ensure_for_task(
     // the same broker.
     let browser = ops.iter().any(|o| o == "browser.control")
         && custody.features.iter().any(|f| f == "browser");
+    let req_credentials: Vec<String> = credentials.iter().map(|(c, _)| c.handle.clone()).collect();
     let req = ProvisionRequest {
         tenant_id: custody.tenant_id.clone(),
         session_id: task.session_id.to_string(),
@@ -126,6 +133,44 @@ pub async fn ensure_for_task(
         .lock()
         .await
         .insert(task.task_id, Arc::clone(&handle));
+    // REQ-EV-0288: the sandbox holds a short-lived handle, so a task that
+    // outlives one lifetime is renewed rather than given a standing secret.
+    // The renewal stops when the sandbox is released — and with it the
+    // handle expires on its own, so a leaked sandbox loses its credential
+    // instead of keeping it.
+    if !req_credentials.is_empty() {
+        let handles: Vec<String> = req_credentials.clone();
+        let core = Arc::clone(core);
+        let sandbox = Arc::clone(&handle);
+        let task_id = task.task_id;
+        tokio::spawn(async move {
+            let every = std::time::Duration::from_millis(
+                u64::try_from(CREDENTIAL_TTL_MS / 2)
+                    .unwrap_or(60_000)
+                    .max(1_000),
+            );
+            loop {
+                tokio::time::sleep(every).await;
+                if !core.tools.sandboxes.lock().await.contains_key(&task_id) {
+                    return;
+                }
+                let Some(token) = core.tools.forge.get().and_then(|f| f.token.clone()) else {
+                    // The Core no longer holds the secret: nothing to renew,
+                    // and the sandbox's handle expires on its own.
+                    return;
+                };
+                let until = modbit_domain::Timestamp::now().0 + CREDENTIAL_TTL_MS;
+                for handle in &handles {
+                    if let Err(e) = sandbox.renew_credential(handle, &token, until).await {
+                        eprintln!(
+                            "modbit-core: renewing the sandbox credential `{handle}` failed: {e}"
+                        );
+                        return;
+                    }
+                }
+            }
+        });
+    }
     if let Ok(mut b) = core.tools.browserless.lock() {
         if id.browser {
             b.remove(&task.task_id);
@@ -178,6 +223,11 @@ pub async fn ensure_for_task(
 }
 
 /// Destroy the task's sandbox once the task has ended; a no-op otherwise.
+/// How long a credential handle the Core grants a sandbox lives
+/// (REQ-EV-0288). The gateway caps it at its own ceiling; a longer task
+/// renews rather than holding a standing secret.
+pub const CREDENTIAL_TTL_MS: i64 = 10 * 60 * 1000;
+
 pub async fn release_if_ended(core: &Arc<Core>, task_id: TaskId, actor: &Actor) {
     let task = match core.store.lock().await.task(&task_id) {
         Ok(Some(t)) => t,

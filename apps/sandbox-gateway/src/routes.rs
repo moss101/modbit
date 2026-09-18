@@ -101,6 +101,10 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/v1/sandboxes/{sandbox_id}", get(record).delete(destroy))
         .route("/v1/sandboxes/{sandbox_id}/calls", post(call))
         .route("/v1/sandboxes/{sandbox_id}/relink", post(relink))
+        .route(
+            "/v1/sandboxes/{sandbox_id}/credentials",
+            post(renew_credential),
+        )
         .route("/v1/sandboxes/{sandbox_id}/egress", get(egress))
         .route("/v1/sandboxes/{sandbox_id}/browser/cdp", get(browser_cdp))
         .with_state(state)
@@ -201,6 +205,16 @@ async fn owned(
     }
 }
 
+/// How long a credential handle lives when the provisioner does not say
+/// (REQ-EV-0288: short-lived by construction). `MODBIT_SANDBOX_CREDENTIAL_TTL_MS`
+/// overrides it; a provisioner may always ask for less.
+fn default_credential_ttl_ms() -> i64 {
+    std::env::var("MODBIT_SANDBOX_CREDENTIAL_TTL_MS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(15 * 60 * 1000)
+}
+
 /// The credential grants of a provision body, with the secrets they carry
 /// (memory only from here on).
 fn credentials_of(
@@ -220,6 +234,16 @@ fn credentials_of(
             ) else {
                 continue;
             };
+            // REQ-EV-0288: a handle that carries a secret is short-lived
+            // by construction. A provisioner may ask for less than the
+            // host's default; it cannot ask for a standing secret.
+            let asked = c["expires_at_ms"].as_i64().unwrap_or(0);
+            let ceiling = now_ms() + default_credential_ttl_ms();
+            let expires_at_ms = if asked > 0 {
+                asked.min(ceiling)
+            } else {
+                ceiling
+            };
             grants.push(CredentialGrant {
                 handle: handle.to_owned(),
                 virtual_host: virtual_host.to_owned(),
@@ -227,6 +251,7 @@ fn credentials_of(
                 header: c["header"].as_str().unwrap_or("Authorization").to_owned(),
                 value_prefix: c["value_prefix"].as_str().unwrap_or("Bearer ").to_owned(),
                 capability: c["capability"].as_str().unwrap_or("secret.use").to_owned(),
+                expires_at_ms,
             });
             if let Some(secret) = c["secret"].as_str() {
                 secrets.insert(handle.to_owned(), secret.to_owned());
@@ -378,16 +403,20 @@ async fn provision(
         .lock()
         .await
         .insert(sandbox_id.to_string(), tenant);
-    let broker = provisioned.egress.take().map(|rx| {
-        let (_, secrets) = credentials_of(&body);
-        let broker = modbit_sandbox::egress::EgressBroker::new(
-            &sandbox_id.to_string(),
-            spec.network.clone(),
-            secrets,
-            Arc::clone(&st.audit) as Arc<dyn modbit_sandbox::egress::EgressAudit>,
-        );
-        tokio::spawn(broker.serve(rx))
-    });
+    let (egress, broker) = match provisioned.egress.take() {
+        Some(rx) => {
+            let (_, secrets) = credentials_of(&body);
+            let broker = modbit_sandbox::egress::EgressBroker::new(
+                &sandbox_id.to_string(),
+                spec.network.clone(),
+                secrets,
+                Arc::clone(&st.audit) as Arc<dyn modbit_sandbox::egress::EgressAudit>,
+            );
+            let task = tokio::spawn(Arc::clone(&broker).serve(rx));
+            (Some(broker), Some(task))
+        }
+        None => (None, None),
+    };
     let link: GuestLink<Channel> = match GuestLink::admit(
         provisioned.channel,
         &sandbox_id.to_string(),
@@ -429,6 +458,7 @@ async fn provision(
             hello: hello.clone(),
             policy: policy.clone(),
             broker,
+            egress,
         }),
     );
     Ok((
@@ -919,6 +949,61 @@ async fn egress(
         "records": live.iter().map(|r| json!({"kind": r.kind, "destination": r.destination, "allowed": r.allowed, "capability": r.capability, "detail": r.detail, "at_ms": r.at_ms})).collect::<Vec<_>>(),
         "stored": stored.len(),
     })))
+}
+
+/// `POST /v1/sandboxes/{id}/credentials {tenant_id, handle, secret, expires_at_ms}`
+/// (M9.3, REQ-EV-0288): hand a live sandbox a fresh secret and lifetime for
+/// a handle it already grants. Not journaled and never echoed: the value
+/// crosses once, is held in the broker's memory and reaches no guest. A
+/// handle the sandbox does not grant is refused — this renews, it never
+/// widens what the sandbox may reach.
+async fn renew_credential(
+    State(st): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(body): Json<Value>,
+) -> ApiResult<Json<Value>> {
+    let w = worker(&st, &headers)?;
+    let tenant = tenant_of(&body)?;
+    let sandbox = sandbox_id_of(&id)?;
+    let (_, live) = owned(&st, tenant, &w.worker_id, sandbox).await?;
+    let handle = body["handle"]
+        .as_str()
+        .unwrap_or_default()
+        .trim()
+        .to_owned();
+    let secret = body["secret"].as_str().unwrap_or_default().to_owned();
+    if handle.is_empty() || secret.is_empty() {
+        return Err(ApiError::new(
+            StatusCode::BAD_REQUEST,
+            "BAD_REQUEST",
+            "handle and secret are required",
+        ));
+    }
+    let asked = body["expires_at_ms"].as_i64().unwrap_or(0);
+    let ceiling = now_ms() + default_credential_ttl_ms();
+    let expires_at_ms = if asked > 0 {
+        asked.min(ceiling)
+    } else {
+        ceiling
+    };
+    let Some(broker) = &live.egress else {
+        return Err(ApiError::new(
+            StatusCode::CONFLICT,
+            "NO_EGRESS_BROKER",
+            "this sandbox has no egress broker",
+        ));
+    };
+    if !broker.renew(&handle, secret, expires_at_ms) {
+        return Err(ApiError::new(
+            StatusCode::NOT_FOUND,
+            "UNKNOWN_CREDENTIAL_HANDLE",
+            format!("sandbox {sandbox} grants no credential under `{handle}`"),
+        ));
+    }
+    Ok(Json(
+        json!({"sandbox_id": sandbox.to_string(), "handle": handle, "expires_at_ms": expires_at_ms}),
+    ))
 }
 
 /// `POST /v1/sandboxes/{id}/relink {tenant_id}`: replace a lost link to a

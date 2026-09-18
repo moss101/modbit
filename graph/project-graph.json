@@ -23243,8 +23243,29 @@
    "milestone": "M9",
    "qual": "QUAL-EV-0288",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "WIRED",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-18T18:24:54Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audited: PARTIAL. M8.6 built the broker injection — the guest addresses a virtual host over plain HTTP through its proxy, the broker forwards over TLS with the secret it holds under the handle, and the backend conformance contract already proves the guest never held it (egress_credentialed, egress_secret_never_in_guest) and that the sandbox's own view lists virtual hosts, never values. What REQ-EV-0288 asks for beyond that is SHORT-LIVED: a grant has no lifetime, a secret handed to the gateway lives as long as the sandbox, and there is no way to hand a live sandbox a fresh one."
+    },
+    {
+     "at": "2026-09-18T18:38:29Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "CredentialGrant.expires_at_ms with live_at/remaining_ms; the broker holds its policy and secrets behind a lock, refuses an expired grant and drops its secret, and renews; the gateway stamps and caps every grant's lifetime and serves POST /v1/sandboxes/{id}/credentials; the client's renew_credential; the Core's CREDENTIAL_TTL_MS and the renewal task that stops with the sandbox"
+    },
+    {
+     "at": "2026-09-18T18:38:29Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "three new steps in the backend conformance contract (short-lived and absent from the policy, expires, renews) that every backend must pass, and the gateway suite asserts a report that omits one is not a pass"
+    }
+   ],
+   "status_changed_on": "2026-09-18T18:38:29Z"
   },
   {
    "id": "IMP-EV-0289",
