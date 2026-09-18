@@ -1,12 +1,30 @@
 {
  "task": "IMP-EV-0187",
- "requirements": ["REQ-EV-0187", "QUAL-EV-0187", "docs/58 MEDIA-E2E-006", "DR-M5-001"],
- "scenarios": ["a real MCP server returns a caption and a real PNG; the hub decodes and bounds the block and the Media Pipeline scans, budgets and strips it", "a vision-capable model receives the caption in the tool message and the egress copy in the follow-up user message that names the call", "the PNG's instruction-shaped metadata comment is gone from what the model receives", "the envelope carries the image's own dimensions and separate original and egress digests", "no event on the task's log carries the image bytes"],
- "tests": ["services/modbit-core/tests/surface_protocol.rs::qual_ev_0187_an_mcp_image_result_reaches_a_vision_capable_model_through_the_media_pipeline", "crates/mcp result::tests"],
- "batch_commits": [],
- "runs": [],
+ "requirements": [
+  "REQ-EV-0187",
+  "QUAL-EV-0187",
+  "docs/58 MEDIA-E2E-006",
+  "DR-M5-001"
+ ],
+ "scenarios": [
+  "a real MCP server returns a caption and a real PNG; the hub decodes and bounds the block and the Media Pipeline scans, budgets and strips it",
+  "a vision-capable model receives the caption in the tool message and the egress copy in the follow-up user message that names the call",
+  "the PNG's instruction-shaped metadata comment is gone from what the model receives",
+  "the envelope carries the image's own dimensions and separate original and egress digests",
+  "no event on the task's log carries the image bytes"
+ ],
+ "tests": [
+  "services/modbit-core/tests/surface_protocol.rs::qual_ev_0187_an_mcp_image_result_reaches_a_vision_capable_model_through_the_media_pipeline",
+  "crates/mcp result::tests"
+ ],
+ "batch_commits": [
+  "35a6a41"
+ ],
+ "runs": [
+  "gha-35371697634"
+ ],
  "proof": "a real server process, a real PNG on the wire, the real Media Pipeline and a scripted vision-capable endpoint whose received request is inspected.",
  "audit": "PARTIAL before: the Media Pipeline and the split follow-up representation existed (M2.10) but read only the single-media shape fs.read emits; an MCP image block was typed by the gateway and went no further.",
  "limitations": "audio is normalized but no routed model takes it; an embedded binary resource is bounded but not put through the pipeline; the media budget is the host default.",
- "ci": ""
+ "ci": "main CI green on macOS, Linux and Windows (run 35371697634); branch run 35369965155"
 }

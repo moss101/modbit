@@ -15491,8 +15491,14 @@
    "milestone": "M9",
    "qual": "QUAL-EV-0128",
    "source": "docs/41",
-   "status": "WIRED",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-35371697634",
+    "commit:35a6a41",
+    "test:services/modbit-core/tests/surface_protocol.rs::qual_ev_0128_layered_mcp_configuration_resolves_deterministically_and_a_credential_never_reaches_the_model",
+    "artifact:evidence/m9/IMP-EV-0128/TASK_CARD.md",
+    "artifact:evidence/m9/IMP-EV-0128/evidence.json"
+   ],
    "notes": [
     {
      "at": "2026-09-18T15:39:43Z",
@@ -15511,9 +15517,27 @@
      "from": "IMPLEMENTING",
      "to": "WIRED",
      "note": "external.list reports each server's requires, provenance and the configuration's refusals; external.call refuses an unleased server before anything is spawned and reports what was redacted; the pinned configuration is released when the task ends"
+    },
+    {
+     "at": "2026-09-18T17:27:51Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "qualification passes locally against real MCP server processes; branch CI green on macOS, Linux and Windows (run 35369965155)"
+    },
+    {
+     "at": "2026-09-18T17:27:51Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "main CI green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-18T17:28:01Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "MCP management and scoped auth complete: the layered configuration decides which servers a task sees, the task's lease decides which of them it may reach, and a credential is used by a server but never repeated back into the model's context"
     }
    ],
-   "status_changed_on": "2026-09-18T16:21:38Z"
+   "status_changed_on": "2026-09-18T17:28:01Z"
   },
   {
    "id": "IMP-EV-0129",
@@ -18506,8 +18530,14 @@
    "milestone": "M9",
    "qual": "QUAL-EV-0187",
    "source": "docs/41",
-   "status": "WIRED",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-35371697634",
+    "commit:35a6a41",
+    "test:services/modbit-core/tests/surface_protocol.rs::qual_ev_0187_an_mcp_image_result_reaches_a_vision_capable_model_through_the_media_pipeline",
+    "artifact:evidence/m9/IMP-EV-0187/TASK_CARD.md",
+    "artifact:evidence/m9/IMP-EV-0187/evidence.json"
+   ],
    "notes": [
     {
      "at": "2026-09-18T16:25:01Z",
@@ -18526,9 +18556,27 @@
      "from": "IMPLEMENTING",
      "to": "WIRED",
      "note": "the model receives the caption in the tool message and the egress copy in the follow-up that names the call, through the same REQ-EV-0188 representation a workspace media read uses"
+    },
+    {
+     "at": "2026-09-18T17:27:51Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "qualification passes locally against real MCP server processes; branch CI green on macOS, Linux and Windows (run 35369965155)"
+    },
+    {
+     "at": "2026-09-18T17:27:51Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "same run"
+    },
+    {
+     "at": "2026-09-18T17:28:01Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "rich MCP media complete: an image block goes through the same Media Pipeline a workspace read uses and reaches a vision-capable model as the egress copy"
     }
    ],
-   "status_changed_on": "2026-09-18T16:31:02Z"
+   "status_changed_on": "2026-09-18T17:28:01Z"
   },
   {
    "id": "IMP-EV-0188",
