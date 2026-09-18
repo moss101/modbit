@@ -191,6 +191,42 @@ impl Tool for ExternalCallTool {
             };
             match hub.call(call).await {
                 Ok(result) => {
+                    // M9.4 (REQ-EV-0187): an image or audio block a server
+                    // returned goes through the Media Pipeline like any
+                    // other media the host reads — scanned, budgeted,
+                    // metadata-stripped, stored — so what reaches a
+                    // vision-capable model is the egress copy and never the
+                    // server's bytes. A block the pipeline refuses (over
+                    // budget, not the type it claims) is reported as
+                    // refused and no envelope is made for it.
+                    let mut media_parts: Vec<Value> = Vec::new();
+                    let mut media_refused: Vec<Value> = Vec::new();
+                    for part in &result.parts {
+                        let (bytes, label) = match part {
+                            Part::Image { bytes, .. } => (bytes, "image"),
+                            Part::Audio { bytes, .. } => (bytes, "audio"),
+                            _ => continue,
+                        };
+                        let source = format!("external.{server}.{tool}");
+                        let req = crate::media::ReadRequest {
+                            bytes,
+                            source: &source,
+                            workspace_revision: None,
+                            task_id: Some(ctx.task_id),
+                            pages: None,
+                            region: None,
+                            budget: crate::media::default_budget(),
+                        };
+                        match crate::media::read(&req, ctx.sink.as_ref()) {
+                            Ok(m) => media_parts
+                                .push(serde_json::to_value(&m.envelope).unwrap_or(Value::Null)),
+                            Err(e) => media_refused.push(json!({
+                                "kind": label,
+                                "code": e.code,
+                                "reason": e.message,
+                            })),
+                        }
+                    }
                     let parts: Vec<Value> = result
                         .parts
                         .iter()
@@ -231,6 +267,8 @@ impl Tool for ExternalCallTool {
                         "text": result.text(),
                         "parts": parts,
                         "refused_parts": result.dropped,
+                        "media_parts": media_parts,
+                        "refused_media": media_refused,
                         "structured": result.structured,
                         // REQ-EV-0128: a server handed a credential may not
                         // repeat it back into the model's context.

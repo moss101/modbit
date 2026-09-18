@@ -18506,8 +18506,29 @@
    "milestone": "M9",
    "qual": "QUAL-EV-0187",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "WIRED",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-18T16:25:01Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audited: the Media Pipeline (M2.10, IMP-EV-0188) already scans, budgets, strips metadata and produces the egress copy a vision-capable model receives, and the Core's runtime turns a tool result's media into content parts — but only from the single-media shape fs.read emits. An MCP result's image parts were parsed and typed by the gateway (IMP-EV-0104) and stopped there: no envelope, no egress copy, nothing reaching a model. DR-M5-001 deferred this task to M9 for exactly that reason."
+    },
+    {
+     "at": "2026-09-18T16:31:02Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "crates/tools/src/external.rs runs each image/audio block through crate::media::read and emits media_parts/refused_media; services/modbit-core/src/runtime.rs reads media_parts through the extracted envelope_ref so one result may carry several images; the test server returns a real PNG with an instruction-shaped metadata comment"
+    },
+    {
+     "at": "2026-09-18T16:31:02Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "the model receives the caption in the tool message and the egress copy in the follow-up that names the call, through the same REQ-EV-0188 representation a workspace media read uses"
+    }
+   ],
+   "status_changed_on": "2026-09-18T16:31:02Z"
   },
   {
    "id": "IMP-EV-0188",

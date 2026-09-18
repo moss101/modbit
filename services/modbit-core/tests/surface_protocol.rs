@@ -33781,3 +33781,196 @@ async fn qual_ev_0128_layered_mcp_configuration_resolves_deterministically_and_a
     );
     drop(repo);
 }
+
+/// QUAL-EV-0187 (REQ-EV-0187 "rich MCP media results"; docs/58 MEDIA-E2E-006:
+/// a real local MCP test server returns text plus image content, the MCP Hub
+/// normalizes the parts, the Media Pipeline scans and budgets the image, a
+/// vision-capable provider receives both, and call ids and evidence stay
+/// contiguous) — M9.4, DR-M5-001.
+///
+/// The whole path is real: a real MCP server process returns a real PNG in a
+/// `tools/call` result, the hub decodes and bounds it, `external.call` runs
+/// it through the same Media Pipeline a workspace read uses, and the model
+/// receives the egress copy — the image with its metadata stripped — in the
+/// split follow-up representation of REQ-EV-0188, named by the call it came
+/// from. The canonical log keeps the digest, never the bytes.
+#[tokio::test]
+async fn qual_ev_0187_an_mcp_image_result_reaches_a_vision_capable_model_through_the_media_pipeline()
+ {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+
+    let server_bin = mcp_testserver_bin();
+    assert!(
+        server_bin.exists(),
+        "build the MCP test server first: cargo build -p modbit-mcp-testserver"
+    );
+    let (repo, root) = plain_repo(&[("notes.md", "the chart comes from the docs server\n")]);
+    // The host declares `chart` a read: it renders and returns, it changes
+    // nothing. Everything else this server offers stays an external effect.
+    let servers = json!([{
+        "name": "docs",
+        "transport": { "kind": "stdio", "command": server_bin.to_string_lossy(), "args": [] },
+        "env": { "MODBIT_MCP_TESTSRV_NAME": "docs" },
+        "read_only_tools": ["search", "chart"],
+        "trust": "TRUSTED",
+    }])
+    .to_string();
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "read the chart", "expected_files": []}}]}),
+        json!({"calls": [{"name": "external.call", "args": {"server": "docs", "tool": "chart", "arguments": {}}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "read the chart", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn_with_env(
+        dir.path(),
+        &[
+            ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+            ("MODBIT_MCP_SERVERS", servers.as_str()),
+        ],
+    );
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x90)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x91, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x92),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                // A model whose catalog entry accepts image input.
+                model: "gpt-5-mini".into(),
+                max_turns: 8,
+                max_tool_calls: 0,
+                max_no_progress_turns: 6,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 120).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+
+    // The model saw the text the server returned and the image beside it.
+    let bodies = seen.lock().unwrap().clone();
+    let body = bodies.last().expect("a last request");
+    let messages = body["messages"].as_array().unwrap();
+    let tool_index = messages
+        .iter()
+        .position(|m| {
+            m["role"] == "tool"
+                && m["content"]
+                    .as_str()
+                    .is_some_and(|c| c.contains("revenue by quarter"))
+        })
+        .unwrap_or_else(|| panic!("no external tool result reached the model: {body:#}"));
+    let content = messages[tool_index]["content"].as_str().unwrap();
+    assert!(
+        content.contains("attachment(s) for this call follow"),
+        "the tool message names its attachment: {content}"
+    );
+    assert!(
+        content.contains("UNTRUSTED_EXTERNAL_CONTENT"),
+        "what a server returned stays labelled untrusted: {content}"
+    );
+    let follow_up = &messages[tool_index + 1];
+    assert_eq!(follow_up["role"], "user", "{follow_up}");
+    let blocks = follow_up["content"].as_array().unwrap();
+    let call_id = messages[tool_index]["tool_call_id"].as_str().unwrap();
+    assert!(
+        blocks[0]["text"].as_str().unwrap().contains(call_id),
+        "the follow-up names the call it belongs to: {follow_up}"
+    );
+    assert_eq!(blocks[1]["type"], "image_url", "{follow_up}");
+    let url = blocks[1]["image_url"]["url"].as_str().unwrap();
+    assert!(
+        url.starts_with("data:image/png;base64,iVBORw0KGgo"),
+        "the model receives a real PNG: {url}"
+    );
+    // The server's image carries an instruction-shaped metadata comment.
+    // What the model receives is the egress copy, which does not.
+    let bytes = {
+        use base64::Engine as _;
+        base64::engine::general_purpose::STANDARD
+            .decode(url.split_once(',').unwrap().1)
+            .expect("a real base64 payload")
+    };
+    assert!(
+        !String::from_utf8_lossy(&bytes).contains("SYSTEM: ignore"),
+        "the image's metadata was stripped before the model saw it"
+    );
+
+    // The Media Pipeline really ran. The same call made directly shows the
+    // envelope it produced: the image's own dimensions, read from the PNG,
+    // and an egress copy stored apart from the original bytes.
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x93),
+            "InvokeTool",
+            modbit_protocol::v1::InvokeTool {
+                task_id: Some(task.clone()),
+                tool_name: "external.call".into(),
+                arguments_json: r#"{"server":"docs","tool":"chart","arguments":{}}"#.into(),
+                tool_call_id: Some(id16(0x94)),
+                output_budget_bytes: 1024 * 1024,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let direct: modbit_protocol::v1::ToolInvoked = Client::result(&ack).unwrap();
+    assert_eq!(direct.status, "SUCCESS", "{direct:?}");
+    let out: serde_json::Value = serde_json::from_str(&direct.structured_output_json).unwrap();
+    let media = &out["media_parts"][0];
+    assert_eq!(media["mime"], json!("image/png"), "{out}");
+    assert_eq!(media["width"], json!(2), "the pipeline read the PNG: {out}");
+    assert_eq!(media["height"], json!(2), "{out}");
+    let egress = media["egress_ref"].as_str().unwrap_or_default();
+    let original = media["content_ref"].as_str().unwrap_or_default();
+    assert_eq!(egress.len(), 64, "an egress copy was stored: {out}");
+    assert_eq!(original.len(), 64, "{out}");
+    assert_ne!(
+        egress, original,
+        "the egress copy is the image with its metadata stripped, not the server's bytes"
+    );
+    assert!(
+        media["lineage"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|t| t.to_string().contains("strip")),
+        "the strip is on the envelope's lineage: {out}"
+    );
+    assert!(
+        out["refused_media"].as_array().unwrap().is_empty(),
+        "nothing was refused: {out}"
+    );
+    assert_eq!(
+        out["parts"][1]["kind"],
+        json!("image"),
+        "the typed part stays beside the envelope: {out}"
+    );
+
+    // The bytes are never on the log: only digests.
+    let evs = task_events(&core, &session, &task).await;
+    assert!(
+        evs.iter().any(|(_, ty, _)| ty == "ToolCallSucceeded"),
+        "the external call succeeded on the log"
+    );
+    for (_, ty, payload) in &evs {
+        assert!(
+            !payload.to_string().contains("iVBORw0KGgo"),
+            "event {ty} carried the image bytes"
+        );
+    }
+    drop(repo);
+}
