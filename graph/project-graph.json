@@ -9890,9 +9890,12 @@
    "milestone": "M8",
    "qual": "QUAL-EV-0021",
    "source": "docs/41",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
-    "test:services/modbit-core/tests/surface_protocol.rs::qual_ev_0021_0062_0146_environment_revision_is_pinned_applied_and_rebuilt_explicitly"
+    "test:services/modbit-core/tests/surface_protocol.rs::qual_ev_0021_0062_0146_environment_revision_is_pinned_applied_and_rebuilt_explicitly",
+    "run:35308001565",
+    "commit:7dc5643",
+    "artifact:evidence/m8/IMP-EV-0021/TASK_CARD.md"
    ],
    "notes": [
     {
@@ -9918,9 +9921,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "local: qualification test green against a real Core, real sh, restart under the run"
+    },
+    {
+     "at": "2026-09-18T05:04:31Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on main run 35308001565 at 7dc5643"
+    },
+    {
+     "at": "2026-09-18T05:04:31Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: hosted CI green on main run 35308001565 at 7dc5643; card retained"
     }
    ],
-   "status_changed_on": "2026-09-18T02:50:23Z"
+   "status_changed_on": "2026-09-18T05:04:31Z"
   },
   {
    "id": "IMP-EV-0022",
@@ -10009,8 +10024,52 @@
    "milestone": "M8",
    "qual": "QUAL-EV-0024",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:apps/cloud-worker/tests/cloud_worker.rs::qual_ev_0024_the_workers_outbound_link_proves_identity_reconnect_revocation_and_tenant_isolation",
+    "run:35308001565",
+    "commit:7dc5643",
+    "artifact:evidence/m8/IMP-EV-0024/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-18T05:04:31Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: see card (landed on main at 7dc5643)"
+    },
+    {
+     "at": "2026-09-18T05:04:31Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented and landed on main at 7dc5643"
+    },
+    {
+     "at": "2026-09-18T05:04:31Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring in place"
+    },
+    {
+     "at": "2026-09-18T05:04:31Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "qualification test green in the cloud suite"
+    },
+    {
+     "at": "2026-09-18T05:04:32Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on main run 35308001565 at 7dc5643"
+    },
+    {
+     "at": "2026-09-18T05:04:32Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: hosted CI green on main run 35308001565 at 7dc5643; card retained"
+    }
+   ],
+   "status_changed_on": "2026-09-18T05:04:32Z"
   },
   {
    "id": "IMP-EV-0025",
@@ -11762,9 +11821,12 @@
    "milestone": "M8",
    "qual": "QUAL-EV-0062",
    "source": "docs/41",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
-    "test:services/modbit-core/tests/surface_protocol.rs::qual_ev_0021_0062_0146_environment_revision_is_pinned_applied_and_rebuilt_explicitly"
+    "test:services/modbit-core/tests/surface_protocol.rs::qual_ev_0021_0062_0146_environment_revision_is_pinned_applied_and_rebuilt_explicitly",
+    "run:35308001565",
+    "commit:7dc5643",
+    "artifact:evidence/m8/IMP-EV-0062/TASK_CARD.md"
    ],
    "notes": [
     {
@@ -11790,9 +11852,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "local: qualification test green against a real Core, real sh, restart under the run"
+    },
+    {
+     "at": "2026-09-18T05:04:31Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on main run 35308001565 at 7dc5643"
+    },
+    {
+     "at": "2026-09-18T05:04:31Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: hosted CI green on main run 35308001565 at 7dc5643; card retained"
     }
    ],
-   "status_changed_on": "2026-09-18T02:50:24Z"
+   "status_changed_on": "2026-09-18T05:04:31Z"
   },
   {
    "id": "IMP-EV-0063",
@@ -12313,8 +12387,52 @@
    "milestone": "M8",
    "qual": "QUAL-EV-0072",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:apps/cloud-worker/tests/cloud_worker.rs::qual_ev_0072_capabilities_are_negotiated_before_dispatch_an_older_worker_gets_a_compatible_projection_or_the_task_is_refused",
+    "run:35308001565",
+    "commit:7dc5643",
+    "artifact:evidence/m8/IMP-EV-0072/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-18T05:04:31Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: see card (landed on main at 7dc5643)"
+    },
+    {
+     "at": "2026-09-18T05:04:31Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented and landed on main at 7dc5643"
+    },
+    {
+     "at": "2026-09-18T05:04:31Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring in place"
+    },
+    {
+     "at": "2026-09-18T05:04:31Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "qualification test green in the cloud suite"
+    },
+    {
+     "at": "2026-09-18T05:04:32Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on main run 35308001565 at 7dc5643"
+    },
+    {
+     "at": "2026-09-18T05:04:32Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: hosted CI green on main run 35308001565 at 7dc5643; card retained"
+    }
+   ],
+   "status_changed_on": "2026-09-18T05:04:32Z"
   },
   {
    "id": "IMP-EV-0073",
@@ -12386,9 +12504,12 @@
    "milestone": "M8",
    "qual": "QUAL-EV-0075",
    "source": "docs/41",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
-    "test:apps/desktop/e2e/workers.spec.ts"
+    "test:apps/desktop/e2e/workers.spec.ts",
+    "run:35308001565",
+    "commit:7dc5643",
+    "artifact:evidence/m8/IMP-EV-0075/TASK_CARD.md"
    ],
    "notes": [
     {
@@ -12414,9 +12535,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "local: the three qualification tests green in the real app against the real Core (22/22 desktop e2e)"
+    },
+    {
+     "at": "2026-09-18T05:04:31Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on main run 35308001565 at 7dc5643"
+    },
+    {
+     "at": "2026-09-18T05:04:31Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: hosted CI green on main run 35308001565 at 7dc5643; card retained"
     }
    ],
-   "status_changed_on": "2026-09-18T03:05:36Z"
+   "status_changed_on": "2026-09-18T05:04:31Z"
   },
   {
    "id": "IMP-EV-0076",
@@ -12429,9 +12562,12 @@
    "milestone": "M8",
    "qual": "QUAL-EV-0076",
    "source": "docs/41",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
-    "test:apps/desktop/e2e/workers.spec.ts"
+    "test:apps/desktop/e2e/workers.spec.ts",
+    "run:35308001565",
+    "commit:7dc5643",
+    "artifact:evidence/m8/IMP-EV-0076/TASK_CARD.md"
    ],
    "notes": [
     {
@@ -12457,9 +12593,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "local: the three qualification tests green in the real app against the real Core (22/22 desktop e2e)"
+    },
+    {
+     "at": "2026-09-18T05:04:32Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on main run 35308001565 at 7dc5643"
+    },
+    {
+     "at": "2026-09-18T05:04:32Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: hosted CI green on main run 35308001565 at 7dc5643; card retained"
     }
    ],
-   "status_changed_on": "2026-09-18T03:05:37Z"
+   "status_changed_on": "2026-09-18T05:04:32Z"
   },
   {
    "id": "IMP-EV-0077",
@@ -12715,9 +12863,12 @@
    "milestone": "M8",
    "qual": "QUAL-EV-0081",
    "source": "docs/41",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
-    "test:apps/desktop/e2e/workers.spec.ts"
+    "test:apps/desktop/e2e/workers.spec.ts",
+    "run:35308001565",
+    "commit:7dc5643",
+    "artifact:evidence/m8/IMP-EV-0081/TASK_CARD.md"
    ],
    "notes": [
     {
@@ -12743,9 +12894,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "local: the three qualification tests green in the real app against the real Core (22/22 desktop e2e)"
+    },
+    {
+     "at": "2026-09-18T05:04:32Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on main run 35308001565 at 7dc5643"
+    },
+    {
+     "at": "2026-09-18T05:04:32Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: hosted CI green on main run 35308001565 at 7dc5643; card retained"
     }
    ],
-   "status_changed_on": "2026-09-18T03:05:37Z"
+   "status_changed_on": "2026-09-18T05:04:32Z"
   },
   {
    "id": "IMP-EV-0082",
@@ -14174,8 +14337,52 @@
    "milestone": "M8",
    "qual": "QUAL-EV-0109",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:apps/cloud-worker/tests/cloud_worker.rs::qual_ev_0109_the_same_tool_fixture_runs_locally_and_in_the_cloud_with_equivalent_effect_and_event_semantics",
+    "run:35308001565",
+    "commit:7dc5643",
+    "artifact:evidence/m8/IMP-EV-0109/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-18T05:04:30Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: see card (landed on main at 7dc5643)"
+    },
+    {
+     "at": "2026-09-18T05:04:30Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented and landed on main at 7dc5643"
+    },
+    {
+     "at": "2026-09-18T05:04:30Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring in place"
+    },
+    {
+     "at": "2026-09-18T05:04:30Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "qualification test green in the cloud suite"
+    },
+    {
+     "at": "2026-09-18T05:04:32Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on main run 35308001565 at 7dc5643"
+    },
+    {
+     "at": "2026-09-18T05:04:32Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: hosted CI green on main run 35308001565 at 7dc5643; card retained"
+    }
+   ],
+   "status_changed_on": "2026-09-18T05:04:32Z"
   },
   {
    "id": "IMP-EV-0110",
@@ -15934,9 +16141,12 @@
    "milestone": "M8",
    "qual": "QUAL-EV-0146",
    "source": "docs/41",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
-    "test:services/modbit-core/tests/surface_protocol.rs::qual_ev_0021_0062_0146_environment_revision_is_pinned_applied_and_rebuilt_explicitly"
+    "test:services/modbit-core/tests/surface_protocol.rs::qual_ev_0021_0062_0146_environment_revision_is_pinned_applied_and_rebuilt_explicitly",
+    "run:35308001565",
+    "commit:7dc5643",
+    "artifact:evidence/m8/IMP-EV-0146/TASK_CARD.md"
    ],
    "notes": [
     {
@@ -15962,9 +16172,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "local: qualification test green against a real Core, real sh, restart under the run"
+    },
+    {
+     "at": "2026-09-18T05:04:31Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on main run 35308001565 at 7dc5643"
+    },
+    {
+     "at": "2026-09-18T05:04:31Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: hosted CI green on main run 35308001565 at 7dc5643; card retained"
     }
    ],
-   "status_changed_on": "2026-09-18T02:50:24Z"
+   "status_changed_on": "2026-09-18T05:04:31Z"
   },
   {
    "id": "IMP-EV-0147",
@@ -17484,8 +17706,52 @@
    "milestone": "M8",
    "qual": "QUAL-EV-0176",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:apps/cloud-worker/tests/cloud_worker.rs::qual_m8_7_a_local_task_hands_off_to_the_cloud_and_continues_from_its_checkpoint_in_a_sandbox",
+    "run:35308001565",
+    "commit:7dc5643",
+    "artifact:evidence/m8/IMP-EV-0176/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-18T05:04:30Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: see card (landed on main at 7dc5643)"
+    },
+    {
+     "at": "2026-09-18T05:04:30Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented and landed on main at 7dc5643"
+    },
+    {
+     "at": "2026-09-18T05:04:30Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring in place"
+    },
+    {
+     "at": "2026-09-18T05:04:30Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "qualification test green in the cloud suite"
+    },
+    {
+     "at": "2026-09-18T05:04:32Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on main run 35308001565 at 7dc5643"
+    },
+    {
+     "at": "2026-09-18T05:04:32Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: hosted CI green on main run 35308001565 at 7dc5643; card retained"
+    }
+   ],
+   "status_changed_on": "2026-09-18T05:04:32Z"
   },
   {
    "id": "IMP-EV-0177",
@@ -20092,8 +20358,52 @@
    "milestone": "M8",
    "qual": "QUAL-EV-0233",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:apps/sandbox-gateway/tests/gateway.rs",
+    "run:35308001565",
+    "commit:7dc5643",
+    "artifact:evidence/m8/IMP-EV-0233/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-18T05:04:30Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: see card (landed on main at 7dc5643)"
+    },
+    {
+     "at": "2026-09-18T05:04:30Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "implemented and landed on main at 7dc5643"
+    },
+    {
+     "at": "2026-09-18T05:04:31Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "production wiring in place"
+    },
+    {
+     "at": "2026-09-18T05:04:31Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "qualification test green in the cloud suite"
+    },
+    {
+     "at": "2026-09-18T05:04:32Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on main run 35308001565 at 7dc5643"
+    },
+    {
+     "at": "2026-09-18T05:04:32Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: hosted CI green on main run 35308001565 at 7dc5643; card retained"
+    }
+   ],
+   "status_changed_on": "2026-09-18T05:04:32Z"
   },
   {
    "id": "IMP-EV-0234",
@@ -29540,10 +29850,13 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-011",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
     "test:apps/cloud-api/tests/cloud_api.rs::qual_px_011_a_signed_forge_webhook_makes_the_canonical_task_for_its_tenant_once_and_the_rest_is_refused_and_audited",
-    "test:apps/cloud-worker/tests/cloud_worker.rs::qual_px_011_a_webhook_for_a_held_session_is_relayed_and_the_worker_makes_the_canonical_task"
+    "test:apps/cloud-worker/tests/cloud_worker.rs::qual_px_011_a_webhook_for_a_held_session_is_relayed_and_the_worker_makes_the_canonical_task",
+    "run:35308001565",
+    "commit:7dc5643",
+    "artifact:evidence/m8/PX-011/TASK_CARD.md"
    ],
    "notes": [
     {
@@ -29569,9 +29882,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "local: both qual_px_011 tests green against real Postgres and MinIO (API-append and worker-relay paths)"
+    },
+    {
+     "at": "2026-09-18T05:04:32Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on main run 35308001565 at 7dc5643"
+    },
+    {
+     "at": "2026-09-18T05:04:32Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: hosted CI green on main run 35308001565 at 7dc5643; card retained"
     }
    ],
-   "status_changed_on": "2026-09-18T03:49:52Z"
+   "status_changed_on": "2026-09-18T05:04:32Z"
   },
   {
    "id": "PX-014",

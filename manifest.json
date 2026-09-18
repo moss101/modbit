@@ -8,7 +8,7 @@
   "counts": {
     "docs": 89,
     "root_and_tooling": 1235,
-    "docs_bytes": 1242670
+    "docs_bytes": 1243622
   },
   "sections": [
     {
@@ -851,8 +851,8 @@
       "section": "live-state",
       "section_title": "Live state",
       "title": "Build Manifest",
-      "bytes": 9138,
-      "sha256": "a2c7a288540489a3e44e913cb0e48f68f174aa5b4673caf8f94f5716df13bf67"
+      "bytes": 10090,
+      "sha256": "7d7e8f953e2ffd1418601c386d49e16947ea9435f3391478798f6d14cb88576e"
     }
   ],
   "root_and_tooling": [
@@ -6988,13 +6988,13 @@
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 40733,
-      "sha256": "9beccc811fbdb2f0abd9e9a4677b867882feb94df3d656f809f0d512c407a76c"
+      "bytes": 40730,
+      "sha256": "f8a5d71d9e83e81b9d2ab1f34626a4c6de587cef19e7c36c27cea7f04c5d2640"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1520318,
-      "sha256": "b3240ab774e76ff57734998f08e953848129403683e1dc6615df27a51970415d"
+      "bytes": 1529791,
+      "sha256": "d8e592c5c8211d6dc3088a977788270f520fd29ecd3eeede363c0462cc75dfbc"
     },
     {
       "path": "tools/build_graph.py",
