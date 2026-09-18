@@ -490,7 +490,7 @@ flowchart LR
 | Task | Status | Title | Acceptance / note |
 |---|---|---|---|
 | `M9.1` | COMPLETE | Engineering Memory schemas/scopes/promotion |  |
-| `M9.2` | NOT_STARTED | protected-effect receipt hash chain |  |
+| `M9.2` | REAL_TESTING | protected-effect receipt hash chain |  |
 | `M9.3` | NOT_STARTED | full protected-path/secret redaction/broker hardening |  |
 | `M9.4` | NOT_STARTED | external MCP gateway |  |
 | `M9.5` | NOT_STARTED | emergency stop |  |

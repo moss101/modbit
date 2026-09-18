@@ -14,14 +14,14 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | Section | Range | Files | Bytes |
 |---|---|---:|---:|
 | Authority and orientation | 00–09 | 8 | 65205 |
-| Architecture and subsystems | 10–29 | 20 | 337188 |
+| Architecture and subsystems | 10–29 | 20 | 338334 |
 | Implementation specifications | 30–39 | 10 | 136124 |
 | Requirements, tasks and traceability | 40–49 | 10 | 351596 |
 | Verification and testing | 50–69 | 15 | 203744 |
 | Delivery and operations | 70–79 | 7 | 33831 |
 | Agent process and governance | 80–97 | 18 | 109299 |
 | Live state | 98–99 | 1 | 10387 |
-| **Total docs** | | **89** | **1247374** |
+| **Total docs** | | **89** | **1248520** |
 
 ## Specification files (`docs/`)
 
@@ -48,7 +48,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 20 | `docs/20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md` | Workspace, Git, Worktrees, Diagnostics, and Trusted Code Surface | architecture | 5632 | `12981015ae69e28a83f8c8ea04330a16e3c6d9c0ab70f7cb8af6fd581754b0d7` |
 | 21 | `docs/21_TERMINAL_EXECUTION_AND_SANDBOX.md` | Terminal, Execution Router, and Sandbox Architecture | architecture | 29276 | `be8bab2dba33d4003a9c2208f0291db38e9ca441955c63effd127f7a3e6ee927` |
 | 22 | `docs/22_BROWSER_AND_COMPUTER_USE.md` | Browser and Computer-Use Architecture | architecture | 29985 | `2798543a1c861adc8391d1db5f9a0484b2c3fff03d6c4e18976d7e6f2efec88d` |
-| 23 | `docs/23_SECURITY_POLICY_EFFECT_LEDGER.md` | Security, Policy, Capabilities, Secrets, and Effect Ledger | architecture | 8725 | `4ee252f2d0f2192c45f142b4fd07e7bc1d9f2334436678fa445d420ea87c1e10` |
+| 23 | `docs/23_SECURITY_POLICY_EFFECT_LEDGER.md` | Security, Policy, Capabilities, Secrets, and Effect Ledger | architecture | 9871 | `0688557cad15473b4b0b5de70e63d4e9ceca30a54462ea07bd309240ee8925bd` |
 | 24 | `docs/24_CLOUD_CONTROL_PLANE_AND_SYNC.md` | Cloud Control Plane, Remote Execution, and Sync | architecture | 17593 | `f6e858b9aa75e6f2d452b26d824ad2975436bc19d932dc4dad3906d9fde335a7` |
 | 25 | `docs/25_MULTIMODAL_MEDIA_AND_NOTEBOOK_RUNTIME.md` | Multimodal, Media and Notebook Runtime | architecture | 8001 | `8f711ffd6294c377dbba537086356fc869d171240d6ccdf5bef5a0c2d5b9ba3e` |
 | 26 | `docs/26_SKILL_REGISTRY_AND_EVOLUTION.md` | Skill Registry and Evolution Integration — Skill Evolution Without a Second Runtime | architecture | 11590 | `e5b69188c09e95c66a4bb2b42549e00b5f55790b81c163d29f892c62d6a1eec3` |
@@ -1349,10 +1349,14 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m8/PX-011/evidence.json` | retained evidence | 1489 | `85a7eba3e2dcdbbfa8e4b4daf204f4fb77e513a4b19d4e571505c55ba457221e` |
 | `evidence/m9/IMP-EV-0162/TASK_CARD.md` | retained evidence | 4465 | `e93b23f997134175ec47eb17fe3756f722cb1ebfa7a41b3d05fbbb11af3043b8` |
 | `evidence/m9/IMP-EV-0162/evidence.json` | retained evidence | 1296 | `b70da1a4e4afc9058d6fcd7260b16731bae0851c273fb9d4e850c621ccf3cc25` |
+| `evidence/m9/IMP-EV-0270/TASK_CARD.md` | retained evidence | 3597 | `6c5344903995ffb1fb79d21c6ac73b01b47637e9e55f09b5ce4a2c4d35ddd95a` |
+| `evidence/m9/IMP-EV-0270/evidence.json` | retained evidence | 1229 | `0d2b9576e360c9aacb1a9d31f9f22d64c6aec6114426d71895b97daddbc91349` |
 | `evidence/m9/M9.1/TASK_CARD.md` | retained evidence | 2201 | `e1bd3161543efe39fc7a3b68d99831dd15b1dae8a5be6472535cdd6a375c0cdc` |
 | `evidence/m9/M9.1/evidence.json` | retained evidence | 848 | `e3a5b7d8e1d4248a37da88dfc9ee8d9544650792a5aac2c9f8e1cd6edf871c68` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 40727 | `4691ab3d25018e20a7aa0c2b59cd3157dccb2075c5b0a6c8d19bc9b173c8ba76` |
-| `graph/project-graph.json` | project driver graph with live status | 1532604 | `c9c97c66a4bffd30e1e3c5d88118a1b4029d5e4189206f171523615209c6d169` |
+| `evidence/m9/M9.2/TASK_CARD.md` | retained evidence | 3593 | `aea3f79a21d310a31c7397be44485cea449463ab75e5d22c1d83f72791451d95` |
+| `evidence/m9/M9.2/evidence.json` | retained evidence | 1222 | `abc5ee48cc6e75d825093abe8e3ca1d4103805095f7010b821482493aa609409` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 40728 | `d709235612107669e2c58a3a08dfa8593db6a4f2e4af7db24f04a6e77ca03c14` |
+| `graph/project-graph.json` | project driver graph with live status | 1534764 | `b8e476b5f067c27029247e1220b6afec4a40c9a0d7edc6b620b0c78de3e95804` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 53364 | `b1a026685406fab72ca15d0e75000645daab1cb0e32f9b82cff648542f866d5d` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 17596 | `5c9b7a782d245223726f860ca583d766929a6f5662b644adebee64d257ad426b` |

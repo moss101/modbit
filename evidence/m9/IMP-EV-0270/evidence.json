@@ -1,0 +1,12 @@
+{
+ "task": "IMP-EV-0270",
+ "requirements": ["REQ-EV-0270", "QUAL-EV-0270", "docs/23 Protected-effect receipt chain"],
+ "scenarios": ["two approved protected effects produce a hash-linked two-receipt chain bound to approval/lease/call/result; tampering a stored field, reordering the two receipts, and deleting the first each make chain verification fail, and restoring makes it pass"],
+ "tests": ["services/modbit-core/tests/surface_protocol.rs::qual_ev_0270_the_protected_effect_receipt_chain_detects_tamper_delete_and_reorder", "crates/policy ledger::tests::chain_verifies_and_tampering_is_detected"],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "high-risk effects seal an immutable hash-linked receipt bound to approval/capability/call/result; GetEffectReceipts recomputes verify_chain over the stored rows on every read, so tamper/delete/reorder is detected.",
+ "audit": "PARTIAL before: the Effect Ledger (M2.5/M2.8) built the chain, seal/verify_chain and GetEffectReceipts; the real-system tamper/delete/reorder qualification (QUAL-EV-0270) was missing.",
+ "limitations": "per-tenant chain; projection tamper self-heals on rebuild (the log is truth, hash-chained by M1.1); whole-chain verification per read.",
+ "ci": ""
+}

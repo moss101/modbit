@@ -32419,3 +32419,256 @@ async fn qual_ev_0162_memory_is_proposed_read_and_promoted_under_governance_no_t
     );
     drop(repo);
 }
+
+/// Produce one protected-effect receipt: create a worktree (reversible),
+/// close it (Destructive → approval), resolve, and re-invoke to execute.
+async fn produce_receipt(
+    c: &mut Client,
+    session: &Id,
+    task: &Id,
+    g: Option<u64>,
+    cmd: u8,
+    call: u8,
+    wt: &str,
+) {
+    use modbit_protocol::v1::{ApprovalList, ApprovalResolvedAck, ListApprovals, ResolveApproval};
+    let r = invoke_tool(
+        c,
+        task,
+        g,
+        cmd,
+        call,
+        "git.worktree.create",
+        &format!(r#"{{"branch":"task/{cmd}","path":"{wt}"}}"#),
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "create: {r:?}");
+    let close = format!(r#"{{"path":"{wt}"}}"#);
+    let r = invoke_tool(c, task, g, cmd + 1, call + 1, "git.worktree.close", &close).await;
+    assert_eq!(r.error_code, "APPROVAL_REQUIRED", "close: {r:?}");
+    let ack = c
+        .command(envelope(
+            id16(cmd + 2),
+            "ListApprovals",
+            ListApprovals {
+                session_id: Some(session.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let list: ApprovalList = Client::result(&ack).unwrap();
+    let a = list
+        .approvals
+        .iter()
+        .find(|a| {
+            a.status == "REQUESTED"
+                && a.approval_id.as_ref().map(hex_id).as_deref() == Some(r.approval_id.as_str())
+        })
+        .expect("the pending approval");
+    let ack = c
+        .command(envelope_fenced(
+            id16(cmd + 3),
+            "ResolveApproval",
+            ResolveApproval {
+                approval_id: a.approval_id.clone(),
+                approve: true,
+                reason: "ok".into(),
+                intent_hash: a.intent_hash.clone(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: ApprovalResolvedAck = Client::result(&ack).unwrap();
+    let r = invoke_tool(c, task, g, cmd + 4, call + 1, "git.worktree.close", &close).await;
+    assert_eq!(r.status, "SUCCESS", "resolved close: {r:?}");
+    assert_eq!(r.effect_receipt_ids.len(), 1, "a receipt: {r:?}");
+}
+
+async fn effect_receipts(
+    c: &mut Client,
+    task: &Id,
+    cmd: u8,
+) -> modbit_protocol::v1::EffectReceiptList {
+    use modbit_protocol::v1::{EffectReceiptList, GetEffectReceipts};
+    let ack = c
+        .command(envelope(
+            id16(cmd),
+            "GetEffectReceipts",
+            GetEffectReceipts {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    Client::result::<EffectReceiptList>(&ack).unwrap()
+}
+
+/// REQ-EV-0270 (QUAL-EV-0270, docs/23 "Protected-effect receipt chain"): a
+/// high-risk effect produces an immutable, hash-linked receipt bound to the
+/// approval, capability lease, tool call and result. The chain is verified
+/// from the stored projection on every read, so tampering, deleting or
+/// reordering a receipt makes verification fail — and restoring it makes it
+/// pass again.
+#[tokio::test]
+async fn qual_ev_0270_the_protected_effect_receipt_chain_detects_tamper_delete_and_reorder() {
+    use modbit_protocol::v1::{CreateTask, TaskCreated};
+    use rusqlite::params;
+    let (repo, root) = plain_repo(&[("a.txt", "a\n")]);
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn(dir.path());
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x70)).await;
+    let g = lease_for(&session);
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x71),
+            "CreateTask",
+            CreateTask {
+                session_id: Some(session.clone()),
+                goal_text: "receipts".into(),
+                workspace_id: None,
+                execution_profile: String::new(),
+                origin: "cli".into(),
+                workspace_root: root.clone(),
+                issue_url: String::new(),
+                issue_json: String::new(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let task = Client::result::<TaskCreated>(&ack)
+        .unwrap()
+        .task_id
+        .unwrap();
+    // Forward slashes so the path is valid JSON on Windows too (git accepts them).
+    let root_json = root.replace('\\', "/");
+    produce_receipt(
+        &mut c,
+        &session,
+        &task,
+        g,
+        0x20,
+        0xA0,
+        &format!("{root_json}-wt1"),
+    )
+    .await;
+    produce_receipt(
+        &mut c,
+        &session,
+        &task,
+        g,
+        0x30,
+        0xB0,
+        &format!("{root_json}-wt2"),
+    )
+    .await;
+
+    let base = effect_receipts(&mut c, &task, 0x40).await;
+    assert!(base.chain_valid, "baseline valid: {}", base.detail);
+    assert_eq!(base.receipts.len(), 2, "{base:?}");
+    // The second links to the first (a hash-linked chain), each hash 64 hex.
+    assert_eq!(base.receipts[0].previous_receipt_hash, "");
+    assert_eq!(
+        base.receipts[1].previous_receipt_hash,
+        base.receipts[0].receipt_hash
+    );
+    assert!(base.receipts.iter().all(|r| r.receipt_hash.len() == 64));
+    // Each receipt is bound to its approval, lease, call and result.
+    assert!(base.receipts.iter().all(|r| r.approval_id.is_some()
+        && r.capability_lease_id.is_some()
+        && !r.evidence_ref.is_empty()
+        && r.intent_hash.len() == 64));
+
+    // Tamper the store directly and re-read: the Core recomputes the chain
+    // from the stored rows on every read (it caches no verdict).
+    let db = dir.path().join("core").join("core.db");
+    let conn = rusqlite::Connection::open(&db).unwrap();
+    conn.busy_timeout(std::time::Duration::from_secs(10))
+        .unwrap();
+    let seqs: Vec<i64> = {
+        let mut stmt = conn
+            .prepare("SELECT seq FROM effect_receipts ORDER BY seq")
+            .unwrap();
+        stmt.query_map([], |r| r.get::<_, i64>(0))
+            .unwrap()
+            .map(Result::unwrap)
+            .collect()
+    };
+    assert_eq!(seqs.len(), 2, "two receipts in the store");
+
+    // 1. Tamper: a stored field changes so its hash no longer recomputes.
+    conn.execute(
+        "UPDATE effect_receipts SET status = 'FORGED' WHERE seq = ?1",
+        params![seqs[0]],
+    )
+    .unwrap();
+    let v = effect_receipts(&mut c, &task, 0x41).await;
+    assert!(!v.chain_valid, "tamper detected: {v:?}");
+    assert!(v.detail.contains("does not recompute"), "{}", v.detail);
+    conn.execute(
+        "UPDATE effect_receipts SET status = 'SUCCESS' WHERE seq = ?1",
+        params![seqs[0]],
+    )
+    .unwrap();
+    assert!(
+        effect_receipts(&mut c, &task, 0x42).await.chain_valid,
+        "restored"
+    );
+
+    // 2. Reorder: swap the two receipts' seq; the links no longer match.
+    conn.execute(
+        "UPDATE effect_receipts SET seq = -1 WHERE seq = ?1",
+        params![seqs[0]],
+    )
+    .unwrap();
+    conn.execute(
+        "UPDATE effect_receipts SET seq = ?1 WHERE seq = ?2",
+        params![seqs[0], seqs[1]],
+    )
+    .unwrap();
+    conn.execute(
+        "UPDATE effect_receipts SET seq = ?1 WHERE seq = -1",
+        params![seqs[1]],
+    )
+    .unwrap();
+    assert!(
+        !effect_receipts(&mut c, &task, 0x43).await.chain_valid,
+        "reorder detected"
+    );
+    conn.execute(
+        "UPDATE effect_receipts SET seq = -1 WHERE seq = ?1",
+        params![seqs[0]],
+    )
+    .unwrap();
+    conn.execute(
+        "UPDATE effect_receipts SET seq = ?1 WHERE seq = ?2",
+        params![seqs[0], seqs[1]],
+    )
+    .unwrap();
+    conn.execute(
+        "UPDATE effect_receipts SET seq = ?1 WHERE seq = -1",
+        params![seqs[1]],
+    )
+    .unwrap();
+    assert!(
+        effect_receipts(&mut c, &task, 0x44).await.chain_valid,
+        "restored after reorder"
+    );
+
+    // 3. Delete the first receipt: the second links to a missing predecessor.
+    conn.execute(
+        "DELETE FROM effect_receipts WHERE seq = ?1",
+        params![seqs[0]],
+    )
+    .unwrap();
+    let v = effect_receipts(&mut c, &task, 0x45).await;
+    assert!(!v.chain_valid, "delete detected: {v:?}");
+    assert_eq!(v.receipts.len(), 1, "one row remains: {v:?}");
+    drop(repo);
+}

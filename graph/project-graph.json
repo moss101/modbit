@@ -4399,8 +4399,37 @@
    "milestone": "M9",
    "order": 1,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "test:services/modbit-core/tests/surface_protocol.rs::qual_ev_0270_the_protected_effect_receipt_chain_detects_tamper_delete_and_reorder"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-18T06:50:14Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: PARTIAL — the Effect Ledger built the chain/seal/verify_chain and GetEffectReceipts; the tamper/delete/reorder qualification was missing"
+    },
+    {
+     "at": "2026-09-18T06:50:14Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "the receipt chain, seal/verify_chain and GetEffectReceipts recompute exist; qualification added"
+    },
+    {
+     "at": "2026-09-18T06:50:14Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "GetEffectReceipts recomputes verify_chain over the stored rows every read"
+    },
+    {
+     "at": "2026-09-18T06:50:14Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "local: QUAL-EV-0270 green — tamper/reorder/delete each fail verification against the real store"
+    }
+   ],
+   "status_changed_on": "2026-09-18T06:50:14Z"
   },
   {
    "id": "M9.3",
@@ -21969,8 +21998,37 @@
    "milestone": "M9",
    "qual": "QUAL-EV-0270",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "test:services/modbit-core/tests/surface_protocol.rs::qual_ev_0270_the_protected_effect_receipt_chain_detects_tamper_delete_and_reorder"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-18T06:50:13Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: PARTIAL — the Effect Ledger built the chain/seal/verify_chain and GetEffectReceipts; the tamper/delete/reorder qualification was missing"
+    },
+    {
+     "at": "2026-09-18T06:50:14Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "the receipt chain, seal/verify_chain and GetEffectReceipts recompute exist; qualification added"
+    },
+    {
+     "at": "2026-09-18T06:50:14Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "GetEffectReceipts recomputes verify_chain over the stored rows every read"
+    },
+    {
+     "at": "2026-09-18T06:50:14Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "local: QUAL-EV-0270 green — tamper/reorder/delete each fail verification against the real store"
+    }
+   ],
+   "status_changed_on": "2026-09-18T06:50:14Z"
   },
   {
    "id": "IMP-EV-0271",

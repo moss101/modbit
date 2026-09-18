@@ -59,6 +59,8 @@ EffectReceipt {
 
 The chain is append-only and independently verifiable. A rejected/failed effect is also recorded when security-relevant.
 
+As built (M9.2, IMP-EV-0270; `crates/policy/src/ledger.rs`, `services/modbit-core/src/tools.rs`, event-store `effect_receipts`): every effect at or above `ProtectedWrite` seals a receipt as it completes — `receipt_hash` is the sha256 over the canonical JSON of every other field, and `previous_receipt_hash` links to the tenant chain's last receipt (`last_receipt_hash`) — bound to the tool call, the capability lease, the approval and the result object. The chain is a projection of the immutable `EffectReceiptAppended` events; `GetEffectReceipts` recomputes `verify_chain` over the stored rows on every read (the Core caches no verdict) and returns `chain_valid` with a `detail`, so a receipt tampered, deleted or reordered in the store fails verification until it is restored. Proven by `qual_ev_0270_…` (`services/modbit-core/tests/surface_protocol.rs`): two approved protected effects produce a linked two-receipt chain (`chain_valid`); tampering a stored field (`does not recompute`), swapping the two receipts' order, and deleting the first (a missing predecessor) each make `chain_valid` false, and restoring makes it true again.
+
 ## Secrets
 
 - Renderer never sees raw cloud/provider secrets.
