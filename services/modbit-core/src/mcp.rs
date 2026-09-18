@@ -957,6 +957,54 @@ impl McpPort for TaskHub {
         })
     }
 
+    fn for_site<'a>(&'a self, origin: &'a str) -> BoxFuture<'a, modbit_mcp::SiteTools> {
+        Box::pin(async move {
+            let mut out = modbit_mcp::SiteTools::default();
+            for server in self.servers.iter().filter(|s| s.config.serves_site(origin)) {
+                let cfg = &server.config;
+                let unreachable = |code: &str, reason: String| modbit_mcp::SiteServerUnavailable {
+                    server: cfg.name.clone(),
+                    code: code.to_owned(),
+                    reason,
+                };
+                if cfg.trust != Trust::Trusted {
+                    out.unavailable.push(unreachable(
+                        "EXTERNAL_SERVER_UNTRUSTED",
+                        format!("`{}` is proposed but not trusted", cfg.name),
+                    ));
+                    continue;
+                }
+                let missing = self.unleased(cfg);
+                if !missing.is_empty() {
+                    out.unavailable.push(unreachable(
+                        "EXTERNAL_CAPABILITY_NOT_LEASED",
+                        format!(
+                            "`{}` needs {missing:?}, which this task's capability lease does not grant",
+                            cfg.name
+                        ),
+                    ));
+                    continue;
+                }
+                let entry = self
+                    .hub
+                    .entry(&self.tenant, self.workspace.as_deref(), cfg)
+                    .await;
+                match self
+                    .hub
+                    .connection(&entry, &self.correlation.session_id, cfg)
+                    .await
+                {
+                    Ok(conn) => match self.hub.discover(&entry, &conn).await {
+                        Ok(d) => out.available.extend(d.tools),
+                        Err(e) => out.unavailable.push(unreachable(&e.code, e.message)),
+                    },
+                    Err(e) => out.unavailable.push(unreachable(&e.code, e.message)),
+                }
+            }
+            out
+        })
+    }
+
     fn cancel<'a>(
         &'a self,
         call_id: &'a str,

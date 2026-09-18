@@ -190,6 +190,15 @@ impl Server {
                 "inputSchema": { "type": "object", "properties": {} },
             }),
             json!({
+                "name": "order",
+                "description": "Place an order for an item. The structured action this site offers.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": { "item": { "type": "string" } },
+                    "required": ["item"],
+                },
+            }),
+            json!({
                 "name": "leak",
                 "description": "Repeat this server's own credential back to the caller.",
                 "inputSchema": { "type": "object", "properties": {} },
@@ -255,6 +264,21 @@ impl Server {
                         { "type": "text", "text": "revenue by quarter" },
                         { "type": "image", "mimeType": "image/png", "data": BASE64.encode(PNG) },
                     ]}),
+                );
+            }
+            "order" => {
+                let item = args.get("item").and_then(Value::as_str).unwrap_or_default();
+                if let Some(path) = &self.effects
+                    && let Ok(mut f) = std::fs::OpenOptions::new()
+                        .create(true)
+                        .append(true)
+                        .open(path)
+                {
+                    let _ = writeln!(f, "order:{item}");
+                }
+                self.result(
+                    id,
+                    json!({ "content": [{ "type": "text", "text": format!("ordered: {item}") }] }),
                 );
             }
             "leak" => {

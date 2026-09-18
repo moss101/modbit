@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 1256,
-    "docs_bytes": 1263697
+    "root_and_tooling": 1258,
+    "docs_bytes": 1265427
   },
   "sections": [
     {
@@ -239,8 +239,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Browser and Computer-Use Architecture",
-      "bytes": 29985,
-      "sha256": "2798543a1c861adc8391d1db5f9a0484b2c3fff03d6c4e18976d7e6f2efec88d"
+      "bytes": 31715,
+      "sha256": "0a846ff68035d09959118091e559439cd5d0f893e9d005e4d52b2ce495baebf7"
     },
     {
       "path": "docs/23_SECURITY_POLICY_EFFECT_LEDGER.md",
@@ -7072,6 +7072,16 @@
       "sha256": "0d2b9576e360c9aacb1a9d31f9f22d64c6aec6114426d71895b97daddbc91349"
     },
     {
+      "path": "evidence/m9/IMP-EV-0281/TASK_CARD.md",
+      "bytes": 4355,
+      "sha256": "b209eb3d97e80453630582be3b78b0e11a121ead360ccb4af9a468ddf8b47498"
+    },
+    {
+      "path": "evidence/m9/IMP-EV-0281/evidence.json",
+      "bytes": 1481,
+      "sha256": "52153603f712b3e6433402237b423d8d961a5e9c598a21e46a66e1bf677a541c"
+    },
+    {
       "path": "evidence/m9/M9.1/TASK_CARD.md",
       "bytes": 2201,
       "sha256": "e1bd3161543efe39fc7a3b68d99831dd15b1dae8a5be6472535cdd6a375c0cdc"
@@ -7098,8 +7108,8 @@
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1546237,
-      "sha256": "c2af810e9af43a3cef63ededfa90b7ed8630396b3b4ed0013b22b7bc50e14044"
+      "bytes": 1547606,
+      "sha256": "a5d220b9597e32f6078b342123613f0c265bbb41609e2d616c63606d5aa7242a"
     },
     {
       "path": "tools/build_graph.py",

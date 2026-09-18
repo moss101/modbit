@@ -150,6 +150,10 @@ pub const FAILURE_TAXONOMY: &[(&str, &str)] = &[
         "the element does not take text: pick the field the page names for this value",
     ),
     (
+        "SITE_TOOL_PREFERRED",
+        "this site offers a structured way to do this (docs/22 rung 1): call the external tool the answer names instead of driving the interface; drive it only when no site tool is available",
+    ),
+    (
         "ACTION_UNSAFE",
         "the action is protected on this element: read the page and act again so the approval can be asked; never act around it",
     ),
@@ -455,10 +459,15 @@ tool!(
             &modbit_browser::compiler::state_fingerprint(&page),
         )
         .await;
+        // REQ-EV-0281 (docs/22 rung 1): what this site offers as a
+        // structured action, and — when the host bound a server to this
+        // origin that this task cannot reach — why it does not.
+        let site_tools = site_tools_json(ctx, &page.state.url).await;
         let Some(prev) = previous else {
             let mut v = full_json(&page);
             v["credentials"] = credentials;
             v["known_transitions"] = known_transitions;
+            v["site_tools"] = site_tools;
             return ToolOutcome::ok(v);
         };
         let delta = modbit_browser::compiler::diff(&prev, &page);
@@ -470,12 +479,14 @@ tool!(
                 json!({"from_version": delta.from_version, "touched": delta.size()});
             v["credentials"] = credentials;
             v["known_transitions"] = known_transitions;
+            v["site_tools"] = site_tools;
             return ToolOutcome::ok(v);
         }
         let mut v = state_json(&page.state);
         v["mode"] = json!("delta");
         v["credentials"] = credentials;
         v["known_transitions"] = known_transitions;
+        v["site_tools"] = site_tools;
         v["from_version"] = json!(delta.from_version);
         v["from_fingerprint"] = json!(delta.from_fingerprint);
         v["state_fingerprint"] = json!(delta.to_fingerprint);
@@ -611,6 +622,39 @@ impl BrowserAct {
             idempotency: Idempotency::NonIdempotent,
         }))
     }
+}
+
+/// What the site the page is on offers this task as a structured action
+/// (REQ-EV-0281, docs/22 "Action hierarchy" rung 1), and why a server the
+/// host bound to this origin is not reachable when it is not. `null` when
+/// no external hub is attached, so a build without one reads exactly as it
+/// did before.
+async fn site_tools_json(ctx: &InvokeContext, url: &str) -> Value {
+    let Some(hub) = &ctx.external else {
+        return Value::Null;
+    };
+    let origin = modbit_browser::origin_of(url).unwrap_or_default();
+    if origin.is_empty() {
+        return Value::Null;
+    }
+    let site = hub.for_site(&origin).await;
+    if site.available.is_empty() && site.unavailable.is_empty() {
+        return Value::Null;
+    }
+    json!({
+        "origin": origin,
+        "prefer": !site.available.is_empty(),
+        "available": site.available.iter().map(|t| json!({
+            "name": t.qualified,
+            "server": t.server,
+            "tool": t.name,
+            "description": t.description,
+            "input_schema": t.input_schema,
+            "read_only": t.read_only,
+        })).collect::<Vec<_>>(),
+        "unavailable": site.unavailable,
+        "note": "a protected action on this page is done through the site's own tool when one is available (docs/22 rung 1); the page's interface is the fallback",
+    })
 }
 
 async fn act(ctx: &InvokeContext, args: Value) -> ToolOutcome {
@@ -781,6 +825,47 @@ async fn act(ctx: &InvokeContext, args: Value) -> ToolOutcome {
                 target.role, target.name
             ),
         );
+    }
+    // REQ-EV-0281 (docs/22 "Action hierarchy" rung 1): when the host has
+    // bound a trusted, reachable external server to this page's origin, a
+    // *protected* action is done through the structured tool the site
+    // offers, not by driving its interface. A page-only action still goes
+    // through the interface, and so does everything at an origin with no
+    // reachable server — which is the fallback down the ladder to the
+    // derived semantic action of M7.4.
+    if classify_action(&target, &action, &key) == ActionRisk::Protected
+        && let Some(hub) = &ctx.external
+    {
+        let origin = modbit_browser::origin_of(&before.state.url).unwrap_or_default();
+        let site = hub.for_site(&origin).await;
+        if !site.available.is_empty() {
+            let mut o = typed_fail(
+                "SITE_TOOL_PREFERRED",
+                format!(
+                    "{} “{}” is a protected action and this site offers a structured way to do it: call {} through external.call instead of driving the page",
+                    target.role,
+                    target.name,
+                    site.available
+                        .iter()
+                        .map(|t| t.qualified.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
+            );
+            o.structured_output = json!({
+                "provenance": PROVENANCE,
+                "origin": origin,
+                "site_tools": site.available.iter().map(|t| json!({
+                    "name": t.qualified,
+                    "server": t.server,
+                    "tool": t.name,
+                    "description": t.description,
+                    "input_schema": t.input_schema,
+                })).collect::<Vec<_>>(),
+                "action_performed": false,
+            });
+            return o;
+        }
     }
     let fingerprint_before = modbit_browser::compiler::state_fingerprint(&before);
     let (after_state, navigated, detail) = match port

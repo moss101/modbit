@@ -67,6 +67,14 @@ pub struct ServerConfig {
     /// label, never an authority.
     #[serde(default)]
     pub scopes: BTreeSet<String>,
+    /// Origins this server serves (REQ-EV-0281, docs/22 "Action hierarchy"
+    /// rung 1). A page at one of these origins has a structured way to do
+    /// what the agent would otherwise do by driving its interface, and the
+    /// host prefers it for a protected action. Binding is the **host's**
+    /// declaration: a page is untrusted content, so a declaration read from
+    /// a page could only ever be a proposal (REQ-EV-0224), never a grant.
+    #[serde(default)]
+    pub sites: BTreeSet<String>,
     /// Host capabilities a task must already hold before this server may be
     /// reached at all (REQ-EV-0128 scoped auth). These are ordinary
     /// capability ids — `network.egress`, `secret.use`, `fs.read` — checked
@@ -189,6 +197,7 @@ impl ServerConfig {
             env: BTreeMap::new(),
             credential: None,
             scopes: BTreeSet::new(),
+            sites: BTreeSet::new(),
             requires: BTreeSet::new(),
             read_only_tools: BTreeSet::new(),
             trust: Trust::Trusted,
@@ -265,6 +274,13 @@ impl ServerConfig {
         self.read_only_tools.contains(tool)
     }
 
+    /// Whether this server is bound to `origin` — the scheme, host and port
+    /// of a page, compared exactly.
+    #[must_use]
+    pub fn serves_site(&self, origin: &str) -> bool {
+        !origin.is_empty() && self.sites.iter().any(|s| s == origin)
+    }
+
     /// The capabilities a task must hold to reach this server: what the
     /// configuration requires, plus `secret.use` whenever a credential is
     /// named — using a server's credential is using a secret, whoever
@@ -325,6 +341,11 @@ pub fn fingerprint(cfg: &ServerConfig) -> String {
     h.update(cfg.credential.as_deref().unwrap_or("").as_bytes());
     h.update(b"\nscopes\n");
     for s in &cfg.scopes {
+        h.update(s.as_bytes());
+        h.update(b"\x1f");
+    }
+    h.update(b"\nsites\n");
+    for s in &cfg.sites {
         h.update(s.as_bytes());
         h.update(b"\x1f");
     }
@@ -445,6 +466,9 @@ mod tests {
             |c: &mut ServerConfig| {
                 c.requires.insert("network.egress".into());
             },
+            |c: &mut ServerConfig| {
+                c.sites.insert("https://example.test".into());
+            },
         ] {
             let mut c = base.clone();
             mutate(&mut c);
@@ -507,6 +531,26 @@ mod tests {
             c.missing_capabilities(&["network.egress".to_owned(), "secret.use".to_owned()])
                 .is_empty()
         );
+    }
+
+    #[test]
+    fn a_server_serves_only_the_origins_the_host_bound_it_to() {
+        let mut c = cfg();
+        assert!(
+            !c.serves_site("https://shop.test"),
+            "nothing is bound by default"
+        );
+        c.sites.insert("https://shop.test".into());
+        assert!(c.serves_site("https://shop.test"));
+        assert!(
+            !c.serves_site("https://shop.test:8443"),
+            "a port is part of an origin"
+        );
+        assert!(
+            !c.serves_site("http://shop.test"),
+            "a scheme is part of an origin"
+        );
+        assert!(!c.serves_site(""), "an unknown origin is never served");
     }
 
     #[test]

@@ -32717,6 +32717,11 @@ fn server_log(path: &std::path::Path) -> Vec<serde_json::Value> {
 /// Approve the session's one open `external.call` approval (an external
 /// side effect waits for an intent-bound approval; docs/23).
 async fn approve_pending(c: &mut Client, cmd: u8, session: &Id, g: Option<u64>) {
+    approve_pending_for(c, cmd, session, g, "external.call").await;
+}
+
+/// Approve the session's one open approval for `tool`.
+async fn approve_pending_for(c: &mut Client, cmd: u8, session: &Id, g: Option<u64>, tool: &str) {
     use modbit_protocol::v1::{ApprovalList, ListApprovals, ResolveApproval};
     let ack = c
         .command(envelope(
@@ -32733,9 +32738,9 @@ async fn approve_pending(c: &mut Client, cmd: u8, session: &Id, g: Option<u64>) 
     let id = approvals
         .approvals
         .iter()
-        .find(|a| a.status == "REQUESTED" && a.tool_name == "external.call")
+        .find(|a| a.status == "REQUESTED" && a.tool_name == tool)
         .and_then(|a| a.approval_id.clone())
-        .unwrap_or_else(|| panic!("no open external.call approval: {approvals:?}"));
+        .unwrap_or_else(|| panic!("no open {tool} approval: {approvals:?}"));
     c.command(envelope_fenced(
         id16(cmd ^ 0x01),
         "ResolveApproval",
@@ -34279,5 +34284,358 @@ async fn qual_ev_0224_a_proposed_external_server_is_inert_until_the_host_trusts_
     )
     .await;
     assert_eq!(r.error_code, "EXTERNAL_SERVER_UNTRUSTED", "{r:?}");
+    drop(repo);
+}
+
+/// A fake shop at `https://shop.test/cart` with one protected action: the
+/// "Place order" button. It records every act it is asked to perform, which
+/// is how the ladder's rung is observed — a click the host never saw is an
+/// action the host preferred to do another way.
+async fn spawn_shop_host(
+    mut host: Client,
+    acts: std::sync::Arc<std::sync::Mutex<Vec<serde_json::Value>>>,
+) -> tokio::task::JoinHandle<()> {
+    use modbit_protocol::v1::BrowserHostResponse;
+    use serde_json::json;
+    tokio::spawn(async move {
+        let mut ordered = false;
+        let page = |ordered: bool| -> serde_json::Value {
+            if ordered {
+                return json!({"url": "https://shop.test/ordered", "title": "Thank you", "nodes": [
+                    {"id": "1", "parent": null, "role": "RootWebArea", "name": "Thank you"},
+                    {"id": "2", "parent": "1", "role": "main", "name": ""},
+                    {"id": "3", "parent": "2", "role": "heading", "name": "Order placed"},
+                ]});
+            }
+            json!({"url": "https://shop.test/cart", "title": "Your cart", "nodes": [
+                {"id": "1", "parent": null, "role": "RootWebArea", "name": "Your cart"},
+                {"id": "2", "parent": "1", "role": "main", "name": ""},
+                {"id": "4", "parent": "2", "role": "form", "name": "Checkout"},
+                {"id": "7", "parent": "4", "role": "button", "name": "Place order", "backend_dom_node_id": 107},
+            ]})
+        };
+        while let Some(req) = host.next_browser_request().await.unwrap_or(None) {
+            let r: serde_json::Value = serde_json::from_str(&req.request_json).unwrap();
+            let response = match r["kind"].as_str().unwrap_or_default() {
+                "navigate" => {
+                    json!({"kind": "state", "state": {"url": r["url"], "title": "Your cart", "ready": true, "state_version": 1}})
+                }
+                "snapshot" => {
+                    let p = page(ordered);
+                    json!({"kind": "snapshot", "state": {"url": p["url"], "title": p["title"], "ready": true, "state_version": 1}, "nodes": p["nodes"], "truncated": false})
+                }
+                "act" => {
+                    acts.lock().unwrap().push(json!({
+                        "node": r["backend_dom_node_id"], "action": r["action"],
+                    }));
+                    ordered = true;
+                    let p = page(ordered);
+                    json!({"kind": "acted", "state": {"url": p["url"], "title": p["title"], "ready": true, "state_version": 2}, "navigated": true, "detail": "clicked"})
+                }
+                "close" => break,
+                other => json!({"kind": "error", "code": "UNSUPPORTED", "message": other}),
+            };
+            if host
+                .command(envelope(
+                    Id {
+                        value: (0..16).map(|_| rand::random::<u8>()).collect(),
+                    },
+                    "BrowserHostResponse",
+                    BrowserHostResponse {
+                        request_id: req.request_id,
+                        response_json: response.to_string(),
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .is_err()
+            {
+                break;
+            }
+        }
+    })
+}
+
+/// QUAL-EV-0281 (REQ-EV-0281 "prefer authenticated site-declared structured
+/// tool when available, then derived semantic action, primitive, vision";
+/// QUAL-EV-0281 "same task selects native tool when trust/policy allow;
+/// fallback works otherwise") — M9.4, DR-M7-001, docs/22 "Action hierarchy"
+/// rung 1.
+///
+/// One page, one protected action — "Place order" on a cart at
+/// `https://shop.test` — and the host bound an external tool server to that
+/// origin. What is proven, with the trust decision in between:
+///
+/// - **untrusted: the fallback works.** The page read says the site's tool
+///   is there and why it cannot be used; `browser.act` on the button runs
+///   through the interface as M7.4 built it, and the host records the click.
+/// - **trusted: the structured action wins.** The page read prefers the
+///   site's tool by name; the *same* `browser.act` is refused
+///   `SITE_TOOL_PREFERRED` and the host is never asked to click anything;
+///   the order is placed through `external.call` instead.
+///
+/// The trust decision is IMP-EV-0224's, and because a task's configuration
+/// is pinned the change is seen by the next task — the same page and the
+/// same action, under a configuration that changed.
+#[tokio::test]
+async fn qual_ev_0281_a_site_tool_is_preferred_for_a_protected_action_when_trust_allows_and_the_page_is_the_fallback()
+ {
+    use modbit_protocol::v1::{
+        AttachBrowserHost, BrowserHostAttached, BrowserSessionOpened, ClientKind, InvokeTool,
+        OpenBrowserSession, ProposeExternalServer, ToolInvoked, TrustExternalServer,
+    };
+    use serde_json::{Value, json};
+
+    let server_bin = mcp_testserver_bin();
+    assert!(server_bin.exists(), "cargo build -p modbit-mcp-testserver");
+    let dir = tempfile::tempdir().unwrap();
+    let logs = tempfile::tempdir().unwrap();
+    let effects = logs.path().join("orders.txt");
+    let (repo, root) = plain_repo(&[("README.md", "# shop\n")]);
+    let core = CoreProcess::spawn(dir.path());
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xC0)).await;
+    let g = lease_for(&session);
+
+    // The host binds a server to the site's origin. A page is untrusted
+    // content, so what a page says about its own tools could only ever be a
+    // proposal — which is exactly the path this takes.
+    let ack = c
+        .command(envelope(
+            id16(0xC1),
+            "ProposeExternalServer",
+            ProposeExternalServer {
+                name: "shop".into(),
+                definition_json: json!({
+                    "transport": { "kind": "stdio", "command": server_bin.to_string_lossy(), "args": [] },
+                    "env": {
+                        "MODBIT_MCP_TESTSRV_NAME": "shop",
+                        "MODBIT_MCP_TESTSRV_EFFECTS": effects.to_string_lossy(),
+                    },
+                    "sites": ["https://shop.test"],
+                    "read_only_tools": ["search"],
+                })
+                .to_string(),
+                reason: "the cart page offers a structured checkout".into(),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let _: modbit_protocol::v1::ExternalServerConfigured = Client::result(&ack).unwrap();
+
+    async fn call(
+        c: &mut Client,
+        cmd: u8,
+        call: u8,
+        task: &Id,
+        g: Option<u64>,
+        tool: &str,
+        args: &str,
+    ) -> ToolInvoked {
+        let ack = c
+            .command(envelope_fenced(
+                id16(cmd),
+                "InvokeTool",
+                InvokeTool {
+                    task_id: Some(task.clone()),
+                    tool_name: tool.into(),
+                    arguments_json: args.into(),
+                    tool_call_id: Some(id16(call)),
+                    output_budget_bytes: 1024 * 1024,
+                }
+                .encode_to_vec(),
+                g,
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    }
+    async fn open_shop(
+        core: &CoreProcess,
+        c: &mut Client,
+        task: &Id,
+        g: Option<u64>,
+        cmd: u8,
+        acts: std::sync::Arc<std::sync::Mutex<Vec<Value>>>,
+    ) -> (Id, tokio::task::JoinHandle<()>) {
+        let opened: BrowserSessionOpened = Client::result(
+            &c.command(envelope_fenced(
+                id16(cmd),
+                "OpenBrowserSession",
+                OpenBrowserSession {
+                    task_id: Some(task.clone()),
+                }
+                .encode_to_vec(),
+                g,
+            ))
+            .await
+            .unwrap(),
+        )
+        .unwrap();
+        let bsid = opened.browser_session_id.clone().unwrap();
+        let mut host = core.client_of(ClientKind::Desktop).await;
+        let _: BrowserHostAttached = Client::result(
+            &host
+                .command(envelope(
+                    id16(cmd ^ 0x01),
+                    "AttachBrowserHost",
+                    AttachBrowserHost {
+                        browser_session_id: Some(bsid.clone()),
+                        host_kind: "test-host".into(),
+                        partition: opened.partition.clone(),
+                        sandboxed: true,
+                        context_isolated: true,
+                        node_integration: false,
+                        task_id: Some(task.clone()),
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .unwrap(),
+        )
+        .unwrap();
+        (bsid, spawn_shop_host(host, acts).await)
+    }
+    let reference = modbit_browser::compiler::reference_of(
+        "button",
+        "Place order",
+        &["main:".to_owned(), "form:Checkout".to_owned()],
+        0,
+    );
+    let act_args = json!({ "ref": reference, "action": "click" }).to_string();
+
+    // ---- untrusted: the page is the way ---------------------------------
+    let acts_a: std::sync::Arc<std::sync::Mutex<Vec<Value>>> = Default::default();
+    let task_a = create_task_with_profile(&mut c, &session, g, &root, 0xC2, "local_trusted").await;
+    let (_bsid_a, host_a) = open_shop(&core, &mut c, &task_a, g, 0xC4, acts_a.clone()).await;
+    let r = call(
+        &mut c,
+        0xC6,
+        0x01,
+        &task_a,
+        g,
+        "browser.navigate",
+        r#"{"url":"https://shop.test/cart"}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let r = call(&mut c, 0xC7, 0x02, &task_a, g, "browser.snapshot", "{}").await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let page: Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let site = &page["site_tools"];
+    assert_eq!(site["origin"], json!("https://shop.test"), "{site}");
+    assert_eq!(
+        site["prefer"],
+        json!(false),
+        "an untrusted server offers nothing: {site}"
+    );
+    assert_eq!(
+        site["unavailable"][0]["code"],
+        json!("EXTERNAL_SERVER_UNTRUSTED"),
+        "the page read says why the ladder falls back: {site}"
+    );
+    // The protected action runs through the interface, once approved.
+    let r = call(&mut c, 0xC8, 0x03, &task_a, g, "browser.act", &act_args).await;
+    assert_eq!(
+        (r.status.as_str(), r.error_code.as_str()),
+        ("APPROVAL_PENDING", "APPROVAL_REQUIRED"),
+        "a submission is an external effect: {r:?}"
+    );
+    approve_pending_for(&mut c, 0xC9, &session, g, "browser.act").await;
+    let r = call(&mut c, 0xCA, 0x03, &task_a, g, "browser.act", &act_args).await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    assert_eq!(
+        acts_a.lock().unwrap().len(),
+        1,
+        "the fallback drove the page: {:?}",
+        acts_a.lock().unwrap()
+    );
+    assert!(
+        !effects.exists(),
+        "and nothing was ordered through the site's own tool"
+    );
+
+    // ---- trusted: the site's structured action wins ---------------------
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xCB),
+            "TrustExternalServer",
+            TrustExternalServer {
+                session_id: Some(session.clone()),
+                name: "shop".into(),
+                trust: true,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let view: modbit_protocol::v1::ExternalServerConfigured = Client::result(&ack).unwrap();
+    assert_eq!(view.trust, "TRUSTED", "{view:?}");
+
+    let acts_b: std::sync::Arc<std::sync::Mutex<Vec<Value>>> = Default::default();
+    let task_b = create_task_with_profile(&mut c, &session, g, &root, 0xCC, "local_trusted").await;
+    let (_bsid_b, host_b) = open_shop(&core, &mut c, &task_b, g, 0xCE, acts_b.clone()).await;
+    let r = call(
+        &mut c,
+        0xD0,
+        0x04,
+        &task_b,
+        g,
+        "browser.navigate",
+        r#"{"url":"https://shop.test/cart"}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let r = call(&mut c, 0xD1, 0x05, &task_b, g, "browser.snapshot", "{}").await;
+    let page: Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let site = &page["site_tools"];
+    assert_eq!(site["prefer"], json!(true), "{site}");
+    let names: Vec<&str> = site["available"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|t| t["name"].as_str().unwrap())
+        .collect();
+    assert!(names.contains(&"external.shop.order"), "{names:?}");
+
+    // The same action on the same button: refused, with the better path
+    // named. The kernel judges the class first — it is the boundary and it
+    // sees only the class, not the page — so the approval is asked before
+    // the effector can answer; a model that read the page never gets here.
+    let r = call(&mut c, 0xD2, 0x06, &task_b, g, "browser.act", &act_args).await;
+    assert_eq!(r.status, "APPROVAL_PENDING", "{r:?}");
+    approve_pending_for(&mut c, 0xD6, &session, g, "browser.act").await;
+    let r = call(&mut c, 0xD2, 0x06, &task_b, g, "browser.act", &act_args).await;
+    assert_eq!(
+        (r.status.as_str(), r.error_code.as_str()),
+        ("APPLICATION_FAILURE", "SITE_TOOL_PREFERRED"),
+        "even approved, the interface is not the way when the site offers one: {r:?}"
+    );
+    assert!(
+        r.error_message.contains("external.shop.order"),
+        "the refusal names the structured action: {r:?}"
+    );
+    assert!(
+        acts_b.lock().unwrap().is_empty(),
+        "the host was never asked to click anything: {:?}",
+        acts_b.lock().unwrap()
+    );
+
+    // And the order goes through the site's own tool instead.
+    let order = r#"{"server":"shop","tool":"order","arguments":{"item":"a book"}}"#;
+    let r = call(&mut c, 0xD3, 0x07, &task_b, g, "external.call", order).await;
+    assert_eq!(r.status, "APPROVAL_PENDING", "{r:?}");
+    approve_pending_for(&mut c, 0xD4, &session, g, "external.call").await;
+    let r = call(&mut c, 0xD5, 0x07, &task_b, g, "external.call", order).await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    assert_eq!(
+        std::fs::read_to_string(&effects).unwrap().trim(),
+        "order:a book",
+        "the site's own tool placed the order"
+    );
+    host_a.abort();
+    host_b.abort();
     drop(repo);
 }

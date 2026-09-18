@@ -45,6 +45,7 @@ pub use config::{
 pub use discovery::{Annotations, DiscoveredTool, Discovery, Limits, parse_tools_list};
 pub use port::{
     Cancelled, Correlation, ExternalCall, Health, Listing, McpPort, PortError, ServerListing,
+    SiteServerUnavailable, SiteTools,
 };
 pub use protocol::{Frame, PROTOCOL_VERSION, RpcError, ServerInfo};
 pub use result::{CallResult, Part};
