@@ -140,6 +140,13 @@ pub enum Health {
     },
     /// Proposed but not trusted: never started (REQ-EV-0224).
     Untrusted,
+    /// The task's capability lease does not grant what this server needs, so
+    /// it is not started for this task (REQ-EV-0128 scoped auth). A task
+    /// that could not do a thing itself cannot have a server do it.
+    Unleased {
+        /// Capabilities the lease does not grant.
+        missing: Vec<String>,
+    },
 }
 
 /// One server as `external.list` reports it.
@@ -151,10 +158,16 @@ pub struct ServerListing {
     pub trust: Trust,
     /// Health.
     pub health: Health,
-    /// Scopes the host granted.
+    /// Scopes the host granted, in the server's own vocabulary (labels).
     pub scopes: Vec<String>,
+    /// Host capabilities this server needs before a task may reach it.
+    pub requires: Vec<String>,
     /// Which configuration layer contributed it.
     pub layer: String,
+    /// How the configuration decided: which layer's definition stands and
+    /// whose contrary opinion was overridden or refused (REQ-EV-0039
+    /// provenance, REQ-EV-0128 audit).
+    pub provenance: Vec<String>,
     /// The pool key its transport is shared under (audit; the fingerprint
     /// is what makes two sessions share one server).
     pub pool_key: String,
@@ -171,6 +184,12 @@ pub struct ServerListing {
 pub struct Listing {
     /// Servers, by name.
     pub servers: Vec<ServerListing>,
+    /// Servers the configuration refused outright: a layer tried to add one
+    /// a higher authority denied, or to remove one a higher authority
+    /// added. They are not in `servers`, and this is where they are
+    /// answered for (REQ-EV-0128 audit).
+    #[serde(default)]
+    pub refused_servers: Vec<String>,
 }
 
 /// What `external.cancel` returns.

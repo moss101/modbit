@@ -696,7 +696,8 @@
       ],
       "test": "qual_ev_0104_0193_a_real_mcp_server_lists_calls_and_cancels_while_two_sessions_share_one_transport",
       "injection_note": "docs/16: a discovered schema and a returned result are untrusted content from a program the host does not control; names are validated and namespaced `external.<server>.<tool>`, descriptions are control-stripped and truncated, schemas are byte- and depth-bounded with no `$ref`, and any field the host does not know (a capability claim, a system instruction, an effect class) is dropped before the host looks at the tool",
-      "effect_note": "per call (Tool::effect_of): the registered class is the floor a call the HOST declared a read costs; everything else \u2014 an undeclared tool, an unknown server, a tool whose server claims `readOnlyHint` \u2014 raises to ExternalSideEffect, and a server claiming `destructiveHint` takes the host's read declaration away. A server's claim can only raise (crates/mcp::ReadDeclarations, discovery::parse_tools_list)"
+      "effect_note": "per call (Tool::effect_of): the registered class is the floor a call the HOST declared a read costs; everything else \u2014 an undeclared tool, an unknown server, a tool whose server claims `readOnlyHint` \u2014 raises to ExternalSideEffect, and a server claiming `destructiveHint` takes the host's read declaration away. A server's claim can only raise (crates/mcp::ReadDeclarations, discovery::parse_tools_list)",
+      "media_note": "M9.4 (REQ-EV-0187): an image or audio block a server returns goes through the Media Pipeline like any other media the host reads \u2014 scanned, budgeted, metadata-stripped, stored by digest \u2014 so a vision-capable model receives the egress copy and never the server's bytes (qual_ev_0187_an_mcp_image_result_reaches_a_vision_capable_model_through_the_media_pipeline)"
     },
     {
       "tool": "external.cancel",

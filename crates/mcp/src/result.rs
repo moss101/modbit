@@ -109,6 +109,12 @@ pub struct CallResult {
     pub is_error: bool,
     /// The server's structured output, when it returned one and it fits.
     pub structured: Option<Value>,
+    /// How many times a secret in the host's custody was replaced in this
+    /// answer (REQ-EV-0128: a credential is handed to a server to use, not
+    /// to repeat — an answer carrying one back would put it in the model's
+    /// context). 0 in the common case.
+    #[serde(default)]
+    pub redacted: usize,
 }
 
 impl CallResult {

@@ -196,13 +196,30 @@ pub fn resolve(layers: &BTreeMap<Authority, Layer>) -> ResolvedConfig {
                 ));
                 continue;
             }
-            out.mcp_servers.entry(name.clone()).or_insert(Resolved {
-                value: endpoint.clone(),
-                provenance: Provenance {
-                    decided_by: level,
-                    overridden: vec![],
-                },
-            });
+            match out.mcp_servers.get_mut(name) {
+                // A higher authority already defined this name. It stands,
+                // and the lower layer's contrary definition is recorded so
+                // that "why did I get this server" has an answer.
+                Some(existing) => existing.provenance.overridden.push((
+                    level,
+                    format!(
+                        "{level:?} also defines MCP server `{name}`; {:?} decided",
+                        existing.provenance.decided_by
+                    ),
+                )),
+                None => {
+                    out.mcp_servers.insert(
+                        name.clone(),
+                        Resolved {
+                            value: endpoint.clone(),
+                            provenance: Provenance {
+                                decided_by: level,
+                                overridden: vec![],
+                            },
+                        },
+                    );
+                }
+            }
         }
         for name in &layer.mcp_deny {
             if let Some(existing) = out.mcp_servers.get(name)
@@ -346,6 +363,38 @@ mod tests {
         for w in &r.rejected_widenings {
             assert!(w.contains("tried to"), "{w}");
         }
+    }
+
+    /// A lower layer defining a name a higher layer already defined does not
+    /// win and does not vanish: the higher definition stands and the
+    /// conflict is on the record (REQ-EV-0128 audit).
+    #[test]
+    fn a_shadowed_mcp_definition_is_recorded_not_silently_dropped() {
+        let mut layers = BTreeMap::new();
+        layers.insert(
+            Authority::Project,
+            Layer {
+                mcp_servers: [("docs".into(), "project-definition".into())].into(),
+                ..Layer::default()
+            },
+        );
+        layers.insert(
+            Authority::User,
+            Layer {
+                mcp_servers: [("docs".into(), "user-definition".into())].into(),
+                ..Layer::default()
+            },
+        );
+        let r = resolve(&layers);
+        let docs = r.mcp_servers.get("docs").expect("resolved");
+        assert_eq!(
+            docs.value, "project-definition",
+            "the higher authority decides"
+        );
+        assert_eq!(docs.provenance.decided_by, Authority::Project);
+        assert_eq!(docs.provenance.overridden.len(), 1);
+        assert_eq!(docs.provenance.overridden[0].0, Authority::User);
+        assert!(docs.provenance.overridden[0].1.contains("also defines"));
     }
 
     #[test]

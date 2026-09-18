@@ -28,6 +28,8 @@ Submit huge/malformed/decompression-bomb-style fixture. Expected: hard page/byte
 
 Real local MCP test server returns text plus image content. Expected: MCP Hub normalizes parts, Media Pipeline scans/budgets image, vision-capable provider receives both, call IDs/evidence stay contiguous.
 
+*As built (M9.4, DR-M5-001):* `qual_ev_0187_an_mcp_image_result_reaches_a_vision_capable_model_through_the_media_pipeline` runs a real `modbit-mcp-testserver` process whose `chart` tool returns a caption and a PNG carrying an instruction-shaped metadata comment. The hub decodes and bounds the block, `external.call` runs it through the same pipeline `fs.read` uses, and the model receives the caption in the tool message and the **egress copy** in the follow-up user message that names the call — with the metadata comment gone. The envelope carries the image's own dimensions and separate original and egress digests; the log carries no bytes.
+
 ## MEDIA-E2E-007 — strict provider tool-media serialization
 
 Use a strict OpenAI-compatible test endpoint that rejects media in tool-role messages. Expected: provider adapter splits media into compliant follow-up representation while canonical ToolResult remains unchanged and model receives image.
