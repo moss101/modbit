@@ -4399,9 +4399,12 @@
    "milestone": "M9",
    "order": 1,
    "source": "docs/43",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
-    "test:services/modbit-core/tests/surface_protocol.rs::qual_ev_0270_the_protected_effect_receipt_chain_detects_tamper_delete_and_reorder"
+    "test:services/modbit-core/tests/surface_protocol.rs::qual_ev_0270_the_protected_effect_receipt_chain_detects_tamper_delete_and_reorder",
+    "run:35319337722",
+    "commit:274b15a",
+    "artifact:evidence/m9/M9.2/TASK_CARD.md"
    ],
    "notes": [
     {
@@ -4427,9 +4430,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "local: QUAL-EV-0270 green — tamper/reorder/delete each fail verification against the real store"
+    },
+    {
+     "at": "2026-09-18T07:57:57Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on main run 35319337722 at 274b15a"
+    },
+    {
+     "at": "2026-09-18T07:57:57Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: hosted CI green on main run 35319337722 at 274b15a; card retained"
     }
    ],
-   "status_changed_on": "2026-09-18T06:50:14Z"
+   "status_changed_on": "2026-09-18T07:57:57Z"
   },
   {
    "id": "M9.3",
@@ -21998,9 +22013,12 @@
    "milestone": "M9",
    "qual": "QUAL-EV-0270",
    "source": "docs/41",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
-    "test:services/modbit-core/tests/surface_protocol.rs::qual_ev_0270_the_protected_effect_receipt_chain_detects_tamper_delete_and_reorder"
+    "test:services/modbit-core/tests/surface_protocol.rs::qual_ev_0270_the_protected_effect_receipt_chain_detects_tamper_delete_and_reorder",
+    "run:35319337722",
+    "commit:274b15a",
+    "artifact:evidence/m9/IMP-EV-0270/TASK_CARD.md"
    ],
    "notes": [
     {
@@ -22026,9 +22044,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "local: QUAL-EV-0270 green — tamper/reorder/delete each fail verification against the real store"
+    },
+    {
+     "at": "2026-09-18T07:57:57Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on main run 35319337722 at 274b15a"
+    },
+    {
+     "at": "2026-09-18T07:57:57Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: hosted CI green on main run 35319337722 at 274b15a; card retained"
     }
    ],
-   "status_changed_on": "2026-09-18T06:50:14Z"
+   "status_changed_on": "2026-09-18T07:57:57Z"
   },
   {
    "id": "IMP-EV-0271",
