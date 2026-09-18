@@ -33,4 +33,4 @@ A `cloud_isolated` task's browser is the Chromium inside its sandbox, driven by 
 ## Evidence
 
 - `evidence.json` in this directory (commits, hosted CI run, test names)
-- CI run json copy alongside
+- CI run json copy alongside: `ci-run-35290929921.json` — hosted run 35290929921 at c20494f on main, green on macOS, Linux and Windows; the cloud job on a real Firecracker MicroVM with Chrome for Testing's headless shell (`HeadlessChrome/153.0.8010.47`) answering CDP inside the guest

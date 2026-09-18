@@ -32,4 +32,4 @@ A cloud task survives the loss of its sandbox: the call in flight keeps its unkn
 ## Evidence
 
 - `evidence.json` in this directory (commits, hosted CI run, test names)
-- CI run json copy alongside
+- CI run json copy alongside: `ci-run-35290929921.json` — hosted run 35290929921 at c20494f on main, green on macOS, Linux and Windows; the cloud job on a real Firecracker MicroVM with Chrome for Testing's headless shell (`HeadlessChrome/153.0.8010.47`) answering CDP inside the guest

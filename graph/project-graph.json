@@ -4233,8 +4233,53 @@
    "milestone": "M8",
    "order": 7,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_m8_8_a_cloud_tasks_browser_runs_inside_its_sandbox_over_cdp_and_streams_its_view_to_the_person",
+    "test:qual_m8_3_a_firecracker_microvm_boots_the_guest_and_passes_the_backend_contract",
+    "run:35290929921",
+    "commit:c20494f",
+    "artifact:evidence/m8/M8.8/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-18T00:46:56Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: MISSING — browser tools local only; no cloud browser"
+    },
+    {
+     "at": "2026-09-18T00:46:56Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "guest browser, gateway CDP relay, Core cloud-cdp host, view stream, worker link"
+    },
+    {
+     "at": "2026-09-18T00:46:56Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "StartTask attaches the host; API stream/input/control over the worker's link"
+    },
+    {
+     "at": "2026-09-18T00:46:56Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "end to end; conformance browser steps on the MicroVM"
+    },
+    {
+     "at": "2026-09-18T00:46:56Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green incl. HeadlessChrome inside the Firecracker guest"
+    },
+    {
+     "at": "2026-09-18T00:46:56Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-18T00:46:56Z"
   },
   {
    "id": "M8.9",
@@ -4244,8 +4289,52 @@
    "milestone": "M8",
    "order": 8,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:qual_m8_9_a_lost_sandbox_is_replaced_and_restored_from_the_latest_checkpoint_and_the_task_resumes",
+    "run:35290929921",
+    "commit:c20494f",
+    "artifact:evidence/m8/M8.9/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-18T00:46:56Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: SandboxLost never journaled; cloud checkpoints captured the seed"
+    },
+    {
+     "at": "2026-09-18T00:46:56Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "guest fs.snapshot, sandbox checkpoints, relink-or-replace, restore"
+    },
+    {
+     "at": "2026-09-18T00:46:56Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "runtime hook on SANDBOX_UNAVAILABLE; turn-boundary checkpoints"
+    },
+    {
+     "at": "2026-09-18T00:46:56Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "the sandbox killed mid-task on a real backend"
+    },
+    {
+     "at": "2026-09-18T00:46:56Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on the Firecracker MicroVM"
+    },
+    {
+     "at": "2026-09-18T00:46:57Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-18T00:46:57Z"
   },
   {
    "id": "M9.1",

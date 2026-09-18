@@ -16,10 +16,14 @@
   "qual_m8_3_the_reference_backend_passes_the_backend_contract",
   "qual_m8_8_a_cloud_tasks_browser_runs_inside_its_sandbox_over_cdp_and_streams_its_view_to_the_person"
  ],
- "batch_commits": [],
- "runs": [],
+ "batch_commits": [
+  "c20494f"
+ ],
+ "runs": [
+  "35290929921"
+ ],
  "proof": "the Core is the Browser Bridge for a cloud task: CDP over the gateway's authenticated DevTools relay to the Chromium inside the sandbox (an ephemeral browser context, one page), the same HostRequests the desktop's host answers, the page reached through the egress broker; the page's screencast goes to the connections that watch and, over the worker's outbound link, to the Cloud API's stream; the person's input is applied only under their control lease.",
  "audit": "MISSING before: browser tools local only; no cloud browser.",
  "limitations": "desktop rendering of the stream not built; JPEG over WebSocket (no WebRTC); fill_credential refused in the cloud; one browser and page per sandbox.",
- "ci": ""
+ "ci": "https://github.com/moss101/modbit/actions/runs/35290929921"
 }
