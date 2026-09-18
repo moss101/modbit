@@ -5440,6 +5440,195 @@ export declare type ProviderConfigured = Message<"modbit.v1.ProviderConfigured">
 export declare const ProviderConfiguredSchema: GenMessage<ProviderConfigured>;
 
 /**
+ * An external tool (MCP) server a client proposes, on its own behalf or
+ * relaying what an agent suggested (M9.4, REQ-EV-0224, docs/16). The host
+ * validates the definition and stores it in the user configuration layer as
+ * PROPOSED: a proposal is inert — never started, never listed to a model as
+ * callable, never invoked — until a person trusts it. Proposing is not
+ * installing.
+ *
+ * @generated from message modbit.v1.ProposeExternalServer
+ */
+export declare type ProposeExternalServer = Message<"modbit.v1.ProposeExternalServer"> & {
+  /**
+   * the configuration key; normalized by the host
+   *
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * transport, env, scopes, requires, read_only_tools
+   *
+   * @generated from field: string definition_json = 2;
+   */
+  definitionJson: string;
+
+  /**
+   * why (untrusted text, kept for the audit)
+   *
+   * @generated from field: string reason = 3;
+   */
+  reason: string;
+};
+
+/**
+ * Describes the message modbit.v1.ProposeExternalServer.
+ * Use `create(ProposeExternalServerSchema)` to create a new message.
+ */
+export declare const ProposeExternalServerSchema: GenMessage<ProposeExternalServer>;
+
+/**
+ * A person trusts a proposed external server, or takes trust away again
+ * (M9.4, REQ-EV-0224). Held to the same client capability as trusting a
+ * repository: letting a program the host did not write run against this
+ * workspace is that kind of decision. Trusting is refused while a gate is
+ * unmet — a definition that does not validate, a name a higher
+ * configuration layer denied, or a named credential the Core does not hold.
+ *
+ * @generated from message modbit.v1.TrustExternalServer
+ */
+export declare type TrustExternalServer = Message<"modbit.v1.TrustExternalServer"> & {
+  /**
+   * @generated from field: modbit.v1.Id session_id = 1;
+   */
+  sessionId?: Id | undefined;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * false takes trust away again
+   *
+   * @generated from field: bool trust = 3;
+   */
+  trust: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.TrustExternalServer.
+ * Use `create(TrustExternalServerSchema)` to create a new message.
+ */
+export declare const TrustExternalServerSchema: GenMessage<TrustExternalServer>;
+
+/**
+ * A credential for an external server, by handle (M9.4, REQ-EV-0224).
+ * Not journaled, for the same reason as ConfigureProvider and
+ * ConfigureForge: the request carries a secret. The Core holds it in memory
+ * only and answers with everything but the value.
+ *
+ * @generated from message modbit.v1.ConfigureExternalCredential
+ */
+export declare type ConfigureExternalCredential = Message<"modbit.v1.ConfigureExternalCredential"> & {
+  /**
+   * the handle a server definition names
+   *
+   * @generated from field: string handle = 1;
+   */
+  handle: string;
+
+  /**
+   * the credential; empty clears it
+   *
+   * @generated from field: string value = 2;
+   */
+  value: string;
+};
+
+/**
+ * Describes the message modbit.v1.ConfigureExternalCredential.
+ * Use `create(ConfigureExternalCredentialSchema)` to create a new message.
+ */
+export declare const ConfigureExternalCredentialSchema: GenMessage<ConfigureExternalCredential>;
+
+/**
+ * What the host holds for a credential handle. Never the value.
+ *
+ * @generated from message modbit.v1.ExternalCredentialConfigured
+ */
+export declare type ExternalCredentialConfigured = Message<"modbit.v1.ExternalCredentialConfigured"> & {
+  /**
+   * @generated from field: string handle = 1;
+   */
+  handle: string;
+
+  /**
+   * @generated from field: bool held = 2;
+   */
+  held: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.ExternalCredentialConfigured.
+ * Use `create(ExternalCredentialConfiguredSchema)` to create a new message.
+ */
+export declare const ExternalCredentialConfiguredSchema: GenMessage<ExternalCredentialConfigured>;
+
+/**
+ * What the host stored for an external server. Never carries a credential
+ * value — only the handle a definition named and whether the Core holds one.
+ *
+ * @generated from message modbit.v1.ExternalServerConfigured
+ */
+export declare type ExternalServerConfigured = Message<"modbit.v1.ExternalServerConfigured"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * PROPOSED | TRUSTED
+   *
+   * @generated from field: string trust = 2;
+   */
+  trust: string;
+
+  /**
+   * the configuration layer it was written to
+   *
+   * @generated from field: string layer = 3;
+   */
+  layer: string;
+
+  /**
+   * capabilities a task needs to reach it
+   *
+   * @generated from field: repeated string requires = 4;
+   */
+  requires: string[];
+
+  /**
+   * @generated from field: repeated string scopes = 5;
+   */
+  scopes: string[];
+
+  /**
+   * @generated from field: string credential_handle = 6;
+   */
+  credentialHandle: string;
+
+  /**
+   * @generated from field: bool credential_available = 7;
+   */
+  credentialAvailable: boolean;
+
+  /**
+   * as proposed (untrusted text)
+   *
+   * @generated from field: string reason = 8;
+   */
+  reason: string;
+};
+
+/**
+ * Describes the message modbit.v1.ExternalServerConfigured.
+ * Use `create(ExternalServerConfiguredSchema)` to create a new message.
+ */
+export declare const ExternalServerConfiguredSchema: GenMessage<ExternalServerConfigured>;
+
+/**
  * @generated from message modbit.v1.TrustRepository
  */
 export declare type TrustRepository = Message<"modbit.v1.TrustRepository"> & {

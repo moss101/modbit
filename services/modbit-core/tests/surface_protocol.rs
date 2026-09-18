@@ -33974,3 +33974,310 @@ async fn qual_ev_0187_an_mcp_image_result_reaches_a_vision_capable_model_through
     }
     drop(repo);
 }
+
+/// QUAL-EV-0224 (REQ-EV-0224 "MCP config conversational management": a
+/// UI or an agent may propose configuration changes but the host validates,
+/// trusts and authorizes — a proposed MCP install cannot execute until the
+/// trust and credential gates pass) — M9.4, docs/16.
+///
+/// The real Core, real configuration files and a real MCP server binary
+/// that must never be started until it is trusted. What is proven:
+///
+/// - **proposing is not installing** — a proposal is stored `PROPOSED` in
+///   the user configuration layer, is `UNTRUSTED` in the listing with no
+///   tools, is refused on a call, and its process is never spawned.
+/// - **the host validates** — a definition that does not validate is
+///   refused, and a name a higher configuration layer denied is refused at
+///   propose time rather than silently at resolve time.
+/// - **the credential gate** — a proposal naming a credential the Core does
+///   not hold cannot be trusted; once the credential is in the Core's
+///   custody it can, and only then does the server run.
+/// - **the host authorizes** — trusting needs a client capability a headless
+///   guest does not hold, while proposing does not.
+/// - **a task keeps the configuration it started with** — the task that saw
+///   the proposal still sees it untrusted after the trust; a new task sees
+///   the server ready.
+#[tokio::test]
+async fn qual_ev_0224_a_proposed_external_server_is_inert_until_the_host_trusts_it_and_holds_its_credential()
+ {
+    use modbit_protocol::v1::{
+        ClientKind, ConfigureExternalCredential, ExternalCredentialConfigured,
+        ExternalServerConfigured, InvokeTool, ProposeExternalServer, ToolInvoked,
+        TrustExternalServer,
+    };
+    use serde_json::{Value, json};
+
+    const SECRET: &str = "proposed-server-secret-8f1c";
+
+    let server_bin = mcp_testserver_bin();
+    assert!(
+        server_bin.exists(),
+        "build the MCP test server first: cargo build -p modbit-mcp-testserver"
+    );
+    let dir = tempfile::tempdir().unwrap();
+    let logs = tempfile::tempdir().unwrap();
+    let started = logs.path().join("vault.jsonl");
+    let (repo, root) = plain_repo(&[("README.md", "# demo\n")]);
+    // An admin layer that denies one name outright.
+    std::fs::write(
+        dir.path().join("admin-config.json"),
+        json!({ "mcp_deny": ["shadow"] }).to_string(),
+    )
+    .unwrap();
+
+    let core = CoreProcess::spawn(dir.path());
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xA0)).await;
+    let g = lease_for(&session);
+
+    let definition = json!({
+        "transport": { "kind": "stdio", "command": server_bin.to_string_lossy(), "args": [] },
+        "env": {
+            "MODBIT_MCP_TESTSRV_NAME": "vault",
+            "MODBIT_MCP_TESTSRV_LOG": started.to_string_lossy(),
+            "MODBIT_MCP_TESTSRV_REQUIRE_ENV": format!("MCP_CREDENTIAL={SECRET}"),
+        },
+        "read_only_tools": ["search"],
+        "credential": "docs-api",
+        "trust": "TRUSTED",
+    })
+    .to_string();
+
+    // ---- propose ------------------------------------------------------
+    let ack = c
+        .command(envelope(
+            id16(0xA1),
+            "ProposeExternalServer",
+            ProposeExternalServer {
+                name: "Vault".into(),
+                definition_json: definition.clone(),
+                reason: "the agent suggested it for the docs search".into(),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let view: ExternalServerConfigured = Client::result(&ack).unwrap();
+    assert_eq!(
+        (view.name.as_str(), view.trust.as_str(), view.layer.as_str()),
+        ("vault", "PROPOSED", "user"),
+        "a client cannot propose something already trusted: {view:?}"
+    );
+    assert_eq!(view.credential_handle, "docs-api");
+    assert!(
+        !view.credential_available,
+        "the Core holds no such credential yet"
+    );
+    assert!(view.requires.iter().any(|r| r == "secret.use"), "{view:?}");
+
+    // The host validates, and refuses a name a higher layer denied.
+    let err = c
+        .command(envelope(
+            id16(0xA2),
+            "ProposeExternalServer",
+            ProposeExternalServer {
+                name: "shadow".into(),
+                definition_json: definition.clone(),
+                reason: String::new(),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "EXTERNAL_SERVER_DENIED"),
+        "{err:?}"
+    );
+    let err = c
+        .command(envelope(
+            id16(0xA3),
+            "ProposeExternalServer",
+            ProposeExternalServer {
+                name: "broken".into(),
+                definition_json: json!({ "transport": { "kind": "stdio", "command": "" } })
+                    .to_string(),
+                reason: String::new(),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "BAD_EXTERNAL_SERVER"),
+        "{err:?}"
+    );
+
+    // ---- a proposal is inert ------------------------------------------
+    async fn call(
+        c: &mut Client,
+        cmd: u8,
+        call: u8,
+        task: &Id,
+        g: Option<u64>,
+        tool: &str,
+        args: &str,
+    ) -> ToolInvoked {
+        let ack = c
+            .command(envelope_fenced(
+                id16(cmd),
+                "InvokeTool",
+                InvokeTool {
+                    task_id: Some(task.clone()),
+                    tool_name: tool.into(),
+                    arguments_json: args.into(),
+                    tool_call_id: Some(id16(call)),
+                    output_budget_bytes: 1024 * 1024,
+                }
+                .encode_to_vec(),
+                g,
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    }
+    let before = create_task_with_profile(&mut c, &session, g, &root, 0xA4, "local_trusted").await;
+    let r = call(&mut c, 0xA5, 0x01, &before, g, "external.list", "{}").await;
+    let listing: Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let vault = listing["servers"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["server"] == "vault")
+        .cloned()
+        .expect("the proposal is visible");
+    assert_eq!(vault["health"]["state"], json!("UNTRUSTED"), "{vault}");
+    assert!(vault["tools"].as_array().unwrap().is_empty());
+    let r = call(
+        &mut c,
+        0xA6,
+        0x02,
+        &before,
+        g,
+        "external.call",
+        r#"{"server":"vault","tool":"search","arguments":{"q":"x"}}"#,
+    )
+    .await;
+    assert_eq!(r.error_code, "EXTERNAL_SERVER_UNTRUSTED", "{r:?}");
+    assert!(
+        !started.exists(),
+        "a proposed server is never started, not even to look at it"
+    );
+
+    // ---- the credential gate ------------------------------------------
+    let trust = |cmd: u8, trust: bool| {
+        envelope_fenced(
+            id16(cmd),
+            "TrustExternalServer",
+            TrustExternalServer {
+                session_id: Some(session.clone()),
+                name: "vault".into(),
+                trust,
+            }
+            .encode_to_vec(),
+            g,
+        )
+    };
+    let err = c.command(trust(0xA7, true)).await.unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "EXTERNAL_CREDENTIAL_UNAVAILABLE"),
+        "trust is refused while the Core holds no credential: {err:?}"
+    );
+    let ack = c
+        .command(envelope(
+            id16(0xA8),
+            "ConfigureExternalCredential",
+            ConfigureExternalCredential {
+                handle: "docs-api".into(),
+                value: SECRET.into(),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let held: ExternalCredentialConfigured = Client::result(&ack).unwrap();
+    assert_eq!((held.handle.as_str(), held.held), ("docs-api", true));
+    let ack = c.command(trust(0xA9, true)).await.unwrap();
+    let view: ExternalServerConfigured = Client::result(&ack).unwrap();
+    assert_eq!(view.trust, "TRUSTED", "{view:?}");
+    assert!(view.credential_available, "{view:?}");
+
+    // ---- the task that saw the proposal keeps its own configuration ----
+    let r = call(&mut c, 0xAA, 0x03, &before, g, "external.list", "{}").await;
+    let listing: Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let vault = listing["servers"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["server"] == "vault")
+        .cloned()
+        .unwrap();
+    assert_eq!(
+        vault["health"]["state"],
+        json!("UNTRUSTED"),
+        "a task keeps the configuration it started with: {vault}"
+    );
+
+    // ---- a new task reaches the trusted server -------------------------
+    let after = create_task_with_profile(&mut c, &session, g, &root, 0xAB, "local_trusted").await;
+    let r = call(
+        &mut c,
+        0xAC,
+        0x04,
+        &after,
+        g,
+        "external.call",
+        r#"{"server":"vault","tool":"search","arguments":{"q":"trusted"}}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let out: Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(
+        out["text"],
+        json!("hit: trusted"),
+        "the credential reached the server the person trusted: {out}"
+    );
+    assert!(started.exists(), "and only now was it started");
+
+    // ---- the host authorizes: a guest may propose, never trust ---------
+    let mut guest = core.client_of(ClientKind::SandboxGuest).await;
+    let err = guest
+        .command(envelope(
+            id16(0xAD),
+            "ProposeExternalServer",
+            ProposeExternalServer {
+                name: "guest".into(),
+                definition_json: definition.clone(),
+                reason: String::new(),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "CLIENT_CAPABILITY"),
+        "a sandbox guest authors nothing: {err:?}"
+    );
+    let err = guest.command(trust(0xAE, false)).await.unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "CLIENT_CAPABILITY"),
+        "trusting is a person's decision: {err:?}"
+    );
+
+    // ---- trust can be taken away again ---------------------------------
+    let ack = c.command(trust(0xAF, false)).await.unwrap();
+    let view: ExternalServerConfigured = Client::result(&ack).unwrap();
+    assert_eq!(view.trust, "PROPOSED", "{view:?}");
+    let later = create_task_with_profile(&mut c, &session, g, &root, 0xB0, "local_trusted").await;
+    let r = call(
+        &mut c,
+        0xB1,
+        0x05,
+        &later,
+        g,
+        "external.call",
+        r#"{"server":"vault","tool":"search","arguments":{"q":"x"}}"#,
+    )
+    .await;
+    assert_eq!(r.error_code, "EXTERNAL_SERVER_UNTRUSTED", "{r:?}");
+    drop(repo);
+}

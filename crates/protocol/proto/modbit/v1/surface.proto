@@ -1281,6 +1281,58 @@ message ProviderConfigured {
   repeated string models = 3;      // model ids the endpoint serves
 }
 
+// An external tool (MCP) server a client proposes, on its own behalf or
+// relaying what an agent suggested (M9.4, REQ-EV-0224, docs/16). The host
+// validates the definition and stores it in the user configuration layer as
+// PROPOSED: a proposal is inert — never started, never listed to a model as
+// callable, never invoked — until a person trusts it. Proposing is not
+// installing.
+message ProposeExternalServer {
+  string name = 1;                 // the configuration key; normalized by the host
+  string definition_json = 2;      // transport, env, scopes, requires, read_only_tools
+  string reason = 3;               // why (untrusted text, kept for the audit)
+}
+
+// A person trusts a proposed external server, or takes trust away again
+// (M9.4, REQ-EV-0224). Held to the same client capability as trusting a
+// repository: letting a program the host did not write run against this
+// workspace is that kind of decision. Trusting is refused while a gate is
+// unmet — a definition that does not validate, a name a higher
+// configuration layer denied, or a named credential the Core does not hold.
+message TrustExternalServer {
+  Id session_id = 1;
+  string name = 2;
+  bool trust = 3;                  // false takes trust away again
+}
+
+// A credential for an external server, by handle (M9.4, REQ-EV-0224).
+// Not journaled, for the same reason as ConfigureProvider and
+// ConfigureForge: the request carries a secret. The Core holds it in memory
+// only and answers with everything but the value.
+message ConfigureExternalCredential {
+  string handle = 1;               // the handle a server definition names
+  string value = 2;                // the credential; empty clears it
+}
+
+// What the host holds for a credential handle. Never the value.
+message ExternalCredentialConfigured {
+  string handle = 1;
+  bool held = 2;
+}
+
+// What the host stored for an external server. Never carries a credential
+// value — only the handle a definition named and whether the Core holds one.
+message ExternalServerConfigured {
+  string name = 1;
+  string trust = 2;                // PROPOSED | TRUSTED
+  string layer = 3;                // the configuration layer it was written to
+  repeated string requires = 4;    // capabilities a task needs to reach it
+  repeated string scopes = 5;
+  string credential_handle = 6;
+  bool credential_available = 7;
+  string reason = 8;               // as proposed (untrusted text)
+}
+
 message TrustRepository {
   Id session_id = 1;
   string workspace_root = 2;       // the root the user trusts, scoped exactly to it

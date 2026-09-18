@@ -20459,8 +20459,29 @@
    "milestone": "M9",
    "qual": "QUAL-EV-0224",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "WIRED",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-18T17:00:14Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audited: ABSENT. A server's configuration reaches the Core only from files on disk (IMP-EV-0128) and a boot environment variable; there is no way for a client or an agent to propose one, no trust transition, and no way to hand the Core a credential for an external server at run time. The Trust::Proposed state and the hub's refusal to start an untrusted server exist from IMP-EV-0104 and are what a proposal will land in."
+    },
+    {
+     "at": "2026-09-18T17:27:15Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "three surface commands (ProposeExternalServer, TrustExternalServer, ConfigureExternalCredential) with their views, the user-layer store written whole through a temporary file, the propose-time deny check, the credential gate on trust, and stop_named so taking trust away stops the program"
+    },
+    {
+     "at": "2026-09-18T17:27:15Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "registered in the supported command list with their client capabilities (task.author to propose, repository.trust to trust or configure a credential); the hub now takes trust from the task's current configuration rather than from the pool entry, so a trust change is seen by the next task and an untrust stops the transport"
+    }
+   ],
+   "status_changed_on": "2026-09-18T17:27:15Z"
   },
   {
    "id": "IMP-EV-0225",
