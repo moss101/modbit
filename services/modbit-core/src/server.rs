@@ -548,6 +548,9 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "CompileRoutingPlan",
                     "ConfigureProvider",
                     "ConfigureForge",
+                    "ProposeExternalServer",
+                    "TrustExternalServer",
+                    "ConfigureExternalCredential",
                     "ConfigureSandboxGateway",
                     "ExportHandoff",
                     "RebindTaskWorkspace",
@@ -1067,6 +1070,12 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         "ConfigureProvider" | "ActivateModelRegistry" | "ProbeModel" | "ConfigureForge" => {
             "provider.configure"
         }
+        // Proposing costs nothing and grants nothing, so any client that can
+        // author a task may do it; trusting a program the host did not write
+        // to run against this workspace is the same class of decision as
+        // trusting the repository, and is held to the same capability.
+        "ProposeExternalServer" => "task.author",
+        "TrustExternalServer" | "ConfigureExternalCredential" => "repository.trust",
         "ConfigureSandboxGateway" => "sandbox.configure",
         "ExportHandoff" => "task.author",
         "GetEnvironment" | "RebuildEnvironment" => "task.author",
@@ -4203,6 +4212,75 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 egress,
             };
             core.tools.forge.set(cfg);
+            accept(cid, false, view.encode_to_vec())
+        }
+        // M9.4 (REQ-EV-0224): a client proposes an external tool server on
+        // its own behalf or relaying what an agent suggested. The host
+        // validates it and writes it into the user configuration layer as
+        // PROPOSED — inert until a person trusts it. Proposing is not
+        // installing, and nothing here starts a process.
+        "ProposeExternalServer" => {
+            let Ok(p) = wire::ProposeExternalServer::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "ProposeExternalServer");
+            };
+            match crate::mcp::propose(core, &p.name, &p.definition_json, &p.reason) {
+                Ok(view) => accept(cid, false, view.encode_to_vec()),
+                Err((code, message)) => reject(cid, code, message),
+            }
+        }
+        // M9.4 (REQ-EV-0224): a person trusts a proposal, or takes trust
+        // away. Every gate is answered here rather than at the moment the
+        // server would have run: the definition must validate, no higher
+        // layer may have denied the name, and a named credential must be in
+        // the Core's custody.
+        "TrustExternalServer" => {
+            let Ok(p) = wire::TrustExternalServer::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "TrustExternalServer");
+            };
+            let Some(session_id) = p
+                .session_id
+                .as_ref()
+                .and_then(id16)
+                .map(modbit_domain::SessionId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "session_id required");
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
+                return ack;
+            }
+            match crate::mcp::set_trust(core, &p.name, p.trust) {
+                Ok(view) => {
+                    if !p.trust {
+                        // Taking trust away stops the program, not merely
+                        // the next task's access to it.
+                        core.tools.mcp.stop_named(&view.name).await;
+                    }
+                    accept(cid, false, view.encode_to_vec())
+                }
+                Err((code, message)) => reject(cid, code, message),
+            }
+        }
+        // M9.4 (REQ-EV-0224): a credential for an external server, by
+        // handle. Not journaled, for the same reason as ConfigureProvider
+        // and ConfigureForge: the request carries a secret. The Core holds
+        // it in memory and answers with everything but the value.
+        "ConfigureExternalCredential" => {
+            let Ok(p) = wire::ConfigureExternalCredential::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "ConfigureExternalCredential");
+            };
+            let handle = p.handle.trim().to_owned();
+            if handle.is_empty() {
+                return reject(cid, "BAD_PAYLOAD", "handle required");
+            }
+            if p.value.is_empty() {
+                core.tools.mcp.clear_credential(&handle);
+            } else {
+                core.tools.mcp.set_credential(&handle, p.value.clone());
+            }
+            let view = wire::ExternalCredentialConfigured {
+                held: core.tools.mcp.has_credential(&handle),
+                handle,
+            };
             accept(cid, false, view.encode_to_vec())
         }
         "ExportHandoff" => {

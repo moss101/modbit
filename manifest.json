@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 1256,
-    "docs_bytes": 1263057
+    "root_and_tooling": 1260,
+    "docs_bytes": 1267383
   },
   "sections": [
     {
@@ -185,8 +185,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Tool System, Capability Kernel, Procedural Runtime, and MCP",
-      "bytes": 26437,
-      "sha256": "17059a9a789ac32640f306ba4241c5457159340005b36e5f214851cf23a507f4"
+      "bytes": 27954,
+      "sha256": "5fcb36fcccea1046de944963aa44256952be76cf80a29641a22aaccaca0416af"
     },
     {
       "path": "docs/17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md",
@@ -239,8 +239,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Browser and Computer-Use Architecture",
-      "bytes": 29985,
-      "sha256": "2798543a1c861adc8391d1db5f9a0484b2c3fff03d6c4e18976d7e6f2efec88d"
+      "bytes": 31715,
+      "sha256": "0a846ff68035d09959118091e559439cd5d0f893e9d005e4d52b2ce495baebf7"
     },
     {
       "path": "docs/23_SECURITY_POLICY_EFFECT_LEDGER.md",
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 38173,
-      "sha256": "82babc7d09661e70645904fd984c7d634b9033b94727599cec94c3ce9c93cb15"
+      "bytes": 39252,
+      "sha256": "a6df6943020a62bcf7f2ed2e83fbc2a4fa623f4420f35f08c95c24ad900851e9"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -7052,6 +7052,16 @@
       "sha256": "cc1adc79cdfc3c69fc49c606878cfe7e91061073e940036839049ecf58d16f0f"
     },
     {
+      "path": "evidence/m9/IMP-EV-0224/TASK_CARD.md",
+      "bytes": 4668,
+      "sha256": "f87a85cd6fef892e2f137b0e8cf0b1e5ef966b7f1e12100063d424b80d4f52a3"
+    },
+    {
+      "path": "evidence/m9/IMP-EV-0224/evidence.json",
+      "bytes": 1676,
+      "sha256": "ffd99f8b4f8b673582c9b433ee814e8a52f2abdef334b21eb51e3f9603be03be"
+    },
+    {
       "path": "evidence/m9/IMP-EV-0270/TASK_CARD.md",
       "bytes": 3597,
       "sha256": "6c5344903995ffb1fb79d21c6ac73b01b47637e9e55f09b5ce4a2c4d35ddd95a"
@@ -7060,6 +7070,16 @@
       "path": "evidence/m9/IMP-EV-0270/evidence.json",
       "bytes": 1229,
       "sha256": "0d2b9576e360c9aacb1a9d31f9f22d64c6aec6114426d71895b97daddbc91349"
+    },
+    {
+      "path": "evidence/m9/IMP-EV-0281/TASK_CARD.md",
+      "bytes": 4355,
+      "sha256": "b209eb3d97e80453630582be3b78b0e11a121ead360ccb4af9a468ddf8b47498"
+    },
+    {
+      "path": "evidence/m9/IMP-EV-0281/evidence.json",
+      "bytes": 1481,
+      "sha256": "52153603f712b3e6433402237b423d8d961a5e9c598a21e46a66e1bf677a541c"
     },
     {
       "path": "evidence/m9/IMP-EV-0288/TASK_CARD.md",
@@ -7098,8 +7118,8 @@
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1548398,
-      "sha256": "545cbffa14ed9f1e719bb4aabc145ae7b08154ccf155442fab13475f13628131"
+      "bytes": 1551205,
+      "sha256": "b4c30872bba862af19ad03818f8dcb89d689a4c11abe371abcefdc09de2f47ef"
     },
     {
       "path": "tools/build_graph.py",

@@ -192,6 +192,30 @@ pub struct Listing {
     pub refused_servers: Vec<String>,
 }
 
+/// A server bound to the page's origin that this task cannot reach, and
+/// why — the reason the host falls back down the action ladder instead of
+/// preferring a structured action (REQ-EV-0281, docs/22).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SiteServerUnavailable {
+    /// Server name.
+    pub server: String,
+    /// Stable code (`EXTERNAL_SERVER_UNTRUSTED`, `EXTERNAL_CAPABILITY_NOT_LEASED`, …).
+    pub code: String,
+    /// What is in the way.
+    pub reason: String,
+}
+
+/// What the site the browser is on offers this task (REQ-EV-0281): the
+/// structured tools of the servers the host bound to the page's origin and
+/// this task may reach, and the ones it may not with the reason.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct SiteTools {
+    /// Tools a trusted, leased, reachable bound server declares.
+    pub available: Vec<DiscoveredTool>,
+    /// Bound servers this task cannot reach, and why.
+    pub unavailable: Vec<SiteServerUnavailable>,
+}
+
 /// What `external.cancel` returns.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Cancelled {
@@ -218,6 +242,11 @@ pub trait McpPort: Send + Sync {
         call_id: &'a str,
         reason: &'a str,
     ) -> BoxFuture<'a, Result<Cancelled, PortError>>;
+
+    /// What the site at `origin` offers this task (REQ-EV-0281). Only the
+    /// servers the host bound to that origin are touched, so reading a page
+    /// never starts an unrelated server.
+    fn for_site<'a>(&'a self, origin: &'a str) -> BoxFuture<'a, SiteTools>;
 }
 
 #[cfg(test)]

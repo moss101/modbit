@@ -360,6 +360,24 @@ impl McpHub {
             .insert(credential_key(handle), value);
     }
 
+    /// Whether this Core holds a credential for `handle`.
+    pub fn has_credential(&self, handle: &str) -> bool {
+        self.credentials
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .contains_key(&credential_key(handle))
+    }
+
+    /// Forget a credential. A server that needs it stops being reachable at
+    /// its next start; a transport already running keeps what it was given
+    /// until it is replaced.
+    pub fn clear_credential(&self, handle: &str) {
+        self.credentials
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(&credential_key(handle));
+    }
+
     /// The credential values in custody — what the pipeline refuses to let
     /// through tool arguments (M9.3).
     pub fn secrets_in_custody(&self) -> Vec<String> {
@@ -369,6 +387,27 @@ impl McpHub {
             .values()
             .cloned()
             .collect()
+    }
+
+    /// Stop every pooled transport of the server called `name`. A person
+    /// taking trust away means the program stops, not merely that the next
+    /// task cannot reach it.
+    pub async fn stop_named(&self, name: &str) {
+        let doomed: Vec<PoolKey> = {
+            let pool = self.pool.lock().await;
+            pool.iter()
+                .filter(|(_, e)| e.cfg.name == name)
+                .map(|(k, _)| k.clone())
+                .collect()
+        };
+        for key in doomed {
+            let entry = self.pool.lock().await.remove(&key);
+            if let Some(entry) = entry {
+                // Dropping the sender ends the writer task, which closes the
+                // child's input; an MCP server exits when its input ends.
+                let _ = entry.conn.lock().await.take();
+            }
+        }
     }
 
     /// Stop every pooled server (Core shutdown).
@@ -434,7 +473,20 @@ impl McpHub {
         &self,
         entry: &Arc<Pooled>,
         session: &str,
+        cfg: &ServerConfig,
     ) -> Result<Arc<Connection>, PortError> {
+        // Trust first, and before the pool: a transport another task started
+        // is not a way to reach a server this task's configuration does not
+        // trust, and trust can be taken away while an entry is alive.
+        if !cfg.startable() {
+            return Err(PortError::clean(
+                "EXTERNAL_SERVER_UNTRUSTED",
+                format!(
+                    "`{}` is proposed but not trusted; a person or an admin layer must trust it before it can run",
+                    cfg.name
+                ),
+            ));
+        }
         entry.state().sessions.insert(session.to_owned());
         let mut slot = entry.conn.lock().await;
         if let Some(c) = slot.as_ref() {
@@ -449,16 +501,7 @@ impl McpHub {
             *slot = None;
             entry.state().discovery = None;
         }
-        if !entry.cfg.startable() {
-            return Err(PortError::clean(
-                "EXTERNAL_SERVER_UNTRUSTED",
-                format!(
-                    "`{}` is proposed but not trusted; a person or an admin layer must trust it before it can run",
-                    entry.cfg.name
-                ),
-            ));
-        }
-        match self.start(&entry.cfg).await {
+        match self.start(cfg).await {
             Ok(c) => {
                 entry.state().failure = None;
                 *slot = Some(Arc::clone(&c));
@@ -806,7 +849,7 @@ impl TaskHub {
         }
         match self
             .hub
-            .connection(&entry, &self.correlation.session_id)
+            .connection(&entry, &self.correlation.session_id, cfg)
             .await
         {
             Ok(conn) => match self.hub.discover(&entry, &conn).await {
@@ -880,7 +923,7 @@ impl McpPort for TaskHub {
                 .await;
             let conn = self
                 .hub
-                .connection(&entry, &self.correlation.session_id)
+                .connection(&entry, &self.correlation.session_id, cfg)
                 .await?;
             let discovery = self.hub.discover(&entry, &conn).await?;
             let Some(tool) = discovery.tools.iter().find(|t| t.name == call.tool) else {
@@ -911,6 +954,54 @@ impl McpPort for TaskHub {
                 .map_err(|e| PortError::clean(e.code, e.message))?;
             parsed.redacted = self.redact(&mut parsed);
             Ok(parsed)
+        })
+    }
+
+    fn for_site<'a>(&'a self, origin: &'a str) -> BoxFuture<'a, modbit_mcp::SiteTools> {
+        Box::pin(async move {
+            let mut out = modbit_mcp::SiteTools::default();
+            for server in self.servers.iter().filter(|s| s.config.serves_site(origin)) {
+                let cfg = &server.config;
+                let unreachable = |code: &str, reason: String| modbit_mcp::SiteServerUnavailable {
+                    server: cfg.name.clone(),
+                    code: code.to_owned(),
+                    reason,
+                };
+                if cfg.trust != Trust::Trusted {
+                    out.unavailable.push(unreachable(
+                        "EXTERNAL_SERVER_UNTRUSTED",
+                        format!("`{}` is proposed but not trusted", cfg.name),
+                    ));
+                    continue;
+                }
+                let missing = self.unleased(cfg);
+                if !missing.is_empty() {
+                    out.unavailable.push(unreachable(
+                        "EXTERNAL_CAPABILITY_NOT_LEASED",
+                        format!(
+                            "`{}` needs {missing:?}, which this task's capability lease does not grant",
+                            cfg.name
+                        ),
+                    ));
+                    continue;
+                }
+                let entry = self
+                    .hub
+                    .entry(&self.tenant, self.workspace.as_deref(), cfg)
+                    .await;
+                match self
+                    .hub
+                    .connection(&entry, &self.correlation.session_id, cfg)
+                    .await
+                {
+                    Ok(conn) => match self.hub.discover(&entry, &conn).await {
+                        Ok(d) => out.available.extend(d.tools),
+                        Err(e) => out.unavailable.push(unreachable(&e.code, e.message)),
+                    },
+                    Err(e) => out.unavailable.push(unreachable(&e.code, e.message)),
+                }
+            }
+            out
         })
     }
 
@@ -980,4 +1071,148 @@ impl McpPort for TaskHub {
             })
         })
     }
+}
+
+/// A definition as the host stores it, and the view a client is answered
+/// with. Never carries a credential value — only the handle a definition
+/// named and whether the Core holds one.
+fn view_of(
+    core: &crate::server::Core,
+    cfg: &ServerConfig,
+    reason: &str,
+) -> modbit_protocol::v1::ExternalServerConfigured {
+    modbit_protocol::v1::ExternalServerConfigured {
+        name: cfg.name.clone(),
+        trust: format!("{:?}", cfg.trust).to_ascii_uppercase(),
+        layer: "user".into(),
+        requires: cfg.needed_capabilities().into_iter().collect(),
+        scopes: cfg.scopes.iter().cloned().collect(),
+        credential_available: cfg
+            .credential
+            .as_ref()
+            .is_some_and(|h| core.tools.mcp.has_credential(h)),
+        credential_handle: cfg.credential.clone().unwrap_or_default(),
+        reason: reason.to_owned(),
+    }
+}
+
+/// Parse and validate a definition under `name`, as the user layer holds it.
+fn definition(name: &str, json: &str) -> Result<ServerConfig, (&'static str, String)> {
+    let name =
+        modbit_mcp::normalize_server_name(name).map_err(|e| ("BAD_EXTERNAL_SERVER", e.message))?;
+    let mut cfg: ServerConfig = serde_json::from_str(json).map_err(|e| {
+        (
+            "BAD_EXTERNAL_SERVER",
+            format!("`{name}` is not a server definition: {e}"),
+        )
+    })?;
+    cfg.name = name;
+    cfg.layer = "user".into();
+    cfg.validate()
+        .map_err(|e| ("BAD_EXTERNAL_SERVER", format!("{}: {}", e.code, e.message)))?;
+    Ok(cfg)
+}
+
+/// The definition the user layer holds, as a proposal-shaped JSON string
+/// with `trust` set. `reason` is the client's own text, kept for the audit.
+fn stored(cfg: &ServerConfig, reason: &str) -> Result<String, (&'static str, String)> {
+    let mut v = serde_json::to_value(cfg).map_err(|e| ("BAD_EXTERNAL_SERVER", e.to_string()))?;
+    if let Some(o) = v.as_object_mut() {
+        // Untrusted text a client supplied: bounded, kept beside the
+        // definition so "who asked for this server, and why" has an answer.
+        o.insert(
+            "reason".into(),
+            serde_json::Value::String(reason.chars().take(512).collect::<String>()),
+        );
+    }
+    serde_json::to_string(&v).map_err(|e| ("BAD_EXTERNAL_SERVER", e.to_string()))
+}
+
+/// REQ-EV-0224: store a proposed external server. It is written PROPOSED
+/// whatever the definition says — a client cannot propose something already
+/// trusted — and nothing is started.
+///
+/// # Errors
+/// `BAD_EXTERNAL_SERVER` when the definition does not validate,
+/// `EXTERNAL_SERVER_DENIED` when a higher configuration layer denied the
+/// name (the proposal could never run, so it is refused now rather than
+/// silently at resolve time), `CONFIGURATION_UNWRITABLE` when the user
+/// layer cannot be written.
+pub fn propose(
+    core: &crate::server::Core,
+    name: &str,
+    definition_json: &str,
+    reason: &str,
+) -> Result<modbit_protocol::v1::ExternalServerConfigured, (&'static str, String)> {
+    let mut cfg = definition(name, definition_json)?;
+    cfg.trust = Trust::Proposed;
+    if let Some(level) = crate::config::denied_above_user(&core.data_dir, None, &cfg.name) {
+        return Err((
+            "EXTERNAL_SERVER_DENIED",
+            format!(
+                "`{}` is denied by the {level:?} configuration; a proposal for it could never run",
+                cfg.name
+            ),
+        ));
+    }
+    crate::config::put_user_server(&core.data_dir, &cfg.name, &stored(&cfg, reason)?)
+        .map_err(|e| ("CONFIGURATION_UNWRITABLE", e))?;
+    Ok(view_of(core, &cfg, reason))
+}
+
+/// REQ-EV-0224: trust a proposed external server, or take trust away. Every
+/// gate is answered here rather than when the server would have run.
+///
+/// # Errors
+/// `UNKNOWN_EXTERNAL_SERVER` when the user layer holds no such definition,
+/// `BAD_EXTERNAL_SERVER` when what it holds no longer validates,
+/// `EXTERNAL_SERVER_DENIED` when a higher layer denies the name,
+/// `EXTERNAL_CREDENTIAL_UNAVAILABLE` when the definition names a credential
+/// this Core does not hold, `CONFIGURATION_UNWRITABLE` when the user layer
+/// cannot be written.
+pub fn set_trust(
+    core: &crate::server::Core,
+    name: &str,
+    trust: bool,
+) -> Result<modbit_protocol::v1::ExternalServerConfigured, (&'static str, String)> {
+    let normalized =
+        modbit_mcp::normalize_server_name(name).map_err(|e| ("BAD_EXTERNAL_SERVER", e.message))?;
+    let Some(json) = crate::config::user_server(&core.data_dir, &normalized) else {
+        return Err((
+            "UNKNOWN_EXTERNAL_SERVER",
+            format!("the user configuration holds no external server named `{normalized}`"),
+        ));
+    };
+    let reason = serde_json::from_str::<serde_json::Value>(&json)
+        .ok()
+        .and_then(|v| v.get("reason").and_then(|r| r.as_str()).map(str::to_owned))
+        .unwrap_or_default();
+    let mut cfg = definition(&normalized, &json)?;
+    if trust {
+        if let Some(level) = crate::config::denied_above_user(&core.data_dir, None, &cfg.name) {
+            return Err((
+                "EXTERNAL_SERVER_DENIED",
+                format!("`{}` is denied by the {level:?} configuration", cfg.name),
+            ));
+        }
+        if let Some(handle) = &cfg.credential
+            && !core.tools.mcp.has_credential(handle)
+        {
+            return Err((
+                "EXTERNAL_CREDENTIAL_UNAVAILABLE",
+                format!(
+                    "`{}` needs the credential `{handle}`, which this Core does not hold; configure it before trusting the server",
+                    cfg.name
+                ),
+            ));
+        }
+    }
+    cfg.trust = if trust {
+        Trust::Trusted
+    } else {
+        Trust::Proposed
+    };
+    crate::config::put_user_server(&core.data_dir, &cfg.name, &stored(&cfg, &reason)?)
+        .map_err(|e| ("CONFIGURATION_UNWRITABLE", e))?;
+    Ok(view_of(core, &cfg, &reason))
 }

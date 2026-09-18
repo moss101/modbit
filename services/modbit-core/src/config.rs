@@ -220,3 +220,142 @@ mod tests {
         );
     }
 }
+
+/// The user layer's file. Proposals are written here because it is the same
+/// file the resolver reads and a person edits: there is no second store of
+/// external servers to disagree with the configuration.
+#[must_use]
+pub fn user_layer_path(data_dir: &Path) -> std::path::PathBuf {
+    data_dir.join("config.json")
+}
+
+/// Write `definition` under `mcp_servers[name]` in the user layer, keeping
+/// every other key of the file exactly as it was — including keys this
+/// build does not know, which belong to whoever wrote them.
+///
+/// # Errors
+/// A message naming what went wrong when the file cannot be read as JSON,
+/// is not an object, or cannot be written.
+pub fn put_user_server(data_dir: &Path, name: &str, definition: &str) -> Result<(), String> {
+    let path = user_layer_path(data_dir);
+    let mut doc: serde_json::Value = match std::fs::read_to_string(&path) {
+        Ok(text) if !text.trim().is_empty() => serde_json::from_str(&text).map_err(|e| {
+            format!(
+                "`{}` is not JSON ({e}); refusing to overwrite it",
+                path.display()
+            )
+        })?,
+        _ => serde_json::json!({}),
+    };
+    let Some(obj) = doc.as_object_mut() else {
+        return Err(format!(
+            "`{}` is not a configuration object; refusing to overwrite it",
+            path.display()
+        ));
+    };
+    let servers = obj
+        .entry("mcp_servers")
+        .or_insert_with(|| serde_json::json!({}));
+    let Some(servers) = servers.as_object_mut() else {
+        return Err("`mcp_servers` is not an object".into());
+    };
+    servers.insert(
+        name.to_owned(),
+        serde_json::Value::String(definition.to_owned()),
+    );
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", parent.display()))?;
+    }
+    let text = serde_json::to_string_pretty(&doc).map_err(|e| e.to_string())?;
+    // Written whole through a temporary file: a half-written configuration
+    // would be read as "no opinion" by the next task.
+    let tmp = path.with_extension("json.tmp");
+    std::fs::write(&tmp, text.as_bytes()).map_err(|e| format!("{}: {e}", tmp.display()))?;
+    std::fs::rename(&tmp, &path).map_err(|e| format!("{}: {e}", path.display()))?;
+    Ok(())
+}
+
+/// The definition the user layer holds for `name`, if any.
+#[must_use]
+pub fn user_server(data_dir: &Path, name: &str) -> Option<String> {
+    let doc: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(user_layer_path(data_dir)).ok()?).ok()?;
+    doc.get("mcp_servers")?
+        .get(name)?
+        .as_str()
+        .map(str::to_owned)
+}
+
+/// Whether a layer above the user's denied `name` — the reason a proposal
+/// for it can never become a running server, answered at propose time
+/// rather than silently at resolve time.
+#[must_use]
+pub fn denied_above_user(
+    data_dir: &Path,
+    workspace_root: Option<&str>,
+    name: &str,
+) -> Option<Authority> {
+    let layers = layers_for(data_dir, workspace_root);
+    [Authority::Admin, Authority::Project]
+        .into_iter()
+        .find(|l| {
+            layers
+                .get(l)
+                .is_some_and(|layer| layer.mcp_deny.contains(name))
+        })
+}
+
+#[cfg(test)]
+mod proposal_tests {
+    use super::*;
+
+    #[test]
+    fn a_proposal_is_written_into_the_user_layer_without_disturbing_the_rest_of_it() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(
+            user_layer_path(dir.path()),
+            r#"{"hooks":["lint"],"something_this_build_does_not_know":{"keep":1}}"#,
+        )
+        .expect("write");
+        put_user_server(dir.path(), "docs", r#"{"trust":"PROPOSED"}"#).expect("written");
+        let doc: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(user_layer_path(dir.path())).unwrap())
+                .unwrap();
+        assert_eq!(doc["hooks"][0], "lint");
+        assert_eq!(doc["something_this_build_does_not_know"]["keep"], 1);
+        assert_eq!(
+            user_server(dir.path(), "docs").as_deref(),
+            Some(r#"{"trust":"PROPOSED"}"#)
+        );
+        // And it is a layer the resolver reads.
+        let layers = layers_for(dir.path(), None);
+        assert!(layers[&Authority::User].mcp_servers.contains_key("docs"));
+    }
+
+    #[test]
+    fn a_file_that_is_not_json_is_never_overwritten() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(user_layer_path(dir.path()), "{ not json").expect("write");
+        let e = put_user_server(dir.path(), "docs", "{}").expect_err("refused");
+        assert!(e.contains("refusing to overwrite"), "{e}");
+        assert_eq!(
+            std::fs::read_to_string(user_layer_path(dir.path())).unwrap(),
+            "{ not json"
+        );
+    }
+
+    #[test]
+    fn a_name_a_higher_layer_denied_is_known_before_it_is_proposed() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(
+            dir.path().join("admin-config.json"),
+            r#"{"mcp_deny":["shadow"]}"#,
+        )
+        .expect("write");
+        assert_eq!(
+            denied_above_user(dir.path(), None, "shadow"),
+            Some(Authority::Admin)
+        );
+        assert_eq!(denied_above_user(dir.path(), None, "docs"), None);
+    }
+}

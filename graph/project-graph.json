@@ -20507,8 +20507,29 @@
    "milestone": "M9",
    "qual": "QUAL-EV-0224",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "WIRED",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-18T17:00:14Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audited: ABSENT. A server's configuration reaches the Core only from files on disk (IMP-EV-0128) and a boot environment variable; there is no way for a client or an agent to propose one, no trust transition, and no way to hand the Core a credential for an external server at run time. The Trust::Proposed state and the hub's refusal to start an untrusted server exist from IMP-EV-0104 and are what a proposal will land in."
+    },
+    {
+     "at": "2026-09-18T17:27:15Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "three surface commands (ProposeExternalServer, TrustExternalServer, ConfigureExternalCredential) with their views, the user-layer store written whole through a temporary file, the propose-time deny check, the credential gate on trust, and stop_named so taking trust away stops the program"
+    },
+    {
+     "at": "2026-09-18T17:27:15Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "registered in the supported command list with their client capabilities (task.author to propose, repository.trust to trust or configure a credential); the hub now takes trust from the task's current configuration rather than from the pool entry, so a trust change is seen by the next task and an untrust stops the transport"
+    }
+   ],
+   "status_changed_on": "2026-09-18T17:27:15Z"
   },
   {
    "id": "IMP-EV-0225",
@@ -22880,8 +22901,29 @@
    "milestone": "M9",
    "qual": "QUAL-EV-0281",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "WIRED",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-18T17:40:07Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audited: PARTIAL. The action ladder's rungs 2-4 are built and proven in M7 (derived semantic action by reference, primitive structural CDP action, targeted vision), and the External Tool Hub of M9.4 now lists and calls MCP servers. Rung 1 — a structured action the site offers, preferred when trusted and policy-allowed — does not exist: nothing binds a server to an origin and nothing in browser.act knows a better path is available. DR-M7-001 moved this task to M9 for the gateway."
+    },
+    {
+     "at": "2026-09-18T17:49:31Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "ServerConfig.sites binds a trusted server to the origins it serves (in the fingerprint); McpPort::for_site touches only those servers; every page read carries site_tools with the reason when a bound server is unreachable; a protected browser.act is refused SITE_TOOL_PREFERRED naming the structured action"
+    },
+    {
+     "at": "2026-09-18T17:49:31Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "the refusal is in the browser failure taxonomy with its recovery guidance; the binding is the host's declaration and a page's own claim can only be a proposal (IMP-EV-0224)"
+    }
+   ],
+   "status_changed_on": "2026-09-18T17:49:31Z"
   },
   {
    "id": "IMP-EV-0282",
