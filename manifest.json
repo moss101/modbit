@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 1245,
-    "docs_bytes": 1248520
+    "root_and_tooling": 1250,
+    "docs_bytes": 1256342
   },
   "sections": [
     {
@@ -149,8 +149,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Clean Repository and Module Layout",
-      "bytes": 9439,
-      "sha256": "9cf99c8535c14f16b216f2a477703fdc9c4a47a63867a616eea3ffcc3e3560b4"
+      "bytes": 9671,
+      "sha256": "da440789203a82536000d62d0e7feb1868a1934be4e49a66cb5cea584a7919a7"
     },
     {
       "path": "docs/13_DOMAIN_MODEL_AND_STATE_MACHINES.md",
@@ -185,8 +185,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Tool System, Capability Kernel, Procedural Runtime, and MCP",
-      "bytes": 19459,
-      "sha256": "f4304ea09b87d05baadcc475d838144e8df7c186e41fbc0bc5745680401fc277"
+      "bytes": 23424,
+      "sha256": "b9c070300bacbd5cf6dfc0aeea6191b6147171905083a59b26f5e4566cdc8545"
     },
     {
       "path": "docs/17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md",
@@ -194,8 +194,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Canonical Tool and Capability Inventory",
-      "bytes": 6011,
-      "sha256": "0415cac6a1bb10a1aae38cc41e200e217861965902f30ed7edb75f408b04e59a"
+      "bytes": 7044,
+      "sha256": "3542409ed94a42a9479b38ff322e578a06eefab925fb3cc60b7bc8cded4c4b65"
     },
     {
       "path": "docs/18_CONTEXT_RETRIEVAL_AND_ENGINEERING_KNOWLEDGE.md",
@@ -248,8 +248,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Security, Policy, Capabilities, Secrets, and Effect Ledger",
-      "bytes": 9871,
-      "sha256": "0688557cad15473b4b0b5de70e63d4e9ceca30a54462ea07bd309240ee8925bd"
+      "bytes": 11133,
+      "sha256": "293de99ffa248ff2031ac68361838f245a699aaee940f5e0c489d8783096aa13"
     },
     {
       "path": "docs/24_CLOUD_CONTROL_PLANE_AND_SYNC.md",
@@ -509,8 +509,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Security Threat Model and Verification",
-      "bytes": 5644,
-      "sha256": "8d299543293dfdbf155e5609c4bf18022fe0f89399620191f0840852ab5684d1"
+      "bytes": 6301,
+      "sha256": "05599c999404264fe85cce3dc75b643f8e845ecf029b72c78dce8072556c0d5e"
     },
     {
       "path": "docs/53_PERFORMANCE_AND_BENCHMARK_PLAN.md",
@@ -527,8 +527,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Fault Injection and Recovery Catalog",
-      "bytes": 2266,
-      "sha256": "3bb42df3f654adb39d146e74bee48b8cb9043b567027a59ee92aceca3181010f"
+      "bytes": 2614,
+      "sha256": "1f82e59c6e47c51c688c62a027242d79661a0692d84f8c1055612a3bec84d03a"
     },
     {
       "path": "docs/55_MUTATION_NEGATIVE_AND_CHAOS_TEST_POLICY.md",
@@ -545,8 +545,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Tool Parity and Capability Conformance — Real Effect Tests",
-      "bytes": 5823,
-      "sha256": "88bbbf4e566359de38eb37832770d571caaeda70dd2d3621743509d1c349ed59"
+      "bytes": 6148,
+      "sha256": "2d446ff4c7f3c9d2f32a51e6a444fcf719f68e10d509d7530a0dd8d460242197"
     },
     {
       "path": "docs/57_SKILL_EVOLUTION_REAL_TESTS.md",
@@ -957,9 +957,14 @@
       "sha256": "d490f5996d598119f962ae1832367f7e91ac9ec93b2dbf8ba625d51562432b35"
     },
     {
+      "path": "docs/decisions/DR-M9-001-external-tool-hub-module-layout.md",
+      "bytes": 5045,
+      "sha256": "f3b9680b9707a395471253ca045fd95660b95ab6af616ebeeb3d318bce4d37b0"
+    },
+    {
       "path": "docs/decisions/README.md",
-      "bytes": 4089,
-      "sha256": "442df363fafde7970d3d3aac38152afae490b99e29e1634efec6d5bb2d1c1937"
+      "bytes": 4233,
+      "sha256": "76485a2490c8bce98ded5b0de479ba9f2b66e0551d5a1d139fb72a49443ddcb7"
     },
     {
       "path": "evidence/dossier-epr-v1.1/baseline.json",
@@ -6987,6 +6992,16 @@
       "sha256": "85a7eba3e2dcdbbfa8e4b4daf204f4fb77e513a4b19d4e571505c55ba457221e"
     },
     {
+      "path": "evidence/m9/IMP-EV-0104/TASK_CARD.md",
+      "bytes": 6096,
+      "sha256": "f47c9673a474e02316d84784de2391da07c23dee4c92523d7b13dc59ab8d3feb"
+    },
+    {
+      "path": "evidence/m9/IMP-EV-0104/evidence.json",
+      "bytes": 2443,
+      "sha256": "6698be5b9ce2a0670c25161b7e5e7884255cb34183b8adce5be4955f2ce4151a"
+    },
+    {
       "path": "evidence/m9/IMP-EV-0162/TASK_CARD.md",
       "bytes": 4465,
       "sha256": "e93b23f997134175ec47eb17fe3756f722cb1ebfa7a41b3d05fbbb11af3043b8"
@@ -6995,6 +7010,16 @@
       "path": "evidence/m9/IMP-EV-0162/evidence.json",
       "bytes": 1296,
       "sha256": "b70da1a4e4afc9058d6fcd7260b16731bae0851c273fb9d4e850c621ccf3cc25"
+    },
+    {
+      "path": "evidence/m9/IMP-EV-0193/TASK_CARD.md",
+      "bytes": 3473,
+      "sha256": "8eef44c0c0143d765f2524a8747b7cba69c809ca116439c2db6724aee34289a4"
+    },
+    {
+      "path": "evidence/m9/IMP-EV-0193/evidence.json",
+      "bytes": 1413,
+      "sha256": "a5759385cef58d2dd67a941b6bca4153ac372840ba0973c487038b455c095081"
     },
     {
       "path": "evidence/m9/IMP-EV-0215/TASK_CARD.md",
@@ -7039,12 +7064,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 40724,
-      "sha256": "2b529c163c090dba7006aa87e9f45446d1e8bfaf486b3ed87c61c8b37404a920"
+      "sha256": "0095cfd43bec4d4da3ffef928f81b8a2848a100ed06e7965d7fd86e73b6fc58d"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1537081,
-      "sha256": "0a467c4b5124ddae7f418206ec50c16c41739e2d498a118c24376b9518dc8fe6"
+      "bytes": 1539970,
+      "sha256": "14430eb50929cdcbd284abfa96537d3ff241cb90626d25a320759fc76857a6ca"
     },
     {
       "path": "tools/build_graph.py",

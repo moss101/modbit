@@ -665,6 +665,53 @@
         "memory.propose"
       ],
       "test": "memory_tools_delegate_to_the_host_port_and_never_promote"
+    },
+    {
+      "tool": "external.list",
+      "family": "mcp",
+      "source_behaviors": [
+        "MCP tools/list",
+        "ListMcpResourcesTool",
+        "MCP server discovery"
+      ],
+      "owner": "External Tool Hub (services/modbit-core::mcp)",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "external.list"
+      ],
+      "test": "qual_ev_0104_0193_a_real_mcp_server_lists_calls_and_cancels_while_two_sessions_share_one_transport",
+      "injection_note": "docs/16: a discovered schema and a returned result are untrusted content from a program the host does not control; names are validated and namespaced `external.<server>.<tool>`, descriptions are control-stripped and truncated, schemas are byte- and depth-bounded with no `$ref`, and any field the host does not know (a capability claim, a system instruction, an effect class) is dropped before the host looks at the tool"
+    },
+    {
+      "tool": "external.call",
+      "family": "mcp",
+      "source_behaviors": [
+        "MCP tools/call",
+        "mcp__<server>__<tool> invocation"
+      ],
+      "owner": "External Tool Hub (services/modbit-core::mcp)",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "external.call"
+      ],
+      "test": "qual_ev_0104_0193_a_real_mcp_server_lists_calls_and_cancels_while_two_sessions_share_one_transport",
+      "injection_note": "docs/16: a discovered schema and a returned result are untrusted content from a program the host does not control; names are validated and namespaced `external.<server>.<tool>`, descriptions are control-stripped and truncated, schemas are byte- and depth-bounded with no `$ref`, and any field the host does not know (a capability claim, a system instruction, an effect class) is dropped before the host looks at the tool",
+      "effect_note": "per call (Tool::effect_of): the registered class is the floor a call the HOST declared a read costs; everything else \u2014 an undeclared tool, an unknown server, a tool whose server claims `readOnlyHint` \u2014 raises to ExternalSideEffect, and a server claiming `destructiveHint` takes the host's read declaration away. A server's claim can only raise (crates/mcp::ReadDeclarations, discovery::parse_tools_list)"
+    },
+    {
+      "tool": "external.cancel",
+      "family": "mcp",
+      "source_behaviors": [
+        "MCP notifications/cancelled",
+        "cancel an in-flight external call"
+      ],
+      "owner": "External Tool Hub (services/modbit-core::mcp)",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "external.call"
+      ],
+      "test": "qual_ev_0104_0193_a_real_mcp_server_lists_calls_and_cancels_while_two_sessions_share_one_transport",
+      "effect_note": "cancelling is a read of the host's own call table plus one notification, so it stays available under an emergency stop; an effectful call cancelled after it was sent is reported EXTERNAL_OUTCOME_UNKNOWN \u2014 the host never claims the effect did not happen (docs/16, docs/54 fault 25)"
     }
   ],
   "harness": [
@@ -894,6 +941,11 @@
       "namespace": "memory",
       "inventory_ref": "memory.query",
       "justification": "governed engineering memory: curated recall (memory.query) and candidate proposal (memory.propose); promotion is a separate governed step, no raw transcript auto-promotes (docs/19, REQ-EV-0162)"
+    },
+    {
+      "namespace": "external",
+      "inventory_ref": "external.list",
+      "justification": "the External Tool Hub is a distinct effector: an MCP server is a program outside the host with its own protocol, lifecycle and trust state, and no skill over existing tools can speak JSON-RPC to it, bound its untrusted declarations, pool its transport per tenant and workspace, or reconcile an interrupted effectful call (docs/16 'MCP / external tools', docs/17 new-tool rule, M9.4)"
     }
   ],
   "namespaces_note": "REQ-EV-0230 build/buy lint: every registered tool namespace names the docs/17 canonical inventory row it realizes and why it exists as a tool rather than a skill over existing tools; a new namespace without a row here, or whose inventory_ref is not in docs/17, fails qual_ev_0230."

@@ -32672,3 +32672,734 @@ async fn qual_ev_0270_the_protected_effect_receipt_chain_detects_tamper_delete_a
     assert_eq!(v.receipts.len(), 1, "one row remains: {v:?}");
     drop(repo);
 }
+
+/// The real MCP server the external-tool suites run against (docs/56 "MCP |
+/// real MCP test server"), built as a workspace member beside this test.
+fn mcp_testserver_bin() -> std::path::PathBuf {
+    let exe = std::env::current_exe().expect("test exe");
+    let dir = exe.parent().and_then(|p| p.parent()).expect("target/debug");
+    dir.join(if cfg!(windows) {
+        "modbit-mcp-testserver.exe"
+    } else {
+        "modbit-mcp-testserver"
+    })
+}
+
+/// Wait until the server's own record satisfies `done` (its append and the
+/// host's read are two processes racing), then return the log.
+fn await_server_log(
+    path: &std::path::Path,
+    done: impl Fn(&[serde_json::Value]) -> bool,
+) -> Vec<serde_json::Value> {
+    let deadline = std::time::Instant::now() + Duration::from_secs(10);
+    loop {
+        let log = server_log(path);
+        if done(&log) {
+            return log;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "the server's record never showed what was expected: {log:?}"
+        );
+        std::thread::sleep(Duration::from_millis(50));
+    }
+}
+
+/// Every JSON-RPC message an MCP test server recorded, in order.
+fn server_log(path: &std::path::Path) -> Vec<serde_json::Value> {
+    std::fs::read_to_string(path)
+        .unwrap_or_default()
+        .lines()
+        .filter_map(|l| serde_json::from_str(l).ok())
+        .collect()
+}
+
+/// Approve the session's one open `external.call` approval (an external
+/// side effect waits for an intent-bound approval; docs/23).
+async fn approve_pending(c: &mut Client, cmd: u8, session: &Id, g: Option<u64>) {
+    use modbit_protocol::v1::{ApprovalList, ListApprovals, ResolveApproval};
+    let ack = c
+        .command(envelope(
+            id16(cmd),
+            "ListApprovals",
+            ListApprovals {
+                session_id: Some(session.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let approvals: ApprovalList = Client::result(&ack).unwrap();
+    let id = approvals
+        .approvals
+        .iter()
+        .find(|a| a.status == "REQUESTED" && a.tool_name == "external.call")
+        .and_then(|a| a.approval_id.clone())
+        .unwrap_or_else(|| panic!("no open external.call approval: {approvals:?}"));
+    c.command(envelope_fenced(
+        id16(cmd ^ 0x01),
+        "ResolveApproval",
+        ResolveApproval {
+            approval_id: Some(id),
+            approve: true,
+            reason: "approved by the test".into(),
+            intent_hash: String::new(),
+        }
+        .encode_to_vec(),
+        g,
+    ))
+    .await
+    .unwrap();
+}
+
+/// QUAL-EV-0104 (REQ-EV-0104 "MCP list / call / cancel lifecycle": a real
+/// MCP test server supports list/call/cancel and audit correlation) and
+/// QUAL-EV-0193 (REQ-EV-0193 "workspace-scoped MCP transport pool": two
+/// sessions reuse the transport; a config or tenant change creates a
+/// separate pool entry) — M9.4, docs/16 "MCP / external tools".
+///
+/// Everything here is the real thing: the actual `modbit-core` binary, real
+/// MCP server processes over real pipes speaking the real protocol, and the
+/// Core's own event log and approval flow. What is proven:
+///
+/// - **list** — a trusted server is started lazily, its declaration is
+///   parsed under the host's bounds and namespaced `external.<server>.*`;
+///   a hostile server's forged names, oversize and too-deep schemas,
+///   off-machine `$ref` and smuggled capability/system-prompt fields are
+///   refused by name while its good tools stand; a proposed-but-untrusted
+///   server is never started.
+/// - **call** — a declared read runs under the lease; an undeclared tool is
+///   an external side effect the kernel holds behind an intent-bound
+///   approval, and only after approval does the effect reach the server;
+///   arguments are checked against the server's own schema first.
+/// - **cancel** — a call that outlives the host's patience is cancelled on
+///   the wire (`notifications/cancelled` naming the same request id) and a
+///   server that dies mid-call leaves an effectful call with an
+///   `EXTERNAL_OUTCOME_UNKNOWN`, never an assumed-away effect.
+/// - **audit correlation** — the server's own record of a call carries the
+///   session, task, turn and call id the Core logged for it.
+/// - **pool** — two sessions of one tenant in one workspace share one
+///   server process (same pool key, same pid, `sharers` 2, one handshake in
+///   the server's log); a changed configuration and a different workspace
+///   each get their own process.
+#[tokio::test]
+async fn qual_ev_0104_0193_a_real_mcp_server_lists_calls_and_cancels_while_two_sessions_share_one_transport()
+ {
+    use modbit_protocol::v1::{
+        ApprovalList, InvokeTool, ListApprovals, ListTools, ResolveApproval, ToolInvoked, ToolList,
+    };
+    use serde_json::{Value, json};
+
+    let server_bin = mcp_testserver_bin();
+    assert!(
+        server_bin.exists(),
+        "build the MCP test server first: cargo build -p modbit-mcp-testserver ({})",
+        server_bin.display()
+    );
+    let dir = tempfile::tempdir().unwrap();
+    let logs = tempfile::tempdir().unwrap();
+    let docs_log = logs.path().join("docs.jsonl");
+    let mirror_log = logs.path().join("mirror.jsonl");
+    let effects = logs.path().join("effects.txt");
+
+    fn repo_at(dir: &std::path::Path) -> String {
+        std::fs::write(dir.join("README.md"), "# demo\n").unwrap();
+        for args in [
+            vec!["init", "-q", "-b", "main"],
+            vec!["add", "-A"],
+            vec![
+                "-c",
+                "user.name=t",
+                "-c",
+                "user.email=t@e",
+                "commit",
+                "-q",
+                "-m",
+                "base",
+            ],
+        ] {
+            assert!(
+                Command::new("git")
+                    .arg("-C")
+                    .arg(dir)
+                    .args(&args)
+                    .status()
+                    .unwrap()
+                    .success()
+            );
+        }
+        dir.canonicalize()
+            .unwrap()
+            .to_string_lossy()
+            .trim_start_matches(r"\\?\")
+            .to_owned()
+    }
+    let repo_a = tempfile::tempdir().unwrap();
+    let repo_b = tempfile::tempdir().unwrap();
+    let root_a = repo_at(repo_a.path());
+    let root_b = repo_at(repo_b.path());
+
+    // Four configured servers: the same binary, four configurations. `docs`
+    // and `mirror` differ only in their arguments — one byte of difference
+    // is a different fingerprint and therefore a different transport.
+    let server = |name: &str, args: Vec<&str>, env: Value, reads: Vec<&str>, trust: &str| {
+        json!({
+            "name": name,
+            "transport": { "kind": "stdio", "command": server_bin.to_string_lossy(), "args": args },
+            "env": env,
+            "read_only_tools": reads,
+            "scopes": ["docs:read"],
+            "trust": trust,
+            "layer": "project",
+        })
+    };
+    let servers = json!([
+        server(
+            "docs",
+            vec!["--role", "docs"],
+            json!({
+                "MODBIT_MCP_TESTSRV_NAME": "docs",
+                "MODBIT_MCP_TESTSRV_LOG": docs_log.to_string_lossy(),
+                "MODBIT_MCP_TESTSRV_EFFECTS": effects.to_string_lossy(),
+            }),
+            // The host declares three reads. Everything else this server
+            // offers is an external side effect, whatever the server says.
+            // `ghost` is a read of a tool the server does not declare — the
+            // host's judgement is about a name, not about what exists.
+            vec!["search", "slow", "ghost"],
+            "TRUSTED",
+        ),
+        server(
+            "mirror",
+            vec!["--role", "mirror"],
+            json!({
+                "MODBIT_MCP_TESTSRV_NAME": "mirror",
+                "MODBIT_MCP_TESTSRV_LOG": mirror_log.to_string_lossy(),
+            }),
+            vec!["search"],
+            "TRUSTED",
+        ),
+        server(
+            "wild",
+            vec![],
+            json!({ "MODBIT_MCP_TESTSRV_NAME": "wild", "MODBIT_MCP_TESTSRV_MODE": "hostile" }),
+            vec![],
+            "TRUSTED",
+        ),
+        // Proposed, not trusted. Its `search` is declared a read so that
+        // policy cannot be what stops it: only the hub's trust gate can.
+        server("pending", vec![], json!({}), vec!["search"], "PROPOSED"),
+    ]);
+
+    let core = CoreProcess::spawn_with_env(
+        dir.path(),
+        &[
+            ("MODBIT_MCP_SERVERS", &servers.to_string()),
+            // A call the host will not wait longer than this for.
+            ("MODBIT_MCP_CALL_TIMEOUT_MS", "2500"),
+        ],
+    );
+    let mut c = core.client().await;
+
+    async fn call(
+        c: &mut Client,
+        cmd: u8,
+        call: u8,
+        task: &Id,
+        g: Option<u64>,
+        tool: &str,
+        args: &str,
+    ) -> ToolInvoked {
+        let ack = c
+            .command(envelope_fenced(
+                id16(cmd),
+                "InvokeTool",
+                InvokeTool {
+                    task_id: Some(task.clone()),
+                    tool_name: tool.into(),
+                    arguments_json: args.into(),
+                    tool_call_id: Some(id16(call)),
+                    // A hostile server's whole declaration must fit inline,
+                    // so the bounds are read from the answer itself.
+                    output_budget_bytes: 8 * 1024 * 1024,
+                }
+                .encode_to_vec(),
+                g,
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    }
+    async fn new_task(
+        c: &mut Client,
+        id: u8,
+        session: &Id,
+        root: &str,
+        profile: &str,
+        g: Option<u64>,
+    ) -> Id {
+        let ack = c
+            .command(envelope_fenced(
+                id16(id),
+                "CreateTask",
+                CreateTask {
+                    session_id: Some(session.clone()),
+                    goal_text: "external tools".into(),
+                    workspace_id: None,
+                    execution_profile: profile.into(),
+                    origin: "cli".into(),
+                    workspace_root: root.into(),
+                    issue_url: String::new(),
+                    issue_json: String::new(),
+                }
+                .encode_to_vec(),
+                g,
+            ))
+            .await
+            .unwrap();
+        Client::result::<TaskCreated>(&ack)
+            .unwrap()
+            .task_id
+            .unwrap()
+    }
+
+    let (session_a, _) = create_session(&mut c, id16(0x60)).await;
+    let ga = lease_for(&session_a);
+    let task_a = new_task(&mut c, 0x61, &session_a, &root_a, "", ga).await;
+
+    // The family is registered and reachable like any other tool.
+    let ack = c
+        .command(envelope(
+            id16(0x62),
+            "ListTools",
+            ListTools { task_id: None }.encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let tools: ToolList = Client::result(&ack).unwrap();
+    let names: Vec<&str> = tools.tools.iter().map(|t| t.name.as_str()).collect();
+    for n in ["external.list", "external.call", "external.cancel"] {
+        assert!(names.contains(&n), "{names:?}");
+    }
+
+    // ---- list ----------------------------------------------------------
+    let r = call(&mut c, 0x63, 0x01, &task_a, ga, "external.list", "{}").await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let listing: Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(listing["trust"], json!("UNTRUSTED_EXTERNAL_CONTENT"));
+    let by_name = |v: &Value, name: &str| -> Value {
+        v["servers"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|s| s["server"] == name)
+            .unwrap_or_else(|| panic!("no server `{name}` in {v}"))
+            .clone()
+    };
+    let docs = by_name(&listing, "docs");
+    assert_eq!(docs["health"]["state"], json!("READY"), "{docs}");
+    assert_eq!(docs["health"]["sharers"], json!(1));
+    let docs_pid = docs["health"]["pid"].as_u64().expect("a real process");
+    let docs_pool_key = docs["pool_key"].as_str().unwrap().to_owned();
+    assert_eq!(docs["health"]["server_info"]["name"], json!("docs"));
+    let tool_named = |server: &Value, name: &str| -> Option<Value> {
+        server["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|t| t["tool"] == name)
+            .cloned()
+    };
+    let search = tool_named(&docs, "search").expect("search is declared");
+    assert_eq!(search["name"], json!("external.docs.search"));
+    assert_eq!(
+        search["read_only"],
+        json!(true),
+        "the host declared this one a read"
+    );
+    assert_eq!(
+        tool_named(&docs, "note").unwrap()["read_only"],
+        json!(false),
+        "an undeclared tool is never a read"
+    );
+    assert_eq!(
+        tool_named(&docs, "chart").unwrap()["read_only"],
+        json!(false)
+    );
+
+    // A hostile server: what it declares is data, and the bounds hold.
+    let wild = by_name(&listing, "wild");
+    assert_eq!(wild["health"]["state"], json!("READY"));
+    let refused: std::collections::BTreeMap<String, String> = wild["refused_tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| {
+            (
+                r["name"].as_str().unwrap().to_owned(),
+                r["code"].as_str().unwrap().to_owned(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        refused.get("fs.read").map(String::as_str),
+        Some("TOOL_NAME_INVALID"),
+        "{refused:?}"
+    );
+    assert_eq!(
+        refused.get("has space").map(String::as_str),
+        Some("TOOL_NAME_INVALID")
+    );
+    assert_eq!(
+        refused.get("deep").map(String::as_str),
+        Some("SCHEMA_TOO_DEEP")
+    );
+    assert_eq!(
+        refused.get("huge").map(String::as_str),
+        Some("SCHEMA_TOO_LARGE")
+    );
+    assert_eq!(
+        refused.get("pointer").map(String::as_str),
+        Some("SCHEMA_REF_REFUSED")
+    );
+    assert!(
+        tool_named(&wild, "fs.read").is_none(),
+        "a server may not take a native tool's name"
+    );
+    assert!(
+        wild["dropped_over_limit"].as_u64().unwrap() > 0,
+        "a server declaring 200 tools is bounded: {wild}"
+    );
+    let smuggler = tool_named(&wild, "smuggler").expect("kept, but only as data");
+    let smuggler_text = smuggler.to_string();
+    for smuggled in [
+        "requiredCapabilities",
+        "systemPrompt",
+        "developer mode",
+        "effectClass",
+        "\\u001b",
+    ] {
+        assert!(
+            !smuggler_text.contains(smuggled),
+            "`{smuggled}` survived discovery: {smuggler_text}"
+        );
+    }
+    // A proposal is inert: never started, never callable.
+    let pending = by_name(&listing, "pending");
+    assert_eq!(pending["health"]["state"], json!("UNTRUSTED"), "{pending}");
+    assert!(pending["tools"].as_array().unwrap().is_empty());
+    let r = call(
+        &mut c,
+        0x64,
+        0x02,
+        &task_a,
+        ga,
+        "external.call",
+        r#"{"server":"pending","tool":"search","arguments":{"q":"x"}}"#,
+    )
+    .await;
+    assert_eq!(r.error_code, "EXTERNAL_SERVER_UNTRUSTED", "{r:?}");
+
+    // ---- call: a declared read runs under the lease --------------------
+    let r = call(
+        &mut c,
+        0x65,
+        0x03,
+        &task_a,
+        ga,
+        "external.call",
+        r#"{"server":"docs","tool":"search","arguments":{"q":"lease"}}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let out: Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(out["trust"], json!("UNTRUSTED_EXTERNAL_CONTENT"));
+    assert_eq!(out["text"], json!("hit: lease"));
+    assert_eq!(out["is_error"], json!(false));
+
+    // ---- audit correlation ---------------------------------------------
+    let log = await_server_log(&docs_log, |l| l.iter().any(|m| m["method"] == "tools/call"));
+    let calls: Vec<&Value> = log.iter().filter(|m| m["method"] == "tools/call").collect();
+    assert_eq!(calls.len(), 1, "one call so far: {calls:?}");
+    let meta = &calls[0]["params"]["_meta"]["modbit.dev/correlation"];
+    assert_eq!(meta["session_id"], json!(uuid_of(&session_a)), "{meta}");
+    assert_eq!(meta["task_id"], json!(uuid_of(&task_a)), "{meta}");
+    assert_eq!(
+        meta["call_id"],
+        json!(uuid_of(&id16(0x03))),
+        "the server's own record names the call the Core logged: {meta}"
+    );
+    assert_eq!(
+        log.iter().filter(|m| m["method"] == "initialize").count(),
+        1,
+        "one handshake for this transport"
+    );
+
+    // Arguments are checked against the server's own schema first.
+    let r = call(
+        &mut c,
+        0x66,
+        0x04,
+        &task_a,
+        ga,
+        "external.call",
+        r#"{"server":"docs","tool":"search","arguments":{"q":5}}"#,
+    )
+    .await;
+    assert_eq!(r.error_code, "ARGUMENTS_INVALID", "{r:?}");
+    let r = call(
+        &mut c,
+        0x67,
+        0x05,
+        &task_a,
+        ga,
+        "external.call",
+        r#"{"server":"docs","tool":"ghost","arguments":{}}"#,
+    )
+    .await;
+    assert_eq!(r.error_code, "EXTERNAL_TOOL_UNKNOWN", "{r:?}");
+    // A server nobody configured can never be a declared read, so a call to
+    // one is an external side effect before it is anything else: the kernel
+    // stops it, and only an approval gets as far as the hub's own answer.
+    let nowhere = r#"{"server":"nowhere","tool":"search","arguments":{}}"#;
+    let r = call(&mut c, 0x68, 0x06, &task_a, ga, "external.call", nowhere).await;
+    assert_eq!(
+        (r.status.as_str(), r.error_code.as_str()),
+        ("APPROVAL_PENDING", "APPROVAL_REQUIRED"),
+        "unknown is never a read: {r:?}"
+    );
+    approve_pending(&mut c, 0x6E, &session_a, ga).await;
+    let r = call(&mut c, 0x6F, 0x06, &task_a, ga, "external.call", nowhere).await;
+    assert_eq!(r.error_code, "EXTERNAL_SERVER_UNKNOWN", "{r:?}");
+    assert_eq!(
+        server_log(&docs_log)
+            .iter()
+            .filter(|m| m["method"] == "tools/call")
+            .count(),
+        1,
+        "a refused call never reaches the server"
+    );
+
+    // ---- call: an undeclared tool is an effect the kernel gates --------
+    let note = r#"{"server":"docs","tool":"note","arguments":{"text":"from the agent"}}"#;
+    let r = call(&mut c, 0x69, 0x07, &task_a, ga, "external.call", note).await;
+    assert_eq!(
+        (r.status.as_str(), r.error_code.as_str()),
+        ("APPROVAL_PENDING", "APPROVAL_REQUIRED"),
+        "an external side effect waits for an approval: {r:?}"
+    );
+    assert!(
+        !effects.exists(),
+        "nothing reached the server before the approval"
+    );
+    let ack = c
+        .command(envelope(
+            id16(0x6A),
+            "ListApprovals",
+            ListApprovals {
+                session_id: Some(session_a.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let approvals: ApprovalList = Client::result(&ack).unwrap();
+    let pending_approval = approvals
+        .approvals
+        .iter()
+        .find(|a| a.tool_name == "external.call")
+        .unwrap_or_else(|| panic!("{approvals:?}"));
+    assert_eq!(
+        pending_approval.effect_class, "ExternalSideEffect",
+        "{pending_approval:?}"
+    );
+    let approval_id = pending_approval.approval_id.clone().unwrap();
+    c.command(envelope_fenced(
+        id16(0x6B),
+        "ResolveApproval",
+        ResolveApproval {
+            approval_id: Some(approval_id),
+            approve: true,
+            reason: "ok".into(),
+            intent_hash: String::new(),
+        }
+        .encode_to_vec(),
+        ga,
+    ))
+    .await
+    .unwrap();
+    let r = call(&mut c, 0x6C, 0x07, &task_a, ga, "external.call", note).await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    assert_eq!(
+        std::fs::read_to_string(&effects).unwrap().trim(),
+        "from the agent",
+        "the effect reached the real server only after the approval"
+    );
+
+    // ---- cancel: the host stops waiting, the server is told ------------
+    let r = call(
+        &mut c,
+        0x6D,
+        0x08,
+        &task_a,
+        ga,
+        "external.call",
+        r#"{"server":"docs","tool":"slow","arguments":{"ms":60000}}"#,
+    )
+    .await;
+    assert_eq!(
+        (r.status.as_str(), r.error_code.as_str()),
+        ("APPLICATION_FAILURE", "EXTERNAL_CALL_CANCELLED"),
+        "a read that was cancelled changed nothing: {r:?}"
+    );
+    let log = await_server_log(&docs_log, |l| {
+        l.iter().any(|m| m["method"] == "notifications/cancelled")
+    });
+    let slow_request = log
+        .iter()
+        .find(|m| m["method"] == "tools/call" && m["params"]["name"] == "slow")
+        .expect("the slow call reached the server");
+    let cancelled = log
+        .iter()
+        .find(|m| m["method"] == "notifications/cancelled")
+        .expect("the server was told to stop");
+    assert_eq!(
+        cancelled["params"]["requestId"], slow_request["id"],
+        "the cancellation names the request it cancels: {cancelled} / {slow_request}"
+    );
+
+    // ---- pool: a second session shares the same server process --------
+    let (session_b, _) = create_session(&mut c, id16(0x70)).await;
+    let gb = lease_for(&session_b);
+    let task_b = new_task(&mut c, 0x71, &session_b, &root_a, "", gb).await;
+    let r = call(&mut c, 0x72, 0x09, &task_b, gb, "external.list", "{}").await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let listing_b: Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let docs_b = by_name(&listing_b, "docs");
+    assert_eq!(
+        docs_b["pool_key"].as_str().unwrap(),
+        docs_pool_key,
+        "same tenant, same workspace, same configuration: one pool entry"
+    );
+    assert_eq!(
+        docs_b["health"]["pid"].as_u64().unwrap(),
+        docs_pid,
+        "the second session got the same server process"
+    );
+    assert_eq!(docs_b["health"]["sharers"], json!(2));
+    assert_eq!(
+        server_log(&docs_log)
+            .iter()
+            .filter(|m| m["method"] == "initialize")
+            .count(),
+        1,
+        "one process, one handshake, two sessions"
+    );
+
+    // A changed configuration is a different server, and so is a different
+    // workspace: neither shares the transport.
+    let mirror = by_name(&listing_b, "mirror");
+    assert_ne!(mirror["pool_key"].as_str().unwrap(), docs_pool_key);
+    assert_ne!(mirror["health"]["pid"].as_u64().unwrap(), docs_pid);
+    let task_c = new_task(&mut c, 0x73, &session_b, &root_b, "", gb).await;
+    let r = call(&mut c, 0x74, 0x0A, &task_c, gb, "external.list", "{}").await;
+    let listing_c: Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let docs_c = by_name(&listing_c, "docs");
+    assert_ne!(
+        docs_c["pool_key"].as_str().unwrap(),
+        docs_pool_key,
+        "a different workspace is a different pool entry"
+    );
+    assert_ne!(
+        docs_c["health"]["pid"].as_u64().unwrap(),
+        docs_pid,
+        "and a different server process"
+    );
+    assert_eq!(docs_c["health"]["sharers"], json!(1));
+
+    // ---- a server that dies mid-call leaves an unknown outcome --------
+    let crash = r#"{"server":"mirror","tool":"crash","arguments":{}}"#;
+    let r = call(&mut c, 0x75, 0x0B, &task_b, gb, "external.call", crash).await;
+    assert_eq!(r.status, "APPROVAL_PENDING", "{r:?}");
+    let ack = c
+        .command(envelope(
+            id16(0x76),
+            "ListApprovals",
+            ListApprovals {
+                session_id: Some(session_b.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let approvals: ApprovalList = Client::result(&ack).unwrap();
+    let id = approvals
+        .approvals
+        .iter()
+        .find(|a| a.status == "REQUESTED" && a.tool_name == "external.call")
+        .and_then(|a| a.approval_id.clone())
+        .unwrap_or_else(|| panic!("{approvals:?}"));
+    c.command(envelope_fenced(
+        id16(0x77),
+        "ResolveApproval",
+        ResolveApproval {
+            approval_id: Some(id),
+            approve: true,
+            reason: "ok".into(),
+            intent_hash: String::new(),
+        }
+        .encode_to_vec(),
+        gb,
+    ))
+    .await
+    .unwrap();
+    let r = call(&mut c, 0x78, 0x0B, &task_b, gb, "external.call", crash).await;
+    assert_eq!(
+        (r.status.as_str(), r.error_code.as_str()),
+        ("UNKNOWN_OUTCOME", "EXTERNAL_OUTCOME_UNKNOWN"),
+        "an effect in flight when the server died is never assumed away: {r:?}"
+    );
+
+    // ---- the reviewer profile never calls out -------------------------
+    let task_r = new_task(&mut c, 0x79, &session_b, &root_a, "review_isolated", gb).await;
+    let r = call(
+        &mut c,
+        0x7A,
+        0x0C,
+        &task_r,
+        gb,
+        "external.call",
+        r#"{"server":"docs","tool":"search","arguments":{"q":"x"}}"#,
+    )
+    .await;
+    assert_eq!(
+        (r.status.as_str(), r.error_code.as_str()),
+        ("POLICY_DENIED", "PROFILE_NOT_ALLOWED"),
+        "docs/17: `external.call` is excluded from the reviewer projection: {r:?}"
+    );
+    // Excluded *and* kernel-denied: the reviewer's lease does not grant the
+    // capability either, so removing the projection guard would change
+    // nothing about what a reviewer can reach.
+    let ack = c
+        .command(envelope(
+            id16(0x7C),
+            "GetCapabilityLeases",
+            modbit_protocol::v1::GetCapabilityLeases {
+                task_id: Some(task_r.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let leases: modbit_protocol::v1::CapabilityLeaseList = Client::result(&ack).unwrap();
+    let ops = &leases.leases[0].operations;
+    assert!(ops.iter().any(|o| o == "external.list"), "{ops:?}");
+    assert!(!ops.iter().any(|o| o == "external.call"), "{ops:?}");
+    let r = call(&mut c, 0x7B, 0x0D, &task_r, gb, "external.list", "{}").await;
+    assert_eq!(
+        r.status, "SUCCESS",
+        "discovery grants nothing and stays available: {r:?}"
+    );
+    drop(repo_a);
+    drop(repo_b);
+}

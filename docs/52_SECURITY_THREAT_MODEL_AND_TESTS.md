@@ -61,7 +61,8 @@ Source code, Git history, provider credentials, user credentials, cloud tenant d
 
 ### Malicious skill/plugin/MCP
 **Control:** signing/provenance, capability ceilings, schema/size limits, no instruction privilege.  
-**Test:** tool returns oversized recursive schema/content and instruction injection; gateway bounds/isolates it.
+**Test:** tool returns oversized recursive schema/content and instruction injection; gateway bounds/isolates it.  
+**As built (M9.4):** the hostile server of `tools/mcp-testserver` declares a forged native name, an unusable name, an oversize schema, a 40-deep schema, a `$ref` pointing off the machine, an escape-sequence description carrying an instruction, smuggled `requiredCapabilities` / `systemPrompt` / `effectClass` fields, and 200 tools. `qual_ev_0104_0193_a_real_mcp_server_lists_calls_and_cancels_while_two_sessions_share_one_transport` runs the real Core against it and asserts each one refused by name with the rest of the list standing, the count bounded, the smuggled fields absent from what the host keeps, and the server unable to make any call a read.
 
 ## Security gates
 

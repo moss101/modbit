@@ -212,6 +212,12 @@ pub struct InvokeContext {
     /// curated memory through it and `memory.propose` records a candidate.
     /// `None` = no memory is served to this task.
     pub memory: Option<Arc<dyn MemoryPort>>,
+    /// The host's external tool hub (M9.4, REQ-EV-0104/0193, docs/16):
+    /// `external.list` / `external.call` / `external.cancel` reach the
+    /// task's MCP servers through it, with the transports, the pool and
+    /// the bounds on the host's side. `None` = no external tools are
+    /// served to this task.
+    pub external: Option<Arc<dyn modbit_mcp::McpPort>>,
 }
 
 /// What a pinned environment revision gives a process.

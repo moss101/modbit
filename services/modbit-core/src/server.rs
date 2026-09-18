@@ -255,6 +255,9 @@ pub async fn run_as(
         }
     }
     listener.cleanup();
+    // M9.4: every pooled external server is stopped with the Core, so a
+    // stopping Core leaves no MCP child process behind.
+    core.tools.mcp.shutdown().await;
     let _ = std::fs::remove_file(&ready_path);
     Ok(())
 }

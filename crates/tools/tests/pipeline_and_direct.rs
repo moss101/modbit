@@ -90,6 +90,7 @@ fn fixture(exec: Option<ExecTarget>) -> Fixture {
         secrets_in_custody: vec![],
         environment: None,
         memory: None,
+        external: None,
     };
     let mut registry = ToolRegistry::new();
     modbit_tools::direct::register_direct(&mut registry).unwrap();
@@ -217,6 +218,7 @@ async fn qual_ev_0239_0080_denial_is_monotonic_and_argument_text_cannot_bypass_p
         secrets_in_custody: vec![],
         environment: None,
         memory: None,
+        external: None,
     };
     let o = f
         .runtime
@@ -683,6 +685,11 @@ fn qual_ev_0217_compatibility_matrix_covers_every_registered_tool_with_owner_eff
     modbit_tools::direct::register_direct(&mut registry).unwrap();
     modbit_tools::forge::register_forge(&mut registry).unwrap();
     modbit_tools::browser::register_browser(&mut registry).unwrap();
+    modbit_tools::external::register_external(
+        &mut registry,
+        Arc::new(modbit_mcp::ReadDeclarations::new()),
+    )
+    .unwrap();
     let rows = matrix["registered"].as_array().unwrap();
     let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut sources = String::new();
@@ -773,6 +780,11 @@ fn qual_ev_0230_every_tool_namespace_carries_a_build_or_buy_justification() {
     modbit_tools::direct::register_direct(&mut registry).unwrap();
     modbit_tools::forge::register_forge(&mut registry).unwrap();
     modbit_tools::browser::register_browser(&mut registry).unwrap();
+    modbit_tools::external::register_external(
+        &mut registry,
+        Arc::new(modbit_mcp::ReadDeclarations::new()),
+    )
+    .unwrap();
     let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let inventory =
         std::fs::read_to_string(repo.join("docs/17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md"))
@@ -973,6 +985,11 @@ async fn qual_ev_0215_no_tool_schema_declares_a_secret_and_secrets_never_enter_a
     modbit_tools::direct::register_direct(&mut registry).unwrap();
     modbit_tools::forge::register_forge(&mut registry).unwrap();
     modbit_tools::browser::register_browser(&mut registry).unwrap();
+    modbit_tools::external::register_external(
+        &mut registry,
+        Arc::new(modbit_mcp::ReadDeclarations::new()),
+    )
+    .unwrap();
     let specs = registry.specs();
     assert!(
         specs.len() > 20,

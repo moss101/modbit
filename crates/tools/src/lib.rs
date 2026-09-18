@@ -19,6 +19,7 @@
 
 pub mod browser;
 pub mod direct;
+pub mod external;
 pub mod forge;
 pub mod media;
 pub mod notebook;

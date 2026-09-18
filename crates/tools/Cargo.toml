@@ -15,6 +15,7 @@ lopdf = { version = "0.44", default-features = false }
 modbit-domain.workspace = true
 modbit-git.workspace = true
 modbit-browser.workspace = true
+modbit-mcp.workspace = true
 modbit-sandbox.workspace = true
 modbit-protocol.workspace = true
 modbit-terminal.workspace = true

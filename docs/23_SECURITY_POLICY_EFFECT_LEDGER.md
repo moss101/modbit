@@ -69,6 +69,10 @@ As built (M9.2, IMP-EV-0270; `crates/policy/src/ledger.rs`, `services/modbit-cor
 - Secret handles are origin/tool/effect scoped and auditable.
 - Terminal output redactor detects known secret fingerprints before persistence/display while preserving original only in protected diagnostic vault if policy allows.
 
+### External tool servers as built (M9.4)
+
+An MCP server is a program the host started and does not control, so it is treated as one throughout. Its credential is a *handle* in the server's configuration; the value is taken into the Core's memory at boot (`MODBIT_MCP_CREDENTIAL_<HANDLE>`), placed into the child's environment at spawn and written nowhere else — not into the configuration, a log, a listing, an argument or a result — and it joins the Core's custody set, so a tool call carrying the value is refused before policy like any other secret (M9.3). A configuration that tries to put a secret in a plain environment entry is refused `SECRET_IN_CONFIG` rather than quietly accepted. Everything a server *says* is data: names are validated and namespaced, descriptions and schemas are bounded, and fields the host does not know (a capability claim, a system instruction, an effect class) are dropped before the host reads the tool, so a server can neither inject an instruction nor grant itself a capability. What a call costs is the host's judgement, not the server's, and a transport is pooled per tenant and workspace so no tenant ever reaches another's server process. See `16_TOOL_CAPABILITY_AND_PROCEDURAL_RUNTIME.md` "MCP / external tools".
+
 ## Protected paths
 
 System config, SSH keys, credential stores, `.git` internals, CI secrets and user-defined paths default to deny or approval. Path checks are performed after symlink resolution and before each write/open, not only at task creation.
