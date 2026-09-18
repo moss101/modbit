@@ -1,12 +1,41 @@
 {
  "task": "IMP-EV-0104",
- "requirements": ["REQ-EV-0104", "QUAL-EV-0104", "docs/16 MCP / external tools", "docs/17 external.list / call / cancel", "docs/52 Malicious skill/plugin/MCP", "docs/54 fault 25", "docs/56 MCP real test server"],
- "scenarios": ["a trusted MCP server is started lazily and its declaration parsed under the host's bounds and namespaced external.<server>.<tool>", "a hostile server's forged native name, unusable name, oversize schema, 40-deep schema, off-machine $ref, escape-sequence description, smuggled requiredCapabilities/systemPrompt/effectClass and 200 tools are each refused or bounded while its good tools stand", "a host-declared read runs under the lease; an undeclared tool is an external side effect held behind an intent-bound approval and only then reaches the real server", "arguments are checked against the server's own declared schema before anything is sent", "a call that outlives the host's patience is cancelled on the wire with notifications/cancelled naming the same request id", "a server that exits mid-call leaves an effectful call EXTERNAL_OUTCOME_UNKNOWN", "the server's own record of a call carries the session, task and call id the Core logged", "a proposed-but-untrusted server is never started and never callable", "external.call is excluded from the reviewer projection and absent from the review_isolated lease while external.list stays available"],
- "tests": ["services/modbit-core/tests/surface_protocol.rs::qual_ev_0104_0193_a_real_mcp_server_lists_calls_and_cancels_while_two_sessions_share_one_transport", "crates/mcp protocol::tests", "crates/mcp discovery::tests", "crates/mcp result::tests", "crates/mcp calls::tests", "crates/mcp config::tests"],
- "batch_commits": [],
- "runs": [],
+ "requirements": [
+  "REQ-EV-0104",
+  "QUAL-EV-0104",
+  "docs/16 MCP / external tools",
+  "docs/17 external.list / call / cancel",
+  "docs/52 Malicious skill/plugin/MCP",
+  "docs/54 fault 25",
+  "docs/56 MCP real test server"
+ ],
+ "scenarios": [
+  "a trusted MCP server is started lazily and its declaration parsed under the host's bounds and namespaced external.<server>.<tool>",
+  "a hostile server's forged native name, unusable name, oversize schema, 40-deep schema, off-machine $ref, escape-sequence description, smuggled requiredCapabilities/systemPrompt/effectClass and 200 tools are each refused or bounded while its good tools stand",
+  "a host-declared read runs under the lease; an undeclared tool is an external side effect held behind an intent-bound approval and only then reaches the real server",
+  "arguments are checked against the server's own declared schema before anything is sent",
+  "a call that outlives the host's patience is cancelled on the wire with notifications/cancelled naming the same request id",
+  "a server that exits mid-call leaves an effectful call EXTERNAL_OUTCOME_UNKNOWN",
+  "the server's own record of a call carries the session, task and call id the Core logged",
+  "a proposed-but-untrusted server is never started and never callable",
+  "external.call is excluded from the reviewer projection and absent from the review_isolated lease while external.list stays available"
+ ],
+ "tests": [
+  "services/modbit-core/tests/surface_protocol.rs::qual_ev_0104_0193_a_real_mcp_server_lists_calls_and_cancels_while_two_sessions_share_one_transport",
+  "crates/mcp protocol::tests",
+  "crates/mcp discovery::tests",
+  "crates/mcp result::tests",
+  "crates/mcp calls::tests",
+  "crates/mcp config::tests"
+ ],
+ "batch_commits": [
+  "1a71e17"
+ ],
+ "runs": [
+  "gha-35360592014"
+ ],
  "proof": "the real modbit-core binary drives real MCP server processes over real pipes speaking the real protocol; the servers' own logs are read back to correlate what they were asked with what the Core logged.",
  "audit": "ABSENT before: nothing in the product spoke MCP (no matrix family, unread mcp_servers config layers, docs/17 listing the hub's surface as unbuilt).",
  "limitations": "stdio transport only; server configuration from MODBIT_MCP_SERVERS at boot (layered config and conversational management are IMP-EV-0128/0224); media parts typed but not yet routed through the Media Pipeline (IMP-EV-0187); tools/list pagination bounded and list_changed not acted on.",
- "ci": ""
+ "ci": "main CI green on macOS, Linux and Windows (run 35360592014); branch run 35356582511"
 }

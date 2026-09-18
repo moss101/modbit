@@ -1,12 +1,30 @@
 {
  "task": "IMP-EV-0193",
- "requirements": ["REQ-EV-0193", "QUAL-EV-0193", "docs/16 MCP / external tools"],
- "scenarios": ["two sessions of one tenant in one workspace under one configuration share a single server process: same pool key, same pid, sharers 2, one handshake in the server's own log", "one changed byte of configuration is a different fingerprint and a different process", "a different workspace root is a different pool entry and a different process", "a different tenant is a different pool entry (key isolation)", "a dead transport is never handed out again"],
- "tests": ["services/modbit-core/tests/surface_protocol.rs::qual_ev_0104_0193_a_real_mcp_server_lists_calls_and_cancels_while_two_sessions_share_one_transport", "crates/mcp config::tests::the_fingerprint_separates_what_makes_a_different_server", "crates/mcp config::tests::a_pool_key_isolates_tenants_and_workspaces"],
- "batch_commits": [],
- "runs": [],
+ "requirements": [
+  "REQ-EV-0193",
+  "QUAL-EV-0193",
+  "docs/16 MCP / external tools"
+ ],
+ "scenarios": [
+  "two sessions of one tenant in one workspace under one configuration share a single server process: same pool key, same pid, sharers 2, one handshake in the server's own log",
+  "one changed byte of configuration is a different fingerprint and a different process",
+  "a different workspace root is a different pool entry and a different process",
+  "a different tenant is a different pool entry (key isolation)",
+  "a dead transport is never handed out again"
+ ],
+ "tests": [
+  "services/modbit-core/tests/surface_protocol.rs::qual_ev_0104_0193_a_real_mcp_server_lists_calls_and_cancels_while_two_sessions_share_one_transport",
+  "crates/mcp config::tests::the_fingerprint_separates_what_makes_a_different_server",
+  "crates/mcp config::tests::a_pool_key_isolates_tenants_and_workspaces"
+ ],
+ "batch_commits": [
+  "1a71e17"
+ ],
+ "runs": [
+  "gha-35360592014"
+ ],
  "proof": "the sharing is observed as one operating-system process id reported to two sessions, with exactly one MCP handshake in the server's own record.",
  "audit": "ABSENT before (see IMP-EV-0104).",
  "limitations": "no idle eviction (servers live until the Core stops); health is handshake-and-still-open with no periodic ping; tenant isolation proven at the key because one Core serves one tenant, while the workspace field of the same key is proven end-to-end.",
- "ci": ""
+ "ci": "main CI green on macOS, Linux and Windows (run 35360592014); branch run 35356582511"
 }

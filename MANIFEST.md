@@ -1349,11 +1349,11 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m8/PX-011/TASK_CARD.md` | retained evidence | 4518 | `944ad66fa8e1e9c645a68f0af8b7ac0f8b98b641b619514157e3c42512cc7159` |
 | `evidence/m8/PX-011/evidence.json` | retained evidence | 1489 | `85a7eba3e2dcdbbfa8e4b4daf204f4fb77e513a4b19d4e571505c55ba457221e` |
 | `evidence/m9/IMP-EV-0104/TASK_CARD.md` | retained evidence | 6096 | `f47c9673a474e02316d84784de2391da07c23dee4c92523d7b13dc59ab8d3feb` |
-| `evidence/m9/IMP-EV-0104/evidence.json` | retained evidence | 2443 | `6698be5b9ce2a0670c25161b7e5e7884255cb34183b8adce5be4955f2ce4151a` |
+| `evidence/m9/IMP-EV-0104/evidence.json` | retained evidence | 2615 | `dcd68e387c3382d6547f3e460ef07e592ff89fcf3acf8464dac7c8bf3362fcf2` |
 | `evidence/m9/IMP-EV-0162/TASK_CARD.md` | retained evidence | 4465 | `e93b23f997134175ec47eb17fe3756f722cb1ebfa7a41b3d05fbbb11af3043b8` |
 | `evidence/m9/IMP-EV-0162/evidence.json` | retained evidence | 1296 | `b70da1a4e4afc9058d6fcd7260b16731bae0851c273fb9d4e850c621ccf3cc25` |
 | `evidence/m9/IMP-EV-0193/TASK_CARD.md` | retained evidence | 3473 | `8eef44c0c0143d765f2524a8747b7cba69c809ca116439c2db6724aee34289a4` |
-| `evidence/m9/IMP-EV-0193/evidence.json` | retained evidence | 1413 | `a5759385cef58d2dd67a941b6bca4153ac372840ba0973c487038b455c095081` |
+| `evidence/m9/IMP-EV-0193/evidence.json` | retained evidence | 1563 | `030368b54385385645ee95784ead4283ed48af339474e3cc6f133b621712a4cb` |
 | `evidence/m9/IMP-EV-0215/TASK_CARD.md` | retained evidence | 3629 | `f82db37adeedb5e2aa236e0aec94081297a2c21d874136cd794640311881ba45` |
 | `evidence/m9/IMP-EV-0215/evidence.json` | retained evidence | 1128 | `cc1adc79cdfc3c69fc49c606878cfe7e91061073e940036839049ecf58d16f0f` |
 | `evidence/m9/IMP-EV-0270/TASK_CARD.md` | retained evidence | 3597 | `6c5344903995ffb1fb79d21c6ac73b01b47637e9e55f09b5ce4a2c4d35ddd95a` |
@@ -1362,8 +1362,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m9/M9.1/evidence.json` | retained evidence | 848 | `e3a5b7d8e1d4248a37da88dfc9ee8d9544650792a5aac2c9f8e1cd6edf871c68` |
 | `evidence/m9/M9.2/TASK_CARD.md` | retained evidence | 3593 | `aea3f79a21d310a31c7397be44485cea449463ab75e5d22c1d83f72791451d95` |
 | `evidence/m9/M9.2/evidence.json` | retained evidence | 1222 | `abc5ee48cc6e75d825093abe8e3ca1d4103805095f7010b821482493aa609409` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 40724 | `0095cfd43bec4d4da3ffef928f81b8a2848a100ed06e7965d7fd86e73b6fc58d` |
-| `graph/project-graph.json` | project driver graph with live status | 1539970 | `14430eb50929cdcbd284abfa96537d3ff241cb90626d25a320759fc76857a6ca` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 40724 | `7f74ac661eef1d54281592b2a49686a1cf3c40c1402913164ec569a976ead3d8` |
+| `graph/project-graph.json` | project driver graph with live status | 1541926 | `05699520cde846ce553361fd49b2642596c7bd8b2c5cd2dcda8a4a2267cd0faf` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 53364 | `b1a026685406fab72ca15d0e75000645daab1cb0e32f9b82cff648542f866d5d` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 17596 | `5c9b7a782d245223726f860ca583d766929a6f5662b644adebee64d257ad426b` |
