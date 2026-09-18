@@ -623,7 +623,7 @@
         "browser.control"
       ],
       "test": "qual_m7_4_actions_run_by_reference_under_the_effect_they_carry_and_check_their_postconditions",
-      "effect_note": "per call (Tool::effect_of): ExternalSideEffect for a submission or a consequential action, judged by the compiler's risk classification of the resolved entity; never below the registered class; fill_credential (M7.8) fills a broker-held credential by handle into a field at its bound origin only — the host fills from its own custody, the value never crosses the protocol (qual_m7_8_a_credential_is_filled_by_handle_into_its_bound_origin_only_and_the_value_never_crosses)"
+      "effect_note": "per call (Tool::effect_of): ExternalSideEffect for a submission or a consequential action, judged by the compiler's risk classification of the resolved entity; never below the registered class; fill_credential (M7.8) fills a broker-held credential by handle into a field at its bound origin only \u2014 the host fills from its own custody, the value never crosses the protocol (qual_m7_8_a_credential_is_filled_by_handle_into_its_bound_origin_only_and_the_value_never_crosses)"
     },
     {
       "tool": "browser.capture",
@@ -638,6 +638,33 @@
         "browser.control"
       ],
       "test": "qual_m7_5_a_visual_region_is_captured_targeted_and_clicked_by_a_point_with_the_fallback_on_record"
+    },
+    {
+      "tool": "memory.query",
+      "family": "memory",
+      "source_behaviors": [
+        "read scoped engineering memory",
+        "recall"
+      ],
+      "owner": "Engineering Memory",
+      "effect": "ReadOnly",
+      "capabilities": [
+        "memory.query"
+      ],
+      "test": "memory_tools_delegate_to_the_host_port_and_never_promote"
+    },
+    {
+      "tool": "memory.propose",
+      "family": "memory",
+      "source_behaviors": [
+        "propose durable memory (promotion separate)"
+      ],
+      "owner": "Engineering Memory",
+      "effect": "ReversibleWrite",
+      "capabilities": [
+        "memory.propose"
+      ],
+      "test": "memory_tools_delegate_to_the_host_port_and_never_promote"
     }
   ],
   "harness": [
@@ -861,7 +888,12 @@
     {
       "namespace": "browser",
       "inventory_ref": "browser.navigate / snapshot",
-      "justification": "the task's live Chromium session is a distinct effector the Core reaches only through its host's CDP bridge (docs/22 locked direction: Chromium as the engine, the same session the person sees); page content is untrusted, navigation is confined to http(s) and fenced by the control lease — not expressible as a skill over existing tools"
+      "justification": "the task's live Chromium session is a distinct effector the Core reaches only through its host's CDP bridge (docs/22 locked direction: Chromium as the engine, the same session the person sees); page content is untrusted, navigation is confined to http(s) and fenced by the control lease \u2014 not expressible as a skill over existing tools"
+    },
+    {
+      "namespace": "memory",
+      "inventory_ref": "memory.query",
+      "justification": "governed engineering memory: curated recall (memory.query) and candidate proposal (memory.propose); promotion is a separate governed step, no raw transcript auto-promotes (docs/19, REQ-EV-0162)"
     }
   ],
   "namespaces_note": "REQ-EV-0230 build/buy lint: every registered tool namespace names the docs/17 canonical inventory row it realizes and why it exists as a tool rather than a skill over existing tools; a new namespace without a row here, or whose inventory_ref is not in docs/17, fails qual_ev_0230."

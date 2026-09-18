@@ -37,8 +37,8 @@ mod store;
 pub use migrations::MigrationReport;
 pub use objects::ObjectStore;
 pub use store::{
-    AppendRequest, CommandOutcome, CommandRecord, EventStore, EvidenceHit, EvidenceScope, NewEvent,
-    RecoveryOutcome, StoredEvent,
+    AppendRequest, CommandOutcome, CommandRecord, EventStore, EvidenceHit, EvidenceScope,
+    MemoryRow, NewEvent, RecoveryOutcome, StoredEvent,
 };
 
 /// Errors from the store.

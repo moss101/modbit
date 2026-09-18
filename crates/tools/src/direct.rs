@@ -1969,9 +1969,59 @@ tool!(
     }
 );
 
+tool!(
+    MemoryQuery,
+    spec(
+        "memory.query",
+        "Retrieve curated engineering memory in scope for this task — decisions, conventions, facts, procedures, failure patterns, dependency knowledge and user preferences that were promoted, newest first, with their provenance, confidence and scope (M9.1, docs/19). Reads only curated memory; a proposal is never returned. Optional `record_type`, `topic` and `limit` narrow it. This is knowledge, not authority.",
+        EffectClass::ReadOnly,
+        json!({"type":"object","properties":{"record_type":{"type":"string","enum":["decision","convention","fact","procedure","failure_pattern","dependency_knowledge","user_preference"]},"topic":{"type":"string","maxLength":200},"limit":{"type":"integer","minimum":1,"maximum":200}},"additionalProperties":false}),
+        &["memory.query"],
+        Idempotency::Idempotent
+    ),
+    |ctx, args| {
+        let Some(port) = &ctx.memory else {
+            return ToolOutcome::infra(
+                "NO_MEMORY",
+                "no engineering memory is attached to this task",
+            );
+        };
+        match port.query(&args).await {
+            Ok(v) => ToolOutcome::ok(v),
+            Err((code, msg)) => ToolOutcome::fail(&code, msg),
+        }
+    }
+);
+
+tool!(
+    MemoryPropose,
+    spec(
+        "memory.propose",
+        "Propose a durable engineering-memory item (a decision, convention, fact, procedure, failure pattern, dependency knowledge or user preference) with its `topic`, `content` and optional `scope`, `source`, `confidence`, `ttl_ms` and `sensitivity` (M9.1, docs/19). The item is recorded as a candidate only — promotion to curated durable memory is a separate governed step (a person or policy), so a proposal from a transcript summary never becomes memory on its own. Returns the item's id.",
+        EffectClass::ReversibleWrite,
+        json!({"type":"object","properties":{"record_type":{"type":"string","enum":["decision","convention","fact","procedure","failure_pattern","dependency_knowledge","user_preference"]},"topic":{"type":"string","minLength":1,"maxLength":200},"content":{"type":"string","minLength":1,"maxLength":16384},"scope":{"type":"string","enum":["run","session","user","agent_profile","repository","space","organization"]},"source":{"type":"string","enum":["user_stated","agent_observed","transcript_summary","web_content","tool_output","peer_agent","repository_scan"]},"confidence":{"type":"number","minimum":0,"maximum":1},"ttl_ms":{"type":"integer","minimum":1},"sensitivity":{"type":"string","enum":["normal","sensitive"]}},"required":["record_type","topic","content"],"additionalProperties":false}),
+        &["memory.propose"],
+        Idempotency::Idempotent
+    ),
+    |ctx, args| {
+        let Some(port) = &ctx.memory else {
+            return ToolOutcome::infra(
+                "NO_MEMORY",
+                "no engineering memory is attached to this task",
+            );
+        };
+        match port.propose(&args).await {
+            Ok(v) => ToolOutcome::ok(v),
+            Err((code, msg)) => ToolOutcome::fail(&code, msg),
+        }
+    }
+);
+
 /// Register every direct tool.
 pub fn register_direct(registry: &mut ToolRegistry) -> Result<()> {
     for t in [
+        MemoryQuery::shared(),
+        MemoryPropose::shared(),
         FsList::shared(),
         FsRead::shared(),
         FsStat::shared(),

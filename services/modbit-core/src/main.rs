@@ -31,6 +31,7 @@ mod handoff;
 mod inspector;
 mod languages;
 mod media_bridge;
+mod memory;
 mod model_registry;
 mod onboarding;
 mod plans;

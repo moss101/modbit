@@ -23,6 +23,49 @@ pub struct StoredEvent {
     pub envelope: EventEnvelope,
 }
 
+/// One row of the engineering-memory store (M9.1, docs/19). The `doc` is the
+/// whole item as JSON (the Core's `modbit_memory::MemoryItem`); the other
+/// columns index it for scoped query and conflict grouping. This store keeps
+/// the row; the Core owns the item schema and the promotion/query logic.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MemoryRow {
+    /// Item id.
+    pub id: String,
+    /// `kind:id` scope key.
+    pub scope_key: String,
+    /// Record type (snake_case).
+    pub record_type: String,
+    /// Topic (the conflict key within a scope and record type).
+    pub topic: String,
+    /// Lifecycle status (snake_case).
+    pub status: String,
+    /// Sensitivity (snake_case).
+    pub sensitivity: String,
+    /// Created (ms).
+    pub created_at_ms: i64,
+    /// Expiry (ms), if any.
+    pub expires_at_ms: Option<i64>,
+    /// Last write (ms).
+    pub updated_at_ms: i64,
+    /// The whole item as JSON.
+    pub doc: String,
+}
+
+fn memory_row_from(r: &rusqlite::Row<'_>) -> rusqlite::Result<MemoryRow> {
+    Ok(MemoryRow {
+        id: r.get(0)?,
+        scope_key: r.get(1)?,
+        record_type: r.get(2)?,
+        topic: r.get(3)?,
+        status: r.get(4)?,
+        sensitivity: r.get(5)?,
+        created_at_ms: r.get(6)?,
+        expires_at_ms: r.get(7)?,
+        updated_at_ms: r.get(8)?,
+        doc: r.get(9)?,
+    })
+}
+
 /// Scope of an evidence search (REQ-EV-0132); every field narrows.
 #[derive(Clone, Debug, Default)]
 pub struct EvidenceScope {
@@ -942,6 +985,81 @@ impl EventStore {
     /// Runs of a task, newest attempt first.
     pub fn runs_for_task(&self, id: &TaskId) -> Result<Vec<modbit_domain::run::Run>> {
         crate::projections::load_runs_for_task(&self.conn, id)
+    }
+
+    // ---- engineering memory (M9.1, docs/19) ------------------------------
+    //
+    // Low-level rows only: the whole item is the `doc` JSON, the columns
+    // index it for scoped query and conflict grouping. The Core owns the
+    // schema and the promotion/query/conflict logic (`modbit-memory`); this
+    // store keeps memory's own durable, mutable table.
+
+    /// Insert or replace a memory row by id (the Core writes the whole item).
+    pub fn memory_upsert(&self, row: &MemoryRow) -> Result<()> {
+        self.conn.execute(
+            "INSERT OR REPLACE INTO memory_items (id, scope_key, record_type, topic, status, sensitivity, created_at_ms, expires_at_ms, updated_at_ms, doc) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+            rusqlite::params![
+                row.id,
+                row.scope_key,
+                row.record_type,
+                row.topic,
+                row.status,
+                row.sensitivity,
+                row.created_at_ms,
+                row.expires_at_ms,
+                row.updated_at_ms,
+                row.doc,
+            ],
+        )?;
+        Ok(())
+    }
+
+    /// One memory row by id.
+    pub fn memory_get(&self, id: &str) -> Result<Option<MemoryRow>> {
+        self.conn
+            .query_row(
+                "SELECT id, scope_key, record_type, topic, status, sensitivity, created_at_ms, expires_at_ms, updated_at_ms, doc FROM memory_items WHERE id = ?1",
+                [id],
+                memory_row_from,
+            )
+            .optional()
+            .map_err(Into::into)
+    }
+
+    /// Memory rows in any of the given scope keys (any status), for the Core
+    /// to load into a `modbit_memory::MemoryStore` and apply query/conflict
+    /// logic. An empty `scope_keys` returns nothing.
+    pub fn memory_in_scopes(&self, scope_keys: &[String]) -> Result<Vec<MemoryRow>> {
+        if scope_keys.is_empty() {
+            return Ok(Vec::new());
+        }
+        let placeholders = (1..=scope_keys.len())
+            .map(|i| format!("?{i}"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let sql = format!(
+            "SELECT id, scope_key, record_type, topic, status, sensitivity, created_at_ms, expires_at_ms, updated_at_ms, doc \
+             FROM memory_items WHERE scope_key IN ({placeholders}) ORDER BY created_at_ms DESC, id ASC"
+        );
+        let mut stmt = self.conn.prepare(&sql)?;
+        let params = rusqlite::params_from_iter(scope_keys.iter());
+        let rows = stmt
+            .query_map(params, memory_row_from)?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        Ok(rows)
+    }
+
+    /// Every memory row, newest first (inspection).
+    pub fn memory_all(&self) -> Result<Vec<MemoryRow>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, scope_key, record_type, topic, status, sensitivity, created_at_ms, expires_at_ms, updated_at_ms, doc \
+             FROM memory_items ORDER BY created_at_ms DESC, id ASC",
+        )?;
+        let rows = stmt
+            .query_map([], memory_row_from)?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        Ok(rows)
     }
 
     /// Load a run-step projection.

@@ -954,6 +954,34 @@ impl ToolHost {
                 })
             }),
             secrets_in_custody,
+            // M9.1 (REQ-EV-0162): the governed engineering-memory port over
+            // the Core's durable store and the task's scope chain. The user
+            // scope and the author come from the actor; the repository scope
+            // is the canonical workspace root.
+            memory: {
+                let (author, user) = match &actor {
+                    Actor::User(id) => (format!("user:{id}"), id.to_string()),
+                    Actor::Agent(a) => (format!("agent:{a}"), String::new()),
+                    Actor::Core(c) => (format!("core:{c}"), String::new()),
+                    Actor::External(e) => (format!("external:{e}"), String::new()),
+                };
+                let chain = crate::memory::ScopeChain::for_task(
+                    tenant_id,
+                    session_id,
+                    run_id.map(|r| r.to_string()).as_deref(),
+                    &user,
+                    root.as_ref()
+                        .map(|p| p.to_string_lossy().into_owned())
+                        .as_deref(),
+                );
+                Some(Arc::new(crate::memory::CoreMemory::new(
+                    Arc::clone(store),
+                    chain,
+                    author,
+                    root.as_ref().map(|p| p.to_string_lossy().into_owned()),
+                ))
+                    as Arc<dyn modbit_tools::pipeline::MemoryPort>)
+            },
         };
         // REQ-EV-0106: snapshot the write targets so every successful write can
         // land a revision-bound FileChanged event with content and diff refs.

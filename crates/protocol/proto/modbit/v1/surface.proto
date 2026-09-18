@@ -2194,3 +2194,77 @@ message EnvironmentRebuilt {
   repeated string changes = 4;
   uint64 offset = 5;
 }
+
+// M9.1 (REQ-EV-0162, docs/19 "Engineering Memory"): governed engineering
+// memory. `memory.query` (read curated) and `memory.propose` (record a
+// candidate) are tools; promotion is a separate governed command so no raw
+// transcript auto-promotes. A memory item's fields: scope, record type,
+// topic, content, source, author, confidence, TTL, sensitivity,
+// supersedes/conflicts, last validation revision, validated, status.
+message MemoryItemView {
+  string id = 1;
+  string scope = 2;              // kind:id
+  string record_type = 3;
+  string topic = 4;
+  string content = 5;
+  string source = 6;
+  string author = 7;
+  float confidence = 8;
+  int64 created_at_ms = 9;
+  int64 expires_at_ms = 10;      // 0 = none
+  string sensitivity = 11;
+  string status = 12;            // proposed | curated | superseded | deleted | expired
+  repeated string supersedes = 13;
+  repeated string conflicts = 14;
+  string last_validation_revision = 15;
+  bool validated = 16;
+}
+
+// List the engineering memory in a task's scope chain, for inspection
+// (proposals included) — the conflict groups are surfaced, never resolved
+// silently (QUAL-EV-0162).
+message ListMemory {
+  Id task_id = 1;
+}
+
+message MemoryList {
+  Id task_id = 1;
+  repeated MemoryItemView items = 2;      // every status, in the task's scopes
+  repeated string scopes = 3;             // the scope keys read
+  repeated MemoryConflict conflicts = 4;  // curated items on one topic, none superseding
+}
+
+message MemoryConflict {
+  repeated string item_ids = 1;
+}
+
+// Promote a proposed item to curated durable memory (a governed step; a
+// person or policy, never the agent's tool). Refused with a typed reason
+// when the promotion rules do not allow it (docs/19).
+message PromoteMemory {
+  Id task_id = 1;                // the acting session's task (for scope/revision/audit)
+  string memory_id = 2;
+}
+
+message MemoryPromoted {
+  string memory_id = 1;
+  string outcome = 2;            // curated | refused | unknown
+  string refusal_code = 3;       // when refused (docs/19 PromotionRefusal)
+  string refusal_detail = 4;
+  repeated string superseded = 5;
+  uint64 offset = 6;
+}
+
+// Remove a memory item the actor is allowed to (delete or supersede);
+// curated memory stays inspectable, marked.
+message ForgetMemory {
+  Id task_id = 1;
+  string memory_id = 2;
+  bool supersede = 3;            // true = mark superseded; false = deleted
+}
+
+message MemoryForgotten {
+  string memory_id = 1;
+  bool changed = 2;
+  string status = 3;
+}

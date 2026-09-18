@@ -381,8 +381,18 @@ pub fn default_lease_for_profile(
 ) -> (Vec<String>, Vec<String>, EffectClass) {
     let root = workspace_root.unwrap_or("<none>");
     let ops: Vec<&str> = match profile {
-        PROFILE_PLAN => vec!["fs.read", "git.read"],
-        PROFILE_REVIEW_ISOLATED => vec!["fs.read", "fs.write", "git.read", "shell.exec"],
+        // Reading curated engineering memory is a read, allowed while
+        // planning; proposing is a write (excluded here, and under review).
+        PROFILE_PLAN => vec!["fs.read", "git.read", "memory.query"],
+        PROFILE_REVIEW_ISOLATED => {
+            vec![
+                "fs.read",
+                "fs.write",
+                "git.read",
+                "shell.exec",
+                "memory.query",
+            ]
+        }
         // The cloud profile's tools act inside the task's sandbox (M8.5,
         // docs/21): its files and its processes, and — through the
         // gateway's egress broker (M8.6) — the configured forge's API host
@@ -398,6 +408,8 @@ pub fn default_lease_for_profile(
             "network.egress",
             "secret.use",
             "browser.control",
+            "memory.query",
+            "memory.propose",
         ],
         // The autonomous profile drives the task's browser session (M7.1,
         // docs/22): the host's sandboxed view, http(s) only, under the
@@ -409,6 +421,8 @@ pub fn default_lease_for_profile(
             "git.worktree",
             "shell.exec",
             "browser.control",
+            "memory.query",
+            "memory.propose",
         ],
         // The trusted profile also reaches the configured forge (PX-006,
         // docs/23): egress to its one API host and the use of its one token
@@ -423,6 +437,8 @@ pub fn default_lease_for_profile(
             "network.egress",
             "secret.use",
             "browser.control",
+            "memory.query",
+            "memory.propose",
         ],
     };
     let ceiling = match profile {
@@ -436,6 +452,8 @@ pub fn default_lease_for_profile(
             "network.egress" => "network.egress:forge-api:443".to_owned(),
             "secret.use" => "secret.use:forge-token -> forge-api".to_owned(),
             "browser.control" => "browser.control:task-session".to_owned(),
+            "memory.query" => "memory.query:scope-chain".to_owned(),
+            "memory.propose" => "memory.propose:scope-chain".to_owned(),
             _ => format!("{o}:{root}/**"),
         })
         .collect();

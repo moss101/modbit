@@ -1,0 +1,12 @@
+{
+ "task": "IMP-EV-0162",
+ "requirements": ["REQ-EV-0162", "QUAL-EV-0162", "docs/19 Engineering Memory"],
+ "scenarios": ["an agent proposes candidates (user preference, transcript fact, two conventions on one topic) and reads none via memory.query; PromoteMemory refuses the transcript fact and curates the rest; a later task's memory.query reads the curated items but never the proposal; the two conventions are an inspectable conflict; ForgetMemory supersedes one and clears it"],
+ "tests": ["services/modbit-core/tests/surface_protocol.rs::qual_ev_0162_memory_is_proposed_read_and_promoted_under_governance_no_transcript_auto_promotes"],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "governed engineering memory: propose/query tools, a separate governed promotion command with typed refusals (no raw transcript auto-promotes), scoped and provenance-bound items, inspectable conflict/supersession; memory is its own durable store (V16), not a per-session log projection.",
+ "audit": "MISSING before: crates/memory was an empty stub; no schema, store, tools, promotion or scopes.",
+ "limitations": "automatic context-pack injection of curated memory is a follow-up; promotion authority is a session lease; sensitive-scope promotion is conservatively refused pending policy wiring.",
+ "ci": ""
+}

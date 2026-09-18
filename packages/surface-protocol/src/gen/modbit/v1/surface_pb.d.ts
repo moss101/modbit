@@ -9439,6 +9439,312 @@ export declare type EnvironmentRebuilt = Message<"modbit.v1.EnvironmentRebuilt">
 export declare const EnvironmentRebuiltSchema: GenMessage<EnvironmentRebuilt>;
 
 /**
+ * M9.1 (REQ-EV-0162, docs/19 "Engineering Memory"): governed engineering
+ * memory. `memory.query` (read curated) and `memory.propose` (record a
+ * candidate) are tools; promotion is a separate governed command so no raw
+ * transcript auto-promotes. A memory item's fields: scope, record type,
+ * topic, content, source, author, confidence, TTL, sensitivity,
+ * supersedes/conflicts, last validation revision, validated, status.
+ *
+ * @generated from message modbit.v1.MemoryItemView
+ */
+export declare type MemoryItemView = Message<"modbit.v1.MemoryItemView"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * kind:id
+   *
+   * @generated from field: string scope = 2;
+   */
+  scope: string;
+
+  /**
+   * @generated from field: string record_type = 3;
+   */
+  recordType: string;
+
+  /**
+   * @generated from field: string topic = 4;
+   */
+  topic: string;
+
+  /**
+   * @generated from field: string content = 5;
+   */
+  content: string;
+
+  /**
+   * @generated from field: string source = 6;
+   */
+  source: string;
+
+  /**
+   * @generated from field: string author = 7;
+   */
+  author: string;
+
+  /**
+   * @generated from field: float confidence = 8;
+   */
+  confidence: number;
+
+  /**
+   * @generated from field: int64 created_at_ms = 9;
+   */
+  createdAtMs: bigint;
+
+  /**
+   * 0 = none
+   *
+   * @generated from field: int64 expires_at_ms = 10;
+   */
+  expiresAtMs: bigint;
+
+  /**
+   * @generated from field: string sensitivity = 11;
+   */
+  sensitivity: string;
+
+  /**
+   * proposed | curated | superseded | deleted | expired
+   *
+   * @generated from field: string status = 12;
+   */
+  status: string;
+
+  /**
+   * @generated from field: repeated string supersedes = 13;
+   */
+  supersedes: string[];
+
+  /**
+   * @generated from field: repeated string conflicts = 14;
+   */
+  conflicts: string[];
+
+  /**
+   * @generated from field: string last_validation_revision = 15;
+   */
+  lastValidationRevision: string;
+
+  /**
+   * @generated from field: bool validated = 16;
+   */
+  validated: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.MemoryItemView.
+ * Use `create(MemoryItemViewSchema)` to create a new message.
+ */
+export declare const MemoryItemViewSchema: GenMessage<MemoryItemView>;
+
+/**
+ * List the engineering memory in a task's scope chain, for inspection
+ * (proposals included) — the conflict groups are surfaced, never resolved
+ * silently (QUAL-EV-0162).
+ *
+ * @generated from message modbit.v1.ListMemory
+ */
+export declare type ListMemory = Message<"modbit.v1.ListMemory"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.ListMemory.
+ * Use `create(ListMemorySchema)` to create a new message.
+ */
+export declare const ListMemorySchema: GenMessage<ListMemory>;
+
+/**
+ * @generated from message modbit.v1.MemoryList
+ */
+export declare type MemoryList = Message<"modbit.v1.MemoryList"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * every status, in the task's scopes
+   *
+   * @generated from field: repeated modbit.v1.MemoryItemView items = 2;
+   */
+  items: MemoryItemView[];
+
+  /**
+   * the scope keys read
+   *
+   * @generated from field: repeated string scopes = 3;
+   */
+  scopes: string[];
+
+  /**
+   * curated items on one topic, none superseding
+   *
+   * @generated from field: repeated modbit.v1.MemoryConflict conflicts = 4;
+   */
+  conflicts: MemoryConflict[];
+};
+
+/**
+ * Describes the message modbit.v1.MemoryList.
+ * Use `create(MemoryListSchema)` to create a new message.
+ */
+export declare const MemoryListSchema: GenMessage<MemoryList>;
+
+/**
+ * @generated from message modbit.v1.MemoryConflict
+ */
+export declare type MemoryConflict = Message<"modbit.v1.MemoryConflict"> & {
+  /**
+   * @generated from field: repeated string item_ids = 1;
+   */
+  itemIds: string[];
+};
+
+/**
+ * Describes the message modbit.v1.MemoryConflict.
+ * Use `create(MemoryConflictSchema)` to create a new message.
+ */
+export declare const MemoryConflictSchema: GenMessage<MemoryConflict>;
+
+/**
+ * Promote a proposed item to curated durable memory (a governed step; a
+ * person or policy, never the agent's tool). Refused with a typed reason
+ * when the promotion rules do not allow it (docs/19).
+ *
+ * @generated from message modbit.v1.PromoteMemory
+ */
+export declare type PromoteMemory = Message<"modbit.v1.PromoteMemory"> & {
+  /**
+   * the acting session's task (for scope/revision/audit)
+   *
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: string memory_id = 2;
+   */
+  memoryId: string;
+};
+
+/**
+ * Describes the message modbit.v1.PromoteMemory.
+ * Use `create(PromoteMemorySchema)` to create a new message.
+ */
+export declare const PromoteMemorySchema: GenMessage<PromoteMemory>;
+
+/**
+ * @generated from message modbit.v1.MemoryPromoted
+ */
+export declare type MemoryPromoted = Message<"modbit.v1.MemoryPromoted"> & {
+  /**
+   * @generated from field: string memory_id = 1;
+   */
+  memoryId: string;
+
+  /**
+   * curated | refused | unknown
+   *
+   * @generated from field: string outcome = 2;
+   */
+  outcome: string;
+
+  /**
+   * when refused (docs/19 PromotionRefusal)
+   *
+   * @generated from field: string refusal_code = 3;
+   */
+  refusalCode: string;
+
+  /**
+   * @generated from field: string refusal_detail = 4;
+   */
+  refusalDetail: string;
+
+  /**
+   * @generated from field: repeated string superseded = 5;
+   */
+  superseded: string[];
+
+  /**
+   * @generated from field: uint64 offset = 6;
+   */
+  offset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.MemoryPromoted.
+ * Use `create(MemoryPromotedSchema)` to create a new message.
+ */
+export declare const MemoryPromotedSchema: GenMessage<MemoryPromoted>;
+
+/**
+ * Remove a memory item the actor is allowed to (delete or supersede);
+ * curated memory stays inspectable, marked.
+ *
+ * @generated from message modbit.v1.ForgetMemory
+ */
+export declare type ForgetMemory = Message<"modbit.v1.ForgetMemory"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: string memory_id = 2;
+   */
+  memoryId: string;
+
+  /**
+   * true = mark superseded; false = deleted
+   *
+   * @generated from field: bool supersede = 3;
+   */
+  supersede: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.ForgetMemory.
+ * Use `create(ForgetMemorySchema)` to create a new message.
+ */
+export declare const ForgetMemorySchema: GenMessage<ForgetMemory>;
+
+/**
+ * @generated from message modbit.v1.MemoryForgotten
+ */
+export declare type MemoryForgotten = Message<"modbit.v1.MemoryForgotten"> & {
+  /**
+   * @generated from field: string memory_id = 1;
+   */
+  memoryId: string;
+
+  /**
+   * @generated from field: bool changed = 2;
+   */
+  changed: boolean;
+
+  /**
+   * @generated from field: string status = 3;
+   */
+  status: string;
+};
+
+/**
+ * Describes the message modbit.v1.MemoryForgotten.
+ * Use `create(MemoryForgottenSchema)` to create a new message.
+ */
+export declare const MemoryForgottenSchema: GenMessage<MemoryForgotten>;
+
+/**
  * Command acknowledgement.
  *
  * @generated from enum modbit.v1.CommandStatus

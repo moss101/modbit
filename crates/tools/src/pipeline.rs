@@ -13,7 +13,7 @@ use sha2::{Digest, Sha256};
 use tokio::sync::Mutex;
 
 use crate::policy::{CapabilityPort, PolicyDecision, PolicyRequest};
-use crate::registry::{ToolOutcome, ToolRegistry};
+use crate::registry::{BoxFuture, ToolOutcome, ToolRegistry};
 
 /// Reading back a stored result by range, so a bounded observation can be
 /// paged instead of silently truncated (docs/14 harness contract 2).
@@ -54,6 +54,30 @@ pub struct SearchRequest {
 pub trait SearchPort: Send + Sync {
     /// Run the search; `Err` carries a typed code and message.
     fn search(&self, req: &SearchRequest) -> Result<serde_json::Value, (String, String)>;
+}
+
+/// Governed engineering memory the host serves to `memory.query` /
+/// `memory.propose` (M9.1, REQ-EV-0162, docs/19). The Core implements it
+/// over its durable memory store, resolving the task's scope chain and
+/// enforcing the promotion rules; the tools only pass the call's arguments
+/// through. A proposal is never promoted here — promotion is a separate
+/// governed step (a user or policy action), so `memory.propose` can never
+/// make durable memory on its own.
+pub trait MemoryPort: Send + Sync {
+    /// Curated memory visible to the task, for the query in `args`
+    /// (`record_type?`, `topic?`, `limit?`). Never returns a proposal.
+    fn query<'a>(
+        &'a self,
+        args: &'a serde_json::Value,
+    ) -> BoxFuture<'a, Result<serde_json::Value, (String, String)>>;
+    /// Record a candidate memory item from `args` (`record_type`, `topic`,
+    /// `content`, `scope?`, `source?`, `confidence?`, `ttl_ms?`,
+    /// `sensitivity?`). It is stored `proposed`; the result carries its id
+    /// and says plainly that promotion is separate.
+    fn propose<'a>(
+        &'a self,
+        args: &'a serde_json::Value,
+    ) -> BoxFuture<'a, Result<serde_json::Value, (String, String)>>;
 }
 
 /// A language-service request (docs/18 "Semantic language services").
@@ -184,6 +208,10 @@ pub struct InvokeContext {
     /// The environment revision the run is pinned to (REQ-EV-0062): the
     /// variables and `PATH` entries every process the tools start gets.
     pub environment: Option<Arc<ProcessEnvironment>>,
+    /// Governed engineering memory (M9.1, REQ-EV-0162): `memory.query` reads
+    /// curated memory through it and `memory.propose` records a candidate.
+    /// `None` = no memory is served to this task.
+    pub memory: Option<Arc<dyn MemoryPort>>,
 }
 
 /// What a pinned environment revision gives a process.

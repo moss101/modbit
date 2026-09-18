@@ -245,6 +245,7 @@ async fn fs_read_returns_media_envelopes_through_the_registry() {
         effect_class: None,
         secrets_in_custody: vec![],
         environment: None,
+        memory: None,
     };
     let mut registry = ToolRegistry::new();
     modbit_tools::direct::register_direct(&mut registry).unwrap();

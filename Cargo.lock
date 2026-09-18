@@ -2198,6 +2198,7 @@ dependencies = [
  "modbit-domain",
  "modbit-event-store",
  "modbit-git",
+ "modbit-memory",
  "modbit-observability",
  "modbit-policy",
  "modbit-procedural-runtime",
@@ -2345,7 +2346,11 @@ dependencies = [
 name = "modbit-memory"
 version = "0.0.0"
 dependencies = [
+ "hex",
  "modbit-domain",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
 ]
 
 [[package]]

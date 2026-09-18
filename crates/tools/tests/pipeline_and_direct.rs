@@ -89,6 +89,7 @@ fn fixture(exec: Option<ExecTarget>) -> Fixture {
         effect_class: None,
         secrets_in_custody: vec![],
         environment: None,
+        memory: None,
     };
     let mut registry = ToolRegistry::new();
     modbit_tools::direct::register_direct(&mut registry).unwrap();
@@ -215,6 +216,7 @@ async fn qual_ev_0239_0080_denial_is_monotonic_and_argument_text_cannot_bypass_p
         effect_class: None,
         secrets_in_custody: vec![],
         environment: None,
+        memory: None,
     };
     let o = f
         .runtime
@@ -805,4 +807,111 @@ fn qual_ev_0230_every_tool_namespace_carries_a_build_or_buy_justification() {
             "stale namespace row `{ns}`"
         );
     }
+}
+
+/// M9.1 (IMP-EV-0162): the memory tools are read/propose only — `memory.query`
+/// reads through the host's `MemoryPort` and `memory.propose` records a
+/// candidate through it; neither promotes. With no port attached both answer
+/// NO_MEMORY. (End-to-end promotion is proven at the Core in QUAL-EV-0162.)
+#[tokio::test]
+async fn memory_tools_delegate_to_the_host_port_and_never_promote() {
+    use modbit_tools::pipeline::MemoryPort;
+    use serde_json::json;
+
+    // A fake port: propose returns a proposed id; query returns whatever
+    // curated items the host would (here, one), and records the calls.
+    struct FakeMemory {
+        calls: StdMutex<Vec<(String, serde_json::Value)>>,
+    }
+    impl MemoryPort for FakeMemory {
+        fn query<'a>(
+            &'a self,
+            args: &'a serde_json::Value,
+        ) -> modbit_tools::registry::BoxFuture<'a, Result<serde_json::Value, (String, String)>>
+        {
+            self.calls
+                .lock()
+                .unwrap()
+                .push(("query".into(), args.clone()));
+            Box::pin(async move {
+                Ok(json!({"items": [{"id": "m1", "topic": "test runner", "status": "curated"}]}))
+            })
+        }
+        fn propose<'a>(
+            &'a self,
+            args: &'a serde_json::Value,
+        ) -> modbit_tools::registry::BoxFuture<'a, Result<serde_json::Value, (String, String)>>
+        {
+            self.calls
+                .lock()
+                .unwrap()
+                .push(("propose".into(), args.clone()));
+            Box::pin(async move {
+                Ok(json!({"id": "abc", "status": "proposed", "promotion": "separate"}))
+            })
+        }
+    }
+
+    struct Approved;
+    impl CapabilityPort for Approved {
+        fn decide(&self, _: &PolicyRequest) -> PolicyDecision {
+            PolicyDecision::Allow {
+                rule: "test".into(),
+                approval_id: None,
+            }
+        }
+    }
+
+    let f = fixture(None);
+    // No port: both memory tools report NO_MEMORY (infrastructure), never a
+    // silent success.
+    let mut ctx = f.ctx.clone();
+    ctx.kernel = Some(Arc::new(Approved));
+    let o = f
+        .runtime
+        .invoke(&ctx, ToolCallId::new(), "memory.query", "{}")
+        .await;
+    assert_eq!(o.result.status, ToolStatus::InfraFailure, "{o:?}");
+    assert_eq!(o.result.error_code.as_deref(), Some("NO_MEMORY"));
+
+    // With a port: propose delegates and reports promotion is separate;
+    // query delegates and returns curated items.
+    let fake = Arc::new(FakeMemory {
+        calls: StdMutex::new(vec![]),
+    });
+    ctx.memory = Some(fake.clone());
+    let o = f
+        .runtime
+        .invoke(
+            &ctx,
+            ToolCallId::new(),
+            "memory.propose",
+            r#"{"record_type":"fact","topic":"test runner","content":"uses nextest","source":"transcript_summary"}"#,
+        )
+        .await;
+    assert_eq!(o.result.status, ToolStatus::Success, "{o:?}");
+    let out = o.result.structured_output.clone();
+    assert_eq!(out["status"], "proposed");
+    assert_eq!(
+        out["promotion"], "separate",
+        "the tool never promotes: {out}"
+    );
+    let o = f
+        .runtime
+        .invoke(
+            &ctx,
+            ToolCallId::new(),
+            "memory.query",
+            r#"{"record_type":"fact"}"#,
+        )
+        .await;
+    assert_eq!(o.result.status, ToolStatus::Success, "{o:?}");
+    assert_eq!(o.result.structured_output["items"][0]["status"], "curated");
+    // The port saw the calls with the arguments the model gave.
+    let calls = fake.calls.lock().unwrap();
+    assert_eq!(calls.len(), 2);
+    assert_eq!(calls[0].0, "propose");
+    assert_eq!(calls[0].1["source"], "transcript_summary");
+    assert_eq!(calls[1].0, "query");
+    assert_eq!(calls[1].1["record_type"], "fact");
 }

@@ -1067,6 +1067,8 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         "ConfigureSandboxGateway" => "sandbox.configure",
         "ExportHandoff" => "task.author",
         "GetEnvironment" | "RebuildEnvironment" => "task.author",
+        "ListMemory" => "task.author",
+        "PromoteMemory" | "ForgetMemory" => "task.author",
         "RebindTaskWorkspace" | "ImportObjects" => "session.mirror",
         "TrustRepository" => "repository.trust",
         "EmergencyStop" => "session.control",
@@ -1105,6 +1107,102 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
 
 pub(crate) fn wire_id(b: &[u8; 16]) -> wire::Id {
     wire::Id { value: b.to_vec() }
+}
+
+/// A memory item view (from `crate::memory`) to the wire message (M9.1).
+fn memory_item_view(v: &serde_json::Value) -> wire::MemoryItemView {
+    let s = |k: &str| {
+        v.get(k)
+            .and_then(|x| x.as_str())
+            .unwrap_or_default()
+            .to_owned()
+    };
+    let strs = |k: &str| {
+        v.get(k)
+            .and_then(|x| x.as_array())
+            .map(|a| {
+                a.iter()
+                    .filter_map(|e| e.as_str().map(str::to_owned))
+                    .collect()
+            })
+            .unwrap_or_default()
+    };
+    let record_type = v
+        .get("record_type")
+        .and_then(|x| x.as_str())
+        .unwrap_or_default()
+        .to_owned();
+    let source = v
+        .get("source")
+        .and_then(|x| x.as_str())
+        .unwrap_or_default()
+        .to_owned();
+    let sensitivity = v
+        .get("sensitivity")
+        .and_then(|x| x.as_str())
+        .unwrap_or_default()
+        .to_owned();
+    let status = v
+        .get("status")
+        .and_then(|x| x.as_str())
+        .unwrap_or_default()
+        .to_owned();
+    wire::MemoryItemView {
+        id: s("id"),
+        scope: s("scope"),
+        record_type,
+        topic: s("topic"),
+        content: s("content"),
+        source,
+        author: s("author"),
+        confidence: v
+            .get("confidence")
+            .and_then(serde_json::Value::as_f64)
+            .map(|f| f as f32)
+            .unwrap_or(0.0),
+        created_at_ms: v
+            .get("created_at_ms")
+            .and_then(serde_json::Value::as_i64)
+            .unwrap_or(0),
+        expires_at_ms: v
+            .get("expires_at_ms")
+            .and_then(serde_json::Value::as_i64)
+            .unwrap_or(0),
+        sensitivity,
+        status,
+        supersedes: strs("supersedes"),
+        conflicts: strs("conflicts"),
+        last_validation_revision: s("last_validation_revision"),
+        validated: v
+            .get("validated")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false),
+    }
+}
+
+/// The task's workspace git HEAD, if it has a workspace root and a HEAD — a
+/// repository memory fact binds to it (docs/19). `None` when unknown.
+async fn current_revision_of(
+    _core: &Arc<Core>,
+    task: &modbit_domain::task::Task,
+) -> Option<String> {
+    let root = task.workspace_root.clone()?;
+    tokio::task::spawn_blocking(move || {
+        let out = std::process::Command::new("git")
+            .arg("-C")
+            .arg(&root)
+            .args(["rev-parse", "HEAD"])
+            .output()
+            .ok()?;
+        if !out.status.success() {
+            return None;
+        }
+        let rev = String::from_utf8_lossy(&out.stdout).trim().to_owned();
+        (!rev.is_empty()).then_some(rev)
+    })
+    .await
+    .ok()
+    .flatten()
 }
 
 fn to_wire(ev: &StoredEvent) -> StoredEventFrame {
@@ -5020,6 +5118,149 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                     )
                 }
                 Err(why) => reject(cid, "ENVIRONMENT_UNAVAILABLE", why),
+            }
+        }
+        // M9.1 (REQ-EV-0162, docs/19): governed engineering memory —
+        // inspect the task's scope chain (proposals included, conflicts
+        // surfaced), promote a proposal (a governed step, refused with a
+        // typed reason when the rules do not allow it), or forget an item.
+        "ListMemory" => {
+            let Ok(p) = wire::ListMemory::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "ListMemory");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let task = match core.store.lock().await.task(&task_id) {
+                Ok(Some(t)) => t,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            let chain = crate::memory::scope_chain_for(core.tenant_id, core.user_id, &task);
+            match crate::memory::list_scoped(&core.store, &chain).await {
+                Ok((items, scopes, conflicts)) => accept(
+                    cid,
+                    false,
+                    wire::MemoryList {
+                        task_id: Some(wire_id(task_id.as_bytes())),
+                        items: items.iter().map(memory_item_view).collect(),
+                        scopes,
+                        conflicts: conflicts
+                            .into_iter()
+                            .map(|item_ids| wire::MemoryConflict { item_ids })
+                            .collect(),
+                    }
+                    .encode_to_vec(),
+                ),
+                Err(e) => reject(cid, "MEMORY_STORE", e),
+            }
+        }
+        "PromoteMemory" => {
+            let Ok(p) = wire::PromoteMemory::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "PromoteMemory");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            if p.memory_id.is_empty() {
+                return reject(cid, "BAD_PAYLOAD", "memory_id required");
+            }
+            let task = match core.store.lock().await.task(&task_id) {
+                Ok(Some(t)) => t,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
+                return ack;
+            }
+            // The promotion context: the workspace's current revision (a
+            // repository fact must bind to it) and whether the scope permits
+            // sensitive memory (conservative default: no; a later slice wires
+            // policy). Now, to reject an expired proposal.
+            let current_repository_revision = current_revision_of(core, &task).await;
+            let pctx = modbit_memory::PromotionContext {
+                scope_permits_sensitive: false,
+                current_repository_revision,
+                now_ms: modbit_domain::Timestamp::now().0,
+            };
+            match crate::memory::promote(&core.store, &p.memory_id, &pctx).await {
+                Ok(outcome) => {
+                    use crate::memory::Promoted;
+                    let (out, code, detail, superseded) = match outcome {
+                        Promoted::Curated { superseded, .. } => {
+                            ("curated", String::new(), String::new(), superseded)
+                        }
+                        Promoted::Unknown => (
+                            "unknown",
+                            "UNKNOWN_MEMORY".to_owned(),
+                            "no such proposal".to_owned(),
+                            vec![],
+                        ),
+                        Promoted::Refused(refusal) => {
+                            let v = serde_json::to_value(&refusal).unwrap_or_default();
+                            let code = v
+                                .get("code")
+                                .and_then(|c| c.as_str())
+                                .unwrap_or("REFUSED")
+                                .to_owned();
+                            ("refused", code, v.to_string(), vec![])
+                        }
+                    };
+                    accept(
+                        cid,
+                        false,
+                        wire::MemoryPromoted {
+                            memory_id: p.memory_id.clone(),
+                            outcome: out.to_owned(),
+                            refusal_code: code,
+                            refusal_detail: detail,
+                            superseded,
+                            offset: core.last_offset.borrow().to_owned(),
+                        }
+                        .encode_to_vec(),
+                    )
+                }
+                Err(e) => reject(cid, "MEMORY_STORE", e),
+            }
+        }
+        "ForgetMemory" => {
+            let Ok(p) = wire::ForgetMemory::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "ForgetMemory");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            if p.memory_id.is_empty() {
+                return reject(cid, "BAD_PAYLOAD", "memory_id required");
+            }
+            let task = match core.store.lock().await.task(&task_id) {
+                Ok(Some(t)) => t,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
+                return ack;
+            }
+            let status = if p.supersede {
+                modbit_memory::Status::Superseded
+            } else {
+                modbit_memory::Status::Deleted
+            };
+            match crate::memory::set_status(&core.store, &p.memory_id, status).await {
+                Ok(changed) => accept(
+                    cid,
+                    false,
+                    wire::MemoryForgotten {
+                        memory_id: p.memory_id.clone(),
+                        changed,
+                        status: serde_json::to_value(status)
+                            .ok()
+                            .and_then(|v| v.as_str().map(str::to_owned))
+                            .unwrap_or_default(),
+                    }
+                    .encode_to_vec(),
+                ),
+                Err(e) => reject(cid, "MEMORY_STORE", e),
             }
         }
         // M8.8: the person's input into a view they watch, under the

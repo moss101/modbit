@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 1235,
-    "docs_bytes": 1243622
+    "root_and_tooling": 1237,
+    "docs_bytes": 1247077
   },
   "sections": [
     {
@@ -212,8 +212,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Durable State, Memory, Compaction, and Checkpoints",
-      "bytes": 13748,
-      "sha256": "a56bb1e31611a229e1e1f786406cb3d7b31e5d21836c578be2a8c5cf2ca20ada"
+      "bytes": 16269,
+      "sha256": "82e8d84f633a9c7405d7f86026cff9a65cbd0063b042024717d7af442a2728c7"
     },
     {
       "path": "docs/20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md",
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 37239,
-      "sha256": "be0d3f859a9b581dfa9469f3a2dc4a850acbb5b8ef4afee2f782959ec5bbf88d"
+      "bytes": 38173,
+      "sha256": "82babc7d09661e70645904fd984c7d634b9033b94727599cec94c3ce9c93cb15"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -6985,6 +6985,16 @@
       "path": "evidence/m8/PX-011/evidence.json",
       "bytes": 1489,
       "sha256": "85a7eba3e2dcdbbfa8e4b4daf204f4fb77e513a4b19d4e571505c55ba457221e"
+    },
+    {
+      "path": "evidence/m9/IMP-EV-0162/TASK_CARD.md",
+      "bytes": 4465,
+      "sha256": "e93b23f997134175ec47eb17fe3756f722cb1ebfa7a41b3d05fbbb11af3043b8"
+    },
+    {
+      "path": "evidence/m9/IMP-EV-0162/evidence.json",
+      "bytes": 1296,
+      "sha256": "b70da1a4e4afc9058d6fcd7260b16731bae0851c273fb9d4e850c621ccf3cc25"
     },
     {
       "path": "graph/PROJECT_GRAPH.md",

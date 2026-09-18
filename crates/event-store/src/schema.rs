@@ -590,6 +590,31 @@ pub const V15_AGENT_CHILD_TASK: &str = r#"
 ALTER TABLE agent_nodes ADD COLUMN child_task_id BLOB;
 "#;
 
+/// V16 (M9.1, IMP-EV-0162, docs/19 "Engineering Memory"): governed
+/// engineering memory. Unlike the derivable projection tables above, this is
+/// its own durable, mutable store (edit/delete/supersede) — memory is
+/// cross-session and cannot be a projection of a per-session event log
+/// (docs/19: "SQLite WAL databases … for memory metadata"). The whole item
+/// is kept as a JSON document; the indexed columns are for scoped query and
+/// conflict grouping. A proposal (`status='proposed'`) is never read by
+/// `memory.query`; promotion is a separate governed step.
+pub const V16_ENGINEERING_MEMORY: &str = r#"
+CREATE TABLE IF NOT EXISTS memory_items (
+  id            TEXT    PRIMARY KEY NOT NULL,
+  scope_key     TEXT    NOT NULL,
+  record_type   TEXT    NOT NULL,
+  topic         TEXT    NOT NULL,
+  status        TEXT    NOT NULL,
+  sensitivity   TEXT    NOT NULL,
+  created_at_ms INTEGER NOT NULL,
+  expires_at_ms INTEGER,
+  updated_at_ms INTEGER NOT NULL,
+  doc           TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS memory_items_scope ON memory_items (scope_key, status, created_at_ms);
+CREATE INDEX IF NOT EXISTS memory_items_conflict ON memory_items (scope_key, record_type, topic, status);
+"#;
+
 /// All migrations in order. Never edit an entry once shipped; append a new one.
 pub const MIGRATIONS: &[Migration] = &[
     Migration {
@@ -681,6 +706,12 @@ pub const MIGRATIONS: &[Migration] = &[
         name: "agent_child_task",
         up: V15_AGENT_CHILD_TASK,
         rollback: "Additive nullable derivable column. Rollback = drop the column or ignore it; a rebuild derives it from the log; no event is touched.",
+    },
+    Migration {
+        version: 16,
+        name: "engineering_memory",
+        up: V16_ENGINEERING_MEMORY,
+        rollback: "Additive standalone table (docs/19 'Engineering Memory'). It is memory's own durable store, not a projection; a rollback that drops it loses the curated memory it holds, so a rollback exports the rows first. No event is touched.",
     },
 ];
 

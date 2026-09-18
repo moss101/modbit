@@ -230,7 +230,7 @@ fn newer_schema_is_refused() {
             err,
             Error::SchemaTooNew {
                 found: 99,
-                supported: 15
+                supported: 16
             }
         ),
         "{err}"
@@ -580,4 +580,58 @@ fn qual_m8_2_imported_envelopes_are_verbatim_chain_checked_and_idempotent() {
         .unwrap();
     assert_eq!(stored[0].envelope.sequence, 4);
     assert_eq!(dst.verify_aggregate(&a).unwrap(), 4);
+}
+
+#[test]
+fn engineering_memory_rows_round_trip_query_by_scope_and_survive_reopen() {
+    use modbit_event_store::MemoryRow;
+    let dir = tempfile::tempdir().unwrap();
+    let row = |id: &str, scope: &str, status: &str, created: i64| MemoryRow {
+        id: id.into(),
+        scope_key: scope.into(),
+        record_type: "fact".into(),
+        topic: "test runner".into(),
+        status: status.into(),
+        sensitivity: "normal".into(),
+        created_at_ms: created,
+        expires_at_ms: None,
+        updated_at_ms: created,
+        doc: format!("{{\"id\":\"{id}\",\"content\":\"c-{id}\"}}"),
+    };
+    {
+        let store = EventStore::open(dir.path()).unwrap();
+        store
+            .memory_upsert(&row("a", "user:u1", "proposed", 1000))
+            .unwrap();
+        store
+            .memory_upsert(&row("b", "user:u1", "curated", 2000))
+            .unwrap();
+        store
+            .memory_upsert(&row("c", "org:o1", "curated", 1500))
+            .unwrap();
+        // get by id.
+        assert_eq!(store.memory_get("b").unwrap().unwrap().status, "curated");
+        assert!(store.memory_get("nope").unwrap().is_none());
+        // Upsert replaces by id (a promotion is a status change, one row).
+        store
+            .memory_upsert(&row("a", "user:u1", "curated", 1000))
+            .unwrap();
+        assert_eq!(store.memory_get("a").unwrap().unwrap().status, "curated");
+        // in_scopes: only the named scopes, newest first.
+        let in_user = store.memory_in_scopes(&["user:u1".into()]).unwrap();
+        assert_eq!(
+            in_user.iter().map(|r| r.id.as_str()).collect::<Vec<_>>(),
+            vec!["b", "a"]
+        );
+        let both = store
+            .memory_in_scopes(&["user:u1".into(), "org:o1".into()])
+            .unwrap();
+        assert_eq!(both.len(), 3);
+        assert!(store.memory_in_scopes(&[]).unwrap().is_empty());
+        assert_eq!(store.memory_all().unwrap().len(), 3);
+    }
+    // Reopen: the durable memory store survives (it is not a projection).
+    let store = EventStore::open(dir.path()).unwrap();
+    assert_eq!(store.memory_all().unwrap().len(), 3);
+    assert_eq!(store.memory_get("c").unwrap().unwrap().scope_key, "org:o1");
 }

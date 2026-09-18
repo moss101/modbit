@@ -2939,7 +2939,7 @@ async fn m2_7_harness_refuses_unplanned_writes_exhausts_budgets_and_resumes_afte
                 model: "gpt-5-mini".into(),
                 max_turns: 20,
                 max_tool_calls: 0,
-                max_no_progress_turns: 0,
+                max_no_progress_turns: 10,
                 skills: vec![],
             }
             .encode_to_vec(),
@@ -2990,7 +2990,7 @@ async fn m2_7_harness_refuses_unplanned_writes_exhausts_budgets_and_resumes_afte
                 model: "gpt-5-mini".into(),
                 max_turns: 20,
                 max_tool_calls: 0,
-                max_no_progress_turns: 0,
+                max_no_progress_turns: 10,
                 skills: vec![],
             }
             .encode_to_vec(),
@@ -32152,6 +32152,270 @@ async fn qual_ev_0021_0062_0146_environment_revision_is_pinned_applied_and_rebui
         seen.lock().unwrap().len(),
         requests_before,
         "no model request for a run that never started"
+    );
+    drop(repo);
+}
+
+async fn memory_list(c: &mut Client, task: &Id, id: u8) -> modbit_protocol::v1::MemoryList {
+    use modbit_protocol::v1::{ListMemory, MemoryList};
+    let ack = c
+        .command(envelope_fenced(
+            id16(id),
+            "ListMemory",
+            ListMemory {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+            None,
+        ))
+        .await
+        .unwrap();
+    Client::result::<MemoryList>(&ack).unwrap()
+}
+
+async fn promote_memory(
+    c: &mut Client,
+    task: &Id,
+    g: Option<u64>,
+    id: u8,
+    memory_id: String,
+) -> modbit_protocol::v1::MemoryPromoted {
+    use modbit_protocol::v1::{MemoryPromoted, PromoteMemory};
+    let ack = c
+        .command(envelope_fenced(
+            id16(id),
+            "PromoteMemory",
+            PromoteMemory {
+                task_id: Some(task.clone()),
+                memory_id,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    Client::result::<MemoryPromoted>(&ack).unwrap()
+}
+
+/// REQ-EV-0162 (QUAL-EV-0162, docs/19 "Engineering Memory"): governed
+/// engineering memory. An agent proposes candidates with `memory.propose`
+/// and reads curated memory with `memory.query`; a proposal is never read
+/// by a query and never becomes durable memory on its own. Promotion is a
+/// separate governed command: a transcript summary is refused, a user's
+/// stated preference is promoted, and the promoted item is then visible to a
+/// query in a later task; two curated items on one topic are an inspectable
+/// conflict, not a silent pick.
+#[tokio::test]
+async fn qual_ev_0162_memory_is_proposed_read_and_promoted_under_governance_no_transcript_auto_promotes()
+ {
+    use modbit_protocol::v1::{ForgetMemory, StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[("a.txt", "a\n")]);
+    // One run proposes four candidates (a user preference the user stated, a
+    // fact summarized from the transcript, and two conventions on one topic),
+    // reads memory mid-run (sees none — they are proposals), and completes.
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "o", "expected_files": []}}]}),
+        json!({"calls": [{"name": "memory.propose", "args": {"record_type": "user_preference", "topic": "editor", "content": "prefers tabs over spaces", "source": "user_stated", "scope": "user"}}]}),
+        json!({"calls": [{"name": "memory.propose", "args": {"record_type": "fact", "topic": "flaky test", "content": "test_login flakes on CI", "source": "transcript_summary", "scope": "session"}}]}),
+        json!({"calls": [{"name": "memory.propose", "args": {"record_type": "convention", "topic": "indentation", "content": "use tabs", "source": "user_stated", "scope": "user"}}]}),
+        json!({"calls": [{"name": "memory.propose", "args": {"record_type": "convention", "topic": "indentation", "content": "use spaces", "source": "user_stated", "scope": "user"}}]}),
+        json!({"calls": [{"name": "memory.query", "args": {}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xF0)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xF1, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xF2),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 20,
+                max_tool_calls: 0,
+                max_no_progress_turns: 10,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_for_state(&mut c, &task, "ReadyForReview", 60).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    // The mid-run query saw no items: proposals are never read by a query.
+    let bodies = seen.lock().unwrap().clone();
+    let query_result = bodies
+        .iter()
+        .flat_map(|b| b["messages"].as_array().cloned().unwrap_or_default())
+        .filter(|m| m["role"] == "tool")
+        .filter_map(|m| m["content"].as_str().map(str::to_owned))
+        .find(|c| c.contains("\"items\""))
+        .expect("a memory.query tool result");
+    assert!(
+        query_result.contains("\"items\":[]"),
+        "the query returned no proposals: {query_result}"
+    );
+
+    // Inspect the scope chain: four proposals, no conflicts yet (a conflict
+    // is between CURATED items).
+    let v = memory_list(&mut c, &task, 0xF3).await;
+    assert_eq!(v.items.len(), 4, "{v:?}");
+    assert!(v.items.iter().all(|i| i.status == "proposed"), "{v:?}");
+    assert!(v.conflicts.is_empty(), "no conflict among proposals: {v:?}");
+    let id_of = |v: &modbit_protocol::v1::MemoryList, topic: &str, content: &str| {
+        v.items
+            .iter()
+            .find(|i| i.topic == topic && i.content == content)
+            .map(|i| i.id.clone())
+            .unwrap_or_else(|| panic!("no item {topic}/{content}"))
+    };
+    let transcript_id = id_of(&v, "flaky test", "test_login flakes on CI");
+    let pref_id = id_of(&v, "editor", "prefers tabs over spaces");
+    let tabs_id = id_of(&v, "indentation", "use tabs");
+    let spaces_id = id_of(&v, "indentation", "use spaces");
+
+    // The transcript-sourced fact is refused: a transcript summary never
+    // promotes on its own (the M9.1 invariant).
+    let r = promote_memory(&mut c, &task, g, 0xF4, transcript_id.clone()).await;
+    assert_eq!(
+        (r.outcome.as_str(), r.refusal_code.as_str()),
+        ("refused", "TRANSCRIPT_NOT_VALIDATED"),
+        "{r:?}"
+    );
+    // The user's stated preference and the two conventions promote.
+    for (id, mid) in [(0xF5, &pref_id), (0xF6, &tabs_id), (0xF7, &spaces_id)] {
+        let r = promote_memory(&mut c, &task, g, id, mid.clone()).await;
+        assert_eq!(r.outcome, "curated", "{r:?}");
+    }
+    // Now: the preference and both conventions are curated, the transcript
+    // fact is still proposed, and the two conventions on one topic are an
+    // inspectable conflict.
+    let v = memory_list(&mut c, &task, 0xF8).await;
+    let status_of = |v: &modbit_protocol::v1::MemoryList, id: &str| {
+        v.items
+            .iter()
+            .find(|i| i.id == id)
+            .map(|i| i.status.clone())
+            .unwrap()
+    };
+    assert_eq!(status_of(&v, &pref_id), "curated");
+    assert_eq!(status_of(&v, &tabs_id), "curated");
+    assert_eq!(status_of(&v, &spaces_id), "curated");
+    assert_eq!(
+        status_of(&v, &transcript_id),
+        "proposed",
+        "the transcript fact never became memory"
+    );
+    assert_eq!(v.conflicts.len(), 1, "the two conventions conflict: {v:?}");
+    let mut group = v.conflicts[0].item_ids.clone();
+    group.sort();
+    let mut want = vec![tabs_id.clone(), spaces_id.clone()];
+    want.sort();
+    assert_eq!(group, want, "{v:?}");
+
+    // A later task's memory.query reads the curated memory (the preference
+    // and the conventions), never the still-proposed transcript fact.
+    let script2 = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "o", "expected_files": []}}]}),
+        json!({"calls": [{"name": "memory.query", "args": {}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    let (base2, seen2) = scripted_model(script2, None).await;
+    let env2 = [
+        ("MODBIT_OPENAI_BASE_URL", base2.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    // Stop the first Core before the second opens the same data dir (one
+    // Core per data dir); the durable memory store the promotions wrote is
+    // read by the second Core.
+    drop(c);
+    core.kill();
+    // Same data dir → same store, same session/user/repo scopes.
+    let core2 = CoreProcess::spawn_with_env(dir.path(), &env2);
+    let mut c2 = core2.client().await;
+    let g2 = Some(acquire_lease(&mut c2, id16(0xF9), session.clone(), "reader").await);
+    let task2 = create_task_with_profile(&mut c2, &session, g2, &root, 0xFA, "local_trusted").await;
+    let ack = c2
+        .command(envelope_fenced(
+            id16(0xFB),
+            "StartTask",
+            StartTask {
+                task_id: Some(task2.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 20,
+                max_tool_calls: 0,
+                max_no_progress_turns: 10,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g2,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_for_state(&mut c2, &task2, "ReadyForReview", 60).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let q2 = seen2
+        .lock()
+        .unwrap()
+        .iter()
+        .flat_map(|b| b["messages"].as_array().cloned().unwrap_or_default())
+        .filter(|m| m["role"] == "tool")
+        .filter_map(|m| m["content"].as_str().map(str::to_owned))
+        .find(|c| c.contains("\"items\""))
+        .expect("a memory.query result in the second task");
+    assert!(
+        q2.contains("prefers tabs over spaces"),
+        "curated preference is read: {q2}"
+    );
+    assert!(
+        q2.contains("use tabs") && q2.contains("use spaces"),
+        "both conventions read: {q2}"
+    );
+    assert!(
+        !q2.contains("test_login flakes"),
+        "the still-proposed transcript fact is never read by a query: {q2}"
+    );
+
+    // A person can forget (supersede) a curated item; a later query no
+    // longer reads it.
+    let ack = c2
+        .command(envelope_fenced(
+            id16(0xFC),
+            "ForgetMemory",
+            ForgetMemory {
+                task_id: Some(task2.clone()),
+                memory_id: spaces_id.clone(),
+                supersede: true,
+            }
+            .encode_to_vec(),
+            g2,
+        ))
+        .await
+        .unwrap();
+    let f: modbit_protocol::v1::MemoryForgotten = Client::result(&ack).unwrap();
+    assert!(f.changed && f.status == "superseded", "{f:?}");
+    let v = memory_list(&mut c2, &task2, 0xFD).await;
+    assert_eq!(status_of(&v, &spaces_id), "superseded");
+    assert!(
+        v.conflicts.is_empty(),
+        "the conflict is gone once one side is superseded: {v:?}"
     );
     drop(repo);
 }
