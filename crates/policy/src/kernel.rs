@@ -85,6 +85,10 @@ impl Default for PolicyEnvelope {
                 "git.commit",
                 "git.push",
                 "deploy",
+                // docs/17: `external.call` is excluded from the reviewer
+                // projection and kernel-denied under this profile. Listing
+                // stays: discovery never grants authority.
+                "external.call",
             ]
             .into_iter()
             .map(str::to_owned)
@@ -383,7 +387,7 @@ pub fn default_lease_for_profile(
     let ops: Vec<&str> = match profile {
         // Reading curated engineering memory is a read, allowed while
         // planning; proposing is a write (excluded here, and under review).
-        PROFILE_PLAN => vec!["fs.read", "git.read", "memory.query"],
+        PROFILE_PLAN => vec!["fs.read", "git.read", "memory.query", "external.list"],
         PROFILE_REVIEW_ISOLATED => {
             vec![
                 "fs.read",
@@ -391,6 +395,7 @@ pub fn default_lease_for_profile(
                 "git.read",
                 "shell.exec",
                 "memory.query",
+                "external.list",
             ]
         }
         // The cloud profile's tools act inside the task's sandbox (M8.5,
@@ -410,6 +415,8 @@ pub fn default_lease_for_profile(
             "browser.control",
             "memory.query",
             "memory.propose",
+            "external.list",
+            "external.call",
         ],
         // The autonomous profile drives the task's browser session (M7.1,
         // docs/22): the host's sandboxed view, http(s) only, under the
@@ -423,6 +430,8 @@ pub fn default_lease_for_profile(
             "browser.control",
             "memory.query",
             "memory.propose",
+            "external.list",
+            "external.call",
         ],
         // The trusted profile also reaches the configured forge (PX-006,
         // docs/23): egress to its one API host and the use of its one token
@@ -439,6 +448,8 @@ pub fn default_lease_for_profile(
             "browser.control",
             "memory.query",
             "memory.propose",
+            "external.list",
+            "external.call",
         ],
     };
     let ceiling = match profile {
@@ -454,6 +465,10 @@ pub fn default_lease_for_profile(
             "browser.control" => "browser.control:task-session".to_owned(),
             "memory.query" => "memory.query:scope-chain".to_owned(),
             "memory.propose" => "memory.propose:scope-chain".to_owned(),
+            // The hub decides which servers a task may see; the lease grants
+            // the family, and the host's configuration grants the server.
+            "external.list" => "external.list:configured-servers".to_owned(),
+            "external.call" => "external.call:configured-servers".to_owned(),
             _ => format!("{o}:{root}/**"),
         })
         .collect();

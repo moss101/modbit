@@ -1,0 +1,33 @@
+[package]
+name = "modbit-mcp"
+description = "Modbit MCP: the external tool protocol — framing, handshake, bounded untrusted discovery, result parts, transport pool keys"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+modbit-domain.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+hex.workspace = true
+base64.workspace = true
+jsonschema.workspace = true
+
+[lints]
+workspace = true
+
+# Module registration parsed by `architecture-lint modules` (M0.4, docs/45, docs/81).
+# owner: subsystem node id in graph/project-graph.json; canonical: doc 81 single-owner
+# systems this crate is THE implementation of (the MCP hub is not one of them —
+# it is an adapter behind the tool registry boundary); capabilities: production
+# capabilities with their requirement ids.
+[package.metadata.modbit]
+owner = "external-tools"
+canonical = []
+capabilities = [
+  { id = "external.lifecycle", requirements = ["REQ-EV-0104"] },
+  { id = "external.transport_pool", requirements = ["REQ-EV-0193"] },
+]

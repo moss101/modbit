@@ -369,6 +369,10 @@ pub struct ToolHost {
     state_dir: PathBuf,
     /// The forge `forge.*` may reach and the token in this Core's custody (PX-006).
     pub forge: crate::forge::ForgeCustody,
+    /// The External Tool Hub `external.*` reach (M9.4): the configured MCP
+    /// servers, the pooled transports and the credentials in this Core's
+    /// custody.
+    pub mcp: Arc<crate::mcp::McpHub>,
     /// The browser sessions `browser.*` reach through their hosts (M7.1).
     pub browser: Arc<dyn modbit_browser::BrowserPort>,
     /// The provider gateway, for the credentials in its custody (M7.7):
@@ -421,6 +425,13 @@ impl ToolHost {
         modbit_tools::forge::register_forge(&mut registry).map_err(|e| anyhow::anyhow!("{e}"))?;
         modbit_tools::browser::register_browser(&mut registry)
             .map_err(|e| anyhow::anyhow!("{e}"))?;
+        // M9.4: the read declarations the host publishes are shared with the
+        // registered `external.call`, so the effect class it presents to the
+        // kernel is always the host's current judgement.
+        let external_reads = Arc::new(modbit_mcp::ReadDeclarations::new());
+        modbit_tools::external::register_external(&mut registry, Arc::clone(&external_reads))
+            .map_err(|e| anyhow::anyhow!("{e}"))?;
+        let mcp = Arc::new(crate::mcp::McpHub::from_env(external_reads));
         let runtime = ToolRuntime::new(registry, Arc::new(ProfilePolicy));
         let execd = match spawn_execd(data_dir, replay_generation) {
             Ok(e) => Some(e),
@@ -446,6 +457,7 @@ impl ToolHost {
             language_servers: Arc::new(std::sync::Mutex::new(HashMap::new())),
             state_dir: data_dir.join("workspaces"),
             forge: crate::forge::ForgeCustody::from_env(),
+            mcp,
             browser,
             gateway,
             sandbox_gateway: Mutex::new(None),
@@ -468,6 +480,9 @@ impl ToolHost {
         if let Some(t) = self.forge.get().and_then(|f| f.token.clone()) {
             out.push(t);
         }
+        // M9.4: an external server's credential is in this Core's custody
+        // too, so an argument carrying its value is refused like any other.
+        out.extend(self.mcp.secrets_in_custody());
         out.retain(|s| s.len() >= 8);
         out
     }
@@ -856,11 +871,25 @@ impl ToolHost {
                 modbit_tools::pipeline::carries_secret(&v, &secrets_in_custody).is_some()
             });
         if existing.is_none() {
-            let spec = self
-                .runtime
-                .registry()
-                .get(tool_name)
-                .map(|t| t.spec().clone());
+            let tool = self.runtime.registry().get(tool_name);
+            let spec = tool.as_ref().map(|t| t.spec().clone());
+            // The class the call will actually be judged under, not merely
+            // the tool's registered floor: a tool whose effect depends on
+            // what it is asked to do (`browser.act` submitting a form,
+            // `external.call` reaching a tool the host has not declared a
+            // read) is proposed as what it is about to do, so the log and
+            // every projection over it carry the real class (docs/16
+            // "Effect classes"; `Tool::effect_of` can only raise).
+            let proposed_effect_class = match (
+                tool.as_ref(),
+                serde_json::from_str::<serde_json::Value>(arguments_json),
+            ) {
+                (Some(t), Ok(args)) => t.effect_of(&args).max(t.spec().effect_class),
+                _ => spec
+                    .as_ref()
+                    .map(|s| s.effect_class)
+                    .unwrap_or(modbit_domain::toolcall::EffectClass::ReadOnly),
+            };
             let mut st = store.lock().await;
             let arguments_ref = if carries_secret {
                 None
@@ -884,10 +913,7 @@ impl ToolHost {
                         step_id: None,
                         tool_name: tool_name.to_owned(),
                         tool_version: spec.as_ref().map(|s| s.version.clone()).unwrap_or_default(),
-                        effect_class: spec
-                            .as_ref()
-                            .map(|s| s.effect_class)
-                            .unwrap_or(modbit_domain::toolcall::EffectClass::ReadOnly),
+                        effect_class: proposed_effect_class,
                         capability_lease_id: lease_id,
                         arguments_hash: modbit_tools::arguments_hash(arguments_json)
                             .unwrap_or_default(),
@@ -982,6 +1008,24 @@ impl ToolHost {
                 ))
                     as Arc<dyn modbit_tools::pipeline::MemoryPort>)
             },
+            // M9.4 (REQ-EV-0104/0193): the External Tool Hub bound to this
+            // task — the tenant and workspace that decide which pooled
+            // transports it may touch, and the identity every call carries
+            // to the server and back into the audit.
+            external: Some(Arc::new(
+                self.mcp.for_task(
+                    &tenant_id.to_string(),
+                    root.as_ref()
+                        .map(|p| p.to_string_lossy().into_owned())
+                        .as_deref(),
+                    modbit_mcp::port::Correlation {
+                        session_id: session_id.to_string(),
+                        task_id: task_id.to_string(),
+                        turn_id: turn_id.map(|t| t.to_string()),
+                        call_id: String::new(),
+                    },
+                ),
+            ) as Arc<dyn modbit_mcp::McpPort>),
         };
         // REQ-EV-0106: snapshot the write targets so every successful write can
         // land a revision-bound FileChanged event with content and diff refs.

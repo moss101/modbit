@@ -30,6 +30,7 @@ mod gate;
 mod handoff;
 mod inspector;
 mod languages;
+mod mcp;
 mod media_bridge;
 mod memory;
 mod model_registry;

@@ -40,6 +40,10 @@ Most turns see a small task-scoped direct surface. Procedural mode may expose `e
 | forge.issue.read / forge.pr.comments.read / forge.ci.status | Forge | read issues, review comments and CI results from an allowed forge (GitHub first) as untrusted, provenance-bound data | No (network lease) | External Tool Hub |
 | forge.pr.create / forge.pr.update | Forge | open or update a pull request for a reviewed candidate revision | Yes | External Tool Hub with Change Engine |
 
+### External tools as built (M9.4)
+
+`external.list`, `external.call` and `external.cancel` are registered tools in `crates/tools/src/external.rs` behind the External Tool Hub (`crates/mcp` + `services/modbit-core/src/mcp.rs`). The `external` namespace is admitted under the new-tool rule above because an MCP server is a distinct effector with its own protocol, lifecycle and trust state: no skill over existing tools can speak JSON-RPC to a program the host started, bound its untrusted declarations, pool its transport per tenant and workspace, or reconcile an interrupted effectful call. Listing is `ReadOnly` and served under every profile — discovery grants no authority. `external.call` carries the class the host judged the call (a read only when the host's own configuration declared that tool a read; otherwise `ExternalSideEffect` and approval-bound), and it is excluded from the reviewer projection and absent from the `review_isolated` lease. See `16_TOOL_CAPABILITY_AND_PROCEDURAL_RUNTIME.md` "MCP / external tools".
+
 ## Capability lifecycle
 
 `SUPPORTED → DISCOVERABLE → TASK_RELEVANT → ACTIVATED → AUTHORIZED → EXECUTED → EVIDENCED`.

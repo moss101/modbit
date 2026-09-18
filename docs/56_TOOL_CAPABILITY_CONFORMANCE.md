@@ -26,7 +26,7 @@ A tool marked production cannot pass by returning a canned success value.
 | Computer | approved native test app where platform permits | target identity/controller lock/human preempt/emergency stop |
 | Agent | real model + real child runtime | spawn/idempotency/background/park/resume/steer/result/restart |
 | Skill | real registry/package | discover/load/path gate/non-invocable/capability ceiling |
-| MCP | real MCP test server | list/call/media/cancel/auth failure/transport pool |
+| MCP | real MCP test server (`tools/mcp-testserver`, a conformant server over stdio) | list/call/media/cancel/auth failure/transport pool — `qual_ev_0104_0193_a_real_mcp_server_lists_calls_and_cancels_while_two_sessions_share_one_transport` (M9.4) covers list, call, cancel, audit correlation, the untrusted/bounded declaration and the pool; media and scoped auth follow with IMP-EV-0187 and IMP-EV-0128 |
 | Web | real allowlisted test endpoint | fetch/search/network policy/redirect/size limit |
 | Artifact | real content store | OutputRef range/digest/restart/tenant isolation |
 | Memory | real DB | query/propose/promotion/scope/TTL/conflict/no transcript auto-promotion |

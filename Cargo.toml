@@ -15,6 +15,7 @@ members = [
     "crates/checkpoint",
     "crates/compaction",
     "crates/memory",
+    "crates/mcp",
     "crates/effects",
     "crates/policy",
     "crates/providers",
@@ -46,6 +47,7 @@ members = [
     "services/modbit-core",
     "tools/architecture-lint",
     "tools/guest-image",
+    "tools/mcp-testserver",
     "tools/protocol-fixtures",
 ]
 
@@ -68,6 +70,7 @@ modbit-protocol-state = { path = "crates/protocol-state" }
 modbit-checkpoint = { path = "crates/checkpoint" }
 modbit-compaction = { path = "crates/compaction" }
 modbit-memory = { path = "crates/memory" }
+modbit-mcp = { path = "crates/mcp" }
 modbit-effects = { path = "crates/effects" }
 modbit-policy = { path = "crates/policy" }
 modbit-providers = { path = "crates/providers" }

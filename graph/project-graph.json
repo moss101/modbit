@@ -14178,8 +14178,29 @@
    "milestone": "M9",
    "qual": "QUAL-EV-0104",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "WIRED",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-18T14:17:47Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audited: nothing in the product spoke MCP — no matrix family, unread mcp_servers config layers, docs/17 listing external.list/call/cancel as the hub's unbuilt surface; DR-M5-001 and DR-M7-001 already deferred IMP-EV-0187 and IMP-EV-0281 for want of this gateway"
+    },
+    {
+     "at": "2026-09-18T14:17:47Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "crates/mcp (framing, handshake, bounded untrusted discovery, typed result parts, call table), services/modbit-core/src/mcp.rs (the External Tool Hub: processes, pipes, lazy discovery, pool, credential custody, cancellation guards), crates/tools/src/external.rs (external.list/call/cancel), tools/mcp-testserver (a conformant MCP server over stdio as the suites' real counterparty)"
+    },
+    {
+     "at": "2026-09-18T14:17:47Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "registered in the tool registry and reachable through the pipeline and kernel; external.list/external.call lease operations added and external.call denied under review_isolated; the hub bound into InvokeContext per task with the session/task/turn correlation; its credentials joined to the Core's custody set; ToolCallProposed now records the judged class rather than the registered floor"
+    }
+   ],
+   "status_changed_on": "2026-09-18T14:17:47Z"
   },
   {
    "id": "IMP-EV-0105",
@@ -18755,8 +18776,29 @@
    "milestone": "M9",
    "qual": "QUAL-EV-0193",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "WIRED",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-18T14:17:55Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audited: ABSENT with IMP-EV-0104 — no transport existed to pool"
+    },
+    {
+     "at": "2026-09-18T14:17:55Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "crates/mcp::config fingerprint over everything that decides what process is started (name, command, arguments, environment, credential handle, scopes) and PoolKey(tenant, workspace, fingerprint); the hub's entry/connection creating or returning the pooled transport and recording the sessions it serves"
+    },
+    {
+     "at": "2026-09-18T14:17:55Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "external.list reports each server's pool key, sharers and pid, so what the pool did is observable from the product surface; a dead transport is dropped and replaced rather than handed out again"
+    }
+   ],
+   "status_changed_on": "2026-09-18T14:17:55Z"
   },
   {
    "id": "IMP-EV-0194",
@@ -26357,7 +26399,7 @@
    "id": "FI-25",
    "type": "scenario",
    "kind": "fault",
-   "title": "MCP/external tool server disconnects during call",
+   "title": "MCP/external tool server disconnects during call. *As built (M9.4):* every request is registered before it is sent; when the transport ends, a read that never got an answer fails `EXTERNAL_TRANSPORT_LOST` and an effectful call is reported `EXTERNAL_OUTCOME_UNKNOWN` — the host never claims the effect did not happen — and the dead transport is never handed out again (`qual_ev_0104_0193_...`)",
    "source": "docs/54"
   },
   {
@@ -34650,6 +34692,11 @@
   {
    "from": "20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md",
    "to": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
+   "type": "references"
+  },
+  {
+   "from": "23_SECURITY_POLICY_EFFECT_LEDGER.md",
+   "to": "16_TOOL_CAPABILITY_AND_PROCEDURAL_RUNTIME.md",
    "type": "references"
   },
   {
