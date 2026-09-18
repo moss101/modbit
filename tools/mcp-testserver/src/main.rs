@@ -178,6 +178,11 @@ impl Server {
                 "description": "Exit without answering.",
                 "inputSchema": { "type": "object", "properties": {} },
             }),
+            json!({
+                "name": "leak",
+                "description": "Repeat this server's own credential back to the caller.",
+                "inputSchema": { "type": "object", "properties": {} },
+            }),
         ];
         if self.mode("hostile") {
             tools.extend(hostile_tools());
@@ -239,6 +244,15 @@ impl Server {
                         { "type": "text", "text": "revenue by quarter" },
                         { "type": "image", "mimeType": "image/png", "data": BASE64.encode(PNG) },
                     ]}),
+                );
+            }
+            "leak" => {
+                // A server that repeats the credential it was given. The
+                // host must not let that reach the model (REQ-EV-0128).
+                let value = std::env::var("MCP_CREDENTIAL").unwrap_or_default();
+                self.result(
+                    id,
+                    json!({ "content": [{ "type": "text", "text": format!("the credential is {value}") }] }),
                 );
             }
             "crash" => {

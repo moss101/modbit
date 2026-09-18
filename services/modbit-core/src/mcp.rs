@@ -53,11 +53,20 @@ use tokio::sync::{Mutex, mpsc, oneshot};
 const DEFAULT_CALL_TIMEOUT_MS: u64 = 120_000;
 /// How long the handshake may take.
 const HANDSHAKE_TIMEOUT_MS: u64 = 20_000;
+/// How long a liveness check on a pooled transport may take.
+const PING_TIMEOUT_MS: u64 = 5_000;
 /// Most `tools/list` pages followed for one server.
 const MAX_LIST_PAGES: usize = 16;
-/// The environment variable a server's credential is placed in, unless the
-/// configuration names another.
+/// The environment variable a server's credential is placed in.
 const DEFAULT_CREDENTIAL_ENV: &str = "MCP_CREDENTIAL";
+/// What replaces a secret the host recognizes in a server's answer.
+const REDACTED: &str = "[redacted: a credential in this Core's custody]";
+
+/// How a credential handle is keyed in custody and in the environment:
+/// `docs-api` is handed to the Core as `MODBIT_MCP_CREDENTIAL_DOCS_API`.
+fn credential_key(handle: &str) -> String {
+    handle.to_ascii_uppercase().replace(['-', '.'], "_")
+}
 
 type Waiter = oneshot::Sender<Result<Value, PortError>>;
 
@@ -216,24 +225,96 @@ impl Pooled {
     }
 }
 
-/// The hub: every configured server, every pooled transport, and the
-/// credentials in this Core's custody.
+/// The hub: every pooled transport and the credentials in this Core's
+/// custody. Which servers a task may see is not kept here — that is the
+/// task's resolved configuration (`crate::config`), so a project layer and
+/// a user layer answer per task while the transports they name are still
+/// shared across tasks by fingerprint.
 pub struct McpHub {
     limits: Limits,
     timeout: std::time::Duration,
     reads: Arc<modbit_mcp::ReadDeclarations>,
-    servers: std::sync::Mutex<BTreeMap<String, ServerConfig>>,
     credentials: std::sync::Mutex<BTreeMap<String, String>>,
     pool: Mutex<BTreeMap<PoolKey, Arc<Pooled>>>,
 }
 
+/// What one task brings to the hub: the servers its configuration resolved
+/// to, the ones the configuration refused, the capabilities its lease
+/// grants (what a server may need before it is reachable at all) and the
+/// secrets in the Core's custody that must never come back out of a
+/// server's answer.
+pub struct TaskScope {
+    /// Servers the task's configuration resolved to.
+    pub servers: Vec<ConfiguredServer>,
+    /// Servers the configuration refused, with the reason.
+    pub refused_servers: Vec<String>,
+    /// What the task's capability lease grants.
+    pub lease_ops: Vec<String>,
+    /// Secret values in the Core's custody.
+    pub secrets: Vec<String>,
+}
+
+/// One server a task's configuration resolved to, with the record of how
+/// the layers decided it.
+#[derive(Clone, Debug)]
+pub struct ConfiguredServer {
+    /// The validated configuration.
+    pub config: ServerConfig,
+    /// Which layer decided, whose contrary definition was overridden, and
+    /// any widening the resolver refused for this name.
+    pub provenance: Vec<String>,
+}
+
+/// The MCP servers a resolved configuration refused: a layer tried to add
+/// one a higher authority denied, or to remove one a higher authority
+/// added. The resolver keeps every such attempt; this is the MCP subset.
+#[must_use]
+pub fn refused_servers(resolved: &modbit_policy::config::ResolvedConfig) -> Vec<String> {
+    resolved
+        .rejected_widenings
+        .iter()
+        .filter(|w| w.contains("MCP server"))
+        .cloned()
+        .collect()
+}
+
+/// The servers a resolved configuration names, validated and normalized.
+/// A definition that does not parse or does not validate is dropped with a
+/// line on stderr: one bad server never hides the rest.
+#[must_use]
+pub fn servers_from(resolved: &modbit_policy::config::ResolvedConfig) -> Vec<ConfiguredServer> {
+    let mut out = Vec::new();
+    for (name, entry) in &resolved.mcp_servers {
+        let mut cfg = match serde_json::from_str::<ServerConfig>(&entry.value) {
+            Ok(c) => c,
+            Err(e) => {
+                eprintln!(
+                    "modbit-core: external server `{name}` is not a server definition ({e}); ignored"
+                );
+                continue;
+            }
+        };
+        // The configuration key is the authority on the name, and the layer
+        // that decided is the authority on the layer.
+        cfg.name = name.clone();
+        cfg.layer = format!("{:?}", entry.provenance.decided_by).to_ascii_lowercase();
+        if let Err(e) = cfg.validate() {
+            eprintln!("modbit-core: external server `{name}` refused: {e}");
+            continue;
+        }
+        out.push(ConfiguredServer {
+            config: cfg,
+            provenance: crate::config::server_provenance(resolved, name),
+        });
+    }
+    out
+}
+
 impl McpHub {
-    /// A hub with the host's bounds, reading the servers configured at boot
-    /// from `MODBIT_MCP_SERVERS` (a JSON array of server configurations) and
-    /// the call timeout from `MODBIT_MCP_CALL_TIMEOUT_MS`.
-    ///
-    /// A configuration that does not validate is dropped with a line on
-    /// stderr: a bad external server never stops the Core from starting.
+    /// A hub with the host's bounds, the call timeout from
+    /// `MODBIT_MCP_CALL_TIMEOUT_MS`, and the credentials handed to the Core
+    /// at boot as `MODBIT_MCP_CREDENTIAL_<HANDLE>` — taken into memory here
+    /// and never written anywhere else.
     pub fn from_env(reads: Arc<modbit_mcp::ReadDeclarations>) -> Self {
         let hub = Self {
             limits: Limits::default(),
@@ -244,54 +325,28 @@ impl McpHub {
                     .unwrap_or(DEFAULT_CALL_TIMEOUT_MS),
             ),
             reads,
-            servers: std::sync::Mutex::new(BTreeMap::new()),
             credentials: std::sync::Mutex::new(BTreeMap::new()),
             pool: Mutex::new(BTreeMap::new()),
         };
-        if let Ok(raw) = std::env::var("MODBIT_MCP_SERVERS")
-            && let Ok(list) = serde_json::from_str::<Vec<ServerConfig>>(&raw)
-        {
-            for cfg in list {
-                let name = cfg.name.clone();
-                if let Err(e) = hub.configure(cfg) {
-                    eprintln!("modbit-core: external server `{name}` refused: {e}");
-                }
-            }
-        }
-        // A credential handed to the Core at boot for a configured server:
-        // `MODBIT_MCP_CREDENTIAL_<HANDLE>`. The value is taken into memory
-        // here and never written anywhere.
-        let handles: Vec<String> = hub
-            .servers()
-            .iter()
-            .filter_map(|c| c.credential.clone())
-            .collect();
-        for handle in handles {
-            let var = format!(
-                "MODBIT_MCP_CREDENTIAL_{}",
-                handle.to_ascii_uppercase().replace(['-', '.'], "_")
-            );
-            if let Ok(value) = std::env::var(&var)
+        for (key, value) in std::env::vars() {
+            if let Some(handle) = key.strip_prefix("MODBIT_MCP_CREDENTIAL_")
+                && !handle.is_empty()
                 && !value.is_empty()
             {
-                hub.set_credential(&handle, value);
+                hub.set_credential(handle, value);
             }
         }
         hub
     }
 
-    /// Accept a server configuration (validating and normalizing it), and
-    /// publish what it declares a read.
+    /// Publish what a task's servers declare as reads, so the registered
+    /// `external.call` presents the host's judgement to the kernel.
     ///
     /// # Errors
     /// Whatever [`ServerConfig::validate`] refuses.
     pub fn configure(&self, mut cfg: ServerConfig) -> Result<(), ConfigError> {
         cfg.validate()?;
         self.reads.publish(&cfg);
-        self.servers
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .insert(cfg.name.clone(), cfg);
         Ok(())
     }
 
@@ -302,23 +357,13 @@ impl McpHub {
         self.credentials
             .lock()
             .unwrap_or_else(|e| e.into_inner())
-            .insert(handle.to_owned(), value);
+            .insert(credential_key(handle), value);
     }
 
     /// The credential values in custody — what the pipeline refuses to let
     /// through tool arguments (M9.3).
     pub fn secrets_in_custody(&self) -> Vec<String> {
         self.credentials
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .values()
-            .cloned()
-            .collect()
-    }
-
-    /// Every configured server, by name.
-    pub fn servers(&self) -> Vec<ServerConfig> {
-        self.servers
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .values()
@@ -346,12 +391,20 @@ impl McpHub {
         tenant: &str,
         workspace: Option<&str>,
         correlation: Correlation,
+        scope: TaskScope,
     ) -> TaskHub {
+        for s in &scope.servers {
+            let _ = self.configure(s.config.clone());
+        }
         TaskHub {
             hub: Arc::clone(self),
             tenant: tenant.to_owned(),
             workspace: workspace.map(str::to_owned),
             correlation,
+            servers: scope.servers,
+            refused_servers: scope.refused_servers,
+            lease_ops: scope.lease_ops,
+            secrets: scope.secrets,
         }
     }
 
@@ -385,7 +438,10 @@ impl McpHub {
         entry.state().sessions.insert(session.to_owned());
         let mut slot = entry.conn.lock().await;
         if let Some(c) = slot.as_ref() {
-            if c.lock().lost.is_none() {
+            // Health (REQ-EV-0128): a pooled transport is handed out only
+            // while it still answers. A server that has stopped answering
+            // is not "ready" because it once was.
+            if c.lock().lost.is_none() && alive(c).await {
                 return Ok(Arc::clone(c));
             }
             // A dead transport is never handed out again: the entry starts
@@ -433,7 +489,7 @@ impl McpHub {
                 .credentials
                 .lock()
                 .unwrap_or_else(|e| e.into_inner())
-                .get(handle)
+                .get(&credential_key(handle))
                 .cloned();
             let Some(value) = value else {
                 return Err(PortError::clean(
@@ -546,6 +602,19 @@ impl McpHub {
     }
 }
 
+/// Whether a pooled transport still answers, bounded so a wedged server
+/// holds its pool entry for a moment rather than a call timeout.
+async fn alive(conn: &Arc<Connection>) -> bool {
+    matches!(
+        tokio::time::timeout(
+            std::time::Duration::from_millis(PING_TIMEOUT_MS),
+            conn.request(protocol::METHOD_PING, json!({}), None),
+        )
+        .await,
+        Ok(Ok(_))
+    )
+}
+
 fn spawn_writer(mut stdin: tokio::process::ChildStdin, mut rx: mpsc::UnboundedReceiver<String>) {
     tokio::spawn(async move {
         while let Some(line) = rx.recv().await {
@@ -642,26 +711,73 @@ fn spawn_reader(
     });
 }
 
-/// The hub bound to one task: the tenant and workspace that decide which
-/// pool entries it may touch, and the identity every call carries.
+/// The hub bound to one task: the servers its configuration resolved to,
+/// the tenant and workspace that decide which pool entries it may touch,
+/// the capabilities its lease grants, the secrets in the Core's custody,
+/// and the identity every call carries.
 pub struct TaskHub {
     hub: Arc<McpHub>,
     tenant: String,
     workspace: Option<String>,
     correlation: Correlation,
+    servers: Vec<ConfiguredServer>,
+    refused_servers: Vec<String>,
+    lease_ops: Vec<String>,
+    secrets: Vec<String>,
 }
 
 impl TaskHub {
-    fn config(&self, server: &str) -> Option<ServerConfig> {
-        self.hub
-            .servers
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .get(server)
-            .cloned()
+    fn server(&self, name: &str) -> Option<&ConfiguredServer> {
+        self.servers.iter().find(|s| s.config.name == name)
     }
 
-    async fn listing_for(&self, cfg: &ServerConfig) -> ServerListing {
+    /// Whether this task may reach `cfg` at all: a server is not a way
+    /// around the task's own lease (REQ-EV-0128). Returns what is missing.
+    fn unleased(&self, cfg: &ServerConfig) -> Vec<String> {
+        cfg.missing_capabilities(&self.lease_ops)
+    }
+
+    /// Replace every secret in the Core's custody that a server put in its
+    /// answer. A server is handed a credential to use, not to repeat: an
+    /// answer that carries one back would put it in the model's context,
+    /// which is the exfiltration this forbids. Returns the number of
+    /// replacements so the host can record that it happened.
+    fn redact(&self, result: &mut CallResult) -> usize {
+        if self.secrets.is_empty() {
+            return 0;
+        }
+        let mut hits = 0;
+        let mut scrub = |text: &mut String| {
+            for secret in &self.secrets {
+                if secret.len() >= 8 && text.contains(secret.as_str()) {
+                    hits += text.matches(secret.as_str()).count();
+                    *text = text.replace(secret.as_str(), REDACTED);
+                }
+            }
+        };
+        for part in &mut result.parts {
+            match part {
+                modbit_mcp::Part::Text { text, .. } => scrub(text),
+                modbit_mcp::Part::Resource {
+                    text: Some(text), ..
+                } => scrub(text),
+                _ => {}
+            }
+        }
+        if let Some(structured) = &mut result.structured {
+            let mut text = structured.to_string();
+            let before = text.clone();
+            scrub(&mut text);
+            if text != before {
+                *structured =
+                    serde_json::from_str(&text).unwrap_or(serde_json::Value::String(text.clone()));
+            }
+        }
+        hits
+    }
+
+    async fn listing_for(&self, server: &ConfiguredServer) -> ServerListing {
+        let cfg = &server.config;
         let entry = self
             .hub
             .entry(&self.tenant, self.workspace.as_deref(), cfg)
@@ -671,7 +787,9 @@ impl TaskHub {
             trust: cfg.trust,
             health: Health::NotStarted,
             scopes: cfg.scopes.iter().cloned().collect(),
+            requires: cfg.needed_capabilities().into_iter().collect(),
             layer: cfg.layer.clone(),
+            provenance: server.provenance.clone(),
             pool_key: entry.key.to_string(),
             tools: vec![],
             rejected: vec![],
@@ -679,6 +797,11 @@ impl TaskHub {
         };
         if cfg.trust != Trust::Trusted {
             listing.health = Health::Untrusted;
+            return listing;
+        }
+        let missing = self.unleased(cfg);
+        if !missing.is_empty() {
+            listing.health = Health::Unleased { missing };
             return listing;
         }
         match self
@@ -719,24 +842,41 @@ impl McpPort for TaskHub {
     fn list<'a>(&'a self) -> BoxFuture<'a, Result<Listing, PortError>> {
         Box::pin(async move {
             let mut servers = Vec::new();
-            for cfg in self.hub.servers() {
-                servers.push(self.listing_for(&cfg).await);
+            for server in &self.servers {
+                servers.push(self.listing_for(server).await);
             }
-            Ok(Listing { servers })
+            Ok(Listing {
+                servers,
+                refused_servers: self.refused_servers.clone(),
+            })
         })
     }
 
     fn call<'a>(&'a self, call: ExternalCall) -> BoxFuture<'a, Result<CallResult, PortError>> {
         Box::pin(async move {
-            let Some(cfg) = self.config(&call.server) else {
+            let Some(server) = self.server(&call.server) else {
                 return Err(PortError::clean(
                     "EXTERNAL_SERVER_UNKNOWN",
-                    format!("no external server named `{}` is configured", call.server),
+                    format!(
+                        "no external server named `{}` is configured for this task",
+                        call.server
+                    ),
                 ));
             };
+            let cfg = &server.config;
+            let missing = self.unleased(cfg);
+            if !missing.is_empty() {
+                return Err(PortError::clean(
+                    "EXTERNAL_CAPABILITY_NOT_LEASED",
+                    format!(
+                        "`{}` needs {missing:?}, which this task's capability lease does not grant",
+                        cfg.name
+                    ),
+                ));
+            }
             let entry = self
                 .hub
-                .entry(&self.tenant, self.workspace.as_deref(), &cfg)
+                .entry(&self.tenant, self.workspace.as_deref(), cfg)
                 .await;
             let conn = self
                 .hub
@@ -767,8 +907,10 @@ impl McpPort for TaskHub {
                     Some((&call.call_id, &cfg.name, &tool.name, call.effectful)),
                 )
                 .await?;
-            parse_call_result(&result, &conn.limits)
-                .map_err(|e| PortError::clean(e.code, e.message))
+            let mut parsed = parse_call_result(&result, &conn.limits)
+                .map_err(|e| PortError::clean(e.code, e.message))?;
+            parsed.redacted = self.redact(&mut parsed);
+            Ok(parsed)
         })
     }
 

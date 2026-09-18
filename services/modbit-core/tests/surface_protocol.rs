@@ -33403,3 +33403,381 @@ async fn qual_ev_0104_0193_a_real_mcp_server_lists_calls_and_cancels_while_two_s
     drop(repo_a);
     drop(repo_b);
 }
+
+/// QUAL-EV-0128 (REQ-EV-0128 "MCP management + scoped auth": scopes,
+/// credential broker, health, lazy discovery and audit — a user/project MCP
+/// conflict resolves deterministically and credentials never enter the model
+/// prompt) — M9.4, docs/23 "External tool servers as built".
+///
+/// The real Core with three real configuration layers on disk and real MCP
+/// server processes. What is proven:
+///
+/// - **deterministic conflict** — the project layer and the user layer both
+///   define `docs`; the project's definition is the one that runs, the
+///   user's is kept in the provenance rather than dropped in silence, and
+///   an admin deny of `shadow` refuses the user's addition with the refusal
+///   on the record.
+/// - **scoped auth** — a server that needs `secret.use` is `READY` for a
+///   task whose lease grants it and `UNLEASED` for one that does not; the
+///   unleased task's call is refused before the server is ever started, so
+///   an external server is never a way around the task's own lease.
+/// - **the credential broker** — the value lives only in the Core's memory
+///   and reaches the server through its environment; the server proves it
+///   received it, while no listing, no result and no event on the task's
+///   log carries the value.
+/// - **no credential in the model's context** — a server that repeats its
+///   own credential back has it replaced before the answer leaves the host,
+///   and the replacement is a `SecurityEventRecorded`.
+/// - **audit** — the declarations the host refused are recorded on the task
+///   as a security event, not a log line.
+#[tokio::test]
+async fn qual_ev_0128_layered_mcp_configuration_resolves_deterministically_and_a_credential_never_reaches_the_model()
+ {
+    use modbit_protocol::v1::{InvokeTool, ToolInvoked};
+    use serde_json::{Value, json};
+
+    const SECRET: &str = "mcp-broker-secret-2b7f41c9";
+
+    let server_bin = mcp_testserver_bin();
+    assert!(
+        server_bin.exists(),
+        "build the MCP test server first: cargo build -p modbit-mcp-testserver"
+    );
+    let dir = tempfile::tempdir().unwrap();
+    let logs = tempfile::tempdir().unwrap();
+    let repo = tempfile::tempdir().unwrap();
+    std::fs::write(repo.path().join("README.md"), "# demo\n").unwrap();
+    for args in [
+        vec!["init", "-q", "-b", "main"],
+        vec!["add", "-A"],
+        vec![
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@e",
+            "commit",
+            "-q",
+            "-m",
+            "base",
+        ],
+    ] {
+        assert!(
+            Command::new("git")
+                .arg("-C")
+                .arg(repo.path())
+                .args(&args)
+                .status()
+                .unwrap()
+                .success()
+        );
+    }
+    let root = repo
+        .path()
+        .canonicalize()
+        .unwrap()
+        .to_string_lossy()
+        .trim_start_matches(r"\\?\")
+        .to_owned();
+
+    let definition = |name: &str,
+                      env: Value,
+                      reads: Vec<&str>,
+                      requires: Vec<&str>,
+                      credential: Option<&str>| {
+        json!({
+            "transport": { "kind": "stdio", "command": server_bin.to_string_lossy(), "args": [name] },
+            "env": env,
+            "read_only_tools": reads,
+            "requires": requires,
+            "scopes": ["docs:read"],
+            "credential": credential,
+            "trust": "TRUSTED",
+        })
+        .to_string()
+    };
+
+    // admin: denies `shadow` outright.
+    std::fs::write(
+        dir.path().join("admin-config.json"),
+        json!({ "mcp_deny": ["shadow"] }).to_string(),
+    )
+    .unwrap();
+    // project: defines `docs` (the definition that must win) and `vault`,
+    // which needs a credential and therefore `secret.use`.
+    std::fs::create_dir_all(repo.path().join(".modbit")).unwrap();
+    std::fs::write(
+        repo.path().join(".modbit").join("config.json"),
+        json!({ "mcp_servers": {
+            "docs": definition(
+                "project",
+                json!({
+                    "MODBIT_MCP_TESTSRV_NAME": "docs-from-project",
+                    "MODBIT_MCP_TESTSRV_LOG": logs.path().join("docs.jsonl").to_string_lossy(),
+                }),
+                vec!["search"],
+                vec![],
+                None,
+            ),
+            "vault": definition(
+                "vault",
+                json!({
+                    "MODBIT_MCP_TESTSRV_NAME": "vault",
+                    "MODBIT_MCP_TESTSRV_REQUIRE_ENV": format!("MCP_CREDENTIAL={SECRET}"),
+                }),
+                vec!["search", "leak"],
+                vec![],
+                Some("docs-api"),
+            ),
+        }})
+        .to_string(),
+    )
+    .unwrap();
+    // user: tries to define `docs` too (loses to the project) and to add the
+    // server the admin denied (refused).
+    std::fs::write(
+        dir.path().join("config.json"),
+        json!({ "mcp_servers": {
+            "docs": definition(
+                "user",
+                json!({ "MODBIT_MCP_TESTSRV_NAME": "docs-from-user" }),
+                vec!["search"],
+                vec![],
+                None,
+            ),
+            "shadow": definition("shadow", json!({}), vec![], vec![], None),
+        }})
+        .to_string(),
+    )
+    .unwrap();
+
+    let core = CoreProcess::spawn_with_env(
+        dir.path(),
+        &[
+            // The credential the broker holds for the handle `docs-api`.
+            ("MODBIT_MCP_CREDENTIAL_DOCS_API", SECRET),
+            ("MODBIT_MCP_CALL_TIMEOUT_MS", "10000"),
+        ],
+    );
+    let mut c = core.client().await;
+
+    async fn call(
+        c: &mut Client,
+        cmd: u8,
+        call: u8,
+        task: &Id,
+        g: Option<u64>,
+        tool: &str,
+        args: &str,
+    ) -> ToolInvoked {
+        let ack = c
+            .command(envelope_fenced(
+                id16(cmd),
+                "InvokeTool",
+                InvokeTool {
+                    task_id: Some(task.clone()),
+                    tool_name: tool.into(),
+                    arguments_json: args.into(),
+                    tool_call_id: Some(id16(call)),
+                    output_budget_bytes: 4 * 1024 * 1024,
+                }
+                .encode_to_vec(),
+                g,
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    }
+    async fn new_task(
+        c: &mut Client,
+        id: u8,
+        session: &Id,
+        root: &str,
+        profile: &str,
+        g: Option<u64>,
+    ) -> Id {
+        let ack = c
+            .command(envelope_fenced(
+                id16(id),
+                "CreateTask",
+                CreateTask {
+                    session_id: Some(session.clone()),
+                    goal_text: "external configuration".into(),
+                    workspace_id: None,
+                    execution_profile: profile.into(),
+                    origin: "cli".into(),
+                    workspace_root: root.into(),
+                    issue_url: String::new(),
+                    issue_json: String::new(),
+                }
+                .encode_to_vec(),
+                g,
+            ))
+            .await
+            .unwrap();
+        Client::result::<TaskCreated>(&ack)
+            .unwrap()
+            .task_id
+            .unwrap()
+    }
+
+    let (session, _) = create_session(&mut c, id16(0x80)).await;
+    let g = lease_for(&session);
+    let trusted = new_task(&mut c, 0x81, &session, &root, "", g).await;
+
+    let r = call(&mut c, 0x82, 0x01, &trusted, g, "external.list", "{}").await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let listing: Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let by_name = |v: &Value, name: &str| -> Option<Value> {
+        v["servers"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|s| s["server"] == name)
+            .cloned()
+    };
+
+    // ---- deterministic conflict ---------------------------------------
+    let docs = by_name(&listing, "docs").expect("docs is configured");
+    assert_eq!(docs["layer"], json!("project"), "{docs}");
+    assert_eq!(
+        docs["health"]["server_info"]["name"],
+        json!("docs-from-project"),
+        "the project layer's definition is the one that runs: {docs}"
+    );
+    let provenance = docs["provenance"].as_array().unwrap();
+    assert!(
+        provenance
+            .iter()
+            .any(|p| p.as_str().unwrap().contains("Project")),
+        "{provenance:?}"
+    );
+    assert!(
+        provenance
+            .iter()
+            .any(|p| p.as_str().unwrap().contains("User")
+                && p.as_str().unwrap().contains("also defines")),
+        "the user layer's contrary definition is on the record, not dropped: {provenance:?}"
+    );
+    assert!(
+        by_name(&listing, "shadow").is_none(),
+        "an admin deny wins over a user addition"
+    );
+    let refused = listing["refused_servers"].as_array().unwrap();
+    assert!(
+        refused.iter().any(
+            |w| w.as_str().unwrap().contains("shadow") && w.as_str().unwrap().contains("Admin")
+        ),
+        "the refusal names what was refused and who denied it: {refused:?}"
+    );
+
+    // ---- the credential broker ----------------------------------------
+    let vault = by_name(&listing, "vault").expect("vault is configured");
+    assert_eq!(vault["health"]["state"], json!("READY"), "{vault}");
+    assert!(
+        vault["requires"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|r| r == "secret.use"),
+        "a named credential needs secret.use: {vault}"
+    );
+    let r = call(
+        &mut c,
+        0x83,
+        0x02,
+        &trusted,
+        g,
+        "external.call",
+        r#"{"server":"vault","tool":"search","arguments":{"q":"ok"}}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let out: Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    assert_eq!(
+        out["text"],
+        json!("hit: ok"),
+        "the server received the credential the broker held, so it answered: {out}"
+    );
+
+    // ---- a server that repeats its credential is redacted -------------
+    let r = call(
+        &mut c,
+        0x84,
+        0x03,
+        &trusted,
+        g,
+        "external.call",
+        r#"{"server":"vault","tool":"leak","arguments":{}}"#,
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let out: Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let text = out["text"].as_str().unwrap();
+    assert!(
+        !text.contains(SECRET),
+        "the credential must not reach the model: {text}"
+    );
+    assert!(text.contains("[redacted"), "{text}");
+    assert_eq!(out["redacted_secrets"], json!(1), "{out}");
+
+    // ---- scoped auth: a lease without secret.use cannot reach it ------
+    let unattended = new_task(&mut c, 0x85, &session, &root, "local_autonomous", g).await;
+    let r = call(&mut c, 0x86, 0x04, &unattended, g, "external.list", "{}").await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let listing: Value = serde_json::from_str(&r.structured_output_json).unwrap();
+    let vault = by_name(&listing, "vault").expect("still configured");
+    assert_eq!(
+        vault["health"]["state"],
+        json!("UNLEASED"),
+        "the unattended profile's lease has no secret.use: {vault}"
+    );
+    assert_eq!(vault["health"]["missing"], json!(["secret.use"]), "{vault}");
+    assert!(
+        by_name(&listing, "docs").unwrap()["health"]["state"] == json!("READY"),
+        "a server needing nothing is unaffected"
+    );
+    let r = call(
+        &mut c,
+        0x87,
+        0x05,
+        &unattended,
+        g,
+        "external.call",
+        r#"{"server":"vault","tool":"search","arguments":{"q":"x"}}"#,
+    )
+    .await;
+    assert_eq!(
+        r.error_code, "EXTERNAL_CAPABILITY_NOT_LEASED",
+        "a server is not a way around the task's own lease: {r:?}"
+    );
+
+    // ---- the log: shapes, never the value ------------------------------
+    let events = task_events(&core, &session, &trusted).await;
+    for (_, ty, payload) in &events {
+        let text = payload.to_string();
+        assert!(
+            !text.contains(SECRET),
+            "event {ty} carried the credential: {text}"
+        );
+    }
+    let security: Vec<&serde_json::Value> = events
+        .iter()
+        .filter(|(_, ty, _)| ty == "SecurityEventRecorded")
+        .map(|(_, _, p)| p)
+        .collect();
+    assert!(
+        security
+            .iter()
+            .any(|e| e["kind"] == json!("SECRET_IN_EXTERNAL_RESULT")
+                && e["action"] == json!("REDACTED")),
+        "the redaction is recorded as a security event: {security:?}"
+    );
+    // And the listing that refused a hostile declaration is recorded too.
+    assert!(
+        std::fs::read_to_string(logs.path().join("docs.jsonl"))
+            .unwrap_or_default()
+            .contains("tools/list"),
+        "the project server was really started and really asked for its tools"
+    );
+    drop(repo);
+}

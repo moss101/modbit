@@ -1,0 +1,12 @@
+{
+ "task": "IMP-EV-0128",
+ "requirements": ["REQ-EV-0128", "QUAL-EV-0128", "docs/16 MCP / external tools", "docs/23 External tool servers as built"],
+ "scenarios": ["the project layer and the user layer both define `docs`: the project's definition runs, the user's is kept in the provenance", "an admin deny of `shadow` refuses the user's addition and the refusal is reported", "a server needing secret.use is READY for a task whose lease grants it and UNLEASED for one that does not; the unleased call is refused before any process is spawned", "the broker's credential reaches the server through its environment and the server proves it received it", "a server that repeats its own credential has it replaced before the answer leaves the host, counted on the result and recorded as a security event", "no event on the task's log carries the credential value"],
+ "tests": ["services/modbit-core/tests/surface_protocol.rs::qual_ev_0128_layered_mcp_configuration_resolves_deterministically_and_a_credential_never_reaches_the_model", "services/modbit-core config::tests", "crates/policy config::tests::a_shadowed_mcp_definition_is_recorded_not_silently_dropped", "crates/mcp config::tests::a_server_needs_what_its_configuration_requires_and_a_credential_needs_secret_use"],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "three real configuration layer files on disk, the real Core resolving and pinning them per task, and real MCP server processes — one of which is given a credential and tries to repeat it.",
+ "audit": "PARTIAL before: the resolver and its merge laws existed (IMP-EV-0039) but nothing built a ResolvedConfig; the hub took its servers from the boot environment and had no lease check, liveness probe, redaction or declaration audit.",
+ "limitations": "configuration is read from files (writing one conversationally is IMP-EV-0224); the resolved config is not yet passed to the kernel's own per-capability slot; redaction is substring matching over text, backed by the custody and lease rules that do not depend on it.",
+ "ci": ""
+}

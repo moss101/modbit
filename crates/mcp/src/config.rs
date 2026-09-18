@@ -47,7 +47,9 @@ pub enum Trust {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ServerConfig {
     /// Normalized name; the tools it declares live under
-    /// `external.<name>.<tool>`.
+    /// `external.<name>.<tool>`. A definition that omits it takes the name
+    /// of the configuration key it was written under.
+    #[serde(default)]
     pub name: String,
     /// How to reach it.
     pub transport: Transport,
@@ -60,10 +62,19 @@ pub struct ServerConfig {
     /// argument.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub credential: Option<String>,
-    /// Scopes the host grants this server (display and audit; the kernel
-    /// decides authority).
+    /// Scopes the host grants this server, in the server's own vocabulary
+    /// (`docs:read`, `repo:write`). Display and audit only: a scope is a
+    /// label, never an authority.
     #[serde(default)]
     pub scopes: BTreeSet<String>,
+    /// Host capabilities a task must already hold before this server may be
+    /// reached at all (REQ-EV-0128 scoped auth). These are ordinary
+    /// capability ids — `network.egress`, `secret.use`, `fs.read` — checked
+    /// against the task's capability lease *before* the server is started,
+    /// so a task that could not do a thing itself cannot have a server do
+    /// it. A named credential adds `secret.use` on its own.
+    #[serde(default)]
+    pub requires: BTreeSet<String>,
     /// Tools the host declares are reads. Only this can make a call a read;
     /// a server saying so about itself cannot (`docs/16`: server content is
     /// not authority).
@@ -178,6 +189,7 @@ impl ServerConfig {
             env: BTreeMap::new(),
             credential: None,
             scopes: BTreeSet::new(),
+            requires: BTreeSet::new(),
             read_only_tools: BTreeSet::new(),
             trust: Trust::Trusted,
             layer: String::new(),
@@ -252,6 +264,29 @@ impl ServerConfig {
     pub fn host_declares_read(&self, tool: &str) -> bool {
         self.read_only_tools.contains(tool)
     }
+
+    /// The capabilities a task must hold to reach this server: what the
+    /// configuration requires, plus `secret.use` whenever a credential is
+    /// named — using a server's credential is using a secret, whoever
+    /// wrote the configuration.
+    #[must_use]
+    pub fn needed_capabilities(&self) -> BTreeSet<String> {
+        let mut out = self.requires.clone();
+        if self.credential.is_some() {
+            out.insert("secret.use".to_owned());
+        }
+        out
+    }
+
+    /// The capabilities in [`Self::needed_capabilities`] that `granted` (a
+    /// task's lease operations) does not cover.
+    #[must_use]
+    pub fn missing_capabilities(&self, granted: &[String]) -> Vec<String> {
+        self.needed_capabilities()
+            .into_iter()
+            .filter(|c| !granted.iter().any(|g| g == c))
+            .collect()
+    }
 }
 
 /// The normalized fingerprint of a configuration: everything that decides
@@ -290,6 +325,11 @@ pub fn fingerprint(cfg: &ServerConfig) -> String {
     h.update(cfg.credential.as_deref().unwrap_or("").as_bytes());
     h.update(b"\nscopes\n");
     for s in &cfg.scopes {
+        h.update(s.as_bytes());
+        h.update(b"\x1f");
+    }
+    h.update(b"\nrequires\n");
+    for s in &cfg.requires {
         h.update(s.as_bytes());
         h.update(b"\x1f");
     }
@@ -402,6 +442,9 @@ mod tests {
             |c: &mut ServerConfig| {
                 c.scopes.insert("repo:write".into());
             },
+            |c: &mut ServerConfig| {
+                c.requires.insert("network.egress".into());
+            },
         ] {
             let mut c = base.clone();
             mutate(&mut c);
@@ -439,6 +482,31 @@ mod tests {
         assert!(!c.startable());
         c.trust = Trust::Trusted;
         assert!(c.startable());
+    }
+
+    #[test]
+    fn a_server_needs_what_its_configuration_requires_and_a_credential_needs_secret_use() {
+        let mut c = cfg();
+        assert!(
+            c.needed_capabilities().is_empty(),
+            "nothing required by default"
+        );
+        c.requires.insert("network.egress".into());
+        c.credential = Some("docs-api".into());
+        let needed = c.needed_capabilities();
+        assert!(needed.contains("network.egress"));
+        assert!(
+            needed.contains("secret.use"),
+            "a named credential needs secret.use whoever wrote the configuration"
+        );
+        assert_eq!(
+            c.missing_capabilities(&["network.egress".to_owned()]),
+            vec!["secret.use".to_owned()]
+        );
+        assert!(
+            c.missing_capabilities(&["network.egress".to_owned(), "secret.use".to_owned()])
+                .is_empty()
+        );
     }
 
     #[test]

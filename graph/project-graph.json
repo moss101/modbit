@@ -15491,8 +15491,29 @@
    "milestone": "M9",
    "qual": "QUAL-EV-0128",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "WIRED",
+   "evidence": [],
+   "notes": [
+    {
+     "at": "2026-09-18T15:39:43Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audited: the typed ConfigurationResolver (IMP-EV-0039, COMPLETE) implements the admin/project/user merge laws for mcp_servers/mcp_deny with provenance, but nothing in the Core ever built a ResolvedConfig — the kernel port passes config: None and the hub took its servers from MODBIT_MCP_SERVERS at boot. Credential custody, lazy discovery and health exist from IMP-EV-0104; scoped auth against the task's lease, result redaction and the declaration audit do not."
+    },
+    {
+     "at": "2026-09-18T16:21:38Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "services/modbit-core/src/config.rs (the three layers resolved and pinned per task), servers_from/refused_servers over the resolved configuration, ServerConfig.requires + needed_capabilities, Health::Unleased, the liveness ping on reuse, result redaction against the Core's custody set, and the security events for a refused declaration and a redacted answer"
+    },
+    {
+     "at": "2026-09-18T16:21:38Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "external.list reports each server's requires, provenance and the configuration's refusals; external.call refuses an unleased server before anything is spawned and reports what was redacted; the pinned configuration is released when the task ends"
+    }
+   ],
+   "status_changed_on": "2026-09-18T16:21:38Z"
   },
   {
    "id": "IMP-EV-0129",

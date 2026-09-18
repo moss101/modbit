@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 1250,
-    "docs_bytes": 1256342
+    "root_and_tooling": 1252,
+    "docs_bytes": 1259640
   },
   "sections": [
     {
@@ -185,8 +185,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Tool System, Capability Kernel, Procedural Runtime, and MCP",
-      "bytes": 23424,
-      "sha256": "b9c070300bacbd5cf6dfc0aeea6191b6147171905083a59b26f5e4566cdc8545"
+      "bytes": 25625,
+      "sha256": "acff17578154fa15bedade2bcbb317d37ee38ea699de945436cd96e8be793bd1"
     },
     {
       "path": "docs/17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md",
@@ -248,8 +248,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Security, Policy, Capabilities, Secrets, and Effect Ledger",
-      "bytes": 11133,
-      "sha256": "293de99ffa248ff2031ac68361838f245a699aaee940f5e0c489d8783096aa13"
+      "bytes": 12073,
+      "sha256": "58416f9f77cd94cb7afecaea16f376c3743dfe2e61196284268dadaf860f7ed7"
     },
     {
       "path": "docs/24_CLOUD_CONTROL_PLANE_AND_SYNC.md",
@@ -545,8 +545,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Tool Parity and Capability Conformance — Real Effect Tests",
-      "bytes": 6148,
-      "sha256": "2d446ff4c7f3c9d2f32a51e6a444fcf719f68e10d509d7530a0dd8d460242197"
+      "bytes": 6305,
+      "sha256": "0ee1f0e04d63b6562983a8f295da37c9bd763ae9464350c624a55446f69e53db"
     },
     {
       "path": "docs/57_SKILL_EVOLUTION_REAL_TESTS.md",
@@ -7002,6 +7002,16 @@
       "sha256": "dcd68e387c3382d6547f3e460ef07e592ff89fcf3acf8464dac7c8bf3362fcf2"
     },
     {
+      "path": "evidence/m9/IMP-EV-0128/TASK_CARD.md",
+      "bytes": 5407,
+      "sha256": "5009a5251b624c056595055de258f01736a46d58595679ae2731ad11936316a5"
+    },
+    {
+      "path": "evidence/m9/IMP-EV-0128/evidence.json",
+      "bytes": 2049,
+      "sha256": "ce3bbda90d249ea7ceb55756fbdc7ba9e03e271622a1abc76aad71253483de8a"
+    },
+    {
       "path": "evidence/m9/IMP-EV-0162/TASK_CARD.md",
       "bytes": 4465,
       "sha256": "e93b23f997134175ec47eb17fe3756f722cb1ebfa7a41b3d05fbbb11af3043b8"
@@ -7068,8 +7078,8 @@
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1541926,
-      "sha256": "05699520cde846ce553361fd49b2642596c7bd8b2c5cd2dcda8a4a2267cd0faf"
+      "bytes": 1543397,
+      "sha256": "37e9d1c502e242d1449e996f18e648b862f4f3f8de79495085d9351cbd75767e"
     },
     {
       "path": "tools/build_graph.py",

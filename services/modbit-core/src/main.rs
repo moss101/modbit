@@ -20,6 +20,7 @@ mod browser;
 mod browser_cloud;
 mod capacity;
 mod checkpoint;
+mod config;
 mod critique;
 mod economics;
 mod environment;

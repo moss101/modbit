@@ -116,7 +116,9 @@ impl Tool for ExternalList {
                                 "trust": s.trust,
                                 "health": s.health,
                                 "scopes": s.scopes,
+                                "requires": s.requires,
                                 "layer": s.layer,
+                                "provenance": s.provenance,
                                 "pool_key": s.pool_key,
                                 "tools": s.tools.iter().map(|t| json!({
                                     "name": t.qualified,
@@ -134,6 +136,7 @@ impl Tool for ExternalList {
                     ToolOutcome::ok(untrusted(json!({
                         "provenance": "external_tool_hub",
                         "servers": servers,
+                        "refused_servers": listing.refused_servers,
                     })))
                 }
                 Err(e) => port_failure(&e),
@@ -229,6 +232,9 @@ impl Tool for ExternalCallTool {
                         "parts": parts,
                         "refused_parts": result.dropped,
                         "structured": result.structured,
+                        // REQ-EV-0128: a server handed a credential may not
+                        // repeat it back into the model's context.
+                        "redacted_secrets": result.redacted,
                     }));
                     if result.is_error {
                         // The external tool reported its own failure. That
