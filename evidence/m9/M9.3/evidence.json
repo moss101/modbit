@@ -1,0 +1,12 @@
+{
+ "task": "M9.3",
+ "requirements": ["REQ-EV-0215", "REQ-EV-0288", "docs/23 Secrets", "docs/21 dynamic credential handles"],
+ "scenarios": ["no registered tool schema declares a secret-shaped field and a call carrying a custody value is refused before policy", "a guest reaches a credentialed service by injection while its environment, its output and the policy it was built from never carry the value", "every grant is short-lived, expires by dropping the secret, and is renewed rather than standing", "an external server that repeats a custody secret back has it redacted before the answer leaves the host"],
+ "tests": ["crates/tools/tests/pipeline_and_direct.rs::qual_ev_0215_no_tool_schema_declares_a_secret_and_secrets_never_enter_arguments", "apps/sandbox-gateway/tests/gateway.rs::qual_m8_3_the_reference_backend_passes_the_backend_contract", "apps/sandbox-gateway/tests/gateway.rs::qual_m8_3_a_firecracker_microvm_boots_the_guest_and_passes_the_backend_contract", "services/modbit-core/tests/surface_protocol.rs::qual_ev_0128_layered_mcp_configuration_resolves_deterministically_and_a_credential_never_reaches_the_model"],
+ "batch_commits": ["dc2ddd3", "7a56b7c", "a48382d"],
+ "runs": ["gha-35391720594"],
+ "proof": "both halves are proven against real substrates — the whole registered tool surface for the argument rule, and every sandbox backend's conformance contract for the handle.",
+ "audit": "IMP-EV-0215 sealed at 4302fda; IMP-EV-0288 sealed with this milestone.",
+ "limitations": "the Core's own provider and forge credentials are custody-held rather than short-lived; redaction of a returned secret is substring matching, backed by controls that do not depend on it; renewal re-sends rather than rotates.",
+ "ci": "main CI green on macOS, Linux and Windows (run 35391720594)"
+}

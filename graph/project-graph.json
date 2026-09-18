@@ -3,7 +3,7 @@
  "product": "Modbit",
  "edition": "V3.3 EPR v1.1",
  "authority_date": "2026-09-05",
- "generated_on": "2026-09-18",
+ "generated_on": "2026-09-19",
  "generator": "tools/build_graph.py",
  "status_vocabulary": [
   "NOT_STARTED",
@@ -4454,8 +4454,53 @@
    "milestone": "M9",
    "order": 2,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-35391720594",
+    "commit:7a56b7c",
+    "test:apps/sandbox-gateway/tests/gateway.rs::qual_m8_3_the_reference_backend_passes_the_backend_contract",
+    "artifact:evidence/m9/M9.3/TASK_CARD.md",
+    "artifact:evidence/m9/M9.3/evidence.json"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-18T21:06:11Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "the milestone task's substance is IMP-EV-0215 (secrets never enter tool arguments; sealed 4302fda) and IMP-EV-0288 (short-lived credential handles; sealed above), on top of the protected-path and redaction work of M2.5/M2.8/M7.7 and the broker injection of M8.6"
+    },
+    {
+     "at": "2026-09-18T21:06:40Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "both halves built and proven: IMP-EV-0215 (arguments) and IMP-EV-0288 (short-lived handles)"
+    },
+    {
+     "at": "2026-09-18T21:06:41Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "both halves built and proven: IMP-EV-0215 (arguments) and IMP-EV-0288 (short-lived handles)"
+    },
+    {
+     "at": "2026-09-18T21:06:41Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "both halves built and proven: IMP-EV-0215 (arguments) and IMP-EV-0288 (short-lived handles)"
+    },
+    {
+     "at": "2026-09-18T21:06:47Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "main CI green"
+    },
+    {
+     "at": "2026-09-18T21:06:47Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "secrets are never tool parameters, a credential reaches a program by injection rather than possession, and the handle that does it is short-lived and renewed"
+    }
+   ],
+   "status_changed_on": "2026-09-18T21:06:47Z"
   },
   {
    "id": "M9.4",
@@ -4465,8 +4510,53 @@
    "milestone": "M9",
    "order": 3,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-35391720594",
+    "commit:a48382d",
+    "test:services/modbit-core/tests/surface_protocol.rs::qual_ev_0104_0193_a_real_mcp_server_lists_calls_and_cancels_while_two_sessions_share_one_transport",
+    "artifact:evidence/m9/M9.4/TASK_CARD.md",
+    "artifact:evidence/m9/M9.4/evidence.json"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-18T21:07:23Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "all six imp tasks of the gateway are COMPLETE: IMP-EV-0104, 0193, 0128, 0224, 0187, 0281"
+    },
+    {
+     "at": "2026-09-18T21:07:23Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "all six imp tasks of the gateway are COMPLETE: IMP-EV-0104, 0193, 0128, 0224, 0187, 0281"
+    },
+    {
+     "at": "2026-09-18T21:07:23Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "all six imp tasks of the gateway are COMPLETE: IMP-EV-0104, 0193, 0128, 0224, 0187, 0281"
+    },
+    {
+     "at": "2026-09-18T21:07:23Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "all six imp tasks of the gateway are COMPLETE: IMP-EV-0104, 0193, 0128, 0224, 0187, 0281"
+    },
+    {
+     "at": "2026-09-18T21:07:31Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "main CI green on macOS, Linux and Windows for the whole gateway"
+    },
+    {
+     "at": "2026-09-18T21:07:32Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "the External Tool Hub: Modbit uses tools it did not write, from programs it does not control, without any of them gaining authority"
+    }
+   ],
+   "status_changed_on": "2026-09-18T21:07:32Z"
   },
   {
    "id": "M9.5",
@@ -20507,8 +20597,14 @@
    "milestone": "M9",
    "qual": "QUAL-EV-0224",
    "source": "docs/41",
-   "status": "WIRED",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-35391720594",
+    "commit:a48382d",
+    "test:services/modbit-core/tests/surface_protocol.rs::qual_ev_0224_a_proposed_external_server_is_inert_until_the_host_trusts_it_and_holds_its_credential",
+    "artifact:evidence/m9/IMP-EV-0224/TASK_CARD.md",
+    "artifact:evidence/m9/IMP-EV-0224/evidence.json"
+   ],
    "notes": [
     {
      "at": "2026-09-18T17:00:14Z",
@@ -20527,9 +20623,27 @@
      "from": "IMPLEMENTING",
      "to": "WIRED",
      "note": "registered in the supported command list with their client capabilities (task.author to propose, repository.trust to trust or configure a credential); the hub now takes trust from the task's current configuration rather than from the pool entry, so a trust change is seen by the next task and an untrust stops the transport"
+    },
+    {
+     "at": "2026-09-18T21:05:52Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "qualification passes locally; branch CI green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-18T21:05:52Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "same run"
+    },
+    {
+     "at": "2026-09-18T21:06:04Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "conversational MCP configuration complete: a client proposes, the host validates and stores it inert, and only a person's trust — with the credential gate met — makes it run"
     }
    ],
-   "status_changed_on": "2026-09-18T17:27:15Z"
+   "status_changed_on": "2026-09-18T21:06:04Z"
   },
   {
    "id": "IMP-EV-0225",
@@ -22901,8 +23015,14 @@
    "milestone": "M9",
    "qual": "QUAL-EV-0281",
    "source": "docs/41",
-   "status": "WIRED",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-35391720594",
+    "commit:a48382d",
+    "test:services/modbit-core/tests/surface_protocol.rs::qual_ev_0281_a_site_tool_is_preferred_for_a_protected_action_when_trust_allows_and_the_page_is_the_fallback",
+    "artifact:evidence/m9/IMP-EV-0281/TASK_CARD.md",
+    "artifact:evidence/m9/IMP-EV-0281/evidence.json"
+   ],
    "notes": [
     {
      "at": "2026-09-18T17:40:07Z",
@@ -22921,9 +23041,27 @@
      "from": "IMPLEMENTING",
      "to": "WIRED",
      "note": "the refusal is in the browser failure taxonomy with its recovery guidance; the binding is the host's declaration and a page's own claim can only be a proposal (IMP-EV-0224)"
+    },
+    {
+     "at": "2026-09-18T21:05:52Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "qualification passes locally; branch CI green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-18T21:05:52Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "same run"
+    },
+    {
+     "at": "2026-09-18T21:06:04Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "the action ladder's first rung complete: a protected action prefers the site's own structured tool when the host trusts a server bound to the page's origin, and the interface is the fallback otherwise"
     }
    ],
-   "status_changed_on": "2026-09-18T17:49:31Z"
+   "status_changed_on": "2026-09-18T21:06:04Z"
   },
   {
    "id": "IMP-EV-0282",
@@ -23285,8 +23423,14 @@
    "milestone": "M9",
    "qual": "QUAL-EV-0288",
    "source": "docs/41",
-   "status": "WIRED",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-35391720594",
+    "commit:7a56b7c",
+    "test:apps/sandbox-gateway/tests/gateway.rs::qual_m8_3_the_reference_backend_passes_the_backend_contract",
+    "artifact:evidence/m9/IMP-EV-0288/TASK_CARD.md",
+    "artifact:evidence/m9/IMP-EV-0288/evidence.json"
+   ],
    "notes": [
     {
      "at": "2026-09-18T18:24:54Z",
@@ -23305,9 +23449,27 @@
      "from": "IMPLEMENTING",
      "to": "WIRED",
      "note": "three new steps in the backend conformance contract (short-lived and absent from the policy, expires, renews) that every backend must pass, and the gateway suite asserts a report that omits one is not a pass"
+    },
+    {
+     "at": "2026-09-18T21:05:52Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "qualification passes locally; branch CI green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-18T21:05:52Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "main CI green on macOS, Linux and Windows"
+    },
+    {
+     "at": "2026-09-18T21:06:04Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "dynamic credential handles complete: every grant is short-lived by construction, the broker drops the secret at expiry, and a longer task is renewed from the Core's custody rather than given a standing secret"
     }
    ],
-   "status_changed_on": "2026-09-18T18:38:29Z"
+   "status_changed_on": "2026-09-18T21:06:04Z"
   },
   {
    "id": "IMP-EV-0289",

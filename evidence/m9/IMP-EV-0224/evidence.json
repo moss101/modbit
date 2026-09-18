@@ -1,12 +1,31 @@
 {
  "task": "IMP-EV-0224",
- "requirements": ["REQ-EV-0224", "QUAL-EV-0224", "docs/16 MCP / external tools", "docs/30 protocol additions"],
- "scenarios": ["a proposal is stored PROPOSED in the user layer, is UNTRUSTED with no tools, is refused on a call, and its process is never spawned", "a definition that does not validate is refused, and a name a higher layer denied is refused at propose time", "trusting a server whose credential the Core does not hold is refused; configuring the credential lets the trust succeed and only then does the server run", "proposing needs task.author and trusting needs repository.trust; a sandbox guest holds neither", "taking trust away returns the server to PROPOSED and stops the running program", "the task that saw the proposal keeps seeing it untrusted; the next task sees the server ready"],
- "tests": ["services/modbit-core/tests/surface_protocol.rs::qual_ev_0224_a_proposed_external_server_is_inert_until_the_host_trusts_it_and_holds_its_credential", "services/modbit-core config::proposal_tests"],
- "batch_commits": [],
- "runs": [],
+ "requirements": [
+  "REQ-EV-0224",
+  "QUAL-EV-0224",
+  "docs/16 MCP / external tools",
+  "docs/30 protocol additions"
+ ],
+ "scenarios": [
+  "a proposal is stored PROPOSED in the user layer, is UNTRUSTED with no tools, is refused on a call, and its process is never spawned",
+  "a definition that does not validate is refused, and a name a higher layer denied is refused at propose time",
+  "trusting a server whose credential the Core does not hold is refused; configuring the credential lets the trust succeed and only then does the server run",
+  "proposing needs task.author and trusting needs repository.trust; a sandbox guest holds neither",
+  "taking trust away returns the server to PROPOSED and stops the running program",
+  "the task that saw the proposal keeps seeing it untrusted; the next task sees the server ready"
+ ],
+ "tests": [
+  "services/modbit-core/tests/surface_protocol.rs::qual_ev_0224_a_proposed_external_server_is_inert_until_the_host_trusts_it_and_holds_its_credential",
+  "services/modbit-core config::proposal_tests"
+ ],
+ "batch_commits": [
+  "a48382d"
+ ],
+ "runs": [
+  "gha-35391720594"
+ ],
  "proof": "the real Core with real configuration files and a real MCP server binary whose log file is the evidence that it was never started before it was trusted.",
  "audit": "ABSENT before: configuration reached the Core only from files and a boot environment variable; no propose, no trust transition, no run-time credential.",
- "limitations": "an agent proposes through a person's client rather than a tool (docs/17 defines the namespace as list/call/cancel); proposals live in the user layer only; the commands are not journaled — the configuration file is the durable record.",
- "ci": ""
+ "limitations": "an agent proposes through a person's client rather than a tool (docs/17 defines the namespace as list/call/cancel); proposals live in the user layer only; the commands are not journaled \u2014 the configuration file is the durable record.",
+ "ci": "main CI green on macOS, Linux and Windows (run 35391720594) over a48382d"
 }

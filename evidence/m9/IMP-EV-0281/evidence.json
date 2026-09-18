@@ -1,12 +1,28 @@
 {
  "task": "IMP-EV-0281",
- "requirements": ["REQ-EV-0281", "QUAL-EV-0281", "docs/22 Action hierarchy rung 1", "DR-M7-001"],
- "scenarios": ["a server proposed for the site's origin is untrusted: the page read says so and why, and the protected action runs through the interface (the M7.4 fallback) with the host recording the click", "once a person trusts it the page read prefers the site's tool by name, the same action is refused SITE_TOOL_PREFERRED and the host is never asked to click anything, and the order is placed through external.call instead", "a server is bound to an exact origin: a different scheme or port is not the same site"],
- "tests": ["services/modbit-core/tests/surface_protocol.rs::qual_ev_0281_a_site_tool_is_preferred_for_a_protected_action_when_trust_allows_and_the_page_is_the_fallback", "crates/mcp config::tests::a_server_serves_only_the_origins_the_host_bound_it_to"],
- "batch_commits": [],
- "runs": [],
+ "requirements": [
+  "REQ-EV-0281",
+  "QUAL-EV-0281",
+  "docs/22 Action hierarchy rung 1",
+  "DR-M7-001"
+ ],
+ "scenarios": [
+  "a server proposed for the site's origin is untrusted: the page read says so and why, and the protected action runs through the interface (the M7.4 fallback) with the host recording the click",
+  "once a person trusts it the page read prefers the site's tool by name, the same action is refused SITE_TOOL_PREFERRED and the host is never asked to click anything, and the order is placed through external.call instead",
+  "a server is bound to an exact origin: a different scheme or port is not the same site"
+ ],
+ "tests": [
+  "services/modbit-core/tests/surface_protocol.rs::qual_ev_0281_a_site_tool_is_preferred_for_a_protected_action_when_trust_allows_and_the_page_is_the_fallback",
+  "crates/mcp config::tests::a_server_serves_only_the_origins_the_host_bound_it_to"
+ ],
+ "batch_commits": [
+  "a48382d"
+ ],
+ "runs": [
+  "gha-35391720594"
+ ],
  "proof": "one cart page and one protected button, with the trust decision in between; the fake host's record of what it was asked to click is the evidence of which rung the host took.",
  "audit": "PARTIAL before: rungs 2-4 built and proven in M7; nothing bound a server to an origin and browser.act knew of no better path.",
  "limitations": "only a protected action prefers the site tool; no entity-to-tool mapping; origins match exactly; the kernel judges the class before the effector, so an approval is asked before the refusal.",
- "ci": ""
+ "ci": "main CI green on macOS, Linux and Windows (run 35391720594) over a48382d"
 }
