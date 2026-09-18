@@ -36,6 +36,8 @@ export interface HostedSession {
   dialogOpen: boolean;
   /** IMP-EV-0089: the dialog the page opened during the current action (type and message), if any. */
   dialogSeen: { type: string; message: string } | null;
+  /** IMP-EV-0081: the view's process died and the host is bringing it back. */
+  restarting?: boolean;
   /** IMP-EV-0089: permissions the page asked for during the current action (all denied). */
   permissionsAsked: string[];
   /** IMP-EV-0087: when the person last acted in the view (ms epoch), 0 = never. */
@@ -124,7 +126,7 @@ export class BrowserHost {
     wc.on("did-navigate", () => this.bump(h));
     wc.on("did-navigate-in-page", () => this.bump(h));
     wc.on("did-finish-load", () => this.bump(h));
-    wc.on("render-process-gone", (_e, details) => this.notify("browser:state", { browserSessionId: h.browserSessionId, gone: details.reason }));
+    wc.on("render-process-gone", (_e, details) => void this.restartView(h, details.reason));
     // IMP-EV-0087: the person's own input into the view (a real key, not
     // the agent's CDP input, which never reaches this hook while the host
     // dispatches it) takes control for the person at once; the agent's
@@ -188,6 +190,47 @@ export class BrowserHost {
     h.attached = true;
   }
 
+  /**
+   * IMP-EV-0081: the view's process died — a crash, the OS. The session is
+   * the Core's and this host's record of it stands (the same id, partition,
+   * lease and controller); the view is loaded again at the page it was on,
+   * the CDP bridge re-established, and the host attaches again to the same
+   * session (the Core journals the attach). A request arriving meanwhile
+   * answers `VIEW_RESTARTING`; the agent's next observation reads the
+   * restarted page. The Core, its log and the task are untouched.
+   */
+  private async restartView(h: HostedSession, reason: string): Promise<void> {
+    const wc = h.view.webContents;
+    this.log.push({ browserSessionId: h.browserSessionId, kind: "view-gone", ok: false, code: reason, generation: h.leaseGeneration, atMs: Date.now() });
+    this.notify("browser:state", { browserSessionId: h.browserSessionId, gone: reason });
+    if (wc.isDestroyed() || reason === "clean-exit" || !this.sessions.has(h.browserSessionId)) return;
+    h.restarting = true;
+    h.attached = false;
+    h.dialogOpen = false;
+    try {
+      if (wc.debugger.isAttached()) wc.debugger.detach();
+    } catch {
+      // the session died with the process
+    }
+    const url = wc.getURL();
+    try {
+      await wc.loadURL(/^https?:\/\//i.test(url) ? url : "about:blank");
+    } catch {
+      // the page may be unreachable now; the view is up at whatever loaded
+    }
+    try {
+      await this.attach(h);
+      this.bump(h);
+      this.log.push({ browserSessionId: h.browserSessionId, kind: "view-restarted", ok: true, code: reason, generation: h.leaseGeneration, atMs: Date.now() });
+      this.notify("browser:state", { browserSessionId: h.browserSessionId, ...this.state(h), restarted: reason, controller: h.controller, leaseGeneration: h.leaseGeneration });
+    } catch (e) {
+      this.log.push({ browserSessionId: h.browserSessionId, kind: "view-restarted", ok: false, code: (e as Error).message.slice(0, 80), generation: h.leaseGeneration, atMs: Date.now() });
+      this.notify("browser:state", { browserSessionId: h.browserSessionId, error: (e as Error).message });
+    } finally {
+      h.restarting = false;
+    }
+  }
+
   /** After a Core restart every live view attaches again to its session (the same partition). */
   async reattachAll(): Promise<void> {
     for (const h of this.sessions.values()) {
@@ -218,6 +261,15 @@ export class BrowserHost {
     h.lastBounds = { x: Math.round(bounds.x), y: Math.round(bounds.y), width: Math.max(0, Math.round(bounds.width)), height: Math.max(0, Math.round(bounds.height)) };
     h.view.setBounds(h.lastBounds);
     return true;
+  }
+
+  /** REQ-EV-0076: the app window is being replaced; the views it showed leave it (they are this process's) and are shown again on request. */
+  windowReplaced(old: BrowserWindow): void {
+    for (const h of this.sessions.values()) {
+      if (!h.shown) continue;
+      if (!old.isDestroyed()) old.contentView.removeChildView(h.view);
+      h.shown = false;
+    }
   }
 
   hide(browserSessionId: string): void {
@@ -307,6 +359,8 @@ export class BrowserHost {
       // IMP-EV-0083: the view answering is exactly the one attached — the
       // same web contents, alive; a page's title or URL never stands in for it.
       if (h.view.webContents.id !== h.webContentsId) return { kind: "error", code: "WINDOW_UNVERIFIABLE", message: `the session's view is not the web contents attached (${h.webContentsId})` };
+      // IMP-EV-0081: the view is coming back from a dead process; nothing is read or done until it is.
+      if (h.restarting) return { kind: "error", code: "VIEW_RESTARTING", message: "the view's process died and is being restarted; retry the observation" };
       if (req.kind === "navigate" || req.kind === "act") {
         // IMP-EV-0085: under an emergency stop no input runs, whatever the Core's loop does.
         const stop = this.stoppedSessions.get(h.sessionId);

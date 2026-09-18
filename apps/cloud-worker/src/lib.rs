@@ -62,6 +62,11 @@ pub struct Config {
     /// of a cloud browser, their input and control hand-overs travel over
     /// it); the token is held in memory.
     pub api: Option<ApiLinkConfig>,
+    /// IMP-EV-0072: what this worker serves, announced to the control plane
+    /// at start and checked at every claim — `None`: derived from the
+    /// cloud profile's tools and the gateway's features (`browser` when its
+    /// guests have one); a set names an older or narrower worker.
+    pub capabilities: Option<Vec<String>>,
 }
 
 /// The Cloud API a worker links to (M8.8).
@@ -212,6 +217,10 @@ impl Config {
                         .or_else(|_| std::env::var("MODBIT_SANDBOX_WORKER_TOKEN"))
                         .unwrap_or_default(),
                 }),
+            capabilities: std::env::var("MODBIT_CLOUD_WORKER_CAPABILITIES")
+                .ok()
+                .filter(|s| !s.is_empty())
+                .map(|s| s.split(',').map(|c| c.trim().to_owned()).collect()),
         })
     }
 }
@@ -268,10 +277,77 @@ impl Worker {
     }
 }
 
-/// Start a worker: connect, then claim and host ready sessions until stopped.
+/// The cloud profile's tools, as capability names.
+const CLOUD_BASE_CAPABILITIES: &[&str] = &[
+    "fs.read",
+    "fs.write",
+    "git.read",
+    "shell.exec",
+    "network.egress",
+    "secret.use",
+];
+
+/// What this worker serves (IMP-EV-0072): the configured set, else the
+/// cloud profile's tools plus `browser.control` when the gateway's guests
+/// have a browser. Also the gateway's features, for the Cores.
+async fn negotiate(cfg: &Config) -> (Vec<String>, Vec<String>) {
+    let features = match &cfg.sandbox_gateway {
+        Some(g) => modbit_sandbox::client::GatewayClient::new(&g.base_url, &g.worker_token)
+            .features()
+            .await
+            .unwrap_or_else(|e| {
+                eprintln!(
+                    "modbit-cloud-worker[{}]: the gateway's features are unknown ({e}); none assumed",
+                    cfg.worker_id
+                );
+                vec![]
+            }),
+        None => vec![],
+    };
+    let capabilities = match &cfg.capabilities {
+        Some(c) => c.clone(),
+        None => {
+            let mut c: Vec<String> = CLOUD_BASE_CAPABILITIES
+                .iter()
+                .map(|s| (*s).to_owned())
+                .collect();
+            if features.iter().any(|f| f == "browser") {
+                c.push("browser.control".into());
+            }
+            c
+        }
+    };
+    (capabilities, features)
+}
+
+/// Start a worker: connect, announce what it serves, then claim and host
+/// ready sessions it can serve until stopped.
 pub async fn start(cfg: Config) -> anyhow::Result<Worker> {
     std::fs::create_dir_all(&cfg.data_dir)?;
     let store = Arc::new(CloudStore::connect(&cfg.store).await?);
+    let (capabilities, features) = negotiate(&cfg).await;
+    store
+        .register_worker(
+            &cfg.worker_id,
+            &capabilities,
+            &format!(
+                "surface {}.{}",
+                modbit_protocol::PROTOCOL_VERSION.major,
+                modbit_protocol::PROTOCOL_VERSION.minor
+            ),
+        )
+        .await?;
+    eprintln!(
+        "modbit-cloud-worker[{}]: serves {} (gateway features: {})",
+        cfg.worker_id,
+        capabilities.join(", "),
+        features.join(", ")
+    );
+    let cfg = Config {
+        capabilities: Some(capabilities),
+        ..cfg
+    };
+    let features = Arc::new(features);
     let (stop, stop_rx) = tokio::sync::watch::channel(false);
     let worker_id = cfg.worker_id.clone();
     let cfg = Arc::new(cfg);
@@ -282,7 +358,14 @@ pub async fn start(cfg: Config) -> anyhow::Result<Worker> {
         Arc::clone(&cores),
         stop_rx.clone(),
     ));
-    let handle = tokio::spawn(run_loop(cfg, store, stop_rx, Arc::clone(&hosting), cores));
+    let handle = tokio::spawn(run_loop(
+        cfg,
+        store,
+        stop_rx,
+        Arc::clone(&hosting),
+        cores,
+        features,
+    ));
     Ok(Worker {
         stop,
         handle,
@@ -298,20 +381,26 @@ async fn run_loop(
     mut stop: tokio::sync::watch::Receiver<bool>,
     hosting: HostingMap,
     cores: link::Cores,
+    features: Arc<Vec<String>>,
 ) {
     let mut hosted: Vec<(modbit_domain::SessionId, tokio::task::JoinHandle<()>)> = Vec::new();
     loop {
         hosted.retain(|(_, h)| !h.is_finished());
+        // Alive, as far as the control plane knows.
+        if let Err(e) = store.worker_seen(&cfg.worker_id).await {
+            eprintln!("modbit-cloud-worker[{}]: seen: {e}", cfg.worker_id);
+        }
         if hosted.len() < cfg.capacity {
             // Never a session a host here is still winding down (its Core
             // holds the session directory until it has stopped).
             let winding_down: Vec<modbit_domain::SessionId> =
                 hosted.iter().map(|(s, _)| *s).collect();
             match store
-                .claim_ready_session(
+                .claim_ready_session_serving(
                     &cfg.worker_id,
                     cfg.lease_ttl.as_millis() as i64,
                     &winding_down,
+                    cfg.capabilities.as_deref(),
                 )
                 .await
             {
@@ -336,6 +425,7 @@ async fn run_loop(
                         stop.clone(),
                         Arc::clone(&hosting),
                         Arc::clone(&cores),
+                        Arc::clone(&features),
                     ));
                     hosted.push((sid, task));
                     continue;

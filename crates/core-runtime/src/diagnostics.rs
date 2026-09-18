@@ -435,6 +435,30 @@ pub fn classify(source: &FailureSource<'_>) -> FailureDiagnostic {
                     f,
                     message,
                 ),
+                // REQ-EV-0021/0062: the environment is not the revision the
+                // run pinned; an explicit rebuild (or restoring the
+                // definition) is the way on.
+                "ENVIRONMENT_STALE" => diag(
+                    FailureClass::Infrastructure,
+                    code,
+                    false,
+                    "rebuild the environment (RebuildEnvironment) to pin what is there now, or restore the definition files, then resume with StartTask",
+                    "the run waits: it never continues in an environment nobody chose",
+                    vec![],
+                    f,
+                    message,
+                ),
+                // A fresh run's environment names a tool that is not there.
+                "ENVIRONMENT_UNAVAILABLE" => diag(
+                    FailureClass::Infrastructure,
+                    code,
+                    false,
+                    "install the tools the environment definition names (or mark them optional), then resume with StartTask",
+                    "the run waits: it never starts without what its environment requires",
+                    vec![],
+                    f,
+                    message,
+                ),
                 "REPAIR_ESCALATED" => diag(
                     FailureClass::Harness,
                     code,

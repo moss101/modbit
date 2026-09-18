@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 1211,
-    "docs_bytes": 1224601
+    "root_and_tooling": 1235,
+    "docs_bytes": 1242670
   },
   "sections": [
     {
@@ -230,8 +230,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Terminal, Execution Router, and Sandbox Architecture",
-      "bytes": 24369,
-      "sha256": "c2982aa68d6debce456f3be0b337f5b05f2ee27c0130418d862c383dd96a8ea9"
+      "bytes": 29276,
+      "sha256": "be8bab2dba33d4003a9c2208f0291db38e9ca441955c63effd127f7a3e6ee927"
     },
     {
       "path": "docs/22_BROWSER_AND_COMPUTER_USE.md",
@@ -239,8 +239,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Browser and Computer-Use Architecture",
-      "bytes": 29380,
-      "sha256": "480f6963866545565df3c81f0428aed98bf286bc3e53a17b2dd9172db65799ac"
+      "bytes": 29985,
+      "sha256": "2798543a1c861adc8391d1db5f9a0484b2c3fff03d6c4e18976d7e6f2efec88d"
     },
     {
       "path": "docs/23_SECURITY_POLICY_EFFECT_LEDGER.md",
@@ -257,8 +257,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Cloud Control Plane, Remote Execution, and Sync",
-      "bytes": 12822,
-      "sha256": "6e200d51df5406e3c369b4108deac7e220af2d8b4ec7f56877f481b2febfe8b4"
+      "bytes": 17593,
+      "sha256": "f6e858b9aa75e6f2d452b26d824ad2975436bc19d932dc4dad3906d9fde335a7"
     },
     {
       "path": "docs/25_MULTIMODAL_MEDIA_AND_NOTEBOOK_RUNTIME.md",
@@ -302,8 +302,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Client surfaces and source-control integration",
-      "bytes": 19396,
-      "sha256": "e8dfb4882be729bca302e318bd397062dade6157845db6999211ac67f9232b79"
+      "bytes": 20436,
+      "sha256": "01fc7403bcdd2e1bc234a67660d4c4ad7eeca65cb58e5dd6767a68844dc19b31"
     },
     {
       "path": "docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md",
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 33938,
-      "sha256": "f4cc0fee18a2f77dd94f1005ae2b423d200e04e130d760c1bcf7a55225f79027"
+      "bytes": 37239,
+      "sha256": "be0d3f859a9b581dfa9469f3a2dc4a850acbb5b8ef4afee2f782959ec5bbf88d"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -329,8 +329,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Desktop Frontend Implementation",
-      "bytes": 10097,
-      "sha256": "a9b12b816ccbb0e4a34681ca32e0ba7efbfff75685a05cb37ad28f6b2eed697d"
+      "bytes": 13542,
+      "sha256": "33dc6dd7225c3139a0ff6735b0e37d9ea0934ed3e1d6ddb0213f7aabfe69c748"
     },
     {
       "path": "docs/33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md",
@@ -6657,6 +6657,36 @@
       "sha256": "e73166314be690fe49e8654fceb6e384b29f1f8c104f4bf2da8d0d017c6dfd29"
     },
     {
+      "path": "evidence/m8/IMP-EV-0021/TASK_CARD.md",
+      "bytes": 3942,
+      "sha256": "7c0d830d8778014390298da46f6084963f9c0c483b1b54d21feec34742e4b063"
+    },
+    {
+      "path": "evidence/m8/IMP-EV-0021/evidence.json",
+      "bytes": 1059,
+      "sha256": "dc03e7bb6f9a173b3a0d67ecfc011e2505d208cfb6d6c7fe793010858ac714a0"
+    },
+    {
+      "path": "evidence/m8/IMP-EV-0024/TASK_CARD.md",
+      "bytes": 3461,
+      "sha256": "76210bb5b6afee45dbd76f96e594d624f630514a867e43fe17bb7b81e385f224"
+    },
+    {
+      "path": "evidence/m8/IMP-EV-0024/evidence.json",
+      "bytes": 1042,
+      "sha256": "36f22473b87f69c5b8071f8729881e1e46fcadbc49212e691f1b69e5ae917b2a"
+    },
+    {
+      "path": "evidence/m8/IMP-EV-0062/TASK_CARD.md",
+      "bytes": 4022,
+      "sha256": "3cfe6195ec3b1ac0ffad378f8af8b8ed9d08d7cfbe61a66a4d98d1d301c5d2b9"
+    },
+    {
+      "path": "evidence/m8/IMP-EV-0062/evidence.json",
+      "bytes": 1267,
+      "sha256": "1aeb236773b0182ea29a1d3f8991fe272a0311009e65766b7f1ae947f0c1aaab"
+    },
+    {
       "path": "evidence/m8/IMP-EV-0063/TASK_CARD.md",
       "bytes": 2387,
       "sha256": "41d9d103612ab2ed8d94583533f1ae0b67f3d4083e2e02633fdd26f9c1ea31b4"
@@ -6670,6 +6700,86 @@
       "path": "evidence/m8/IMP-EV-0063/evidence.json",
       "bytes": 931,
       "sha256": "613bc3c815d17a22d8f6b9f60d774c32f8827c080b3b8f227fdcd84321603bbb"
+    },
+    {
+      "path": "evidence/m8/IMP-EV-0072/TASK_CARD.md",
+      "bytes": 4287,
+      "sha256": "5b275954f02ace2b637d47e051c2938733539c70235619aa6a8a86de6ddd089f"
+    },
+    {
+      "path": "evidence/m8/IMP-EV-0072/evidence.json",
+      "bytes": 1246,
+      "sha256": "41e22a653e33adf8d4960a4de1eefc6054a921b0b74e23fe21c9e31b4a428485"
+    },
+    {
+      "path": "evidence/m8/IMP-EV-0075/TASK_CARD.md",
+      "bytes": 3498,
+      "sha256": "bda33e6f9decfd620d97681cd2f8d196d5facdc935635c2441fc7e54cbf6d836"
+    },
+    {
+      "path": "evidence/m8/IMP-EV-0075/evidence.json",
+      "bytes": 1160,
+      "sha256": "d057b91af361b09d66aebc8c28944be13658c8e5f6678c1d3123cc3352dacc6d"
+    },
+    {
+      "path": "evidence/m8/IMP-EV-0076/TASK_CARD.md",
+      "bytes": 3019,
+      "sha256": "d719444450c19d2e2591e2f3f248665030aefd7abb0f0f89223343dfc096d487"
+    },
+    {
+      "path": "evidence/m8/IMP-EV-0076/evidence.json",
+      "bytes": 970,
+      "sha256": "8598ef689625c1bcdbcc237c4318b17329f890c01727fffcd7d8d024128796fe"
+    },
+    {
+      "path": "evidence/m8/IMP-EV-0081/TASK_CARD.md",
+      "bytes": 3463,
+      "sha256": "99a06476718d46b3b517a0fd5bf2078e6e643a8eae108b5283dc7836bffa6476"
+    },
+    {
+      "path": "evidence/m8/IMP-EV-0081/evidence.json",
+      "bytes": 1050,
+      "sha256": "271425105b64d0cdec4d144d65e24fd0bb23fee2f6b3779bccedbd176f6fd2b7"
+    },
+    {
+      "path": "evidence/m8/IMP-EV-0109/TASK_CARD.md",
+      "bytes": 3621,
+      "sha256": "6639707bd9bc6e09bea75543f19ec248a0850b8d5478e4a32d5714e50e82ad6f"
+    },
+    {
+      "path": "evidence/m8/IMP-EV-0109/evidence.json",
+      "bytes": 1114,
+      "sha256": "b8efc73e8d9021b160577bd181441dcd02b03f1bd040f26772145adac77510ea"
+    },
+    {
+      "path": "evidence/m8/IMP-EV-0146/TASK_CARD.md",
+      "bytes": 3123,
+      "sha256": "b2e0019f4c678e6ab10434b7a8ef2c32824e90067d30bb0286d008c2877caee4"
+    },
+    {
+      "path": "evidence/m8/IMP-EV-0146/evidence.json",
+      "bytes": 923,
+      "sha256": "65281f192eb45df16f52fca119ae68c76eb9daa443dd165e5a18308d9489403e"
+    },
+    {
+      "path": "evidence/m8/IMP-EV-0176/TASK_CARD.md",
+      "bytes": 2980,
+      "sha256": "a4ef046fe9dda8c11cd35c699d72e46d36f1fa42f36fd79eedb3f85ab171f042"
+    },
+    {
+      "path": "evidence/m8/IMP-EV-0176/evidence.json",
+      "bytes": 940,
+      "sha256": "8be77cb39034761c88f99fa31e3e0c8020e7e1747e77e092db3b8f93c968fe35"
+    },
+    {
+      "path": "evidence/m8/IMP-EV-0233/TASK_CARD.md",
+      "bytes": 2419,
+      "sha256": "c047172d2ae09082506a36c5a074c083e758e0f696f4ea097556c0ea898d5237"
+    },
+    {
+      "path": "evidence/m8/IMP-EV-0233/evidence.json",
+      "bytes": 855,
+      "sha256": "65224dc37125d982495604b59ae9208807d6205a0add308e064c08015adad867"
     },
     {
       "path": "evidence/m8/IMP-EV-0285/TASK_CARD.md",
@@ -6867,14 +6977,24 @@
       "sha256": "a579246d5e34fd08d63cc8864f69d0dd5fb591b903e93e735cde07998f68f573"
     },
     {
+      "path": "evidence/m8/PX-011/TASK_CARD.md",
+      "bytes": 4518,
+      "sha256": "944ad66fa8e1e9c645a68f0af8b7ac0f8b98b641b619514157e3c42512cc7159"
+    },
+    {
+      "path": "evidence/m8/PX-011/evidence.json",
+      "bytes": 1489,
+      "sha256": "85a7eba3e2dcdbbfa8e4b4daf204f4fb77e513a4b19d4e571505c55ba457221e"
+    },
+    {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 40733,
       "sha256": "9beccc811fbdb2f0abd9e9a4677b867882feb94df3d656f809f0d512c407a76c"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1512519,
-      "sha256": "cb8473a3dab273c559fc006d7581b9be2be72ec22e9e9b7b103a22f84d03bf44"
+      "bytes": 1520318,
+      "sha256": "b3240ab774e76ff57734998f08e953848129403683e1dc6615df27a51970415d"
     },
     {
       "path": "tools/build_graph.py",

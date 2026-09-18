@@ -382,6 +382,13 @@ pub struct ToolHost {
     /// The sandbox each `cloud_isolated` task runs in, from `StartTask`
     /// until the task ends.
     pub sandboxes: Mutex<HashMap<TaskId, Arc<modbit_sandbox::client::SandboxHandle>>>,
+    /// IMP-EV-0072: the tasks whose sandbox has no browser (the gateway's
+    /// guests have none) — their projection carries no browser tool.
+    pub browserless: std::sync::Mutex<std::collections::HashSet<TaskId>>,
+    /// The environment revision each running task is pinned to
+    /// (REQ-EV-0062): its variables and `PATH` entries reach the processes
+    /// the tools start.
+    pub environments: crate::environment::Environments,
 }
 
 /// The Sandbox Gateway a Cloud Core Worker's Core reaches (M8.5).
@@ -395,6 +402,10 @@ pub struct SandboxGatewayCustody {
     pub lease_generation: u64,
     /// The worker's id (for the record).
     pub worker_id: String,
+    /// What the gateway's guests can do (IMP-EV-0072): a task's sandbox
+    /// gets a browser only when the guests have one, and the tools the
+    /// model sees follow.
+    pub features: Vec<String>,
 }
 
 impl ToolHost {
@@ -439,6 +450,8 @@ impl ToolHost {
             gateway,
             sandbox_gateway: Mutex::new(None),
             sandboxes: Mutex::new(HashMap::new()),
+            browserless: std::sync::Mutex::new(std::collections::HashSet::new()),
+            environments: crate::environment::Environments::default(),
         })
     }
 
@@ -622,6 +635,27 @@ impl ToolHost {
     /// a tool is advertised only when its host consumer exists (the terminal
     /// broker for shell-backed tools), the profile admits it and, given a
     /// lease, the kernel would not deny it outright. Never a dead tool.
+    /// `visible_specs` for one task: a cloud task whose sandbox has no
+    /// browser sees no browser tool (IMP-EV-0072: the task runs with what
+    /// its worker serves, a compatible projection).
+    pub(crate) fn visible_specs_for(
+        &self,
+        task: &TaskId,
+        profile: Option<&str>,
+        lease: Option<&CapabilityLease>,
+    ) -> Vec<ToolSpec> {
+        let mut specs = self.visible_specs(profile, lease);
+        let browserless = self
+            .browserless
+            .lock()
+            .map(|b| b.contains(task))
+            .unwrap_or(false);
+        if browserless {
+            specs.retain(|s| !s.name.starts_with("browser."));
+        }
+        specs
+    }
+
     pub(crate) fn visible_specs(
         &self,
         profile: Option<&str>,
@@ -913,6 +947,12 @@ impl ToolHost {
                 .cloned()
                 .map(|h| h as Arc<dyn modbit_sandbox::port::SandboxPort>),
             effect_class: None,
+            environment: self.environments.get(&task_id).map(|p| {
+                Arc::new(modbit_tools::pipeline::ProcessEnvironment {
+                    env: p.revision.env.clone(),
+                    path: p.revision.path.clone(),
+                })
+            }),
             secrets_in_custody,
         };
         // REQ-EV-0106: snapshot the write targets so every successful write can

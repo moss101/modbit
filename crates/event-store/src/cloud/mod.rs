@@ -232,6 +232,60 @@ pub struct ObjectMeta {
     pub mime: String,
 }
 
+/// A forge repository's mapping (PX-011): whose tenant and session its
+/// webhook deliveries make tasks in.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
+pub struct ForgeRepository {
+    /// `github`.
+    pub provider: String,
+    /// `owner/name`, lowercased.
+    pub repository: String,
+    /// The tenant.
+    pub tenant_id: TenantId,
+    /// The session tasks are made in.
+    pub session_id: SessionId,
+    /// The forge app installation the deliveries must come from (0: any).
+    pub installation_id: i64,
+    /// A label an issue must be given to become a task (empty: every opened issue).
+    pub intake_label: String,
+    /// The workspace root the task names (empty: the worker's default).
+    pub workspace_root: String,
+    /// The execution profile the task is made under.
+    pub execution_profile: String,
+}
+
+fn forge_repository_row(r: &tokio_postgres::Row) -> ForgeRepository {
+    ForgeRepository {
+        provider: r.get(0),
+        repository: r.get(1),
+        tenant_id: TenantId::from_bytes(*r.get::<_, uuid::Uuid>(2).as_bytes()),
+        session_id: SessionId::from_bytes(*r.get::<_, uuid::Uuid>(3).as_bytes()),
+        installation_id: r.get(4),
+        intake_label: r.get(5),
+        workspace_root: r.get(6),
+        execution_profile: r.get(7),
+    }
+}
+
+/// A webhook delivery the API received (PX-011): once per delivery id.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
+pub struct WebhookDelivery {
+    /// `github`.
+    pub provider: String,
+    /// The forge's delivery id.
+    pub delivery_id: String,
+    /// The event name.
+    pub event: String,
+    /// The tenant it mapped to, once known.
+    pub tenant_id: Option<TenantId>,
+    /// `received` | `task_created` | `relayed` | `ignored:<event>.<action>` | `unmapped` | `installation_mismatch`.
+    pub outcome: String,
+    /// The task it made, if any.
+    pub task_id: Option<TaskId>,
+    /// When it arrived.
+    pub received_at_ms: i64,
+}
+
 fn now_ms() -> i64 {
     Timestamp::now().millis()
 }
@@ -1106,6 +1160,235 @@ impl CloudStore {
 
     // ---- leases (docs/33 "Cloud worker lifecycle") -----------------------
 
+    /// IMP-EV-0072: a worker announces what it serves (idempotent; refreshed
+    /// by `worker_seen`).
+    pub async fn register_worker(
+        &self,
+        worker_id: &str,
+        capabilities: &[String],
+        protocol: &str,
+    ) -> Result<()> {
+        let client = self.pool.get().await?;
+        let now = now_ms();
+        let caps: Vec<String> = capabilities.to_vec();
+        client
+            .execute(
+                "INSERT INTO workers (worker_id, capabilities, protocol, registered_at_ms, seen_at_ms) VALUES ($1, $2, $3, $4, $4) ON CONFLICT (worker_id) DO UPDATE SET capabilities = EXCLUDED.capabilities, protocol = EXCLUDED.protocol, seen_at_ms = EXCLUDED.seen_at_ms",
+                &[&worker_id, &caps, &protocol, &now],
+            )
+            .await?;
+        Ok(())
+    }
+
+    // ---- forge webhook intake (PX-011, docs/24 "Forge webhook intake") --
+
+    /// Map a forge repository to a tenant's session: the webhook for it
+    /// makes tasks there. One tenant per repository: a repository another
+    /// tenant mapped is refused (`Ok(None)`); the same tenant re-mapping
+    /// updates its mapping.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn map_forge_repository(
+        &self,
+        tenant: TenantId,
+        principal: uuid::Uuid,
+        provider: &str,
+        repository: &str,
+        session: SessionId,
+        installation_id: i64,
+        intake_label: &str,
+        workspace_root: &str,
+        execution_profile: &str,
+    ) -> Result<Option<ForgeRepository>> {
+        let client = self.pool.get().await?;
+        let now = now_ms();
+        let rows = client
+            .query(
+                "INSERT INTO forge_repositories (provider, repository, tenant_id, session_id, installation_id, intake_label, workspace_root, execution_profile, mapped_by, created_at_ms, updated_at_ms) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10) ON CONFLICT (provider, repository) DO UPDATE SET session_id = EXCLUDED.session_id, installation_id = EXCLUDED.installation_id, intake_label = EXCLUDED.intake_label, workspace_root = EXCLUDED.workspace_root, execution_profile = EXCLUDED.execution_profile, mapped_by = EXCLUDED.mapped_by, updated_at_ms = EXCLUDED.updated_at_ms WHERE forge_repositories.tenant_id = EXCLUDED.tenant_id RETURNING provider, repository, tenant_id, session_id, installation_id, intake_label, workspace_root, execution_profile",
+                &[&provider, &repository, &tenant_uuid(tenant), &uuid_of(session.as_bytes()), &installation_id, &intake_label, &workspace_root, &execution_profile, &principal, &now],
+            )
+            .await?;
+        Ok(rows.first().map(forge_repository_row))
+    }
+
+    /// The mapping for a repository, whoever's it is (the webhook's lookup:
+    /// the mapping decides the tenant).
+    pub async fn forge_repository(
+        &self,
+        provider: &str,
+        repository: &str,
+    ) -> Result<Option<ForgeRepository>> {
+        let client = self.pool.get().await?;
+        let rows = client
+            .query(
+                "SELECT provider, repository, tenant_id, session_id, installation_id, intake_label, workspace_root, execution_profile FROM forge_repositories WHERE provider = $1 AND repository = $2",
+                &[&provider, &repository],
+            )
+            .await?;
+        Ok(rows.first().map(forge_repository_row))
+    }
+
+    /// A tenant's mappings.
+    pub async fn forge_repositories(&self, tenant: TenantId) -> Result<Vec<ForgeRepository>> {
+        let client = self.pool.get().await?;
+        let rows = client
+            .query(
+                "SELECT provider, repository, tenant_id, session_id, installation_id, intake_label, workspace_root, execution_profile FROM forge_repositories WHERE tenant_id = $1 ORDER BY provider, repository",
+                &[&tenant_uuid(tenant)],
+            )
+            .await?;
+        Ok(rows.iter().map(forge_repository_row).collect())
+    }
+
+    /// Claim a webhook delivery: `Ok(None)` when it is new (recorded
+    /// `received`), `Ok(Some(existing))` when the forge delivered this id
+    /// before — a replay, whatever its body.
+    pub async fn claim_webhook_delivery(
+        &self,
+        provider: &str,
+        delivery_id: &str,
+        event: &str,
+    ) -> Result<Option<WebhookDelivery>> {
+        let client = self.pool.get().await?;
+        let inserted = client
+            .execute(
+                "INSERT INTO webhook_deliveries (provider, delivery_id, event, tenant_id, outcome, task_id, received_at_ms) VALUES ($1, $2, $3, NULL, 'received', NULL, $4) ON CONFLICT (provider, delivery_id) DO NOTHING",
+                &[&provider, &delivery_id, &event, &now_ms()],
+            )
+            .await?;
+        if inserted == 1 {
+            return Ok(None);
+        }
+        let rows = client
+            .query(
+                "SELECT provider, delivery_id, event, tenant_id, outcome, task_id, received_at_ms FROM webhook_deliveries WHERE provider = $1 AND delivery_id = $2",
+                &[&provider, &delivery_id],
+            )
+            .await?;
+        Ok(rows.first().map(|r| WebhookDelivery {
+            provider: r.get(0),
+            delivery_id: r.get(1),
+            event: r.get(2),
+            tenant_id: r
+                .get::<_, Option<uuid::Uuid>>(3)
+                .map(|u| TenantId::from_bytes(*u.as_bytes())),
+            outcome: r.get(4),
+            task_id: r
+                .get::<_, Option<uuid::Uuid>>(5)
+                .map(|u| TaskId::from_bytes(*u.as_bytes())),
+            received_at_ms: r.get(6),
+        }))
+    }
+
+    /// What a claimed delivery came to.
+    pub async fn finish_webhook_delivery(
+        &self,
+        provider: &str,
+        delivery_id: &str,
+        tenant: Option<TenantId>,
+        outcome: &str,
+        task: Option<TaskId>,
+    ) -> Result<()> {
+        let client = self.pool.get().await?;
+        client
+            .execute(
+                "UPDATE webhook_deliveries SET tenant_id = $3, outcome = $4, task_id = $5 WHERE provider = $1 AND delivery_id = $2",
+                &[&provider, &delivery_id, &tenant.map(tenant_uuid), &outcome, &task.map(|t| uuid_of(t.as_bytes()))],
+            )
+            .await?;
+        Ok(())
+    }
+
+    /// A tenant's deliveries (what the forge sent and what came of each), newest last.
+    pub async fn webhook_deliveries(&self, tenant: TenantId) -> Result<Vec<WebhookDelivery>> {
+        let client = self.pool.get().await?;
+        let rows = client
+            .query(
+                "SELECT provider, delivery_id, event, tenant_id, outcome, task_id, received_at_ms FROM webhook_deliveries WHERE tenant_id = $1 ORDER BY received_at_ms ASC, delivery_id ASC",
+                &[&tenant_uuid(tenant)],
+            )
+            .await?;
+        Ok(rows
+            .iter()
+            .map(|r| WebhookDelivery {
+                provider: r.get(0),
+                delivery_id: r.get(1),
+                event: r.get(2),
+                tenant_id: r
+                    .get::<_, Option<uuid::Uuid>>(3)
+                    .map(|u| TenantId::from_bytes(*u.as_bytes())),
+                outcome: r.get(4),
+                task_id: r
+                    .get::<_, Option<uuid::Uuid>>(5)
+                    .map(|u| TaskId::from_bytes(*u.as_bytes())),
+                received_at_ms: r.get(6),
+            })
+            .collect())
+    }
+
+    /// A worker is alive.
+    pub async fn worker_seen(&self, worker_id: &str) -> Result<()> {
+        let client = self.pool.get().await?;
+        client
+            .execute(
+                "UPDATE workers SET seen_at_ms = $2 WHERE worker_id = $1",
+                &[&worker_id, &now_ms()],
+            )
+            .await?;
+        Ok(())
+    }
+
+    /// The capabilities of every worker seen within `ttl_ms`.
+    pub async fn live_workers(&self, ttl_ms: i64) -> Result<Vec<(String, Vec<String>)>> {
+        let client = self.pool.get().await?;
+        let rows = client
+            .query(
+                "SELECT worker_id, capabilities FROM workers WHERE seen_at_ms >= $1 ORDER BY worker_id",
+                &[&(now_ms() - ttl_ms)],
+            )
+            .await?;
+        Ok(rows
+            .iter()
+            .map(|r| (r.get::<_, String>(0), r.get::<_, Vec<String>>(1)))
+            .collect())
+    }
+
+    /// Add to what a session's tasks require of the worker that hosts it.
+    pub async fn require_for_session(
+        &self,
+        tenant: TenantId,
+        session: SessionId,
+        capabilities: &[String],
+    ) -> Result<()> {
+        if capabilities.is_empty() {
+            return Ok(());
+        }
+        let client = self.pool.get().await?;
+        let caps: Vec<String> = capabilities.to_vec();
+        client
+            .execute(
+                "INSERT INTO session_leases (session_id, tenant_id, requirements) VALUES ($1, $2, $3) ON CONFLICT (session_id) DO UPDATE SET requirements = (SELECT ARRAY(SELECT DISTINCT unnest(session_leases.requirements || EXCLUDED.requirements)))",
+                &[&uuid_of(session.as_bytes()), &tenant_uuid(tenant), &caps],
+            )
+            .await?;
+        Ok(())
+    }
+
+    /// What a session requires of its worker.
+    pub async fn session_requirements(
+        &self,
+        tenant: TenantId,
+        session: SessionId,
+    ) -> Result<Vec<String>> {
+        let client = self.pool.get().await?;
+        let row = client
+            .query_opt(
+                "SELECT requirements FROM session_leases WHERE session_id = $1 AND tenant_id = $2",
+                &[&uuid_of(session.as_bytes()), &tenant_uuid(tenant)],
+            )
+            .await?;
+        Ok(row.map(|r| r.get::<_, Vec<String>>(0)).unwrap_or_default())
+    }
+
     /// Mark a session ready for a worker (work is waiting on it).
     pub async fn mark_ready(&self, tenant: TenantId, session: SessionId) -> Result<()> {
         let client = self.pool.get().await?;
@@ -1129,16 +1412,41 @@ impl CloudStore {
         ttl_ms: i64,
         except: &[SessionId],
     ) -> Result<Option<ClaimedLease>> {
+        self.claim_ready_session_serving(worker_id, ttl_ms, except, None)
+            .await
+    }
+
+    /// `claim_ready_session` for a worker that serves `capabilities`
+    /// (IMP-EV-0072): a session whose requirements it does not serve is
+    /// left for a worker that does; `None` capabilities claims anything.
+    pub async fn claim_ready_session_serving(
+        &self,
+        worker_id: &str,
+        ttl_ms: i64,
+        except: &[SessionId],
+        capabilities: Option<&[String]>,
+    ) -> Result<Option<ClaimedLease>> {
         let mut client = self.pool.get().await?;
         let tx = client.transaction().await?;
         let now = now_ms();
         let except: Vec<uuid::Uuid> = except.iter().map(|s| uuid_of(s.as_bytes())).collect();
-        let row = tx
-            .query_opt(
-                "SELECT session_id, tenant_id, generation FROM session_leases WHERE ready = TRUE AND expires_at_ms < $1 AND NOT (session_id = ANY($2)) ORDER BY expires_at_ms ASC LIMIT 1 FOR UPDATE SKIP LOCKED",
-                &[&now, &except],
-            )
-            .await?;
+        let row = match capabilities {
+            Some(caps) => {
+                let caps: Vec<String> = caps.to_vec();
+                tx.query_opt(
+                    "SELECT session_id, tenant_id, generation FROM session_leases WHERE ready = TRUE AND expires_at_ms < $1 AND NOT (session_id = ANY($2)) AND requirements <@ $3 ORDER BY expires_at_ms ASC LIMIT 1 FOR UPDATE SKIP LOCKED",
+                    &[&now, &except, &caps],
+                )
+                .await?
+            }
+            None => {
+                tx.query_opt(
+                    "SELECT session_id, tenant_id, generation FROM session_leases WHERE ready = TRUE AND expires_at_ms < $1 AND NOT (session_id = ANY($2)) ORDER BY expires_at_ms ASC LIMIT 1 FOR UPDATE SKIP LOCKED",
+                    &[&now, &except],
+                )
+                .await?
+            }
+        };
         let Some(r) = row else {
             tx.commit().await?;
             return Ok(None);
@@ -1558,6 +1866,31 @@ impl CloudStore {
             )
             .await?;
         Ok(rows.into_iter().map(|r| (r.get(0), r.get(1))).collect())
+    }
+
+    /// The denials recorded against one resource, whoever's (a webhook
+    /// refused before any tenant is known has none): `(tenant, reason)`.
+    pub async fn denials_for_resource(
+        &self,
+        resource: &str,
+    ) -> Result<Vec<(Option<TenantId>, String)>> {
+        let client = self.pool.get().await?;
+        let rows = client
+            .query(
+                "SELECT tenant_id, reason FROM denials WHERE resource = $1 ORDER BY denial_id ASC",
+                &[&resource],
+            )
+            .await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| {
+                (
+                    r.get::<_, Option<uuid::Uuid>>(0)
+                        .map(|u| TenantId::from_bytes(*u.as_bytes())),
+                    r.get(1),
+                )
+            })
+            .collect())
     }
 
     /// A dedicated connection listening for committed events (`pg_notify`),

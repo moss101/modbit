@@ -19,6 +19,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod environment;
 pub mod paths;
 pub mod revision;
 pub mod service;

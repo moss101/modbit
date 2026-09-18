@@ -1,0 +1,12 @@
+{
+ "task": "IMP-EV-0233",
+ "requirements": ["REQ-EV-0233", "QUAL-EV-0233", "docs/21 Sandbox substrate boundary", "REQ-EV-0291"],
+ "scenarios": ["the one backend conformance suite over the same fixture on the Firecracker MicroVM and on the reference backend, every step held"],
+ "tests": ["qual_m8_3_a_firecracker_microvm_boots_the_guest_and_passes_the_backend_contract", "qual_m8_3_the_reference_backend_passes_the_backend_contract"],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "SandboxBackend is the one contract; the gateway chooses the backend by configuration; the conformance suite runs unchanged on both supported backends on hosted CI.",
+ "audit": "PRESENT since M8.3 (the boundary), extended by M8.5/M8.6/M8.8 steps; this card seals the requirement.",
+ "limitations": "two backends today; the reference backend is for development.",
+ "ci": ""
+}

@@ -126,6 +126,17 @@ export declare type CreateTask = Message<"modbit.v1.CreateTask"> & {
    * @generated from field: string issue_url = 7;
    */
   issueUrl: string;
+
+  /**
+   * PX-011: with origin forge_webhook, the issue as the forge delivered it to
+   * the Cloud API (JSON: url, number, title, author, state, labels, body) —
+   * the worker's Core makes the same canonical task from it that the Cloud
+   * API makes when no worker holds the session; nothing is read from the
+   * forge. Refused without it.
+   *
+   * @generated from field: string issue_json = 8;
+   */
+  issueJson: string;
 };
 
 /**
@@ -5314,6 +5325,13 @@ export declare type ConfigureSandboxGateway = Message<"modbit.v1.ConfigureSandbo
    * @generated from field: uint64 lease_generation = 5;
    */
   leaseGeneration: bigint;
+
+  /**
+   * IMP-EV-0072: what the gateway's guests can do (egress, pty, browser)
+   *
+   * @generated from field: repeated string features = 6;
+   */
+  features: string[];
 };
 
 /**
@@ -9210,6 +9228,215 @@ export declare type BrowserViewInputDelivered = Message<"modbit.v1.BrowserViewIn
  * Use `create(BrowserViewInputDeliveredSchema)` to create a new message.
  */
 export declare const BrowserViewInputDeliveredSchema: GenMessage<BrowserViewInputDelivered>;
+
+/**
+ * REQ-EV-0021/0062/0146 (docs/21 "Environment revisions"): the environment
+ * a task runs in — the definition layers (user, team, repository, the
+ * blueprints they extend), the toolchain as observed, PATH entries and
+ * variable names — pinned to the run as one revision with a content
+ * digest. A run keeps its pinned revision until an explicit rebuild; a
+ * resumed run whose environment changed waits (ENVIRONMENT_STALE).
+ *
+ * @generated from message modbit.v1.GetEnvironment
+ */
+export declare type GetEnvironment = Message<"modbit.v1.GetEnvironment"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.GetEnvironment.
+ * Use `create(GetEnvironmentSchema)` to create a new message.
+ */
+export declare const GetEnvironmentSchema: GenMessage<GetEnvironment>;
+
+/**
+ * @generated from message modbit.v1.EnvironmentSource
+ */
+export declare type EnvironmentSource = Message<"modbit.v1.EnvironmentSource"> & {
+  /**
+   * user | team | repository | blueprint:<name>
+   *
+   * @generated from field: string kind = 1;
+   */
+  kind: string;
+
+  /**
+   * @generated from field: string path = 2;
+   */
+  path: string;
+
+  /**
+   * @generated from field: string sha256 = 3;
+   */
+  sha256: string;
+};
+
+/**
+ * Describes the message modbit.v1.EnvironmentSource.
+ * Use `create(EnvironmentSourceSchema)` to create a new message.
+ */
+export declare const EnvironmentSourceSchema: GenMessage<EnvironmentSource>;
+
+/**
+ * @generated from message modbit.v1.EnvironmentTool
+ */
+export declare type EnvironmentTool = Message<"modbit.v1.EnvironmentTool"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * "" = absent
+   *
+   * @generated from field: string version = 2;
+   */
+  version: string;
+
+  /**
+   * @generated from field: bool optional = 3;
+   */
+  optional: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.EnvironmentTool.
+ * Use `create(EnvironmentToolSchema)` to create a new message.
+ */
+export declare const EnvironmentToolSchema: GenMessage<EnvironmentTool>;
+
+/**
+ * @generated from message modbit.v1.EnvironmentView
+ */
+export declare type EnvironmentView = Message<"modbit.v1.EnvironmentView"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * "" = nothing pinned yet
+   *
+   * @generated from field: string pinned_digest = 2;
+   */
+  pinnedDigest: string;
+
+  /**
+   * the environment as it is now
+   *
+   * @generated from field: string current_digest = 3;
+   */
+  currentDigest: string;
+
+  /**
+   * pinned and current differ
+   *
+   * @generated from field: bool stale = 4;
+   */
+  stale: boolean;
+
+  /**
+   * what differs, when stale
+   *
+   * @generated from field: repeated string changes = 5;
+   */
+  changes: string[];
+
+  /**
+   * of the pinned revision (the current one when none is pinned)
+   *
+   * @generated from field: repeated modbit.v1.EnvironmentSource sources = 6;
+   */
+  sources: EnvironmentSource[];
+
+  /**
+   * @generated from field: repeated modbit.v1.EnvironmentTool toolchain = 7;
+   */
+  toolchain: EnvironmentTool[];
+
+  /**
+   * @generated from field: repeated string path = 8;
+   */
+  path: string[];
+
+  /**
+   * @generated from field: repeated string env_names = 9;
+   */
+  envNames: string[];
+
+  /**
+   * @generated from field: repeated string problems = 10;
+   */
+  problems: string[];
+
+  /**
+   * the object holding the pinned revision
+   *
+   * @generated from field: string revision_ref = 11;
+   */
+  revisionRef: string;
+};
+
+/**
+ * Describes the message modbit.v1.EnvironmentView.
+ * Use `create(EnvironmentViewSchema)` to create a new message.
+ */
+export declare const EnvironmentViewSchema: GenMessage<EnvironmentView>;
+
+/**
+ * @generated from message modbit.v1.RebuildEnvironment
+ */
+export declare type RebuildEnvironment = Message<"modbit.v1.RebuildEnvironment"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.RebuildEnvironment.
+ * Use `create(RebuildEnvironmentSchema)` to create a new message.
+ */
+export declare const RebuildEnvironmentSchema: GenMessage<RebuildEnvironment>;
+
+/**
+ * @generated from message modbit.v1.EnvironmentRebuilt
+ */
+export declare type EnvironmentRebuilt = Message<"modbit.v1.EnvironmentRebuilt"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: string from_digest = 2;
+   */
+  fromDigest: string;
+
+  /**
+   * @generated from field: string to_digest = 3;
+   */
+  toDigest: string;
+
+  /**
+   * @generated from field: repeated string changes = 4;
+   */
+  changes: string[];
+
+  /**
+   * @generated from field: uint64 offset = 5;
+   */
+  offset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.EnvironmentRebuilt.
+ * Use `create(EnvironmentRebuiltSchema)` to create a new message.
+ */
+export declare const EnvironmentRebuiltSchema: GenMessage<EnvironmentRebuilt>;
 
 /**
  * Command acknowledgement.

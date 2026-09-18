@@ -112,6 +112,8 @@ async fn health(State(st): State<Arc<AppState>>) -> Json<Value> {
         "backend": st.backend.kind(),
         "isolated": st.backend.isolates(),
         "guest_protocol": format!("{}.{}", modbit_sandbox::GUEST_PROTOCOL_MAJOR, modbit_sandbox::GUEST_PROTOCOL_MINOR),
+        // IMP-EV-0072: what guests here can do — a worker announces it.
+        "features": st.backend.features(),
         "image": st.backend.image().map(|m| json!({"kind": m.kind, "sha256": m.sha256, "guest_version": m.guest_version, "guest_protocol": m.guest_protocol, "built_from": m.built_from})),
     }))
 }

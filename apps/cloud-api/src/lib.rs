@@ -17,6 +17,7 @@
 
 pub mod auth;
 mod browser_view;
+mod forge;
 pub mod rate;
 mod routes;
 mod stream;
@@ -46,6 +47,9 @@ pub struct AppState {
     pub worker_key: modbit_sandbox::auth::WorkerKey,
     /// The workers linked to this API and the view frames they send.
     pub workers: browser_view::WorkerLinks,
+    /// PX-011: the forge app's webhook secret, in memory only — every
+    /// delivery verifies under it; `None`: no webhook is accepted.
+    pub github_webhook_secret: Option<Vec<u8>>,
 }
 
 /// Service configuration.
@@ -64,10 +68,13 @@ pub struct Config {
     /// HMAC key bytes worker tokens verify under (`None`: a random key —
     /// no worker can link to this process).
     pub worker_key: Option<Vec<u8>>,
+    /// PX-011: the GitHub App's webhook secret (`None`: webhook intake off).
+    pub github_webhook_secret: Option<Vec<u8>>,
 }
 
 impl Config {
     /// From the environment (`MODBIT_CLOUD_DATABASE_URL`, `MODBIT_CLOUD_S3_ENDPOINT`,
+    /// `MODBIT_CLOUD_GITHUB_WEBHOOK_SECRET`,
     /// `MODBIT_CLOUD_S3_BUCKET`, `MODBIT_CLOUD_S3_REGION`, `MODBIT_CLOUD_S3_ACCESS_KEY_ID`,
     /// `MODBIT_CLOUD_S3_SECRET_ACCESS_KEY`, `MODBIT_CLOUD_S3_ALLOW_HTTP`, `MODBIT_CLOUD_TOKEN_KEY_HEX`,
     /// `MODBIT_CLOUD_BIND`).
@@ -95,6 +102,12 @@ impl Config {
             Ok(h) if !h.is_empty() => Some(hex::decode(h)?),
             _ => None,
         };
+        // The webhook secret is read once and kept in memory; it is never
+        // logged, stored or echoed (the same custody as every other secret).
+        let github_webhook_secret = match std::env::var("MODBIT_CLOUD_GITHUB_WEBHOOK_SECRET") {
+            Ok(s) if !s.is_empty() => Some(s.into_bytes()),
+            _ => None,
+        };
         Ok(Self {
             store: CloudStoreConfig { database_url, s3 },
             token_key,
@@ -102,6 +115,7 @@ impl Config {
             rate_capacity: 120,
             rate_per_second: 30.0,
             worker_key,
+            github_webhook_secret,
         })
     }
 }
@@ -163,6 +177,7 @@ pub async fn serve(cfg: Config) -> anyhow::Result<Served> {
             }
         },
         workers: browser_view::WorkerLinks::default(),
+        github_webhook_secret: cfg.github_webhook_secret,
     });
     let listener = tokio::net::TcpListener::bind(&cfg.bind).await?;
     let addr = listener.local_addr()?;

@@ -41,6 +41,12 @@ message CreateTask {
   // document with trust UNTRUSTED_EXTERNAL_CONTENT and provenance forge_issue
   // — data the loop sees, never authority over policy or capabilities.
   string issue_url = 7;
+  // PX-011: with origin forge_webhook, the issue as the forge delivered it to
+  // the Cloud API (JSON: url, number, title, author, state, labels, body) —
+  // the worker's Core makes the same canonical task from it that the Cloud
+  // API makes when no worker holds the session; nothing is read from the
+  // forge. Refused without it.
+  string issue_json = 8;
 }
 
 message GetSessionSnapshot {
@@ -1251,6 +1257,7 @@ message ConfigureSandboxGateway {
   string worker_id = 3;
   string tenant_id = 4;            // the tenant as the gateway knows it (uuid)
   uint64 lease_generation = 5;     // the worker's cloud session lease generation
+  repeated string features = 6;    // IMP-EV-0072: what the gateway's guests can do (egress, pty, browser)
 }
 
 message SandboxGatewayConfigured {
@@ -2138,4 +2145,52 @@ message BrowserViewInput {
 message BrowserViewInputDelivered {
   bool delivered = 1;
   string detail = 2;
+}
+
+// REQ-EV-0021/0062/0146 (docs/21 "Environment revisions"): the environment
+// a task runs in — the definition layers (user, team, repository, the
+// blueprints they extend), the toolchain as observed, PATH entries and
+// variable names — pinned to the run as one revision with a content
+// digest. A run keeps its pinned revision until an explicit rebuild; a
+// resumed run whose environment changed waits (ENVIRONMENT_STALE).
+message GetEnvironment {
+  Id task_id = 1;
+}
+
+message EnvironmentSource {
+  string kind = 1;                 // user | team | repository | blueprint:<name>
+  string path = 2;
+  string sha256 = 3;
+}
+
+message EnvironmentTool {
+  string name = 1;
+  string version = 2;              // "" = absent
+  bool optional = 3;
+}
+
+message EnvironmentView {
+  Id task_id = 1;
+  string pinned_digest = 2;        // "" = nothing pinned yet
+  string current_digest = 3;       // the environment as it is now
+  bool stale = 4;                  // pinned and current differ
+  repeated string changes = 5;     // what differs, when stale
+  repeated EnvironmentSource sources = 6;   // of the pinned revision (the current one when none is pinned)
+  repeated EnvironmentTool toolchain = 7;
+  repeated string path = 8;
+  repeated string env_names = 9;
+  repeated string problems = 10;
+  string revision_ref = 11;        // the object holding the pinned revision
+}
+
+message RebuildEnvironment {
+  Id task_id = 1;
+}
+
+message EnvironmentRebuilt {
+  Id task_id = 1;
+  string from_digest = 2;
+  string to_digest = 3;
+  repeated string changes = 4;
+  uint64 offset = 5;
 }

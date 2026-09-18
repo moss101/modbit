@@ -1,0 +1,12 @@
+{
+ "task": "IMP-EV-0062",
+ "requirements": ["REQ-EV-0062", "QUAL-EV-0062", "docs/21 Environment revisions"],
+ "scenarios": ["the run's processes get the pinned revision's variables and PATH entries; the Core killed and restarted, the resumed run detects the changed environment, journals EnvironmentStale and parks ENVIRONMENT_STALE before any turn; a fresh run whose definition names an absent required tool parks ENVIRONMENT_UNAVAILABLE with no pin and no model request"],
+ "tests": ["qual_ev_0021_0062_0146_environment_revision_is_pinned_applied_and_rebuilt_explicitly", "diagnostics_corpus::loop_environment_stale", "diagnostics_corpus::loop_environment_unavailable"],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "toolchain versions, PATH entries, variables, workspace root and platform pinned as one digest at the run's start; processes run with exactly that; a resume into a different environment or a start without a required tool waits on the explicit path with a classified diagnostic.",
+ "audit": "MISSING before: processes inherited the broker's environment; nothing pinned or checked.",
+ "limitations": "availability is which + version on the revision's PATH; the check is at the run's start; mid-run change is detected at the next resume.",
+ "ci": ""
+}

@@ -449,6 +449,7 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                     origin: "cli".into(),
                     workspace_root,
                     issue_url: String::new(),
+                    issue_json: String::new(),
                 }
                 .encode_to_vec(),
                 Some(lease),
@@ -488,6 +489,7 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                     origin: "forge_issue".into(),
                     workspace_root,
                     issue_url: url,
+                    issue_json: String::new(),
                 }
                 .encode_to_vec(),
                 Some(lease),

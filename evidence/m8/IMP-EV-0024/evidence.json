@@ -1,0 +1,12 @@
+{
+ "task": "IMP-EV-0024",
+ "requirements": ["REQ-EV-0024 (EXPERIMENT)", "QUAL-EV-0024", "docs/24 worker outbound link"],
+ "scenarios": ["a worker under another key never links (401); the right token links outbound; a foreign session over the link is NOT_HOSTED; a dropped link reconnects; an expired token cannot link again"],
+ "tests": ["qual_ev_0024_the_workers_outbound_link_proves_identity_reconnect_revocation_and_tenant_isolation"],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "the worker's outbound link under the worker token: identity by the token's key, reconnect with backoff, revocation by expiry and by the API dropping the live link, tenant isolation by the holder check on both ends; the benefit is the cloud browser's view with no inbound port (M8.8).",
+ "audit": "MISSING before M8.8; built there; qualified here as the experiment.",
+ "limitations": "an experiment: the link carries the view, input and control only; no revocation list; one host, not a VPC deployment; promotion is a decision-record question.",
+ "ci": ""
+}

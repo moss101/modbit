@@ -14,14 +14,14 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | Section | Range | Files | Bytes |
 |---|---|---:|---:|
 | Authority and orientation | 00–09 | 8 | 65205 |
-| Architecture and subsystems | 10–29 | 20 | 323344 |
-| Implementation specifications | 30–39 | 10 | 128444 |
+| Architecture and subsystems | 10–29 | 20 | 334667 |
+| Implementation specifications | 30–39 | 10 | 135190 |
 | Requirements, tasks and traceability | 40–49 | 10 | 351596 |
 | Verification and testing | 50–69 | 15 | 203744 |
 | Delivery and operations | 70–79 | 7 | 33831 |
 | Agent process and governance | 80–97 | 18 | 109299 |
 | Live state | 98–99 | 1 | 9138 |
-| **Total docs** | | **89** | **1224601** |
+| **Total docs** | | **89** | **1242670** |
 
 ## Specification files (`docs/`)
 
@@ -46,18 +46,18 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 18 | `docs/18_CONTEXT_RETRIEVAL_AND_ENGINEERING_KNOWLEDGE.md` | Context, Retrieval, and Engineering Knowledge Engine | architecture | 5728 | `c6a362588d301b22d0f57bd11accecd6af33a9a5f7abc391afb15d7bef6f2303` |
 | 19 | `docs/19_DURABLE_STATE_MEMORY_COMPACTION_CHECKPOINTS.md` | Durable State, Memory, Compaction, and Checkpoints | architecture | 13748 | `a56bb1e31611a229e1e1f786406cb3d7b31e5d21836c578be2a8c5cf2ca20ada` |
 | 20 | `docs/20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md` | Workspace, Git, Worktrees, Diagnostics, and Trusted Code Surface | architecture | 5632 | `12981015ae69e28a83f8c8ea04330a16e3c6d9c0ab70f7cb8af6fd581754b0d7` |
-| 21 | `docs/21_TERMINAL_EXECUTION_AND_SANDBOX.md` | Terminal, Execution Router, and Sandbox Architecture | architecture | 24369 | `c2982aa68d6debce456f3be0b337f5b05f2ee27c0130418d862c383dd96a8ea9` |
-| 22 | `docs/22_BROWSER_AND_COMPUTER_USE.md` | Browser and Computer-Use Architecture | architecture | 29380 | `480f6963866545565df3c81f0428aed98bf286bc3e53a17b2dd9172db65799ac` |
+| 21 | `docs/21_TERMINAL_EXECUTION_AND_SANDBOX.md` | Terminal, Execution Router, and Sandbox Architecture | architecture | 29276 | `be8bab2dba33d4003a9c2208f0291db38e9ca441955c63effd127f7a3e6ee927` |
+| 22 | `docs/22_BROWSER_AND_COMPUTER_USE.md` | Browser and Computer-Use Architecture | architecture | 29985 | `2798543a1c861adc8391d1db5f9a0484b2c3fff03d6c4e18976d7e6f2efec88d` |
 | 23 | `docs/23_SECURITY_POLICY_EFFECT_LEDGER.md` | Security, Policy, Capabilities, Secrets, and Effect Ledger | architecture | 8725 | `4ee252f2d0f2192c45f142b4fd07e7bc1d9f2334436678fa445d420ea87c1e10` |
-| 24 | `docs/24_CLOUD_CONTROL_PLANE_AND_SYNC.md` | Cloud Control Plane, Remote Execution, and Sync | architecture | 12822 | `6e200d51df5406e3c369b4108deac7e220af2d8b4ec7f56877f481b2febfe8b4` |
+| 24 | `docs/24_CLOUD_CONTROL_PLANE_AND_SYNC.md` | Cloud Control Plane, Remote Execution, and Sync | architecture | 17593 | `f6e858b9aa75e6f2d452b26d824ad2975436bc19d932dc4dad3906d9fde335a7` |
 | 25 | `docs/25_MULTIMODAL_MEDIA_AND_NOTEBOOK_RUNTIME.md` | Multimodal, Media and Notebook Runtime | architecture | 8001 | `8f711ffd6294c377dbba537086356fc869d171240d6ccdf5bef5a0c2d5b9ba3e` |
 | 26 | `docs/26_SKILL_REGISTRY_AND_EVOLUTION.md` | Skill Registry and Evolution Integration — Skill Evolution Without a Second Runtime | architecture | 11590 | `e5b69188c09e95c66a4bb2b42549e00b5f55790b81c163d29f892c62d6a1eec3` |
 | 27 | `docs/27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md` | Execution policy router and verified orchestration | architecture | 67229 | `3662f2a9a3704a61f8a1e9c259341ad02eb8f2721ebd885364c0b1d49eaf11be` |
 | 28 | `docs/28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md` | Agent competence: planning, verification and repair | architecture | 12521 | `2dbf6183340ee6a0ba808eef2dd1eea147e41a75dc18e5a3ee77c5bfec117e57` |
-| 29 | `docs/29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md` | Client surfaces and source-control integration | architecture | 19396 | `e8dfb4882be729bca302e318bd397062dade6157845db6999211ac67f9232b79` |
-| 30 | `docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md` | Protocol, APIs, and Event Schemas | implementation | 33938 | `f4cc0fee18a2f77dd94f1005ae2b423d200e04e130d760c1bcf7a55225f79027` |
+| 29 | `docs/29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md` | Client surfaces and source-control integration | architecture | 20436 | `01fc7403bcdd2e1bc234a67660d4c4ad7eeca65cb58e5dd6767a68844dc19b31` |
+| 30 | `docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md` | Protocol, APIs, and Event Schemas | implementation | 37239 | `be0d3f859a9b581dfa9469f3a2dc4a850acbb5b8ef4afee2f782959ec5bbf88d` |
 | 31 | `docs/31_DATABASE_AND_STORAGE_SCHEMA.md` | Database and Storage Schema | implementation | 14957 | `6b0faeb70e7a403fa52c00d1dbd0771e78e16a00cf43de879fc5d42be0a76c8f` |
-| 32 | `docs/32_DESKTOP_FRONTEND_IMPLEMENTATION.md` | Desktop Frontend Implementation | implementation | 10097 | `a9b12b816ccbb0e4a34681ca32e0ba7efbfff75685a05cb37ad28f6b2eed697d` |
+| 32 | `docs/32_DESKTOP_FRONTEND_IMPLEMENTATION.md` | Desktop Frontend Implementation | implementation | 13542 | `33dc6dd7225c3139a0ff6735b0e37d9ea0934ed3e1d6ddb0213f7aabfe69c748` |
 | 33 | `docs/33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md` | Core and Cloud Backend Implementation | implementation | 13639 | `907fccbdc9e41e1002f8576ebdccf2b5875e9368760e8b41849d0f53a6057a84` |
 | 34 | `docs/34_OBSERVABILITY_COST_AND_OPERATIONS_DATA.md` | Observability, Cost, and Operations Data | implementation | 5702 | `4fbb53f587aca00d3b90626f3af21efc95f7241976877e45948ce6b2de5a9bf6` |
 | 35 | `docs/35_DEPENDENCY_AND_BINDING_DECISIONS.md` | Dependency and Binding Decisions | implementation | 2545 | `037a85253201401822bde5ff76b0b6625057099995d06b30c0d1aec4e572b1f9` |
@@ -1281,9 +1281,31 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m7/M7.8/TASK_CARD.md` | retained evidence | 4900 | `c82be386b93814544829b670f6fe0b78dd27373e34db37cbc1c3b83c59dd3f12` |
 | `evidence/m7/M7.8/ci-run-35179264882.json` | retained evidence | 39150 | `91208f78fc4ac7e2b552bed5ef264a1152763372f9035397843612e4a64021ce` |
 | `evidence/m7/M7.8/evidence.json` | retained evidence | 1280 | `e73166314be690fe49e8654fceb6e384b29f1f8c104f4bf2da8d0d017c6dfd29` |
+| `evidence/m8/IMP-EV-0021/TASK_CARD.md` | retained evidence | 3942 | `7c0d830d8778014390298da46f6084963f9c0c483b1b54d21feec34742e4b063` |
+| `evidence/m8/IMP-EV-0021/evidence.json` | retained evidence | 1059 | `dc03e7bb6f9a173b3a0d67ecfc011e2505d208cfb6d6c7fe793010858ac714a0` |
+| `evidence/m8/IMP-EV-0024/TASK_CARD.md` | retained evidence | 3461 | `76210bb5b6afee45dbd76f96e594d624f630514a867e43fe17bb7b81e385f224` |
+| `evidence/m8/IMP-EV-0024/evidence.json` | retained evidence | 1042 | `36f22473b87f69c5b8071f8729881e1e46fcadbc49212e691f1b69e5ae917b2a` |
+| `evidence/m8/IMP-EV-0062/TASK_CARD.md` | retained evidence | 4022 | `3cfe6195ec3b1ac0ffad378f8af8b8ed9d08d7cfbe61a66a4d98d1d301c5d2b9` |
+| `evidence/m8/IMP-EV-0062/evidence.json` | retained evidence | 1267 | `1aeb236773b0182ea29a1d3f8991fe272a0311009e65766b7f1ae947f0c1aaab` |
 | `evidence/m8/IMP-EV-0063/TASK_CARD.md` | retained evidence | 2387 | `41d9d103612ab2ed8d94583533f1ae0b67f3d4083e2e02633fdd26f9c1ea31b4` |
 | `evidence/m8/IMP-EV-0063/ci-run-35268427152.json` | retained evidence | 42325 | `d84af9cf4afdae11a20da170c552f318d96fc4ff75f3a2b23aba559556309932` |
 | `evidence/m8/IMP-EV-0063/evidence.json` | retained evidence | 931 | `613bc3c815d17a22d8f6b9f60d774c32f8827c080b3b8f227fdcd84321603bbb` |
+| `evidence/m8/IMP-EV-0072/TASK_CARD.md` | retained evidence | 4287 | `5b275954f02ace2b637d47e051c2938733539c70235619aa6a8a86de6ddd089f` |
+| `evidence/m8/IMP-EV-0072/evidence.json` | retained evidence | 1246 | `41e22a653e33adf8d4960a4de1eefc6054a921b0b74e23fe21c9e31b4a428485` |
+| `evidence/m8/IMP-EV-0075/TASK_CARD.md` | retained evidence | 3498 | `bda33e6f9decfd620d97681cd2f8d196d5facdc935635c2441fc7e54cbf6d836` |
+| `evidence/m8/IMP-EV-0075/evidence.json` | retained evidence | 1160 | `d057b91af361b09d66aebc8c28944be13658c8e5f6678c1d3123cc3352dacc6d` |
+| `evidence/m8/IMP-EV-0076/TASK_CARD.md` | retained evidence | 3019 | `d719444450c19d2e2591e2f3f248665030aefd7abb0f0f89223343dfc096d487` |
+| `evidence/m8/IMP-EV-0076/evidence.json` | retained evidence | 970 | `8598ef689625c1bcdbcc237c4318b17329f890c01727fffcd7d8d024128796fe` |
+| `evidence/m8/IMP-EV-0081/TASK_CARD.md` | retained evidence | 3463 | `99a06476718d46b3b517a0fd5bf2078e6e643a8eae108b5283dc7836bffa6476` |
+| `evidence/m8/IMP-EV-0081/evidence.json` | retained evidence | 1050 | `271425105b64d0cdec4d144d65e24fd0bb23fee2f6b3779bccedbd176f6fd2b7` |
+| `evidence/m8/IMP-EV-0109/TASK_CARD.md` | retained evidence | 3621 | `6639707bd9bc6e09bea75543f19ec248a0850b8d5478e4a32d5714e50e82ad6f` |
+| `evidence/m8/IMP-EV-0109/evidence.json` | retained evidence | 1114 | `b8efc73e8d9021b160577bd181441dcd02b03f1bd040f26772145adac77510ea` |
+| `evidence/m8/IMP-EV-0146/TASK_CARD.md` | retained evidence | 3123 | `b2e0019f4c678e6ab10434b7a8ef2c32824e90067d30bb0286d008c2877caee4` |
+| `evidence/m8/IMP-EV-0146/evidence.json` | retained evidence | 923 | `65281f192eb45df16f52fca119ae68c76eb9daa443dd165e5a18308d9489403e` |
+| `evidence/m8/IMP-EV-0176/TASK_CARD.md` | retained evidence | 2980 | `a4ef046fe9dda8c11cd35c699d72e46d36f1fa42f36fd79eedb3f85ab171f042` |
+| `evidence/m8/IMP-EV-0176/evidence.json` | retained evidence | 940 | `8be77cb39034761c88f99fa31e3e0c8020e7e1747e77e092db3b8f93c968fe35` |
+| `evidence/m8/IMP-EV-0233/TASK_CARD.md` | retained evidence | 2419 | `c047172d2ae09082506a36c5a074c083e758e0f696f4ea097556c0ea898d5237` |
+| `evidence/m8/IMP-EV-0233/evidence.json` | retained evidence | 855 | `65224dc37125d982495604b59ae9208807d6205a0add308e064c08015adad867` |
 | `evidence/m8/IMP-EV-0285/TASK_CARD.md` | retained evidence | 1780 | `599add501c115ed36faf435c67b64f06e213f5189d1c7f1e69cde5e84999d728` |
 | `evidence/m8/IMP-EV-0285/evidence.json` | retained evidence | 852 | `a75791e4731ebfc22c5e0ee072336afad1dfbec174c44db6e7be0e381be65314` |
 | `evidence/m8/IMP-EV-0286/TASK_CARD.md` | retained evidence | 1818 | `caaad903c4ecff47d310bab88be6b634b3816adbcbd3ca6be7c1ad51afa17b01` |
@@ -1323,8 +1345,10 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m8/M8.9/TASK_CARD.md` | retained evidence | 4459 | `31aaa46eb23def4ff4d0e302234b6aef9545109ce80c2901e11554631d9c40fd` |
 | `evidence/m8/M8.9/ci-run-35290929921.json` | retained evidence | 42349 | `47d1d3b8d0212a5f98a75f733c34a592c6eb3e8c1852959ba58542375ed84a7d` |
 | `evidence/m8/M8.9/evidence.json` | retained evidence | 1548 | `a579246d5e34fd08d63cc8864f69d0dd5fb591b903e93e735cde07998f68f573` |
+| `evidence/m8/PX-011/TASK_CARD.md` | retained evidence | 4518 | `944ad66fa8e1e9c645a68f0af8b7ac0f8b98b641b619514157e3c42512cc7159` |
+| `evidence/m8/PX-011/evidence.json` | retained evidence | 1489 | `85a7eba3e2dcdbbfa8e4b4daf204f4fb77e513a4b19d4e571505c55ba457221e` |
 | `graph/PROJECT_GRAPH.md` | human view of the graph | 40733 | `9beccc811fbdb2f0abd9e9a4677b867882feb94df3d656f809f0d512c407a76c` |
-| `graph/project-graph.json` | project driver graph with live status | 1512519 | `cb8473a3dab273c559fc006d7581b9be2be72ec22e9e9b7b103a22f84d03bf44` |
+| `graph/project-graph.json` | project driver graph with live status | 1520318 | `b3240ab774e76ff57734998f08e953848129403683e1dc6615df27a51970415d` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 53364 | `b1a026685406fab72ca15d0e75000645daab1cb0e32f9b82cff648542f866d5d` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 17596 | `5c9b7a782d245223726f860ca583d766929a6f5662b644adebee64d257ad426b` |

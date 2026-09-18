@@ -180,13 +180,41 @@ function requireRelativePath(v: unknown): string {
 
 // Every handler validates its arguments (REQ-EV-0103: a malformed renderer
 // message is rejected here, never forwarded).
-ipcMain.handle("core:status", () => supervisor.status);
-ipcMain.handle("core:localState", () => loadLocalState());
+//
+// REQ-EV-0075 (docs/32 "Security settings"): every handler answers the app's
+// own renderer only — the top frame of this window. A message from any other
+// web contents or frame (a page in a browser view, a child frame, a window an
+// attacker opened with the bridge) is refused before its arguments are read,
+// and the refusal is on a bounded audit the renderer's diagnostics can show.
+// The privileged effects themselves — the Core socket and its boot secret,
+// the shell, the filesystem, credential values, the browser views' input —
+// live in this process and the Core; the bridge names typed requests only.
+const ipcRefusals: { channel: string; senderId: number; frameUrl: string; reason: string; atMs: number }[] = [];
+function noteRefusal(channel: string, e: IpcMainInvokeEvent, reason: string): void {
+  ipcRefusals.push({ channel, senderId: e.sender.id, frameUrl: e.senderFrame?.url ?? "", reason, atMs: Date.now() });
+  if (ipcRefusals.length > 200) ipcRefusals.splice(0, ipcRefusals.length - 200);
+}
+function handle(channel: string, fn: (e: IpcMainInvokeEvent, ...args: unknown[]) => unknown): void {
+  ipcMain.handle(channel, (e: IpcMainInvokeEvent, ...args: unknown[]) => {
+    const appContents = win?.webContents;
+    if (!appContents || appContents.isDestroyed() || e.sender !== appContents) {
+      noteRefusal(channel, e, "not the app window");
+      throw new Error("SENDER_REFUSED: only the app's own renderer may ask this");
+    }
+    if (!e.senderFrame || e.senderFrame !== appContents.mainFrame) {
+      noteRefusal(channel, e, "not the top frame");
+      throw new Error("SENDER_REFUSED: only the app's top frame may ask this");
+    }
+    return fn(e, ...args);
+  });
+}
+handle("core:status", () => supervisor.status);
+handle("core:localState", () => loadLocalState());
 // Context Inspector (REQ-EV-0035 / 0131 / 0175): what the pack selected and
 // excluded, and what the prompt envelope injected.
 // Workspace context bridge (REQ-EV-0141 / 0160): what the reviewer has
 // selected becomes context. Selection grants nothing; the Core enforces that.
-ipcMain.handle(
+handle(
   "task:select",
   async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown, selection: unknown) => {
     const sid = requireSessionId(sessionId);
@@ -210,13 +238,13 @@ ipcMain.handle(
 // PX-023: the typed status of one task (REQ-EV-0073) — what a fresh
 // snapshot does not carry: the latest attention diagnostic, class, code,
 // the user's action, the recovery path and the evidence refs.
-ipcMain.handle("task:status", async (_e: IpcMainInvokeEvent, taskId: unknown) => {
+handle("task:status", async (_e: IpcMainInvokeEvent, taskId: unknown) => {
   const tid = requireTaskId(taskId);
   const v = await requireClient().taskStatus(tid);
   return { state: v.state, waitReason: v.waitReason, runState: v.runState, loopAlive: v.loopAlive, lastOffset: v.lastOffset.toString(), attentionReason: v.attentionReason, failureClass: v.failureClass, failureCode: v.failureCode, retryable: v.retryable, userAction: v.userAction, recoveryPath: v.recoveryPath, evidenceRefs: v.evidenceRefs };
 });
 // Context efficiency metrics (REQ-EV-0173): quality and economics together.
-ipcMain.handle("task:economics", async (_e: IpcMainInvokeEvent, taskId: unknown) => {
+handle("task:economics", async (_e: IpcMainInvokeEvent, taskId: unknown) => {
   const tid = requireTaskId(taskId);
   const v = await requireClient().taskEconomics(tid);
   return {
@@ -242,7 +270,7 @@ ipcMain.handle("task:economics", async (_e: IpcMainInvokeEvent, taskId: unknown)
   };
 });
 
-ipcMain.handle("context:inspector", async (_e: IpcMainInvokeEvent, taskId: unknown) => {
+handle("context:inspector", async (_e: IpcMainInvokeEvent, taskId: unknown) => {
   const tid = requireTaskId(taskId);
   const v = await requireClient().contextInspector(tid);
   return {
@@ -279,13 +307,13 @@ ipcMain.handle("context:inspector", async (_e: IpcMainInvokeEvent, taskId: unkno
   };
 });
 // PX-026: honest language labels in every client (docs/76).
-ipcMain.handle("languages:list", async () => {
+handle("languages:list", async () => {
   const r = await requireClient().listLanguages();
   return r.languages.map((l) => ({ language: l.language, tier: l.tier, label: l.label, fixture: l.fixture, proven: l.proven, provisional: l.provisional, notClaimed: l.notClaimed, note: l.note }));
 });
 // REQ-EV-0151 / 0275: attention items from the Core (canonical unresolved
 // state only), rendered as the board's attention strip.
-ipcMain.handle("attention:list", async (_e: IpcMainInvokeEvent, sessionId: unknown) => {
+handle("attention:list", async (_e: IpcMainInvokeEvent, sessionId: unknown) => {
   const sid = requireSessionId(sessionId);
   const v = await requireClient().attention(sid);
   return {
@@ -293,14 +321,14 @@ ipcMain.handle("attention:list", async (_e: IpcMainInvokeEvent, sessionId: unkno
     items: v.items.map((i) => ({ kind: i.kind, taskId: Buffer.from(i.taskId?.value ?? []).toString("hex"), reference: i.reference, reason: i.reason, action: i.action, sinceOffset: i.sinceOffset.toString() })),
   };
 });
-ipcMain.handle("session:create", async () => {
+handle("session:create", async () => {
   const c = requireClient();
   const r = await c.createSession(freshId());
   await c.acquireSessionLease(r.sessionId, `desktop ${app.getVersion()}`);
   saveLocalState({ sessionId: r.sessionId });
   return r.sessionId;
 });
-ipcMain.handle("session:snapshot", async (_e: IpcMainInvokeEvent, sessionId: unknown) => {
+handle("session:snapshot", async (_e: IpcMainInvokeEvent, sessionId: unknown) => {
   const sid = requireSessionId(sessionId);
   const s = await requireClient().getSessionSnapshot(sid);
   return {
@@ -311,7 +339,7 @@ ipcMain.handle("session:snapshot", async (_e: IpcMainInvokeEvent, sessionId: unk
     tasks: s.tasks.map((t) => ({ taskId: Buffer.from(t.taskId?.value ?? []).toString("hex"), goalText: t.goalText, state: t.state, generation: Number(t.generation), createdAtMs: Number(t.createdAt?.seconds ?? 0n) * 1000, origin: t.origin, parentTaskId: t.parentTaskId ? Buffer.from(t.parentTaskId.value).toString("hex") : null })),
   };
 });
-ipcMain.handle("task:create", async (_e: IpcMainInvokeEvent, sessionId: unknown, goal: unknown, commandIdHex: unknown, workspaceRoot: unknown, issueUrl: unknown) => {
+handle("task:create", async (_e: IpcMainInvokeEvent, sessionId: unknown, goal: unknown, commandIdHex: unknown, workspaceRoot: unknown, issueUrl: unknown) => {
   const sid = requireSessionId(sessionId);
   // PX-010: from an issue, the goal may be empty (the Core names the task after it).
   const issue = typeof issueUrl === "string" && issueUrl.trim().length > 0 ? issueUrl.trim() : undefined;
@@ -324,7 +352,7 @@ ipcMain.handle("task:create", async (_e: IpcMainInvokeEvent, sessionId: unknown,
   if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
   return c.createTask(sid, g, cid, root, issue);
 });
-ipcMain.handle("task:start", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown) => {
+handle("task:start", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown) => {
   const sid = requireSessionId(sessionId);
   const tid = requireTaskId(taskId);
   const c = requireClient();
@@ -334,14 +362,14 @@ ipcMain.handle("task:start", async (_e: IpcMainInvokeEvent, sessionId: unknown, 
 // PX-024: cancel and steer the focused task from the keyboard. Cancel is
 // confirmed in the renderer before it reaches here; steering queues one
 // line of input under the session lease (QueueInput STEER).
-ipcMain.handle("task:cancel", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown) => {
+handle("task:cancel", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown) => {
   const sid = requireSessionId(sessionId);
   const tid = requireTaskId(taskId);
   const c = requireClient();
   if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
   return c.cancelTask(sid, tid);
 });
-ipcMain.handle("task:steer", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown, text: unknown) => {
+handle("task:steer", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown, text: unknown) => {
   const sid = requireSessionId(sessionId);
   const tid = requireTaskId(taskId);
   if (typeof text !== "string" || text.trim().length === 0 || text.length > 20_000) throw new Error("BAD_ARGUMENT: text");
@@ -353,7 +381,7 @@ ipcMain.handle("task:steer", async (_e: IpcMainInvokeEvent, sessionId: unknown, 
 // REQ-EV-0190: attach a local file to a task. Main reads the bytes (bounded)
 // and the Core normalizes them; the renderer never sees a filesystem.
 const MAX_ATTACHMENT_BYTES = 3 * 1024 * 1024;
-ipcMain.handle("task:attach", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown, filePath: unknown) => {
+handle("task:attach", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown, filePath: unknown) => {
   const sid = requireSessionId(sessionId);
   const tid = requireTaskId(taskId);
   if (typeof filePath !== "string" || filePath.length === 0 || filePath.length > 4096) throw new Error("BAD_ARGUMENT: file path required");
@@ -366,7 +394,7 @@ ipcMain.handle("task:attach", async (_e: IpcMainInvokeEvent, sessionId: unknown,
   return c.ingestAttachment(sid, tid, abs.split(/[\\/]/).pop() ?? "attachment", new Uint8Array(data));
 });
 // Review surface (docs/20): immutable, revision-bound payloads from the Core.
-ipcMain.handle("review:bundle", async (_e: IpcMainInvokeEvent, taskId: unknown) => {
+handle("review:bundle", async (_e: IpcMainInvokeEvent, taskId: unknown) => {
   const b = await requireClient().getReviewBundle(requireTaskId(taskId));
   return {
     taskId: Buffer.from(b.taskId?.value ?? []).toString("hex"),
@@ -385,11 +413,11 @@ ipcMain.handle("review:bundle", async (_e: IpcMainInvokeEvent, taskId: unknown) 
     evidenceLinks: b.evidenceLinks,
   };
 });
-ipcMain.handle("review:codeView", async (_e: IpcMainInvokeEvent, taskId: unknown, path: unknown, expectedFileRevision: unknown) => {
+handle("review:codeView", async (_e: IpcMainInvokeEvent, taskId: unknown, path: unknown, expectedFileRevision: unknown) => {
   const v = await requireClient().getCodeView(requireTaskId(taskId), requireRelativePath(path), typeof expectedFileRevision === "string" ? expectedFileRevision : "");
   return { workspaceRevision: v.workspaceRevision.toString(), fileRevision: v.fileRevision, path: v.path, contentRef: v.contentRef, syntaxLanguage: v.syntaxLanguage, changedRanges: v.changedRanges, evidenceLinks: v.evidenceLinks, stale: v.stale, text: v.text };
 });
-ipcMain.handle("review:decide", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown, decision: unknown, rejected: unknown, note: unknown, expectedWorkspaceRevision: unknown) => {
+handle("review:decide", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown, decision: unknown, rejected: unknown, note: unknown, expectedWorkspaceRevision: unknown) => {
   const sid = requireSessionId(sessionId);
   const tid = requireTaskId(taskId);
   if (decision !== "ACCEPT" && decision !== "RETURN") throw new Error("BAD_ARGUMENT: decision must be ACCEPT or RETURN");
@@ -409,7 +437,7 @@ ipcMain.handle("review:decide", async (_e: IpcMainInvokeEvent, sessionId: unknow
 // PX-005 (docs/20, docs/29): a person's one-hunk edit goes to the Core's
 // ChangeTransaction bound to the revisions the review showed; main holds
 // nothing of it after the call.
-ipcMain.handle("review:patch", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown, patch: unknown) => {
+handle("review:patch", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown, patch: unknown) => {
   const sid = requireSessionId(sessionId);
   const tid = requireTaskId(taskId);
   const x = (patch ?? {}) as { path?: unknown; old?: unknown; new?: unknown; expectedWorkspaceRevision?: unknown; expectedFileRevision?: unknown };
@@ -431,7 +459,7 @@ ipcMain.handle("review:patch", async (_e: IpcMainInvokeEvent, sessionId: unknown
 // bound to an intent hash); the renderer decides it through
 // `approval:resolve` and calls again for OPENED/UPDATED — or DENIED, which
 // leaves the branch local. The forge token never leaves the Core.
-ipcMain.handle("review:pullRequest", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown, expectedCandidateRevision: unknown, update: unknown) => {
+handle("review:pullRequest", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown, expectedCandidateRevision: unknown, update: unknown) => {
   const sid = requireSessionId(sessionId);
   const tid = requireTaskId(taskId);
   if (typeof expectedCandidateRevision !== "string" || !/^\d+$/.test(expectedCandidateRevision)) throw new Error("BAD_ARGUMENT: expectedCandidateRevision must be the revision the review accepted");
@@ -442,7 +470,7 @@ ipcMain.handle("review:pullRequest", async (_e: IpcMainInvokeEvent, sessionId: u
 });
 // PX-001/PX-023: a decision on a protected effect names the intent hash the
 // person saw; the Core refuses any other (INTENT_MISMATCH).
-ipcMain.handle("approval:resolve", async (_e: IpcMainInvokeEvent, sessionId: unknown, approvalId: unknown, approve: unknown, reason: unknown, intentHash: unknown) => {
+handle("approval:resolve", async (_e: IpcMainInvokeEvent, sessionId: unknown, approvalId: unknown, approve: unknown, reason: unknown, intentHash: unknown) => {
   const sid = requireSessionId(sessionId);
   // The Core names an approval as a UUID (hyphenated); the wire wants its bytes.
   const aid = typeof approvalId === "string" ? approvalId.replace(/-/g, "") : "";
@@ -455,7 +483,7 @@ ipcMain.handle("approval:resolve", async (_e: IpcMainInvokeEvent, sessionId: unk
 });
 // REQ-EV-0222 / PX-023: the person's answer to the agent's typed question
 // (an option id, or free text when the question allows it).
-ipcMain.handle("question:respond", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown, questionId: unknown, optionId: unknown, text: unknown) => {
+handle("question:respond", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown, questionId: unknown, optionId: unknown, text: unknown) => {
   const sid = requireSessionId(sessionId);
   const tid = requireTaskId(taskId);
   if (typeof questionId !== "string" || questionId.length === 0 || questionId.length > 128) throw new Error("BAD_ARGUMENT: questionId");
@@ -466,14 +494,14 @@ ipcMain.handle("question:respond", async (_e: IpcMainInvokeEvent, sessionId: unk
 // ---- M7.1 browser sessions (docs/22): the renderer asks main to open a
 // session for a task and to place the view; everything the page does stays
 // in main's sandboxed view and the Core's log.
-ipcMain.handle("browser:open", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown) => {
+handle("browser:open", async (_e: IpcMainInvokeEvent, sessionId: unknown, taskId: unknown) => {
   const sid = requireSessionId(sessionId);
   const tid = requireTaskId(taskId);
   const c = requireClient();
   if (c.leaseGeneration(sid) === undefined) await c.joinSessionLease(sid, `desktop ${app.getVersion()}`);
   return browserHost.open(sid, tid);
 });
-ipcMain.handle("browser:show", (_e: IpcMainInvokeEvent, browserSessionId: unknown, bounds: unknown) => {
+handle("browser:show", (_e: IpcMainInvokeEvent, browserSessionId: unknown, bounds: unknown) => {
   if (typeof browserSessionId !== "string" || !HEX32.test(browserSessionId)) throw new Error("BAD_ARGUMENT: browserSessionId");
   const b = (bounds ?? {}) as { x?: unknown; y?: unknown; width?: unknown; height?: unknown };
   const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= 20_000 ? v : null);
@@ -481,28 +509,28 @@ ipcMain.handle("browser:show", (_e: IpcMainInvokeEvent, browserSessionId: unknow
   if (rect.x === null || rect.y === null || rect.width === null || rect.height === null) throw new Error("BAD_ARGUMENT: bounds");
   return browserHost.show(browserSessionId, rect as { x: number; y: number; width: number; height: number });
 });
-ipcMain.handle("browser:hide", (_e: IpcMainInvokeEvent, browserSessionId: unknown) => {
+handle("browser:hide", (_e: IpcMainInvokeEvent, browserSessionId: unknown) => {
   if (typeof browserSessionId !== "string" || !HEX32.test(browserSessionId)) throw new Error("BAD_ARGUMENT: browserSessionId");
   browserHost.hide(browserSessionId);
 });
-ipcMain.handle("browser:close", async (_e: IpcMainInvokeEvent, browserSessionId: unknown) => {
+handle("browser:close", async (_e: IpcMainInvokeEvent, browserSessionId: unknown) => {
   if (typeof browserSessionId !== "string" || !HEX32.test(browserSessionId)) throw new Error("BAD_ARGUMENT: browserSessionId");
   await browserHost.close(browserSessionId);
 });
-ipcMain.handle("browser:describe", (_e: IpcMainInvokeEvent, browserSessionId: unknown) => {
+handle("browser:describe", (_e: IpcMainInvokeEvent, browserSessionId: unknown) => {
   if (typeof browserSessionId !== "string" || !HEX32.test(browserSessionId)) throw new Error("BAD_ARGUMENT: browserSessionId");
   return browserHost.describe(browserSessionId);
 });
-ipcMain.handle("browser:session", async (_e: IpcMainInvokeEvent, browserSessionId: unknown, taskId: unknown) => {
+handle("browser:session", async (_e: IpcMainInvokeEvent, browserSessionId: unknown, taskId: unknown) => {
   if (typeof browserSessionId !== "string" || !HEX32.test(browserSessionId)) throw new Error("BAD_ARGUMENT: browserSessionId");
   const tid = requireTaskId(taskId);
   const v = await requireClient().browserSession(browserSessionId, tid);
   return { browserSessionId, taskId: tid, partition: v.partition, controller: v.controller, leaseGeneration: v.leaseGeneration.toString(), hostAttached: v.hostAttached, hostKind: v.hostKind, url: v.url, title: v.title, stateVersion: v.stateVersion.toString(), fingerprint: v.fingerprint, closed: v.closed };
 });
-ipcMain.handle("browser:log", () => browserHost.log.slice());
+handle("browser:log", () => browserHost.log.slice());
 // IMP-EV-0085: the person's emergency stop — the host fences its input
 // first (no model loop in the way), then the Core blocks every new effect.
-ipcMain.handle("browser:emergencyStop", async (_e: IpcMainInvokeEvent, sessionId: unknown, reason: unknown) => {
+handle("browser:emergencyStop", async (_e: IpcMainInvokeEvent, sessionId: unknown, reason: unknown) => {
   const sid = requireSessionId(sessionId);
   const why = typeof reason === "string" && reason.length <= 200 ? reason : "emergency stop";
   browserHost.emergencyStop(sid, why);
@@ -511,18 +539,18 @@ ipcMain.handle("browser:emergencyStop", async (_e: IpcMainInvokeEvent, sessionId
 });
 // M7.6: the person takes or returns control of the session (the same
 // session; the agent's input is blocked while they hold it).
-ipcMain.handle("browser:control", (_e: IpcMainInvokeEvent, browserSessionId: unknown, controller: unknown) => {
+handle("browser:control", (_e: IpcMainInvokeEvent, browserSessionId: unknown, controller: unknown) => {
   if (typeof browserSessionId !== "string" || !HEX32.test(browserSessionId)) throw new Error("BAD_ARGUMENT: browserSessionId");
   if (controller !== "AGENT" && controller !== "USER") throw new Error("BAD_ARGUMENT: controller must be AGENT or USER");
   return browserHost.setControl(browserSessionId, controller);
 });
 // The person's own typing into the view (what the E2E uses to type as the person while it holds control).
-ipcMain.handle("browser:typeAsPerson", (_e: IpcMainInvokeEvent, browserSessionId: unknown, text: unknown) => {
+handle("browser:typeAsPerson", (_e: IpcMainInvokeEvent, browserSessionId: unknown, text: unknown) => {
   if (typeof browserSessionId !== "string" || !HEX32.test(browserSessionId)) throw new Error("BAD_ARGUMENT: browserSessionId");
   if (typeof text !== "string" || text.length > 200) throw new Error("BAD_ARGUMENT: text");
   return browserHost.typeAsPerson(browserSessionId, text);
 });
-ipcMain.handle("browser:probe", (_e: IpcMainInvokeEvent, browserSessionId: unknown) => {
+handle("browser:probe", (_e: IpcMainInvokeEvent, browserSessionId: unknown) => {
   if (typeof browserSessionId !== "string" || !HEX32.test(browserSessionId)) throw new Error("BAD_ARGUMENT: browserSessionId");
   return browserHost.probe(browserSessionId);
 });
@@ -532,7 +560,7 @@ ipcMain.handle("browser:probe", (_e: IpcMainInvokeEvent, browserSessionId: unkno
 // instead of watching the notification centre). No secret, no path, no
 // Core payload is in a notification: title and one line.
 const deliveredNotifications: { id: string; title: string; body: string; atMs: number; shown: boolean }[] = [];
-ipcMain.handle("notify:deliver", (_e: IpcMainInvokeEvent, id: unknown, title: unknown, body: unknown) => {
+handle("notify:deliver", (_e: IpcMainInvokeEvent, id: unknown, title: unknown, body: unknown) => {
   if (typeof id !== "string" || id.length > 128 || typeof title !== "string" || title.length > 200 || typeof body !== "string" || body.length > 1000) throw new Error("BAD_ARGUMENT: notification");
   const shown = Notification.isSupported() && process.env.MODBIT_SUPPRESS_OS_NOTIFICATIONS !== "1";
   if (shown) new Notification({ title, body, silent: true }).show();
@@ -540,11 +568,11 @@ ipcMain.handle("notify:deliver", (_e: IpcMainInvokeEvent, id: unknown, title: un
   if (deliveredNotifications.length > 200) deliveredNotifications.splice(0, deliveredNotifications.length - 200);
   return { shown };
 });
-ipcMain.handle("notify:log", () => deliveredNotifications.slice());
+handle("notify:log", () => deliveredNotifications.slice());
 // ---- Credentials (M7.8): the secret crosses main once, from the renderer's
 // input to safeStorage; what comes back is a handle. The Core is told the
 // handle, label, origin and account name.
-ipcMain.handle("credential:add", async (_e: IpcMainInvokeEvent, label: unknown, origin: unknown, username: unknown, secret: unknown) => {
+handle("credential:add", async (_e: IpcMainInvokeEvent, label: unknown, origin: unknown, username: unknown, secret: unknown) => {
   if (typeof label !== "string" || label.length > 200) throw new Error("BAD_ARGUMENT: label");
   if (typeof origin !== "string" || origin.length > 2048) throw new Error("BAD_ARGUMENT: origin");
   if (typeof username !== "string" || username.length > 200) throw new Error("BAD_ARGUMENT: username");
@@ -553,8 +581,8 @@ ipcMain.handle("credential:add", async (_e: IpcMainInvokeEvent, label: unknown, 
   await requireClient().registerBrowserCredential({ handle: h.handle, label: h.label, origin: h.origin, username: h.username });
   return h;
 });
-ipcMain.handle("credential:list", () => credentials.list());
-ipcMain.handle("credential:remove", async (_e: IpcMainInvokeEvent, handle: unknown) => {
+handle("credential:list", () => credentials.list());
+handle("credential:remove", async (_e: IpcMainInvokeEvent, handle: unknown) => {
   if (typeof handle !== "string" || !/^cred_[0-9a-f]{12}$/.test(handle)) throw new Error("BAD_ARGUMENT: handle");
   const removed = credentials.remove(handle);
   await requireClient().forgetBrowserCredential(handle).catch(() => {});
@@ -563,7 +591,7 @@ ipcMain.handle("credential:remove", async (_e: IpcMainInvokeEvent, handle: unkno
 // ---- Onboarding (REQ-PX-022, docs/39): provider setup, repository trust,
 // starter tasks. The credential crosses main once, from the renderer's input
 // field to safeStorage and the Core; it is never returned to the renderer.
-ipcMain.handle("onboarding:provider", async (_e: IpcMainInvokeEvent, provider: unknown, apiKey: unknown, baseUrl: unknown) => {
+handle("onboarding:provider", async (_e: IpcMainInvokeEvent, provider: unknown, apiKey: unknown, baseUrl: unknown) => {
   if (typeof provider !== "string" || !["openai", "anthropic"].includes(provider)) throw new Error("BAD_ARGUMENT: provider must be openai or anthropic");
   if (typeof apiKey !== "string" || apiKey.length > 4096 || apiKey.includes("\0")) throw new Error("BAD_ARGUMENT: key");
   const url = typeof baseUrl === "string" && baseUrl.length <= 2048 && /^https?:\/\//.test(baseUrl) ? baseUrl : "";
@@ -587,7 +615,7 @@ ipcMain.handle("onboarding:provider", async (_e: IpcMainInvokeEvent, provider: u
     keychainAvailable: safeStorage.isEncryptionAvailable(),
   };
 });
-ipcMain.handle("onboarding:providerStatus", async () => {
+handle("onboarding:providerStatus", async () => {
   const rec = loadProvider();
   // What the Core actually has is the truth; the keychain record is only
   // what this profile will hand it on the next start.
@@ -595,7 +623,7 @@ ipcMain.handle("onboarding:providerStatus", async () => {
   const ready = endpoints.filter((e) => e.credentialAvailable).map((e) => e.endpoint);
   return { configured: ready.length > 0, endpoints: [...new Set(ready)], stored: rec !== null, provider: rec?.provider ?? "", keychainAvailable: safeStorage.isEncryptionAvailable() };
 });
-ipcMain.handle("onboarding:trust", async (_e: IpcMainInvokeEvent, sessionId: unknown, workspaceRoot: unknown) => {
+handle("onboarding:trust", async (_e: IpcMainInvokeEvent, sessionId: unknown, workspaceRoot: unknown) => {
   const sid = requireSessionId(sessionId);
   const root = optionalWorkspaceRoot(workspaceRoot);
   if (!root) throw new Error("BAD_ARGUMENT: workspace root required");
@@ -606,27 +634,38 @@ ipcMain.handle("onboarding:trust", async (_e: IpcMainInvokeEvent, sessionId: unk
   const r = await c.trustRepository(sid, abs);
   return { workspaceRoot: abs, offset: r.offset };
 });
-ipcMain.handle("onboarding:starters", async (_e: IpcMainInvokeEvent, workspaceRoot: unknown) => {
+handle("onboarding:starters", async (_e: IpcMainInvokeEvent, workspaceRoot: unknown) => {
   const root = optionalWorkspaceRoot(workspaceRoot);
   if (!root) throw new Error("BAD_ARGUMENT: workspace root required");
   return requireClient().listStarterTasks(resolve(root));
 });
-ipcMain.handle("events:subscribe", (_e: IpcMainInvokeEvent, sessionId: unknown, afterOffset: unknown) => {
+handle("events:subscribe", (_e: IpcMainInvokeEvent, sessionId: unknown, afterOffset: unknown) => {
   const sid = requireSessionId(sessionId);
   const after = typeof afterOffset === "string" && /^\d+$/.test(afterOffset) ? BigInt(afterOffset) : 0n;
   subscription = { sessionId: sid, cursor: after };
   requireClient().subscribe(sid, after);
 });
-ipcMain.handle("debug:coreInfo", () => {
+handle("debug:coreInfo", () => {
   // Test hook: pid/endpoint only; never the secret.
   const s = supervisor.status;
   return s.state === "connected" ? { pid: s.pid, endpoint: s.endpoint } : null;
 });
+// Diagnostics (REQ-EV-0075/0076): what this process refused and how it
+// brought its renderer back — for the renderer's diagnostics and the E2E.
+handle("debug:ipcRefusals", () => ipcRefusals.slice());
+handle("debug:rendererLog", () => rendererLog.slice());
 
-function createWindow(): void {
-  win = new BrowserWindow({
-    width: 1200,
-    height: 800,
+// REQ-EV-0076 (docs/32): the renderer is a view of the Core's session, not
+// its owner. When its process dies — a crash, the OS killing it — this
+// process keeps the Core connection, the session lease and the browser views,
+// notes what happened, and opens a fresh window in the old one's place; the
+// new renderer takes the session snapshot from the Core and subscribes from
+// its cursor, as at any start. Nothing of the session lives in the renderer
+// to lose.
+const rendererLog: { reason: string; exitCode: number; reloaded: boolean; atMs: number }[] = [];
+function createWindow(bounds?: Electron.Rectangle): void {
+  const w = new BrowserWindow({
+    ...(bounds ?? { width: 1200, height: 800 }),
     show: true,
     webPreferences: {
       preload: join(__dirname, "..", "preload", "preload.cjs"),
@@ -636,9 +675,22 @@ function createWindow(): void {
       webSecurity: true,
     },
   });
-  win.webContents.on("will-navigate", (e) => e.preventDefault());
-  win.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
-  void win.loadFile(join(__dirname, "..", "renderer", "index.html"));
+  win = w;
+  w.webContents.on("will-navigate", (e) => e.preventDefault());
+  w.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  w.webContents.on("render-process-gone", (_e, details) => {
+    const replace = details.reason !== "clean-exit" && win === w && !w.isDestroyed();
+    rendererLog.push({ reason: details.reason, exitCode: details.exitCode, reloaded: replace, atMs: Date.now() });
+    if (rendererLog.length > 50) rendererLog.splice(0, rendererLog.length - 50);
+    if (!replace) return;
+    // The views the dead renderer showed leave the old window first (they
+    // are this process's, not the window's); the new renderer shows them
+    // again when it opens its panel.
+    browserHost.windowReplaced(w);
+    createWindow(w.getBounds());
+    w.destroy();
+  });
+  void w.loadFile(join(__dirname, "..", "renderer", "index.html"));
 }
 
 app.whenReady().then(async () => {

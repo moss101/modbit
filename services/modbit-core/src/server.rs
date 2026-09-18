@@ -1066,6 +1066,7 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         }
         "ConfigureSandboxGateway" => "sandbox.configure",
         "ExportHandoff" => "task.author",
+        "GetEnvironment" | "RebuildEnvironment" => "task.author",
         "RebindTaskWorkspace" | "ImportObjects" => "session.mirror",
         "TrustRepository" => "repository.trust",
         "EmergencyStop" => "session.control",
@@ -1421,7 +1422,9 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 "forge_webhook" => TaskOrigin::ForgeWebhook,
                 other => return reject(cid, "BAD_PAYLOAD", format!("unknown origin `{other}`")),
             };
-            if p.goal_text.trim().is_empty() && origin != TaskOrigin::ForgeIssue {
+            if p.goal_text.trim().is_empty()
+                && !matches!(origin, TaskOrigin::ForgeIssue | TaskOrigin::ForgeWebhook)
+            {
                 return reject(cid, "BAD_PAYLOAD", "goal_text required");
             }
             if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
@@ -1447,7 +1450,25 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                     );
                 };
                 match modbit_tools::forge::read_issue(&cfg, p.issue_url.trim()).await {
-                    Ok(v) => Some(v),
+                    Ok(v) => Some((
+                        modbit_domain::task::ForgeIssueIntake {
+                            url: p.issue_url.trim().to_owned(),
+                            number: v["number"].as_u64().unwrap_or(0),
+                            title: v["title"].as_str().unwrap_or_default().to_owned(),
+                            author: v["author"].as_str().unwrap_or_default().to_owned(),
+                            state: v["state"].as_str().unwrap_or_default().to_owned(),
+                            labels: v["labels"]
+                                .as_array()
+                                .map(|l| {
+                                    l.iter()
+                                        .filter_map(|x| x.as_str().map(str::to_owned))
+                                        .collect()
+                                })
+                                .unwrap_or_default(),
+                            body: v["body"].as_str().unwrap_or_default().to_owned(),
+                        },
+                        "forge_issue",
+                    )),
                     Err((code, msg)) => {
                         return reject(
                             cid,
@@ -1456,16 +1477,25 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                         );
                     }
                 }
+            } else if origin == TaskOrigin::ForgeWebhook {
+                // PX-011: the forge delivered the issue to the Cloud API,
+                // which relayed it here with the command; nothing is read.
+                match serde_json::from_str::<modbit_domain::task::ForgeIssueIntake>(&p.issue_json) {
+                    Ok(v) if !v.url.trim().is_empty() => Some((v, "forge_webhook")),
+                    _ => {
+                        return reject(
+                            cid,
+                            "BAD_PAYLOAD",
+                            "issue_json (url, number, title, …) required with origin forge_webhook",
+                        );
+                    }
+                }
             } else {
                 None
             };
             let goal_text = if p.goal_text.trim().is_empty() {
-                let v = issue.as_ref().expect("an issue when the goal is empty");
-                format!(
-                    "{} (#{})",
-                    v["title"].as_str().unwrap_or("issue"),
-                    v["number"].as_u64().unwrap_or(0)
-                )
+                let (v, _) = issue.as_ref().expect("an issue when the goal is empty");
+                v.goal()
             } else {
                 p.goal_text.clone()
             };
@@ -1485,25 +1515,9 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             // The issue as an attached document (REQ-EV-0161) and the record
             // of where the task came from, in the same batch as its creation.
             let mut intake_events = Vec::new();
-            if let Some(v) = &issue {
+            if let Some((v, provenance)) = &issue {
                 use sha2::Digest;
-                let text = format!(
-                    "# {}\n\nissue #{} by {} ({}) — {}\nlabels: {}\n\n{}\n",
-                    v["title"].as_str().unwrap_or_default(),
-                    v["number"].as_u64().unwrap_or(0),
-                    v["author"].as_str().unwrap_or_default(),
-                    v["state"].as_str().unwrap_or_default(),
-                    v["url"].as_str().unwrap_or_default(),
-                    v["labels"]
-                        .as_array()
-                        .map(|l| l
-                            .iter()
-                            .filter_map(|x| x.as_str())
-                            .collect::<Vec<_>>()
-                            .join(", "))
-                        .unwrap_or_default(),
-                    v["body"].as_str().unwrap_or_default()
-                );
+                let text = v.document_text();
                 let document_id = hex::encode(sha2::Sha256::digest(text.as_bytes()));
                 let content_ref = match store.objects().put(text.as_bytes()) {
                     Ok(r) => r,
@@ -1513,8 +1527,8 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                     "ContextDocumentAttached",
                     &TaskEvent::ContextDocumentAttached {
                         document_id: document_id.clone(),
-                        source: format!("forge_issue:{}", p.issue_url.trim()),
-                        title: v["title"].as_str().unwrap_or_default().to_owned(),
+                        source: format!("{provenance}:{}", v.url),
+                        title: v.title.clone(),
                         content_ref,
                         byte_length: text.len() as u64,
                         trust: "UNTRUSTED_EXTERNAL_CONTENT".into(),
@@ -1524,10 +1538,10 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 intake_events.push(typed(
                     "TaskCreatedFromIssue",
                     &TaskEvent::TaskCreatedFromIssue {
-                        url: p.issue_url.trim().to_owned(),
-                        number: v["number"].as_u64().unwrap_or(0),
-                        title: v["title"].as_str().unwrap_or_default().to_owned(),
-                        provenance: "forge_issue".into(),
+                        url: v.url.clone(),
+                        number: v.number,
+                        title: v.title.clone(),
+                        provenance: (*provenance).to_owned(),
                         document_id,
                     },
                     actor.clone(),
@@ -4274,6 +4288,7 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 tenant_id: p.tenant_id.clone(),
                 lease_generation: p.lease_generation,
                 worker_id: p.worker_id.clone(),
+                features: p.features.clone(),
             };
             *core.tools.sandbox_gateway.lock().await = Some(custody);
             accept(
@@ -4894,6 +4909,118 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 }
                 .encode_to_vec(),
             )
+        }
+        // REQ-EV-0021/0062/0146: the environment revision a task is pinned
+        // to, against what is there now.
+        "GetEnvironment" => {
+            let Ok(p) = wire::GetEnvironment::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "GetEnvironment");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let task = match core.store.lock().await.task(&task_id) {
+                Ok(Some(t)) => t,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            let pinned = crate::environment::pinned(core, &task).await;
+            let now = crate::environment::current(core, &task).await;
+            let (shown, stale, changes, revision_ref, pinned_digest) = match &pinned {
+                Some(p) => {
+                    let stale = p.revision.digest != now.digest;
+                    let changes = if stale {
+                        modbit_workspace::environment::changes(&p.revision, &now)
+                    } else {
+                        vec![]
+                    };
+                    (
+                        p.revision.clone(),
+                        stale,
+                        changes,
+                        p.revision_ref.clone(),
+                        p.revision.digest.clone(),
+                    )
+                }
+                None => (now.clone(), false, vec![], String::new(), String::new()),
+            };
+            accept(
+                cid,
+                false,
+                wire::EnvironmentView {
+                    task_id: Some(wire_id(task_id.as_bytes())),
+                    pinned_digest,
+                    current_digest: now.digest,
+                    stale,
+                    changes,
+                    sources: shown
+                        .sources
+                        .iter()
+                        .map(|s| wire::EnvironmentSource {
+                            kind: s.kind.clone(),
+                            path: s.path.clone(),
+                            sha256: s.sha256.clone(),
+                        })
+                        .collect(),
+                    toolchain: shown
+                        .toolchain
+                        .iter()
+                        .map(|t| wire::EnvironmentTool {
+                            name: t.name.clone(),
+                            version: t.version.clone().unwrap_or_default(),
+                            optional: t.optional,
+                        })
+                        .collect(),
+                    path: shown.path.clone(),
+                    env_names: shown.env_names.clone(),
+                    problems: shown.problems.clone(),
+                    revision_ref,
+                }
+                .encode_to_vec(),
+            )
+        }
+        "RebuildEnvironment" => {
+            let Ok(p) = wire::RebuildEnvironment::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "RebuildEnvironment");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let task = match core.store.lock().await.task(&task_id) {
+                Ok(Some(t)) => t,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
+                return ack;
+            }
+            // A running run keeps its revision; the rebuild is for a run at
+            // rest (waiting on the stale environment, queued, or reviewed).
+            if core.runtime.is_running(&task_id).await {
+                return reject(
+                    cid,
+                    "TASK_RUNNING",
+                    "the run is in progress on its pinned environment; rebuild once it waits",
+                );
+            }
+            match crate::environment::rebuild(core, &task, &actor).await {
+                Ok((from, to, changes, offset)) => {
+                    core.last_offset.send_replace(offset);
+                    accept(
+                        cid,
+                        false,
+                        wire::EnvironmentRebuilt {
+                            task_id: Some(wire_id(task_id.as_bytes())),
+                            from_digest: from,
+                            to_digest: to,
+                            changes,
+                            offset,
+                        }
+                        .encode_to_vec(),
+                    )
+                }
+                Err(why) => reject(cid, "ENVIRONMENT_UNAVAILABLE", why),
+            }
         }
         // M8.8: the person's input into a view they watch, under the
         // control lease — theirs, or it is refused before the host.

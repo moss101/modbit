@@ -92,6 +92,29 @@ impl GatewayClient {
         Ok((status, v))
     }
 
+    /// What the gateway's guests can do (`GET /v1/health` → `features`;
+    /// IMP-EV-0072): `egress`, `pty`, `browser`, ….
+    pub async fn features(&self) -> Result<Vec<String>> {
+        let r = self
+            .http
+            .get(format!("{}/v1/health", self.base_url))
+            .send()
+            .await
+            .map_err(|e| SandboxError::Guest(format!("gateway health: {e}")))?;
+        let v: Value = r
+            .json()
+            .await
+            .map_err(|e| SandboxError::Guest(format!("gateway health: {e}")))?;
+        Ok(v["features"]
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .filter_map(|x| x.as_str().map(str::to_owned))
+                    .collect()
+            })
+            .unwrap_or_default())
+    }
+
     /// Provision a sandbox.
     pub async fn provision(&self, req: &ProvisionRequest) -> Result<Arc<SandboxHandle>> {
         let (status, v) = self

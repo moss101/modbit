@@ -1,0 +1,12 @@
+{
+ "task": "IMP-EV-0076",
+ "requirements": ["REQ-EV-0076", "QUAL-EV-0076", "docs/32 Security settings"],
+ "scenarios": ["the renderer's process is killed after a task reached review; main keeps the Core, the lease and the stream and opens a fresh window; the session snapshot (offset, generation, tasks) is unchanged, the same Core process answers the new renderer's typed requests, no model request was made by the restart"],
+ "tests": ["apps/desktop/e2e/workers.spec.ts: renderer killed (REQ-EV-0076)"],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "the renderer is a view of the Core's session; killed and brought back, the session's truth is unchanged and the Core remains its owner.",
+ "audit": "PARTIAL before: typed messages and snapshot/cursor start existed; a dead renderer stayed dead and nothing proved the truth survived.",
+ "limitations": "clean exits are not brought back; transient renderer UI state is lost by design; no crash-storm limit.",
+ "ci": ""
+}

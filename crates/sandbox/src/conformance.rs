@@ -638,6 +638,16 @@ pub async fn run(backend: &dyn SandboxBackend, fx: &Fixture) -> Result<Report> {
             && st3.as_ref().is_ok_and(|s| !s.exists),
         format!("{m:?} {w:?} {l:?} {st:?} {rn:?} {st2:?} {rm:?} {st3:?}"),
     );
+    // The workspace root lists workspace content on every backend: the
+    // block device's own `lost+found` on a MicroVM is not an entry.
+    let r = link.list_dir(&task, &policy.workspace_root, 0).await;
+    push(
+        "fs_root_lists_workspace_content",
+        r.as_ref().is_ok_and(|l| {
+            !l.entries.is_empty() && l.entries.iter().all(|e| e.name != "lost+found")
+        }),
+        format!("{r:?}"),
+    );
     let r = link
         .remove(
             &task,

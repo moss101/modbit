@@ -1,0 +1,12 @@
+{
+ "task": "IMP-EV-0081",
+ "requirements": ["REQ-EV-0081", "QUAL-EV-0081", "docs/22 Local browser"],
+ "scenarios": ["the browser view's process is killed between two observations; the host logs the loss, restarts the view at its page and attaches it again to the same session; the Core reports the session open with the host attached; the agent's next observation is a delta showing the same page unchanged; the task completes on the same Core process"],
+ "tests": ["apps/desktop/e2e/workers.spec.ts: browser view killed (REQ-EV-0081)"],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "the browser view is a worker on the canonical contracts; its crash corrupts nothing in the Core and its restart reattaches the same session.",
+ "audit": "PARTIAL before: the view was a dedicated worker on the contracts and a Core restart re-attached it; the view's own process dying left a dead view.",
+ "limitations": "a request in flight at the crash fails once; the restarted page is a fresh load; the cloud browser's loss is the sandbox-loss path.",
+ "ci": ""
+}

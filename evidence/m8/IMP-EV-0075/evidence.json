@@ -1,0 +1,12 @@
+{
+ "task": "IMP-EV-0075",
+ "requirements": ["REQ-EV-0075", "QUAL-EV-0075", "docs/32 Security settings"],
+ "scenarios": ["arbitrary code in the app's renderer finds no Node, no Electron internals, no raw IPC and the typed bridge only; the Core's address is unreachable and its secret absent; forged approval and browser session refused by the Core; credential values never listed; a child frame has no bridge; a second window with the same preload is refused SENDER_REFUSED by main and audited while the app's window is answered"],
+ "tests": ["apps/desktop/e2e/workers.spec.ts: renderer compromise (REQ-EV-0075)"],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "privileged effects live in main and the Core behind typed requests the app's own top frame alone may make; a compromised renderer or a foreign web contents cannot invoke one.",
+ "audit": "PARTIAL before: sandboxed renderer, typed bridge, validated arguments; no sender check, no compromise proof.",
+ "limitations": "a compromise in the app's own renderer may still ask for the person's decisions; socket unreachability rests on CSP and the sandbox; Core refusals are the existing ones.",
+ "ci": ""
+}

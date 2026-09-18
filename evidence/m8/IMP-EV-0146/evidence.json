@@ -1,0 +1,12 @@
+{
+ "task": "IMP-EV-0146",
+ "requirements": ["REQ-EV-0146", "QUAL-EV-0146", "docs/21 Environment revisions"],
+ "scenarios": ["a repository layer reuses a blueprint by name from the data directory, recorded in the revision by hash; after the stale park the explicit rebuild pins exactly the digest recomputed of what is there and names the changes; a second rebuild changes nothing; the run resumed after it runs in the rebuilt revision"],
+ "tests": ["qual_ev_0021_0062_0146_environment_revision_is_pinned_applied_and_rebuilt_explicitly"],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "blueprints are reusable definitions versioned by content; RebuildEnvironment re-captures and pins the exact digest (idempotent) and the run continues in it.",
+ "audit": "MISSING before: no reusable definition, no rebuild.",
+ "limitations": "blueprints by file, versioned by content hash only; a rebuild is for a run at rest.",
+ "ci": ""
+}

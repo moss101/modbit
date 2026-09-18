@@ -209,6 +209,7 @@ async fn create_task(
                 origin: "cli".into(),
                 workspace_root: String::new(),
                 issue_url: String::new(),
+                issue_json: String::new(),
             }
             .encode_to_vec(),
             lease_for(&session),
@@ -727,6 +728,7 @@ async fn qual_ev_0054_0273_session_lease_fences_out_stale_writers_across_restart
                 origin: "cli".into(),
                 workspace_root: String::new(),
                 issue_url: String::new(),
+                issue_json: String::new(),
             }
             .encode_to_vec(),
             Some(1),
@@ -750,6 +752,7 @@ async fn qual_ev_0054_0273_session_lease_fences_out_stale_writers_across_restart
                 origin: "cli".into(),
                 workspace_root: String::new(),
                 issue_url: String::new(),
+                issue_json: String::new(),
             }
             .encode_to_vec(),
         ))
@@ -776,6 +779,7 @@ async fn qual_ev_0054_0273_session_lease_fences_out_stale_writers_across_restart
                 origin: "cli".into(),
                 workspace_root: String::new(),
                 issue_url: String::new(),
+                issue_json: String::new(),
             }
             .encode_to_vec(),
             Some(1),
@@ -1109,6 +1113,7 @@ async fn m2_4_invoke_tool_runs_direct_tools_through_registry_policy_and_event_lo
                 origin: "cli".into(),
                 workspace_root: root.clone(),
                 issue_url: String::new(),
+                issue_json: String::new(),
             }
             .encode_to_vec(),
             lease_for(&session),
@@ -1392,6 +1397,7 @@ async fn m2_5_capability_kernel_gates_destructive_tools_behind_intent_bound_appr
                     origin: "cli".into(),
                     workspace_root: root.into(),
                     issue_url: String::new(),
+                    issue_json: String::new(),
                 }
                 .encode_to_vec(),
                 g,
@@ -2627,6 +2633,7 @@ async fn m2_7_one_agent_runtime_drives_a_coding_task_to_ready_for_review() {
                 origin: "cli".into(),
                 workspace_root: root.clone(),
                 issue_url: String::new(),
+                issue_json: String::new(),
             }
             .encode_to_vec(),
             g,
@@ -2853,6 +2860,7 @@ async fn m2_7_harness_refuses_unplanned_writes_exhausts_budgets_and_resumes_afte
                 origin: "cli".into(),
                 workspace_root: root.clone(),
                 issue_url: String::new(),
+                issue_json: String::new(),
             }
             .encode_to_vec(),
             g,
@@ -3090,6 +3098,7 @@ async fn m2_7_steering_and_cancellation_apply_at_safe_boundaries() {
                 origin: "cli".into(),
                 workspace_root: root,
                 issue_url: String::new(),
+                issue_json: String::new(),
             }
             .encode_to_vec(),
             g,
@@ -3308,6 +3317,7 @@ async fn m2_8_verification_engine_gates_completion_on_real_cargo_fixture() {
                 origin: "cli".into(),
                 workspace_root: root.clone(),
                 issue_url: String::new(),
+                issue_json: String::new(),
             }
             .encode_to_vec(),
             g,
@@ -3631,6 +3641,7 @@ async fn m2_9_review_surface_applies_per_hunk_decisions_and_commits() {
                 origin: "cli".into(),
                 workspace_root: root.clone(),
                 issue_url: String::new(),
+                issue_json: String::new(),
             }
             .encode_to_vec(),
             g,
@@ -3927,6 +3938,7 @@ async fn m2_9_review_surface_applies_per_hunk_decisions_and_commits() {
                 origin: "cli".into(),
                 workspace_root: root.clone(),
                 issue_url: String::new(),
+                issue_json: String::new(),
             }
             .encode_to_vec(),
             g,
@@ -4085,6 +4097,7 @@ async fn m2_10_media_reads_carry_digests_not_bytes_and_survive_restart() {
                 origin: "cli".into(),
                 workspace_root: root,
                 issue_url: String::new(),
+                issue_json: String::new(),
             }
             .encode_to_vec(),
             g,
@@ -4271,6 +4284,7 @@ async fn qual_ev_0194_approvals_are_canonical_and_never_resolved_by_the_model() 
                 origin: "cli".into(),
                 workspace_root: root.clone(),
                 issue_url: String::new(),
+                issue_json: String::new(),
             }
             .encode_to_vec(),
             g,
@@ -4537,6 +4551,7 @@ async fn qual_ev_0106_every_write_lands_a_revision_bound_file_changed_event_matc
                 origin: "cli".into(),
                 workspace_root: root.clone(),
                 issue_url: String::new(),
+                issue_json: String::new(),
             }
             .encode_to_vec(),
             g,
@@ -4680,6 +4695,7 @@ async fn qual_ev_0064_0065_typed_undo_restores_inverse_actions_and_a_user_edit_b
                 origin: "cli".into(),
                 workspace_root: root.clone(),
                 issue_url: String::new(),
+                issue_json: String::new(),
             }
             .encode_to_vec(),
             g,
@@ -4889,6 +4905,7 @@ async fn create_task_with_profile(
                 origin: "cli".into(),
                 workspace_root: root.into(),
                 issue_url: String::new(),
+                issue_json: String::new(),
             }
             .encode_to_vec(),
             g,
@@ -4944,6 +4961,7 @@ async fn create_task_with_goal(
                 origin: "cli".into(),
                 workspace_root: root.into(),
                 issue_url: String::new(),
+                issue_json: String::new(),
             }
             .encode_to_vec(),
             g,
@@ -7785,6 +7803,7 @@ async fn qual_px_016_change_strategy_tests_first_one_concern_per_transaction_and
                 origin: "cli".into(),
                 workspace_root: root.clone(),
                 issue_url: String::new(),
+                issue_json: String::new(),
             }
             .encode_to_vec(),
             g,
@@ -8041,6 +8060,7 @@ async fn qual_px_018_repair_attempts_are_recorded_bounded_reverted_when_worsened
                 origin: "cli".into(),
                 workspace_root: root.clone(),
                 issue_url: String::new(),
+                issue_json: String::new(),
             }
             .encode_to_vec(),
             g,
@@ -8261,6 +8281,7 @@ async fn qual_px_015_retrieval_before_edit_is_enforced_and_a_stale_record_is_ref
                 origin: "cli".into(),
                 workspace_root: root.clone(),
                 issue_url: String::new(),
+                issue_json: String::new(),
             }
             .encode_to_vec(),
             g,
@@ -8487,6 +8508,7 @@ async fn qual_px_038_scope_expansion_is_bounded_asks_a_typed_question_and_fails_
                 origin: "desktop".into(),
                 workspace_root: root.clone(),
                 issue_url: String::new(),
+                issue_json: String::new(),
             }
             .encode_to_vec(),
             g,
@@ -8673,6 +8695,7 @@ async fn qual_px_038_scope_expansion_is_bounded_asks_a_typed_question_and_fails_
                 origin: "cli".into(),
                 workspace_root: root2.clone(),
                 issue_url: String::new(),
+                issue_json: String::new(),
             }
             .encode_to_vec(),
             g2,
@@ -8795,6 +8818,7 @@ async fn qual_px_039_reproduction_first_is_enforced_and_no_progress_turns_escala
                 origin: "cli".into(),
                 workspace_root: root.clone(),
                 issue_url: String::new(),
+                issue_json: String::new(),
             }
             .encode_to_vec(),
             g,
@@ -14664,6 +14688,7 @@ async fn qual_px_022_provider_setup_and_repository_trust_are_enforced_by_the_cor
                 origin: "desktop".into(),
                 workspace_root: root.clone(),
                 issue_url: String::new(),
+                issue_json: String::new(),
             }
             .encode_to_vec(),
             g,
@@ -14881,6 +14906,7 @@ async fn qual_px_022_provider_setup_and_repository_trust_are_enforced_by_the_cor
                 origin: "desktop".into(),
                 workspace_root: other_root.clone(),
                 issue_url: String::new(),
+                issue_json: String::new(),
             }
             .encode_to_vec(),
             g,
@@ -20458,6 +20484,7 @@ async fn qual_ev_0061_0214_a_skill_cannot_widen_task_authority_and_a_non_invocab
                 origin: "cli".into(),
                 workspace_root: root.clone(),
                 issue_url: String::new(),
+                issue_json: String::new(),
             }
             .encode_to_vec(),
             g,
@@ -28084,6 +28111,7 @@ async fn qual_px_010_a_task_from_a_forge_issue_carries_the_issue_as_untrusted_co
                 origin: "forge_issue".into(),
                 workspace_root: root.clone(),
                 issue_url: url.to_owned(),
+                issue_json: String::new(),
             }
             .encode_to_vec(),
             g,
@@ -31712,6 +31740,418 @@ async fn qual_ev_0082_0234_0277_0282_an_accessible_form_needs_no_pixels_and_a_ca
             .as_str()
             .unwrap_or_default()
             .is_empty()
+    );
+    drop(repo);
+}
+
+async fn environment_view(
+    c: &mut Client,
+    id: u8,
+    task: &Id,
+) -> modbit_protocol::v1::EnvironmentView {
+    use modbit_protocol::v1::{EnvironmentView, GetEnvironment};
+    let ack = c
+        .command(envelope_fenced(
+            id16(id),
+            "GetEnvironment",
+            GetEnvironment {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+            None,
+        ))
+        .await
+        .unwrap();
+    Client::result::<EnvironmentView>(&ack).unwrap()
+}
+
+async fn start_run(
+    c: &mut Client,
+    id: u8,
+    task: &Id,
+    g: Option<u64>,
+) -> modbit_protocol::v1::TaskRunStarted {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    let ack = c
+        .command(envelope_fenced(
+            id16(id),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 20,
+                max_tool_calls: 0,
+                max_no_progress_turns: 0,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    Client::result::<TaskRunStarted>(&ack).unwrap()
+}
+
+async fn rebuild_environment(
+    c: &mut Client,
+    id: u8,
+    task: &Id,
+    g: Option<u64>,
+) -> modbit_protocol::v1::EnvironmentRebuilt {
+    use modbit_protocol::v1::{EnvironmentRebuilt, RebuildEnvironment};
+    let ack = c
+        .command(envelope_fenced(
+            id16(id),
+            "RebuildEnvironment",
+            RebuildEnvironment {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    Client::result::<EnvironmentRebuilt>(&ack).unwrap()
+}
+
+/// REQ-EV-0021 / REQ-EV-0062 / REQ-EV-0146 (QUAL-EV-0021/0062/0146, docs/21
+/// "Environment revisions"): a run pins the environment it starts in as one
+/// revision — the definition layers and the blueprint they extend by hash,
+/// the toolchain as observed, the PATH entries, the variable names — and its
+/// processes run with exactly that (the variables set, the PATH entries in
+/// front). The definition changing under a live run changes nothing for it
+/// (the view reports the pin as stale). A resumed run whose environment no
+/// longer matches its pin waits with ENVIRONMENT_STALE rather than running
+/// in an environment nobody chose; an explicit `RebuildEnvironment` pins the
+/// exact digest of what is there now (idempotent), and the run continues in
+/// it.
+#[tokio::test]
+async fn qual_ev_0021_0062_0146_environment_revision_is_pinned_applied_and_rebuilt_explicitly() {
+    use modbit_protocol::v1::RebuildEnvironment;
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[("a.txt", "a\n")]);
+    let dir = tempfile::tempdir().unwrap();
+    let write = |path: std::path::PathBuf, json: &str| {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, json).unwrap();
+    };
+    // The definition: a blueprint in the data directory, extended by the
+    // repository layer, which overrides one variable and names a tool.
+    write(
+        dir.path().join("environments/blueprints/base.json"),
+        r#"{"env": {"MODBIT_ENV_A": "blueprint", "MODBIT_ENV_B": "blueprint"}, "path": ["tools/bin"]}"#,
+    );
+    let repo_layer = repo.path().join(".modbit/environment.json");
+    write(
+        repo_layer.clone(),
+        r#"{"extends": ["base"], "env": {"MODBIT_ENV_A": "repo"}, "toolchain": [{"name": "git"}]}"#,
+    );
+    let probe = json!({"calls": [{"name": "shell.exec", "args": {"argv": ["sh", "-c", "echo A=$MODBIT_ENV_A B=$MODBIT_ENV_B; echo PATH=$PATH"], "inherit_env": true}}]});
+    // Plan, observe the environment, then the model stalls (the Core is
+    // killed under it); the resumed run observes again and completes.
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "o", "expected_files": []}}]}),
+        probe.clone(),
+        json!({"stall": true, "then": probe}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xE0)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xE1, "local_trusted").await;
+    // Before any run: nothing pinned; the view shows what is there.
+    let v0 = environment_view(&mut c, 0xE2, &task).await;
+    assert_eq!(v0.pinned_digest, "", "{v0:?}");
+    assert!(!v0.stale && !v0.current_digest.is_empty(), "{v0:?}");
+    let kinds: Vec<&str> = v0.sources.iter().map(|s| s.kind.as_str()).collect();
+    assert!(
+        kinds.contains(&"blueprint:base") && kinds.contains(&"repository"),
+        "{v0:?}"
+    );
+    assert!(
+        v0.sources.iter().all(|s| s.sha256.len() == 64),
+        "every source by hash: {v0:?}"
+    );
+    assert_eq!(v0.env_names, vec!["MODBIT_ENV_A", "MODBIT_ENV_B"], "{v0:?}");
+    assert!(
+        v0.toolchain
+            .iter()
+            .any(|t| t.name == "git" && !t.version.is_empty() && !t.optional),
+        "the tool's version is part of the revision: {v0:?}"
+    );
+    assert_eq!(v0.path.len(), 1, "{v0:?}");
+    assert!(v0.path[0].ends_with("bin"), "{v0:?}");
+    let started = start_run(&mut c, 0xE3, &task, g).await;
+    assert!(!started.resumed);
+    // The stalled third request carries the probe's result.
+    let deadline = std::time::Instant::now() + Duration::from_secs(60);
+    while seen.lock().unwrap().len() < 3 {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "the run did not reach the probe"
+        );
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    let observed = |seen: &std::sync::Mutex<Vec<serde_json::Value>>, request: usize| {
+        seen.lock().unwrap()[request]["messages"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .rev()
+            .find(|m| m["role"] == "tool")
+            .and_then(|m| m["content"].as_str())
+            .unwrap_or_default()
+            .to_owned()
+    };
+    let first = observed(&seen, 2);
+    assert!(
+        first.contains("A=repo B=blueprint"),
+        "the run's process got the revision's variables (repository over blueprint): {first}"
+    );
+    assert!(
+        first.contains("tools/bin")
+            || first.contains("tools\\\\bin")
+            || first.contains("tools\\bin"),
+        "the revision's PATH entry is on the process's PATH: {first}"
+    );
+    // The run pinned the revision it started in, the values kept out of the log.
+    let evs = task_events(&core, &session, &task).await;
+    let pinned: Vec<&serde_json::Value> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "EnvironmentPinned")
+        .map(|(_, _, p)| p)
+        .collect();
+    assert_eq!(pinned.len(), 1, "{evs:#?}");
+    let pinned_digest = pinned[0]["digest"].as_str().unwrap().to_owned();
+    assert_eq!(pinned_digest, v0.current_digest, "{pinned:?}");
+    assert!(
+        !pinned[0]["revision_ref"]
+            .as_str()
+            .unwrap_or_default()
+            .is_empty()
+    );
+    assert_eq!(
+        pinned[0]["env_names"],
+        json!(["MODBIT_ENV_A", "MODBIT_ENV_B"])
+    );
+    let logged = serde_json::to_string(&evs).unwrap();
+    assert!(
+        !logged.contains("\"repo\"") && !logged.contains("\"blueprint\""),
+        "the log names the variables, never their values: {evs:#?}"
+    );
+    // The definition changes under the live run: the run keeps its
+    // revision; the view reports the pin as stale, naming what differs.
+    write(
+        repo_layer.clone(),
+        r#"{"extends": ["base"], "env": {"MODBIT_ENV_A": "repo2", "MODBIT_ENV_C": "new"}, "toolchain": [{"name": "git"}]}"#,
+    );
+    let v1 = environment_view(&mut c, 0xE4, &task).await;
+    assert_eq!(v1.pinned_digest, pinned_digest, "{v1:?}");
+    assert!(v1.stale, "{v1:?}");
+    assert_ne!(v1.current_digest, pinned_digest);
+    assert!(
+        v1.changes.iter().any(|ch| ch.contains("repository"))
+            && v1.changes.iter().any(|ch| ch.contains("MODBIT_ENV_C")),
+        "{v1:?}"
+    );
+    assert_eq!(
+        v1.env_names,
+        vec!["MODBIT_ENV_A", "MODBIT_ENV_B"],
+        "the view shows the pinned revision: {v1:?}"
+    );
+    // A rebuild is refused while the run is in progress on its revision.
+    let ack = c
+        .command(envelope_fenced(
+            id16(0xE5),
+            "RebuildEnvironment",
+            RebuildEnvironment {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await;
+    assert!(
+        matches!(ack, Err(ClientError::Rejected { ref code, .. }) if code == "TASK_RUNNING"),
+        "{ack:?}"
+    );
+    // The Core dies under the stalled model; the resumed run finds an
+    // environment that is not the one it pinned and waits.
+    drop(c);
+    core.kill();
+    let core2 = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c2 = core2.client().await;
+    let st = wait_task(&mut c2, &task, 5).await;
+    assert_eq!(
+        (st.state.as_str(), st.loop_alive),
+        ("Waiting", false),
+        "{st:?}"
+    );
+    let g2 = Some(acquire_lease(&mut c2, id16(0xE6), session.clone(), "resumer").await);
+    let started = start_run(&mut c2, 0xE7, &task, g2).await;
+    assert!(started.resumed);
+    let st = wait_task(&mut c2, &task, 30).await;
+    let evs = task_events(&core2, &session, &task).await;
+    assert_eq!(
+        (
+            st.state.as_str(),
+            st.wait_reason.as_str(),
+            st.run_state.as_str()
+        ),
+        ("Waiting", "UserInput", "Suspended"),
+        "{st:?}\n{evs:#?}"
+    );
+    let stale: Vec<&serde_json::Value> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "EnvironmentStale")
+        .map(|(_, _, p)| p)
+        .collect();
+    assert_eq!(stale.len(), 1, "{evs:#?}");
+    assert_eq!(stale[0]["pinned_digest"], json!(pinned_digest));
+    assert_eq!(stale[0]["current_digest"], json!(v1.current_digest));
+    assert!(
+        stale[0]["changes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|ch| ch.as_str().unwrap_or_default().contains("MODBIT_ENV_C")),
+        "{stale:?}"
+    );
+    let attention = evs
+        .iter()
+        .rev()
+        .find(|(_, t, _)| t == "TaskNeedsAttention")
+        .map(|(_, _, p)| p.clone())
+        .unwrap();
+    assert_eq!(
+        attention["diagnostic"]["code"], "ENVIRONMENT_STALE",
+        "{attention}"
+    );
+    assert_eq!(
+        attention["diagnostic"]["class"], "INFRASTRUCTURE",
+        "{attention}"
+    );
+    assert!(
+        attention["diagnostic"]["user_action"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("RebuildEnvironment"),
+        "{attention}"
+    );
+    // No process ran in the changed environment: the probe's second answer
+    // has not been asked for.
+    assert_eq!(
+        seen.lock().unwrap().len(),
+        3,
+        "the resumed run parked before any turn"
+    );
+    // The explicit rebuild pins exactly what is there now, and is idempotent.
+    let r1 = rebuild_environment(&mut c2, 0xE8, &task, g2).await;
+    assert_eq!(r1.from_digest, pinned_digest, "{r1:?}");
+    assert_eq!(r1.to_digest, v1.current_digest, "{r1:?}");
+    assert!(!r1.changes.is_empty(), "{r1:?}");
+    let v2 = environment_view(&mut c2, 0xE9, &task).await;
+    assert_eq!(v2.pinned_digest, r1.to_digest, "{v2:?}");
+    assert!(!v2.stale && v2.changes.is_empty(), "{v2:?}");
+    assert_eq!(
+        v2.env_names,
+        vec!["MODBIT_ENV_A", "MODBIT_ENV_B", "MODBIT_ENV_C"],
+        "{v2:?}"
+    );
+    let r2 = rebuild_environment(&mut c2, 0xEA, &task, g2).await;
+    assert_eq!(
+        (r2.from_digest.as_str(), r2.to_digest.as_str()),
+        (r1.to_digest.as_str(), r1.to_digest.as_str()),
+        "{r2:?}"
+    );
+    assert!(r2.changes.is_empty(), "{r2:?}");
+    let evs = task_events(&core2, &session, &task).await;
+    let rebuilt: Vec<&serde_json::Value> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "EnvironmentRebuilt")
+        .map(|(_, _, p)| p)
+        .collect();
+    assert_eq!(rebuilt.len(), 2, "{evs:#?}");
+    assert_eq!(rebuilt[0]["from_digest"], json!(pinned_digest));
+    assert_eq!(rebuilt[0]["to_digest"], json!(r1.to_digest));
+    assert_eq!(rebuilt[1]["changes"], json!([]));
+    // The run continues in the rebuilt revision: its process sees the new values.
+    let started = start_run(&mut c2, 0xEB, &task, g2).await;
+    assert!(started.resumed);
+    let st = wait_task(&mut c2, &task, 60).await;
+    let evs = task_events(&core2, &session, &task).await;
+    assert_eq!(
+        (st.state.as_str(), st.run_state.as_str()),
+        ("ReadyForReview", "Completed"),
+        "{st:?}\n{evs:#?}"
+    );
+    let bodies = seen.lock().unwrap().len();
+    let second = observed(&seen, bodies - 1);
+    assert!(
+        second.contains("A=repo2 B=blueprint"),
+        "the resumed run's process got the rebuilt revision's variables: {second}"
+    );
+    assert!(
+        evs.iter()
+            .filter(|(_, t, _)| t == "EnvironmentStale")
+            .count()
+            == 1,
+        "a run in its pinned revision is not stale: {evs:#?}"
+    );
+    // A definition naming a required tool that is not there: a fresh run
+    // parks before asking the model anything (the fail path, REQ-EV-0062).
+    write(
+        repo_layer,
+        r#"{"extends": ["base"], "toolchain": [{"name": "modbit-no-such-tool-xyz"}, {"name": "modbit-no-such-optional", "optional": true}]}"#,
+    );
+    let requests_before = seen.lock().unwrap().len();
+    let task2 = create_task_with_profile(&mut c2, &session, g2, &root, 0xEC, "local_trusted").await;
+    let started = start_run(&mut c2, 0xED, &task2, g2).await;
+    assert!(!started.resumed);
+    let st = wait_task(&mut c2, &task2, 30).await;
+    let evs2 = task_events(&core2, &session, &task2).await;
+    assert_eq!(
+        (st.state.as_str(), st.wait_reason.as_str()),
+        ("Waiting", "UserInput"),
+        "{st:?}\n{evs2:#?}"
+    );
+    let attention = evs2
+        .iter()
+        .rev()
+        .find(|(_, t, _)| t == "TaskNeedsAttention")
+        .map(|(_, _, p)| p.clone())
+        .unwrap();
+    assert_eq!(
+        attention["diagnostic"]["code"], "ENVIRONMENT_UNAVAILABLE",
+        "{attention}"
+    );
+    assert!(
+        attention["reason"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("modbit-no-such-tool-xyz")
+            && !attention["reason"]
+                .as_str()
+                .unwrap_or_default()
+                .contains("modbit-no-such-optional"),
+        "the required tool is named, the optional one is not: {attention}"
+    );
+    assert!(
+        evs2.iter().all(|(_, t, _)| t != "EnvironmentPinned"),
+        "nothing was pinned: {evs2:#?}"
+    );
+    assert_eq!(
+        seen.lock().unwrap().len(),
+        requests_before,
+        "no model request for a run that never started"
     );
     drop(repo);
 }

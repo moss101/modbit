@@ -420,7 +420,8 @@ impl Runtime {
                             let core2 = Arc::clone(core);
                             tokio::spawn(async move {
                                 let task_id = task.task_id;
-                                run_loop(core2.clone(), task, run_id, cfg, cancel, park).await;
+                                run_loop(core2.clone(), task, run_id, cfg, cancel, park, true)
+                                    .await;
                                 core2.runtime.tasks.lock().await.remove(&task_id);
                             });
                             return Ok((run_id, true));
@@ -497,7 +498,7 @@ impl Runtime {
         let loop_actor = actor.clone();
         tokio::spawn(async move {
             let task_id = task.task_id;
-            run_loop(core2.clone(), task, run_id, cfg, cancel, park).await;
+            run_loop(core2.clone(), task, run_id, cfg, cancel, park, resumed).await;
             core2.runtime.tasks.lock().await.remove(&task_id);
             // M8.5: a task that ended gives its sandbox back.
             crate::sandboxes::release_if_ended(&core2, task_id, &loop_actor).await;
@@ -2052,7 +2053,7 @@ fn projection(
 ) -> Vec<ToolProjection> {
     let visible = core
         .tools
-        .visible_specs(Some(&task.execution_profile), lease);
+        .visible_specs_for(&task.task_id, Some(&task.execution_profile), lease);
     // Dynamic task-scoped projection (docs/16, M5.1): of what the profile,
     // the lease and the kernel allow, the model is offered what the active
     // node has declared — read-only tools always, file writes once the plan
@@ -2252,6 +2253,7 @@ async fn pending_inputs(core: &Core, task: &Task, after_offset: u64) -> Vec<(Str
     out
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn run_loop(
     core: Arc<Core>,
     task: Task,
@@ -2259,6 +2261,7 @@ async fn run_loop(
     mut cfg: StartConfig,
     cancel: CancellationToken,
     park: CancellationToken,
+    resumed: bool,
 ) {
     let actor = Actor::Agent(format!("solver:{}", task.task_id));
     // Every state-advancing append of this loop is fenced by the lease
@@ -2351,7 +2354,7 @@ async fn run_loop(
     let skill_instructions: Vec<String> = {
         let surface: Vec<String> = core
             .tools
-            .visible_specs(Some(&task.execution_profile), lease.as_ref())
+            .visible_specs_for(&task.task_id, Some(&task.execution_profile), lease.as_ref())
             .into_iter()
             .map(|s| s.name)
             .collect();
@@ -2371,6 +2374,15 @@ async fn run_loop(
         &cfg.endpoint,
         &cfg.model,
     );
+    // REQ-EV-0021/0062/0146 (docs/21 "Environment revisions"): a fresh run
+    // pins the environment as it is; a resumed one checks what it pinned
+    // against what is there and, when they differ, waits for an explicit
+    // rebuild rather than running in an environment nobody chose. The
+    // sandbox's environment is the sandbox's (M8.5): pinned once it exists.
+    let mut environment_block: Option<(&'static str, String)> =
+        crate::environment::attach_to_run(&core, &task, run_id, resumed, lt, &actor)
+            .await
+            .err();
     let end = 'outer: loop {
         if cancel.is_cancelled() {
             break LoopEnd::Cancelled;
@@ -2378,6 +2390,9 @@ async fn run_loop(
         // REQ-EV-0049: a park lands at the turn boundary, the run intact.
         if park.is_cancelled() {
             break LoopEnd::Parked;
+        }
+        if let Some((code, reason)) = environment_block.take() {
+            break LoopEnd::NeedsAttention { code, reason };
         }
         // The projection follows the harness state: deferred tools activated
         // by `tool.search` appear with their schemas from this turn on.
@@ -2431,9 +2446,11 @@ async fn run_loop(
         // `host_visible` is the compiled surface itself (support × policy):
         // a name outside it is TOOL_NOT_VISIBLE; a name inside it that the
         // scope withholds is TOOL_NOT_PROJECTED.
-        let host_specs = core
-            .tools
-            .visible_specs(Some(&task.execution_profile), lease.as_ref());
+        let host_specs = core.tools.visible_specs_for(
+            &task.task_id,
+            Some(&task.execution_profile),
+            lease.as_ref(),
+        );
         let host_visible: Vec<String> = host_specs.iter().map(|s| s.name.clone()).collect();
         let deferred_visible: Vec<String> = {
             let scope = state.projection_scope(if crate::critique::is_review(&task) {
@@ -5928,7 +5945,7 @@ async fn handle_tool_search(
     let words: Vec<&str> = query.split_whitespace().collect();
     let visible = core
         .tools
-        .visible_specs(Some(&task.execution_profile), lease);
+        .visible_specs_for(&task.task_id, Some(&task.execution_profile), lease);
     let mut matched: Vec<&modbit_tools::ToolSpec> = visible
         .iter()
         .filter(|s| harness::is_deferred(&s.name))

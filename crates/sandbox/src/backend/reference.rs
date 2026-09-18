@@ -159,6 +159,14 @@ impl SandboxBackend for ReferenceBackend {
         self.image.as_ref().map(|i| &i.manifest)
     }
 
+    fn features(&self) -> Vec<String> {
+        let mut f = vec!["egress".to_owned(), "pty".to_owned()];
+        if self.chromium.is_some() {
+            f.push("browser".into());
+        }
+        f
+    }
+
     fn provision<'a>(
         &'a self,
         sandbox_id: &'a str,

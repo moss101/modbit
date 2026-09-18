@@ -64,6 +64,12 @@ impl WorkerLinks {
     pub async fn linked(&self, worker_id: &str) -> bool {
         self.links.lock().await.contains_key(worker_id)
     }
+
+    /// Drop `worker_id`'s link (an operator's revocation of the live link;
+    /// the worker may link again with a token that still verifies).
+    pub async fn disconnect(&self, worker_id: &str) -> bool {
+        self.links.lock().await.remove(worker_id).is_some()
+    }
 }
 
 impl WorkerLink {
@@ -155,8 +161,23 @@ async fn run_worker_link(mut socket: WebSocket, state: Arc<AppState>, worker_id:
         .await
         .insert(worker_id.clone(), Arc::clone(&link));
     eprintln!("modbit-cloud-api: worker {worker_id} linked");
+    // The link lives while the map holds it: a disconnect (or a newer
+    // link of the same worker) ends this one.
+    let mut alive = tokio::time::interval(Duration::from_millis(500));
     loop {
         tokio::select! {
+            _ = alive.tick() => {
+                let held = state
+                    .workers
+                    .links
+                    .lock()
+                    .await
+                    .get(&worker_id)
+                    .is_some_and(|l| Arc::ptr_eq(l, &link));
+                if !held {
+                    break;
+                }
+            }
             out = rx.recv() => {
                 let Some(m) = out else { break };
                 if socket.send(Message::Text(m.to_string().into())).await.is_err() {

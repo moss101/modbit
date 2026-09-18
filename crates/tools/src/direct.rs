@@ -190,11 +190,20 @@ tool!(
                 )
                 .await
             {
-                Ok(l) => ToolOutcome::ok(json!({
-                    "entries": l.entries.iter().map(|e| json!({"name": e.name, "kind": e.kind, "size": e.size, "modified_ms": e.modified_ms})).collect::<Vec<_>>(),
-                    "truncated": l.truncated,
-                    "sandbox": sb.identity().sandbox_id,
-                })),
+                Ok(l) => {
+                    // The same entry shape the host's listing has (IMP-EV-0109):
+                    // `path` relative to the workspace, `kind`, `size`.
+                    let dir = s(&args, "path");
+                    let dir = dir.trim_matches('/').trim_start_matches("./");
+                    ToolOutcome::ok(json!({
+                        "entries": l.entries.iter().map(|e| json!({
+                            "path": if dir.is_empty() || dir == "." { e.name.clone() } else { format!("{dir}/{}", e.name) },
+                            "name": e.name, "kind": e.kind, "size": e.size, "modified_ms": e.modified_ms
+                        })).collect::<Vec<_>>(),
+                        "truncated": l.truncated,
+                        "sandbox": sb.identity().sandbox_id,
+                    }))
+                }
                 Err(e) => sandbox_err(e),
             };
         }
@@ -236,6 +245,7 @@ tool!(
                     ToolOutcome::ok(json!({
                         "path": path,
                         "content": String::from_utf8_lossy(&f.content),
+                        "encoding": if std::str::from_utf8(&f.content).is_ok() { "utf8" } else { "lossy" },
                         "content_hash": hex::encode(h.finalize()),
                         "byte_length": f.content.len(),
                         "truncated": f.truncated,
@@ -366,7 +376,7 @@ tool!(
                 .await
             {
                 Ok(st) => ToolOutcome::ok(
-                    json!({"exists": st.exists, "kind": st.kind, "size": st.size, "modified_ms": st.modified_ms, "mode": st.mode, "sandbox": sb.identity().sandbox_id}),
+                    json!({"path": s(&args, "path"), "exists": st.exists, "kind": st.kind, "size": st.size, "modified_ms": st.modified_ms, "mode": st.mode, "sandbox": sb.identity().sandbox_id}),
                 ),
                 Err(e) => sandbox_err(e),
             };
@@ -872,6 +882,12 @@ async fn run_process(ctx: &InvokeContext, args: &Value, request_id: &str) -> Too
                 .collect()
         })
         .unwrap_or_default();
+    // REQ-EV-0062: the run's pinned environment revision — its variables
+    // under the call's own, its PATH entries in front.
+    let env = match &ctx.environment {
+        Some(e) => e.apply(env),
+        None => env,
+    };
     let req = ExecRequest {
         request_id: request_id.into(),
         argv: argv.clone(),
@@ -1805,6 +1821,10 @@ async fn exec_request(
                 .collect()
         })
         .unwrap_or_default();
+    let env = match &ctx.environment {
+        Some(e) => e.apply(env),
+        None => env,
+    };
     Ok(ExecRequest {
         request_id: request_id.into(),
         argv,

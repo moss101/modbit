@@ -1,0 +1,12 @@
+{
+ "task": "IMP-EV-0109",
+ "requirements": ["REQ-EV-0109", "QUAL-EV-0109", "docs/21 Execution profiles"],
+ "scenarios": ["one tool fixture under local_trusted on a local Core and under cloud_isolated on a cloud worker: the same effect fields, the same refusal and the same event sequence per call"],
+ "tests": ["qual_ev_0109_the_same_tool_fixture_runs_locally_and_in_the_cloud_with_equivalent_effect_and_event_semantics"],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "the sandbox adapter's outputs carry the host adapter's fields (path, encoding); both adapters run the one pipeline; the fixture's six calls compare equal in effect and events on both sides.",
+ "audit": "PARTIAL before: adapters existed, outputs diverged, nothing compared them.",
+ "limitations": "adapter-specific fields differ by design; protected paths for processes are the sandbox's alone; browser tools compared by their own qualifications. The MicroVM's root listing hid the filesystem's lost+found only after the first hosted run showed the divergence (fixed in the guest; conformance step fs_root_lists_workspace_content).",
+ "ci": ""
+}

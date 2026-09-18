@@ -22,6 +22,7 @@ mod capacity;
 mod checkpoint;
 mod critique;
 mod economics;
+mod environment;
 mod escalation;
 mod external_diagnostics;
 mod forge;

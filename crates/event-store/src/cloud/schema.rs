@@ -9,7 +9,7 @@
 //! refuses write mode).
 
 /// The schema version this build writes.
-pub const CLOUD_SCHEMA_VERSION: i32 = 4;
+pub const CLOUD_SCHEMA_VERSION: i32 = 6;
 
 /// Ordered migrations `(version, name, sql)`.
 pub const MIGRATIONS: &[(i32, &str, &str)] = &[
@@ -189,6 +189,51 @@ CREATE TABLE IF NOT EXISTS sandbox_egress (
   at_ms BIGINT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS sandbox_egress_by_sandbox ON sandbox_egress(sandbox_id, egress_id);
+",
+    ),
+    (
+        5,
+        "cloud-v5: capability negotiation — what each live worker serves, what each session requires (IMP-EV-0072)",
+        r"
+CREATE TABLE IF NOT EXISTS workers (
+  worker_id TEXT PRIMARY KEY,
+  capabilities TEXT[] NOT NULL DEFAULT '{}',
+  protocol TEXT NOT NULL DEFAULT '',
+  registered_at_ms BIGINT NOT NULL,
+  seen_at_ms BIGINT NOT NULL
+);
+ALTER TABLE session_leases ADD COLUMN IF NOT EXISTS requirements TEXT[] NOT NULL DEFAULT '{}';
+",
+    ),
+    (
+        6,
+        "cloud-v6: forge webhook intake — a repository's tenant and session, and every delivery once (PX-011)",
+        r"
+CREATE TABLE IF NOT EXISTS forge_repositories (
+  provider TEXT NOT NULL,
+  repository TEXT NOT NULL,
+  tenant_id UUID NOT NULL REFERENCES tenants(tenant_id),
+  session_id UUID NOT NULL,
+  installation_id BIGINT NOT NULL DEFAULT 0,
+  intake_label TEXT NOT NULL DEFAULT '',
+  workspace_root TEXT NOT NULL DEFAULT '',
+  execution_profile TEXT NOT NULL DEFAULT 'cloud_isolated',
+  mapped_by UUID,
+  created_at_ms BIGINT NOT NULL,
+  updated_at_ms BIGINT NOT NULL,
+  PRIMARY KEY (provider, repository)
+);
+CREATE INDEX IF NOT EXISTS forge_repositories_tenant ON forge_repositories(tenant_id, provider, repository);
+CREATE TABLE IF NOT EXISTS webhook_deliveries (
+  provider TEXT NOT NULL,
+  delivery_id TEXT NOT NULL,
+  event TEXT NOT NULL,
+  tenant_id UUID,
+  outcome TEXT NOT NULL,
+  task_id UUID,
+  received_at_ms BIGINT NOT NULL,
+  PRIMARY KEY (provider, delivery_id)
+);
 ",
     ),
 ];

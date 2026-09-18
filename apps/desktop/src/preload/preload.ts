@@ -226,6 +226,10 @@ export interface ModbitBridge {
   onCoreStatus(cb: (s: unknown) => void): () => void;
   onRecovery(cb: (r: unknown) => void): () => void;
   debugCoreInfo(): Promise<{ pid: number; endpoint: string } | null>;
+  /** REQ-EV-0075: messages main refused because they did not come from this app's top frame. */
+  debugIpcRefusals(): Promise<{ channel: string; senderId: number; frameUrl: string; reason: string; atMs: number }[]>;
+  /** REQ-EV-0076: the renderer's own process endings and whether main loaded it again. */
+  debugRendererLog(): Promise<{ reason: string; exitCode: number; reloaded: boolean; atMs: number }[]>;
   // Onboarding (REQ-PX-022). The key goes to main and never comes back.
   setupProvider(provider: "openai" | "anthropic", apiKey: string, baseUrl?: string): Promise<{ endpoint: string; model: string; ok: boolean; errorCode: string; errorMessage: string; persisted: boolean; keychainAvailable: boolean }>;
   providerStatus(): Promise<{ configured: boolean; endpoints: string[]; stored: boolean; provider: string; keychainAvailable: boolean }>;
@@ -294,6 +298,8 @@ const bridge: ModbitBridge = {
     return () => ipcRenderer.removeListener("core:recovery", listener);
   },
   debugCoreInfo: () => ipcRenderer.invoke("debug:coreInfo"),
+  debugIpcRefusals: () => ipcRenderer.invoke("debug:ipcRefusals"),
+  debugRendererLog: () => ipcRenderer.invoke("debug:rendererLog"),
   setupProvider: (provider, apiKey, baseUrl) => ipcRenderer.invoke("onboarding:provider", provider, apiKey, baseUrl ?? ""),
   providerStatus: () => ipcRenderer.invoke("onboarding:providerStatus"),
   trustRepository: (sessionId, workspaceRoot) => ipcRenderer.invoke("onboarding:trust", sessionId, workspaceRoot),

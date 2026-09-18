@@ -169,6 +169,11 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/v1/artifacts/{hash}", get(artifact))
         .route("/v1/objects", axum::routing::put(put_object))
         .route("/v1/handoffs", post(handoff))
+        // PX-011: which repositories this tenant takes webhook deliveries for.
+        .route(
+            "/v1/forge/repositories",
+            post(crate::forge::map_repository).get(crate::forge::list_repositories),
+        )
         .route("/v1/stream", get(crate::stream::stream))
         // M8.8: the person's view of a cloud browser, through the worker's link.
         .route(
@@ -189,6 +194,11 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/v1/auth/refresh", post(auth_refresh))
         // M8.8: a worker's outbound link (worker bearer token, not a principal's).
         .route("/v1/workers/link", get(crate::browser_view::worker_link))
+        // PX-011: the GitHub App's deliveries (signed under the app's secret, not a bearer).
+        .route(
+            "/v1/forge/github/webhook",
+            post(crate::forge::github_webhook),
+        )
         .merge(authed)
         .layer(middleware::from_fn(stamp_request_id))
         .layer(tower_http::limit::RequestBodyLimitLayer::new(
@@ -313,14 +323,14 @@ async fn replay(state: &AppState, tenant: TenantId, id: uuid::Uuid) -> ApiResult
     Ok(Some(res))
 }
 
-fn caller(req_ext: &axum::Extension<Caller>) -> Principal {
+pub(crate) fn caller(req_ext: &axum::Extension<Caller>) -> Principal {
     req_ext.0.0.clone()
 }
 
 /// M8.2: while a worker holds the session's lease it is the only writer of
 /// the session's log; a command that must run there is relayed —
 /// recorded `PENDING` for the worker — and answered `202` with its id.
-async fn relay_if_held(
+pub(crate) async fn relay_if_held(
     state: &AppState,
     p: &Principal,
     session: SessionId,
@@ -410,7 +420,7 @@ async fn create_session(
     Ok((StatusCode::CREATED, Json(out)).into_response())
 }
 
-fn parse_id<T>(s: &str, parse: impl Fn(&str) -> Option<T>, what: &str) -> ApiResult<T> {
+pub(crate) fn parse_id<T>(s: &str, parse: impl Fn(&str) -> Option<T>, what: &str) -> ApiResult<T> {
     parse(s).ok_or_else(|| ApiError::bad(format!("{what} must be a uuid")))
 }
 
@@ -481,6 +491,42 @@ async fn create_task(
         .as_str()
         .unwrap_or("cloud_isolated")
         .to_owned();
+    // IMP-EV-0072: what the task requires of the worker that will host it
+    // (`capabilities`, e.g. `browser.control`), negotiated before dispatch:
+    // a requirement no live worker serves is an explicit rejection on the
+    // ledger; a served one is recorded on the session so only a worker
+    // serving it claims the session.
+    let requirements: Vec<String> = body["capabilities"]
+        .as_array()
+        .map(|a| {
+            a.iter()
+                .filter_map(|c| c.as_str().map(str::to_owned))
+                .collect()
+        })
+        .unwrap_or_default();
+    if !requirements.is_empty() {
+        let served = served_capabilities(&state).await?;
+        let missing: Vec<&String> = requirements
+            .iter()
+            .filter(|c| !served.iter().any(|s| s == *c))
+            .collect();
+        if !missing.is_empty() {
+            let result = json!({"code": "NO_CAPABLE_WORKER", "missing": missing, "served": served});
+            state
+                .store
+                .record_rejection(p.tenant_id, cid, "CreateTask", "NO_CAPABLE_WORKER", result)
+                .await?;
+            return Err(ApiError::new(
+                StatusCode::CONFLICT,
+                "NO_CAPABLE_WORKER",
+                format!("the task needs {missing:?}, which no live worker serves"),
+            ));
+        }
+        state
+            .store
+            .require_for_session(p.tenant_id, sid, &requirements)
+            .await?;
+    }
     if let Some(r) = relay_if_held(
         &state,
         &p,
@@ -929,6 +975,129 @@ pub const CLOUD_CAPABILITIES: &[&str] = &[
     "browser.control",
 ];
 
+/// A worker that has not been seen for this long serves nothing.
+const WORKER_LIVENESS_MS: i64 = 60_000;
+
+/// What the cloud serves right now (IMP-EV-0072): the union of the
+/// capabilities of the workers seen lately; the build's own set when no
+/// worker has registered (a single-process deployment, the tests without
+/// a worker).
+async fn served_capabilities(state: &AppState) -> ApiResult<Vec<String>> {
+    let live = state.store.live_workers(WORKER_LIVENESS_MS).await?;
+    if live.is_empty() {
+        return Ok(CLOUD_CAPABILITIES.iter().map(|s| (*s).to_owned()).collect());
+    }
+    let mut out: Vec<String> = Vec::new();
+    for (_, caps) in live {
+        for c in caps {
+            if !out.contains(&c) {
+                out.push(c);
+            }
+        }
+    }
+    out.sort();
+    Ok(out)
+}
+
+/// Manifest keys that would carry authority or a credential into the
+/// cloud: a capsule names requirements and handles, never grants or values.
+const CAPSULE_AUTHORITY_KEYS: &[&str] = &[
+    "lease",
+    "leases",
+    "capability_lease",
+    "token",
+    "tokens",
+    "api_key",
+    "api_keys",
+    "secret",
+    "secrets",
+    "password",
+    "credential",
+    "credentials",
+    "private_key",
+    "boot_secret",
+];
+
+/// Shapes a secret value takes (a provider key, a forge token, a worker
+/// token, a bearer, an AWS key id, a PEM private key).
+fn secret_shaped(text: &str) -> Option<&'static str> {
+    static SHAPES: std::sync::OnceLock<Vec<(regex::Regex, &'static str)>> =
+        std::sync::OnceLock::new();
+    let shapes = SHAPES.get_or_init(|| {
+        [
+            (r"\bsk-[A-Za-z0-9_-]{16,}", "a provider API key"),
+            (r"\b(ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{20,}", "a forge token"),
+            (r"\bgithub_pat_[A-Za-z0-9_]{20,}", "a forge token"),
+            (r"\bmbw_[0-9a-f]{8,}\.[0-9a-f]{16,}", "a worker token"),
+            (r"\bBearer\s+[A-Za-z0-9._~+/=-]{20,}", "a bearer credential"),
+            (r"\bAKIA[0-9A-Z]{16}\b", "an AWS access key id"),
+            (r"-----BEGIN [A-Z ]*PRIVATE KEY-----", "a private key"),
+        ]
+        .into_iter()
+        .map(|(re, what)| (regex::Regex::new(re).expect("a valid shape"), what))
+        .collect()
+    });
+    shapes
+        .iter()
+        .find(|(re, _)| re.is_match(text))
+        .map(|(_, what)| *what)
+}
+
+fn manifest_authority_key(v: &Value, path: &str) -> Option<String> {
+    match v {
+        Value::Object(m) => {
+            for (k, child) in m {
+                let here = if path.is_empty() {
+                    k.clone()
+                } else {
+                    format!("{path}.{k}")
+                };
+                if CAPSULE_AUTHORITY_KEYS.contains(&k.as_str()) {
+                    return Some(here);
+                }
+                if let Some(found) = manifest_authority_key(child, &here) {
+                    return Some(found);
+                }
+            }
+            None
+        }
+        Value::Array(a) => a
+            .iter()
+            .enumerate()
+            .find_map(|(i, c)| manifest_authority_key(c, &format!("{path}[{i}]"))),
+        _ => None,
+    }
+}
+
+/// What a capsule must not carry (IMP-EV-0176): `(code, why)` when it does.
+fn capsule_smuggles(manifest: &Value, log: Option<&str>) -> Option<(&'static str, String)> {
+    if let Some(key) = manifest_authority_key(manifest, "") {
+        return Some((
+            "CAPSULE_SMUGGLES_AUTHORITY",
+            format!(
+                "the manifest carries `{key}`; a handoff names requirements and handles, never a grant or a credential"
+            ),
+        ));
+    }
+    if !manifest.is_null()
+        && let Some(what) = secret_shaped(&manifest.to_string())
+    {
+        return Some((
+            "CAPSULE_SMUGGLES_SECRET",
+            format!("the manifest carries {what}; no secret value crosses in a handoff"),
+        ));
+    }
+    if let Some(text) = log
+        && let Some(what) = secret_shaped(text)
+    {
+        return Some((
+            "CAPSULE_SMUGGLES_SECRET",
+            format!("the bundled log carries {what}; no secret value crosses in a handoff"),
+        ));
+    }
+    None
+}
+
 /// `POST /v1/handoffs {command_id, manifest, parts: {events.jsonl: hash, repo.bundle?: hash, manifest.json: hash}}`
 /// (M8.7, docs/21 "Handoff local → cloud"; docs/30): admit a local task's
 /// continuation. Cloud admission verifies capability parity before the
@@ -968,12 +1137,13 @@ async fn handoff(
                 .collect()
         })
         .unwrap_or_default();
+    let served = served_capabilities(&state).await?;
     let missing: Vec<&String> = capabilities
         .iter()
-        .filter(|c| !CLOUD_CAPABILITIES.contains(&c.as_str()))
+        .filter(|c| !served.iter().any(|s| s == *c))
         .collect();
     if !missing.is_empty() {
-        let result = json!({"code": "CAPABILITY_PARITY", "missing": missing});
+        let result = json!({"code": "CAPABILITY_PARITY", "missing": missing, "served": served});
         state
             .store
             .record_rejection(
@@ -992,6 +1162,24 @@ async fn handoff(
                 missing
             ),
         ));
+    }
+    // IMP-EV-0176 (the capsule): a handoff carries context, decisions,
+    // evidence and requirements — never authority or a secret value. A
+    // manifest with a grant or credential field, or a secret-shaped value
+    // anywhere in the manifest or the log, is refused before anything is
+    // admitted; the refusal is on the ledger.
+    if let Some((code, why)) = capsule_smuggles(manifest, None) {
+        state
+            .store
+            .record_rejection(
+                p.tenant_id,
+                cid,
+                "Handoff",
+                code,
+                json!({"code": code, "why": why}),
+            )
+            .await?;
+        return Err(ApiError::new(StatusCode::CONFLICT, code, why));
     }
     let Some(events_hash) = body["parts"]["events.jsonl"].as_str() else {
         return Err(ApiError::bad(
@@ -1014,6 +1202,20 @@ async fn handoff(
         }
         Err(e) => return Err(e.into()),
     };
+    if let Some((code, why)) = capsule_smuggles(&Value::Null, Some(&String::from_utf8_lossy(&raw)))
+    {
+        state
+            .store
+            .record_rejection(
+                p.tenant_id,
+                cid,
+                "Handoff",
+                code,
+                json!({"code": code, "why": why}),
+            )
+            .await?;
+        return Err(ApiError::new(StatusCode::CONFLICT, code, why));
+    }
     let mut events = Vec::new();
     for line in String::from_utf8_lossy(&raw).lines() {
         if line.trim().is_empty() {
@@ -1092,6 +1294,11 @@ async fn handoff(
             },
             Some((cid, "Handoff", result.clone())),
         )
+        .await?;
+    // The continuation's requirements: only a worker serving them claims it.
+    state
+        .store
+        .require_for_session(p.tenant_id, sid, &capabilities)
         .await?;
     state.store.mark_ready(p.tenant_id, sid).await?;
     Ok((StatusCode::CREATED, Json(result)).into_response())

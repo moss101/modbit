@@ -1,0 +1,12 @@
+{
+ "task": "IMP-EV-0072",
+ "requirements": ["REQ-EV-0072", "QUAL-EV-0072", "docs/24 Capability negotiation"],
+ "scenarios": ["an older worker (no browser) announces what it serves; a browser task is refused NO_CAPABLE_WORKER while only it is live; a plain task it hosts runs on a browserless sandbox with the browser tools outside its surface; a full worker joins, the browser task is accepted, recorded and hosted by the full worker only"],
+ "tests": ["qual_ev_0072_capabilities_are_negotiated_before_dispatch_an_older_worker_gets_a_compatible_projection_or_the_task_is_refused"],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "workers register what they serve (from the gateway's features), tasks name what they require, the API refuses what no live worker serves and records the rest on the session, the claim takes only what the worker serves, and a Core provisions a browser and projects browser tools only when the gateway's guests have one.",
+ "audit": "PARTIAL before: client/guest negotiations existed; no worker announcement, no requirements, any worker claimed anything.",
+ "limitations": "requirements are capability names; liveness window 60 s; media/runtime features negotiated into the Core, not as task requirements.",
+ "ci": ""
+}

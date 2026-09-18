@@ -181,6 +181,44 @@ pub struct InvokeContext {
     /// through a tool, whatever asked for it. Held in memory only; never
     /// journaled, printed or compared as anything but a substring.
     pub secrets_in_custody: Vec<String>,
+    /// The environment revision the run is pinned to (REQ-EV-0062): the
+    /// variables and `PATH` entries every process the tools start gets.
+    pub environment: Option<Arc<ProcessEnvironment>>,
+}
+
+/// What a pinned environment revision gives a process.
+#[derive(Clone, Debug, Default)]
+pub struct ProcessEnvironment {
+    /// Variables (a call's own override these).
+    pub env: std::collections::BTreeMap<String, String>,
+    /// Directories in front of `PATH`.
+    pub path: Vec<String>,
+}
+
+impl ProcessEnvironment {
+    /// A process's variables: the revision's, a call's own on top, and a
+    /// `PATH` with the revision's entries in front of the host's (unless
+    /// the call set its own).
+    #[must_use]
+    pub fn apply(
+        &self,
+        mut env: std::collections::HashMap<String, String>,
+    ) -> std::collections::HashMap<String, String> {
+        for (k, v) in &self.env {
+            env.entry(k.clone()).or_insert_with(|| v.clone());
+        }
+        if !self.path.is_empty() && !env.contains_key("PATH") {
+            let mut full: Vec<std::path::PathBuf> =
+                self.path.iter().map(std::path::PathBuf::from).collect();
+            if let Ok(host) = std::env::var("PATH") {
+                full.extend(std::env::split_paths(&host));
+            }
+            if let Ok(joined) = std::env::join_paths(full) {
+                env.insert("PATH".into(), joined.to_string_lossy().into_owned());
+            }
+        }
+        env
+    }
 }
 
 /// Status of a tool call result (docs/30 `ToolCallResult.status` plus the

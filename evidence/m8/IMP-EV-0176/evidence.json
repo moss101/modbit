@@ -1,0 +1,14 @@
+{
+ "task": "IMP-EV-0176",
+ "requirements": ["REQ-EV-0176", "QUAL-EV-0176", "docs/21 Handoff local → cloud"],
+ "scenarios": [
+  "the exported capsule carries no custody value; a manifest with a grant field is refused CAPSULE_SMUGGLES_AUTHORITY; a manifest quoting a provider key is refused CAPSULE_SMUGGLES_SECRET; the real capsule is admitted"
+ ],
+ "tests": ["qual_m8_7_a_local_task_hands_off_to_the_cloud_and_continues_from_its_checkpoint_in_a_sandbox"],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "the admission refuses a capsule whose manifest carries a grant or credential field, or whose manifest or log carries a secret-shaped value, on the ledger; the bundle is the log, objects, git delta and a manifest of requirements and handles.",
+ "audit": "PARTIAL before: the capsule's shape was trusted at admission.",
+ "limitations": "the secret scan is by shape; opaque strings pass (the export writes no custody value).",
+ "ci": ""
+}

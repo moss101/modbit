@@ -47,6 +47,9 @@ pub struct MicrovmConfig {
     pub manifest: PathBuf,
     /// Trusted publisher keys (`key id`, verifying key).
     pub trusted_keys: Vec<(String, [u8; 32])>,
+    /// What the image's guests can do beyond the contract's core
+    /// (IMP-EV-0072; `MODBIT_GUEST_FEATURES`, e.g. `browser`).
+    pub features: Vec<String>,
 }
 
 impl MicrovmConfig {
@@ -73,6 +76,13 @@ impl MicrovmConfig {
             trusted_keys: crate::image::trusted_keys_from_env(
                 &std::env::var("MODBIT_GUEST_IMAGE_KEYS").unwrap_or_default(),
             ),
+            features: std::env::var("MODBIT_GUEST_FEATURES")
+                .unwrap_or_default()
+                .split(',')
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(str::to_owned)
+                .collect(),
         })
     }
 
@@ -295,6 +305,18 @@ impl SandboxBackend for MicrovmBackend {
 
     fn isolates(&self) -> bool {
         true
+    }
+
+    fn features(&self) -> Vec<String> {
+        let mut f = vec!["egress".to_owned(), "pty".to_owned()];
+        // The image's features are the deployment's to declare
+        // (`MODBIT_GUEST_FEATURES=browser,…`): what its rootfs carries.
+        for x in self.cfg.features.iter() {
+            if !f.contains(x) {
+                f.push(x.clone());
+            }
+        }
+        f
     }
 
     fn image(&self) -> Option<&ImageManifest> {

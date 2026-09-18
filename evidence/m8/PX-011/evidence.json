@@ -1,0 +1,12 @@
+{
+ "task": "PX-011",
+ "requirements": ["REQ-PX-011", "QUAL-PX-011", "docs/24 Forge webhook intake", "docs/29 Issue-to-task intake"],
+ "scenarios": ["a tenant maps a forge repository to a session; a signed opened-issue delivery makes the canonical forge_webhook task with the issue as untrusted context, seen by cursor; unsigned/mis-signed/replayed/mis-installed/unmapped/cross-tenant deliveries are refused and audited; a delivery for a held session is relayed and the worker's Core makes the same events; a label-gated mapping waits for the label"],
+ "tests": ["apps/cloud-api/tests/cloud_api.rs::qual_px_011_a_signed_forge_webhook_makes_the_canonical_task_for_its_tenant_once_and_the_rest_is_refused_and_audited", "apps/cloud-worker/tests/cloud_worker.rs::qual_px_011_a_webhook_for_a_held_session_is_relayed_and_the_worker_makes_the_canonical_task", "modbit_cloud_api::forge::tests"],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "a signed GitHub App webhook makes the same canonical task the desktop makes from an issue, for the mapped tenant, once per delivery; the webhook path adds no second task model; the app's secret is held in memory only and never logged, stored or echoed.",
+ "audit": "MISSING before: no webhook endpoint, no repository->tenant mapping; issue-to-task existed only on the local path (PX-010).",
+ "limitations": "pull_request events accepted and ignored (PX-008/009 later); github only; issues.opened/labeled only; one webhook secret per process.",
+ "ci": ""
+}

@@ -832,15 +832,24 @@ impl Guest {
         };
         let mut entries = Vec::new();
         let mut truncated = false;
+        // The workspace root is a mount point of a block device on the
+        // MicroVM: the filesystem's own `lost+found` there is furniture,
+        // not workspace content (the same listing on every backend).
+        let at_root =
+            resolved.trim_end_matches('/') == self.policy.workspace_root.trim_end_matches('/');
         for e in rd.flatten() {
+            let meta = e.metadata().ok();
+            let ft = e.file_type().ok();
+            let name = e.file_name().to_string_lossy().into_owned();
+            if at_root && name == "lost+found" && ft.is_some_and(|t| t.is_dir()) {
+                continue;
+            }
             if entries.len() >= max {
                 truncated = true;
                 break;
             }
-            let meta = e.metadata().ok();
-            let ft = e.file_type().ok();
             entries.push(wire::GuestDirEntry {
-                name: e.file_name().to_string_lossy().into_owned(),
+                name,
                 kind: match ft {
                     Some(t) if t.is_dir() => "dir".into(),
                     Some(t) if t.is_file() => "file".into(),

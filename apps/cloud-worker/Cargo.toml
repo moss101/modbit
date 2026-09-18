@@ -11,6 +11,7 @@ publish.workspace = true
 modbit-domain.workspace = true
 modbit-protocol.workspace = true
 modbit-event-store = { workspace = true, features = ["cloud"] }
+modbit-sandbox = { workspace = true, features = ["client"] }
 tokio.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -25,11 +26,13 @@ base64.workspace = true
 [dev-dependencies]
 modbit-cloud-api.workspace = true
 modbit-sandbox-gateway.workspace = true
-modbit-sandbox.workspace = true
 reqwest.workspace = true
 tempfile.workspace = true
 axum.workspace = true
 tokio-postgres.workspace = true
+hmac.workspace = true
+sha2.workspace = true
+hex.workspace = true
 
 [lints]
 workspace = true

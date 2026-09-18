@@ -130,7 +130,7 @@ jobs:
           target/debug/guest-image-tool sign --key substrate/publisher.key --key-id ci-publisher --kind reference-guest --image target/debug/modbit-guest --guest-version "$version" --built-from "$GITHUB_SHA" --out substrate/guest.manifest.json
           target/debug/guest-image-tool verify --manifest substrate/rootfs.manifest.json --image substrate/rootfs.ext4 --keys "$keys"
           target/debug/guest-image-tool verify --manifest substrate/guest.manifest.json --image target/debug/modbit-guest --keys "$keys"
-      - name: Cloud API, worker, sandbox backend and gateway qualification (M8.1–M8.8 — real Postgres, real MinIO, real modbit-core, real Firecracker MicroVM, signed images, a browser in the guest)
+      - name: Cloud API, worker, sandbox backend and gateway qualification (M8.1–M8.9, PX-011 — real Postgres, real MinIO, real modbit-core, real Firecracker MicroVM, signed images, a browser in the guest)
         env:
           MODBIT_CLOUD_TEST_DATABASE_URL: postgres://modbit:modbit@127.0.0.1:5439/modbit
           MODBIT_CLOUD_TEST_S3_ENDPOINT: http://127.0.0.1:9009
@@ -146,6 +146,8 @@ jobs:
           MODBIT_GUEST_BIN_MANIFEST: ${{ github.workspace }}/substrate/guest.manifest.json
           # The reference backend's guests run the runner's Chrome (M8.8).
           MODBIT_GUEST_CHROMIUM: /usr/bin/google-chrome
+          # The image's guests have a browser (M8.8; IMP-EV-0072: what the gateway declares).
+          MODBIT_GUEST_FEATURES: browser
         shell: bash
         run: |
           set -o pipefail

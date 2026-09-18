@@ -88,8 +88,12 @@ pub async fn ensure_for_task(
         }
     }
     // M8.8: a browser inside the sandbox when the lease grants the task
-    // one; its traffic goes through the same broker.
-    let browser = ops.iter().any(|o| o == "browser.control");
+    // one and the gateway's guests have one (IMP-EV-0072: a gateway that
+    // declared no browser gets no browser asked of it — the task runs with
+    // the browser tools out of its projection); its traffic goes through
+    // the same broker.
+    let browser = ops.iter().any(|o| o == "browser.control")
+        && custody.features.iter().any(|f| f == "browser");
     let req = ProvisionRequest {
         tenant_id: custody.tenant_id.clone(),
         session_id: task.session_id.to_string(),
@@ -122,6 +126,13 @@ pub async fn ensure_for_task(
         .lock()
         .await
         .insert(task.task_id, Arc::clone(&handle));
+    if let Ok(mut b) = core.tools.browserless.lock() {
+        if id.browser {
+            b.remove(&task.task_id);
+        } else {
+            b.insert(task.task_id);
+        }
+    }
     let ev = typed(
         "SandboxLeaseAcquired",
         &TaskEvent::SandboxLeaseAcquired {
@@ -179,6 +190,10 @@ pub async fn release_if_ended(core: &Arc<Core>, task_id: TaskId, actor: &Actor) 
         _ => return,
     };
     let handle = core.tools.sandboxes.lock().await.remove(&task_id);
+    if let Ok(mut b) = core.tools.browserless.lock() {
+        b.remove(&task_id);
+    }
+    core.tools.environments.forget(&task_id);
     let Some(handle) = handle else {
         return;
     };

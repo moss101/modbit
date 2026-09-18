@@ -106,6 +106,7 @@ pub(crate) async fn host(
     stop: tokio::sync::watch::Receiver<bool>,
     hosting: HostingMap,
     cores: crate::link::Cores,
+    features: Arc<Vec<String>>,
 ) {
     let sid = lease.session_id;
     let generation = lease.generation;
@@ -126,7 +127,7 @@ pub(crate) async fn host(
         lease.clone(),
         fenced_tx,
     ));
-    let end = host_inner(&cfg, &store, &lease, &dir, stop, fenced, &cores).await;
+    let end = host_inner(&cfg, &store, &lease, &dir, stop, fenced, &cores, &features).await;
     heartbeat.abort();
     if let Ok(mut m) = cores.lock() {
         m.remove(&sid);
@@ -190,6 +191,7 @@ async fn heartbeat(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn host_inner(
     cfg: &Config,
     store: &CloudStore,
@@ -198,6 +200,7 @@ async fn host_inner(
     mut stop: tokio::sync::watch::Receiver<bool>,
     mut fenced: tokio::sync::watch::Receiver<bool>,
     cores: &crate::link::Cores,
+    features: &[String],
 ) -> End {
     let sid = lease.session_id;
     let tenant = lease.tenant_id;
@@ -250,6 +253,20 @@ async fn host_inner(
                     worker_id: cfg.worker_id.clone(),
                     tenant_id: tenant.to_string(),
                     lease_generation: lease.generation,
+                    // IMP-EV-0072: an older worker (one serving no browser)
+                    // asks its Core for none — the gateway's features,
+                    // narrowed to what this worker serves.
+                    features: features
+                        .iter()
+                        .filter(|f| {
+                            f.as_str() != "browser"
+                                || cfg
+                                    .capabilities
+                                    .as_ref()
+                                    .is_none_or(|c| c.iter().any(|x| x == "browser.control"))
+                        })
+                        .cloned()
+                        .collect(),
                 }
                 .encode_to_vec(),
                 None,
@@ -543,12 +560,20 @@ async fn execute_relayed(
                         .as_str()
                         .unwrap_or("cloud_isolated")
                         .to_owned(),
-                    origin: "desktop".into(),
+                    // PX-011: a task the forge's webhook made carries its
+                    // origin and the issue itself; the Core makes the
+                    // canonical task from it exactly as the Cloud API does.
+                    origin: body["origin"].as_str().unwrap_or("desktop").to_owned(),
                     workspace_root: body["workspace_root"]
                         .as_str()
                         .unwrap_or_default()
                         .to_owned(),
                     issue_url: String::new(),
+                    issue_json: if body["issue"].is_object() {
+                        body["issue"].to_string()
+                    } else {
+                        String::new()
+                    },
                 }
                 .encode_to_vec(),
                 Some(generation),

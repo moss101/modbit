@@ -9890,8 +9890,37 @@
    "milestone": "M8",
    "qual": "QUAL-EV-0021",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "test:services/modbit-core/tests/surface_protocol.rs::qual_ev_0021_0062_0146_environment_revision_is_pinned_applied_and_rebuilt_explicitly"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-18T02:50:23Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: no environment definition, revision or staleness existed; processes inherited the broker's environment"
+    },
+    {
+     "at": "2026-09-18T02:50:23Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "crates/workspace environment module (layers, blueprints, revision digest), Core environment module, events, protocol"
+    },
+    {
+     "at": "2026-09-18T02:50:23Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired: run pins at start, processes run under the revision, resume checks, GetEnvironment/RebuildEnvironment"
+    },
+    {
+     "at": "2026-09-18T02:50:23Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "local: qualification test green against a real Core, real sh, restart under the run"
+    }
+   ],
+   "status_changed_on": "2026-09-18T02:50:23Z"
   },
   {
    "id": "IMP-EV-0022",
@@ -11733,8 +11762,37 @@
    "milestone": "M8",
    "qual": "QUAL-EV-0062",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "test:services/modbit-core/tests/surface_protocol.rs::qual_ev_0021_0062_0146_environment_revision_is_pinned_applied_and_rebuilt_explicitly"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-18T02:50:24Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: no environment definition, revision or staleness existed; processes inherited the broker's environment"
+    },
+    {
+     "at": "2026-09-18T02:50:24Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "crates/workspace environment module (layers, blueprints, revision digest), Core environment module, events, protocol"
+    },
+    {
+     "at": "2026-09-18T02:50:24Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired: run pins at start, processes run under the revision, resume checks, GetEnvironment/RebuildEnvironment"
+    },
+    {
+     "at": "2026-09-18T02:50:24Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "local: qualification test green against a real Core, real sh, restart under the run"
+    }
+   ],
+   "status_changed_on": "2026-09-18T02:50:24Z"
   },
   {
    "id": "IMP-EV-0063",
@@ -12328,8 +12386,37 @@
    "milestone": "M8",
    "qual": "QUAL-EV-0075",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "test:apps/desktop/e2e/workers.spec.ts"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-18T03:05:36Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: sandboxed renderer, typed bridge, validated arguments and isolated views existed; no sender check, no renderer or view restart, no compromise/crash proof"
+    },
+    {
+     "at": "2026-09-18T03:05:36Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "desktop main: IPC sender guard with audit; window replaced on renderer death; browser view restarted and re-attached on its process death"
+    },
+    {
+     "at": "2026-09-18T03:05:36Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired in the real app: every handler guarded, render-process-gone on the window and the views handled"
+    },
+    {
+     "at": "2026-09-18T03:05:36Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "local: the three qualification tests green in the real app against the real Core (22/22 desktop e2e)"
+    }
+   ],
+   "status_changed_on": "2026-09-18T03:05:36Z"
   },
   {
    "id": "IMP-EV-0076",
@@ -12342,8 +12429,37 @@
    "milestone": "M8",
    "qual": "QUAL-EV-0076",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "test:apps/desktop/e2e/workers.spec.ts"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-18T03:05:36Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: sandboxed renderer, typed bridge, validated arguments and isolated views existed; no sender check, no renderer or view restart, no compromise/crash proof"
+    },
+    {
+     "at": "2026-09-18T03:05:36Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "desktop main: IPC sender guard with audit; window replaced on renderer death; browser view restarted and re-attached on its process death"
+    },
+    {
+     "at": "2026-09-18T03:05:36Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired in the real app: every handler guarded, render-process-gone on the window and the views handled"
+    },
+    {
+     "at": "2026-09-18T03:05:37Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "local: the three qualification tests green in the real app against the real Core (22/22 desktop e2e)"
+    }
+   ],
+   "status_changed_on": "2026-09-18T03:05:37Z"
   },
   {
    "id": "IMP-EV-0077",
@@ -12599,8 +12715,37 @@
    "milestone": "M8",
    "qual": "QUAL-EV-0081",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "test:apps/desktop/e2e/workers.spec.ts"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-18T03:05:37Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: sandboxed renderer, typed bridge, validated arguments and isolated views existed; no sender check, no renderer or view restart, no compromise/crash proof"
+    },
+    {
+     "at": "2026-09-18T03:05:37Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "desktop main: IPC sender guard with audit; window replaced on renderer death; browser view restarted and re-attached on its process death"
+    },
+    {
+     "at": "2026-09-18T03:05:37Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired in the real app: every handler guarded, render-process-gone on the window and the views handled"
+    },
+    {
+     "at": "2026-09-18T03:05:37Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "local: the three qualification tests green in the real app against the real Core (22/22 desktop e2e)"
+    }
+   ],
+   "status_changed_on": "2026-09-18T03:05:37Z"
   },
   {
    "id": "IMP-EV-0082",
@@ -15789,8 +15934,37 @@
    "milestone": "M8",
    "qual": "QUAL-EV-0146",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "test:services/modbit-core/tests/surface_protocol.rs::qual_ev_0021_0062_0146_environment_revision_is_pinned_applied_and_rebuilt_explicitly"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-18T02:50:24Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: no environment definition, revision or staleness existed; processes inherited the broker's environment"
+    },
+    {
+     "at": "2026-09-18T02:50:24Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "crates/workspace environment module (layers, blueprints, revision digest), Core environment module, events, protocol"
+    },
+    {
+     "at": "2026-09-18T02:50:24Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired: run pins at start, processes run under the revision, resume checks, GetEnvironment/RebuildEnvironment"
+    },
+    {
+     "at": "2026-09-18T02:50:24Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "local: qualification test green against a real Core, real sh, restart under the run"
+    }
+   ],
+   "status_changed_on": "2026-09-18T02:50:24Z"
   },
   {
    "id": "IMP-EV-0147",
@@ -29366,8 +29540,38 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-011",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "test:apps/cloud-api/tests/cloud_api.rs::qual_px_011_a_signed_forge_webhook_makes_the_canonical_task_for_its_tenant_once_and_the_rest_is_refused_and_audited",
+    "test:apps/cloud-worker/tests/cloud_worker.rs::qual_px_011_a_webhook_for_a_held_session_is_relayed_and_the_worker_makes_the_canonical_task"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-18T03:49:51Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: no webhook endpoint or repository->tenant mapping existed; issue-to-task was local only (PX-010)"
+    },
+    {
+     "at": "2026-09-18T03:49:51Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "cloud-api forge module + schema v6 (forge_repositories, webhook_deliveries); shared ForgeIssueIntake rendering; CreateTask.issue_json; worker relay; Core forge_webhook origin"
+    },
+    {
+     "at": "2026-09-18T03:49:52Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "wired: POST /v1/forge/github/webhook verifies, maps, admits once, makes the canonical task or relays it"
+    },
+    {
+     "at": "2026-09-18T03:49:52Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "local: both qual_px_011 tests green against real Postgres and MinIO (API-append and worker-relay paths)"
+    }
+   ],
+   "status_changed_on": "2026-09-18T03:49:52Z"
   },
   {
    "id": "PX-014",

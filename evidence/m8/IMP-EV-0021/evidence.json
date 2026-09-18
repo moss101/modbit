@@ -1,0 +1,12 @@
+{
+ "task": "IMP-EV-0021",
+ "requirements": ["REQ-EV-0021", "QUAL-EV-0021", "docs/21 Environment revisions"],
+ "scenarios": ["user < team < repository layers with blueprints by extends; the run pins the revision it starts in; the definition rewritten under the live run leaves the run in its revision and the view stale, naming the change; a rebuild is refused while the run is in progress"],
+ "tests": ["qual_ev_0021_0062_0146_environment_revision_is_pinned_applied_and_rebuilt_explicitly", "modbit_workspace::environment::tests"],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "three layers with explicit precedence and blueprints, captured by hash as one revision with a digest at the run's start; the definition changing afterwards changes nothing for the run; staleness is a reported state of the pin against what is there.",
+ "audit": "MISSING before: no environment definition, no revision, no staleness.",
+ "limitations": "layers are the definition (no per-run override); values literal; a cloud task's environment is its sandbox image's.",
+ "ci": ""
+}

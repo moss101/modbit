@@ -58,6 +58,12 @@ pub trait SandboxBackend: Send + Sync {
     fn image(&self) -> Option<&crate::image::ImageManifest> {
         None
     }
+    /// What guests on this backend can do beyond the contract's core
+    /// (IMP-EV-0072): `egress`, `pty`, `browser` — what a worker
+    /// announces to the control plane as served capabilities.
+    fn features(&self) -> Vec<String> {
+        vec!["egress".into(), "pty".into()]
+    }
     /// Boot a guest for `sandbox_id` under `policy`.
     fn provision<'a>(
         &'a self,

@@ -466,7 +466,8 @@ pub enum TaskEvent {
         number: u64,
         /// Issue title.
         title: String,
-        /// Always `forge_issue`.
+        /// `forge_issue` (the Core read the issue, PX-010) or
+        /// `forge_webhook` (the forge delivered it to the Cloud API, PX-011).
         provenance: String,
         /// sha256 of the attached text (the `ContextDocumentAttached` document id).
         document_id: String,
@@ -713,6 +714,53 @@ pub enum TaskEvent {
         sandbox_id: String,
         /// What was observed.
         detail: String,
+    },
+    /// `EnvironmentPinned` (REQ-EV-0062/0146; docs/21 "Environment
+    /// revisions"): the run pinned the environment revision it runs in —
+    /// the definition files (by hash), the toolchain as observed, the
+    /// `PATH` entries, the variables' names. No state change.
+    EnvironmentPinned {
+        /// The run.
+        run_id: RunId,
+        /// The revision's content digest.
+        digest: String,
+        /// The object holding the revision.
+        revision_ref: String,
+        /// The definition files: `kind`, `path`, `sha256`.
+        sources: Vec<serde_json::Value>,
+        /// The tools: `name`, `version`.
+        toolchain: Vec<serde_json::Value>,
+        /// `PATH` entries in front.
+        path: Vec<String>,
+        /// Variable names (never values).
+        env_names: Vec<String>,
+        /// Problems compiling the definition (part of the revision).
+        problems: Vec<String>,
+    },
+    /// `EnvironmentStale` (REQ-EV-0021/0062): a resumed run found the
+    /// environment no longer the revision it pinned; it waits for an
+    /// explicit rebuild. No state change.
+    EnvironmentStale {
+        /// The run.
+        run_id: RunId,
+        /// What it pinned.
+        pinned_digest: String,
+        /// What is there now.
+        current_digest: String,
+        /// What differs.
+        changes: Vec<String>,
+    },
+    /// `EnvironmentRebuilt` (REQ-EV-0021/0146): the task's environment was
+    /// re-captured and pinned anew, by an explicit request. No state change.
+    EnvironmentRebuilt {
+        /// The digest before (empty when nothing was pinned).
+        from_digest: String,
+        /// The digest now.
+        to_digest: String,
+        /// The object holding the revision.
+        revision_ref: String,
+        /// What changed.
+        changes: Vec<String>,
     },
     /// `SandboxRestored` (M8.9, docs/21 "Sandbox recovery"): a fresh sandbox
     /// took the lost one's place and the task's latest checkpoint was
@@ -1698,6 +1746,9 @@ impl TaskEvent {
             Self::SandboxReleased { .. } => "SandboxReleased",
             Self::SandboxLost { .. } => "SandboxLost",
             Self::SandboxRestored { .. } => "SandboxRestored",
+            Self::EnvironmentPinned { .. } => "EnvironmentPinned",
+            Self::EnvironmentStale { .. } => "EnvironmentStale",
+            Self::EnvironmentRebuilt { .. } => "EnvironmentRebuilt",
             Self::UnsupportedLanguageOptInRecorded { .. } => "UnsupportedLanguageOptInRecorded",
             Self::ContextDocumentAttached { .. } => "ContextDocumentAttached",
             Self::SelectionRecorded { .. } => "SelectionRecorded",
@@ -1926,7 +1977,10 @@ impl Task {
             // lifecycle land whatever the task's state.
             TaskEvent::SandboxReleased { .. }
             | TaskEvent::SandboxLost { .. }
-            | TaskEvent::SandboxRestored { .. } => None,
+            | TaskEvent::SandboxRestored { .. }
+            | TaskEvent::EnvironmentPinned { .. }
+            | TaskEvent::EnvironmentStale { .. }
+            | TaskEvent::EnvironmentRebuilt { .. } => None,
             // The workspace moved (M8.7): the projection follows.
             TaskEvent::TaskWorkspaceRebound {
                 workspace_root,
@@ -1954,6 +2008,60 @@ impl Task {
         }
         self.generation += 1;
         Ok(())
+    }
+}
+
+/// A forge issue as the intake sees it (PX-010: read by the Core; PX-011:
+/// delivered by the forge's webhook to the Cloud API). Both paths make the
+/// same canonical task from it: the goal it names and the untrusted
+/// context document it renders to are one rendering, here.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ForgeIssueIntake {
+    /// The issue's web URL.
+    pub url: String,
+    /// Issue number.
+    pub number: u64,
+    /// Title.
+    pub title: String,
+    /// Author login.
+    #[serde(default)]
+    pub author: String,
+    /// `open` | `closed`.
+    #[serde(default)]
+    pub state: String,
+    /// Label names.
+    #[serde(default)]
+    pub labels: Vec<String>,
+    /// Body text (data, never instructions).
+    #[serde(default)]
+    pub body: String,
+}
+
+impl ForgeIssueIntake {
+    /// The task's goal when none was given: the title and the number.
+    #[must_use]
+    pub fn goal(&self) -> String {
+        let title = if self.title.trim().is_empty() {
+            "issue"
+        } else {
+            self.title.trim()
+        };
+        format!("{title} (#{})", self.number)
+    }
+
+    /// The attached context document's text.
+    #[must_use]
+    pub fn document_text(&self) -> String {
+        format!(
+            "# {}\n\nissue #{} by {} ({}) — {}\nlabels: {}\n\n{}\n",
+            self.title,
+            self.number,
+            self.author,
+            self.state,
+            self.url,
+            self.labels.join(", "),
+            self.body
+        )
     }
 }
 

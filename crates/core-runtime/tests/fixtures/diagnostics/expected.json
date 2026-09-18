@@ -228,6 +228,36 @@
     "retryable": true,
     "user_action": "wait for a running task to finish, or raise MODBIT_CAPACITY, then resume with StartTask"
   },
+  "loop_environment_stale": {
+    "class": "INFRASTRUCTURE",
+    "code": "ENVIRONMENT_STALE",
+    "detail": "the environment is not the revision this run pinned (0f3a9c1b2d4e → 7c1d2e3f4a5b): repository layer changed; env MODBIT_ENV_C added; rebuild it (RebuildEnvironment) to continue in what is there now, or restore the definition",
+    "evidence_refs": [],
+    "features": [
+      "class:infrastructure",
+      "code:environment_stale",
+      "not_retryable",
+      "source:harness"
+    ],
+    "recovery_path": "the run waits: it never continues in an environment nobody chose",
+    "retryable": false,
+    "user_action": "rebuild the environment (RebuildEnvironment) to pin what is there now, or restore the definition files, then resume with StartTask"
+  },
+  "loop_environment_unavailable": {
+    "class": "INFRASTRUCTURE",
+    "code": "ENVIRONMENT_UNAVAILABLE",
+    "detail": "the environment names tools that are not there: zig",
+    "evidence_refs": [],
+    "features": [
+      "class:infrastructure",
+      "code:environment_unavailable",
+      "not_retryable",
+      "source:harness"
+    ],
+    "recovery_path": "the run waits: it never starts without what its environment requires",
+    "retryable": false,
+    "user_action": "install the tools the environment definition names (or mark them optional), then resume with StartTask"
+  },
   "loop_no_progress": {
     "class": "HARNESS",
     "code": "NO_PROGRESS",

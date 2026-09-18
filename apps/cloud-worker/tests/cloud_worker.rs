@@ -394,6 +394,7 @@ fn worker_config_with(
             token: f.token.clone(),
         }),
         api: None,
+        capabilities: None,
     }
 }
 
@@ -553,6 +554,7 @@ async fn qual_m8_2_a_worker_claims_the_lease_runs_the_task_relays_commands_mirro
         rate_capacity: 500,
         rate_per_second: 100.0,
         worker_key: None,
+        github_webhook_secret: None,
     })
     .await
     .expect("api");
@@ -965,6 +967,7 @@ async fn qual_m8_5_a_cloud_isolated_tasks_tools_act_inside_its_sandbox_and_the_s
         rate_capacity: 500,
         rate_per_second: 100.0,
         worker_key: None,
+        github_webhook_secret: None,
     })
     .await
     .expect("api");
@@ -1338,6 +1341,7 @@ async fn qual_m8_7_a_local_task_hands_off_to_the_cloud_and_continues_from_its_ch
             origin: "cli".into(),
             workspace_root: root.clone(),
             issue_url: String::new(),
+            issue_json: String::new(),
         }
         .encode_to_vec(),
         g,
@@ -1490,6 +1494,7 @@ async fn qual_m8_7_a_local_task_hands_off_to_the_cloud_and_continues_from_its_ch
         rate_capacity: 500,
         rate_per_second: 100.0,
         worker_key: None,
+        github_webhook_secret: None,
     })
     .await
     .expect("api");
@@ -1542,6 +1547,25 @@ async fn qual_m8_7_a_local_task_hands_off_to_the_cloud_and_continues_from_its_ch
             "content-addressed on both sides"
         );
     }
+    // IMP-EV-0176: a capsule that smuggles authority or a secret value is
+    // refused before anything is admitted — a grant-shaped field in the
+    // manifest, a secret-shaped value anywhere in it.
+    let mut with_grant = manifest.clone();
+    with_grant["token"] = json!(laptop_forge_token);
+    let (s, e) = api.post(&a, "/v1/handoffs", json!({"command_id": uuid::Uuid::now_v7().to_string(), "manifest": with_grant, "parts": parts})).await;
+    assert_eq!(
+        (s, e["code"].as_str()),
+        (409, Some("CAPSULE_SMUGGLES_AUTHORITY")),
+        "{e}"
+    );
+    let mut with_secret = manifest.clone();
+    with_secret["goal_text"] = json!(format!("summarize; the key is {laptop_api_key}"));
+    let (s, e) = api.post(&a, "/v1/handoffs", json!({"command_id": uuid::Uuid::now_v7().to_string(), "manifest": with_secret, "parts": parts})).await;
+    assert_eq!(
+        (s, e["code"].as_str()),
+        (409, Some("CAPSULE_SMUGGLES_SECRET")),
+        "{e}"
+    );
     // Parity: a continuation that needs a capability the cloud does not
     // serve (a host worktree) is refused.
     let mut needs_browser = manifest.clone();
@@ -1796,6 +1820,7 @@ async fn qual_m8_8_a_cloud_tasks_browser_runs_inside_its_sandbox_over_cdp_and_st
         rate_capacity: 500,
         rate_per_second: 100.0,
         worker_key: Some(gateway.key_bytes()),
+        github_webhook_secret: None,
     })
     .await
     .expect("api");
@@ -2158,6 +2183,7 @@ async fn qual_m8_9_a_lost_sandbox_is_replaced_and_restored_from_the_latest_check
         rate_capacity: 500,
         rate_per_second: 100.0,
         worker_key: None,
+        github_webhook_secret: None,
     })
     .await
     .expect("api");
@@ -2347,6 +2373,941 @@ async fn qual_m8_9_a_lost_sandbox_is_replaced_and_restored_from_the_latest_check
             && retry.contains(&second_sandbox),
         "the retry ran in the fresh sandbox on the restored worktree: {retry}"
     );
+    worker.stop().await;
+    gateway.served.stop();
+}
+
+/// The structured output of a tool result the model saw (`output:` JSON).
+fn structured(text: &str) -> Value {
+    text.split("output:\n")
+        .nth(1)
+        .and_then(|j| serde_json::from_str::<Value>(j.trim()).ok())
+        .unwrap_or(Value::Null)
+}
+
+/// The tool results the model saw in its last request, in order.
+fn tool_results(seen: &Arc<Mutex<Vec<Value>>>) -> Vec<String> {
+    let bodies = seen.lock().unwrap();
+    bodies
+        .last()
+        .and_then(|b| b["messages"].as_array())
+        .map(|m| {
+            m.iter()
+                .filter(|x| x["role"] == "tool")
+                .map(|x| x["content"].as_str().unwrap_or_default().to_owned())
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// IMP-EV-0109 (docs/21 "Execution profiles", REQ-EV-0109: one canonical
+/// execution interface with local and cloud adapters): the same tool
+/// fixture — a process, a file read, a listing, a stat, a read outside the
+/// root — runs under `local_trusted` on a local Core (the host's workspace
+/// and terminal broker) and under `cloud_isolated` on a cloud worker (the
+/// sandbox), with equivalent effects — the same structured outputs, save
+/// the sandbox's identity — and the same event semantics per call.
+#[tokio::test]
+async fn qual_ev_0109_the_same_tool_fixture_runs_locally_and_in_the_cloud_with_equivalent_effect_and_event_semantics()
+ {
+    let Some(store_cfg) = store_config().await else {
+        eprintln!(
+            "SKIPPED: MODBIT_CLOUD_TEST_DATABASE_URL unset (the hosted cloud job runs this against Postgres and a sandbox)"
+        );
+        return;
+    };
+    let fixture = || {
+        vec![
+            json!({"calls": [{"name": "plan.update", "args": {"outcome": "out.txt written and read back", "expected_files": ["out.txt"]}}]}),
+            json!({"calls": [
+                {"name": "shell.exec", "args": {"argv": ["/bin/sh", "-c", "printf 'hi\\n' > out.txt; cat out.txt; echo status=$?"]}},
+                {"name": "fs.read", "args": {"path": "out.txt"}},
+                {"name": "fs.list", "args": {"path": "."}},
+                {"name": "fs.stat", "args": {"path": "out.txt"}},
+                {"name": "fs.read", "args": {"path": "../../etc/passwd"}}
+            ]}),
+            json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+        ]
+    };
+    let keep = tempfile::tempdir().unwrap();
+    let data = match std::env::var("MODBIT_CLOUD_WORKER_TEST_KEEP_DIR") {
+        Ok(d) => std::path::PathBuf::from(d).join("ev0109"),
+        Err(_) => keep.path().to_path_buf(),
+    };
+    // ---- local: a local Core, the host's workspace ----
+    let (local_model, local_seen) = scripted_model(fixture()).await;
+    let local_root = repo(&data.join("local-repo"));
+    let laptop = modbit_cloud_worker::core_process::CoreProcess::spawn_local(
+        &core_bin(),
+        &data.join("local-core"),
+    )
+    .expect("local core");
+    let mut lc = laptop
+        .client_as(modbit_protocol::v1::ClientKind::Cli)
+        .await
+        .expect("local client");
+    let _: modbit_protocol::v1::ProviderConfigured = cmd(
+        &mut lc,
+        "ConfigureProvider",
+        modbit_protocol::v1::ConfigureProvider {
+            provider: "openai".into(),
+            api_key: String::new(),
+            base_url: local_model.clone(),
+        }
+        .encode_to_vec(),
+        None,
+    )
+    .await
+    .expect("provider");
+    let created: modbit_protocol::v1::SessionCreated = cmd(
+        &mut lc,
+        "CreateSession",
+        modbit_protocol::v1::CreateSession { space_id: None }.encode_to_vec(),
+        None,
+    )
+    .await
+    .expect("session");
+    let local_sid = created.session_id.clone().unwrap();
+    let lease: modbit_protocol::v1::SessionLeaseAcquired = cmd(
+        &mut lc,
+        "AcquireSessionLease",
+        modbit_protocol::v1::AcquireSessionLease {
+            session_id: Some(local_sid.clone()),
+            owner: "laptop".into(),
+        }
+        .encode_to_vec(),
+        None,
+    )
+    .await
+    .expect("lease");
+    let g = Some(lease.lease_generation);
+    let task: modbit_protocol::v1::TaskCreated = cmd(
+        &mut lc,
+        "CreateTask",
+        modbit_protocol::v1::CreateTask {
+            session_id: Some(local_sid.clone()),
+            goal_text: "write out.txt and read it back".into(),
+            workspace_id: None,
+            execution_profile: "local_trusted".into(),
+            origin: "cli".into(),
+            workspace_root: local_root.clone(),
+            issue_url: String::new(),
+            issue_json: String::new(),
+        }
+        .encode_to_vec(),
+        g,
+    )
+    .await
+    .expect("task");
+    let local_tid = task.task_id.clone().unwrap();
+    let _: modbit_protocol::v1::TaskRunStarted = cmd(
+        &mut lc,
+        "StartTask",
+        modbit_protocol::v1::StartTask {
+            task_id: Some(local_tid.clone()),
+            endpoint: "openai".into(),
+            model: "gpt-5".into(),
+            max_turns: 0,
+            max_tool_calls: 0,
+            max_no_progress_turns: 0,
+            skills: vec![],
+        }
+        .encode_to_vec(),
+        g,
+    )
+    .await
+    .expect("started");
+    until("the local task to reach review", 120, async || {
+        let snap: modbit_protocol::v1::SessionSnapshot = cmd(
+            &mut lc,
+            "GetSessionSnapshot",
+            modbit_protocol::v1::GetSessionSnapshot {
+                session_id: Some(local_sid.clone()),
+            }
+            .encode_to_vec(),
+            None,
+        )
+        .await
+        .ok()?;
+        (snap.tasks[0].state == "ReadyForReview").then_some(())
+    })
+    .await;
+    // The local log's tool-call events, in order.
+    let local_events: Vec<(String, String)> = {
+        lc.subscribe(local_sid.clone(), 0).await.unwrap();
+        let mut out = Vec::new();
+        loop {
+            let Ok(Ok(Some(f))) =
+                tokio::time::timeout(Duration::from_secs(3), lc.next_event()).await
+            else {
+                break;
+            };
+            let e = f.event.unwrap();
+            if e.event_type.starts_with("ToolCall") {
+                out.push((
+                    e.event_type.clone(),
+                    e.aggregate_id
+                        .map(|i| hex::encode(i.value))
+                        .unwrap_or_default(),
+                ));
+            }
+        }
+        out
+    };
+    laptop.stop();
+    // ---- cloud: the API, a worker, a sandbox ----
+    let (cloud_model, cloud_seen) = scripted_model(fixture()).await;
+    let served = serve(ApiConfig {
+        store: store_cfg.clone(),
+        token_key: None,
+        bind: "127.0.0.1:0".into(),
+        rate_capacity: 500,
+        rate_per_second: 100.0,
+        worker_key: None,
+        github_webhook_secret: None,
+    })
+    .await
+    .expect("api");
+    let api = Api {
+        base: format!("http://{}", served.addr),
+        http: reqwest::Client::new(),
+        served,
+    };
+    let store = &api.served.state.store;
+    let tenant = store.create_tenant("equivalence-test").await.unwrap();
+    let (_p, secret) = store.create_principal(tenant, "user", "ada").await.unwrap();
+    let (_, tok) = api
+        .post("", "/v1/auth/token", json!({"secret": secret}))
+        .await;
+    let a = tok["access_token"].as_str().unwrap().to_owned();
+    let cloud_root = repo(&data.join("cloud-repo"));
+    let gateway = Gateway::start(&store_cfg, &data.join("gateway")).await;
+    let (_, created) = api
+        .post(
+            &a,
+            "/v1/sessions",
+            json!({"command_id": uuid::Uuid::now_v7().to_string()}),
+        )
+        .await;
+    let sid = created["session_id"].as_str().unwrap().to_owned();
+    let (s, task) = api.post(&a, &format!("/v1/sessions/{sid}/tasks"), json!({"command_id": uuid::Uuid::now_v7().to_string(), "goal_text": "write out.txt and read it back", "execution_profile": "cloud_isolated", "workspace_root": cloud_root})).await;
+    assert_eq!(s, 201, "{task}");
+    let worker = start(worker_config(
+        &store_cfg,
+        "worker-e",
+        &data.join("w"),
+        &cloud_model,
+        Duration::from_secs(10),
+        &gateway,
+    ))
+    .await
+    .expect("worker");
+    until("the cloud task to reach review", 240, async || {
+        let (_, v) = api.get(&a, &format!("/v1/sessions/{sid}")).await;
+        (v["tasks"][0]["state"] == "READY_FOR_REVIEW").then_some(())
+    })
+    .await;
+    let (_, evs) = api
+        .get(
+            &a,
+            &format!("/v1/events?session_id={sid}&after=0&limit=2000"),
+        )
+        .await;
+    let cloud_events: Vec<(String, String)> = evs["events"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|e| {
+            e["envelope"]["event_type"]
+                .as_str()
+                .unwrap_or_default()
+                .starts_with("ToolCall")
+        })
+        .map(|e| {
+            (
+                e["envelope"]["event_type"].as_str().unwrap().to_owned(),
+                e["envelope"]["aggregate_id"].to_string(),
+            )
+        })
+        .collect();
+    worker.stop().await;
+    gateway.served.stop();
+    // ---- equivalence ----
+    let local = tool_results(&local_seen);
+    let cloud = tool_results(&cloud_seen);
+    eprintln!(
+        "local:\n{}\n====\ncloud:\n{}",
+        local.join("\n----\n"),
+        cloud.join("\n----\n")
+    );
+    assert_eq!(local.len(), cloud.len(), "the same calls were made");
+    assert_eq!(local.len(), 6);
+    // The effect of each call, in the fields the contract carries on both
+    // sides (an adapter adds its own — the sandbox's id, the host's
+    // workspace revision — never changes these).
+    fn effect(tool: &str, v: &Value) -> Value {
+        match tool {
+            "shell.exec" => {
+                json!({"exit_code": v["exit_code"], "stdout_preview": v["stdout_preview"], "cancelled": v["cancelled"], "timed_out": v["timed_out"], "signal": v["signal"]})
+            }
+            "fs.read" => {
+                json!({"path": v["path"], "content": v["content"], "byte_length": v["byte_length"], "content_hash": v["content_hash"], "truncated": v["truncated"], "encoding": v["encoding"]})
+            }
+            "fs.list" => {
+                let mut entries: Vec<Value> = v["entries"]
+                    .as_array()
+                    .cloned()
+                    .unwrap_or_default()
+                    .into_iter()
+                    .filter(|e| e["path"] != ".git")
+                    .map(|e| json!({"path": e["path"], "kind": e["kind"], "size": e["size"]}))
+                    .collect();
+                entries.sort_by_key(|e| e["path"].to_string());
+                json!({"entries": entries})
+            }
+            "fs.stat" => json!({"path": v["path"], "kind": v["kind"], "size": v["size"]}),
+            _ => Value::Null,
+        }
+    }
+    let tools = [
+        "plan.update",
+        "shell.exec",
+        "fs.read",
+        "fs.list",
+        "fs.stat",
+        "fs.read",
+    ];
+    let status_of = |t: &str| t.lines().next().unwrap_or_default().to_owned();
+    for (i, (l, c)) in local.iter().zip(cloud.iter()).enumerate() {
+        assert_eq!(
+            status_of(l),
+            status_of(c),
+            "call {i}: the same status\nlocal: {l}\ncloud: {c}"
+        );
+        if i == 5 {
+            // The read outside the root: refused with the same code on both.
+            assert!(
+                l.contains("error_code: PATH_OUTSIDE_ROOT")
+                    && c.contains("error_code: PATH_OUTSIDE_ROOT"),
+                "call {i}\nlocal: {l}\ncloud: {c}"
+            );
+            continue;
+        }
+        if i == 0 {
+            continue;
+        }
+        let (lv, cv) = (
+            effect(tools[i], &structured(l)),
+            effect(tools[i], &structured(c)),
+        );
+        assert!(tools[i] != "fs.read" || lv["content"] != Value::Null, "{l}");
+        assert_eq!(
+            lv, cv,
+            "call {i} ({}): the same effect\nlocal: {l}\ncloud: {c}",
+            tools[i]
+        );
+    }
+    // The process: its exit and its output on both sides.
+    let shell = structured(&local[1]);
+    assert_eq!(shell["exit_code"], 0);
+    assert_eq!(shell["stdout_preview"], "hi\nstatus=0\n");
+    // The same event semantics per call: the sequence of tool-call event
+    // types, call by call, is identical.
+    let seq = |evs: &[(String, String)]| -> Vec<Vec<String>> {
+        let mut by_call: Vec<(String, Vec<String>)> = Vec::new();
+        for (t, id) in evs {
+            match by_call.iter_mut().find(|(i, _)| i == id) {
+                Some((_, v)) => v.push(t.clone()),
+                None => by_call.push((id.clone(), vec![t.clone()])),
+            }
+        }
+        by_call.into_iter().map(|(_, v)| v).collect()
+    };
+    let (ls, cs) = (seq(&local_events), seq(&cloud_events));
+    assert_eq!(
+        ls.len(),
+        cs.len(),
+        "the same number of calls on both logs: {ls:?} vs {cs:?}"
+    );
+    assert_eq!(ls, cs, "the same event sequence per call");
+    assert!(
+        ls.iter()
+            .any(|v| v.iter().any(|t| t == "ToolCallSucceeded"))
+            && ls.iter().any(|v| v.iter().any(|t| t == "ToolCallFailed")),
+        "{ls:?}"
+    );
+}
+
+/// IMP-EV-0024 (REQ-EV-0024, an experiment; docs/24): the worker's link to
+/// the Cloud API is outbound only — the worker binds no port — under the
+/// same authenticated worker protocol the gateway speaks. Proven here:
+/// identity (a token that does not verify never links; the right one
+/// does), reconnect (a dropped link comes back on its own), revocation (an
+/// expired token cannot link again once the live link is dropped) and
+/// tenant isolation (a request over the link for a session this worker
+/// does not hold is refused, and the API only ever asks the holder).
+#[tokio::test]
+async fn qual_ev_0024_the_workers_outbound_link_proves_identity_reconnect_revocation_and_tenant_isolation()
+ {
+    let Some(store_cfg) = store_config().await else {
+        eprintln!(
+            "SKIPPED: MODBIT_CLOUD_TEST_DATABASE_URL unset (the hosted cloud job runs this against Postgres)"
+        );
+        return;
+    };
+    let (model_base, _seen) = scripted_model(vec![]).await;
+    let key: Vec<u8> = uuid::Uuid::now_v7()
+        .as_bytes()
+        .iter()
+        .chain(uuid::Uuid::new_v4().as_bytes())
+        .copied()
+        .collect();
+    let worker_key = modbit_sandbox::auth::WorkerKey::new(key.clone());
+    let served = serve(ApiConfig {
+        store: store_cfg.clone(),
+        token_key: None,
+        bind: "127.0.0.1:0".into(),
+        rate_capacity: 500,
+        rate_per_second: 100.0,
+        worker_key: Some(key),
+        github_webhook_secret: None,
+    })
+    .await
+    .expect("api");
+    let api = Api {
+        base: format!("http://{}", served.addr),
+        http: reqwest::Client::new(),
+        served,
+    };
+    let keep = tempfile::tempdir().unwrap();
+    let data = keep.path().to_path_buf();
+    let gateway = Gateway::start(&store_cfg, &data.join("gateway")).await;
+    let now_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as i64;
+    let link_cfg = |worker: &str, token: String| {
+        let mut cfg = worker_config(
+            &store_cfg,
+            worker,
+            &data.join(worker),
+            &model_base,
+            Duration::from_secs(10),
+            &gateway,
+        );
+        cfg.api = Some(modbit_cloud_worker::ApiLinkConfig {
+            base_url: api.base.clone(),
+            worker_token: token,
+        });
+        cfg
+    };
+    // Identity: a token under another key never links.
+    let other = modbit_sandbox::auth::WorkerKey::random();
+    let impostor = start(link_cfg(
+        "worker-x",
+        other.issue(&modbit_sandbox::auth::WorkerClaims {
+            worker_id: "worker-x".into(),
+            exp_ms: i64::MAX,
+        }),
+    ))
+    .await
+    .expect("worker");
+    tokio::time::sleep(Duration::from_secs(3)).await;
+    assert!(
+        !api.served.state.workers.linked("worker-x").await,
+        "a worker whose token does not verify is not linked"
+    );
+    impostor.stop().await;
+    // Identity: the right token links, from an outbound connection.
+    let short_lived = worker_key.issue(&modbit_sandbox::auth::WorkerClaims {
+        worker_id: "worker-l".into(),
+        exp_ms: now_ms + 12_000,
+    });
+    let worker = start(link_cfg("worker-l", short_lived))
+        .await
+        .expect("worker");
+    until("the worker's link", 30, async || {
+        api.served
+            .state
+            .workers
+            .linked("worker-l")
+            .await
+            .then_some(())
+    })
+    .await;
+    // Tenant isolation: over the link, a session this worker does not hold
+    // is refused before anything is touched.
+    let link = api.served.state.workers.get("worker-l").await.unwrap();
+    let foreign = modbit_domain::SessionId::new();
+    let bsid = hex::encode(uuid::Uuid::now_v7().as_bytes());
+    let answer = link
+        .ask(
+            json!({"kind": "input", "session_id": foreign.to_string(), "browser_session_id": bsid, "input": {"kind": "click", "x": 1, "y": 1}}),
+            Duration::from_secs(10),
+        )
+        .await
+        .expect("an answer");
+    assert_eq!(answer["status"], "REJECTED", "{answer}");
+    assert_eq!(answer["code"], "NOT_HOSTED", "{answer}");
+    // Reconnect: the live link dropped by the API comes back on its own
+    // while the token still verifies.
+    assert!(api.served.state.workers.disconnect("worker-l").await);
+    until("the link to come back", 30, async || {
+        let l = api.served.state.workers.get("worker-l").await?;
+        (!Arc::ptr_eq(&l, &link)).then_some(())
+    })
+    .await;
+    // Revocation: once the token has expired, a dropped link cannot come
+    // back — the worker retries and is refused each time.
+    until("the token to expire", 30, async || {
+        let expired = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis() as i64
+            > now_ms + 12_000;
+        expired.then_some(())
+    })
+    .await;
+    assert!(api.served.state.workers.disconnect("worker-l").await);
+    tokio::time::sleep(Duration::from_secs(6)).await;
+    assert!(
+        !api.served.state.workers.linked("worker-l").await,
+        "an expired token does not link again"
+    );
+    worker.stop().await;
+    gateway.served.stop();
+}
+
+/// IMP-EV-0072 (REQ-EV-0072; docs/24): capabilities are negotiated before
+/// dispatch. A worker announces what it serves (the cloud profile's tools,
+/// `browser.control` when its gateway's guests have a browser); a task
+/// names what it requires. A requirement no live worker serves is an
+/// explicit rejection (`NO_CAPABLE_WORKER`); a served one keeps the
+/// session for a worker that serves it — an older worker never claims it;
+/// and a task an older worker does host runs with a compatible projection:
+/// no browser tool offered, no browser asked of its sandbox.
+#[tokio::test]
+async fn qual_ev_0072_capabilities_are_negotiated_before_dispatch_an_older_worker_gets_a_compatible_projection_or_the_task_is_refused()
+ {
+    let Some(store_cfg) = store_config().await else {
+        eprintln!(
+            "SKIPPED: MODBIT_CLOUD_TEST_DATABASE_URL unset (the hosted cloud job runs this against Postgres and a sandbox)"
+        );
+        return;
+    };
+    // The same script on both: a look at the browser — outside an older
+    // worker's projection, inside a full worker's.
+    let script = || {
+        vec![
+            json!({"calls": [{"name": "plan.update", "args": {"outcome": "noted", "expected_files": []}}]}),
+            json!({"calls": [{"name": "browser.snapshot", "args": {}}]}),
+            json!({"calls": [{"name": "task.complete", "args": {"summary": "noted", "self_review": {"findings": []}}}]}),
+        ]
+    };
+    let (old_model, old_seen) = scripted_model(script()).await;
+    let (new_model, new_seen) = scripted_model(script()).await;
+    let served = serve(ApiConfig {
+        store: store_cfg.clone(),
+        token_key: None,
+        bind: "127.0.0.1:0".into(),
+        rate_capacity: 500,
+        rate_per_second: 100.0,
+        worker_key: None,
+        github_webhook_secret: None,
+    })
+    .await
+    .expect("api");
+    let api = Api {
+        base: format!("http://{}", served.addr),
+        http: reqwest::Client::new(),
+        served,
+    };
+    let store = &api.served.state.store;
+    let tenant = store.create_tenant("negotiation-test").await.unwrap();
+    let (_p, secret) = store.create_principal(tenant, "user", "ada").await.unwrap();
+    let (_, tok) = api
+        .post("", "/v1/auth/token", json!({"secret": secret}))
+        .await;
+    let a = tok["access_token"].as_str().unwrap().to_owned();
+    let keep = tempfile::tempdir().unwrap();
+    let data = match std::env::var("MODBIT_CLOUD_WORKER_TEST_KEEP_DIR") {
+        Ok(d) => std::path::PathBuf::from(d).join("ev0072"),
+        Err(_) => keep.path().to_path_buf(),
+    };
+    let gateway = Gateway::start(&store_cfg, &data.join("gateway")).await;
+    // The gateway's guests have a browser here (the host's Chrome, or the
+    // image's): a full worker serves browser.control; the older one does not.
+    let (_, health) = gw_get(&gateway, "worker-old", "/v1/health").await;
+    assert!(
+        health["features"]
+            .as_array()
+            .is_some_and(|f| f.iter().any(|x| x == "browser")),
+        "the gateway declares its guests' browser: {health}"
+    );
+    // An older worker: the cloud profile's tools, no browser.
+    let mut old_cfg = worker_config(
+        &store_cfg,
+        "worker-old",
+        &data.join("old"),
+        &old_model,
+        Duration::from_secs(10),
+        &gateway,
+    );
+    old_cfg.capabilities = Some(
+        [
+            "fs.read",
+            "fs.write",
+            "git.read",
+            "shell.exec",
+            "network.egress",
+            "secret.use",
+        ]
+        .iter()
+        .map(|s| (*s).to_owned())
+        .collect(),
+    );
+    let old = start(old_cfg).await.expect("older worker");
+    let live = store.live_workers(60_000).await.unwrap();
+    assert!(
+        live.iter()
+            .any(|(w, caps)| w == "worker-old" && !caps.iter().any(|c| c == "browser.control")),
+        "the older worker announced what it serves: {live:?}"
+    );
+    // Explicit rejection: a task needing the browser while only the older
+    // worker is live.
+    let (_, created) = api
+        .post(
+            &a,
+            "/v1/sessions",
+            json!({"command_id": uuid::Uuid::now_v7().to_string()}),
+        )
+        .await;
+    let needy_sid = created["session_id"].as_str().unwrap().to_owned();
+    let root = repo(&data.join("repo"));
+    let (s, refused) = api.post(&a, &format!("/v1/sessions/{needy_sid}/tasks"), json!({"command_id": uuid::Uuid::now_v7().to_string(), "goal_text": "browse", "execution_profile": "cloud_isolated", "workspace_root": root, "capabilities": ["browser.control"]})).await;
+    assert_eq!(s, 409, "{refused}");
+    assert_eq!(refused["code"], "NO_CAPABLE_WORKER", "{refused}");
+    // Compatible projection: a task with no browser requirement, hosted by
+    // the older worker, runs — with no browser tool offered and no browser
+    // asked of its sandbox.
+    let (_, created) = api
+        .post(
+            &a,
+            "/v1/sessions",
+            json!({"command_id": uuid::Uuid::now_v7().to_string()}),
+        )
+        .await;
+    let plain_sid = created["session_id"].as_str().unwrap().to_owned();
+    let plain_root = repo(&data.join("plain-repo"));
+    let (s, t) = api.post(&a, &format!("/v1/sessions/{plain_sid}/tasks"), json!({"command_id": uuid::Uuid::now_v7().to_string(), "goal_text": "note", "execution_profile": "cloud_isolated", "workspace_root": plain_root})).await;
+    assert_eq!(s, 201, "{t}");
+    until(
+        "the plain task to reach review on the older worker",
+        240,
+        async || {
+            let (_, v) = api.get(&a, &format!("/v1/sessions/{plain_sid}")).await;
+            (v["tasks"][0]["state"] == "READY_FOR_REVIEW").then_some(())
+        },
+    )
+    .await;
+    let (_, evs) = api
+        .get(
+            &a,
+            &format!("/v1/events?session_id={plain_sid}&after=0&limit=2000"),
+        )
+        .await;
+    let events = evs["events"].as_array().unwrap();
+    let lease = events
+        .iter()
+        .find(|e| e["envelope"]["event_type"] == "SandboxLeaseAcquired")
+        .expect("a sandbox");
+    assert_eq!(
+        lease["payload"]["browser"], false,
+        "no browser asked of the older worker's sandbox: {lease}"
+    );
+    assert!(
+        !events
+            .iter()
+            .any(|e| e["envelope"]["event_type"] == "BrowserSessionOpened"),
+        "no browser session for a browserless sandbox"
+    );
+    let old_results = tool_results(&old_seen);
+    assert!(
+        old_results
+            .get(1)
+            .is_some_and(|t| t.contains("TOOL_NOT_VISIBLE")),
+        "the older worker's task has no browser tool in its surface: {old_results:?}"
+    );
+    // A full worker joins: the browser task is accepted now, recorded as
+    // requiring the browser, and hosted by the full worker — never the
+    // older one, which keeps polling.
+    let full = start(worker_config(
+        &store_cfg,
+        "worker-new",
+        &data.join("new"),
+        &new_model,
+        Duration::from_secs(10),
+        &gateway,
+    ))
+    .await
+    .expect("full worker");
+    until(
+        "the full worker to announce browser.control",
+        30,
+        async || {
+            store
+                .live_workers(60_000)
+                .await
+                .ok()?
+                .iter()
+                .any(|(w, caps)| w == "worker-new" && caps.iter().any(|c| c == "browser.control"))
+                .then_some(())
+        },
+    )
+    .await;
+    let (s, t) = api.post(&a, &format!("/v1/sessions/{needy_sid}/tasks"), json!({"command_id": uuid::Uuid::now_v7().to_string(), "goal_text": "browse", "execution_profile": "cloud_isolated", "workspace_root": root, "capabilities": ["browser.control"]})).await;
+    assert_eq!(s, 201, "{t}");
+    let needy = modbit_domain::SessionId::parse(&needy_sid).unwrap();
+    assert_eq!(
+        store.session_requirements(tenant, needy).await.unwrap(),
+        vec!["browser.control".to_owned()]
+    );
+    until("the browser task to reach review", 240, async || {
+        let (_, v) = api.get(&a, &format!("/v1/sessions/{needy_sid}")).await;
+        (v["tasks"][0]["state"] == "READY_FOR_REVIEW").then_some(())
+    })
+    .await;
+    assert!(
+        matches!(
+            full.hosting(needy),
+            Some(modbit_cloud_worker::Hosting::Hosting { .. })
+                | Some(modbit_cloud_worker::Hosting::Released { .. })
+        ),
+        "the full worker hosted the browser task: {:?}",
+        full.hosting(needy)
+    );
+    assert!(
+        old.hosting(needy).is_none(),
+        "the older worker never claimed it: {:?}",
+        old.hosting(needy)
+    );
+    let new_results = tool_results(&new_seen);
+    assert!(
+        new_results
+            .get(1)
+            .is_some_and(|t| t.contains("status: SUCCESS") && t.contains("about:blank")),
+        "the full worker's task reads its sandbox's browser: {new_results:?}"
+    );
+    old.stop().await;
+    full.stop().await;
+    gateway.served.stop();
+}
+
+/// PX-011 (QUAL-PX-011, docs/24 "Forge webhook intake", docs/29
+/// "Issue-to-task intake") — the worker-relay half: a GitHub App's delivery
+/// for a repository mapped to a session a worker holds is relayed with the
+/// issue, and the worker's Core makes the same canonical task (origin
+/// `forge_webhook`, the issue an untrusted context document) and runs it in
+/// its sandbox. The webhook path adds no second task model: the events on
+/// the cloud log are exactly `TaskCreated`, `TaskQueued`,
+/// `ContextDocumentAttached`, `TaskCreatedFromIssue`.
+#[tokio::test]
+async fn qual_px_011_a_webhook_for_a_held_session_is_relayed_and_the_worker_makes_the_canonical_task()
+ {
+    use hmac::{Hmac, KeyInit, Mac};
+    use sha2::Sha256;
+    const SECRET: &[u8] = b"wh-relay-secret";
+    let Some(store_cfg) = store_config().await else {
+        eprintln!(
+            "SKIPPED: MODBIT_CLOUD_TEST_DATABASE_URL unset (the hosted cloud job runs this against Postgres and a sandbox)"
+        );
+        return;
+    };
+    assert!(
+        core_bin().exists(),
+        "modbit-core at {}",
+        core_bin().display()
+    );
+    // The task the worker's Core will run from the webhook's issue: read the
+    // issue text it was given as context, then complete.
+    // A short script the worker's Core runs for every task it hosts (the
+    // seed task that makes the worker claim the session, and the webhook's
+    // task after): plan, then complete.
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "done", "expected_files": []}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    let (model_base, _seen) = scripted_model(script).await;
+    let served = serve(ApiConfig {
+        store: store_cfg.clone(),
+        token_key: None,
+        bind: "127.0.0.1:0".into(),
+        rate_capacity: 500,
+        rate_per_second: 100.0,
+        worker_key: None,
+        github_webhook_secret: Some(SECRET.to_vec()),
+    })
+    .await
+    .expect("api");
+    let api = Api {
+        base: format!("http://{}", served.addr),
+        http: reqwest::Client::new(),
+        served,
+    };
+    let tenant = api.served.state.store.create_tenant("wh").await.unwrap();
+    let (_p, secret) = api
+        .served
+        .state
+        .store
+        .create_principal(tenant, "user", "ada")
+        .await
+        .unwrap();
+    let (_, tok) = api
+        .post("", "/v1/auth/token", json!({"secret": secret}))
+        .await;
+    let a = tok["access_token"].as_str().unwrap().to_owned();
+    let keep = tempfile::tempdir().unwrap();
+    let data = keep.path().to_path_buf();
+    let root = repo(&data.join("repo"));
+    let gateway = Gateway::start(&store_cfg, &data.join("gateway")).await;
+    let (_, created) = api
+        .post(
+            &a,
+            "/v1/sessions",
+            json!({"command_id": uuid::Uuid::now_v7().to_string()}),
+        )
+        .await;
+    let sid = created["session_id"].as_str().unwrap().to_owned();
+    // Map acme/widgets → this session.
+    let (s, mapped) = api
+        .post(&a, "/v1/forge/repositories", json!({"repository": "acme/widgets", "session_id": sid, "workspace_root": root, "execution_profile": "cloud_isolated"}))
+        .await;
+    assert_eq!(s, 201, "{mapped}");
+    // A worker claims a session only when it has ready work: a first,
+    // ordinary task makes the session ready and the worker take it, so the
+    // webhook that follows finds the session held (and is relayed).
+    let c_seed = uuid::Uuid::now_v7().to_string();
+    let (s, seed) = api.post(&a, &format!("/v1/sessions/{sid}/tasks"), json!({"command_id": c_seed, "goal_text": "seed", "execution_profile": "cloud_isolated", "workspace_root": root})).await;
+    assert_eq!(s, 201, "{seed}");
+    let seed_tid = seed["task_id"].as_str().unwrap().to_owned();
+    let worker = start(worker_config(
+        &store_cfg,
+        "worker-wh",
+        &data.join("w"),
+        &model_base,
+        Duration::from_secs(10),
+        &gateway,
+    ))
+    .await
+    .expect("worker");
+    until("the worker to hold the session", 60, async || {
+        let (_, v) = api.get(&a, &format!("/v1/sessions/{sid}")).await;
+        (v["lease"]["worker_id"] == "worker-wh").then_some(())
+    })
+    .await;
+    // The forge delivers an opened issue, signed under the app's secret.
+    let body = serde_json::to_vec(&json!({
+        "action": "opened",
+        "issue": {"number": 42, "html_url": "https://github.com/acme/widgets/issues/42", "title": "The widget leaks", "state": "open", "user": {"login": "octo"}, "labels": [], "body": "It leaks on shutdown."},
+        "repository": {"full_name": "acme/widgets"},
+        "installation": {"id": 7}
+    }))
+    .unwrap();
+    let mut mac = Hmac::<Sha256>::new_from_slice(SECRET).unwrap();
+    mac.update(&body);
+    let sig = format!("sha256={}", hex::encode(mac.finalize().into_bytes()));
+    let r = api
+        .http
+        .post(format!("{}/v1/forge/github/webhook", api.base))
+        .header("content-type", "application/json")
+        .header("x-github-delivery", "wh-d-1")
+        .header("x-github-event", "issues")
+        .header("x-hub-signature-256", sig)
+        .body(body)
+        .send()
+        .await
+        .unwrap();
+    // The session is held: the delivery is relayed, not appended here.
+    assert_eq!(r.status(), 202, "relayed while held");
+    let relayed: Value = r.json().await.unwrap();
+    assert_eq!(relayed["status"], "PENDING", "{relayed}");
+    // The worker's Core made the task from the issue (a second task) and
+    // ran it to review.
+    let seed_tid_c = seed_tid.clone();
+    let tid = until(
+        "the webhook's task to reach review on the worker",
+        120,
+        async || {
+            let (_, v) = api.get(&a, &format!("/v1/sessions/{sid}")).await;
+            v["tasks"].as_array().and_then(|t| {
+                t.iter()
+                    .find(|x| {
+                        x["state"] == "READY_FOR_REVIEW"
+                            && x["task_id"].as_str() != Some(seed_tid_c.as_str())
+                    })
+                    .and_then(|x| x["task_id"].as_str().map(str::to_owned))
+            })
+        },
+    )
+    .await;
+    // The canonical intake events are on the cloud log, made by the worker.
+    let (_, evs) = api
+        .get(
+            &a,
+            &format!("/v1/events?session_id={sid}&after=0&limit=1000"),
+        )
+        .await;
+    let tid_bytes = json!(
+        modbit_domain::TaskId::parse(&tid)
+            .unwrap()
+            .as_bytes()
+            .to_vec()
+    );
+    let for_task: Vec<&Value> = evs["events"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|e| e["envelope"]["aggregate_id"] == tid_bytes)
+        .collect();
+    let intake: Vec<&str> = for_task
+        .iter()
+        .map(|e| e["envelope"]["event_type"].as_str().unwrap())
+        .take(4)
+        .collect();
+    assert_eq!(
+        intake,
+        vec![
+            "TaskCreated",
+            "TaskQueued",
+            "ContextDocumentAttached",
+            "TaskCreatedFromIssue"
+        ],
+        "the worker made the canonical task, no second model: {intake:?}"
+    );
+    let created_ev = for_task
+        .iter()
+        .find(|e| e["envelope"]["event_type"] == "TaskCreated")
+        .unwrap();
+    assert_eq!(
+        created_ev["payload"]["origin"], "forge_webhook",
+        "{created_ev}"
+    );
+    assert_eq!(created_ev["payload"]["goal_text"], "The widget leaks (#42)");
+    let from_issue = for_task
+        .iter()
+        .find(|e| e["envelope"]["event_type"] == "TaskCreatedFromIssue")
+        .unwrap();
+    assert_eq!(from_issue["payload"]["provenance"], "forge_webhook");
+    assert_eq!(from_issue["payload"]["number"], 42);
+    // The delivery ledger records it relayed, named by the worker's task.
+    let (_, ledger) = api.get(&a, "/v1/forge/repositories").await;
+    let d = ledger["deliveries"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|d| d["delivery_id"] == "wh-d-1")
+        .unwrap();
+    assert_eq!(d["outcome"], "relayed", "{d}");
     worker.stop().await;
     gateway.served.stop();
 }
