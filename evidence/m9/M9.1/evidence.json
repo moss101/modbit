@@ -1,0 +1,12 @@
+{
+ "task": "M9.1",
+ "requirements": ["REQ-EV-0162", "QUAL-EV-0162", "docs/19 Engineering Memory"],
+ "scenarios": ["Engineering Memory schemas, scopes and governed promotion — delivered as IMP-EV-0162; a proposal never auto-promotes, promotion is a separate governed step, conflict/supersession inspectable"],
+ "tests": ["services/modbit-core/tests/surface_protocol.rs::qual_ev_0162_memory_is_proposed_read_and_promoted_under_governance_no_transcript_auto_promotes"],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "governed engineering memory: schema/scopes/promotion with the no-raw-transcript-auto-promotes invariant, proven end to end on a real Core.",
+ "audit": "MISSING before: crates/memory was an empty stub.",
+ "limitations": "automatic context-pack injection is a follow-up; sensitive-scope promotion conservatively refused.",
+ "ci": ""
+}

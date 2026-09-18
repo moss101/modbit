@@ -4344,8 +4344,52 @@
    "milestone": "M9",
    "order": 0,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:services/modbit-core/tests/surface_protocol.rs::qual_ev_0162_memory_is_proposed_read_and_promoted_under_governance_no_transcript_auto_promotes",
+    "run:35314477444",
+    "commit:0ef075c",
+    "artifact:evidence/m9/M9.1/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-18T06:38:11Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: crates/memory was an empty stub; no schema, store, tools, promotion or scopes"
+    },
+    {
+     "at": "2026-09-18T06:38:11Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "governed engineering memory implemented and landed on main at 0ef075c"
+    },
+    {
+     "at": "2026-09-18T06:38:11Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tools, durable store, scope chain and governed promotion wired"
+    },
+    {
+     "at": "2026-09-18T06:38:11Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "QUAL-EV-0162 green: propose/query/promote/forget on a real Core"
+    },
+    {
+     "at": "2026-09-18T06:38:12Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on main run 35314477444 at 0ef075c"
+    },
+    {
+     "at": "2026-09-18T06:38:12Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: hosted CI green on main run 35314477444 at 0ef075c; card retained"
+    }
+   ],
+   "status_changed_on": "2026-09-18T06:38:12Z"
   },
   {
    "id": "M9.2",
@@ -16910,8 +16954,52 @@
    "milestone": "M9",
    "qual": "QUAL-EV-0162",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "test:services/modbit-core/tests/surface_protocol.rs::qual_ev_0162_memory_is_proposed_read_and_promoted_under_governance_no_transcript_auto_promotes",
+    "run:35314477444",
+    "commit:0ef075c",
+    "artifact:evidence/m9/IMP-EV-0162/TASK_CARD.md"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-18T06:38:11Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: crates/memory was an empty stub; no schema, store, tools, promotion or scopes"
+    },
+    {
+     "at": "2026-09-18T06:38:11Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "governed engineering memory implemented and landed on main at 0ef075c"
+    },
+    {
+     "at": "2026-09-18T06:38:11Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "tools, durable store, scope chain and governed promotion wired"
+    },
+    {
+     "at": "2026-09-18T06:38:11Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "QUAL-EV-0162 green: propose/query/promote/forget on a real Core"
+    },
+    {
+     "at": "2026-09-18T06:38:11Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on main run 35314477444 at 0ef075c"
+    },
+    {
+     "at": "2026-09-18T06:38:11Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: hosted CI green on main run 35314477444 at 0ef075c; card retained"
+    }
+   ],
+   "status_changed_on": "2026-09-18T06:38:11Z"
   },
   {
    "id": "IMP-EV-0163",
