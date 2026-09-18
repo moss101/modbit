@@ -1,0 +1,12 @@
+{
+ "task": "IMP-EV-0215",
+ "requirements": ["REQ-EV-0215", "QUAL-EV-0215", "docs/23 Secret broker"],
+ "scenarios": ["no registered tool's input schema declares a secret-value field (credential handles and counts allowed); a custody secret embedded in a tool's arguments is refused SECRET_EXFILTRATION_BLOCKED before any effect, the record names the field not the value, and the same shape without the secret is not blocked"],
+ "tests": ["crates/tools/tests/pipeline_and_direct.rs::qual_ev_0215_no_tool_schema_declares_a_secret_and_secrets_never_enter_arguments"],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "secrets are host-resolved and never model parameters: the tool surface exposes no secret-value field, and a custody secret can never pass through a tool call's arguments.",
+ "audit": "PARTIAL before: M7.7/M7.8/PX-006 built the forge/credential brokers and the secret-in-arguments guard; the whole-surface schema assertion and the argument-path proof were missing.",
+ "limitations": "built-in families inspected; guard matches secrets >= 8 chars; output redaction covered where it occurs (forge/browser).",
+ "ci": ""
+}

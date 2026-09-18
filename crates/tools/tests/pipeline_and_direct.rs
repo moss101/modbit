@@ -915,3 +915,139 @@ async fn memory_tools_delegate_to_the_host_port_and_never_promote() {
     assert_eq!(calls[1].0, "query");
     assert_eq!(calls[1].1["record_type"], "fact");
 }
+
+/// REQ-EV-0215 (QUAL-EV-0215, docs/23 "Secret broker"): required/optional
+/// secrets are resolved by the host, never exposed as model parameter
+/// values. No registered tool's input schema declares a secret field, and a
+/// credential in the Core's custody can never be passed through a tool's
+/// arguments — the call is refused before any effect and the record names
+/// the field, not the value.
+#[tokio::test]
+async fn qual_ev_0215_no_tool_schema_declares_a_secret_and_secrets_never_enter_arguments() {
+    use serde_json::Value;
+
+    // 1. Schema inspection: walk every registered tool's input schema and
+    //    assert no property is named like a credential.
+    // A field that would carry a secret VALUE is forbidden; a field that
+    // carries an opaque HANDLE/reference the host resolves (a credential
+    // handle, M7.8) is the sanctioned mechanism and is allowed, and a count
+    // like `token_budget` is not a credential — so match the exact
+    // normalized names a secret-value field would use.
+    fn secretish(name: &str) -> bool {
+        let n = name.to_ascii_lowercase().replace(['_', '-'], "");
+        [
+            "apikey",
+            "secret",
+            "secretvalue",
+            "secretkey",
+            "clientsecret",
+            "password",
+            "passwd",
+            "privatekey",
+            "accesskey",
+            "secretaccesskey",
+            "authtoken",
+            "accesstoken",
+            "refreshtoken",
+            "bearertoken",
+            "sessiontoken",
+            "apitoken",
+        ]
+        .contains(&n.as_str())
+    }
+    fn walk_properties(schema: &Value, tool: &str, path: &str) {
+        if let Some(props) = schema.get("properties").and_then(Value::as_object) {
+            for (k, v) in props {
+                assert!(
+                    !secretish(k),
+                    "tool `{tool}` schema exposes a secret-shaped field `{path}{k}` — secrets are host-resolved, never model parameters"
+                );
+                walk_properties(v, tool, &format!("{path}{k}."));
+            }
+        }
+        if let Some(items) = schema.get("items") {
+            walk_properties(items, tool, &format!("{path}[]."));
+        }
+    }
+    let mut registry = ToolRegistry::new();
+    modbit_tools::direct::register_direct(&mut registry).unwrap();
+    modbit_tools::forge::register_forge(&mut registry).unwrap();
+    modbit_tools::browser::register_browser(&mut registry).unwrap();
+    let specs = registry.specs();
+    assert!(
+        specs.len() > 20,
+        "the whole surface is inspected: {}",
+        specs.len()
+    );
+    for spec in &specs {
+        walk_properties(&spec.input_schema, &spec.name, "");
+    }
+
+    // 2. A custody secret can never be passed as an argument: the pipeline
+    //    refuses the call before any effect, naming the field not the value.
+    struct Approved;
+    impl CapabilityPort for Approved {
+        fn decide(&self, _: &PolicyRequest) -> PolicyDecision {
+            PolicyDecision::Allow {
+                rule: "test".into(),
+                approval_id: None,
+            }
+        }
+    }
+    const SECRET: &str = "sk-live-abc123-never-leaves-the-core";
+    let f = fixture(None);
+    let mut ctx = f.ctx.clone();
+    ctx.kernel = Some(Arc::new(Approved));
+    ctx.secrets_in_custody = vec![SECRET.to_owned()];
+    // The secret embedded in an ordinary argument (here a file path's content
+    // area — any string field) is caught.
+    let o = f
+        .runtime
+        .invoke(
+            &ctx,
+            ToolCallId::new(),
+            "change.apply",
+            &format!(r#"{{"path":"notes.txt","op":"replace","content":"token={SECRET}"}}"#),
+        )
+        .await;
+    assert_eq!(o.result.status, ToolStatus::PolicyDenied, "{:?}", o.result);
+    assert_eq!(
+        o.result.error_code.as_deref(),
+        Some("SECRET_EXFILTRATION_BLOCKED")
+    );
+    // No effector ran, and the record names the field, never the value.
+    assert!(
+        o.stages.iter().all(|s| s.stage != "execute"),
+        "{:?}",
+        o.stages
+    );
+    let record = format!(
+        "{:?}{}",
+        o.result,
+        o.stages
+            .iter()
+            .map(|s| format!("{s:?}"))
+            .collect::<String>()
+    );
+    assert!(record.contains("content"), "the field is named: {record}");
+    assert!(
+        !record.contains(SECRET),
+        "the secret value is never in the record: {record}"
+    );
+    // Without the secret the same shape is allowed through the kernel.
+    let o = f
+        .runtime
+        .invoke(
+            &ctx,
+            ToolCallId::new(),
+            "change.apply",
+            r#"{"path":"notes.txt","op":"replace","content":"token=REDACTED"}"#,
+        )
+        .await;
+    assert_ne!(
+        o.result.error_code.as_deref(),
+        Some("SECRET_EXFILTRATION_BLOCKED"),
+        "no secret, no block: {:?}",
+        o.result
+    );
+}

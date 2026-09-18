@@ -19845,8 +19845,37 @@
    "milestone": "M9",
    "qual": "QUAL-EV-0215",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "REAL_TESTING",
+   "evidence": [
+    "test:crates/tools/tests/pipeline_and_direct.rs::qual_ev_0215_no_tool_schema_declares_a_secret_and_secrets_never_enter_arguments"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-18T08:17:50Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audit: PARTIAL — brokers + secret-in-args guard existed; the schema-surface assertion was missing"
+    },
+    {
+     "at": "2026-09-18T08:17:50Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "qualification of the existing host-resolved-secrets behavior"
+    },
+    {
+     "at": "2026-09-18T08:17:50Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "the secret-in-args guard and host-resolved brokers are the wiring"
+    },
+    {
+     "at": "2026-09-18T08:17:50Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "local: QUAL-EV-0215 green — no schema exposes a secret; custody secret blocked from args"
+    }
+   ],
+   "status_changed_on": "2026-09-18T08:17:50Z"
   },
   {
    "id": "IMP-EV-0217",
