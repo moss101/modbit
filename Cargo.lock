@@ -2116,6 +2116,7 @@ dependencies = [
  "modbit-domain",
  "modbit-event-store",
  "modbit-protocol",
+ "modbit-sandbox",
  "rand 0.10.2",
  "reqwest",
  "serde",
@@ -2133,6 +2134,8 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "axum",
+ "base64",
+ "futures-util",
  "hex",
  "modbit-cloud-api",
  "modbit-domain",
@@ -2147,6 +2150,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "tokio-postgres",
+ "tokio-tungstenite 0.29.0",
  "uuid",
 ]
 
@@ -2176,6 +2180,7 @@ name = "modbit-core"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "base64",
  "ed25519-dalek",
  "hex",
  "libc",
@@ -2327,6 +2332,7 @@ dependencies = [
  "nix 0.29.0",
  "portable-pty",
  "prost",
+ "sha2 0.11.0",
  "tokio",
  "uuid",
  "vsock",
@@ -2461,10 +2467,12 @@ version = "0.0.0"
 dependencies = [
  "base64",
  "ed25519-dalek",
+ "futures-util",
  "hex",
  "hmac",
  "modbit-domain",
  "modbit-protocol",
+ "nix 0.29.0",
  "prost",
  "rand 0.10.2",
  "reqwest",
@@ -2474,6 +2482,7 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.20",
  "tokio",
+ "tokio-tungstenite 0.29.0",
  "uuid",
 ]
 
@@ -2484,6 +2493,7 @@ dependencies = [
  "anyhow",
  "axum",
  "base64",
+ "futures-util",
  "hex",
  "modbit-domain",
  "modbit-event-store",
@@ -2496,6 +2506,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "tokio-postgres",
+ "tokio-tungstenite 0.29.0",
  "tower-http",
  "uuid",
 ]

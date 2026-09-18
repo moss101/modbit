@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 89,
-    "root_and_tooling": 1205,
-    "docs_bytes": 1213075
+    "root_and_tooling": 1209,
+    "docs_bytes": 1224298
   },
   "sections": [
     {
@@ -230,8 +230,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Terminal, Execution Router, and Sandbox Architecture",
-      "bytes": 21163,
-      "sha256": "94fef67d538a8ba7cd552daa612abcd128efae736cafacbdb3e6a745b42088e8"
+      "bytes": 24369,
+      "sha256": "c2982aa68d6debce456f3be0b337f5b05f2ee27c0130418d862c383dd96a8ea9"
     },
     {
       "path": "docs/22_BROWSER_AND_COMPUTER_USE.md",
@@ -239,8 +239,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Browser and Computer-Use Architecture",
-      "bytes": 25330,
-      "sha256": "999b3eef349ee449dfc9de7ab1d9b2a1ec477c94a53495be8d9a38c76220d56f"
+      "bytes": 29380,
+      "sha256": "480f6963866545565df3c81f0428aed98bf286bc3e53a17b2dd9172db65799ac"
     },
     {
       "path": "docs/23_SECURITY_POLICY_EFFECT_LEDGER.md",
@@ -257,8 +257,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Cloud Control Plane, Remote Execution, and Sync",
-      "bytes": 12230,
-      "sha256": "ce502945a9c295abfeab63025cd4ce8f537cb6c8ced35c1938aa98b484d8e6be"
+      "bytes": 12822,
+      "sha256": "6e200d51df5406e3c369b4108deac7e220af2d8b4ec7f56877f481b2febfe8b4"
     },
     {
       "path": "docs/25_MULTIMODAL_MEDIA_AND_NOTEBOOK_RUNTIME.md",
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 31132,
-      "sha256": "ed2c444ca62c0b29186d4740dfb0815d690418de3ffd7ab41b72fc652debda6a"
+      "bytes": 33938,
+      "sha256": "f4cc0fee18a2f77dd94f1005ae2b423d200e04e130d760c1bcf7a55225f79027"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -338,8 +338,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Core and Cloud Backend Implementation",
-      "bytes": 13070,
-      "sha256": "eea38039af96f496e086a2d2bed3d52933c2e242c4443fec190b6ce7e9626f59"
+      "bytes": 13639,
+      "sha256": "907fccbdc9e41e1002f8576ebdccf2b5875e9368760e8b41849d0f53a6057a84"
     },
     {
       "path": "docs/34_OBSERVABILITY_COST_AND_OPERATIONS_DATA.md",
@@ -6835,6 +6835,26 @@
       "path": "evidence/m8/M8.7/evidence.json",
       "bytes": 1858,
       "sha256": "958d6b3724209caa56e3a6e05753be0ffab62df30efbf5bb373341e258839c7e"
+    },
+    {
+      "path": "evidence/m8/M8.8/TASK_CARD.md",
+      "bytes": 6089,
+      "sha256": "e382c4f88e5996a9d78eebbbe3de923b143c1628d9e584f0bebb6c56687ef00d"
+    },
+    {
+      "path": "evidence/m8/M8.8/evidence.json",
+      "bytes": 1810,
+      "sha256": "a72c9e4bb6f375d44e4898dd555944fb6f8284abca272511eef71cb71b4d81e2"
+    },
+    {
+      "path": "evidence/m8/M8.9/TASK_CARD.md",
+      "bytes": 4201,
+      "sha256": "877e90efd80a0b29a7a85bd9020ca0071a4071dee3e201bfc61881ba2f78d452"
+    },
+    {
+      "path": "evidence/m8/M8.9/evidence.json",
+      "bytes": 1442,
+      "sha256": "a9f7a28cdad843621226c8c73f9895178d9a637e5a23e3cac06ab689fce774cc"
     },
     {
       "path": "graph/PROJECT_GRAPH.md",

@@ -27,6 +27,8 @@ pub struct ReferenceBackend {
     work_dir: PathBuf,
     image: Option<VerifiedImage>,
     children: Mutex<HashMap<String, (Child, String)>>,
+    /// The host's Chromium the guest may run (M8.8); none = no browser.
+    chromium: Option<PathBuf>,
 }
 
 impl ReferenceBackend {
@@ -40,6 +42,7 @@ impl ReferenceBackend {
             work_dir,
             image: None,
             children: Mutex::new(HashMap::new()),
+            chromium: None,
         }
     }
 
@@ -66,8 +69,81 @@ impl ReferenceBackend {
             work_dir,
             image: Some(image),
             children: Mutex::new(HashMap::new()),
+            chromium: None,
         })
     }
+
+    /// Name the host's Chromium a guest may run (M8.8); the default is
+    /// none, so a guest under this backend has no browser.
+    #[must_use]
+    pub fn with_chromium(mut self, chromium: Option<PathBuf>) -> Self {
+        self.chromium = chromium;
+        self
+    }
+}
+
+/// Ask a guest process to stop (SIGTERM on Unix; a kill elsewhere).
+fn terminate(child: &Child) {
+    #[cfg(unix)]
+    if let Some(pid) = child.id() {
+        let _ = nix::sys::signal::kill(
+            nix::unistd::Pid::from_raw(pid as i32),
+            nix::sys::signal::Signal::SIGTERM,
+        );
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = child;
+    }
+}
+
+impl Drop for ReferenceBackend {
+    fn drop(&mut self) {
+        // Guests get a term and a moment to stop their browsers before the
+        // kill their handles carry.
+        if let Ok(mut m) = self.children.lock() {
+            for (c, _) in m.values() {
+                terminate(c);
+            }
+            if !m.is_empty() {
+                std::thread::sleep(Duration::from_millis(400));
+            }
+            m.clear();
+        }
+    }
+}
+
+/// The host's Chromium for a reference guest (M8.8): `MODBIT_GUEST_CHROMIUM`,
+/// else the usual places (Google Chrome, Chromium) on this OS. `None`: the
+/// guest has no browser.
+#[must_use]
+pub fn detect_chromium() -> Option<PathBuf> {
+    if let Ok(p) = std::env::var("MODBIT_GUEST_CHROMIUM")
+        && !p.trim().is_empty()
+    {
+        return Some(PathBuf::from(p));
+    }
+    let candidates: &[&str] = if cfg!(target_os = "macos") {
+        &[
+            "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+            "/Applications/Chromium.app/Contents/MacOS/Chromium",
+        ]
+    } else if cfg!(windows) {
+        &[
+            "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+            "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+        ]
+    } else {
+        &[
+            "/usr/bin/google-chrome",
+            "/usr/bin/google-chrome-stable",
+            "/usr/bin/chromium-browser",
+            "/usr/bin/chromium",
+            "/opt/chromium/chrome-headless-shell",
+            "/opt/chromium/chrome",
+        ]
+    };
+    candidates.iter().map(PathBuf::from).find(|p| p.is_file())
 }
 
 impl SandboxBackend for ReferenceBackend {
@@ -125,6 +201,9 @@ impl SandboxBackend for ReferenceBackend {
                 .env("PATH", std::env::var("PATH").unwrap_or_default());
             if let Some(a) = &egress_addr {
                 cmd.arg("--egress-host").arg(a);
+            }
+            if let Some(c) = &self.chromium {
+                cmd.arg("--chromium").arg(c);
             }
             // Windows processes need the system root (and a temp dir) to
             // load their runtime; nothing else of the host's environment
@@ -210,8 +289,16 @@ impl SandboxBackend for ReferenceBackend {
         Box::pin(async move {
             let child = self.children.lock().expect("children").remove(sandbox_id);
             if let Some((mut c, _)) = child {
-                let _ = c.start_kill();
-                let _ = c.wait().await;
+                // A term first: the guest stops what it runs (its browser,
+                // M8.8) and exits; a kill after a grace period.
+                terminate(&c);
+                if tokio::time::timeout(Duration::from_secs(2), c.wait())
+                    .await
+                    .is_err()
+                {
+                    let _ = c.start_kill();
+                    let _ = c.wait().await;
+                }
             }
             let dir = self.work_dir.join(sandbox_id);
             if dir.is_dir() {

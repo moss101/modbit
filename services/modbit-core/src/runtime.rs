@@ -3245,6 +3245,8 @@ async fn run_loop(
         // no-progress budget.
         let mut yielded_to_person = false;
         let mut completed = false;
+        // M8.9: whether a tool acted in the task's sandbox this turn.
+        let mut ran_sandboxed_tool = false;
         let mut pending_question: Option<String> = None;
         let mut escalation: Option<RepairEscalation> = None;
         let mut scope_fail_closed: Option<String> = None;
@@ -4066,6 +4068,44 @@ async fn run_loop(
                                 &projected_names,
                             )
                             .await;
+                            // M8.9 (docs/21 "Sandbox recovery"): a cloud task's
+                            // sandbox did not answer — the call keeps its unknown
+                            // outcome; the sandbox is re-linked or replaced and
+                            // restored from the latest checkpoint before the model
+                            // hears the result, so its next call has somewhere to run.
+                            let entry = match entry {
+                                TranscriptEntry::ToolResult {
+                                    mut text,
+                                    call_id,
+                                    name,
+                                    failure_signature,
+                                    clears,
+                                    wrote,
+                                    progress,
+                                    media,
+                                } if text.contains("error_code: SANDBOX_UNAVAILABLE")
+                                    && task.execution_profile
+                                        == modbit_policy::kernel::PROFILE_CLOUD_ISOLATED =>
+                                {
+                                    if let Some(note) =
+                                        crate::sandboxes::recover_if_lost(&core, &task, &actor)
+                                            .await
+                                    {
+                                        text.push_str(&format!("\nsandbox_recovery: {note}\n"));
+                                    }
+                                    TranscriptEntry::ToolResult {
+                                        call_id,
+                                        name,
+                                        text,
+                                        failure_signature,
+                                        clears,
+                                        wrote,
+                                        progress,
+                                        media,
+                                    }
+                                }
+                                other => other,
+                            };
                             let failure = match &entry {
                                 TranscriptEntry::ToolResult {
                                     failure_signature,
@@ -4103,6 +4143,15 @@ async fn run_loop(
                                     )],
                                 );
                             }
+                            ran_sandboxed_tool |= matches!(
+                                name.as_str(),
+                                "shell.exec"
+                                    | "test.run"
+                                    | "fs.read"
+                                    | "fs.list"
+                                    | "fs.stat"
+                                    | "change.apply"
+                            );
                             (entry, StepType::ToolCall, failure)
                         }
                     }
@@ -4248,6 +4297,20 @@ async fn run_loop(
                 AggregateType::Turn,
                 *turn_id.as_bytes(),
                 evs,
+            );
+        }
+        // M8.9: a cloud task's worktree lives in its sandbox; a checkpoint at
+        // every turn that ran a tool is what a fresh sandbox is restored
+        // from when this one is lost (docs/21 "Sandbox recovery").
+        if task.execution_profile == modbit_policy::kernel::PROFILE_CLOUD_ISOLATED
+            && ran_sandboxed_tool
+            && !completed
+            && let Err(e) =
+                crate::checkpoint::capture(&core, &task, lturn, &actor, None, "turn_boundary").await
+        {
+            eprintln!(
+                "modbit-core: task {}: the turn-boundary checkpoint failed: {e}",
+                task.task_id
             );
         }
         if completed {

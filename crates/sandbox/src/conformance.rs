@@ -815,7 +815,7 @@ pub async fn run(backend: &dyn SandboxBackend, fx: &Fixture) -> Result<Report> {
             .unwrap_or_default();
         push(
             "egress_secret_never_in_guest",
-            !env_text.contains(&eg.secret) && env_text.contains("http_proxy=http://127.0.0.1:3128"),
+            !env_text.contains(&eg.secret) && env_text.contains("http_proxy=http://127.0.0.1:"),
             format!("{env_text:?}"),
         );
         let records = audit.records(&sandbox_id);
@@ -877,6 +877,60 @@ pub async fn run(backend: &dyn SandboxBackend, fx: &Fixture) -> Result<Report> {
     // still alive after the refusals
     let h = link.health(&task).await;
     push("alive_after_refusals", h.is_ok(), format!("{h:?}"));
+    // M8.8: the guest's browser, when the spec grants one — started on
+    // the guest's loopback, its DevTools reached through a forwarded link
+    // and nothing else, answering CDP; stopped with the sandbox.
+    if fx.spec.browser {
+        let started = link.browser_start(&task, 800, 600).await;
+        push(
+            "browser_started",
+            started
+                .as_ref()
+                .is_ok_and(|b| b.port > 0 && b.ws_path.starts_with("/devtools/browser/")),
+            format!("{started:?}"),
+        );
+        #[cfg(feature = "client")]
+        if let Ok(b) = &started {
+            let fresh = backend.reconnect(&sandbox_id).await?;
+            let l2: GuestLink<Channel> = GuestLink::admit_image(
+                fresh,
+                &sandbox_id,
+                &policy,
+                Duration::from_secs(30),
+                backend.image(),
+            )
+            .await?;
+            let version = async {
+                let (raw, port) = l2.browser_forward(&task).await?;
+                let url = format!("ws://127.0.0.1:{port}{}", b.ws_path);
+                let (mut ws, _) = tokio_tungstenite::client_async(url.as_str(), raw)
+                    .await
+                    .map_err(|e| crate::SandboxError::Guest(format!("DevTools handshake: {e}")))?;
+                use futures_util::{SinkExt, StreamExt};
+                ws.send(tokio_tungstenite::tungstenite::Message::Text(
+                    r#"{"id":1,"method":"Browser.getVersion","params":{}}"#.into(),
+                ))
+                .await
+                .map_err(|e| crate::SandboxError::Guest(e.to_string()))?;
+                let reply = tokio::time::timeout(Duration::from_secs(20), ws.next())
+                    .await
+                    .map_err(|_| crate::SandboxError::Guest("no CDP answer".into()))?
+                    .ok_or_else(|| crate::SandboxError::Guest("CDP closed".into()))?
+                    .map_err(|e| crate::SandboxError::Guest(e.to_string()))?;
+                Ok::<String, crate::SandboxError>(reply.to_text().unwrap_or_default().to_owned())
+            }
+            .await;
+            push(
+                "browser_answers_cdp",
+                version
+                    .as_ref()
+                    .is_ok_and(|v| v.contains("\"product\"") && v.contains("Chrome")),
+                format!("{version:?}"),
+            );
+        }
+        let stopped = link.browser_stop(&task).await;
+        push("browser_stopped", stopped.is_ok(), format!("{stopped:?}"));
+    }
     // destroy, twice
     let d1 = backend.destroy(&sandbox_id).await;
     let d2 = backend.destroy(&sandbox_id).await;

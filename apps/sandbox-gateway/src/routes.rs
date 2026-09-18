@@ -102,6 +102,7 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/v1/sandboxes/{sandbox_id}/calls", post(call))
         .route("/v1/sandboxes/{sandbox_id}/relink", post(relink))
         .route("/v1/sandboxes/{sandbox_id}/egress", get(egress))
+        .route("/v1/sandboxes/{sandbox_id}/browser/cdp", get(browser_cdp))
         .with_state(state)
 }
 
@@ -300,6 +301,7 @@ fn spec_of(
             credentials: credentials_of(v).0,
         },
         resources,
+        browser: spec["browser"].as_bool().unwrap_or(false),
     })
 }
 
@@ -433,7 +435,7 @@ async fn provision(
             "sandbox_id": sandbox_id.to_string(),
             "backend": backend,
             "isolated": isolated,
-            "policy": {"workspace_root": policy.workspace_root, "protected_paths": policy.protected_paths, "network_interface": policy.network_interface, "egress_proxy": policy.egress_proxy, "egress": policy.egress.iter().map(|r| format!("{}:{}", r.host, r.port)).collect::<Vec<_>>(), "credentials": policy.spec.network.credentials.iter().map(|c| c.virtual_host.clone()).collect::<Vec<_>>()},
+            "policy": {"workspace_root": policy.workspace_root, "protected_paths": policy.protected_paths, "network_interface": policy.network_interface, "egress_proxy": policy.egress_proxy, "egress": policy.egress.iter().map(|r| format!("{}:{}", r.host, r.port)).collect::<Vec<_>>(), "credentials": policy.spec.network.credentials.iter().map(|c| c.virtual_host.clone()).collect::<Vec<_>>(), "browser": policy.browser},
             "guest": {"version": hello.guest_version, "protocol": format!("{}.{}", hello.protocol_major, hello.protocol_minor), "methods": hello.methods, "boot_id": hello.boot_id},
             "image": st.backend.image().map(|m| json!({"kind": m.kind, "sha256": m.sha256, "guest_version": m.guest_version})),
         })),
@@ -553,11 +555,16 @@ async fn call(
             let path = c["path"]
                 .as_str()
                 .ok_or_else(|| ApiError::bad("call.path is required"))?;
-            let content = c["content"]
-                .as_str()
-                .unwrap_or_default()
-                .as_bytes()
-                .to_vec();
+            // Text as `content`; bytes that are not UTF-8 as `content_base64`.
+            let content = match c["content_base64"].as_str() {
+                Some(b) => base64::Engine::decode(&base64::engine::general_purpose::STANDARD, b)
+                    .map_err(|e| ApiError::bad(format!("content_base64: {e}")))?,
+                None => c["content"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .as_bytes()
+                    .to_vec(),
+            };
             let wr = link.write_file(&task_id, &effect_id, path, content).await?;
             json!({"kind": "fs.write", "bytes": wr.bytes})
         }
@@ -722,6 +729,45 @@ async fn call(
             link.rename(&task_id, &effect_id, from, to).await?;
             json!({"kind": "fs.rename", "from": from, "to": to})
         }
+        // M8.9: the guest's worktree, hashed.
+        "fs.snapshot" => {
+            let root = c["root"].as_str().unwrap_or_default();
+            let r = link
+                .fs_snapshot(
+                    &task_id,
+                    root,
+                    c["max_entries"].as_u64().unwrap_or(0) as u32,
+                )
+                .await?;
+            json!({"kind": "fs.snapshot", "entries": r.entries.iter().map(|e| json!({"path": e.path, "size": e.size, "sha256": e.sha256})).collect::<Vec<_>>(), "truncated": r.truncated})
+        }
+        // M8.8: the guest's browser — started on the policy's grant, its
+        // DevTools reached only through `/browser/cdp` below.
+        "browser.start" => {
+            if !live.policy.browser {
+                return Err(ApiError::new(
+                    StatusCode::FORBIDDEN,
+                    "POLICY_DENIED",
+                    "the sandbox's policy grants no browser",
+                ));
+            }
+            let width = c["width"].as_u64().unwrap_or(0) as u32;
+            let height = c["height"].as_u64().unwrap_or(0) as u32;
+            let b = link.browser_start(&task_id, width, height).await?;
+            st.store
+                .set_sandbox_state(
+                    tenant,
+                    sandbox,
+                    "READY",
+                    &format!("{}; browser pid {}", rec.detail, b.pid),
+                )
+                .await?;
+            json!({"kind": "browser.start", "port": b.port, "ws_path": b.ws_path, "pid": b.pid, "already_running": b.already_running, "cdp_path": format!("/v1/sandboxes/{sandbox}/browser/cdp")})
+        }
+        "browser.stop" => {
+            link.browser_stop(&task_id).await?;
+            json!({"kind": "browser.stop"})
+        }
         other => {
             return Err(ApiError::bad(format!(
                 "call.kind `{other}` is not a guest method"
@@ -729,6 +775,107 @@ async fn call(
         }
     };
     Ok(Json(out))
+}
+
+/// `GET /v1/sandboxes/{id}/browser/cdp?tenant_id=` (WebSocket; M8.8,
+/// docs/22 "Cloud browser"): the browser's DevTools, relayed. The worker's
+/// bearer token authenticates the upgrade; the gateway opens a fresh
+/// admitted link to the guest, asks it to forward, performs the DevTools
+/// WebSocket handshake over the relay and passes messages both ways. The
+/// guest's DevTools port is reachable by no other route.
+async fn browser_cdp(
+    State(st): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Query(q): Query<std::collections::HashMap<String, String>>,
+    ws: axum::extract::ws::WebSocketUpgrade,
+) -> ApiResult<Response> {
+    let w = worker(&st, &headers)?;
+    let tenant = q
+        .get("tenant_id")
+        .and_then(|s| TenantId::parse(s).ok())
+        .ok_or_else(|| ApiError::bad("tenant_id is required"))?;
+    let sandbox = sandbox_id_of(&id)?;
+    let (rec, live) = owned(&st, tenant, &w.worker_id, sandbox).await?;
+    if !live.policy.browser {
+        return Err(ApiError::new(
+            StatusCode::FORBIDDEN,
+            "POLICY_DENIED",
+            "the sandbox's policy grants no browser",
+        ));
+    }
+    let policy = live.policy.clone();
+    let fresh = st.backend.reconnect(&sandbox.to_string()).await?;
+    let link: GuestLink<Channel> = GuestLink::admit_image(
+        fresh,
+        &sandbox.to_string(),
+        &policy,
+        Duration::from_secs(30),
+        st.backend.image(),
+    )
+    .await?;
+    let task_id = rec.task_id.to_string();
+    // The browser target's path, from the guest (a start is idempotent:
+    // the browser running is reported, one not yet running is started).
+    let ws_path = {
+        let mut l = live.link.lock().await;
+        l.browser_start(&task_id, 0, 0).await?.ws_path
+    };
+    let (raw, port) = link.browser_forward(&task_id).await?;
+    let url = format!("ws://127.0.0.1:{port}{ws_path}");
+    let (upstream, _) = tokio_tungstenite::client_async(url.as_str(), raw)
+        .await
+        .map_err(|e| {
+            ApiError::new(
+                StatusCode::BAD_GATEWAY,
+                "GUEST",
+                format!("DevTools handshake: {e}"),
+            )
+        })?;
+    Ok(ws.on_upgrade(move |socket| relay_cdp(socket, upstream)))
+}
+
+async fn relay_cdp<S>(
+    client: axum::extract::ws::WebSocket,
+    upstream: tokio_tungstenite::WebSocketStream<S>,
+) where
+    S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
+{
+    use axum::extract::ws::Message as A;
+    use futures_util::{SinkExt, StreamExt};
+    use tokio_tungstenite::tungstenite::Message as T;
+    let (mut c_tx, mut c_rx) = client.split();
+    let (mut u_tx, mut u_rx) = upstream.split();
+    let down = async {
+        while let Some(Ok(m)) = u_rx.next().await {
+            let out = match m {
+                T::Text(t) => A::Text(t.as_str().into()),
+                T::Binary(b) => A::Binary(b),
+                T::Close(_) => break,
+                _ => continue,
+            };
+            if c_tx.send(out).await.is_err() {
+                break;
+            }
+        }
+    };
+    let up = async {
+        while let Some(Ok(m)) = c_rx.next().await {
+            let out = match m {
+                A::Text(t) => T::Text(t.as_str().into()),
+                A::Binary(b) => T::Binary(b),
+                A::Close(_) => break,
+                _ => continue,
+            };
+            if u_tx.send(out).await.is_err() {
+                break;
+            }
+        }
+    };
+    tokio::select! {
+        _ = down => {}
+        _ = up => {}
+    }
 }
 
 /// `GET /v1/sandboxes/{id}/egress?tenant_id=`: the broker's audit for a
@@ -786,15 +933,49 @@ async fn relink(
     let sandbox = sandbox_id_of(&id)?;
     let (rec, live) = owned(&st, tenant, &w.worker_id, sandbox).await?;
     let policy = live.policy.clone();
-    let fresh = st.backend.reconnect(&sandbox.to_string()).await?;
-    let new_link: GuestLink<Channel> = GuestLink::admit_image(
-        fresh,
-        &sandbox.to_string(),
-        &policy,
-        Duration::from_secs(30),
-        st.backend.image(),
-    )
-    .await?;
+    // M8.9 (docs/21 "Sandbox recovery"): a guest that cannot be reached
+    // again is lost — recorded so, its remains torn down, `410
+    // SANDBOX_GONE` from here on; the worker's Core replaces it.
+    let admitted = async {
+        let fresh = tokio::time::timeout(
+            Duration::from_secs(20),
+            st.backend.reconnect(&sandbox.to_string()),
+        )
+        .await
+        .map_err(|_| SandboxError::Guest("the guest did not accept a link within 20 s".into()))??;
+        GuestLink::admit_image(
+            fresh,
+            &sandbox.to_string(),
+            &policy,
+            Duration::from_secs(30),
+            st.backend.image(),
+        )
+        .await
+    }
+    .await;
+    let new_link: GuestLink<Channel> = match admitted {
+        Ok(l) => l,
+        Err(e) => {
+            st.live.lock().await.remove(&sandbox);
+            if let Some(b) = &live.broker {
+                b.abort();
+            }
+            let _ = st.backend.destroy(&sandbox.to_string()).await;
+            st.store
+                .set_sandbox_state(
+                    tenant,
+                    sandbox,
+                    "LOST",
+                    &format!("{}; relink failed: {e}", rec.detail),
+                )
+                .await?;
+            return Err(ApiError::new(
+                StatusCode::GONE,
+                "SANDBOX_GONE",
+                format!("sandbox {sandbox} is lost: {e}"),
+            ));
+        }
+    };
     let boot_id = new_link.hello.boot_id.clone();
     *live.link.lock().await = new_link;
     Ok(Json(
@@ -818,6 +999,18 @@ async fn destroy(
     st.live.lock().await.remove(&sandbox);
     if let Some(b) = &live.broker {
         b.abort();
+    }
+    // M8.8: the guest's browser goes with the guest — asked to stop first,
+    // so a reference guest leaves no orphan Chromium behind (a MicroVM's
+    // dies with the VM regardless).
+    if live.policy.browser
+        && let Ok(mut link) = tokio::time::timeout(Duration::from_secs(2), live.link.lock()).await
+    {
+        let _ = tokio::time::timeout(
+            Duration::from_secs(3),
+            link.browser_stop(&rec.task_id.to_string()),
+        )
+        .await;
     }
     st.backend.destroy(&sandbox.to_string()).await?;
     st.store

@@ -103,6 +103,11 @@ jobs:
           echo "e20e46d0c36c55c0d1014eb20576171b3f3d922260d9f792017aeff53af3d4f2  vmlinux" | sha256sum -c -
           curl -sSfL -o busybox https://busybox.net/downloads/binaries/1.35.0-x86_64-linux-musl/busybox
           echo "6e123e7f3202a8c1e9b1f94d8941580a25135382b99e8d3e34fb858bba311348  busybox" | sha256sum -c -
+          # The guest's browser (M8.8): Chrome for Testing's headless shell, pinned and checksummed.
+          curl -sSfL -o chrome-headless-shell-linux64.zip https://storage.googleapis.com/chrome-for-testing-public/153.0.8010.47/linux64/chrome-headless-shell-linux64.zip
+          echo "7728775cf4a35464cd81c8eea2d44d6d32ccc0bd1edfa75aea7f32d146963d63  chrome-headless-shell-linux64.zip" | sha256sum -c -
+          unzip -q chrome-headless-shell-linux64.zip
+          ./chrome-headless-shell-linux64/chrome-headless-shell --version
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
@@ -113,7 +118,7 @@ jobs:
           set -euo pipefail
           rustup target add x86_64-unknown-linux-musl
           cargo build --locked --release -p modbit-guest --target x86_64-unknown-linux-musl
-          tools/guest-image/build.sh target/x86_64-unknown-linux-musl/release/modbit-guest substrate/busybox substrate/rootfs.ext4 64
+          tools/guest-image/build.sh target/x86_64-unknown-linux-musl/release/modbit-guest substrate/busybox substrate/rootfs.ext4 512 substrate/chrome-headless-shell-linux64
       - name: Sign the guest images (M8.4) — a publisher key minted for this job; the gateway trusts only it
         run: |
           set -euo pipefail
@@ -125,7 +130,7 @@ jobs:
           target/debug/guest-image-tool sign --key substrate/publisher.key --key-id ci-publisher --kind reference-guest --image target/debug/modbit-guest --guest-version "$version" --built-from "$GITHUB_SHA" --out substrate/guest.manifest.json
           target/debug/guest-image-tool verify --manifest substrate/rootfs.manifest.json --image substrate/rootfs.ext4 --keys "$keys"
           target/debug/guest-image-tool verify --manifest substrate/guest.manifest.json --image target/debug/modbit-guest --keys "$keys"
-      - name: Cloud API, worker, sandbox backend and gateway qualification (M8.1–M8.4 — real Postgres, real MinIO, real modbit-core, real Firecracker MicroVM, signed images)
+      - name: Cloud API, worker, sandbox backend and gateway qualification (M8.1–M8.8 — real Postgres, real MinIO, real modbit-core, real Firecracker MicroVM, signed images, a browser in the guest)
         env:
           MODBIT_CLOUD_TEST_DATABASE_URL: postgres://modbit:modbit@127.0.0.1:5439/modbit
           MODBIT_CLOUD_TEST_S3_ENDPOINT: http://127.0.0.1:9009
@@ -139,6 +144,8 @@ jobs:
           MODBIT_GUEST_ROOTFS: ${{ github.workspace }}/substrate/rootfs.ext4
           MODBIT_GUEST_IMAGE_MANIFEST: ${{ github.workspace }}/substrate/rootfs.manifest.json
           MODBIT_GUEST_BIN_MANIFEST: ${{ github.workspace }}/substrate/guest.manifest.json
+          # The reference backend's guests run the runner's Chrome (M8.8).
+          MODBIT_GUEST_CHROMIUM: /usr/bin/google-chrome
         shell: bash
         run: |
           set -o pipefail

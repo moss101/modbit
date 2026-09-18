@@ -134,6 +134,11 @@ pub struct SandboxSpec {
     pub network: NetworkPolicy,
     /// Bounds.
     pub resources: Resources,
+    /// Whether the task may run a browser in the sandbox (M8.8): the
+    /// guest's headless Chromium, its DevTools reached only through the
+    /// gateway, its traffic through the egress broker like any process's.
+    #[serde(default)]
+    pub browser: bool,
 }
 
 /// Where the guest's workspace is mounted.
@@ -165,6 +170,8 @@ pub struct CompiledPolicy {
     /// Guest-side: whether the guest runs its local egress proxy and points
     /// its processes at it (any grant at all).
     pub egress_proxy: bool,
+    /// Guest-side: whether the guest may run a browser (M8.8).
+    pub browser: bool,
 }
 
 /// Compile a spec. Refuses a protected path that escapes the workspace.
@@ -190,6 +197,7 @@ pub fn compile(spec: &SandboxSpec) -> crate::Result<CompiledPolicy> {
         network_interface: false,
         egress: spec.network.egress.clone(),
         egress_proxy: spec.network.grants_anything(),
+        browser: spec.browser,
     })
 }
 
@@ -205,6 +213,7 @@ impl CompiledPolicy {
             max_processes: self.spec.resources.max_processes,
             exec_timeout_ms: self.spec.resources.exec_timeout_ms,
             egress_proxy: self.egress_proxy,
+            browser: self.browser,
         }
     }
 }
@@ -297,6 +306,7 @@ mod tests {
             protected_paths: vec![".git/hooks".into(), "secrets".into()],
             network: NetworkPolicy::default(),
             resources: Resources::default(),
+            browser: false,
         }
     }
 

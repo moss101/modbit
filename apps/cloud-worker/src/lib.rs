@@ -16,6 +16,7 @@
 
 pub mod core_process;
 mod handoff;
+mod link;
 mod session;
 
 use std::path::PathBuf;
@@ -57,6 +58,27 @@ pub struct Config {
     /// a cloud task's lease grants, its token the credential the broker
     /// injects); the token is held in memory and crosses to the Core once.
     pub forge: Option<ForgeConfig>,
+    /// The Cloud API this worker links to outbound (M8.8: the person's view
+    /// of a cloud browser, their input and control hand-overs travel over
+    /// it); the token is held in memory.
+    pub api: Option<ApiLinkConfig>,
+}
+
+/// The Cloud API a worker links to (M8.8).
+#[derive(Clone)]
+pub struct ApiLinkConfig {
+    /// Base URL (`https://api…`; the link is `wss` there).
+    pub base_url: String,
+    /// The worker's bearer token (the same worker key the gateway verifies).
+    pub worker_token: String,
+}
+
+impl std::fmt::Debug for ApiLinkConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ApiLinkConfig")
+            .field("base_url", &self.base_url)
+            .finish_non_exhaustive()
+    }
 }
 
 /// The forge a worker's Cores are configured with (M8.6).
@@ -181,6 +203,15 @@ impl Config {
                         .unwrap_or_else(|_| "https://api.github.com".into()),
                     token,
                 }),
+            api: std::env::var("MODBIT_CLOUD_API_URL")
+                .ok()
+                .filter(|s| !s.is_empty())
+                .map(|base_url| ApiLinkConfig {
+                    base_url,
+                    worker_token: std::env::var("MODBIT_CLOUD_WORKER_API_TOKEN")
+                        .or_else(|_| std::env::var("MODBIT_SANDBOX_WORKER_TOKEN"))
+                        .unwrap_or_default(),
+                }),
         })
     }
 }
@@ -213,6 +244,7 @@ pub(crate) type HostingMap =
 pub struct Worker {
     stop: tokio::sync::watch::Sender<bool>,
     handle: tokio::task::JoinHandle<()>,
+    link: tokio::task::JoinHandle<()>,
     hosting: HostingMap,
     /// The worker's id.
     pub worker_id: String,
@@ -224,6 +256,7 @@ impl Worker {
     pub async fn stop(self) {
         let _ = self.stop.send(true);
         let _ = self.handle.await;
+        self.link.abort();
     }
 
     /// How this worker stands on `session` (`None`: never claimed here).
@@ -243,10 +276,17 @@ pub async fn start(cfg: Config) -> anyhow::Result<Worker> {
     let worker_id = cfg.worker_id.clone();
     let cfg = Arc::new(cfg);
     let hosting: HostingMap = Default::default();
-    let handle = tokio::spawn(run_loop(cfg, store, stop_rx, Arc::clone(&hosting)));
+    let cores: link::Cores = Default::default();
+    let link = tokio::spawn(link::run(
+        Arc::clone(&cfg),
+        Arc::clone(&cores),
+        stop_rx.clone(),
+    ));
+    let handle = tokio::spawn(run_loop(cfg, store, stop_rx, Arc::clone(&hosting), cores));
     Ok(Worker {
         stop,
         handle,
+        link,
         hosting,
         worker_id,
     })
@@ -257,6 +297,7 @@ async fn run_loop(
     store: Arc<CloudStore>,
     mut stop: tokio::sync::watch::Receiver<bool>,
     hosting: HostingMap,
+    cores: link::Cores,
 ) {
     let mut hosted: Vec<(modbit_domain::SessionId, tokio::task::JoinHandle<()>)> = Vec::new();
     loop {
@@ -294,6 +335,7 @@ async fn run_loop(
                         lease,
                         stop.clone(),
                         Arc::clone(&hosting),
+                        Arc::clone(&cores),
                     ));
                     hosted.push((sid, task));
                     continue;

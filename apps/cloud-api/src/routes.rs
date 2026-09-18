@@ -32,17 +32,17 @@ pub struct ApiError {
 }
 
 impl ApiError {
-    fn new(status: StatusCode, code: &'static str, message: impl Into<String>) -> Self {
+    pub(crate) fn new(status: StatusCode, code: &'static str, message: impl Into<String>) -> Self {
         Self {
             status,
             code,
             message: message.into(),
         }
     }
-    fn bad(message: impl Into<String>) -> Self {
+    pub(crate) fn bad(message: impl Into<String>) -> Self {
         Self::new(StatusCode::BAD_REQUEST, "BAD_PAYLOAD", message)
     }
-    fn not_found(what: impl Into<String>) -> Self {
+    pub(crate) fn not_found(what: impl Into<String>) -> Self {
         Self::new(StatusCode::NOT_FOUND, "NOT_FOUND", what)
     }
 }
@@ -77,7 +77,7 @@ impl IntoResponse for ApiError {
     }
 }
 
-type ApiResult<T> = Result<T, ApiError>;
+pub(crate) type ApiResult<T> = Result<T, ApiError>;
 
 /// The authenticated caller, attached to the request by the middleware.
 #[derive(Clone, Debug)]
@@ -170,6 +170,15 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/v1/objects", axum::routing::put(put_object))
         .route("/v1/handoffs", post(handoff))
         .route("/v1/stream", get(crate::stream::stream))
+        // M8.8: the person's view of a cloud browser, through the worker's link.
+        .route(
+            "/v1/browser-sessions/{browser_session_id}/stream",
+            get(crate::browser_view::browser_stream),
+        )
+        .route(
+            "/v1/browser-sessions/{browser_action}",
+            post(browser_action),
+        )
         .route_layer(middleware::from_fn_with_state(
             Arc::clone(&state),
             authenticate,
@@ -178,12 +187,32 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/v1/health", get(health))
         .route("/v1/auth/token", post(auth_token))
         .route("/v1/auth/refresh", post(auth_refresh))
+        // M8.8: a worker's outbound link (worker bearer token, not a principal's).
+        .route("/v1/workers/link", get(crate::browser_view::worker_link))
         .merge(authed)
         .layer(middleware::from_fn(stamp_request_id))
         .layer(tower_http::limit::RequestBodyLimitLayer::new(
             64 * 1024 * 1024,
         ))
         .with_state(state)
+}
+
+/// `POST /v1/browser-sessions/{id}:input` | `:control` (M8.8).
+async fn browser_action(
+    state: State<Arc<AppState>>,
+    ext: axum::Extension<Caller>,
+    Path(browser_action): Path<String>,
+    body: Json<Value>,
+) -> ApiResult<(StatusCode, Json<Value>)> {
+    let (id, action) = browser_action
+        .split_once(':')
+        .ok_or_else(|| ApiError::bad("expected /v1/browser-sessions/{id}:input|:control"))?;
+    let id = id.to_owned();
+    match action {
+        "input" => crate::browser_view::browser_input(state, ext, Path(id), body).await,
+        "control" => crate::browser_view::browser_control(state, ext, Path(id), body).await,
+        other => Err(ApiError::bad(format!("unknown browser action `{other}`"))),
+    }
 }
 
 async fn health() -> Json<Value> {
@@ -896,6 +925,8 @@ pub const CLOUD_CAPABILITIES: &[&str] = &[
     "shell.exec",
     "network.egress",
     "secret.use",
+    // M8.8: the browser inside the sandbox.
+    "browser.control",
 ];
 
 /// `POST /v1/handoffs {command_id, manifest, parts: {events.jsonl: hash, repo.bundle?: hash, manifest.json: hash}}`

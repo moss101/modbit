@@ -473,6 +473,14 @@ export declare type SurfaceFrame = Message<"modbit.v1.SurfaceFrame"> & {
      */
     value: BrowserHostRequest;
     case: "browserRequest";
+  } | {
+    /**
+     * M8.8: a screencast frame of a browser view this connection watches.
+     *
+     * @generated from field: modbit.v1.BrowserViewFrame browser_frame = 9;
+     */
+    value: BrowserViewFrame;
+    case: "browserFrame";
   } | { case: undefined; value?: undefined };
 };
 
@@ -8931,6 +8939,277 @@ export declare type BrowserSessionClosed = Message<"modbit.v1.BrowserSessionClos
  * Use `create(BrowserSessionClosedSchema)` to create a new message.
  */
 export declare const BrowserSessionClosedSchema: GenMessage<BrowserSessionClosed>;
+
+/**
+ * M8.8 (docs/22 "Cloud browser"): the person's view of a browser the Core
+ * hosts itself — a cloud task's Chromium inside its sandbox, reached over
+ * the gateway's DevTools relay (`host_kind` `cloud-cdp`). Watching starts
+ * the page's screencast; frames arrive on this connection as
+ * SurfaceFrame.browser_frame until the watcher unwatches or disconnects.
+ * A session hosted by the desktop's own view answers HOST_NOT_STREAMABLE:
+ * its view is on the desktop already.
+ *
+ * @generated from message modbit.v1.WatchBrowserView
+ */
+export declare type WatchBrowserView = Message<"modbit.v1.WatchBrowserView"> & {
+  /**
+   * @generated from field: modbit.v1.Id browser_session_id = 1;
+   */
+  browserSessionId?: Id | undefined;
+
+  /**
+   * 0 = 1024
+   *
+   * @generated from field: uint32 max_width = 2;
+   */
+  maxWidth: number;
+
+  /**
+   * 0 = 768
+   *
+   * @generated from field: uint32 max_height = 3;
+   */
+  maxHeight: number;
+
+  /**
+   * JPEG quality; 0 = 60
+   *
+   * @generated from field: uint32 quality = 4;
+   */
+  quality: number;
+};
+
+/**
+ * Describes the message modbit.v1.WatchBrowserView.
+ * Use `create(WatchBrowserViewSchema)` to create a new message.
+ */
+export declare const WatchBrowserViewSchema: GenMessage<WatchBrowserView>;
+
+/**
+ * @generated from message modbit.v1.BrowserViewWatched
+ */
+export declare type BrowserViewWatched = Message<"modbit.v1.BrowserViewWatched"> & {
+  /**
+   * @generated from field: modbit.v1.Id browser_session_id = 1;
+   */
+  browserSessionId?: Id | undefined;
+
+  /**
+   * @generated from field: string host_kind = 2;
+   */
+  hostKind: string;
+
+  /**
+   * @generated from field: string controller = 3;
+   */
+  controller: string;
+
+  /**
+   * @generated from field: uint64 lease_generation = 4;
+   */
+  leaseGeneration: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.BrowserViewWatched.
+ * Use `create(BrowserViewWatchedSchema)` to create a new message.
+ */
+export declare const BrowserViewWatchedSchema: GenMessage<BrowserViewWatched>;
+
+/**
+ * @generated from message modbit.v1.UnwatchBrowserView
+ */
+export declare type UnwatchBrowserView = Message<"modbit.v1.UnwatchBrowserView"> & {
+  /**
+   * @generated from field: modbit.v1.Id browser_session_id = 1;
+   */
+  browserSessionId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.UnwatchBrowserView.
+ * Use `create(UnwatchBrowserViewSchema)` to create a new message.
+ */
+export declare const UnwatchBrowserViewSchema: GenMessage<UnwatchBrowserView>;
+
+/**
+ * @generated from message modbit.v1.BrowserViewUnwatched
+ */
+export declare type BrowserViewUnwatched = Message<"modbit.v1.BrowserViewUnwatched"> & {
+  /**
+   * @generated from field: bool was_watching = 1;
+   */
+  wasWatching: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.BrowserViewUnwatched.
+ * Use `create(BrowserViewUnwatchedSchema)` to create a new message.
+ */
+export declare const BrowserViewUnwatchedSchema: GenMessage<BrowserViewUnwatched>;
+
+/**
+ * One screencast frame (JPEG) of the page as it is.
+ *
+ * @generated from message modbit.v1.BrowserViewFrame
+ */
+export declare type BrowserViewFrame = Message<"modbit.v1.BrowserViewFrame"> & {
+  /**
+   * @generated from field: modbit.v1.Id browser_session_id = 1;
+   */
+  browserSessionId?: Id | undefined;
+
+  /**
+   * @generated from field: bytes jpeg = 2;
+   */
+  jpeg: Uint8Array;
+
+  /**
+   * the frame's pixels
+   *
+   * @generated from field: uint32 width = 3;
+   */
+  width: number;
+
+  /**
+   * @generated from field: uint32 height = 4;
+   */
+  height: number;
+
+  /**
+   * the page's CSS pixels the frame maps to
+   *
+   * @generated from field: uint32 page_width = 5;
+   */
+  pageWidth: number;
+
+  /**
+   * @generated from field: uint32 page_height = 6;
+   */
+  pageHeight: number;
+
+  /**
+   * @generated from field: uint64 seq = 7;
+   */
+  seq: bigint;
+
+  /**
+   * as last observed (untrusted)
+   *
+   * @generated from field: string url = 8;
+   */
+  url: string;
+
+  /**
+   * @generated from field: string title = 9;
+   */
+  title: string;
+};
+
+/**
+ * Describes the message modbit.v1.BrowserViewFrame.
+ * Use `create(BrowserViewFrameSchema)` to create a new message.
+ */
+export declare const BrowserViewFrameSchema: GenMessage<BrowserViewFrame>;
+
+/**
+ * The person's input into a view they watch, applied only while the
+ * person holds the session's control lease (SetBrowserControl USER);
+ * under the agent's control it is refused AGENT_ACTIVE. Coordinates are
+ * page CSS pixels (the frame's page_width/page_height).
+ *
+ * @generated from message modbit.v1.BrowserViewInput
+ */
+export declare type BrowserViewInput = Message<"modbit.v1.BrowserViewInput"> & {
+  /**
+   * @generated from field: modbit.v1.Id browser_session_id = 1;
+   */
+  browserSessionId?: Id | undefined;
+
+  /**
+   * mouse_move | mouse_down | mouse_up | click | wheel | key_down | key_up | insert_text
+   *
+   * @generated from field: string kind = 2;
+   */
+  kind: string;
+
+  /**
+   * @generated from field: double x = 3;
+   */
+  x: number;
+
+  /**
+   * @generated from field: double y = 4;
+   */
+  y: number;
+
+  /**
+   * left | middle | right (mouse)
+   *
+   * @generated from field: string button = 5;
+   */
+  button: string;
+
+  /**
+   * insert_text
+   *
+   * @generated from field: string text = 6;
+   */
+  text: string;
+
+  /**
+   * key_down / key_up: Enter, Tab, a, …
+   *
+   * @generated from field: string key = 7;
+   */
+  key: string;
+
+  /**
+   * wheel
+   *
+   * @generated from field: int32 delta_x = 8;
+   */
+  deltaX: number;
+
+  /**
+   * @generated from field: int32 delta_y = 9;
+   */
+  deltaY: number;
+
+  /**
+   * CDP bit mask: 1 alt, 2 ctrl, 4 meta, 8 shift
+   *
+   * @generated from field: uint32 modifiers = 10;
+   */
+  modifiers: number;
+};
+
+/**
+ * Describes the message modbit.v1.BrowserViewInput.
+ * Use `create(BrowserViewInputSchema)` to create a new message.
+ */
+export declare const BrowserViewInputSchema: GenMessage<BrowserViewInput>;
+
+/**
+ * @generated from message modbit.v1.BrowserViewInputDelivered
+ */
+export declare type BrowserViewInputDelivered = Message<"modbit.v1.BrowserViewInputDelivered"> & {
+  /**
+   * @generated from field: bool delivered = 1;
+   */
+  delivered: boolean;
+
+  /**
+   * @generated from field: string detail = 2;
+   */
+  detail: string;
+};
+
+/**
+ * Describes the message modbit.v1.BrowserViewInputDelivered.
+ * Use `create(BrowserViewInputDeliveredSchema)` to create a new message.
+ */
+export declare const BrowserViewInputDeliveredSchema: GenMessage<BrowserViewInputDelivered>;
 
 /**
  * Command acknowledgement.

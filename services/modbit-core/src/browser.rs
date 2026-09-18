@@ -33,6 +33,10 @@ pub(crate) struct HostLink {
     pub tx: mpsc::Sender<wire::BrowserHostRequest>,
     /// The connection the host attached on (a later attach replaces it).
     pub connection: u64,
+    /// M8.8: a host the Core runs itself (`cloud-cdp`) takes view control
+    /// — watchers of the page's screencast and the person's input; a
+    /// desktop host has none (its view is on the desktop already).
+    pub view: Option<mpsc::Sender<crate::browser_cloud::ViewControl>>,
 }
 
 /// One session as the Core records it.
@@ -168,6 +172,17 @@ impl BrowserSessions {
         let before = rec.lease;
         rec.lease = rec.lease.handed_to(to);
         Some((rec.lease, rec.lease != before))
+    }
+
+    /// The view control of the session's host, when the host streams (M8.8).
+    pub(crate) async fn view_control(
+        &self,
+        id: BrowserSessionId,
+    ) -> Option<(String, mpsc::Sender<crate::browser_cloud::ViewControl>)> {
+        let s = self.sessions.lock().await;
+        let rec = s.get(&id)?;
+        let h = rec.host.as_ref()?;
+        h.view.clone().map(|v| (h.kind.clone(), v))
     }
 
     pub(crate) async fn record_state(&self, id: BrowserSessionId, state: PageState) {

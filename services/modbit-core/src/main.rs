@@ -17,6 +17,7 @@ mod attention;
 mod baseline;
 mod branch;
 mod browser;
+mod browser_cloud;
 mod capacity;
 mod checkpoint;
 mod critique;

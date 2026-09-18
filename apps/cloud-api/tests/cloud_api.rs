@@ -39,6 +39,7 @@ fn env_config(rate_capacity: u32) -> Option<Config> {
         bind: "127.0.0.1:0".into(),
         rate_capacity,
         rate_per_second: 0.5,
+        worker_key: None,
     })
 }
 

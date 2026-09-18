@@ -387,6 +387,9 @@ pub fn default_lease_for_profile(
         // docs/21): its files and its processes, and — through the
         // gateway's egress broker (M8.6) — the configured forge's API host
         // with the token handle it holds; no host browser.
+        // M8.8: and the task's browser — Chromium inside the sandbox,
+        // its traffic through the same broker, its view streamed to the
+        // person through the Core (docs/22 "Cloud browser").
         PROFILE_CLOUD_ISOLATED => vec![
             "fs.read",
             "fs.write",
@@ -394,6 +397,7 @@ pub fn default_lease_for_profile(
             "shell.exec",
             "network.egress",
             "secret.use",
+            "browser.control",
         ],
         // The autonomous profile drives the task's browser session (M7.1,
         // docs/22): the host's sandboxed view, http(s) only, under the

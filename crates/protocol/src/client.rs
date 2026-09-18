@@ -84,6 +84,9 @@ pub struct Client {
     /// M7.1: browser-host requests that arrived while another frame was
     /// awaited; `next_browser_request` drains them first.
     browser_requests: std::collections::VecDeque<crate::v1::BrowserHostRequest>,
+    /// M8.8: frames of a browser view this connection watches that arrived
+    /// while another frame was awaited; `next_browser_frame` drains them first.
+    browser_frames: std::collections::VecDeque<crate::v1::BrowserViewFrame>,
 }
 
 impl std::fmt::Debug for Client {
@@ -129,6 +132,7 @@ impl Client {
                     protocol_version: ack.protocol_version,
                     capabilities: ack.client_capabilities,
                     browser_requests: std::collections::VecDeque::new(),
+                    browser_frames: std::collections::VecDeque::new(),
                 })
             }
             Some(SurfaceFrame {
@@ -182,7 +186,52 @@ impl Client {
                 Some(SurfaceFrame {
                     body: Some(Body::BrowserRequest(r)),
                 }) => self.browser_requests.push_back(r),
+                // M8.8: a frame of a watched view may interleave.
+                Some(SurfaceFrame {
+                    body: Some(Body::BrowserFrame(f)),
+                }) => self.push_frame(f),
                 None => return Err(ClientError::Refused("connection closed".into())),
+                Some(other) => return Err(ClientError::Unexpected(format!("{other:?}"))),
+            }
+        }
+    }
+
+    fn push_frame(&mut self, f: crate::v1::BrowserViewFrame) {
+        // A watcher that does not drain keeps only the latest few.
+        if self.browser_frames.len() >= 8 {
+            self.browser_frames.pop_front();
+        }
+        self.browser_frames.push_back(f);
+    }
+
+    /// M8.8: the next frame of a browser view this connection watches
+    /// (`WatchBrowserView`); `None` when the Core closes.
+    pub async fn next_browser_frame(
+        &mut self,
+    ) -> Result<Option<crate::v1::BrowserViewFrame>, ClientError> {
+        if let Some(f) = self.browser_frames.pop_front() {
+            return Ok(Some(f));
+        }
+        loop {
+            match read_frame(&mut self.stream).await? {
+                Some(SurfaceFrame {
+                    body: Some(Body::BrowserFrame(f)),
+                }) => return Ok(Some(f)),
+                Some(SurfaceFrame {
+                    body: Some(Body::Error(e)),
+                }) => {
+                    return Err(ClientError::Protocol {
+                        code: e.code,
+                        message: e.message,
+                    });
+                }
+                None => return Ok(None),
+                Some(SurfaceFrame {
+                    body: Some(Body::BrowserRequest(r)),
+                }) => self.browser_requests.push_back(r),
+                Some(SurfaceFrame {
+                    body: Some(Body::Event(_) | Body::CommandAck(_)),
+                }) => continue,
                 Some(other) => return Err(ClientError::Unexpected(format!("{other:?}"))),
             }
         }
@@ -213,6 +262,9 @@ impl Client {
                 Some(SurfaceFrame {
                     body: Some(Body::Event(_) | Body::CommandAck(_)),
                 }) => continue,
+                Some(SurfaceFrame {
+                    body: Some(Body::BrowserFrame(f)),
+                }) => self.push_frame(f),
                 Some(other) => return Err(ClientError::Unexpected(format!("{other:?}"))),
             }
         }
@@ -259,6 +311,9 @@ impl Client {
                 Some(SurfaceFrame {
                     body: Some(Body::BrowserRequest(r)),
                 }) => self.browser_requests.push_back(r),
+                Some(SurfaceFrame {
+                    body: Some(Body::BrowserFrame(f)),
+                }) => self.push_frame(f),
                 Some(other) => return Err(ClientError::Unexpected(format!("{other:?}"))),
             }
         }

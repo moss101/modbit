@@ -21,7 +21,10 @@ use crate::pipeline::InvokeContext;
 use crate::registry::{BoxFuture, Idempotency, Tool, ToolOutcome, ToolRegistry, ToolSpec};
 use crate::{EffectClass, Result};
 
-const PROFILES: &[&str] = &["local_trusted", "local_autonomous"];
+// M8.8: under `cloud_isolated` the browser is the Chromium inside the
+// task's sandbox, hosted by the Core over the gateway's relay (docs/22
+// "Cloud browser"); the tools are the same.
+const PROFILES: &[&str] = &["local_trusted", "local_autonomous", "cloud_isolated"];
 
 /// The capability a lease must grant for any `browser.*` call.
 pub const CAPABILITY: &str = "browser.control";

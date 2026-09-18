@@ -30,19 +30,21 @@ fn start_proxy_if_granted(policy: &wire::GuestPolicy) -> bool {
         eprintln!("modbit-guest: the policy grants egress but no broker address is known here");
         return false;
     };
-    if PROXY_STARTED.set(()).is_ok() {
-        tokio::spawn(async move {
-            if let Err(e) = crate::proxy::serve(addr).await {
-                eprintln!("modbit-guest: egress proxy: {e}");
-            }
-        });
+    if PROXY_STARTED.set(()).is_ok()
+        && let Err(e) = crate::proxy::start(addr)
+    {
+        eprintln!("modbit-guest: egress proxy: {e}");
+        return false;
     }
-    true
+    crate::proxy::addr().is_some()
 }
 
 /// The environment a process gets so its HTTP clients use the local proxy.
 fn proxy_env() -> Vec<String> {
-    let url = format!("http://{}", crate::proxy::PROXY_ADDR);
+    let Some(addr) = crate::proxy::addr() else {
+        return vec![];
+    };
+    let url = format!("http://{addr}");
     vec![
         format!("http_proxy={url}"),
         format!("https_proxy={url}"),
@@ -62,6 +64,7 @@ pub const METHODS: &[&str] = &[
     "pty",
     "fs.dir",
     "net.egress",
+    "browser",
 ];
 
 /// Serve on a loopback TCP listener (the reference backend), announcing
@@ -70,6 +73,17 @@ pub async fn serve_tcp(addr: &str, mapping: Option<PathBuf>) -> std::io::Result<
     let listener = tokio::net::TcpListener::bind(addr).await?;
     let local = listener.local_addr()?;
     println!("ready listen={local}");
+    // A term stops the browser this guest runs (M8.8) before the exit.
+    #[cfg(unix)]
+    tokio::spawn(async {
+        if let Ok(mut term) =
+            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+        {
+            term.recv().await;
+            crate::browser::stop();
+            std::process::exit(0);
+        }
+    });
     let boot_id = uuid::Uuid::now_v7().to_string();
     let started = Instant::now();
     let procs = Arc::new(ProcTable::default());
@@ -187,6 +201,12 @@ pub async fn serve_stream<S: AsyncRead + AsyncWrite + Unpin>(
         };
         let mut reply = guest.handle(call).await;
         auth::sign_reply(&guest.credential, &mut reply);
+        // M8.8: a forward turns this link into a raw relay to the browser's
+        // DevTools port once the answer is on the wire; no call follows.
+        let forward_to = match &reply.body {
+            Some(guest_reply::Body::BrowserForwarding(f)) => Some(f.port),
+            _ => None,
+        };
         write_message(
             &mut stream,
             &GuestFrame {
@@ -195,6 +215,13 @@ pub async fn serve_stream<S: AsyncRead + AsyncWrite + Unpin>(
         )
         .await
         .map_err(std::io::Error::other)?;
+        if let Some(port) = forward_to {
+            let mut cdp = tokio::net::TcpStream::connect(("127.0.0.1", port as u16)).await?;
+            let _ = cdp.set_nodelay(true);
+            eprintln!("modbit-guest: link forwarded to the browser's DevTools ({port})");
+            let _ = tokio::io::copy_bidirectional(&mut stream, &mut cdp).await;
+            return Ok(());
+        }
     }
     Ok(())
 }
@@ -317,10 +344,15 @@ impl Guest {
             | Some(guest_call::Body::ProcWrite(_))
             | Some(guest_call::Body::ProcCancel(_)) => "proc.exec",
             Some(guest_call::Body::PtyResize(_)) => "pty",
-            Some(guest_call::Body::ListDir(_)) | Some(guest_call::Body::Stat(_)) => "fs.read",
+            Some(guest_call::Body::ListDir(_))
+            | Some(guest_call::Body::Stat(_))
+            | Some(guest_call::Body::FsSnapshot(_)) => "fs.read",
             Some(guest_call::Body::Mkdir(_))
             | Some(guest_call::Body::Remove(_))
             | Some(guest_call::Body::Rename(_)) => "fs.write",
+            Some(guest_call::Body::BrowserStart(_))
+            | Some(guest_call::Body::BrowserStop(_))
+            | Some(guest_call::Body::BrowserForward(_)) => "browser",
             None => "",
         };
         if !expected.is_empty() && call.capability != expected {
@@ -353,11 +385,72 @@ impl Guest {
             Some(guest_call::Body::ProcCancel(c)) => self.proc_cancel(&id, &c).await,
             Some(guest_call::Body::PtyResize(r)) => self.pty_resize(&id, &r),
             Some(guest_call::Body::ListDir(l)) => self.list_dir(&id, &l),
+            Some(guest_call::Body::FsSnapshot(f)) => self.fs_snapshot(&id, &f),
             Some(guest_call::Body::Stat(st)) => self.stat(&id, &st),
             Some(guest_call::Body::Mkdir(m)) => self.mkdir(&id, &m),
             Some(guest_call::Body::Remove(r)) => self.remove(&id, &r),
             Some(guest_call::Body::Rename(r)) => self.rename(&id, &r),
+            Some(guest_call::Body::BrowserStart(b)) => self.browser_start(&id, &b).await,
+            Some(guest_call::Body::BrowserStop(_)) => {
+                if !self.policy.browser {
+                    return refusal(&id, "POLICY_DENIED", "the policy grants no browser");
+                }
+                crate::browser::stop();
+                reply(
+                    &id,
+                    guest_reply::Body::FsDone(wire::GuestFsDone {
+                        path: "browser".into(),
+                    }),
+                )
+            }
+            Some(guest_call::Body::BrowserForward(_)) => {
+                if !self.policy.browser {
+                    return refusal(&id, "POLICY_DENIED", "the policy grants no browser");
+                }
+                match crate::browser::running() {
+                    Some(r) => reply(
+                        &id,
+                        guest_reply::Body::BrowserForwarding(wire::GuestBrowserForwarding {
+                            port: u32::from(r.port),
+                        }),
+                    ),
+                    None => refusal(&id, "BROWSER_NOT_RUNNING", "start the browser first"),
+                }
+            }
             None => refusal(&id, "BAD_CALL", "empty call body"),
+        }
+    }
+
+    /// M8.8: the guest's headless Chromium, on the policy's grant; its
+    /// requests go through the egress proxy (or nowhere).
+    async fn browser_start(&mut self, id: &str, b: &wire::GuestBrowserStart) -> wire::GuestReply {
+        if !self.policy.browser {
+            return refusal(id, "POLICY_DENIED", "the policy grants no browser");
+        }
+        let proxy = if self.egress {
+            crate::proxy::addr()
+        } else {
+            None
+        };
+        let data_dir = match &self.mapping {
+            Some(dir) => dir
+                .parent()
+                .map(|p| p.join("browser"))
+                .unwrap_or_else(|| dir.join(".modbit-browser")),
+            None => PathBuf::from("/tmp/modbit-browser"),
+        };
+        match crate::browser::start(b.width, b.height, proxy.as_deref(), &data_dir).await {
+            Ok((r, already)) => reply(
+                id,
+                guest_reply::Body::BrowserStarted(wire::GuestBrowserStarted {
+                    port: u32::from(r.port),
+                    ws_path: r.ws_path,
+                    pid: r.pid,
+                    version: String::new(),
+                    already_running: already,
+                }),
+            ),
+            Err((code, msg)) => refusal(id, code, msg),
         }
     }
 
@@ -651,6 +744,75 @@ impl Guest {
             ),
             Err(e) => refusal(id, "BAD_CALL", format!("resize: {e}")),
         }
+    }
+
+    /// M8.9: every regular file under the root, hashed — what a checkpoint
+    /// of the guest's worktree compares against the seed.
+    fn fs_snapshot(&self, id: &str, f: &wire::GuestFsSnapshot) -> wire::GuestReply {
+        let root_guest = if f.root.is_empty() {
+            self.policy.workspace_root.clone()
+        } else {
+            self.resolved_guest_path(&f.root)
+        };
+        if let Err((code, msg)) = read_allowed(&self.policy, &root_guest) {
+            return refusal(id, code, msg);
+        }
+        let host_root = self.host_path(&root_guest);
+        let max = if f.max_entries == 0 {
+            20_000
+        } else {
+            f.max_entries as usize
+        };
+        let mut entries = Vec::new();
+        let mut truncated = false;
+        let mut stack = vec![host_root.clone()];
+        while let Some(dir) = stack.pop() {
+            let Ok(rd) = std::fs::read_dir(&dir) else {
+                continue;
+            };
+            let mut items: Vec<_> = rd.flatten().collect();
+            items.sort_by_key(|e| e.file_name());
+            for e in items {
+                let Ok(ft) = e.file_type() else { continue };
+                let name = e.file_name().to_string_lossy().into_owned();
+                if ft.is_dir() {
+                    if name != ".git" {
+                        stack.push(e.path());
+                    }
+                    continue;
+                }
+                if !ft.is_file() {
+                    continue;
+                }
+                if entries.len() >= max {
+                    truncated = true;
+                    break;
+                }
+                let Ok(bytes) = std::fs::read(e.path()) else {
+                    continue;
+                };
+                use sha2::Digest;
+                let sha256 = hex::encode(sha2::Sha256::digest(&bytes));
+                let rel = e
+                    .path()
+                    .strip_prefix(&host_root)
+                    .map(|p| p.to_string_lossy().replace('\\', "/"))
+                    .unwrap_or(name);
+                entries.push(wire::GuestFsEntry {
+                    path: rel,
+                    size: bytes.len() as u64,
+                    sha256,
+                });
+            }
+            if truncated {
+                break;
+            }
+        }
+        entries.sort_by(|a, b| a.path.cmp(&b.path));
+        reply(
+            id,
+            guest_reply::Body::FsSnapshot(wire::GuestFsSnapshotResult { entries, truncated }),
+        )
     }
 
     fn list_dir(&self, id: &str, l: &wire::GuestListDir) -> wire::GuestReply {

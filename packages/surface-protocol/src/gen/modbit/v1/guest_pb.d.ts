@@ -124,6 +124,14 @@ export declare type GuestPolicy = Message<"modbit.v1.GuestPolicy"> & {
    * @generated from field: bool egress_proxy = 7;
    */
   egressProxy: boolean;
+
+  /**
+   * M8.8: the guest may run a browser (Chromium, headless) for the task;
+   * its traffic goes through the egress proxy like every process's.
+   *
+   * @generated from field: bool browser = 8;
+   */
+  browser: boolean;
 };
 
 /**
@@ -354,6 +362,34 @@ export declare type GuestCall = Message<"modbit.v1.GuestCall"> & {
      */
     value: GuestRename;
     case: "rename";
+  } | {
+    /**
+     * M8.8: the guest's browser
+     *
+     * @generated from field: modbit.v1.GuestBrowserStart browser_start = 40;
+     */
+    value: GuestBrowserStart;
+    case: "browserStart";
+  } | {
+    /**
+     * @generated from field: modbit.v1.GuestBrowserStop browser_stop = 41;
+     */
+    value: GuestBrowserStop;
+    case: "browserStop";
+  } | {
+    /**
+     * @generated from field: modbit.v1.GuestBrowserForward browser_forward = 42;
+     */
+    value: GuestBrowserForward;
+    case: "browserForward";
+  } | {
+    /**
+     * M8.9: the workspace's content, hashed (a checkpoint of the guest)
+     *
+     * @generated from field: modbit.v1.GuestFsSnapshot fs_snapshot = 35;
+     */
+    value: GuestFsSnapshot;
+    case: "fsSnapshot";
   } | { case: undefined; value?: undefined };
 };
 
@@ -576,6 +612,28 @@ export declare type GuestReply = Message<"modbit.v1.GuestReply"> & {
      */
     value: GuestFsDone;
     case: "fsDone";
+  } | {
+    /**
+     * M8.8
+     *
+     * @generated from field: modbit.v1.GuestBrowserStarted browser_started = 40;
+     */
+    value: GuestBrowserStarted;
+    case: "browserStarted";
+  } | {
+    /**
+     * @generated from field: modbit.v1.GuestBrowserForwarding browser_forwarding = 42;
+     */
+    value: GuestBrowserForwarding;
+    case: "browserForwarding";
+  } | {
+    /**
+     * M8.9
+     *
+     * @generated from field: modbit.v1.GuestFsSnapshotResult fs_snapshot = 35;
+     */
+    value: GuestFsSnapshotResult;
+    case: "fsSnapshot";
   } | { case: undefined; value?: undefined };
 };
 
@@ -584,6 +642,200 @@ export declare type GuestReply = Message<"modbit.v1.GuestReply"> & {
  * Use `create(GuestReplySchema)` to create a new message.
  */
 export declare const GuestReplySchema: GenMessage<GuestReply>;
+
+/**
+ * M8.9 (docs/21 "Sandbox recovery"): every regular file under `root`
+ * (the workspace; `.git` and symlinks skipped) with its size and sha256,
+ * so a checkpoint of the guest's worktree costs one call plus the reads
+ * of what changed.
+ *
+ * @generated from message modbit.v1.GuestFsSnapshot
+ */
+export declare type GuestFsSnapshot = Message<"modbit.v1.GuestFsSnapshot"> & {
+  /**
+   * "" = the workspace root
+   *
+   * @generated from field: string root = 1;
+   */
+  root: string;
+
+  /**
+   * 0 = 20000
+   *
+   * @generated from field: uint32 max_entries = 2;
+   */
+  maxEntries: number;
+};
+
+/**
+ * Describes the message modbit.v1.GuestFsSnapshot.
+ * Use `create(GuestFsSnapshotSchema)` to create a new message.
+ */
+export declare const GuestFsSnapshotSchema: GenMessage<GuestFsSnapshot>;
+
+/**
+ * @generated from message modbit.v1.GuestFsEntry
+ */
+export declare type GuestFsEntry = Message<"modbit.v1.GuestFsEntry"> & {
+  /**
+   * relative to root, `/`-separated
+   *
+   * @generated from field: string path = 1;
+   */
+  path: string;
+
+  /**
+   * @generated from field: uint64 size = 2;
+   */
+  size: bigint;
+
+  /**
+   * @generated from field: string sha256 = 3;
+   */
+  sha256: string;
+};
+
+/**
+ * Describes the message modbit.v1.GuestFsEntry.
+ * Use `create(GuestFsEntrySchema)` to create a new message.
+ */
+export declare const GuestFsEntrySchema: GenMessage<GuestFsEntry>;
+
+/**
+ * @generated from message modbit.v1.GuestFsSnapshotResult
+ */
+export declare type GuestFsSnapshotResult = Message<"modbit.v1.GuestFsSnapshotResult"> & {
+  /**
+   * @generated from field: repeated modbit.v1.GuestFsEntry entries = 1;
+   */
+  entries: GuestFsEntry[];
+
+  /**
+   * @generated from field: bool truncated = 2;
+   */
+  truncated: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.GuestFsSnapshotResult.
+ * Use `create(GuestFsSnapshotResultSchema)` to create a new message.
+ */
+export declare const GuestFsSnapshotResultSchema: GenMessage<GuestFsSnapshotResult>;
+
+/**
+ * M8.8 (docs/22 "Cloud browser"): start the guest's Chromium, headless,
+ * with its DevTools endpoint on the guest's loopback; the policy must
+ * grant a browser. Idempotent: a browser already running is reported.
+ *
+ * @generated from message modbit.v1.GuestBrowserStart
+ */
+export declare type GuestBrowserStart = Message<"modbit.v1.GuestBrowserStart"> & {
+  /**
+   * viewport; 0 = 1024
+   *
+   * @generated from field: uint32 width = 1;
+   */
+  width: number;
+
+  /**
+   * 0 = 768
+   *
+   * @generated from field: uint32 height = 2;
+   */
+  height: number;
+};
+
+/**
+ * Describes the message modbit.v1.GuestBrowserStart.
+ * Use `create(GuestBrowserStartSchema)` to create a new message.
+ */
+export declare const GuestBrowserStartSchema: GenMessage<GuestBrowserStart>;
+
+/**
+ * @generated from message modbit.v1.GuestBrowserStarted
+ */
+export declare type GuestBrowserStarted = Message<"modbit.v1.GuestBrowserStarted"> & {
+  /**
+   * the DevTools port on the guest's loopback
+   *
+   * @generated from field: uint32 port = 1;
+   */
+  port: number;
+
+  /**
+   * /devtools/browser/<id>
+   *
+   * @generated from field: string ws_path = 2;
+   */
+  wsPath: string;
+
+  /**
+   * @generated from field: uint32 pid = 3;
+   */
+  pid: number;
+
+  /**
+   * what the browser reported (untrusted)
+   *
+   * @generated from field: string version = 4;
+   */
+  version: string;
+
+  /**
+   * @generated from field: bool already_running = 5;
+   */
+  alreadyRunning: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.GuestBrowserStarted.
+ * Use `create(GuestBrowserStartedSchema)` to create a new message.
+ */
+export declare const GuestBrowserStartedSchema: GenMessage<GuestBrowserStarted>;
+
+/**
+ * @generated from message modbit.v1.GuestBrowserStop
+ */
+export declare type GuestBrowserStop = Message<"modbit.v1.GuestBrowserStop"> & {
+};
+
+/**
+ * Describes the message modbit.v1.GuestBrowserStop.
+ * Use `create(GuestBrowserStopSchema)` to create a new message.
+ */
+export declare const GuestBrowserStopSchema: GenMessage<GuestBrowserStop>;
+
+/**
+ * After the guest answers GuestBrowserForwarding, this link carries raw
+ * bytes to and from the browser's DevTools port (a CDP WebSocket): the
+ * link is consumed, no further call travels on it.
+ *
+ * @generated from message modbit.v1.GuestBrowserForward
+ */
+export declare type GuestBrowserForward = Message<"modbit.v1.GuestBrowserForward"> & {
+};
+
+/**
+ * Describes the message modbit.v1.GuestBrowserForward.
+ * Use `create(GuestBrowserForwardSchema)` to create a new message.
+ */
+export declare const GuestBrowserForwardSchema: GenMessage<GuestBrowserForward>;
+
+/**
+ * @generated from message modbit.v1.GuestBrowserForwarding
+ */
+export declare type GuestBrowserForwarding = Message<"modbit.v1.GuestBrowserForwarding"> & {
+  /**
+   * @generated from field: uint32 port = 1;
+   */
+  port: number;
+};
+
+/**
+ * Describes the message modbit.v1.GuestBrowserForwarding.
+ * Use `create(GuestBrowserForwardingSchema)` to create a new message.
+ */
+export declare const GuestBrowserForwardingSchema: GenMessage<GuestBrowserForwarding>;
 
 /**
  * @generated from message modbit.v1.GuestHealthReport

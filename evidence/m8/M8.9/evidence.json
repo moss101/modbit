@@ -1,0 +1,14 @@
+{
+ "task": "M8.9",
+ "requirements": ["docs/21 Sandbox recovery", "docs/19 Resume algorithm (unknown outcomes; resources by lease)", "docs/51 E2E-018", "docs/24 one log"],
+ "scenarios": [
+  "a cloud task's sandbox is killed after a checkpointed turn: the call in flight is unknown and never replayed, SandboxLost is journaled, the gateway records LOST, a fresh sandbox is provisioned and restored from the latest checkpoint (SandboxRestored), the model's retry reads the restored files in it and the task reaches review"
+ ],
+ "tests": ["qual_m8_9_a_lost_sandbox_is_replaced_and_restored_from_the_latest_checkpoint_and_the_task_resumes"],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "cloud tasks checkpoint the guest's worktree at every turn that ran a sandboxed tool (fs.snapshot against the seed); a sandboxed call that does not answer keeps an unknown outcome; the Core relinks once, journals SandboxLost when the guest is gone, provisions a fresh sandbox, writes the latest checkpoint into it (SandboxRestored) and tells the model what was restored; the gateway marks the lost sandbox LOST on a failed relink.",
+ "audit": "MISSING before: SandboxLost never journaled; checkpoints of cloud tasks captured the seed; no replacement after a loss.",
+ "limitations": "loss detected at the next call; checkpoint bounds (20000 files / 256 MiB of changes); processes of the lost sandbox are gone; automatic recovery, no person asked.",
+ "ci": ""
+}

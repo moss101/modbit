@@ -311,16 +311,29 @@ impl SandboxBackend for MicrovmBackend {
                 return Err(SandboxError::Substrate(why));
             }
 
-            // The image on disk is still the one the publisher signed.
-            image::check_image(&self.image.manifest, &self.cfg.rootfs)?;
+            // The image on disk is still the one the publisher signed —
+            // hashed off the runtime's threads: an image with a browser in
+            // it is hundreds of megabytes, and the gateway's other work (a
+            // worker's lease heartbeat in the same process, in tests) must
+            // not wait for it.
+            {
+                let manifest = self.image.manifest.clone();
+                let rootfs = self.cfg.rootfs.clone();
+                tokio::task::spawn_blocking(move || image::check_image(&manifest, &rootfs))
+                    .await
+                    .map_err(|e| SandboxError::Substrate(format!("image check: {e}")))??;
+            }
             let dir = self.cfg.work_dir.join(sandbox_id);
             std::fs::create_dir_all(&dir)?;
             let ws_img = dir.join("workspace.ext4");
-            make_ext4(
-                &policy.spec.workspace_source,
-                &ws_img,
-                policy.spec.resources.workspace_mib,
-            )?;
+            {
+                let src = policy.spec.workspace_source.clone();
+                let img = ws_img.clone();
+                let mib = policy.spec.resources.workspace_mib;
+                tokio::task::spawn_blocking(move || make_ext4(&src, &img, mib))
+                    .await
+                    .map_err(|e| SandboxError::Substrate(format!("mkfs: {e}")))??;
+            }
             let api_sock = dir.join("api.sock");
             let vsock = dir.join("v.sock");
             let console = dir.join("console.log");

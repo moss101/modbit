@@ -1,0 +1,25 @@
+{
+ "task": "M8.8",
+ "requirements": [
+  "docs/22 Cloud browser",
+  "docs/02 MOD-BROWSE-001",
+  "docs/21 Sandbox substrate boundary (browser endpoint control; egress through the broker)",
+  "docs/24 worker outbound link",
+  "docs/33 Sandbox Gateway"
+ ],
+ "scenarios": [
+  "the guest starts a headless Chromium on the sandbox's grant; its DevTools is reached only through a forwarded admitted link and answers CDP; stopped with the sandbox — on the MicroVM and the reference backend",
+  "a cloud task's browser tools act on a page inside the sandbox through the broker; the person, through the Cloud API, is refused input under the agent's control, takes control, receives JPEG frames of the page, clicks in the view, hands control back; the agent reads the page the person left"
+ ],
+ "tests": [
+  "qual_m8_3_a_firecracker_microvm_boots_the_guest_and_passes_the_backend_contract",
+  "qual_m8_3_the_reference_backend_passes_the_backend_contract",
+  "qual_m8_8_a_cloud_tasks_browser_runs_inside_its_sandbox_over_cdp_and_streams_its_view_to_the_person"
+ ],
+ "batch_commits": [],
+ "runs": [],
+ "proof": "the Core is the Browser Bridge for a cloud task: CDP over the gateway's authenticated DevTools relay to the Chromium inside the sandbox (an ephemeral browser context, one page), the same HostRequests the desktop's host answers, the page reached through the egress broker; the page's screencast goes to the connections that watch and, over the worker's outbound link, to the Cloud API's stream; the person's input is applied only under their control lease.",
+ "audit": "MISSING before: browser tools local only; no cloud browser.",
+ "limitations": "desktop rendering of the stream not built; JPEG over WebSocket (no WebRTC); fill_credential refused in the cloud; one browser and page per sandbox.",
+ "ci": ""
+}

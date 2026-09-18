@@ -18,6 +18,9 @@ prost.workspace = true
 uuid.workspace = true
 anyhow.workspace = true
 hex.workspace = true
+tokio-tungstenite.workspace = true
+futures-util.workspace = true
+base64.workspace = true
 
 [dev-dependencies]
 modbit-cloud-api.workspace = true

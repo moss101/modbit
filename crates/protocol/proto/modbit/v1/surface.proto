@@ -130,6 +130,8 @@ message SurfaceFrame {
     // M7.1 (docs/22): a request the Core sends to the browser host attached
     // on this connection; the host answers with a BrowserHostResponse command.
     BrowserHostRequest browser_request = 8;
+    // M8.8: a screencast frame of a browser view this connection watches.
+    BrowserViewFrame browser_frame = 9;
   }
 }
 
@@ -2072,4 +2074,68 @@ message CloseBrowserSession {
 message BrowserSessionClosed {
   Id browser_session_id = 1;
   uint64 offset = 2;
+}
+
+// M8.8 (docs/22 "Cloud browser"): the person's view of a browser the Core
+// hosts itself — a cloud task's Chromium inside its sandbox, reached over
+// the gateway's DevTools relay (`host_kind` `cloud-cdp`). Watching starts
+// the page's screencast; frames arrive on this connection as
+// SurfaceFrame.browser_frame until the watcher unwatches or disconnects.
+// A session hosted by the desktop's own view answers HOST_NOT_STREAMABLE:
+// its view is on the desktop already.
+message WatchBrowserView {
+  Id browser_session_id = 1;
+  uint32 max_width = 2;            // 0 = 1024
+  uint32 max_height = 3;           // 0 = 768
+  uint32 quality = 4;              // JPEG quality; 0 = 60
+}
+
+message BrowserViewWatched {
+  Id browser_session_id = 1;
+  string host_kind = 2;
+  string controller = 3;
+  uint64 lease_generation = 4;
+}
+
+message UnwatchBrowserView {
+  Id browser_session_id = 1;
+}
+
+message BrowserViewUnwatched {
+  bool was_watching = 1;
+}
+
+// One screencast frame (JPEG) of the page as it is.
+message BrowserViewFrame {
+  Id browser_session_id = 1;
+  bytes jpeg = 2;
+  uint32 width = 3;                // the frame's pixels
+  uint32 height = 4;
+  uint32 page_width = 5;           // the page's CSS pixels the frame maps to
+  uint32 page_height = 6;
+  uint64 seq = 7;
+  string url = 8;                  // as last observed (untrusted)
+  string title = 9;
+}
+
+// The person's input into a view they watch, applied only while the
+// person holds the session's control lease (SetBrowserControl USER);
+// under the agent's control it is refused AGENT_ACTIVE. Coordinates are
+// page CSS pixels (the frame's page_width/page_height).
+message BrowserViewInput {
+  Id browser_session_id = 1;
+  string kind = 2;                 // mouse_move | mouse_down | mouse_up | click | wheel | key_down | key_up | insert_text
+  double x = 3;
+  double y = 4;
+  string button = 5;               // left | middle | right (mouse)
+  string text = 6;                 // insert_text
+  string key = 7;                  // key_down / key_up: Enter, Tab, a, …
+  int32 delta_x = 8;               // wheel
+  int32 delta_y = 9;
+  uint32 modifiers = 10;           // CDP bit mask: 1 alt, 2 ctrl, 4 meta, 8 shift
+}
+
+message BrowserViewInputDelivered {
+  bool delivered = 1;
+  string detail = 2;
 }

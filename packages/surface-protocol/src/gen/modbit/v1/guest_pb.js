@@ -21,7 +21,7 @@ import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
  * Describes the file modbit/v1/guest.proto.
  */
 export const file_modbit_v1_guest = /*@__PURE__*/
-  fileDesc("ChVtb2RiaXQvdjEvZ3Vlc3QucHJvdG8SCW1vZGJpdC52MSJ1CgpHdWVzdEhlbGxvEhYKDnByb3RvY29sX21ham9yGAEgASgNEhYKDnByb3RvY29sX21pbm9yGAIgASgNEhUKDWd1ZXN0X3ZlcnNpb24YAyABKAkSDwoHbWV0aG9kcxgEIAMoCRIPCgdib290X2lkGAUgASgJIrYBCgtHdWVzdFBvbGljeRIWCg53b3Jrc3BhY2Vfcm9vdBgBIAEoCRIXCg9wcm90ZWN0ZWRfcGF0aHMYAiADKAkSFgoOcmVhZGFibGVfcm9vdHMYAyADKAkSGAoQbWF4X291dHB1dF9ieXRlcxgEIAEoBBIVCg1tYXhfcHJvY2Vzc2VzGAUgASgNEhcKD2V4ZWNfdGltZW91dF9tcxgGIAEoBBIUCgxlZ3Jlc3NfcHJveHkYByABKAgijAEKCkd1ZXN0QWRtaXQSFgoOcHJvdG9jb2xfbWFqb3IYASABKA0SFgoOcHJvdG9jb2xfbWlub3IYAiABKA0SEgoKY3JlZGVudGlhbBgDIAEoDBISCgpzYW5kYm94X2lkGAQgASgJEiYKBnBvbGljeRgFIAEoCzIWLm1vZGJpdC52MS5HdWVzdFBvbGljeSI0Cg1HdWVzdEFkbWl0dGVkEhIKCnNhbmRib3hfaWQYASABKAkSDwoHYm9vdF9pZBgCIAEoCSItCgxHdWVzdFJlZnVzZWQSDAoEY29kZRgBIAEoCRIPCgdtZXNzYWdlGAIgASgJIpEGCglHdWVzdENhbGwSDwoHY2FsbF9pZBgBIAEoCRIPCgd0YXNrX2lkGAIgASgJEhEKCWVmZmVjdF9pZBgDIAEoCRISCgpjYXBhYmlsaXR5GAQgASgJEgwKBGF1dGgYBSABKAwSKAoGaGVhbHRoGAogASgLMhYubW9kYml0LnYxLkd1ZXN0SGVhbHRoSAASJAoEZXhlYxgLIAEoCzIULm1vZGJpdC52MS5HdWVzdEV4ZWNIABItCglyZWFkX2ZpbGUYDCABKAsyGC5tb2RiaXQudjEuR3Vlc3RSZWFkRmlsZUgAEi8KCndyaXRlX2ZpbGUYDSABKAsyGS5tb2RiaXQudjEuR3Vlc3RXcml0ZUZpbGVIABItCgluZXRfcHJvYmUYDiABKAsyGC5tb2RiaXQudjEuR3Vlc3ROZXRQcm9iZUgAEi8KCnByb2Nfc3RhcnQYFCABKAsyGS5tb2RiaXQudjEuR3Vlc3RQcm9jU3RhcnRIABIxCgtwcm9jX2ZvbGxvdxgVIAEoCzIaLm1vZGJpdC52MS5HdWVzdFByb2NGb2xsb3dIABIvCgpwcm9jX3dyaXRlGBYgASgLMhkubW9kYml0LnYxLkd1ZXN0UHJvY1dyaXRlSAASMQoLcHJvY19jYW5jZWwYFyABKAsyGi5tb2RiaXQudjEuR3Vlc3RQcm9jQ2FuY2VsSAASLwoKcHR5X3Jlc2l6ZRgYIAEoCzIZLm1vZGJpdC52MS5HdWVzdFB0eVJlc2l6ZUgAEisKCGxpc3RfZGlyGB4gASgLMhcubW9kYml0LnYxLkd1ZXN0TGlzdERpckgAEiQKBHN0YXQYHyABKAsyFC5tb2RiaXQudjEuR3Vlc3RTdGF0SAASJgoFbWtkaXIYICABKAsyFS5tb2RiaXQudjEuR3Vlc3RNa2RpckgAEigKBnJlbW92ZRghIAEoCzIWLm1vZGJpdC52MS5HdWVzdFJlbW92ZUgAEigKBnJlbmFtZRgiIAEoCzIWLm1vZGJpdC52MS5HdWVzdFJlbmFtZUgAQgYKBGJvZHkiDQoLR3Vlc3RIZWFsdGgiVgoJR3Vlc3RFeGVjEgwKBGFyZ3YYASADKAkSCwoDY3dkGAIgASgJEgsKA2VudhgDIAMoCRISCgp0aW1lb3V0X21zGAQgASgEEg0KBXN0ZGluGAUgASgMIjAKDUd1ZXN0UmVhZEZpbGUSDAoEcGF0aBgBIAEoCRIRCgltYXhfYnl0ZXMYAiABKAQiLwoOR3Vlc3RXcml0ZUZpbGUSDAoEcGF0aBgBIAEoCRIPCgdjb250ZW50GAIgASgMIj8KDUd1ZXN0TmV0UHJvYmUSDAoEaG9zdBgBIAEoCRIMCgRwb3J0GAIgASgNEhIKCnRpbWVvdXRfbXMYAyABKAQi5AQKCkd1ZXN0UmVwbHkSDwoHY2FsbF9pZBgBIAEoCRIMCgRhdXRoGAIgASgMEi4KBmhlYWx0aBgKIAEoCzIcLm1vZGJpdC52MS5HdWVzdEhlYWx0aFJlcG9ydEgAEioKBGV4ZWMYCyABKAsyGi5tb2RiaXQudjEuR3Vlc3RFeGVjUmVzdWx0SAASKwoEZmlsZRgMIAEoCzIbLm1vZGJpdC52MS5HdWVzdEZpbGVDb250ZW50SAASLgoHd3JpdHRlbhgNIAEoCzIbLm1vZGJpdC52MS5HdWVzdEZpbGVXcml0dGVuSAASLwoFcHJvYmUYDiABKAsyHi5tb2RiaXQudjEuR3Vlc3ROZXRQcm9iZVJlc3VsdEgAEioKB3JlZnVzYWwYDyABKAsyFy5tb2RiaXQudjEuR3Vlc3RSZWZ1c2FsSAASMwoMcHJvY19zdGFydGVkGBQgASgLMhsubW9kYml0LnYxLkd1ZXN0UHJvY1N0YXJ0ZWRIABIxCgtwcm9jX291dHB1dBgVIAEoCzIaLm1vZGJpdC52MS5HdWVzdFByb2NPdXRwdXRIABIrCghwcm9jX2FjaxgWIAEoCzIXLm1vZGJpdC52MS5HdWVzdFByb2NBY2tIABItCgdsaXN0aW5nGB4gASgLMhoubW9kYml0LnYxLkd1ZXN0RGlyTGlzdGluZ0gAEioKBHN0YXQYHyABKAsyGi5tb2RiaXQudjEuR3Vlc3RTdGF0UmVzdWx0SAASKQoHZnNfZG9uZRggIAEoCzIWLm1vZGJpdC52MS5HdWVzdEZzRG9uZUgAQgYKBGJvZHkiWgoRR3Vlc3RIZWFsdGhSZXBvcnQSDwoHYm9vdF9pZBgBIAEoCRIRCgl1cHRpbWVfbXMYAiABKAQSEQoJcHJvY2Vzc2VzGAMgASgNEg4KBmtlcm5lbBgEIAEoCSKgAQoPR3Vlc3RFeGVjUmVzdWx0EhEKCWV4aXRfY29kZRgBIAEoBRIOCgZzdGRvdXQYAiABKAwSDgoGc3RkZXJyGAMgASgMEhgKEHN0ZG91dF90cnVuY2F0ZWQYBCABKAgSGAoQc3RkZXJyX3RydW5jYXRlZBgFIAEoCBIRCgl0aW1lZF9vdXQYBiABKAgSEwoLZHVyYXRpb25fbXMYByABKAQiNgoQR3Vlc3RGaWxlQ29udGVudBIPCgdjb250ZW50GAEgASgMEhEKCXRydW5jYXRlZBgCIAEoCCIhChBHdWVzdEZpbGVXcml0dGVuEg0KBWJ5dGVzGAEgASgEIjcKE0d1ZXN0TmV0UHJvYmVSZXN1bHQSEQoJcmVhY2hhYmxlGAEgASgIEg0KBWVycm9yGAIgASgJIi0KDEd1ZXN0UmVmdXNhbBIMCgRjb2RlGAEgASgJEg8KB21lc3NhZ2UYAiABKAkijAIKCkd1ZXN0RnJhbWUSJgoFaGVsbG8YASABKAsyFS5tb2RiaXQudjEuR3Vlc3RIZWxsb0gAEiYKBWFkbWl0GAIgASgLMhUubW9kYml0LnYxLkd1ZXN0QWRtaXRIABIsCghhZG1pdHRlZBgDIAEoCzIYLm1vZGJpdC52MS5HdWVzdEFkbWl0dGVkSAASKgoHcmVmdXNlZBgEIAEoCzIXLm1vZGJpdC52MS5HdWVzdFJlZnVzZWRIABIkCgRjYWxsGAUgASgLMhQubW9kYml0LnYxLkd1ZXN0Q2FsbEgAEiYKBXJlcGx5GAYgASgLMhUubW9kYml0LnYxLkd1ZXN0UmVwbHlIAEIGCgRib2R5IokBCg5HdWVzdFByb2NTdGFydBIMCgRhcmd2GAEgAygJEgsKA2N3ZBgCIAEoCRILCgNlbnYYAyADKAkSEgoKdGltZW91dF9tcxgEIAEoBBILCgNwdHkYBSABKAgSDAoEY29scxgGIAEoDRIMCgRyb3dzGAcgASgNEhIKCnN0ZGluX29wZW4YCCABKAgiMAoQR3Vlc3RQcm9jU3RhcnRlZBIPCgdwcm9jX2lkGAEgASgJEgsKA3BpZBgCIAEoDSJcCg9HdWVzdFByb2NGb2xsb3cSDwoHcHJvY19pZBgBIAEoCRIUCgxhZnRlcl9jdXJzb3IYAiABKAQSEQoJbWF4X2J5dGVzGAMgASgEEg8KB3dhaXRfbXMYBCABKAQixQEKD0d1ZXN0UHJvY091dHB1dBIPCgdwcm9jX2lkGAEgASgJEgwKBGRhdGEYAiABKAwSDgoGY3Vyc29yGAMgASgEEhEKCXRydW5jYXRlZBgEIAEoCBIPCgdydW5uaW5nGAUgASgIEhYKCWV4aXRfY29kZRgGIAEoBUgAiAEBEhEKCXRpbWVkX291dBgHIAEoCBIRCgljYW5jZWxsZWQYCCABKAgSEwoLdG90YWxfYnl0ZXMYCSABKARCDAoKX2V4aXRfY29kZSJECg5HdWVzdFByb2NXcml0ZRIPCgdwcm9jX2lkGAEgASgJEgwKBGRhdGEYAiABKAwSEwoLY2xvc2Vfc3RkaW4YAyABKAgiIgoPR3Vlc3RQcm9jQ2FuY2VsEg8KB3Byb2NfaWQYASABKAkiPQoOR3Vlc3RQdHlSZXNpemUSDwoHcHJvY19pZBgBIAEoCRIMCgRjb2xzGAIgASgNEgwKBHJvd3MYAyABKA0iHwoMR3Vlc3RQcm9jQWNrEg8KB3Byb2NfaWQYASABKAkiMQoMR3Vlc3RMaXN0RGlyEgwKBHBhdGgYASABKAkSEwoLbWF4X2VudHJpZXMYAiABKA0iTgoNR3Vlc3REaXJFbnRyeRIMCgRuYW1lGAEgASgJEgwKBGtpbmQYAiABKAkSDAoEc2l6ZRgDIAEoBBITCgttb2RpZmllZF9tcxgEIAEoAyJPCg9HdWVzdERpckxpc3RpbmcSKQoHZW50cmllcxgBIAMoCzIYLm1vZGJpdC52MS5HdWVzdERpckVudHJ5EhEKCXRydW5jYXRlZBgCIAEoCCIZCglHdWVzdFN0YXQSDAoEcGF0aBgBIAEoCSJgCg9HdWVzdFN0YXRSZXN1bHQSDgoGZXhpc3RzGAEgASgIEgwKBGtpbmQYAiABKAkSDAoEc2l6ZRgDIAEoBBITCgttb2RpZmllZF9tcxgEIAEoAxIMCgRtb2RlGAUgASgNIhoKCkd1ZXN0TWtkaXISDAoEcGF0aBgBIAEoCSIuCgtHdWVzdFJlbW92ZRIMCgRwYXRoGAEgASgJEhEKCXJlY3Vyc2l2ZRgCIAEoCCInCgtHdWVzdFJlbmFtZRIMCgRmcm9tGAEgASgJEgoKAnRvGAIgASgJIhsKC0d1ZXN0RnNEb25lEgwKBHBhdGgYASABKAliBnByb3RvMw");
+  fileDesc("ChVtb2RiaXQvdjEvZ3Vlc3QucHJvdG8SCW1vZGJpdC52MSJ1CgpHdWVzdEhlbGxvEhYKDnByb3RvY29sX21ham9yGAEgASgNEhYKDnByb3RvY29sX21pbm9yGAIgASgNEhUKDWd1ZXN0X3ZlcnNpb24YAyABKAkSDwoHbWV0aG9kcxgEIAMoCRIPCgdib290X2lkGAUgASgJIscBCgtHdWVzdFBvbGljeRIWCg53b3Jrc3BhY2Vfcm9vdBgBIAEoCRIXCg9wcm90ZWN0ZWRfcGF0aHMYAiADKAkSFgoOcmVhZGFibGVfcm9vdHMYAyADKAkSGAoQbWF4X291dHB1dF9ieXRlcxgEIAEoBBIVCg1tYXhfcHJvY2Vzc2VzGAUgASgNEhcKD2V4ZWNfdGltZW91dF9tcxgGIAEoBBIUCgxlZ3Jlc3NfcHJveHkYByABKAgSDwoHYnJvd3NlchgIIAEoCCKMAQoKR3Vlc3RBZG1pdBIWCg5wcm90b2NvbF9tYWpvchgBIAEoDRIWCg5wcm90b2NvbF9taW5vchgCIAEoDRISCgpjcmVkZW50aWFsGAMgASgMEhIKCnNhbmRib3hfaWQYBCABKAkSJgoGcG9saWN5GAUgASgLMhYubW9kYml0LnYxLkd1ZXN0UG9saWN5IjQKDUd1ZXN0QWRtaXR0ZWQSEgoKc2FuZGJveF9pZBgBIAEoCRIPCgdib290X2lkGAIgASgJIi0KDEd1ZXN0UmVmdXNlZBIMCgRjb2RlGAEgASgJEg8KB21lc3NhZ2UYAiABKAki6wcKCUd1ZXN0Q2FsbBIPCgdjYWxsX2lkGAEgASgJEg8KB3Rhc2tfaWQYAiABKAkSEQoJZWZmZWN0X2lkGAMgASgJEhIKCmNhcGFiaWxpdHkYBCABKAkSDAoEYXV0aBgFIAEoDBIoCgZoZWFsdGgYCiABKAsyFi5tb2RiaXQudjEuR3Vlc3RIZWFsdGhIABIkCgRleGVjGAsgASgLMhQubW9kYml0LnYxLkd1ZXN0RXhlY0gAEi0KCXJlYWRfZmlsZRgMIAEoCzIYLm1vZGJpdC52MS5HdWVzdFJlYWRGaWxlSAASLwoKd3JpdGVfZmlsZRgNIAEoCzIZLm1vZGJpdC52MS5HdWVzdFdyaXRlRmlsZUgAEi0KCW5ldF9wcm9iZRgOIAEoCzIYLm1vZGJpdC52MS5HdWVzdE5ldFByb2JlSAASLwoKcHJvY19zdGFydBgUIAEoCzIZLm1vZGJpdC52MS5HdWVzdFByb2NTdGFydEgAEjEKC3Byb2NfZm9sbG93GBUgASgLMhoubW9kYml0LnYxLkd1ZXN0UHJvY0ZvbGxvd0gAEi8KCnByb2Nfd3JpdGUYFiABKAsyGS5tb2RiaXQudjEuR3Vlc3RQcm9jV3JpdGVIABIxCgtwcm9jX2NhbmNlbBgXIAEoCzIaLm1vZGJpdC52MS5HdWVzdFByb2NDYW5jZWxIABIvCgpwdHlfcmVzaXplGBggASgLMhkubW9kYml0LnYxLkd1ZXN0UHR5UmVzaXplSAASKwoIbGlzdF9kaXIYHiABKAsyFy5tb2RiaXQudjEuR3Vlc3RMaXN0RGlySAASJAoEc3RhdBgfIAEoCzIULm1vZGJpdC52MS5HdWVzdFN0YXRIABImCgVta2RpchggIAEoCzIVLm1vZGJpdC52MS5HdWVzdE1rZGlySAASKAoGcmVtb3ZlGCEgASgLMhYubW9kYml0LnYxLkd1ZXN0UmVtb3ZlSAASKAoGcmVuYW1lGCIgASgLMhYubW9kYml0LnYxLkd1ZXN0UmVuYW1lSAASNQoNYnJvd3Nlcl9zdGFydBgoIAEoCzIcLm1vZGJpdC52MS5HdWVzdEJyb3dzZXJTdGFydEgAEjMKDGJyb3dzZXJfc3RvcBgpIAEoCzIbLm1vZGJpdC52MS5HdWVzdEJyb3dzZXJTdG9wSAASOQoPYnJvd3Nlcl9mb3J3YXJkGCogASgLMh4ubW9kYml0LnYxLkd1ZXN0QnJvd3NlckZvcndhcmRIABIxCgtmc19zbmFwc2hvdBgjIAEoCzIaLm1vZGJpdC52MS5HdWVzdEZzU25hcHNob3RIAEIGCgRib2R5Ig0KC0d1ZXN0SGVhbHRoIlYKCUd1ZXN0RXhlYxIMCgRhcmd2GAEgAygJEgsKA2N3ZBgCIAEoCRILCgNlbnYYAyADKAkSEgoKdGltZW91dF9tcxgEIAEoBBINCgVzdGRpbhgFIAEoDCIwCg1HdWVzdFJlYWRGaWxlEgwKBHBhdGgYASABKAkSEQoJbWF4X2J5dGVzGAIgASgEIi8KDkd1ZXN0V3JpdGVGaWxlEgwKBHBhdGgYASABKAkSDwoHY29udGVudBgCIAEoDCI/Cg1HdWVzdE5ldFByb2JlEgwKBGhvc3QYASABKAkSDAoEcG9ydBgCIAEoDRISCgp0aW1lb3V0X21zGAMgASgEIpkGCgpHdWVzdFJlcGx5Eg8KB2NhbGxfaWQYASABKAkSDAoEYXV0aBgCIAEoDBIuCgZoZWFsdGgYCiABKAsyHC5tb2RiaXQudjEuR3Vlc3RIZWFsdGhSZXBvcnRIABIqCgRleGVjGAsgASgLMhoubW9kYml0LnYxLkd1ZXN0RXhlY1Jlc3VsdEgAEisKBGZpbGUYDCABKAsyGy5tb2RiaXQudjEuR3Vlc3RGaWxlQ29udGVudEgAEi4KB3dyaXR0ZW4YDSABKAsyGy5tb2RiaXQudjEuR3Vlc3RGaWxlV3JpdHRlbkgAEi8KBXByb2JlGA4gASgLMh4ubW9kYml0LnYxLkd1ZXN0TmV0UHJvYmVSZXN1bHRIABIqCgdyZWZ1c2FsGA8gASgLMhcubW9kYml0LnYxLkd1ZXN0UmVmdXNhbEgAEjMKDHByb2Nfc3RhcnRlZBgUIAEoCzIbLm1vZGJpdC52MS5HdWVzdFByb2NTdGFydGVkSAASMQoLcHJvY19vdXRwdXQYFSABKAsyGi5tb2RiaXQudjEuR3Vlc3RQcm9jT3V0cHV0SAASKwoIcHJvY19hY2sYFiABKAsyFy5tb2RiaXQudjEuR3Vlc3RQcm9jQWNrSAASLQoHbGlzdGluZxgeIAEoCzIaLm1vZGJpdC52MS5HdWVzdERpckxpc3RpbmdIABIqCgRzdGF0GB8gASgLMhoubW9kYml0LnYxLkd1ZXN0U3RhdFJlc3VsdEgAEikKB2ZzX2RvbmUYICABKAsyFi5tb2RiaXQudjEuR3Vlc3RGc0RvbmVIABI5Cg9icm93c2VyX3N0YXJ0ZWQYKCABKAsyHi5tb2RiaXQudjEuR3Vlc3RCcm93c2VyU3RhcnRlZEgAEj8KEmJyb3dzZXJfZm9yd2FyZGluZxgqIAEoCzIhLm1vZGJpdC52MS5HdWVzdEJyb3dzZXJGb3J3YXJkaW5nSAASNwoLZnNfc25hcHNob3QYIyABKAsyIC5tb2RiaXQudjEuR3Vlc3RGc1NuYXBzaG90UmVzdWx0SABCBgoEYm9keSI0Cg9HdWVzdEZzU25hcHNob3QSDAoEcm9vdBgBIAEoCRITCgttYXhfZW50cmllcxgCIAEoDSI6CgxHdWVzdEZzRW50cnkSDAoEcGF0aBgBIAEoCRIMCgRzaXplGAIgASgEEg4KBnNoYTI1NhgDIAEoCSJUChVHdWVzdEZzU25hcHNob3RSZXN1bHQSKAoHZW50cmllcxgBIAMoCzIXLm1vZGJpdC52MS5HdWVzdEZzRW50cnkSEQoJdHJ1bmNhdGVkGAIgASgIIjIKEUd1ZXN0QnJvd3NlclN0YXJ0Eg0KBXdpZHRoGAEgASgNEg4KBmhlaWdodBgCIAEoDSJrChNHdWVzdEJyb3dzZXJTdGFydGVkEgwKBHBvcnQYASABKA0SDwoHd3NfcGF0aBgCIAEoCRILCgNwaWQYAyABKA0SDwoHdmVyc2lvbhgEIAEoCRIXCg9hbHJlYWR5X3J1bm5pbmcYBSABKAgiEgoQR3Vlc3RCcm93c2VyU3RvcCIVChNHdWVzdEJyb3dzZXJGb3J3YXJkIiYKFkd1ZXN0QnJvd3NlckZvcndhcmRpbmcSDAoEcG9ydBgBIAEoDSJaChFHdWVzdEhlYWx0aFJlcG9ydBIPCgdib290X2lkGAEgASgJEhEKCXVwdGltZV9tcxgCIAEoBBIRCglwcm9jZXNzZXMYAyABKA0SDgoGa2VybmVsGAQgASgJIqABCg9HdWVzdEV4ZWNSZXN1bHQSEQoJZXhpdF9jb2RlGAEgASgFEg4KBnN0ZG91dBgCIAEoDBIOCgZzdGRlcnIYAyABKAwSGAoQc3Rkb3V0X3RydW5jYXRlZBgEIAEoCBIYChBzdGRlcnJfdHJ1bmNhdGVkGAUgASgIEhEKCXRpbWVkX291dBgGIAEoCBITCgtkdXJhdGlvbl9tcxgHIAEoBCI2ChBHdWVzdEZpbGVDb250ZW50Eg8KB2NvbnRlbnQYASABKAwSEQoJdHJ1bmNhdGVkGAIgASgIIiEKEEd1ZXN0RmlsZVdyaXR0ZW4SDQoFYnl0ZXMYASABKAQiNwoTR3Vlc3ROZXRQcm9iZVJlc3VsdBIRCglyZWFjaGFibGUYASABKAgSDQoFZXJyb3IYAiABKAkiLQoMR3Vlc3RSZWZ1c2FsEgwKBGNvZGUYASABKAkSDwoHbWVzc2FnZRgCIAEoCSKMAgoKR3Vlc3RGcmFtZRImCgVoZWxsbxgBIAEoCzIVLm1vZGJpdC52MS5HdWVzdEhlbGxvSAASJgoFYWRtaXQYAiABKAsyFS5tb2RiaXQudjEuR3Vlc3RBZG1pdEgAEiwKCGFkbWl0dGVkGAMgASgLMhgubW9kYml0LnYxLkd1ZXN0QWRtaXR0ZWRIABIqCgdyZWZ1c2VkGAQgASgLMhcubW9kYml0LnYxLkd1ZXN0UmVmdXNlZEgAEiQKBGNhbGwYBSABKAsyFC5tb2RiaXQudjEuR3Vlc3RDYWxsSAASJgoFcmVwbHkYBiABKAsyFS5tb2RiaXQudjEuR3Vlc3RSZXBseUgAQgYKBGJvZHkiiQEKDkd1ZXN0UHJvY1N0YXJ0EgwKBGFyZ3YYASADKAkSCwoDY3dkGAIgASgJEgsKA2VudhgDIAMoCRISCgp0aW1lb3V0X21zGAQgASgEEgsKA3B0eRgFIAEoCBIMCgRjb2xzGAYgASgNEgwKBHJvd3MYByABKA0SEgoKc3RkaW5fb3BlbhgIIAEoCCIwChBHdWVzdFByb2NTdGFydGVkEg8KB3Byb2NfaWQYASABKAkSCwoDcGlkGAIgASgNIlwKD0d1ZXN0UHJvY0ZvbGxvdxIPCgdwcm9jX2lkGAEgASgJEhQKDGFmdGVyX2N1cnNvchgCIAEoBBIRCgltYXhfYnl0ZXMYAyABKAQSDwoHd2FpdF9tcxgEIAEoBCLFAQoPR3Vlc3RQcm9jT3V0cHV0Eg8KB3Byb2NfaWQYASABKAkSDAoEZGF0YRgCIAEoDBIOCgZjdXJzb3IYAyABKAQSEQoJdHJ1bmNhdGVkGAQgASgIEg8KB3J1bm5pbmcYBSABKAgSFgoJZXhpdF9jb2RlGAYgASgFSACIAQESEQoJdGltZWRfb3V0GAcgASgIEhEKCWNhbmNlbGxlZBgIIAEoCBITCgt0b3RhbF9ieXRlcxgJIAEoBEIMCgpfZXhpdF9jb2RlIkQKDkd1ZXN0UHJvY1dyaXRlEg8KB3Byb2NfaWQYASABKAkSDAoEZGF0YRgCIAEoDBITCgtjbG9zZV9zdGRpbhgDIAEoCCIiCg9HdWVzdFByb2NDYW5jZWwSDwoHcHJvY19pZBgBIAEoCSI9Cg5HdWVzdFB0eVJlc2l6ZRIPCgdwcm9jX2lkGAEgASgJEgwKBGNvbHMYAiABKA0SDAoEcm93cxgDIAEoDSIfCgxHdWVzdFByb2NBY2sSDwoHcHJvY19pZBgBIAEoCSIxCgxHdWVzdExpc3REaXISDAoEcGF0aBgBIAEoCRITCgttYXhfZW50cmllcxgCIAEoDSJOCg1HdWVzdERpckVudHJ5EgwKBG5hbWUYASABKAkSDAoEa2luZBgCIAEoCRIMCgRzaXplGAMgASgEEhMKC21vZGlmaWVkX21zGAQgASgDIk8KD0d1ZXN0RGlyTGlzdGluZxIpCgdlbnRyaWVzGAEgAygLMhgubW9kYml0LnYxLkd1ZXN0RGlyRW50cnkSEQoJdHJ1bmNhdGVkGAIgASgIIhkKCUd1ZXN0U3RhdBIMCgRwYXRoGAEgASgJImAKD0d1ZXN0U3RhdFJlc3VsdBIOCgZleGlzdHMYASABKAgSDAoEa2luZBgCIAEoCRIMCgRzaXplGAMgASgEEhMKC21vZGlmaWVkX21zGAQgASgDEgwKBG1vZGUYBSABKA0iGgoKR3Vlc3RNa2RpchIMCgRwYXRoGAEgASgJIi4KC0d1ZXN0UmVtb3ZlEgwKBHBhdGgYASABKAkSEQoJcmVjdXJzaXZlGAIgASgIIicKC0d1ZXN0UmVuYW1lEgwKBGZyb20YASABKAkSCgoCdG8YAiABKAkiGwoLR3Vlc3RGc0RvbmUSDAoEcGF0aBgBIAEoCWIGcHJvdG8z");
 
 /**
  * Describes the message modbit.v1.GuestHello.
@@ -108,170 +108,226 @@ export const GuestReplySchema = /*@__PURE__*/
   messageDesc(file_modbit_v1_guest, 11);
 
 /**
+ * Describes the message modbit.v1.GuestFsSnapshot.
+ * Use `create(GuestFsSnapshotSchema)` to create a new message.
+ */
+export const GuestFsSnapshotSchema = /*@__PURE__*/
+  messageDesc(file_modbit_v1_guest, 12);
+
+/**
+ * Describes the message modbit.v1.GuestFsEntry.
+ * Use `create(GuestFsEntrySchema)` to create a new message.
+ */
+export const GuestFsEntrySchema = /*@__PURE__*/
+  messageDesc(file_modbit_v1_guest, 13);
+
+/**
+ * Describes the message modbit.v1.GuestFsSnapshotResult.
+ * Use `create(GuestFsSnapshotResultSchema)` to create a new message.
+ */
+export const GuestFsSnapshotResultSchema = /*@__PURE__*/
+  messageDesc(file_modbit_v1_guest, 14);
+
+/**
+ * Describes the message modbit.v1.GuestBrowserStart.
+ * Use `create(GuestBrowserStartSchema)` to create a new message.
+ */
+export const GuestBrowserStartSchema = /*@__PURE__*/
+  messageDesc(file_modbit_v1_guest, 15);
+
+/**
+ * Describes the message modbit.v1.GuestBrowserStarted.
+ * Use `create(GuestBrowserStartedSchema)` to create a new message.
+ */
+export const GuestBrowserStartedSchema = /*@__PURE__*/
+  messageDesc(file_modbit_v1_guest, 16);
+
+/**
+ * Describes the message modbit.v1.GuestBrowserStop.
+ * Use `create(GuestBrowserStopSchema)` to create a new message.
+ */
+export const GuestBrowserStopSchema = /*@__PURE__*/
+  messageDesc(file_modbit_v1_guest, 17);
+
+/**
+ * Describes the message modbit.v1.GuestBrowserForward.
+ * Use `create(GuestBrowserForwardSchema)` to create a new message.
+ */
+export const GuestBrowserForwardSchema = /*@__PURE__*/
+  messageDesc(file_modbit_v1_guest, 18);
+
+/**
+ * Describes the message modbit.v1.GuestBrowserForwarding.
+ * Use `create(GuestBrowserForwardingSchema)` to create a new message.
+ */
+export const GuestBrowserForwardingSchema = /*@__PURE__*/
+  messageDesc(file_modbit_v1_guest, 19);
+
+/**
  * Describes the message modbit.v1.GuestHealthReport.
  * Use `create(GuestHealthReportSchema)` to create a new message.
  */
 export const GuestHealthReportSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_guest, 12);
+  messageDesc(file_modbit_v1_guest, 20);
 
 /**
  * Describes the message modbit.v1.GuestExecResult.
  * Use `create(GuestExecResultSchema)` to create a new message.
  */
 export const GuestExecResultSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_guest, 13);
+  messageDesc(file_modbit_v1_guest, 21);
 
 /**
  * Describes the message modbit.v1.GuestFileContent.
  * Use `create(GuestFileContentSchema)` to create a new message.
  */
 export const GuestFileContentSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_guest, 14);
+  messageDesc(file_modbit_v1_guest, 22);
 
 /**
  * Describes the message modbit.v1.GuestFileWritten.
  * Use `create(GuestFileWrittenSchema)` to create a new message.
  */
 export const GuestFileWrittenSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_guest, 15);
+  messageDesc(file_modbit_v1_guest, 23);
 
 /**
  * Describes the message modbit.v1.GuestNetProbeResult.
  * Use `create(GuestNetProbeResultSchema)` to create a new message.
  */
 export const GuestNetProbeResultSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_guest, 16);
+  messageDesc(file_modbit_v1_guest, 24);
 
 /**
  * Describes the message modbit.v1.GuestRefusal.
  * Use `create(GuestRefusalSchema)` to create a new message.
  */
 export const GuestRefusalSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_guest, 17);
+  messageDesc(file_modbit_v1_guest, 25);
 
 /**
  * Describes the message modbit.v1.GuestFrame.
  * Use `create(GuestFrameSchema)` to create a new message.
  */
 export const GuestFrameSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_guest, 18);
+  messageDesc(file_modbit_v1_guest, 26);
 
 /**
  * Describes the message modbit.v1.GuestProcStart.
  * Use `create(GuestProcStartSchema)` to create a new message.
  */
 export const GuestProcStartSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_guest, 19);
+  messageDesc(file_modbit_v1_guest, 27);
 
 /**
  * Describes the message modbit.v1.GuestProcStarted.
  * Use `create(GuestProcStartedSchema)` to create a new message.
  */
 export const GuestProcStartedSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_guest, 20);
+  messageDesc(file_modbit_v1_guest, 28);
 
 /**
  * Describes the message modbit.v1.GuestProcFollow.
  * Use `create(GuestProcFollowSchema)` to create a new message.
  */
 export const GuestProcFollowSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_guest, 21);
+  messageDesc(file_modbit_v1_guest, 29);
 
 /**
  * Describes the message modbit.v1.GuestProcOutput.
  * Use `create(GuestProcOutputSchema)` to create a new message.
  */
 export const GuestProcOutputSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_guest, 22);
+  messageDesc(file_modbit_v1_guest, 30);
 
 /**
  * Describes the message modbit.v1.GuestProcWrite.
  * Use `create(GuestProcWriteSchema)` to create a new message.
  */
 export const GuestProcWriteSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_guest, 23);
+  messageDesc(file_modbit_v1_guest, 31);
 
 /**
  * Describes the message modbit.v1.GuestProcCancel.
  * Use `create(GuestProcCancelSchema)` to create a new message.
  */
 export const GuestProcCancelSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_guest, 24);
+  messageDesc(file_modbit_v1_guest, 32);
 
 /**
  * Describes the message modbit.v1.GuestPtyResize.
  * Use `create(GuestPtyResizeSchema)` to create a new message.
  */
 export const GuestPtyResizeSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_guest, 25);
+  messageDesc(file_modbit_v1_guest, 33);
 
 /**
  * Describes the message modbit.v1.GuestProcAck.
  * Use `create(GuestProcAckSchema)` to create a new message.
  */
 export const GuestProcAckSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_guest, 26);
+  messageDesc(file_modbit_v1_guest, 34);
 
 /**
  * Describes the message modbit.v1.GuestListDir.
  * Use `create(GuestListDirSchema)` to create a new message.
  */
 export const GuestListDirSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_guest, 27);
+  messageDesc(file_modbit_v1_guest, 35);
 
 /**
  * Describes the message modbit.v1.GuestDirEntry.
  * Use `create(GuestDirEntrySchema)` to create a new message.
  */
 export const GuestDirEntrySchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_guest, 28);
+  messageDesc(file_modbit_v1_guest, 36);
 
 /**
  * Describes the message modbit.v1.GuestDirListing.
  * Use `create(GuestDirListingSchema)` to create a new message.
  */
 export const GuestDirListingSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_guest, 29);
+  messageDesc(file_modbit_v1_guest, 37);
 
 /**
  * Describes the message modbit.v1.GuestStat.
  * Use `create(GuestStatSchema)` to create a new message.
  */
 export const GuestStatSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_guest, 30);
+  messageDesc(file_modbit_v1_guest, 38);
 
 /**
  * Describes the message modbit.v1.GuestStatResult.
  * Use `create(GuestStatResultSchema)` to create a new message.
  */
 export const GuestStatResultSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_guest, 31);
+  messageDesc(file_modbit_v1_guest, 39);
 
 /**
  * Describes the message modbit.v1.GuestMkdir.
  * Use `create(GuestMkdirSchema)` to create a new message.
  */
 export const GuestMkdirSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_guest, 32);
+  messageDesc(file_modbit_v1_guest, 40);
 
 /**
  * Describes the message modbit.v1.GuestRemove.
  * Use `create(GuestRemoveSchema)` to create a new message.
  */
 export const GuestRemoveSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_guest, 33);
+  messageDesc(file_modbit_v1_guest, 41);
 
 /**
  * Describes the message modbit.v1.GuestRename.
  * Use `create(GuestRenameSchema)` to create a new message.
  */
 export const GuestRenameSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_guest, 34);
+  messageDesc(file_modbit_v1_guest, 42);
 
 /**
  * Describes the message modbit.v1.GuestFsDone.
  * Use `create(GuestFsDoneSchema)` to create a new message.
  */
 export const GuestFsDoneSchema = /*@__PURE__*/
-  messageDesc(file_modbit_v1_guest, 35);
+  messageDesc(file_modbit_v1_guest, 43);
 

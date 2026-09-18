@@ -145,6 +145,9 @@ fn spec_with(ws: &Path, eg: Option<&EgressStack>) -> SandboxSpec {
             workspace_mib: 64,
             ..Resources::default()
         },
+        // M8.8: a browser when this host (or the image) has one.
+        browser: modbit_sandbox::backend::reference::detect_chromium().is_some()
+            || std::env::var("MODBIT_GUEST_ROOTFS").is_ok(),
     }
 }
 
@@ -187,7 +190,8 @@ fn fixture_with(ws: &Path, eg: Option<&EgressStack>, busybox: bool) -> Fixture {
             vec![
                 "/bin/sh".into(),
                 "-c".into(),
-                "printf 'CONNECT %s HTTP/1.1\r\nHost: %s\r\n\r\n' \"$0\" \"$0\" | /usr/bin/nc 127.0.0.1 3128".into(),
+                // The proxy's port is in the environment the guest sets.
+                "p=${http_proxy#http://}; printf 'CONNECT %s HTTP/1.1\r\nHost: %s\r\n\r\n' \"$0\" \"$0\" | /usr/bin/nc ${p%:*} ${p#*:}".into(),
             ]
         }),
     });
@@ -378,7 +382,8 @@ async fn qual_m8_3_the_reference_backend_passes_the_backend_contract() {
     let (signed, trusted) = signed_by_test("reference-guest", &bin, &guest_version());
     let backend =
         ReferenceBackend::verified(bin.clone(), dir.path().join("sandboxes"), &signed, &trusted)
-            .expect("verified guest binary");
+            .expect("verified guest binary")
+            .with_chromium(modbit_sandbox::backend::reference::detect_chromium());
     let report = assert_conformance(&backend, &ws).await;
     assert_eq!(
         (report.backend, report.isolated),
@@ -633,6 +638,7 @@ async fn qual_m8_3_the_gateway_binds_sandboxes_to_the_tenant_and_the_workers_ses
             work_dir: dir.path().join("sandboxes"),
             manifest: Some(manifest_path),
             trusted_keys,
+            chromium: modbit_sandbox::backend::reference::detect_chromium(),
         },
     })
     .await

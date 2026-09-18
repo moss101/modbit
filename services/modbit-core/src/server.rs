@@ -595,6 +595,8 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
     // host, the queue of requests the Core wants written to it.
     let connection = CONNECTIONS.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
     let mut host_rx: Option<tokio::sync::mpsc::Receiver<wire::BrowserHostRequest>> = None;
+    // M8.8: the browser views this connection watches — frames arrive here.
+    let mut views = Views::default();
     let outcome = serve_frames(
         &core,
         &mut stream,
@@ -604,10 +606,177 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
         &mut rx,
         connection,
         &mut host_rx,
+        &mut views,
     )
     .await;
     core.browser.connection_closed(connection).await;
+    views.unwatch_all(&core).await;
     outcome
+}
+
+/// The browser views one connection watches (M8.8): one frame queue for
+/// all of them, and the watcher id each host knows this connection by.
+#[derive(Default)]
+struct Views {
+    rx: Option<
+        tokio::sync::mpsc::Receiver<(
+            modbit_browser::BrowserSessionId,
+            crate::browser_cloud::ViewFrame,
+        )>,
+    >,
+    tx: Option<
+        tokio::sync::mpsc::Sender<(
+            modbit_browser::BrowserSessionId,
+            crate::browser_cloud::ViewFrame,
+        )>,
+    >,
+    watching: std::collections::HashMap<modbit_browser::BrowserSessionId, u64>,
+}
+
+static WATCHERS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+
+impl Views {
+    fn queue(
+        &mut self,
+    ) -> tokio::sync::mpsc::Sender<(
+        modbit_browser::BrowserSessionId,
+        crate::browser_cloud::ViewFrame,
+    )> {
+        if let Some(tx) = &self.tx {
+            return tx.clone();
+        }
+        let (tx, rx) = tokio::sync::mpsc::channel(8);
+        self.rx = Some(rx);
+        self.tx = Some(tx.clone());
+        tx
+    }
+
+    async fn unwatch_all(&mut self, core: &Arc<Core>) {
+        for (bsid, id) in self.watching.drain() {
+            if let Some((_, ctl)) = core.browser.view_control(bsid).await {
+                let _ = ctl
+                    .send(crate::browser_cloud::ViewControl::Unwatch(id))
+                    .await;
+            }
+        }
+    }
+}
+
+/// `WatchBrowserView` on this connection: frames of the session's view
+/// are written to it until it unwatches or disconnects.
+async fn watch_browser_view(
+    core: &Arc<Core>,
+    env: CommandEnvelope,
+    views: &mut Views,
+) -> CommandAck {
+    let cid = env.command_id.clone();
+    let Ok(p) = wire::WatchBrowserView::decode(env.payload.as_slice()) else {
+        return reject(cid, "BAD_PAYLOAD", "WatchBrowserView");
+    };
+    let Some(bsid) = p
+        .browser_session_id
+        .as_ref()
+        .and_then(id16)
+        .map(modbit_browser::BrowserSessionId::from_bytes)
+    else {
+        return reject(cid, "BAD_PAYLOAD", "browser_session_id required");
+    };
+    let Some(rec) = core.browser.get(bsid).await else {
+        return reject(cid, "NO_SUCH_SESSION", bsid.to_string());
+    };
+    if rec.closed {
+        return reject(cid, "SESSION_CLOSED", bsid.to_string());
+    }
+    let Some(host) = &rec.host else {
+        return reject(cid, "NO_BROWSER_HOST", "no host is attached to the session");
+    };
+    let Some(ctl) = host.view.clone() else {
+        return reject(
+            cid,
+            "HOST_NOT_STREAMABLE",
+            format!(
+                "the session's {} host shows its view on the desktop itself; nothing to stream",
+                host.kind
+            ),
+        );
+    };
+    let id = *views
+        .watching
+        .entry(bsid)
+        .or_insert_with(|| WATCHERS.fetch_add(1, std::sync::atomic::Ordering::SeqCst));
+    let queue = views.queue();
+    let (ftx, mut frx) = tokio::sync::mpsc::channel::<crate::browser_cloud::ViewFrame>(4);
+    // Frames of this session into the connection's one queue (tagged).
+    tokio::spawn(async move {
+        while let Some(f) = frx.recv().await {
+            if queue.send((bsid, f)).await.is_err() {
+                break;
+            }
+        }
+    });
+    if ctl
+        .send(crate::browser_cloud::ViewControl::Watch {
+            id,
+            tx: ftx,
+            max_width: p.max_width,
+            max_height: p.max_height,
+            quality: p.quality,
+        })
+        .await
+        .is_err()
+    {
+        views.watching.remove(&bsid);
+        return reject(cid, "HOST_GONE", "the session's host is gone");
+    }
+    accept(
+        cid,
+        false,
+        wire::BrowserViewWatched {
+            browser_session_id: Some(wire_id(bsid.as_bytes())),
+            host_kind: host.kind.clone(),
+            controller: match rec.lease.controller {
+                modbit_browser::Controller::Agent => "AGENT".into(),
+                modbit_browser::Controller::User => "USER".into(),
+            },
+            lease_generation: rec.lease.generation,
+        }
+        .encode_to_vec(),
+    )
+}
+
+async fn unwatch_browser_view(
+    core: &Arc<Core>,
+    env: CommandEnvelope,
+    views: &mut Views,
+) -> CommandAck {
+    let cid = env.command_id.clone();
+    let Ok(p) = wire::UnwatchBrowserView::decode(env.payload.as_slice()) else {
+        return reject(cid, "BAD_PAYLOAD", "UnwatchBrowserView");
+    };
+    let Some(bsid) = p
+        .browser_session_id
+        .as_ref()
+        .and_then(id16)
+        .map(modbit_browser::BrowserSessionId::from_bytes)
+    else {
+        return reject(cid, "BAD_PAYLOAD", "browser_session_id required");
+    };
+    let was = views.watching.remove(&bsid);
+    if let Some(id) = was
+        && let Some((_, ctl)) = core.browser.view_control(bsid).await
+    {
+        let _ = ctl
+            .send(crate::browser_cloud::ViewControl::Unwatch(id))
+            .await;
+    }
+    accept(
+        cid,
+        false,
+        wire::BrowserViewUnwatched {
+            was_watching: was.is_some(),
+        }
+        .encode_to_vec(),
+    )
 }
 
 /// Connection counter (a host is tied to the connection it attached on).
@@ -623,6 +792,7 @@ async fn serve_frames(
     rx: &mut watch::Receiver<u64>,
     connection: u64,
     host_rx: &mut Option<tokio::sync::mpsc::Receiver<wire::BrowserHostRequest>>,
+    views: &mut Views,
 ) -> Result<()> {
     loop {
         // Drain any events the subscriber has not seen yet, in bounded batches.
@@ -673,6 +843,26 @@ async fn serve_frames(
                 }
                 None
             }
+            // M8.8: a frame of a browser view this connection watches.
+            f = async { views.rx.as_mut().expect("guarded").recv().await }, if views.rx.is_some() => {
+                match f {
+                    Some((bsid, frame)) => {
+                        write_frame(stream, &SurfaceFrame { body: Some(Body::BrowserFrame(wire::BrowserViewFrame {
+                            browser_session_id: Some(wire_id(bsid.as_bytes())),
+                            jpeg: frame.jpeg,
+                            width: frame.width,
+                            height: frame.height,
+                            page_width: frame.page_width,
+                            page_height: frame.page_height,
+                            seq: frame.seq,
+                            url: frame.url,
+                            title: frame.title,
+                        })) }).await?;
+                    }
+                    None => { views.rx = None; }
+                }
+                None
+            }
         };
         let Some(frame) = frame else { continue };
         match frame.body {
@@ -700,6 +890,13 @@ async fn serve_frames(
                             *host_rx = Some(new_rx);
                         }
                         ack
+                    }
+                    // M8.8: watching binds this connection's writer to the view's frames.
+                    _ if env.command_type == "WatchBrowserView" => {
+                        watch_browser_view(core, env, views).await
+                    }
+                    _ if env.command_type == "UnwatchBrowserView" => {
+                        unwatch_browser_view(core, env, views).await
                     }
                     _ => handle_command(core, env).await,
                 };
@@ -878,6 +1075,8 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         | "ForgetBrowserCredential" => "browser.host",
         "OpenBrowserSession" | "CloseBrowserSession" => "task.author",
         "SetBrowserControl" => "session.control",
+        "WatchBrowserView" | "UnwatchBrowserView" => "events.subscribe",
+        "BrowserViewInput" => "session.control",
         "ImportMirroredEvents" | "ReadMirrorEvents" => "session.mirror",
         "IngestAttachment" | "AttachContextDocument" => "attachments.ingest",
         "CreateSession"
@@ -1047,6 +1246,7 @@ async fn attach_browser_host(
                 kind: host_kind.clone(),
                 tx,
                 connection,
+                view: None,
             },
         )
         .await
@@ -4333,11 +4533,32 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             }
             // M8.5: a `cloud_isolated` task runs inside a sandbox the
             // gateway issues for it; without one the run does not start.
-            if task.execution_profile == modbit_policy::kernel::PROFILE_CLOUD_ISOLATED
-                && let Err((code, why)) =
-                    crate::sandboxes::ensure_for_task(core, &task, &actor).await
-            {
-                return reject(cid, &code, why);
+            if task.execution_profile == modbit_policy::kernel::PROFILE_CLOUD_ISOLATED {
+                let sandbox = match crate::sandboxes::ensure_for_task(core, &task, &actor).await {
+                    Ok(h) => h,
+                    Err((code, why)) => return reject(cid, &code, why),
+                };
+                // M8.8: the task's browser is the Chromium inside that
+                // sandbox, hosted by this Core over the gateway's relay,
+                // when the sandbox's policy grants one; the session exists
+                // from the start, the browser runs on first use.
+                if modbit_sandbox::port::SandboxPort::identity(&*sandbox).browser {
+                    // A session without a live host (a restart) is re-hosted.
+                    let hosted =
+                        match core.browser.session_for_task(task_id).await {
+                            Some(b) => core.browser.get(b).await.is_some_and(|r| {
+                                r.host.as_ref().is_some_and(|h| !h.tx.is_closed())
+                            }),
+                            None => false,
+                        };
+                    if !hosted
+                        && let Err(why) =
+                            crate::browser_cloud::CloudHost::attach(core, &task, sandbox, &actor)
+                                .await
+                    {
+                        return reject(cid, "BROWSER_HOST", why);
+                    }
+                }
             }
             // Model policy: request → environment defaults → first registered.
             let endpoints = core.gateway.endpoints();
@@ -4673,6 +4894,77 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 }
                 .encode_to_vec(),
             )
+        }
+        // M8.8: the person's input into a view they watch, under the
+        // control lease — theirs, or it is refused before the host.
+        "BrowserViewInput" => {
+            let Ok(p) = wire::BrowserViewInput::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "BrowserViewInput");
+            };
+            let Some(bsid) = p
+                .browser_session_id
+                .as_ref()
+                .and_then(id16)
+                .map(modbit_browser::BrowserSessionId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "browser_session_id required");
+            };
+            let Some(rec) = core.browser.get(bsid).await else {
+                return reject(cid, "NO_SUCH_SESSION", bsid.to_string());
+            };
+            if rec.lease.controller != modbit_browser::Controller::User {
+                return reject(
+                    cid,
+                    "AGENT_ACTIVE",
+                    format!(
+                        "the agent holds control of the session (lease generation {}); take control first (SetBrowserControl USER)",
+                        rec.lease.generation
+                    ),
+                );
+            }
+            let Some((_, ctl)) = core.browser.view_control(bsid).await else {
+                return reject(
+                    cid,
+                    "HOST_NOT_STREAMABLE",
+                    "the session's host takes no remote input",
+                );
+            };
+            let (tx, rx) = tokio::sync::oneshot::channel();
+            let input = crate::browser_cloud::ViewInput {
+                kind: p.kind.clone(),
+                x: p.x,
+                y: p.y,
+                button: p.button.clone(),
+                text: p.text.clone(),
+                key: p.key.clone(),
+                delta_x: p.delta_x,
+                delta_y: p.delta_y,
+                modifiers: p.modifiers,
+            };
+            if ctl
+                .send(crate::browser_cloud::ViewControl::Input(input, tx))
+                .await
+                .is_err()
+            {
+                return reject(cid, "HOST_GONE", "the session's host is gone");
+            }
+            match tokio::time::timeout(std::time::Duration::from_secs(10), rx).await {
+                Ok(Ok(Ok(detail))) => accept(
+                    cid,
+                    false,
+                    wire::BrowserViewInputDelivered {
+                        delivered: true,
+                        detail,
+                    }
+                    .encode_to_vec(),
+                ),
+                Ok(Ok(Err((code, why)))) => reject(cid, &code, why),
+                _ => reject(
+                    cid,
+                    "BROWSER_TIMEOUT",
+                    "the host did not apply the input in time",
+                ),
+            }
         }
         "CloseBrowserSession" => {
             let Ok(p) = wire::CloseBrowserSession::decode(env.payload.as_slice()) else {

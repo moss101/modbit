@@ -16,6 +16,7 @@
 #![forbid(unsafe_code)]
 
 pub mod auth;
+mod browser_view;
 pub mod rate;
 mod routes;
 mod stream;
@@ -41,6 +42,10 @@ pub struct AppState {
     pub access_ttl_ms: i64,
     /// Refresh token lifetime.
     pub refresh_ttl_ms: i64,
+    /// The key worker tokens verify under (M8.8: the worker's outbound link).
+    pub worker_key: modbit_sandbox::auth::WorkerKey,
+    /// The workers linked to this API and the view frames they send.
+    pub workers: browser_view::WorkerLinks,
 }
 
 /// Service configuration.
@@ -56,6 +61,9 @@ pub struct Config {
     pub rate_capacity: u32,
     /// Sustained requests per second per principal.
     pub rate_per_second: f64,
+    /// HMAC key bytes worker tokens verify under (`None`: a random key —
+    /// no worker can link to this process).
+    pub worker_key: Option<Vec<u8>>,
 }
 
 impl Config {
@@ -83,12 +91,17 @@ impl Config {
             Ok(h) if !h.is_empty() => Some(hex::decode(h)?),
             _ => None,
         };
+        let worker_key = match std::env::var("MODBIT_CLOUD_WORKER_KEY_HEX") {
+            Ok(h) if !h.is_empty() => Some(hex::decode(h)?),
+            _ => None,
+        };
         Ok(Self {
             store: CloudStoreConfig { database_url, s3 },
             token_key,
             bind: std::env::var("MODBIT_CLOUD_BIND").unwrap_or_else(|_| "127.0.0.1:8787".into()),
             rate_capacity: 120,
             rate_per_second: 30.0,
+            worker_key,
         })
     }
 }
@@ -140,6 +153,16 @@ pub async fn serve(cfg: Config) -> anyhow::Result<Served> {
         notify,
         access_ttl_ms: 15 * 60 * 1000,
         refresh_ttl_ms: 30 * 24 * 60 * 60 * 1000,
+        worker_key: match cfg.worker_key {
+            Some(k) => modbit_sandbox::auth::WorkerKey::new(k),
+            None => {
+                eprintln!(
+                    "modbit-cloud-api: MODBIT_CLOUD_WORKER_KEY_HEX unset; no worker can link to this process"
+                );
+                modbit_sandbox::auth::WorkerKey::random()
+            }
+        },
+        workers: browser_view::WorkerLinks::default(),
     });
     let listener = tokio::net::TcpListener::bind(&cfg.bind).await?;
     let addr = listener.local_addr()?;

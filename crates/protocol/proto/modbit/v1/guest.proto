@@ -36,6 +36,9 @@ message GuestPolicy {
   // its processes at it; every connection goes to the gateway's egress
   // broker over the private channel, which decides by the policy.
   bool egress_proxy = 7;
+  // M8.8: the guest may run a browser (Chromium, headless) for the task;
+  // its traffic goes through the egress proxy like every process's.
+  bool browser = 8;
 }
 
 // The gateway admits the guest (or refuses it: version, methods).
@@ -81,6 +84,12 @@ message GuestCall {
     GuestMkdir mkdir = 32;
     GuestRemove remove = 33;
     GuestRename rename = 34;
+    // M8.8: the guest's browser
+    GuestBrowserStart browser_start = 40;
+    GuestBrowserStop browser_stop = 41;
+    GuestBrowserForward browser_forward = 42;
+    // M8.9: the workspace's content, hashed (a checkpoint of the guest)
+    GuestFsSnapshot fs_snapshot = 35;
   }
 }
 
@@ -128,7 +137,59 @@ message GuestReply {
     GuestDirListing listing = 30;
     GuestStatResult stat = 31;
     GuestFsDone fs_done = 32;
+    // M8.8
+    GuestBrowserStarted browser_started = 40;
+    GuestBrowserForwarding browser_forwarding = 42;
+    // M8.9
+    GuestFsSnapshotResult fs_snapshot = 35;
   }
+}
+
+// M8.9 (docs/21 "Sandbox recovery"): every regular file under `root`
+// (the workspace; `.git` and symlinks skipped) with its size and sha256,
+// so a checkpoint of the guest's worktree costs one call plus the reads
+// of what changed.
+message GuestFsSnapshot {
+  string root = 1;                 // "" = the workspace root
+  uint32 max_entries = 2;          // 0 = 20000
+}
+
+message GuestFsEntry {
+  string path = 1;                 // relative to root, `/`-separated
+  uint64 size = 2;
+  string sha256 = 3;
+}
+
+message GuestFsSnapshotResult {
+  repeated GuestFsEntry entries = 1;
+  bool truncated = 2;
+}
+
+// M8.8 (docs/22 "Cloud browser"): start the guest's Chromium, headless,
+// with its DevTools endpoint on the guest's loopback; the policy must
+// grant a browser. Idempotent: a browser already running is reported.
+message GuestBrowserStart {
+  uint32 width = 1;                // viewport; 0 = 1024
+  uint32 height = 2;               // 0 = 768
+}
+
+message GuestBrowserStarted {
+  uint32 port = 1;                 // the DevTools port on the guest's loopback
+  string ws_path = 2;              // /devtools/browser/<id>
+  uint32 pid = 3;
+  string version = 4;              // what the browser reported (untrusted)
+  bool already_running = 5;
+}
+
+message GuestBrowserStop {}
+
+// After the guest answers GuestBrowserForwarding, this link carries raw
+// bytes to and from the browser's DevTools port (a CDP WebSocket): the
+// link is consumed, no further call travels on it.
+message GuestBrowserForward {}
+
+message GuestBrowserForwarding {
+  uint32 port = 1;
 }
 
 message GuestHealthReport {

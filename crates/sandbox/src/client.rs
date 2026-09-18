@@ -50,6 +50,8 @@ pub struct ProvisionRequest {
     /// Credentialed virtual hosts with the secrets the broker will hold
     /// (memory only; they cross to the gateway once).
     pub credentials: Vec<(crate::policy::CredentialGrant, String)>,
+    /// Whether the sandbox may run a browser (M8.8).
+    pub browser: bool,
 }
 
 impl GatewayClient {
@@ -101,6 +103,7 @@ impl GatewayClient {
                         "workspace_source": req.workspace_source, "protected_paths": req.protected_paths, "resources": req.resources,
                         "egress": req.egress.iter().map(|r| json!({"host": r.host, "port": r.port, "capability": r.capability})).collect::<Vec<_>>(),
                         "credentials": req.credentials.iter().map(|(c, secret)| json!({"handle": c.handle, "virtual_host": c.virtual_host, "target_url": c.target_url, "header": c.header, "value_prefix": c.value_prefix, "capability": c.capability, "secret": secret})).collect::<Vec<_>>(),
+                        "browser": req.browser,
                     },
                 }),
             )
@@ -137,6 +140,7 @@ impl GatewayClient {
                         .collect()
                 })
                 .unwrap_or_default(),
+            browser: v["policy"]["browser"].as_bool().unwrap_or(false),
         };
         Ok(Arc::new(SandboxHandle {
             client: self.clone(),
@@ -213,6 +217,44 @@ impl SandboxHandle {
             return Err(gateway_error(status, &v));
         }
         Ok(v["same_boot"].as_bool().unwrap_or(false))
+    }
+}
+
+/// The gateway's CDP relay as a [`CdpTransport`] (M8.8).
+struct WsTransport(
+    tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>,
+);
+
+impl crate::port::CdpTransport for WsTransport {
+    fn send(&mut self, text: String) -> PortFuture<'_, Result<()>> {
+        Box::pin(async move {
+            use futures_util::SinkExt;
+            self.0
+                .send(tokio_tungstenite::tungstenite::Message::Text(text.into()))
+                .await
+                .map_err(|e| SandboxError::Guest(format!("DevTools relay send: {e}")))
+        })
+    }
+
+    fn recv(&mut self) -> PortFuture<'_, Option<Result<String>>> {
+        Box::pin(async move {
+            use futures_util::StreamExt;
+            loop {
+                match self.0.next().await {
+                    None => return None,
+                    Some(Err(e)) => {
+                        return Some(Err(SandboxError::Guest(format!(
+                            "DevTools relay recv: {e}"
+                        ))));
+                    }
+                    Some(Ok(tokio_tungstenite::tungstenite::Message::Text(t))) => {
+                        return Some(Ok(t.as_str().to_owned()));
+                    }
+                    Some(Ok(tokio_tungstenite::tungstenite::Message::Close(_))) => return None,
+                    Some(Ok(_)) => continue,
+                }
+            }
+        })
     }
 }
 
@@ -361,10 +403,33 @@ impl SandboxPort for SandboxHandle {
         content: Vec<u8>,
     ) -> PortFuture<'a, Result<wire::GuestFileWritten>> {
         Box::pin(async move {
-            let v = self.call(task_id, effect_id, json!({"kind": "fs.write", "path": path, "content": String::from_utf8_lossy(&content)})).await?;
+            let body = match std::str::from_utf8(&content) {
+                Ok(text) => json!({"kind": "fs.write", "path": path, "content": text}),
+                Err(_) => {
+                    json!({"kind": "fs.write", "path": path, "content_base64": base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &content)})
+                }
+            };
+            let v = self.call(task_id, effect_id, body).await?;
             Ok(wire::GuestFileWritten {
                 bytes: v["bytes"].as_u64().unwrap_or(0),
             })
+        })
+    }
+
+    fn remove<'a>(
+        &'a self,
+        task_id: &'a str,
+        effect_id: &'a str,
+        path: &'a str,
+    ) -> PortFuture<'a, Result<()>> {
+        Box::pin(async move {
+            self.call(
+                task_id,
+                effect_id,
+                json!({"kind": "fs.remove", "path": path, "recursive": false}),
+            )
+            .await?;
+            Ok(())
         })
     }
 
@@ -399,6 +464,95 @@ impl SandboxPort for SandboxHandle {
                 entries,
                 truncated: v["truncated"].as_bool().unwrap_or(false),
             })
+        })
+    }
+
+    fn fs_snapshot<'a>(
+        &'a self,
+        task_id: &'a str,
+        root: &'a str,
+    ) -> PortFuture<'a, Result<wire::GuestFsSnapshotResult>> {
+        Box::pin(async move {
+            let v = self
+                .call(task_id, "", json!({"kind": "fs.snapshot", "root": root}))
+                .await?;
+            Ok(wire::GuestFsSnapshotResult {
+                entries: v["entries"]
+                    .as_array()
+                    .map(|a| {
+                        a.iter()
+                            .map(|e| wire::GuestFsEntry {
+                                path: e["path"].as_str().unwrap_or_default().to_owned(),
+                                size: e["size"].as_u64().unwrap_or(0),
+                                sha256: e["sha256"].as_str().unwrap_or_default().to_owned(),
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_default(),
+                truncated: v["truncated"].as_bool().unwrap_or(false),
+            })
+        })
+    }
+
+    fn browser_start<'a>(
+        &'a self,
+        task_id: &'a str,
+        width: u32,
+        height: u32,
+    ) -> PortFuture<'a, Result<crate::port::BrowserEndpoint>> {
+        Box::pin(async move {
+            let v = self
+                .call(
+                    task_id,
+                    "",
+                    json!({"kind": "browser.start", "width": width, "height": height}),
+                )
+                .await?;
+            Ok(crate::port::BrowserEndpoint {
+                port: v["port"].as_u64().unwrap_or(0) as u32,
+                ws_path: v["ws_path"].as_str().unwrap_or_default().to_owned(),
+                already_running: v["already_running"].as_bool().unwrap_or(false),
+            })
+        })
+    }
+
+    fn browser_stop<'a>(&'a self, task_id: &'a str) -> PortFuture<'a, Result<()>> {
+        Box::pin(async move {
+            self.call(task_id, "", json!({"kind": "browser.stop"}))
+                .await?;
+            Ok(())
+        })
+    }
+
+    fn browser_connect<'a>(&'a self) -> PortFuture<'a, Result<Box<dyn crate::port::CdpTransport>>> {
+        Box::pin(async move {
+            let base = self.client.base_url.clone();
+            let ws_base = if let Some(rest) = base.strip_prefix("https://") {
+                format!("wss://{rest}")
+            } else if let Some(rest) = base.strip_prefix("http://") {
+                format!("ws://{rest}")
+            } else {
+                base
+            };
+            let url = format!(
+                "{ws_base}/v1/sandboxes/{}/browser/cdp?tenant_id={}",
+                self.identity.sandbox_id, self.tenant_id
+            );
+            use tokio_tungstenite::tungstenite::client::IntoClientRequest;
+            let mut req = url
+                .as_str()
+                .into_client_request()
+                .map_err(|e| SandboxError::Guest(format!("DevTools relay url: {e}")))?;
+            req.headers_mut().insert(
+                "authorization",
+                format!("Bearer {}", self.client.token)
+                    .parse()
+                    .map_err(|_| SandboxError::Guest("bearer header".into()))?,
+            );
+            let (ws, _) = tokio_tungstenite::connect_async(req)
+                .await
+                .map_err(|e| SandboxError::Guest(format!("DevTools relay: {e}")))?;
+            Ok(Box::new(WsTransport(ws)) as Box<dyn crate::port::CdpTransport>)
         })
     }
 

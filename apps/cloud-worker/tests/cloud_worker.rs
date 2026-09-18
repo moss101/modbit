@@ -163,7 +163,11 @@ async fn scripted_model_gated(
                 let mut out = String::new();
                 let calls = step["calls"].as_array().cloned().unwrap_or_default();
                 for (i, c) in calls.iter().enumerate() {
-                    let frame = json!({"id": "c", "model": "scripted", "choices": [{"index": 0, "delta": {"tool_calls": [{"index": i, "id": format!("call_{results}_{i}"), "type": "function", "function": {"name": c["name"], "arguments": c["args"].to_string()}}]}, "finish_reason": null}]});
+                    // M8.8: `{"$ref": {"role", "name"}}` in the arguments is
+                    // the ref of that entity in the latest compiled page the
+                    // model saw (what a real model reads off the snapshot).
+                    let args = resolve_refs(c["args"].clone(), &body["messages"]);
+                    let frame = json!({"id": "c", "model": "scripted", "choices": [{"index": 0, "delta": {"tool_calls": [{"index": i, "id": format!("call_{results}_{i}"), "type": "function", "function": {"name": c["name"], "arguments": args.to_string()}}]}, "finish_reason": null}]});
                     out.push_str(&format!("data: {frame}\n\n"));
                 }
                 if calls.is_empty() {
@@ -181,6 +185,62 @@ async fn scripted_model_gated(
         let _ = axum::serve(listener, app).await;
     });
     (format!("http://{addr}"), seen, gate)
+}
+
+/// The entities of the latest compiled page in the conversation's tool
+/// results (newest first), as `(role, name, ref, bounds)`.
+fn latest_entities(messages: &Value) -> Vec<Value> {
+    let Some(msgs) = messages.as_array() else {
+        return vec![];
+    };
+    for m in msgs.iter().rev() {
+        if m["role"] != "tool" {
+            continue;
+        }
+        let text = m["content"].as_str().unwrap_or_default();
+        let Some(json_text) = text.split("output:\n").nth(1) else {
+            continue;
+        };
+        let Ok(v) = serde_json::from_str::<Value>(json_text.trim()) else {
+            continue;
+        };
+        for key in ["page", "after"] {
+            if let Some(es) = v[key]["entities"].as_array() {
+                return es.clone();
+            }
+        }
+        if let Some(es) = v["entities"].as_array() {
+            return es.clone();
+        }
+    }
+    vec![]
+}
+
+fn resolve_refs(args: Value, messages: &Value) -> Value {
+    match args {
+        Value::Object(map) => {
+            if let Some(want) = map.get("$ref") {
+                let entities = latest_entities(messages);
+                let found = entities.iter().find(|e| {
+                    e["role"] == want["role"]
+                        && e["name"]
+                            .as_str()
+                            .is_some_and(|n| n.contains(want["name"].as_str().unwrap_or_default()))
+                });
+                return match found {
+                    Some(e) => e["ref"].clone(),
+                    None => json!("000000000000"),
+                };
+            }
+            Value::Object(
+                map.into_iter()
+                    .map(|(k, v)| (k, resolve_refs(v, messages)))
+                    .collect(),
+            )
+        }
+        Value::Array(a) => Value::Array(a.into_iter().map(|v| resolve_refs(v, messages)).collect()),
+        other => other,
+    }
 }
 
 struct Api {
@@ -250,7 +310,20 @@ async fn fake_forge() -> FakeForge {
     let expected = format!("Bearer {token}");
     let seen: Arc<Mutex<Vec<String>>> = Default::default();
     let seen2 = Arc::clone(&seen);
-    let app = Router::new().route(
+    // M8.8: a page on the admitted host for the cloud browser — a form
+    // whose link greets whoever was typed, and the greeting.
+    let form_html = "<!doctype html><html><head><title>Greeter</title></head><body><main><h1>Greeter</h1><label>Your name <input id=who name=who></label> <a id=go href=\"/greet?who=\">Greet</a><script>document.getElementById('who').addEventListener('input', e => { document.getElementById('go').href = '/greet?who=' + encodeURIComponent(e.target.value); });</script></main></body></html>";
+    let app = Router::new()
+        .route("/form", get(move || async move { axum::response::Html(form_html) }))
+        .route(
+            "/greet",
+            get(|q: axum::extract::Query<std::collections::HashMap<String, String>>| async move {
+                let who = q.get("who").cloned().unwrap_or_default();
+                let who: String = who.chars().filter(|c| c.is_alphanumeric() || *c == ' ').collect();
+                axum::response::Html(format!("<!doctype html><html><head><title>Greeted</title></head><body><main><h1>hello, {who}</h1><a id=again href=\"/form\">Again</a></main></body></html>"))
+            }),
+        )
+        .route(
         "/user",
         get(move |headers: axum::http::HeaderMap| {
             let expected = expected.clone();
@@ -320,6 +393,7 @@ fn worker_config_with(
             api_base_url: f.base_url.clone(),
             token: f.token.clone(),
         }),
+        api: None,
     }
 }
 
@@ -355,6 +429,8 @@ struct Gateway {
     served: modbit_sandbox_gateway::Served,
     /// `microvm` | `reference`.
     backend: &'static str,
+    /// The worker key bytes the gateway was given.
+    key: Vec<u8>,
 }
 
 impl Gateway {
@@ -403,14 +479,21 @@ impl Gateway {
                             "test-publisher".to_owned(),
                             key.verifying_key().to_bytes(),
                         )],
+                        chromium: modbit_sandbox::backend::reference::detect_chromium(),
                     },
                     "reference",
                 )
             }
         };
+        let key: Vec<u8> = uuid::Uuid::now_v7()
+            .as_bytes()
+            .iter()
+            .chain(uuid::Uuid::new_v4().as_bytes())
+            .copied()
+            .collect();
         let served = modbit_sandbox_gateway::serve(modbit_sandbox_gateway::Config {
             store: store.clone(),
-            worker_key: None,
+            worker_key: Some(modbit_sandbox::auth::WorkerKey::new(key.clone())),
             bind: "127.0.0.1:0".into(),
             backend,
         })
@@ -421,7 +504,13 @@ impl Gateway {
             base_url: format!("http://{}", served.addr),
             served,
             backend: kind,
+            key,
         }
+    }
+
+    /// The worker key's bytes (the API verifies worker tokens under the same key).
+    fn key_bytes(&self) -> Vec<u8> {
+        self.key.clone()
     }
 
     fn token_for(&self, worker_id: &str) -> String {
@@ -463,6 +552,7 @@ async fn qual_m8_2_a_worker_claims_the_lease_runs_the_task_relays_commands_mirro
         bind: "127.0.0.1:0".into(),
         rate_capacity: 500,
         rate_per_second: 100.0,
+        worker_key: None,
     })
     .await
     .expect("api");
@@ -874,6 +964,7 @@ async fn qual_m8_5_a_cloud_isolated_tasks_tools_act_inside_its_sandbox_and_the_s
         bind: "127.0.0.1:0".into(),
         rate_capacity: 500,
         rate_per_second: 100.0,
+        worker_key: None,
     })
     .await
     .expect("api");
@@ -1024,7 +1115,7 @@ async fn qual_m8_5_a_cloud_isolated_tasks_tools_act_inside_its_sandbox_and_the_s
     let forge_text = &tool_texts[7];
     assert!(
         (forge_text.contains("\"authorized\":true") || forge_text.contains("authorized\\\":true"))
-            && forge_text.contains("http_proxy=http://127.0.0.1:3128")
+            && forge_text.contains("http_proxy=http://127.0.0.1:")
             && !forge_text.contains(&forge.token),
         "the forge through the broker, the token never in the guest: {forge_text}"
     );
@@ -1398,6 +1489,7 @@ async fn qual_m8_7_a_local_task_hands_off_to_the_cloud_and_continues_from_its_ch
         bind: "127.0.0.1:0".into(),
         rate_capacity: 500,
         rate_per_second: 100.0,
+        worker_key: None,
     })
     .await
     .expect("api");
@@ -1450,9 +1542,10 @@ async fn qual_m8_7_a_local_task_hands_off_to_the_cloud_and_continues_from_its_ch
             "content-addressed on both sides"
         );
     }
-    // Parity: a continuation that needs the browser is refused.
+    // Parity: a continuation that needs a capability the cloud does not
+    // serve (a host worktree) is refused.
     let mut needs_browser = manifest.clone();
-    needs_browser["capabilities"] = json!(["fs.read", "browser.control"]);
+    needs_browser["capabilities"] = json!(["fs.read", "git.worktree"]);
     let (s, e) = api.post(&a, "/v1/handoffs", json!({"command_id": uuid::Uuid::now_v7().to_string(), "manifest": needs_browser, "parts": parts})).await;
     assert_eq!(
         (s, e["code"].as_str()),
@@ -1641,4 +1734,619 @@ async fn qual_m8_7_a_local_task_hands_off_to_the_cloud_and_continues_from_its_ch
     worker.stop().await;
     gateway.served.stop();
     laptop.stop();
+}
+
+/// M8.8 (docs/22 "Cloud browser"): a `cloud_isolated` task's browser is
+/// the Chromium inside its sandbox — the Core's browser tools act on it
+/// over the gateway's DevTools relay (the page reached through the egress
+/// broker, on the admitted host) — and the person, through the Cloud API,
+/// watches the page's screencast, takes control, clicks in the view and
+/// hands control back; the agent, back in control, reads the page the
+/// person left.
+#[tokio::test]
+async fn qual_m8_8_a_cloud_tasks_browser_runs_inside_its_sandbox_over_cdp_and_streams_its_view_to_the_person()
+ {
+    let Some(store_cfg) = store_config().await else {
+        eprintln!(
+            "SKIPPED: MODBIT_CLOUD_TEST_DATABASE_URL unset (the hosted cloud job runs this against Postgres and a sandbox)"
+        );
+        return;
+    };
+    assert!(
+        core_bin().exists(),
+        "modbit-core at {}",
+        core_bin().display()
+    );
+    let forge = fake_forge().await;
+    let form_url = format!("{}/form", forge.base_url);
+    eprintln!("fake forge (and the greeter) at {}", forge.base_url);
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "the greeter greeted us", "expected_files": []}}]}),
+        // The agent: the form, filled and followed — every step through
+        // the sandbox's browser.
+        json!({"calls": [
+            {"name": "browser.navigate", "args": {"url": form_url}},
+            {"name": "browser.snapshot", "args": {}}
+        ]}),
+        json!({"calls": [
+            {"name": "browser.act", "args": {"ref": {"$ref": {"role": "textbox", "name": "Your name"}}, "action": "fill", "value": "ada"}}
+        ]}),
+        json!({"calls": [
+            {"name": "browser.act", "args": {"ref": {"$ref": {"role": "link", "name": "Greet"}}, "action": "click", "expect": {"url_contains": "/greet?who=ada"}}},
+            {"name": "browser.snapshot", "args": {}}
+        ]}),
+        // Held while the person takes over; when the gate opens the agent
+        // reads the page again and completes.
+        json!({"gate": true, "calls": [{"name": "browser.snapshot", "args": {}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "greeted in the cloud browser", "self_review": {"findings": []}}}]}),
+    ];
+    let (model_base, seen, gate) = scripted_model_gated(script).await;
+    // The API verifies worker tokens under the gateway's key: the worker's
+    // one token links it to both.
+    let keep = tempfile::tempdir().unwrap();
+    let data = match std::env::var("MODBIT_CLOUD_WORKER_TEST_KEEP_DIR") {
+        Ok(d) => std::path::PathBuf::from(d).join("m88"),
+        Err(_) => keep.path().to_path_buf(),
+    };
+    let gateway = Gateway::start(&store_cfg, &data.join("gateway")).await;
+    let served = serve(ApiConfig {
+        store: store_cfg.clone(),
+        token_key: None,
+        bind: "127.0.0.1:0".into(),
+        rate_capacity: 500,
+        rate_per_second: 100.0,
+        worker_key: Some(gateway.key_bytes()),
+    })
+    .await
+    .expect("api");
+    let api = Api {
+        base: format!("http://{}", served.addr),
+        http: reqwest::Client::new(),
+        served,
+    };
+    let store = &api.served.state.store;
+    let tenant = store.create_tenant("browser-test").await.unwrap();
+    let (_p, secret) = store.create_principal(tenant, "user", "ada").await.unwrap();
+    let (_, tok) = api
+        .post("", "/v1/auth/token", json!({"secret": secret}))
+        .await;
+    let a = tok["access_token"].as_str().unwrap().to_owned();
+    let root = repo(&data.join("repo"));
+    let (_, created) = api
+        .post(
+            &a,
+            "/v1/sessions",
+            json!({"command_id": uuid::Uuid::now_v7().to_string()}),
+        )
+        .await;
+    let sid = created["session_id"].as_str().unwrap().to_owned();
+    let (s, task) = api.post(&a, &format!("/v1/sessions/{sid}/tasks"), json!({"command_id": uuid::Uuid::now_v7().to_string(), "goal_text": "greet through the greeter", "execution_profile": "cloud_isolated", "workspace_root": root})).await;
+    assert_eq!(s, 201, "{task}");
+    let mut cfg = worker_config_with(
+        &store_cfg,
+        "worker-b",
+        &data.join("w"),
+        &model_base,
+        Duration::from_secs(10),
+        &gateway,
+        Some(&forge),
+    );
+    cfg.api = Some(modbit_cloud_worker::ApiLinkConfig {
+        base_url: api.base.clone(),
+        worker_token: gateway.token_for("worker-b"),
+    });
+    let worker = start(cfg).await.expect("worker");
+    // The worker links to the API outbound.
+    until("the worker's link", 30, async || {
+        api.served
+            .state
+            .workers
+            .linked("worker-b")
+            .await
+            .then_some(())
+    })
+    .await;
+    // The agent's turns run until the gated step: the greeting page is up.
+    let bsid = until("the browser session on the cloud log", 240, async || {
+        let (_, evs) = api
+            .get(
+                &a,
+                &format!("/v1/events?session_id={sid}&after=0&limit=1000"),
+            )
+            .await;
+        let events = evs["events"].as_array()?;
+        let opened = events
+            .iter()
+            .find(|e| e["envelope"]["event_type"] == "BrowserSessionOpened")?;
+        let bsid = opened["payload"]["browser_session_id"].as_str()?.to_owned();
+        // Four tool-calling turns done: the last snapshot (the greeting) is in.
+        let bodies = seen.lock().unwrap();
+        let turns = bodies
+            .last()
+            .and_then(|b| b["messages"].as_array())
+            .map(|m| {
+                m.iter()
+                    .filter(|x| x["role"] == "assistant" && !x["tool_calls"].is_null())
+                    .count()
+            })
+            .unwrap_or(0);
+        (turns >= 4).then_some(bsid)
+    })
+    .await;
+    // The log names the host: the Core itself, over the sandbox's relay.
+    let (_, evs) = api
+        .get(
+            &a,
+            &format!("/v1/events?session_id={sid}&after=0&limit=1000"),
+        )
+        .await;
+    let events = evs["events"].as_array().unwrap().clone();
+    let attached = events
+        .iter()
+        .find(|e| e["envelope"]["event_type"] == "BrowserHostAttached")
+        .expect("BrowserHostAttached");
+    assert_eq!(attached["payload"]["host_kind"], "cloud-cdp", "{attached}");
+    assert!(
+        attached["payload"]["partition"]
+            .as_str()
+            .is_some_and(|p| p.starts_with("sandbox:")),
+        "{attached}"
+    );
+    let lease = events
+        .iter()
+        .find(|e| e["envelope"]["event_type"] == "SandboxLeaseAcquired")
+        .expect("SandboxLeaseAcquired");
+    assert_eq!(lease["payload"]["browser"], true, "{lease}");
+    // What the agent saw: the form compiled from the sandbox's Chromium,
+    // the fill, the link followed to the greeting.
+    let bodies = seen.lock().unwrap().clone();
+    let tool_texts: Vec<String> = bodies.last().unwrap()["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    eprintln!("agent tool results:\n{}", tool_texts.join("\n----\n"));
+    let nav = &tool_texts[1];
+    assert!(
+        nav.contains("status: SUCCESS") && nav.contains("Greeter"),
+        "the sandbox's browser loaded the page through the broker: {nav}"
+    );
+    let snap = &tool_texts[2];
+    assert!(
+        snap.contains("\"role\":\"textbox\"")
+            && snap.contains("Your name")
+            && snap.contains("Greet"),
+        "the page compiled from the guest's accessibility tree: {snap}"
+    );
+    let fill = &tool_texts[3];
+    assert!(
+        fill.contains("status: SUCCESS") && fill.contains("inserted 3 chars"),
+        "the fill acted inside the guest: {fill}"
+    );
+    let click = &tool_texts[4];
+    assert!(
+        click.contains("status: SUCCESS")
+            && click.contains("/greet?who=ada")
+            && click.contains("\"held\":true")
+            && click.contains("hello, ada")
+            && click.contains("Again"),
+        "the click navigated to the greeting and the postcondition held: {click}"
+    );
+    let greeted = &tool_texts[5];
+    assert!(
+        greeted.contains("Greeted") && greeted.contains("/greet?who=ada"),
+        "the greeting page, read again: {greeted}"
+    );
+    // The "Again" link's box, as compiled after the click — where the
+    // person will click.
+    let again_bounds = {
+        let json_text = click.split("output:\n").nth(1).unwrap().trim();
+        let v: Value = serde_json::from_str(json_text).unwrap();
+        v["delta"]["added"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|e| e["name"] == "Again")
+            .map(|e| e["bounds"].clone())
+            .expect("the Again link's bounds")
+    };
+    assert!(
+        again_bounds["width"].as_u64().unwrap_or(0) > 0,
+        "{again_bounds}"
+    );
+    // ---- the person, through the Cloud API ----
+    // Input under the agent's control is refused before it reaches the page.
+    let (s, refused) = api
+        .post(
+            &a,
+            &format!("/v1/browser-sessions/{bsid}:input"),
+            json!({"session_id": sid, "kind": "click", "x": 10, "y": 10}),
+        )
+        .await;
+    assert_eq!(s, 409, "{refused}");
+    assert_eq!(refused["code"], "AGENT_ACTIVE", "{refused}");
+    // Take control.
+    let (s, ctl) = api
+        .post(
+            &a,
+            &format!("/v1/browser-sessions/{bsid}:control"),
+            json!({"session_id": sid, "controller": "USER"}),
+        )
+        .await;
+    assert_eq!(s, 200, "{ctl}");
+    assert_eq!(ctl["controller"], "USER", "{ctl}");
+    // Watch: frames of the greeting page arrive over the API's stream.
+    let ws_url = format!(
+        "{}/v1/browser-sessions/{bsid}/stream?session_id={sid}",
+        api.base.replace("http://", "ws://")
+    );
+    use futures_util::StreamExt;
+    use tokio_tungstenite::tungstenite::client::IntoClientRequest;
+    let mut req = ws_url.as_str().into_client_request().unwrap();
+    req.headers_mut()
+        .insert("authorization", format!("Bearer {a}").parse().unwrap());
+    let (mut ws, _) = tokio_tungstenite::connect_async(req).await.expect("stream");
+    let first = tokio::time::timeout(Duration::from_secs(30), ws.next())
+        .await
+        .expect("an opener")
+        .expect("a message")
+        .expect("text");
+    let opener: Value = serde_json::from_str(first.to_text().unwrap()).unwrap();
+    assert_eq!(opener["watching"]["host_kind"], "cloud-cdp", "{opener}");
+    assert_eq!(opener["watching"]["controller"], "USER", "{opener}");
+    let mut frame = None;
+    let deadline = Instant::now() + Duration::from_secs(60);
+    while Instant::now() < deadline {
+        let Ok(Some(Ok(m))) = tokio::time::timeout(Duration::from_secs(30), ws.next()).await else {
+            break;
+        };
+        let v: Value = serde_json::from_str(m.to_text().unwrap_or("{}")).unwrap_or_default();
+        if v["frame"].is_object() {
+            frame = Some(v["frame"].clone());
+            break;
+        }
+    }
+    let frame = frame.expect("a screencast frame of the cloud browser");
+    let jpeg = base64::Engine::decode(
+        &base64::engine::general_purpose::STANDARD,
+        frame["jpeg_base64"].as_str().unwrap(),
+    )
+    .unwrap();
+    assert!(
+        jpeg.len() > 500 && jpeg.starts_with(&[0xFF, 0xD8]),
+        "a JPEG frame ({} bytes)",
+        jpeg.len()
+    );
+    assert!(
+        frame["page_width"].as_u64().unwrap_or(0) >= 320,
+        "the page's size travels with the frame: {}",
+        frame["page_width"]
+    );
+    assert!(
+        frame["url"].as_str().is_some_and(|u| u.contains("/greet")),
+        "the frame is of the greeting page: {frame}"
+    );
+    // The person clicks "Again" in the view: the page goes back to the form.
+    let x = again_bounds["x"].as_f64().unwrap() + again_bounds["width"].as_f64().unwrap() / 2.0;
+    let y = again_bounds["y"].as_f64().unwrap() + again_bounds["height"].as_f64().unwrap() / 2.0;
+    let (s, clicked) = api
+        .post(
+            &a,
+            &format!("/v1/browser-sessions/{bsid}:input"),
+            json!({"session_id": sid, "kind": "click", "x": x, "y": y}),
+        )
+        .await;
+    assert_eq!(s, 200, "{clicked}");
+    assert_eq!(clicked["delivered"], true, "{clicked}");
+    // A later frame shows the form again.
+    let mut back = false;
+    let deadline = Instant::now() + Duration::from_secs(60);
+    while Instant::now() < deadline {
+        let Ok(Some(Ok(m))) = tokio::time::timeout(Duration::from_secs(30), ws.next()).await else {
+            break;
+        };
+        let v: Value = serde_json::from_str(m.to_text().unwrap_or("{}")).unwrap_or_default();
+        if v["frame"]["url"]
+            .as_str()
+            .is_some_and(|u| u.ends_with("/form"))
+        {
+            back = true;
+            break;
+        }
+    }
+    assert!(
+        back,
+        "the person's click navigated the cloud browser back to the form"
+    );
+    drop(ws);
+    // Control back to the agent; its next read is the page the person left.
+    let (s, ctl) = api
+        .post(
+            &a,
+            &format!("/v1/browser-sessions/{bsid}:control"),
+            json!({"session_id": sid, "controller": "AGENT"}),
+        )
+        .await;
+    assert_eq!(s, 200, "{ctl}");
+    gate.notify_waiters();
+    until("the task to reach review", 180, async || {
+        let (_, v) = api.get(&a, &format!("/v1/sessions/{sid}")).await;
+        (v["tasks"][0]["state"] == "READY_FOR_REVIEW").then_some(())
+    })
+    .await;
+    let bodies = seen.lock().unwrap().clone();
+    let last_texts: Vec<String> = bodies.last().unwrap()["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    let after_person = last_texts
+        .get(6)
+        .expect("the agent's read after the person's turn");
+    assert!(
+        after_person.contains("Greeter") && after_person.contains("Your name"),
+        "the agent reads the form the person navigated to: {after_person}"
+    );
+    // Control changes are on the log, both ways.
+    let (_, evs) = api
+        .get(
+            &a,
+            &format!("/v1/events?session_id={sid}&after=0&limit=1000"),
+        )
+        .await;
+    let controls: Vec<String> = evs["events"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|e| e["envelope"]["event_type"] == "BrowserControlChanged")
+        .map(|e| {
+            e["payload"]["controller"]
+                .as_str()
+                .unwrap_or_default()
+                .to_owned()
+        })
+        .collect();
+    assert_eq!(controls, vec!["USER", "AGENT"], "{controls:?}");
+    worker.stop().await;
+    gateway.served.stop();
+}
+
+/// M8.9 (docs/21 "Sandbox recovery", E2E-018): a cloud task's sandbox is
+/// killed mid-task, after a checkpoint. The call in flight keeps its
+/// unknown outcome (never replayed by the Core); the lease loss is
+/// detected (`SandboxLost`, the gateway's record `LOST`), a fresh sandbox
+/// is provisioned and restored from the latest checkpoint
+/// (`SandboxRestored`), and the run resumes in it: the model's next call
+/// reads the files the checkpoint carried.
+#[tokio::test]
+async fn qual_m8_9_a_lost_sandbox_is_replaced_and_restored_from_the_latest_checkpoint_and_the_task_resumes()
+ {
+    let Some(store_cfg) = store_config().await else {
+        eprintln!(
+            "SKIPPED: MODBIT_CLOUD_TEST_DATABASE_URL unset (the hosted cloud job runs this against Postgres and a sandbox)"
+        );
+        return;
+    };
+    assert!(
+        core_bin().exists(),
+        "modbit-core at {}",
+        core_bin().display()
+    );
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "work.txt written in the sandbox and read back after a loss", "expected_files": ["work.txt"]}}]}),
+        // A turn of work in the guest — the turn boundary checkpoints it.
+        json!({"calls": [
+            {"name": "shell.exec", "args": {"argv": ["/bin/sh", "-c", "echo v1 > work.txt; echo more >> NOTES.md; echo written"]}},
+            {"name": "fs.read", "args": {"path": "work.txt"}}
+        ]}),
+        // Held until the test has killed the sandbox: this call finds it
+        // gone — its outcome is unknown, the sandbox is replaced.
+        json!({"gate": true, "calls": [{"name": "shell.exec", "args": {"argv": ["/bin/sh", "-c", "cat work.txt"]}}]}),
+        // The model's own retry, in the fresh sandbox.
+        json!({"calls": [{"name": "shell.exec", "args": {"argv": ["/bin/sh", "-c", "cat work.txt; cat NOTES.md; echo again"]}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "recovered", "self_review": {"findings": []}}}]}),
+    ];
+    let (model_base, seen, gate) = scripted_model_gated(script).await;
+    let served = serve(ApiConfig {
+        store: store_cfg.clone(),
+        token_key: None,
+        bind: "127.0.0.1:0".into(),
+        rate_capacity: 500,
+        rate_per_second: 100.0,
+        worker_key: None,
+    })
+    .await
+    .expect("api");
+    let api = Api {
+        base: format!("http://{}", served.addr),
+        http: reqwest::Client::new(),
+        served,
+    };
+    let store = &api.served.state.store;
+    let tenant = store.create_tenant("recovery-test").await.unwrap();
+    let (_p, secret) = store.create_principal(tenant, "user", "ada").await.unwrap();
+    let (_, tok) = api
+        .post("", "/v1/auth/token", json!({"secret": secret}))
+        .await;
+    let a = tok["access_token"].as_str().unwrap().to_owned();
+    let keep = tempfile::tempdir().unwrap();
+    let data = match std::env::var("MODBIT_CLOUD_WORKER_TEST_KEEP_DIR") {
+        Ok(d) => std::path::PathBuf::from(d).join("m89"),
+        Err(_) => keep.path().to_path_buf(),
+    };
+    let root = repo(&data.join("repo"));
+    let gateway = Gateway::start(&store_cfg, &data.join("gateway")).await;
+    let (_, created) = api
+        .post(
+            &a,
+            "/v1/sessions",
+            json!({"command_id": uuid::Uuid::now_v7().to_string()}),
+        )
+        .await;
+    let sid = created["session_id"].as_str().unwrap().to_owned();
+    let (s, task) = api.post(&a, &format!("/v1/sessions/{sid}/tasks"), json!({"command_id": uuid::Uuid::now_v7().to_string(), "goal_text": "write work.txt and read it back", "execution_profile": "cloud_isolated", "workspace_root": root})).await;
+    assert_eq!(s, 201, "{task}");
+    let worker = start(worker_config(
+        &store_cfg,
+        "worker-r",
+        &data.join("w"),
+        &model_base,
+        Duration::from_secs(10),
+        &gateway,
+    ))
+    .await
+    .expect("worker");
+    // The first sandbox, and the checkpoint of the turn that wrote in it.
+    let (first_sandbox, checkpoint_id) = until("the turn-boundary checkpoint", 240, async || {
+        let (_, evs) = api
+            .get(
+                &a,
+                &format!("/v1/events?session_id={sid}&after=0&limit=1000"),
+            )
+            .await;
+        let events = evs["events"].as_array()?;
+        let sandbox = events
+            .iter()
+            .find(|e| e["envelope"]["event_type"] == "SandboxLeaseAcquired")?["payload"]["sandbox_id"]
+            .as_str()?
+            .to_owned();
+        let cp = events
+            .iter()
+            .find(|e| e["envelope"]["event_type"] == "CheckpointCommitted")?["payload"]["checkpoint_id"]
+            .as_str()?
+            .to_owned();
+        Some((sandbox, cp))
+    })
+    .await;
+    // The sandbox's process, from the gateway's record; killed outright.
+    let (s, rec) = gw_get(
+        &gateway,
+        "worker-r",
+        &format!("/v1/sandboxes/{first_sandbox}?tenant_id={tenant}"),
+    )
+    .await;
+    assert_eq!(s, 200, "{rec}");
+    let detail = rec["detail"].as_str().unwrap_or_default().to_owned();
+    let pid: u32 = detail
+        .split("pid ")
+        .nth(1)
+        .and_then(|rest| rest.split(|c: char| !c.is_ascii_digit()).next())
+        .and_then(|d| d.parse().ok())
+        .unwrap_or_else(|| panic!("a pid in the sandbox record's detail: {detail}"));
+    let killed = std::process::Command::new("kill")
+        .args(["-9", &pid.to_string()])
+        .status()
+        .unwrap();
+    assert!(killed.success(), "kill -9 {pid}");
+    eprintln!("killed sandbox {first_sandbox} (pid {pid}); opening the gate");
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    gate.notify_waiters();
+    until(
+        "the task to reach review after the recovery",
+        240,
+        async || {
+            let (_, v) = api.get(&a, &format!("/v1/sessions/{sid}")).await;
+            (v["tasks"][0]["state"] == "READY_FOR_REVIEW").then_some(())
+        },
+    )
+    .await;
+    let (_, evs) = api
+        .get(
+            &a,
+            &format!("/v1/events?session_id={sid}&after=0&limit=2000"),
+        )
+        .await;
+    let events = evs["events"].as_array().unwrap().clone();
+    let of = |t: &str| -> Vec<Value> {
+        events
+            .iter()
+            .filter(|e| e["envelope"]["event_type"] == t)
+            .map(|e| e["payload"].clone())
+            .collect()
+    };
+    let lost = of("SandboxLost");
+    assert_eq!(lost.len(), 1, "one loss on the log: {lost:?}");
+    assert_eq!(lost[0]["sandbox_id"], first_sandbox.as_str(), "{lost:?}");
+    let leases = of("SandboxLeaseAcquired");
+    assert_eq!(
+        leases.len(),
+        2,
+        "the lost sandbox and its replacement: {leases:?}"
+    );
+    let second_sandbox = leases[1]["sandbox_id"].as_str().unwrap().to_owned();
+    assert_ne!(second_sandbox, first_sandbox);
+    let restored = of("SandboxRestored");
+    assert_eq!(restored.len(), 1, "{restored:?}");
+    assert_eq!(
+        restored[0]["sandbox_id"],
+        second_sandbox.as_str(),
+        "{restored:?}"
+    );
+    assert_eq!(
+        restored[0]["replaced"],
+        first_sandbox.as_str(),
+        "{restored:?}"
+    );
+    assert_eq!(
+        restored[0]["checkpoint_id"],
+        checkpoint_id.as_str(),
+        "{restored:?}"
+    );
+    assert!(
+        restored[0]["files_written"].as_u64().unwrap_or(0) >= 2,
+        "work.txt and NOTES.md restored: {restored:?}"
+    );
+    // The call in flight at the loss: unknown, never replayed by the Core.
+    let unknown = of("ToolCallUnknownOutcome");
+    assert_eq!(unknown.len(), 1, "{unknown:?}");
+    let checkpoints = of("CheckpointCommitted");
+    assert!(
+        checkpoints
+            .iter()
+            .any(|c| c["checkpoint_id"] == checkpoint_id.as_str()),
+        "{checkpoints:?}"
+    );
+    // The gateway's record of the lost sandbox.
+    let (_, rec) = gw_get(
+        &gateway,
+        "worker-r",
+        &format!("/v1/sandboxes/{first_sandbox}?tenant_id={tenant}"),
+    )
+    .await;
+    assert_eq!(rec["state"], "LOST", "{rec}");
+    // What the model saw.
+    let bodies = seen.lock().unwrap().clone();
+    let tool_texts: Vec<String> = bodies.last().unwrap()["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    eprintln!("tool results:\n{}", tool_texts.join("\n----\n"));
+    let in_flight = &tool_texts[3];
+    assert!(
+        in_flight.contains("UNKNOWN")
+            && in_flight.contains("sandbox_recovery:")
+            && in_flight.contains(&second_sandbox),
+        "the call at the loss: unknown, and the recovery told: {in_flight}"
+    );
+    assert!(
+        in_flight.contains(&checkpoint_id),
+        "the recovery names the checkpoint restored: {in_flight}"
+    );
+    let retry = &tool_texts[4];
+    assert!(
+        retry.contains("status: SUCCESS")
+            && retry.contains("v1")
+            && retry.contains("more")
+            && retry.contains(&second_sandbox),
+        "the retry ran in the fresh sandbox on the restored worktree: {retry}"
+    );
+    worker.stop().await;
+    gateway.served.stop();
 }

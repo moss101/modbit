@@ -66,6 +66,8 @@ As built (M8.3): worker identity is the HMAC bearer token (`modbit_sandbox::auth
 
 As built (M8.6): the gateway brokers network policy and secret handles per sandbox — an `EgressBroker` over the provision's compiled network policy and the secrets it carried (memory only), serving the channels the guest's local proxy opens (a second vsock port on a MicroVM, a loopback listener on the reference backend), admitting by rule or grant, refusing the rest, recording every decision (`sandbox_egress`, `GET /v1/sandboxes/{id}/egress`); a credentialed virtual host is performed by the broker against its target with the secret injected (docs/21 "Sandbox substrate boundary" as built).
 
+As built (M8.8): the gateway relays a sandbox's browser DevTools (`GET /v1/sandboxes/{id}/browser/cdp`, WebSocket): one more admitted link to the guest, forwarded (`browser.forward`), the DevTools WebSocket handshake performed over it, messages passed both ways; `browser.start` / `browser.stop` as guest calls, refused `POLICY_DENIED` unless the sandbox's policy grants a browser; a destroy stops the browser first. The Cloud API holds the workers' outbound links (`GET /v1/workers/link`) and serves the person's view through them (docs/22 "Cloud browser", docs/24).
+
 ## Provider requests
 
 Provider Gateway records request metadata before network dispatch and model usage after completion. Raw hidden reasoning is not persisted unless explicitly exposed by provider and permitted; normal model messages/tool calls are stored as protocol/evidence according to retention policy.

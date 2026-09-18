@@ -21,6 +21,7 @@
 
 use std::process::ExitCode;
 
+mod browser;
 mod procs;
 mod proxy;
 mod serve;
@@ -46,6 +47,12 @@ fn main() -> ExitCode {
             }
             "--egress-host" => {
                 egress_host = args.get(i + 1).cloned();
+                i += 2;
+            }
+            "--chromium" => {
+                if let Some(p) = args.get(i + 1) {
+                    browser::set_chromium(std::path::PathBuf::from(p));
+                }
                 i += 2;
             }
             other => {

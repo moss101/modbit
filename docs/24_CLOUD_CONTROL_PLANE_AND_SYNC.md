@@ -51,6 +51,8 @@ As built (M8.2): the cloud log and the worker's local Core log are one log, mirr
 
 As built (M8.7): a handoff is the same log crossing tenants once. The laptop's bundle carries its session's log verbatim; the API imports it under the cloud tenant with the origin tenant on every envelope and the chain checked (`import_handoff`), so the cloud log of the session begins with the laptop's events — same ids, sequences and hashes — and the worker's mirror (`ImportMirroredEvents` with `admitted_handoff`) carries them into its Core unchanged. Everything after the admission (`TaskHandoffAdmitted`, the rebind, the sandbox, the continuation) is the cloud tenant's; the laptop's `TaskHandedOff` stays on the laptop's log, after the bundle. Workspace files cross once, as the checkpoint and the git bundle the worker materializes; nothing is synced back — the continuation's results are on the cloud log and in the cloud workspace.
 
+As built (M8.8): a worker keeps one outbound link to the Cloud API (`GET /v1/workers/link`, a WebSocket it opens with its worker token, reconnecting with backoff; a worker needs no inbound port). Over it the API reaches the worker's hosted sessions for what the log cannot carry — the live view of a cloud browser (frames worker → API, fanned out to the persons watching), the person's input and control hand-overs (API → worker, answered with the outcome from the session's own Core). Every request names a session the worker must hold; the link carries no secret and stores nothing.
+
 ## Multi-tenancy
 
 Every DB table/object/sandbox lease carries TenantId. API authorization verifies tenant ownership before dereference. Object store uses per-tenant prefixes plus signed short-lived URLs. Cross-tenant tests are mandatory.

@@ -105,6 +105,7 @@ pub(crate) async fn host(
     lease: ClaimedLease,
     stop: tokio::sync::watch::Receiver<bool>,
     hosting: HostingMap,
+    cores: crate::link::Cores,
 ) {
     let sid = lease.session_id;
     let generation = lease.generation;
@@ -125,8 +126,11 @@ pub(crate) async fn host(
         lease.clone(),
         fenced_tx,
     ));
-    let end = host_inner(&cfg, &store, &lease, &dir, stop, fenced).await;
+    let end = host_inner(&cfg, &store, &lease, &dir, stop, fenced, &cores).await;
     heartbeat.abort();
+    if let Ok(mut m) = cores.lock() {
+        m.remove(&sid);
+    }
     match end {
         End::Stopped => {
             let _ = store
@@ -193,6 +197,7 @@ async fn host_inner(
     dir: &std::path::Path,
     mut stop: tokio::sync::watch::Receiver<bool>,
     mut fenced: tokio::sync::watch::Receiver<bool>,
+    cores: &crate::link::Cores,
 ) -> End {
     let sid = lease.session_id;
     let tenant = lease.tenant_id;
@@ -200,6 +205,17 @@ async fn host_inner(
         Ok(c) => c,
         Err(e) => return End::Failed(format!("core: {e}")),
     };
+    // The link reaches this session's Core here (M8.8).
+    if let Ok(mut m) = cores.lock() {
+        m.insert(
+            sid,
+            crate::link::LiveCore {
+                endpoint: core.ready.endpoint.clone(),
+                boot_secret_hex: core.ready.boot_secret_hex.clone(),
+                generation: lease.generation,
+            },
+        );
+    }
     let mut c = match core.client().await {
         Ok(c) => c,
         Err(e) => return End::Failed(format!("connect: {e}")),

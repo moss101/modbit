@@ -363,6 +363,66 @@ impl<S: AsyncRead + AsyncWrite + Unpin + Send> GuestLink<S> {
         }
     }
 
+    /// Start the guest's browser (M8.8): headless Chromium with its
+    /// DevTools on the guest's loopback; idempotent.
+    pub async fn browser_start(
+        &mut self,
+        task_id: &str,
+        width: u32,
+        height: u32,
+    ) -> Result<wire::GuestBrowserStarted> {
+        let body = self
+            .call(
+                task_id,
+                "",
+                "browser",
+                guest_call::Body::BrowserStart(wire::GuestBrowserStart { width, height }),
+                Duration::from_secs(40),
+            )
+            .await?;
+        Self::expect_refusal_or("browser_start", body, |b| match b {
+            ReplyBody::BrowserStarted(p) => Some(p),
+            _ => None,
+        })
+    }
+
+    /// Stop the guest's browser (M8.8).
+    pub async fn browser_stop(&mut self, task_id: &str) -> Result<()> {
+        let body = self
+            .call(
+                task_id,
+                "",
+                "browser",
+                guest_call::Body::BrowserStop(wire::GuestBrowserStop {}),
+                Duration::ZERO,
+            )
+            .await?;
+        Self::expect_refusal_or("browser_stop", body, |b| match b {
+            ReplyBody::FsDone(_) => Some(()),
+            _ => None,
+        })
+    }
+
+    /// Turn this link into a raw relay to the browser's DevTools port
+    /// (M8.8): after the guest's answer the stream carries CDP bytes and
+    /// nothing else; the link is consumed.
+    pub async fn browser_forward(mut self, task_id: &str) -> Result<(S, u32)> {
+        let body = self
+            .call(
+                task_id,
+                "",
+                "browser",
+                guest_call::Body::BrowserForward(wire::GuestBrowserForward {}),
+                Duration::ZERO,
+            )
+            .await?;
+        let port = Self::expect_refusal_or("browser_forward", body, |b| match b {
+            ReplyBody::BrowserForwarding(f) => Some(f.port),
+            _ => None,
+        })?;
+        Ok((self.stream, port))
+    }
+
     /// Start a followed process (M8.5).
     pub async fn proc_start(
         &mut self,
@@ -482,6 +542,31 @@ impl<S: AsyncRead + AsyncWrite + Unpin + Send> GuestLink<S> {
             .await?;
         Self::expect_refusal_or("pty_resize", body, |b| {
             matches!(b, ReplyBody::ProcAck(_)).then_some(())
+        })
+    }
+
+    /// Every regular file under `root` with its hash (M8.9).
+    pub async fn fs_snapshot(
+        &mut self,
+        task_id: &str,
+        root: &str,
+        max_entries: u32,
+    ) -> Result<wire::GuestFsSnapshotResult> {
+        let body = self
+            .call(
+                task_id,
+                "",
+                "fs.read",
+                guest_call::Body::FsSnapshot(wire::GuestFsSnapshot {
+                    root: root.into(),
+                    max_entries,
+                }),
+                Duration::from_secs(60),
+            )
+            .await?;
+        Self::expect_refusal_or("fs_snapshot", body, |b| match b {
+            ReplyBody::FsSnapshot(r) => Some(r),
+            _ => None,
         })
     }
 
@@ -672,6 +757,7 @@ mod tests {
             protected_paths: vec![],
             network: NetworkPolicy::default(),
             resources: Resources::default(),
+            browser: false,
         })
         .unwrap()
     }

@@ -1,5 +1,6 @@
-//! The guest's local egress proxy (M8.6): an HTTP proxy on
-//! `127.0.0.1:3128` the guest's processes are pointed at (`http_proxy`,
+//! The guest's local egress proxy (M8.6): an HTTP proxy on a loopback
+//! port of the guest's own (ephemeral — several reference guests share a
+//! host) the guest's processes are pointed at (`http_proxy`,
 //! `https_proxy`). It decides nothing: every client connection becomes one
 //! channel to the gateway's egress broker on the host — over vsock in a
 //! MicroVM, over the loopback address the reference backend named — with
@@ -23,8 +24,33 @@ pub enum BrokerAddr {
     Tcp(String),
 }
 
-/// The proxy's listen address inside the guest.
-pub const PROXY_ADDR: &str = "127.0.0.1:3128";
+/// The proxy's listen address inside the guest, once it listens.
+static PROXY_ADDR: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+
+/// Where the proxy listens (`127.0.0.1:<port>`), if it runs.
+pub fn addr() -> Option<String> {
+    PROXY_ADDR.get().cloned()
+}
+
+/// Bind the proxy on an ephemeral loopback port and serve it in the
+/// background; the address is known from here on.
+pub fn start(broker: BrokerAddr) -> std::io::Result<String> {
+    let std_listener = std::net::TcpListener::bind("127.0.0.1:0")?;
+    std_listener.set_nonblocking(true)?;
+    let local = std_listener.local_addr()?.to_string();
+    let _ = PROXY_ADDR.set(local.clone());
+    tokio::spawn(async move {
+        match tokio::net::TcpListener::from_std(std_listener) {
+            Ok(listener) => {
+                if let Err(e) = serve(listener, broker).await {
+                    eprintln!("modbit-guest: egress proxy: {e}");
+                }
+            }
+            Err(e) => eprintln!("modbit-guest: egress proxy: {e}"),
+        }
+    });
+    Ok(local)
+}
 
 type Channel = Box<dyn ChannelIo>;
 pub(crate) trait ChannelIo:
@@ -53,9 +79,14 @@ async fn open_channel(addr: &BrokerAddr) -> std::io::Result<Channel> {
 }
 
 /// Serve the proxy forever.
-pub async fn serve(addr: BrokerAddr) -> std::io::Result<()> {
-    let listener = tokio::net::TcpListener::bind(PROXY_ADDR).await?;
-    eprintln!("modbit-guest: egress proxy on {PROXY_ADDR} → {addr:?}");
+async fn serve(listener: tokio::net::TcpListener, addr: BrokerAddr) -> std::io::Result<()> {
+    eprintln!(
+        "modbit-guest: egress proxy on {} → {addr:?}",
+        listener
+            .local_addr()
+            .map(|a| a.to_string())
+            .unwrap_or_default()
+    );
     let addr = Arc::new(addr);
     loop {
         let (client, _) = listener.accept().await?;
@@ -76,6 +107,16 @@ async fn handle_client(client: tokio::net::TcpStream, addr: &BrokerAddr) -> std:
     let mut parts = request_line.split_whitespace();
     let method = parts.next().unwrap_or_default().to_owned();
     let target = parts.next().unwrap_or_default().to_owned();
+    // The destination host is logged, never a path or query (a URL may
+    // carry a token).
+    eprintln!(
+        "modbit-guest: proxy: {method} {}",
+        target
+            .trim_start_matches("http://")
+            .split('/')
+            .next()
+            .unwrap_or_default()
+    );
     if method == "CONNECT" {
         // Drain the headers.
         let mut line = String::new();

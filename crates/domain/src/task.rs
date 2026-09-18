@@ -651,6 +651,10 @@ pub enum TaskEvent {
         /// the hosts, never the handles' secrets.
         #[serde(default)]
         credentials: Vec<String>,
+        /// Whether the sandbox may run the task's browser (M8.8): the
+        /// lease grants `browser.control`.
+        #[serde(default)]
+        browser: bool,
     },
     /// `TaskHandedOff` (M8.7, docs/21 "Handoff local → cloud"): this Core
     /// exported the task — its log, its objects, an immutable workspace
@@ -709,6 +713,24 @@ pub enum TaskEvent {
         sandbox_id: String,
         /// What was observed.
         detail: String,
+    },
+    /// `SandboxRestored` (M8.9, docs/21 "Sandbox recovery"): a fresh sandbox
+    /// took the lost one's place and the task's latest checkpoint was
+    /// written into it — the worktree as it was at that checkpoint; what
+    /// came after is the model's to redo. No state change.
+    SandboxRestored {
+        /// The sandbox the worktree was restored into.
+        sandbox_id: String,
+        /// The sandbox that was lost.
+        replaced: String,
+        /// The checkpoint restored (empty: none existed, the seed alone).
+        checkpoint_id: String,
+        /// Its epoch (0 with no checkpoint).
+        epoch: u32,
+        /// Files written from objects.
+        files_written: u32,
+        /// Files removed because the checkpoint did not have them.
+        files_removed: u32,
     },
     /// M7.7 (docs/22 "Prompt-injection isolation", REQ-EV-0284): a
     /// security-relevant attempt the runtime saw and answered — content
@@ -1675,6 +1697,7 @@ impl TaskEvent {
             Self::TaskWorkspaceRebound { .. } => "TaskWorkspaceRebound",
             Self::SandboxReleased { .. } => "SandboxReleased",
             Self::SandboxLost { .. } => "SandboxLost",
+            Self::SandboxRestored { .. } => "SandboxRestored",
             Self::UnsupportedLanguageOptInRecorded { .. } => "UnsupportedLanguageOptInRecorded",
             Self::ContextDocumentAttached { .. } => "ContextDocumentAttached",
             Self::SelectionRecorded { .. } => "SelectionRecorded",
@@ -1901,7 +1924,9 @@ impl Task {
             // A sandbox is given back after the task ended (M8.5), and one
             // may be lost at any time: the records of the substrate's
             // lifecycle land whatever the task's state.
-            TaskEvent::SandboxReleased { .. } | TaskEvent::SandboxLost { .. } => None,
+            TaskEvent::SandboxReleased { .. }
+            | TaskEvent::SandboxLost { .. }
+            | TaskEvent::SandboxRestored { .. } => None,
             // The workspace moved (M8.7): the projection follows.
             TaskEvent::TaskWorkspaceRebound {
                 workspace_root,

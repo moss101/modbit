@@ -44,6 +44,8 @@ pub enum BackendChoice {
         manifest: Option<PathBuf>,
         /// Trusted publisher keys.
         trusted_keys: Vec<(String, [u8; 32])>,
+        /// The host's Chromium a guest may run (M8.8); none = no browser.
+        chromium: Option<PathBuf>,
     },
 }
 
@@ -99,6 +101,7 @@ impl Config {
                 work_dir: PathBuf::from(std::env::var("MODBIT_SANDBOX_WORK_DIR").unwrap_or_else(|_| std::env::temp_dir().join("modbit-sandboxes").to_string_lossy().into_owned())),
                 manifest: std::env::var("MODBIT_GUEST_BIN_MANIFEST").ok().filter(|v| !v.is_empty()).map(PathBuf::from),
                 trusted_keys: modbit_sandbox::image::trusted_keys_from_env(&std::env::var("MODBIT_GUEST_IMAGE_KEYS").unwrap_or_default()),
+                chromium: std::env::var("MODBIT_GUEST_CHROMIUM").ok().filter(|v| !v.is_empty()).map(PathBuf::from),
             },
             #[cfg(unix)]
             "microvm" => BackendChoice::Microvm(
@@ -246,6 +249,7 @@ pub async fn serve(cfg: Config) -> anyhow::Result<Served> {
             work_dir,
             manifest,
             trusted_keys,
+            chromium,
         } => {
             eprintln!(
                 "modbit-sandbox-gateway: serving the REFERENCE backend — guests are host processes with no isolation; not for tenants"
@@ -261,14 +265,18 @@ pub async fn serve(cfg: Config) -> anyhow::Result<Served> {
                             &signed,
                             trusted_keys,
                         )
-                        .map_err(|e| anyhow::anyhow!("{e}"))?,
+                        .map_err(|e| anyhow::anyhow!("{e}"))?
+                        .with_chromium(chromium.clone()),
                     )
                 }
                 None => {
                     eprintln!(
                         "modbit-sandbox-gateway: the reference guest binary is UNVERIFIED (no MODBIT_GUEST_BIN_MANIFEST)"
                     );
-                    Arc::new(ReferenceBackend::new(guest_bin.clone(), work_dir.clone()))
+                    Arc::new(
+                        ReferenceBackend::new(guest_bin.clone(), work_dir.clone())
+                            .with_chromium(chromium.clone()),
+                    )
                 }
             }
         }

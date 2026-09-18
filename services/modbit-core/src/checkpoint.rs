@@ -74,6 +74,101 @@ fn dirty_state(
     Ok((out, head))
 }
 
+/// M8.9 (docs/21 "Sandbox recovery"): the dirty state of a cloud task's
+/// worktree — the guest's `/workspace` against the seed it was provisioned
+/// from (the host copy at the task's root): every file whose content
+/// differs or is new goes in as an object, every seed file the guest no
+/// longer has as [`modbit_checkpoint::DELETED`]. One hashed listing from
+/// the guest, then the reads of what changed. Bounded: a worktree beyond
+/// the limits is refused rather than half-captured.
+async fn dirty_state_sandbox(
+    objects: &ObjectStore,
+    sandbox: &dyn modbit_sandbox::port::SandboxPort,
+    task_id: &str,
+    seed_root: &std::path::Path,
+) -> anyhow::Result<(BTreeMap<String, String>, Option<String>)> {
+    const MAX_FILES: usize = 20_000;
+    const MAX_BYTES: u64 = 256 * 1024 * 1024;
+    let repo = modbit_git::Repo::open(seed_root)?;
+    let head = repo.head().ok();
+    let snap = sandbox
+        .fs_snapshot(task_id, "")
+        .await
+        .map_err(|e| anyhow::anyhow!("the sandbox's worktree could not be listed: {e}"))?;
+    if snap.truncated || snap.entries.len() > MAX_FILES {
+        anyhow::bail!(
+            "the sandbox's worktree has more than {MAX_FILES} files; a checkpoint of it is refused"
+        );
+    }
+    // The seed, hashed the same way.
+    let mut seed: HashMap<String, String> = HashMap::new();
+    let mut stack = vec![seed_root.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        let Ok(rd) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        for e in rd.flatten() {
+            let Ok(ft) = e.file_type() else { continue };
+            if ft.is_dir() {
+                if e.file_name() != ".git" {
+                    stack.push(e.path());
+                }
+                continue;
+            }
+            if !ft.is_file() {
+                continue;
+            }
+            let Ok(bytes) = std::fs::read(e.path()) else {
+                continue;
+            };
+            let rel = e
+                .path()
+                .strip_prefix(seed_root)
+                .map(|p| p.to_string_lossy().replace('\\', "/"))
+                .unwrap_or_default();
+            seed.insert(rel, content_hash(&bytes));
+        }
+    }
+    let mut out = BTreeMap::new();
+    let mut bytes_read = 0u64;
+    for entry in &snap.entries {
+        if seed.get(&entry.path).is_some_and(|h| *h == entry.sha256) {
+            continue;
+        }
+        bytes_read += entry.size;
+        if bytes_read > MAX_BYTES {
+            anyhow::bail!(
+                "the sandbox's changed files exceed {} MiB; a checkpoint of them is refused",
+                MAX_BYTES / (1024 * 1024)
+            );
+        }
+        let guest_path = format!(
+            "{}/{}",
+            sandbox.identity().workspace_root.trim_end_matches('/'),
+            entry.path
+        );
+        let f = sandbox
+            .read_file(task_id, &guest_path, 0)
+            .await
+            .map_err(|e| anyhow::anyhow!("reading `{}` from the sandbox: {e}", entry.path))?;
+        if f.truncated {
+            anyhow::bail!(
+                "`{}` in the sandbox exceeds the read bound; a checkpoint of it is refused",
+                entry.path
+            );
+        }
+        out.insert(entry.path.clone(), objects.put(&f.content)?);
+    }
+    let present: std::collections::HashSet<&str> =
+        snap.entries.iter().map(|e| e.path.as_str()).collect();
+    for path in seed.keys() {
+        if !present.contains(path.as_str()) {
+            out.insert(path.clone(), modbit_checkpoint::DELETED.to_owned());
+        }
+    }
+    Ok((out, head))
+}
+
 /// The manifests of a task's committed checkpoints, oldest first.
 pub(crate) fn manifests(store: &EventStore, task: &Task) -> Vec<CheckpointManifest> {
     store
@@ -184,11 +279,24 @@ pub(crate) async fn capture(
         )
         .map_err(|e| anyhow::anyhow!(e))?;
     }
-    // 2. capture the worktree and the runtime cursor.
+    // 2. capture the worktree and the runtime cursor — the guest's worktree
+    // when the task runs in a sandbox (M8.9), the host's otherwise.
+    let sandbox = core
+        .tools
+        .sandboxes
+        .lock()
+        .await
+        .get(&task.task_id)
+        .cloned();
     let (dirty, git_head, workspace_revision, worktree_id) = {
         let ws = ws.lock().await;
         let objects = core.store.lock().await.objects().clone();
-        let (dirty, head) = dirty_state(&objects, &ws, &canonical)?;
+        let (dirty, head) = match &sandbox {
+            Some(h) => {
+                dirty_state_sandbox(&objects, &**h, &task.task_id.to_string(), &canonical).await?
+            }
+            None => dirty_state(&objects, &ws, &canonical)?,
+        };
         let rev = ws.revision();
         (dirty, head, rev.number, rev.worktree_id.clone())
     };
