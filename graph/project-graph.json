@@ -19845,9 +19845,12 @@
    "milestone": "M9",
    "qual": "QUAL-EV-0215",
    "source": "docs/41",
-   "status": "REAL_TESTING",
+   "status": "COMPLETE",
    "evidence": [
-    "test:crates/tools/tests/pipeline_and_direct.rs::qual_ev_0215_no_tool_schema_declares_a_secret_and_secrets_never_enter_arguments"
+    "test:crates/tools/tests/pipeline_and_direct.rs::qual_ev_0215_no_tool_schema_declares_a_secret_and_secrets_never_enter_arguments",
+    "run:35325116952",
+    "commit:dc2ddd3",
+    "artifact:evidence/m9/IMP-EV-0215/TASK_CARD.md"
    ],
    "notes": [
     {
@@ -19873,9 +19876,21 @@
      "from": "WIRED",
      "to": "REAL_TESTING",
      "note": "local: QUAL-EV-0215 green — no schema exposes a secret; custody secret blocked from args"
+    },
+    {
+     "at": "2026-09-18T09:15:09Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI green on main run 35325116952 at dc2ddd3"
+    },
+    {
+     "at": "2026-09-18T09:15:09Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed: hosted CI green on main run 35325116952 at dc2ddd3; card retained"
     }
    ],
-   "status_changed_on": "2026-09-18T08:17:50Z"
+   "status_changed_on": "2026-09-18T09:15:09Z"
   },
   {
    "id": "IMP-EV-0217",
