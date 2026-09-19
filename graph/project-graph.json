@@ -33803,8 +33803,54 @@
    "subsystem": "governance",
    "source": "docs/77_RELEASE_ZERO_EXECUTION_GOAL.md",
    "acceptance": "graph.py goal derives the whole remaining ladder to a release from live state and exits 0 only when it is READY; doc 77 states the goal, its exit criteria, the waves, the inputs only the user can supply and the per-task protocol; copied-package test passes; no product proof",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:dossier-gov-005-2026-09-19-final",
+    "artifact:evidence/dossier-gov-005/validation.json",
+    "artifact:evidence/dossier-gov-005/tests.log",
+    "revision:sha256:b89b79a782386ad26beeb570ea1242e53088ec1f8d3f0775198b81de99748e5d",
+    "commit:49cbc43c7336a0058fa510b2f02235b5914acecd"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-19T18:34:25Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Live graph audit at main c2acfc1: status/gates/releases/ready, the 42 open RELEASE_ZERO items with after and milestone prerequisites, the PX-020 blocker note, DR-M2-001/M3-002/M3-003/M6-001/M6-002, docs 43/59/60/61/70/73/75; baseline hashed in evidence/dossier-gov-005/baseline.json"
+    },
+    {
+     "at": "2026-09-19T18:34:25Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "goal command in tools/graph.py (goal_plan, cmd_goal, GOAL_EXIT, exit-code propagation); doc 77; GOV5_CHANGE and DOC-GOV-005 in build_graph.py; test_goal_is_derived_executable_and_release_scoped plus the chain assertions; pointers in docs 00/43/75/93/98, README, SKILLS; docs/97 entry"
+    },
+    {
+     "at": "2026-09-19T18:34:25Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Regenerated graph (1482 nodes, 4636 edges; doc 90, dossier_task 13, change_record 9) and both manifests through the real CLIs; graph.py goal run against the regenerated graph: BLOCKED exit 2, 42 open steps, 7 attestations, 10 waves, PX-020 holds 23 steps"
+    },
+    {
+     "at": "2026-09-19T18:34:25Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "check_dossier --manifest exit 0 (90 docs); copied-package suite 44 tests passed including the new goal test; graph file byte-identical before and after the goal command"
+    },
+    {
+     "at": "2026-09-19T18:34:25Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "Change commit 49cbc43 on main; evidence bundle retained"
+    },
+    {
+     "at": "2026-09-19T18:34:25Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Sealed: goal command derived and executable, doc 77 authoritative for the goal definition, integrity gate and copied-package suite green"
+    }
+   ],
+   "owner_agent": "claude-opus-5",
+   "status_changed_on": "2026-09-19T18:34:25Z"
   },
   {
    "id": "ALPHA",

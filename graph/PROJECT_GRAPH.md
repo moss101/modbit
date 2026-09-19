@@ -372,7 +372,7 @@ flowchart LR
 - `DOC-PX-004`: COMPLETE; Product extension stage D: UX flows, onboarding and interaction budgets; evidence: run:dossier-px-004-2026-09-05-final, artifact:evidence/dossier-px-004/validation.json, artifact:evidence/dossier-px-004/tests.log, revision:sha256:afd47083a105c959760a5ec04dcd4a56b777e5ccdcc143ef29945b55a2e705cb, commit:46ffd21796431c2df4805b0fe168b66c375f66e7
 - `DOC-PX-005`: COMPLETE; Product extension stage E: language and platform support matrix; evidence: run:dossier-px-005-2026-09-05-final, artifact:evidence/dossier-px-005/validation.json, artifact:evidence/dossier-px-005/tests.log, revision:sha256:786117af583dca78214f2ecd17b0ccd5d07880274969bbf1cbee6b107aada985, commit:df76087d60f80f8f6192ed359254e14b321db573
 - `DOC-PX-006`: COMPLETE; Product extension stage F: verification execution mechanics, scope bounds, repair policy and agent harness contracts; evidence: run:dossier-px-006-2026-09-05-final, artifact:evidence/dossier-px-006/validation.json, artifact:evidence/dossier-px-006/tests.log, revision:sha256:060860f40e2b4c8180d52047013627d38a48692bb51af19efc5a9951bcb82c4f, commit:4a3f6df023f82c03df1a8fd7051a219d885232ed
-- `DOC-GOV-005`: NOT_STARTED; Release Zero execution goal: derived goal command and execution plan; evidence: none
+- `DOC-GOV-005`: COMPLETE; Release Zero execution goal: derived goal command and execution plan; evidence: run:dossier-gov-005-2026-09-19-final, artifact:evidence/dossier-gov-005/validation.json, artifact:evidence/dossier-gov-005/tests.log, revision:sha256:b89b79a782386ad26beeb570ea1242e53088ec1f8d3f0775198b81de99748e5d, commit:49cbc43c7336a0058fa510b2f02235b5914acecd
 
 ## Milestone tasks in execution order
 
