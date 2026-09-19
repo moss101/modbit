@@ -6,9 +6,9 @@
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
-    "docs": 89,
-    "root_and_tooling": 1264,
-    "docs_bytes": 1267383
+    "docs": 90,
+    "root_and_tooling": 1267,
+    "docs_bytes": 1299528
   },
   "sections": [
     {
@@ -59,8 +59,8 @@
       "section": "authority",
       "section_title": "Authority and orientation",
       "title": "Modbit — AI-Agent Build Dossier V3.3 EPR v1.1",
-      "bytes": 16729,
-      "sha256": "cac817ca1fd014438bbeab9e5c43b543f143c7fb137d8cd00a4c59d4cfc6b6cf"
+      "bytes": 17087,
+      "sha256": "f6f0d02a561b0cc993104b1d33599363900f9a78e440d35d667fb58daafd4d14"
     },
     {
       "path": "docs/01_START_HERE_FOR_BUILD_AGENTS.md",
@@ -428,8 +428,8 @@
       "section": "requirements",
       "section_title": "Requirements, tasks and traceability",
       "title": "Implementation Roadmap and Verifiable Task Graph",
-      "bytes": 11018,
-      "sha256": "051246e5acace3e6c7e35fb20d774bd1905bd0996517daadc9ec231fbe004c0e"
+      "bytes": 11262,
+      "sha256": "e20dec732c1935ff781fa7cedcd64822478e65e366128aee58bb6c83995cb0fb"
     },
     {
       "path": "docs/44_REQUIREMENTS_TRACEABILITY_MATRIX.md",
@@ -671,8 +671,8 @@
       "section": "delivery",
       "section_title": "Delivery and operations",
       "title": "Phased release plan and readiness",
-      "bytes": 4279,
-      "sha256": "6f753c623b64d361d02e590f9ee446d180d3a524b411b8f305183096e396d2ac"
+      "bytes": 4467,
+      "sha256": "e6d02b3572c94923216846326d9a11d18d1ee1e7fad83ab0866ab820183854af"
     },
     {
       "path": "docs/76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
@@ -682,6 +682,15 @@
       "title": "Language and platform support matrix",
       "bytes": 5687,
       "sha256": "753831f02bc261061c80249f4a7eca23e6e8891f886df25b52bb41331fc80b3f"
+    },
+    {
+      "path": "docs/77_RELEASE_ZERO_EXECUTION_GOAL.md",
+      "number": 77,
+      "section": "delivery",
+      "section_title": "Delivery and operations",
+      "title": "Release Zero Execution Goal",
+      "bytes": 23157,
+      "sha256": "4a990efd404496eb72846eb67d6112c3640ac00d81acdf03d100678fded354a3"
     },
     {
       "path": "docs/80_ANTI_SUPERFICIAL_IMPLEMENTATION_STANDARD.md",
@@ -806,8 +815,8 @@
       "section": "governance",
       "section_title": "Agent process and governance",
       "title": "Status Vocabulary and Lifecycle Reconciliation",
-      "bytes": 9218,
-      "sha256": "5121ef5959610b83b1e0f643a202c96cbb88e7c7e47d1b65149ca720f3f278f1"
+      "bytes": 9519,
+      "sha256": "b4c2533c0e5dae4f1e8efaa66d59dc5f2d34eb865a6b04475479f9aa23a9adbc"
     },
     {
       "path": "docs/94_EXECUTION_POLICY_DOSSIER_TASK_AND_HANDOFF.md",
@@ -842,8 +851,8 @@
       "section": "governance",
       "section_title": "Agent process and governance",
       "title": "Dossier maintenance log",
-      "bytes": 43736,
-      "sha256": "ae48c1832a920977def82d1ba4b7d492d4281c60a3723beaef613d3144c97073"
+      "bytes": 50687,
+      "sha256": "95224c64e280b2017339d66052970d4353500ea878caf1433387126543cc5abd"
     },
     {
       "path": "docs/98_BUILD_MANIFEST.md",
@@ -851,8 +860,8 @@
       "section": "live-state",
       "section_title": "Live state",
       "title": "Build Manifest",
-      "bytes": 10387,
-      "sha256": "543223e35d6500afbcfcc4875267ab512927e5020333bd0273bd6fed57e6ad48"
+      "bytes": 11333,
+      "sha256": "4e4352db5246d3a8a344fc99104ae8b62612e96b7f835bdcc41dfa0182db9031"
     }
   ],
   "root_and_tooling": [
@@ -873,13 +882,13 @@
     },
     {
       "path": "README.md",
-      "bytes": 10200,
-      "sha256": "575c1c947f4064ae19894a43916f66fca49974a3002a368c05314d80f3d7ccff"
+      "bytes": 10634,
+      "sha256": "1befcf5fa3cee356c20b234f652e7585a9fde7eaa85781b9c822d8852117d473"
     },
     {
       "path": "SKILLS.md",
-      "bytes": 18306,
-      "sha256": "d6a62b1df940c10e1e4dec05af6a8ce7c94b65018c9e24a6bd76f88a7978d27c"
+      "bytes": 18835,
+      "sha256": "2f441310c0e2909afde84cab80226a1e3b4452adbd6a627967e60debd8455b71"
     },
     {
       "path": "docs/decisions/DR-M0-002-locked-architecture-file-guard.md",
@@ -1040,6 +1049,21 @@
       "path": "evidence/dossier-gov-004/validation.json",
       "bytes": 14824,
       "sha256": "38b271df486c68ff1afcd7ce5779ea371f956d7583a85edb8d9e7b7dc5736876"
+    },
+    {
+      "path": "evidence/dossier-gov-005/baseline.json",
+      "bytes": 18853,
+      "sha256": "d92f775bc0c1cb23d55080e4a027b9025d701483507bb5cfb7453a5ee4b900f8"
+    },
+    {
+      "path": "evidence/dossier-gov-005/tests.log",
+      "bytes": 3470,
+      "sha256": "974c4449ce11cf143e185d4a3ec31fa1c09429e43199359689baf2c135a97779"
+    },
+    {
+      "path": "evidence/dossier-gov-005/validation.json",
+      "bytes": 16914,
+      "sha256": "6510934ed17c371fe26659f4e3a46e8faa3cc17ba9caf0f316f155e81433c042"
     },
     {
       "path": "evidence/dossier-gov/baseline.json",
@@ -7133,18 +7157,18 @@
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 40720,
-      "sha256": "b37e54afe069c42df5eb5dd70e1acbbb03ca838879334f8bc750747dc51d3875"
+      "bytes": 40841,
+      "sha256": "cd2f8854092df97903b0358d3c5d658571116b15b5930e96d3c3d732b30365c4"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1557341,
-      "sha256": "57012fbec750933f94b581b5f92a63cb2e45369a6510c7316f64e81c3e839a0a"
+      "bytes": 1565111,
+      "sha256": "d9e5e1fcb504acd573f66a4eacfa71fa21347a61fc1898f62472a80bd058491d"
     },
     {
       "path": "tools/build_graph.py",
-      "bytes": 53364,
-      "sha256": "b1a026685406fab72ca15d0e75000645daab1cb0e32f9b82cff648542f866d5d"
+      "bytes": 54559,
+      "sha256": "2386120f7a8ab3c48562b3450427d61637859c87cd9f7f5817c46676ab322547"
     },
     {
       "path": "tools/build_manifest.py",
@@ -7168,13 +7192,13 @@
     },
     {
       "path": "tools/graph.py",
-      "bytes": 36313,
-      "sha256": "76f2a79fca3c305205f34573b94118c99511944833e8e602bf0eba7e2ac305cb"
+      "bytes": 46180,
+      "sha256": "2e55d715b9b43e76b4b0c8e3a71dd68a5e185d152d047dfc2a05863659d2d983"
     },
     {
       "path": "tools/test_dossier.py",
-      "bytes": 33280,
-      "sha256": "b9a8309daf73baf794799bdd7069de5dbad1400ebe4c534fa576671e3b1e2d64"
+      "bytes": 37541,
+      "sha256": "00feb4077c36fd870843028c43a6c8dda54fa0fb3432038b652032ccb7f996fb"
     }
   ],
   "renames_v3_to_v3_1": {

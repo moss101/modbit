@@ -295,6 +295,9 @@ class DossierTests(unittest.TestCase):
         self.assertIn("DOC-PX-003", self.run_tool("graph", "show", "DOC-PX-004"))
         self.assertIn("DOC-PX-004", self.run_tool("graph", "show", "DOC-PX-005"))
         self.assertIn("DOC-PX-005", self.run_tool("graph", "show", "DOC-PX-006"))
+        out = self.run_tool("graph", "show", "DOC-GOV-005")
+        for required in ("DOC-PX-006", "DR-GOV-2026-09-19-005", "77_RELEASE_ZERO_EXECUTION_GOAL.md", "97_DOSSIER_MAINTENANCE_LOG.md", "governance"):
+            self.assertIn(required, out)
         out = self.run_tool("graph", "show", "DOC-GOV-001")
         for required in ("DOC-EPR-002", "DR-GOV-2026-09-05", "96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md", "governance"):
             self.assertIn(required, out)
@@ -564,6 +567,65 @@ class DossierTests(unittest.TestCase):
         self.assertIn("DR-M2-002", nodes["PX-033"]["milestone_override"])
         self.assertIn(("PX-033", "M3"), scheduled)
         self.assertIn("PX-033", alpha)
+
+    def test_goal_is_derived_executable_and_release_scoped(self):
+        # DOC-GOV-005: `graph.py goal` derives the remaining ladder to a release from live
+        # state and exits 0 only when the release is READY (docs/77). Reset to a clean start
+        # so the expectations do not depend on live progress.
+        self.reset_m01_fixture()
+        self.run_tool("graph", "goal", "NOPE", ok=False, contains="unknown release")
+        before = (self.root / "graph/project-graph.json").read_bytes()
+        out = self.run_tool("graph", "goal", ok=False)
+        self.assertIn("GOAL RELEASE_ZERO", out)
+        self.assertRegex(out, r"state\s+NOT_READY \(exit 1\)")
+        self.assertRegex(out, r"(?m)^\s+0 M0\.1\s+milestone_task\s+NOT_STARTED\s+M0", )
+        self.assertRegex(out, r"(?m)^\s+\d+ M1\.1\s+milestone_task\s+NOT_STARTED\s+M1\s+milestone:M0", )
+        self.assertRegex(out, r"(?m)^\s+\d+ EPR-GATE-G\s+release_gate\s+OPEN", )
+        self.assertRegex(out, r"(?m)^\s+\d+ RELEASE_ZERO\s+release\s+NOT_READY", )
+        self.assertIn("python3 tools/graph.py show M0.1", out)
+        self.assertEqual(before, (self.root / "graph/project-graph.json").read_bytes())
+        result = subprocess.run([sys.executable, "tools/graph.py", "goal", "--json"], cwd=self.root, capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 1, result.stderr)
+        report = json.loads(result.stdout)
+        self.assertEqual((report["goal"], report["state"], report["exit_code"]), ("RELEASE_ZERO", "NOT_READY", 1))
+        steps = {s["id"]: s for s in report["steps"]}
+        self.assertEqual(steps["M0.1"]["wave"], 0)
+        self.assertIn("M0.1", report["startable_now"])
+        self.assertNotIn("M0.2", report["startable_now"])
+        self.assertEqual(steps["M0.2"]["waiting_on"], ["M0.1"])
+        self.assertGreater(steps["M10.6"]["wave"], steps["M10.5"]["wave"])
+        self.assertIn("EPR-019", steps["EPR-GATE-D"]["waiting_on"])
+        self.assertEqual(report["final_step"]["id"], "RELEASE_ZERO")
+        # A BLOCKED step is a blocker; everything downstream is held by it and the goal exits 2.
+        self.run_tool("graph", "set", "M0.1", "BLOCKED", "--note", "fixture blocker: hosted CI billing")
+        out = self.run_tool("graph", "goal", ok=False)
+        self.assertRegex(out, r"state\s+BLOCKED \(exit 2\)")
+        self.assertIn("M0.1 (M0) BLOCKED since", out)
+        self.assertIn("fixture blocker: hosted CI billing", out)
+        self.assertRegex(out, r"M0\.2\s+milestone_task\s+NOT_STARTED\s+M0\s+M0\.1 .*\[held by M0\.1\]")
+        self.assertRegex(out, r"M1\.1\s+milestone_task.*\[held by M0\.1\]")
+        self.assertIn("resolve M0.1", out)
+        # Scoped to one release: ALPHA has no gates and never waits on M10.
+        out = self.run_tool("graph", "goal", "ALPHA", ok=False)
+        self.assertIn("GOAL ALPHA", out)
+        self.assertNotIn("M10.6", out)
+        self.assertNotIn("EPR-GATE-G", out)
+        # Every work item COMPLETE and every gate attested: the goal is met and exits 0.
+        g = self.graph()
+        for node in g["nodes"]:
+            if node["type"] in ("imp_task", "milestone_task"):
+                node["status"] = "COMPLETE"
+                node["evidence"] = ["run:fixture-all", "commit:fixture"]
+                node.pop("blocked_from", None)
+        self.write_graph(g)
+        out = self.run_tool("graph", "goal", ok=False, contains="EPR-GATE-A TASKS_COMPLETE")
+        self.assertRegex(out, r"(?m)^\s+0 EPR-GATE-A\s+release_gate\s+TASKS_COMPLETE", )
+        self.assertIn("python3 tools/graph.py attest EPR-GATE-A", out)
+        for letter in "ABCDEFG":
+            self.run_tool("graph", "attest", "EPR-GATE-" + letter, "--evidence", "artifact:evidence/dossier-gov-005/baseline.json")
+        out = self.run_tool("graph", "goal", contains="RELEASE_ZERO is READY")
+        self.assertRegex(out, r"state\s+READY \(exit 0\)")
+        self.assertRegex(self.run_tool("graph", "goal", "ALPHA"), r"state\s+READY \(exit 0\)")
 
 
 if __name__ == "__main__":

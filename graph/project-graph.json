@@ -683,6 +683,14 @@
    "section": "delivery"
   },
   {
+   "id": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "type": "doc",
+   "title": "Release Zero Execution Goal",
+   "path": "docs/77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "number": 77,
+   "section": "delivery"
+  },
+  {
    "id": "80_ANTI_SUPERFICIAL_IMPLEMENTATION_STANDARD.md",
    "type": "doc",
    "title": "Anti-Superficial Implementation Standard",
@@ -33782,6 +33790,23 @@
    "status_changed_on": "2026-09-05T13:57:54Z"
   },
   {
+   "id": "DR-GOV-2026-09-19-005",
+   "type": "change_record",
+   "title": "Approved Release Zero execution goal: derived goal command and execution plan",
+   "status": "APPROVED",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md"
+  },
+  {
+   "id": "DOC-GOV-005",
+   "type": "dossier_task",
+   "title": "Release Zero execution goal: derived goal command and execution plan",
+   "subsystem": "governance",
+   "source": "docs/77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "acceptance": "graph.py goal derives the whole remaining ladder to a release from live state and exits 0 only when it is READY; doc 77 states the goal, its exit criteria, the waves, the inputs only the user can supply and the per-task protocol; copied-package test passes; no product proof",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
    "id": "ALPHA",
    "type": "release",
    "title": "Local coding loop and recovery spine",
@@ -34154,6 +34179,11 @@
   },
   {
    "from": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
+   "to": "section:delivery",
+   "type": "in_section"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
    "to": "section:delivery",
    "type": "in_section"
   },
@@ -34595,6 +34625,11 @@
   {
    "from": "00_MASTER_INDEX.md",
    "to": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
+   "type": "references"
+  },
+  {
+   "from": "00_MASTER_INDEX.md",
+   "to": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
    "type": "references"
   },
   {
@@ -35454,6 +35489,11 @@
   },
   {
    "from": "43_IMPLEMENTATION_ROADMAP_AND_TASK_GRAPH.md",
+   "to": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "type": "references"
+  },
+  {
+   "from": "43_IMPLEMENTATION_ROADMAP_AND_TASK_GRAPH.md",
    "to": "98_BUILD_MANIFEST.md",
    "type": "references"
   },
@@ -35774,6 +35814,11 @@
   },
   {
    "from": "75_PHASED_RELEASE_PLAN_AND_READINESS.md",
+   "to": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "type": "references"
+  },
+  {
+   "from": "75_PHASED_RELEASE_PLAN_AND_READINESS.md",
    "to": "83_DEFINITION_OF_DONE_AND_ACCEPTANCE.md",
    "type": "references"
   },
@@ -35815,6 +35860,206 @@
   {
    "from": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
    "to": "75_PHASED_RELEASE_PLAN_AND_READINESS.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "01_START_HERE_FOR_BUILD_AGENTS.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "02_AUTHORITY_AND_DECISIONS.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "15_MODEL_ROUTER_AND_PROVIDER_GATEWAY.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "23_SECURITY_POLICY_EFFECT_LEDGER.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "26_SKILL_REGISTRY_AND_EVOLUTION.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "34_OBSERVABILITY_COST_AND_OPERATIONS_DATA.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "36_BUILD_BUY_DEPENDENCY_AND_LICENSE_POLICY.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "40_EVIDENCE_DERIVED_REQUIREMENT_LEDGER.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "43_IMPLEMENTATION_ROADMAP_AND_TASK_GRAPH.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "51_E2E_ACCEPTANCE_TEST_CATALOG.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "52_SECURITY_THREAT_MODEL_AND_TESTS.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "53_PERFORMANCE_AND_BENCHMARK_PLAN.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "54_FAULT_INJECTION_AND_RECOVERY_CATALOG.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "55_MUTATION_NEGATIVE_AND_CHAOS_TEST_POLICY.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "56_TOOL_CAPABILITY_CONFORMANCE.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "59_RELEASE_ZERO_PROOF_SCENARIO.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "60_RELEASE_ZERO_EXPANDED_PROOF.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "70_CI_CD_RELEASE_AND_SUPPLY_CHAIN.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "71_OPERATIONS_RUNBOOK.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "73_RELEASE_BLOCKERS_AND_STOP_THE_LINE_RULES.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "74_PACKAGE_INTEGRITY_AND_BUILD_COVERAGE.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "75_PHASED_RELEASE_PLAN_AND_READINESS.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "81_ARCHITECTURE_GUARDRAILS_AND_FORBIDDEN_DUPLICATION.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "82_NO_PLACEHOLDER_PRODUCTION_EVIDENCE_GATE.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "83_DEFINITION_OF_DONE_AND_ACCEPTANCE.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "84_EXISTING_CODE_FEATURE_AUDIT_PROTOCOL.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "85_AGENT_TASK_EXECUTION_PROTOCOL.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "86_TASK_CARD_TEMPLATE.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "90_PR_CHANGE_EVIDENCE_TEMPLATE.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "91_FEATURE_COMPLETION_AUDIT.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "93_STATUS_VOCABULARY_AND_LIFECYCLE.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "references"
+  },
+  {
+   "from": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "to": "98_BUILD_MANIFEST.md",
    "type": "references"
   },
   {
@@ -35875,6 +36120,11 @@
   {
    "from": "93_STATUS_VOCABULARY_AND_LIFECYCLE.md",
    "to": "75_PHASED_RELEASE_PLAN_AND_READINESS.md",
+   "type": "references"
+  },
+  {
+   "from": "93_STATUS_VOCABULARY_AND_LIFECYCLE.md",
+   "to": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
    "type": "references"
   },
   {
@@ -36599,6 +36849,11 @@
   },
   {
    "from": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "to": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "type": "references"
+  },
+  {
+   "from": "97_DOSSIER_MAINTENANCE_LOG.md",
    "to": "83_DEFINITION_OF_DONE_AND_ACCEPTANCE.md",
    "type": "references"
   },
@@ -36630,6 +36885,11 @@
   {
    "from": "98_BUILD_MANIFEST.md",
    "to": "75_PHASED_RELEASE_PLAN_AND_READINESS.md",
+   "type": "references"
+  },
+  {
+   "from": "98_BUILD_MANIFEST.md",
+   "to": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
    "type": "references"
   },
   {
@@ -52530,6 +52790,36 @@
   {
    "from": "DOC-PX-006",
    "to": "DR-PX-2026-09-05-006",
+   "type": "authorized_by"
+  },
+  {
+   "from": "DR-GOV-2026-09-19-005",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-GOV-005",
+   "to": "DOC-PX-006",
+   "type": "after"
+  },
+  {
+   "from": "DOC-GOV-005",
+   "to": "governance",
+   "type": "owned_by"
+  },
+  {
+   "from": "DOC-GOV-005",
+   "to": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-GOV-005",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-GOV-005",
+   "to": "DR-GOV-2026-09-19-005",
    "type": "authorized_by"
   },
   {

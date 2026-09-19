@@ -42,7 +42,7 @@ Only `COMPLETE` means done. A milestone is `COMPLETE` only when every task in it
 
 The lifecycle is the same for every change. What differs by **behavioral risk** is the evidence that lets a change leave `REAL_TESTING` and `E2E_PROVEN`: release-critical changes need the real-effect and packaged E2E proof; iteration-tier changes, which by definition touch no effect-bearing behavior, canonical persistence, permissions or policy, execution, recovery, protocol or schema, security boundary or evidence semantics, need the packaged UI smoke suite against a real Core (`83_DEFINITION_OF_DONE_AND_ACCEPTANCE.md`). Mixed or uncertain changes are release-critical. The tier is recorded on the task card and in evidence references, never as a status.
 
-Releases `ALPHA`, `BETA` and `RELEASE_ZERO` (`75_PHASED_RELEASE_PLAN_AND_READINESS.md`) are derived projections: `NOT_READY`, `BLOCKED` or `READY`, computed from included work items and required gates by `tools/graph.py releases`. They cannot be set, and they are not a fourth ladder.
+Releases `ALPHA`, `BETA` and `RELEASE_ZERO` (`75_PHASED_RELEASE_PLAN_AND_READINESS.md`) are derived projections: `NOT_READY`, `BLOCKED` or `READY`, computed from included work items and required gates by `tools/graph.py releases`. They cannot be set, and they are not a fourth ladder. `python3 tools/graph.py goal [RELEASE]` derives the remaining ladder to a release — open work items and unsatisfied gates in dependency waves, blockers and what they hold — and exits 0 only when the release is `READY` (`77_RELEASE_ZERO_EXECUTION_GOAL.md`); it reads the graph and never writes it.
 
 ## Release gate state (derived)
 

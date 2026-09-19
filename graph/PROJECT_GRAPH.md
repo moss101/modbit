@@ -10,16 +10,16 @@ One JSON file that answers *what exists, what depends on what, what proves what,
 | Node type | Count | Meaning |
 |---|---:|---|
 | `section` | 8 | numbering range of the dossier |
-| `doc` | 89 | one specification file in docs/ |
+| `doc` | 90 | one specification file in docs/ |
 | `milestone` | 11 | M0–M10 from docs/43; carries proof statement and dependency edges |
 | `milestone_task` | 78 | Mx.y row from docs/43 (plus five tasks the V2 sequencing delta named but did not enumerate); ordered inside its milestone; carries status |
 | `subsystem` | 23 | canonical single-owner boundary (docs/81); owns REQ rows and IMP tasks; delivered in a primary milestone |
 | `requirement` | 352 | REQ-EV from docs/40, additive REQ-EPR from docs/49 or additive REQ-PX from docs/62 |
 | `imp_task` | 323 | IMP-EV from docs/41, EPR from docs/49 or PX from docs/62; carries status and evidence |
-| `dossier_task` | 12 | governance package work outside product milestone roll-ups |
+| `dossier_task` | 13 | governance package work outside product milestone roll-ups |
 | `release_gate` | 7 | EPR promotion gate from docs/61; derived state OPEN/TASKS_COMPLETE/SATISFIED; carries attestation evidence, never a lifecycle status |
 | `source_patch` | 2 | immutable user-supplied patch provenance |
-| `change_record` | 8 | explicit approved dossier amendment |
+| `change_record` | 9 | explicit approved dossier amendment |
 | `qual_test` | 352 | QUAL-EV from docs/42, QUAL-EPR from docs/61 or QUAL-PX from docs/62 |
 | `release` | 3 | ALPHA / BETA / RELEASE_ZERO projection from docs/75; readiness derived from included work items and required gates, never stored |
 | `scenario` | 155 | E2E-nnn, WSK-E2E-nnn, MEDIA-E2E-nnn, EPR-E2E/FI-nnn or PX-E2E-nnn scenario, or FI-nn fault case |
@@ -27,15 +27,15 @@ One JSON file that answers *what exists, what depends on what, what proves what,
 
 | Edge type | Count | Meaning |
 |---|---:|---|
-| `in_section` | 89 | doc → section |
-| `references` | 481 | doc → doc (explicit filename mention) |
+| `in_section` | 90 | doc → section |
+| `references` | 527 | doc → doc (explicit filename mention) |
 | `depends_on` | 18 | milestone → milestone it requires COMPLETE first |
 | `part_of` | 78 | milestone_task → milestone |
-| `after` | 188 | work item → required COMPLETE work item, including cross-milestone EPR dependencies |
+| `after` | 189 | work item → required COMPLETE work item, including cross-milestone EPR dependencies |
 | `delivered_in` | 22 | subsystem → primary milestone |
-| `specified_by` | 205 | subsystem → doc |
+| `specified_by` | 208 | subsystem → doc |
 | `owned_by_req` | 352 | requirement → subsystem |
-| `owned_by` | 335 | imp_task → subsystem |
+| `owned_by` | 336 | imp_task → subsystem |
 | `scheduled_in` | 323 | imp_task → milestone |
 | `implemented_by` | 323 | requirement → imp_task |
 | `qualified_by` | 352 | requirement → qual_test |
@@ -44,7 +44,7 @@ One JSON file that answers *what exists, what depends on what, what proves what,
 | `constrains` | 63 | decision → subsystem |
 | `requires_task` | 27 | release gate → required implementation task |
 | `extends` | 87 | additive requirement → related preserved EV requirement |
-| `authorized_by` | 193 | adopted task/decision/requirement → approved change record |
+| `authorized_by` | 194 | adopted task/decision/requirement → approved change record |
 | `adopts` | 2 | change record → immutable source patch |
 | `supersedes` | 10 | new authority → prior authority, only within the recorded scope |
 | `refines` | 5 | v1.1 source/change → previous source/change; non-conflicting authority survives |
@@ -123,7 +123,7 @@ Each canonical subsystem is a single-owner boundary (`docs/81_ARCHITECTURE_GUARD
 ```mermaid
 flowchart TB
   subgraph M0["M0 — Repository and authority"]
-    governance["Architecture Governance & Product Scope<br/>15 tasks"]
+    governance["Architecture Governance & Product Scope<br/>16 tasks"]
   end
   subgraph M1["M1 — Durable local shell and Core"]
     domain_events["Domain Model, Event Store & Protocol State<br/>20 tasks"]
@@ -179,7 +179,7 @@ flowchart TB
 | `eval-bench` Eval Harness & Benchmarks | M3 | `benchmarks/retrieval`, `benchmarks/context-economics`, `benchmarks/agent-engineering`, `benchmarks/latency` | `53`, `61`, `63`, `38` | 21 | 18 | MOD-JIT-001, ADR-R-044, ADR-R-051, ADR-R-056 |
 | `extensions-hooks` Hook Bus, Extension System & Importers | M9 | `crates/tools (hooks)`, `crates/skills (import)` | `25` | 8 | 7 | — |
 | `external-tools` MCP Hub, Integrations & Web Gateway | M9 | `crates/tools (external.*)`, `crates/tools (forge.*)` | `16`, `29` | 6 | 5 | — |
-| `governance` Architecture Governance & Product Scope | M0 | `tools/architecture-lint`, `tools/evidence-check`, `docs/decisions` | `02`, `03`, `76`, `81`, `82` | 9 | 15 | MOD-PROD-001, MOD-IDE-001, MOD-IDE-002, MOD-COV-001 |
+| `governance` Architecture Governance & Product Scope | M0 | `tools/architecture-lint`, `tools/evidence-check`, `docs/decisions` | `02`, `03`, `76`, `81`, `82` | 9 | 16 | MOD-PROD-001, MOD-IDE-001, MOD-IDE-002, MOD-COV-001 |
 | `media` Media Pipeline & Artifact Store | M5 | `crates/tools (media)`, `object store` | `25` | 5 | 5 | MOD-MEDIA-001, MOD-MEDIA-002, MOD-MM-001 |
 | `memory` Engineering Memory | M9 | `crates/memory` | `19` | 1 | 1 | — |
 | `model-gateway` Execution Policy Router & Provider Gateway | M2 | `crates/providers` | `15`, `27`, `38` | 11 | 11 | ADR-R-039, ADR-R-040, ADR-R-041, ADR-R-047, ADR-R-049, ADR-R-050 |
@@ -372,6 +372,7 @@ flowchart LR
 - `DOC-PX-004`: COMPLETE; Product extension stage D: UX flows, onboarding and interaction budgets; evidence: run:dossier-px-004-2026-09-05-final, artifact:evidence/dossier-px-004/validation.json, artifact:evidence/dossier-px-004/tests.log, revision:sha256:afd47083a105c959760a5ec04dcd4a56b777e5ccdcc143ef29945b55a2e705cb, commit:46ffd21796431c2df4805b0fe168b66c375f66e7
 - `DOC-PX-005`: COMPLETE; Product extension stage E: language and platform support matrix; evidence: run:dossier-px-005-2026-09-05-final, artifact:evidence/dossier-px-005/validation.json, artifact:evidence/dossier-px-005/tests.log, revision:sha256:786117af583dca78214f2ecd17b0ccd5d07880274969bbf1cbee6b107aada985, commit:df76087d60f80f8f6192ed359254e14b321db573
 - `DOC-PX-006`: COMPLETE; Product extension stage F: verification execution mechanics, scope bounds, repair policy and agent harness contracts; evidence: run:dossier-px-006-2026-09-05-final, artifact:evidence/dossier-px-006/validation.json, artifact:evidence/dossier-px-006/tests.log, revision:sha256:060860f40e2b4c8180d52047013627d38a48692bb51af19efc5a9951bcb82c4f, commit:4a3f6df023f82c03df1a8fd7051a219d885232ed
+- `DOC-GOV-005`: NOT_STARTED; Release Zero execution goal: derived goal command and execution plan; evidence: none
 
 ## Milestone tasks in execution order
 
@@ -533,7 +534,7 @@ flowchart LR
 | Implementation specifications | `30`, `31`, `32`, `33`, `34`, `35`, `36`, `37`, `38`, `39` |
 | Requirements, tasks and traceability | `40`, `41`, `42`, `43`, `44`, `45`, `46`, `47`, `48`, `49` |
 | Verification and testing | `50`, `51`, `52`, `53`, `54`, `55`, `56`, `57`, `58`, `59`, `60`, `61`, `62`, `63`, `64` |
-| Delivery and operations | `70`, `71`, `72`, `73`, `74`, `75`, `76` |
+| Delivery and operations | `70`, `71`, `72`, `73`, `74`, `75`, `76`, `77` |
 | Agent process and governance | `80`, `81`, `82`, `83`, `84`, `85`, `86`, `87`, `88`, `89`, `90`, `91`, `92`, `93`, `94`, `95`, `96`, `97` |
 | Live state | `98` |
 

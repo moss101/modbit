@@ -24,7 +24,7 @@ tools/
   check_dossier.py              integrity gate for docs + graph + manifest + evidence grammar
   test_dossier.py               copied-package positive and negative tests of the tooling
 evidence/                       retained evidence of dossier-only tasks (baseline, validation, test logs)
-docs/                           89 specification files, uniquely numbered by section
+docs/                           90 specification files, uniquely numbered by section
 ```
 
 ## Where to start
@@ -74,6 +74,7 @@ python3 tools/graph.py status             # milestone roll-up (M10 reads GATED u
 python3 tools/graph.py gates              # release-gate readiness: OPEN / TASKS_COMPLETE / SATISFIED
 python3 tools/graph.py releases           # ALPHA / BETA / RELEASE_ZERO readiness, derived from task state and gates
 python3 tools/graph.py ready --release ALPHA   # what can be started now inside Alpha
+python3 tools/graph.py goal                    # the executable goal: every remaining step to RELEASE_ZERO in dependency waves; exit 0 only when READY
 python3 tools/graph.py attest EPR-GATE-A --evidence artifact:evidence/release/gate-a.json
 python3 tools/graph.py render > graph/PROJECT_GRAPH.md   # refresh the mermaid view
 python3 tools/check_dossier.py            # integrity gate
@@ -87,8 +88,8 @@ Names do not satisfy behavior. A feature is complete only when its domain contra
 
 ## Status
 
-Specification: V3.3 EPR v1.1 (2026-09-05): 291 preserved REQ-EV rows plus 20 additive REQ-EPR rows, EPR-000..019 work packages and QUAL-EPR proofs. Governance maintenance reseal DOC-GOV-001 (2026-09-05) added the evidence-reference grammar and decision-status validation; see [doc 96](docs/96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md). DOC-GOV-002 aligned the implementation specifications with EPR v1.1, and DOC-GOV-003 made release-gate attestation and one-step lifecycle transitions tool-enforced, and DOC-GOV-004 carried both patches into the PRD, desktop, cloud, durability, tool-inventory, conformance and definition-of-done docs with a verified source coverage map in doc 27; see the [maintenance log](docs/97_DOSSIER_MAINTENANCE_LOG.md). DR-PX ([doc 07](docs/07_PRODUCT_EXTENSION_DECISION_RECORD.md)) opened the additive product-extension ledger ([doc 62](docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md)) and the phased releases ([doc 75](docs/75_PHASED_RELEASE_PLAN_AND_READINESS.md)); the requirement count in this README is the frozen base, and effective totals come from `python3 tools/check_dossier.py`. Stages A–E (DOC-PX-001..005) added docs 28, 29, 39, 63 and 76: agent competence, client surfaces and source control, UX flows, competence benchmarks, and the language and platform matrix. Stage F (DOC-PX-006, DR-PX-2026-09-05-006) added doc 64 and rows REQ-PX-032..040: verification execution mechanics (pre-change baseline, staged test targeting, normalized test reports, flake quarantine, diff invariants with test integrity), bounded scope policy, repair-policy defaults and the agent harness contracts; `IMP-EV-0107` is scheduled in M2.  
-Implementation: `NOT_STARTED` on every milestone. See `docs/98_BUILD_MANIFEST.md`.
+Specification: V3.3 EPR v1.1 (2026-09-05): 291 preserved REQ-EV rows plus 20 additive REQ-EPR rows, EPR-000..019 work packages and QUAL-EPR proofs. Governance maintenance reseal DOC-GOV-001 (2026-09-05) added the evidence-reference grammar and decision-status validation; see [doc 96](docs/96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md). DOC-GOV-002 aligned the implementation specifications with EPR v1.1, and DOC-GOV-003 made release-gate attestation and one-step lifecycle transitions tool-enforced, and DOC-GOV-004 carried both patches into the PRD, desktop, cloud, durability, tool-inventory, conformance and definition-of-done docs with a verified source coverage map in doc 27; see the [maintenance log](docs/97_DOSSIER_MAINTENANCE_LOG.md). DR-PX ([doc 07](docs/07_PRODUCT_EXTENSION_DECISION_RECORD.md)) opened the additive product-extension ledger ([doc 62](docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md)) and the phased releases ([doc 75](docs/75_PHASED_RELEASE_PLAN_AND_READINESS.md)); the requirement count in this README is the frozen base, and effective totals come from `python3 tools/check_dossier.py`. Stages A–E (DOC-PX-001..005) added docs 28, 29, 39, 63 and 76: agent competence, client surfaces and source control, UX flows, competence benchmarks, and the language and platform matrix. Stage F (DOC-PX-006, DR-PX-2026-09-05-006) added doc 64 and rows REQ-PX-032..040: verification execution mechanics (pre-change baseline, staged test targeting, normalized test reports, flake quarantine, diff invariants with test integrity), bounded scope policy, repair-policy defaults and the agent harness contracts; `IMP-EV-0107` is scheduled in M2. DOC-GOV-005 (2026-09-19) added the executable Release Zero goal: [doc 77](docs/77_RELEASE_ZERO_EXECUTION_GOAL.md) states when the product is done and `python3 tools/graph.py goal` derives the remaining ladder and its exit code from the graph.  
+Implementation: see `docs/98_BUILD_MANIFEST.md` and `python3 tools/graph.py status`; the goal command prints what remains.
 
 ## Execution policy development
 

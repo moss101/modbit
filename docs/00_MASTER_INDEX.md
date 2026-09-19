@@ -38,7 +38,7 @@ The architecture dossier was complete enough for human architects but could caus
 | 30–39 | Implementation specifications | protocol, storage, desktop, backend, observability, dependency bindings, build/buy, donor policy |
 | 40–49 | Requirements, tasks and traceability | 291-row EV ledger, 265 EV tasks, 291 EV qualifications plus 20 additive EPR requirements/tasks/qualifications, roadmap, traceability, coverage gates, depth contracts |
 | 50–69 | Verification and testing | test strategy, E2E catalog, security, performance, fault/chaos, conformance, real-system suites, Release Zero, EPR gates, additive PX ledger |
-| 70–79 | Delivery and operations | CI/CD, runbook, risk register, release blockers, package integrity |
+| 70–79 | Delivery and operations | CI/CD, runbook, risk register, release blockers, package integrity, phased releases, platform matrix, the Release Zero execution goal |
 | 80–97 | Agent process and governance | anti-superficial standard, guardrails, no-placeholder gate, DoD, audit/execution/handoff/parallel protocols, templates, status vocabulary |
 | 98–99 | Live state | build manifest (updated by implementation agents) |
 
@@ -131,6 +131,7 @@ Do **not** preload the whole dossier. `89_BUILD_AGENT_CONTEXT_LOADING_POLICY.md`
 - `74_PACKAGE_INTEGRITY_AND_BUILD_COVERAGE.md` — documentation and product CI integrity checks
 - `75_PHASED_RELEASE_PLAN_AND_READINESS.md` — ALPHA/BETA/RELEASE_ZERO as derived projections, membership rules, readiness derivation
 - `76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md` — language tiers A/B/C/Unsupported earned by conformance suites; platform states CI_COMPATIBLE vs RELEASE_GRADE; macOS Alpha
+- `77_RELEASE_ZERO_EXECUTION_GOAL.md` — the executable goal for the production-ready application: RELEASE_ZERO READY plus the packaged Release Zero proof; exit criteria, dated stage plan, owner-supplied inputs, per-step protocol; live plan and exit code from `python3 tools/graph.py goal`
 
 ### 80–97 Agent process and governance
 - `80_ANTI_SUPERFICIAL_IMPLEMENTATION_STANDARD.md` — feature-depth equation, thin-implementation traps

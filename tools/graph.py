@@ -13,6 +13,9 @@ Commands
   gates                      release-gate readiness: OPEN / TASKS_COMPLETE / SATISFIED, and gated milestones
   releases                   derived release readiness (ALPHA / BETA / RELEASE_ZERO): NOT_READY / BLOCKED / READY
   ready --release ALPHA      restrict the ready list to work items included in one release
+  goal    [RELEASE] [--json] the executable goal for a release (default RELEASE_ZERO): exit criteria, every
+          remaining work item and gate attestation layered into dependency waves, blockers and what they hold,
+          the next commands; exit 0 only when the release is READY, 2 while BLOCKED, 1 otherwise (docs/77)
   status                     milestone roll-up
   render  [--write]          mermaid/markdown view (stdout, or graph/PROJECT_GRAPH.md)
   path                       critical path and milestone dependency order
@@ -44,6 +47,8 @@ GATE_STATES = ["OPEN", "TASKS_COMPLETE", "SATISFIED"]
 MILESTONE_GATED = "GATED"
 RELEASE_ORDER = ["ALPHA", "BETA", "RELEASE_ZERO"]
 RELEASE_STATES = ["NOT_READY", "BLOCKED", "READY"]
+GOAL_EXIT = {"READY": 0, "NOT_READY": 1, "BLOCKED": 2}
+DEFAULT_GOAL = "RELEASE_ZERO"
 
 
 def evidence_ref_error(ref, root=ROOT):
@@ -401,6 +406,181 @@ def cmd_releases(args):
         print("%s: %d startable now%s" % (rid, len(startable), (": " + ", ".join(sorted(startable)[:6]) + (" …" if len(startable) > 6 else "")) if startable else ""))
 
 
+def goal_plan(ix, rid):
+    """Derive the remaining ladder to a release from live state; nothing here is stored.
+
+    A step is an included work item that is not COMPLETE, a required gate that is not SATISFIED,
+    or any work item/gate those transitively wait on (upstream milestone work outside the release,
+    e.g. for ALPHA). Its prerequisites are its open `after` targets, every open work item and
+    unsatisfied gate of each incomplete milestone its milestone `depends_on`, and for a gate its
+    open `requires_task` targets. Waves are longest-path layers over those prerequisites: wave 0 is
+    startable (or attestable) now. A BLOCKED step is a blocker; every step whose closure contains
+    it is `held_by` it and cannot become COMPLETE until the blocker is resolved (docs/93).
+    """
+    def status(nid):
+        return ix.nodes[nid].get("status", "NOT_STARTED")
+
+    def open_work(mid):
+        return [w["id"] for w in ix.milestone_work(mid) if w.get("status", "NOT_STARTED") != "COMPLETE"]
+
+    def prerequisites(nid):
+        n = ix.nodes[nid]
+        deps, waiting = set(), []
+        if n["type"] == "release_gate":
+            for t in ix.outs(nid, "requires_task"):
+                if status(t) != "COMPLETE":
+                    deps.add(t)
+                    waiting.append(t)
+            return deps, waiting
+        for d in ix.outs(nid, "after"):
+            if status(d) != "COMPLETE":
+                deps.add(d)
+                waiting.append(d)
+        mid = ix.milestone_of(nid)
+        for up in (ix.outs(mid, "depends_on") if mid else []):
+            if ix.milestone_state(up) == "COMPLETE":
+                continue
+            deps.update(open_work(up))
+            deps.update(gid for gid in ix.milestone_gates(up) if ix.gate_state(gid) != "SATISFIED")
+            waiting.append("milestone:" + up)
+        return deps, waiting
+
+    prereq, waiting = {}, {}
+    stack = [i for i in ix.release_items(rid) if status(i) != "COMPLETE"]
+    stack += [gid for gid in ix.outs(rid, "requires_gate") if ix.gate_state(gid) != "SATISFIED"]
+    while stack:
+        nid = stack.pop()
+        if nid in prereq:
+            continue
+        prereq[nid], waiting[nid] = prerequisites(nid)
+        stack.extend(d for d in prereq[nid] if d not in prereq)
+
+    wave, held = {}, {}
+
+    def wave_of(nid, path):
+        if nid in wave:
+            return wave[nid]
+        if nid in path:  # a real cycle is reported by check_dossier G6; never recurse forever here
+            return 0
+        w = 0
+        for d in prereq[nid]:
+            w = max(w, wave_of(d, path + (nid,)) + 1)
+        wave[nid] = w
+        return w
+
+    def held_by(nid, path):
+        if nid in held:
+            return held[nid]
+        if nid in path:
+            return set()
+        found = set()
+        for d in prereq[nid]:
+            if status(d) == "BLOCKED":
+                found.add(d)
+            found |= held_by(d, path + (nid,))
+        held[nid] = found
+        return found
+
+    for nid in prereq:
+        wave_of(nid, ())
+        held_by(nid, ())
+    steps = []
+    for nid in prereq:
+        n = ix.nodes[nid]
+        st = ix.gate_state(nid) if n["type"] == "release_gate" else status(nid)
+        steps.append({"wave": wave[nid], "id": nid, "kind": n["type"], "status": st,
+                      "milestone": ix.milestone_of(nid) if n["type"] != "release_gate" else None,
+                      "waiting_on": sorted(waiting[nid]), "held_by": sorted(held[nid]), "title": n["title"]})
+    def milestone_order(mid):
+        return ix.nodes[mid]["order"] if mid else -1
+
+    steps.sort(key=lambda x: (x["wave"], x["kind"] == "release_gate", milestone_order(x["milestone"]),
+                              x["kind"] != "milestone_task", x["id"]))
+    return steps
+
+
+def cmd_goal(args):
+    ix = Index(load())
+    rid = args.release or DEFAULT_GOAL
+    if rid not in ix.nodes or ix.nodes[rid]["type"] != "release":
+        sys.exit("unknown release %r; expected one of %s" % (rid, ", ".join(RELEASE_ORDER)))
+    release = ix.nodes[rid]
+    state = ix.release_state(rid)
+    items = ix.release_items(rid)
+    statuses = Counter(ix.nodes[i].get("status", "NOT_STARTED") for i in items)
+    gates = ix.outs(rid, "requires_gate")
+    gate_states = {gid: ix.gate_state(gid) for gid in gates}
+    steps = goal_plan(ix, rid)
+    blockers = []
+    for s in steps:
+        if s["status"] != "BLOCKED":
+            continue
+        n = ix.nodes[s["id"]]
+        notes = [x for x in n.get("notes", []) if x.get("to") == "BLOCKED"]
+        blockers.append({"id": s["id"], "milestone": s["milestone"], "since": n.get("status_changed_on", ""),
+                         "note": notes[-1]["note"] if notes else "",
+                         "holds": sorted(x["id"] for x in steps if s["id"] in x["held_by"])})
+    startable = [s["id"] for s in steps if s["wave"] == 0 and s["kind"] != "release_gate" and s["status"] == "NOT_STARTED"]
+    in_progress = [s["id"] for s in steps if s["kind"] != "release_gate" and s["status"] not in ("NOT_STARTED", "BLOCKED", "COMPLETE")]
+    attestable = [s["id"] for s in steps if s["kind"] == "release_gate" and s["status"] == "TASKS_COMPLETE"]
+    last_wave = max([s["wave"] for s in steps] + [-1]) + 1
+    milestones = ix.outs(rid, "includes") and sorted({m for m in (ix.milestone_of(i) for i in items) if m},
+                                                     key=lambda m: ix.nodes[m]["order"])
+    report = {
+        "goal": rid, "title": release["title"], "state": state, "exit_code": GOAL_EXIT[state],
+        "exit_criteria": "every included work item COMPLETE and every required gate SATISFIED (docs/75); "
+                         + ("the Release Zero proof passes on the packaged build (docs/60)" if rid == DEFAULT_GOAL
+                            else "ships only after the applicable proof in docs 60/76 (docs/75)"),
+        "work_items": {"total": len(items), "complete": statuses.get("COMPLETE", 0), "blocked": statuses.get("BLOCKED", 0),
+                       "in_progress": len(in_progress), "not_started": statuses.get("NOT_STARTED", 0)},
+        "milestones": {m: ix.milestone_state(m) for m in milestones},
+        "gates": gate_states, "blockers": blockers, "startable_now": startable, "in_progress": in_progress,
+        "attestable_now": attestable, "steps": steps,
+        "final_step": {"wave": last_wave, "id": rid, "kind": "release", "status": state, "title": release["title"]},
+    }
+    if getattr(args, "json", False):
+        print(json.dumps(report, indent=1, ensure_ascii=False))
+        return GOAL_EXIT[state]
+    print("GOAL %s — %s" % (rid, release["title"]))
+    print("%-14s %s (exit %d)" % ("state", state, GOAL_EXIT[state]))
+    print("%-14s %s" % ("exit criteria", report["exit_criteria"]))
+    wi = report["work_items"]
+    print("%-14s %d/%d COMPLETE, %d BLOCKED, %d in progress, %d NOT_STARTED" % (
+        "work items", wi["complete"], wi["total"], wi["blocked"], wi["in_progress"], wi["not_started"]))
+    print("%-14s %s" % ("milestones", ", ".join("%s %s" % (m, st) for m, st in report["milestones"].items()) or "-"))
+    sat = sum(1 for st in gate_states.values() if st == "SATISFIED")
+    print("%-14s %d/%d SATISFIED%s" % ("gates", sat, len(gates),
+                                       (": " + ", ".join("%s %s" % (g, st) for g, st in sorted(gate_states.items()))) if gates else ""))
+    if blockers:
+        print("blockers")
+        for b in blockers:
+            print("  %s (%s) BLOCKED since %s — %s" % (b["id"], b["milestone"], b["since"] or "?", b["note"] or "no note"))
+            if b["holds"]:
+                print("    holds %d step(s): %s" % (len(b["holds"]), ", ".join(b["holds"])))
+    if state == "READY":
+        print("%s is READY: every included work item is COMPLETE and every required gate is SATISFIED." % rid)
+        return 0
+    print("%4s %-14s %-15s %-15s %-4s %-30s %s" % ("WAVE", "STEP", "KIND", "STATUS", "MS", "WAITING ON", "TITLE"))
+    for s in steps:
+        waiting = ", ".join(s["waiting_on"][:3]) + (" +%d" % (len(s["waiting_on"]) - 3) if len(s["waiting_on"]) > 3 else "")
+        flag = (" [held by %s]" % ", ".join(s["held_by"])) if s["held_by"] else ""
+        print("%4d %-14s %-15s %-15s %-4s %-30s %s%s" % (s["wave"], s["id"], s["kind"], s["status"], s["milestone"] or "-",
+                                                         waiting or "-", s["title"], flag))
+    print("%4d %-14s %-15s %-15s %-4s %-30s %s" % (last_wave, rid, "release", state, "-", "every step above", release["title"]))
+    print("next")
+    for nid in startable[:8]:
+        print("  python3 tools/graph.py show %s   # audit, then walk AUDITING → … → COMPLETE with evidence (docs/85, docs/93)" % nid)
+    if len(startable) > 8:
+        print("  … %d more startable step(s); python3 tools/graph.py ready --release %s" % (len(startable) - 8, rid))
+    for nid in in_progress[:8]:
+        print("  python3 tools/graph.py show %s   # in progress: %s" % (nid, ix.nodes[nid].get("status")))
+    for gid in attestable:
+        print("  python3 tools/graph.py attest %s --evidence artifact:<gate evidence>   # only with the docs/61 gate evidence" % gid)
+    for b in blockers:
+        print("  resolve %s: %s" % (b["id"], (b["note"] or "see its BLOCKED note").split(". ")[0]))
+    return GOAL_EXIT[state]
+
+
 def rollup(ix):
     out = []
     for m in sorted(ix.by_type("milestone"), key=lambda n: n["order"]):
@@ -712,6 +892,7 @@ def main(argv=None):
     a = sp.add_parser("attest"); a.add_argument("id"); a.add_argument("--evidence", action="append"); a.add_argument("--note"); a.add_argument("--agent"); a.set_defaults(fn=cmd_attest)
     a = sp.add_parser("gates"); a.set_defaults(fn=cmd_gates)
     a = sp.add_parser("releases"); a.set_defaults(fn=cmd_releases)
+    a = sp.add_parser("goal"); a.add_argument("release", nargs="?"); a.add_argument("--json", action="store_true"); a.set_defaults(fn=cmd_goal)
     a = sp.add_parser("render"); a.add_argument("--write", action="store_true"); a.set_defaults(fn=cmd_render)
     a = sp.add_parser("path"); a.set_defaults(fn=cmd_path)
     a = sp.add_parser("stats"); a.set_defaults(fn=cmd_stats)
@@ -719,8 +900,7 @@ def main(argv=None):
     if not args.cmd:
         p.print_help()
         return 1
-    args.fn(args)
-    return 0
+    return args.fn(args) or 0
 
 
 if __name__ == "__main__":

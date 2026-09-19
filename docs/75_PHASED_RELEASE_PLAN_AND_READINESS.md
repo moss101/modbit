@@ -29,6 +29,7 @@ For each release: `BLOCKED` if any included work item is `BLOCKED`; `READY` when
 ```bash
 python3 tools/graph.py releases                 # readiness table and startable items per release
 python3 tools/graph.py ready --release ALPHA    # what can be started now inside Alpha
+python3 tools/graph.py goal                     # the executable goal: every remaining step to RELEASE_ZERO in dependency waves; exit 0 only when READY (77_RELEASE_ZERO_EXECUTION_GOAL.md)
 ```
 
 `98_BUILD_MANIFEST.md` does not carry release status; the graph view and these commands are the only places it appears, always derived.

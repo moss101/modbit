@@ -49,6 +49,9 @@ GOV_LOG_DOC = "97_DOSSIER_MAINTENANCE_LOG.md"
 GOV2_CHANGE = "DR-GOV-2026-09-05-002"
 GOV3_CHANGE = "DR-GOV-2026-09-05-003"
 GOV4_CHANGE = "DR-GOV-2026-09-05-004"
+# DOC-GOV-005 (docs/97): the executable Release Zero goal — `graph.py goal` and doc 77.
+GOV5_CHANGE = "DR-GOV-2026-09-19-005"
+GOAL_DOC = "77_RELEASE_ZERO_EXECUTION_GOAL.md"
 PX_STAGES = [("DOC-PX-001", "DOC-GOV-004", "Product extension stage A: authority, PX ledger tooling, phased releases, governance tiering"),
              ("DOC-PX-002", "DOC-PX-001", "Product extension stage B: client surfaces and source-control integration"),
              ("DOC-PX-003", "DOC-PX-002", "Product extension stage C: agent competence contracts and benchmarks"),
@@ -716,6 +719,17 @@ def build(previous=None):
         link(stage_id, px.CHANGE, "authorized_by")
         if stage_id == "DOC-PX-006":
             link(stage_id, PX6_CHANGE, "authorized_by")
+    add({"id": GOV5_CHANGE, "type": "change_record", "title": "Approved Release Zero execution goal: derived goal command and execution plan",
+         "status": "APPROVED", "source": "docs/" + GOV_LOG_DOC})
+    link(GOV5_CHANGE, GOV_LOG_DOC, "specified_by")
+    add({"id": "DOC-GOV-005", "type": "dossier_task", "title": "Release Zero execution goal: derived goal command and execution plan",
+         "subsystem": "governance", "source": "docs/" + GOAL_DOC,
+         "acceptance": "graph.py goal derives the whole remaining ladder to a release from live state and exits 0 only when it is READY; doc 77 states the goal, its exit criteria, the waves, the inputs only the user can supply and the per-task protocol; copied-package test passes; no product proof"})
+    link("DOC-GOV-005", PX_STAGES[-1][0], "after")
+    link("DOC-GOV-005", "governance", "owned_by")
+    link("DOC-GOV-005", GOAL_DOC, "specified_by")
+    link("DOC-GOV-005", GOV_LOG_DOC, "specified_by")
+    link("DOC-GOV-005", GOV5_CHANGE, "authorized_by")
 
     # releases: derived projections over work items (docs/75) ----------------
     ms_of, owner_of = {}, {}

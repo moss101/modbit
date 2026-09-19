@@ -466,3 +466,54 @@ Recorded in doc 07 for the whole extension; this entry adds only: **Test impact*
 | Changed | `MANIFEST.md`, `README.md`, `SKILLS.md`, `manifest.json`, `graph/PROJECT_GRAPH.md`, `graph/project-graph.json` |
 | Changed | `docs/00_MASTER_INDEX.md`, `docs/10_PRODUCT_PRD_AND_UX.md`, `docs/13_DOMAIN_MODEL_AND_STATE_MACHINES.md`, `docs/14_AGENT_RUNTIME_AND_ORCHESTRATION.md`, `docs/17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md`, `docs/28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md`, `docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md`, `docs/31_DATABASE_AND_STORAGE_SCHEMA.md`, `docs/33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md`, `docs/43_IMPLEMENTATION_ROADMAP_AND_TASK_GRAPH.md`, `docs/50_TEST_STRATEGY_REAL_SYSTEM_GATES.md`, `docs/53_PERFORMANCE_AND_BENCHMARK_PLAN.md`, `docs/56_TOOL_CAPABILITY_CONFORMANCE.md`, `docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md`, `docs/63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md`, `docs/72_RISK_REGISTER_AND_OPEN_DECISIONS.md`, `docs/74_PACKAGE_INTEGRITY_AND_BUILD_COVERAGE.md`, `docs/97_DOSSIER_MAINTENANCE_LOG.md`, `docs/98_BUILD_MANIFEST.md` |
 | Changed | `tools/build_graph.py`, `tools/test_dossier.py` |
+
+## DOC-GOV-005 — Release Zero execution goal: derived goal command and execution plan
+
+### Identity and authority
+
+- Task: DOC-GOV-005 (`dossier_task`); owner: governance; prerequisite: DOC-PX-006 COMPLETE; outside product roll-ups.
+- Decision Record: DR-GOV-2026-09-19-005, approved for dossier adoption. On 2026-09-19, with M9.3 and M9.4 sealed, the user asked for "an executable goal to complete [the] end production ready application".
+- Scope: new doc 77 (`77_RELEASE_ZERO_EXECUTION_GOAL.md`); `goal` command in `../tools/graph.py` with `GOAL_EXIT`/`DEFAULT_GOAL` and exit-code propagation from `main`; the DR-GOV-2026-09-19-005 change record and DOC-GOV-005 node in `../tools/build_graph.py`; one test and one assertion block in `../tools/test_dossier.py`; pointers in docs 00/43/75/93/98, `../README.md` and `../SKILLS.md`; the M9 row of doc 98 refreshed to the sealed state (status column unchanged); this entry. No requirement row, task, qualification, owner, ADR clause, gate definition, release rule or product status changes; docs 40/41/42/49/62 byte-identical; `../AGENTS.md` untouched.
+- Revision before change: `../evidence/dossier-gov-005/baseline.json`, recording `main` c2acfc1 and every package hash.
+
+### Decision Record (change-control fields)
+
+| Field | Content |
+|---|---|
+| Trigger / evidence | With 359 of 401 product work items COMPLETE, no single place stated when the product is done or ordered what remains. `graph.py ready` lists only what is startable now, `releases` only counts, `gates` only the seven gates; the dependency chain to `RELEASE_ZERO` (M9 backlog → PX-020 → M10 stages → attestations) and the inputs only the owner can supply (provider and forge credentials, threshold profiles, signing identity, reference hardware) were spread over five Decision Records, doc 61 and chat. |
+| Current behavior | An agent had to re-derive the end state and the order from the graph each session, and the owner-supplied inputs were only discoverable from the BLOCKED note of PX-020 and the DR files. |
+| Replacement | Doc 77 defines the goal as `RELEASE_ZERO` READY plus the packaged Release Zero proof, in terms the dossier already has, and gives the exit criteria, the dated stage plan, the owner-input register and the per-step protocol. `python3 tools/graph.py goal [RELEASE] [--json]` derives the same thing live: every open included work item and unsatisfied gate (and what they transitively wait on) layered into dependency waves over `after`, milestone `depends_on` roll-ups and gate `requires_task`; blockers with their notes and the steps they hold; the next commands; exit 0 only when the release is READY, 2 while BLOCKED, 1 otherwise. Read-only: the command never writes the graph. |
+| Migration | None. No node status, edge or release rule changes; one change record and one `dossier_task` node are added by the builder; doc 77 becomes a doc node with its references. |
+| Compatibility | Graph schema 1.2 unchanged. Existing commands unchanged except that `main` now returns a command's exit code (every prior command returns none, so their exit code stays 0). Standard library only, Python 3.9. |
+| Security impact | None on the product. Governance: the goal has no completion path outside the one-step ladder and gate attestation the tools already enforce; doc 77 forbids substituting an agent-invented value for an owner-supplied input. |
+| Test impact | One test added (`test_goal_is_derived_executable_and_release_scoped`): unknown release refused; a clean-start fixture shows M0.1 at wave 0, M1.1 waiting on `milestone:M0`, EPR-GATE-G OPEN, the RELEASE_ZERO final step, exit 1 and an unchanged graph file; `--json` parses with waves, waits and startable steps; a BLOCKED M0.1 yields exit 2, the blocker line with its note and `[held by M0.1]` on its dependents; ALPHA never waits on M10 or gate G; every item COMPLETE plus all seven attestations yields READY with exit 0. The governance chain test now also checks DOC-GOV-005 follows DOC-PX-006 with its change record and both specifying docs. |
+| Rollback | Revert the two commits on `main` or restore the inventory below from `baseline.json` hashes and rerun the reseal; requires another Decision Record because docs 43/75/93/98 are governing text. |
+| Explicit user approval | The request itself on 2026-09-19 ("create an executable goal to complete end production ready application"). |
+
+### Stage applicability
+
+| Stage | DOC-GOV-005 execution |
+|---|---|
+| AUDITING | Live graph read: `status`, `gates`, `releases`, `ready --release RELEASE_ZERO`, the 42 open items with their `after` and milestone prerequisites, the PX-020 blocker note, the deferred-live-half Decision Records, docs 43/59/60/61/70/73/75; baseline hashes |
+| IMPLEMENTING | `goal` command, doc 77, builder wiring, test, pointer edits, this entry |
+| WIRED | Regenerated graph and manifests through the real CLIs; `graph.py goal` run against the regenerated graph |
+| REAL_TESTING | `check_dossier --manifest` and the copied-package suite including the new test |
+| E2E_PROVEN | Change commit on `main` pushed; evidence retained |
+| COMPLETE | One-step ladder with evidence; seal commit |
+| Product qualification | Non-applicable: no product behavior changes; the goal command reads the graph only |
+
+### Status and handoff
+
+- **Interfaces:** `python3 tools/graph.py goal [ALPHA|BETA|RELEASE_ZERO] [--json]`; report fields `goal`, `state`, `exit_code`, `exit_criteria`, `work_items`, `milestones`, `gates`, `blockers[{id, milestone, since, note, holds}]`, `startable_now`, `in_progress`, `attestable_now`, `steps[{wave, id, kind, status, milestone, waiting_on, held_by, title}]`, `final_step`. Doc numbers now free: 08, 09, 65–69, 78, 79.
+- **Evidence:** `../evidence/dossier-gov-005/` bundle (baseline, tests.log, validation.json); change commit recorded as `commit:` evidence on DOC-GOV-005.
+- **Remaining product work:** unchanged by this task: 42 open steps in ten waves; `RELEASE_ZERO` BLOCKED by PX-020 until the owner supplies provider credentials (doc 77 §5).
+- **Next safe action:** `python3 tools/graph.py goal`, then take a wave-0 M9 step (M9.5 first: audit of the existing emergency-stop path, then EPR-010 and the owner-batched IMP-EV items); in parallel the owner supplies doc 77 §5 items 1–4.
+
+### Exact file inventory for this change
+
+| Action | Path |
+|---|---|
+| Added | `docs/77_RELEASE_ZERO_EXECUTION_GOAL.md`; `evidence/dossier-gov-005/baseline.json`, `tests.log`, `validation.json` |
+| Changed | `MANIFEST.md`, `README.md`, `SKILLS.md`, `manifest.json`, `graph/PROJECT_GRAPH.md`, `graph/project-graph.json` |
+| Changed | `docs/00_MASTER_INDEX.md`, `docs/43_IMPLEMENTATION_ROADMAP_AND_TASK_GRAPH.md`, `docs/75_PHASED_RELEASE_PLAN_AND_READINESS.md`, `docs/93_STATUS_VOCABULARY_AND_LIFECYCLE.md`, `docs/97_DOSSIER_MAINTENANCE_LOG.md`, `docs/98_BUILD_MANIFEST.md` |
+| Changed | `tools/build_graph.py`, `tools/graph.py`, `tools/test_dossier.py` |

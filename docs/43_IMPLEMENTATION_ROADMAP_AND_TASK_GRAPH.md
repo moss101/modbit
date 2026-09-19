@@ -164,7 +164,7 @@ The V2 delta above names work that never received a task row. V3.1 enumerates it
 
 ## Release projections
 
-ALPHA, BETA and RELEASE_ZERO are derived projections over these tasks, defined in `75_PHASED_RELEASE_PLAN_AND_READINESS.md` and computed by `python3 tools/graph.py releases`; they add no status and no milestone. PX tasks from `62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md` schedule into these milestones like EPR tasks.
+ALPHA, BETA and RELEASE_ZERO are derived projections over these tasks, defined in `75_PHASED_RELEASE_PLAN_AND_READINESS.md` and computed by `python3 tools/graph.py releases`; they add no status and no milestone. PX tasks from `62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md` schedule into these milestones like EPR tasks. The executable goal that ends this roadmap is `77_RELEASE_ZERO_EXECUTION_GOAL.md`: `python3 tools/graph.py goal` derives every remaining task and gate attestation in dependency waves from this graph and exits 0 only when RELEASE_ZERO is READY.
 
 ## Machine-readable form
 

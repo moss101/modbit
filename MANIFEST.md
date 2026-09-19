@@ -2,7 +2,7 @@
 
 > **Authority date:** 2026-09-05  
 > **Generated:** 2026-09-19 by `tools/build_manifest.py`  
-> **Scope:** every specification file in `docs/` plus the root governing files and tooling. The previous `99_MANIFEST.md` covered only 39 Part 2 files; this manifest covers all 89 docs.
+> **Scope:** every specification file in `docs/` plus the root governing files and tooling. The previous `99_MANIFEST.md` covered only 39 Part 2 files; this manifest covers all 90 docs.
 > **Machine-readable twin:** `manifest.json` (same content, same hashes).
 
 ## Integrity rule
@@ -13,21 +13,21 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 
 | Section | Range | Files | Bytes |
 |---|---|---:|---:|
-| Authority and orientation | 00–09 | 8 | 65205 |
+| Authority and orientation | 00–09 | 8 | 65563 |
 | Architecture and subsystems | 10–29 | 20 | 353982 |
 | Implementation specifications | 30–39 | 10 | 137203 |
-| Requirements, tasks and traceability | 40–49 | 10 | 351596 |
+| Requirements, tasks and traceability | 40–49 | 10 | 351840 |
 | Verification and testing | 50–69 | 15 | 205880 |
-| Delivery and operations | 70–79 | 7 | 33831 |
-| Agent process and governance | 80–97 | 18 | 109299 |
-| Live state | 98–99 | 1 | 10387 |
-| **Total docs** | | **89** | **1267383** |
+| Delivery and operations | 70–79 | 8 | 57176 |
+| Agent process and governance | 80–97 | 18 | 116551 |
+| Live state | 98–99 | 1 | 11333 |
+| **Total docs** | | **90** | **1299528** |
 
 ## Specification files (`docs/`)
 
 | # | File | Title | Section | Bytes | SHA-256 |
 |---:|---|---|---|---:|---|
-| 00 | `docs/00_MASTER_INDEX.md` | Modbit — AI-Agent Build Dossier V3.3 EPR v1.1 | authority | 16729 | `cac817ca1fd014438bbeab9e5c43b543f143c7fb137d8cd00a4c59d4cfc6b6cf` |
+| 00 | `docs/00_MASTER_INDEX.md` | Modbit — AI-Agent Build Dossier V3.3 EPR v1.1 | authority | 17087 | `f6f0d02a561b0cc993104b1d33599363900f9a78e440d35d667fb58daafd4d14` |
 | 01 | `docs/01_START_HERE_FOR_BUILD_AGENTS.md` | Start Here for Build Agents | authority | 3036 | `e5ad750bd3c5c0a219f135bf3878c91c6230d417a66fca664becef682eb78fc2` |
 | 02 | `docs/02_AUTHORITY_AND_DECISIONS.md` | Authority, Decision Register, and Conflict Resolution | authority | 16068 | `d56806f57926b7499ec7d3085208304ec679e7caaed50cc0422b15e346106160` |
 | 03 | `docs/03_ARCHITECTURAL_CONFLICTS_AND_SUPERSESSIONS.md` | Architectural Conflicts and Supersessions | authority | 6175 | `6c80da9c6575a10848352f18c794b5896c2006a83d022b6513f7993fe217a95c` |
@@ -68,7 +68,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 40 | `docs/40_EVIDENCE_DERIVED_REQUIREMENT_LEDGER.md` | Evidence-Derived Requirement Ledger — Build Edition | requirements | 76383 | `d673606834f48960f015f4719c0b6fd956988469c39348aa859c4c0d91e20336` |
 | 41 | `docs/41_EVIDENCE_DERIVED_IMPLEMENTATION_TASKS.md` | Evidence-Derived Implementation Tasks | requirements | 149169 | `90aadd632622877351db607f6c521b6b7d121ad55690ef0f313680b31dd26311` |
 | 42 | `docs/42_EVIDENCE_DERIVED_QUALIFICATION_TEST_MATRIX.md` | Evidence-Derived Qualification Test Matrix | requirements | 49179 | `9bb8430c3b2cf0e06a7caf7caf1b40ae3ccd61dc07f36475029b557bb94ad292` |
-| 43 | `docs/43_IMPLEMENTATION_ROADMAP_AND_TASK_GRAPH.md` | Implementation Roadmap and Verifiable Task Graph | requirements | 11018 | `051246e5acace3e6c7e35fb20d774bd1905bd0996517daadc9ec231fbe004c0e` |
+| 43 | `docs/43_IMPLEMENTATION_ROADMAP_AND_TASK_GRAPH.md` | Implementation Roadmap and Verifiable Task Graph | requirements | 11262 | `e20dec732c1935ff781fa7cedcd64822478e65e366128aee58bb6c83995cb0fb` |
 | 44 | `docs/44_REQUIREMENTS_TRACEABILITY_MATRIX.md` | Requirements Traceability Matrix | requirements | 5473 | `36bb27a4cbbc50b24bed92e76d3145c286ed2a27943a8ba9509238c42c25fb31` |
 | 45 | `docs/45_REQUIREMENT_TO_TASK_TO_TEST_TRACEABILITY.md` | Requirement → Task → Test Traceability | requirements | 1581 | `4c3822133dd045eeefc3da2da681d22bb02458ecec82b92478b9292a24d3a3fa` |
 | 46 | `docs/46_REQUIREMENT_COVERAGE_FREEZE_GATE.md` | Requirement Coverage Freeze Gate | requirements | 1656 | `abce92a0c58412c47dcf9cfd75cea628883ad34aa876bfb36bce94291e968368` |
@@ -95,8 +95,9 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 72 | `docs/72_RISK_REGISTER_AND_OPEN_DECISIONS.md` | Risk Register and Open Technical Decisions | delivery | 9116 | `9e4f22e5d977b82b8d059a1a829e783a2dabbc1662569a3d581d0e2a6b4ba47e` |
 | 73 | `docs/73_RELEASE_BLOCKERS_AND_STOP_THE_LINE_RULES.md` | Release Blockers and Stop-the-Line Rules | delivery | 1825 | `00103375774eed06e6afa60843bec3a02482d202ef1c37ad0d5f46abe79dddc6` |
 | 74 | `docs/74_PACKAGE_INTEGRITY_AND_BUILD_COVERAGE.md` | Package Integrity and Build Coverage | delivery | 4468 | `b4e7687347e9ea62ef38e1e7e1b4c82669b487c15e6e0ef8a8ab8d8331cd3698` |
-| 75 | `docs/75_PHASED_RELEASE_PLAN_AND_READINESS.md` | Phased release plan and readiness | delivery | 4279 | `6f753c623b64d361d02e590f9ee446d180d3a524b411b8f305183096e396d2ac` |
+| 75 | `docs/75_PHASED_RELEASE_PLAN_AND_READINESS.md` | Phased release plan and readiness | delivery | 4467 | `e6d02b3572c94923216846326d9a11d18d1ee1e7fad83ab0866ab820183854af` |
 | 76 | `docs/76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md` | Language and platform support matrix | delivery | 5687 | `753831f02bc261061c80249f4a7eca23e6e8891f886df25b52bb41331fc80b3f` |
+| 77 | `docs/77_RELEASE_ZERO_EXECUTION_GOAL.md` | Release Zero Execution Goal | delivery | 23157 | `4a990efd404496eb72846eb67d6112c3640ac00d81acdf03d100678fded354a3` |
 | 80 | `docs/80_ANTI_SUPERFICIAL_IMPLEMENTATION_STANDARD.md` | Anti-Superficial Implementation Standard | governance | 3193 | `9d5ab7ddbe39110cff675b57fb75c3ec7fd3173480865674f3073489761fcb0f` |
 | 81 | `docs/81_ARCHITECTURE_GUARDRAILS_AND_FORBIDDEN_DUPLICATION.md` | Architecture Guardrails and Forbidden Duplication | governance | 2671 | `b87503de04d9859fe6cc1694ac65653b430e9b52ff9cc1b5ed043f7a5c66dded` |
 | 82 | `docs/82_NO_PLACEHOLDER_PRODUCTION_EVIDENCE_GATE.md` | No-Placeholder Production Evidence Gate | governance | 2418 | `f8ee13f8a255ed071aaa471d2c9a16dbe0e77900faa60d40222a299fe6a975d1` |
@@ -110,12 +111,12 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 90 | `docs/90_PR_CHANGE_EVIDENCE_TEMPLATE.md` | PR / Change Evidence Template | governance | 1211 | `60feb8f87ef7d44982f8cb1e9734f10d885462abbb9a91701c60d88f3323c715` |
 | 91 | `docs/91_FEATURE_COMPLETION_AUDIT.md` | Feature Completion Audit | governance | 1074 | `810c4488a24258cff4ed87cd0ba6cea6b21cda5834b44bc02bf4c9e0a4eda3f5` |
 | 92 | `docs/92_BUILD_EVIDENCE_AND_DEPENDENCY_MANIFEST.md` | Build Evidence and Dependency Manifest | governance | 1048 | `69be7ff64cbfa647f40f0609af1194497da9f93e43f147378fc39ef8f1b5d37d` |
-| 93 | `docs/93_STATUS_VOCABULARY_AND_LIFECYCLE.md` | Status Vocabulary and Lifecycle Reconciliation | governance | 9218 | `5121ef5959610b83b1e0f643a202c96cbb88e7c7e47d1b65149ca720f3f278f1` |
+| 93 | `docs/93_STATUS_VOCABULARY_AND_LIFECYCLE.md` | Status Vocabulary and Lifecycle Reconciliation | governance | 9519 | `b4c2533c0e5dae4f1e8efaa66d59dc5f2d34eb865a6b04475479f9aa23a9adbc` |
 | 94 | `docs/94_EXECUTION_POLICY_DOSSIER_TASK_AND_HANDOFF.md` | Execution policy dossier task and handoff | governance | 11506 | `bc3c83f033db8ca5934751227cce2437f4cd7772a21917551618ae03f79b81ba` |
 | 95 | `docs/95_EPR_V1_1_DOSSIER_TASK_AND_HANDOFF.md` | EPR v1.1 dossier task and handoff | governance | 10525 | `264069b600baf40d1e54d2f89be7e9804a8b77c0dbf3ddb0a9dca41111582413` |
 | 96 | `docs/96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md` | Dossier governance maintenance task and handoff | governance | 9070 | `af650309e48dd7fd60dd6d286c460ed7c3128a2201964078c7f50aea385bfb8c` |
-| 97 | `docs/97_DOSSIER_MAINTENANCE_LOG.md` | Dossier maintenance log | governance | 43736 | `ae48c1832a920977def82d1ba4b7d492d4281c60a3723beaef613d3144c97073` |
-| 98 | `docs/98_BUILD_MANIFEST.md` | Build Manifest | live-state | 10387 | `543223e35d6500afbcfcc4875267ab512927e5020333bd0273bd6fed57e6ad48` |
+| 97 | `docs/97_DOSSIER_MAINTENANCE_LOG.md` | Dossier maintenance log | governance | 50687 | `95224c64e280b2017339d66052970d4353500ea878caf1433387126543cc5abd` |
+| 98 | `docs/98_BUILD_MANIFEST.md` | Build Manifest | live-state | 11333 | `4e4352db5246d3a8a344fc99104ae8b62612e96b7f835bdcc41dfa0182db9031` |
 
 ## Root governing files and tooling
 
@@ -124,8 +125,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `AGENTS.md` | build-agent operating contract (highest authority) | 9512 | `52facabdca45abd2fcdaf10a7b0141057895217af95560395dc0d24a8793b64f` |
 | `MODBIT-PATCH-EPR-v1.1-Supersession-and-Refinement.md` | source patch provenance | 20229 | `30dbacdb3a37b364f535f55ed7bf4ea8fa35d70cd6f85c9a61897ac9db72f2bd` |
 | `MODBIT-PATCH-Execution-Policy-Router-and-Verified-Multi-Model-Orchestration.md` | source patch provenance | 54208 | `9e0cee7d49d442033b875e250a61a212b898dd6f4bf35826cdad5ffeb71edb66` |
-| `README.md` | human orientation | 10200 | `575c1c947f4064ae19894a43916f66fca49974a3002a368c05314d80f3d7ccff` |
-| `SKILLS.md` | governed procedures for agents | 18306 | `d6a62b1df940c10e1e4dec05af6a8ce7c94b65018c9e24a6bd76f88a7978d27c` |
+| `README.md` | human orientation | 10634 | `1befcf5fa3cee356c20b234f652e7585a9fde7eaa85781b9c822d8852117d473` |
+| `SKILLS.md` | governed procedures for agents | 18835 | `2f441310c0e2909afde84cab80226a1e3b4452adbd6a627967e60debd8455b71` |
 | `docs/decisions/DR-M0-002-locked-architecture-file-guard.md` | source patch provenance | 2738 | `17609542de912b116bd113cc36d4c1fc5c863658bdd539e11e5f5b7c8772a240` |
 | `docs/decisions/DR-M0-004-module-registration-and-canonical-systems.md` | source patch provenance | 2457 | `20217db18f46557448325ec23d75b1cf638cd9e4c8b96eddc8d1f512260ca992` |
 | `docs/decisions/DR-M0-005-reschedule-runtime-dependent-m0-governance-tasks.md` | source patch provenance | 2912 | `7b76feae285e44195b47d33981d5167f73dfc718eebc49d289d6c473c2949fe0` |
@@ -158,6 +159,9 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/dossier-gov-004/baseline.json` | retained evidence | 13157 | `d8eb58214c0c1a49dacf825699c8bfc063a8e453d2d200f6fc42d4323cabedb9` |
 | `evidence/dossier-gov-004/tests.log` | retained evidence | 2592 | `ba61cc34aec9c28c5b3a2a27b40e67c1f65200d8f9076a837df250c081cb8cd1` |
 | `evidence/dossier-gov-004/validation.json` | retained evidence | 14824 | `38b271df486c68ff1afcd7ce5779ea371f956d7583a85edb8d9e7b7dc5736876` |
+| `evidence/dossier-gov-005/baseline.json` | retained evidence | 18853 | `d92f775bc0c1cb23d55080e4a027b9025d701483507bb5cfb7453a5ee4b900f8` |
+| `evidence/dossier-gov-005/tests.log` | retained evidence | 3470 | `974c4449ce11cf143e185d4a3ec31fa1c09429e43199359689baf2c135a97779` |
+| `evidence/dossier-gov-005/validation.json` | retained evidence | 16914 | `6510934ed17c371fe26659f4e3a46e8faa3cc17ba9caf0f316f155e81433c042` |
 | `evidence/dossier-gov/baseline.json` | retained evidence | 11772 | `f9c8db7cc997add9aaa708929bc14bde5a04a84147c87b73ed5a78be9a43b6f3` |
 | `evidence/dossier-gov/tests.log` | retained evidence | 2307 | `8a0e53ed17231b88a8be6aec74cf98f98812bae46574c89f2c2ae7bac6368a58` |
 | `evidence/dossier-gov/validation.json` | retained evidence | 14440 | `d1d5ddad3e4fee8e441610d48d1de489c788fb8e2b363b9336207bbf27dcbfc9` |
@@ -1376,15 +1380,15 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m9/M9.3/evidence.json` | retained evidence | 1800 | `1654b7838c7c8a73f62380a85fe876cb06a5a8ce86719ca53be7ec2481d21b95` |
 | `evidence/m9/M9.4/TASK_CARD.md` | retained evidence | 4502 | `1f9af3f695ea457f3cbd5b231f67c602e706ff706bf46f7b28676dded484f85b` |
 | `evidence/m9/M9.4/evidence.json` | retained evidence | 2833 | `68610d3d6a57760a8d8b463d81a17fa3d869e91a0c6d142723e9822f27f10b43` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 40720 | `b37e54afe069c42df5eb5dd70e1acbbb03ca838879334f8bc750747dc51d3875` |
-| `graph/project-graph.json` | project driver graph with live status | 1557341 | `57012fbec750933f94b581b5f92a63cb2e45369a6510c7316f64e81c3e839a0a` |
-| `tools/build_graph.py` | regenerates graph structure from docs | 53364 | `b1a026685406fab72ca15d0e75000645daab1cb0e32f9b82cff648542f866d5d` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 40841 | `cd2f8854092df97903b0358d3c5d658571116b15b5930e96d3c3d732b30365c4` |
+| `graph/project-graph.json` | project driver graph with live status | 1565111 | `d9e5e1fcb504acd573f66a4eacfa71fa21347a61fc1898f62472a80bd058491d` |
+| `tools/build_graph.py` | regenerates graph structure from docs | 54559 | `2386120f7a8ab3c48562b3450427d61637859c87cd9f7f5817c46676ab322547` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 17596 | `5c9b7a782d245223726f860ca583d766929a6f5662b644adebee64d257ad426b` |
 | `tools/dossier_epr.py` | parses additive EPR authority and traceability | 9310 | `4b5e399ee1b4886662294e3780d7f0630195e29c8198256ff7719d5236591a18` |
 | `tools/dossier_px.py` | parses the additive product-extension ledger and phased release rules | 6931 | `0a7dd5bd5872fb1d959c56fd017bd3916062d0f60d1bc51b9abceddc134202e2` |
-| `tools/graph.py` | query/update graph | 36313 | `76f2a79fca3c305205f34573b94118c99511944833e8e602bf0eba7e2ac305cb` |
-| `tools/test_dossier.py` | copied-package integration and negative tests | 33280 | `b9a8309daf73baf794799bdd7069de5dbad1400ebe4c534fa576671e3b1e2d64` |
+| `tools/graph.py` | query/update graph | 46180 | `2e55d715b9b43e76b4b0c8e3a71dd68a5e185d152d047dfc2a05863659d2d983` |
+| `tools/test_dossier.py` | copied-package integration and negative tests | 37541 | `00feb4077c36fd870843028c43a6c8dda54fa0fb3432038b652032ccb7f996fb` |
 
 ## Rename map (V3 flat numbering → V3.1 `docs/`)
 
