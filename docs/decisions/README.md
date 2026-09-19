@@ -64,3 +64,4 @@ change of mind is a new record that names the old one in `supersedes`.
 | DR-M6-003 | The screen-state matrix seals on the rows the Core can force today; the rows whose substrate is M7–M9 are mapped now and forced when it exists | accepted | 2026-09-13 | none |
 | DR-M7-001 | Reschedule IMP-EV-0281 to M9 (site-declared structured tools are MCP servers a site declares; the gateway that lists and calls them is M9.4) | accepted | 2026-09-17 | none |
 | DR-M9-001 | Add `crates/mcp` and `tools/mcp-testserver` to the module layout (the External Tool Hub of M9.4) | accepted | 2026-09-18 | none |
+| DR-M9-002 | The live-provider proofs may run against an OpenAI- or Anthropic-protocol compatible gateway (z.ai, glm-5.3-flash), recorded as such; the providers' own production endpoints stay open | accepted | 2026-09-19 | none |

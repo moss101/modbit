@@ -45,6 +45,19 @@ pub struct ModelCapability {
     pub output_price_per_mtok: f64,
 }
 
+/// How the credential is presented on the wire.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AuthScheme {
+    /// The family's own header: `Authorization: Bearer` for OpenAI,
+    /// `x-api-key` for Anthropic.
+    #[default]
+    Native,
+    /// `Authorization: Bearer` regardless of family, for Anthropic-protocol
+    /// gateways that authenticate that way.
+    Bearer,
+}
+
 /// One registered endpoint.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Endpoint {
@@ -52,7 +65,9 @@ pub struct Endpoint {
     pub name: String,
     /// Wire family.
     pub kind: ProviderKind,
-    /// Base URL (no trailing slash), e.g. `https://api.openai.com`.
+    /// Base URL (no trailing slash), e.g. `https://api.openai.com`. A base
+    /// that already names its API version (`https://api.z.ai/api/paas/v4`)
+    /// is used as is; otherwise the family's `/v1` is appended ([`wire_url`]).
     pub base_url: String,
     /// Credential.
     pub credential: SecretHandle,
@@ -60,6 +75,34 @@ pub struct Endpoint {
     pub models: Vec<ModelCapability>,
     /// Bounded retries before the first token (rate limit / transient errors).
     pub max_retries: u32,
+    /// How the credential is sent.
+    #[serde(default)]
+    pub auth: AuthScheme,
+    /// Provider-specific request fields a compatible gateway needs (for
+    /// example `{"tool_stream": true}`), added to every request body of this
+    /// endpoint where the canonical body has no such key. Never a secret.
+    #[serde(default)]
+    pub extra_body: serde_json::Map<String, serde_json::Value>,
+}
+
+/// The request URL for a wire family on a base URL: the family's path under
+/// the provider's `/v1`, unless the base's last segment already names an API
+/// version (`v1`, `v4`, …), in which case the path is appended directly.
+#[must_use]
+pub fn wire_url(kind: ProviderKind, base_url: &str) -> String {
+    let base = base_url.trim_end_matches('/');
+    let versioned = base.rsplit('/').next().is_some_and(|seg| {
+        seg.len() > 1 && seg.starts_with('v') && seg[1..].chars().all(|c| c.is_ascii_digit())
+    });
+    let path = match kind {
+        ProviderKind::OpenAi => "chat/completions",
+        ProviderKind::Anthropic => "messages",
+    };
+    if versioned {
+        format!("{base}/{path}")
+    } else {
+        format!("{base}/v1/{path}")
+    }
 }
 
 /// Rolling health (docs/15 "Health and failover").
@@ -632,30 +675,29 @@ impl ProviderGateway {
         route: &Arc<Mutex<RouteRecord>>,
         deadline: Instant,
     ) -> Attempt {
-        let (url, body, mut rb) = match ep.kind {
-            ProviderKind::OpenAi => {
-                let url = format!("{}/v1/chat/completions", ep.base_url);
-                let body = crate::openai::request_body(req);
-                let mut rb = self.client.post(&url);
-                if let Some(key) = ep.credential.resolve() {
-                    rb = rb.bearer_auth(key);
-                }
-                (url, body, rb)
-            }
-            ProviderKind::Anthropic => {
-                let url = format!("{}/v1/messages", ep.base_url);
-                let body = crate::anthropic::request_body(req);
-                let mut rb = self
-                    .client
+        let url = wire_url(ep.kind, &ep.base_url);
+        let (mut body, mut rb) = match ep.kind {
+            ProviderKind::OpenAi => (crate::openai::request_body(req), self.client.post(&url)),
+            ProviderKind::Anthropic => (
+                crate::anthropic::request_body(req),
+                self.client
                     .post(&url)
-                    .header("anthropic-version", "2023-06-01");
-                if let Some(key) = ep.credential.resolve() {
-                    rb = rb.header("x-api-key", key);
-                }
-                (url, body, rb)
-            }
+                    .header("anthropic-version", "2023-06-01"),
+            ),
         };
-        let _ = url;
+        if let Some(key) = ep.credential.resolve() {
+            rb = match (ep.kind, ep.auth) {
+                (ProviderKind::Anthropic, AuthScheme::Native) => rb.header("x-api-key", key),
+                _ => rb.bearer_auth(key),
+            };
+        }
+        // Gateway-specific fields fill in beside the canonical body; a
+        // canonical key is never overridden by configuration.
+        if let Some(obj) = body.as_object_mut() {
+            for (k, v) in &ep.extra_body {
+                obj.entry(k.clone()).or_insert_with(|| v.clone());
+            }
+        }
         rb = rb
             .header("accept", "text/event-stream")
             .header("x-modbit-request-id", &req.request_id)
@@ -856,52 +898,179 @@ enum Attempt {
 }
 
 /// Endpoints from the Core's environment (docs/15 "Credentials": only the
-/// Core reads them). `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`, optional
-/// `MODBIT_OPENAI_BASE_URL` / `MODBIT_ANTHROPIC_BASE_URL`.
+/// Core reads them). Per provider: `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`;
+/// optional `MODBIT_<P>_BASE_URL` (a compatible gateway), `MODBIT_<P>_MODELS`
+/// (its catalog, see [`parse_models_spec`]), `MODBIT_<P>_AUTH` (`native` or
+/// `bearer`) and `MODBIT_<P>_EXTRA_BODY` (a JSON object of request fields).
 #[must_use]
 pub fn endpoints_from_env() -> Vec<Endpoint> {
+    endpoints_from(|name| std::env::var(name).ok())
+}
+
+/// [`endpoints_from_env`] over an explicit lookup, so a test can configure
+/// endpoints without touching the process environment. Each provider is
+/// registered on its own: a missing OpenAI key does not hide an Anthropic
+/// one. A malformed catalog, auth or extra-body value leaves that provider
+/// unregistered with the reason on stderr; nothing is guessed in its place.
+#[must_use]
+pub fn endpoints_from(lookup: impl Fn(&str) -> Option<String>) -> Vec<Endpoint> {
+    let present = |name: &str| lookup(name).filter(|v| !v.trim().is_empty());
     let mut out = Vec::new();
-    let openai_base = std::env::var("MODBIT_OPENAI_BASE_URL")
-        .ok()
-        .filter(|s| !s.is_empty())
-        .unwrap_or_else(|| "https://api.openai.com".into());
-    let anthropic_base = std::env::var("MODBIT_ANTHROPIC_BASE_URL")
-        .ok()
-        .filter(|s| !s.is_empty())
-        .unwrap_or_else(|| "https://api.anthropic.com".into());
-    // An environment variable set to nothing is nothing: it registers no
-    // endpoint, the same as an absent one.
-    let openai_cred = if std::env::var("OPENAI_API_KEY").is_ok_and(|v| !v.is_empty()) {
-        SecretHandle::Env("OPENAI_API_KEY".into())
-    } else if std::env::var("MODBIT_OPENAI_BASE_URL").is_ok_and(|v| !v.trim().is_empty()) {
-        SecretHandle::None
-    } else {
-        return out;
-    };
-    out.push(Endpoint {
-        name: "openai".into(),
-        kind: ProviderKind::OpenAi,
-        base_url: openai_base.trim_end_matches('/').to_owned(),
-        credential: openai_cred,
-        models: default_openai_models(),
-        max_retries: 3,
-    });
-    let anthropic_cred = if std::env::var("ANTHROPIC_API_KEY").is_ok_and(|v| !v.is_empty()) {
-        SecretHandle::Env("ANTHROPIC_API_KEY".into())
-    } else if std::env::var("MODBIT_ANTHROPIC_BASE_URL").is_ok_and(|v| !v.trim().is_empty()) {
-        SecretHandle::None
-    } else {
-        return out;
-    };
-    out.push(Endpoint {
-        name: "anthropic".into(),
-        kind: ProviderKind::Anthropic,
-        base_url: anthropic_base.trim_end_matches('/').to_owned(),
-        credential: anthropic_cred,
-        models: default_anthropic_models(),
-        max_retries: 3,
-    });
+    for (name, kind, key_var, default_base, defaults) in [
+        (
+            "openai",
+            ProviderKind::OpenAi,
+            "OPENAI_API_KEY",
+            "https://api.openai.com",
+            default_openai_models as fn() -> Vec<ModelCapability>,
+        ),
+        (
+            "anthropic",
+            ProviderKind::Anthropic,
+            "ANTHROPIC_API_KEY",
+            "https://api.anthropic.com",
+            default_anthropic_models as fn() -> Vec<ModelCapability>,
+        ),
+    ] {
+        let prefix = format!("MODBIT_{}", name.to_ascii_uppercase());
+        let base_var = format!("{prefix}_BASE_URL");
+        // An environment variable set to nothing is nothing: it registers no
+        // endpoint, the same as an absent one.
+        let credential = if present(key_var).is_some() {
+            SecretHandle::Env(key_var.into())
+        } else if present(&base_var).is_some() {
+            SecretHandle::None
+        } else {
+            continue;
+        };
+        let configured = (|| -> Result<Endpoint, String> {
+            let models = match present(&format!("{prefix}_MODELS")) {
+                Some(spec) => {
+                    parse_models_spec(&spec).map_err(|e| format!("{prefix}_MODELS: {e}"))?
+                }
+                None => defaults(),
+            };
+            let auth = match present(&format!("{prefix}_AUTH")).as_deref() {
+                None | Some("native") => AuthScheme::Native,
+                Some("bearer") => AuthScheme::Bearer,
+                Some(other) => {
+                    return Err(format!(
+                        "{prefix}_AUTH: expected `native` or `bearer`, got {other:?}"
+                    ));
+                }
+            };
+            let extra_body = match present(&format!("{prefix}_EXTRA_BODY")) {
+                Some(text) => match serde_json::from_str::<serde_json::Value>(&text) {
+                    Ok(serde_json::Value::Object(map)) => map,
+                    Ok(_) => return Err(format!("{prefix}_EXTRA_BODY: expected a JSON object")),
+                    Err(e) => return Err(format!("{prefix}_EXTRA_BODY: {e}")),
+                },
+                None => serde_json::Map::new(),
+            };
+            Ok(Endpoint {
+                name: name.into(),
+                kind,
+                base_url: present(&base_var)
+                    .unwrap_or_else(|| default_base.into())
+                    .trim_end_matches('/')
+                    .to_owned(),
+                credential,
+                models,
+                max_retries: 3,
+                auth,
+                extra_body,
+            })
+        })();
+        match configured {
+            Ok(ep) => out.push(ep),
+            Err(reason) => eprintln!("provider endpoint `{name}` not registered: {reason}"),
+        }
+    }
     out
+}
+
+/// Parse a configured catalog: comma-separated entries
+/// `model=input/output[;key=value…]`, prices in USD per million tokens.
+/// Prices are mandatory because an unknown provider cost is not free
+/// (docs/73). Optional keys: `ctx` (context tokens, default 128000), `out`
+/// (max output tokens, default 16384), `vision` and `reasoning` (`true` /
+/// `false`, default `false`). Example:
+/// `glm-5.3-flash=0.15/0.50;ctx=200000;out=131072`.
+pub fn parse_models_spec(spec: &str) -> Result<Vec<ModelCapability>, String> {
+    let mut out = Vec::new();
+    for entry in spec.split(',').map(str::trim).filter(|e| !e.is_empty()) {
+        let mut fields = entry.split(';').map(str::trim);
+        let head = fields.next().unwrap_or_default();
+        let (model, prices) = head
+            .split_once('=')
+            .ok_or_else(|| format!("{entry:?}: expected `model=input_price/output_price`"))?;
+        let model = model.trim();
+        if model.is_empty() {
+            return Err(format!("{entry:?}: empty model id"));
+        }
+        let (inp, outp) = prices.split_once('/').ok_or_else(|| {
+            format!("{entry:?}: expected `input_price/output_price` in USD per million tokens")
+        })?;
+        let price = |v: &str| {
+            v.trim()
+                .parse::<f64>()
+                .ok()
+                .filter(|p| p.is_finite() && *p >= 0.0)
+                .ok_or_else(|| format!("{entry:?}: price {v:?} is not a non-negative number"))
+        };
+        let (input_price, output_price) = (price(inp)?, price(outp)?);
+        let (mut ctx, mut max_out, mut vision, mut reasoning) =
+            (128_000u32, 16_384u32, false, false);
+        for field in fields.filter(|f| !f.is_empty()) {
+            let (k, v) = field
+                .split_once('=')
+                .ok_or_else(|| format!("{entry:?}: expected `key=value`, got {field:?}"))?;
+            let v = v.trim();
+            match k.trim() {
+                "ctx" => {
+                    ctx = v
+                        .parse()
+                        .map_err(|_| format!("{entry:?}: ctx {v:?} is not a token count"))?
+                }
+                "out" => {
+                    max_out = v
+                        .parse()
+                        .map_err(|_| format!("{entry:?}: out {v:?} is not a token count"))?
+                }
+                "vision" => {
+                    vision = v
+                        .parse()
+                        .map_err(|_| format!("{entry:?}: vision {v:?} is not true/false"))?
+                }
+                "reasoning" => {
+                    reasoning = v
+                        .parse()
+                        .map_err(|_| format!("{entry:?}: reasoning {v:?} is not true/false"))?
+                }
+                other => {
+                    return Err(format!(
+                        "{entry:?}: unknown key {other:?} (ctx, out, vision, reasoning)"
+                    ));
+                }
+            }
+        }
+        if ctx == 0 || max_out == 0 {
+            return Err(format!("{entry:?}: ctx and out must be positive"));
+        }
+        out.push(cap(
+            model,
+            ctx,
+            max_out,
+            reasoning,
+            vision,
+            input_price,
+            output_price,
+        ));
+    }
+    if out.is_empty() {
+        return Err("no model entries".into());
+    }
+    Ok(out)
 }
 
 fn cap(

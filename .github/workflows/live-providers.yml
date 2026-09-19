@@ -1,6 +1,18 @@
 # Live provider proof (docs/15 "Live provider proof", DR-M2-001): real streaming,
-# typed tool-call round trip and cancellation against the production endpoints
-# with dedicated test credentials. Skips explicitly until the secrets exist.
+# typed tool-call round trip and cancellation against real endpoints with
+# dedicated test credentials. Skips explicitly until the secrets exist.
+#
+# Secrets (never printed): OPENAI_API_KEY, ANTHROPIC_API_KEY.
+# Repository variables (not secret; DR-M9-002) point a family at a compatible
+# gateway and its catalog, for example
+#   MODBIT_OPENAI_BASE_URL=https://api.z.ai/api/paas/v4
+#   MODBIT_OPENAI_MODELS=glm-5.3-flash=0.15/0.50;ctx=200000;out=131072
+#   MODBIT_ANTHROPIC_BASE_URL=https://api.z.ai/api/anthropic
+#   MODBIT_ANTHROPIC_MODELS=glm-5.3-flash=0.15/0.50;ctx=200000;out=131072
+#   MODBIT_LIVE_MODEL=glm-5.3-flash
+# with optional MODBIT_<P>_AUTH (native|bearer), MODBIT_<P>_EXTRA_BODY (a JSON
+# object of request fields) and MODBIT_<P>_LIVE_MODEL per family. Unset
+# variables mean the provider's own production endpoint and catalog.
 name: live-providers
 
 on:
@@ -13,7 +25,7 @@ permissions:
 
 jobs:
   live:
-    name: live streaming proof against production endpoints
+    name: live streaming proof against real endpoints
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -24,9 +36,33 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MODBIT_OPENAI_BASE_URL: ${{ vars.MODBIT_OPENAI_BASE_URL }}
+          MODBIT_OPENAI_MODELS: ${{ vars.MODBIT_OPENAI_MODELS }}
+          MODBIT_OPENAI_AUTH: ${{ vars.MODBIT_OPENAI_AUTH }}
+          MODBIT_OPENAI_EXTRA_BODY: ${{ vars.MODBIT_OPENAI_EXTRA_BODY }}
+          MODBIT_OPENAI_LIVE_MODEL: ${{ vars.MODBIT_OPENAI_LIVE_MODEL }}
+          MODBIT_ANTHROPIC_BASE_URL: ${{ vars.MODBIT_ANTHROPIC_BASE_URL }}
+          MODBIT_ANTHROPIC_MODELS: ${{ vars.MODBIT_ANTHROPIC_MODELS }}
+          MODBIT_ANTHROPIC_AUTH: ${{ vars.MODBIT_ANTHROPIC_AUTH }}
+          MODBIT_ANTHROPIC_EXTRA_BODY: ${{ vars.MODBIT_ANTHROPIC_EXTRA_BODY }}
+          MODBIT_ANTHROPIC_LIVE_MODEL: ${{ vars.MODBIT_ANTHROPIC_LIVE_MODEL }}
+          MODBIT_LIVE_MODEL: ${{ vars.MODBIT_LIVE_MODEL }}
         run: |
           if [ -z "$OPENAI_API_KEY" ] && [ -z "$ANTHROPIC_API_KEY" ]; then
             echo "::notice::no provider secrets configured; live proof skipped (DR-M2-001)"
             exit 0
           fi
-          MODBIT_LIVE_PROVIDERS=1 cargo test --locked -p modbit-providers live_ -- --nocapture
+          {
+            echo "## Live provider proof"
+            echo "- openai: base=${MODBIT_OPENAI_BASE_URL:-https://api.openai.com} models=${MODBIT_OPENAI_MODELS:-default catalog} live_model=${MODBIT_OPENAI_LIVE_MODEL:-${MODBIT_LIVE_MODEL:-catalog small model}} key=$([ -n "$OPENAI_API_KEY" ] && echo present || echo absent)"
+            echo "- anthropic: base=${MODBIT_ANTHROPIC_BASE_URL:-https://api.anthropic.com} models=${MODBIT_ANTHROPIC_MODELS:-default catalog} live_model=${MODBIT_ANTHROPIC_LIVE_MODEL:-${MODBIT_LIVE_MODEL:-catalog small model}} key=$([ -n "$ANTHROPIC_API_KEY" ] && echo present || echo absent)"
+          } >> "$GITHUB_STEP_SUMMARY"
+          set -o pipefail
+          MODBIT_LIVE_PROVIDERS=1 cargo test --locked -p modbit-providers live_ -- --nocapture 2>&1 | tee live-providers.log
+      - name: Retain the run log (evidence for the deferred live halves)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: live-providers-log
+          path: live-providers.log
+          if-no-files-found: ignore

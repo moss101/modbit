@@ -72,6 +72,8 @@ pub(crate) fn configure_provider(
         credential,
         models: models.clone(),
         max_retries: 3,
+        auth: Default::default(),
+        extra_body: Default::default(),
     });
     Ok(wire::ProviderConfigured {
         endpoint: name.into(),

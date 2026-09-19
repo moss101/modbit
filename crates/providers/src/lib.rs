@@ -31,7 +31,7 @@ pub use contract::{
     SecretHandle, ToolProjection, Usage, stop,
 };
 pub use gateway::{
-    Endpoint, EndpointHealth, ModelCapability, ModelStream, OrgModelPolicy, ProviderGateway,
-    Requirements, RouteError, RouteRecord, default_anthropic_models, default_openai_models,
-    endpoints_from_env,
+    AuthScheme, Endpoint, EndpointHealth, ModelCapability, ModelStream, OrgModelPolicy,
+    ProviderGateway, Requirements, RouteError, RouteRecord, default_anthropic_models,
+    default_openai_models, endpoints_from, endpoints_from_env, parse_models_spec, wire_url,
 };

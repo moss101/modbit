@@ -8,9 +8,9 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use modbit_providers::{
-    ContentPart, Endpoint, Message, ModelCapability, ModelEvent, ModelPolicy, ModelRequest,
-    ProviderGateway, ProviderKind, Requirements, Role, RouteError, SecretHandle, ToolProjection,
-    stop,
+    AuthScheme, ContentPart, Endpoint, Message, ModelCapability, ModelEvent, ModelPolicy,
+    ModelRequest, ProviderGateway, ProviderKind, Requirements, Role, RouteError, SecretHandle,
+    ToolProjection, stop,
 };
 use serde_json::{Value, json};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -214,6 +214,8 @@ fn endpoint(
         credential: cred,
         models: vec![model("m-tools", true), model("m-plain", false)],
         max_retries: retries,
+        auth: AuthScheme::Native,
+        extra_body: Default::default(),
     }
 }
 
@@ -967,7 +969,11 @@ async fn qual_ev_0028_0189_capability_catalog_refuses_mismatched_models_before_d
 
 /// Live proof (docs/15 "Live provider proof"): runs only with
 /// `MODBIT_LIVE_PROVIDERS=1` and real credentials; otherwise it is skipped
-/// and the deferral is tracked by DR-M2-001.
+/// and the deferral is tracked by DR-M2-001. The endpoints come from the
+/// environment (`endpoints_from_env`: a compatible gateway through
+/// `MODBIT_<P>_BASE_URL` / `_MODELS`, DR-M9-002); the model is
+/// `MODBIT_<P>_LIVE_MODEL`, else `MODBIT_LIVE_MODEL`, else the catalog's
+/// small model. The run prints what it talked to, never a credential.
 #[tokio::test]
 async fn live_streaming_tool_round_trip_and_cancellation_against_production_endpoints() {
     if std::env::var("MODBIT_LIVE_PROVIDERS").as_deref() != Ok("1") {
@@ -975,13 +981,52 @@ async fn live_streaming_tool_round_trip_and_cancellation_against_production_endp
         return;
     }
     let gw = ProviderGateway::new(modbit_providers::endpoints_from_env());
+    assert!(
+        !gw.endpoints().is_empty(),
+        "MODBIT_LIVE_PROVIDERS=1 but no endpoint is configured (OPENAI_API_KEY / ANTHROPIC_API_KEY)"
+    );
     for ep in gw.endpoints() {
-        let model = ep
-            .models
-            .iter()
-            .find(|m| m.model.contains("mini") || m.model.contains("haiku"))
-            .map(|m| m.model.clone())
-            .unwrap();
+        let configured = std::env::var(format!(
+            "MODBIT_{}_LIVE_MODEL",
+            ep.name.to_ascii_uppercase()
+        ))
+        .or_else(|_| std::env::var("MODBIT_LIVE_MODEL"))
+        .ok()
+        .filter(|m| !m.trim().is_empty());
+        let model = match configured {
+            Some(m) => {
+                assert!(
+                    ep.models.iter().any(|c| c.model == m.trim()),
+                    "{}: live model {m:?} is not in its catalog {:?} (set MODBIT_{}_MODELS)",
+                    ep.name,
+                    ep.models
+                        .iter()
+                        .map(|c| c.model.as_str())
+                        .collect::<Vec<_>>(),
+                    ep.name.to_ascii_uppercase()
+                );
+                m.trim().to_owned()
+            }
+            None => ep
+                .models
+                .iter()
+                .find(|m| m.model.contains("mini") || m.model.contains("haiku"))
+                .map(|m| m.model.clone())
+                .unwrap_or_else(|| {
+                    panic!(
+                        "{}: no small model in the catalog and no MODBIT_LIVE_MODEL",
+                        ep.name
+                    )
+                }),
+        };
+        eprintln!(
+            "live: endpoint `{}` ({:?}) at {} model {model} auth {:?} extra_body {}",
+            ep.name,
+            ep.kind,
+            modbit_providers::wire_url(ep.kind, &ep.base_url),
+            ep.auth,
+            serde_json::Value::Object(ep.extra_body.clone())
+        );
         let msgs = vec![
             Message::text(
                 Role::System,
@@ -1070,6 +1115,210 @@ async fn live_streaming_tool_round_trip_and_cancellation_against_production_endp
             matches!(last, Some(ModelEvent::Completed { ref stop_reason }) if stop_reason == stop::CANCELLED)
         );
     }
+}
+
+/// DR-M9-002: a compatible gateway whose base URL already names its API
+/// version is called without a second `/v1`; the Anthropic family can
+/// authenticate with a bearer token; configured extra request fields fill in
+/// beside the canonical body and never override it.
+#[tokio::test]
+async fn compatible_gateway_versioned_base_url_bearer_auth_and_extra_body() {
+    assert_eq!(
+        modbit_providers::wire_url(ProviderKind::OpenAi, "https://api.openai.com"),
+        "https://api.openai.com/v1/chat/completions"
+    );
+    assert_eq!(
+        modbit_providers::wire_url(ProviderKind::OpenAi, "https://api.z.ai/api/paas/v4/"),
+        "https://api.z.ai/api/paas/v4/chat/completions"
+    );
+    assert_eq!(
+        modbit_providers::wire_url(ProviderKind::Anthropic, "https://api.z.ai/api/anthropic"),
+        "https://api.z.ai/api/anthropic/v1/messages"
+    );
+    assert_eq!(
+        modbit_providers::wire_url(ProviderKind::Anthropic, "http://127.0.0.1:1/vendor/v2"),
+        "http://127.0.0.1:1/vendor/v2/messages"
+    );
+    // OpenAI family on a versioned base: no `/v1`, extras beside the body.
+    let server = fake(vec![Script::Sse(openai_text_stream(&["ok"]))]).await;
+    let mut ep = endpoint(
+        "gw",
+        ProviderKind::OpenAi,
+        &format!("{}/api/paas/v4", server.base_url),
+        SecretHandle::Inline("k-openai".into()),
+        0,
+    );
+    ep.extra_body =
+        serde_json::from_value(json!({"tool_stream": true, "model": "overridden?"})).unwrap();
+    let gw = ProviderGateway::new(vec![ep]);
+    let s = gw
+        .stream(
+            request(
+                "gw",
+                "m-tools",
+                vec![Message::text(Role::User, "hi")],
+                false,
+                5_000,
+            ),
+            &Requirements::default(),
+            CancellationToken::new(),
+        )
+        .unwrap();
+    let events = collect(s).await;
+    assert_eq!(text_of(&events), "ok");
+    {
+        let seen = server.seen.lock().unwrap();
+        assert_eq!(seen[0].path, "/api/paas/v4/chat/completions");
+        assert_eq!(seen[0].body["tool_stream"], json!(true));
+        assert_eq!(
+            seen[0].body["model"],
+            json!("m-tools"),
+            "canonical keys win"
+        );
+        assert!(
+            seen[0]
+                .headers
+                .iter()
+                .any(|(k, v)| k == "authorization" && v == "Bearer k-openai")
+        );
+    }
+    // Anthropic family with the bearer scheme: `Authorization`, no `x-api-key`.
+    let server = fake(vec![Script::Sse(anthropic_text_stream("ok"))]).await;
+    let mut ep = endpoint(
+        "gw",
+        ProviderKind::Anthropic,
+        &server.base_url,
+        SecretHandle::Inline("k-anthropic".into()),
+        0,
+    );
+    ep.auth = AuthScheme::Bearer;
+    let gw = ProviderGateway::new(vec![ep]);
+    let s = gw
+        .stream(
+            request(
+                "gw",
+                "m-tools",
+                vec![Message::text(Role::User, "hi")],
+                false,
+                5_000,
+            ),
+            &Requirements::default(),
+            CancellationToken::new(),
+        )
+        .unwrap();
+    let events = collect(s).await;
+    assert_eq!(text_of(&events), "ok");
+    let seen = server.seen.lock().unwrap();
+    assert_eq!(seen[0].path, "/v1/messages");
+    assert!(
+        seen[0]
+            .headers
+            .iter()
+            .any(|(k, v)| k == "authorization" && v == "Bearer k-anthropic")
+    );
+    assert!(!seen[0].headers.iter().any(|(k, _)| k == "x-api-key"));
+    assert!(
+        seen[0]
+            .headers
+            .iter()
+            .any(|(k, v)| k == "anthropic-version" && v == "2023-06-01")
+    );
+}
+
+/// DR-M9-002: endpoints from configuration register each provider on its own,
+/// take a configured catalog whose prices are mandatory, and refuse a
+/// malformed value instead of guessing.
+#[test]
+fn endpoints_from_configuration_register_providers_independently_with_priced_catalogs() {
+    let lookup = |vars: &[(&str, &str)]| {
+        let vars: Vec<(String, String)> = vars
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect();
+        move |name: &str| vars.iter().find(|(k, _)| k == name).map(|(_, v)| v.clone())
+    };
+    assert!(modbit_providers::endpoints_from(lookup(&[])).is_empty());
+    // Only an Anthropic key: one endpoint, the default catalog, native auth.
+    let eps = modbit_providers::endpoints_from(lookup(&[("ANTHROPIC_API_KEY", "k")]));
+    assert_eq!(eps.len(), 1);
+    assert_eq!(
+        (eps[0].name.as_str(), eps[0].kind),
+        ("anthropic", ProviderKind::Anthropic)
+    );
+    assert_eq!(eps[0].base_url, "https://api.anthropic.com");
+    assert!(eps[0].models.iter().any(|m| m.model.contains("haiku")));
+    assert_eq!(eps[0].auth, AuthScheme::Native);
+    // A compatible gateway for both families with its own catalog.
+    let eps = modbit_providers::endpoints_from(lookup(&[
+        ("OPENAI_API_KEY", "k1"),
+        ("MODBIT_OPENAI_BASE_URL", "https://api.z.ai/api/paas/v4/"),
+        (
+            "MODBIT_OPENAI_MODELS",
+            "glm-5.3-flash=0.15/0.50;ctx=200000;out=131072, glm-5.3=1.4/4.4;reasoning=true;vision=true",
+        ),
+        ("MODBIT_OPENAI_EXTRA_BODY", "{\"tool_stream\": true}"),
+        ("ANTHROPIC_API_KEY", "k2"),
+        (
+            "MODBIT_ANTHROPIC_BASE_URL",
+            "https://api.z.ai/api/anthropic",
+        ),
+        ("MODBIT_ANTHROPIC_MODELS", "glm-5.3-flash=0.15/0.50"),
+        ("MODBIT_ANTHROPIC_AUTH", "bearer"),
+    ]));
+    assert_eq!(eps.len(), 2);
+    let openai = &eps[0];
+    assert_eq!(openai.base_url, "https://api.z.ai/api/paas/v4");
+    assert_eq!(
+        openai
+            .models
+            .iter()
+            .map(|m| m.model.as_str())
+            .collect::<Vec<_>>(),
+        ["glm-5.3-flash", "glm-5.3"]
+    );
+    assert_eq!(openai.models[0].context_tokens, 200_000);
+    assert_eq!(openai.models[0].max_output_tokens, 131_072);
+    assert_eq!(
+        (
+            openai.models[0].input_price_per_mtok,
+            openai.models[0].output_price_per_mtok
+        ),
+        (0.15, 0.50)
+    );
+    assert!(!openai.models[0].vision && !openai.models[0].reasoning);
+    assert!(openai.models[1].vision && openai.models[1].reasoning);
+    assert_eq!(openai.models[1].input_modalities, vec!["text", "image"]);
+    assert_eq!(openai.extra_body.get("tool_stream"), Some(&json!(true)));
+    assert_eq!(openai.auth, AuthScheme::Native);
+    assert!(matches!(openai.credential, SecretHandle::Env(ref v) if v == "OPENAI_API_KEY"));
+    let anthropic = &eps[1];
+    assert_eq!(anthropic.auth, AuthScheme::Bearer);
+    assert_eq!(anthropic.models.len(), 1);
+    assert_eq!(anthropic.models[0].context_tokens, 128_000);
+    // Malformed values leave that provider unregistered, the other intact.
+    for (var, value) in [
+        ("MODBIT_OPENAI_MODELS", "glm-5.3-flash"),
+        ("MODBIT_OPENAI_MODELS", "glm-5.3-flash=free"),
+        ("MODBIT_OPENAI_MODELS", "glm-5.3-flash=0.15/0.50;ctx=lots"),
+        ("MODBIT_OPENAI_MODELS", "glm-5.3-flash=0.15/0.50;speed=fast"),
+        ("MODBIT_OPENAI_AUTH", "basic"),
+        ("MODBIT_OPENAI_EXTRA_BODY", "[1]"),
+        ("MODBIT_OPENAI_EXTRA_BODY", "{not json"),
+    ] {
+        let eps = modbit_providers::endpoints_from(lookup(&[
+            ("OPENAI_API_KEY", "k1"),
+            (var, value),
+            ("ANTHROPIC_API_KEY", "k2"),
+        ]));
+        assert_eq!(eps.len(), 1, "{var}={value:?}");
+        assert_eq!(eps[0].name, "anthropic", "{var}={value:?}");
+    }
+    assert!(modbit_providers::parse_models_spec("").is_err());
+    assert!(modbit_providers::parse_models_spec("m=-1/2").is_err());
+    assert!(
+        modbit_providers::parse_models_spec("m=0/0").is_ok(),
+        "a priced free tier is a stated price"
+    );
 }
 
 /// QUAL-EV-0112: the routing record shows requested vs resolved model, effort
@@ -1316,6 +1565,8 @@ async fn qual_ev_0188_tool_media_is_split_for_strict_endpoints_and_embedded_wher
             vision_model("m-text", &["text"]),
         ],
         max_retries: 0,
+        auth: AuthScheme::Native,
+        extra_body: Default::default(),
     }]);
     let tool_message = Message {
         role: Role::Tool,
