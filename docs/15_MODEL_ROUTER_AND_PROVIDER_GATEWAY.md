@@ -68,9 +68,13 @@ Cache keys include model/provider/prompt compiler version and stable segment has
 
 Raw provider secrets never enter renderer/model context. Local provider credentials use OS-protected storage accessed by Core/main boundary. Hosted service credentials live in cloud secret manager; sandbox receives only short-lived broker handles when explicitly required for a tool, never model API secrets.
 
+## Endpoint configuration
+
+The Core registers its provider endpoints from its own environment (`endpoints_from_env`), never from a renderer or a model. Per family `P` in `OPENAI`, `ANTHROPIC`: the credential `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` (read at request time, never logged); `MODBIT_P_BASE_URL` for a compatible gateway — a base whose last segment names an API version (`https://api.z.ai/api/paas/v4`) is used as is, otherwise the family's `/v1` path is appended; `MODBIT_P_MODELS`, the gateway's catalog as comma-separated `model=input/output[;ctx=…;out=…;vision=…;reasoning=…]` entries whose USD-per-million-token prices are mandatory (an unknown provider cost is not free, `73_RELEASE_BLOCKERS_AND_STOP_THE_LINE_RULES.md`); `MODBIT_P_AUTH` (`native`, the family's own header, or `bearer`); and `MODBIT_P_EXTRA_BODY`, a JSON object of provider-specific request fields that fill in beside the canonical body and never override a canonical key. Each family registers on its own; a malformed value leaves that family unregistered with the reason on the Core's stderr, and nothing is guessed in its place. The same fields exist on `Endpoint` for `ConfigureProvider`.
+
 ## Live provider proof
 
-Provider adapters are not considered complete until nightly/RC CI successfully performs a real streaming model call, a real typed tool-call round trip and cancellation/timeout against the production provider endpoint using dedicated test credentials.
+Provider adapters are not considered complete until nightly/RC CI successfully performs a real streaming model call, a real typed tool-call round trip and cancellation/timeout against the production provider endpoint using dedicated test credentials. `.github/workflows/live-providers.yml` is that run; it skips explicitly while the secrets are absent (DR-M2-001). DR-M9-002 allows the same proof to run against an OpenAI- or Anthropic-protocol compatible gateway configured through the variables above; such a run proves the adapters' wire behaviour, streaming, tool-call round trip and cancellation against a real model, and is recorded with the gateway and model it used, but it does not stand in for the provider's own production endpoint, which stays an open item on each affected task until it has run.
 
 
 ## V2 multimodal/provider capability fields

@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 90,
-    "root_and_tooling": 1267,
-    "docs_bytes": 1299528
+    "root_and_tooling": 1268,
+    "docs_bytes": 1301272
   },
   "sections": [
     {
@@ -176,8 +176,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Execution Policy Router and Provider Gateway",
-      "bytes": 7208,
-      "sha256": "c2d264fb093ef1ac5b62685a082a5743015f6916fad49799ee529a6c91f277a3"
+      "bytes": 8952,
+      "sha256": "2803768f49061e529e36c03ec2de1c418bdb6f93a01ded69dbd8c3dd451f7827"
     },
     {
       "path": "docs/16_TOOL_CAPABILITY_AND_PROCEDURAL_RUNTIME.md",
@@ -971,9 +971,14 @@
       "sha256": "f3b9680b9707a395471253ca045fd95660b95ab6af616ebeeb3d318bce4d37b0"
     },
     {
+      "path": "docs/decisions/DR-M9-002-live-proofs-on-compatible-gateway.md",
+      "bytes": 6816,
+      "sha256": "3ecbb758999caf80fd9721b439a55d41d4b4ce1cecc7e8082f7337337cc6ec1e"
+    },
+    {
       "path": "docs/decisions/README.md",
-      "bytes": 4233,
-      "sha256": "76485a2490c8bce98ded5b0de479ba9f2b66e0551d5a1d139fb72a49443ddcb7"
+      "bytes": 4464,
+      "sha256": "755d5c981949bd38bf624d4a1376033180e4f185ff95cdbedc8116756cb0d9e8"
     },
     {
       "path": "evidence/dossier-epr-v1.1/baseline.json",
@@ -7158,12 +7163,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 41097,
-      "sha256": "161805550f959aab3bd458b843f75ba300b90d163a1d488cbac0affd67c69fa0"
+      "sha256": "f55dc2debaa35ff315189534513d97111ab78b343f791dbfd7d1437deab8ba91"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1567375,
-      "sha256": "8738156d2d2df423a945f069981d088a99ad1c77a865aa3024292ff43811295d"
+      "bytes": 1567521,
+      "sha256": "97c6bf3273af950d907b28349d178f620f9399d623f39b201241adbbc130063f"
     },
     {
       "path": "tools/build_graph.py",

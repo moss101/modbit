@@ -35094,6 +35094,11 @@
    "type": "references"
   },
   {
+   "from": "15_MODEL_ROUTER_AND_PROVIDER_GATEWAY.md",
+   "to": "73_RELEASE_BLOCKERS_AND_STOP_THE_LINE_RULES.md",
+   "type": "references"
+  },
+  {
    "from": "16_TOOL_CAPABILITY_AND_PROCEDURAL_RUNTIME.md",
    "to": "17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md",
    "type": "references"
