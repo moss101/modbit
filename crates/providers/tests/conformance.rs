@@ -985,14 +985,22 @@ async fn live_streaming_tool_round_trip_and_cancellation_against_production_endp
         !gw.endpoints().is_empty(),
         "MODBIT_LIVE_PROVIDERS=1 but no endpoint is configured (OPENAI_API_KEY / ANTHROPIC_API_KEY)"
     );
+    let var = |name: String| std::env::var(name).ok().filter(|v| !v.trim().is_empty());
+    let mut proven = Vec::new();
     for ep in gw.endpoints() {
-        let configured = std::env::var(format!(
+        // An endpoint registered from a base URL alone has no credential to
+        // prove anything with; it is named as skipped, never counted.
+        if matches!(ep.credential, SecretHandle::None) {
+            eprintln!("live: endpoint `{}` has no credential; skipped", ep.name);
+            continue;
+        }
+        // CI passes every variable, so an unset per-family one arrives empty:
+        // empty means absent and falls back to the shared one.
+        let configured = var(format!(
             "MODBIT_{}_LIVE_MODEL",
             ep.name.to_ascii_uppercase()
         ))
-        .or_else(|_| std::env::var("MODBIT_LIVE_MODEL"))
-        .ok()
-        .filter(|m| !m.trim().is_empty());
+        .or_else(|| var("MODBIT_LIVE_MODEL".into()));
         let model = match configured {
             Some(m) => {
                 assert!(
@@ -1114,7 +1122,17 @@ async fn live_streaming_tool_round_trip_and_cancellation_against_production_endp
         assert!(
             matches!(last, Some(ModelEvent::Completed { ref stop_reason }) if stop_reason == stop::CANCELLED)
         );
+        eprintln!(
+            "live: endpoint `{}` proven — streaming, tool-call round trip and cancellation with model {model}",
+            ep.name
+        );
+        proven.push(ep.name.clone());
     }
+    assert!(
+        !proven.is_empty(),
+        "MODBIT_LIVE_PROVIDERS=1 but no configured endpoint carries a credential"
+    );
+    eprintln!("live: proven endpoints: {}", proven.join(", "));
 }
 
 /// DR-M9-002: a compatible gateway whose base URL already names its API
