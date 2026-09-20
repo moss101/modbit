@@ -562,7 +562,8 @@ fn run_trial(
         if let Some(parent) = dst.parent() {
             std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
         }
-        std::fs::copy(&src, &dst).map_err(|e| format!("hidden {}: {e}", src.display()))?;
+        std::fs::write(&dst, Suite::hidden_bytes(&src)?)
+            .map_err(|e| format!("hidden {}: {e}", dst.display()))?;
     }
     let mut acceptance_passed = true;
     for command in &task.acceptance.commands {

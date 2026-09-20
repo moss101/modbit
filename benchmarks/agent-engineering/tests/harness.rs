@@ -78,6 +78,11 @@ fn the_internal_suite_is_frozen_and_its_digest_covers_hidden_acceptance() {
     let (_, same) = Suite::load(&copy.join("tasks.json")).unwrap();
     assert_eq!(same, digest);
     let hidden = copy.join("hidden/python-service/test_hidden_zero.py");
+    // A CRLF checkout of the same suite digests identically.
+    let lf = std::fs::read_to_string(&hidden).unwrap();
+    std::fs::write(&hidden, lf.replace('\n', "\r\n")).unwrap();
+    let (_, crlf) = Suite::load(&copy.join("tasks.json")).unwrap();
+    assert_eq!(crlf, digest, "line endings do not change the digest");
     std::fs::write(&hidden, "def test_weakened():\n    pass\n").unwrap();
     let (_, changed) = Suite::load(&copy.join("tasks.json")).unwrap();
     assert_ne!(changed, digest);
@@ -550,10 +555,35 @@ fn the_binary_drives_a_real_task_through_the_real_cli_and_core_and_scores_it() {
     assert_eq!(bundle.trials.len(), 1);
     let t = &bundle.trials[0];
     assert_eq!(t.task, "python-service/reject-zero");
-    assert_eq!(t.state, "ReadyForReview", "{text}");
     let trial_dir = out.path().join("good/trials/python-service__reject-zero-1");
+    // On failure, show what the product did: the CLI exchange, the events
+    // that decide the scoring, and the acceptance run.
     let logs = || {
-        ["acceptance.log", "cli.log", "diff.patch"]
+        let events = std::fs::read_to_string(trial_dir.join("events.jsonl")).unwrap_or_default();
+        let decisive: String = events
+            .lines()
+            .filter(|l| {
+                [
+                    "DiffInvariantViolated",
+                    "NoProgressDetected",
+                    "TaskNeedsAttention",
+                    "PlanRecorded",
+                    "PlanRevised",
+                    "ReproductionRecorded",
+                    "VerificationRunRecorded",
+                    "FileChanged",
+                    "ToolCallFailed",
+                    "RepairAttempt",
+                    "AcceptanceGateEvaluated",
+                    "TaskReadyForReview",
+                    "HarnessBudgetExhausted",
+                ]
+                .iter()
+                .any(|k| l.contains(k))
+            })
+            .map(|l| format!("{}\n", &l[..l.len().min(900)]))
+            .collect();
+        ["cli.log", "acceptance.log", "diff.patch"]
             .iter()
             .map(|f| {
                 format!(
@@ -561,8 +591,10 @@ fn the_binary_drives_a_real_task_through_the_real_cli_and_core_and_scores_it() {
                     std::fs::read_to_string(trial_dir.join(f)).unwrap_or_default()
                 )
             })
+            .chain([format!("--- decisive events\n{decisive}")])
             .collect::<String>()
     };
+    assert_eq!(t.state, "ReadyForReview", "{text}\n{}", logs());
     assert!(
         t.core_verified
             && t.acceptance_passed

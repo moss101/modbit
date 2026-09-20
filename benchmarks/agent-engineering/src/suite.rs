@@ -102,8 +102,21 @@ pub struct HiddenFile {
 }
 
 impl Suite {
+    /// A hidden file's bytes as they are placed in a workspace: LF-normalized,
+    /// so a CRLF checkout digests and behaves like an LF one.
+    ///
+    /// # Errors
+    /// The file cannot be read.
+    pub fn hidden_bytes(path: &Path) -> Result<Vec<u8>, String> {
+        let bytes = std::fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
+        Ok(String::from_utf8_lossy(&bytes)
+            .replace("\r\n", "\n")
+            .into_bytes())
+    }
+
     /// Load a suite file and compute its digest: SHA-256 over the canonical
-    /// suite JSON followed by each hidden file's bytes, in task order.
+    /// suite JSON followed by each hidden file's LF-normalized bytes, in task
+    /// order. Checkout line endings do not change the digest.
     ///
     /// # Errors
     /// The file or a hidden file cannot be read or parsed, or the suite is
@@ -122,8 +135,8 @@ impl Suite {
         for t in &suite.tasks {
             for f in &t.acceptance.hidden_files {
                 let src = base.join(&f.from);
-                let bytes = std::fs::read(&src)
-                    .map_err(|e| format!("{}: hidden file {}: {e}", t.id, src.display()))?;
+                let bytes =
+                    Self::hidden_bytes(&src).map_err(|e| format!("{}: hidden file {e}", t.id))?;
                 h.update(t.id.as_bytes());
                 h.update([0]);
                 h.update(f.path.as_bytes());
