@@ -8792,7 +8792,10 @@ async fn residue_of_a_check_the_agent_runs_is_recorded_not_attributed() {
         // The agent reproduces the failure with a command that writes a
         // bytecode cache and a scratch file into the workspace.
         json!({"calls": [{"name": "test.run", "args": {"argv": ["sh", "-c", "mkdir -p __pycache__ && echo x > __pycache__/app.cpython-3.pyc && echo scratch > .pytest_scratch && sh check.sh"], "inherit_env": true}}]}),
-        json!({"calls": [{"name": "change.apply", "args": {"path": "app.py", "op": "replace", "content": "def value():\n    return 2\n"}}]}),
+        // The edit changes the file's size: CPython trusts a bytecode cache
+        // whose recorded source size and mtime-second still match, and the
+        // reproduction just wrote one for the old source.
+        json!({"calls": [{"name": "change.apply", "args": {"path": "app.py", "op": "replace", "content": "def value():\n    return 2  # the check expects 2\n"}}]}),
         json!({"calls": [{"name": "test.run", "args": {"argv": ["sh", "check.sh"], "inherit_env": true}}]}),
         json!({"calls": [{"name": "task.complete", "args": {"summary": "value() returns 2 and the check passes", "self_review": {"findings": [{"text": "check.sh passes at the candidate revision", "resolved": true}], "verification": ["sh check.sh"]}}}]}),
     ];
