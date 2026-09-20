@@ -8769,6 +8769,126 @@ async fn qual_px_038_scope_expansion_is_bounded_asks_a_typed_question_and_fails_
     let _ = (repo, repo2);
 }
 
+/// docs/64 §4 (found by the PX-020 competence baseline on hosted runners):
+/// a check the agent runs itself — `test.run` with pytest, a `python3 -c`
+/// reproduction — leaves bytecode and scratch in the workspace exactly as an
+/// engine stage does. That residue is recorded on the workspace and left
+/// out of the completion invariants, so the task completes; it is never a
+/// write of the agent's and never a DI-1 denial.
+#[tokio::test]
+async fn residue_of_a_check_the_agent_runs_is_recorded_not_attributed() {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[
+        ("app.py", "def value():\n    return 1\n"),
+        (
+            "check.sh",
+            "python3 -c 'import app; raise SystemExit(0 if app.value() == 2 else 1)'\n",
+        ),
+    ]);
+    let script = vec![
+        json!({"calls": [{"name": "fs.read", "args": {"path": "app.py"}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "value() returns 2", "expected_files": ["app.py"], "verification": ["sh check.sh"]}}]}),
+        // The agent reproduces the failure with a command that writes a
+        // bytecode cache and a scratch file into the workspace.
+        json!({"calls": [{"name": "test.run", "args": {"argv": ["sh", "-c", "mkdir -p __pycache__ && echo x > __pycache__/app.cpython-3.pyc && echo scratch > .pytest_scratch && sh check.sh"], "inherit_env": true}}]}),
+        // The edit changes the file's size: CPython trusts a bytecode cache
+        // whose recorded source size and mtime-second still match, and the
+        // reproduction just wrote one for the old source.
+        json!({"calls": [{"name": "change.apply", "args": {"path": "app.py", "op": "replace", "content": "def value():\n    return 2  # the check expects 2\n"}}]}),
+        json!({"calls": [{"name": "test.run", "args": {"argv": ["sh", "check.sh"], "inherit_env": true}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "value() returns 2 and the check passes", "self_review": {"findings": [{"text": "check.sh passes at the candidate revision", "resolved": true}], "verification": ["sh check.sh"]}}}]}),
+    ];
+    let (base, _seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn_with_env(
+        dir.path(),
+        &[
+            ("MODBIT_OPENAI_BASE_URL", &base),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+        ],
+    );
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x60)).await;
+    let g = lease_for(&session);
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x61),
+            "CreateTask",
+            CreateTask {
+                session_id: Some(session.clone()),
+                goal_text: "value() returns 1 but the check expects 2; the check fails".into(),
+                workspace_id: None,
+                execution_profile: String::new(),
+                origin: "cli".into(),
+                workspace_root: root.clone(),
+                issue_url: String::new(),
+                issue_json: String::new(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let task = Client::result::<TaskCreated>(&ack)
+        .unwrap()
+        .task_id
+        .unwrap();
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x62),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 12,
+                max_tool_calls: 0,
+                max_no_progress_turns: 0,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_task(&mut c, &task, 120).await;
+    let evs = task_events(&core, &session, &task).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}\n{evs:#?}");
+    let residue: Vec<&(String, String, serde_json::Value)> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "VerificationResidueRecorded")
+        .collect();
+    let paths: Vec<String> = residue
+        .iter()
+        .flat_map(|(_, _, p)| p["paths"].as_array().cloned().unwrap_or_default())
+        .filter_map(|p| p.as_str().map(str::to_owned))
+        .collect();
+    assert!(
+        residue.iter().any(|(_, _, p)| p["verification_run_id"]
+            .as_str()
+            .is_some_and(|r| r.starts_with("tool:"))),
+        "the agent's own check records its residue: {evs:#?}"
+    );
+    assert!(
+        paths.iter().any(|p| p.starts_with("__pycache__"))
+            && paths.contains(&".pytest_scratch".to_owned()),
+        "{paths:?}"
+    );
+    assert!(
+        !evs.iter().any(|(_, t, _)| t == "DiffInvariantViolated"),
+        "residue must not be attributed to the agent: {evs:#?}"
+    );
+    assert!(
+        std::fs::read_to_string(repo.path().join("app.py"))
+            .unwrap()
+            .contains("return 2"),
+        "the fix landed"
+    );
+}
+
 /// PX-039 repair policy: the Alpha defaults come from the versioned policy; a
 /// goal that reports a failure whose verification reproduces nothing is
 /// UNREPRODUCED, and a fix is refused until the plan states the limitation;
