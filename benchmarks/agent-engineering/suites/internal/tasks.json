@@ -1,0 +1,112 @@
+{
+  "id": "internal-competence",
+  "version": "1.0.0",
+  "protocol": {
+    "trials": 3,
+    "max_turns": 24,
+    "question_answer": "Use your best judgement and proceed without further questions; keep the change minimal and keep the existing tests passing.",
+    "approvals": "deny"
+  },
+  "tasks": [
+    {
+      "id": "rust-cli/reject-negative",
+      "fixture": "rust-cli",
+      "language": "rust",
+      "tier": "A",
+      "difficulty": "easy",
+      "goal": "parse_quantity in src/lib.rs accepts negative numbers. Make it return an error for any negative quantity so that the acceptance test acceptance_rejects_negative_quantity in tests/quantities.rs passes, without changing the formatting functions or the tests.",
+      "acceptance": {
+        "commands": [
+          ["cargo", "test", "--offline", "--test", "quantities", "acceptance_rejects_negative_quantity"],
+          ["cargo", "test", "--offline", "--test", "quantities", "formats_totals"]
+        ],
+        "protected_tests": ["tests/quantities.rs"]
+      }
+    },
+    {
+      "id": "rust-cli/negative-amounts",
+      "fixture": "rust-cli",
+      "language": "rust",
+      "tier": "A",
+      "difficulty": "medium",
+      "goal": "format_cents in src/lib.rs renders negative cent amounts wrongly: format_cents(-105) gives \"-1.-5\". Render negative amounts with a single leading minus and two-digit cents, so -105 gives \"-1.05\" and -5 gives \"-0.05\", while positive amounts keep exactly their current output. Add a test for negative amounts in a new test file and keep the existing tests unchanged.",
+      "acceptance": {
+        "hidden_files": [
+          { "path": "tests/hidden_negative_amounts.rs", "from": "hidden/rust-cli/hidden_negative_amounts.rs" }
+        ],
+        "commands": [
+          ["cargo", "test", "--offline", "--test", "hidden_negative_amounts"],
+          ["cargo", "test", "--offline", "--test", "quantities", "formats_totals"]
+        ],
+        "protected_tests": ["tests/quantities.rs"]
+      }
+    },
+    {
+      "id": "ts-webapp/reject-negative",
+      "fixture": "ts-webapp",
+      "language": "typescript",
+      "tier": "A",
+      "difficulty": "easy",
+      "goal": "parseQuantity in src/cart.ts accepts negative numbers. Make it throw for any negative quantity so that the test \"acceptance rejects negative quantity\" in test/cart.test.ts passes, without changing formatting behaviour or the tests.",
+      "acceptance": {
+        "commands": [
+          ["node", "node_modules/vitest/vitest.mjs", "run", "test/cart.test.ts", "-t", "acceptance rejects negative quantity"],
+          ["node", "node_modules/vitest/vitest.mjs", "run", "test/cart.test.ts", "-t", "formats totals"]
+        ],
+        "protected_tests": ["test/cart.test.ts"]
+      }
+    },
+    {
+      "id": "ts-webapp/parse-money",
+      "fixture": "ts-webapp",
+      "language": "typescript",
+      "tier": "A",
+      "difficulty": "medium",
+      "goal": "Add and export a function parseMoney(text: string): number in src/cart.ts that converts a decimal money string such as \"7.50\" or \"12\" into an integer number of cents (750, 1200), tolerating surrounding whitespace, throwing on negative values, more than two decimal places, empty or otherwise malformed input, and round-tripping with formatCents. Add tests for it in a new test file and keep the existing tests unchanged.",
+      "acceptance": {
+        "hidden_files": [
+          { "path": "test/hidden_parse_money.test.ts", "from": "hidden/ts-webapp/hidden_parse_money.test.ts" }
+        ],
+        "commands": [
+          ["node", "node_modules/vitest/vitest.mjs", "run", "test/hidden_parse_money.test.ts"],
+          ["node", "node_modules/vitest/vitest.mjs", "run", "test/cart.test.ts", "-t", "formats totals"]
+        ],
+        "protected_tests": ["test/cart.test.ts"]
+      }
+    },
+    {
+      "id": "python-service/reject-zero",
+      "fixture": "python-service",
+      "language": "python",
+      "tier": "A",
+      "difficulty": "easy",
+      "goal": "Quantities must be strictly positive, but parse_quantity in service.py accepts \"0\". Make it raise ValueError for zero as well as for negative values, keep the existing tests passing, and add a test for zero.",
+      "acceptance": {
+        "hidden_files": [
+          { "path": "test_hidden_zero.py", "from": "hidden/python-service/test_hidden_zero.py" }
+        ],
+        "commands": [
+          ["python3", "-m", "pytest", "-q", "test_hidden_zero.py", "test_service.py"]
+        ],
+        "protected_tests": ["test_service.py"]
+      }
+    },
+    {
+      "id": "python-service/discount",
+      "fixture": "python-service",
+      "language": "python",
+      "tier": "A",
+      "difficulty": "medium",
+      "goal": "Add apply_discount(cents: int, percent: int) -> int to service.py. It returns the amount after the percentage discount, in cents, rounding half up to the nearest cent (apply_discount(1000, 15) == 850, apply_discount(999, 33) == 669, apply_discount(101, 50) == 51), and raises ValueError when percent is below 0 or above 100. Add tests for it and keep the existing tests passing.",
+      "acceptance": {
+        "hidden_files": [
+          { "path": "test_hidden_discount.py", "from": "hidden/python-service/test_hidden_discount.py" }
+        ],
+        "commands": [
+          ["python3", "-m", "pytest", "-q", "test_hidden_discount.py", "test_service.py"]
+        ],
+        "protected_tests": ["test_service.py"]
+      }
+    }
+  ]
+}

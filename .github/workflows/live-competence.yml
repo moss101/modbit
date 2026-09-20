@@ -1,0 +1,100 @@
+# Competence baseline on the internal suite through the real product
+# (PX-020, docs/63): every trial is a fresh Core profile on a fresh copy of a
+# fixture repository, driven only through modbit-cli, scored by the Core's own
+# event log plus hidden acceptance the agent never sees. A real model is the
+# whole point (docs/82): the job refuses to run without the provider secret.
+#
+# Secrets (never printed): OPENAI_API_KEY and/or ANTHROPIC_API_KEY.
+# Repository variables (DR-M9-002) point a family at a compatible gateway:
+# MODBIT_<P>_BASE_URL, MODBIT_<P>_MODELS, MODBIT_<P>_AUTH, MODBIT_<P>_EXTRA_BODY,
+# MODBIT_LIVE_MODEL. The bundle is retained as the artifact `competence-baseline`
+# and, once a run is accepted as the baseline, copied under evidence/m3/PX-020.
+name: live-competence
+
+on:
+  workflow_dispatch:
+    inputs:
+      endpoint:
+        description: "Provider family to pin (openai | anthropic)"
+        required: true
+        default: "openai"
+      trials:
+        description: "Trials per task (the suite protocol says 3)"
+        required: false
+        default: "3"
+      tasks:
+        description: "Comma-separated task ids to run (empty = the whole suite)"
+        required: false
+        default: ""
+      max_turns:
+        description: "Turn budget per trial (the suite protocol says 24)"
+        required: false
+        default: "24"
+
+permissions:
+  contents: read
+
+jobs:
+  baseline:
+    name: competence baseline (internal suite, ${{ inputs.endpoint }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Install pinned Rust toolchain (rust-toolchain.toml)
+        run: rustup show
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4 (reads packageManager)
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - name: Install workspace packages (the ts-webapp fixture's vitest, docs/50)
+        run: pnpm install --frozen-lockfile
+      - name: Install pytest (the python-service fixture's runner)
+        run: python3 -m pip install --quiet --user pytest==8.4.2 || python3 -m pip install --quiet --break-system-packages pytest==8.4.2
+      - name: Build the product and the harness
+        run: cargo build --locked -p modbit-core -p modbit-cli -p modbit-execd -p modbit-bench-agent-engineering
+      - name: Run the internal suite through the real product
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MODBIT_OPENAI_BASE_URL: ${{ vars.MODBIT_OPENAI_BASE_URL }}
+          MODBIT_OPENAI_MODELS: ${{ vars.MODBIT_OPENAI_MODELS }}
+          MODBIT_OPENAI_AUTH: ${{ vars.MODBIT_OPENAI_AUTH }}
+          MODBIT_OPENAI_EXTRA_BODY: ${{ vars.MODBIT_OPENAI_EXTRA_BODY }}
+          MODBIT_OPENAI_LIVE_MODEL: ${{ vars.MODBIT_OPENAI_LIVE_MODEL }}
+          MODBIT_ANTHROPIC_BASE_URL: ${{ vars.MODBIT_ANTHROPIC_BASE_URL }}
+          MODBIT_ANTHROPIC_MODELS: ${{ vars.MODBIT_ANTHROPIC_MODELS }}
+          MODBIT_ANTHROPIC_AUTH: ${{ vars.MODBIT_ANTHROPIC_AUTH }}
+          MODBIT_ANTHROPIC_EXTRA_BODY: ${{ vars.MODBIT_ANTHROPIC_EXTRA_BODY }}
+          MODBIT_ANTHROPIC_LIVE_MODEL: ${{ vars.MODBIT_ANTHROPIC_LIVE_MODEL }}
+          MODBIT_LIVE_MODEL: ${{ vars.MODBIT_LIVE_MODEL }}
+          ENDPOINT: ${{ inputs.endpoint }}
+          TRIALS: ${{ inputs.trials }}
+          TASKS: ${{ inputs.tasks }}
+          MAX_TURNS: ${{ inputs.max_turns }}
+        run: |
+          key_var="$(echo "$ENDPOINT" | tr '[:lower:]' '[:upper:]')_API_KEY"
+          if [ -z "${!key_var}" ]; then
+            echo "::error::no $key_var secret: a competence baseline needs a real model (docs/82); nothing was run"
+            exit 1
+          fi
+          args=(--suite benchmarks/agent-engineering/suites/internal/tasks.json --fixtures tests/fixtures/repos
+                --out competence-baseline --endpoint "$ENDPOINT" --trials "$TRIALS" --max-turns "$MAX_TURNS"
+                --cli target/debug/modbit-cli --core target/debug/modbit-core --trial-timeout-secs 1200)
+          IFS=',' read -ra ids <<< "$TASKS"
+          for id in "${ids[@]}"; do [ -n "$id" ] && args+=(--task "$id"); done
+          set -o pipefail
+          target/debug/competence-baseline "${args[@]}" 2>&1 | tee competence-baseline/run.log
+          {
+            echo "## Competence baseline ($ENDPOINT, $TRIALS trials/task)"
+            cat competence-baseline/summary.md
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Retain the bundle, per-trial event logs and diffs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: competence-baseline-${{ inputs.endpoint }}-${{ github.run_id }}
+          path: competence-baseline
+          if-no-files-found: warn
