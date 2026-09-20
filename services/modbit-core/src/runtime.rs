@@ -4083,6 +4083,23 @@ async fn run_loop(
                                 continue;
                             }
                             state.tool_calls += 1;
+                            // docs/64 §4: a check the agent runs itself leaves
+                            // residue exactly as an engine stage does (a
+                            // bytecode cache, a test runner's scratch); what is
+                            // untracked afterwards and was not before is
+                            // recorded as the check's residue, never as a write
+                            // of the agent's, so the completion invariants judge
+                            // the agent and not the interpreter.
+                            let untracked_before = if is_check_tool(&name)
+                                && task.execution_profile
+                                    != modbit_policy::kernel::PROFILE_CLOUD_ISOLATED
+                            {
+                                task.workspace_root.as_deref().map(|r| {
+                                    crate::verify::untracked_paths(std::path::Path::new(r))
+                                })
+                            } else {
+                                None
+                            };
                             // docs/16 (M5.1): the turn's projection travels with
                             // the call; a tool the model was not offered this
                             // turn is refused at the pipeline's policy stage
@@ -4107,6 +4124,39 @@ async fn run_loop(
                                 &projected_names,
                             )
                             .await;
+                            if let (Some(before), Some(root)) =
+                                (untracked_before, task.workspace_root.as_deref())
+                            {
+                                let residue: Vec<String> =
+                                    crate::verify::untracked_paths(std::path::Path::new(root))
+                                        .difference(&before)
+                                        .filter(|p| !p.starts_with(".modbit"))
+                                        .cloned()
+                                        .collect();
+                                if !residue.is_empty() {
+                                    let mut store = core.store.lock().await;
+                                    let _ = append(
+                                        &mut store,
+                                        &core,
+                                        Lineage::task(
+                                            core.tenant_id,
+                                            task.session_id,
+                                            task.task_id,
+                                        ),
+                                        AggregateType::Workspace,
+                                        crate::tools::workspace_aggregate_id(root),
+                                        vec![typed(
+                                            "VerificationResidueRecorded",
+                                            &modbit_domain::workspace::WorkspaceEvent::VerificationResidueRecorded {
+                                                task_id: task.task_id,
+                                                verification_run_id: format!("tool:{call_id}"),
+                                                paths: residue,
+                                            },
+                                            actor.clone(),
+                                        )],
+                                    );
+                                }
+                            }
                             // M8.9 (docs/21 "Sandbox recovery"): a cloud task's
                             // sandbox did not answer — the call keeps its unknown
                             // outcome; the sandbox is re-linked or replaced and
