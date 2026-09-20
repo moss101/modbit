@@ -79,7 +79,9 @@ fn the_internal_suite_is_frozen_and_its_digest_covers_hidden_acceptance() {
     assert_eq!(same, digest);
     let hidden = copy.join("hidden/python-service/test_hidden_zero.py");
     // A CRLF checkout of the same suite digests identically.
-    let lf = std::fs::read_to_string(&hidden).unwrap();
+    let lf = std::fs::read_to_string(&hidden)
+        .unwrap()
+        .replace("\r\n", "\n");
     std::fs::write(&hidden, lf.replace('\n', "\r\n")).unwrap();
     let (_, crlf) = Suite::load(&copy.join("tasks.json")).unwrap();
     assert_eq!(crlf, digest, "line endings do not change the digest");
