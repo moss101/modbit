@@ -1,5 +1,40 @@
-{"task":"M2.6","commits":{"implementation":"41032dc"},"evidence_tier":"release-critical",
- "runs":[{"id":"gha-34378814770","kind":"hosted CI on 41032dc","result":"PASS: thirteen jobs green on macOS, Linux and Windows; conformance suite (7) and Core socket proof pass on all three","url":"https://github.com/moss101/modbit/actions/runs/34378814770","log":"ci-run-34378814770.json, ci-run-34378814770-tests.log"}],
- "pending":{"live_provider_proof":"DR-M2-001: .github/workflows/live-providers.yml runs the live streaming/tool/cancellation test against production endpoints once OPENAI_API_KEY / ANTHROPIC_API_KEY repository secrets exist; append its first green run here"},
- "faults":["OpenAI and Anthropic streaming tool round trips over real HTTP: call identity preserved into the next request; usage, metadata and requested-vs-resolved route recorded (REQ-EV-0112)","429/503 retried with bounded jittered backoff charged to the same request; exhaustion is a typed retryable error; health counts rate limits","stalled provider → TIMEOUT within the request budget","cancellation mid-stream ends with Completed{cancelled} and the server observes the dropped connection","disconnect after the first token → STREAM_INTERRUPTED, not replayed (one request seen)","malformed frame → MALFORMED_STREAM; 401 → AUTH_REJECTED without retry","QUAL-EV-0028/0189: tools/vision/modality/reasoning mismatch, unknown endpoint/model and missing credential refused before any network call","credential never appears in events, route records, errors or Debug output","Core: catalog and health over the socket; text and tool probes stream through the gateway; route refusal before dispatch"],
- "acceptance":{"Provider Gateway OpenAI + Anthropic streaming":"PASS (conformance + Core proof); live production-endpoint proof pending credentials per DR-M2-001"}}
+{
+  "task": "M2.6",
+  "commits": {
+    "implementation": "41032dc"
+  },
+  "evidence_tier": "release-critical",
+  "runs": [
+    {
+      "id": "gha-34378814770",
+      "kind": "hosted CI on 41032dc",
+      "result": "PASS: thirteen jobs green on macOS, Linux and Windows; conformance suite (7) and Core socket proof pass on all three",
+      "url": "https://github.com/moss101/modbit/actions/runs/34378814770",
+      "log": "ci-run-34378814770.json, ci-run-34378814770-tests.log"
+    },
+    {
+      "id": "gha-35491774156",
+      "kind": "live-providers.yml workflow_dispatch on main 8dcc24a (DR-M9-002: compatible gateway)",
+      "result": "PASS: live_streaming_tool_round_trip_and_cancellation_against_production_endpoints against z.ai with model glm-5.3-flash on both wire protocols — anthropic at https://api.z.ai/api/anthropic/v1/messages (x-api-key) and openai at https://api.z.ai/api/coding/paas/v4/chat/completions (bearer): real streaming, a typed fs.read tool call, the tool result turned into a text answer, and a mid-stream cancel ending CANCELLED; 27.36 s; run log retained as the workflow artifact live-providers-log. Earlier: run 35486482070 proved the openai family alone (the anthropic secret was not yet set; skipped by name); run 35470484491 failed on model selection (empty per-family MODBIT_ANTHROPIC_LIVE_MODEL masked MODBIT_LIVE_MODEL; fixed in 8dcc24a); run 35470226975 skipped (no secrets yet).",
+      "url": "https://github.com/moss101/modbit/actions/runs/35491774156"
+    }
+  ],
+  "pending": {
+    "live_provider_proof": "DISCHARGED on a compatible gateway 2026-09-20 (run gha-35491774156, DR-M9-002): the adapters' live streaming, tool-call round trip and cancellation are proven against a real model (z.ai glm-5.3-flash) over both the OpenAI and the Anthropic protocol.",
+    "production_endpoint_run": "OPEN per DR-M9-002: the same test against api.openai.com / api.anthropic.com with the providers' own credentials has not run; the docs/15 'production provider endpoint' clause stays open until it has."
+  },
+  "faults": [
+    "OpenAI and Anthropic streaming tool round trips over real HTTP: call identity preserved into the next request; usage, metadata and requested-vs-resolved route recorded (REQ-EV-0112)",
+    "429/503 retried with bounded jittered backoff charged to the same request; exhaustion is a typed retryable error; health counts rate limits",
+    "stalled provider → TIMEOUT within the request budget",
+    "cancellation mid-stream ends with Completed{cancelled} and the server observes the dropped connection",
+    "disconnect after the first token → STREAM_INTERRUPTED, not replayed (one request seen)",
+    "malformed frame → MALFORMED_STREAM; 401 → AUTH_REJECTED without retry",
+    "QUAL-EV-0028/0189: tools/vision/modality/reasoning mismatch, unknown endpoint/model and missing credential refused before any network call",
+    "credential never appears in events, route records, errors or Debug output",
+    "Core: catalog and health over the socket; text and tool probes stream through the gateway; route refusal before dispatch"
+  ],
+  "acceptance": {
+    "Provider Gateway OpenAI + Anthropic streaming": "PASS (conformance + Core proof); live production-endpoint proof pending credentials per DR-M2-001"
+  }
+}

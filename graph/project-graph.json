@@ -3,7 +3,7 @@
  "product": "Modbit",
  "edition": "V3.3 EPR v1.1",
  "authority_date": "2026-09-05",
- "generated_on": "2026-09-19",
+ "generated_on": "2026-09-20",
  "generator": "tools/build_graph.py",
  "status_vocabulary": [
   "NOT_STARTED",
@@ -1620,7 +1620,8 @@
     "commit:41032dc",
     "artifact:docs/decisions/DR-M2-001-live-provider-proof-pending-credentials.md",
     "artifact:evidence/m2/M2.6/evidence.json",
-    "artifact:evidence/m2/M2.6/TASK_CARD.md"
+    "artifact:evidence/m2/M2.6/TASK_CARD.md",
+    "run:gha-35491774156"
    ],
    "notes": [
     {
@@ -1660,7 +1661,7 @@
      "note": "Sealed with hosted CI evidence; live provider proof tracked by DR-M2-001"
     }
    ],
-   "status_changed_on": "2026-09-09T16:52:05Z"
+   "status_changed_on": "2026-09-20T05:31:03Z"
   },
   {
    "id": "M2.7",
