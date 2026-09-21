@@ -31,7 +31,7 @@ use std::time::{Duration, Instant};
 
 use modbit_bench_agent_engineering::{
     Bundle, Economics, Environment, EventLog, HARNESS_VERSION, Protocol, Suite, TaskSpec,
-    TrialOutcome, count, metrics, parse_events, sha256_hex,
+    TrialOutcome, count, metrics, parse_events, protected_intact, sha256_hex,
 };
 
 struct Args {
@@ -362,6 +362,17 @@ fn run_trial(
     copy_fixture(&args.fixtures.join(&task.fixture), &workspace)?;
     git(&workspace, &["init", "-q", "-b", "main"])?;
     git(&workspace, &["config", "core.autocrlf", "false"])?;
+    // The linked modules are the developer's installation, not the
+    // repository's content: excluded from git so that an agent reinstalling
+    // them is not a deleted path in the diff (`node_modules/` in a
+    // .gitignore does not match a symbolic link).
+    if workspace.join("node_modules").exists() {
+        let exclude = workspace.join(".git/info/exclude");
+        if let Some(parent) = exclude.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        std::fs::write(&exclude, "node_modules\n").map_err(|e| e.to_string())?;
+    }
     commit_all(&workspace, "fixture")?;
     for op in &task.setup {
         match op {
@@ -387,9 +398,7 @@ fn run_trial(
         .map(|p| {
             (
                 p.clone(),
-                std::fs::read(workspace.join(p))
-                    .map(|b| sha256_hex(&b))
-                    .unwrap_or_default(),
+                std::fs::read_to_string(workspace.join(p)).unwrap_or_default(),
             )
         })
         .collect();
@@ -556,6 +565,28 @@ fn run_trial(
     std::fs::write(&events_path, &ev.stdout).map_err(|e| e.to_string())?;
     let events = parse_events(&ev.stdout);
     let counts = count(&events, &task_id);
+    // The verification reports the Core stored for this trial (every stage's
+    // per-check results and runner output excerpts) travel with the trial.
+    let reports_dir = trial_dir.join("reports");
+    let _ = std::fs::create_dir_all(&reports_dir);
+    for e in &events {
+        if e.event_type != "VerificationBaselineRecorded"
+            && e.event_type != "VerificationRunRecorded"
+        {
+            continue;
+        }
+        for r in e.payload["report_refs"].as_array().into_iter().flatten() {
+            let Some(hash) = r.as_str() else { continue };
+            if hash.len() < 3 {
+                continue;
+            }
+            let src = data_dir
+                .join("core/objects")
+                .join(&hash[..2])
+                .join(&hash[2..]);
+            let _ = std::fs::copy(&src, reports_dir.join(format!("{hash}.json")));
+        }
+    }
     let diff = git(&workspace, &["diff", "HEAD"]).unwrap_or_default();
     std::fs::write(trial_dir.join("diff.patch"), &diff).map_err(|e| e.to_string())?;
     // Acceptance: hidden files placed only now, commands must all pass,
@@ -598,11 +629,11 @@ fn run_trial(
         }
     }
     std::fs::write(trial_dir.join("acceptance.log"), &acceptance_log).map_err(|e| e.to_string())?;
+    // docs/63: a named test modified, deleted, skipped or weakened fails the
+    // trial; a test added beside the named ones does not.
     let test_integrity_ok = protected_before.iter().all(|(p, before)| {
-        std::fs::read(workspace.join(p))
-            .map(|b| sha256_hex(&b))
-            .unwrap_or_default()
-            == *before
+        let after = std::fs::read_to_string(workspace.join(p)).ok();
+        protected_intact(before, after.as_deref())
     });
     let core_verified = (counts.ready_for_review || counts.completed)
         && !counts.failed

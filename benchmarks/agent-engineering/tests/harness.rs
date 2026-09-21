@@ -285,7 +285,9 @@ fn event_scoring_counts_the_doc_63_signals_from_the_log() {
         json!({"offset": 20, "event_type": "PlanRevised", "task_id": task, "payload": {"version": 2, "added": ["README.md"]}}),
         json!({"offset": 21, "event_type": "UserQuestionAsked", "task_id": task, "payload": {}}),
         json!({"offset": 22, "event_type": "FlakyCheckQuarantined", "task_id": task, "payload": {"check_id": "c"}}),
-        json!({"offset": 23, "event_type": "RegressionAttributed", "task_id": task, "payload": {"check_id": "c2"}}),
+        json!({"offset": 23, "event_type": "RegressionAttributed", "task_id": task, "payload": {"check_id": "c2", "attribution": "REGRESSION"}}),
+        json!({"offset": 31, "event_type": "RegressionAttributed", "task_id": task, "payload": {"check_id": "c3", "attribution": "KNOWN_FAILING"}}),
+        json!({"offset": 32, "event_type": "RegressionAttributed", "task_id": task, "payload": {"check_id": "c4", "attribution": "COLLATERAL_FIX"}}),
         json!({"offset": 24, "event_type": "VerificationRunRecorded", "task_id": task, "payload": {"stage": "COMPLETION", "status": "PASSED"}}),
         json!({"offset": 25, "event_type": "AcceptanceGateEvaluated", "task_id": task, "payload": {"verdict": "ACCEPT"}}),
         json!({"offset": 26, "event_type": "SelfReviewRecorded", "task_id": task, "payload": {"unresolved": 0}}),
@@ -300,7 +302,7 @@ fn event_scoring_counts_the_doc_63_signals_from_the_log() {
         .chain(["not json\n".to_owned()])
         .collect();
     let events = parse_events(&text);
-    assert_eq!(events.len(), 21);
+    assert_eq!(events.len(), 23);
     let c = count(&events, task);
     assert_eq!(c.plan_v1_files, ["src/lib.rs"]);
     assert_eq!(c.files_changed, ["README.md", "src/lib.rs", "tests/new.rs"]);
@@ -328,8 +330,11 @@ fn event_scoring_counts_the_doc_63_signals_from_the_log() {
             c.flaky_quarantines,
             c.regressions_attributed
         ),
-        (1, 1, 1, 1)
+        (1, 1, 1, 1),
+        "only a REGRESSION label is a regression"
     );
+    assert_eq!(c.attributions["KNOWN_FAILING"], 1);
+    assert_eq!(c.attributions["COLLATERAL_FIX"], 1);
     assert_eq!(c.gate_verdict.as_deref(), Some("ACCEPT"));
     assert_eq!(
         c.last_verification,
@@ -338,7 +343,7 @@ fn event_scoring_counts_the_doc_63_signals_from_the_log() {
     assert_eq!(c.self_review_unresolved, Some(0));
     assert!(c.ready_for_review && c.plan_recorded && !c.failed);
     assert_eq!(c.model_calls, 1);
-    assert_eq!(c.offsets, Some((10, 30)));
+    assert_eq!(c.offsets, Some((10, 32)));
 }
 
 // ---- the real binary through the real CLI and Core, scripted model ---------
@@ -754,4 +759,59 @@ fn merge_combines_per_task_bundles_under_one_protocol_and_refuses_mismatches() {
         !ok && text.contains("different suite, protocol or revision"),
         "{text}"
     );
+}
+
+#[test]
+fn protected_tests_are_intact_when_named_tests_are_unchanged_and_additions_are_allowed() {
+    use modbit_bench_agent_engineering::protected_intact;
+    let py = "from service import format_cents, parse_quantity, total_cents\n\n\ndef test_parse_quantity_rejects_negative():\n    try:\n        parse_quantity(\"-5\")\n    except ValueError:\n        return\n    raise AssertionError(\"negative quantity accepted\")\n\n\ndef test_total_and_format():\n    assert format_cents(total_cents(parse_quantity(\"3\"), 250)) == \"$7.50\"\n";
+    // What the live model did: an import gains a symbol, tests are appended.
+    let added = py.replace(
+        "from service import format_cents",
+        "from service import apply_discount, format_cents",
+    ) + "\n\ndef test_apply_discount_examples():\n    assert apply_discount(1000, 15) == 850\n";
+    assert!(protected_intact(py, Some(&added)));
+    let inserted = py.replace(
+        "\n\ndef test_total_and_format",
+        "\n\ndef test_zero():\n    assert parse_quantity(\"1\") == 1\n\n\ndef test_total_and_format",
+    );
+    assert!(protected_intact(py, Some(&inserted)));
+    // Weakened, modified, deleted or skipped named tests are not intact.
+    assert!(!protected_intact(
+        py,
+        Some(&py.replace("== \"$7.50\"", "== \"$7.5\""))
+    ));
+    assert!(!protected_intact(
+        py,
+        Some(&py.replace(
+            "    raise AssertionError(\"negative quantity accepted\")\n",
+            "    pass\n"
+        ))
+    ));
+    assert!(!protected_intact(
+        py,
+        Some(&py.replace("def test_total_and_format", "def _test_total_and_format"))
+    ));
+    assert!(!protected_intact(
+        py,
+        Some("def test_nothing():\n    pass\n")
+    ));
+    assert!(!protected_intact(py, None));
+    let rs = "#[test]\nfn acceptance_rejects_negative_quantity() {\n    assert!(parse_quantity(\"-5\").is_err());\n}\n";
+    assert!(protected_intact(
+        rs,
+        Some(&format!(
+            "{rs}\n#[test]\nfn negatives_format() {{\n    assert_eq!(format_cents(-5), \"-0.05\");\n}}\n"
+        ))
+    ));
+    assert!(!protected_intact(
+        rs,
+        Some(&rs.replace("fn acceptance", "fn ignored_acceptance"))
+    ));
+    let ts = "describe(\"cart\", () => {\n  it(\"acceptance rejects negative quantity\", () => {\n    expect(() => parseQuantity(\"-5\")).toThrow();\n  });\n});\n";
+    assert!(protected_intact(ts, Some(&ts.replace("});\n});", "});\n  it(\"parses money\", () => {\n    expect(parseMoney(\"7.50\")).toBe(750);\n  });\n});"))));
+    assert!(!protected_intact(
+        ts,
+        Some(&ts.replace("it(\"acceptance", "it.skip(\"acceptance"))
+    ));
 }

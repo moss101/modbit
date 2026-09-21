@@ -43,11 +43,11 @@ status and `task economics`:
 |---|---|
 | `core_verified` | the task ended `ReadyForReview`/`Completed` through the Core's own completion gating with no `RegressionAttributed` |
 | `acceptance_passed` | every acceptance command exited 0 after the hidden files were placed |
-| `test_integrity_ok` | every protected test file is byte-identical to before the run (DI-3, scored by the harness) |
+| `test_integrity_ok` | every protected test file is intact in doc 63's sense: each original line that declares a test or asserts something is still present, unchanged and in order (a named test modified, deleted, skipped or weakened fails; tests added beside them and an import gaining a symbol are allowed); scored by the harness on top of the engine's DI-3 |
 | `verified_success` | all three |
 | `first_pass` | verified with zero `RepairAttemptRecorded` (doc 63, literally) |
 | `first_candidate` | verified with at most one `RepairAttemptRecorded` and no `RepairEscalated`: the first fix held, or one recorded repair after a failing planned verification sufficed. (Reproducing a reported failure with an ad-hoc command opens no verification signature, so a direct fix after it still counts as first pass.) |
-| `counts` | repair attempts, `RepairEscalated`, `NoProgressDetected`, policy denies, plan v1 write set, plan revisions, questions, files changed / outside the original plan, edits without a `RetrievalRecorded`, regressions, flaky quarantines, `DiffInvariantViolated` by invariant, gate verdict, verification stage/status, self-review |
+| `counts` | repair attempts, `RepairEscalated`, `NoProgressDetected`, policy denies, plan v1 write set, plan revisions, questions, files changed / outside the original plan, edits without a `RetrievalRecorded`, regressions (only `RegressionAttributed` with the `REGRESSION` label; every label is tallied in `attributions`), flaky quarantines, `DiffInvariantViolated` by invariant, gate verdict, verification stage/status, self-review |
 | `economics` | model calls, tokens, cost at catalog list prices, wall/model/tool time |
 
 Metrics follow doc 63's table: verified and first-pass success with 95% Wilson
@@ -68,7 +68,8 @@ target/debug/competence-baseline \
 ```
 
 Output: `baseline.json` (the bundle), `baseline.sha256` (its digest),
-`summary.md`, and `trials/<task>-<n>/{cli.log,events.jsonl,diff.patch,acceptance.log}`.
+`summary.md`, and `trials/<task>-<n>/{cli.log,events.jsonl,diff.patch,acceptance.log,reports/}`
+(`reports/` holds the Core's verification report objects for every stage of the trial).
 Exit 0 only when the bundle validates. `competence-baseline merge --out <dir>
 <part dir>...` combines per-task bundles of the same suite, protocol and
 revision into one (trials concatenated, metrics recomputed, every part's

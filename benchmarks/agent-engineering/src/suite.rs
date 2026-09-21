@@ -184,3 +184,38 @@ impl Suite {
             .join(&f.from)
     }
 }
+
+/// Whether a protected test file is intact in the sense of docs/63: no test
+/// named by the acceptance was modified, deleted, skipped or weakened.
+/// Every original line that declares a test or asserts something must still
+/// appear, unchanged and in order, in the current content; additions
+/// anywhere (new tests, an import gaining a symbol) are allowed. A deleted
+/// file is not intact.
+#[must_use]
+pub fn protected_intact(original: &str, current: Option<&str>) -> bool {
+    let Some(current) = current else {
+        return false;
+    };
+    let significant = |line: &str| {
+        let t = line.trim();
+        !t.is_empty()
+            && (t.contains("assert")
+                || t.contains("raise ")
+                || t.contains("expect(")
+                || t.starts_with("def test")
+                || t.starts_with("async def test")
+                || t.contains("#[test]")
+                || t.starts_with("fn ")
+                || t.starts_with("pub fn ")
+                || t.contains("it(")
+                || t.contains("test(")
+                || t.contains("describe("))
+    };
+    let mut cur = current.lines().map(str::trim);
+    for wanted in original.lines().map(str::trim).filter(|l| significant(l)) {
+        if !cur.any(|l| l == wanted) {
+            return false;
+        }
+    }
+    true
+}

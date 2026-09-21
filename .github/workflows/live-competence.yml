@@ -93,6 +93,7 @@ jobs:
             exit 1
           fi
           part="parts/$(echo "$TASK" | tr '/' '_')"
+          mkdir -p "$part"
           set -o pipefail
           target/debug/competence-baseline --suite benchmarks/agent-engineering/suites/internal/tasks.json \
             --fixtures tests/fixtures/repos --out "$part" --endpoint "$ENDPOINT" --trials "$TRIALS" \

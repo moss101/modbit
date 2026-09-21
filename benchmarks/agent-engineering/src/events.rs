@@ -59,8 +59,13 @@ pub struct Counts {
     pub files_outside_plan: Vec<String>,
     /// Edits of an existing file with no earlier `RetrievalRecorded` for that path (must be zero).
     pub edits_without_retrieval: u32,
-    /// `RegressionAttributed` events.
+    /// `RegressionAttributed` events whose attribution is `REGRESSION` (a
+    /// check that passed at BASELINE and fails at the candidate after the
+    /// flake protocol); the other labels are counted in `attributions`.
     pub regressions_attributed: u32,
+    /// Every `RegressionAttributed` event by its attribution label
+    /// (`REGRESSION`, `KNOWN_FAILING`, `COLLATERAL_FIX`, `NEW_FAILING`, …).
+    pub attributions: BTreeMap<String, u32>,
     /// `FlakyCheckQuarantined` events.
     pub flaky_quarantines: u32,
     /// `DiffInvariantViolated` events whose invariant is `DI-3`.
@@ -141,7 +146,13 @@ pub fn count(events: &[Event], task_hex: &str) -> Counts {
                     changed.insert(path.to_owned());
                 }
             }
-            "RegressionAttributed" => c.regressions_attributed += 1,
+            "RegressionAttributed" => {
+                let label = p["attribution"].as_str().unwrap_or("?").to_owned();
+                if label == "REGRESSION" {
+                    c.regressions_attributed += 1;
+                }
+                *c.attributions.entry(label).or_insert(0) += 1;
+            }
             "FlakyCheckQuarantined" => c.flaky_quarantines += 1,
             "DiffInvariantViolated" => {
                 let inv = p["invariant"].as_str().unwrap_or("?").to_owned();

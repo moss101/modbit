@@ -22,7 +22,7 @@ pub use bundle::{
     TrialOutcome, digest_of, metrics,
 };
 pub use events::{Counts, Event, count, parse_events};
-pub use suite::{Acceptance, FileOp, HiddenFile, Suite, SuiteProtocol, TaskSpec};
+pub use suite::{Acceptance, FileOp, HiddenFile, Suite, SuiteProtocol, TaskSpec, protected_intact};
 
 /// Harness version recorded in every bundle (docs/63 "harness version").
 pub const HARNESS_VERSION: &str = "competence-baseline/1";
