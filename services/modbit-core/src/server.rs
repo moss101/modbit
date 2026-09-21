@@ -2585,6 +2585,7 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 call_id: None,
                 lease_generation: env.expected_generation,
                 projection: None,
+                cancel: None,
             };
             match core.tools.invoke(&core.store, req).await {
                 Ok(done) => {
@@ -2829,6 +2830,31 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             if offset > 0 {
                 core.last_offset.send_replace(offset);
             }
+            // docs/23: safe tool calls in flight are cancelled, not waited
+            // for — every live loop of the session is cancelled, which ends
+            // the call it is inside through the pipeline's own accounting (a
+            // process is killed with its group and recorded Cancelled; an
+            // effect already sent is recorded UnknownOutcome for
+            // reconciliation) and ends the run without another model call.
+            // The loop's own lease fencing does not do this: the stop revokes
+            // capability leases, not the session's lease generation.
+            let live: Vec<TaskId> = store
+                .live_tasks()
+                .unwrap_or_default()
+                .into_iter()
+                .filter(|t| t.session_id == session_id)
+                .map(|t| t.task_id)
+                .collect();
+            drop(store);
+            let mut cancelled = 0u32;
+            for task_id in live {
+                if core.runtime.cancel(&task_id).await {
+                    cancelled += 1;
+                }
+            }
+            eprintln!(
+                "modbit-core: emergency stop on session {session_id}: {revoked} lease(s) revoked, {cancelled} live run(s) cancelled ({reason})"
+            );
             accept(
                 cid,
                 false,
@@ -4647,6 +4673,17 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             };
             if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
                 return ack;
+            }
+            // docs/23 "Emergency stop": a stopped session starts nothing; the
+            // stop is on the log and lasts for the session.
+            if let Ok(Some(s)) = core.store.lock().await.session(&task.session_id)
+                && s.emergency_stopped_at.is_some()
+            {
+                return reject(
+                    cid,
+                    "EMERGENCY_STOP",
+                    "the session is under an emergency stop; no run starts in it",
+                );
             }
             // REQ-PX-022: a desktop task runs only on a repository the user
             // trusted in this session, explicitly and scoped to that root.

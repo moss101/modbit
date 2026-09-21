@@ -745,6 +745,7 @@ impl ToolHost {
             call_id,
             lease_generation,
             projection,
+            cancel,
         } = call;
         let (workspace, root) = match &workspace_root {
             Some(r) => {
@@ -1060,6 +1061,7 @@ impl ToolHost {
                     },
                 ),
             ) as Arc<dyn modbit_mcp::McpPort>),
+            cancel: cancel.clone(),
         };
         // REQ-EV-0106: snapshot the write targets so every successful write can
         // land a revision-bound FileChanged event with content and diff refs.
@@ -1907,6 +1909,9 @@ pub struct InvokeRequest<'a> {
     /// naming a tool outside it is refused before any effect, however it
     /// was crafted. `None` = no projection applies (a user's direct call).
     pub projection: Option<Vec<String>>,
+    /// The run's cancellation token, so a process the tool runs stops with
+    /// the run (M9.5); `None` outside a live loop.
+    pub cancel: Option<tokio_util::sync::CancellationToken>,
 }
 
 /// What an invocation produced.

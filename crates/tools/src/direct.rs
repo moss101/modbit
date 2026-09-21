@@ -923,10 +923,27 @@ async fn run_process(ctx: &InvokeContext, args: &Value, request_id: &str) -> Too
     }
     let mut session_id = String::new();
     let (mut out, mut err) = (Vec::new(), Vec::new());
+    let cancel = ctx.cancel.clone().unwrap_or_default();
+    let mut cancel_sent = false;
     loop {
-        match client.next().await {
+        let next = tokio::select! {
+            n = client.next() => n,
+            () = cancel.cancelled(), if !cancel_sent => {
+                cancel_sent = true;
+                if !session_id.is_empty() {
+                    let _ = client.cancel(&session_id).await;
+                }
+                continue;
+            }
+        };
+        match next {
             Ok(Some(Event::Started(st))) => {
                 session_id = st.session_id;
+                // A cancel that arrived before the broker named the session
+                // is sent now that it has.
+                if cancel_sent {
+                    let _ = client.cancel(&session_id).await;
+                }
                 if let Some(input) = args.get("stdin").and_then(Value::as_str)
                     && let Err(e) = client.write_stdin(&session_id, input.as_bytes()).await
                 {
@@ -1958,7 +1975,18 @@ tool!(
             "raw_output_ref": o.structured_output.get("output_ref").cloned().unwrap_or(Value::Null),
             "exit_code": exit
         });
-        // A test run's application result is the report; a failing test is still a successful tool call.
+        // A test run's application result is the report; a failing test is
+        // still a successful tool call. A run cancelled with the task
+        // (docs/23) is not evidence of anything: the call is cancelled.
+        if cancelled {
+            return ToolOutcome {
+                ok: false,
+                structured_output: report,
+                error_code: Some("CANCELLED".into()),
+                error_message: Some("the run was cancelled while the check ran".into()),
+                ..o
+            };
+        }
         ToolOutcome {
             ok: true,
             structured_output: report,
