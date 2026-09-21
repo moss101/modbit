@@ -4575,8 +4575,56 @@
    "milestone": "M9",
    "order": 4,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-35565188980",
+    "test:m9_5_emergency_stop_cancels_the_check_in_flight_ends_the_run_and_outlives_a_restart",
+    "test:m2_5_capability_kernel_gates_destructive_tools_behind_intent_bound_approvals",
+    "test:qual_ev_0085_an_emergency_stop_halts_browser_input_before_the_host_with_the_reason_on_record",
+    "artifact:evidence/m9/M9.5/TASK_CARD.md",
+    "artifact:evidence/m9/M9.5/evidence.json",
+    "commit:d544115"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-21T06:10:46Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED-PARTIAL: stop journaled + leases revoked + kernel refusals existed (m2_5, qual_ev_0085); the running loop kept turning, in-flight processes outlived the stop, a cancelled process was recorded as failure/success, StartTask started runs in a stopped session"
+    },
+    {
+     "at": "2026-09-21T06:10:46Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "EmergencyStop cancels live loops; InvokeContext.cancel + BrokerRunner.cancel reach the broker's Cancel; ToolStatus::Cancelled for cancelled processes and test.run; StartTask refused EMERGENCY_STOP; docs/23 as-built"
+    },
+    {
+     "at": "2026-09-21T06:10:46Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "PR #21 squashed to main as d544115"
+    },
+    {
+     "at": "2026-09-21T06:10:46Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "hosted CI run 35565188980 green on macOS/Linux/Windows; related suites m2_5, qual_ev_0085, cancellation, m4_6, residue, m2_7/m2_8, px_039 green; modbit-tools 17/17"
+    },
+    {
+     "at": "2026-09-21T06:10:46Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "a 600 s check killed within seconds of the stop on the real Core and broker; the stop outlives a Core restart"
+    },
+    {
+     "at": "2026-09-21T06:10:46Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Sealed"
+    }
+   ],
+   "owner_agent": "claude-opus-5",
+   "status_changed_on": "2026-09-21T06:10:46Z"
   },
   {
    "id": "M9.6",

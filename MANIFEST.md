@@ -1632,8 +1632,11 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m9/M9.3/evidence.json` | retained evidence | 1800 | `1654b7838c7c8a73f62380a85fe876cb06a5a8ce86719ca53be7ec2481d21b95` |
 | `evidence/m9/M9.4/TASK_CARD.md` | retained evidence | 4502 | `1f9af3f695ea457f3cbd5b231f67c602e706ff706bf46f7b28676dded484f85b` |
 | `evidence/m9/M9.4/evidence.json` | retained evidence | 2833 | `68610d3d6a57760a8d8b463d81a17fa3d869e91a0c6d142723e9822f27f10b43` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 41098 | `581c58c02c36d2d7f38e06b410b857dad62c15c9e5ff0fd696bd339f9599add6` |
-| `graph/project-graph.json` | project driver graph with live status | 1570916 | `c3a217b50be2af5662fb49ffe8d5777c34d63cd5fe50ec9fbf7c20135637e786` |
+| `evidence/m9/M9.5/TASK_CARD.md` | retained evidence | 5637 | `f89aa454b703201b3f1e8f480661358d58cadcd4099c4f3a2a4a51d0743cf798` |
+| `evidence/m9/M9.5/ci-run-35565188980.json` | retained evidence | 42266 | `f5c7a84ce8a219d40bbf748630eca67144b1c986906eb1528dc54dbd24b4cb01` |
+| `evidence/m9/M9.5/evidence.json` | retained evidence | 2844 | `77780ebcc16f18c58d3a4e2664a801b49d2d0abef4f0ed719d0c3ede8a6ccad4` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 41095 | `f7922aab3dec968eed331b2d61542eee51b1837f4ea9d1d56ba151de9414ebee` |
+| `graph/project-graph.json` | project driver graph with live status | 1572932 | `e1e41e74d8ebba9f723ea7d0d6f314b7eb2dfad7a1babc8318e39cb0b5b38d34` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 54559 | `2386120f7a8ab3c48562b3450427d61637859c87cd9f7f5817c46676ab322547` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 17596 | `5c9b7a782d245223726f860ca583d766929a6f5662b644adebee64d257ad426b` |

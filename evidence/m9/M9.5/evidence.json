@@ -1,0 +1,37 @@
+{
+ "task": "M9.5",
+ "requirements": [
+  "docs/23 Emergency stop",
+  "REQ-EV-0085 (IMP-EV-0085, M7.6)",
+  "docs/14 Compound execution and interruption",
+  "docs/21 resource quotas and emergency stop"
+ ],
+ "scenarios": [
+  "the stop lands while a check the agent started is running: the process is gone within seconds, the call is ToolCallCancelled, the run ends RunCancelled/TaskCancelled without another model call, the queued write never happens",
+  "StartTask on a stopped session is refused EMERGENCY_STOP",
+  "the refusal survives killing and restarting the Core: the stop is a projection of the log",
+  "kept from M2.5/M7.6: leases revoked with the reason, non-read effects refused EMERGENCY_STOP by the kernel, browser input halted by the host"
+ ],
+ "tests": [
+  "services/modbit-core/tests/surface_protocol.rs::m9_5_emergency_stop_cancels_the_check_in_flight_ends_the_run_and_outlives_a_restart",
+  "services/modbit-core/tests/surface_protocol.rs::m2_5_capability_kernel_gates_destructive_tools_behind_intent_bound_approvals",
+  "services/modbit-core/tests/surface_protocol.rs::qual_ev_0085_an_emergency_stop_halts_browser_input_before_the_host_with_the_reason_on_record"
+ ],
+ "batch_commits": [
+  "d544115"
+ ],
+ "runs": [
+  "35565188980"
+ ],
+ "ci": {
+  "run_id": "35565188980",
+  "head_sha": "0040af18750b7b2220589d4c2f6a4af00a28a0aa",
+  "conclusion": "success",
+  "note": "the macOS desktop-E2E job passed on rerun after the documented CAPACITY_EXHAUSTED/CORE_UNAVAILABLE timing flake; every Rust job passed first time",
+  "json": "evidence/m9/M9.5/ci-run-35565188980.json"
+ },
+ "audit": "IMPLEMENTED-PARTIAL before: the stop journaled and revoked leases and the kernel refused new effects, but a running loop kept turning (it fences on the session lease generation), a process a tool ran outlived the stop (no cancellation path to the broker in the direct runner or the engine's BrokerRunner), a cancelled process was recorded as a failure or, for test.run, as a successful call carrying a CANCELLED report, and StartTask would start a run in a stopped session.",
+ "proof": "On the real Core with the real terminal broker a 600 s check is killed within seconds of the stop, the outcomes are recorded honestly, no model call follows, a new run is refused and a restarted Core refuses it too; green on macOS, Linux and Windows.",
+ "negative_proof": "The same test against the code before the change: the check kept running after the stop (the first local run of this task), and the call was recorded a success with a CANCELLED report.",
+ "limitations": "A stop is per session and is not lifted (docs/23 names no lifting); external operations already accepted by a remote are recorded UnknownOutcome for reconciliation, not recalled; cloud-isolated process cancellation follows the guest protocol and is not separately measured here."
+}
