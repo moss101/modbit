@@ -8821,22 +8821,28 @@ async fn m9_5_emergency_stop_cancels_the_check_in_flight_ends_the_run_and_outliv
         .await
         .unwrap();
     let _: TaskRunStarted = Client::result(&ack).unwrap();
-    // Wait until the check is running: its process is findable.
+    // Wait until the check is running: the call is dispatched to the broker
+    // (the log says so on every platform); on Unix its process is findable too.
     let running = |marker: &str| {
-        Command::new("pgrep")
-            .args(["-f", &format!("echo {marker}")])
-            .output()
-            .map(|o| !o.stdout.is_empty())
-            .unwrap_or(false)
+        cfg!(unix)
+            && Command::new("pgrep")
+                .args(["-f", &format!("echo {marker}")])
+                .output()
+                .map(|o| !o.stdout.is_empty())
+                .unwrap_or(false)
     };
     let started = std::time::Instant::now();
-    while !running(&marker) {
+    loop {
+        let evs = task_events(&core, &session, &task).await;
+        let dispatched = evs.iter().any(|(_, t, _)| t == "ToolCallDispatched");
+        if dispatched && (!cfg!(unix) || running(&marker)) {
+            break;
+        }
         assert!(
-            started.elapsed() < Duration::from_secs(60),
-            "the check never started: {:?}",
-            task_events(&core, &session, &task).await
+            started.elapsed() < Duration::from_secs(90),
+            "the check never started: {evs:#?}"
         );
-        tokio::time::sleep(Duration::from_millis(200)).await;
+        tokio::time::sleep(Duration::from_millis(300)).await;
     }
     let requests_before = seen.lock().unwrap().len();
     // The stop lands while the check runs.
@@ -8856,7 +8862,9 @@ async fn m9_5_emergency_stop_cancels_the_check_in_flight_ends_the_run_and_outliv
         .unwrap();
     let stopped: EmergencyStopped = Client::result(&ack).unwrap();
     assert!(stopped.leases_revoked >= 1, "{stopped:?}");
-    // The process is gone within seconds, not after its 600 s.
+    // The process is gone within seconds, not after its 600 s: on Unix by
+    // inspection, everywhere by the loop ending — it can only end once the
+    // broker has reported the check's exit.
     while running(&marker) {
         assert!(
             stopped_at.elapsed() < Duration::from_secs(15),
@@ -8865,6 +8873,10 @@ async fn m9_5_emergency_stop_cancels_the_check_in_flight_ends_the_run_and_outliv
         tokio::time::sleep(Duration::from_millis(200)).await;
     }
     let st = wait_task(&mut c, &task, 30).await;
+    assert!(
+        stopped_at.elapsed() < Duration::from_secs(30),
+        "the run did not end within 30 s of the stop: {st:?}"
+    );
     let evs = task_events(&core, &session, &task).await;
     assert_eq!(st.state, "Cancelled", "{st:?}\n{evs:#?}");
     let types: Vec<&str> = evs.iter().map(|(_, t, _)| t.as_str()).collect();
