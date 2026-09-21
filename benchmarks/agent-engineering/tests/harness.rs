@@ -491,8 +491,10 @@ fn run_harness(base_url: &str, out: &Path, extra: &[&str]) -> (bool, String) {
         .args([
             "--suite",
             suite_path().to_str().unwrap(),
+            // Relative on purpose: the hosted workflow passes it this way, and
+            // the ts-webapp link's target must not depend on it.
             "--fixtures",
-            root().join("tests/fixtures/repos").to_str().unwrap(),
+            "tests/fixtures/repos",
             "--out",
             out.to_str().unwrap(),
             "--endpoint",
@@ -814,4 +816,37 @@ fn protected_tests_are_intact_when_named_tests_are_unchanged_and_additions_are_a
         ts,
         Some(&ts.replace("it(\"acceptance", "it.skip(\"acceptance"))
     ));
+}
+
+#[test]
+fn a_fixture_copy_links_installed_modules_by_absolute_path_even_from_a_relative_source() {
+    use modbit_bench_agent_engineering::copy_fixture;
+    let tmp = tempfile::tempdir().unwrap();
+    let src_parent = tmp.path().join("fixtures");
+    let src = src_parent.join("webapp");
+    std::fs::create_dir_all(src.join("node_modules/.bin")).unwrap();
+    std::fs::create_dir_all(src.join("target")).unwrap();
+    std::fs::write(src.join("index.ts"), "export const a = 1;\r\n").unwrap();
+    std::fs::write(src.join("node_modules/.bin/tool"), "#!/bin/sh\n").unwrap();
+    std::fs::write(src.join("target/junk"), "x").unwrap();
+    // Run from the temp dir so a relative source is meaningful, as the hosted
+    // workflow's `--fixtures tests/fixtures/repos` is.
+    let dst = tmp.path().join("copies/ws");
+    let cwd = std::env::current_dir().unwrap();
+    std::env::set_current_dir(tmp.path()).unwrap();
+    let result = copy_fixture(Path::new("fixtures/webapp"), &dst);
+    std::env::set_current_dir(cwd).unwrap();
+    result.unwrap();
+    assert_eq!(
+        std::fs::read_to_string(dst.join("index.ts")).unwrap(),
+        "export const a = 1;\n",
+        "LF-normalized"
+    );
+    assert!(!dst.join("target").exists(), "build products are left out");
+    let link = std::fs::read_link(dst.join("node_modules")).unwrap();
+    assert!(link.is_absolute(), "{}", link.display());
+    assert!(
+        dst.join("node_modules/.bin/tool").is_file(),
+        "the link resolves from the copy"
+    );
 }

@@ -231,46 +231,6 @@ fn git(dir: &Path, args: &[&str]) -> Result<String, String> {
     Ok(String::from_utf8_lossy(&o.stdout).into_owned())
 }
 
-/// Copy a fixture without its build products, LF-normalized, and link its
-/// installed modules so a configured command runs as a developer's would.
-fn copy_fixture(src: &Path, dst: &Path) -> Result<(), String> {
-    fn walk(src: &Path, dst: &Path) -> Result<(), String> {
-        std::fs::create_dir_all(dst).map_err(|e| format!("{}: {e}", dst.display()))?;
-        for e in std::fs::read_dir(src).map_err(|e| format!("{}: {e}", src.display()))? {
-            let e = e.map_err(|e| e.to_string())?;
-            let n = e.file_name();
-            let name = n.to_string_lossy();
-            if name == "target"
-                || name == "node_modules"
-                || name == ".vitest"
-                || name.starts_with(".vite")
-            {
-                continue;
-            }
-            let p = e.path();
-            if p.is_dir() {
-                walk(&p, &dst.join(&n))?;
-            } else {
-                let bytes = std::fs::read(&p).map_err(|e| format!("{}: {e}", p.display()))?;
-                let text = String::from_utf8_lossy(&bytes).replace("\r\n", "\n");
-                std::fs::write(dst.join(&n), text).map_err(|e| e.to_string())?;
-            }
-        }
-        Ok(())
-    }
-    walk(src, dst)?;
-    let installed = src.join("node_modules");
-    if installed.exists() {
-        #[cfg(unix)]
-        std::os::unix::fs::symlink(&installed, dst.join("node_modules"))
-            .map_err(|e| e.to_string())?;
-        #[cfg(windows)]
-        std::os::windows::fs::symlink_dir(&installed, dst.join("node_modules"))
-            .map_err(|e| e.to_string())?;
-    }
-    Ok(())
-}
-
 fn commit_all(dir: &Path, message: &str) -> Result<(), String> {
     git(dir, &["add", "-A"])?;
     git(
@@ -359,7 +319,7 @@ fn run_trial(
     let workspace = scratch.join("workspace");
     let data_dir = scratch.join("profile");
     std::fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
-    copy_fixture(&args.fixtures.join(&task.fixture), &workspace)?;
+    modbit_bench_agent_engineering::copy_fixture(&args.fixtures.join(&task.fixture), &workspace)?;
     git(&workspace, &["init", "-q", "-b", "main"])?;
     git(&workspace, &["config", "core.autocrlf", "false"])?;
     // The linked modules are the developer's installation, not the

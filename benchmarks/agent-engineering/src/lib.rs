@@ -16,6 +16,7 @@
 pub mod bundle;
 pub mod events;
 pub mod suite;
+pub mod workspace;
 
 pub use bundle::{
     Bundle, BundleRefused, Economics, Environment, EventLog, Metrics, Protocol, Rate, TargetRecord,
@@ -23,6 +24,7 @@ pub use bundle::{
 };
 pub use events::{Counts, Event, count, parse_events};
 pub use suite::{Acceptance, FileOp, HiddenFile, Suite, SuiteProtocol, TaskSpec, protected_intact};
+pub use workspace::copy_fixture;
 
 /// Harness version recorded in every bundle (docs/63 "harness version").
 pub const HARNESS_VERSION: &str = "competence-baseline/1";
