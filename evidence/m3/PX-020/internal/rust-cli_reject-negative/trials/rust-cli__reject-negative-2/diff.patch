@@ -1,0 +1,14 @@
+diff --git a/src/lib.rs b/src/lib.rs
+index 12a5798..63ffadd 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -7,6 +7,9 @@ pub fn parse_quantity(input: &str) -> Result<i64, String> {
+         .trim()
+         .parse()
+         .map_err(|e| format!("not a number: {e}"))?;
++    if n < 0 {
++        return Err(format!("negative quantity: {n}"));
++    }
+     Ok(n)
+ }
+ 

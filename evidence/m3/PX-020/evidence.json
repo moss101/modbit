@@ -1,0 +1,94 @@
+{
+ "task": "PX-020",
+ "requirement": "REQ-PX-020",
+ "qual": "QUAL-PX-020",
+ "tests": [
+  "the_internal_suite_is_frozen_and_its_digest_covers_hidden_acceptance",
+  "bundle_validation_refuses_what_the_frozen_protocol_forbids_and_no_target_precedes_a_baseline",
+  "event_scoring_counts_the_doc_63_signals_from_the_log",
+  "a_bundle_is_referenced_by_the_digest_of_its_file_bytes",
+  "the_binary_drives_a_real_task_through_the_real_cli_and_core_and_scores_it",
+  "residue_of_a_check_the_agent_runs_is_recorded_not_attributed"
+ ],
+ "batch_commits": [
+  "3d91938",
+  "e3c105c",
+  "a37afa6",
+  "1507707cab9a328939bacb57b260f967184ab84c"
+ ],
+ "runs": [
+  "35543942063",
+  "35538461759",
+  "35560128454"
+ ],
+ "earlier_live_runs": "evidence/m3/PX-020/live-runs.json",
+ "live_run": {
+  "id": "35560128454",
+  "workflow": "live-competence.yml",
+  "endpoint": "openai",
+  "model": "glm-5.3-flash",
+  "base_url_host": "api.z.ai",
+  "artifact": "competence-baseline-openai-35560128454"
+ },
+ "decision_records": [
+  "docs/decisions/DR-M3-003-benchmark-and-conformance-live-model-halves.md",
+  "docs/decisions/DR-M9-002-live-proofs-on-compatible-gateway.md",
+  "docs/decisions/DR-M3-005-competence-baseline-public-suite-deferred.md"
+ ],
+ "baseline": {
+  "suite": "internal",
+  "bundle": "evidence/m3/PX-020/internal/baseline.json",
+  "digest": "59301bb8f2699794b3e26d1699db94e5689aabd991c3b168f26801b7d1a7b786",
+  "task_list_digest": "a6cdf39a8dac3294b97cc61d8497dbbe5923b2129e185a727d75892c2255ac0c",
+  "tasks": [
+   "rust-cli/reject-negative",
+   "rust-cli/negative-amounts",
+   "ts-webapp/reject-negative",
+   "ts-webapp/parse-money",
+   "python-service/reject-zero",
+   "python-service/discount"
+  ],
+  "trials_per_task": 3,
+  "modbit_revision": "1507707cab9a328939bacb57b260f967184ab84c",
+  "build_digest": "fbf23a98251f0939793f24c48f2c0de5a7a5183713ddcde2fabe0a6cddb47749",
+  "verified_success": {
+   "successes": 12,
+   "n": 18,
+   "rate": 0.6666666666666666,
+   "ci95": [
+    0.437494672959451,
+    0.8372122524916631
+   ]
+  },
+  "first_pass_success": {
+   "successes": 10,
+   "n": 18,
+   "rate": 0.5555555555555556,
+   "ci95": [
+    0.33716415642042774,
+    0.7544048187299437
+   ]
+  },
+  "first_candidate_success": {
+   "successes": 12,
+   "n": 18,
+   "rate": 0.6666666666666666,
+   "ci95": [
+    0.437494672959451,
+    0.8372122524916631
+   ]
+  },
+  "repair_loops": {
+   "0": 16,
+   "1": 2
+  },
+  "total_cost_usd": 0.703974
+ },
+ "open": {
+  "public_suite": "SWE-bench Verified slice under the frozen protocol with images pinned by digest: not run; DR-M3-005 names what it needs; no public-suite target before its bundle exists"
+ },
+ "proof": "The internal competence suite ran on hosted CI (35560128454) through the real product with glm-5.3-flash at api.z.ai: 12/18 verified successes, 10/18 first pass; the bundle is immutable and referenced by digest 59301bb8f269\u2026; validation refuses gold-patch access, unpinned images and missing trial counts; a target cannot be recorded without a valid baseline digest.",
+ "audit": "NOT-FOUND before: no eval harness, no suite, no bundle, no live-model run.",
+ "limitations": "Internal suite only; public SWE-bench slice open per DR-M3-005. Live model through a compatible gateway (DR-M9-002), not a provider production endpoint. Six tasks on three fixtures; wide intervals. Test-selection quality not measured.",
+ "found_defect": "A check the agent runs itself left bytecode residue that COMPLETION attributed to the agent (DI-1 DENY); fixed in services/modbit-core/src/runtime.rs with a real-system qualification."
+}

@@ -1,0 +1,381 @@
+{
+  "schema": "modbit-competence-baseline/1",
+  "suite_id": "internal-competence",
+  "suite_version": "1.0.0",
+  "task_list_digest": "a6cdf39a8dac3294b97cc61d8497dbbe5923b2129e185a727d75892c2255ac0c",
+  "tasks": [
+    "ts-webapp/reject-negative"
+  ],
+  "protocol": {
+    "trials_per_task": 3,
+    "max_turns": 24,
+    "configuration": "direct",
+    "endpoint": "openai",
+    "model": "glm-5.3-flash",
+    "base_url_host": "api.z.ai",
+    "catalog_prices_usd_per_mtok": [
+      0.15,
+      0.5
+    ],
+    "gold_patch_access": false,
+    "images": [],
+    "question_answer": "Use your best judgement and proceed without further questions; keep the change minimal and keep the existing tests passing.",
+    "approvals": "deny"
+  },
+  "environment": {
+    "modbit_revision": "1507707cab9a328939bacb57b260f967184ab84c",
+    "build_digest": "fbf23a98251f0939793f24c48f2c0de5a7a5183713ddcde2fabe0a6cddb47749",
+    "harness_version": "competence-baseline/1",
+    "toolchains": {
+      "cargo": "cargo 1.97.1 (c980f4866 2026-06-30)",
+      "git": "git version 2.55.0",
+      "node": "v26.5.1",
+      "python3": "Python 3.12.3",
+      "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)"
+    },
+    "os": "linux-x86_64"
+  },
+  "trials": [
+    {
+      "task": "ts-webapp/reject-negative",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 2,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "src/cart.ts"
+        ],
+        "plan_revisions": 4,
+        "questions": 0,
+        "files_changed": [
+          "src/cart.ts"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {
+          "COLLATERAL_FIX": 2,
+          "KNOWN_FAILING": 2
+        },
+        "flaky_quarantines": 1,
+        "di3_violations": 0,
+        "diff_invariants": {
+          "DI-1": 1
+        },
+        "gate_verdict": "INCONCLUSIVE",
+        "last_verification": [
+          "COMPLETION",
+          "FAILED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 3,
+        "model_calls": 24,
+        "offsets": [
+          1,
+          884
+        ]
+      },
+      "economics": {
+        "model_calls": 24,
+        "input_tokens": 284645,
+        "cached_input_tokens": 93888,
+        "output_tokens": 19186,
+        "cost_usd": 0.05229,
+        "wall_ms": 848979,
+        "model_ms": 657616,
+        "tool_ms": 981,
+        "tool_calls": 11
+      },
+      "event_log": {
+        "file": "trials/ts-webapp__reject-negative-1/events.jsonl",
+        "sha256": "f8966b6e4b41ef3b4abef0f8762fe7fe100c72da74c29a9e5ca709461af54f7d",
+        "offsets": [
+          1,
+          884
+        ]
+      },
+      "diff_sha256": "c912ef05bf6023896e3264a67c8f51a317e5b36e6dff3c5140079486cfad3c89",
+      "interactions": 3,
+      "notes": []
+    },
+    {
+      "task": "ts-webapp/reject-negative",
+      "trial": 2,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": false,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 1,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "src/cart.ts"
+        ],
+        "plan_revisions": 1,
+        "questions": 0,
+        "files_changed": [
+          "src/cart.ts"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {
+          "COLLATERAL_FIX": 1,
+          "KNOWN_FAILING": 1
+        },
+        "flaky_quarantines": 1,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "FAILED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 15,
+        "offsets": [
+          1,
+          371
+        ]
+      },
+      "economics": {
+        "model_calls": 15,
+        "input_tokens": 163246,
+        "cached_input_tokens": 81792,
+        "output_tokens": 10444,
+        "cost_usd": 0.029709,
+        "wall_ms": 278020,
+        "model_ms": 269609,
+        "tool_ms": 397,
+        "tool_calls": 8
+      },
+      "event_log": {
+        "file": "trials/ts-webapp__reject-negative-2/events.jsonl",
+        "sha256": "dfc9bf93a204fcc23e2c9642f3f2a3445b9e88ed6f36cd41271c6c700d927969",
+        "offsets": [
+          1,
+          371
+        ]
+      },
+      "diff_sha256": "c912ef05bf6023896e3264a67c8f51a317e5b36e6dff3c5140079486cfad3c89",
+      "interactions": 0,
+      "notes": []
+    },
+    {
+      "task": "ts-webapp/reject-negative",
+      "trial": 3,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "src/cart.ts"
+        ],
+        "plan_revisions": 2,
+        "questions": 0,
+        "files_changed": [
+          "src/cart.ts"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {
+          "COLLATERAL_FIX": 1,
+          "KNOWN_FAILING": 1
+        },
+        "flaky_quarantines": 1,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "FAILED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 7,
+        "offsets": [
+          1,
+          203
+        ]
+      },
+      "economics": {
+        "model_calls": 7,
+        "input_tokens": 59266,
+        "cached_input_tokens": 34304,
+        "output_tokens": 3745,
+        "cost_usd": 0.010762,
+        "wall_ms": 91179,
+        "model_ms": 85947,
+        "tool_ms": 53,
+        "tool_calls": 4
+      },
+      "event_log": {
+        "file": "trials/ts-webapp__reject-negative-3/events.jsonl",
+        "sha256": "9b81eb36ab85311f00a8f88fb5940fa1b60eb48de6930234ac989ad5ca73717c",
+        "offsets": [
+          1,
+          203
+        ]
+      },
+      "diff_sha256": "c912ef05bf6023896e3264a67c8f51a317e5b36e6dff3c5140079486cfad3c89",
+      "interactions": 0,
+      "notes": []
+    }
+  ],
+  "metrics": {
+    "verified_success": {
+      "successes": 3,
+      "n": 3,
+      "rate": 1.0,
+      "ci95": [
+        0.4385029682449545,
+        1.0
+      ]
+    },
+    "first_pass_success": {
+      "successes": 2,
+      "n": 3,
+      "rate": 0.6666666666666666,
+      "ci95": [
+        0.20765960080204768,
+        0.9385080552796037
+      ]
+    },
+    "first_candidate_success": {
+      "successes": 3,
+      "n": 3,
+      "rate": 1.0,
+      "ci95": [
+        0.4385029682449545,
+        1.0
+      ]
+    },
+    "repair_loops": {
+      "0": 2,
+      "1": 1
+    },
+    "equivalent_hypothesis_escalations": [
+      0,
+      0.0
+    ],
+    "no_progress_escalations": [
+      2,
+      0.6666666666666666
+    ],
+    "wrong_effect_attempts_blocked": [
+      0,
+      0.0
+    ],
+    "evidence_coverage": {
+      "successes": 3,
+      "n": 3,
+      "rate": 1.0,
+      "ci95": [
+        0.4385029682449545,
+        1.0
+      ]
+    },
+    "cost_and_time": {
+      "total_cost_usd": 0.09276100000000001,
+      "unpriced_trials": 0,
+      "cost_per_verified_success_usd": 0.030920333333333338,
+      "wall_ms_per_verified_success": 406059.3333333333,
+      "tool_ms_total": 1431,
+      "wall_ms_total": 1218178
+    },
+    "retrieval_discipline_edits_without_record": 0,
+    "scope_discipline": {
+      "files_outside_original_plan_per_trial": 0.0,
+      "scope_expansions_per_trial": 2.3333333333333335,
+      "scope_questions_per_trial": 0.0
+    },
+    "regression_attribution": 0,
+    "flaky_check_rate": [
+      3,
+      1.0
+    ],
+    "test_integrity_violations": 0,
+    "test_selection_quality": "not measured: the fixture suites are below the size at which TARGETED selection differs from the full suite (PX-035 reports it)",
+    "per_task": {
+      "ts-webapp/reject-negative": {
+        "verified_success": {
+          "successes": 3,
+          "n": 3,
+          "rate": 1.0,
+          "ci95": [
+            0.4385029682449545,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 2,
+          "n": 3,
+          "rate": 0.6666666666666666,
+          "ci95": [
+            0.20765960080204768,
+            0.9385080552796037
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 3,
+          "n": 3,
+          "rate": 1.0,
+          "ci95": [
+            0.4385029682449545,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0,
+          1,
+          0
+        ],
+        "states": [
+          "ReadyForReview",
+          "ReadyForReview",
+          "ReadyForReview"
+        ]
+      }
+    }
+  },
+  "generated_at": "2026-09-21T04:34:53Z"
+}

@@ -1,7 +1,7 @@
 # Modbit Project Graph
 
 > Generated from `graph/project-graph.json` by `tools/graph.py render --write`. Do not edit by hand; edit the graph through `tools/graph.py set` or regenerate structure with `tools/build_graph.py`.  
-> Graph generated on 2026-09-20; view rendered on 2026-09-20.
+> Graph generated on 2026-09-21; view rendered on 2026-09-21.
 
 ## What the graph is
 
@@ -28,7 +28,7 @@ One JSON file that answers *what exists, what depends on what, what proves what,
 | Edge type | Count | Meaning |
 |---|---:|---|
 | `in_section` | 90 | doc → section |
-| `references` | 528 | doc → doc (explicit filename mention) |
+| `references` | 531 | doc → doc (explicit filename mention) |
 | `depends_on` | 18 | milestone → milestone it requires COMPLETE first |
 | `part_of` | 78 | milestone_task → milestone |
 | `after` | 189 | work item → required COMPLETE work item, including cross-milestone EPR dependencies |
@@ -59,7 +59,7 @@ flowchart LR
   M0["M0<br/>Repository and authority<br/>5/5 done"]
   M1["M1<br/>Durable local shell and Core<br/>19/19 done"]
   M2["M2<br/>Real local engineering loop<br/>63/63 done"]
-  M3["M3<br/>Context intelligence<br/>87/88 done"]
+  M3["M3<br/>Context intelligence<br/>88/88 done"]
   M4["M4<br/>Durable recovery spine<br/>18/18 done"]
   M5["M5<br/>Procedural runtime and skills<br/>39/39 done"]
   M6["M6<br/>Subagents/fleet<br/>58/58 done"]
@@ -88,7 +88,7 @@ flowchart LR
   style M0 fill:#dcfce7,stroke:#16a34a,color:#111827
   style M1 fill:#dcfce7,stroke:#16a34a,color:#111827
   style M2 fill:#dcfce7,stroke:#16a34a,color:#111827
-  style M3 fill:#fee2e2,stroke:#dc2626,color:#111827
+  style M3 fill:#dcfce7,stroke:#16a34a,color:#111827
   style M4 fill:#dcfce7,stroke:#16a34a,color:#111827
   style M5 fill:#dcfce7,stroke:#16a34a,color:#111827
   style M6 fill:#dcfce7,stroke:#16a34a,color:#111827
@@ -107,7 +107,7 @@ Critical path (reliability spine): **M0 → M1 → M2 → M4**. Do not start bro
 | M0 Repository and authority | COMPLETE | yes | 4 | 1 | 5 | 0 | — | clean clone build + architecture lint |
 | M1 Durable local shell and Core | COMPLETE | yes | 5 | 14 | 19 | 0 | M0 | user creates durable task, kills/restarts app/Core, same task recovers with no fake state. |
 | M2 Real local engineering loop | COMPLETE | yes | 10 | 53 | 63 | 0 | M1 | E2E-001/002/003 with live model and actual test pass. |
-| M3 Context intelligence | BLOCKED | yes | 9 | 79 | 87 | 1 | M2 | profile A/B/C benchmark plus retrieval-before-edit visible in task evidence. |
+| M3 Context intelligence | COMPLETE | yes | 9 | 79 | 88 | 0 | M2 | profile A/B/C benchmark plus retrieval-before-edit visible in task evidence. |
 | M4 Durable recovery spine | COMPLETE | yes | 6 | 12 | 18 | 0 | M2 | E2E-004/005/006/007/008. |
 | M5 Procedural runtime and skills | COMPLETE | yes | 7 | 32 | 39 | 0 | M2 | E2E-011/012; direct and procedural mode yield equivalent receipts/policy behavior. |
 | M6 Subagents/fleet | COMPLETE | yes | 7 | 51 | 58 | 0 | M2, M4 | E2E-009/010 and user can supervise multiple tasks without raw-log polling. |
@@ -323,8 +323,8 @@ Releases are projections over work items and gates (docs/75). Readiness is compu
 | Release | State | Included work items | Complete | Blocked | Required gates | Rule |
 |---|---|---:|---:|---:|---|---|
 | ALPHA: Local coding loop and recovery spine | READY | 114 | 114 | 0 | none | / ALPHA / Local coding loop and recovery spine / M0, M1, M2, M4 / M2.10 / EPR- / — / — / |
-| BETA: Intelligence, fleet and browser | BLOCKED | 318 | 317 | 1 | none | / BETA / Intelligence, fleet and browser / M0, M1, M2, M3, M4, M5, M6, M7 / — / — / — / — / |
-| RELEASE_ZERO: Full end-to-end proof | BLOCKED | 401 | 359 | 1 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
+| BETA: Intelligence, fleet and browser | READY | 318 | 318 | 0 | none | / BETA / Intelligence, fleet and browser / M0, M1, M2, M3, M4, M5, M6, M7 / — / — / — / — / |
+| RELEASE_ZERO: Full end-to-end proof | NOT_READY | 401 | 360 | 0 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
 
 ## Scoped v1.1 supersessions and source provenance
 

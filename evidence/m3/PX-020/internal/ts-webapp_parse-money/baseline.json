@@ -1,0 +1,382 @@
+{
+  "schema": "modbit-competence-baseline/1",
+  "suite_id": "internal-competence",
+  "suite_version": "1.0.0",
+  "task_list_digest": "a6cdf39a8dac3294b97cc61d8497dbbe5923b2129e185a727d75892c2255ac0c",
+  "tasks": [
+    "ts-webapp/parse-money"
+  ],
+  "protocol": {
+    "trials_per_task": 3,
+    "max_turns": 24,
+    "configuration": "direct",
+    "endpoint": "openai",
+    "model": "glm-5.3-flash",
+    "base_url_host": "api.z.ai",
+    "catalog_prices_usd_per_mtok": [
+      0.15,
+      0.5
+    ],
+    "gold_patch_access": false,
+    "images": [],
+    "question_answer": "Use your best judgement and proceed without further questions; keep the change minimal and keep the existing tests passing.",
+    "approvals": "deny"
+  },
+  "environment": {
+    "modbit_revision": "1507707cab9a328939bacb57b260f967184ab84c",
+    "build_digest": "fbf23a98251f0939793f24c48f2c0de5a7a5183713ddcde2fabe0a6cddb47749",
+    "harness_version": "competence-baseline/1",
+    "toolchains": {
+      "cargo": "cargo 1.97.1 (c980f4866 2026-06-30)",
+      "git": "git version 2.55.0",
+      "node": "v26.5.1",
+      "python3": "Python 3.12.3",
+      "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)"
+    },
+    "os": "linux-x86_64"
+  },
+  "trials": [
+    {
+      "task": "ts-webapp/parse-money",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "src/cart.ts",
+          "test/money.test.ts"
+        ],
+        "plan_revisions": 1,
+        "questions": 0,
+        "files_changed": [
+          "src/cart.ts",
+          "test/money.test.ts"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {
+          "KNOWN_FAILING": 2
+        },
+        "flaky_quarantines": 1,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "FAILED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 9,
+        "offsets": [
+          1,
+          264
+        ]
+      },
+      "economics": {
+        "model_calls": 9,
+        "input_tokens": 81146,
+        "cached_input_tokens": 48192,
+        "output_tokens": 8388,
+        "cost_usd": 0.016366,
+        "wall_ms": 212569,
+        "model_ms": 208638,
+        "tool_ms": 87,
+        "tool_calls": 8
+      },
+      "event_log": {
+        "file": "trials/ts-webapp__parse-money-1/events.jsonl",
+        "sha256": "c4a8881c92e89eb1619677ba93fd7ed676e28527d4619e5f41a31bdae7ed06d0",
+        "offsets": [
+          1,
+          264
+        ]
+      },
+      "diff_sha256": "776676b4357a3e3bbf536b4b9735e0aa24f9b2f769ae4450589338547f10a10e",
+      "interactions": 0,
+      "notes": []
+    },
+    {
+      "task": "ts-webapp/parse-money",
+      "trial": 2,
+      "state": "Waiting",
+      "exit_code": 2,
+      "core_verified": false,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": false,
+      "first_pass": false,
+      "first_candidate": false,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "src/cart.ts",
+          "test/money.test.ts"
+        ],
+        "plan_revisions": 2,
+        "questions": 0,
+        "files_changed": [
+          "src/cart.ts",
+          "test/money.test.ts"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 1,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": null,
+        "last_verification": [
+          "TARGETED",
+          "FAILED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": false,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 5,
+        "model_calls": 24,
+        "offsets": [
+          1,
+          680
+        ]
+      },
+      "economics": {
+        "model_calls": 24,
+        "input_tokens": 327799,
+        "cached_input_tokens": 85056,
+        "output_tokens": 24368,
+        "cost_usd": 0.061354,
+        "wall_ms": 695826,
+        "model_ms": 687850,
+        "tool_ms": 1368,
+        "tool_calls": 24
+      },
+      "event_log": {
+        "file": "trials/ts-webapp__parse-money-2/events.jsonl",
+        "sha256": "e80eeadff84c17aa07567c701d7470105f6bf47394dcbb12e93ada3f6d4a43c0",
+        "offsets": [
+          1,
+          680
+        ]
+      },
+      "diff_sha256": "33b324b71b87de746e73df49dd4291ac10c1b12f10a48f96396672c6eca313b0",
+      "interactions": 4,
+      "notes": []
+    },
+    {
+      "task": "ts-webapp/parse-money",
+      "trial": 3,
+      "state": "Waiting",
+      "exit_code": 2,
+      "core_verified": false,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": false,
+      "first_pass": false,
+      "first_candidate": false,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "src/cart.ts",
+          "src/cart.test.ts"
+        ],
+        "plan_revisions": 2,
+        "questions": 0,
+        "files_changed": [
+          "src/cart.test.ts",
+          "src/cart.ts",
+          "test/parse-money.test.ts"
+        ],
+        "files_outside_plan": [
+          "test/parse-money.test.ts"
+        ],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 1,
+        "di3_violations": 1,
+        "diff_invariants": {
+          "DI-3": 1
+        },
+        "gate_verdict": null,
+        "last_verification": [
+          "TARGETED",
+          "FAILED"
+        ],
+        "self_review_unresolved": null,
+        "plan_recorded": true,
+        "ready_for_review": false,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 5,
+        "model_calls": 24,
+        "offsets": [
+          1,
+          665
+        ]
+      },
+      "economics": {
+        "model_calls": 24,
+        "input_tokens": 300024,
+        "cached_input_tokens": 115584,
+        "output_tokens": 23979,
+        "cost_usd": 0.056993,
+        "wall_ms": 573361,
+        "model_ms": 565721,
+        "tool_ms": 1219,
+        "tool_calls": 22
+      },
+      "event_log": {
+        "file": "trials/ts-webapp__parse-money-3/events.jsonl",
+        "sha256": "2c152954cca29bb4955c2a9ecc0f2cb1330113c74dbf3fdb3b21478707dd848e",
+        "offsets": [
+          1,
+          665
+        ]
+      },
+      "diff_sha256": "dffc1e216d35d5229e6c913230394799323c67bfb7def632b8692fa824769a69",
+      "interactions": 4,
+      "notes": []
+    }
+  ],
+  "metrics": {
+    "verified_success": {
+      "successes": 1,
+      "n": 3,
+      "rate": 0.3333333333333333,
+      "ci95": [
+        0.061491944720396215,
+        0.7923403991979523
+      ]
+    },
+    "first_pass_success": {
+      "successes": 1,
+      "n": 3,
+      "rate": 0.3333333333333333,
+      "ci95": [
+        0.061491944720396215,
+        0.7923403991979523
+      ]
+    },
+    "first_candidate_success": {
+      "successes": 1,
+      "n": 3,
+      "rate": 0.3333333333333333,
+      "ci95": [
+        0.061491944720396215,
+        0.7923403991979523
+      ]
+    },
+    "repair_loops": {
+      "0": 3
+    },
+    "equivalent_hypothesis_escalations": [
+      0,
+      0.0
+    ],
+    "no_progress_escalations": [
+      0,
+      0.0
+    ],
+    "wrong_effect_attempts_blocked": [
+      0,
+      0.0
+    ],
+    "evidence_coverage": {
+      "successes": 1,
+      "n": 1,
+      "rate": 1.0,
+      "ci95": [
+        0.20654931437723742,
+        1.0
+      ]
+    },
+    "cost_and_time": {
+      "total_cost_usd": 0.134713,
+      "unpriced_trials": 0,
+      "cost_per_verified_success_usd": 0.134713,
+      "wall_ms_per_verified_success": 1481756.0,
+      "tool_ms_total": 2674,
+      "wall_ms_total": 1481756
+    },
+    "retrieval_discipline_edits_without_record": 0,
+    "scope_discipline": {
+      "files_outside_original_plan_per_trial": 0.3333333333333333,
+      "scope_expansions_per_trial": 1.6666666666666667,
+      "scope_questions_per_trial": 0.0
+    },
+    "regression_attribution": 0,
+    "flaky_check_rate": [
+      3,
+      1.0
+    ],
+    "test_integrity_violations": 1,
+    "test_selection_quality": "not measured: the fixture suites are below the size at which TARGETED selection differs from the full suite (PX-035 reports it)",
+    "per_task": {
+      "ts-webapp/parse-money": {
+        "verified_success": {
+          "successes": 1,
+          "n": 3,
+          "rate": 0.3333333333333333,
+          "ci95": [
+            0.061491944720396215,
+            0.7923403991979523
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 3,
+          "rate": 0.3333333333333333,
+          "ci95": [
+            0.061491944720396215,
+            0.7923403991979523
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 3,
+          "rate": 0.3333333333333333,
+          "ci95": [
+            0.061491944720396215,
+            0.7923403991979523
+          ]
+        },
+        "repair_attempts": [
+          0,
+          0,
+          0
+        ],
+        "states": [
+          "ReadyForReview",
+          "Waiting",
+          "Waiting"
+        ]
+      }
+    }
+  },
+  "generated_at": "2026-09-21T04:39:24Z"
+}

@@ -1,0 +1,63 @@
+diff --git a/service.py b/service.py
+index 91ac956..f4f89bb 100644
+--- a/service.py
++++ b/service.py
+@@ -15,3 +15,18 @@ def total_cents(quantity: int, unit_cents: int) -> int:
+ 
+ def format_cents(cents: int) -> str:
+     return f"${cents // 100}.{cents % 100:02d}"
++
++
++def apply_discount(cents: int, percent: int) -> int:
++    """Return the amount after a percentage discount, in cents.
++
++    Rounds half up to the nearest cent using integer math:
++    ``cents * (100 - percent)`` is in hundredths of a cent, so adding 50
++    before floor division implements round-half-up (also for negative
++    inputs, given Python's floor division).
++
++    Raises ValueError when percent is below 0 or above 100.
++    """
++    if percent < 0 or percent > 100:
++        raise ValueError("percent must be between 0 and 100")
++    return (cents * (100 - percent) + 50) // 100
+diff --git a/test_service.py b/test_service.py
+index f60a677..b8aba07 100644
+--- a/test_service.py
++++ b/test_service.py
+@@ -1,4 +1,4 @@
+-from service import format_cents, parse_quantity, total_cents
++from service import apply_discount, format_cents, parse_quantity, total_cents
+ 
+ 
+ def test_parse_quantity_rejects_negative():
+@@ -11,3 +11,29 @@ def test_parse_quantity_rejects_negative():
+ 
+ def test_total_and_format():
+     assert format_cents(total_cents(parse_quantity("3"), 250)) == "$7.50"
++
++
++def test_apply_discount_basic():
++    assert apply_discount(1000, 15) == 850
++    assert apply_discount(999, 33) == 669
++
++
++def test_apply_discount_rounds_half_up():
++    # 101 cents at 50% off is 50.5 cents -> rounds half up to 51
++    assert apply_discount(101, 50) == 51
++    # 101 cents at 49% off is 51.51 cents -> rounds half up to 52
++    assert apply_discount(101, 49) == 52
++
++
++def test_apply_discount_bounds():
++    assert apply_discount(1000, 0) == 1000
++    assert apply_discount(1000, 100) == 0
++
++
++def test_apply_discount_rejects_out_of_range_percent():
++    for bad_percent in (-1, 101):
++        try:
++            apply_discount(1000, bad_percent)
++        except ValueError:
++            continue
++        raise AssertionError(f"percent {bad_percent} accepted")

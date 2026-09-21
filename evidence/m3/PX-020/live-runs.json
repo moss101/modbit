@@ -1,0 +1,20 @@
+{
+ "runs": [
+  {
+   "id": "35543943430",
+   "outcome": "runner lost communication after 2h52m in the single trial job; no log, no artifact; led to one job per task"
+  },
+  {
+   "id": "35553462919",
+   "outcome": "all six parts produced; read 0/18 verified for harness reasons (regression label counting, byte-identical protected tests, relative node_modules link); not a baseline"
+  },
+  {
+   "id": "35557463122",
+   "outcome": "10/18 verified; ts-webapp 0/6 because the node_modules link dangled on the runner (MODULE_NOT_FOUND at BASELINE); not a baseline"
+  },
+  {
+   "id": "35560128454",
+   "outcome": "the baseline: 12/18 verified, all six parts and the merge green"
+  }
+ ]
+}

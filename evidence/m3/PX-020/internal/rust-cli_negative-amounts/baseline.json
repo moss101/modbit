@@ -1,0 +1,375 @@
+{
+  "schema": "modbit-competence-baseline/1",
+  "suite_id": "internal-competence",
+  "suite_version": "1.0.0",
+  "task_list_digest": "a6cdf39a8dac3294b97cc61d8497dbbe5923b2129e185a727d75892c2255ac0c",
+  "tasks": [
+    "rust-cli/negative-amounts"
+  ],
+  "protocol": {
+    "trials_per_task": 3,
+    "max_turns": 24,
+    "configuration": "direct",
+    "endpoint": "openai",
+    "model": "glm-5.3-flash",
+    "base_url_host": "api.z.ai",
+    "catalog_prices_usd_per_mtok": [
+      0.15,
+      0.5
+    ],
+    "gold_patch_access": false,
+    "images": [],
+    "question_answer": "Use your best judgement and proceed without further questions; keep the change minimal and keep the existing tests passing.",
+    "approvals": "deny"
+  },
+  "environment": {
+    "modbit_revision": "1507707cab9a328939bacb57b260f967184ab84c",
+    "build_digest": "fbf23a98251f0939793f24c48f2c0de5a7a5183713ddcde2fabe0a6cddb47749",
+    "harness_version": "competence-baseline/1",
+    "toolchains": {
+      "cargo": "cargo 1.97.1 (c980f4866 2026-06-30)",
+      "git": "git version 2.55.0",
+      "node": "v26.5.1",
+      "python3": "Python 3.12.3",
+      "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)"
+    },
+    "os": "linux-x86_64"
+  },
+  "trials": [
+    {
+      "task": "rust-cli/negative-amounts",
+      "trial": 1,
+      "state": "Waiting",
+      "exit_code": 2,
+      "core_verified": false,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": false,
+      "first_pass": false,
+      "first_candidate": false,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 1,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "src/lib.rs",
+          "tests/format_cents.rs"
+        ],
+        "plan_revisions": 1,
+        "questions": 0,
+        "files_changed": [
+          "src/lib.rs",
+          "tests/format_cents.rs"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 1,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": null,
+        "last_verification": [
+          "TARGETED",
+          "FAILED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": false,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 5,
+        "model_calls": 24,
+        "offsets": [
+          1,
+          721
+        ]
+      },
+      "economics": {
+        "model_calls": 24,
+        "input_tokens": 342224,
+        "cached_input_tokens": 90432,
+        "output_tokens": 28380,
+        "cost_usd": 0.065524,
+        "wall_ms": 743512,
+        "model_ms": 729853,
+        "tool_ms": 8547,
+        "tool_calls": 27
+      },
+      "event_log": {
+        "file": "trials/rust-cli__negative-amounts-1/events.jsonl",
+        "sha256": "e861b35a7a20245e8831cacb337ddce01ed741f1f69b85cd84a38acd16db5bfa",
+        "offsets": [
+          1,
+          721
+        ]
+      },
+      "diff_sha256": "e9ff86d4e53dd8b6de8141942ac7059cefeb96a5ac0a64b079e6d5ed8d5b1b18",
+      "interactions": 4,
+      "notes": []
+    },
+    {
+      "task": "rust-cli/negative-amounts",
+      "trial": 2,
+      "state": "Waiting",
+      "exit_code": 2,
+      "core_verified": false,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": false,
+      "first_pass": false,
+      "first_candidate": false,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 1,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "src/lib.rs",
+          "tests/format_negative.rs"
+        ],
+        "plan_revisions": 3,
+        "questions": 0,
+        "files_changed": [
+          "src/lib.rs",
+          "tests/format_negative.rs"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 1,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": null,
+        "last_verification": [
+          "TARGETED",
+          "FAILED"
+        ],
+        "self_review_unresolved": 1,
+        "plan_recorded": true,
+        "ready_for_review": false,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 5,
+        "model_calls": 24,
+        "offsets": [
+          1,
+          678
+        ]
+      },
+      "economics": {
+        "model_calls": 24,
+        "input_tokens": 345475,
+        "cached_input_tokens": 72640,
+        "output_tokens": 32716,
+        "cost_usd": 0.068179,
+        "wall_ms": 843175,
+        "model_ms": 837686,
+        "tool_ms": 749,
+        "tool_calls": 20
+      },
+      "event_log": {
+        "file": "trials/rust-cli__negative-amounts-2/events.jsonl",
+        "sha256": "0768c881ac0f2acd94d0a075b4b106c94c8af553dd9a78e42b39a1d5198b6d61",
+        "offsets": [
+          1,
+          678
+        ]
+      },
+      "diff_sha256": "af0c3621f5dff346e43edde9dc3558ee9ea8ee8d9dec2f4252bd123e17b777de",
+      "interactions": 4,
+      "notes": []
+    },
+    {
+      "task": "rust-cli/negative-amounts",
+      "trial": 3,
+      "state": "Waiting",
+      "exit_code": 2,
+      "core_verified": false,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": false,
+      "first_pass": false,
+      "first_candidate": false,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "src/lib.rs",
+          "tests/negative_amounts.rs"
+        ],
+        "plan_revisions": 2,
+        "questions": 0,
+        "files_changed": [
+          "src/lib.rs",
+          "tests/negative_amounts.rs"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 1,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": null,
+        "last_verification": [
+          "TARGETED",
+          "FAILED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": false,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 5,
+        "model_calls": 24,
+        "offsets": [
+          1,
+          684
+        ]
+      },
+      "economics": {
+        "model_calls": 24,
+        "input_tokens": 319506,
+        "cached_input_tokens": 101376,
+        "output_tokens": 23328,
+        "cost_usd": 0.05959,
+        "wall_ms": 603023,
+        "model_ms": 597475,
+        "tool_ms": 1058,
+        "tool_calls": 24
+      },
+      "event_log": {
+        "file": "trials/rust-cli__negative-amounts-3/events.jsonl",
+        "sha256": "8247fca0142f6dab774435608c02ab33d0abfb5ab87f6eff4710f179c1112cda",
+        "offsets": [
+          1,
+          684
+        ]
+      },
+      "diff_sha256": "5220ab986341704110133970d583032a28c97a73567dd77238e772327f8b2dad",
+      "interactions": 4,
+      "notes": []
+    }
+  ],
+  "metrics": {
+    "verified_success": {
+      "successes": 0,
+      "n": 3,
+      "rate": 0.0,
+      "ci95": [
+        4.8683609171202235e-17,
+        0.5614970317550455
+      ]
+    },
+    "first_pass_success": {
+      "successes": 0,
+      "n": 3,
+      "rate": 0.0,
+      "ci95": [
+        4.8683609171202235e-17,
+        0.5614970317550455
+      ]
+    },
+    "first_candidate_success": {
+      "successes": 0,
+      "n": 3,
+      "rate": 0.0,
+      "ci95": [
+        4.8683609171202235e-17,
+        0.5614970317550455
+      ]
+    },
+    "repair_loops": {
+      "0": 3
+    },
+    "equivalent_hypothesis_escalations": [
+      0,
+      0.0
+    ],
+    "no_progress_escalations": [
+      2,
+      0.6666666666666666
+    ],
+    "wrong_effect_attempts_blocked": [
+      0,
+      0.0
+    ],
+    "evidence_coverage": {
+      "successes": 0,
+      "n": 0,
+      "rate": 0.0,
+      "ci95": [
+        0.0,
+        1.0
+      ]
+    },
+    "cost_and_time": {
+      "total_cost_usd": 0.19329300000000002,
+      "unpriced_trials": 0,
+      "cost_per_verified_success_usd": null,
+      "wall_ms_per_verified_success": null,
+      "tool_ms_total": 10354,
+      "wall_ms_total": 2189710
+    },
+    "retrieval_discipline_edits_without_record": 0,
+    "scope_discipline": {
+      "files_outside_original_plan_per_trial": 0.0,
+      "scope_expansions_per_trial": 2.0,
+      "scope_questions_per_trial": 0.0
+    },
+    "regression_attribution": 0,
+    "flaky_check_rate": [
+      3,
+      1.0
+    ],
+    "test_integrity_violations": 0,
+    "test_selection_quality": "not measured: the fixture suites are below the size at which TARGETED selection differs from the full suite (PX-035 reports it)",
+    "per_task": {
+      "rust-cli/negative-amounts": {
+        "verified_success": {
+          "successes": 0,
+          "n": 3,
+          "rate": 0.0,
+          "ci95": [
+            4.8683609171202235e-17,
+            0.5614970317550455
+          ]
+        },
+        "first_pass_success": {
+          "successes": 0,
+          "n": 3,
+          "rate": 0.0,
+          "ci95": [
+            4.8683609171202235e-17,
+            0.5614970317550455
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 0,
+          "n": 3,
+          "rate": 0.0,
+          "ci95": [
+            4.8683609171202235e-17,
+            0.5614970317550455
+          ]
+        },
+        "repair_attempts": [
+          0,
+          0,
+          0
+        ],
+        "states": [
+          "Waiting",
+          "Waiting",
+          "Waiting"
+        ]
+      }
+    }
+  },
+  "generated_at": "2026-09-21T04:51:07Z"
+}

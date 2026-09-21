@@ -3,7 +3,7 @@
  "product": "Modbit",
  "edition": "V3.3 EPR v1.1",
  "authority_date": "2026-09-05",
- "generated_on": "2026-09-20",
+ "generated_on": "2026-09-21",
  "generator": "tools/build_graph.py",
  "status_vocabulary": [
   "NOT_STARTED",
@@ -30996,18 +30996,72 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-020",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "BLOCKED",
-   "evidence": [],
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-35560128454",
+    "run:gha-35538461759",
+    "run:gha-35543942063",
+    "test:the_binary_drives_a_real_task_through_the_real_cli_and_core_and_scores_it",
+    "test:bundle_validation_refuses_what_the_frozen_protocol_forbids_and_no_target_precedes_a_baseline",
+    "test:residue_of_a_check_the_agent_runs_is_recorded_not_attributed",
+    "artifact:evidence/m3/PX-020/internal/baseline.json",
+    "artifact:evidence/m3/PX-020/internal/baseline.sha256",
+    "artifact:evidence/m3/PX-020/TASK_CARD.md",
+    "commit:3d91938",
+    "commit:1507707cab9a328939bacb57b260f967184ab84c"
+   ],
    "notes": [
     {
      "at": "2026-09-11T04:51:11Z",
      "from": "NOT_STARTED",
      "to": "BLOCKED",
      "note": "DR-M3-003: the competence baseline has no offline half; running the public and internal suites on a scripted server would invent a baseline. Waits for provider credentials and .github/workflows/live-providers.yml"
+    },
+    {
+     "at": "2026-09-21T04:55:07Z",
+     "from": "BLOCKED",
+     "to": "NOT_STARTED",
+     "note": "DR-M3-005: provider credentials exist (DR-M9-002); the internal competence suite ran through the real product on hosted CI (live-competence run 35560128454); resumed from BLOCKED at the state it was blocked from"
+    },
+    {
+     "at": "2026-09-21T04:55:07Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "NOT-FOUND: no eval harness, suite, bundle or live-model run existed; benchmarks/context-economics ran paired trials on a scripted model only"
+    },
+    {
+     "at": "2026-09-21T04:55:07Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "benchmarks/agent-engineering: frozen six-task internal suite with hidden acceptance and DI-3-protected tests, event scoring, doc 63 metrics with Wilson intervals, bundle validation and target-before-baseline refusal, the competence-baseline binary driving modbit-cli, merge mode; live-competence.yml one job per task; Core fix: residue of an agent-run check recorded, not attributed"
+    },
+    {
+     "at": "2026-09-21T04:55:08Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "PR #20 squashed to main as 3d91938; harness fixes e3c105c, a37afa6, 1507707 on main; the Core reads endpoints from the environment as in production"
+    },
+    {
+     "at": "2026-09-21T04:55:08Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "hosted CI: PR #20 run 35538461759 14/14 on macOS/Linux/Windows (harness suite incl. the real CLI+Core end-to-end, Core qualification residue_of_a_check_the_agent_runs_is_recorded_not_attributed); three live runs on hosted CI against glm-5.3-flash, the first two exposing harness defects (live-runs.json)"
+    },
+    {
+     "at": "2026-09-21T04:55:08Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "live-competence run 35560128454: 12/18 verified (95% 0.437-0.837) through the real product with glm-5.3-flash; bundle digest 59301bb8f2699794b3e26d1699db94e5689aabd991c3b168f26801b7d1a7b786"
+    },
+    {
+     "at": "2026-09-21T04:55:08Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Sealed on the internal competence baseline per DR-M3-005; the public SWE-bench Verified slice stays an open item on the card"
     }
    ],
-   "status_changed_on": "2026-09-11T04:51:11Z",
-   "blocked_from": "NOT_STARTED"
+   "owner_agent": "claude-opus-5",
+   "status_changed_on": "2026-09-21T04:55:08Z"
   },
   {
    "id": "PX-021",
@@ -35742,6 +35796,21 @@
   {
    "from": "62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
    "to": "76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md",
+   "type": "references"
+  },
+  {
+   "from": "63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
+   "to": "12_REPOSITORY_AND_MODULE_LAYOUT.md",
+   "type": "references"
+  },
+  {
+   "from": "63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
+   "to": "15_MODEL_ROUTER_AND_PROVIDER_GATEWAY.md",
+   "type": "references"
+  },
+  {
+   "from": "63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md",
+   "to": "28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
    "type": "references"
   },
   {

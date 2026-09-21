@@ -1,0 +1,14 @@
+diff --git a/src/cart.ts b/src/cart.ts
+index cd383a7..a32b13f 100644
+--- a/src/cart.ts
++++ b/src/cart.ts
+@@ -10,3 +10,9 @@ export function totalCents(quantity: number, unitCents: number): number {
+ export function formatCents(cents: number): string {
+   return `${Math.floor(cents / 100)}.${String(cents % 100).padStart(2, "0")}`;
+ }
++export function parseMoney(text: string): number {
++  const s = text.trim();
++  const m = /^(\d+)(?:\.(\d{1,2}))?$/.exec(s);
++  if (!m) throw new Error(`not a money amount: ${JSON.stringify(text)}`);
++  return Number(m[1]) * 100 + Number((m[2] ?? "").padEnd(2, "0"));
++}

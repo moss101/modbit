@@ -1,0 +1,24 @@
+$ cargo test --offline --test hidden_negative_amounts
+[exit 0]
+
+running 2 tests
+test hidden_negative_amounts_render_with_a_leading_minus ... ok
+test hidden_positive_amounts_unchanged ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling rust_cli v0.1.0 (/tmp/modbit-bench-3034-rust-cli__negative-amounts-2/workspace)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.08s
+     Running tests/hidden_negative_amounts.rs (target/debug/deps/hidden_negative_amounts-4e469cd3a45727bc)
+
+$ cargo test --offline --test quantities formats_totals
+[exit 0]
+
+running 1 test
+test formats_totals ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.00s
+     Running tests/quantities.rs (target/debug/deps/quantities-7ec4f67322d5f22f)
+

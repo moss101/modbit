@@ -1,0 +1,22 @@
+$ cargo test --offline --test quantities acceptance_rejects_negative_quantity
+[exit 0]
+
+running 1 test
+test acceptance_rejects_negative_quantity ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.00s
+     Running tests/quantities.rs (target/debug/deps/quantities-7ec4f67322d5f22f)
+
+$ cargo test --offline --test quantities formats_totals
+[exit 0]
+
+running 1 test
+test formats_totals ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.01s
+     Running tests/quantities.rs (target/debug/deps/quantities-7ec4f67322d5f22f)
+

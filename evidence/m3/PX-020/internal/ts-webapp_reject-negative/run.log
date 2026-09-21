@@ -1,0 +1,66 @@
+competence-baseline: suite internal-competence v1.0.0 (1 tasks, digest a6cdf39a8dac) — 3 trials x 1 tasks, endpoint openai at api.z.ai model glm-5.3-flash, max_turns 24
+competence-baseline: processes by memory after the trial:
+    PID   RSS ELAPSED COMMAND
+   1886 172052    937 Runner.Worker
+   1831 145248    939 provjobd2377266
+   1863 113888    939 Runner.Listener
+   2879 106824    851 modbit-core
+   1112 72524     959 dockerd
+    765 51660     959 php-fpm8.3
+    841 43800     959 containerd
+    222 43680     969 multipathd
+competence-baseline: MemAvailable:   15202600 kB | SwapFree:        3145724 kB
+competence-baseline: ts-webapp/reject-negative trial 1/3: state=ReadyForReview core_verified=true acceptance=true integrity=true verified=true repairs=0 interactions=3 cost=Some(0.05229) (851s)
+competence-baseline: processes by memory after the trial:
+    PID   RSS ELAPSED COMMAND
+   1886 177904   1217 Runner.Worker
+   1831 138656   1220 provjobd2377266
+   1863 114332   1219 Runner.Listener
+   3678 77140     280 modbit-core
+   1112 72524    1239 dockerd
+    765 51660    1240 php-fpm8.3
+    841 43800    1240 containerd
+    222 43680    1250 multipathd
+competence-baseline: MemAvailable:   15224924 kB | SwapFree:        3145724 kB
+competence-baseline: ts-webapp/reject-negative trial 2/3: state=ReadyForReview core_verified=true acceptance=true integrity=true verified=true repairs=1 interactions=0 cost=Some(0.029709) (280s)
+competence-baseline: processes by memory after the trial:
+    PID   RSS ELAPSED COMMAND
+   1886 179596   1312 Runner.Worker
+   1831 143888   1314 provjobd2377266
+   1863 114400   1314 Runner.Listener
+   4160 75060      94 modbit-core
+   1112 72524    1334 dockerd
+    765 51660    1334 php-fpm8.3
+    841 43808    1334 containerd
+    222 43680    1344 multipathd
+competence-baseline: MemAvailable:   15184392 kB | SwapFree:        3145724 kB
+competence-baseline: ts-webapp/reject-negative trial 3/3: state=ReadyForReview core_verified=true acceptance=true integrity=true verified=true repairs=0 interactions=0 cost=Some(0.010762) (94s)
+# Competence baseline — internal-competence v1.0.0
+
+- task list digest: `a6cdf39a8dac3294b97cc61d8497dbbe5923b2129e185a727d75892c2255ac0c`
+- bundle digest: `603d2dccf201cf05e261fe739bab6abf695887160d3c9387260a5dbb1d15ab47`
+- protocol: 3 trials/task, max_turns 24, openai `glm-5.3-flash` at api.z.ai (direct)
+- Modbit revision: `1507707cab9a328939bacb57b260f967184ab84c`; build digest `fbf23a98251f`; harness competence-baseline/1
+
+| metric | value | 95% interval |
+|---|---|---|
+| verified success | 3/3 = 1.000 | 0.439–1.000 |
+| first-pass success (zero RepairAttempts) | 2/3 = 0.667 | 0.208–0.939 |
+| first-candidate success (at most one repair attempt, no escalation) | 3/3 = 1.000 | 0.439–1.000 |
+| repair loops (attempts→trials) | {0: 2, 1: 1} | — |
+| equivalent-hypothesis escalations | 0 (0.00/trial) | — |
+| no-progress escalations | 2 (0.67/trial) | — |
+| wrong-effect attempts blocked | 0 (0.00/trial) | — |
+| evidence coverage | 3/3 = 1.000 | 0.439–1.000 |
+| cost | total 0.0928 USD; per verified success Some(0.030920333333333338) | — |
+| edits without retrieval record | 0 | must be 0 |
+| files outside original plan / expansions / questions per trial | 0.00 / 2.33 / 0.00 | — |
+| regressions attributed | 0 | — |
+| flaky quarantines | 3 (1.00/trial) | — |
+| DI-3 violations | 0 | — |
+
+| task | verified | first-pass | states |
+|---|---|---|---|
+| ts-webapp/reject-negative | 3/3 | 2/3 | ReadyForReview, ReadyForReview, ReadyForReview |
+
+bundle: parts/ts-webapp_reject-negative/baseline.json (sha256 603d2dccf201cf05e261fe739bab6abf695887160d3c9387260a5dbb1d15ab47)

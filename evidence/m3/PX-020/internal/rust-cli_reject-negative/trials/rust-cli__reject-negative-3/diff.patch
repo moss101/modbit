@@ -1,0 +1,21 @@
+diff --git a/src/lib.rs b/src/lib.rs
+index 12a5798..4fd733b 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -1,12 +1,15 @@
+ //! Fixture target software (docs/50 `rust-cli`): a tiny order-quantity
+ //! library with seeded defects. Not Modbit code.
+ 
+-/// Parse an order quantity. Seeded defect: negatives are accepted.
++/// Parse an order quantity. Negative quantities are rejected.
+ pub fn parse_quantity(input: &str) -> Result<i64, String> {
+     let n: i64 = input
+         .trim()
+         .parse()
+         .map_err(|e| format!("not a number: {e}"))?;
++    if n < 0 {
++        return Err(format!("negative quantity: {n}"));
++    }
+     Ok(n)
+ }
+ 

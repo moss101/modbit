@@ -1,0 +1,375 @@
+{
+  "schema": "modbit-competence-baseline/1",
+  "suite_id": "internal-competence",
+  "suite_version": "1.0.0",
+  "task_list_digest": "a6cdf39a8dac3294b97cc61d8497dbbe5923b2129e185a727d75892c2255ac0c",
+  "tasks": [
+    "python-service/reject-zero"
+  ],
+  "protocol": {
+    "trials_per_task": 3,
+    "max_turns": 24,
+    "configuration": "direct",
+    "endpoint": "openai",
+    "model": "glm-5.3-flash",
+    "base_url_host": "api.z.ai",
+    "catalog_prices_usd_per_mtok": [
+      0.15,
+      0.5
+    ],
+    "gold_patch_access": false,
+    "images": [],
+    "question_answer": "Use your best judgement and proceed without further questions; keep the change minimal and keep the existing tests passing.",
+    "approvals": "deny"
+  },
+  "environment": {
+    "modbit_revision": "1507707cab9a328939bacb57b260f967184ab84c",
+    "build_digest": "fbf23a98251f0939793f24c48f2c0de5a7a5183713ddcde2fabe0a6cddb47749",
+    "harness_version": "competence-baseline/1",
+    "toolchains": {
+      "cargo": "cargo 1.97.1 (c980f4866 2026-06-30)",
+      "git": "git version 2.55.0",
+      "node": "v26.5.1",
+      "python3": "Python 3.12.3",
+      "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)"
+    },
+    "os": "linux-x86_64"
+  },
+  "trials": [
+    {
+      "task": "python-service/reject-zero",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "service.py",
+          "test_service.py"
+        ],
+        "plan_revisions": 2,
+        "questions": 0,
+        "files_changed": [
+          "service.py",
+          "test_service.py"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 17,
+        "offsets": [
+          1,
+          429
+        ]
+      },
+      "economics": {
+        "model_calls": 17,
+        "input_tokens": 175556,
+        "cached_input_tokens": 85632,
+        "output_tokens": 5164,
+        "cost_usd": 0.028915,
+        "wall_ms": 164832,
+        "model_ms": 161718,
+        "tool_ms": 779,
+        "tool_calls": 12
+      },
+      "event_log": {
+        "file": "trials/python-service__reject-zero-1/events.jsonl",
+        "sha256": "69d7751fe1c574c0a0701ac89ba332865f397a813e161e84c7beed020ebd72b6",
+        "offsets": [
+          1,
+          429
+        ]
+      },
+      "diff_sha256": "c7d3650f82a005a33643c94ab40929d0782b3513e1b25dc758ea21cbbd1a3668",
+      "interactions": 0,
+      "notes": []
+    },
+    {
+      "task": "python-service/reject-zero",
+      "trial": 2,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "service.py",
+          "test_service.py"
+        ],
+        "plan_revisions": 3,
+        "questions": 0,
+        "files_changed": [
+          "service.py",
+          "test_service.py"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 15,
+        "offsets": [
+          1,
+          383
+        ]
+      },
+      "economics": {
+        "model_calls": 15,
+        "input_tokens": 142489,
+        "cached_input_tokens": 83328,
+        "output_tokens": 5042,
+        "cost_usd": 0.023894,
+        "wall_ms": 132233,
+        "model_ms": 130828,
+        "tool_ms": 120,
+        "tool_calls": 9
+      },
+      "event_log": {
+        "file": "trials/python-service__reject-zero-2/events.jsonl",
+        "sha256": "6eff2757c7efcff07cce3f126f08e203607331fad0d35bbc8493a41c3983fbe2",
+        "offsets": [
+          1,
+          383
+        ]
+      },
+      "diff_sha256": "cb440bb8f48ea93098d117bfe18fe84f407308e8536a19279fa9a4be66d3cac6",
+      "interactions": 0,
+      "notes": []
+    },
+    {
+      "task": "python-service/reject-zero",
+      "trial": 3,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "service.py",
+          "test_service.py"
+        ],
+        "plan_revisions": 3,
+        "questions": 0,
+        "files_changed": [
+          "service.py",
+          "test_service.py"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 1,
+        "model_calls": 20,
+        "offsets": [
+          1,
+          518
+        ]
+      },
+      "economics": {
+        "model_calls": 20,
+        "input_tokens": 216594,
+        "cached_input_tokens": 76416,
+        "output_tokens": 10744,
+        "cost_usd": 0.037861,
+        "wall_ms": 410130,
+        "model_ms": 406945,
+        "tool_ms": 772,
+        "tool_calls": 15
+      },
+      "event_log": {
+        "file": "trials/python-service__reject-zero-3/events.jsonl",
+        "sha256": "0c5ceb8cd3ff7d11110220b310628f6cb4199c7a5d34095b3bf812591a4ac691",
+        "offsets": [
+          1,
+          518
+        ]
+      },
+      "diff_sha256": "d2d8368e764975ed5e89c31db91b03dfdb471f42ac026c865bb9b2ed4b60ad1b",
+      "interactions": 1,
+      "notes": []
+    }
+  ],
+  "metrics": {
+    "verified_success": {
+      "successes": 3,
+      "n": 3,
+      "rate": 1.0,
+      "ci95": [
+        0.4385029682449545,
+        1.0
+      ]
+    },
+    "first_pass_success": {
+      "successes": 3,
+      "n": 3,
+      "rate": 1.0,
+      "ci95": [
+        0.4385029682449545,
+        1.0
+      ]
+    },
+    "first_candidate_success": {
+      "successes": 3,
+      "n": 3,
+      "rate": 1.0,
+      "ci95": [
+        0.4385029682449545,
+        1.0
+      ]
+    },
+    "repair_loops": {
+      "0": 3
+    },
+    "equivalent_hypothesis_escalations": [
+      0,
+      0.0
+    ],
+    "no_progress_escalations": [
+      0,
+      0.0
+    ],
+    "wrong_effect_attempts_blocked": [
+      0,
+      0.0
+    ],
+    "evidence_coverage": {
+      "successes": 3,
+      "n": 3,
+      "rate": 1.0,
+      "ci95": [
+        0.4385029682449545,
+        1.0
+      ]
+    },
+    "cost_and_time": {
+      "total_cost_usd": 0.09067,
+      "unpriced_trials": 0,
+      "cost_per_verified_success_usd": 0.030223333333333335,
+      "wall_ms_per_verified_success": 235731.66666666666,
+      "tool_ms_total": 1671,
+      "wall_ms_total": 707195
+    },
+    "retrieval_discipline_edits_without_record": 0,
+    "scope_discipline": {
+      "files_outside_original_plan_per_trial": 0.0,
+      "scope_expansions_per_trial": 2.6666666666666665,
+      "scope_questions_per_trial": 0.0
+    },
+    "regression_attribution": 0,
+    "flaky_check_rate": [
+      0,
+      0.0
+    ],
+    "test_integrity_violations": 0,
+    "test_selection_quality": "not measured: the fixture suites are below the size at which TARGETED selection differs from the full suite (PX-035 reports it)",
+    "per_task": {
+      "python-service/reject-zero": {
+        "verified_success": {
+          "successes": 3,
+          "n": 3,
+          "rate": 1.0,
+          "ci95": [
+            0.4385029682449545,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 3,
+          "n": 3,
+          "rate": 1.0,
+          "ci95": [
+            0.4385029682449545,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 3,
+          "n": 3,
+          "rate": 1.0,
+          "ci95": [
+            0.4385029682449545,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0,
+          0,
+          0
+        ],
+        "states": [
+          "ReadyForReview",
+          "ReadyForReview",
+          "ReadyForReview"
+        ]
+      }
+    }
+  },
+  "generated_at": "2026-09-21T04:26:24Z"
+}

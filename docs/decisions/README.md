@@ -65,3 +65,4 @@ change of mind is a new record that names the old one in `supersedes`.
 | DR-M7-001 | Reschedule IMP-EV-0281 to M9 (site-declared structured tools are MCP servers a site declares; the gateway that lists and calls them is M9.4) | accepted | 2026-09-17 | none |
 | DR-M9-001 | Add `crates/mcp` and `tools/mcp-testserver` to the module layout (the External Tool Hub of M9.4) | accepted | 2026-09-18 | none |
 | DR-M9-002 | The live-provider proofs may run against an OpenAI- or Anthropic-protocol compatible gateway (z.ai, glm-5.3-flash), recorded as such; the providers' own production endpoints stay open | accepted | 2026-09-19 | none |
+| DR-M3-005 | PX-020 seals on the internal competence baseline measured through the real product with a live model; the public SWE-bench Verified slice waits for its container-image harness | accepted | 2026-09-20 | none |

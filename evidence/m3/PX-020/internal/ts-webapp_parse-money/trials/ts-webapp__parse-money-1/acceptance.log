@@ -1,0 +1,26 @@
+$ node node_modules/vitest/vitest.mjs run test/hidden_parse_money.test.ts
+[exit 0]
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.0 [39m[90m/tmp/modbit-bench-2860-ts-webapp__parse-money-1/workspace[39m
+
+ [32m✓[39m test/hidden_parse_money.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m3 passed[39m[22m[90m (3)[39m
+[2m   Start at [22m 04:18:09
+[2m   Duration [22m 115ms[2m (transform 55%, import 24%, tests 12%, worker 9%)[22m
+
+
+$ node node_modules/vitest/vitest.mjs run test/cart.test.ts -t formats totals
+[exit 0]
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.0 [39m[90m/tmp/modbit-bench-2860-ts-webapp__parse-money-1/workspace[39m
+
+ [32m✓[39m test/cart.test.ts [2m([22m[2m4 tests[22m[2m | [22m[33m3 skipped[39m[2m)[22m[32m 2[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[2m | [22m[33m3 skipped[39m[90m (4)[39m
+[2m   Start at [22m 04:18:10
+[2m   Duration [22m 111ms[2m (transform 58%, import 25%, worker 9%, tests 7%)[22m
+
+

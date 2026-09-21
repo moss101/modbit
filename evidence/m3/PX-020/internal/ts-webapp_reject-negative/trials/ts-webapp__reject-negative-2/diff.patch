@@ -1,0 +1,12 @@
+diff --git a/src/cart.ts b/src/cart.ts
+index cd383a7..bd43f55 100644
+--- a/src/cart.ts
++++ b/src/cart.ts
+@@ -2,6 +2,7 @@
+ export function parseQuantity(input: string): number {
+   const n = Number(input.trim());
+   if (!Number.isInteger(n)) throw new Error(`not an integer: ${input}`);
++  if (n < 0) throw new Error(`negative quantity: ${input}`);
+   return n;
+ }
+ export function totalCents(quantity: number, unitCents: number): number {

@@ -1,0 +1,20 @@
+diff --git a/src/lib.rs b/src/lib.rs
+index 12a5798..64a2d37 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -16,6 +16,14 @@ pub fn total_cents(quantity: i64, unit_cents: i64) -> i64 {
+ }
+ 
+ /// Human formatting of a cent amount.
++///
++/// Negative amounts render with a single leading minus and two-digit cents:
++/// `-105` → `"-1.05"`, `-5` → `"-0.05"`. Positive amounts are unchanged.
+ pub fn format_cents(cents: i64) -> String {
+-    format!("{}.{:02}", cents / 100, cents % 100)
++    let (sign, magnitude) = if cents < 0 {
++        ("-", cents.unsigned_abs())
++    } else {
++        ("", cents as u64)
++    };
++    format!("{sign}{}.{:02}", magnitude / 100, magnitude % 100)
+ }

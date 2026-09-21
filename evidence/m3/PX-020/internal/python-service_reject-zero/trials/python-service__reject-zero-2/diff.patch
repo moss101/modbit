@@ -1,0 +1,36 @@
+diff --git a/service.py b/service.py
+index 91ac956..f74f3ca 100644
+--- a/service.py
++++ b/service.py
+@@ -2,10 +2,10 @@
+ 
+ 
+ def parse_quantity(text: str) -> int:
+-    """Parse a positive integer quantity; negative values are rejected."""
++    """Parse a strictly positive integer quantity; zero and negative values are rejected."""
+     value = int(text.strip())
+-    if value < 0:
+-        raise ValueError("negative quantity")
++    if value <= 0:
++        raise ValueError("quantity must be strictly positive")
+     return value
+ 
+ 
+diff --git a/test_service.py b/test_service.py
+index f60a677..fc5825f 100644
+--- a/test_service.py
++++ b/test_service.py
+@@ -9,5 +9,13 @@ def test_parse_quantity_rejects_negative():
+     raise AssertionError("negative quantity accepted")
+ 
+ 
++def test_parse_quantity_rejects_zero():
++    try:
++        parse_quantity("0")
++    except ValueError:
++        return
++    raise AssertionError("zero quantity accepted")
++
++
+ def test_total_and_format():
+     assert format_cents(total_cents(parse_quantity("3"), 250)) == "$7.50"

@@ -1,0 +1,376 @@
+{
+  "schema": "modbit-competence-baseline/1",
+  "suite_id": "internal-competence",
+  "suite_version": "1.0.0",
+  "task_list_digest": "a6cdf39a8dac3294b97cc61d8497dbbe5923b2129e185a727d75892c2255ac0c",
+  "tasks": [
+    "python-service/discount"
+  ],
+  "protocol": {
+    "trials_per_task": 3,
+    "max_turns": 24,
+    "configuration": "direct",
+    "endpoint": "openai",
+    "model": "glm-5.3-flash",
+    "base_url_host": "api.z.ai",
+    "catalog_prices_usd_per_mtok": [
+      0.15,
+      0.5
+    ],
+    "gold_patch_access": false,
+    "images": [],
+    "question_answer": "Use your best judgement and proceed without further questions; keep the change minimal and keep the existing tests passing.",
+    "approvals": "deny"
+  },
+  "environment": {
+    "modbit_revision": "1507707cab9a328939bacb57b260f967184ab84c",
+    "build_digest": "fbf23a98251f0939793f24c48f2c0de5a7a5183713ddcde2fabe0a6cddb47749",
+    "harness_version": "competence-baseline/1",
+    "toolchains": {
+      "cargo": "cargo 1.97.1 (c980f4866 2026-06-30)",
+      "git": "git version 2.55.0",
+      "node": "v26.5.1",
+      "python3": "Python 3.12.3",
+      "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)"
+    },
+    "os": "linux-x86_64"
+  },
+  "trials": [
+    {
+      "task": "python-service/discount",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "service.py",
+          "test_service.py"
+        ],
+        "plan_revisions": 4,
+        "questions": 0,
+        "files_changed": [
+          "service.py",
+          "test_service.py"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 15,
+        "offsets": [
+          1,
+          408
+        ]
+      },
+      "economics": {
+        "model_calls": 15,
+        "input_tokens": 151081,
+        "cached_input_tokens": 83328,
+        "output_tokens": 10164,
+        "cost_usd": 0.027744,
+        "wall_ms": 259474,
+        "model_ms": 257372,
+        "tool_ms": 412,
+        "tool_calls": 11
+      },
+      "event_log": {
+        "file": "trials/python-service__discount-1/events.jsonl",
+        "sha256": "6663ddc1cd3f48a68a37c2dbb1f5edbe7513fe6eb8668adc60fa8bc317aae3fe",
+        "offsets": [
+          1,
+          408
+        ]
+      },
+      "diff_sha256": "010a0d78f61e82cb6e1d1e60a59e308ae6ced808baa6d94bc68cca2205c22b60",
+      "interactions": 0,
+      "notes": []
+    },
+    {
+      "task": "python-service/discount",
+      "trial": 2,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "service.py",
+          "test_service.py"
+        ],
+        "plan_revisions": 2,
+        "questions": 0,
+        "files_changed": [
+          "service.py",
+          "test_service.py"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 20,
+        "offsets": [
+          1,
+          496
+        ]
+      },
+      "economics": {
+        "model_calls": 20,
+        "input_tokens": 229888,
+        "cached_input_tokens": 112896,
+        "output_tokens": 10148,
+        "cost_usd": 0.039557,
+        "wall_ms": 220986,
+        "model_ms": 218540,
+        "tool_ms": 817,
+        "tool_calls": 13
+      },
+      "event_log": {
+        "file": "trials/python-service__discount-2/events.jsonl",
+        "sha256": "975b55be2af7e072940e0c0d37bc4e9203d14c703599d3f8f169714d08b39694",
+        "offsets": [
+          1,
+          496
+        ]
+      },
+      "diff_sha256": "303bfb65fa7024f2481be7c1759c2bdcf763cb2e581a5a47fc87800b976e39ad",
+      "interactions": 0,
+      "notes": []
+    },
+    {
+      "task": "python-service/discount",
+      "trial": 3,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": false,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 1,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "service.py",
+          "test_service.py"
+        ],
+        "plan_revisions": 2,
+        "questions": 0,
+        "files_changed": [
+          "service.py",
+          "test_service.py"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 21,
+        "offsets": [
+          1,
+          532
+        ]
+      },
+      "economics": {
+        "model_calls": 21,
+        "input_tokens": 255667,
+        "cached_input_tokens": 118912,
+        "output_tokens": 12626,
+        "cost_usd": 0.044663,
+        "wall_ms": 299040,
+        "model_ms": 296691,
+        "tool_ms": 241,
+        "tool_calls": 13
+      },
+      "event_log": {
+        "file": "trials/python-service__discount-3/events.jsonl",
+        "sha256": "95affb02bbc55bfe631abb1e51892a617b6da870e5c2c1f3925b6e31921232bb",
+        "offsets": [
+          1,
+          532
+        ]
+      },
+      "diff_sha256": "99bf3ade3a1c4322fd6aa8ed56f17f6788bfbd97a803d1849ba96f2463635bac",
+      "interactions": 0,
+      "notes": []
+    }
+  ],
+  "metrics": {
+    "verified_success": {
+      "successes": 3,
+      "n": 3,
+      "rate": 1.0,
+      "ci95": [
+        0.4385029682449545,
+        1.0
+      ]
+    },
+    "first_pass_success": {
+      "successes": 2,
+      "n": 3,
+      "rate": 0.6666666666666666,
+      "ci95": [
+        0.20765960080204768,
+        0.9385080552796037
+      ]
+    },
+    "first_candidate_success": {
+      "successes": 3,
+      "n": 3,
+      "rate": 1.0,
+      "ci95": [
+        0.4385029682449545,
+        1.0
+      ]
+    },
+    "repair_loops": {
+      "0": 2,
+      "1": 1
+    },
+    "equivalent_hypothesis_escalations": [
+      0,
+      0.0
+    ],
+    "no_progress_escalations": [
+      0,
+      0.0
+    ],
+    "wrong_effect_attempts_blocked": [
+      0,
+      0.0
+    ],
+    "evidence_coverage": {
+      "successes": 3,
+      "n": 3,
+      "rate": 1.0,
+      "ci95": [
+        0.4385029682449545,
+        1.0
+      ]
+    },
+    "cost_and_time": {
+      "total_cost_usd": 0.11196400000000001,
+      "unpriced_trials": 0,
+      "cost_per_verified_success_usd": 0.03732133333333334,
+      "wall_ms_per_verified_success": 259833.33333333334,
+      "tool_ms_total": 1470,
+      "wall_ms_total": 779500
+    },
+    "retrieval_discipline_edits_without_record": 0,
+    "scope_discipline": {
+      "files_outside_original_plan_per_trial": 0.0,
+      "scope_expansions_per_trial": 2.6666666666666665,
+      "scope_questions_per_trial": 0.0
+    },
+    "regression_attribution": 0,
+    "flaky_check_rate": [
+      0,
+      0.0
+    ],
+    "test_integrity_violations": 0,
+    "test_selection_quality": "not measured: the fixture suites are below the size at which TARGETED selection differs from the full suite (PX-035 reports it)",
+    "per_task": {
+      "python-service/discount": {
+        "verified_success": {
+          "successes": 3,
+          "n": 3,
+          "rate": 1.0,
+          "ci95": [
+            0.4385029682449545,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 2,
+          "n": 3,
+          "rate": 0.6666666666666666,
+          "ci95": [
+            0.20765960080204768,
+            0.9385080552796037
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 3,
+          "n": 3,
+          "rate": 1.0,
+          "ci95": [
+            0.4385029682449545,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0,
+          0,
+          1
+        ],
+        "states": [
+          "ReadyForReview",
+          "ReadyForReview",
+          "ReadyForReview"
+        ]
+      }
+    }
+  },
+  "generated_at": "2026-09-21T04:27:42Z"
+}

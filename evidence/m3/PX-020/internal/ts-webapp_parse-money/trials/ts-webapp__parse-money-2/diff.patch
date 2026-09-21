@@ -1,0 +1,31 @@
+diff --git a/src/cart.ts b/src/cart.ts
+index cd383a7..8112acf 100644
+--- a/src/cart.ts
++++ b/src/cart.ts
+@@ -1,7 +1,8 @@
+-// Fixture target software (docs/50 `ts-webapp`). Seeded defect: negative quantities are accepted.
++// Fixture target software (docs/50 `ts-webapp`).
+ export function parseQuantity(input: string): number {
+   const n = Number(input.trim());
+   if (!Number.isInteger(n)) throw new Error(`not an integer: ${input}`);
++  if (n < 0) throw new Error(`negative quantity: ${input}`);
+   return n;
+ }
+ export function totalCents(quantity: number, unitCents: number): number {
+@@ -10,3 +11,16 @@ export function totalCents(quantity: number, unitCents: number): number {
+ export function formatCents(cents: number): string {
+   return `${Math.floor(cents / 100)}.${String(cents % 100).padStart(2, "0")}`;
+ }
++export function parseMoney(text: string): number {
++  const trimmed = text.trim();
++  if (trimmed.length === 0) throw new Error(`empty money string: ${JSON.stringify(text)}`);
++  if (/^[-+]/.test(trimmed)) throw new Error(`signed money not allowed: ${JSON.stringify(text)}`);
++  const m = /^(\d+)(?:\.(\d{1,2}))?$/.exec(trimmed);
++  if (m === null) throw new Error(`malformed money string: ${JSON.stringify(text)}`);
++  const dollars = Number(m[1]);
++  const frac = m[2] ?? "";
++  const cents = frac.length === 0 ? 0 : frac.length === 1 ? Number(frac) * 10 : Number(frac);
++  const total = dollars * 100 + cents;
++  if (!Number.isSafeInteger(total)) throw new Error(`money out of range: ${JSON.stringify(text)}`);
++  return total;
++}

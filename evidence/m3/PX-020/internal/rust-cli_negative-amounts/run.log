@@ -1,0 +1,66 @@
+competence-baseline: suite internal-competence v1.0.0 (1 tasks, digest a6cdf39a8dac) — 3 trials x 1 tasks, endpoint openai at api.z.ai model glm-5.3-flash, max_turns 24
+competence-baseline: processes by memory after the trial:
+    PID   RSS ELAPSED COMMAND
+   2073 139820    836 Runner.Worker
+   1988 138860    960 provjobd2997360
+   2054 107916    837 Runner.Listener
+   3066 91896     745 modbit-core
+   1140 72616     975 dockerd
+    893 51728     976 php-fpm8.3
+    993 44168     975 containerd
+    223 43712     983 multipathd
+competence-baseline: MemAvailable:   15311840 kB | SwapFree:        3145724 kB
+competence-baseline: rust-cli/negative-amounts trial 1/3: state=Waiting core_verified=false acceptance=true integrity=true verified=false repairs=0 interactions=4 cost=Some(0.065524) (745s)
+competence-baseline: processes by memory after the trial:
+    PID   RSS ELAPSED COMMAND
+   2073 140576   1681 Runner.Worker
+   1988 138864   1806 provjobd2997360
+   2054 109932   1683 Runner.Listener
+   3930 90312     845 modbit-core
+   1140 72620    1820 dockerd
+    893 51728    1821 php-fpm8.3
+    993 44172    1821 containerd
+    223 43712    1829 multipathd
+competence-baseline: MemAvailable:   15296796 kB | SwapFree:        3145724 kB
+competence-baseline: rust-cli/negative-amounts trial 2/3: state=Waiting core_verified=false acceptance=true integrity=true verified=false repairs=0 interactions=4 cost=Some(0.068179) (845s)
+competence-baseline: processes by memory after the trial:
+    PID   RSS ELAPSED COMMAND
+   2073 140708   2286 Runner.Worker
+   1988 138864   2411 provjobd2997360
+   2054 111588   2288 Runner.Listener
+   4829 100508    605 modbit-core
+   1140 72620    2425 dockerd
+    893 51728    2426 php-fpm8.3
+    993 44176    2426 containerd
+    223 43712    2434 multipathd
+competence-baseline: MemAvailable:   15288740 kB | SwapFree:        3145724 kB
+competence-baseline: rust-cli/negative-amounts trial 3/3: state=Waiting core_verified=false acceptance=true integrity=true verified=false repairs=0 interactions=4 cost=Some(0.05959) (605s)
+# Competence baseline — internal-competence v1.0.0
+
+- task list digest: `a6cdf39a8dac3294b97cc61d8497dbbe5923b2129e185a727d75892c2255ac0c`
+- bundle digest: `b03fee5c86b9a489a7c80ca68ed4c9fabd6b215817148a97344b461b743c8dde`
+- protocol: 3 trials/task, max_turns 24, openai `glm-5.3-flash` at api.z.ai (direct)
+- Modbit revision: `1507707cab9a328939bacb57b260f967184ab84c`; build digest `fbf23a98251f`; harness competence-baseline/1
+
+| metric | value | 95% interval |
+|---|---|---|
+| verified success | 0/3 = 0.000 | 0.000–0.561 |
+| first-pass success (zero RepairAttempts) | 0/3 = 0.000 | 0.000–0.561 |
+| first-candidate success (at most one repair attempt, no escalation) | 0/3 = 0.000 | 0.000–0.561 |
+| repair loops (attempts→trials) | {0: 3} | — |
+| equivalent-hypothesis escalations | 0 (0.00/trial) | — |
+| no-progress escalations | 2 (0.67/trial) | — |
+| wrong-effect attempts blocked | 0 (0.00/trial) | — |
+| evidence coverage | 0/0 = 0.000 | 0.000–1.000 |
+| cost | total 0.1933 USD; per verified success None | — |
+| edits without retrieval record | 0 | must be 0 |
+| files outside original plan / expansions / questions per trial | 0.00 / 2.00 / 0.00 | — |
+| regressions attributed | 0 | — |
+| flaky quarantines | 3 (1.00/trial) | — |
+| DI-3 violations | 0 | — |
+
+| task | verified | first-pass | states |
+|---|---|---|---|
+| rust-cli/negative-amounts | 0/3 | 0/3 | Waiting, Waiting, Waiting |
+
+bundle: parts/rust-cli_negative-amounts/baseline.json (sha256 b03fee5c86b9a489a7c80ca68ed4c9fabd6b215817148a97344b461b743c8dde)

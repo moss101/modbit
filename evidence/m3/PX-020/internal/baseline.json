@@ -1,0 +1,1688 @@
+{
+  "schema": "modbit-competence-baseline/1",
+  "suite_id": "internal-competence",
+  "suite_version": "1.0.0",
+  "task_list_digest": "a6cdf39a8dac3294b97cc61d8497dbbe5923b2129e185a727d75892c2255ac0c",
+  "tasks": [
+    "rust-cli/reject-negative",
+    "rust-cli/negative-amounts",
+    "ts-webapp/reject-negative",
+    "ts-webapp/parse-money",
+    "python-service/reject-zero",
+    "python-service/discount"
+  ],
+  "protocol": {
+    "trials_per_task": 3,
+    "max_turns": 24,
+    "configuration": "direct",
+    "endpoint": "openai",
+    "model": "glm-5.3-flash",
+    "base_url_host": "api.z.ai",
+    "catalog_prices_usd_per_mtok": [
+      0.15,
+      0.5
+    ],
+    "gold_patch_access": false,
+    "images": [],
+    "question_answer": "Use your best judgement and proceed without further questions; keep the change minimal and keep the existing tests passing.",
+    "approvals": "deny"
+  },
+  "environment": {
+    "modbit_revision": "1507707cab9a328939bacb57b260f967184ab84c",
+    "build_digest": "fbf23a98251f0939793f24c48f2c0de5a7a5183713ddcde2fabe0a6cddb47749",
+    "harness_version": "competence-baseline/1",
+    "toolchains": {
+      "cargo": "cargo 1.97.1 (c980f4866 2026-06-30)",
+      "git": "git version 2.55.0",
+      "node": "v26.5.1",
+      "python3": "Python 3.12.3",
+      "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)"
+    },
+    "os": "linux-x86_64"
+  },
+  "trials": [
+    {
+      "task": "python-service/discount",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "service.py",
+          "test_service.py"
+        ],
+        "plan_revisions": 4,
+        "questions": 0,
+        "files_changed": [
+          "service.py",
+          "test_service.py"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 15,
+        "offsets": [
+          1,
+          408
+        ]
+      },
+      "economics": {
+        "model_calls": 15,
+        "input_tokens": 151081,
+        "cached_input_tokens": 83328,
+        "output_tokens": 10164,
+        "cost_usd": 0.027744,
+        "wall_ms": 259474,
+        "model_ms": 257372,
+        "tool_ms": 412,
+        "tool_calls": 11
+      },
+      "event_log": {
+        "file": "python-service_discount/trials/python-service__discount-1/events.jsonl",
+        "sha256": "6663ddc1cd3f48a68a37c2dbb1f5edbe7513fe6eb8668adc60fa8bc317aae3fe",
+        "offsets": [
+          1,
+          408
+        ]
+      },
+      "diff_sha256": "010a0d78f61e82cb6e1d1e60a59e308ae6ced808baa6d94bc68cca2205c22b60",
+      "interactions": 0,
+      "notes": []
+    },
+    {
+      "task": "python-service/discount",
+      "trial": 2,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "service.py",
+          "test_service.py"
+        ],
+        "plan_revisions": 2,
+        "questions": 0,
+        "files_changed": [
+          "service.py",
+          "test_service.py"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 20,
+        "offsets": [
+          1,
+          496
+        ]
+      },
+      "economics": {
+        "model_calls": 20,
+        "input_tokens": 229888,
+        "cached_input_tokens": 112896,
+        "output_tokens": 10148,
+        "cost_usd": 0.039557,
+        "wall_ms": 220986,
+        "model_ms": 218540,
+        "tool_ms": 817,
+        "tool_calls": 13
+      },
+      "event_log": {
+        "file": "python-service_discount/trials/python-service__discount-2/events.jsonl",
+        "sha256": "975b55be2af7e072940e0c0d37bc4e9203d14c703599d3f8f169714d08b39694",
+        "offsets": [
+          1,
+          496
+        ]
+      },
+      "diff_sha256": "303bfb65fa7024f2481be7c1759c2bdcf763cb2e581a5a47fc87800b976e39ad",
+      "interactions": 0,
+      "notes": []
+    },
+    {
+      "task": "python-service/discount",
+      "trial": 3,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": false,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 1,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "service.py",
+          "test_service.py"
+        ],
+        "plan_revisions": 2,
+        "questions": 0,
+        "files_changed": [
+          "service.py",
+          "test_service.py"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 21,
+        "offsets": [
+          1,
+          532
+        ]
+      },
+      "economics": {
+        "model_calls": 21,
+        "input_tokens": 255667,
+        "cached_input_tokens": 118912,
+        "output_tokens": 12626,
+        "cost_usd": 0.044663,
+        "wall_ms": 299040,
+        "model_ms": 296691,
+        "tool_ms": 241,
+        "tool_calls": 13
+      },
+      "event_log": {
+        "file": "python-service_discount/trials/python-service__discount-3/events.jsonl",
+        "sha256": "95affb02bbc55bfe631abb1e51892a617b6da870e5c2c1f3925b6e31921232bb",
+        "offsets": [
+          1,
+          532
+        ]
+      },
+      "diff_sha256": "99bf3ade3a1c4322fd6aa8ed56f17f6788bfbd97a803d1849ba96f2463635bac",
+      "interactions": 0,
+      "notes": []
+    },
+    {
+      "task": "python-service/reject-zero",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "service.py",
+          "test_service.py"
+        ],
+        "plan_revisions": 2,
+        "questions": 0,
+        "files_changed": [
+          "service.py",
+          "test_service.py"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 17,
+        "offsets": [
+          1,
+          429
+        ]
+      },
+      "economics": {
+        "model_calls": 17,
+        "input_tokens": 175556,
+        "cached_input_tokens": 85632,
+        "output_tokens": 5164,
+        "cost_usd": 0.028915,
+        "wall_ms": 164832,
+        "model_ms": 161718,
+        "tool_ms": 779,
+        "tool_calls": 12
+      },
+      "event_log": {
+        "file": "python-service_reject-zero/trials/python-service__reject-zero-1/events.jsonl",
+        "sha256": "69d7751fe1c574c0a0701ac89ba332865f397a813e161e84c7beed020ebd72b6",
+        "offsets": [
+          1,
+          429
+        ]
+      },
+      "diff_sha256": "c7d3650f82a005a33643c94ab40929d0782b3513e1b25dc758ea21cbbd1a3668",
+      "interactions": 0,
+      "notes": []
+    },
+    {
+      "task": "python-service/reject-zero",
+      "trial": 2,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "service.py",
+          "test_service.py"
+        ],
+        "plan_revisions": 3,
+        "questions": 0,
+        "files_changed": [
+          "service.py",
+          "test_service.py"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 15,
+        "offsets": [
+          1,
+          383
+        ]
+      },
+      "economics": {
+        "model_calls": 15,
+        "input_tokens": 142489,
+        "cached_input_tokens": 83328,
+        "output_tokens": 5042,
+        "cost_usd": 0.023894,
+        "wall_ms": 132233,
+        "model_ms": 130828,
+        "tool_ms": 120,
+        "tool_calls": 9
+      },
+      "event_log": {
+        "file": "python-service_reject-zero/trials/python-service__reject-zero-2/events.jsonl",
+        "sha256": "6eff2757c7efcff07cce3f126f08e203607331fad0d35bbc8493a41c3983fbe2",
+        "offsets": [
+          1,
+          383
+        ]
+      },
+      "diff_sha256": "cb440bb8f48ea93098d117bfe18fe84f407308e8536a19279fa9a4be66d3cac6",
+      "interactions": 0,
+      "notes": []
+    },
+    {
+      "task": "python-service/reject-zero",
+      "trial": 3,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "service.py",
+          "test_service.py"
+        ],
+        "plan_revisions": 3,
+        "questions": 0,
+        "files_changed": [
+          "service.py",
+          "test_service.py"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 0,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "PASSED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 1,
+        "model_calls": 20,
+        "offsets": [
+          1,
+          518
+        ]
+      },
+      "economics": {
+        "model_calls": 20,
+        "input_tokens": 216594,
+        "cached_input_tokens": 76416,
+        "output_tokens": 10744,
+        "cost_usd": 0.037861,
+        "wall_ms": 410130,
+        "model_ms": 406945,
+        "tool_ms": 772,
+        "tool_calls": 15
+      },
+      "event_log": {
+        "file": "python-service_reject-zero/trials/python-service__reject-zero-3/events.jsonl",
+        "sha256": "0c5ceb8cd3ff7d11110220b310628f6cb4199c7a5d34095b3bf812591a4ac691",
+        "offsets": [
+          1,
+          518
+        ]
+      },
+      "diff_sha256": "d2d8368e764975ed5e89c31db91b03dfdb471f42ac026c865bb9b2ed4b60ad1b",
+      "interactions": 1,
+      "notes": []
+    },
+    {
+      "task": "rust-cli/negative-amounts",
+      "trial": 1,
+      "state": "Waiting",
+      "exit_code": 2,
+      "core_verified": false,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": false,
+      "first_pass": false,
+      "first_candidate": false,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 1,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "src/lib.rs",
+          "tests/format_cents.rs"
+        ],
+        "plan_revisions": 1,
+        "questions": 0,
+        "files_changed": [
+          "src/lib.rs",
+          "tests/format_cents.rs"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 1,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": null,
+        "last_verification": [
+          "TARGETED",
+          "FAILED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": false,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 5,
+        "model_calls": 24,
+        "offsets": [
+          1,
+          721
+        ]
+      },
+      "economics": {
+        "model_calls": 24,
+        "input_tokens": 342224,
+        "cached_input_tokens": 90432,
+        "output_tokens": 28380,
+        "cost_usd": 0.065524,
+        "wall_ms": 743512,
+        "model_ms": 729853,
+        "tool_ms": 8547,
+        "tool_calls": 27
+      },
+      "event_log": {
+        "file": "rust-cli_negative-amounts/trials/rust-cli__negative-amounts-1/events.jsonl",
+        "sha256": "e861b35a7a20245e8831cacb337ddce01ed741f1f69b85cd84a38acd16db5bfa",
+        "offsets": [
+          1,
+          721
+        ]
+      },
+      "diff_sha256": "e9ff86d4e53dd8b6de8141942ac7059cefeb96a5ac0a64b079e6d5ed8d5b1b18",
+      "interactions": 4,
+      "notes": []
+    },
+    {
+      "task": "rust-cli/negative-amounts",
+      "trial": 2,
+      "state": "Waiting",
+      "exit_code": 2,
+      "core_verified": false,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": false,
+      "first_pass": false,
+      "first_candidate": false,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 1,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "src/lib.rs",
+          "tests/format_negative.rs"
+        ],
+        "plan_revisions": 3,
+        "questions": 0,
+        "files_changed": [
+          "src/lib.rs",
+          "tests/format_negative.rs"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 1,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": null,
+        "last_verification": [
+          "TARGETED",
+          "FAILED"
+        ],
+        "self_review_unresolved": 1,
+        "plan_recorded": true,
+        "ready_for_review": false,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 5,
+        "model_calls": 24,
+        "offsets": [
+          1,
+          678
+        ]
+      },
+      "economics": {
+        "model_calls": 24,
+        "input_tokens": 345475,
+        "cached_input_tokens": 72640,
+        "output_tokens": 32716,
+        "cost_usd": 0.068179,
+        "wall_ms": 843175,
+        "model_ms": 837686,
+        "tool_ms": 749,
+        "tool_calls": 20
+      },
+      "event_log": {
+        "file": "rust-cli_negative-amounts/trials/rust-cli__negative-amounts-2/events.jsonl",
+        "sha256": "0768c881ac0f2acd94d0a075b4b106c94c8af553dd9a78e42b39a1d5198b6d61",
+        "offsets": [
+          1,
+          678
+        ]
+      },
+      "diff_sha256": "af0c3621f5dff346e43edde9dc3558ee9ea8ee8d9dec2f4252bd123e17b777de",
+      "interactions": 4,
+      "notes": []
+    },
+    {
+      "task": "rust-cli/negative-amounts",
+      "trial": 3,
+      "state": "Waiting",
+      "exit_code": 2,
+      "core_verified": false,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": false,
+      "first_pass": false,
+      "first_candidate": false,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "src/lib.rs",
+          "tests/negative_amounts.rs"
+        ],
+        "plan_revisions": 2,
+        "questions": 0,
+        "files_changed": [
+          "src/lib.rs",
+          "tests/negative_amounts.rs"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 1,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": null,
+        "last_verification": [
+          "TARGETED",
+          "FAILED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": false,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 5,
+        "model_calls": 24,
+        "offsets": [
+          1,
+          684
+        ]
+      },
+      "economics": {
+        "model_calls": 24,
+        "input_tokens": 319506,
+        "cached_input_tokens": 101376,
+        "output_tokens": 23328,
+        "cost_usd": 0.05959,
+        "wall_ms": 603023,
+        "model_ms": 597475,
+        "tool_ms": 1058,
+        "tool_calls": 24
+      },
+      "event_log": {
+        "file": "rust-cli_negative-amounts/trials/rust-cli__negative-amounts-3/events.jsonl",
+        "sha256": "8247fca0142f6dab774435608c02ab33d0abfb5ab87f6eff4710f179c1112cda",
+        "offsets": [
+          1,
+          684
+        ]
+      },
+      "diff_sha256": "5220ab986341704110133970d583032a28c97a73567dd77238e772327f8b2dad",
+      "interactions": 4,
+      "notes": []
+    },
+    {
+      "task": "rust-cli/reject-negative",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "src/lib.rs"
+        ],
+        "plan_revisions": 2,
+        "questions": 0,
+        "files_changed": [
+          "src/lib.rs"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {
+          "COLLATERAL_FIX": 1,
+          "KNOWN_FAILING": 1
+        },
+        "flaky_quarantines": 1,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "FAILED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 11,
+        "offsets": [
+          1,
+          289
+        ]
+      },
+      "economics": {
+        "model_calls": 11,
+        "input_tokens": 101225,
+        "cached_input_tokens": 61248,
+        "output_tokens": 6627,
+        "cost_usd": 0.018497,
+        "wall_ms": 195916,
+        "model_ms": 185071,
+        "tool_ms": 469,
+        "tool_calls": 6
+      },
+      "event_log": {
+        "file": "rust-cli_reject-negative/trials/rust-cli__reject-negative-1/events.jsonl",
+        "sha256": "271cc5e58ae35d4ed77ce4909ad1931680ca64baf2b511d2a3f97310f45dcdfe",
+        "offsets": [
+          1,
+          289
+        ]
+      },
+      "diff_sha256": "77f718a5409501b473e759c88fb795917a6ed4ced6435c1535131092cebede66",
+      "interactions": 0,
+      "notes": []
+    },
+    {
+      "task": "rust-cli/reject-negative",
+      "trial": 2,
+      "state": "Waiting",
+      "exit_code": 2,
+      "core_verified": false,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": false,
+      "first_pass": false,
+      "first_candidate": false,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "src/lib.rs"
+        ],
+        "plan_revisions": 1,
+        "questions": 0,
+        "files_changed": [
+          "src/lib.rs"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {
+          "COLLATERAL_FIX": 1,
+          "KNOWN_FAILING": 1
+        },
+        "flaky_quarantines": 1,
+        "di3_violations": 0,
+        "diff_invariants": {
+          "DI-1": 1
+        },
+        "gate_verdict": "REJECT",
+        "last_verification": [
+          "COMPLETION",
+          "FAILED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": false,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 5,
+        "model_calls": 24,
+        "offsets": [
+          1,
+          939
+        ]
+      },
+      "economics": {
+        "model_calls": 24,
+        "input_tokens": 286994,
+        "cached_input_tokens": 100480,
+        "output_tokens": 17867,
+        "cost_usd": 0.051983,
+        "wall_ms": 949481,
+        "model_ms": 634397,
+        "tool_ms": 328,
+        "tool_calls": 20
+      },
+      "event_log": {
+        "file": "rust-cli_reject-negative/trials/rust-cli__reject-negative-2/events.jsonl",
+        "sha256": "79b340033298e4c0bc3f7b8644b8e1a119cdcc2cebb0350e74c08603f6fdd29f",
+        "offsets": [
+          1,
+          939
+        ]
+      },
+      "diff_sha256": "cb4e970c22ed1eb22ba5ae14db218fa496eb673d059766465d1dbb3bbbc98eb8",
+      "interactions": 4,
+      "notes": []
+    },
+    {
+      "task": "rust-cli/reject-negative",
+      "trial": 3,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "src/lib.rs"
+        ],
+        "plan_revisions": 1,
+        "questions": 0,
+        "files_changed": [
+          "src/lib.rs"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {
+          "COLLATERAL_FIX": 1,
+          "KNOWN_FAILING": 1
+        },
+        "flaky_quarantines": 1,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "FAILED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 1,
+        "model_calls": 8,
+        "offsets": [
+          1,
+          216
+        ]
+      },
+      "economics": {
+        "model_calls": 8,
+        "input_tokens": 57056,
+        "cached_input_tokens": 33792,
+        "output_tokens": 3069,
+        "cost_usd": 0.010093,
+        "wall_ms": 200044,
+        "model_ms": 198127,
+        "tool_ms": 51,
+        "tool_calls": 3
+      },
+      "event_log": {
+        "file": "rust-cli_reject-negative/trials/rust-cli__reject-negative-3/events.jsonl",
+        "sha256": "b81ea8c9f5307763db485e3b12aa1ad543868b89a91b1ef28a8f91690d54c3cd",
+        "offsets": [
+          1,
+          216
+        ]
+      },
+      "diff_sha256": "77f718a5409501b473e759c88fb795917a6ed4ced6435c1535131092cebede66",
+      "interactions": 1,
+      "notes": []
+    },
+    {
+      "task": "ts-webapp/parse-money",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "src/cart.ts",
+          "test/money.test.ts"
+        ],
+        "plan_revisions": 1,
+        "questions": 0,
+        "files_changed": [
+          "src/cart.ts",
+          "test/money.test.ts"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {
+          "KNOWN_FAILING": 2
+        },
+        "flaky_quarantines": 1,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "FAILED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 9,
+        "offsets": [
+          1,
+          264
+        ]
+      },
+      "economics": {
+        "model_calls": 9,
+        "input_tokens": 81146,
+        "cached_input_tokens": 48192,
+        "output_tokens": 8388,
+        "cost_usd": 0.016366,
+        "wall_ms": 212569,
+        "model_ms": 208638,
+        "tool_ms": 87,
+        "tool_calls": 8
+      },
+      "event_log": {
+        "file": "ts-webapp_parse-money/trials/ts-webapp__parse-money-1/events.jsonl",
+        "sha256": "c4a8881c92e89eb1619677ba93fd7ed676e28527d4619e5f41a31bdae7ed06d0",
+        "offsets": [
+          1,
+          264
+        ]
+      },
+      "diff_sha256": "776676b4357a3e3bbf536b4b9735e0aa24f9b2f769ae4450589338547f10a10e",
+      "interactions": 0,
+      "notes": []
+    },
+    {
+      "task": "ts-webapp/parse-money",
+      "trial": 2,
+      "state": "Waiting",
+      "exit_code": 2,
+      "core_verified": false,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": false,
+      "first_pass": false,
+      "first_candidate": false,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "src/cart.ts",
+          "test/money.test.ts"
+        ],
+        "plan_revisions": 2,
+        "questions": 0,
+        "files_changed": [
+          "src/cart.ts",
+          "test/money.test.ts"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 1,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": null,
+        "last_verification": [
+          "TARGETED",
+          "FAILED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": false,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 5,
+        "model_calls": 24,
+        "offsets": [
+          1,
+          680
+        ]
+      },
+      "economics": {
+        "model_calls": 24,
+        "input_tokens": 327799,
+        "cached_input_tokens": 85056,
+        "output_tokens": 24368,
+        "cost_usd": 0.061354,
+        "wall_ms": 695826,
+        "model_ms": 687850,
+        "tool_ms": 1368,
+        "tool_calls": 24
+      },
+      "event_log": {
+        "file": "ts-webapp_parse-money/trials/ts-webapp__parse-money-2/events.jsonl",
+        "sha256": "e80eeadff84c17aa07567c701d7470105f6bf47394dcbb12e93ada3f6d4a43c0",
+        "offsets": [
+          1,
+          680
+        ]
+      },
+      "diff_sha256": "33b324b71b87de746e73df49dd4291ac10c1b12f10a48f96396672c6eca313b0",
+      "interactions": 4,
+      "notes": []
+    },
+    {
+      "task": "ts-webapp/parse-money",
+      "trial": 3,
+      "state": "Waiting",
+      "exit_code": 2,
+      "core_verified": false,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": false,
+      "first_pass": false,
+      "first_candidate": false,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "src/cart.ts",
+          "src/cart.test.ts"
+        ],
+        "plan_revisions": 2,
+        "questions": 0,
+        "files_changed": [
+          "src/cart.test.ts",
+          "src/cart.ts",
+          "test/parse-money.test.ts"
+        ],
+        "files_outside_plan": [
+          "test/parse-money.test.ts"
+        ],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {},
+        "flaky_quarantines": 1,
+        "di3_violations": 1,
+        "diff_invariants": {
+          "DI-3": 1
+        },
+        "gate_verdict": null,
+        "last_verification": [
+          "TARGETED",
+          "FAILED"
+        ],
+        "self_review_unresolved": null,
+        "plan_recorded": true,
+        "ready_for_review": false,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 5,
+        "model_calls": 24,
+        "offsets": [
+          1,
+          665
+        ]
+      },
+      "economics": {
+        "model_calls": 24,
+        "input_tokens": 300024,
+        "cached_input_tokens": 115584,
+        "output_tokens": 23979,
+        "cost_usd": 0.056993,
+        "wall_ms": 573361,
+        "model_ms": 565721,
+        "tool_ms": 1219,
+        "tool_calls": 22
+      },
+      "event_log": {
+        "file": "ts-webapp_parse-money/trials/ts-webapp__parse-money-3/events.jsonl",
+        "sha256": "2c152954cca29bb4955c2a9ecc0f2cb1330113c74dbf3fdb3b21478707dd848e",
+        "offsets": [
+          1,
+          665
+        ]
+      },
+      "diff_sha256": "dffc1e216d35d5229e6c913230394799323c67bfb7def632b8692fa824769a69",
+      "interactions": 4,
+      "notes": []
+    },
+    {
+      "task": "ts-webapp/reject-negative",
+      "trial": 1,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 2,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "src/cart.ts"
+        ],
+        "plan_revisions": 4,
+        "questions": 0,
+        "files_changed": [
+          "src/cart.ts"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {
+          "COLLATERAL_FIX": 2,
+          "KNOWN_FAILING": 2
+        },
+        "flaky_quarantines": 1,
+        "di3_violations": 0,
+        "diff_invariants": {
+          "DI-1": 1
+        },
+        "gate_verdict": "INCONCLUSIVE",
+        "last_verification": [
+          "COMPLETION",
+          "FAILED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 3,
+        "model_calls": 24,
+        "offsets": [
+          1,
+          884
+        ]
+      },
+      "economics": {
+        "model_calls": 24,
+        "input_tokens": 284645,
+        "cached_input_tokens": 93888,
+        "output_tokens": 19186,
+        "cost_usd": 0.05229,
+        "wall_ms": 848979,
+        "model_ms": 657616,
+        "tool_ms": 981,
+        "tool_calls": 11
+      },
+      "event_log": {
+        "file": "ts-webapp_reject-negative/trials/ts-webapp__reject-negative-1/events.jsonl",
+        "sha256": "f8966b6e4b41ef3b4abef0f8762fe7fe100c72da74c29a9e5ca709461af54f7d",
+        "offsets": [
+          1,
+          884
+        ]
+      },
+      "diff_sha256": "c912ef05bf6023896e3264a67c8f51a317e5b36e6dff3c5140079486cfad3c89",
+      "interactions": 3,
+      "notes": []
+    },
+    {
+      "task": "ts-webapp/reject-negative",
+      "trial": 2,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": false,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 1,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "src/cart.ts"
+        ],
+        "plan_revisions": 1,
+        "questions": 0,
+        "files_changed": [
+          "src/cart.ts"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {
+          "COLLATERAL_FIX": 1,
+          "KNOWN_FAILING": 1
+        },
+        "flaky_quarantines": 1,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "FAILED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 15,
+        "offsets": [
+          1,
+          371
+        ]
+      },
+      "economics": {
+        "model_calls": 15,
+        "input_tokens": 163246,
+        "cached_input_tokens": 81792,
+        "output_tokens": 10444,
+        "cost_usd": 0.029709,
+        "wall_ms": 278020,
+        "model_ms": 269609,
+        "tool_ms": 397,
+        "tool_calls": 8
+      },
+      "event_log": {
+        "file": "ts-webapp_reject-negative/trials/ts-webapp__reject-negative-2/events.jsonl",
+        "sha256": "dfc9bf93a204fcc23e2c9642f3f2a3445b9e88ed6f36cd41271c6c700d927969",
+        "offsets": [
+          1,
+          371
+        ]
+      },
+      "diff_sha256": "c912ef05bf6023896e3264a67c8f51a317e5b36e6dff3c5140079486cfad3c89",
+      "interactions": 0,
+      "notes": []
+    },
+    {
+      "task": "ts-webapp/reject-negative",
+      "trial": 3,
+      "state": "ReadyForReview",
+      "exit_code": 0,
+      "core_verified": true,
+      "acceptance_passed": true,
+      "test_integrity_ok": true,
+      "verified_success": true,
+      "first_pass": true,
+      "first_candidate": true,
+      "counts": {
+        "repair_attempts": 0,
+        "repair_escalations": 0,
+        "no_progress_escalations": 0,
+        "policy_denies": 0,
+        "plan_v1_files": [
+          "src/cart.ts"
+        ],
+        "plan_revisions": 2,
+        "questions": 0,
+        "files_changed": [
+          "src/cart.ts"
+        ],
+        "files_outside_plan": [],
+        "edits_without_retrieval": 0,
+        "regressions_attributed": 0,
+        "attributions": {
+          "COLLATERAL_FIX": 1,
+          "KNOWN_FAILING": 1
+        },
+        "flaky_quarantines": 1,
+        "di3_violations": 0,
+        "diff_invariants": {},
+        "gate_verdict": "ACCEPT",
+        "last_verification": [
+          "COMPLETION",
+          "FAILED"
+        ],
+        "self_review_unresolved": 0,
+        "plan_recorded": true,
+        "ready_for_review": true,
+        "completed": false,
+        "failed": false,
+        "needs_attention": 0,
+        "model_calls": 7,
+        "offsets": [
+          1,
+          203
+        ]
+      },
+      "economics": {
+        "model_calls": 7,
+        "input_tokens": 59266,
+        "cached_input_tokens": 34304,
+        "output_tokens": 3745,
+        "cost_usd": 0.010762,
+        "wall_ms": 91179,
+        "model_ms": 85947,
+        "tool_ms": 53,
+        "tool_calls": 4
+      },
+      "event_log": {
+        "file": "ts-webapp_reject-negative/trials/ts-webapp__reject-negative-3/events.jsonl",
+        "sha256": "9b81eb36ab85311f00a8f88fb5940fa1b60eb48de6930234ac989ad5ca73717c",
+        "offsets": [
+          1,
+          203
+        ]
+      },
+      "diff_sha256": "c912ef05bf6023896e3264a67c8f51a317e5b36e6dff3c5140079486cfad3c89",
+      "interactions": 0,
+      "notes": []
+    }
+  ],
+  "metrics": {
+    "verified_success": {
+      "successes": 12,
+      "n": 18,
+      "rate": 0.6666666666666666,
+      "ci95": [
+        0.437494672959451,
+        0.8372122524916631
+      ]
+    },
+    "first_pass_success": {
+      "successes": 10,
+      "n": 18,
+      "rate": 0.5555555555555556,
+      "ci95": [
+        0.33716415642042774,
+        0.7544048187299437
+      ]
+    },
+    "first_candidate_success": {
+      "successes": 12,
+      "n": 18,
+      "rate": 0.6666666666666666,
+      "ci95": [
+        0.437494672959451,
+        0.8372122524916631
+      ]
+    },
+    "repair_loops": {
+      "0": 16,
+      "1": 2
+    },
+    "equivalent_hypothesis_escalations": [
+      0,
+      0.0
+    ],
+    "no_progress_escalations": [
+      4,
+      0.2222222222222222
+    ],
+    "wrong_effect_attempts_blocked": [
+      0,
+      0.0
+    ],
+    "evidence_coverage": {
+      "successes": 12,
+      "n": 12,
+      "rate": 1.0,
+      "ci95": [
+        0.7575059933447591,
+        1.0
+      ]
+    },
+    "cost_and_time": {
+      "total_cost_usd": 0.703974,
+      "unpriced_trials": 0,
+      "cost_per_verified_success_usd": 0.0586645,
+      "wall_ms_per_verified_success": 643481.6666666666,
+      "tool_ms_total": 18448,
+      "wall_ms_total": 7721780
+    },
+    "retrieval_discipline_edits_without_record": 0,
+    "scope_discipline": {
+      "files_outside_original_plan_per_trial": 0.05555555555555555,
+      "scope_expansions_per_trial": 2.111111111111111,
+      "scope_questions_per_trial": 0.0
+    },
+    "regression_attribution": 0,
+    "flaky_check_rate": [
+      12,
+      0.6666666666666666
+    ],
+    "test_integrity_violations": 1,
+    "test_selection_quality": "not measured: the fixture suites are below the size at which TARGETED selection differs from the full suite (PX-035 reports it)",
+    "per_task": {
+      "python-service/discount": {
+        "verified_success": {
+          "successes": 3,
+          "n": 3,
+          "rate": 1.0,
+          "ci95": [
+            0.4385029682449545,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 2,
+          "n": 3,
+          "rate": 0.6666666666666666,
+          "ci95": [
+            0.20765960080204768,
+            0.9385080552796037
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 3,
+          "n": 3,
+          "rate": 1.0,
+          "ci95": [
+            0.4385029682449545,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0,
+          0,
+          1
+        ],
+        "states": [
+          "ReadyForReview",
+          "ReadyForReview",
+          "ReadyForReview"
+        ]
+      },
+      "python-service/reject-zero": {
+        "verified_success": {
+          "successes": 3,
+          "n": 3,
+          "rate": 1.0,
+          "ci95": [
+            0.4385029682449545,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 3,
+          "n": 3,
+          "rate": 1.0,
+          "ci95": [
+            0.4385029682449545,
+            1.0
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 3,
+          "n": 3,
+          "rate": 1.0,
+          "ci95": [
+            0.4385029682449545,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0,
+          0,
+          0
+        ],
+        "states": [
+          "ReadyForReview",
+          "ReadyForReview",
+          "ReadyForReview"
+        ]
+      },
+      "rust-cli/negative-amounts": {
+        "verified_success": {
+          "successes": 0,
+          "n": 3,
+          "rate": 0.0,
+          "ci95": [
+            4.8683609171202235e-17,
+            0.5614970317550455
+          ]
+        },
+        "first_pass_success": {
+          "successes": 0,
+          "n": 3,
+          "rate": 0.0,
+          "ci95": [
+            4.8683609171202235e-17,
+            0.5614970317550455
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 0,
+          "n": 3,
+          "rate": 0.0,
+          "ci95": [
+            4.8683609171202235e-17,
+            0.5614970317550455
+          ]
+        },
+        "repair_attempts": [
+          0,
+          0,
+          0
+        ],
+        "states": [
+          "Waiting",
+          "Waiting",
+          "Waiting"
+        ]
+      },
+      "rust-cli/reject-negative": {
+        "verified_success": {
+          "successes": 2,
+          "n": 3,
+          "rate": 0.6666666666666666,
+          "ci95": [
+            0.20765960080204768,
+            0.9385080552796037
+          ]
+        },
+        "first_pass_success": {
+          "successes": 2,
+          "n": 3,
+          "rate": 0.6666666666666666,
+          "ci95": [
+            0.20765960080204768,
+            0.9385080552796037
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 2,
+          "n": 3,
+          "rate": 0.6666666666666666,
+          "ci95": [
+            0.20765960080204768,
+            0.9385080552796037
+          ]
+        },
+        "repair_attempts": [
+          0,
+          0,
+          0
+        ],
+        "states": [
+          "ReadyForReview",
+          "Waiting",
+          "ReadyForReview"
+        ]
+      },
+      "ts-webapp/parse-money": {
+        "verified_success": {
+          "successes": 1,
+          "n": 3,
+          "rate": 0.3333333333333333,
+          "ci95": [
+            0.061491944720396215,
+            0.7923403991979523
+          ]
+        },
+        "first_pass_success": {
+          "successes": 1,
+          "n": 3,
+          "rate": 0.3333333333333333,
+          "ci95": [
+            0.061491944720396215,
+            0.7923403991979523
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 1,
+          "n": 3,
+          "rate": 0.3333333333333333,
+          "ci95": [
+            0.061491944720396215,
+            0.7923403991979523
+          ]
+        },
+        "repair_attempts": [
+          0,
+          0,
+          0
+        ],
+        "states": [
+          "ReadyForReview",
+          "Waiting",
+          "Waiting"
+        ]
+      },
+      "ts-webapp/reject-negative": {
+        "verified_success": {
+          "successes": 3,
+          "n": 3,
+          "rate": 1.0,
+          "ci95": [
+            0.4385029682449545,
+            1.0
+          ]
+        },
+        "first_pass_success": {
+          "successes": 2,
+          "n": 3,
+          "rate": 0.6666666666666666,
+          "ci95": [
+            0.20765960080204768,
+            0.9385080552796037
+          ]
+        },
+        "first_candidate_success": {
+          "successes": 3,
+          "n": 3,
+          "rate": 1.0,
+          "ci95": [
+            0.4385029682449545,
+            1.0
+          ]
+        },
+        "repair_attempts": [
+          0,
+          1,
+          0
+        ],
+        "states": [
+          "ReadyForReview",
+          "ReadyForReview",
+          "ReadyForReview"
+        ]
+      }
+    }
+  },
+  "generated_at": "2026-09-21T04:51:37Z"
+}

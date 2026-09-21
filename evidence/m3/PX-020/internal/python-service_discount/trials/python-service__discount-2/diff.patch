@@ -1,0 +1,72 @@
+diff --git a/service.py b/service.py
+index 91ac956..ee0d15a 100644
+--- a/service.py
++++ b/service.py
+@@ -1,5 +1,7 @@
+ """Fixture service (docs/50): a small module with a real pytest suite."""
+ 
++from decimal import ROUND_HALF_UP, Decimal
++
+ 
+ def parse_quantity(text: str) -> int:
+     """Parse a positive integer quantity; negative values are rejected."""
+@@ -15,3 +17,15 @@ def total_cents(quantity: int, unit_cents: int) -> int:
+ 
+ def format_cents(cents: int) -> str:
+     return f"${cents // 100}.{cents % 100:02d}"
++
++
++def apply_discount(cents: int, percent: int) -> int:
++    """Return the amount after a percent discount, in cents.
++
++    The result is rounded half up to the nearest cent. percent must be
++    within 0..100; anything else raises ValueError.
++    """
++    if percent < 0 or percent > 100:
++        raise ValueError("percent must be between 0 and 100")
++    discounted = Decimal(cents) * (100 - percent) / Decimal(100)
++    return int(discounted.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+diff --git a/test_service.py b/test_service.py
+index f60a677..c72d91d 100644
+--- a/test_service.py
++++ b/test_service.py
+@@ -1,4 +1,6 @@
+-from service import format_cents, parse_quantity, total_cents
++import pytest
++
++from service import apply_discount, format_cents, parse_quantity, total_cents
+ 
+ 
+ def test_parse_quantity_rejects_negative():
+@@ -11,3 +13,31 @@ def test_parse_quantity_rejects_negative():
+ 
+ def test_total_and_format():
+     assert format_cents(total_cents(parse_quantity("3"), 250)) == "$7.50"
++
++
++def test_apply_discount_examples():
++    assert apply_discount(1000, 15) == 850
++    assert apply_discount(999, 33) == 669
++    assert apply_discount(101, 50) == 51
++
++
++def test_apply_discount_bounds_of_percent():
++    assert apply_discount(1000, 0) == 1000
++    assert apply_discount(1000, 100) == 0
++
++
++def test_apply_discount_rounds_half_up():
++    # 999 * 50% = 499.5 cents -> 500
++    assert apply_discount(999, 50) == 500
++    # 5 * 10% = 4.5 cents -> 5 (ties round up, not to even)
++    assert apply_discount(5, 10) == 5
++    # 15 * 10% = 13.5 cents -> 14
++    assert apply_discount(15, 10) == 14
++    # 101 * 67% = 67.67 cents -> 68
++    assert apply_discount(101, 33) == 68
++
++
++def test_apply_discount_rejects_percent_out_of_range():
++    for bad_percent in (-1, 101, 1000):
++        with pytest.raises(ValueError):
++            apply_discount(1000, bad_percent)
