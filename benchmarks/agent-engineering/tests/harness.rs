@@ -687,3 +687,71 @@ fn a_bundle_is_referenced_by_the_digest_of_its_file_bytes() {
         modbit_bench_agent_engineering::sha256_hex(&bytes)
     );
 }
+
+#[test]
+fn merge_combines_per_task_bundles_under_one_protocol_and_refuses_mismatches() {
+    let tmp = tempfile::tempdir().unwrap();
+    let write = |name: &str, b: &Bundle| {
+        let d = tmp.path().join(name);
+        std::fs::create_dir_all(d.join("trials")).unwrap();
+        std::fs::write(d.join("baseline.json"), b.to_file_bytes()).unwrap();
+        d
+    };
+    let a = bundle(2, vec![trial("a", 1, true, 0), trial("a", 2, false, 1)]);
+    let b = bundle(2, vec![trial("b", 1, true, 1), trial("b", 2, true, 0)]);
+    let (da, db) = (write("part-a", &a), write("part-b", &b));
+    let out = tmp.path().join("merged");
+    let run = |dirs: &[&Path]| {
+        let mut c = Command::new(env!("CARGO_BIN_EXE_competence-baseline"));
+        c.arg("merge").arg("--out").arg(&out);
+        for d in dirs {
+            c.arg(d);
+        }
+        let o = c.output().unwrap();
+        (
+            o.status.success(),
+            format!(
+                "{}{}",
+                String::from_utf8_lossy(&o.stdout),
+                String::from_utf8_lossy(&o.stderr)
+            ),
+        )
+    };
+    let (ok, text) = run(&[&da, &db]);
+    assert!(ok, "{text}");
+    let merged: Bundle =
+        serde_json::from_slice(&std::fs::read(out.join("baseline.json")).unwrap()).unwrap();
+    merged.validate().unwrap();
+    assert_eq!(merged.tasks, ["a", "b"]);
+    assert_eq!(merged.trials.len(), 4);
+    assert!(
+        same_rate(&merged.metrics.verified_success, &Rate::of(3, 4)),
+        "{:?}",
+        merged.metrics.verified_success
+    );
+    assert!(same_rate(
+        &merged.metrics.first_pass_success,
+        &Rate::of(2, 4)
+    ));
+    assert!(
+        merged
+            .trials
+            .iter()
+            .all(|t| t.event_log.file.starts_with("part-")),
+        "{:?}",
+        merged.trials[0].event_log.file
+    );
+    assert!(out.join("baseline.sha256").is_file() && out.join("summary.md").is_file());
+    // The same task twice: more trials than the protocol declares.
+    let (ok, text) = run(&[&da, &da]);
+    assert!(!ok && text.contains("bundle refused"), "{text}");
+    // A different revision is a different baseline.
+    let mut other = b.clone();
+    other.environment.modbit_revision = "def".into();
+    let dc = write("part-c", &other);
+    let (ok, text) = run(&[&da, &dc]);
+    assert!(
+        !ok && text.contains("different suite, protocol or revision"),
+        "{text}"
+    );
+}

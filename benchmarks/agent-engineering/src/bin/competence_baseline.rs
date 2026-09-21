@@ -16,6 +16,11 @@
 //!   [--task <id>]... [--trial-timeout-secs 900] [--keep] [--cli <bin>] [--core <bin>]
 //! ```
 //!
+//! `competence-baseline merge --out <dir> <bundle dir>...` combines per-task
+//! bundles produced by separate jobs of the same commit and protocol into one
+//! bundle (the hosted workflow runs one job per task so a lost runner loses
+//! one task's trials, not the run).
+//!
 //! Exit 0 when the bundle validates and is written; 1 otherwise.
 
 use std::collections::BTreeMap;
@@ -628,10 +633,72 @@ fn run_trial(
         interactions,
         notes,
     };
+    // The trial's Core idle-exits on its own, but nothing of a trial may
+    // outlive it on a shared runner: the profile's Core is asked to stop now
+    // (its broker follows within its orphan grace), and what is still running
+    // is printed so a starved runner can be read from the log.
+    stop_profile_core(&data_dir);
     if !args.keep {
         let _ = std::fs::remove_dir_all(&scratch);
     }
+    diagnostics();
     Ok(TrialResult { outcome })
+}
+
+/// Ask the Core serving `data_dir` to stop: its argv names the profile.
+/// Unix only; a Windows runner relies on the idle exit.
+fn stop_profile_core(data_dir: &Path) {
+    #[cfg(unix)]
+    {
+        let needle = format!("--data-dir {}", data_dir.display());
+        if let Ok(o) = Command::new("pgrep").args(["-f", &needle]).output() {
+            for pid in String::from_utf8_lossy(&o.stdout).split_whitespace() {
+                let _ = Command::new("kill").args(["-TERM", pid]).status();
+            }
+        }
+    }
+    #[cfg(not(unix))]
+    let _ = data_dir;
+}
+
+/// What is still running and how much memory it holds, for the log.
+fn diagnostics() {
+    #[cfg(unix)]
+    {
+        let ps = if cfg!(target_os = "linux") {
+            Command::new("ps")
+                .args(["-eo", "pid,rss,etimes,comm", "--sort=-rss"])
+                .output()
+        } else {
+            Command::new("ps")
+                .args(["-axo", "pid,rss,etime,comm", "-r"])
+                .output()
+        };
+        if let Ok(o) = ps {
+            let text = String::from_utf8_lossy(&o.stdout);
+            let top: Vec<&str> = text.lines().take(9).collect();
+            eprintln!(
+                "competence-baseline: processes by memory after the trial:\n{}",
+                top.join("\n")
+            );
+        }
+        if cfg!(target_os = "linux")
+            && let Ok(m) = std::fs::read_to_string("/proc/meminfo")
+        {
+            let pick = |k: &str| {
+                m.lines()
+                    .find(|l| l.starts_with(k))
+                    .unwrap_or("")
+                    .trim()
+                    .to_owned()
+            };
+            eprintln!(
+                "competence-baseline: {} | {}",
+                pick("MemAvailable"),
+                pick("SwapFree")
+            );
+        }
+    }
 }
 
 fn parse_economics(text: &str) -> Economics {
@@ -702,6 +769,9 @@ fn now_rfc3339() -> String {
 }
 
 fn main() {
+    if std::env::args().nth(1).as_deref() == Some("merge") {
+        std::process::exit(merge_main());
+    }
     let args = parse_args();
     let (suite, task_list_digest) = Suite::load(&args.suite).unwrap_or_else(|e| {
         eprintln!("competence-baseline: {e}");
@@ -839,6 +909,141 @@ fn main() {
         format!("{digest}  baseline.json\n"),
     )
     .expect("write digest");
+    let summary = render_summary(&bundle, &digest);
+    std::fs::write(args.out.join("summary.md"), &summary).expect("write summary");
+    print!("{summary}");
+    println!(
+        "\nbundle: {} (sha256 {digest})",
+        args.out.join("baseline.json").display()
+    );
+}
+
+/// `merge --out <dir> <bundle dir>...`: one bundle from per-task bundles of
+/// the same suite, protocol and Modbit revision. Trials are concatenated,
+/// metrics recomputed, and the result validated like any bundle; a mismatch
+/// in suite digest, protocol or revision is refused.
+fn merge_main() -> i32 {
+    let argv: Vec<String> = std::env::args().skip(2).collect();
+    let mut out = PathBuf::from("competence-baseline");
+    let mut dirs: Vec<PathBuf> = Vec::new();
+    let mut i = 0;
+    while i < argv.len() {
+        if argv[i] == "--out" {
+            i += 1;
+            out = PathBuf::from(argv.get(i).cloned().unwrap_or_else(|| usage()));
+        } else {
+            dirs.push(PathBuf::from(&argv[i]));
+        }
+        i += 1;
+    }
+    if dirs.is_empty() {
+        eprintln!("competence-baseline merge: no bundle directories given");
+        return 1;
+    }
+    let mut merged: Option<Bundle> = None;
+    let mut build_digests: Vec<String> = Vec::new();
+    for dir in &dirs {
+        let path = dir.join("baseline.json");
+        let text = match std::fs::read(&path) {
+            Ok(t) => t,
+            Err(e) => {
+                eprintln!("competence-baseline merge: {}: {e}", path.display());
+                return 1;
+            }
+        };
+        let part: Bundle = match serde_json::from_slice(&text) {
+            Ok(b) => b,
+            Err(e) => {
+                eprintln!("competence-baseline merge: {}: {e}", path.display());
+                return 1;
+            }
+        };
+        // Per-trial artefacts travel with their part: the merged bundle keeps
+        // each trial's event-log path under the part's directory name.
+        let part_name = dir
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        match &mut merged {
+            None => {
+                let mut b = part;
+                for t in &mut b.trials {
+                    t.event_log.file = format!("{part_name}/{}", t.event_log.file);
+                }
+                build_digests.push(b.environment.build_digest.clone());
+                merged = Some(b);
+            }
+            Some(b) => {
+                let same = b.suite_id == part.suite_id
+                    && b.suite_version == part.suite_version
+                    && b.task_list_digest == part.task_list_digest
+                    && b.environment.modbit_revision == part.environment.modbit_revision
+                    && b.protocol.trials_per_task == part.protocol.trials_per_task
+                    && b.protocol.max_turns == part.protocol.max_turns
+                    && b.protocol.endpoint == part.protocol.endpoint
+                    && b.protocol.model == part.protocol.model
+                    && b.protocol.base_url_host == part.protocol.base_url_host
+                    && b.protocol.gold_patch_access == part.protocol.gold_patch_access;
+                if !same {
+                    eprintln!(
+                        "competence-baseline merge: {} was produced under a different suite, protocol or revision",
+                        path.display()
+                    );
+                    return 1;
+                }
+                for task in &part.tasks {
+                    if !b.tasks.contains(task) {
+                        b.tasks.push(task.clone());
+                    }
+                }
+                for mut t in part.trials {
+                    t.event_log.file = format!("{part_name}/{}", t.event_log.file);
+                    b.trials.push(t);
+                }
+                if !build_digests.contains(&part.environment.build_digest) {
+                    build_digests.push(part.environment.build_digest.clone());
+                }
+            }
+        }
+    }
+    let Some(mut bundle) = merged else { return 1 };
+    bundle.trials.sort_by_key(|t| (t.task.clone(), t.trial));
+    bundle.metrics = metrics(&bundle.trials);
+    if build_digests.len() > 1 {
+        // The jobs built the same revision on different runners; the bundle
+        // names every binary digest that produced a trial rather than one.
+        bundle.environment.build_digest = build_digests.join("+");
+    }
+    bundle.generated_at = now_rfc3339();
+    if let Err(e) = bundle.validate() {
+        eprintln!("competence-baseline merge: bundle refused: {e}");
+        return 1;
+    }
+    if let Err(e) = std::fs::create_dir_all(&out) {
+        eprintln!("competence-baseline merge: {}: {e}", out.display());
+        return 1;
+    }
+    let bytes = bundle.to_file_bytes();
+    let digest = modbit_bench_agent_engineering::digest_of(&bytes);
+    std::fs::write(out.join("baseline.json"), &bytes).expect("write baseline.json");
+    std::fs::write(
+        out.join("baseline.sha256"),
+        format!("{digest}  baseline.json\n"),
+    )
+    .expect("write digest");
+    let summary = render_summary(&bundle, &digest);
+    std::fs::write(out.join("summary.md"), &summary).expect("write summary");
+    print!("{summary}");
+    println!(
+        "\nbundle: {} (sha256 {digest}) from {} part(s)",
+        out.join("baseline.json").display(),
+        dirs.len()
+    );
+    0
+}
+
+/// The human summary written beside the bundle.
+fn render_summary(bundle: &Bundle, digest: &str) -> String {
     let m = &bundle.metrics;
     let mut summary = format!(
         "# Competence baseline — {} v{}\n\n- task list digest: `{}`\n- bundle digest: `{digest}`\n- protocol: {} trials/task, max_turns {}, {} `{}` at {} ({})\n- Modbit revision: `{}`; build digest `{}`; harness {}\n\n| metric | value | 95% interval |\n|---|---|---|\n| verified success | {}/{} = {:.3} | {:.3}–{:.3} |\n| first-pass success (zero RepairAttempts) | {}/{} = {:.3} | {:.3}–{:.3} |\n| first-candidate success (at most one repair attempt, no escalation) | {}/{} = {:.3} | {:.3}–{:.3} |\n| repair loops (attempts→trials) | {:?} | — |\n| equivalent-hypothesis escalations | {} ({:.2}/trial) | — |\n| no-progress escalations | {} ({:.2}/trial) | — |\n| wrong-effect attempts blocked | {} ({:.2}/trial) | — |\n| evidence coverage | {}/{} = {:.3} | {:.3}–{:.3} |\n| cost | total {:.4} USD; per verified success {:?} | — |\n| edits without retrieval record | {} | must be 0 |\n| files outside original plan / expansions / questions per trial | {:.2} / {:.2} / {:.2} | — |\n| regressions attributed | {} | — |\n| flaky quarantines | {} ({:.2}/trial) | — |\n| DI-3 violations | {} | — |\n\n| task | verified | first-pass | states |\n|---|---|---|---|\n",
@@ -902,10 +1107,5 @@ fn main() {
             tm.states.join(", ")
         ));
     }
-    std::fs::write(args.out.join("summary.md"), &summary).expect("write summary");
-    print!("{summary}");
-    println!(
-        "\nbundle: {} (sha256 {digest})",
-        args.out.join("baseline.json").display()
-    );
+    summary
 }

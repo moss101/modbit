@@ -69,10 +69,17 @@ target/debug/competence-baseline \
 
 Output: `baseline.json` (the bundle), `baseline.sha256` (its digest),
 `summary.md`, and `trials/<task>-<n>/{cli.log,events.jsonl,diff.patch,acceptance.log}`.
-Exit 0 only when the bundle validates. `.github/workflows/live-competence.yml`
-runs it on hosted CI with the repository secrets and gateway variables and
-retains the output as an artifact; an accepted run is copied under
-`evidence/m3/PX-020/`.
+Exit 0 only when the bundle validates. `competence-baseline merge --out <dir>
+<part dir>...` combines per-task bundles of the same suite, protocol and
+revision into one (trials concatenated, metrics recomputed, every part's
+event logs kept under its own directory; a mismatch is refused).
+`.github/workflows/live-competence.yml` runs one job per task on hosted CI with
+the repository secrets and gateway variables — a lost runner loses one task's
+trials, not the run — then merges the parts and retains
+`competence-baseline-<endpoint>-<run>`; an accepted run is copied under
+`evidence/m3/PX-020/`. After every trial the harness stops that profile's
+Core and prints the processes holding the most memory, so a starved runner
+can be read from the log.
 
 ## What this does not do
 

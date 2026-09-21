@@ -35,10 +35,22 @@ permissions:
   contents: read
 
 jobs:
-  baseline:
-    name: competence baseline (internal suite, ${{ inputs.endpoint }})
+  # One job per task: a lost runner loses one task's trials, not the run, and
+  # every part is retained on its own. `merge` combines the parts below.
+  task:
+    name: "${{ matrix.task }} (${{ inputs.endpoint }})"
     runs-on: ubuntu-latest
-    timeout-minutes: 240
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        task:
+          - rust-cli/reject-negative
+          - rust-cli/negative-amounts
+          - ts-webapp/reject-negative
+          - ts-webapp/parse-money
+          - python-service/reject-zero
+          - python-service/discount
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Install pinned Rust toolchain (rust-toolchain.toml)
@@ -55,7 +67,7 @@ jobs:
         run: python3 -m pip install --quiet --user pytest==8.4.2 || python3 -m pip install --quiet --break-system-packages pytest==8.4.2
       - name: Build the product and the harness
         run: cargo build --locked -p modbit-core -p modbit-cli -p modbit-execd -p modbit-bench-agent-engineering
-      - name: Run the internal suite through the real product
+      - name: Run this task's trials through the real product
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -72,7 +84,7 @@ jobs:
           MODBIT_LIVE_MODEL: ${{ vars.MODBIT_LIVE_MODEL }}
           ENDPOINT: ${{ inputs.endpoint }}
           TRIALS: ${{ inputs.trials }}
-          TASKS: ${{ inputs.tasks }}
+          TASK: ${{ matrix.task }}
           MAX_TURNS: ${{ inputs.max_turns }}
         run: |
           key_var="$(echo "$ENDPOINT" | tr '[:lower:]' '[:upper:]')_API_KEY"
@@ -80,18 +92,54 @@ jobs:
             echo "::error::no $key_var secret: a competence baseline needs a real model (docs/82); nothing was run"
             exit 1
           fi
-          args=(--suite benchmarks/agent-engineering/suites/internal/tasks.json --fixtures tests/fixtures/repos
-                --out competence-baseline --endpoint "$ENDPOINT" --trials "$TRIALS" --max-turns "$MAX_TURNS"
-                --cli target/debug/modbit-cli --core target/debug/modbit-core --trial-timeout-secs 1200)
-          IFS=',' read -ra ids <<< "$TASKS"
-          for id in "${ids[@]}"; do [ -n "$id" ] && args+=(--task "$id"); done
+          part="parts/$(echo "$TASK" | tr '/' '_')"
           set -o pipefail
-          target/debug/competence-baseline "${args[@]}" 2>&1 | tee competence-baseline/run.log
+          target/debug/competence-baseline --suite benchmarks/agent-engineering/suites/internal/tasks.json \
+            --fixtures tests/fixtures/repos --out "$part" --endpoint "$ENDPOINT" --trials "$TRIALS" \
+            --max-turns "$MAX_TURNS" --task "$TASK" --cli target/debug/modbit-cli --core target/debug/modbit-core \
+            --trial-timeout-secs 1200 2>&1 | tee "$part/run.log"
+      - name: Retain this task's part (bundle, event logs, diffs)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: competence-part-${{ inputs.endpoint }}-${{ strategy.job-index }}
+          path: parts
+          if-no-files-found: warn
+
+  merge:
+    name: merge the parts into the baseline bundle
+    needs: task
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Install pinned Rust toolchain (rust-toolchain.toml)
+        run: rustup show
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - name: Build the harness
+        run: cargo build --locked -p modbit-bench-agent-engineering
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: competence-part-${{ inputs.endpoint }}-*
+          path: downloaded
+      - name: Merge
+        env:
+          ENDPOINT: ${{ inputs.endpoint }}
+          TRIALS: ${{ inputs.trials }}
+        run: |
+          dirs=()
+          for d in downloaded/*/*/; do [ -f "$d/baseline.json" ] && dirs+=("${d%/}"); done
+          echo "parts with a bundle: ${#dirs[@]}"
+          if [ "${#dirs[@]}" -eq 0 ]; then echo "::error::no part produced a bundle"; exit 1; fi
+          mkdir -p competence-baseline
+          target/debug/competence-baseline merge --out competence-baseline "${dirs[@]}"
+          cp -R "${dirs[@]}" competence-baseline/
           {
-            echo "## Competence baseline ($ENDPOINT, $TRIALS trials/task)"
+            echo "## Competence baseline ($ENDPOINT, $TRIALS trials/task, ${#dirs[@]} of 6 tasks)"
             cat competence-baseline/summary.md
           } >> "$GITHUB_STEP_SUMMARY"
-      - name: Retain the bundle, per-trial event logs and diffs
+      - name: Retain the merged bundle with every part
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
