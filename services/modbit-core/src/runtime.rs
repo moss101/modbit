@@ -522,6 +522,16 @@ impl Runtime {
         Ok((run_id, resumed))
     }
 
+    /// The live loop's cancellation token, for work that must stop with it
+    /// (a verification command the broker is running, M9.5).
+    pub async fn cancel_token(&self, task_id: &TaskId) -> Option<CancellationToken> {
+        self.tasks
+            .lock()
+            .await
+            .get(task_id)
+            .map(|r| r.cancel.clone())
+    }
+
     /// Request cancellation; the loop stops at the next safe boundary.
     pub async fn cancel(&self, task_id: &TaskId) -> bool {
         match self.tasks.lock().await.get(task_id) {
@@ -6495,6 +6505,7 @@ async fn execute_tool(
             call_id: Some(call_id.to_owned()),
             lease_generation: lt.lease(),
             projection: Some(projected.to_vec()),
+            cancel: Some(cancel.clone()),
         };
         let done = match core.tools.invoke(&core.store, req).await {
             Ok(d) => d,
@@ -6832,6 +6843,7 @@ pub(crate) async fn run_verification(
     let runner = crate::verify::BrokerRunner {
         target: core.tools.execd.as_ref().map(|e| e.target.clone()),
         execution_profile: task.execution_profile.clone(),
+        cancel: core.runtime.cancel_token(&task.task_id).await,
     };
     let sink = crate::verify::ObjectSinkAdapter(core.store.lock().await.objects().clone());
     let engine = VerificationEngine::new(&runner, &sink, VerificationPolicy::default());

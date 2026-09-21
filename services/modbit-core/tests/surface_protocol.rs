@@ -8769,6 +8769,179 @@ async fn qual_px_038_scope_expansion_is_bounded_asks_a_typed_question_and_fails_
     let _ = (repo, repo2);
 }
 
+/// M9.5 (docs/23 "Emergency stop"): a stop is not only a refusal of new
+/// effects. A check the agent is running when the stop lands is cancelled
+/// at once — the process is killed with its group and the call is recorded
+/// Cancelled — the run ends without another model call, no run starts in
+/// the session again, and a restarted Core still holds the stop. Before
+/// this task the stop revoked capability leases only: a running loop fences
+/// on the session lease generation, which the stop does not touch, so it
+/// kept turning against refusals and a 60-second check ran to its end.
+#[tokio::test]
+async fn m9_5_emergency_stop_cancels_the_check_in_flight_ends_the_run_and_outlives_a_restart() {
+    use modbit_protocol::v1::{EmergencyStop, EmergencyStopped, StartTask, TaskRunStarted};
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[("app.txt", "value = 1\n")]);
+    // The marker makes the process findable and unlike any other test's.
+    let marker = format!("m95stop{:08x}", rand::random::<u32>());
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "study the value", "expected_files": ["app.txt"]}}]}),
+        json!({"calls": [{"name": "test.run", "args": {"argv": ["sh", "-c", format!("echo {marker}; sleep 600")], "inherit_env": true}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "app.txt", "op": "replace", "content": "value = 2\n"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x70)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x71, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x72),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 8,
+                max_tool_calls: 0,
+                max_no_progress_turns: 0,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    // Wait until the check is running: its process is findable.
+    let running = |marker: &str| {
+        Command::new("pgrep")
+            .args(["-f", &format!("echo {marker}")])
+            .output()
+            .map(|o| !o.stdout.is_empty())
+            .unwrap_or(false)
+    };
+    let started = std::time::Instant::now();
+    while !running(&marker) {
+        assert!(
+            started.elapsed() < Duration::from_secs(60),
+            "the check never started: {:?}",
+            task_events(&core, &session, &task).await
+        );
+        tokio::time::sleep(Duration::from_millis(200)).await;
+    }
+    let requests_before = seen.lock().unwrap().len();
+    // The stop lands while the check runs.
+    let stopped_at = std::time::Instant::now();
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x73),
+            "EmergencyStop",
+            EmergencyStop {
+                session_id: Some(session.clone()),
+                reason: "operator: stop everything".into(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let stopped: EmergencyStopped = Client::result(&ack).unwrap();
+    assert!(stopped.leases_revoked >= 1, "{stopped:?}");
+    // The process is gone within seconds, not after its 600 s.
+    while running(&marker) {
+        assert!(
+            stopped_at.elapsed() < Duration::from_secs(15),
+            "the check kept running after the stop"
+        );
+        tokio::time::sleep(Duration::from_millis(200)).await;
+    }
+    let st = wait_task(&mut c, &task, 30).await;
+    let evs = task_events(&core, &session, &task).await;
+    assert_eq!(st.state, "Cancelled", "{st:?}\n{evs:#?}");
+    let types: Vec<&str> = evs.iter().map(|(_, t, _)| t.as_str()).collect();
+    // The stop itself is a session event, outside any task.
+    let session_types: Vec<String> = {
+        let mut s = core.client().await;
+        s.subscribe(session.clone(), 0).await.unwrap();
+        let mut out = Vec::new();
+        while let Ok(Ok(Some(e))) =
+            tokio::time::timeout(Duration::from_millis(400), s.next_event()).await
+        {
+            out.push(e.event.unwrap().event_type);
+        }
+        out
+    };
+    assert!(
+        session_types.iter().any(|t| t == "EmergencyStopActivated"),
+        "{session_types:?}"
+    );
+    assert!(
+        types.contains(&"ToolCallCancelled"),
+        "the check in flight is recorded Cancelled, not failed: {types:?}"
+    );
+    assert!(
+        evs.iter().any(|(_, t, p)| t == "CapabilityLeaseRevoked"
+            && p["reason"]
+                .as_str()
+                .is_some_and(|r| r.starts_with("EMERGENCY_STOP"))),
+        "{evs:#?}"
+    );
+    // No model call after the stop: the run ended, it did not turn against refusals.
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    assert_eq!(
+        seen.lock().unwrap().len(),
+        requests_before,
+        "a model call after the stop"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("app.txt")).unwrap(),
+        "value = 1\n",
+        "the write that was scripted after the check never happened"
+    );
+    // Nothing starts in a stopped session: a fresh task is refused, and the
+    // refusal survives a Core restart because the stop is on the log.
+    let other = create_task_with_profile(&mut c, &session, g, &root, 0x74, "local_trusted").await;
+    let start = |id: u8, other: &Id| {
+        envelope_fenced(
+            id16(id),
+            "StartTask",
+            StartTask {
+                task_id: Some(other.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 4,
+                max_tool_calls: 0,
+                max_no_progress_turns: 0,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        )
+    };
+    let err = c.command(start(0x75, &other)).await.unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "EMERGENCY_STOP"),
+        "{err:?}"
+    );
+    core.kill();
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let err = c.command(start(0x76, &other)).await.unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "EMERGENCY_STOP"),
+        "the stop outlives the Core: {err:?}"
+    );
+}
+
 /// docs/64 §4 (found by the PX-020 competence baseline on hosted runners):
 /// a check the agent runs itself — `test.run` with pytest, a `python3 -c`
 /// reproduction — leaves bytecode and scratch in the workspace exactly as an

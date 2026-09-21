@@ -399,6 +399,7 @@ async fn run_inner(
                         // The specialist's own projection (M5.1): a second
                         // fence under the read-only guard above.
                         projection: Some(tools.iter().map(|t| t.name.clone()).collect()),
+                        cancel: None,
                     },
                 )
                 .await;

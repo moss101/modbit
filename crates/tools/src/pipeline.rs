@@ -218,6 +218,11 @@ pub struct InvokeContext {
     /// the bounds on the host's side. `None` = no external tools are
     /// served to this task.
     pub external: Option<Arc<dyn modbit_mcp::McpPort>>,
+    /// The run's cancellation (docs/23 "Emergency stop", M9.5): a process a
+    /// tool is running when the run is cancelled is cancelled at the broker
+    /// — its group is killed — and reported cancelled, instead of running to
+    /// its exit or timeout while the Core has already moved on.
+    pub cancel: Option<tokio_util::sync::CancellationToken>,
 }
 
 /// What a pinned environment revision gives a process.
@@ -740,6 +745,10 @@ impl ToolRuntime {
             ToolStatus::Success
         } else if outcome.infra_failure {
             ToolStatus::InfraFailure
+        } else if outcome.error_code.as_deref() == Some("CANCELLED") {
+            // The run was cancelled while the process ran (docs/23): the
+            // call was cancelled, it did not fail.
+            ToolStatus::Cancelled
         } else {
             ToolStatus::ApplicationFailure
         };

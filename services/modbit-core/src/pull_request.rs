@@ -471,6 +471,7 @@ pub async fn run(
                 call_id: None,
                 lease_generation: req.lease_generation,
                 projection: None,
+                cancel: None,
             },
         )
         .await

@@ -8,7 +8,7 @@
   "counts": {
     "docs": 90,
     "root_and_tooling": 1519,
-    "docs_bytes": 1304123
+    "docs_bytes": 1305757
   },
   "sections": [
     {
@@ -248,8 +248,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Security, Policy, Capabilities, Secrets, and Effect Ledger",
-      "bytes": 12541,
-      "sha256": "c483ad640dca537d29d3b6b9a52da1cdee29d9235937ff85ffd8da19cbe02cd3"
+      "bytes": 14175,
+      "sha256": "8ca46bb4d4dc30921a1a8076609666566ad44a4578f234040b8e0c3a21043e9c"
     },
     {
       "path": "docs/24_CLOUD_CONTROL_PLANE_AND_SYNC.md",

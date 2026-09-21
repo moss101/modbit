@@ -21,6 +21,11 @@ pub struct BrokerRunner {
     pub target: Option<ExecTarget>,
     /// Execution profile label carried on requests.
     pub execution_profile: String,
+    /// The run's cancellation (docs/23 "Emergency stop", M9.5): a command
+    /// still running when the run is cancelled is cancelled at the broker —
+    /// its process group is killed — and reported cancelled, instead of
+    /// running to its exit or timeout.
+    pub cancel: Option<tokio_util::sync::CancellationToken>,
 }
 
 impl CommandRunner for BrokerRunner {
@@ -72,8 +77,31 @@ impl CommandRunner for BrokerRunner {
                 };
             }
             let (mut out, mut err) = (Vec::new(), Vec::new());
+            let mut session_id: Option<String> = None;
+            let mut cancel_sent = false;
+            let cancel = self.cancel.clone().unwrap_or_default();
             loop {
-                match client.next().await {
+                let next = tokio::select! {
+                    n = client.next() => n,
+                    () = cancel.cancelled(), if !cancel_sent => {
+                        cancel_sent = true;
+                        // The broker ends the process with its group and
+                        // answers with an Exited that says cancelled; a
+                        // cancel that arrives before Started is sent as soon
+                        // as the session is known.
+                        if let Some(sid) = &session_id {
+                            let _ = client.cancel(sid).await;
+                        }
+                        continue;
+                    }
+                };
+                match next {
+                    Ok(Some(Event::Started(st))) => {
+                        if cancel_sent {
+                            let _ = client.cancel(&st.session_id).await;
+                        }
+                        session_id = Some(st.session_id);
+                    }
                     Ok(Some(Event::Output(o))) => {
                         if o.stream == "stderr" {
                             err.extend(o.data);
@@ -88,7 +116,7 @@ impl CommandRunner for BrokerRunner {
                             stderr: String::from_utf8_lossy(&err).into_owned(),
                             reporter_file: None,
                             timed_out: x.timed_out,
-                            cancelled: x.cancelled,
+                            cancelled: x.cancelled || cancel_sent,
                         };
                     }
                     Ok(Some(_)) => {}
