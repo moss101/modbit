@@ -199,6 +199,8 @@ pub(crate) fn revise(
         events.push(typed(
             "TaskInputQueued",
             &TaskEvent::TaskInputQueued {
+                provenance: String::new(),
+                untrusted: false,
                 input_id: format!("plan-note-v{version}-{}", modbit_domain::Timestamp::now().0),
                 mode: modbit_domain::task::InputMode::FollowUp,
                 text: format!("Plan review note on version {version}: {note}"),

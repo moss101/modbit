@@ -400,6 +400,8 @@ pub(crate) async fn at_acceptance(
             vec![typed(
                 "TaskInputQueued",
                 &TaskEvent::TaskInputQueued {
+                    provenance: String::new(),
+                    untrusted: false,
                     input_id: format!("review-brief-{}", env.env_id),
                     mode: InputMode::FollowUp,
                     text: brief.clone(),
@@ -972,6 +974,8 @@ async fn revise(core: &Arc<Core>, candidate: &Task, result: &ReviewerResultSumma
         events.push(typed(
             "TaskInputQueued",
             &TaskEvent::TaskInputQueued {
+                provenance: String::new(),
+                untrusted: false,
                 input_id: format!("review-revision-{revision}-{}", result.offset),
                 mode: InputMode::FollowUp,
                 text: format!(

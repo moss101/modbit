@@ -1426,6 +1426,8 @@ pub(crate) async fn follow_up_child(
         typed(
             "TaskInputQueued",
             &TaskEvent::TaskInputQueued {
+                provenance: String::new(),
+                untrusted: false,
                 input_id: format!(
                     "parent-{}-{}",
                     node.agent_id,

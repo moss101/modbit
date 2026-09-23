@@ -292,7 +292,14 @@ fn projections_follow_the_reducers_in_the_append_transaction_and_after_rebuild()
             AggregateType::Task,
             *task.as_bytes(),
             vec![
-                typed("TaskSteered", &TaskEvent::TaskSteered { text: "ok".into() }),
+                typed(
+                    "TaskSteered",
+                    &TaskEvent::TaskSteered {
+                        text: "ok".into(),
+                        provenance: String::new(),
+                        untrusted: false,
+                    },
+                ),
                 typed("TaskCompleted", &TaskEvent::TaskCompleted),
             ],
         ))

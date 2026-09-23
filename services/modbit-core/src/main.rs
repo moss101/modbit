@@ -44,6 +44,7 @@ mod procedural;
 mod protocol;
 mod pull_request;
 mod review;
+mod review_comments;
 mod review_env;
 mod routing;
 mod rules;

@@ -10366,6 +10366,123 @@ export declare type CiResultsIngested = Message<"modbit.v1.CiResultsIngested"> &
 export declare const CiResultsIngestedSchema: GenMessage<CiResultsIngested>;
 
 /**
+ * Read the task's pull-request comments from the forge; those from an
+ * identity the organization allows (the admin layer's
+ * `review_comment_authors`) that address Modbit (`@modbit`) become untrusted
+ * STEER input through the ordinary steering path, each once; the rest are
+ * recorded with why they were ignored.
+ *
+ * @generated from message modbit.v1.IngestReviewComments
+ */
+export declare type IngestReviewComments = Message<"modbit.v1.IngestReviewComments"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.IngestReviewComments.
+ * Use `create(IngestReviewCommentsSchema)` to create a new message.
+ */
+export declare const IngestReviewCommentsSchema: GenMessage<IngestReviewComments>;
+
+/**
+ * @generated from message modbit.v1.ReviewCommentView
+ */
+export declare type ReviewCommentView = Message<"modbit.v1.ReviewCommentView"> & {
+  /**
+   * @generated from field: uint64 comment_id = 1;
+   */
+  commentId: bigint;
+
+  /**
+   * review | issue
+   *
+   * @generated from field: string kind = 2;
+   */
+  kind: string;
+
+  /**
+   * @generated from field: string author = 3;
+   */
+  author: string;
+
+  /**
+   * @generated from field: string url = 4;
+   */
+  url: string;
+
+  /**
+   * when steered
+   *
+   * @generated from field: string input_id = 5;
+   */
+  inputId: string;
+
+  /**
+   * DISALLOWED_AUTHOR | NOT_ADDRESSED | EMPTY, when ignored
+   *
+   * @generated from field: string reason = 6;
+   */
+  reason: string;
+};
+
+/**
+ * Describes the message modbit.v1.ReviewCommentView.
+ * Use `create(ReviewCommentViewSchema)` to create a new message.
+ */
+export declare const ReviewCommentViewSchema: GenMessage<ReviewCommentView>;
+
+/**
+ * @generated from message modbit.v1.ReviewCommentsIngestedView
+ */
+export declare type ReviewCommentsIngestedView = Message<"modbit.v1.ReviewCommentsIngestedView"> & {
+  /**
+   * @generated from field: string owner = 1;
+   */
+  owner: string;
+
+  /**
+   * @generated from field: string repo = 2;
+   */
+  repo: string;
+
+  /**
+   * @generated from field: uint64 pull_number = 3;
+   */
+  pullNumber: bigint;
+
+  /**
+   * @generated from field: repeated modbit.v1.ReviewCommentView steered = 4;
+   */
+  steered: ReviewCommentView[];
+
+  /**
+   * @generated from field: repeated modbit.v1.ReviewCommentView ignored = 5;
+   */
+  ignored: ReviewCommentView[];
+
+  /**
+   * comments ingested before, not taken again
+   *
+   * @generated from field: uint32 already_taken = 6;
+   */
+  alreadyTaken: number;
+
+  /**
+   * @generated from field: uint64 offset = 7;
+   */
+  offset: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.ReviewCommentsIngestedView.
+ * Use `create(ReviewCommentsIngestedViewSchema)` to create a new message.
+ */
+export declare const ReviewCommentsIngestedViewSchema: GenMessage<ReviewCommentsIngestedView>;
+
+/**
  * Command acknowledgement.
  *
  * @generated from enum modbit.v1.CommandStatus

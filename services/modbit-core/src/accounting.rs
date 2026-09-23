@@ -2445,6 +2445,8 @@ mod tests {
                     "TaskSteered",
                     &TaskEvent::TaskSteered {
                         text: "x".repeat(70 * 1024),
+                        provenance: String::new(),
+                        untrusted: false,
                     },
                     Actor::User(modbit_domain::UserId::new()),
                 )],

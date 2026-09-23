@@ -2420,3 +2420,33 @@ message CiResultsIngested {
   uint64 offset = 8;
   string evidence_class = 9;       // external_ci: informs, never qualifies
 }
+
+// ---- Review-comment steering (PX-008; docs/29 "Review-comment steering") ----
+
+// Read the task's pull-request comments from the forge; those from an
+// identity the organization allows (the admin layer's
+// `review_comment_authors`) that address Modbit (`@modbit`) become untrusted
+// STEER input through the ordinary steering path, each once; the rest are
+// recorded with why they were ignored.
+message IngestReviewComments {
+  Id task_id = 1;
+}
+
+message ReviewCommentView {
+  uint64 comment_id = 1;
+  string kind = 2;                 // review | issue
+  string author = 3;
+  string url = 4;
+  string input_id = 5;             // when steered
+  string reason = 6;               // DISALLOWED_AUTHOR | NOT_ADDRESSED | EMPTY, when ignored
+}
+
+message ReviewCommentsIngestedView {
+  string owner = 1;
+  string repo = 2;
+  uint64 pull_number = 3;
+  repeated ReviewCommentView steered = 4;
+  repeated ReviewCommentView ignored = 5;
+  uint32 already_taken = 6;        // comments ingested before, not taken again
+  uint64 offset = 7;
+}
