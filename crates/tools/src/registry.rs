@@ -46,6 +46,19 @@ pub struct ToolSpec {
     pub output_budget_bytes: u64,
     /// Idempotency.
     pub idempotency: Idempotency,
+    /// The tool that counteracts this one's effect, when one exists
+    /// (REQ-EV-0066): an external effect with a compensation is
+    /// `COMPENSATABLE`, one without is `IRREVERSIBLE`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub compensation: Option<String>,
+}
+
+impl ToolSpec {
+    /// How far this tool's effect can be taken back (REQ-EV-0066).
+    #[must_use]
+    pub fn reversibility(&self) -> modbit_domain::toolcall::Reversibility {
+        modbit_domain::toolcall::Reversibility::of(self.effect_class, self.compensation.is_some())
+    }
 }
 
 /// What a tool returns to the pipeline.

@@ -615,6 +615,14 @@ CREATE INDEX IF NOT EXISTS memory_items_scope ON memory_items (scope_key, status
 CREATE INDEX IF NOT EXISTS memory_items_conflict ON memory_items (scope_key, record_type, topic, status);
 "#;
 
+/// Version 17 (REQ-EV-0066): a receipt says how far its effect can be taken
+/// back and, for a compensation, which effect it compensates. Both are
+/// nullable: a receipt written before carries neither and keeps its hash.
+pub const V17_RECEIPT_REVERSIBILITY: &str = r#"
+ALTER TABLE effect_receipts ADD COLUMN reversibility TEXT;
+ALTER TABLE effect_receipts ADD COLUMN compensates BLOB;
+"#;
+
 /// All migrations in order. Never edit an entry once shipped; append a new one.
 pub const MIGRATIONS: &[Migration] = &[
     Migration {
@@ -712,6 +720,12 @@ pub const MIGRATIONS: &[Migration] = &[
         name: "engineering_memory",
         up: V16_ENGINEERING_MEMORY,
         rollback: "Additive standalone table (docs/19 'Engineering Memory'). It is memory's own durable store, not a projection; a rollback that drops it loses the curated memory it holds, so a rollback exports the rows first. No event is touched.",
+    },
+    Migration {
+        version: 17,
+        name: "receipt_reversibility",
+        up: V17_RECEIPT_REVERSIBILITY,
+        rollback: "Additive nullable derivable columns. Rollback = ignore them; a rebuild derives them from the receipts on the log, whose hashes cover them; no event is touched.",
     },
 ];
 

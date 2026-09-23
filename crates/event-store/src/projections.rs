@@ -1763,8 +1763,8 @@ fn insert_receipt(tx: &rusqlite::Connection, r: &EffectReceipt) -> Result<()> {
         |row| row.get(0),
     )?;
     tx.execute(
-        "INSERT OR IGNORE INTO effect_receipts (effect_id, seq, previous_receipt_hash, task_id, turn_id, step_id, tool_call_id, capability_lease_id, intent_hash, policy_decision, approval_id, execution_target, evidence_ref, status, occurred_at, receipt_hash)
-         VALUES (?1, ?2, ?3, ?4, NULL, NULL, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
+        "INSERT OR IGNORE INTO effect_receipts (effect_id, seq, previous_receipt_hash, task_id, turn_id, step_id, tool_call_id, capability_lease_id, intent_hash, policy_decision, approval_id, execution_target, evidence_ref, status, occurred_at, receipt_hash, reversibility, compensates)
+         VALUES (?1, ?2, ?3, ?4, NULL, NULL, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
         params![
             r.effect_id.as_bytes().as_slice(),
             seq,
@@ -1780,6 +1780,8 @@ fn insert_receipt(tx: &rusqlite::Connection, r: &EffectReceipt) -> Result<()> {
             &r.status,
             r.occurred_at.millis(),
             &r.receipt_hash,
+            r.reversibility.map(|x| x.label()),
+            r.compensates.map(|e| e.as_bytes().to_vec()),
         ],
     )?;
     Ok(())
@@ -1811,10 +1813,18 @@ fn receipt_from_row(r: &rusqlite::Row<'_>) -> rusqlite::Result<EffectReceipt> {
         status: r.get(10)?,
         occurred_at: Timestamp(r.get(11)?),
         receipt_hash: r.get(12)?,
+        reversibility: r
+            .get::<_, Option<String>>(13)?
+            .and_then(|x| serde_json::from_value(serde_json::Value::String(x)).ok()),
+        compensates: r
+            .get::<_, Option<Vec<u8>>>(14)?
+            .map(blob16)
+            .transpose()?
+            .map(modbit_domain::EffectId::from_bytes),
     })
 }
 
-const RECEIPT_COLS: &str = "effect_id, previous_receipt_hash, task_id, tool_call_id, capability_lease_id, intent_hash, policy_decision, approval_id, execution_target, evidence_ref, status, occurred_at, receipt_hash";
+const RECEIPT_COLS: &str = "effect_id, previous_receipt_hash, task_id, tool_call_id, capability_lease_id, intent_hash, policy_decision, approval_id, execution_target, evidence_ref, status, occurred_at, receipt_hash, reversibility, compensates";
 
 /// The hash of the newest receipt in the chain, if any.
 pub fn last_receipt_hash(tx: &rusqlite::Connection) -> Result<Option<String>> {

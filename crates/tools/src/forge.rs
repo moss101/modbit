@@ -86,6 +86,7 @@ fn spec(
         timeout_ms: 60_000,
         output_budget_bytes: 64 * 1024,
         idempotency: idem,
+        compensation: None,
     }
 }
 
@@ -456,13 +457,18 @@ tool!(
 
 tool!(
     ForgePrCreate,
-    spec(
-        "forge.pr.create",
-        "Open a pull request on the configured forge for a pushed branch (protected external effect; idempotent by key).",
-        EffectClass::ExternalSideEffect,
-        json!({"type":"object","properties":{"owner":{"type":"string","minLength":1},"repo":{"type":"string","minLength":1},"head":{"type":"string","minLength":1},"base":{"type":"string","minLength":1},"title":{"type":"string","minLength":1},"body":{"type":"string"},"draft":{"type":"boolean"},"idempotency_key":{"type":"string","minLength":8}},"required":["owner","repo","head","base","title","idempotency_key"],"additionalProperties":false}),
-        &["network.egress", "secret.use"],
-        Idempotency::NonIdempotent
+    // Opening a pull request cannot be undone; closing it counteracts it
+    // (REQ-EV-0066: COMPENSATABLE, never REVERSIBLE).
+    compensated_by(
+        spec(
+            "forge.pr.create",
+            "Open a pull request on the configured forge for a pushed branch (protected external effect; idempotent by key).",
+            EffectClass::ExternalSideEffect,
+            json!({"type":"object","properties":{"owner":{"type":"string","minLength":1},"repo":{"type":"string","minLength":1},"head":{"type":"string","minLength":1},"base":{"type":"string","minLength":1},"title":{"type":"string","minLength":1},"body":{"type":"string"},"draft":{"type":"boolean"},"idempotency_key":{"type":"string","minLength":8}},"required":["owner","repo","head","base","title","idempotency_key"],"additionalProperties":false}),
+            &["network.egress", "secret.use"],
+            Idempotency::NonIdempotent
+        ),
+        "forge.pr.update",
     ),
     |ctx, args| {
         let cfg = match gate(ctx, &args, true) {
@@ -740,6 +746,36 @@ tool!(
         }
     }
 );
+
+/// The call that compensates a forge effect (REQ-EV-0066): the tool and
+/// its arguments, built from the original call's result and bound to
+/// `idempotency_key`. `None` when `tool` declares no compensation or the
+/// result does not name what to counteract.
+#[must_use]
+pub fn compensation_call(
+    tool: &str,
+    output: &Value,
+    idempotency_key: &str,
+) -> Option<(String, Value)> {
+    match tool {
+        "forge.pr.create" => {
+            let owner = output["owner"].as_str().filter(|s| !s.is_empty())?;
+            let repo = output["repo"].as_str().filter(|s| !s.is_empty())?;
+            let number = output["number"].as_u64().filter(|n| *n > 0)?;
+            Some((
+                "forge.pr.update".to_owned(),
+                json!({"owner": owner, "repo": repo, "number": number, "state": "closed", "idempotency_key": idempotency_key}),
+            ))
+        }
+        _ => None,
+    }
+}
+
+/// A spec whose effect `tool` counteracts (REQ-EV-0066).
+fn compensated_by(mut spec: ToolSpec, tool: &str) -> ToolSpec {
+    spec.compensation = Some(tool.to_owned());
+    spec
+}
 
 /// Register the family.
 pub fn register_forge(registry: &mut ToolRegistry) -> Result<()> {

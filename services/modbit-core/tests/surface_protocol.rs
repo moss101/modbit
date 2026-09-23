@@ -36590,3 +36590,333 @@ async fn qual_px_008_allowed_review_comments_steer_as_untrusted_input_and_grant_
     );
     drop(repo);
 }
+
+/// QUAL-EV-0066 (REQ-EV-0066; docs/23 "Reversibility") on the real Core
+/// against a GitHub-compatible forge: the receipt of an opened pull request
+/// says `COMPENSATABLE`, and the pull request is never offered an undo —
+/// `UndoToolCall` refuses it naming what counteracts it. `CompensateEffect`
+/// runs the declared compensation (closing the pull request) as a new
+/// external effect under its own approval, and its receipt is distinct: a new
+/// effect naming the one it compensates, with a class of its own, beside the
+/// untouched original; a second request answers from that receipt; the
+/// compensation itself can be neither undone nor compensated; and the chain,
+/// with the new fields, verifies after a restart.
+#[tokio::test]
+async fn qual_ev_0066_an_external_effect_is_never_undoable_and_its_compensation_is_a_receipt_of_its_own()
+ {
+    use modbit_protocol::v1::{
+        ApprovalList, ApprovalResolvedAck, CompensateEffect, CompensationAck, EffectReceiptList,
+        GetEffectReceipts, GetReviewBundle, ListApprovals, OpenPullRequest, PullRequestAck,
+        ResolveApproval, ReviewBundle, StartTask, TaskRunStarted, UndoToolCall,
+    };
+    let gh = fake_github("ghp_testtoken_0066");
+    let (repo, root) = plain_repo(&[("notes.txt", "line 1\nline 2\nline 3\n")]);
+    let bare = tempfile::tempdir().unwrap();
+    assert!(
+        Command::new("git")
+            .args(["init", "-q", "--bare", "-b", "main"])
+            .arg(bare.path())
+            .status()
+            .unwrap()
+            .success()
+    );
+    for args in [
+        vec!["remote", "add", "origin", "https://github.test/o/r.git"],
+        vec![
+            "config",
+            &format!("url.{}.insteadOf", bare.path().to_str().unwrap()),
+            "https://github.test/o/r.git",
+        ],
+    ] {
+        assert!(
+            Command::new("git")
+                .arg("-C")
+                .arg(repo.path())
+                .args(&args)
+                .status()
+                .unwrap()
+                .success()
+        );
+    }
+    let script = vec![
+        serde_json::json!({"calls": [{"name": "fs.read", "args": {"path": "notes.txt"}}]}),
+        serde_json::json!({"calls": [{"name": "plan.update", "args": {"outcome": "annotate", "expected_files": ["notes.txt"], "protected_effects": []}}]}),
+        serde_json::json!({"calls": [{"name": "change.apply", "args": {"path": "notes.txt", "op": "replace", "content": "line 1\nline 2 annotated\nline 3\n"}}]}),
+        serde_json::json!({"calls": [{"name": "task.complete", "args": {"summary": "annotated", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, _) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("MODBIT_GITHUB_API_BASE_URL", gh.base.as_str()),
+        ("MODBIT_GITHUB_TOKEN", "ghp_testtoken_0066"),
+        ("MODBIT_GITHUB_WEB_HOST", "github.test"),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client_of(ClientKind::Desktop).await;
+    let (session, _) = create_session(&mut c, id16(0x51)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_goal(&mut c, &session, g, &root, 0x52, "annotate the notes").await;
+    let _: TaskRunStarted = Client::result(
+        &c.command(envelope_fenced(
+            id16(0x53),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: "openai".into(),
+                model: "gpt-5".into(),
+                max_turns: 20,
+                max_tool_calls: 0,
+                max_no_progress_turns: 4,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+    let st = wait_for_state(&mut c, &task, "ReadyForReview", 120).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let b: ReviewBundle = Client::result(
+        &c.command(envelope(
+            id16(0x54),
+            "GetReviewBundle",
+            GetReviewBundle {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+    let open = |id: u8| {
+        envelope_fenced(
+            id16(id),
+            "OpenPullRequest",
+            OpenPullRequest {
+                task_id: Some(task.clone()),
+                expected_candidate_revision: b.workspace_revision,
+                base: String::new(),
+                title: String::new(),
+                remote: String::new(),
+            }
+            .encode_to_vec(),
+            g,
+        )
+    };
+    async fn approve_requested(c: &mut Client, session: &Id, g: Option<u64>, id: u8, tool: &str) {
+        let list: ApprovalList = Client::result(
+            &c.command(envelope(
+                id16(id),
+                "ListApprovals",
+                ListApprovals {
+                    session_id: Some(session.clone()),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap(),
+        )
+        .unwrap();
+        let a = list
+            .approvals
+            .iter()
+            .find(|a| a.status == "REQUESTED" && a.tool_name == tool)
+            .cloned()
+            .unwrap_or_else(|| panic!("a REQUESTED {tool} approval: {list:?}"));
+        let r: ApprovalResolvedAck = Client::result(
+            &c.command(envelope_fenced(
+                id16(id + 1),
+                "ResolveApproval",
+                ResolveApproval {
+                    approval_id: a.approval_id.clone(),
+                    approve: true,
+                    reason: "decided".into(),
+                    intent_hash: a.intent_hash.clone(),
+                }
+                .encode_to_vec(),
+                g,
+            ))
+            .await
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(r.status, "APPROVED");
+    }
+    let pending: PullRequestAck = Client::result(&c.command(open(0x55)).await.unwrap()).unwrap();
+    assert_eq!(pending.status, "APPROVAL_PENDING");
+    approve_requested(&mut c, &session, g, 0x56, "forge.pr.create").await;
+    let opened: PullRequestAck = Client::result(&c.command(open(0x58)).await.unwrap()).unwrap();
+    assert_eq!(opened.status, "OPENED", "{opened:?}");
+    async fn receipts(c: &mut Client, task: &Id, id: u8) -> EffectReceiptList {
+        Client::result(
+            &c.command(envelope(
+                id16(id),
+                "GetEffectReceipts",
+                GetEffectReceipts {
+                    task_id: Some(task.clone()),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap(),
+        )
+        .unwrap()
+    }
+    let hex = |i: &Option<Id>| hex::encode(&i.as_ref().unwrap().value);
+    let r1 = receipts(&mut c, &task, 0x59).await;
+    assert!(r1.chain_valid, "{r1:?}");
+    let pr_receipt = r1
+        .receipts
+        .iter()
+        .find(|r| {
+            modbit_domain::EffectId::parse(&opened.effect_receipt_ids[0])
+                .is_ok_and(|e| hex::encode(e.as_bytes()) == hex(&r.effect_id))
+        })
+        .expect("the pull request's receipt")
+        .clone();
+    assert_eq!(pr_receipt.reversibility, "COMPENSATABLE");
+    assert!(pr_receipt.compensates.is_none());
+    // 1. Never undoable.
+    let err = c
+        .command(envelope(
+            id16(0x5A),
+            "UndoToolCall",
+            UndoToolCall {
+                task_id: Some(task.clone()),
+                tool_call_id: pr_receipt.tool_call_id.clone(),
+                apply: false,
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap_err();
+    match &err {
+        ClientError::Rejected { code, message } => {
+            assert_eq!(code, "NOT_UNDOABLE");
+            assert!(
+                message.contains("COMPENSATABLE, not undoable")
+                    && message.contains("forge.pr.update"),
+                "{message}"
+            );
+        }
+        other => panic!("{other:?}"),
+    }
+    // 2. Compensated: a new effect under its own approval.
+    let compensate = |id: u8, call: Option<Id>| {
+        envelope_fenced(
+            id16(id),
+            "CompensateEffect",
+            CompensateEffect {
+                task_id: Some(task.clone()),
+                tool_call_id: call,
+            }
+            .encode_to_vec(),
+            g,
+        )
+    };
+    let first: CompensationAck = Client::result(
+        &c.command(compensate(0x5B, pr_receipt.tool_call_id.clone()))
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(first.status, "APPROVAL_PENDING", "{first:?}");
+    assert_eq!(first.compensating_tool, "forge.pr.update");
+    assert_eq!(
+        gh.pulls.lock().unwrap()[0]["state"],
+        "open",
+        "nothing reached the forge before the approval"
+    );
+    approve_requested(&mut c, &session, g, 0x5C, "forge.pr.update").await;
+    let done: CompensationAck = Client::result(
+        &c.command(compensate(0x5E, pr_receipt.tool_call_id.clone()))
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(done.status, "COMPENSATED", "{done:?}");
+    assert_eq!(done.effect_receipt_ids.len(), 1);
+    assert_eq!(gh.pulls.lock().unwrap()[0]["state"], "closed");
+    // 3. The compensation receipt is its own: a new effect naming the original.
+    let r2 = receipts(&mut c, &task, 0x5F).await;
+    assert!(r2.chain_valid, "{r2:?}");
+    assert_eq!(r2.receipts.len(), r1.receipts.len() + 1);
+    let comp = r2
+        .receipts
+        .iter()
+        .find(|r| r.compensates.is_some())
+        .expect("a compensation receipt")
+        .clone();
+    assert_eq!(hex(&comp.compensates), hex(&pr_receipt.effect_id));
+    assert_ne!(hex(&comp.effect_id), hex(&pr_receipt.effect_id));
+    assert_eq!(
+        comp.reversibility, "IRREVERSIBLE",
+        "closing declares no compensation of its own"
+    );
+    let original_now = r2
+        .receipts
+        .iter()
+        .find(|r| hex(&r.effect_id) == hex(&pr_receipt.effect_id))
+        .unwrap();
+    assert_eq!(
+        original_now, &pr_receipt,
+        "the original receipt is untouched"
+    );
+    // 4. Asked again: the receipt answers; nothing runs twice.
+    let again: CompensationAck = Client::result(
+        &c.command(compensate(0x60, pr_receipt.tool_call_id.clone()))
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    assert!(again.status == "COMPENSATED" && again.replayed, "{again:?}");
+    assert_eq!(
+        gh.requests
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|(m, t, _)| m == "PATCH" && t.contains("/pulls/1"))
+            .count(),
+        1,
+        "one close on the forge"
+    );
+    // 5. The compensation is neither undone nor compensated.
+    let err = c
+        .command(envelope(
+            id16(0x61),
+            "UndoToolCall",
+            UndoToolCall {
+                task_id: Some(task.clone()),
+                tool_call_id: comp.tool_call_id.clone(),
+                apply: false,
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(&err, ClientError::Rejected { code, message } if code == "NOT_UNDOABLE" && message.contains("IRREVERSIBLE")),
+        "{err:?}"
+    );
+    let err = c
+        .command(compensate(0x62, comp.tool_call_id.clone()))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(&err, ClientError::Rejected { code, .. } if code == "NOT_COMPENSATABLE"),
+        "{err:?}"
+    );
+    // 6. The chain, new fields and all, verifies from the projection after a restart.
+    drop(c);
+    core.kill();
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client_of(ClientKind::Desktop).await;
+    let r3 = receipts(&mut c, &task, 0x63).await;
+    assert!(r3.chain_valid, "{r3:?}");
+    assert_eq!(r3.receipts, r2.receipts);
+    drop(repo);
+}

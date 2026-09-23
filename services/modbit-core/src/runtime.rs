@@ -6676,6 +6676,7 @@ async fn execute_tool(
             lease_generation: lt.lease(),
             projection: Some(projected.to_vec()),
             cancel: Some(cancel.clone()),
+            compensates: None,
         };
         let done = match core.tools.invoke(&core.store, req).await {
             Ok(d) => d,

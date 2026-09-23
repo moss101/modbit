@@ -82,8 +82,33 @@ mod tests {
             evidence_ref: None,
             status: status.into(),
             occurred_at: Timestamp(1),
+            reversibility: None,
+            compensates: None,
             receipt_hash: String::new(),
         })
+    }
+
+    /// REQ-EV-0066: a receipt written before reversibility existed keeps its
+    /// hash (the absent fields are not serialized), and on a new receipt the
+    /// class and the compensated effect are covered by the hash.
+    #[test]
+    fn reversibility_and_compensation_are_hashed_and_legacy_receipts_keep_their_hash() {
+        use modbit_domain::toolcall::Reversibility;
+        let legacy = receipt(None, "SUCCESS");
+        let json = serde_json::to_value(&legacy).unwrap();
+        assert!(json.get("reversibility").is_none() && json.get("compensates").is_none());
+        assert_eq!(receipt_hash(&legacy), legacy.receipt_hash);
+        let mut new = seal(EffectReceipt {
+            reversibility: Some(Reversibility::Compensatable),
+            compensates: Some(EffectId::new()),
+            ..receipt(None, "SUCCESS")
+        });
+        assert!(verify_chain(std::slice::from_ref(&new)).is_ok());
+        new.reversibility = Some(Reversibility::Reversible);
+        assert!(
+            verify_chain(std::slice::from_ref(&new)).is_err(),
+            "relabelling an external effect as reversible breaks the chain"
+        );
     }
 
     #[test]

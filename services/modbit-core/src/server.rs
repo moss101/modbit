@@ -581,6 +581,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "UpdatePullRequest",
                     "IngestCiResults",
                     "IngestReviewComments",
+                    "CompensateEffect",
                     "UndoToolCall",
                     "AskSideQuestion",
                     "ListQuestions",
@@ -1069,7 +1070,11 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         "DecideReview" => "review.decide",
         // Steering a task from its pull request's comments is steering it.
         "ApplyUserPatch" | "SubmitExternalDiagnostics" | "IngestReviewComments" => "task.author",
-        "OpenPullRequest" | "UpdatePullRequest" | "IngestCiResults" => "review.decide",
+        // Counteracting an effect on the forge is the same class of decision
+        // as the pull request it counteracts (REQ-EV-0066).
+        "OpenPullRequest" | "UpdatePullRequest" | "IngestCiResults" | "CompensateEffect" => {
+            "review.decide"
+        }
         "ResolveApproval" => "approval.resolve",
         "RespondToQuestion" | "AskSideQuestion" => "question.answer",
         // A late invoice changes what a request is said to have cost: the
@@ -2597,6 +2602,7 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 lease_generation: env.expected_generation,
                 projection: None,
                 cancel: None,
+                compensates: None,
             };
             match core.tools.invoke(&core.store, req).await {
                 Ok(done) => {
@@ -3679,6 +3685,14 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             let Some(root) = task.workspace_root.clone() else {
                 return reject(cid, "NO_WORKSPACE", "the task has no workspace root");
             };
+            // REQ-EV-0066: an effect that is not reversible has no undo; the
+            // refusal says how far it can be taken back and what counteracts it.
+            let recorded = core.store.lock().await.tool_call(&call).ok().flatten();
+            if let Some(c) = &recorded
+                && let Some((code, detail)) = crate::compensation::not_undoable(core, c)
+            {
+                return reject(cid, code, detail);
+            }
             let plan = match crate::undo::plan(core, &root, call).await {
                 Ok(p) => p,
                 Err(e) => return reject(cid, "UNDO_PLAN", e.to_string()),
@@ -5878,6 +5892,46 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 Err((code, msg)) => reject(cid, &code, msg),
             }
         }
+        // REQ-EV-0066: counteract an effect that cannot be undone.
+        "CompensateEffect" => {
+            let Ok(p) = wire::CompensateEffect::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "CompensateEffect");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let Some(call) = p
+                .tool_call_id
+                .as_ref()
+                .and_then(id16)
+                .map(ToolCallId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "tool_call_id required");
+            };
+            let session_id = match core.store.lock().await.task(&task_id) {
+                Ok(Some(t)) => t.session_id,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
+                return ack;
+            }
+            match crate::compensation::compensate(
+                core,
+                task_id,
+                call,
+                actor,
+                env.expected_generation,
+            )
+            .await
+            {
+                Ok(v) => {
+                    let replayed = v.replayed;
+                    accept(cid, replayed, v.encode_to_vec())
+                }
+                Err((code, msg)) => reject(cid, &code, msg),
+            }
+        }
         // PX-008: the pull request's comments, allowed and addressed ones as
         // untrusted steering, the rest recorded as ignored.
         "IngestReviewComments" => {
@@ -6090,6 +6144,11 @@ fn receipt_view(r: &modbit_domain::toolcall::EffectReceipt) -> wire::EffectRecei
         status: r.status.clone(),
         occurred_at_ms: r.occurred_at.millis(),
         receipt_hash: r.receipt_hash.clone(),
+        reversibility: r
+            .reversibility
+            .map(|x| x.label().to_owned())
+            .unwrap_or_default(),
+        compensates: r.compensates.map(|e| wire_id(e.as_bytes())),
     }
 }
 

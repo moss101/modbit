@@ -318,6 +318,8 @@ message EffectReceiptView {
   string status = 11;
   int64 occurred_at_ms = 12;
   string receipt_hash = 13;
+  string reversibility = 14;       // REVERSIBLE | PARTIALLY_REVERSIBLE | COMPENSATABLE | IRREVERSIBLE; "" before REQ-EV-0066
+  Id compensates = 15;             // the effect this one compensates, when it is a compensation
 }
 
 message EffectReceiptList {
@@ -2449,4 +2451,27 @@ message ReviewCommentsIngestedView {
   repeated ReviewCommentView ignored = 5;
   uint32 already_taken = 6;        // comments ingested before, not taken again
   uint64 offset = 7;
+}
+
+// ---- Reversibility and compensation (REQ-EV-0066; docs/23 "Reversibility") ----
+
+// Counteract an effect that cannot be undone with the compensation its tool
+// declares — itself an approved external effect whose receipt names the
+// effect it compensates. The first call asks for the approval; the call
+// after the person decides runs it.
+message CompensateEffect {
+  Id task_id = 1;
+  Id tool_call_id = 2;             // the call whose effect is compensated
+}
+
+message CompensationAck {
+  string status = 1;               // APPROVAL_PENDING | COMPENSATED | DENIED
+  string compensating_tool = 2;
+  Id compensating_tool_call_id = 3;
+  string approval_id = 4;
+  string intent_hash = 5;
+  Id original_effect_id = 6;
+  repeated string effect_receipt_ids = 7;
+  bool replayed = 8;
+  string detail = 9;
 }

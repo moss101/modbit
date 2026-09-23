@@ -49,6 +49,7 @@ fn spec(name: &str, description: &str, input: Value, timeout_ms: u64) -> ToolSpe
         timeout_ms,
         output_budget_bytes: 128 * 1024,
         idempotency: Idempotency::Idempotent,
+        compensation: None,
     }
 }
 
@@ -620,6 +621,7 @@ impl BrowserAct {
             timeout_ms: 60_000,
             output_budget_bytes: 128 * 1024,
             idempotency: Idempotency::NonIdempotent,
+            compensation: None,
         }))
     }
 }

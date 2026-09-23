@@ -29,6 +29,54 @@ pub enum EffectClass {
     Destructive,
 }
 
+/// How far an effect can be taken back (REQ-EV-0066, docs/23
+/// "Reversibility"). Never optimistic: only a write the workspace can undo
+/// exactly is `Reversible`; an external effect is at best `Compensatable` —
+/// another effect that counteracts it, with a receipt of its own — and never
+/// fully undoable.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum Reversibility {
+    /// Undone exactly (a workspace write with its typed undo; a read, which
+    /// changed nothing).
+    Reversible,
+    /// Content can be restored but what observed it cannot be recalled (a
+    /// protected surface).
+    PartiallyReversible,
+    /// Cannot be undone; a declared compensating effect counteracts it.
+    Compensatable,
+    /// Cannot be undone or counteracted (a disclosure, a destruction, an
+    /// external effect with no compensation).
+    Irreversible,
+}
+
+impl Reversibility {
+    /// The class of an effect of `effect` class whose tool does or does not
+    /// declare a compensation.
+    #[must_use]
+    pub const fn of(effect: EffectClass, has_compensation: bool) -> Self {
+        match effect {
+            EffectClass::ReadOnly | EffectClass::ReversibleWrite => Self::Reversible,
+            EffectClass::ProtectedWrite => Self::PartiallyReversible,
+            EffectClass::ExternalSideEffect if has_compensation => Self::Compensatable,
+            EffectClass::ExternalSideEffect
+            | EffectClass::SecretAccess
+            | EffectClass::Destructive => Self::Irreversible,
+        }
+    }
+
+    /// Wire label.
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Reversible => "REVERSIBLE",
+            Self::PartiallyReversible => "PARTIALLY_REVERSIBLE",
+            Self::Compensatable => "COMPENSATABLE",
+            Self::Irreversible => "IRREVERSIBLE",
+        }
+    }
+}
+
 /// Tool call lifecycle.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -168,6 +216,14 @@ pub struct EffectReceipt {
     pub status: String,
     /// When.
     pub occurred_at: Timestamp,
+    /// How far the effect can be taken back (REQ-EV-0066); absent on
+    /// receipts written before it, which keep their hash.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reversibility: Option<Reversibility>,
+    /// The effect this one compensates, when it is a compensation: a
+    /// compensation is its own receipt, never an edit of the original.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub compensates: Option<EffectId>,
     /// Hash of the receipt.
     pub receipt_hash: String,
 }
