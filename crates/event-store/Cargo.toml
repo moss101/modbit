@@ -32,6 +32,7 @@ reqwest = { workspace = true, optional = true }
 cloud = ["dep:tokio-postgres", "dep:deadpool-postgres", "dep:object_store", "dep:uuid", "dep:rand", "dep:tokio", "dep:bytes", "dep:futures-util", "dep:reqwest"]
 
 [dev-dependencies]
+proptest.workspace = true
 tempfile.workspace = true
 
 [lints]

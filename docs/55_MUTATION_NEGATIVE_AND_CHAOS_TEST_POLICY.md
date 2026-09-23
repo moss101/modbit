@@ -8,6 +8,8 @@ Positive tests can pass while security/recovery checks are ineffective. Critical
 
 For policy, effect idempotency, checkpoint fencing, context freshness, tenant isolation, secret redaction and path protection, periodically introduce controlled mutations such as inverted predicate, skipped fence, stale read, duplicate dispatch or removed redaction and prove the suite fails.
 
+As built (M9.6): the property suites of `52_SECURITY_THREAT_MODEL_AND_TESTS.md` "Security gates" carry their mutation beside the property — a verifier with one check removed, a corrupted length prefix, a stale lease generation — so the suite itself shows which control catches what.
+
 ## Negative fixtures
 
 Maintain fixtures for ambiguous edits, invalid/stale IDs, duplicate requests, oversized outputs/media, malformed provider/tool events, hostile web/doc content, symlink/path escapes, cross-tenant handles, expired capabilities and corrupted artifacts.
