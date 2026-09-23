@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 90,
-    "root_and_tooling": 1528,
-    "docs_bytes": 1315127
+    "root_and_tooling": 1529,
+    "docs_bytes": 1317614
   },
   "sections": [
     {
@@ -302,8 +302,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Client surfaces and source-control integration",
-      "bytes": 20436,
-      "sha256": "01fc7403bcdd2e1bc234a67660d4c4ad7eeca65cb58e5dd6767a68844dc19b31"
+      "bytes": 21965,
+      "sha256": "69e3f4d9467ab2ef7c64192dc0f5e0b601a7e2160685fccd20032b0e468a48c2"
     },
     {
       "path": "docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md",
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 41208,
-      "sha256": "b422abf029897d91f1bd78546ebcb2a5f804a9b6b92597faaa1b075c9932a2bb"
+      "bytes": 42166,
+      "sha256": "b80bfa1a580db2f7d5e22fdb56f03bc4b333c468fe8b515b3469ef5dab962af8"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -8459,6 +8459,11 @@
       "path": "evidence/m9/M9.6/evidence.json",
       "bytes": 3747,
       "sha256": "cbb7012e8ff5c95606ff3b54bee5c47df381a0a4e6a7cd9cae13ca69bc478ff5"
+    },
+    {
+      "path": "evidence/m9/PX-009/TASK_CARD.md",
+      "bytes": 3716,
+      "sha256": "143ff5f9be712b78a43f415d143fba93a8568e2f9b6980d28e278d4731838fa2"
     },
     {
       "path": "graph/PROJECT_GRAPH.md",

@@ -579,6 +579,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "SubmitExternalDiagnostics",
                     "OpenPullRequest",
                     "UpdatePullRequest",
+                    "IngestCiResults",
                     "UndoToolCall",
                     "AskSideQuestion",
                     "ListQuestions",
@@ -1066,7 +1067,7 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         "GetCodeView" => "ui.code_view",
         "DecideReview" => "review.decide",
         "ApplyUserPatch" | "SubmitExternalDiagnostics" => "task.author",
-        "OpenPullRequest" | "UpdatePullRequest" => "review.decide",
+        "OpenPullRequest" | "UpdatePullRequest" | "IngestCiResults" => "review.decide",
         "ResolveApproval" => "approval.resolve",
         "RespondToQuestion" | "AskSideQuestion" => "question.answer",
         // A late invoice changes what a request is said to have cost: the
@@ -5870,6 +5871,28 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                     let replayed = v.replayed;
                     accept(cid, replayed, v.encode_to_vec())
                 }
+                Err((code, msg)) => reject(cid, &code, msg),
+            }
+        }
+        // PX-009: the forge's check runs for the pushed commit, as evidence
+        // with provenance ci — never a verification result.
+        "IngestCiResults" => {
+            let Ok(p) = wire::IngestCiResults::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "IngestCiResults");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let session_id = match core.store.lock().await.task(&task_id) {
+                Ok(Some(t)) => t.session_id,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
+                return ack;
+            }
+            match crate::ci_evidence::ingest(core, task_id, actor, env.expected_generation).await {
+                Ok(v) => accept(cid, false, v.encode_to_vec()),
                 Err((code, msg)) => reject(cid, &code, msg),
             }
         }

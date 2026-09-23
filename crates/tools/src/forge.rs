@@ -695,9 +695,41 @@ tool!(
         .await
         {
             Ok((200, body)) => {
+                // A run's own output is its log (PX-009); each part is
+                // bounded so the answer stays a bounded view.
+                let bounded = |v: &Value| -> (Value, bool) {
+                    let s = v.as_str().unwrap_or_default();
+                    if s.len() <= 16 * 1024 {
+                        return (json!(s), false);
+                    }
+                    let mut end = 16 * 1024;
+                    while !s.is_char_boundary(end) {
+                        end -= 1;
+                    }
+                    (json!(&s[..end]), true)
+                };
                 let checks: Vec<Value> = body["check_runs"]
                     .as_array()
-                    .map(|a| a.iter().map(|c| json!({"name": c["name"], "status": c["status"], "conclusion": c["conclusion"], "url": c["html_url"], "head_sha": c["head_sha"]})).collect())
+                    .map(|a| {
+                        a.iter()
+                            .map(|c| {
+                                let (title, t1) = bounded(&c["output"]["title"]);
+                                let (summary, t2) = bounded(&c["output"]["summary"]);
+                                let (text, t3) = bounded(&c["output"]["text"]);
+                                json!({
+                                    "id": c["id"],
+                                    "name": c["name"],
+                                    "status": c["status"],
+                                    "conclusion": c["conclusion"],
+                                    "url": c["html_url"],
+                                    "head_sha": c["head_sha"],
+                                    "completed_at": c["completed_at"],
+                                    "output": {"title": title, "summary": summary, "text": text},
+                                    "output_truncated": t1 || t2 || t3,
+                                })
+                            })
+                            .collect()
+                    })
                     .unwrap_or_default();
                 ToolOutcome::ok(untrusted(
                     json!({"provenance": "forge_ci", "owner": owner, "repo": repo, "ref": r, "total": body["total_count"], "checks": checks}),

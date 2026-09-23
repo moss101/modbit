@@ -27706,7 +27706,12 @@ fn fake_github(token: &str) -> FakeGithub {
                     ),
                     ("GET", ["repos", _, _, "commits", sha, "check-runs"]) => (
                         200,
-                        serde_json::json!({"total_count": 1, "check_runs": [{"name": "ci", "status": "completed", "conclusion": "success", "html_url": "https://github.test/o/r/runs/1", "head_sha": sha}]}),
+                        // The run for the commit asked about, and one the forge
+                        // still lists for an older commit (PX-009 refuses it).
+                        serde_json::json!({"total_count": 2, "check_runs": [
+                            {"id": 101, "name": "ci", "status": "completed", "conclusion": "success", "html_url": "https://github.test/o/r/runs/101", "head_sha": sha, "completed_at": "2026-09-13T00:05:00Z", "output": {"title": "ci passed", "summary": "3 tests passed", "text": "test totals::negative ... ok\ntest totals::zero ... ok\ntest totals::positive ... ok\n"}},
+                            {"id": 102, "name": "ci-previous", "status": "completed", "conclusion": "success", "html_url": "https://github.test/o/r/runs/102", "head_sha": "fedcba9876543210fedcba9876543210fedcba98", "completed_at": "2026-09-12T00:05:00Z", "output": {"title": "ci passed", "summary": "on an older commit"}}
+                        ]}),
                     ),
                     _ => (404, serde_json::json!({"message": "Not Found"})),
                 }
@@ -35897,5 +35902,354 @@ async fn epr_fi_010_unknown_work_holds_its_reservation_across_a_kill_and_a_late_
         .await
         .unwrap_err();
     assert!(matches!(err, ClientError::Rejected { ref code, .. } if code == "UNKNOWN_TASK"));
+    drop(repo);
+}
+
+/// QUAL-PX-009 / PX-E2E-009 (REQ-PX-009; docs/29 "CI evidence") on the real
+/// Core against a GitHub-compatible forge: once a reviewed result's pull
+/// request is open, the forge's check runs for the commit this Core pushed are
+/// ingested through `forge.ci.status` as evidence with provenance `ci`, the
+/// forge's run id, the commit and the run's own log as an object — shown in
+/// Review; a run the forge lists for another commit is refused. Ingestion
+/// writes no verification run and no gate record. A green run is not a
+/// qualification: returned to work, the task's own check (its configured
+/// command, which the project also calls `ci`) runs in Modbit on the new
+/// revision, fails there, and the gate rejects while the green CI evidence
+/// stands, filed under its commit.
+#[tokio::test]
+async fn qual_px_009_ci_results_are_evidence_with_provenance_and_never_a_verification_result() {
+    use modbit_protocol::v1::{
+        ApprovalList, ApprovalResolvedAck, CiResultsIngested, DecideReview, GetReviewBundle,
+        IngestCiResults, ListApprovals, ObjectRangeChunk, OpenPullRequest, PullRequestAck,
+        ReadObjectRange, ResolveApproval, ReviewBundle, ReviewDecided, StartTask, TaskRunStarted,
+    };
+    let gh = fake_github("ghp_testtoken_0009");
+    // The task's own check is named `ci`, as the forge's run is; it passes
+    // at the base and breaks only when the notes say BROKEN.
+    let (repo, root) = plain_repo(&[
+        ("notes.txt", "line 1\nline 2\nline 3\n"),
+        ("check.sh", "! grep -q BROKEN notes.txt\n"),
+        (
+            ".modbit/verification.json",
+            "{\"commands\": [{\"id\": \"ci\", \"argv\": [\"sh\", \"check.sh\"]}]}",
+        ),
+    ]);
+    let bare = tempfile::tempdir().unwrap();
+    assert!(
+        Command::new("git")
+            .args(["init", "-q", "--bare", "-b", "main"])
+            .arg(bare.path())
+            .status()
+            .unwrap()
+            .success()
+    );
+    for args in [
+        vec!["remote", "add", "origin", "https://github.test/o/r.git"],
+        vec![
+            "config",
+            &format!("url.{}.insteadOf", bare.path().to_str().unwrap()),
+            "https://github.test/o/r.git",
+        ],
+    ] {
+        assert!(
+            Command::new("git")
+                .arg("-C")
+                .arg(repo.path())
+                .args(&args)
+                .status()
+                .unwrap()
+                .success()
+        );
+    }
+    let script = vec![
+        serde_json::json!({"calls": [{"name": "fs.read", "args": {"path": "notes.txt"}}]}),
+        serde_json::json!({"calls": [{"name": "plan.update", "args": {"outcome": "annotate", "expected_files": ["notes.txt"], "protected_effects": []}}]}),
+        serde_json::json!({"calls": [{"name": "change.apply", "args": {"path": "notes.txt", "op": "replace", "content": "line 1\nline 2 annotated\nline 3\n"}}]}),
+        serde_json::json!({"calls": [{"name": "task.complete", "args": {"summary": "annotated", "self_review": {"findings": []}}}]}),
+        // Returned to work: a change that breaks the task's own check.
+        serde_json::json!({"calls": [{"name": "change.apply", "args": {"path": "notes.txt", "op": "replace", "content": "line 1\nline 2 annotated BROKEN\nline 3\n"}}]}),
+        serde_json::json!({"calls": [{"name": "task.complete", "args": {"summary": "marked the note", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, _) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn_with_env(
+        dir.path(),
+        &[
+            ("MODBIT_OPENAI_BASE_URL", &base),
+            ("MODBIT_GITHUB_API_BASE_URL", gh.base.as_str()),
+            ("MODBIT_GITHUB_TOKEN", "ghp_testtoken_0009"),
+            ("MODBIT_GITHUB_WEB_HOST", "github.test"),
+        ],
+    );
+    let mut c = core.client_of(ClientKind::Desktop).await;
+    let (session, _) = create_session(&mut c, id16(0x31)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_goal(&mut c, &session, g, &root, 0x32, "annotate the notes").await;
+    let start = |id: u8| {
+        envelope_fenced(
+            id16(id),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: "openai".into(),
+                model: "gpt-5".into(),
+                max_turns: 20,
+                max_tool_calls: 0,
+                max_no_progress_turns: 2,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        )
+    };
+    let _: TaskRunStarted = Client::result(&c.command(start(0x33)).await.unwrap()).unwrap();
+    let st = wait_for_state(&mut c, &task, "ReadyForReview", 120).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let bundle = |id: u8| {
+        envelope(
+            id16(id),
+            "GetReviewBundle",
+            GetReviewBundle {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        )
+    };
+    let b0: ReviewBundle = Client::result(&c.command(bundle(0x34)).await.unwrap()).unwrap();
+    let r1 = b0.workspace_revision;
+    // Nothing to ingest before a pull request exists.
+    let ingest = |id: u8| {
+        envelope_fenced(
+            id16(id),
+            "IngestCiResults",
+            IngestCiResults {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+            g,
+        )
+    };
+    let err = c.command(ingest(0x35)).await.unwrap_err();
+    assert!(
+        matches!(err, ClientError::Rejected { ref code, .. } if code == "NO_PULL_REQUEST"),
+        "{err:?}"
+    );
+    // The pull request, approved and opened (PX-007's path).
+    let open = |id: u8| {
+        envelope_fenced(
+            id16(id),
+            "OpenPullRequest",
+            OpenPullRequest {
+                task_id: Some(task.clone()),
+                expected_candidate_revision: r1,
+                base: String::new(),
+                title: String::new(),
+                remote: String::new(),
+            }
+            .encode_to_vec(),
+            g,
+        )
+    };
+    let pending: PullRequestAck = Client::result(&c.command(open(0x36)).await.unwrap()).unwrap();
+    assert_eq!(pending.status, "APPROVAL_PENDING", "{pending:?}");
+    let list: ApprovalList = Client::result(
+        &c.command(envelope(
+            id16(0x37),
+            "ListApprovals",
+            ListApprovals {
+                session_id: Some(session.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+    let a = list
+        .approvals
+        .iter()
+        .find(|a| a.status == "REQUESTED")
+        .cloned()
+        .unwrap();
+    let r: ApprovalResolvedAck = Client::result(
+        &c.command(envelope_fenced(
+            id16(0x38),
+            "ResolveApproval",
+            ResolveApproval {
+                approval_id: a.approval_id.clone(),
+                approve: true,
+                reason: "open it".into(),
+                intent_hash: a.intent_hash.clone(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(r.status, "APPROVED");
+    let opened: PullRequestAck = Client::result(&c.command(open(0x39)).await.unwrap()).unwrap();
+    assert_eq!(opened.status, "OPENED", "{opened:?}");
+    let before = task_events(&core, &session, &task).await;
+    let count = |evs: &[(String, String, serde_json::Value)], t: &str| {
+        evs.iter().filter(|(_, ty, _)| ty == t).count()
+    };
+
+    // 1. Ingest: the run for the pushed commit is evidence; the other is refused.
+    let got: CiResultsIngested = Client::result(&c.command(ingest(0x3A)).await.unwrap()).unwrap();
+    assert_eq!(got.commit, opened.head_sha, "the commit this Core pushed");
+    assert_eq!(
+        (
+            got.provider.as_str(),
+            got.owner.as_str(),
+            got.repo.as_str(),
+            got.pull_number
+        ),
+        ("github", "o", "r", 1)
+    );
+    assert_eq!(got.evidence_class, "external_ci");
+    assert_eq!(got.checks.len(), 1, "{got:?}");
+    let ci = &got.checks[0];
+    assert_eq!(
+        (
+            ci.name.as_str(),
+            ci.run_id,
+            ci.conclusion.as_str(),
+            ci.provenance.as_str()
+        ),
+        ("ci", 101, "success", "ci")
+    );
+    assert_eq!(ci.url, "https://github.test/o/r/runs/101");
+    assert_eq!(got.rejected.len(), 1, "{got:?}");
+    assert_eq!(
+        (
+            got.rejected[0].name.as_str(),
+            got.rejected[0].reason.as_str()
+        ),
+        ("ci-previous", "MISMATCHED_COMMIT")
+    );
+    // The run's own log is an object a reader pages by range.
+    let chunk: ObjectRangeChunk = Client::result(
+        &c.command(envelope(
+            id16(0x3B),
+            "ReadObjectRange",
+            ReadObjectRange {
+                object_hash: ci.log_ref.clone(),
+                offset: 0,
+                length: 4096,
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+    let log = String::from_utf8(chunk.data).unwrap();
+    assert!(
+        log.starts_with("ci passed\n\n3 tests passed") && log.contains("totals::negative ... ok"),
+        "{log}"
+    );
+    // The read went through the forge adapter under the Core's token.
+    assert!(
+        gh.requests
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|(m, t, auth)| m == "GET"
+                && t.contains(&format!("/commits/{}/check-runs", opened.head_sha))
+                && *auth),
+        "the check runs were read for the pushed commit"
+    );
+    // 2. Evidence, not a verdict: nothing verification- or gate-shaped was written.
+    let after = task_events(&core, &session, &task).await;
+    for t in [
+        "VerificationRunRecorded",
+        "AcceptanceGateEvaluated",
+        "RealizedRiskDerived",
+    ] {
+        assert_eq!(count(&after, t), count(&before, t), "{t} after ingestion");
+    }
+    let recorded: Vec<&serde_json::Value> = after
+        .iter()
+        .filter(|(_, t, _)| t == "CiEvidenceRecorded")
+        .map(|(_, _, p)| p)
+        .collect();
+    assert_eq!(recorded.len(), 1);
+    assert_eq!(recorded[0]["provenance"], "ci");
+    assert_eq!(recorded[0]["commit"], opened.head_sha.as_str());
+    assert_eq!(recorded[0]["rejected"][0]["reason"], "MISMATCHED_COMMIT");
+    // 3. Review shows it with its provenance.
+    let b1: ReviewBundle = Client::result(&c.command(bundle(0x3C)).await.unwrap()).unwrap();
+    assert_eq!(b1.ci_evidence.len(), 1, "{:?}", b1.ci_evidence);
+    assert_eq!(b1.ci_evidence[0].provenance, "ci");
+    assert_eq!(b1.ci_evidence[0].commit, opened.head_sha);
+    assert!(
+        b1.evidence_links
+            .iter()
+            .any(|l| l == &format!("ci_log:{}", ci.log_ref)),
+        "{:?}",
+        b1.evidence_links
+    );
+    assert_eq!(
+        b1.verification_runs, b0.verification_runs,
+        "Review's verification runs are Modbit's own, unchanged by CI"
+    );
+    // 4. A green run is not a qualification: returned to work, the task's
+    //    own check runs in Modbit on the new revision and fails there.
+    let d: ReviewDecided = Client::result(
+        &c.command(envelope_fenced(
+            id16(0x3D),
+            "DecideReview",
+            DecideReview {
+                task_id: Some(task.clone()),
+                decision: "RETURN".into(),
+                rejected: vec![],
+                note: "rework".into(),
+                expected_workspace_revision: r1,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+    assert!(
+        matches!(d.task_state.as_str(), "Running" | "Waiting"),
+        "{d:?}"
+    );
+    let _: TaskRunStarted = Client::result(&c.command(start(0x3E)).await.unwrap()).unwrap();
+    let st = wait_task(&mut c, &task, 120).await;
+    assert_ne!(
+        st.state, "ReadyForReview",
+        "a failing own check never proposes: {st:?}"
+    );
+    let evs = task_events(&core, &session, &task).await;
+    let runs_after: Vec<&serde_json::Value> = evs
+        .iter()
+        .filter(|(_, t, p)| t == "VerificationRunRecorded" && p["stage"] == "COMPLETION")
+        .map(|(_, _, p)| p)
+        .collect();
+    let last = runs_after.last().unwrap();
+    assert_eq!(last["status"], "FAILED", "{last:#}");
+    let own_ci = last["checks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["check_id"] == "configured_command:sh check.sh")
+        .unwrap_or_else(|| panic!("the task's own check ran in Modbit: {last:#}"));
+    assert_eq!(own_ci["status"], "FAIL", "{own_ci:#}");
+    assert!(
+        evs.iter().any(|(_, t, p)| t == "AcceptanceGateEvaluated"
+            && p["verdict"] == "REJECT"
+            && p["candidate_revision"].as_u64() > Some(r1)),
+        "the gate rejects the new revision on Modbit's own run"
+    );
+    // The green evidence stands, under the commit it named.
+    let b2: ReviewBundle = Client::result(&c.command(bundle(0x3F)).await.unwrap()).unwrap();
+    assert_eq!(b2.ci_evidence.len(), 1);
+    assert_eq!(b2.ci_evidence[0].commit, opened.head_sha);
+    assert_eq!(b2.ci_evidence[0].conclusion, "success");
     drop(repo);
 }
