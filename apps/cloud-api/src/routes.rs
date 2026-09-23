@@ -634,6 +634,8 @@ async fn task_action(
             (
                 "TaskInputQueued",
                 TaskEvent::TaskInputQueued {
+                    provenance: String::new(),
+                    untrusted: false,
                     input_id: cid.to_string(),
                     mode: InputMode::Steer,
                     text,

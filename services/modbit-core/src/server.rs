@@ -580,6 +580,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "OpenPullRequest",
                     "UpdatePullRequest",
                     "IngestCiResults",
+                    "IngestReviewComments",
                     "UndoToolCall",
                     "AskSideQuestion",
                     "ListQuestions",
@@ -1066,7 +1067,8 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         }
         "GetCodeView" => "ui.code_view",
         "DecideReview" => "review.decide",
-        "ApplyUserPatch" | "SubmitExternalDiagnostics" => "task.author",
+        // Steering a task from its pull request's comments is steering it.
+        "ApplyUserPatch" | "SubmitExternalDiagnostics" | "IngestReviewComments" => "task.author",
         "OpenPullRequest" | "UpdatePullRequest" | "IngestCiResults" => "review.decide",
         "ResolveApproval" => "approval.resolve",
         "RespondToQuestion" | "AskSideQuestion" => "question.answer",
@@ -2066,6 +2068,8 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 events: vec![typed(
                     "TaskInputQueued",
                     &TaskEvent::TaskInputQueued {
+                        provenance: String::new(),
+                        untrusted: false,
                         input_id: p.input_id.clone(),
                         mode,
                         text: p.text.clone(),
@@ -5871,6 +5875,30 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                     let replayed = v.replayed;
                     accept(cid, replayed, v.encode_to_vec())
                 }
+                Err((code, msg)) => reject(cid, &code, msg),
+            }
+        }
+        // PX-008: the pull request's comments, allowed and addressed ones as
+        // untrusted steering, the rest recorded as ignored.
+        "IngestReviewComments" => {
+            let Ok(p) = wire::IngestReviewComments::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "IngestReviewComments");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let session_id = match core.store.lock().await.task(&task_id) {
+                Ok(Some(t)) => t.session_id,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
+                return ack;
+            }
+            match crate::review_comments::ingest(core, task_id, actor, env.expected_generation)
+                .await
+            {
+                Ok(v) => accept(cid, false, v.encode_to_vec()),
                 Err((code, msg)) => reject(cid, &code, msg),
             }
         }

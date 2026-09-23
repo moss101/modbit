@@ -71,6 +71,11 @@ pub struct Layer {
     /// Rules (ordered).
     #[serde(default)]
     pub rules: Vec<String>,
+    /// Forge identities whose pull-request comments addressed to Modbit may
+    /// steer a task (PX-008). Only the organization (admin) layer grants;
+    /// a lower layer may narrow the list, never add to it.
+    #[serde(default)]
+    pub review_comment_authors: Option<BTreeSet<String>>,
 }
 
 /// Where a resolved value came from.
@@ -106,6 +111,9 @@ pub struct ResolvedConfig {
     pub hooks: Vec<Resolved<String>>,
     /// Rules in effective order.
     pub rules: Vec<Resolved<String>>,
+    /// Who may steer through forge review comments (`None` = nobody: only
+    /// the organization grants).
+    pub review_comment_authors: Option<Resolved<BTreeSet<String>>>,
     /// Attempts by a lower layer to widen a higher decision (rejected, kept for audit).
     pub rejected_widenings: Vec<String>,
 }
@@ -233,6 +241,42 @@ pub fn resolve(layers: &BTreeMap<Authority, Layer>) -> ResolvedConfig {
                 out.mcp_servers.remove(name);
             }
         }
+        // review-comment authors: granted by the organization only, narrowed
+        // below it
+        if let Some(set) = &layer.review_comment_authors {
+            match (&mut out.review_comment_authors, level) {
+                (None, Authority::Admin) => {
+                    out.review_comment_authors = Some(Resolved {
+                        value: set.clone(),
+                        provenance: Provenance {
+                            decided_by: level,
+                            overridden: vec![],
+                        },
+                    });
+                }
+                (None, _) => out.rejected_widenings.push(format!(
+                    "{level:?} tried to name review-comment authors {set:?}; only the organization (admin) layer grants them"
+                )),
+                (Some(existing), _) => {
+                    let widened: Vec<_> = set.difference(&existing.value).cloned().collect();
+                    if !widened.is_empty() {
+                        out.rejected_widenings.push(format!(
+                            "{level:?} tried to add review-comment authors {widened:?} beyond {:?}'s list",
+                            existing.provenance.decided_by
+                        ));
+                    }
+                    let narrowed: BTreeSet<_> = existing.value.intersection(set).cloned().collect();
+                    if narrowed != existing.value {
+                        existing.provenance.overridden.push((
+                            existing.provenance.decided_by,
+                            format!("narrowed by {level:?}"),
+                        ));
+                        existing.value = narrowed;
+                        existing.provenance.decided_by = level;
+                    }
+                }
+            }
+        }
         // hooks / rules: append in authority order
         for h in &layer.hooks {
             out.hooks.push(Resolved {
@@ -254,6 +298,39 @@ pub fn resolve(layers: &BTreeMap<Authority, Layer>) -> ResolvedConfig {
         }
     }
     out
+}
+
+#[cfg(test)]
+mod review_comment_author_tests {
+    use super::*;
+
+    fn layer(authors: &[&str]) -> Layer {
+        Layer {
+            review_comment_authors: Some(authors.iter().map(|a| (*a).to_owned()).collect()),
+            ..Layer::default()
+        }
+    }
+
+    #[test]
+    fn only_the_organization_grants_review_comment_authors_and_lower_layers_only_narrow() {
+        // A project cannot grant on its own.
+        let r = resolve(&BTreeMap::from([(Authority::Project, layer(&["mallory"]))]));
+        assert!(r.review_comment_authors.is_none());
+        assert!(r.rejected_widenings[0].contains("only the organization"));
+        // The organization grants; a project narrows; a user cannot widen.
+        let r = resolve(&BTreeMap::from([
+            (Authority::Admin, layer(&["reviewer", "lead"])),
+            (Authority::Project, layer(&["reviewer"])),
+            (Authority::User, layer(&["reviewer", "mallory"])),
+        ]));
+        let got = r.review_comment_authors.unwrap();
+        assert_eq!(got.value, BTreeSet::from(["reviewer".to_owned()]));
+        assert!(
+            r.rejected_widenings.iter().any(|w| w.contains("mallory")),
+            "{:?}",
+            r.rejected_widenings
+        );
+    }
 }
 
 #[cfg(test)]

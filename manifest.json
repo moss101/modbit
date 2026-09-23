@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 90,
-    "root_and_tooling": 1529,
-    "docs_bytes": 1317614
+    "root_and_tooling": 1530,
+    "docs_bytes": 1320268
   },
   "sections": [
     {
@@ -185,8 +185,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Tool System, Capability Kernel, Procedural Runtime, and MCP",
-      "bytes": 27954,
-      "sha256": "5fcb36fcccea1046de944963aa44256952be76cf80a29641a22aaccaca0416af"
+      "bytes": 28163,
+      "sha256": "5c9d459dd670e12eeef8c714d70b4b11a6e2c1c296da671767c9e967e6209936"
     },
     {
       "path": "docs/17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md",
@@ -302,8 +302,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Client surfaces and source-control integration",
-      "bytes": 21965,
-      "sha256": "69e3f4d9467ab2ef7c64192dc0f5e0b601a7e2160685fccd20032b0e468a48c2"
+      "bytes": 23716,
+      "sha256": "28d33fa4dc71bc46831981c4eb3490c5e24aaeac713edad6594b5798a67882e3"
     },
     {
       "path": "docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md",
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 42166,
-      "sha256": "b80bfa1a580db2f7d5e22fdb56f03bc4b333c468fe8b515b3469ef5dab962af8"
+      "bytes": 42860,
+      "sha256": "d966a1cf31ca701e2639592d8a88a713c831e5ae6cc5a2f5edc2cbdb73e03da3"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -8459,6 +8459,11 @@
       "path": "evidence/m9/M9.6/evidence.json",
       "bytes": 3747,
       "sha256": "cbb7012e8ff5c95606ff3b54bee5c47df381a0a4e6a7cd9cae13ca69bc478ff5"
+    },
+    {
+      "path": "evidence/m9/PX-008/TASK_CARD.md",
+      "bytes": 4348,
+      "sha256": "e7eb7e8c1c32696223a5a8e7844b79573b9a7be8da116ab1621977196cc70c2a"
     },
     {
       "path": "evidence/m9/PX-009/TASK_CARD.md",

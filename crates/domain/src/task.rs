@@ -265,6 +265,14 @@ pub enum TaskEvent {
     TaskSteered {
         /// Steering text.
         text: String,
+        /// Where the steer came from when not the person at a client
+        /// (`forge_review_comment` for PX-008); empty for the person.
+        #[serde(default)]
+        provenance: String,
+        /// Whether the text is untrusted data the agent weighs rather than
+        /// an instruction from the person (PX-008).
+        #[serde(default)]
+        untrusted: bool,
     },
     /// `TaskNeedsAttention`: attention flag; no state change.
     TaskNeedsAttention {
@@ -325,6 +333,14 @@ pub enum TaskEvent {
         mode: InputMode,
         /// Text.
         text: String,
+        /// Where the input came from when not the person at a client
+        /// (`forge_review_comment` for PX-008); empty for the person.
+        #[serde(default)]
+        provenance: String,
+        /// Whether the text is untrusted data (PX-008): the agent reads it
+        /// fenced as such, and it grants nothing.
+        #[serde(default)]
+        untrusted: bool,
     },
     /// `PlanRecorded` (docs/28 PX-014): the plan artifact before the first write; no state change.
     PlanRecorded {
@@ -1728,6 +1744,27 @@ pub enum TaskEvent {
         /// Object hash of the invoice line as delivered.
         invoice_ref: String,
     },
+    /// `ReviewCommentsIngested` (PX-008, docs/29 "Review-comment
+    /// steering"): the task's pull-request comments read from the forge —
+    /// those from an identity the organization allows and addressed to
+    /// Modbit queued as untrusted steering (`TaskInputQueued`, provenance
+    /// `forge_review_comment`), every other one recorded with why it was
+    /// ignored. A comment is taken once. An audit record about the task,
+    /// valid in every state.
+    ReviewCommentsIngested {
+        /// Owner.
+        owner: String,
+        /// Repository.
+        repo: String,
+        /// Pull request number.
+        pull_number: u64,
+        /// Comments queued as steering.
+        steered: Vec<ReviewCommentRecord>,
+        /// Comments ignored, with the reason.
+        ignored: Vec<ReviewCommentRecord>,
+        /// The `forge.pr.comments.read` call that read them.
+        tool_call_id: String,
+    },
     /// `CiEvidenceRecorded` (PX-009, docs/29 "CI evidence", REQ-EV-0010):
     /// the forge's check runs for the commit the task's pull request carries,
     /// recorded as external evidence with provenance `ci` — never a
@@ -1788,6 +1825,24 @@ pub enum TaskEvent {
         /// Signals the record could not observe, by name.
         missing_signals: Vec<String>,
     },
+}
+
+/// One pull-request comment as ingestion saw it (PX-008): who, where,
+/// and what became of it — never its text, which is the input's.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReviewCommentRecord {
+    /// The forge's comment id.
+    pub comment_id: u64,
+    /// `review` (on a line) | `issue` (on the conversation).
+    pub kind: String,
+    /// The forge login that wrote it.
+    pub author: String,
+    /// Where a person reads it.
+    pub url: String,
+    /// The queued input's id, when steered.
+    pub input_id: String,
+    /// `DISALLOWED_AUTHOR` | `NOT_ADDRESSED` | `EMPTY`, when ignored.
+    pub reason: String,
 }
 
 /// One check run recorded as CI evidence (PX-009).
@@ -1929,6 +1984,7 @@ impl TaskEvent {
             Self::ToolCallReconciled { .. } => "ToolCallReconciled",
             Self::UsageReconciled { .. } => "UsageReconciled",
             Self::CiEvidenceRecorded { .. } => "CiEvidenceRecorded",
+            Self::ReviewCommentsIngested { .. } => "ReviewCommentsIngested",
             Self::RequestOutcomeRecorded { .. } => "RequestOutcomeRecorded",
         }
     }
@@ -2111,6 +2167,7 @@ impl Task {
             // CI results (PX-009), which finish on the forge's schedule.
             TaskEvent::SandboxReleased { .. }
             | TaskEvent::CiEvidenceRecorded { .. }
+            | TaskEvent::ReviewCommentsIngested { .. }
             | TaskEvent::UsageReconciled { .. }
             | TaskEvent::RequestOutcomeRecorded { .. }
             | TaskEvent::SandboxLost { .. }
@@ -2263,8 +2320,15 @@ mod tests {
         t.apply(&TaskEvent::TaskCancelled, Timestamp(3)).unwrap();
         assert!(t.apply(&TaskEvent::TaskQueued, Timestamp(4)).is_err());
         assert!(
-            t.apply(&TaskEvent::TaskSteered { text: "x".into() }, Timestamp(4))
-                .is_err()
+            t.apply(
+                &TaskEvent::TaskSteered {
+                    text: "x".into(),
+                    provenance: String::new(),
+                    untrusted: false,
+                },
+                Timestamp(4),
+            )
+            .is_err()
         );
         assert!(Task::create(TaskId::new(), &TaskEvent::TaskQueued, Timestamp(1)).is_err());
     }

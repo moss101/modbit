@@ -617,6 +617,8 @@ pub async fn decide(
             events.push(typed(
                 "TaskInputQueued",
                 &TaskEvent::TaskInputQueued {
+                    provenance: String::new(),
+                    untrusted: false,
                     input_id: format!("review-{}", Timestamp::now().0),
                     mode: InputMode::FollowUp,
                     text: format!("Review feedback: {}", p.note.trim()),
