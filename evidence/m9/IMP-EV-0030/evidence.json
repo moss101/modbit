@@ -1,0 +1,35 @@
+{
+ "task": "IMP-EV-0030",
+ "requirements": [
+  "REQ-EV-0030",
+  "docs/15 Health and failover / docs/27 §9.2 fallback slots"
+ ],
+ "scenarios": [
+  "the signed registry names gpt-5 as the approved fallback of gpt-5-mini; the compiled plan carries fallback-1 (LEG_FAILED after initial) before anything runs",
+  "the primary answers 503 on every request: its bounded retries are spent and the same run continues on gpt-5 with SlotActivated, a PROVIDER SWITCH and a LEG_FAILED continuation (PROVIDER_FAILED:…)",
+  "the fallback reads, edits and completes, verified by the repository's own check; the route reads FALLBACK and the request record keeps the initial leg FAILED",
+  "under a registry that names no chain the same outage stops the run with a PROVIDER STAY naming the missing fallback and no continuation"
+ ],
+ "tests": [
+  "services/modbit-core/tests/surface_protocol.rs::qual_ev_0030_a_primary_outage_continues_on_the_approved_fallback_and_records_the_decision",
+  "crates/providers/tests/compiler.rs::an_approved_fallback_chain_is_compiled_as_prevalidated_leg_failed_slots",
+  "crates/providers/src/registry.rs::a_fallback_chain_is_bounded_and_names_only_this_documents_bindings"
+ ],
+ "batch_commits": [
+  "b5d0faf"
+ ],
+ "runs": [
+  "35855314572"
+ ],
+ "ci": {
+  "run_id": "35855314572",
+  "head_sha": "b77088eec62bb856a6caee323e766d9d515bbcd8",
+  "conclusion": "success",
+  "note": "every Rust job green on macOS, Linux and Windows; the macOS desktop-E2E job passed on rerun after the known states.spec:268 restart-window race (fix in flight as PR #28)",
+  "json": "evidence/m9/IMP-EV-0030/ci-run-35855314572.json"
+ },
+ "audit": "IMPLEMENTED-PARTIAL before: the plan schema had Trigger::LegFailed and the gateway retried a failing provider a bounded number of times, but no binding could declare a fallback, the compiler never emitted a LegFailed slot, and a provider failure always ended the run.",
+ "proof": "Real Core against a scripted OpenAI-compatible provider whose primary model is down: the approved fallback is prevalidated in the plan, activated through admission on the same run, recorded as a decision, and completes the verified change.",
+ "negative_proof": "Without an approved fallback the outage stops the run and the STAY is on the log; nothing continues elsewhere.",
+ "limitations": "The chain is declared on the signed registry entry (the operator's approved profile of the binding); the chain follows the opener, and a stronger continuation slot carries no fallback of its own."
+}

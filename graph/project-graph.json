@@ -10629,8 +10629,16 @@
    "milestone": "M9",
    "qual": "QUAL-EV-0030",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-35855314572",
+    "test:qual_ev_0030_a_primary_outage_continues_on_the_approved_fallback_and_records_the_decision",
+    "artifact:evidence/m9/IMP-EV-0030/TASK_CARD.md",
+    "artifact:evidence/m9/IMP-EV-0030/evidence.json",
+    "artifact:evidence/m9/IMP-EV-0030/ci-run-35855314572.json",
+    "commit:b5d0faf"
+   ],
+   "status_changed_on": "2026-09-23T12:08:57Z"
   },
   {
    "id": "IMP-EV-0031",
