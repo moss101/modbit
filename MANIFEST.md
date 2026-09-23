@@ -1642,9 +1642,13 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m9/M9.6/ci-run-35821231094.json` | retained evidence | 42199 | `f35bae2baf639b587019494dbabff5459ec499d7e8c56d22c595d66aae6948cd` |
 | `evidence/m9/M9.6/evidence.json` | retained evidence | 3747 | `cbb7012e8ff5c95606ff3b54bee5c47df381a0a4e6a7cd9cae13ca69bc478ff5` |
 | `evidence/m9/PX-008/TASK_CARD.md` | retained evidence | 4348 | `e7eb7e8c1c32696223a5a8e7844b79573b9a7be8da116ab1621977196cc70c2a` |
+| `evidence/m9/PX-008/ci-run-35830456557.json` | retained evidence | 42199 | `508168affe8ad4b8a13e97c3d4f855efbf4255325e88b58fec882ad41376033a` |
+| `evidence/m9/PX-008/evidence.json` | retained evidence | 2511 | `d7f0c4aeb1288332d4780600a91cd4e52f204ce8a2b60f10346d61dfa84a275a` |
 | `evidence/m9/PX-009/TASK_CARD.md` | retained evidence | 3716 | `143ff5f9be712b78a43f415d143fba93a8568e2f9b6980d28e278d4731838fa2` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 41086 | `b22257ce715ae953ba582d5eba7eaaa0572d41647ef34e4024014b8b3cf0d113` |
-| `graph/project-graph.json` | project driver graph with live status | 1576915 | `44981958f98303a18e9672d317763df3a957ce5a3ef989d15ca9e2c37ff70b4a` |
+| `evidence/m9/PX-009/ci-run-35830456557.json` | retained evidence | 42199 | `508168affe8ad4b8a13e97c3d4f855efbf4255325e88b58fec882ad41376033a` |
+| `evidence/m9/PX-009/evidence.json` | retained evidence | 2230 | `61d514ff843ff8750fecb6fd7d4936bd84d3255b2e9d2e72cbbc32901de9d99e` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 41086 | `90e9198a83d97da7ebd582796072a264f59fdaad6ef8180be288ab4fd2214d6e` |
+| `graph/project-graph.json` | project driver graph with live status | 1579990 | `629718b05dcf8d220baa6b2a19ea2ad77789a6d65ba4a1bbf57a61bbdef4d646` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 54559 | `2386120f7a8ab3c48562b3450427d61637859c87cd9f7f5817c46676ab322547` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 17596 | `5c9b7a782d245223726f860ca583d766929a6f5662b644adebee64d257ad426b` |

@@ -30507,8 +30507,54 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-008",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-35830456557",
+    "test:qual_px_008_allowed_review_comments_steer_as_untrusted_input_and_grant_nothing",
+    "artifact:evidence/m9/PX-008/TASK_CARD.md",
+    "artifact:evidence/m9/PX-008/evidence.json",
+    "artifact:evidence/m9/PX-008/ci-run-35830456557.json",
+    "commit:bb7570b"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-23T07:33:53Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED-PARTIAL: comments read as untrusted data but unused; steering carried no provenance or trust; no organization reviewer identities"
+    },
+    {
+     "at": "2026-09-23T07:33:53Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "review_comment_authors (admin grants), IngestReviewComments, provenance/untrusted on TaskInputQueued and TaskSteered, fenced transcript; docs/29, 30, 16"
+    },
+    {
+     "at": "2026-09-23T07:33:53Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "PR #24 rebase-merged to main as bb7570b"
+    },
+    {
+     "at": "2026-09-23T07:33:53Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "hosted CI run 35830456557 green on macOS/Linux/Windows"
+    },
+    {
+     "at": "2026-09-23T07:33:53Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "allowed @modbit comments steer as untrusted and the agent acts; others ignored; injection moves nothing"
+    },
+    {
+     "at": "2026-09-23T07:33:53Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-23T07:33:53Z"
   },
   {
    "id": "PX-009",
@@ -30532,8 +30578,54 @@
    ],
    "task_card": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md#px-009",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-35830456557",
+    "test:qual_px_009_ci_results_are_evidence_with_provenance_and_never_a_verification_result",
+    "artifact:evidence/m9/PX-009/TASK_CARD.md",
+    "artifact:evidence/m9/PX-009/evidence.json",
+    "artifact:evidence/m9/PX-009/ci-run-35830456557.json",
+    "commit:f6d0396"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-23T07:33:52Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED-PARTIAL: forge.ci.status read check runs as untrusted data (no id, no output) and nothing consumed it"
+    },
+    {
+     "at": "2026-09-23T07:33:52Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "modbit_verification::ci, IngestCiResults, CiEvidenceRecorded, ReviewBundle.ci_evidence, forge.ci.status run id and output; docs/29, docs/30"
+    },
+    {
+     "at": "2026-09-23T07:33:52Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "PR #24 rebase-merged to main as f6d0396"
+    },
+    {
+     "at": "2026-09-23T07:33:52Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "hosted CI run 35830456557 green on macOS/Linux/Windows"
+    },
+    {
+     "at": "2026-09-23T07:33:52Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "CI evidence for the pushed commit recorded and shown; older-commit run refused; Modbit's own failing check still rejects"
+    },
+    {
+     "at": "2026-09-23T07:33:53Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-23T07:33:53Z"
   },
   {
    "id": "PX-010",

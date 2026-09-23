@@ -1,0 +1,35 @@
+{
+ "task": "PX-009",
+ "requirements": [
+  "REQ-PX-009",
+  "REQ-EV-0010",
+  "docs/29 CI-result ingestion"
+ ],
+ "scenarios": [
+  "no pull request: IngestCiResults refused NO_PULL_REQUEST",
+  "after an approved open, the check runs for the commit this Core pushed are read through forge.ci.status under the task's lease; the run for that commit is recorded (provenance ci, run id, conclusion, its own output as an object log); a run the forge lists for an older commit is refused MISMATCHED_COMMIT",
+  "ingestion writes no verification run, gate record or risk derivation; Review lists the evidence with commit and provenance and links the log; its verification runs are unchanged",
+  "returned to work, the task's own check runs in Modbit on the new revision and fails; the gate rejects; the green evidence stands under its commit"
+ ],
+ "tests": [
+  "services/modbit-core/tests/surface_protocol.rs::qual_px_009_ci_results_are_evidence_with_provenance_and_never_a_verification_result",
+  "crates/verification/src/ci.rs::tests::{a_run_on_another_commit_or_without_identity_is_refused, a_long_log_is_cut_on_a_character_boundary_and_says_so}"
+ ],
+ "batch_commits": [
+  "f6d0396"
+ ],
+ "runs": [
+  "35830456557"
+ ],
+ "ci": {
+  "run_id": "35830456557",
+  "head_sha": "6d60f9ac307355217d2ed56c7ce0c0050dd769a5",
+  "conclusion": "success",
+  "note": "all 14 checks green on macOS, Linux and Windows first time; PR #24 carried PX-009 and PX-008 as separate commits, rebase-merged",
+  "json": "evidence/m9/PX-009/ci-run-35830456557.json"
+ },
+ "audit": "IMPLEMENTED-PARTIAL before: forge.ci.status read check runs as untrusted data (no run id, no output) and nothing consumed it; no CI evidence on tasks or in Review.",
+ "proof": "Real Core against a GitHub-compatible forge and a real bare remote: CI evidence recorded for the pushed commit with provenance and logs, refused for another commit, shown in Review, and never counted as a verification result.",
+ "negative_proof": "The older-commit run is refused; the green run does not stop Modbit's own failing check from failing the gate.",
+ "limitations": "GitHub check-runs only; job logs beyond the run's own output not fetched; ingestion on request (webhook-driven ingestion not wired)."
+}

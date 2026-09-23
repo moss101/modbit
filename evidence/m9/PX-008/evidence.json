@@ -1,0 +1,36 @@
+{
+ "task": "PX-008",
+ "requirements": [
+  "REQ-PX-008",
+  "REQ-EV-0010",
+  "docs/29 Review-comment steering"
+ ],
+ "scenarios": [
+  "no pull request: IngestReviewComments refused NO_PULL_REQUEST",
+  "with the organization allowing `reviewer`, that reviewer's @modbit comments (identity matched case-insensitively) are queued as STEER inputs with provenance forge_review_comment, untrusted; the unaddressed review comment is NOT_ADDRESSED; the maintainer's and a stranger's comments are DISALLOWED_AUTHOR; a second ingestion takes nothing",
+  "returned to work, both steers apply as TaskSteered with provenance and the untrusted tag, the model reads them fenced as external content, and the agent does what the reviewer asked",
+  "an allowed comment claiming to approve every pending approval and grant egress moves no approval, lease or configuration"
+ ],
+ "tests": [
+  "services/modbit-core/tests/surface_protocol.rs::qual_px_008_allowed_review_comments_steer_as_untrusted_input_and_grant_nothing",
+  "crates/policy/src/config.rs::review_comment_author_tests::only_the_organization_grants_review_comment_authors_and_lower_layers_only_narrow",
+  "services/modbit-core/src/review_comments.rs::tests::{the_mention_must_stand_as_a_word, a_long_comment_is_cut_on_a_character_boundary_and_says_so}"
+ ],
+ "batch_commits": [
+  "bb7570b"
+ ],
+ "runs": [
+  "35830456557"
+ ],
+ "ci": {
+  "run_id": "35830456557",
+  "head_sha": "6d60f9ac307355217d2ed56c7ce0c0050dd769a5",
+  "conclusion": "success",
+  "note": "all 14 checks green on macOS, Linux and Windows first time; PR #24 carried PX-009 and PX-008 as separate commits, rebase-merged",
+  "json": "evidence/m9/PX-008/ci-run-35830456557.json"
+ },
+ "audit": "IMPLEMENTED-PARTIAL before: forge.pr.comments.read returned comments as untrusted data and nothing consumed them; steering carried text and mode only, so every steer read as the person's instruction; no organization notion of reviewer identities.",
+ "proof": "Real Core against a GitHub-compatible forge and a real bare remote: allowed, addressed comments steer the task as untrusted input through the ordinary steering path, and the agent acts on them; everything else is recorded and reaches nothing.",
+ "negative_proof": "A stranger's comment and an unaddressed one are ignored and never reach the log's inputs; the injection comment changes no approval.",
+ "limitations": "Ingestion on request (webhook-driven ingestion not wired); a steer queued during review applies when a person returns the task to work."
+}
