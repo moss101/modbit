@@ -6,6 +6,7 @@
 //!
 //! | layer | source |
 //! |---|---|
+//! | device | `MODBIT_DEVICE_POLICY` (a path the device manager sets), else the machine's managed file (`device_policy_path`) |
 //! | admin | `MODBIT_ADMIN_CONFIG` (a path), else `<data-dir>/admin-config.json` |
 //! | project | `<workspace root>/.modbit/config.json` |
 //! | user | `<data-dir>/config.json` |
@@ -49,10 +50,31 @@ fn read_layer(path: &Path) -> Option<Layer> {
     }
 }
 
-/// The three layers for a task, in authority order.
+/// Where the machine's managed device policy lives (REQ-EV-0040): a path
+/// the device manager provisions, outside anything a user or a repository
+/// writes to — `MODBIT_DEVICE_POLICY` when the manager sets it, else the
+/// platform's system-wide location.
+#[must_use]
+pub fn device_policy_path() -> std::path::PathBuf {
+    if let Ok(p) = std::env::var("MODBIT_DEVICE_POLICY") {
+        return std::path::PathBuf::from(p);
+    }
+    if cfg!(target_os = "macos") {
+        std::path::PathBuf::from("/Library/Application Support/Modbit/device-policy.json")
+    } else if cfg!(windows) {
+        std::path::PathBuf::from(r"C:\ProgramData\Modbit\device-policy.json")
+    } else {
+        std::path::PathBuf::from("/etc/modbit/device-policy.json")
+    }
+}
+
+/// The layers for a task, in authority order: device, admin, project, user.
 #[must_use]
 pub fn layers_for(data_dir: &Path, workspace_root: Option<&str>) -> BTreeMap<Authority, Layer> {
     let mut layers = BTreeMap::new();
+    if let Some(l) = read_layer(&device_policy_path()) {
+        layers.insert(Authority::Device, l);
+    }
     let admin = std::env::var("MODBIT_ADMIN_CONFIG")
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|_| data_dir.join("admin-config.json"));
@@ -335,7 +357,7 @@ pub fn denied_above_user(
     name: &str,
 ) -> Option<Authority> {
     let layers = layers_for(data_dir, workspace_root);
-    [Authority::Admin, Authority::Project]
+    [Authority::Device, Authority::Admin, Authority::Project]
         .into_iter()
         .find(|l| {
             layers

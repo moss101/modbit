@@ -10583,6 +10583,69 @@ export declare type CompensationAck = Message<"modbit.v1.CompensationAck"> & {
 export declare const CompensationAckSchema: GenMessage<CompensationAck>;
 
 /**
+ * The configuration a task is decided under: its generation, the machine's
+ * device constraints (only the device layer sets them), every capability's
+ * decision with the layer that made it, and every attempt a lower layer made
+ * to widen or override a higher one, refused.
+ *
+ * @generated from message modbit.v1.GetEffectivePolicy
+ */
+export declare type GetEffectivePolicy = Message<"modbit.v1.GetEffectivePolicy"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.GetEffectivePolicy.
+ * Use `create(GetEffectivePolicySchema)` to create a new message.
+ */
+export declare const GetEffectivePolicySchema: GenMessage<GetEffectivePolicy>;
+
+/**
+ * @generated from message modbit.v1.EffectivePolicyView
+ */
+export declare type EffectivePolicyView = Message<"modbit.v1.EffectivePolicyView"> & {
+  /**
+   * @generated from field: string generation = 1;
+   */
+  generation: string;
+
+  /**
+   * the device constraints, "" when the machine sets none
+   *
+   * @generated from field: string device_json = 2;
+   */
+  deviceJson: string;
+
+  /**
+   * where the device policy was read, "" when none
+   *
+   * @generated from field: string device_source = 3;
+   */
+  deviceSource: string;
+
+  /**
+   * "capability=ALLOW|ASK|DENY by Device|Admin|Project|User"
+   *
+   * @generated from field: repeated string permissions = 4;
+   */
+  permissions: string[];
+
+  /**
+   * @generated from field: repeated string rejected_widenings = 5;
+   */
+  rejectedWidenings: string[];
+};
+
+/**
+ * Describes the message modbit.v1.EffectivePolicyView.
+ * Use `create(EffectivePolicyViewSchema)` to create a new message.
+ */
+export declare const EffectivePolicyViewSchema: GenMessage<EffectivePolicyView>;
+
+/**
  * Command acknowledgement.
  *
  * @generated from enum modbit.v1.CommandStatus
