@@ -767,12 +767,23 @@ impl ToolHost {
             .as_ref()
             .map(|l| l.operations.clone())
             .unwrap_or_default();
+        // REQ-EV-0041 (and M9.4): the configuration snapshot this call is
+        // decided under — the one the task's current model round runs with
+        // (the loop refreshes it at each round boundary). A call outside a
+        // round uses the same snapshot: a task keeps the configuration it has
+        // until its next round (M9.4). A call already in flight keeps the
+        // snapshot it was decided with.
+        let root_text = root.as_ref().map(|p| p.to_string_lossy().into_owned());
+        let task_config =
+            self.configurations
+                .for_task(task_id, &self.data_dir, root_text.as_deref());
         let port = KernelPort {
             kernel: CapabilityKernel::default(),
             lease,
             approval,
             emergency_stopped,
             projection,
+            config: Arc::clone(&task_config),
         };
         let search: Option<Arc<dyn modbit_tools::SearchPort>> = match (&workspace, &root) {
             (Some(ws), Some(r)) => Some(Arc::new(IndexPort {
@@ -881,15 +892,6 @@ impl ToolHost {
         // argument object; the pipeline refuses the call by its hash.
         let secrets_in_custody = self.secrets_in_custody();
         let secrets_in_custody_for_hub = secrets_in_custody.clone();
-        // M9.4 (REQ-EV-0039/0128): the admin/project/user configuration in
-        // force for this task, resolved once and pinned.
-        let task_config = self.configurations.for_task(
-            task_id,
-            &self.data_dir,
-            root.as_ref()
-                .map(|p| p.to_string_lossy().into_owned())
-                .as_deref(),
-        );
         let carries_secret = serde_json::from_str::<serde_json::Value>(arguments_json)
             .ok()
             .is_some_and(|v| {
@@ -1943,6 +1945,9 @@ struct KernelPort {
     emergency_stopped: bool,
     /// The turn's projection, when the caller is the model (M5.1).
     projection: Option<Vec<String>>,
+    /// The configuration snapshot the call is decided under (REQ-EV-0041):
+    /// its per-capability `DENY` denies and `ASK` escalates.
+    config: Arc<modbit_policy::config::ResolvedConfig>,
 }
 
 impl CapabilityPort for KernelPort {
@@ -1970,7 +1975,7 @@ impl CapabilityPort for KernelPort {
             lease: self.lease.as_ref(),
             approval: self.approval.as_ref(),
             intent_hash: &req.intent_hash,
-            config: None,
+            config: Some(&self.config),
             emergency_stopped: self.emergency_stopped,
             now: modbit_domain::Timestamp::now(),
         });

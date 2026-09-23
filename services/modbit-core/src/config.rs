@@ -84,13 +84,52 @@ pub fn layers_for(data_dir: &Path, workspace_root: Option<&str>) -> BTreeMap<Aut
     layers
 }
 
-/// Resolved configurations, pinned per task.
+/// Resolved configurations, pinned per task: the snapshot a model round
+/// runs under (REQ-EV-0041). The loop refreshes it at each round boundary; a
+/// call already in flight keeps the snapshot it was decided under.
 #[derive(Default)]
 pub struct Configurations {
     pinned: Mutex<HashMap<TaskId, Arc<ResolvedConfig>>>,
 }
 
+/// One resolution of a task's configuration, with its generation.
+#[derive(Clone, Debug)]
+pub struct Snapshot {
+    /// The configuration.
+    pub config: Arc<ResolvedConfig>,
+    /// Its generation (`modbit_policy::config::generation`).
+    pub generation: String,
+}
+
 impl Configurations {
+    /// Resolve `task`'s configuration now and make it the snapshot in
+    /// force; answers the new snapshot and, when the generation moved, the
+    /// one it replaced (REQ-EV-0041). The first resolution of a task has no
+    /// predecessor.
+    pub fn refresh(
+        &self,
+        task: TaskId,
+        data_dir: &Path,
+        workspace_root: Option<&str>,
+    ) -> (Snapshot, Option<Snapshot>) {
+        let fresh = Arc::new(resolve(&layers_for(data_dir, workspace_root)));
+        let now = Snapshot {
+            generation: modbit_policy::config::generation(&fresh),
+            config: fresh,
+        };
+        let mut pinned = self.pinned.lock().unwrap_or_else(|e| e.into_inner());
+        let previous = pinned
+            .insert(task, Arc::clone(&now.config))
+            .and_then(|old| {
+                let g = modbit_policy::config::generation(&old);
+                (g != now.generation).then_some(Snapshot {
+                    config: old,
+                    generation: g,
+                })
+            });
+        (now, previous)
+    }
+
     /// The configuration in force for `task`, resolving and pinning it the
     /// first time the task asks.
     pub fn for_task(

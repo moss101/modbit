@@ -1744,6 +1744,23 @@ pub enum TaskEvent {
         /// Object hash of the invoice line as delivered.
         invoice_ref: String,
     },
+    /// `PolicyGenerationChanged` (REQ-EV-0041, docs/23 "Policy generations"):
+    /// at a model-round boundary the configuration in force resolved to a new
+    /// generation. The next round is decided under it — a tool whose
+    /// capability it now denies is withheld — while a call already in flight
+    /// finished under the snapshot it was decided with. No state change.
+    PolicyGenerationChanged {
+        /// The generation the previous round ran under.
+        from: String,
+        /// The generation from this round on.
+        to: String,
+        /// Capabilities made stricter (a new ASK or DENY).
+        tightened: Vec<String>,
+        /// Capabilities made looser.
+        loosened: Vec<String>,
+        /// Tools the new generation withholds, by name.
+        withheld_tools: Vec<String>,
+    },
     /// `ReviewCommentsIngested` (PX-008, docs/29 "Review-comment
     /// steering"): the task's pull-request comments read from the forge —
     /// those from an identity the organization allows and addressed to
@@ -1985,6 +2002,7 @@ impl TaskEvent {
             Self::UsageReconciled { .. } => "UsageReconciled",
             Self::CiEvidenceRecorded { .. } => "CiEvidenceRecorded",
             Self::ReviewCommentsIngested { .. } => "ReviewCommentsIngested",
+            Self::PolicyGenerationChanged { .. } => "PolicyGenerationChanged",
             Self::RequestOutcomeRecorded { .. } => "RequestOutcomeRecorded",
         }
     }
@@ -2153,7 +2171,8 @@ impl Task {
             | TaskEvent::TerminalOutputAdvanced { .. }
             | TaskEvent::ProcessExited { .. }
             | TaskEvent::ProtocolStateResumed { .. }
-            | TaskEvent::ToolCallReconciled { .. } => {
+            | TaskEvent::ToolCallReconciled { .. }
+            | TaskEvent::PolicyGenerationChanged { .. } => {
                 if self.state.is_terminal() {
                     return Err(invalid(&self.state, event.event_type()));
                 }

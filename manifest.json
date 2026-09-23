@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 90,
-    "root_and_tooling": 1537,
-    "docs_bytes": 1322917
+    "root_and_tooling": 1538,
+    "docs_bytes": 1324829
   },
   "sections": [
     {
@@ -185,8 +185,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Tool System, Capability Kernel, Procedural Runtime, and MCP",
-      "bytes": 28163,
-      "sha256": "5c9d459dd670e12eeef8c714d70b4b11a6e2c1c296da671767c9e967e6209936"
+      "bytes": 28332,
+      "sha256": "44bb75864b4476d23e611f4f29e577231d1b5c7cc246351a87af215b3998855d"
     },
     {
       "path": "docs/17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md",
@@ -248,8 +248,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Security, Policy, Capabilities, Secrets, and Effect Ledger",
-      "bytes": 15950,
-      "sha256": "f15cf9bbaf97745a3a36d26714748d0d9da516cb1f4af9e6d519a38883345406"
+      "bytes": 17294,
+      "sha256": "bed2cdf582cbe010b1d17a48c36a8d078d8baf75ecba07bb8335630940e7ec40"
     },
     {
       "path": "docs/24_CLOUD_CONTROL_PLANE_AND_SYNC.md",
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 43463,
-      "sha256": "237fb188ee2412881bf24efe4130db3cb3449ebb788b8a8a020d474ad2da3226"
+      "bytes": 43862,
+      "sha256": "fb02594d89c1390ad3d186d172a8ccdc660f0f3fdbef8cf9239a6b8b91ac860f"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -8289,6 +8289,11 @@
       "path": "evidence/m9/EPR-010/evidence.json",
       "bytes": 4136,
       "sha256": "6e34899ed9ccbb56235a37df58451b8ec750b92bb9bc00663c42a5c8d1682041"
+    },
+    {
+      "path": "evidence/m9/IMP-EV-0041/TASK_CARD.md",
+      "bytes": 3303,
+      "sha256": "b79a17ea3b3973e4329c80626372317d52bbbc902d8b35b2a3197af1f7ed457b"
     },
     {
       "path": "evidence/m9/IMP-EV-0066/TASK_CARD.md",

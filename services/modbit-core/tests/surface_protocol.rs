@@ -36920,3 +36920,177 @@ async fn qual_ev_0066_an_external_effect_is_never_undoable_and_its_compensation_
     assert_eq!(r3.receipts, r2.receipts);
     drop(repo);
 }
+
+/// QUAL-EV-0041 (REQ-EV-0041; docs/23 "Policy generations") on the real Core
+/// and the real terminal broker: the organization's policy changes while a
+/// run is active. The call already in flight — a `shell.exec` the policy
+/// allowed when it was decided — finishes and is recorded a success; at the
+/// next model round the policy resolves to a new generation, recorded with
+/// the capability it tightened and the tool it now withholds; the round's
+/// projection no longer offers `shell.exec` (withheld `POLICY_DENIED`), the
+/// model's attempt to call it anyway is refused before any process starts,
+/// and a client's direct call afterwards is denied by the kernel under the
+/// snapshot the last round installed.
+#[tokio::test]
+async fn qual_ev_0041_a_tightened_policy_applies_from_the_next_round_and_the_call_in_flight_finishes()
+ {
+    use modbit_protocol::v1::{InvokeTool, StartTask, TaskRunStarted, ToolInvoked};
+    let (repo, root) = plain_repo(&[("notes.txt", "line 1\n")]);
+    let script = vec![
+        serde_json::json!({"calls": [{"name": "plan.update", "args": {"outcome": "run the slow check", "expected_files": []}}]}),
+        // In flight when the policy tightens.
+        serde_json::json!({"calls": [{"name": "shell.exec", "args": {"argv": ["sh", "-c", "sleep 3; echo first-done"]}}]}),
+        // After it: the model tries again; the policy now denies it.
+        serde_json::json!({"calls": [{"name": "shell.exec", "args": {"argv": ["sh", "-c", "touch forbidden-ran"]}}]}),
+        serde_json::json!({"calls": [{"name": "task.complete", "args": {"summary": "ran the check", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn_with_env(dir.path(), &[("MODBIT_OPENAI_BASE_URL", &base)]);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x71)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x72, "local_trusted").await;
+    let _: TaskRunStarted = Client::result(
+        &c.command(envelope_fenced(
+            id16(0x73),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: "openai".into(),
+                model: "gpt-5".into(),
+                max_turns: 12,
+                max_tool_calls: 0,
+                max_no_progress_turns: 4,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+    // Wait until the slow shell.exec is dispatched, then tighten the policy.
+    let deadline = std::time::Instant::now() + Duration::from_secs(60);
+    loop {
+        let evs = task_events(&core, &session, &task).await;
+        let dispatched = evs.iter().any(|(_, t, _)| t == "ToolCallDispatched")
+            && evs
+                .iter()
+                .any(|(_, t, p)| t == "ToolCallProposed" && p["tool_name"] == "shell.exec");
+        if dispatched {
+            break;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "the slow call never dispatched"
+        );
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    std::fs::write(
+        dir.path().join("admin-config.json"),
+        r#"{"permissions": {"shell.exec": "DENY"}}"#,
+    )
+    .unwrap();
+    let st = wait_task(&mut c, &task, 120).await;
+    assert!(!st.loop_alive, "{st:?}");
+    let evs = task_events(&core, &session, &task).await;
+    // The call in flight finished under the snapshot it was decided with.
+    let shell_calls: Vec<&serde_json::Value> = evs
+        .iter()
+        .filter(|(_, t, p)| t == "ToolCallProposed" && p["tool_name"] == "shell.exec")
+        .map(|(_, _, p)| p)
+        .collect();
+    assert_eq!(shell_calls.len(), 2, "{shell_calls:#?}");
+    assert!(
+        seen.lock()
+            .unwrap()
+            .iter()
+            .any(|b| b.to_string().contains("first-done")),
+        "the call in flight finished and its output reached the next round"
+    );
+    // The next round: a new generation, recorded with what it tightened.
+    let changed: Vec<&serde_json::Value> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "PolicyGenerationChanged")
+        .map(|(_, _, p)| p)
+        .collect();
+    assert_eq!(changed.len(), 1, "{changed:#?}");
+    assert_eq!(changed[0]["tightened"], serde_json::json!(["shell.exec"]));
+    assert!(
+        changed[0]["withheld_tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|t| t == "shell.exec"),
+        "{:#}",
+        changed[0]
+    );
+    assert_ne!(changed[0]["from"], changed[0]["to"]);
+    // ... and the rounds from then on do not offer the tool.
+    let after_change = evs
+        .iter()
+        .position(|(_, t, _)| t == "PolicyGenerationChanged")
+        .unwrap();
+    let later_projection = evs[after_change..]
+        .iter()
+        .find(|(_, t, _)| t == "ToolProjectionSelected")
+        .map(|(_, _, p)| p)
+        .expect("a projection after the change");
+    assert!(
+        !later_projection["projected"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|t| t == "shell.exec"),
+        "{later_projection:#}"
+    );
+    assert!(
+        later_projection["withheld"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|w| w == "shell.exec:POLICY_DENIED"),
+        "{later_projection:#}"
+    );
+    // The model's attempt was refused before anything ran.
+    assert!(
+        evs[after_change..]
+            .iter()
+            .any(|(_, t, p)| t == "ToolCallPolicyDecision"
+                && p["allowed"] == false
+                && p["decision"]
+                    .as_str()
+                    .is_some_and(|d| d.starts_with("TOOL_NOT_PROJECTED"))),
+        "the second shell.exec is refused at the policy stage"
+    );
+    assert!(
+        !repo.path().join("forbidden-ran").exists(),
+        "no process of the denied call ran"
+    );
+    // A client's direct call is decided under the new policy too.
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x74),
+            "InvokeTool",
+            InvokeTool {
+                task_id: Some(task.clone()),
+                tool_name: "shell.exec".into(),
+                arguments_json: r#"{"argv": ["sh", "-c", "touch direct-ran"]}"#.into(),
+                tool_call_id: Some(id16(0x75)),
+                output_budget_bytes: 0,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let r: ToolInvoked = Client::result(&ack).unwrap();
+    assert_eq!(
+        (r.status.as_str(), r.error_code.as_str()),
+        ("POLICY_DENIED", "CAPABILITY_DENIED_BY_CONFIG"),
+        "{r:?}"
+    );
+    assert!(!repo.path().join("direct-ran").exists());
+}
