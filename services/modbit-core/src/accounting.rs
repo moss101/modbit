@@ -1546,8 +1546,11 @@ pub(crate) fn derive(
     for (pos, &i) in solver_idx.iter().enumerate() {
         let outcome = {
             let next = solver_idx.get(pos + 1).map(|&j| legs[j].1.trigger.as_str());
-            if next == Some("QUALITY_REJECTED") || next == Some("LEG_FAILED") {
+            if next == Some("QUALITY_REJECTED") {
                 "REJECTED"
+            } else if next == Some("LEG_FAILED") {
+                // The provider failed it outright (REQ-EV-0030).
+                "FAILED"
             } else if next == Some("REVISION") {
                 "REVISED"
             } else if next.is_some() {

@@ -254,6 +254,7 @@ mod tests {
                 allowed_profiles: vec![],
             },
             revoked: false,
+            fallbacks: vec![],
         }
     }
 

@@ -454,3 +454,248 @@ pub(crate) async fn at_quality_boundary(
     state.begin_leg();
     Decision::Activated { note }
 }
+
+/// The provider boundary (REQ-EV-0030; docs/15 "Health and failover",
+/// docs/27 §9.2): the leg's provider failed outright — its bounded retries
+/// spent — and the plan in force has an approved fallback slot
+/// (`Trigger::LegFailed`) continuing the binding that failed. The fallback is
+/// the one the signed registry named for that binding and the compiler
+/// prevalidated and budgeted; it activates under admission with the
+/// remaining budget, the same run and transcript, and the decision is on the
+/// log (`SlotActivated`, `RouteReevaluated` at boundary `PROVIDER`,
+/// `ContinuationActivated` with trigger `LEG_FAILED`). Anything else — no
+/// plan, no fallback for this binding, a slot admission refuses — is a STAY on
+/// the log and the run stops as it would have.
+#[allow(clippy::too_many_arguments, clippy::too_many_lines)]
+pub(crate) async fn at_provider_boundary(
+    core: &Core,
+    task: &Task,
+    run_id: RunId,
+    cfg: &mut StartConfig,
+    state: &mut HarnessState,
+    lt: Lineage,
+    actor: &Actor,
+    code: &str,
+    message: &str,
+) -> Decision {
+    let current = format!("{}/{}", cfg.endpoint, cfg.model);
+    let context = crate::routing::RouteContext {
+        endpoint: cfg.endpoint.clone(),
+        model: cfg.model.clone(),
+        cache: None,
+        plan_id: cfg.plan_id.clone(),
+    };
+    let plan = {
+        let store = core.store.lock().await;
+        plan_in_force(&store, task, run_id)
+    };
+    let Some(plan) = plan else {
+        return Decision::Stayed {
+            reason: "no plan is in force on this run".into(),
+        };
+    };
+    let record_stay = |reason: String| {
+        let ev = crate::routing::reevaluated_event(
+            "PROVIDER",
+            plan.routing_epoch,
+            Some(&context),
+            &current,
+            "STAY",
+            reason.clone(),
+            None,
+            &plan.plan_id,
+            actor.clone(),
+        );
+        (ev, reason)
+    };
+    // The fallback continuing the binding that failed: its predecessor is a
+    // slot of this plan on the same binding.
+    let slot = plan
+        .slots
+        .iter()
+        .find(|s| {
+            s.trigger == Trigger::LegFailed
+                && s.predecessor.as_deref().is_some_and(|p| {
+                    plan.slots.iter().any(|q| {
+                        q.slot_id == p && q.endpoint == cfg.endpoint && q.model == cfg.model
+                    })
+                })
+        })
+        .cloned();
+    let mut store = core.store.lock().await;
+    let Some(slot) = slot else {
+        let (ev, reason) = record_stay(format!(
+            "PROVIDER_FAILED:{code}: {message}; the plan in force ({}) has no approved fallback continuing {current}; the run stops",
+            plan.plan_id
+        ));
+        let _ = append(
+            &mut store,
+            core,
+            lt,
+            AggregateType::Run,
+            *run_id.as_bytes(),
+            vec![ev],
+        );
+        return Decision::Stayed { reason };
+    };
+    let (spent, attempts) = spent_so_far(
+        &store,
+        core,
+        run_id,
+        &plan.total_budget.currency,
+        plan.total_budget.scale,
+    );
+    let activations: Vec<(String, u32)> = store
+        .routing_activations(&run_id, &plan.plan_id)
+        .unwrap_or_default()
+        .into_iter()
+        .fold(Vec::new(), |mut acc, a| {
+            match acc.iter_mut().find(|(s, _)| *s == a.slot_id) {
+                Some((_, n)) => *n = (*n).max(a.activation),
+                None => acc.push((a.slot_id, a.activation)),
+            }
+            acc
+        });
+    let legs: u32 = store
+        .routing_plans(&run_id)
+        .unwrap_or_default()
+        .iter()
+        .map(|p| {
+            store
+                .routing_activations(&run_id, &p.plan_id)
+                .map(|a| a.len() as u32)
+                .unwrap_or(0)
+        })
+        .sum();
+    let ledger = RunLedger {
+        activations,
+        attempts: legs,
+        spent: spent.clone(),
+        in_flight: Money::zero(&plan.total_budget.currency, plan.total_budget.scale),
+    };
+    let activation = match admission::admit_activation(
+        &plan,
+        &ledger,
+        &slot.slot_id,
+        Trigger::LegFailed,
+    ) {
+        Ok(a) => a,
+        Err(r) => {
+            let (ev, reason) = record_stay(format!(
+                "PROVIDER_FAILED:{code}: {message}; the approved fallback `{}` ({}/{}) is not admitted: {} ({r:?}); spent {} of {} {} over {attempts} invocation(s) in {legs} leg(s); the run stops",
+                slot.slot_id,
+                slot.endpoint,
+                slot.model,
+                r.code(),
+                spent.minor_units,
+                plan.total_budget.minor_units,
+                plan.total_budget.currency
+            ));
+            let _ = append(
+                &mut store,
+                core,
+                lt,
+                AggregateType::Run,
+                *run_id.as_bytes(),
+                vec![ev],
+            );
+            return Decision::Stayed { reason };
+        }
+    };
+    let remaining = plan
+        .total_budget
+        .minor_units
+        .saturating_sub(spent.minor_units)
+        .saturating_sub(plan.verification_reserve.minor_units);
+    let chosen = format!("{}/{}", slot.endpoint, slot.model);
+    let note = format!(
+        "[FALLBACK] The provider serving {current} failed ({code}: {message}) after its bounded retries; the runtime continued the same task on the plan's approved fallback `{}`: you are {chosen}. The original request is the first user message above and every result above stands; carry on from where the work is. Remaining budget: {remaining} {} minor units of {}.",
+        slot.slot_id, plan.total_budget.currency, plan.total_budget.minor_units,
+    );
+    let events = vec![
+        typed(
+            "SlotActivated",
+            &RunEvent::SlotActivated {
+                plan_id: plan.plan_id.clone(),
+                slot_id: activation.slot_id.clone(),
+                activation: activation.activation,
+                reserved_minor: activation.reserved.minor_units,
+            },
+            actor.clone(),
+        ),
+        crate::routing::reevaluated_event(
+            "PROVIDER",
+            plan.routing_epoch,
+            Some(&context),
+            &chosen,
+            "SWITCH",
+            format!(
+                "PROVIDER_FAILED:{code}: {message}; approved fallback `{}` activated on the same run with the remaining budget",
+                slot.slot_id
+            ),
+            None,
+            &plan.plan_id,
+            actor.clone(),
+        ),
+        typed(
+            "ContinuationActivated",
+            &RunEvent::ContinuationActivated {
+                plan_id: plan.plan_id.clone(),
+                from_plan_id: cfg.plan_id.clone(),
+                from_slot_id: cfg.slot_id.clone(),
+                slot_id: slot.slot_id.clone(),
+                activation: activation.activation,
+                trigger: "LEG_FAILED".into(),
+                cause: format!("PROVIDER_FAILED:{code}"),
+                endpoint: slot.endpoint.clone(),
+                model: slot.model.clone(),
+                gate_ref: String::new(),
+                candidate_revision: state.candidate_revision.unwrap_or(0),
+                reject_reasons: vec![message.to_owned()],
+                failed_leg_attempts: attempts,
+                failed_leg_repair_attempts: state.repair_attempts.len() as u32,
+                spent_minor: spent.minor_units,
+                reserved_minor: activation.reserved.minor_units,
+                remaining_minor: remaining,
+                currency: plan.total_budget.currency.clone(),
+                scale: plan.total_budget.scale,
+                note: note.clone(),
+            },
+            actor.clone(),
+        ),
+    ];
+    if let Err(e) = append(
+        &mut store,
+        core,
+        lt,
+        AggregateType::Run,
+        *run_id.as_bytes(),
+        events,
+    ) {
+        return Decision::Stayed {
+            reason: format!("the activation could not be recorded: {e}"),
+        };
+    }
+    crate::agents::primary_rebound(
+        &mut store,
+        core,
+        task,
+        lt,
+        actor,
+        modbit_domain::agent::AgentBinding {
+            endpoint: slot.endpoint.clone(),
+            model: slot.model.clone(),
+        },
+        &format!(
+            "approved fallback `{}` activated after a provider failure (REQ-EV-0030)",
+            slot.slot_id
+        ),
+    );
+    drop(store);
+    cfg.plan_id = plan.plan_id.clone();
+    cfg.slot_id = slot.slot_id.clone();
+    cfg.endpoint = slot.endpoint.clone();
+    cfg.model = slot.model.clone();
+    state.begin_leg();
+    Decision::Activated { note }
+}

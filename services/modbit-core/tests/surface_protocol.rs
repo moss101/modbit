@@ -2390,6 +2390,23 @@ async fn scripted_model_reactive(
                 // A script step `{"stall": true}` holds that request open
                 // once (a Core killed mid-stream, M6.7); the same step answers
                 // from `then` when the resumed run asks again.
+                // A step `{"http_status": 503}` is an outage: the provider
+                // answers with that status and no stream (REQ-EV-0030).
+                if let Some(status) = reply["http_status"].as_u64() {
+                    let body = serde_json::json!({"error": {"message": "the service is overloaded", "type": "server_error"}}).to_string();
+                    let _ = sock
+                        .write_all(
+                            format!(
+                                "HTTP/1.1 {status} Unavailable\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
+                                body.len()
+                            )
+                            .as_bytes(),
+                        )
+                        .await;
+                    let _ = sock.flush().await;
+                    let _ = sock.shutdown().await;
+                    return;
+                }
                 let reply = if reply["stall"] == true {
                     if !stalled_once.swap(true, std::sync::atomic::Ordering::SeqCst) {
                         tokio::time::sleep(Duration::from_secs(600)).await;
@@ -13132,6 +13149,7 @@ async fn qual_epr_002_a_signed_registry_activates_at_runtime_and_a_revocation_st
             allowed_profiles: vec![],
         },
         revoked,
+        fallbacks: vec![],
     };
     let document = |generation: &str, revoke_mini: bool| RegistryDocument {
         schema_version: REGISTRY_SCHEMA_VERSION,
@@ -13748,6 +13766,7 @@ async fn qual_epr_016_feasibility_is_measured_at_admission_under_pinned_versions
             allowed_profiles: vec![],
         },
         revoked: false,
+        fallbacks: vec![],
     };
     let document = RegistryDocument {
         schema_version: REGISTRY_SCHEMA_VERSION,
@@ -14076,6 +14095,7 @@ async fn qual_epr_004_the_compiler_runs_through_core_and_identical_inputs_give_i
                     allowed_profiles: vec![],
                 },
                 revoked: false,
+                fallbacks: vec![],
             }
         };
     let document = RegistryDocument {
@@ -14385,6 +14405,7 @@ async fn qual_epr_005_new_runs_go_through_the_compiled_initial_leg_and_keep_the_
             allowed_profiles: vec![],
         },
         revoked: false,
+        fallbacks: vec![],
     };
     let document = |generation: &str, floor: f64| RegistryDocument {
         schema_version: REGISTRY_SCHEMA_VERSION,
@@ -19349,6 +19370,7 @@ async fn qual_epr_009_routes_reevaluate_at_boundaries_on_cache_economics_and_sur
                 allowed_profiles: vec![],
             },
             revoked: false,
+            fallbacks: vec![],
         };
     let document = RegistryDocument {
         schema_version: REGISTRY_SCHEMA_VERSION,
@@ -22132,6 +22154,7 @@ async fn qual_epr_006_a_quality_rejection_continues_the_run_on_the_prevalidated_
             allowed_profiles: vec![],
         },
         revoked: false,
+        fallbacks: vec![],
     };
     let document = RegistryDocument {
         schema_version: REGISTRY_SCHEMA_VERSION,
@@ -25969,6 +25992,7 @@ async fn qual_epr_007_the_reviewer_slot_activates_on_the_gate_validates_findings
             allowed_profiles: vec![],
         },
         revoked: false,
+        fallbacks: vec![],
     };
     let document = RegistryDocument {
         schema_version: REGISTRY_SCHEMA_VERSION,
@@ -35040,6 +35064,7 @@ fn accounting_registry(
                     allowed_profiles: vec![],
                 },
                 revoked: false,
+                fallbacks: vec![],
             })
             .collect(),
     };
@@ -37203,4 +37228,225 @@ async fn qual_ev_0040_a_project_file_cannot_disable_what_the_device_requires() {
     );
     assert!(!repo.path().join("executed").exists());
     drop(machine);
+}
+
+/// A signed registry for QUAL-EV-0030: `gpt-5-mini` (cheap solver) and
+/// `gpt-5` (solver, reviewer), the first declaring `gpt-5` as its approved
+/// fallback when `with_fallback`.
+fn chain_registry(
+    generation: &str,
+    key: &ed25519_dalek::SigningKey,
+    with_fallback: bool,
+) -> String {
+    let signed = accounting_registry(
+        generation,
+        key,
+        &[("gpt-5-mini", 25, 5, 200), ("gpt-5", 125, 25, 1_000)],
+    );
+    if !with_fallback {
+        return signed;
+    }
+    // Re-sign the same document with the chain declared.
+    use ed25519_dalek::Signer;
+    let outer: serde_json::Value = serde_json::from_str(&signed).unwrap();
+    let mut doc: serde_json::Value =
+        serde_json::from_str(outer["document_json"].as_str().unwrap()).unwrap();
+    doc["entries"][0]["fallbacks"] = serde_json::json!(["openai/gpt-5"]);
+    let json = doc.to_string();
+    serde_json::json!({
+        "key_id": "ops",
+        "signature_hex": hex::encode(key.sign(json.as_bytes()).to_bytes()),
+        "document_json": json,
+    })
+    .to_string()
+}
+
+/// QUAL-EV-0030 (REQ-EV-0030; docs/15 "Health and failover", docs/27 §9.2)
+/// on the real Core against a scripted OpenAI-compatible provider whose
+/// economical model is down: the signed registry names `gpt-5` as the
+/// approved fallback of `gpt-5-mini`; the compiled plan carries it as a
+/// prevalidated `LEG_FAILED` slot; when the primary's bounded retries are
+/// spent the same run continues on the fallback — `SlotActivated`,
+/// `RouteReevaluated` at `PROVIDER` (SWITCH), `ContinuationActivated`
+/// (`LEG_FAILED`, `PROVIDER_FAILED:…`) — and completes; the route reads
+/// `FALLBACK` and the request record keeps the failed initial leg failed.
+/// With a registry that names no fallback the same outage stops the run and
+/// the STAY is on the log with why: no hidden retry elsewhere.
+#[tokio::test]
+async fn qual_ev_0030_a_primary_outage_continues_on_the_approved_fallback_and_records_the_decision()
+{
+    use ed25519_dalek::SigningKey;
+    use modbit_domain::routing::ConditionalExecutionPlan;
+    use modbit_protocol::v1::{GetRoutingPlan, RoutingPlanView, TaskRunStarted};
+    use serde_json::json;
+    let key = SigningKey::from_bytes(&[43u8; 32]);
+    let key_hex = hex::encode(key.verifying_key().to_bytes());
+    let (repo, root) = plain_repo(&[
+        ("notes.txt", "line 1\n"),
+        ("check.sh", "grep -q '^line 1' notes.txt\n"),
+        (
+            ".modbit/verification.json",
+            "{\"commands\": [{\"id\": \"notes\", \"argv\": [\"sh\", \"check.sh\"]}]}",
+        ),
+    ]);
+    // The primary is down for every request; the fallback does the work.
+    let outage = vec![json!({"http_status": 503}); 8];
+    let fallback = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "annotate", "expected_files": ["notes.txt"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "notes.txt"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "notes.txt", "op": "replace", "content": "line 1 annotated\n"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "annotated", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_model_reactive(
+        vec![],
+        vec![],
+        None,
+        None,
+        vec![],
+        false,
+        vec![
+            ("gpt-5-mini".to_owned(), outage),
+            ("gpt-5".to_owned(), fallback),
+        ],
+    )
+    .await;
+    let dir = tempfile::tempdir().unwrap();
+    let keys = format!("ops:{key_hex}");
+    let env: Vec<(&str, &str)> = vec![
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_REGISTRY_KEYS", keys.as_str()),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    activate_registry(&mut c, &chain_registry("registry-chain", &key, true)).await;
+    let (session, _) = create_session(&mut c, id16(0x91)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x92, "local_trusted").await;
+    let _: TaskRunStarted =
+        Client::result(&c.command(start_task(&task, 0x93, g)).await.unwrap()).unwrap();
+    let st = wait_for_state(&mut c, &task, "ReadyForReview", 180).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("notes.txt")).unwrap(),
+        "line 1 annotated\n"
+    );
+    let evs = task_events(&core, &session, &task).await;
+    let of = |t: &str| -> Vec<serde_json::Value> {
+        evs.iter()
+            .filter(|(_, ty, _)| ty == t)
+            .map(|(_, _, p)| p.clone())
+            .collect()
+    };
+    // The approved fallback was in the plan before anything ran.
+    let plan: ConditionalExecutionPlan =
+        serde_json::from_value(of("RoutingPlanCompiled")[0]["plan"].clone()).unwrap();
+    let fb = plan
+        .slots
+        .iter()
+        .find(|s| s.slot_id == "fallback-1")
+        .expect("the fallback slot is prevalidated");
+    assert_eq!(
+        (fb.model.as_str(), fb.predecessor.as_deref()),
+        ("gpt-5", Some("initial"))
+    );
+    assert_eq!(plan.slots[0].model, "gpt-5-mini");
+    assert!(!of("RoutingDecisionRecorded").is_empty());
+    // The decision, on the log.
+    let switch: Vec<serde_json::Value> = of("RouteReevaluated")
+        .into_iter()
+        .filter(|r| r["boundary"] == "PROVIDER")
+        .collect();
+    assert_eq!(switch.len(), 1, "{switch:#?}");
+    assert_eq!(
+        (
+            switch[0]["decision"].as_str(),
+            switch[0]["current"].as_str(),
+            switch[0]["chosen"].as_str()
+        ),
+        (
+            Some("SWITCH"),
+            Some("openai/gpt-5-mini"),
+            Some("openai/gpt-5")
+        )
+    );
+    let cont = of("ContinuationActivated");
+    assert_eq!(cont.len(), 1, "{cont:#?}");
+    assert_eq!(cont[0]["trigger"], "LEG_FAILED");
+    assert!(
+        cont[0]["cause"]
+            .as_str()
+            .unwrap()
+            .starts_with("PROVIDER_FAILED:"),
+        "{:#}",
+        cont[0]
+    );
+    assert_eq!(
+        of("SlotActivated")
+            .iter()
+            .filter(|a| a["slot_id"] == "fallback-1")
+            .count(),
+        1
+    );
+    // Bounded: the primary was asked its retries' worth, no more.
+    let bodies = seen.lock().unwrap().clone();
+    let primary = bodies.iter().filter(|b| b["model"] == "gpt-5-mini").count();
+    assert!(
+        (1..=4).contains(&primary),
+        "{primary} requests to the primary"
+    );
+    assert!(bodies.iter().any(|b| b["model"] == "gpt-5"));
+    // The route and the request's record read what happened.
+    let view: RoutingPlanView = Client::result(
+        &c.command(envelope(
+            id16(0x94),
+            "GetRoutingPlan",
+            GetRoutingPlan {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(view.path_label, "FALLBACK", "{view:?}");
+    let (outcome, record) = request_outcome(&mut c, &task).await;
+    assert_eq!(outcome.initial_leg_success, "false");
+    assert_eq!(record["legs"]["escalations"][0]["success"], true);
+    assert_eq!(record["executed_path"][0]["outcome"], "FAILED");
+
+    // Without an approved fallback: the same outage stops the run, and why
+    // is on the log.
+    // (A fresh session: the first one's route is now the fallback binding,
+    // which the task boundary keeps as the incumbent, REQ-EPR-009.)
+    activate_registry(&mut c, &chain_registry("registry-nochain", &key, false)).await;
+    let (session2, _) = create_session(&mut c, id16(0x97)).await;
+    let g2 = lease_for(&session2);
+    let task2 = create_task_with_profile(&mut c, &session2, g2, &root, 0x95, "local_trusted").await;
+    let _: TaskRunStarted =
+        Client::result(&c.command(start_task(&task2, 0x96, g2)).await.unwrap()).unwrap();
+    let st = wait_task(&mut c, &task2, 180).await;
+    assert_eq!(st.state, "Waiting", "{st:?}");
+    let evs2 = task_events(&core, &session2, &task2).await;
+    let stay: Vec<&serde_json::Value> = evs2
+        .iter()
+        .filter(|(_, t, p)| t == "RouteReevaluated" && p["boundary"] == "PROVIDER")
+        .map(|(_, _, p)| p)
+        .collect();
+    assert_eq!(stay.len(), 1, "{stay:#?}");
+    assert_eq!(stay[0]["decision"], "STAY");
+    assert!(
+        stay[0]["reason"]
+            .as_str()
+            .unwrap()
+            .contains("has no approved fallback continuing openai/gpt-5-mini"),
+        "{:#}",
+        stay[0]
+    );
+    assert!(
+        !evs2.iter().any(|(_, t, _)| t == "ContinuationActivated"),
+        "nothing continued"
+    );
 }

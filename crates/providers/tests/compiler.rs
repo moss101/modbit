@@ -52,6 +52,7 @@ fn entry(model: &str, roles: &[&str], input_price: u64, output_price: u64) -> Re
             allowed_profiles: vec![],
         },
         revoked: false,
+        fallbacks: vec![],
     }
 }
 
@@ -521,4 +522,93 @@ fn qual_epr_009_a_route_switches_only_to_a_feasible_alternative_that_beats_the_s
     i4.assurance_available = false;
     let fallback = compile(&i4).expect("compiled");
     assert_eq!(fallback.plan.initial_slot().unwrap().model, "gpt-5-mini");
+}
+
+/// REQ-EV-0030: an opener's approved fallback chain is compiled into every
+/// plan as prevalidated `LegFailed` slots in order — worst-case budgeted like
+/// any reachable slot, left out of the expected cost (only an outage pays
+/// them) — and a fallback the request cannot use is excluded with its reason.
+#[test]
+fn an_approved_fallback_chain_is_compiled_as_prevalidated_leg_failed_slots() {
+    let with_chain = |fallbacks: Vec<&str>, pro_tools: bool| {
+        let mut mini = entry("gpt-5-mini", &["solver"], 25, 200);
+        mini.fallbacks = fallbacks.into_iter().map(str::to_owned).collect();
+        let mut pro = entry("gpt-5-pro", &["solver", "reviewer"], 1_500, 12_000);
+        pro.tools = pro_tools;
+        registry_with(vec![
+            mini,
+            entry("gpt-5", &["solver", "reviewer"], 125, 1_000),
+            pro,
+        ])
+    };
+    let e = no_evidence();
+    let t = thresholds();
+    let plain = compile(&input(&with_chain(vec![], true), &e, &t)).expect("compiled");
+    let chained = compile(&input(
+        &with_chain(vec!["openai/gpt-5", "openai/gpt-5-pro"], true),
+        &e,
+        &t,
+    ))
+    .expect("compiled");
+    let fb: Vec<(&str, Option<&str>, Trigger, &str)> = chained
+        .plan
+        .slots
+        .iter()
+        .filter(|s| s.trigger == Trigger::LegFailed)
+        .map(|s| {
+            (
+                s.slot_id.as_str(),
+                s.predecessor.as_deref(),
+                s.trigger,
+                s.model.as_str(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        fb,
+        vec![
+            ("fallback-1", Some("initial"), Trigger::LegFailed, "gpt-5"),
+            (
+                "fallback-2",
+                Some("fallback-1"),
+                Trigger::LegFailed,
+                "gpt-5-pro"
+            ),
+        ],
+        "{:#?}",
+        chained.plan.slots
+    );
+    assert_eq!(chained.plan.validate(scope().tenant_id, 1), Ok(()));
+    let cost = |c: &modbit_providers::compiler::Compiled| {
+        c.candidates
+            .iter()
+            .find(|k| k.plan_id == c.plan.plan_id)
+            .map(|k| (k.expected_cost_minor, k.worst_case_cost_minor))
+            .unwrap()
+    };
+    let (exp_plain, worst_plain) = cost(&plain);
+    let (exp_chain, worst_chain) = cost(&chained);
+    assert_eq!(exp_chain, exp_plain, "an outage is not expected");
+    assert!(worst_chain > worst_plain, "but it is budgeted");
+    // A fallback without tools cannot serve a tool-using request.
+    let excluded =
+        compile(&input(&with_chain(vec!["openai/gpt-5-pro"], false), &e, &t)).expect("compiled");
+    assert!(
+        !excluded
+            .plan
+            .slots
+            .iter()
+            .any(|s| s.trigger == Trigger::LegFailed),
+        "{:#?}",
+        excluded.plan.slots
+    );
+    assert!(
+        excluded
+            .selection
+            .exclusions
+            .iter()
+            .any(|x| x.reason.starts_with("fallback openai/gpt-5-pro")),
+        "{:?}",
+        excluded.selection.exclusions
+    );
 }

@@ -521,12 +521,46 @@ pub fn compile(input: &CompileInput<'_>) -> Result<Compiled, CompileRefused> {
         } else {
             None
         };
+        // REQ-EV-0030: the opener's approved fallback chain, as prevalidated
+        // slots activated only when the leg before fails outright (a
+        // provider outage) — worst-case budgeted like every reachable slot,
+        // never a hidden retry elsewhere.
+        let mut fallbacks: Vec<Slot> = Vec::new();
+        for f in &opener.fallbacks {
+            let Some(e) = registry
+                .document
+                .entries
+                .iter()
+                .find(|e| format!("{}/{}", e.endpoint, e.model) == *f)
+            else {
+                continue;
+            };
+            if let Some(reason) = binding_exclusion(e, input, "solver") {
+                exclusions.push(Exclusion {
+                    plan_id: format!("{}/{} fallback {f}", opener.endpoint, opener.model),
+                    reason: format!("fallback {f}: {reason}"),
+                });
+                continue;
+            }
+            let cost = worst_case_minor(e, input.expected_input_tokens, output_tokens(e))?;
+            let predecessor = fallbacks
+                .last()
+                .map_or_else(|| "initial".to_owned(), |s: &Slot| s.slot_id.clone());
+            fallbacks.push(make_slot(
+                &format!("fallback-{}", fallbacks.len() + 1),
+                e,
+                Some(&predecessor),
+                Trigger::LegFailed,
+                cost,
+            ));
+        }
         let shapes: Vec<(String, Vec<Slot>, Option<&RegistryEntry>)> = shapes
             .into_iter()
             .map(|(label, mut slots, continuation)| {
                 if let Some(r) = &reviewer {
                     slots.push(r.clone());
                 }
+                slots.extend(fallbacks.iter().cloned());
                 (label, slots, continuation)
             })
             .collect();
@@ -600,9 +634,11 @@ pub fn compile(input: &CompileInput<'_>) -> Result<Compiled, CompileRefused> {
                 // paid only when the gate requires a review, which no
                 // statistic here predicts, and it must not tilt the choice
                 // of opener (REQ-EPR-007).
+                // A fallback is paid only on an outage (REQ-EV-0030), which
+                // no statistic here predicts either.
                 let rest: u64 = plan.slots[1..]
                     .iter()
-                    .filter(|s| s.role == "solver")
+                    .filter(|s| s.role == "solver" && s.trigger != Trigger::LegFailed)
                     .map(|s| s.budget.reserved.minor_units)
                     .sum();
                 let p_first = input
