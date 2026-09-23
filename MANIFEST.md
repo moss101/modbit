@@ -17,11 +17,11 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | Architecture and subsystems | 10–29 | 20 | 357360 |
 | Implementation specifications | 30–39 | 10 | 137203 |
 | Requirements, tasks and traceability | 40–49 | 10 | 351840 |
-| Verification and testing | 50–69 | 15 | 208165 |
+| Verification and testing | 50–69 | 15 | 211102 |
 | Delivery and operations | 70–79 | 8 | 57176 |
 | Agent process and governance | 80–97 | 18 | 116551 |
 | Live state | 98–99 | 1 | 11899 |
-| **Total docs** | | **90** | **1305757** |
+| **Total docs** | | **90** | **1308694** |
 
 ## Specification files (`docs/`)
 
@@ -77,10 +77,10 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 49 | `docs/49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md` | Execution policy requirements and implementation tasks | requirements | 49196 | `e90bfba1d3f3594f1ff80bf629b2838be6d3423f4350f9c34c6fd8be4cf0b005` |
 | 50 | `docs/50_TEST_STRATEGY_REAL_SYSTEM_GATES.md` | Test Strategy — Real-System Completion Gates | verification | 5886 | `9c25cf0c759ffb1c3edbe90c42e83b294c49a6b31a7dd43b6206752e2c0f65ba` |
 | 51 | `docs/51_E2E_ACCEPTANCE_TEST_CATALOG.md` | End-to-End Acceptance Test Catalog | verification | 7941 | `94cb5e496f2fb7d39fa8bd18e9f94da048481c607ba4aabfcd750b29cb5b213c` |
-| 52 | `docs/52_SECURITY_THREAT_MODEL_AND_TESTS.md` | Security Threat Model and Verification | verification | 6301 | `05599c999404264fe85cce3dc75b643f8e845ecf029b72c78dce8072556c0d5e` |
+| 52 | `docs/52_SECURITY_THREAT_MODEL_AND_TESTS.md` | Security Threat Model and Verification | verification | 8950 | `74fc40a03aae4ae03d442043517febe559fd7c9b2e4d2d02ee66e95af6d0aa72` |
 | 53 | `docs/53_PERFORMANCE_AND_BENCHMARK_PLAN.md` | Performance, Context Economics, and Benchmark Plan | verification | 7144 | `a2fd331c6d0c824dcdb04b82766763f748ce44107884985122a12985c1d23d4b` |
 | 54 | `docs/54_FAULT_INJECTION_AND_RECOVERY_CATALOG.md` | Fault Injection and Recovery Catalog | verification | 2614 | `1f82e59c6e47c51c688c62a027242d79661a0692d84f8c1055612a3bec84d03a` |
-| 55 | `docs/55_MUTATION_NEGATIVE_AND_CHAOS_TEST_POLICY.md` | Mutation, Negative and Chaos Test Policy | verification | 1995 | `ab51c19d80eded9dba1d000b1af5d390bf3463a6dbf92aba886812db7994dc24` |
+| 55 | `docs/55_MUTATION_NEGATIVE_AND_CHAOS_TEST_POLICY.md` | Mutation, Negative and Chaos Test Policy | verification | 2283 | `2df95d89972afc627a88224091a6191e26859946dc1f7968f8fed05cde1eec00` |
 | 56 | `docs/56_TOOL_CAPABILITY_CONFORMANCE.md` | Tool Parity and Capability Conformance — Real Effect Tests | verification | 6305 | `0ee1f0e04d63b6562983a8f295da37c9bd763ae9464350c624a55446f69e53db` |
 | 57 | `docs/57_SKILL_EVOLUTION_REAL_TESTS.md` | Skill Evolution Real-System Tests | verification | 3466 | `fa5335a1367e464dc7c51cffbc972c803b26781b9e17163c81df25b4c2853f21` |
 | 58 | `docs/58_MULTIMODAL_MEDIA_REAL_TESTS.md` | Multimodal / Media Real-System Tests | verification | 4040 | `317a29984dc65eecf53dcb26cec525deb99499f602cd34ef6fa0ed7e8e402c81` |
@@ -1635,8 +1635,9 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m9/M9.5/TASK_CARD.md` | retained evidence | 5637 | `f89aa454b703201b3f1e8f480661358d58cadcd4099c4f3a2a4a51d0743cf798` |
 | `evidence/m9/M9.5/ci-run-35565188980.json` | retained evidence | 42266 | `f5c7a84ce8a219d40bbf748630eca67144b1c986906eb1528dc54dbd24b4cb01` |
 | `evidence/m9/M9.5/evidence.json` | retained evidence | 2844 | `77780ebcc16f18c58d3a4e2664a801b49d2d0abef4f0ed719d0c3ede8a6ccad4` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 41095 | `f7922aab3dec968eed331b2d61542eee51b1837f4ea9d1d56ba151de9414ebee` |
-| `graph/project-graph.json` | project driver graph with live status | 1572932 | `e1e41e74d8ebba9f723ea7d0d6f314b7eb2dfad7a1babc8318e39cb0b5b38d34` |
+| `evidence/m9/M9.6/TASK_CARD.md` | retained evidence | 4092 | `a299804fc50aae2a0db24372475bd8e347377870d6771858a93ddcd708a4560c` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 41095 | `954e92cefdc07eec4b1b18209c59c9845be130d2e95af79c5a786cd96ae894be` |
+| `graph/project-graph.json` | project driver graph with live status | 1573075 | `4618f0efacb257b318e419c06d6bf090e9357e0d85d23a5f2c6c572a63a875b0` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 54559 | `2386120f7a8ab3c48562b3450427d61637859c87cd9f7f5817c46676ab322547` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 17596 | `5c9b7a782d245223726f860ca583d766929a6f5662b644adebee64d257ad426b` |

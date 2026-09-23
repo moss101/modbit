@@ -83,6 +83,17 @@ impl PathPolicy {
     /// Lexical normalization: reject absolute paths outside the root, `..`
     /// that climbs above the root, and empty components.
     fn normalize(&self, given: &str) -> Result<PathBuf> {
+        // On Unix a backslash is a filename character, not a separator: a
+        // path such as `src\x.rs` would name one file at the root while the
+        // root-relative record (forward-slash form) would say `src/x.rs` — a
+        // write-set and diff-invariant match for a file that was not
+        // written. Found by the M9.6 path fuzzer; refused here (docs/52).
+        if !cfg!(windows) && given.contains('\\') {
+            return Err(Error::OutsideRoot {
+                path: given.into(),
+                detail: "backslash is not a path separator on this platform; use `/`".into(),
+            });
+        }
         let p = Path::new(given);
         let mut rel = PathBuf::new();
         let mut depth: i32 = 0;

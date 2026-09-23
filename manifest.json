@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 90,
-    "root_and_tooling": 1522,
-    "docs_bytes": 1305757
+    "root_and_tooling": 1523,
+    "docs_bytes": 1308694
   },
   "sections": [
     {
@@ -509,8 +509,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Security Threat Model and Verification",
-      "bytes": 6301,
-      "sha256": "05599c999404264fe85cce3dc75b643f8e845ecf029b72c78dce8072556c0d5e"
+      "bytes": 8950,
+      "sha256": "74fc40a03aae4ae03d442043517febe559fd7c9b2e4d2d02ee66e95af6d0aa72"
     },
     {
       "path": "docs/53_PERFORMANCE_AND_BENCHMARK_PLAN.md",
@@ -536,8 +536,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Mutation, Negative and Chaos Test Policy",
-      "bytes": 1995,
-      "sha256": "ab51c19d80eded9dba1d000b1af5d390bf3463a6dbf92aba886812db7994dc24"
+      "bytes": 2283,
+      "sha256": "2df95d89972afc627a88224091a6191e26859946dc1f7968f8fed05cde1eec00"
     },
     {
       "path": "docs/56_TOOL_CAPABILITY_CONFORMANCE.md",
@@ -8431,14 +8431,19 @@
       "sha256": "77780ebcc16f18c58d3a4e2664a801b49d2d0abef4f0ed719d0c3ede8a6ccad4"
     },
     {
+      "path": "evidence/m9/M9.6/TASK_CARD.md",
+      "bytes": 4092,
+      "sha256": "a299804fc50aae2a0db24372475bd8e347377870d6771858a93ddcd708a4560c"
+    },
+    {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 41095,
-      "sha256": "f7922aab3dec968eed331b2d61542eee51b1837f4ea9d1d56ba151de9414ebee"
+      "sha256": "954e92cefdc07eec4b1b18209c59c9845be130d2e95af79c5a786cd96ae894be"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1572932,
-      "sha256": "e1e41e74d8ebba9f723ea7d0d6f314b7eb2dfad7a1babc8318e39cb0b5b38d34"
+      "bytes": 1573075,
+      "sha256": "4618f0efacb257b318e419c06d6bf090e9357e0d85d23a5f2c6c572a63a875b0"
     },
     {
       "path": "tools/build_graph.py",

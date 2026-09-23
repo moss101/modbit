@@ -561,3 +561,60 @@ async fn qual_m4_5_a_killed_broker_comes_back_with_its_durable_sessions_and_an_o
     };
     assert!(exit.cancelled, "{exit:?}");
 }
+
+/// M9.6 (docs/52 "Shell injection"): argv-first execution. Every hostile
+/// argument — metacharacters, command substitution, quoting, newlines, a
+/// leading dash, an environment reference, a NUL-free control character —
+/// reaches the process as exactly one literal token; no command named inside
+/// it runs (the canary file it would create stays absent) and the exit code
+/// is the child's, so an injection could not even fake success.
+#[tokio::test]
+async fn hostile_arguments_reach_the_process_as_literal_tokens_and_nothing_inside_them_runs() {
+    let dir = tempfile::tempdir().unwrap();
+    let canary = tempfile::tempdir().unwrap();
+    let canary_file = canary.path().join("owned");
+    let canary_text = canary_file.to_string_lossy().into_owned();
+    let hostile: Vec<String> = vec![
+        format!("; touch {canary_text}"),
+        format!("$(touch {canary_text})"),
+        format!("`touch {canary_text}`"),
+        format!("| touch {canary_text} #"),
+        format!("&& touch {canary_text}"),
+        format!("\ntouch {canary_text}\n"),
+        "\"quoted; arg\"".into(),
+        "'single' \"double\"".into(),
+        "-rf".into(),
+        "--".into(),
+        "$HOME".into(),
+        "%PATH%".into(),
+        "a\tb\x1b[31m".into(),
+        "🚀 unicode ; still one token".into(),
+    ];
+    let execd = Execd::spawn(dir.path());
+    let mut c = execd.client().await;
+    let refs: Vec<&str> = hostile.iter().map(String::as_str).collect();
+    c.exec(req("hostile", "echo-args", &refs)).await.unwrap();
+    let (_, out, _, exited) = run_to_exit(&mut c).await;
+    let text = String::from_utf8(out).unwrap();
+    // The child prints its args with Debug formatting: every token, verbatim.
+    let expected = format!("args={hostile:?}");
+    assert!(
+        text.starts_with(&expected),
+        "arguments were not passed literally:\n{text}\nexpected prefix:\n{expected}"
+    );
+    assert_eq!(
+        exited.exit_code,
+        Some(3),
+        "the child's own exit code, {exited:?}"
+    );
+    assert!(
+        !canary_file.exists(),
+        "a command named inside an argument ran: {canary_text}"
+    );
+    // The same tokens through a shell would run them: the control is argv,
+    // not an escaping layer, and the broker has no shell mode to reach for.
+    assert!(
+        !text.contains("HOME_SET=true") || std::env::var("HOME").is_err(),
+        "environment is explicit"
+    );
+}
