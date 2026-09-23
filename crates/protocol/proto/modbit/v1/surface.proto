@@ -1223,6 +1223,12 @@ message RoutingCompileView {
   RoutingAdmissionView admission = 13;
   string refusal_code = 14;
   string refusal_detail = 15;
+  // REQ-EV-0029: what the request demanded of a binding before anything was
+  // weighed (capabilities, context, profile, residency, the model policy),
+  // its digest, and every binding those hard filters removed.
+  repeated string demands = 16;
+  string demands_digest = 17;
+  repeated string hard_exclusions = 18; // "binding: reason"
 }
 
 // ---- Onboarding (REQ-PX-022, docs/39 "Onboarding") ----
@@ -1512,7 +1518,7 @@ message GetRoutingSessionState {
 }
 
 message RouteDecisionView {
-  string boundary = 1;             // TASK | COMPACTION | PROVIDER | QUALITY | MODE
+  string boundary = 1;             // TASK | COMPACTION | PROVIDER | QUALITY | MODE | POLICY
   uint64 route_epoch = 2;
   string current = 3;              // endpoint/model in force before; "" at a fresh start
   string chosen = 4;               // endpoint/model in force after

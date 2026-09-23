@@ -5223,6 +5223,27 @@ export declare type RoutingCompileView = Message<"modbit.v1.RoutingCompileView">
    * @generated from field: string refusal_detail = 15;
    */
   refusalDetail: string;
+
+  /**
+   * REQ-EV-0029: what the request demanded of a binding before anything was
+   * weighed (capabilities, context, profile, residency, the model policy),
+   * its digest, and every binding those hard filters removed.
+   *
+   * @generated from field: repeated string demands = 16;
+   */
+  demands: string[];
+
+  /**
+   * @generated from field: string demands_digest = 17;
+   */
+  demandsDigest: string;
+
+  /**
+   * "binding: reason"
+   *
+   * @generated from field: repeated string hard_exclusions = 18;
+   */
+  hardExclusions: string[];
 };
 
 /**
@@ -6457,7 +6478,7 @@ export declare const GetRoutingSessionStateSchema: GenMessage<GetRoutingSessionS
  */
 export declare type RouteDecisionView = Message<"modbit.v1.RouteDecisionView"> & {
   /**
-   * TASK | COMPACTION | PROVIDER | QUALITY | MODE
+   * TASK | COMPACTION | PROVIDER | QUALITY | MODE | POLICY
    *
    * @generated from field: string boundary = 1;
    */

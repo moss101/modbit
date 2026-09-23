@@ -316,6 +316,23 @@ pub enum RunEvent {
         choice_probability_bp: u32,
         /// Time the compile took, milliseconds.
         routing_latency_ms: u64,
+        /// REQ-EV-0029: what the request demanded of a binding before
+        /// anything was weighed (capabilities, context, profile, residency,
+        /// the model policy), in words. Empty for a decision recorded before
+        /// the demands were.
+        #[serde(default)]
+        demands: Vec<String>,
+        /// Digest of `demands`: two requests with the same one faced the
+        /// same hard filters.
+        #[serde(default)]
+        demands_digest: String,
+        /// Every binding the hard filters removed, and why.
+        #[serde(default)]
+        hard_exclusions: Vec<crate::routing::RoutingExclusion>,
+        /// The compile's input digest: identical inputs replay to the
+        /// identical plan. Empty when nothing was compiled.
+        #[serde(default)]
+        input_digest: String,
     },
     /// `FlakyCheckQuarantined` (docs/64 §3); no state change.
     FlakyCheckQuarantined {
@@ -385,7 +402,8 @@ pub enum RunEvent {
     /// admitted under a new routing epoch on the same run; `STAY` and
     /// `INITIAL` change nothing. No state change.
     RouteReevaluated {
-        /// `TASK` | `COMPACTION` | `PROVIDER` | `QUALITY` | `MODE`.
+        /// `TASK` | `COMPACTION` | `PROVIDER` | `QUALITY` | `MODE` | `POLICY`
+        /// (the model policy in force refused the binding, REQ-EV-0029).
         boundary: String,
         /// The routing epoch in force after the decision.
         route_epoch: u64,

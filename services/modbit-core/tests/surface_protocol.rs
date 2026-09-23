@@ -37450,3 +37450,537 @@ async fn qual_ev_0030_a_primary_outage_continues_on_the_approved_fallback_and_re
         "nothing continued"
     );
 }
+
+/// A signed registry for QUAL-EV-0029: five solvers, the cheapest first — one
+/// that cannot call tools, one whose context cannot hold the request, then
+/// `gpt-5-mini`, `gpt-5` and `gpt-5-pro`.
+fn capability_registry(generation: &str, key: &ed25519_dalek::SigningKey) -> String {
+    use ed25519_dalek::Signer;
+    let signed = accounting_registry(
+        generation,
+        key,
+        &[
+            ("gpt-5-nano", 5, 1, 40),
+            ("gpt-5-tiny", 10, 2, 80),
+            ("gpt-5-mini", 25, 5, 200),
+            ("gpt-5", 125, 25, 1_000),
+            ("gpt-5-pro", 1_500, 150, 12_000),
+        ],
+    );
+    let outer: serde_json::Value = serde_json::from_str(&signed).unwrap();
+    let mut doc: serde_json::Value =
+        serde_json::from_str(outer["document_json"].as_str().unwrap()).unwrap();
+    doc["entries"][0]["tools"] = serde_json::json!(false);
+    doc["entries"][1]["context_tokens"] = serde_json::json!(32_000);
+    let json = doc.to_string();
+    serde_json::json!({
+        "key_id": "ops",
+        "signature_hex": hex::encode(key.sign(json.as_bytes()).to_bytes()),
+        "document_json": json,
+    })
+    .to_string()
+}
+
+/// QUAL-EV-0029 (REQ-EV-0029; docs/15 "Routing") on the real Core against a
+/// scripted OpenAI-compatible provider. The organization's policy allows
+/// four models; the signed registry's two cheapest solvers cannot serve an
+/// agent request (no tools; a 32k context under the 40k the request is
+/// priced at) and the next cheapest is not allowed. The hard filters remove
+/// all three before anything is weighed and the run dispatches only to the
+/// cheapest binding left. The durable decision records the request's
+/// demands, every hard exclusion with its reason and the candidates' scores;
+/// the task's intrinsic fingerprint is on the log beside it (the profiler,
+/// in shadow); replaying the compile for the same task reproduces the input
+/// digest, the demands, the exclusions and every score. Fail closed: an
+/// operator's plan and a pin naming the refused model are refused, the
+/// refused start records nothing; a policy tightened mid-run re-routes the
+/// run at the next round (`POLICY` SWITCH) and the refused model is never
+/// asked again; on the direct path, where nothing can take over, the run
+/// ends `MODEL_NOT_ALLOWED` and the next start routes under the new policy.
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn qual_ev_0029_hard_filters_decide_first_and_the_decision_replays() {
+    use ed25519_dalek::SigningKey;
+    use modbit_domain::routing::ConditionalExecutionPlan;
+    use modbit_protocol::v1::{
+        AdmitRoutingPlan, CompileRoutingPlan, RoutingAdmissionView, RoutingCompileView, StartTask,
+        TaskRunStarted,
+    };
+    use serde_json::json;
+    let key = SigningKey::from_bytes(&[47u8; 32]);
+    let key_hex = hex::encode(key.verifying_key().to_bytes());
+    let files: &[(&str, &str)] = &[
+        ("notes.txt", "line 1\n"),
+        ("check.sh", "grep -q '^line 1' notes.txt\n"),
+        (
+            ".modbit/verification.json",
+            "{\"commands\": [{\"id\": \"notes\", \"argv\": [\"sh\", \"check.sh\"]}]}",
+        ),
+    ];
+    let (repo_a, root_a) = plain_repo(files);
+    let (repo_b, root_b) = plain_repo(files);
+    let (repo_c, root_c) = plain_repo(files);
+    let plan = json!({"calls": [{"name": "plan.update", "args": {"outcome": "annotate", "expected_files": ["notes.txt"]}}]});
+    let read = json!({"calls": [{"name": "fs.read", "args": {"path": "notes.txt"}}]});
+    let write = json!({"calls": [{"name": "change.apply", "args": {"path": "notes.txt", "op": "replace", "content": "line 1 annotated\n"}}]});
+    let done = json!({"calls": [{"name": "task.complete", "args": {"summary": "annotated", "self_review": {"findings": []}}}]});
+    let slow = json!({"calls": [{"name": "shell.exec", "args": {"argv": ["sh", "-c", "sleep 3; echo slow-done"]}}]});
+    let (base, seen) = scripted_model_reactive(
+        vec![],
+        vec![],
+        None,
+        None,
+        vec![],
+        false,
+        // One script per scenario, keyed by its goal and indexed by the
+        // tool results in the request, whichever model is asked: the model
+        // that answers is what the assertions read.
+        vec![
+            (
+                "needle:policy-routed".to_owned(),
+                vec![plan.clone(), read.clone(), write.clone(), done.clone()],
+            ),
+            (
+                "needle:tightened mid-run".to_owned(),
+                vec![
+                    plan.clone(),
+                    slow.clone(),
+                    read.clone(),
+                    write.clone(),
+                    done.clone(),
+                ],
+            ),
+            (
+                "needle:the direct path".to_owned(),
+                vec![
+                    plan.clone(),
+                    slow.clone(),
+                    read.clone(),
+                    write.clone(),
+                    done.clone(),
+                ],
+            ),
+        ],
+    )
+    .await;
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(
+        dir.path().join("admin-config.json"),
+        r#"{"models_allow": ["gpt-5-nano", "openai/gpt-5-tiny", "gpt-5", "gpt-5-pro"]}"#,
+    )
+    .unwrap();
+    let keys = format!("ops:{key_hex}");
+    let env: Vec<(&str, &str)> = vec![
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_REGISTRY_KEYS", keys.as_str()),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    activate_registry(&mut c, &capability_registry("registry-capability", &key)).await;
+    let start = |t: &Id, id: u8, g: Option<u64>, model: &str| {
+        envelope_fenced(
+            id16(id),
+            "StartTask",
+            StartTask {
+                task_id: Some(t.clone()),
+                endpoint: if model.is_empty() {
+                    String::new()
+                } else {
+                    "openai".into()
+                },
+                model: model.into(),
+                max_turns: 20,
+                max_tool_calls: 0,
+                max_no_progress_turns: 6,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        )
+    };
+
+    // 1. The policy and the capabilities decide before the cost does.
+    let (session, _) = create_session(&mut c, id16(0xA1)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_goal(
+        &mut c,
+        &session,
+        g,
+        &root_a,
+        0xA2,
+        "annotate the notes (policy-routed)",
+    )
+    .await;
+    let _: TaskRunStarted =
+        Client::result(&c.command(start(&task, 0xA3, g, "")).await.unwrap()).unwrap();
+    let st = wait_for_state(&mut c, &task, "ReadyForReview", 180).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    assert_eq!(
+        std::fs::read_to_string(repo_a.path().join("notes.txt")).unwrap(),
+        "line 1 annotated\n"
+    );
+    let asked: Vec<String> = seen
+        .lock()
+        .unwrap()
+        .iter()
+        .map(|b| b["model"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    assert!(
+        !asked.is_empty() && asked.iter().all(|m| m == "gpt-5"),
+        "only the cheapest binding the hard filters left was asked: {asked:?}"
+    );
+    let evs = task_events(&core, &session, &task).await;
+    let of = |evs: &[(String, String, serde_json::Value)], t: &str| -> Vec<serde_json::Value> {
+        evs.iter()
+            .filter(|(_, ty, _)| ty == t)
+            .map(|(_, _, p)| p.clone())
+            .collect()
+    };
+    // The task's intrinsic fingerprint, recorded in shadow beside the route.
+    let profiled = of(&evs, "RequestProfiled");
+    assert_eq!(profiled.len(), 1, "{profiled:#?}");
+    assert_eq!(profiled[0]["features_digest"].as_str().unwrap().len(), 64);
+    assert!(!profiled[0]["slice"].as_str().unwrap().is_empty());
+    // The durable decision: demands, hard exclusions, scores, replay digest.
+    let decisions = of(&evs, "RoutingDecisionRecorded");
+    assert_eq!(decisions.len(), 1, "{decisions:#?}");
+    let d = &decisions[0];
+    let demands: Vec<String> = serde_json::from_value(d["demands"].clone()).unwrap();
+    for want in [
+        "tools",
+        "context>=40000",
+        "profile=local_trusted",
+        "model in [gpt-5,gpt-5-nano,gpt-5-pro,openai/gpt-5-tiny]",
+        "priced in USD at scale 2",
+    ] {
+        assert!(demands.iter().any(|x| x == want), "{want}: {demands:?}");
+    }
+    assert_eq!(d["demands_digest"].as_str().unwrap().len(), 64);
+    assert_eq!(d["input_digest"].as_str().unwrap().len(), 64);
+    let excluded: Vec<(String, String)> = d["hard_exclusions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|x| {
+            (
+                x["subject"].as_str().unwrap().to_owned(),
+                x["reason"].as_str().unwrap().to_owned(),
+            )
+        })
+        .collect();
+    let reason = |b: &str| {
+        excluded
+            .iter()
+            .find(|(s, _)| s == b)
+            .map(|(_, r)| r.clone())
+            .unwrap_or_else(|| panic!("{b} not excluded: {excluded:#?}"))
+    };
+    assert_eq!(reason("openai/gpt-5-nano"), "cannot call tools");
+    assert_eq!(
+        reason("openai/gpt-5-tiny"),
+        "context of 32000 tokens is below the 40000 the request needs"
+    );
+    assert_eq!(
+        reason("openai/gpt-5-mini"),
+        "not allowed by the model policy in force"
+    );
+    let candidates = d["candidates"].as_array().unwrap();
+    assert!(!candidates.is_empty());
+    for k in candidates {
+        for b in k["bindings"].as_array().unwrap() {
+            assert!(
+                ![
+                    "openai/gpt-5-nano",
+                    "openai/gpt-5-tiny",
+                    "openai/gpt-5-mini"
+                ]
+                .contains(&b.as_str().unwrap()),
+                "an excluded binding was weighed: {k:#}"
+            );
+        }
+        assert!(k["worst_case_cost_minor"].as_u64() >= k["expected_cost_minor"].as_u64());
+        assert!(k["quality_lcb_bp"].as_u64() <= k["quality_mean_bp"].as_u64());
+    }
+    let chosen: Vec<&serde_json::Value> = candidates
+        .iter()
+        .filter(|k| k["reason"].as_str() == Some(""))
+        .collect();
+    assert_eq!(chosen.len(), 1, "{candidates:#?}");
+    assert_eq!(chosen[0]["bindings"][0], "openai/gpt-5");
+    assert!(
+        candidates
+            .iter()
+            .filter(|k| k["reason"].as_str() != Some(""))
+            .all(|k| !k["reason"].as_str().unwrap().is_empty()),
+        "every other candidate says why it was not chosen"
+    );
+
+    // 2. The replay: compiling the same task again reproduces the decision.
+    let replay: RoutingCompileView = Client::result(
+        &c.command(envelope_fenced(
+            id16(0xA4),
+            "CompileRoutingPlan",
+            CompileRoutingPlan {
+                task_id: Some(task.clone()),
+                pin_endpoint: String::new(),
+                pin_model: String::new(),
+                request_cap_minor: 0,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+    assert!(replay.compiled, "{replay:?}");
+    assert_eq!(replay.input_digest, d["input_digest"].as_str().unwrap());
+    assert_eq!(replay.demands_digest, d["demands_digest"].as_str().unwrap());
+    assert_eq!(replay.demands, demands);
+    assert_eq!(
+        replay.hard_exclusions,
+        excluded
+            .iter()
+            .map(|(s, r)| format!("{s}: {r}"))
+            .collect::<Vec<_>>()
+    );
+    let recorded: Vec<(Vec<String>, u64, u64, u64)> = candidates
+        .iter()
+        .map(|k| {
+            (
+                serde_json::from_value(k["bindings"].clone()).unwrap(),
+                k["expected_cost_minor"].as_u64().unwrap(),
+                k["worst_case_cost_minor"].as_u64().unwrap(),
+                k["quality_lcb_bp"].as_u64().unwrap(),
+            )
+        })
+        .collect();
+    let replayed: Vec<(Vec<String>, u64, u64, u64)> = replay
+        .candidates
+        .iter()
+        .map(|k| {
+            (
+                k.bindings.clone(),
+                k.expected_cost_minor,
+                k.worst_case_cost_minor,
+                u64::from(k.quality_lcb_bp),
+            )
+        })
+        .collect();
+    assert_eq!(replayed, recorded, "every score replays");
+
+    // 3. Fail closed. An operator's plan naming the refused model ...
+    let mut op: ConditionalExecutionPlan =
+        serde_json::from_value(of(&evs, "RoutingPlanCompiled")[0]["plan"].clone()).unwrap();
+    op.slots[0].model = "gpt-5-mini".into();
+    let op = op.sealed();
+    let refused: RoutingAdmissionView = Client::result(
+        &c.command(envelope_fenced(
+            id16(0xA5),
+            "AdmitRoutingPlan",
+            AdmitRoutingPlan {
+                task_id: Some(task.clone()),
+                plan_json: serde_json::to_string(&op).unwrap(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+    assert!(!refused.admitted, "{refused:?}");
+    assert_eq!(refused.refusal_code, "MODEL_NOT_ALLOWED", "{refused:?}");
+    // ... and a pin on it: refused by name, and the refused start records
+    // nothing — the task is as it was, and can be started.
+    let task3 = create_task_with_profile(&mut c, &session, g, &root_a, 0xA6, "local_trusted").await;
+    let err = c
+        .command(start(&task3, 0xA7, g, "gpt-5-mini"))
+        .await
+        .unwrap_err();
+    let said = format!("{err:?}");
+    assert!(
+        said.contains("PIN_NOT_ELIGIBLE") && said.contains("not allowed by the model policy"),
+        "{said}"
+    );
+    let st3 = wait_task(&mut c, &task3, 1).await;
+    assert_eq!(st3.state, "Queued", "{st3:?}");
+    let evs3 = task_events(&core, &session, &task3).await;
+    assert!(
+        !evs3.iter().any(|(_, t, _)| t == "TaskStarted"
+            || t == "RunCreated"
+            || t.starts_with("CapacityTicket")),
+        "a refused start records nothing: {evs3:#?}"
+    );
+
+    // 4. A policy tightened mid-run: the run re-routes at the next round and
+    //    the refused model is never asked again.
+    std::fs::write(dir.path().join("admin-config.json"), "{}").unwrap();
+    let (session_b, _) = create_session(&mut c, id16(0xB1)).await;
+    let gb = lease_for(&session_b);
+    let task_b = create_task_with_goal(
+        &mut c,
+        &session_b,
+        gb,
+        &root_b,
+        0xB2,
+        "annotate the notes (tightened mid-run)",
+    )
+    .await;
+    let _: TaskRunStarted =
+        Client::result(&c.command(start(&task_b, 0xB3, gb, "")).await.unwrap()).unwrap();
+    async fn wait_for_slow(core: &CoreProcess, session: &Id, task: &Id) {
+        let deadline = std::time::Instant::now() + Duration::from_secs(90);
+        loop {
+            let evs = task_events(core, session, task).await;
+            if evs
+                .iter()
+                .any(|(_, t, p)| t == "ToolCallProposed" && p["tool_name"] == "shell.exec")
+                && evs.iter().any(|(_, t, _)| t == "ToolCallDispatched")
+            {
+                break;
+            }
+            assert!(
+                std::time::Instant::now() < deadline,
+                "the slow call never dispatched"
+            );
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+    }
+    wait_for_slow(&core, &session_b, &task_b).await;
+    std::fs::write(
+        dir.path().join("admin-config.json"),
+        r#"{"models_allow": ["gpt-5", "gpt-5-pro"]}"#,
+    )
+    .unwrap();
+    let st = wait_for_state(&mut c, &task_b, "ReadyForReview", 180).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    assert_eq!(
+        std::fs::read_to_string(repo_b.path().join("notes.txt")).unwrap(),
+        "line 1 annotated\n"
+    );
+    let evs_b = task_events(&core, &session_b, &task_b).await;
+    let first_plan: ConditionalExecutionPlan =
+        serde_json::from_value(of(&evs_b, "RoutingPlanCompiled")[0]["plan"].clone()).unwrap();
+    assert_eq!(
+        first_plan.slots[0].model, "gpt-5-mini",
+        "unrestricted, the cheapest capable binding opened the run"
+    );
+    let policy: Vec<serde_json::Value> = of(&evs_b, "RouteReevaluated")
+        .into_iter()
+        .filter(|r| r["boundary"] == "POLICY")
+        .collect();
+    assert_eq!(policy.len(), 1, "{policy:#?}");
+    assert_eq!(
+        (
+            policy[0]["decision"].as_str(),
+            policy[0]["current"].as_str(),
+            policy[0]["chosen"].as_str()
+        ),
+        (
+            Some("SWITCH"),
+            Some("openai/gpt-5-mini"),
+            Some("openai/gpt-5")
+        )
+    );
+    assert!(!of(&evs_b, "PolicyGenerationChanged").is_empty());
+    let switched = of(&evs_b, "RoutingDecisionRecorded");
+    assert_eq!(switched.len(), 2, "{switched:#?}");
+    assert!(
+        switched[1]["hard_exclusions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|x| x["subject"] == "openai/gpt-5-mini"
+                && x["reason"] == "not allowed by the model policy in force"),
+        "{:#}",
+        switched[1]
+    );
+    let mini_asked = seen
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|b| b["model"] == "gpt-5-mini")
+        .count();
+    assert_eq!(mini_asked, 2, "the refused model was never asked again");
+    drop(c);
+    core.kill();
+
+    // 5. The direct path, where nothing can take over: the run ends
+    //    MODEL_NOT_ALLOWED, a start on the refused model is refused, and a
+    //    start on an allowed one routes a new run.
+    let dir2 = tempfile::tempdir().unwrap();
+    std::fs::write(dir2.path().join("admin-config.json"), "{}").unwrap();
+    let mut core2 = CoreProcess::spawn_with_env(
+        dir2.path(),
+        &[
+            ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+        ],
+    );
+    let mut c2 = core2.client().await;
+    let (session_c, _) = create_session(&mut c2, id16(0xC1)).await;
+    let gc = lease_for(&session_c);
+    let task_c = create_task_with_goal(
+        &mut c2,
+        &session_c,
+        gc,
+        &root_c,
+        0xC2,
+        "annotate the notes (the direct path)",
+    )
+    .await;
+    let _: TaskRunStarted = Client::result(
+        &c2.command(start(&task_c, 0xC3, gc, "gpt-5-mini"))
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    wait_for_slow(&core2, &session_c, &task_c).await;
+    std::fs::write(
+        dir2.path().join("admin-config.json"),
+        r#"{"models_allow": ["gpt-5"]}"#,
+    )
+    .unwrap();
+    let st = wait_task(&mut c2, &task_c, 120).await;
+    assert_eq!(st.state, "Waiting", "{st:?}");
+    let evs_c = task_events(&core2, &session_c, &task_c).await;
+    let attention = of(&evs_c, "TaskNeedsAttention");
+    assert!(
+        attention
+            .last()
+            .is_some_and(|a| a.to_string().contains("MODEL_NOT_ALLOWED")),
+        "{attention:#?}"
+    );
+    assert_eq!(
+        of(&evs_c, "RunFailed")[0]["failure_code"],
+        "MODEL_NOT_ALLOWED"
+    );
+    assert_eq!(
+        seen.lock()
+            .unwrap()
+            .iter()
+            .filter(|b| b["model"] == "gpt-5-mini")
+            .count(),
+        4,
+        "the refused model was not asked after the policy changed"
+    );
+    let err = c2
+        .command(start(&task_c, 0xC4, gc, "gpt-5-mini"))
+        .await
+        .unwrap_err();
+    assert!(format!("{err:?}").contains("MODEL_NOT_ALLOWED"), "{err:?}");
+    let _: TaskRunStarted =
+        Client::result(&c2.command(start(&task_c, 0xC5, gc, "gpt-5")).await.unwrap()).unwrap();
+    let st = wait_for_state(&mut c2, &task_c, "ReadyForReview", 180).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    assert_eq!(
+        std::fs::read_to_string(repo_c.path().join("notes.txt")).unwrap(),
+        "line 1 annotated\n"
+    );
+    drop(c2);
+    core2.kill();
+}

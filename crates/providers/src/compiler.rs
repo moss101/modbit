@@ -99,6 +99,10 @@ pub struct CompileInput<'a> {
     /// unless a cheaper feasible one saves at least the thresholds' switch
     /// cost. `None` at a fresh start (nothing to switch from).
     pub current_binding: Option<(String, String)>,
+    /// REQ-EV-0029: the models the policy in force allows (`endpoint/model`
+    /// or `model` labels), when it restricts them: a hard filter applied
+    /// before any quality or cost is weighed. `None` = unrestricted.
+    pub allowed_models: Option<Vec<String>>,
     /// REQ-EPR-007: whether the assurance policy can require independent
     /// review of this request, so every plan carries a prevalidated
     /// reviewer slot (the cheapest eligible `reviewer`-role binding, a
@@ -141,6 +145,71 @@ pub struct Compiled {
     pub candidates: Vec<CandidateRecord>,
     /// Digest of the exact inputs, so identical inputs are provably identical.
     pub input_digest: String,
+    /// REQ-EV-0029: every binding the hard filters removed before anything
+    /// was weighed, and why.
+    pub hard_exclusions: Vec<Exclusion>,
+    /// REQ-EV-0029: what the request demanded of a binding, in words a reader
+    /// can check each exclusion against.
+    pub demands: Vec<String>,
+    /// Digest of `demands`: two requests with the same one faced the same
+    /// hard filters.
+    pub demands_digest: String,
+}
+
+/// Whether the model policy in force allows a binding (REQ-EV-0029): an entry
+/// names either `endpoint/model` or a bare model, which allows it on any
+/// endpoint. `None` is an unrestricted policy.
+#[must_use]
+pub fn model_allowed(allowed: Option<&[String]>, endpoint: &str, model: &str) -> bool {
+    allowed.is_none_or(|allowed| {
+        let label = format!("{endpoint}/{model}");
+        allowed.iter().any(|a| *a == label || a == model)
+    })
+}
+
+/// What a request demands of a binding before anything is weighed
+/// (REQ-EV-0029), in words: capabilities, context, profile, residency, the
+/// model policy, the currency, and a pin. Sorted lists, so the same demands
+/// always read the same.
+#[must_use]
+pub fn demands(input: &CompileInput<'_>) -> Vec<String> {
+    let n = &input.needs;
+    let sorted = |v: &[String]| {
+        let mut v = v.to_vec();
+        v.sort();
+        v.join(",")
+    };
+    let mut out = Vec::new();
+    if n.tools {
+        out.push("tools".to_owned());
+    }
+    if n.vision {
+        out.push("vision".to_owned());
+    }
+    if n.structured_output {
+        out.push("structured_output".to_owned());
+    }
+    if n.min_context_tokens > 0 {
+        out.push(format!("context>={}", n.min_context_tokens));
+    }
+    out.push(format!("profile={}", input.execution_profile));
+    if !input.allowed_residencies.is_empty() {
+        out.push(format!(
+            "residency in [{}]",
+            sorted(&input.allowed_residencies)
+        ));
+    }
+    if let Some(m) = &input.allowed_models {
+        out.push(format!("model in [{}]", sorted(m)));
+    }
+    out.push(format!(
+        "priced in {} at scale {}",
+        input.request_cap.currency, input.request_cap.scale
+    ));
+    if let Some((e, m)) = &input.manual_pin {
+        out.push(format!("pinned to {e}/{m}"));
+    }
+    out
 }
 
 /// Why nothing could be compiled.
@@ -232,6 +301,11 @@ fn worst_case_minor(
 fn binding_exclusion(e: &RegistryEntry, input: &CompileInput<'_>, role: &str) -> Option<String> {
     if e.revoked {
         return Some("revoked in the active registry".into());
+    }
+    // REQ-EV-0029: the policy's model allow-list comes before anything is
+    // weighed.
+    if !model_allowed(input.allowed_models.as_deref(), &e.endpoint, &e.model) {
+        return Some("not allowed by the model policy in force".into());
     }
     if !e.roles.iter().any(|r| r == role) {
         return Some(format!("not bound to the {role} role"));
@@ -339,6 +413,16 @@ pub fn compile(input: &CompileInput<'_>) -> Result<Compiled, CompileRefused> {
         .map(|(e, m)| format!("current:{e}/{m}"));
     if let Some(c) = &current {
         parts.push(c);
+    }
+    // Only a policy that restricts models is part of the digest; an
+    // unrestricted compile digests exactly as before the field existed.
+    let models = input.allowed_models.as_ref().map(|m| {
+        let mut m = m.clone();
+        m.sort();
+        format!("models:{}", m.join(","))
+    });
+    if let Some(m) = &models {
+        parts.push(m);
     }
     let input_digest = digest(&parts);
     let zero = Money::zero(&input.request_cap.currency, input.request_cap.scale);
@@ -708,11 +792,17 @@ pub fn compile(input: &CompileInput<'_>) -> Result<Compiled, CompileRefused> {
         .cloned()
         .expect("the selection names a candidate");
     let mut selection = selection;
+    let hard_exclusions = exclusions.clone();
     selection.exclusions.extend(exclusions);
+    let demands = demands(input);
+    let demands_digest = digest(&demands.iter().map(String::as_str).collect::<Vec<_>>());
     Ok(Compiled {
         plan,
         selection,
         candidates: candidates.into_iter().map(|(_, c)| c).collect(),
         input_digest,
+        hard_exclusions,
+        demands,
+        demands_digest,
     })
 }

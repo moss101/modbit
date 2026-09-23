@@ -160,6 +160,7 @@ fn input<'a>(
         expected_input_tokens: 40_000,
         current_binding: None,
         include_reviewer: false,
+        allowed_models: None,
     }
 }
 
@@ -610,5 +611,374 @@ fn an_approved_fallback_chain_is_compiled_as_prevalidated_leg_failed_slots() {
             .any(|x| x.reason.starts_with("fallback openai/gpt-5-pro")),
         "{:?}",
         excluded.selection.exclusions
+    );
+}
+
+/// One case of the QUAL-EV-0029 corpus: a request's demands, the policy it
+/// runs under, and what the hard filters and the selector must make of them.
+struct RoutingCase {
+    name: &'static str,
+    profile: &'static str,
+    min_context_tokens: u32,
+    residencies: &'static [&'static str],
+    models: Option<&'static [&'static str]>,
+    /// Binding → the start of the reason it must be excluded with.
+    excluded: &'static [(&'static str, &'static str)],
+    /// The binding the plan must open with; `None` = fail closed.
+    chosen: Option<&'static str>,
+}
+
+/// QUAL-EV-0029 (REQ-EV-0029; docs/15 "Routing"): a benchmark corpus of
+/// routing cases replayed through the compiler. Hard policy and capability
+/// filters decide first — a binding that cannot call tools, one whose context
+/// cannot hold the request, one the model policy refuses, a revoked one, one
+/// in a residency the request may not use and one governance keeps from the
+/// profile are removed before anything is weighed, the cheapest bindings
+/// among them — and only then do the eval-gated quality floor and the
+/// expected cost choose among what is left. Replaying the corpus reproduces
+/// every exclusion, every score and every plan exactly; every score
+/// recomputes from the registry prices and the evidence; a request nothing
+/// can serve fails closed with every reason.
+#[test]
+fn qual_ev_0029_hard_filters_decide_first_and_the_corpus_replays_exactly() {
+    let mut nano = entry("gpt-5-nano", &["solver"], 5, 40);
+    nano.tools = false;
+    let mut tiny = entry("gpt-5-tiny", &["solver"], 10, 80);
+    tiny.context_tokens = 32_000;
+    let mut old = entry("gpt-4-legacy", &["solver"], 20, 150);
+    old.revoked = true;
+    let mut eu = entry("gpt-5-eu", &["solver"], 60, 500);
+    eu.governance.data_residency = "eu".into();
+    let mut sandboxed = entry("gpt-5-sandboxed", &["solver"], 80, 600);
+    sandboxed.governance.allowed_profiles = vec!["sandboxed".into()];
+    let entries = vec![
+        nano,
+        tiny,
+        old,
+        entry("gpt-5-mini", &["solver"], 25, 200),
+        eu,
+        sandboxed,
+        entry("gpt-5", &["solver"], 125, 1_000),
+        // The registry binds a reviewer; this corpus compiles without one.
+        entry("gpt-5-pro", &["solver", "reviewer"], 1_500, 12_000),
+    ];
+    let r = registry_with(entries.clone());
+    // Eval evidence: the two cheapest bindings are the best measured, and
+    // are excluded anyway when the request cannot use them.
+    let e = Evidence {
+        stats_version: "stats-7".into(),
+        legs: vec![
+            leg("solver|gpt-5-nano|none|build-1", 0.95, 0.97, 400),
+            leg("solver|gpt-5-tiny|none|build-1", 0.90, 0.93, 300),
+            leg("solver|gpt-5-mini|none|build-1", 0.55, 0.62, 200),
+            leg("solver|gpt-5-eu|none|build-1", 0.78, 0.83, 120),
+            leg("solver|gpt-5-sandboxed|none|build-1", 0.75, 0.80, 100),
+            leg("solver|gpt-5|none|build-1", 0.80, 0.86, 150),
+            leg("solver|gpt-5-pro|none|build-1", 0.93, 0.96, 90),
+        ],
+    };
+    let t = thresholds();
+    let corpus = [
+        RoutingCase {
+            name: "a plain request",
+            profile: "local_trusted",
+            min_context_tokens: 40_000,
+            residencies: &[],
+            models: None,
+            excluded: &[
+                ("openai/gpt-5-nano", "cannot call tools"),
+                (
+                    "openai/gpt-5-tiny",
+                    "context of 32000 tokens is below the 40000",
+                ),
+                ("openai/gpt-4-legacy", "revoked in the active registry"),
+                (
+                    "openai/gpt-5-sandboxed",
+                    "governance does not allow the local_trusted profile",
+                ),
+            ],
+            chosen: Some("openai/gpt-5-eu"),
+        },
+        RoutingCase {
+            name: "a request that must stay in the us",
+            profile: "local_trusted",
+            min_context_tokens: 40_000,
+            residencies: &["us"],
+            models: None,
+            excluded: &[
+                ("openai/gpt-5-nano", "cannot call tools"),
+                (
+                    "openai/gpt-5-tiny",
+                    "context of 32000 tokens is below the 40000",
+                ),
+                ("openai/gpt-4-legacy", "revoked in the active registry"),
+                (
+                    "openai/gpt-5-eu",
+                    "data residency eu is not allowed for this request",
+                ),
+                (
+                    "openai/gpt-5-sandboxed",
+                    "governance does not allow the local_trusted profile",
+                ),
+            ],
+            chosen: Some("openai/gpt-5"),
+        },
+        RoutingCase {
+            name: "an organization that allows two models",
+            profile: "local_trusted",
+            min_context_tokens: 40_000,
+            residencies: &[],
+            models: Some(&["gpt-5-pro", "openai/gpt-5-mini"]),
+            excluded: &[
+                (
+                    "openai/gpt-5-nano",
+                    "not allowed by the model policy in force",
+                ),
+                (
+                    "openai/gpt-5-tiny",
+                    "not allowed by the model policy in force",
+                ),
+                ("openai/gpt-4-legacy", "revoked in the active registry"),
+                (
+                    "openai/gpt-5-eu",
+                    "not allowed by the model policy in force",
+                ),
+                (
+                    "openai/gpt-5-sandboxed",
+                    "not allowed by the model policy in force",
+                ),
+                ("openai/gpt-5", "not allowed by the model policy in force"),
+            ],
+            // The mini is allowed and cheaper, and below the floor.
+            chosen: Some("openai/gpt-5-pro"),
+        },
+        RoutingCase {
+            name: "a sandboxed request in the us",
+            profile: "sandboxed",
+            min_context_tokens: 40_000,
+            residencies: &["us"],
+            models: None,
+            excluded: &[
+                ("openai/gpt-5-nano", "cannot call tools"),
+                (
+                    "openai/gpt-5-tiny",
+                    "context of 32000 tokens is below the 40000",
+                ),
+                ("openai/gpt-4-legacy", "revoked in the active registry"),
+                (
+                    "openai/gpt-5-eu",
+                    "data residency eu is not allowed for this request",
+                ),
+            ],
+            chosen: Some("openai/gpt-5-sandboxed"),
+        },
+        RoutingCase {
+            name: "a small request",
+            profile: "local_trusted",
+            min_context_tokens: 16_000,
+            residencies: &[],
+            models: None,
+            excluded: &[
+                ("openai/gpt-5-nano", "cannot call tools"),
+                ("openai/gpt-4-legacy", "revoked in the active registry"),
+                (
+                    "openai/gpt-5-sandboxed",
+                    "governance does not allow the local_trusted profile",
+                ),
+            ],
+            chosen: Some("openai/gpt-5-tiny"),
+        },
+        RoutingCase {
+            name: "a request no binding can hold",
+            profile: "local_trusted",
+            min_context_tokens: 500_000,
+            residencies: &[],
+            models: None,
+            excluded: &[
+                ("openai/gpt-5-nano", "cannot call tools"),
+                (
+                    "openai/gpt-5-tiny",
+                    "context of 32000 tokens is below the 500000",
+                ),
+                ("openai/gpt-4-legacy", "revoked in the active registry"),
+                (
+                    "openai/gpt-5-mini",
+                    "context of 400000 tokens is below the 500000",
+                ),
+                (
+                    "openai/gpt-5-eu",
+                    "context of 400000 tokens is below the 500000",
+                ),
+                (
+                    "openai/gpt-5-sandboxed",
+                    "governance does not allow the local_trusted profile",
+                ),
+                (
+                    "openai/gpt-5",
+                    "context of 400000 tokens is below the 500000",
+                ),
+                (
+                    "openai/gpt-5-pro",
+                    "context of 400000 tokens is below the 500000",
+                ),
+            ],
+            chosen: None,
+        },
+    ];
+    let reason_for = |excluded: &[(String, String)], binding: &str| {
+        excluded
+            .iter()
+            .find(|(b, _)| b == binding)
+            .map(|(_, r)| r.clone())
+    };
+    let mut digests = std::collections::BTreeSet::new();
+    for case in &corpus {
+        let mut i = input(&r, &e, &t);
+        i.assurance_available = false;
+        i.execution_profile = case.profile.into();
+        i.needs.min_context_tokens = case.min_context_tokens;
+        i.allowed_residencies = case.residencies.iter().map(|s| (*s).to_owned()).collect();
+        i.allowed_models = case
+            .models
+            .map(|m| m.iter().map(|s| (*s).to_owned()).collect());
+        let first = compile(&i);
+        // The replay: the same inputs, compiled again, are the same result,
+        // exclusions and scores included.
+        let again = compile(&i);
+        assert_eq!(first, again, "{}: the replay differs", case.name);
+        let excluded: Vec<(String, String)> = match &first {
+            Ok(c) => c
+                .hard_exclusions
+                .iter()
+                .map(|x| (x.plan_id.clone(), x.reason.clone()))
+                .collect(),
+            Err(CompileRefused::NoEligibleBinding { exclusions }) => exclusions
+                .iter()
+                .map(|x| (x.plan_id.clone(), x.reason.clone()))
+                .collect(),
+            Err(other) => panic!("{}: {other:?}", case.name),
+        };
+        // Exactly the expected bindings are removed, each for its reason.
+        assert_eq!(
+            excluded.len(),
+            case.excluded.len(),
+            "{}: {excluded:#?}",
+            case.name
+        );
+        for (binding, why) in case.excluded {
+            let reason = reason_for(&excluded, binding)
+                .unwrap_or_else(|| panic!("{}: {binding} was not excluded", case.name));
+            assert!(
+                reason.starts_with(why),
+                "{}: {binding} excluded for `{reason}`, not `{why}`",
+                case.name
+            );
+        }
+        let Some(chosen) = case.chosen else {
+            assert!(
+                matches!(first, Err(CompileRefused::NoEligibleBinding { .. })),
+                "{}: fails closed",
+                case.name
+            );
+            continue;
+        };
+        let c = first.expect("compiled");
+        assert_eq!(
+            format!("{}/{}", c.plan.slots[0].endpoint, c.plan.slots[0].model),
+            chosen,
+            "{}",
+            case.name
+        );
+        // Nothing excluded is a candidate: the filters came before the
+        // weighing, not after it.
+        for k in &c.candidates {
+            for b in &k.bindings {
+                assert!(
+                    reason_for(&excluded, b).is_none(),
+                    "{}: excluded {b} became a candidate",
+                    case.name
+                );
+            }
+        }
+        // Every score is auditable: it recomputes from the registry prices
+        // and the evidence the compile was given.
+        for k in &c.candidates {
+            let model = k.bindings[0].trim_start_matches("openai/");
+            let entry = entries.iter().find(|x| x.model == model).unwrap();
+            let leg_minor = (40_000 * entry.economics.input_per_mtok_minor).div_ceil(1_000_000)
+                + (4_096 * entry.economics.output_per_mtok_minor).div_ceil(1_000_000);
+            assert_eq!(
+                k.expected_cost_minor,
+                leg_minor + 100,
+                "{}: {} expected cost",
+                case.name,
+                k.plan_id
+            );
+            let evidence = e
+                .legs
+                .iter()
+                .find(|l| l.key_id == format!("solver|{model}|none|build-1"))
+                .unwrap();
+            assert!(
+                (k.quality.lcb - evidence.lcb).abs() < 1e-9,
+                "{}: {} lcb {} vs evidence {}",
+                case.name,
+                k.plan_id,
+                k.quality.lcb,
+                evidence.lcb
+            );
+            assert!(k.quality.lcb <= k.quality.mean);
+            assert!(k.worst_case_cost_minor >= k.expected_cost_minor);
+        }
+        // Then quality, then cost: the chosen plan clears the floor, and no
+        // feasible plan is cheaper.
+        let picked = c
+            .candidates
+            .iter()
+            .find(|k| k.plan_id == c.plan.plan_id)
+            .unwrap();
+        assert!(picked.quality.lcb >= t.tau, "{}", case.name);
+        assert!(
+            c.candidates
+                .iter()
+                .filter(|k| k.quality.lcb >= t.tau && k.hard_eligible)
+                .all(|k| k.expected_cost_minor >= picked.expected_cost_minor),
+            "{}",
+            case.name
+        );
+        // The demands read as the case states them, and differ where the
+        // case differs.
+        assert!(c.demands.contains(&"tools".to_owned()), "{:?}", c.demands);
+        assert!(
+            c.demands
+                .contains(&format!("context>={}", case.min_context_tokens))
+        );
+        assert!(c.demands.contains(&format!("profile={}", case.profile)));
+        if let Some(m) = case.models {
+            let mut m: Vec<&str> = m.to_vec();
+            m.sort_unstable();
+            assert!(
+                c.demands.contains(&format!("model in [{}]", m.join(","))),
+                "{:?}",
+                c.demands
+            );
+        }
+        assert!(digests.insert(c.demands_digest.clone()), "{}", case.name);
+    }
+    // The policy is part of a replay's identity: a policy that allows every
+    // binding chooses what an unrestricted compile chooses, under a digest
+    // of its own.
+    let mut i = input(&r, &e, &t);
+    i.assurance_available = false;
+    let unrestricted = compile(&i).unwrap();
+    i.allowed_models = Some(entries.iter().map(|x| x.model.clone()).collect());
+    let everything = compile(&i).unwrap();
+    assert_eq!(everything.plan.slots, unrestricted.plan.slots);
+    assert_ne!(everything.input_digest, unrestricted.input_digest);
+    // A policy that allows nothing admits nothing.
+    i.allowed_models = Some(vec![]);
+    assert!(
+        matches!(compile(&i), Err(CompileRefused::NoEligibleBinding { .. })),
+        "a policy that allows nothing admits nothing"
     );
 }

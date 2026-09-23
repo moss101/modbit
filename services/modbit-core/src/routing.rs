@@ -229,17 +229,20 @@ pub(crate) async fn admit(
         Ok(p) => p,
         Err(e) => return refuse("BAD_PLAN", e.to_string()),
     };
-    let Some(session_id) = core
-        .store
-        .lock()
-        .await
-        .task(&task_id)
-        .ok()
-        .flatten()
-        .map(|t| t.session_id)
-    else {
+    let Some(task) = core.store.lock().await.task(&task_id).ok().flatten() else {
         return refuse("UNKNOWN_TASK", task_id.to_string());
     };
+    let session_id = task.session_id;
+    // REQ-EV-0029: an operator's plan is held to the same model policy as a
+    // compiled one; no slot of it may name a model the policy refuses.
+    if let Some((code, detail)) = refused_by_model_policy(
+        model_policy(core, &task).as_deref(),
+        plan.slots
+            .iter()
+            .map(|s| (s.endpoint.clone(), s.model.clone())),
+    ) {
+        return refuse(&code, detail);
+    }
     let mut store = core.store.lock().await;
     let Some(run) = store
         .runs_for_task(&task_id)
@@ -329,6 +332,10 @@ pub(crate) async fn admit(
                 selection: "OPERATOR".into(),
                 choice_probability_bp: 10_000,
                 routing_latency_ms: 0,
+                demands: vec![],
+                demands_digest: String::new(),
+                hard_exclusions: vec![],
+                input_digest: String::new(),
             },
             modbit_domain::event::Actor::Core("admission".into()),
         ),
@@ -771,8 +778,13 @@ pub(crate) fn compile_for_run(
         },
         lease_generation,
         routing_epoch: next_epoch,
+        // REQ-EV-0029: what the request demands of a binding before anything
+        // is weighed. The agent loop calls tools, and the context has to hold
+        // what the compile prices the request at. Images are not a hard need:
+        // a binding without vision gets them described (docs/25).
         needs: modbit_providers::registry::Needs {
             tools: true,
+            min_context_tokens: u32::try_from(expected_input_tokens).unwrap_or(u32::MAX),
             ..Default::default()
         },
         execution_profile: task.execution_profile.clone(),
@@ -798,6 +810,7 @@ pub(crate) fn compile_for_run(
         ),
         expected_input_tokens,
         current_binding: context.map(|c| (c.endpoint.clone(), c.model.clone())),
+        allowed_models: model_policy(core, task),
     };
     let compiled = modbit_providers::compiler::compile(&input)
         .map_err(|r| (r.code().to_owned(), format!("{r:?}")))?;
@@ -1002,6 +1015,37 @@ pub(crate) fn reevaluated_event(
     )
 }
 
+/// The models the task's policy in force allows (REQ-EV-0029), when it
+/// restricts them: the task's pinned configuration, which a round boundary
+/// refreshes (REQ-EV-0041).
+pub(crate) fn model_policy(core: &Core, task: &modbit_domain::task::Task) -> Option<Vec<String>> {
+    core.tools
+        .configurations
+        .for_task(task.task_id, &core.data_dir, task.workspace_root.as_deref())
+        .models_allow
+        .as_ref()
+        .map(|r| r.value.iter().cloned().collect())
+}
+
+/// The first binding of `bindings` the model policy refuses, as the refusal.
+pub(crate) fn refused_by_model_policy(
+    allowed: Option<&[String]>,
+    bindings: impl IntoIterator<Item = (String, String)>,
+) -> Option<(String, String)> {
+    bindings
+        .into_iter()
+        .find(|(e, m)| !modbit_providers::compiler::model_allowed(allowed, e, m))
+        .map(|(e, m)| {
+            (
+                "MODEL_NOT_ALLOWED".to_owned(),
+                format!(
+                    "{e}/{m} is not allowed by the model policy in force (allowed: {})",
+                    allowed.unwrap_or_default().join(", ")
+                ),
+            )
+        })
+}
+
 /// The events that record a compiled plan and its admission.
 pub(crate) fn compiled_events(
     c: &CompiledForRun,
@@ -1073,6 +1117,18 @@ pub(crate) fn compiled_events(
                 // chosen plan had every chance of being chosen.
                 choice_probability_bp: 10_000,
                 routing_latency_ms: c.routing_latency_ms,
+                demands: c.compiled.demands.clone(),
+                demands_digest: c.compiled.demands_digest.clone(),
+                hard_exclusions: c
+                    .compiled
+                    .hard_exclusions
+                    .iter()
+                    .map(|e| modbit_domain::routing::RoutingExclusion {
+                        subject: e.plan_id.clone(),
+                        reason: e.reason.clone(),
+                    })
+                    .collect(),
+                input_digest: c.compiled.input_digest.clone(),
             },
             actor,
         ),
@@ -1120,14 +1176,25 @@ pub(crate) async fn compile(
         Err((code, detail)) => return refuse(&code, detail),
     };
     let plan_id = c.compiled.plan.plan_id.clone();
-    if let Err(e) = crate::runtime::append(
-        &mut store,
-        core,
-        crate::runtime::Lineage::run(core.tenant_id, task.session_id, task_id, run.run_id),
-        modbit_domain::event::AggregateType::Run,
-        *run.run_id.as_bytes(),
-        compiled_events(&c, modbit_domain::event::Actor::Core("compiler".into())),
-    ) {
+    // A run that has ended takes no new plan: the compile is a replay of the
+    // decision under the inputs in force (REQ-EV-0029), returned and recorded
+    // nowhere.
+    let ended = matches!(
+        run.state,
+        modbit_domain::run::RunState::Completed
+            | modbit_domain::run::RunState::Failed
+            | modbit_domain::run::RunState::Cancelled
+    );
+    if !ended
+        && let Err(e) = crate::runtime::append(
+            &mut store,
+            core,
+            crate::runtime::Lineage::run(core.tenant_id, task.session_id, task_id, run.run_id),
+            modbit_domain::event::AggregateType::Run,
+            *run.run_id.as_bytes(),
+            compiled_events(&c, modbit_domain::event::Actor::Core("compiler".into())),
+        )
+    {
         return refuse("STORE", e.to_string());
     }
     wire::RoutingCompileView {
@@ -1167,6 +1234,14 @@ pub(crate) async fn compile(
         admission: admission_view(&store, run.run_id, &plan_id),
         refusal_code: String::new(),
         refusal_detail: String::new(),
+        demands: c.compiled.demands.clone(),
+        demands_digest: c.compiled.demands_digest.clone(),
+        hard_exclusions: c
+            .compiled
+            .hard_exclusions
+            .iter()
+            .map(|e| format!("{}: {}", e.plan_id, e.reason))
+            .collect(),
     }
 }
 
