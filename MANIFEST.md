@@ -1,7 +1,7 @@
 # Modbit Dossier Manifest — V3.3 EPR v1.1
 
 > **Authority date:** 2026-09-05  
-> **Generated:** 2026-09-21 by `tools/build_manifest.py`  
+> **Generated:** 2026-09-23 by `tools/build_manifest.py`  
 > **Scope:** every specification file in `docs/` plus the root governing files and tooling. The previous `99_MANIFEST.md` covered only 39 Part 2 files; this manifest covers all 90 docs.
 > **Machine-readable twin:** `manifest.json` (same content, same hashes).
 
@@ -1636,8 +1636,10 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m9/M9.5/ci-run-35565188980.json` | retained evidence | 42266 | `f5c7a84ce8a219d40bbf748630eca67144b1c986906eb1528dc54dbd24b4cb01` |
 | `evidence/m9/M9.5/evidence.json` | retained evidence | 2844 | `77780ebcc16f18c58d3a4e2664a801b49d2d0abef4f0ed719d0c3ede8a6ccad4` |
 | `evidence/m9/M9.6/TASK_CARD.md` | retained evidence | 4092 | `a299804fc50aae2a0db24372475bd8e347377870d6771858a93ddcd708a4560c` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 41095 | `954e92cefdc07eec4b1b18209c59c9845be130d2e95af79c5a786cd96ae894be` |
-| `graph/project-graph.json` | project driver graph with live status | 1573075 | `4618f0efacb257b318e419c06d6bf090e9357e0d85d23a5f2c6c572a63a875b0` |
+| `evidence/m9/M9.6/ci-run-35821231094.json` | retained evidence | 42199 | `f35bae2baf639b587019494dbabff5459ec499d7e8c56d22c595d66aae6948cd` |
+| `evidence/m9/M9.6/evidence.json` | retained evidence | 3747 | `cbb7012e8ff5c95606ff3b54bee5c47df381a0a4e6a7cd9cae13ca69bc478ff5` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 41092 | `fc8d149effc60760e924888fcce2afea135e090e508efd7795e7d57e09a3f3a9` |
+| `graph/project-graph.json` | project driver graph with live status | 1574883 | `31c5e559a8086223cd9fade6047acf75a5d1b6cfdf4008b3656cf7bb452d1e51` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 54559 | `2386120f7a8ab3c48562b3450427d61637859c87cd9f7f5817c46676ab322547` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 17596 | `5c9b7a782d245223726f860ca583d766929a6f5662b644adebee64d257ad426b` |

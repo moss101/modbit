@@ -1,0 +1,42 @@
+{
+ "task": "M9.6",
+ "requirements": [
+  "docs/52 Security gates: fuzzers for the protocol decoder, path normalizer, tool argument validation and event migration; property tests for the effect receipt chain and lease fencing",
+  "docs/52 Major threats and controls: path traversal/symlink escape (incl. TOCTOU), shell injection",
+  "docs/55 prove the test detects broken behaviour (mutation beside each property)"
+ ],
+ "scenarios": [
+  "arbitrary bytes never panic the frame reader; a declared length above the ceiling is refused before it is read; written frames read back identical; a corrupted prefix never yields a frame",
+  "hostile paths are refused or resolve inside the root; planted links to the outside are refused; protected names are refused under any prefix; a target swapped for an escaping link between two operations is refused at the second",
+  "every registered tool's schema accepts or refuses arbitrary JSON without panicking, refuses undeclared keys and holds its string bounds",
+  "arbitrary receipt chains verify; every single-field tamper, reorder and interior deletion is detected; a verifier with one check removed accepts what the real one refuses",
+  "on the real SQLite store only the current lease generation lands; migrations are idempotent across reopen; rebuilt projections match",
+  "hostile metacharacter arguments reach the child as single literal tokens through the real broker; nothing named inside them runs"
+ ],
+ "tests": [
+  "crates/protocol/tests/property_framing.rs",
+  "crates/workspace/tests/property_paths.rs::a_hostile_path_is_refused_or_resolves_inside_the_root",
+  "crates/workspace/tests/property_paths.rs::a_target_swapped_for_an_escaping_link_between_operations_is_refused",
+  "crates/tools/tests/property_arguments.rs",
+  "crates/policy/tests/property_chain.rs",
+  "crates/event-store/tests/property_fencing.rs",
+  "services/modbit-execd/tests/broker.rs::hostile_arguments_reach_the_process_as_literal_tokens_and_nothing_inside_them_runs"
+ ],
+ "batch_commits": [
+  "98c7e81"
+ ],
+ "runs": [
+  "35821231094"
+ ],
+ "ci": {
+  "run_id": "35821231094",
+  "head_sha": "a0f80fadf134bbebfd5210608aca7434a490b5b3",
+  "conclusion": "success",
+  "note": "all 14 checks green on macOS, Linux and Windows; the first run (35820462397) failed on Windows only because the TOCTOU test's Unix-only imports were unused there under -D warnings, fixed in a0f80fa",
+  "json": "evidence/m9/M9.6/ci-run-35821231094.json"
+ },
+ "audit": "IMPLEMENTED-PARTIAL before: every docs/52 threat had hand-written qualifications, but no randomized suite existed, no TOCTOU race was tested and no hostile-metacharacter argument had gone through the real broker.",
+ "proof": "Randomized property suites over the real components (protocol reader, PathPolicy/WorkspaceService, the tool registry, the receipt-chain verifier, the SQLite event store, the terminal broker) run by cargo test --workspace on every platform; the path fuzzer found a real defect (a backslash on Unix named a literal file while the record rewrote it to '/'), fixed in crates/workspace/src/paths.rs.",
+ "negative_proof": "Mutations inside the suites: a verifier without the hash check accepts a field tamper and one without the link check accepts a reorder; a corrupted length prefix never yields a frame; a stale lease generation writes nothing. The fuzzer's finding is the negative proof of the previous normalizer.",
+ "limitations": "Property suites, not coverage-guided fuzzing (cargo-fuzz needs a nightly toolchain the pinned build does not use); bounded case counts; SAST/dependency/secret scanning, the signed SBOM and the external penetration test are M10.2 and the release procedure; the M8 sandbox/SSRF and cross-tenant matrices are not re-randomized."
+}

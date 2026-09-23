@@ -3,7 +3,7 @@
  "product": "Modbit",
  "edition": "V3.3 EPR v1.1",
  "authority_date": "2026-09-05",
- "generated_on": "2026-09-21",
+ "generated_on": "2026-09-23",
  "generator": "tools/build_graph.py",
  "status_vocabulary": [
   "NOT_STARTED",
@@ -4634,8 +4634,56 @@
    "milestone": "M9",
    "order": 5,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-35821231094",
+    "test:hostile_arguments_reach_the_process_as_literal_tokens_and_nothing_inside_them_runs",
+    "test:a_target_swapped_for_an_escaping_link_between_operations_is_refused",
+    "test:a_hostile_path_is_refused_or_resolves_inside_the_root",
+    "artifact:evidence/m9/M9.6/TASK_CARD.md",
+    "artifact:evidence/m9/M9.6/evidence.json",
+    "artifact:evidence/m9/M9.6/ci-run-35821231094.json",
+    "commit:98c7e81"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-23T05:34:08Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED-PARTIAL: every docs/52 threat had hand-written qualifications; no randomized suite, no TOCTOU race test, no hostile-metacharacter argument through the real broker"
+    },
+    {
+     "at": "2026-09-23T05:34:08Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "proptest suites for protocol framing, path normalizer (+TOCTOU), tool arguments, receipt chain, lease fencing/migration; execd shell-injection attack test; backslash refusal fixed in the normalizer; docs/52 and docs/55 as-built"
+    },
+    {
+     "at": "2026-09-23T05:34:08Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "PR #22 squashed to main as 98c7e81"
+    },
+    {
+     "at": "2026-09-23T05:34:08Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "hosted CI run 35821231094 green on macOS/Linux/Windows (14 checks)"
+    },
+    {
+     "at": "2026-09-23T05:34:08Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "attacks through the real broker and workspace service refused; property suites green with their mutations"
+    },
+    {
+     "at": "2026-09-23T05:34:08Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-23T05:34:08Z"
   },
   {
    "id": "M10.1",
