@@ -35791,6 +35791,16 @@ async fn epr_fi_010_unknown_work_holds_its_reservation_across_a_kill_and_a_late_
         Err(ClientError::Rejected { code: got, .. }) => assert_eq!(got, code),
         other => panic!("expected {code}, got {other:?}"),
     };
+    // A client kind without the provider capability cannot import one.
+    {
+        let mut ide = core
+            .client_of(modbit_protocol::v1::ClientKind::IdeAdapter)
+            .await;
+        refused(
+            ide.command(invoice(0x8C, n, &rid, 1_200, 300)).await,
+            "CLIENT_CAPABILITY",
+        );
+    }
     refused(
         c.command(invoice(0x85, n, "req_someone_else", 1_200, 300))
             .await,

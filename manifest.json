@@ -8,7 +8,7 @@
   "counts": {
     "docs": 90,
     "root_and_tooling": 1526,
-    "docs_bytes": 1315060
+    "docs_bytes": 1315127
   },
   "sections": [
     {
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 41141,
-      "sha256": "898c677df459cc24054e53eb42996030029c39b842943e0cb4616883596c43f1"
+      "bytes": 41208,
+      "sha256": "b422abf029897d91f1bd78546ebcb2a5f804a9b6b92597faaa1b075c9932a2bb"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -8277,8 +8277,8 @@
     },
     {
       "path": "evidence/m9/EPR-010/TASK_CARD.md",
-      "bytes": 8615,
-      "sha256": "9bce08d6ddb0801956a91b23f14bfb615a7772cd2ba5c6092abd81f247a47f8e"
+      "bytes": 8695,
+      "sha256": "e4c7ec46507662c91d91fc783913dcb6de7c5e914eac44796f7d720d7901884c"
     },
     {
       "path": "evidence/m9/IMP-EV-0104/TASK_CARD.md",

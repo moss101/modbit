@@ -1069,9 +1069,13 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         "OpenPullRequest" | "UpdatePullRequest" => "review.decide",
         "ResolveApproval" => "approval.resolve",
         "RespondToQuestion" | "AskSideQuestion" => "question.answer",
-        "ConfigureProvider" | "ActivateModelRegistry" | "ProbeModel" | "ConfigureForge" => {
-            "provider.configure"
-        }
+        // A late invoice changes what a request is said to have cost: the
+        // same class of decision as configuring the provider (REQ-EPR-010).
+        "ConfigureProvider"
+        | "ActivateModelRegistry"
+        | "ProbeModel"
+        | "ConfigureForge"
+        | "ReconcileUsage" => "provider.configure",
         // Proposing costs nothing and grants nothing, so any client that can
         // author a task may do it; trusting a program the host did not write
         // to run against this workspace is the same class of decision as
