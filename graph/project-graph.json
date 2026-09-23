@@ -10956,8 +10956,54 @@
    "milestone": "M9",
    "qual": "QUAL-EV-0041",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-35846708616",
+    "test:qual_ev_0041_a_tightened_policy_applies_from_the_next_round_and_the_call_in_flight_finishes",
+    "artifact:evidence/m9/IMP-EV-0041/TASK_CARD.md",
+    "artifact:evidence/m9/IMP-EV-0041/evidence.json",
+    "artifact:evidence/m9/IMP-EV-0041/ci-run-35846708616.json",
+    "commit:ce694c1"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-23T10:41:56Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED-PARTIAL: kernel config step existed but the Core passed config: None; config pinned for a task's life; no generation record"
+    },
+    {
+     "at": "2026-09-23T10:41:56Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "round-boundary refresh, generations, PolicyGenerationChanged, kernel receives the snapshot, POLICY_DENIED withholding; docs/23, 16, 30"
+    },
+    {
+     "at": "2026-09-23T10:41:57Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "PR #26 squashed to main as ce694c1"
+    },
+    {
+     "at": "2026-09-23T10:41:57Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "hosted CI run 35846708616 green on macOS/Linux/Windows (Windows desktop-E2E on rerun)"
+    },
+    {
+     "at": "2026-09-23T10:41:57Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "tightened org policy applies from the next round; the call in flight finishes"
+    },
+    {
+     "at": "2026-09-23T10:41:57Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-23T10:41:57Z"
   },
   {
    "id": "IMP-EV-0042",

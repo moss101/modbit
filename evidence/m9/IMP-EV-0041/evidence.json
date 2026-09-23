@@ -1,0 +1,36 @@
+{
+ "task": "IMP-EV-0041",
+ "requirements": [
+  "REQ-EV-0041",
+  "docs/23 Capability kernel / policy generations"
+ ],
+ "scenarios": [
+  "the organization layer is rewritten to deny shell.exec while a 3 s shell.exec the policy allowed is running; that call finishes and its output reaches the next round",
+  "the next round records one PolicyGenerationChanged (tightened shell.exec, withheld shell.exec, a new generation)",
+  "the round's projection no longer offers shell.exec and lists it withheld POLICY_DENIED; the model's retry is refused TOOL_NOT_PROJECTED at the policy stage and no process runs",
+  "a client's direct InvokeTool shell.exec afterwards is POLICY_DENIED / CAPABILITY_DENIED_BY_CONFIG under the snapshot the last round installed",
+  "qual_ev_0224 (M9.4): a task with no round keeps the configuration it started with"
+ ],
+ "tests": [
+  "services/modbit-core/tests/surface_protocol.rs::qual_ev_0041_a_tightened_policy_applies_from_the_next_round_and_the_call_in_flight_finishes",
+  "crates/policy/src/config.rs::generation_tests::a_generation_names_what_the_configuration_decides_and_a_change_says_which_way",
+  "services/modbit-core/tests/surface_protocol.rs::qual_ev_0224_a_proposed_external_server_is_inert_until_the_host_trusts_it_and_holds_its_credential"
+ ],
+ "batch_commits": [
+  "ce694c1"
+ ],
+ "runs": [
+  "35846708616"
+ ],
+ "ci": {
+  "run_id": "35846708616",
+  "head_sha": "b188772b6824e16b009ed8af38f387fa8c9eaec9",
+  "conclusion": "success",
+  "note": "every Rust job green on macOS, Linux and Windows; the Windows desktop-E2E job passed on rerun after the states.spec restart-window render race (a follow-up task was raised for the spec)",
+  "json": "evidence/m9/IMP-EV-0041/ci-run-35846708616.json"
+ },
+ "audit": "IMPLEMENTED-PARTIAL before: configuration layers resolved and the kernel had a per-capability DENY/ASK step, but the Core passed config: None so the step never ran; the configuration was pinned for a task's life; nothing recorded a policy change.",
+ "proof": "Real Core and terminal broker: a policy tightened mid-run applies from the next round \u2014 recorded, withheld from the projection and refused at dispatch \u2014 while the call in flight finishes under its snapshot.",
+ "negative_proof": "The denied retry and the direct client call start no process; before the change the kernel's configuration step never ran.",
+ "limitations": "A tightening withholds and refuses from the next round; it does not suspend the run by itself. The device layer is IMP-EV-0040's."
+}
