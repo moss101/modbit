@@ -957,6 +957,7 @@ message ReviewBundle {
   repeated string invariant_findings = 12; // "DI-n CLASS path: evidence"
   uint32 receipts = 13;
   repeated string evidence_links = 14;     // "kind:ref" (report, raw output, receipt, event offset)
+  repeated CiCheckView ci_evidence = 15;   // PX-009: external, provenance ci; never a verification result
 }
 
 message GetCodeView {
@@ -2377,4 +2378,45 @@ message UsageReconciliationView {
   bool priced = 4;
   string priced_under = 5;
   string record_ref = 6;           // the outcome record appended with it
+}
+
+// ---- CI results as evidence (PX-009; docs/29 "CI evidence") ----
+
+// Read the forge's check runs for the commit the task's pull request carries
+// and record them as evidence with provenance `ci`. Informational: a green
+// run elsewhere is never a verification result, and a run that names another
+// commit is refused.
+message IngestCiResults {
+  Id task_id = 1;
+}
+
+message CiCheckView {
+  string name = 1;
+  uint64 run_id = 2;
+  string status = 3;
+  string conclusion = 4;
+  string url = 5;
+  string completed_at = 6;
+  string log_ref = 7;              // the run's own output, by ReadObjectRange
+  bool log_truncated = 8;
+  string commit = 9;
+  string provenance = 10;          // ci
+}
+
+message CiRejectedView {
+  string name = 1;
+  string head_sha = 2;
+  string reason = 3;               // MISMATCHED_COMMIT | MALFORMED
+}
+
+message CiResultsIngested {
+  string provider = 1;
+  string owner = 2;
+  string repo = 3;
+  uint64 pull_number = 4;
+  string commit = 5;
+  repeated CiCheckView checks = 6;
+  repeated CiRejectedView rejected = 7;
+  uint64 offset = 8;
+  string evidence_class = 9;       // external_ci: informs, never qualifies
 }

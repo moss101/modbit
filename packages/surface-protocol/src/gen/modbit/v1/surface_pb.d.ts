@@ -4048,6 +4048,13 @@ export declare type ReviewBundle = Message<"modbit.v1.ReviewBundle"> & {
    * @generated from field: repeated string evidence_links = 14;
    */
   evidenceLinks: string[];
+
+  /**
+   * PX-009: external, provenance ci; never a verification result
+   *
+   * @generated from field: repeated modbit.v1.CiCheckView ci_evidence = 15;
+   */
+  ciEvidence: CiCheckView[];
 };
 
 /**
@@ -10185,6 +10192,178 @@ export declare type UsageReconciliationView = Message<"modbit.v1.UsageReconcilia
  * Use `create(UsageReconciliationViewSchema)` to create a new message.
  */
 export declare const UsageReconciliationViewSchema: GenMessage<UsageReconciliationView>;
+
+/**
+ * Read the forge's check runs for the commit the task's pull request carries
+ * and record them as evidence with provenance `ci`. Informational: a green
+ * run elsewhere is never a verification result, and a run that names another
+ * commit is refused.
+ *
+ * @generated from message modbit.v1.IngestCiResults
+ */
+export declare type IngestCiResults = Message<"modbit.v1.IngestCiResults"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.IngestCiResults.
+ * Use `create(IngestCiResultsSchema)` to create a new message.
+ */
+export declare const IngestCiResultsSchema: GenMessage<IngestCiResults>;
+
+/**
+ * @generated from message modbit.v1.CiCheckView
+ */
+export declare type CiCheckView = Message<"modbit.v1.CiCheckView"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: uint64 run_id = 2;
+   */
+  runId: bigint;
+
+  /**
+   * @generated from field: string status = 3;
+   */
+  status: string;
+
+  /**
+   * @generated from field: string conclusion = 4;
+   */
+  conclusion: string;
+
+  /**
+   * @generated from field: string url = 5;
+   */
+  url: string;
+
+  /**
+   * @generated from field: string completed_at = 6;
+   */
+  completedAt: string;
+
+  /**
+   * the run's own output, by ReadObjectRange
+   *
+   * @generated from field: string log_ref = 7;
+   */
+  logRef: string;
+
+  /**
+   * @generated from field: bool log_truncated = 8;
+   */
+  logTruncated: boolean;
+
+  /**
+   * @generated from field: string commit = 9;
+   */
+  commit: string;
+
+  /**
+   * ci
+   *
+   * @generated from field: string provenance = 10;
+   */
+  provenance: string;
+};
+
+/**
+ * Describes the message modbit.v1.CiCheckView.
+ * Use `create(CiCheckViewSchema)` to create a new message.
+ */
+export declare const CiCheckViewSchema: GenMessage<CiCheckView>;
+
+/**
+ * @generated from message modbit.v1.CiRejectedView
+ */
+export declare type CiRejectedView = Message<"modbit.v1.CiRejectedView"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string head_sha = 2;
+   */
+  headSha: string;
+
+  /**
+   * MISMATCHED_COMMIT | MALFORMED
+   *
+   * @generated from field: string reason = 3;
+   */
+  reason: string;
+};
+
+/**
+ * Describes the message modbit.v1.CiRejectedView.
+ * Use `create(CiRejectedViewSchema)` to create a new message.
+ */
+export declare const CiRejectedViewSchema: GenMessage<CiRejectedView>;
+
+/**
+ * @generated from message modbit.v1.CiResultsIngested
+ */
+export declare type CiResultsIngested = Message<"modbit.v1.CiResultsIngested"> & {
+  /**
+   * @generated from field: string provider = 1;
+   */
+  provider: string;
+
+  /**
+   * @generated from field: string owner = 2;
+   */
+  owner: string;
+
+  /**
+   * @generated from field: string repo = 3;
+   */
+  repo: string;
+
+  /**
+   * @generated from field: uint64 pull_number = 4;
+   */
+  pullNumber: bigint;
+
+  /**
+   * @generated from field: string commit = 5;
+   */
+  commit: string;
+
+  /**
+   * @generated from field: repeated modbit.v1.CiCheckView checks = 6;
+   */
+  checks: CiCheckView[];
+
+  /**
+   * @generated from field: repeated modbit.v1.CiRejectedView rejected = 7;
+   */
+  rejected: CiRejectedView[];
+
+  /**
+   * @generated from field: uint64 offset = 8;
+   */
+  offset: bigint;
+
+  /**
+   * external_ci: informs, never qualifies
+   *
+   * @generated from field: string evidence_class = 9;
+   */
+  evidenceClass: string;
+};
+
+/**
+ * Describes the message modbit.v1.CiResultsIngested.
+ * Use `create(CiResultsIngestedSchema)` to create a new message.
+ */
+export declare const CiResultsIngestedSchema: GenMessage<CiResultsIngested>;
 
 /**
  * Command acknowledgement.

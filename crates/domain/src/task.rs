@@ -1728,6 +1728,31 @@ pub enum TaskEvent {
         /// Object hash of the invoice line as delivered.
         invoice_ref: String,
     },
+    /// `CiEvidenceRecorded` (PX-009, docs/29 "CI evidence", REQ-EV-0010):
+    /// the forge's check runs for the commit the task's pull request carries,
+    /// recorded as external evidence with provenance `ci` — never a
+    /// verification result. Runs that named another commit are listed as
+    /// refused. An audit record about the task, valid in every state.
+    CiEvidenceRecorded {
+        /// Forge (`github`).
+        provider: String,
+        /// Owner.
+        owner: String,
+        /// Repository.
+        repo: String,
+        /// Pull request number.
+        pull_number: u64,
+        /// The commit the Core pushed for the pull request.
+        commit: String,
+        /// Check runs accepted as evidence.
+        checks: Vec<CiCheckRecord>,
+        /// Check runs refused.
+        rejected: Vec<CiRejectedRecord>,
+        /// The `forge.ci.status` call that read them.
+        tool_call_id: String,
+        /// `ci`.
+        provenance: String,
+    },
     /// `RequestOutcomeRecorded` (REQ-EPR-010, docs/27 §11.2-11.3, docs/38
     /// "CompleteAccountingAndAttribution" step 4): the request's accounting
     /// and outcome record as of this point — every leg and attempt with its
@@ -1763,6 +1788,39 @@ pub enum TaskEvent {
         /// Signals the record could not observe, by name.
         missing_signals: Vec<String>,
     },
+}
+
+/// One check run recorded as CI evidence (PX-009).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CiCheckRecord {
+    /// Check name.
+    pub name: String,
+    /// The forge's run id.
+    pub run_id: u64,
+    /// Status.
+    pub status: String,
+    /// Conclusion; empty while not completed.
+    pub conclusion: String,
+    /// Where a person reads it.
+    pub url: String,
+    /// When it completed.
+    pub completed_at: String,
+    /// Object hash of the run's own output (its log), readable by range;
+    /// empty when it had none.
+    pub log_ref: String,
+    /// Whether the log was cut.
+    pub log_truncated: bool,
+}
+
+/// One check run refused as CI evidence (PX-009).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CiRejectedRecord {
+    /// Check name.
+    pub name: String,
+    /// The commit it named.
+    pub head_sha: String,
+    /// `MISMATCHED_COMMIT` | `MALFORMED`.
+    pub reason: String,
 }
 
 impl TaskEvent {
@@ -1870,6 +1928,7 @@ impl TaskEvent {
             Self::ProtocolStateResumed { .. } => "ProtocolStateResumed",
             Self::ToolCallReconciled { .. } => "ToolCallReconciled",
             Self::UsageReconciled { .. } => "UsageReconciled",
+            Self::CiEvidenceRecorded { .. } => "CiEvidenceRecorded",
             Self::RequestOutcomeRecorded { .. } => "RequestOutcomeRecorded",
         }
     }
@@ -2048,8 +2107,10 @@ impl Task {
             // may be lost at any time: the records of the substrate's
             // lifecycle land whatever the task's state. So do the request's
             // accounting records (REQ-EPR-010): a review concludes and a
-            // late invoice arrives after the request's own run is over.
+            // late invoice arrives after the request's own run is over; and
+            // CI results (PX-009), which finish on the forge's schedule.
             TaskEvent::SandboxReleased { .. }
+            | TaskEvent::CiEvidenceRecorded { .. }
             | TaskEvent::UsageReconciled { .. }
             | TaskEvent::RequestOutcomeRecorded { .. }
             | TaskEvent::SandboxLost { .. }

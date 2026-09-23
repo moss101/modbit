@@ -256,6 +256,13 @@ pub async fn bundle(
             _ => {}
         }
     }
+    // PX-009: CI results for the pushed commit, as external evidence.
+    let ci_evidence = crate::ci_evidence::views(&store, task.task_id);
+    for c in &ci_evidence {
+        if !c.log_ref.is_empty() {
+            evidence_links.push(format!("ci_log:{}", c.log_ref));
+        }
+    }
     let mut verification_runs = Vec::new();
     for run_id in &run_ids {
         for v in store.verification_runs(run_id).unwrap_or_default() {
@@ -293,6 +300,7 @@ pub async fn bundle(
         invariant_findings,
         receipts,
         evidence_links,
+        ci_evidence,
     })
 }
 
