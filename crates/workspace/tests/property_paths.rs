@@ -8,9 +8,9 @@
 //! swapped for an escaping link between two operations is refused at the
 //! second, because every operation resolves anew.
 
-use modbit_workspace::{Error, PathPolicy, WorkspaceService, WritePrecondition};
+use modbit_workspace::{Error, PathPolicy};
 use proptest::prelude::*;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 fn segment() -> impl Strategy<Value = String> {
     prop_oneof![
@@ -100,6 +100,7 @@ proptest! {
 #[cfg(unix)]
 #[test]
 fn a_target_swapped_for_an_escaping_link_between_operations_is_refused() {
+    use modbit_workspace::{WorkspaceService, WritePrecondition};
     let (root, outside, _canonical) = root_with_links();
     let state = tempfile::tempdir().unwrap();
     let mut ws = WorkspaceService::open(root.path(), state.path(), &[]).unwrap();
@@ -138,5 +139,4 @@ fn a_target_swapped_for_an_escaping_link_between_operations_is_refused() {
         std::fs::read_to_string(outside.path().join("secret.txt")).unwrap(),
         "top secret"
     );
-    let _ = Path::new("");
 }
