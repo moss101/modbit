@@ -2159,8 +2159,25 @@ fn projection(
                 .collect()
         })
         .unwrap_or_default();
+    // REQ-EV-0041: what the policy snapshot of this round denies is not
+    // offered at all (the kernel refuses it too, should a call name it).
+    let denied = modbit_policy::config::denied(&core.tools.configurations.for_task(
+        task.task_id,
+        &core.data_dir,
+        task.workspace_root.as_deref(),
+    ));
     for s in visible {
         if !capsule_tools.is_empty() && !capsule_tools.iter().any(|t| t == &s.name) {
+            continue;
+        }
+        if let Some(c) = s.required_capabilities.iter().find(|c| denied.contains(*c)) {
+            state.withheld_tools.push(harness::WithheldTool {
+                name: s.name.clone(),
+                reason: "POLICY_DENIED".into(),
+                how: format!(
+                    "the policy in force denies `{c}`; a person changes the policy, the agent does not"
+                ),
+            });
             continue;
         }
         if let Err(w) = harness::project(&s.name, s.effect_class, &s.required_capabilities, &scope)
@@ -2523,6 +2540,48 @@ async fn run_loop(
         if let Some((code, reason)) = environment_block.take() {
             break LoopEnd::NeedsAttention { code, reason };
         }
+        // REQ-EV-0041: the policy is refreshed between model rounds. A new
+        // generation is recorded with which way it moved; the round below is
+        // decided under it, and a call already in flight finished under the
+        // snapshot it was decided with.
+        {
+            let (now, previous) = core.tools.configurations.refresh(
+                task.task_id,
+                &core.data_dir,
+                task.workspace_root.as_deref(),
+            );
+            if let Some(previous) = previous {
+                let (tightened, loosened) =
+                    modbit_policy::config::permission_changes(&previous.config, &now.config);
+                let denied = modbit_policy::config::denied(&now.config);
+                let withheld_tools: Vec<String> = core
+                    .tools
+                    .visible_specs_for(&task.task_id, Some(&task.execution_profile), lease.as_ref())
+                    .into_iter()
+                    .filter(|s| s.required_capabilities.iter().any(|c| denied.contains(c)))
+                    .map(|s| s.name)
+                    .collect();
+                let mut store = core.store.lock().await;
+                let _ = append(
+                    &mut store,
+                    &core,
+                    lt,
+                    AggregateType::Task,
+                    *task.task_id.as_bytes(),
+                    vec![typed(
+                        "PolicyGenerationChanged",
+                        &TaskEvent::PolicyGenerationChanged {
+                            from: previous.generation,
+                            to: now.generation,
+                            tightened,
+                            loosened,
+                            withheld_tools,
+                        },
+                        actor.clone(),
+                    )],
+                );
+            }
+        }
         // The projection follows the harness state: deferred tools activated
         // by `tool.search` appear with their schemas from this turn on.
         tools = projection(&core, &task, lease.as_ref(), &mut state);
@@ -2587,11 +2646,17 @@ async fn run_loop(
             } else {
                 "solver"
             });
+            let denied = modbit_policy::config::denied(&core.tools.configurations.for_task(
+                task.task_id,
+                &core.data_dir,
+                task.workspace_root.as_deref(),
+            ));
             host_specs
                 .into_iter()
                 .filter(|s| {
                     harness::is_deferred(&s.name) && !state.activated_tools.contains(&s.name)
                 })
+                .filter(|s| !s.required_capabilities.iter().any(|c| denied.contains(c)))
                 .filter(|s| {
                     harness::project(&s.name, s.effect_class, &s.required_capabilities, &scope)
                         .is_ok()

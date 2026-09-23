@@ -22,6 +22,8 @@ Examples:
 - `browser.control:session-9`
 - `secret.use:github-token -> origin api.github.com`
 
+As built (IMP-EV-0041, REQ-EV-0041; `modbit_policy::config::{generation, permission_changes, denied}`, `services/modbit-core/src/config.rs`): the policy is refreshed between model rounds. At every round boundary the loop re-resolves the admin/project/user layers into the task's snapshot; a snapshot is identified by its generation (a digest of everything it decides), and a new generation is recorded as `PolicyGenerationChanged { from, to, tightened, loosened, withheld_tools }`. The round is decided under the snapshot it starts with: the Capability Kernel now receives it (step 5, the per-capability `DENY` refused `CAPABILITY_DENIED_BY_CONFIG` and `ASK` escalated to an approval — before this the Core passed no configuration and the step never ran), and the projection withholds every tool whose required capability the snapshot denies (`POLICY_DENIED`), so a model call naming one is refused `TOOL_NOT_PROJECTED` before any effect. A call already in flight is never re-decided: it finishes under the snapshot it was decided with. A call from a client outside a round (`InvokeTool`, the forge commands) is decided under the task's snapshot as of its latest round — a task keeps the configuration it has until its next round (M9.4) (test `qual_ev_0041_a_tightened_policy_applies_from_the_next_round_and_the_call_in_flight_finishes`).
+
 ## Approval policy
 
 Default policy should permit routine read/search/test activity and reversible writes inside isolated worktrees while escalating:

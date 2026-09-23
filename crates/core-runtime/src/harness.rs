@@ -1020,7 +1020,8 @@ impl HarnessState {
 pub struct WithheldTool {
     /// Tool name.
     pub name: String,
-    /// `DECLARE_WRITES` | `DECLARE_PROTECTED_EFFECT` | `REVIEWER_LEG`.
+    /// `DECLARE_WRITES` | `DECLARE_PROTECTED_EFFECT` | `REVIEWER_LEG` |
+    /// `POLICY_DENIED` (REQ-EV-0041).
     pub reason: String,
     /// What to do.
     pub how: String,

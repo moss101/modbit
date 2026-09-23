@@ -118,6 +118,54 @@ pub struct ResolvedConfig {
     pub rejected_widenings: Vec<String>,
 }
 
+/// The generation of a resolved configuration (REQ-EV-0041): a digest of
+/// everything it decides, so two resolutions that decide the same are the
+/// same generation and any change is a new one.
+#[must_use]
+pub fn generation(cfg: &ResolvedConfig) -> String {
+    use sha2::{Digest, Sha256};
+    let json = serde_json::to_string(cfg).unwrap_or_default();
+    let digest = Sha256::digest(json.as_bytes());
+    hex::encode(&digest[..12])
+}
+
+/// How the per-capability permissions moved from `old` to `new`: the
+/// capabilities made stricter (a new `ASK` or `DENY`, or `ASK` to `DENY`)
+/// and those made looser, each sorted.
+#[must_use]
+pub fn permission_changes(
+    old: &ResolvedConfig,
+    new: &ResolvedConfig,
+) -> (Vec<String>, Vec<String>) {
+    let level =
+        |c: &ResolvedConfig, k: &str| c.permissions.get(k).map_or(Permission::Allow, |p| p.value);
+    let keys: BTreeSet<&String> = old
+        .permissions
+        .keys()
+        .chain(new.permissions.keys())
+        .collect();
+    let (mut tightened, mut loosened) = (Vec::new(), Vec::new());
+    for k in keys {
+        let (before, after) = (level(old, k), level(new, k));
+        if after > before {
+            tightened.push(k.clone());
+        } else if after < before {
+            loosened.push(k.clone());
+        }
+    }
+    (tightened, loosened)
+}
+
+/// The capabilities a configuration denies.
+#[must_use]
+pub fn denied(cfg: &ResolvedConfig) -> BTreeSet<String> {
+    cfg.permissions
+        .iter()
+        .filter(|(_, p)| p.value == Permission::Deny)
+        .map(|(k, _)| k.clone())
+        .collect()
+}
+
 /// Resolve layers deterministically. `layers` may omit levels.
 #[must_use]
 pub fn resolve(layers: &BTreeMap<Authority, Layer>) -> ResolvedConfig {
@@ -298,6 +346,47 @@ pub fn resolve(layers: &BTreeMap<Authority, Layer>) -> ResolvedConfig {
         }
     }
     out
+}
+
+#[cfg(test)]
+mod generation_tests {
+    use super::*;
+
+    fn with(perms: &[(&str, Permission)]) -> ResolvedConfig {
+        resolve(&BTreeMap::from([(
+            Authority::Admin,
+            Layer {
+                permissions: perms.iter().map(|(k, v)| ((*k).to_owned(), *v)).collect(),
+                ..Layer::default()
+            },
+        )]))
+    }
+
+    #[test]
+    fn a_generation_names_what_the_configuration_decides_and_a_change_says_which_way() {
+        let open = with(&[]);
+        let shut = with(&[
+            ("shell.exec", Permission::Deny),
+            ("net.fetch", Permission::Ask),
+        ]);
+        assert_eq!(generation(&open), generation(&with(&[])));
+        assert_ne!(generation(&open), generation(&shut));
+        assert_eq!(
+            permission_changes(&open, &shut),
+            (
+                vec!["net.fetch".to_owned(), "shell.exec".to_owned()],
+                vec![]
+            )
+        );
+        assert_eq!(
+            permission_changes(&shut, &open),
+            (
+                vec![],
+                vec!["net.fetch".to_owned(), "shell.exec".to_owned()]
+            )
+        );
+        assert_eq!(denied(&shut), BTreeSet::from(["shell.exec".to_owned()]));
+    }
 }
 
 #[cfg(test)]
