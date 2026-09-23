@@ -105,6 +105,12 @@ pub enum RegistryRefused {
         /// What is wrong with it.
         detail: String,
     },
+    /// A binding's declared fallback chain is not bounded or names what the
+    /// document does not hold (REQ-EV-0030).
+    InvalidFallback {
+        /// What is wrong with it.
+        detail: String,
+    },
 }
 
 impl RegistryRefused {
@@ -121,6 +127,7 @@ impl RegistryRefused {
             Self::NotYetValid { .. } => "REGISTRY_NOT_YET_VALID",
             Self::MissingRoleBinding { .. } => "REGISTRY_MISSING_ROLE_BINDING",
             Self::InvalidQualityFloor { .. } => "REGISTRY_INVALID_QUALITY_FLOOR",
+            Self::InvalidFallback { .. } => "REGISTRY_INVALID_FALLBACK",
         }
     }
 }
@@ -211,7 +218,16 @@ pub struct RegistryEntry {
     /// can see that it was withdrawn rather than never existed.
     #[serde(default)]
     pub revoked: bool,
+    /// The approved fallback chain of this binding (REQ-EV-0030), in order,
+    /// as `endpoint/model`: bindings of this document a plan may continue on
+    /// when this one fails outright. Bounded by [`MAX_FALLBACKS`]; signed
+    /// with the rest, so nothing unapproved can be a fallback.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub fallbacks: Vec<String>,
 }
+
+/// The longest fallback chain a binding may declare (REQ-EV-0030: bounded).
+pub const MAX_FALLBACKS: usize = 2;
 
 /// The mode floor a plan must satisfy. It is a policy input, not an
 /// observation: it says what the product demands, never what it achieved.
@@ -398,6 +414,40 @@ pub fn activate(
         return Err(RegistryRefused::InvalidQualityFloor {
             detail: "no mode floor is defined".into(),
         });
+    }
+    // REQ-EV-0030: a fallback chain is bounded, names bindings of this
+    // document, never the binding itself, and never repeats one.
+    for e in &document.entries {
+        let me = format!("{}/{}", e.endpoint, e.model);
+        if e.fallbacks.len() > MAX_FALLBACKS {
+            return Err(RegistryRefused::InvalidFallback {
+                detail: format!(
+                    "{me} declares {} fallbacks; at most {MAX_FALLBACKS}",
+                    e.fallbacks.len()
+                ),
+            });
+        }
+        let mut seen = std::collections::HashSet::new();
+        for f in &e.fallbacks {
+            let known = document
+                .entries
+                .iter()
+                .any(|x| format!("{}/{}", x.endpoint, x.model) == *f);
+            if *f == me || !known || !seen.insert(f.as_str()) {
+                return Err(RegistryRefused::InvalidFallback {
+                    detail: format!(
+                        "{me} declares fallback `{f}`, which is {}",
+                        if *f == me {
+                            "itself"
+                        } else if !known {
+                            "not a binding of this document"
+                        } else {
+                            "declared twice"
+                        }
+                    ),
+                });
+            }
+        }
     }
     for role in REQUIRED_ROLES {
         if !document

@@ -60,10 +60,25 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::RoutingPlanView 
         let activations = store
             .routing_activations(&run.run_id, &p.plan_id)
             .unwrap_or_default();
-        for s in p.slots.iter().filter(|s| {
-            attempts.iter().any(|a| a.slot_id == s.slot_id)
-                || (s.role != "solver" && activations.iter().any(|a| a.slot_id == s.slot_id))
-        }) {
+        // In the order they ran (a slot's first attempt; an activation-only
+        // leg, the reviewer's, after), not the order the rows are stored in.
+        let mut used: Vec<&modbit_event_store::projections::RoutingSlotRow> = p
+            .slots
+            .iter()
+            .filter(|s| {
+                attempts.iter().any(|a| a.slot_id == s.slot_id)
+                    || (s.role != "solver" && activations.iter().any(|a| a.slot_id == s.slot_id))
+            })
+            .collect();
+        used.sort_by_key(|s| {
+            attempts
+                .iter()
+                .filter(|a| a.slot_id == s.slot_id)
+                .map(|a| a.attempt)
+                .min()
+                .unwrap_or(u32::MAX)
+        });
+        for s in used {
             let leg = (
                 s.role.clone(),
                 s.trigger.clone(),
@@ -175,6 +190,12 @@ pub(crate) fn path_label(ran: &[(String, String, String)]) -> String {
     let solvers: Vec<&(String, String, String)> =
         ran.iter().filter(|(r, _, _)| r == "solver").collect();
     let cascade = solvers.len() >= 2 && solvers[1].1 == "QUALITY_REJECTED";
+    // REQ-EV-0030: a second solver on an approved fallback after a provider
+    // failure is a fallback, not an escalation.
+    let fallback = solvers.len() >= 2 && solvers[1].1 == "LEG_FAILED";
+    if fallback && !critique && roles.len() == 2 {
+        return "FALLBACK".to_owned();
+    }
     match (roles.as_slice(), critique, cascade) {
         ([], _, _) => String::new(),
         (_, true, true) => "CASCADE+CRITIQUE".to_owned(),

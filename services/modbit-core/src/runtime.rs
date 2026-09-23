@@ -3102,7 +3102,24 @@ async fn run_loop(
                                 actor.clone(),
                             )],
                         );
-                        break 'outer LoopEnd::ProviderFailed(code, e.to_string());
+                        drop(store);
+                        // REQ-EV-0030: a binding the gateway will not route
+                        // (withdrawn, unreachable) continues on its approved
+                        // fallback when the plan has one.
+                        let message = e.to_string();
+                        match crate::escalation::at_provider_boundary(
+                            &core, &task, run_id, &mut cfg, &mut state, lt, &actor, &code, &message,
+                        )
+                        .await
+                        {
+                            crate::escalation::Decision::Activated { note } => {
+                                transcript.push(Message::text(Role::User, note));
+                                continue 'outer;
+                            }
+                            crate::escalation::Decision::Stayed { .. } => {
+                                break 'outer LoopEnd::ProviderFailed(code, message);
+                            }
+                        }
                     }
                 };
                 // The provider's own request id, when it gave one: read from the live
@@ -3378,7 +3395,22 @@ async fn run_loop(
                             actor.clone(),
                         )],
                     );
-                    break 'outer LoopEnd::ProviderFailed(code, message);
+                    drop(store);
+                    // REQ-EV-0030: an approved fallback continues the leg the
+                    // provider failed; without one the run stops as before.
+                    match crate::escalation::at_provider_boundary(
+                        &core, &task, run_id, &mut cfg, &mut state, lt, &actor, &code, &message,
+                    )
+                    .await
+                    {
+                        crate::escalation::Decision::Activated { note } => {
+                            transcript.push(Message::text(Role::User, note));
+                            continue 'outer;
+                        }
+                        crate::escalation::Decision::Stayed { .. } => {
+                            break 'outer LoopEnd::ProviderFailed(code, message);
+                        }
+                    }
                 }
                 // The response of a superseded owner is not applied (M4.4).
                 if let Some((current, owner)) = lease_lost(&core, &task, cfg.lease_generation).await

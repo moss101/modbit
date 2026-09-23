@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 90,
-    "root_and_tooling": 1543,
-    "docs_bytes": 1326810
+    "root_and_tooling": 1544,
+    "docs_bytes": 1328830
   },
   "sections": [
     {
@@ -176,8 +176,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Execution Policy Router and Provider Gateway",
-      "bytes": 9475,
-      "sha256": "fb930071a001d1266ee2d80cea8bcb3022070dd78b33a8ef043cc169902e758d"
+      "bytes": 11102,
+      "sha256": "d37c84031d6e581f44131e0860dda81d083fd2ef5a3d049db130a01a6e4dbeb4"
     },
     {
       "path": "docs/16_TOOL_CAPABILITY_AND_PROCEDURAL_RUNTIME.md",
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 44197,
-      "sha256": "ab7ddb342306882149af283b77f6df149f56463a6319827c504762b83f4c4970"
+      "bytes": 44590,
+      "sha256": "acc226b5ce4a6cf9e964170a15641886de62c768841e9b3dcb070e6e8860f39c"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -8289,6 +8289,11 @@
       "path": "evidence/m9/EPR-010/evidence.json",
       "bytes": 4136,
       "sha256": "6e34899ed9ccbb56235a37df58451b8ec750b92bb9bc00663c42a5c8d1682041"
+    },
+    {
+      "path": "evidence/m9/IMP-EV-0030/TASK_CARD.md",
+      "bytes": 3608,
+      "sha256": "65f114cb85080db36090b351fae4d0e491f67f5d9ab939a663d7120f5ecbc211"
     },
     {
       "path": "evidence/m9/IMP-EV-0040/TASK_CARD.md",

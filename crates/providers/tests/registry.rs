@@ -54,6 +54,7 @@ fn entry(model: &str, roles: &[&str], tools: bool) -> RegistryEntry {
             allowed_profiles: vec![],
         },
         revoked: false,
+        fallbacks: vec![],
     }
 }
 
@@ -306,4 +307,35 @@ fn a_revoked_model_is_refused_at_dispatch_and_says_so() {
         )
         .unwrap_err();
     assert_eq!(code, "MODEL_NOT_ELIGIBLE");
+}
+
+/// REQ-EV-0030: a binding's fallback chain is signed with the document and
+/// bounded — at most `MAX_FALLBACKS`, bindings of the same document, never
+/// the binding itself, never twice — and a document that breaks any of that
+/// is refused whole.
+#[test]
+fn a_fallback_chain_is_bounded_and_names_only_this_documents_bindings() {
+    let with = |fallbacks: &[&str]| {
+        let mut d = document();
+        d.entries[0].fallbacks = fallbacks.iter().map(|f| (*f).to_owned()).collect();
+        activate(&sign(&d), &trusted(), NOW)
+    };
+    let ok = with(&["openai/gpt-5"]).expect("an approved fallback activates");
+    assert_eq!(ok.document.entries[0].fallbacks, vec!["openai/gpt-5"]);
+    for (chain, why) in [
+        (
+            vec!["openai/gpt-5", "openai/gpt-5", "openai/gpt-5"],
+            "at most",
+        ),
+        (vec!["openai/gpt-5-mini"], "itself"),
+        (vec!["anthropic/claude-x"], "not a binding of this document"),
+        (vec!["openai/gpt-5", "openai/gpt-5"], "declared twice"),
+    ] {
+        let err = with(&chain).unwrap_err();
+        assert_eq!(err.code(), "REGISTRY_INVALID_FALLBACK", "{chain:?}");
+        assert!(format!("{err:?}").contains(why), "{chain:?}: {err:?}");
+    }
+    // A document without chains serializes as it always did.
+    let json = serde_json::to_string(&document()).unwrap();
+    assert!(!json.contains("fallbacks"));
 }
