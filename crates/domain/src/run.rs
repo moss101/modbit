@@ -271,6 +271,51 @@ pub enum RunEvent {
         output_tokens: Option<u64>,
         /// The provider's own request id, when it gave one.
         provider_request_id: Option<String>,
+        /// The subset of the input served from the provider cache, when
+        /// reported (REQ-EPR-010; absent on attempts recorded before it).
+        #[serde(default)]
+        cached_input_tokens: Option<u64>,
+        /// The subset of the input written to the provider cache, when
+        /// reported.
+        #[serde(default)]
+        cache_write_tokens: Option<u64>,
+        /// Dispatch to the end of the attempt, milliseconds.
+        #[serde(default)]
+        latency_ms: Option<u64>,
+        /// What the attempt cost at the registry prices in force when it
+        /// ended — plain input, cached input, cache writes and output each at
+        /// its own price — in the plan's minor units. `None` when the usage
+        /// is unknown or no price was in force: never a zero.
+        #[serde(default)]
+        cost_minor: Option<u64>,
+        /// The registry generation `cost_minor` was priced under; empty when
+        /// unpriced.
+        #[serde(default)]
+        priced_under: String,
+    },
+    /// `RoutingDecisionRecorded` (REQ-EPR-010, docs/27 §10): the decision
+    /// record of one compile — every candidate with its expected and
+    /// worst-case cost, quality mean and lower bound, eligibility and the
+    /// reason it was or was not chosen — beside the plan it chose. The
+    /// versions are the plan's own provenance. No state change.
+    RoutingDecisionRecorded {
+        /// The chosen plan.
+        plan_id: String,
+        /// Every candidate considered, the chosen one included.
+        candidates: Vec<crate::routing::RoutingCandidate>,
+        /// The chosen plan's quality mean, basis points.
+        chosen_quality_mean_bp: u32,
+        /// The chosen plan's quality lower bound, basis points.
+        chosen_quality_lcb_bp: u32,
+        /// The selector's code: `FEASIBLE` | `QUALITY_FLOOR_INFEASIBLE` |
+        /// `NO_HARD_ELIGIBLE_PLAN`; or `OPERATOR` (a plan admitted by hand)
+        /// and `DIRECT` (no registry: the direct baseline, not compiled).
+        selection: String,
+        /// Probability the chosen plan had of being chosen, basis points:
+        /// 10 000 for the deterministic selector (no exploration).
+        choice_probability_bp: u32,
+        /// Time the compile took, milliseconds.
+        routing_latency_ms: u64,
     },
     /// `FlakyCheckQuarantined` (docs/64 §3); no state change.
     FlakyCheckQuarantined {
@@ -515,6 +560,7 @@ impl RunEvent {
             Self::RoutingPlanAdmitted { .. } => "RoutingPlanAdmitted",
             Self::SlotActivated { .. } => "SlotActivated",
             Self::RoutingAttemptRecorded { .. } => "RoutingAttemptRecorded",
+            Self::RoutingDecisionRecorded { .. } => "RoutingDecisionRecorded",
             Self::RunFenced { .. } => "RunFenced",
             Self::FlakyCheckQuarantined { .. } => "FlakyCheckQuarantined",
             Self::RegressionAttributed { .. } => "RegressionAttributed",
@@ -602,6 +648,7 @@ impl Run {
             | RunEvent::RoutingPlanAdmitted { .. }
             | RunEvent::SlotActivated { .. }
             | RunEvent::RoutingAttemptRecorded { .. }
+            | RunEvent::RoutingDecisionRecorded { .. }
             | RunEvent::RunFenced { .. }
             | RunEvent::FlakyCheckQuarantined { .. }
             | RunEvent::RegressionAttributed { .. }

@@ -211,6 +211,9 @@ impl Decoder {
                     cached_input_tokens: u["prompt_tokens_details"]["cached_tokens"]
                         .as_u64()
                         .unwrap_or(0),
+                    // Chat Completions reports no cache writes: prompt
+                    // caching there is automatic and unpriced on write.
+                    cache_write_input_tokens: 0,
                 },
             });
         }

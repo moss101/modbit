@@ -666,6 +666,22 @@ pub(crate) struct ReviewerResultSummary {
 /// its verdict to the candidate — or a person's decision when there is no
 /// usable result.
 pub(crate) async fn on_review_end(core: Arc<Core>, review_task: Task, actor: Actor) {
+    let candidate_id = {
+        let store = core.store.lock().await;
+        crate::review_env::bound_to(&store, &review_task).map(|(_, c, _, _)| c)
+    };
+    conclude_review(&core, &review_task, &actor).await;
+    // REQ-EPR-010: the request's record as of the review's conclusion — the
+    // reviewer leg's cost, its verdict and findings, and what was decided.
+    if let Some(candidate) = candidate_id {
+        crate::accounting::append_record(&core, candidate, "REVIEW_CONCLUDED", &actor).await;
+    }
+}
+
+async fn conclude_review(core: &Arc<Core>, review_task: &Task, actor: &Actor) {
+    let core = Arc::clone(core);
+    let review_task = review_task.clone();
+    let actor = actor.clone();
     let bound = {
         let store = core.store.lock().await;
         crate::review_env::bound_to(&store, &review_task)

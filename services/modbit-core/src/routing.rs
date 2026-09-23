@@ -167,7 +167,7 @@ fn admission_view(
 /// by a stronger solver on quality rejection is `CASCADE` (docs/27 §9,
 /// REQ-EPR-006: derived from what ran, never a template); anything else is
 /// the roles joined.
-fn path_label(ran: &[(String, String, String)]) -> String {
+pub(crate) fn path_label(ran: &[(String, String, String)]) -> String {
     let roles: Vec<&str> = ran.iter().map(|(r, _, _)| r.as_str()).collect();
     // REQ-EPR-007: an executed review or revision leg makes the path a
     // CRITIQUE, beside the escalation label when both ran.
@@ -254,6 +254,11 @@ pub(crate) async fn admit(
     let plan_ref = modbit_domain::routing::plan_digest(&plan);
     let registry = core.gateway.registry();
     let feasibility = feasibility_of(&store, registry.as_ref(), session_id, &plan);
+    let bindings: Vec<String> = plan
+        .slots
+        .iter()
+        .map(|s| format!("{}/{}", s.endpoint, s.model))
+        .collect();
     let events = vec![
         crate::runtime::typed(
             "RoutingPlanCompiled",
@@ -277,6 +282,32 @@ pub(crate) async fn admit(
                 stats_version: feasibility.stats_version.clone(),
                 thresholds_version: feasibility.thresholds_version.clone(),
                 target_met: feasibility.target_met,
+            },
+            modbit_domain::event::Actor::Core("admission".into()),
+        ),
+        // The decision was an operator's, not the compiler's: one candidate,
+        // no alternatives, and the expected cost is the worst case because
+        // nothing estimated it (REQ-EPR-010).
+        crate::runtime::typed(
+            "RoutingDecisionRecorded",
+            &modbit_domain::run::RunEvent::RoutingDecisionRecorded {
+                plan_id: plan_id.clone(),
+                candidates: vec![modbit_domain::routing::RoutingCandidate {
+                    plan_id: plan_id.clone(),
+                    bindings: bindings.clone(),
+                    expected_cost_minor: feasibility.worst_case_minor,
+                    worst_case_cost_minor: feasibility.worst_case_minor,
+                    quality_mean_bp: feasibility.mean_bp,
+                    quality_lcb_bp: feasibility.lcb_bp,
+                    confident: feasibility.confident,
+                    hard_eligible: true,
+                    reason: String::new(),
+                }],
+                chosen_quality_mean_bp: feasibility.mean_bp,
+                chosen_quality_lcb_bp: feasibility.lcb_bp,
+                selection: "OPERATOR".into(),
+                choice_probability_bp: 10_000,
+                routing_latency_ms: 0,
             },
             modbit_domain::event::Actor::Core("admission".into()),
         ),
@@ -329,6 +360,12 @@ pub(crate) struct FeasibilityRecord {
     pub code: String,
     /// Quality lower bound, in basis points.
     pub lcb_bp: u32,
+    /// Quality mean, in basis points (for the record; never qualifies).
+    pub mean_bp: u32,
+    /// Whether every leg that contributed had enough observations.
+    pub confident: bool,
+    /// The plan's worst-case complete cost, minor units.
+    pub worst_case_minor: u64,
     /// The snapshot the bound came from, or `none`.
     pub stats_version: String,
     /// The threshold version, or `none`.
@@ -368,6 +405,14 @@ pub(crate) fn feasibility_of(
         return FeasibilityRecord {
             code: "QUALITY_FLOOR_UNKNOWN".into(),
             lcb_bp: 0,
+            mean_bp: 0,
+            confident: false,
+            worst_case_minor: plan
+                .slots
+                .iter()
+                .map(|s| s.budget.reserved.minor_units)
+                .sum::<u64>()
+                .saturating_add(plan.verification_reserve.minor_units),
             stats_version: "none".into(),
             thresholds_version: "none".into(),
             target_met: false,
@@ -452,6 +497,9 @@ pub(crate) fn feasibility_of(
     FeasibilityRecord {
         code: selection.code.clone(),
         lcb_bp: bp(quality.lcb),
+        mean_bp: bp(quality.mean),
+        confident: quality.confident,
+        worst_case_minor: worst_case,
         stats_version,
         thresholds_version: thresholds.thresholds_version.clone(),
         target_met: selection.target_met,
@@ -479,6 +527,8 @@ pub(crate) struct CompiledForRun {
     pub registry_generation: String,
     /// The stay/switch economics of the compile (REQ-EPR-009).
     pub switch: SwitchRecord,
+    /// What the compile took, milliseconds (REQ-EPR-010).
+    pub routing_latency_ms: u64,
 }
 
 /// Compile the plan for a run (REQ-EPR-004) from the active signed registry,
@@ -596,6 +646,7 @@ pub(crate) fn compile_for_run(
     use modbit_bench_outcome_statistics::MIN_CONFIDENT_SAMPLES;
     use modbit_providers::compiler::{CompileInput, Evidence};
     use modbit_providers::feasibility::{LegEvidence, Thresholds};
+    let compile_started = std::time::Instant::now();
     let Some(registry) = core.gateway.registry() else {
         return Err((
             "NO_ACTIVE_REGISTRY".into(),
@@ -746,9 +797,16 @@ pub(crate) fn compile_for_run(
     let admission =
         modbit_core_runtime::admission::admit_plan(&compiled.plan, core.tenant_id, next_epoch)
             .map_err(|r| (r.code().to_owned(), format!("{r:?}")))?;
+    let chosen_quality = compiled
+        .candidates
+        .iter()
+        .find(|c| c.plan_id == compiled.plan.plan_id);
     let feasibility = FeasibilityRecord {
         code: compiled.selection.code.clone(),
         lcb_bp: bp(compiled.selection.selected_lcb),
+        mean_bp: chosen_quality.map_or(0, |c| bp(c.quality.mean)),
+        confident: chosen_quality.is_some_and(|c| c.quality.confident),
+        worst_case_minor: chosen_quality.map_or(0, |c| c.worst_case_cost_minor),
         stats_version: evidence.stats_version.clone(),
         thresholds_version: thresholds.thresholds_version.clone(),
         target_met: compiled.selection.target_met,
@@ -760,6 +818,8 @@ pub(crate) fn compile_for_run(
         feasibility,
         registry_generation: registry.generation().to_owned(),
         switch,
+        routing_latency_ms: u64::try_from(compile_started.elapsed().as_millis())
+            .unwrap_or(u64::MAX),
     })
 }
 
@@ -951,6 +1011,47 @@ pub(crate) fn compiled_events(
                 stats_version: c.feasibility.stats_version.clone(),
                 thresholds_version: c.feasibility.thresholds_version.clone(),
                 target_met: c.feasibility.target_met,
+            },
+            actor.clone(),
+        ),
+        crate::runtime::typed(
+            "RoutingDecisionRecorded",
+            &modbit_domain::run::RunEvent::RoutingDecisionRecorded {
+                plan_id: c.compiled.plan.plan_id.clone(),
+                candidates: c
+                    .compiled
+                    .candidates
+                    .iter()
+                    .map(|k| modbit_domain::routing::RoutingCandidate {
+                        plan_id: k.plan_id.clone(),
+                        bindings: k.bindings.clone(),
+                        expected_cost_minor: k.expected_cost_minor,
+                        worst_case_cost_minor: k.worst_case_cost_minor,
+                        quality_mean_bp: bp(k.quality.mean),
+                        quality_lcb_bp: bp(k.quality.lcb),
+                        confident: k.quality.confident,
+                        hard_eligible: k.hard_eligible,
+                        reason: if k.plan_id == c.compiled.plan.plan_id {
+                            String::new()
+                        } else if !k.hard_eligible {
+                            k.ineligible_reason.clone()
+                        } else {
+                            c.compiled
+                                .selection
+                                .exclusions
+                                .iter()
+                                .find(|e| e.plan_id == k.plan_id)
+                                .map_or_else(|| "not selected".to_owned(), |e| e.reason.clone())
+                        },
+                    })
+                    .collect(),
+                chosen_quality_mean_bp: c.feasibility.mean_bp,
+                chosen_quality_lcb_bp: c.feasibility.lcb_bp,
+                selection: c.compiled.selection.code.clone(),
+                // The selector is deterministic: no exploration, so the
+                // chosen plan had every chance of being chosen.
+                choice_probability_bp: 10_000,
+                routing_latency_ms: c.routing_latency_ms,
             },
             actor,
         ),

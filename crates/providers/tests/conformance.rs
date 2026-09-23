@@ -1752,3 +1752,55 @@ async fn post_json(base_url: &str, body: &Value) -> (u16, String) {
         .unwrap_or(0);
     (status, text)
 }
+
+/// REQ-EPR-010 (docs/38 "CompleteAccountingAndAttribution" step 2): the
+/// Messages API reports plain input, cache reads and cache writes as three
+/// disjoint cumulative counts, where Chat Completions reports the total with
+/// the cached subset inside it. Both arrive in the contract as the total
+/// input with its subsets, so no reader has to know which wire it came
+/// from, and a repeated report replaces the last one instead of adding to it.
+#[test]
+fn usage_means_the_same_on_both_wires_and_a_repeated_report_is_not_added() {
+    use modbit_providers::{ModelEvent, Usage, anthropic, openai};
+    let last = |events: Vec<ModelEvent>| {
+        events.into_iter().rev().find_map(|e| match e {
+            ModelEvent::Usage { usage } => Some(usage),
+            _ => None,
+        })
+    };
+    let mut d = anthropic::Decoder::default();
+    let start = json!({"type":"message_start","message":{"id":"msg_9","model":"m","usage":{"input_tokens":50,"cache_read_input_tokens":40,"cache_creation_input_tokens":10,"output_tokens":1}}});
+    let _ = d.decode(Some("message_start"), &start.to_string());
+    let delta = json!({"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":12}});
+    let first = last(d.decode(Some("message_delta"), &delta.to_string())).unwrap();
+    assert_eq!(
+        first,
+        Usage {
+            input_tokens: 100,
+            output_tokens: 12,
+            cached_input_tokens: 40,
+            cache_write_input_tokens: 10,
+        },
+        "plain + read + write is the total; read and write are its subsets"
+    );
+    // The same cumulative report again (a replayed frame): nothing doubles.
+    let again = last(d.decode(Some("message_delta"), &delta.to_string())).unwrap();
+    assert_eq!(again, first);
+    // A later cumulative report with the input restated replaces it.
+    let restated = json!({"type":"message_delta","delta":{},"usage":{"input_tokens":50,"cache_read_input_tokens":40,"cache_creation_input_tokens":10,"output_tokens":20}});
+    let later = last(d.decode(Some("message_delta"), &restated.to_string())).unwrap();
+    assert_eq!((later.input_tokens, later.output_tokens), (100, 20));
+
+    let mut o = openai::Decoder::default();
+    let frame = json!({"id":"c","model":"m","choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":100,"completion_tokens":12,"prompt_tokens_details":{"cached_tokens":40}}});
+    let chat = last(o.decode(&frame.to_string())).unwrap();
+    assert_eq!(
+        (
+            chat.input_tokens,
+            chat.cached_input_tokens,
+            chat.cache_write_input_tokens
+        ),
+        (100, 40, 0),
+        "the same request on the other wire reads the same"
+    );
+}

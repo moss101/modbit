@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 90,
-    "root_and_tooling": 1525,
-    "docs_bytes": 1308694
+    "root_and_tooling": 1526,
+    "docs_bytes": 1315060
   },
   "sections": [
     {
@@ -176,8 +176,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Execution Policy Router and Provider Gateway",
-      "bytes": 8952,
-      "sha256": "2803768f49061e529e36c03ec2de1c418bdb6f93a01ded69dbd8c3dd451f7827"
+      "bytes": 9475,
+      "sha256": "fb930071a001d1266ee2d80cea8bcb3022070dd78b33a8ef043cc169902e758d"
     },
     {
       "path": "docs/16_TOOL_CAPABILITY_AND_PROCEDURAL_RUNTIME.md",
@@ -284,8 +284,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Execution policy router and verified orchestration",
-      "bytes": 67229,
-      "sha256": "3662f2a9a3704a61f8a1e9c259341ad02eb8f2721ebd885364c0b1d49eaf11be"
+      "bytes": 67667,
+      "sha256": "e4957aff5554b6eea8b04b43dfcecbb1871a11b7e16cdb278f8b110bc86daf5a"
     },
     {
       "path": "docs/28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md",
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 39252,
-      "sha256": "a6df6943020a62bcf7f2ed2e83fbc2a4fa623f4420f35f08c95c24ad900851e9"
+      "bytes": 41141,
+      "sha256": "898c677df459cc24054e53eb42996030029c39b842943e0cb4616883596c43f1"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -347,8 +347,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Observability, Cost, and Operations Data",
-      "bytes": 5702,
-      "sha256": "4fbb53f587aca00d3b90626f3af21efc95f7241976877e45948ce6b2de5a9bf6"
+      "bytes": 9218,
+      "sha256": "23e7d734256f8f7720561bd8ec37e05fc6990df847f3af3e3a91cbf7553a9b63"
     },
     {
       "path": "docs/35_DEPENDENCY_AND_BINDING_DECISIONS.md",
@@ -8274,6 +8274,11 @@
       "path": "evidence/m8/PX-011/evidence.json",
       "bytes": 1489,
       "sha256": "85a7eba3e2dcdbbfa8e4b4daf204f4fb77e513a4b19d4e571505c55ba457221e"
+    },
+    {
+      "path": "evidence/m9/EPR-010/TASK_CARD.md",
+      "bytes": 8615,
+      "sha256": "9bce08d6ddb0801956a91b23f14bfb615a7772cd2ba5c6092abd81f247a47f8e"
     },
     {
       "path": "evidence/m9/IMP-EV-0104/TASK_CARD.md",

@@ -1098,11 +1098,36 @@ fn route_new_run(
                     currency: admission.reserved.currency,
                     scale: admission.reserved.scale,
                     lease_generation,
-                    feasibility: feasibility.code,
+                    feasibility: feasibility.code.clone(),
                     quality_lcb_bp: feasibility.lcb_bp,
-                    stats_version: feasibility.stats_version,
-                    thresholds_version: feasibility.thresholds_version,
+                    stats_version: feasibility.stats_version.clone(),
+                    thresholds_version: feasibility.thresholds_version.clone(),
                     target_met: feasibility.target_met,
+                },
+                actor.clone(),
+            ),
+            // No registry, no compile: the direct baseline is the one plan
+            // there is, and its record says so (REQ-EPR-010).
+            typed(
+                "RoutingDecisionRecorded",
+                &RunEvent::RoutingDecisionRecorded {
+                    plan_id: plan.plan_id.clone(),
+                    candidates: vec![modbit_domain::routing::RoutingCandidate {
+                        plan_id: plan.plan_id.clone(),
+                        bindings: vec![format!("{}/{}", cfg.endpoint, cfg.model)],
+                        expected_cost_minor: feasibility.worst_case_minor,
+                        worst_case_cost_minor: feasibility.worst_case_minor,
+                        quality_mean_bp: feasibility.mean_bp,
+                        quality_lcb_bp: feasibility.lcb_bp,
+                        confident: feasibility.confident,
+                        hard_eligible: true,
+                        reason: String::new(),
+                    }],
+                    chosen_quality_mean_bp: feasibility.mean_bp,
+                    chosen_quality_lcb_bp: feasibility.lcb_bp,
+                    selection: "DIRECT".into(),
+                    choice_probability_bp: 10_000,
+                    routing_latency_ms: 0,
                 },
                 actor.clone(),
             ),
@@ -1377,16 +1402,31 @@ fn recover_route(
 
 /// One attempt of the run's activated slot, recorded from what happened:
 /// an attempt whose provider reported no usage is unknown, never zero
-/// (REQ-EPR-001, and the EPR-000 rule that unknown cost stays unknown).
+/// (REQ-EPR-001, and the EPR-000 rule that unknown cost stays unknown). A
+/// reported one is priced where it ended, at the registry in force, with
+/// its cached and cache-written subsets at their own prices (REQ-EPR-010).
+#[allow(clippy::too_many_arguments)]
 fn routing_attempt_event(
+    core: &Core,
     cfg: &StartConfig,
     attempt: u32,
     outcome: &str,
     usage: &modbit_providers::Usage,
     usage_reported: bool,
     provider_request_id: Option<String>,
+    latency: std::time::Duration,
     actor: Actor,
 ) -> NewEvent {
+    let priced = usage_reported
+        .then(|| {
+            crate::accounting::price(
+                core.gateway.registry().as_ref(),
+                &cfg.endpoint,
+                &cfg.model,
+                usage,
+            )
+        })
+        .flatten();
     typed(
         "RoutingAttemptRecorded",
         &RunEvent::RoutingAttemptRecorded {
@@ -1398,6 +1438,11 @@ fn routing_attempt_event(
             input_tokens: usage_reported.then_some(usage.input_tokens),
             output_tokens: usage_reported.then_some(usage.output_tokens),
             provider_request_id,
+            cached_input_tokens: usage_reported.then_some(usage.cached_input_tokens),
+            cache_write_tokens: usage_reported.then_some(usage.cache_write_input_tokens),
+            latency_ms: Some(u64::try_from(latency.as_millis()).unwrap_or(u64::MAX)),
+            cost_minor: priced.as_ref().map(|p| p.minor),
+            priced_under: priced.map(|p| p.registry_generation).unwrap_or_default(),
         },
         actor,
     )
@@ -2877,6 +2922,8 @@ async fn run_loop(
                     ..Default::default()
                 };
                 let stream_cancel = cancel.child_token();
+                // The attempt's latency runs from dispatch to its record.
+                let invoked_at = std::time::Instant::now();
                 let stream = match core.gateway.stream(request, &needs, stream_cancel.clone()) {
                     Ok(s) => s,
                     Err(e) => {
@@ -3036,12 +3083,14 @@ async fn run_loop(
                         AggregateType::Run,
                         *run_id.as_bytes(),
                         vec![routing_attempt_event(
+                            &core,
                             &cfg,
                             ordinal,
                             "INTERRUPTED",
                             &usage,
                             usage_reported,
                             provider_request_id(),
+                            invoked_at.elapsed(),
                             actor.clone(),
                         )],
                     );
@@ -3085,12 +3134,14 @@ async fn run_loop(
                         AggregateType::Run,
                         *run_id.as_bytes(),
                         vec![routing_attempt_event(
+                            &core,
                             &cfg,
                             ordinal,
                             "CANCELLED",
                             &usage,
                             usage_reported,
                             provider_request_id(),
+                            invoked_at.elapsed(),
                             actor.clone(),
                         )],
                     );
@@ -3151,12 +3202,14 @@ async fn run_loop(
                         AggregateType::Run,
                         *run_id.as_bytes(),
                         vec![routing_attempt_event(
+                            &core,
                             &cfg,
                             ordinal,
                             "FAILED",
                             &usage,
                             usage_reported,
                             provider_request_id(),
+                            invoked_at.elapsed(),
                             actor.clone(),
                         )],
                     );
@@ -3255,12 +3308,14 @@ async fn run_loop(
                         AggregateType::Run,
                         *run_id.as_bytes(),
                         vec![routing_attempt_event(
+                            &core,
                             &cfg,
                             ordinal,
                             "SUCCEEDED",
                             &usage,
                             usage_reported,
                             provider_request_id(),
+                            invoked_at.elapsed(),
                             actor.clone(),
                         )],
                     );
@@ -4544,6 +4599,53 @@ async fn run_loop(
             end,
             LoopEnd::ReadyForReview | LoopEnd::Fenced { .. } | LoopEnd::Parked
         );
+    // REQ-EPR-010: the request's accounting and outcome record rides in the
+    // same append as the run's end (docs/38 "CompleteAccountingAndAttribution"
+    // step 4). A fence or a park is not an outcome, and a review task's cost
+    // is accounted on the request it reviews.
+    let outcome_event: Option<NewEvent> = {
+        let pending = match &end {
+            LoopEnd::Fenced { .. } | LoopEnd::Parked => None,
+            LoopEnd::ReadyForReview => Some(("ReadyForReview", String::new())),
+            LoopEnd::Cancelled => Some(("Cancelled", String::new())),
+            LoopEnd::NeedsInput(_) => Some(("Waiting", "NEEDS_INPUT".to_owned())),
+            // The vocabulary of `accounting::derive`'s own stop reading.
+            LoopEnd::NeedsAttention { .. } => Some(("Waiting", "NEEDS_ATTENTION".to_owned())),
+            LoopEnd::BudgetExhausted(_) => Some(("Waiting", "BUDGET_EXHAUSTED".to_owned())),
+            LoopEnd::NoProgress(_) => Some(("Waiting", "NO_PROGRESS".to_owned())),
+            LoopEnd::ProviderFailed(..) => Some(("Waiting", "PROVIDER_FAILED".to_owned())),
+            LoopEnd::CapacityLost(_) => Some(("Waiting", "CAPACITY".to_owned())),
+        };
+        pending.and_then(|(task_state, stop)| {
+            crate::accounting::record_event(
+                &store,
+                core.tenant_id,
+                task.task_id,
+                "RUN_END",
+                Some(&crate::accounting::Pending {
+                    task_state,
+                    stop,
+                    review_pending: !review_leg.is_empty(),
+                }),
+                &actor,
+            )
+        })
+    };
+    // Every end below appends through this, so the record is in its batch.
+    let append_batch =
+        |store: &mut EventStore,
+         core: &Core,
+         l: Lineage,
+         mut parts: Vec<(AggregateType, [u8; 16], Vec<NewEvent>)>| {
+            if let Some(e) = &outcome_event {
+                parts.push((
+                    AggregateType::Task,
+                    *task.task_id.as_bytes(),
+                    vec![e.clone()],
+                ));
+            }
+            append_batch(store, core, l, parts)
+        };
     match end {
         LoopEnd::Fenced {
             current_generation,

@@ -562,6 +562,8 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "MaterializeOutcomeStatistics",
                     "GetOutcomeStatistics",
                     "GetTaskEconomics",
+                    "GetRequestOutcome",
+                    "ReconcileUsage",
                     "SetTaskSelection",
                     "AttachContextDocument",
                     "AllowUnsupportedLanguage",
@@ -3790,6 +3792,43 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             };
             let view = crate::routing::view(core, task_id).await;
             accept(cid, false, view.encode_to_vec())
+        }
+        // REQ-EPR-010: the request's accounting and outcome record.
+        "GetRequestOutcome" => {
+            let Ok(p) = wire::GetRequestOutcome::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "GetRequestOutcome");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let view = crate::accounting::view(core, task_id).await;
+            if !view.found {
+                return reject(cid, "UNKNOWN_TASK", task_id.to_string());
+            }
+            accept(cid, false, view.encode_to_vec())
+        }
+        // REQ-EPR-010 / EPR-FI-010: a late invoice for an attempt of
+        // unknown usage, settled once.
+        "ReconcileUsage" => {
+            let Ok(p) = wire::ReconcileUsage::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "ReconcileUsage");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let Some(run_id) = p
+                .run_id
+                .as_ref()
+                .and_then(id16)
+                .map(modbit_domain::RunId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "run_id required");
+            };
+            let actor = Actor::User(core.user_id);
+            match crate::accounting::reconcile(core, &p, task_id, run_id, &actor).await {
+                Ok(v) => accept(cid, false, v.encode_to_vec()),
+                Err((code, detail)) => reject(cid, &code, detail),
+            }
         }
         "GetWorkGraph" => {
             let Ok(p) = wire::GetWorkGraph::decode(env.payload.as_slice()) else {

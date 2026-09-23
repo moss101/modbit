@@ -666,6 +666,9 @@ pub async fn decide(
         offset
     };
     core.last_offset.send_replace(offset);
+    // REQ-EPR-010: a person's decision is the request's explicit signal;
+    // the record as of it is on the log beside it.
+    crate::accounting::append_record(core, task.task_id, "REVIEW_DECIDED", &actor).await;
     let task_state = if decision == "ACCEPT" {
         "Completed"
     } else {

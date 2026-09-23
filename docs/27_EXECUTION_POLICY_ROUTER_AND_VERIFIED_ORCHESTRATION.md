@@ -719,6 +719,8 @@ Keep raw signals. Do not retain only the composite scalar.
 
 Retain request final verified success, satisfaction, keep/revert, intervention, cost, wall-clock and repair turns. Separately retain initial-solver accept/reject, escalation success, reviewer genuine-defect discovery/false positive, revision success and tool reliability. Gate-level records retain accepted results later shown wrong, rejected results later shown valid, realized-risk misses and over-classification. A successful frontier escalation MUST NOT credit the failed initial economical leg. Preserve linkage to exact candidate, gate/risk versions and later corrective evidence; do not retain only a composite reward scalar.
 
+As built (EPR-010): the RoutingTrace and OutcomeRecord of a request are one record derived from the log (`GetRequestOutcome`), pinned by `RequestOutcomeRecorded` at each run's end, a review's conclusion, a person's decision and a late invoice; its request, leg, escalation, review, revision and gate observations are separate fields, and the composite reward stays absent while no reward version is active (doc 34 "As built (EPR-010)").
+
 ## 12. Counterfactual learning
 
 ### 12.1 Why it is required

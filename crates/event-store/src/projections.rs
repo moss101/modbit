@@ -989,6 +989,7 @@ pub fn apply(tx: &Transaction<'_>, ev: &StoredEvent, objects: &crate::ObjectStor
                     input_tokens,
                     output_tokens,
                     provider_request_id,
+                    ..
                 } => {
                     tx.execute(
                         "INSERT OR REPLACE INTO routing_attempts (run_id, plan_id, slot_id, attempt, started_at, ended_at, outcome, usage_known, input_tokens, output_tokens, provider_request_id)

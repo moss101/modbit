@@ -9,6 +9,7 @@
 use std::path::PathBuf;
 use std::process::ExitCode;
 
+mod accounting;
 mod agent_profiles;
 mod agent_tools;
 mod agents;
