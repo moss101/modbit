@@ -701,6 +701,34 @@ pub const DIRECT_NOTE: &str = "The direct baseline expressed as a schema-2 plan:
 /// The single slot every direct plan has.
 pub const DIRECT_SLOT: &str = "initial";
 
+/// One candidate plan the compiler considered, as the routing decision
+/// record keeps it (REQ-EPR-010, docs/27 §10): what it would have cost,
+/// what it could be expected to do and why it was or was not chosen. Quality
+/// is in basis points so the log never carries a drifting float.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RoutingCandidate {
+    /// Plan id.
+    pub plan_id: String,
+    /// Slots as `endpoint/model`, in order.
+    pub bindings: Vec<String>,
+    /// Expected complete cost, minor units: what plans were ranked by.
+    pub expected_cost_minor: u64,
+    /// Worst-case complete cost, minor units: what the cap was checked
+    /// against.
+    pub worst_case_cost_minor: u64,
+    /// Composed quality mean, basis points (for the record; never used to
+    /// qualify).
+    pub quality_mean_bp: u32,
+    /// Composed quality lower bound, basis points.
+    pub quality_lcb_bp: u32,
+    /// Whether every contributing leg had enough observations.
+    pub confident: bool,
+    /// Whether budget, policy and prevalidation allowed it at all.
+    pub hard_eligible: bool,
+    /// Why not chosen, or why ineligible; empty for the chosen plan.
+    pub reason: String,
+}
+
 /// The plan id of the direct plan of a run: derived from the run, so a reader
 /// of an attempt never has to look the plan up to name it.
 #[must_use]

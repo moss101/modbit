@@ -144,10 +144,40 @@ pub struct Decoder {
     blocks: Vec<Option<(String, String, String)>>, // tool_use: (id, name, partial json)
     stop_reason: Option<String>,
     usage: Usage,
+    /// The Messages API reports plain input, cache reads and cache writes
+    /// as three disjoint counts, each cumulative for the message (a later
+    /// report replaces an earlier one, it never adds to it).
+    plain_input: u64,
+    cache_read: u64,
+    cache_write: u64,
     done: bool,
 }
 
 impl Decoder {
+    /// Take in a `usage` object from `message_start` or `message_delta`:
+    /// each count it carries replaces the one held, and the contract's total
+    /// input is their sum, with reads and writes as its subsets.
+    fn absorb_usage(&mut self, u: &Value) {
+        if let Some(n) = u["input_tokens"].as_u64() {
+            self.plain_input = n;
+        }
+        if let Some(n) = u["cache_read_input_tokens"].as_u64() {
+            self.cache_read = n;
+        }
+        if let Some(n) = u["cache_creation_input_tokens"].as_u64() {
+            self.cache_write = n;
+        }
+        if let Some(n) = u["output_tokens"].as_u64() {
+            self.usage.output_tokens = n;
+        }
+        self.usage.input_tokens = self
+            .plain_input
+            .saturating_add(self.cache_read)
+            .saturating_add(self.cache_write);
+        self.usage.cached_input_tokens = self.cache_read;
+        self.usage.cache_write_input_tokens = self.cache_write;
+    }
+
     /// Decode one SSE event (`event` name + data).
     pub fn decode(&mut self, event: Option<&str>, data: &str) -> Vec<ModelEvent> {
         let v: Value = match serde_json::from_str(data) {
@@ -165,9 +195,7 @@ impl Decoder {
         match kind {
             "message_start" => {
                 let m = &v["message"];
-                self.usage.input_tokens = m["usage"]["input_tokens"].as_u64().unwrap_or(0);
-                self.usage.cached_input_tokens =
-                    m["usage"]["cache_read_input_tokens"].as_u64().unwrap_or(0);
+                self.absorb_usage(&m["usage"]);
                 out.push(ModelEvent::ProviderMetadata {
                     metadata: json!({"resolved_model": m["model"].clone(), "provider_request_id": m["id"].clone()}),
                 });
@@ -236,9 +264,7 @@ impl Decoder {
                 if let Some(s) = v["delta"]["stop_reason"].as_str() {
                     self.stop_reason = Some(s.to_owned());
                 }
-                if let Some(o) = v["usage"]["output_tokens"].as_u64() {
-                    self.usage.output_tokens = o;
-                }
+                self.absorb_usage(&v["usage"]);
                 out.push(ModelEvent::Usage {
                     usage: self.usage.clone(),
                 });

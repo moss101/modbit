@@ -2134,6 +2134,14 @@ async fn m2_6_provider_gateway_streams_through_the_core_over_real_http() {
 ///
 /// `{id}` is the provider's own request id, the header a real provider returns
 /// and the handle its logs use.
+/// Every usage frame a scripted provider sent, as `(port, model, prompt,
+/// cached, completion, request id)`: what the provider says it charged, for
+/// tests that reconcile the product's accounting against it (REQ-EPR-010).
+type ReportedUsage = (u16, String, u64, u64, u64, String);
+static REPORTED_USAGE: std::sync::Mutex<Vec<ReportedUsage>> = std::sync::Mutex::new(Vec::new());
+/// Makes every scripted provider request id unique across a test binary.
+static SCRIPTED_REQUESTS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 const RESPONSE_HEAD: &str = "HTTP/1.1 200 OK\r\ncontent-type: text/event-stream\r\nx-request-id: {id}\r\nconnection: close\r\ntransfer-encoding: chunked\r\n\r\n";
 
 async fn scripted_model(
@@ -2413,14 +2421,29 @@ async fn scripted_model_reactive(
                 } else {
                     0
                 };
-                frames.push(serde_json::json!({"id":"c","model":"scripted-1","choices":[{"index":0,"delta":{},"finish_reason":finish}],"usage":{"prompt_tokens":prompt_tokens,"completion_tokens":completion_tokens,"prompt_tokens_details":{"cached_tokens":cached_tokens}}}).to_string());
+                let request_id = format!(
+                    "req_scripted_{results}_{}",
+                    SCRIPTED_REQUESTS.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+                );
+                // A step `{"no_usage": true, ...}` answers without a usage
+                // frame, as a gateway does when usage reporting is off: the
+                // cost of that request is unknown to the product.
+                if reply["no_usage"] == true {
+                    frames.push(serde_json::json!({"id":"c","model":"scripted-1","choices":[{"index":0,"delta":{},"finish_reason":finish}]}).to_string());
+                } else {
+                    frames.push(serde_json::json!({"id":"c","model":"scripted-1","choices":[{"index":0,"delta":{},"finish_reason":finish}],"usage":{"prompt_tokens":prompt_tokens,"completion_tokens":completion_tokens,"prompt_tokens_details":{"cached_tokens":cached_tokens}}}).to_string());
+                    REPORTED_USAGE.lock().unwrap().push((
+                        port,
+                        model_name.clone().unwrap_or_default(),
+                        prompt_tokens as u64,
+                        cached_tokens as u64,
+                        completion_tokens as u64,
+                        request_id.clone(),
+                    ));
+                }
                 frames.push("[DONE]".into());
                 let _ = sock
-                    .write_all(
-                        RESPONSE_HEAD
-                            .replace("{id}", &format!("req_scripted_{results}"))
-                            .as_bytes(),
-                    )
+                    .write_all(RESPONSE_HEAD.replace("{id}", &request_id).as_bytes())
                     .await;
                 for f in frames {
                     let frame = format!("data: {f}\n\n");
@@ -34942,5 +34965,937 @@ async fn qual_ev_0281_a_site_tool_is_preferred_for_a_protected_action_when_trust
     );
     host_a.abort();
     host_b.abort();
+    drop(repo);
+}
+
+/// A signed registry for the EPR-010 tests: each entry `(model, input,
+/// cached input, output)` in minor units per million tokens, USD scale 2.
+fn accounting_registry(
+    generation: &str,
+    key: &ed25519_dalek::SigningKey,
+    models: &[(&str, u64, u64, u64)],
+) -> String {
+    use ed25519_dalek::Signer;
+    use modbit_providers::registry::{
+        Economics, Governance, Latency, QualityFloor, REGISTRY_SCHEMA_VERSION, RegistryDocument,
+        RegistryEntry, SignedRegistry,
+    };
+    let now = modbit_domain::Timestamp::now().0;
+    let document = RegistryDocument {
+        schema_version: REGISTRY_SCHEMA_VERSION,
+        registry_generation: generation.into(),
+        stats_version: "stats-1".into(),
+        issued_at_ms: now - 60_000,
+        expires_at_ms: now + 86_400_000,
+        quality_floors: vec![QualityFloor {
+            mode: "auto".into(),
+            min_quality: 0.72,
+            max_cost_minor: 5_000,
+            currency: "USD".into(),
+            scale: 2,
+        }],
+        entries: models
+            .iter()
+            .map(|(model, input, cached, output)| RegistryEntry {
+                endpoint: "openai".into(),
+                provider: "openai".into(),
+                family: "gpt-5".into(),
+                model: (*model).into(),
+                roles: vec!["solver".into(), "reviewer".into()],
+                input_modalities: vec!["text".into()],
+                context_tokens: 400_000,
+                max_output_tokens: 64_000,
+                tools: true,
+                vision: false,
+                reasoning: true,
+                structured_output: true,
+                economics: Economics {
+                    input_per_mtok_minor: *input,
+                    output_per_mtok_minor: *output,
+                    currency: "USD".into(),
+                    scale: 2,
+                    cached_input_per_mtok_minor: Some(*cached),
+                    cache_write_per_mtok_minor: None,
+                    cache_ttl_ms: None,
+                },
+                latency: Latency {
+                    p50_ms: 900,
+                    p95_ms: 4_200,
+                },
+                governance: Governance {
+                    data_residency: "us".into(),
+                    retains_prompts: false,
+                    allowed_profiles: vec![],
+                },
+                revoked: false,
+            })
+            .collect(),
+    };
+    let json = serde_json::to_string(&document).unwrap();
+    serde_json::to_string(&SignedRegistry {
+        key_id: "ops".into(),
+        signature_hex: hex::encode(key.sign(json.as_bytes()).to_bytes()),
+        document_json: json,
+    })
+    .unwrap()
+}
+
+/// What the provider's reported usage costs at a price triple, the way a
+/// provider bills it: plain input, cached input and output, each rounded up.
+fn billed(
+    prompt: u64,
+    cached: u64,
+    completion: u64,
+    (input, cached_price, output): (u64, u64, u64),
+) -> u64 {
+    let c = |t: u64, p: u64| (u128::from(t) * u128::from(p)).div_ceil(1_000_000) as u64;
+    c(prompt - cached, input) + c(cached, cached_price.min(input)) + c(completion, output)
+}
+
+async fn request_outcome(
+    c: &mut Client,
+    task: &Id,
+) -> (modbit_protocol::v1::RequestOutcomeView, serde_json::Value) {
+    use modbit_protocol::v1::{GetRequestOutcome, RequestOutcomeView};
+    let ack = c
+        .command(envelope(
+            Id {
+                value: (0..16).map(|_| rand::random::<u8>()).collect(),
+            },
+            "GetRequestOutcome",
+            GetRequestOutcome {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let v: RequestOutcomeView = Client::result(&ack).unwrap();
+    let r = serde_json::from_str(&v.record_json).unwrap();
+    (v, r)
+}
+
+async fn activate_registry(c: &mut Client, signed: &str) {
+    use modbit_protocol::v1::{ActivateModelRegistry, ModelRegistryView};
+    let ack = c
+        .command(envelope(
+            Id {
+                value: (0..16).map(|_| rand::random::<u8>()).collect(),
+            },
+            "ActivateModelRegistry",
+            ActivateModelRegistry {
+                signed_json: signed.to_owned(),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let r: ModelRegistryView = Client::result(&ack).unwrap();
+    assert!(r.active, "{r:?}");
+}
+
+fn start_task(t: &Id, id: u8, g: Option<u64>) -> CommandEnvelope {
+    use modbit_protocol::v1::StartTask;
+    envelope_fenced(
+        id16(id),
+        "StartTask",
+        StartTask {
+            task_id: Some(t.clone()),
+            endpoint: String::new(),
+            model: String::new(),
+            max_turns: 20,
+            max_tool_calls: 0,
+            max_no_progress_turns: 2,
+            skills: vec![],
+        }
+        .encode_to_vec(),
+        g,
+    )
+}
+
+fn all_attempts(r: &serde_json::Value) -> Vec<serde_json::Value> {
+    r["executed_path"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .flat_map(|l| l["attempts"].as_array().unwrap().clone())
+        .collect()
+}
+
+/// QUAL-EPR-010 / EPR-E2E-010 (REQ-EPR-010; docs/27 §10-11, docs/38
+/// "CompleteAccountingAndAttribution") on the real Core against a scripted
+/// OpenAI-compatible provider that reports cached prompts: the economical
+/// initial leg fails, the gate rejects it, and the run continues on the
+/// prevalidated stronger slot, which succeeds. The request's record
+/// reconciles to what the provider itself reported — every attempt of both
+/// legs, the cached subset at its own price — the request is a verified
+/// success while its initial leg stays a failure, the gate's rejection is
+/// its own observation, every version, the candidates' quality mean and
+/// lower bound and the executed slots read back, a record rides the log at
+/// each run end and at the person's decision, what could not be observed is
+/// named, nothing is claimed as a saving, and a restarted Core rebuilds the
+/// same record from the log.
+#[tokio::test]
+async fn qual_epr_010_the_request_record_reconciles_to_provider_usage_and_keeps_legs_and_gates_apart()
+ {
+    use ed25519_dalek::SigningKey;
+    use modbit_domain::routing::{
+        Budget, ConditionalExecutionPlan, Money, Provenance, ROUTING_SCHEMA_VERSION, Slot, Trigger,
+    };
+    use modbit_protocol::v1::{AdmitRoutingPlan, RoutingAdmissionView, TaskRunStarted};
+    use serde_json::json;
+    let key = SigningKey::from_bytes(&[31u8; 32]);
+    let key_hex = hex::encode(key.verifying_key().to_bytes());
+    let now = modbit_domain::Timestamp::now().0;
+    let prices = |model: &str| -> (u64, u64, u64) {
+        if model == "gpt-5" {
+            (125, 25, 1_000)
+        } else {
+            (25, 5, 200)
+        }
+    };
+    let signed = accounting_registry(
+        "registry-accounting",
+        &key,
+        &[("gpt-5-mini", 25, 5, 200), ("gpt-5", 125, 25, 1_000)],
+    );
+    let (repo, root) = plain_repo(&[
+        ("qty.txt", "quantity = 5\nvalidated = yes\n"),
+        (
+            "check.sh",
+            "grep -q '^validated = yes' qty.txt && grep -q '^quantity = [0-9]' qty.txt\n",
+        ),
+        (
+            ".modbit/verification.json",
+            "{\"commands\": [{\"id\": \"gate\", \"argv\": [\"sh\", \"check.sh\"]}]}",
+        ),
+    ]);
+    let hash = sha256_of(b"quantity = 5\nvalidated = yes\n");
+    let mini = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "the quantity is 7", "expected_files": ["qty.txt"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "qty.txt"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "qty.txt", "op": "replace", "content": "quantity = -7\n", "expected_content_hash": hash}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "set to 7", "self_review": {"findings": []}}}]}),
+        json!({"text": "I cannot see why the check fails."}),
+        json!({"text": "I have nothing further."}),
+        json!({"text": "Still nothing."}),
+    ];
+    let stronger = vec![
+        json!({"text": "unused"}),
+        json!({"text": "unused"}),
+        json!({"text": "unused"}),
+        json!({"text": "unused"}),
+        json!({"text": "The check wants a positive quantity and the validation line.", "calls": [{"name": "change.apply", "args": {"path": "qty.txt", "op": "replace", "content": "quantity = 7\nvalidated = yes\n"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "quantity is 7, validated", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, _seen) = scripted_model_reactive(
+        mini,
+        vec![],
+        None,
+        None,
+        vec![],
+        true,
+        vec![("gpt-5".to_owned(), stronger)],
+    )
+    .await;
+    let port: u16 = base.rsplit(':').next().unwrap().parse().unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let keys = format!("ops:{key_hex}");
+    let env: Vec<(&str, &str)> = vec![
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_REGISTRY_KEYS", keys.as_str()),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    activate_registry(&mut c, &signed).await;
+    let (session, _) = create_session(&mut c, id16(0x71)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x72, "local_trusted").await;
+    let of = |evs: &[(String, String, serde_json::Value)], t: &str| -> Vec<serde_json::Value> {
+        evs.iter()
+            .filter(|(_, ty, _)| ty == t)
+            .map(|(_, _, p)| p.clone())
+            .collect()
+    };
+
+    // 1. The initial leg fails: the request is a failure, and so is its leg.
+    let _: TaskRunStarted =
+        Client::result(&c.command(start_task(&task, 0x73, g)).await.unwrap()).unwrap();
+    let st = wait_task(&mut c, &task, 120).await;
+    assert_eq!(
+        (st.state.as_str(), st.failure_code.as_str()),
+        ("Waiting", "NO_PROGRESS"),
+        "{st:?}"
+    );
+    let (v1, r1) = request_outcome(&mut c, &task).await;
+    assert_eq!(
+        (
+            v1.final_outcome.as_str(),
+            v1.initial_leg_success.as_str(),
+            v1.verified_success
+        ),
+        ("fail", "false", false),
+        "{r1:#}"
+    );
+    let path1 = r1["executed_path"].as_array().unwrap();
+    assert_eq!(path1.len(), 1, "{r1:#}");
+    assert_eq!(path1[0]["binding"], "openai/gpt-5-mini");
+    assert_eq!(path1[0]["trigger"], "INITIAL");
+    assert_eq!(path1[0]["outcome"], "FAILED");
+    // The compiler's decision, with every candidate's mean and lower bound.
+    let d0 = &r1["decisions"][0];
+    assert_eq!(d0["recorded"], true, "{d0:#}");
+    let candidates = d0["candidates"].as_array().unwrap();
+    assert!(!candidates.is_empty(), "{d0:#}");
+    for k in candidates {
+        assert!(
+            k["quality_mean_bp"].is_u64() && k["quality_lcb_bp"].is_u64(),
+            "{k:#}"
+        );
+        assert!(k["expected_cost_minor"].is_u64() && k["worst_case_cost_minor"].is_u64());
+    }
+    assert!(d0["chosen_quality_mean_bp"].is_u64(), "{d0:#}");
+    assert!(d0["routing_latency_ms"].is_u64(), "{d0:#}");
+    let pv = &r1["versions"]["plans"][0];
+    for f in [
+        "policy",
+        "registry_generation",
+        "profiler",
+        "statistics",
+        "compiler",
+        "gate",
+        "risk",
+        "content_digest",
+    ] {
+        assert!(
+            !pv[f].as_str().unwrap_or_default().is_empty(),
+            "{f} missing: {pv:#}"
+        );
+    }
+    assert_eq!(pv["registry_generation"], "registry-accounting");
+    // The durable record rode in with the run's end.
+    assert!(!v1.recorded_ref.is_empty(), "{v1:?}");
+    let d1: serde_json::Value = serde_json::from_str(&v1.recorded_json).unwrap();
+    assert_eq!(d1["request"]["final_outcome"], "fail");
+    assert_eq!(d1["cost"]["total_minor"], r1["cost"]["total_minor"]);
+    assert_eq!(
+        all_attempts(&d1).len(),
+        all_attempts(&r1).len(),
+        "the record at the run's end has every attempt"
+    );
+
+    // 2. A plan with the stronger solver prevalidated for this run: the
+    //    boundary at resume continues on it, and it succeeds.
+    let run_id = of(
+        &task_events(&core, &session, &task).await,
+        "RoutingPlanCompiled",
+    )
+    .into_iter()
+    .filter_map(|p| serde_json::from_value::<ConditionalExecutionPlan>(p["plan"].clone()).ok())
+    .map(|p| p.run_id)
+    .next()
+    .unwrap();
+    let usd = |m: u64| Money {
+        minor_units: m,
+        currency: "USD".into(),
+        scale: 2,
+    };
+    let slot = |id: &str, model: &str, pred: Option<&str>, trigger: Trigger, reserved: u64| Slot {
+        slot_id: id.into(),
+        predecessor: pred.map(str::to_owned),
+        trigger,
+        max_activations: 1,
+        endpoint: "openai".into(),
+        model: model.into(),
+        role: "solver".into(),
+        budget: Budget {
+            timeout_ms: 120_000,
+            max_output_tokens: 4096,
+            max_retries: 0,
+            reserved: usd(reserved),
+        },
+    };
+    let cascade = ConditionalExecutionPlan {
+        schema_version: ROUTING_SCHEMA_VERSION,
+        plan_id: "cascade-acct".into(),
+        tenant_id: modbit_domain::TenantId::from_bytes([0xA1; 16]),
+        session_id: modbit_domain::SessionId::from_bytes(session.value.clone().try_into().unwrap()),
+        task_id: modbit_domain::TaskId::from_bytes(task.value.clone().try_into().unwrap()),
+        run_id,
+        routing_epoch: 1,
+        lease_generation: g.unwrap_or(0),
+        created_at_ms: now,
+        provenance: Provenance {
+            policy_version: "policy-1".into(),
+            registry_generation: "registry-accounting".into(),
+            profiler_version: "none".into(),
+            statistics_version: "stats-1".into(),
+            compiler_version: "operator".into(),
+            gate_version: "gate-1".into(),
+            risk_version: "risk-1".into(),
+            legacy_decode: None,
+        },
+        input_digest: "e".repeat(64),
+        slots: vec![
+            slot("initial", "gpt-5-mini", None, Trigger::Initial, 100),
+            slot(
+                "stronger",
+                "gpt-5",
+                Some("initial"),
+                Trigger::QualityRejected,
+                300,
+            ),
+        ],
+        max_total_attempts: 8,
+        max_revisions: 1,
+        verification_reserve: usd(50),
+        total_budget: usd(2_000),
+        content_digest: String::new(),
+    }
+    .sealed();
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x74),
+            "AdmitRoutingPlan",
+            AdmitRoutingPlan {
+                task_id: Some(task.clone()),
+                plan_json: serde_json::to_string(&cascade).unwrap(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let a: RoutingAdmissionView = Client::result(&ack).unwrap();
+    assert!(a.admitted, "{a:?}");
+    let _: TaskRunStarted =
+        Client::result(&c.command(start_task(&task, 0x75, g)).await.unwrap()).unwrap();
+    let st = wait_for_state(&mut c, &task, "ReadyForReview", 180).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let (v2, r2) = request_outcome(&mut c, &task).await;
+    // Request, leg and escalation observations, apart.
+    assert_eq!(v2.final_outcome, "pass", "{r2:#}");
+    assert!(v2.verified_success && !v2.first_pass_success, "{v2:?}");
+    assert_eq!(
+        v2.initial_leg_success, "false",
+        "a successful escalation never credits the failed initial leg"
+    );
+    assert_eq!(v2.path_label, "CASCADE");
+    let solvers: Vec<&serde_json::Value> = r2["executed_path"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|l| l["role"] == "solver")
+        .collect();
+    assert_eq!(
+        solvers.first().unwrap()["binding"],
+        "openai/gpt-5-mini",
+        "{r2:#}"
+    );
+    assert_eq!(solvers.first().unwrap()["outcome"], "REJECTED", "{r2:#}");
+    let last = solvers.last().unwrap();
+    assert_eq!(
+        (
+            last["binding"].as_str(),
+            last["trigger"].as_str(),
+            last["outcome"].as_str()
+        ),
+        (
+            Some("openai/gpt-5"),
+            Some("QUALITY_REJECTED"),
+            Some("SUCCEEDED")
+        ),
+        "{r2:#}"
+    );
+    let esc = r2["legs"]["escalations"].as_array().unwrap();
+    assert_eq!(esc.len(), 1, "{r2:#}");
+    assert_eq!(esc[0]["success"], true);
+    assert_eq!(esc[0]["from_binding"], "openai/gpt-5-mini");
+    assert_eq!(esc[0]["to_binding"], "openai/gpt-5");
+    // The gate's rejection of the initial candidate stands as its own
+    // observation although the request succeeded.
+    let gates = r2["gates"].as_array().unwrap();
+    assert!(
+        gates
+            .iter()
+            .any(|g| g["verdict"] == "REJECT" && g["correction"] == "NONE_OBSERVED"),
+        "{gates:#?}"
+    );
+    assert!(!r2["versions"]["gate"].as_array().unwrap().is_empty());
+
+    // Reconciliation against the provider's own report: every attempt the
+    // provider answered is an attempt here, token for token, and the money
+    // is what those tokens cost at the registry's prices.
+    let reported: Vec<ReportedUsage> = REPORTED_USAGE
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|u| u.0 == port)
+        .cloned()
+        .collect();
+    let attempts = all_attempts(&r2);
+    let known: Vec<&serde_json::Value> = attempts
+        .iter()
+        .filter(|a| a["usage"] == "REPORTED")
+        .collect();
+    assert_eq!(known.len(), reported.len(), "{attempts:#?}\n{reported:#?}");
+    assert_eq!(
+        known.len(),
+        attempts.len(),
+        "no attempt of unknown usage: {attempts:#?}"
+    );
+    let sum = |f: &str| known.iter().map(|a| a[f].as_u64().unwrap()).sum::<u64>();
+    assert_eq!(
+        sum("input_tokens"),
+        reported.iter().map(|u| u.2).sum::<u64>()
+    );
+    assert_eq!(
+        sum("cached_input_tokens"),
+        reported.iter().map(|u| u.3).sum::<u64>()
+    );
+    assert!(
+        sum("cached_input_tokens") > 0,
+        "the provider reported cached prompts"
+    );
+    assert_eq!(
+        sum("output_tokens"),
+        reported.iter().map(|u| u.4).sum::<u64>()
+    );
+    let ids: std::collections::HashSet<&str> = reported.iter().map(|u| u.5.as_str()).collect();
+    assert!(
+        known
+            .iter()
+            .all(|a| ids.contains(a["provider_request_id"].as_str().unwrap_or_default())),
+        "every attempt names the provider request it paid for"
+    );
+    let expected: u64 = reported
+        .iter()
+        .map(|u| billed(u.2, u.3, u.4, prices(&u.1)))
+        .sum();
+    assert_eq!(r2["cost"]["inference_minor"], expected, "{:#}", r2["cost"]);
+    assert_eq!(r2["cost"]["total_minor"], expected);
+    assert_eq!(r2["cost"]["held_unknown_minor"], 0);
+    assert_eq!(r2["cost"]["complete"], true);
+    assert_eq!(r2["cost"]["solver_minor"], expected);
+    assert_eq!(v2.total_minor, expected);
+    assert!(
+        r2["versions"]["priced_under"]
+            .as_array()
+            .unwrap()
+            .contains(&json!("registry-accounting"))
+    );
+    // Versions and decisions of the operator's plan read back.
+    let pv = r2["versions"]["plans"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| p["plan_id"] == "cascade-acct")
+        .unwrap();
+    assert_eq!(
+        (
+            pv["policy"].as_str(),
+            pv["compiler"].as_str(),
+            pv["gate"].as_str(),
+            pv["risk"].as_str()
+        ),
+        (
+            Some("policy-1"),
+            Some("operator"),
+            Some("gate-1"),
+            Some("risk-1")
+        )
+    );
+    let dc = r2["decisions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|d| d["plan_id"] == "cascade-acct")
+        .unwrap();
+    assert_eq!(dc["selection"], "OPERATOR", "{dc:#}");
+    assert!(dc["chosen_quality_mean_bp"].is_u64());
+    assert_eq!(
+        dc["candidates"][0]["bindings"],
+        json!(["openai/gpt-5-mini", "openai/gpt-5"])
+    );
+    assert!(r2["reservations"]["activated_minor"].as_u64().unwrap() > 0);
+    assert!(r2["reservations"]["released_minor"].is_u64());
+    // Missing signals are named; nothing is claimed as a saving.
+    for m in ["explicit_feedback", "merge_signal"] {
+        assert!(
+            v2.missing_signals.iter().any(|x| x == m),
+            "{m}: {:?}",
+            v2.missing_signals
+        );
+    }
+    assert!(
+        v2.missing_signals
+            .iter()
+            .any(|x| x.starts_with("keep_signal"))
+    );
+    assert!(
+        v2.missing_signals
+            .iter()
+            .any(|x| x.starts_with("composite_reward"))
+    );
+    assert_eq!(
+        r2["counterfactual"]["observed_minor"],
+        serde_json::Value::Null
+    );
+    assert_eq!(r2["counterfactual"]["observed_label"], "NOT_EXECUTED");
+    assert!(
+        ["ESTIMATED", "CHOSEN_WAS_FRONTIER", "NO_CANDIDATES"]
+            .contains(&r2["counterfactual"]["label"].as_str().unwrap()),
+        "{:#}",
+        r2["counterfactual"]
+    );
+    fn field_names(v: &serde_json::Value, out: &mut Vec<String>) {
+        match v {
+            serde_json::Value::Object(m) => {
+                for (k, x) in m {
+                    out.push(k.clone());
+                    field_names(x, out);
+                }
+            }
+            serde_json::Value::Array(a) => a.iter().for_each(|x| field_names(x, out)),
+            _ => {}
+        }
+    }
+    let mut names = Vec::new();
+    field_names(&r2, &mut names);
+    assert!(
+        !names.iter().any(|k| k.contains("saving")),
+        "no field claims a saving: {names:?}"
+    );
+    // A record rode each run's end.
+    let evs = task_events(&core, &session, &task).await;
+    let records = of(&evs, "RequestOutcomeRecorded");
+    assert_eq!(
+        records.iter().filter(|r| r["trigger"] == "RUN_END").count(),
+        2,
+        "{records:#?}"
+    );
+    assert_eq!(
+        records.last().unwrap()["record_ref"],
+        v2.recorded_ref.as_str()
+    );
+    assert_eq!(records.last().unwrap()["final_outcome"], "pass");
+    assert_eq!(records.last().unwrap()["initial_leg_success"], false);
+
+    // 3. The person accepts: an explicit signal, by reference, recorded.
+    let decided = decide_review(&mut c, &task, g, 0x76, "ACCEPT")
+        .await
+        .unwrap();
+    assert_eq!(decided.task_state, "Completed", "{decided:?}");
+    let (v3, r3) = request_outcome(&mut c, &task).await;
+    let explicit = r3["signals"]["explicit"].as_array().unwrap();
+    assert_eq!(explicit.len(), 1, "{r3:#}");
+    assert_eq!(
+        (explicit[0]["value"].as_str(), explicit[0]["actor"].as_str()),
+        (Some("ACCEPT"), Some("user"))
+    );
+    assert!(
+        explicit[0]["source"]
+            .as_str()
+            .unwrap()
+            .starts_with("event:")
+    );
+    assert!(!v3.missing_signals.iter().any(|x| x == "explicit_feedback"));
+    assert_eq!(r3["request"]["terminal"], true);
+    let evs = task_events(&core, &session, &task).await;
+    assert!(
+        of(&evs, "RequestOutcomeRecorded")
+            .iter()
+            .any(|r| r["trigger"] == "REVIEW_DECIDED"),
+        "the decision's record is on the log"
+    );
+
+    // 4. The record is the log's: a restarted Core rebuilds it.
+    drop(c);
+    core.kill();
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (v4, r4) = request_outcome(&mut c, &task).await;
+    for f in [
+        "executed_path",
+        "legs",
+        "gates",
+        "decisions",
+        "versions",
+        "reservations",
+        "signals",
+    ] {
+        assert_eq!(r4[f], r3[f], "{f} differs after a restart");
+    }
+    assert_eq!(v4.total_minor, v3.total_minor);
+    drop(repo);
+}
+
+/// EPR-FI-010 (REQ-EPR-010, docs/38 "CompleteAccountingAndAttribution"
+/// steps 1-3) on the real Core: a provider answer without usage and an
+/// invocation a Core kill cut off hold their slot's reservation — never
+/// zero, never lost — across the restart and the resumed run; a late
+/// invoice settles the unknown attempt exactly once at the registry's
+/// prices, a second delivery charges nothing, an attempt whose usage was
+/// reported refuses an invoice, a mismatched request id or a missing
+/// attempt is refused, and an unknown request has no record to read.
+#[tokio::test]
+async fn epr_fi_010_unknown_work_holds_its_reservation_across_a_kill_and_a_late_invoice_settles_it_once()
+ {
+    use ed25519_dalek::SigningKey;
+    use modbit_protocol::v1::{ReconcileUsage, TaskRunStarted, UsageReconciliationView};
+    use serde_json::json;
+    let key = SigningKey::from_bytes(&[37u8; 32]);
+    let key_hex = hex::encode(key.verifying_key().to_bytes());
+    let signed = accounting_registry("registry-fi", &key, &[("gpt-5-mini", 25, 5, 200)]);
+    let (repo, root) = plain_repo(&[("notes.txt", "draft\n")]);
+    let hash = sha256_of(b"draft\n");
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "notes say final", "expected_files": ["notes.txt"]}}]}),
+        // Answered without a usage frame: the cost of this request is unknown.
+        json!({"no_usage": true, "calls": [{"name": "fs.read", "args": {"path": "notes.txt"}}]}),
+        // Held open once: the Core is killed while it waits.
+        json!({"stall": true, "then": {"calls": [{"name": "change.apply", "args": {"path": "notes.txt", "op": "replace", "content": "final\n", "expected_content_hash": hash}}]}}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "notes say final", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, _seen) =
+        scripted_model_reactive(script, vec![], None, None, vec![], false, vec![]).await;
+    let dir = tempfile::tempdir().unwrap();
+    let keys = format!("ops:{key_hex}");
+    let env: Vec<(&str, &str)> = vec![
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_REGISTRY_KEYS", keys.as_str()),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    activate_registry(&mut c, &signed).await;
+    let (session, _) = create_session(&mut c, id16(0x81)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x82, "local_trusted").await;
+    let _: TaskRunStarted =
+        Client::result(&c.command(start_task(&task, 0x83, g)).await.unwrap()).unwrap();
+    // Wait for the third invocation to be in flight with two attempts
+    // recorded, then kill the Core under it.
+    let deadline = std::time::Instant::now() + Duration::from_secs(90);
+    loop {
+        let evs = task_events(&core, &session, &task).await;
+        let started = evs
+            .iter()
+            .filter(|(_, t, _)| t == "ModelInvocationStarted")
+            .count();
+        let recorded = evs
+            .iter()
+            .filter(|(_, t, _)| t == "RoutingAttemptRecorded")
+            .count();
+        if started == 3 && recorded == 2 {
+            break;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "started {started}, recorded {recorded}"
+        );
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    drop(c);
+    core.kill();
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    activate_registry(&mut c, &signed).await;
+    // Before the resume: the cut-off invocation is held, not dropped.
+    let (_, r0) = request_outcome(&mut c, &task).await;
+    let held0: Vec<serde_json::Value> = all_attempts(&r0)
+        .into_iter()
+        .filter(|a| a["usage"] == "UNKNOWN")
+        .collect();
+    assert_eq!(held0.len(), 2, "{r0:#}");
+    let _: TaskRunStarted =
+        Client::result(&c.command(start_task(&task, 0x84, g)).await.unwrap()).unwrap();
+    let st = wait_for_state(&mut c, &task, "ReadyForReview", 180).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let (v1, r1) = request_outcome(&mut c, &task).await;
+    let attempts = all_attempts(&r1);
+    let cut: Vec<&serde_json::Value> = attempts
+        .iter()
+        .filter(|a| a["outcome"] == "CUT_OFF")
+        .collect();
+    assert_eq!(
+        cut.len(),
+        1,
+        "the killed invocation is accounted once: {attempts:#?}"
+    );
+    let unknown: Vec<&serde_json::Value> = attempts
+        .iter()
+        .filter(|a| a["usage"] == "UNKNOWN" && a["attempt"].as_u64().unwrap() > 0)
+        .collect();
+    assert_eq!(unknown.len(), 1, "{attempts:#?}");
+    let reserve = unknown[0]["held_minor"].as_u64().unwrap();
+    assert!(
+        reserve > 0,
+        "unknown work holds its slot's reservation: {attempts:#?}"
+    );
+    assert_eq!(cut[0]["held_minor"].as_u64().unwrap(), reserve);
+    let held = r1["cost"]["held_unknown_minor"].as_u64().unwrap();
+    assert_eq!(held, 2 * reserve, "{:#}", r1["cost"]);
+    assert_eq!(r1["cost"]["complete"], false);
+    let inference = r1["cost"]["inference_minor"].as_u64().unwrap();
+    assert_eq!(v1.total_minor, inference + held);
+    assert_eq!(v1.unknown_minor, held);
+    assert_eq!(r1["reservations"]["held_minor"], held);
+    let records = task_events(&core, &session, &task).await;
+    let last_run_end = records
+        .iter()
+        .rev()
+        .find(|(_, t, p)| t == "RequestOutcomeRecorded" && p["trigger"] == "RUN_END")
+        .map(|(_, _, p)| p.clone())
+        .unwrap();
+    assert_eq!(
+        last_run_end["unknown_minor"], held,
+        "the run's end recorded the held work"
+    );
+
+    // The late invoice.
+    let a = unknown[0];
+    let run_bytes = modbit_domain::RunId::parse(a["run_id"].as_str().unwrap())
+        .unwrap()
+        .as_bytes()
+        .to_vec();
+    let invoice = |id: u8, attempt: u32, request_id: &str, input: u64, cached: u64| {
+        envelope(
+            id16(id),
+            "ReconcileUsage",
+            ReconcileUsage {
+                task_id: Some(task.clone()),
+                run_id: Some(Id {
+                    value: run_bytes.clone(),
+                }),
+                plan_id: a["plan_id"].as_str().unwrap().into(),
+                slot_id: a["slot_id"].as_str().unwrap().into(),
+                attempt,
+                provider_request_id: request_id.into(),
+                input_tokens: input,
+                cached_input_tokens: cached,
+                cache_write_tokens: 0,
+                output_tokens: 40,
+                source: "billing-import".into(),
+                invoice_json: "{\"line\": 1}".into(),
+            }
+            .encode_to_vec(),
+        )
+    };
+    let n = a["attempt"].as_u64().unwrap() as u32;
+    let rid = a["provider_request_id"].as_str().unwrap().to_owned();
+    let refused = |r: Result<modbit_protocol::v1::CommandAck, ClientError>, code: &str| match r {
+        Err(ClientError::Rejected { code: got, .. }) => assert_eq!(got, code),
+        other => panic!("expected {code}, got {other:?}"),
+    };
+    // A client kind without the provider capability cannot import one.
+    {
+        let mut ide = core
+            .client_of(modbit_protocol::v1::ClientKind::IdeAdapter)
+            .await;
+        refused(
+            ide.command(invoice(0x8C, n, &rid, 1_200, 300)).await,
+            "CLIENT_CAPABILITY",
+        );
+    }
+    refused(
+        c.command(invoice(0x85, n, "req_someone_else", 1_200, 300))
+            .await,
+        "REQUEST_ID_MISMATCH",
+    );
+    refused(
+        c.command(invoice(0x86, 99, "", 1_200, 300)).await,
+        "NO_SUCH_ATTEMPT",
+    );
+    refused(
+        c.command(invoice(0x87, n, &rid, 100, 300)).await,
+        "BAD_PAYLOAD",
+    );
+    let reported = attempts
+        .iter()
+        .find(|x| {
+            x["usage"] == "REPORTED" && x["run_id"] == a["run_id"] && x["plan_id"] == a["plan_id"]
+        })
+        .unwrap();
+    {
+        let mut e = invoice(
+            0x88,
+            reported["attempt"].as_u64().unwrap() as u32,
+            "",
+            1_200,
+            300,
+        );
+        let mut p = ReconcileUsage::decode(e.payload.as_slice()).unwrap();
+        p.slot_id = reported["slot_id"].as_str().unwrap().into();
+        e.payload = p.encode_to_vec();
+        refused(c.command(e).await, "ALREADY_KNOWN");
+    }
+    let ok: UsageReconciliationView =
+        Client::result(&c.command(invoice(0x89, n, &rid, 1_200, 300)).await.unwrap()).unwrap();
+    let cost = billed(1_200, 300, 40, (25, 5, 200));
+    assert!(ok.reconciled && !ok.duplicate && ok.priced, "{ok:?}");
+    assert_eq!(
+        (ok.cost_minor, ok.priced_under.as_str()),
+        (cost, "registry-fi")
+    );
+    assert!(!ok.record_ref.is_empty());
+    let (v2, r2) = request_outcome(&mut c, &task).await;
+    let settled = all_attempts(&r2)
+        .into_iter()
+        .find(|x| {
+            x["run_id"] == a["run_id"]
+                && x["attempt"] == a["attempt"]
+                && x["slot_id"] == a["slot_id"]
+                && x["plan_id"] == a["plan_id"]
+        })
+        .unwrap();
+    assert_eq!(settled["usage"], "RECONCILED", "{settled:#}");
+    assert_eq!(settled["cost_minor"], cost);
+    assert_eq!(settled["held_minor"], 0);
+    assert_eq!(
+        r2["cost"]["held_unknown_minor"],
+        held - reserve,
+        "only the cut-off stays held"
+    );
+    assert_eq!(r2["cost"]["inference_minor"], inference + cost);
+    assert_eq!(v2.total_minor, v1.total_minor - reserve + cost);
+    // Delivered again: nothing is charged twice.
+    let again: UsageReconciliationView =
+        Client::result(&c.command(invoice(0x8A, n, &rid, 1_200, 300)).await.unwrap()).unwrap();
+    assert!(again.duplicate && !again.reconciled, "{again:?}");
+    assert_eq!(again.cost_minor, cost);
+    let (v3, _) = request_outcome(&mut c, &task).await;
+    assert_eq!(v3.total_minor, v2.total_minor);
+    let evs = task_events(&core, &session, &task).await;
+    assert_eq!(
+        evs.iter()
+            .filter(|(_, t, _)| t == "UsageReconciled")
+            .count(),
+        1,
+        "one invoice on the log"
+    );
+    let reconciled_record = evs
+        .iter()
+        .rev()
+        .find(|(_, t, p)| t == "RequestOutcomeRecorded" && p["trigger"] == "USAGE_RECONCILED")
+        .map(|(_, _, p)| p.clone())
+        .unwrap();
+    assert_eq!(reconciled_record["total_minor"], v2.total_minor);
+    // A request this Core does not hold has no record to read.
+    let err = c
+        .command(envelope(
+            id16(0x8B),
+            "GetRequestOutcome",
+            modbit_protocol::v1::GetRequestOutcome {
+                task_id: Some(id16(0xEE)),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap_err();
+    assert!(matches!(err, ClientError::Rejected { ref code, .. } if code == "UNKNOWN_TASK"));
     drop(repo);
 }

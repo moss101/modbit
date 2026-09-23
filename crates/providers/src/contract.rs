@@ -203,15 +203,24 @@ pub struct ModelRequest {
     pub policy_tags: Vec<String>,
 }
 
-/// Token usage.
+/// Token usage, in one meaning on every wire (docs/38
+/// "CompleteAccountingAndAttribution": the total input and its cached
+/// subset, never double charged). Adapters translate their provider's
+/// report into this shape; a provider that reports cache reads beside the
+/// input rather than inside it is summed here, not downstream.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Usage {
-    /// Input tokens.
+    /// Every input token the request was billed for, cached, cache-written
+    /// and plain alike.
     pub input_tokens: u64,
     /// Output tokens.
     pub output_tokens: u64,
-    /// Input tokens served from the provider cache.
+    /// The subset of `input_tokens` served from the provider cache.
     pub cached_input_tokens: u64,
+    /// The subset of `input_tokens` written to the provider cache (a price
+    /// of its own on providers that charge for cache writes).
+    #[serde(default)]
+    pub cache_write_input_tokens: u64,
 }
 
 /// docs/15 `ModelEvent`.

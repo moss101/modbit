@@ -2320,3 +2320,61 @@ message MemoryForgotten {
   bool changed = 2;
   string status = 3;
 }
+
+// ---- Request accounting and outcome (REQ-EPR-010; docs/27 §10-11, docs/38
+// "CompleteAccountingAndAttribution") ----
+
+// The request's accounting and outcome record, derived from the log: every
+// leg and attempt with its cost, the versions it ran under, request, leg and
+// gate observations kept apart, raw signals by reference and the missing
+// ones named. A projection of the log, never a second store.
+message GetRequestOutcome {
+  Id task_id = 1;
+}
+
+message RequestOutcomeView {
+  bool found = 1;
+  string accounting_version = 2;
+  string record_json = 3;          // the whole record as of now
+  string recorded_ref = 4;         // the latest durable RequestOutcomeRecorded's record, "" when none
+  string recorded_json = 5;        // that durable record's content, as recorded
+  string final_outcome = 6;        // pass | fail | partial | cancelled | open
+  bool verified_success = 7;
+  bool first_pass_success = 8;
+  string initial_leg_success = 9;  // "true" | "false" | "" while undecided
+  uint64 total_minor = 10;         // known spend plus held unknowns
+  uint64 unknown_minor = 11;       // of which held for work of unknown usage
+  string currency = 12;
+  uint32 scale = 13;
+  repeated string missing_signals = 14;
+  string path_label = 15;
+}
+
+// A late invoice (EPR-FI-010): the provider's figures for an attempt of the
+// request whose usage was unknown when it ended. Charged once, instead of the
+// reservation held for it; an attempt whose usage was reported is refused
+// (ALREADY_KNOWN), and the same attempt reconciled again is a duplicate
+// that charges nothing.
+message ReconcileUsage {
+  Id task_id = 1;
+  Id run_id = 2;
+  string plan_id = 3;
+  string slot_id = 4;
+  uint32 attempt = 5;
+  string provider_request_id = 6;  // must match the attempt's when both have one
+  uint64 input_tokens = 7;         // total input, cached and cache-written included
+  uint64 cached_input_tokens = 8;
+  uint64 cache_write_tokens = 9;
+  uint64 output_tokens = 10;
+  string source = 11;              // who delivered the figures
+  string invoice_json = 12;        // the invoice line as delivered (kept as an object)
+}
+
+message UsageReconciliationView {
+  bool reconciled = 1;             // a new reconciliation was recorded
+  bool duplicate = 2;              // already reconciled: nothing charged again
+  uint64 cost_minor = 3;
+  bool priced = 4;
+  string priced_under = 5;
+  string record_ref = 6;           // the outcome record appended with it
+}

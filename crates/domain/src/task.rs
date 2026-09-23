@@ -1693,6 +1693,76 @@ pub enum TaskEvent {
         /// What was observed (receipt hash, target content hash, ...).
         observed: String,
     },
+    /// `UsageReconciled` (REQ-EPR-010, docs/38
+    /// "CompleteAccountingAndAttribution" step 3, EPR-FI-010): the
+    /// provider's own figures for an attempt of this request whose usage was
+    /// unknown when it ended arrived later (a late invoice). The attempt is
+    /// charged these figures instead of its held reservation, exactly once.
+    /// An audit record about the request, valid in every state.
+    UsageReconciled {
+        /// The run the attempt belongs to.
+        run_id: RunId,
+        /// Plan.
+        plan_id: String,
+        /// Slot.
+        slot_id: String,
+        /// Attempt ordinal within the slot.
+        attempt: u32,
+        /// The provider's request id, when the attempt recorded one.
+        provider_request_id: Option<String>,
+        /// Total input tokens.
+        input_tokens: u64,
+        /// Cached subset.
+        cached_input_tokens: u64,
+        /// Cache-write subset.
+        cache_write_tokens: u64,
+        /// Output tokens.
+        output_tokens: u64,
+        /// Priced at the registry in force at reconciliation; `None` when no
+        /// price was in force.
+        cost_minor: Option<u64>,
+        /// Registry generation of that price; empty when unpriced.
+        priced_under: String,
+        /// Who delivered the figures (an importer's name).
+        source: String,
+        /// Object hash of the invoice line as delivered.
+        invoice_ref: String,
+    },
+    /// `RequestOutcomeRecorded` (REQ-EPR-010, docs/27 §11.2-11.3, docs/38
+    /// "CompleteAccountingAndAttribution" step 4): the request's accounting
+    /// and outcome record as of this point — every leg and attempt with its
+    /// cost, the versions it ran under, request, leg and gate observations
+    /// kept apart, raw signals by reference and the missing ones named. The
+    /// record is the object; the event pins it and carries the headline. A
+    /// later record supersedes an earlier one; records are never summed. An
+    /// audit record about the request, valid in every state.
+    RequestOutcomeRecorded {
+        /// Object hash of the full record.
+        record_ref: String,
+        /// Accounting rules version.
+        accounting_version: String,
+        /// `RUN_END` | `REVIEW_CONCLUDED` | `REVIEW_DECIDED` |
+        /// `USAGE_RECONCILED`.
+        trigger: String,
+        /// `pass` | `fail` | `partial` | `cancelled` | `open`.
+        final_outcome: String,
+        /// Whether the request is verified.
+        verified_success: bool,
+        /// Verified with no repair, escalation or revision.
+        first_pass_success: bool,
+        /// Whether the initial leg succeeded; `None` while undecided.
+        initial_leg_success: Option<bool>,
+        /// Everything charged, minor units (known spend plus held unknowns).
+        total_minor: u64,
+        /// Of which held for work whose usage is unknown.
+        unknown_minor: u64,
+        /// Currency.
+        currency: String,
+        /// Scale.
+        scale: u8,
+        /// Signals the record could not observe, by name.
+        missing_signals: Vec<String>,
+    },
 }
 
 impl TaskEvent {
@@ -1799,6 +1869,8 @@ impl TaskEvent {
             Self::ProcessExited { .. } => "ProcessExited",
             Self::ProtocolStateResumed { .. } => "ProtocolStateResumed",
             Self::ToolCallReconciled { .. } => "ToolCallReconciled",
+            Self::UsageReconciled { .. } => "UsageReconciled",
+            Self::RequestOutcomeRecorded { .. } => "RequestOutcomeRecorded",
         }
     }
 }
@@ -1974,8 +2046,12 @@ impl Task {
             }
             // A sandbox is given back after the task ended (M8.5), and one
             // may be lost at any time: the records of the substrate's
-            // lifecycle land whatever the task's state.
+            // lifecycle land whatever the task's state. So do the request's
+            // accounting records (REQ-EPR-010): a review concludes and a
+            // late invoice arrives after the request's own run is over.
             TaskEvent::SandboxReleased { .. }
+            | TaskEvent::UsageReconciled { .. }
+            | TaskEvent::RequestOutcomeRecorded { .. }
             | TaskEvent::SandboxLost { .. }
             | TaskEvent::SandboxRestored { .. }
             | TaskEvent::EnvironmentPinned { .. }

@@ -9934,6 +9934,259 @@ export declare type MemoryForgotten = Message<"modbit.v1.MemoryForgotten"> & {
 export declare const MemoryForgottenSchema: GenMessage<MemoryForgotten>;
 
 /**
+ * The request's accounting and outcome record, derived from the log: every
+ * leg and attempt with its cost, the versions it ran under, request, leg and
+ * gate observations kept apart, raw signals by reference and the missing
+ * ones named. A projection of the log, never a second store.
+ *
+ * @generated from message modbit.v1.GetRequestOutcome
+ */
+export declare type GetRequestOutcome = Message<"modbit.v1.GetRequestOutcome"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.GetRequestOutcome.
+ * Use `create(GetRequestOutcomeSchema)` to create a new message.
+ */
+export declare const GetRequestOutcomeSchema: GenMessage<GetRequestOutcome>;
+
+/**
+ * @generated from message modbit.v1.RequestOutcomeView
+ */
+export declare type RequestOutcomeView = Message<"modbit.v1.RequestOutcomeView"> & {
+  /**
+   * @generated from field: bool found = 1;
+   */
+  found: boolean;
+
+  /**
+   * @generated from field: string accounting_version = 2;
+   */
+  accountingVersion: string;
+
+  /**
+   * the whole record as of now
+   *
+   * @generated from field: string record_json = 3;
+   */
+  recordJson: string;
+
+  /**
+   * the latest durable RequestOutcomeRecorded's record, "" when none
+   *
+   * @generated from field: string recorded_ref = 4;
+   */
+  recordedRef: string;
+
+  /**
+   * that durable record's content, as recorded
+   *
+   * @generated from field: string recorded_json = 5;
+   */
+  recordedJson: string;
+
+  /**
+   * pass | fail | partial | cancelled | open
+   *
+   * @generated from field: string final_outcome = 6;
+   */
+  finalOutcome: string;
+
+  /**
+   * @generated from field: bool verified_success = 7;
+   */
+  verifiedSuccess: boolean;
+
+  /**
+   * @generated from field: bool first_pass_success = 8;
+   */
+  firstPassSuccess: boolean;
+
+  /**
+   * "true" | "false" | "" while undecided
+   *
+   * @generated from field: string initial_leg_success = 9;
+   */
+  initialLegSuccess: string;
+
+  /**
+   * known spend plus held unknowns
+   *
+   * @generated from field: uint64 total_minor = 10;
+   */
+  totalMinor: bigint;
+
+  /**
+   * of which held for work of unknown usage
+   *
+   * @generated from field: uint64 unknown_minor = 11;
+   */
+  unknownMinor: bigint;
+
+  /**
+   * @generated from field: string currency = 12;
+   */
+  currency: string;
+
+  /**
+   * @generated from field: uint32 scale = 13;
+   */
+  scale: number;
+
+  /**
+   * @generated from field: repeated string missing_signals = 14;
+   */
+  missingSignals: string[];
+
+  /**
+   * @generated from field: string path_label = 15;
+   */
+  pathLabel: string;
+};
+
+/**
+ * Describes the message modbit.v1.RequestOutcomeView.
+ * Use `create(RequestOutcomeViewSchema)` to create a new message.
+ */
+export declare const RequestOutcomeViewSchema: GenMessage<RequestOutcomeView>;
+
+/**
+ * A late invoice (EPR-FI-010): the provider's figures for an attempt of the
+ * request whose usage was unknown when it ended. Charged once, instead of the
+ * reservation held for it; an attempt whose usage was reported is refused
+ * (ALREADY_KNOWN), and the same attempt reconciled again is a duplicate
+ * that charges nothing.
+ *
+ * @generated from message modbit.v1.ReconcileUsage
+ */
+export declare type ReconcileUsage = Message<"modbit.v1.ReconcileUsage"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: modbit.v1.Id run_id = 2;
+   */
+  runId?: Id | undefined;
+
+  /**
+   * @generated from field: string plan_id = 3;
+   */
+  planId: string;
+
+  /**
+   * @generated from field: string slot_id = 4;
+   */
+  slotId: string;
+
+  /**
+   * @generated from field: uint32 attempt = 5;
+   */
+  attempt: number;
+
+  /**
+   * must match the attempt's when both have one
+   *
+   * @generated from field: string provider_request_id = 6;
+   */
+  providerRequestId: string;
+
+  /**
+   * total input, cached and cache-written included
+   *
+   * @generated from field: uint64 input_tokens = 7;
+   */
+  inputTokens: bigint;
+
+  /**
+   * @generated from field: uint64 cached_input_tokens = 8;
+   */
+  cachedInputTokens: bigint;
+
+  /**
+   * @generated from field: uint64 cache_write_tokens = 9;
+   */
+  cacheWriteTokens: bigint;
+
+  /**
+   * @generated from field: uint64 output_tokens = 10;
+   */
+  outputTokens: bigint;
+
+  /**
+   * who delivered the figures
+   *
+   * @generated from field: string source = 11;
+   */
+  source: string;
+
+  /**
+   * the invoice line as delivered (kept as an object)
+   *
+   * @generated from field: string invoice_json = 12;
+   */
+  invoiceJson: string;
+};
+
+/**
+ * Describes the message modbit.v1.ReconcileUsage.
+ * Use `create(ReconcileUsageSchema)` to create a new message.
+ */
+export declare const ReconcileUsageSchema: GenMessage<ReconcileUsage>;
+
+/**
+ * @generated from message modbit.v1.UsageReconciliationView
+ */
+export declare type UsageReconciliationView = Message<"modbit.v1.UsageReconciliationView"> & {
+  /**
+   * a new reconciliation was recorded
+   *
+   * @generated from field: bool reconciled = 1;
+   */
+  reconciled: boolean;
+
+  /**
+   * already reconciled: nothing charged again
+   *
+   * @generated from field: bool duplicate = 2;
+   */
+  duplicate: boolean;
+
+  /**
+   * @generated from field: uint64 cost_minor = 3;
+   */
+  costMinor: bigint;
+
+  /**
+   * @generated from field: bool priced = 4;
+   */
+  priced: boolean;
+
+  /**
+   * @generated from field: string priced_under = 5;
+   */
+  pricedUnder: string;
+
+  /**
+   * the outcome record appended with it
+   *
+   * @generated from field: string record_ref = 6;
+   */
+  recordRef: string;
+};
+
+/**
+ * Describes the message modbit.v1.UsageReconciliationView.
+ * Use `create(UsageReconciliationViewSchema)` to create a new message.
+ */
+export declare const UsageReconciliationViewSchema: GenMessage<UsageReconciliationView>;
+
+/**
  * Command acknowledgement.
  *
  * @generated from enum modbit.v1.CommandStatus
