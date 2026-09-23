@@ -2475,3 +2475,21 @@ message CompensationAck {
   bool replayed = 8;
   string detail = 9;
 }
+
+// ---- Effective policy (REQ-EV-0040/0041; docs/23) ----
+
+// The configuration a task is decided under: its generation, the machine's
+// device constraints (only the device layer sets them), every capability's
+// decision with the layer that made it, and every attempt a lower layer made
+// to widen or override a higher one, refused.
+message GetEffectivePolicy {
+  Id task_id = 1;
+}
+
+message EffectivePolicyView {
+  string generation = 1;
+  string device_json = 2;          // the device constraints, "" when the machine sets none
+  string device_source = 3;        // where the device policy was read, "" when none
+  repeated string permissions = 4; // "capability=ALLOW|ASK|DENY by Device|Admin|Project|User"
+  repeated string rejected_widenings = 5;
+}

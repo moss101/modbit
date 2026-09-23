@@ -37094,3 +37094,113 @@ async fn qual_ev_0041_a_tightened_policy_applies_from_the_next_round_and_the_cal
     );
     assert!(!repo.path().join("direct-ran").exists());
 }
+
+/// QUAL-EV-0040 (REQ-EV-0040; docs/23 "Device policy") on the real Core and
+/// the real terminal broker: the machine's managed policy
+/// (`MODBIT_DEVICE_POLICY`) requires sandboxed execution, turns telemetry
+/// off, names a proxy, trust roots and an update floor, and denies network
+/// egress. The repository's `.modbit/config.json` tries to switch the sandbox
+/// requirement and telemetry back and to allow egress and execution; the
+/// user's own configuration tries the same. Every one of those attempts is
+/// refused and kept on the record, the device's constraints stand as the
+/// device wrote them, and execution under the host profile is refused
+/// `DEVICE_REQUIRES_SANDBOX` with nothing run.
+#[tokio::test]
+async fn qual_ev_0040_a_project_file_cannot_disable_what_the_device_requires() {
+    use modbit_protocol::v1::{EffectivePolicyView, GetEffectivePolicy, InvokeTool, ToolInvoked};
+    let (repo, root) = plain_repo(&[
+        ("notes.txt", "line 1\n"),
+        (
+            ".modbit/config.json",
+            r#"{"device": {"sandbox_required": false, "telemetry": "full"}, "permissions": {"network.egress": "ALLOW", "shell.exec": "ALLOW"}}"#,
+        ),
+    ]);
+    let machine = tempfile::tempdir().unwrap();
+    let device_file = machine.path().join("device-policy.json");
+    std::fs::write(
+        &device_file,
+        r#"{"device": {"sandbox_required": true, "telemetry": "off", "proxy": "http://proxy.corp.test:3128", "trust_roots": ["sha256:0f1e2d3c"], "update_channel": "stable", "minimum_version": "0.1.0"}, "permissions": {"network.egress": "DENY"}}"#,
+    )
+    .unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(
+        dir.path().join("config.json"),
+        r#"{"device": {"proxy": "http://my-own-proxy.test:8080"}}"#,
+    )
+    .unwrap();
+    let device_path = device_file.to_string_lossy().into_owned();
+    let core = CoreProcess::spawn_with_env(
+        dir.path(),
+        &[("MODBIT_DEVICE_POLICY", device_path.as_str())],
+    );
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x81)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x82, "local_trusted").await;
+    let v: EffectivePolicyView = Client::result(
+        &c.command(envelope(
+            id16(0x83),
+            "GetEffectivePolicy",
+            GetEffectivePolicy {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+    // The device's constraints stand as the device wrote them.
+    let device: serde_json::Value = serde_json::from_str(&v.device_json).unwrap();
+    assert_eq!(
+        device,
+        serde_json::json!({"sandbox_required": true, "telemetry": "off", "proxy": "http://proxy.corp.test:3128", "trust_roots": ["sha256:0f1e2d3c"], "update_channel": "stable", "minimum_version": "0.1.0"})
+    );
+    assert_eq!(v.device_source, device_path);
+    assert!(
+        v.permissions
+            .iter()
+            .any(|p| p == "network.egress=DENY by Device"),
+        "{:?}",
+        v.permissions
+    );
+    // Every attempt from below is refused and on the record.
+    for needle in [
+        "Project tried to set device constraint `sandbox_required`",
+        "Project tried to set device constraint `telemetry`",
+        "Project tried to widen permission `network.egress`",
+        "User tried to set device constraint `proxy`",
+    ] {
+        assert!(
+            v.rejected_widenings.iter().any(|w| w.contains(needle)),
+            "{needle}: {:?}",
+            v.rejected_widenings
+        );
+    }
+    assert!(!v.generation.is_empty());
+    // Execution under the host profile is refused, and nothing runs.
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x84),
+            "InvokeTool",
+            InvokeTool {
+                task_id: Some(task.clone()),
+                tool_name: "shell.exec".into(),
+                arguments_json: r#"{"argv": ["sh", "-c", "touch executed"]}"#.into(),
+                tool_call_id: Some(id16(0x85)),
+                output_budget_bytes: 0,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let r: ToolInvoked = Client::result(&ack).unwrap();
+    assert_eq!(
+        (r.status.as_str(), r.error_code.as_str()),
+        ("POLICY_DENIED", "DEVICE_REQUIRES_SANDBOX"),
+        "{r:?}"
+    );
+    assert!(!repo.path().join("executed").exists());
+    drop(machine);
+}

@@ -298,6 +298,25 @@ impl CapabilityKernel {
         // 5. resolved configuration.
         let mut ask_reason: Option<String> = None;
         if let Some(cfg) = req.config {
+            // REQ-EV-0040: a machine that requires sandboxed execution gets it —
+            // execution runs only in an isolated profile, whatever any lower
+            // configuration says.
+            if let Some(d) = &cfg.device
+                && d.value.sandbox_required == Some(true)
+                && req.required_capabilities.iter().any(|c| c == "shell.exec")
+                && !matches!(
+                    req.execution_profile,
+                    PROFILE_REVIEW_ISOLATED | PROFILE_CLOUD_ISOLATED
+                )
+            {
+                return deny(
+                    "DEVICE_REQUIRES_SANDBOX",
+                    format!(
+                        "this device requires sandboxed execution; `{}` is not an isolated profile",
+                        req.execution_profile
+                    ),
+                );
+            }
             for c in req.required_capabilities {
                 match cfg.permissions.get(c).map(|p| p.value) {
                     Some(Permission::Deny) => {

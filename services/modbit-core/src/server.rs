@@ -564,6 +564,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "GetTaskEconomics",
                     "GetRequestOutcome",
                     "ReconcileUsage",
+                    "GetEffectivePolicy",
                     "SetTaskSelection",
                     "AttachContextDocument",
                     "AllowUnsupportedLanguage",
@@ -3814,6 +3815,52 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 return reject(cid, "BAD_PAYLOAD", "task_id required");
             };
             let view = crate::routing::view(core, task_id).await;
+            accept(cid, false, view.encode_to_vec())
+        }
+        // REQ-EV-0040/0041: the configuration a task is decided under.
+        "GetEffectivePolicy" => {
+            let Ok(p) = wire::GetEffectivePolicy::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "GetEffectivePolicy");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let task = match core.store.lock().await.task(&task_id) {
+                Ok(Some(t)) => t,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            let cfg = core.tools.configurations.for_task(
+                task_id,
+                &core.data_dir,
+                task.workspace_root.as_deref(),
+            );
+            let device_path = crate::config::device_policy_path();
+            let view = wire::EffectivePolicyView {
+                generation: modbit_policy::config::generation(&cfg),
+                device_json: cfg
+                    .device
+                    .as_ref()
+                    .map(|d| serde_json::to_string(&d.value).unwrap_or_default())
+                    .unwrap_or_default(),
+                device_source: if cfg.device.is_some() {
+                    device_path.display().to_string()
+                } else {
+                    String::new()
+                },
+                permissions: cfg
+                    .permissions
+                    .iter()
+                    .map(|(k, v)| {
+                        format!(
+                            "{k}={} by {:?}",
+                            format!("{:?}", v.value).to_uppercase(),
+                            v.provenance.decided_by
+                        )
+                    })
+                    .collect(),
+                rejected_widenings: cfg.rejected_widenings.clone(),
+            };
             accept(cid, false, view.encode_to_vec())
         }
         // REQ-EPR-010: the request's accounting and outcome record.

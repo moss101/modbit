@@ -22,6 +22,9 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Authority {
+    /// The machine itself (REQ-EV-0040): device management (MDM) policy,
+    /// above every configuration a person or a repository writes.
+    Device,
     /// Organization administrator.
     Admin,
     /// Repository / project configuration.
@@ -32,7 +35,12 @@ pub enum Authority {
 
 impl Authority {
     /// Every level in precedence order.
-    pub const ALL: [Authority; 3] = [Authority::Admin, Authority::Project, Authority::User];
+    pub const ALL: [Authority; 4] = [
+        Authority::Device,
+        Authority::Admin,
+        Authority::Project,
+        Authority::User,
+    ];
 }
 
 /// Permission decision, from least to most restrictive.
@@ -76,6 +84,63 @@ pub struct Layer {
     /// a lower layer may narrow the list, never add to it.
     #[serde(default)]
     pub review_comment_authors: Option<BTreeSet<String>>,
+    /// Machine constraints (REQ-EV-0040): set by the device layer only; the
+    /// same key in any other layer is a rejected attempt, recorded.
+    #[serde(default)]
+    pub device: Option<DeviceConstraints>,
+}
+
+/// What the machine requires of every task on it (REQ-EV-0040): trust
+/// roots, the egress proxy, the update channel and floor, whether execution
+/// must be sandboxed, and the telemetry level. Absent means the device has
+/// no requirement there.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeviceConstraints {
+    /// Execution (`shell.exec`) only in an isolated profile.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sandbox_required: Option<bool>,
+    /// `off` | `minimal` | `full`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub telemetry: Option<String>,
+    /// The egress proxy every outbound connection must use.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub proxy: Option<String>,
+    /// Certificate fingerprints the machine trusts for TLS.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trust_roots: Option<Vec<String>>,
+    /// Update channel.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub update_channel: Option<String>,
+    /// Lowest build allowed to run.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub minimum_version: Option<String>,
+}
+
+impl DeviceConstraints {
+    /// The names of the constraints this value sets.
+    #[must_use]
+    pub fn set_fields(&self) -> Vec<&'static str> {
+        let mut out = Vec::new();
+        if self.sandbox_required.is_some() {
+            out.push("sandbox_required");
+        }
+        if self.telemetry.is_some() {
+            out.push("telemetry");
+        }
+        if self.proxy.is_some() {
+            out.push("proxy");
+        }
+        if self.trust_roots.is_some() {
+            out.push("trust_roots");
+        }
+        if self.update_channel.is_some() {
+            out.push("update_channel");
+        }
+        if self.minimum_version.is_some() {
+            out.push("minimum_version");
+        }
+        out
+    }
 }
 
 /// Where a resolved value came from.
@@ -114,6 +179,8 @@ pub struct ResolvedConfig {
     /// Who may steer through forge review comments (`None` = nobody: only
     /// the organization grants).
     pub review_comment_authors: Option<Resolved<BTreeSet<String>>>,
+    /// The machine's constraints (`None` = the device requires nothing).
+    pub device: Option<Resolved<DeviceConstraints>>,
     /// Attempts by a lower layer to widen a higher decision (rejected, kept for audit).
     pub rejected_widenings: Vec<String>,
 }
@@ -289,6 +356,25 @@ pub fn resolve(layers: &BTreeMap<Authority, Layer>) -> ResolvedConfig {
                 out.mcp_servers.remove(name);
             }
         }
+        // device constraints: the machine's alone (REQ-EV-0040); any other
+        // layer that names one is refused, and the refusal is kept
+        if let Some(d) = &layer.device {
+            if level == Authority::Device {
+                out.device = Some(Resolved {
+                    value: d.clone(),
+                    provenance: Provenance {
+                        decided_by: level,
+                        overridden: vec![],
+                    },
+                });
+            } else {
+                for field in d.set_fields() {
+                    out.rejected_widenings.push(format!(
+                        "{level:?} tried to set device constraint `{field}`; only the device (machine) policy sets it"
+                    ));
+                }
+            }
+        }
         // review-comment authors: granted by the organization only, narrowed
         // below it
         if let Some(set) = &layer.review_comment_authors {
@@ -346,6 +432,71 @@ pub fn resolve(layers: &BTreeMap<Authority, Layer>) -> ResolvedConfig {
         }
     }
     out
+}
+
+#[cfg(test)]
+mod device_tests {
+    use super::*;
+
+    #[test]
+    fn only_the_device_sets_device_constraints_and_its_denials_stand_below_it() {
+        let device = Layer {
+            device: Some(DeviceConstraints {
+                sandbox_required: Some(true),
+                telemetry: Some("off".into()),
+                ..DeviceConstraints::default()
+            }),
+            permissions: BTreeMap::from([("network.egress".to_owned(), Permission::Deny)]),
+            ..Layer::default()
+        };
+        let project = Layer {
+            device: Some(DeviceConstraints {
+                sandbox_required: Some(false),
+                telemetry: Some("full".into()),
+                ..DeviceConstraints::default()
+            }),
+            permissions: BTreeMap::from([("network.egress".to_owned(), Permission::Allow)]),
+            ..Layer::default()
+        };
+        let r = resolve(&BTreeMap::from([
+            (Authority::Device, device),
+            (Authority::Project, project),
+        ]));
+        let d = r.device.unwrap();
+        assert_eq!(d.provenance.decided_by, Authority::Device);
+        assert_eq!(d.value.sandbox_required, Some(true));
+        assert_eq!(d.value.telemetry.as_deref(), Some("off"));
+        assert_eq!(
+            r.permissions["network.egress"].value,
+            Permission::Deny,
+            "the project cannot widen the device's denial"
+        );
+        let refused = r.rejected_widenings.join("\n");
+        assert!(
+            refused.contains("Project tried to set device constraint `sandbox_required`"),
+            "{refused}"
+        );
+        assert!(
+            refused.contains("Project tried to set device constraint `telemetry`"),
+            "{refused}"
+        );
+        assert!(
+            refused.contains("Project tried to widen permission `network.egress`"),
+            "{refused}"
+        );
+        // Without a device layer, a project's device key sets nothing.
+        let r = resolve(&BTreeMap::from([(
+            Authority::Project,
+            Layer {
+                device: Some(DeviceConstraints {
+                    sandbox_required: Some(false),
+                    ..DeviceConstraints::default()
+                }),
+                ..Layer::default()
+            },
+        )]));
+        assert!(r.device.is_none());
+    }
 }
 
 #[cfg(test)]
