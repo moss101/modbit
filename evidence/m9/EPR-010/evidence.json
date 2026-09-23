@@ -1,0 +1,41 @@
+{
+ "task": "EPR-010",
+ "requirements": [
+  "REQ-EPR-010",
+  "REQ-EV-0112",
+  "docs/27 \u00a710-11",
+  "docs/38 CompleteAccountingAndAttribution",
+  "docs/34 Verified workflow economics and routing observability"
+ ],
+ "scenarios": [
+  "an initial leg on the economical solver fails (NO_PROGRESS): the request record says fail, initial leg false, with the compiler's decision (every candidate's mean/LCB) and every plan version, pinned by RequestOutcomeRecorded at the run's end",
+  "an operator plan prevalidates the stronger solver; the resumed run escalates and succeeds: request pass and verified, not first-pass, initial leg still false, escalation success true, path CASCADE, the gate's REJECT kept with NONE_OBSERVED",
+  "every attempt reconciles token for token (input, cached subset, output, provider request id) with the scripted provider's reported usage, and the cost equals those tokens at the registry's prices",
+  "a person's ACCEPT is an explicit signal by reference with a REVIEW_DECIDED record; a restarted Core rebuilds the same record",
+  "a provider answer without usage and an invocation a Core kill cut off hold their slot's reservation; a late invoice settles one once at the registry's prices; a duplicate charges nothing; wrong request id, missing attempt, bad subsets, a reported attempt and a client without provider.configure are refused",
+  "unit: tenant filtering, replayed attempt dedupe, a retention-removed payload listed unavailable, per-subset pricing"
+ ],
+ "tests": [
+  "services/modbit-core/tests/surface_protocol.rs::qual_epr_010_the_request_record_reconciles_to_provider_usage_and_keeps_legs_and_gates_apart",
+  "services/modbit-core/tests/surface_protocol.rs::epr_fi_010_unknown_work_holds_its_reservation_across_a_kill_and_a_late_invoice_settles_it_once",
+  "services/modbit-core/src/accounting.rs::tests::{each_subset_of_the_input_is_charged_at_its_own_price, a_replayed_attempt_record_is_counted_once_and_named, another_tenants_envelopes_in_the_session_are_not_this_requests_accounting, a_signal_whose_payload_retention_removed_is_unavailable_not_absent}",
+  "crates/providers/tests/conformance.rs::usage_means_the_same_on_both_wires_and_a_repeated_report_is_not_added"
+ ],
+ "batch_commits": [
+  "fe37d2c"
+ ],
+ "runs": [
+  "35827023410"
+ ],
+ "ci": {
+  "run_id": "35827023410",
+  "head_sha": "1de52f7b07318b80e9ec002ddcaf5029210b738f",
+  "conclusion": "success",
+  "note": "every Rust job green on macOS, Linux and Windows; the macOS desktop-E2E job passed on rerun after the documented CAPACITY_EXHAUSTED timing flake",
+  "json": "evidence/m9/EPR-010/ci-run-35827023410.json"
+ },
+ "audit": "IMPLEMENTED-PARTIAL before: plans, admissions, activations, attempts (input/output, unknown kept unknown), continuations, reviewer legs, gate evaluations were on the log, but nothing assembled a request's accounting: no cached subset, latency or price per attempt, candidates' mean/LCB dropped, reviewer-task usage unlinked, cut-off invocations untraced, no settlement, no late-invoice path, no request/leg/gate attribution, no raw-signal record; the Messages adapter's input_tokens excluded cache reads.",
+ "proof": "On the real Core against a scripted OpenAI-compatible provider over HTTP, an escalated request's record reconciles to the provider's own usage report and keeps request, leg and gate observations apart; a kill, a missing usage frame and a late invoice are accounted without loss or double charge.",
+ "negative_proof": "Before the change the escalated request had no record at all; the Messages adapter reported 50 input tokens for a 50 plain + 40 cached message billed as 90; the FI refusals and the duplicate delivery are the negative cases of the invoice path.",
+ "limitations": "Retention deletion exercised at the accounting boundary (payload object removed), no product retention operation yet (docs/31 Retention owner); verification time reported, not priced; keep signal and composite reward named missing (no keep window, no reward version); model calls outside routing attempts (compaction, vision bridge) are not request attempts yet; live-provider half rides any live run."
+}

@@ -28347,8 +28347,55 @@
    ],
    "task_card": "docs/49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md#epr-010",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller or executor present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-35827023410",
+    "test:qual_epr_010_the_request_record_reconciles_to_provider_usage_and_keeps_legs_and_gates_apart",
+    "test:epr_fi_010_unknown_work_holds_its_reservation_across_a_kill_and_a_late_invoice_settles_it_once",
+    "artifact:evidence/m9/EPR-010/TASK_CARD.md",
+    "artifact:evidence/m9/EPR-010/evidence.json",
+    "artifact:evidence/m9/EPR-010/ci-run-35827023410.json",
+    "commit:fe37d2c"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-23T07:07:24Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED-PARTIAL: plans/admissions/activations/attempts/gates on the log but no request accounting; attempts unpriced without cached subset or latency; candidates' mean/LCB dropped; reviewer usage unlinked; cut-off invocations untraced; no settlement or late invoice; Messages adapter input_tokens excluded cache reads"
+    },
+    {
+     "at": "2026-09-23T07:07:24Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "accounting.rs derivation + RequestOutcomeRecorded in run-end batches, review conclusion/decision, ReconcileUsage; attempts priced; RoutingDecisionRecorded; GetRequestOutcome; usage semantics normalized; docs/34/30/15/27 as-built"
+    },
+    {
+     "at": "2026-09-23T07:07:24Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "PR #23 squashed to main as fe37d2c"
+    },
+    {
+     "at": "2026-09-23T07:07:24Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "hosted CI run 35827023410 green on macOS/Linux/Windows (macOS desktop-E2E on rerun after the documented capacity flake)"
+    },
+    {
+     "at": "2026-09-23T07:07:24Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "escalated request reconciled token for token to provider-reported usage; kill, missing usage and late invoice accounted without loss or double charge"
+    },
+    {
+     "at": "2026-09-23T07:07:24Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-23T07:07:24Z"
   },
   {
    "id": "EPR-011",
