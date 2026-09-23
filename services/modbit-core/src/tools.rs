@@ -746,6 +746,7 @@ impl ToolHost {
             lease_generation,
             projection,
             cancel,
+            compensates,
         } = call;
         let (workspace, root) = match &workspace_root {
             Some(r) => {
@@ -1556,6 +1557,13 @@ impl ToolHost {
                         evidence_ref: None,
                         status: format!("{:?}", result.status).to_uppercase(),
                         occurred_at: now,
+                        // REQ-EV-0066: how far this effect can be taken back,
+                        // from the tool's own declaration; never optimistic.
+                        reversibility: Some(self.runtime.registry().get(tool_name).map_or_else(
+                            || modbit_domain::toolcall::Reversibility::of(effect_class, false),
+                            |t| t.spec().reversibility(),
+                        )),
+                        compensates,
                         receipt_hash: String::new(),
                     });
                 }
@@ -1912,6 +1920,9 @@ pub struct InvokeRequest<'a> {
     /// The run's cancellation token, so a process the tool runs stops with
     /// the run (M9.5); `None` outside a live loop.
     pub cancel: Option<tokio_util::sync::CancellationToken>,
+    /// The effect this call compensates, when it is a compensation
+    /// (REQ-EV-0066): its receipt names it.
+    pub compensates: Option<modbit_domain::EffectId>,
 }
 
 /// What an invocation produced.

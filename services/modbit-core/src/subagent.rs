@@ -400,6 +400,7 @@ async fn run_inner(
                         // fence under the read-only guard above.
                         projection: Some(tools.iter().map(|t| t.name.clone()).collect()),
                         cancel: None,
+                        compensates: None,
                     },
                 )
                 .await;

@@ -98,6 +98,7 @@ fn spec(
         timeout_ms: 60_000,
         output_budget_bytes: 64 * 1024,
         idempotency: idem,
+        compensation: None,
     }
 }
 

@@ -1247,6 +1247,20 @@ export declare type EffectReceiptView = Message<"modbit.v1.EffectReceiptView"> &
    * @generated from field: string receipt_hash = 13;
    */
   receiptHash: string;
+
+  /**
+   * REVERSIBLE | PARTIALLY_REVERSIBLE | COMPENSATABLE | IRREVERSIBLE; "" before REQ-EV-0066
+   *
+   * @generated from field: string reversibility = 14;
+   */
+  reversibility: string;
+
+  /**
+   * the effect this one compensates, when it is a compensation
+   *
+   * @generated from field: modbit.v1.Id compensates = 15;
+   */
+  compensates?: Id | undefined;
 };
 
 /**
@@ -10481,6 +10495,92 @@ export declare type ReviewCommentsIngestedView = Message<"modbit.v1.ReviewCommen
  * Use `create(ReviewCommentsIngestedViewSchema)` to create a new message.
  */
 export declare const ReviewCommentsIngestedViewSchema: GenMessage<ReviewCommentsIngestedView>;
+
+/**
+ * Counteract an effect that cannot be undone with the compensation its tool
+ * declares — itself an approved external effect whose receipt names the
+ * effect it compensates. The first call asks for the approval; the call
+ * after the person decides runs it.
+ *
+ * @generated from message modbit.v1.CompensateEffect
+ */
+export declare type CompensateEffect = Message<"modbit.v1.CompensateEffect"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * the call whose effect is compensated
+   *
+   * @generated from field: modbit.v1.Id tool_call_id = 2;
+   */
+  toolCallId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.CompensateEffect.
+ * Use `create(CompensateEffectSchema)` to create a new message.
+ */
+export declare const CompensateEffectSchema: GenMessage<CompensateEffect>;
+
+/**
+ * @generated from message modbit.v1.CompensationAck
+ */
+export declare type CompensationAck = Message<"modbit.v1.CompensationAck"> & {
+  /**
+   * APPROVAL_PENDING | COMPENSATED | DENIED
+   *
+   * @generated from field: string status = 1;
+   */
+  status: string;
+
+  /**
+   * @generated from field: string compensating_tool = 2;
+   */
+  compensatingTool: string;
+
+  /**
+   * @generated from field: modbit.v1.Id compensating_tool_call_id = 3;
+   */
+  compensatingToolCallId?: Id | undefined;
+
+  /**
+   * @generated from field: string approval_id = 4;
+   */
+  approvalId: string;
+
+  /**
+   * @generated from field: string intent_hash = 5;
+   */
+  intentHash: string;
+
+  /**
+   * @generated from field: modbit.v1.Id original_effect_id = 6;
+   */
+  originalEffectId?: Id | undefined;
+
+  /**
+   * @generated from field: repeated string effect_receipt_ids = 7;
+   */
+  effectReceiptIds: string[];
+
+  /**
+   * @generated from field: bool replayed = 8;
+   */
+  replayed: boolean;
+
+  /**
+   * @generated from field: string detail = 9;
+   */
+  detail: string;
+};
+
+/**
+ * Describes the message modbit.v1.CompensationAck.
+ * Use `create(CompensationAckSchema)` to create a new message.
+ */
+export declare const CompensationAckSchema: GenMessage<CompensationAck>;
 
 /**
  * Command acknowledgement.

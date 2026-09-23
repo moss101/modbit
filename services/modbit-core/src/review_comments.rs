@@ -181,6 +181,7 @@ pub(crate) async fn ingest(
                 lease_generation,
                 projection: None,
                 cancel: None,
+                compensates: None,
             },
         )
         .await

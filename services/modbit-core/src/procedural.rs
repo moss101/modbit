@@ -346,6 +346,7 @@ async fn serve(
             lease_generation: lineage.lease(),
             projection: Some(projection.clone()),
             cancel: None,
+            compensates: None,
         };
         let done = match core.tools.invoke(&core.store, req).await {
             Ok(d) => d,

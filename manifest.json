@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 90,
-    "root_and_tooling": 1534,
-    "docs_bytes": 1320268
+    "root_and_tooling": 1535,
+    "docs_bytes": 1322917
   },
   "sections": [
     {
@@ -248,8 +248,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Security, Policy, Capabilities, Secrets, and Effect Ledger",
-      "bytes": 14175,
-      "sha256": "8ca46bb4d4dc30921a1a8076609666566ad44a4578f234040b8e0c3a21043e9c"
+      "bytes": 15950,
+      "sha256": "f15cf9bbaf97745a3a36d26714748d0d9da516cb1f4af9e6d519a38883345406"
     },
     {
       "path": "docs/24_CLOUD_CONTROL_PLANE_AND_SYNC.md",
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 42860,
-      "sha256": "d966a1cf31ca701e2639592d8a88a713c831e5ae6cc5a2f5edc2cbdb73e03da3"
+      "bytes": 43463,
+      "sha256": "237fb188ee2412881bf24efe4130db3cb3449ebb788b8a8a020d474ad2da3226"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -320,8 +320,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Database and Storage Schema",
-      "bytes": 14957,
-      "sha256": "6b0faeb70e7a403fa52c00d1dbd0771e78e16a00cf43de879fc5d42be0a76c8f"
+      "bytes": 15228,
+      "sha256": "471cccdabae45c478d38feb0a2db6ead8152cd0dde24fc04ed4bbb11f4d876aa"
     },
     {
       "path": "docs/32_DESKTOP_FRONTEND_IMPLEMENTATION.md",
@@ -8289,6 +8289,11 @@
       "path": "evidence/m9/EPR-010/evidence.json",
       "bytes": 4136,
       "sha256": "6e34899ed9ccbb56235a37df58451b8ec750b92bb9bc00663c42a5c8d1682041"
+    },
+    {
+      "path": "evidence/m9/IMP-EV-0066/TASK_CARD.md",
+      "bytes": 3273,
+      "sha256": "cad1ca65a9f994af9d606ec09d87cbf4b07fe429dec59940acf2e942fbf7995a"
     },
     {
       "path": "evidence/m9/IMP-EV-0104/TASK_CARD.md",

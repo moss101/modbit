@@ -50,6 +50,8 @@ Unique `(aggregate_id, sequence)`.
 ### `effect_receipts`
 `effect_id PK, previous_receipt_hash, task_id, turn_id, step_id, tool_call_id, capability_lease_id, intent_hash, policy_decision, approval_id, execution_target, evidence_ref, status, occurred_at, receipt_hash`.
 
+As built (V17, REQ-EV-0066): plus nullable `reversibility` (`REVERSIBLE` | `PARTIALLY_REVERSIBLE` | `COMPENSATABLE` | `IRREVERSIBLE`) and `compensates` (the effect a compensation counteracts); rows written before V17 carry neither and verify with their original hashes.
+
 ### `protocol_state`
 Keyed by `session_id + protocol_key`; stores typed JSON/protobuf payload and generation for pending tool/approval/question/subagent/terminal/browser/sandbox lifecycle.
 `(session_id, protocol_key) PK, payload, generation, updated_at`. Key `task:<task_id>` holds the task's `ProtocolState` (`crates/protocol-state`: outstanding calls with their phase, pending approvals with their intent hash, the open question, active leases, reconciled unknown outcomes), materialized in the transaction of every event that touches the task's calls, approvals, leases, question or reconciliations (M4.1); terminal/browser/sandbox keys arrive with M4.5.
