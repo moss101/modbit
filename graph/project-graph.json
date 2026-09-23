@@ -12346,8 +12346,54 @@
    "milestone": "M9",
    "qual": "QUAL-EV-0066",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-35832652662",
+    "test:qual_ev_0066_an_external_effect_is_never_undoable_and_its_compensation_is_a_receipt_of_its_own",
+    "artifact:evidence/m9/IMP-EV-0066/TASK_CARD.md",
+    "artifact:evidence/m9/IMP-EV-0066/evidence.json",
+    "artifact:evidence/m9/IMP-EV-0066/ci-run-35832652662.json",
+    "commit:a195139"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-23T09:59:08Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "IMPLEMENTED-PARTIAL: effect classes and receipt chain existed; no reversibility on receipts; UndoToolCall said NOTHING_TO_UNDO for external effects; no compensation"
+    },
+    {
+     "at": "2026-09-23T09:59:09Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "Reversibility::of + ToolSpec.compensation; receipts stamped; V17; NOT_UNDOABLE; CompensateEffect with compensates receipts; docs/23, 30, 31"
+    },
+    {
+     "at": "2026-09-23T09:59:10Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "PR #25 squashed to main as a195139"
+    },
+    {
+     "at": "2026-09-23T09:59:11Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "hosted CI run 35832652662 green on macOS/Linux/Windows (macOS desktop-E2E on rerun)"
+    },
+    {
+     "at": "2026-09-23T09:59:12Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "external effect refused undo; compensation under approval leaves a distinct linked receipt; chain verifies across restart"
+    },
+    {
+     "at": "2026-09-23T09:59:13Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Sealed"
+    }
+   ],
+   "status_changed_on": "2026-09-23T09:59:13Z"
   },
   {
    "id": "IMP-EV-0067",

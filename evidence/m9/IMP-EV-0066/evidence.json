@@ -1,0 +1,37 @@
+{
+ "task": "IMP-EV-0066",
+ "requirements": [
+  "REQ-EV-0066",
+  "docs/23 Protected-effect receipt chain / Reversibility"
+ ],
+ "scenarios": [
+  "the opened pull request's receipt is COMPENSATABLE; UndoToolCall refuses it NOT_UNDOABLE naming forge.pr.update",
+  "CompensateEffect asks for its own approval first (nothing reaches the forge), then closes the pull request once",
+  "the compensation receipt is a new effect naming the original (compensates), IRREVERSIBLE itself, beside the untouched original; the chain verifies",
+  "a second request answers from the compensation receipt; the compensation can be neither undone nor compensated",
+  "after a kill and restart the chain with the new fields verifies from the projection and reads back identical",
+  "a pre-V17 receipt keeps its hash; relabelling a compensatable effect as reversible breaks the chain"
+ ],
+ "tests": [
+  "services/modbit-core/tests/surface_protocol.rs::qual_ev_0066_an_external_effect_is_never_undoable_and_its_compensation_is_a_receipt_of_its_own",
+  "crates/policy/src/ledger.rs::tests::reversibility_and_compensation_are_hashed_and_legacy_receipts_keep_their_hash",
+  "crates/event-store/tests/{migrations_projections_commands,real_sqlite,routing_state}.rs at schema V17"
+ ],
+ "batch_commits": [
+  "a195139"
+ ],
+ "runs": [
+  "35832652662"
+ ],
+ "ci": {
+  "run_id": "35832652662",
+  "head_sha": "3004860c18193a9b630ed9bc35eb3f15c8416f98",
+  "conclusion": "success",
+  "note": "every Rust job green on macOS, Linux and Windows; the macOS desktop-E2E job passed on rerun after a states.spec restart-window render race unrelated to receipts (it passed on Linux and Windows in the same run)",
+  "json": "evidence/m9/IMP-EV-0066/ci-run-35832652662.json"
+ },
+ "audit": "IMPLEMENTED-PARTIAL before: effect classes and a hash-chained receipt existed, but no receipt said how far its effect could be taken back, UndoToolCall answered NOTHING_TO_UNDO ('the call changed no files') for an opened pull request, and there was no compensation path or compensation receipt.",
+ "proof": "Real Core against a GitHub-compatible forge and a real bare remote: an external effect is labelled COMPENSATABLE and refused an undo; its compensation runs under approval once and leaves a distinct receipt linked to the original; the chain verifies across a restart.",
+ "negative_proof": "The receipt chain rejects a relabelled class; the compensation itself is refused both undo and compensation.",
+ "limitations": "One declared compensation (forge.pr.create -> close); MCP and browser effects are IRREVERSIBLE until their tools declare one; PARTIALLY_REVERSIBLE effects keep the typed content undo."
+}
