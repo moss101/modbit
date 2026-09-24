@@ -53,9 +53,6 @@ pub const MAX_TIMEOUT_MS: u64 = 30_000;
 /// Bytes of a handler's answer read; more is a malformed answer.
 pub const MAX_ANSWER_BYTES: usize = 64 * 1024;
 
-/// The file an extension declares itself in.
-pub const EXTENSION_MANIFEST: &str = "modbit-extension.json";
-
 /// Where in the lifecycle a hook runs.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -296,42 +293,6 @@ impl HookSpec {
                 .is_some_and(|rest| rest.starts_with('.')),
             None => t == tool,
         })
-    }
-}
-
-/// An extension's declaration of itself (REQ-EV-0240): what it is and the
-/// handlers it registers. Its handlers run outside the Core like any hook.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct ExtensionManifest {
-    /// Name.
-    pub name: String,
-    /// Version.
-    pub version: String,
-    /// The hooks it registers.
-    #[serde(default)]
-    pub hooks: Vec<HookSpec>,
-}
-
-impl ExtensionManifest {
-    /// Parse and validate a manifest.
-    ///
-    /// # Errors
-    /// Why it cannot be loaded.
-    pub fn parse(json: &str) -> Result<Self, String> {
-        let m: Self =
-            serde_json::from_str(json).map_err(|e| format!("not an extension manifest: {e}"))?;
-        if m.name.trim().is_empty() || m.version.trim().is_empty() {
-            return Err("an extension names itself and its version".into());
-        }
-        let mut seen = std::collections::BTreeSet::new();
-        for h in &m.hooks {
-            h.validate()?;
-            if !seen.insert(h.name.clone()) {
-                return Err(format!("hook `{}` is declared twice", h.name));
-            }
-        }
-        Ok(m)
     }
 }
 
@@ -876,7 +837,7 @@ mod tests {
             assert!(HookSpec::parse(bad).is_err(), "{bad}");
         }
         assert!(
-            ExtensionManifest::parse(
+            crate::extensions::ExtensionManifest::parse(
                 r#"{"name":"e","version":"1","hooks":[{"name":"a","point":"after_run","command":["true"]},{"name":"a","point":"after_run","command":["true"]}]}"#
             )
             .is_err(),

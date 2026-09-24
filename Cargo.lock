@@ -2593,6 +2593,7 @@ dependencies = [
 name = "modbit-tools"
 version = "0.0.0"
 dependencies = [
+ "ed25519-dalek",
  "globset",
  "hex",
  "jsonschema",

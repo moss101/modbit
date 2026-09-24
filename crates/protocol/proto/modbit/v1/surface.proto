@@ -1350,9 +1350,28 @@ message ExternalServerConfigured {
 // a directory whose `modbit-extension.json` registers hooks for a session's
 // tasks; loading one is trusting a program to run against the workspace.
 
+// What an extension is and would do, and who vouches for it, before it is
+// loaded (REQ-EV-0225). Reads the directory; changes nothing.
+message InspectExtension {
+  string path = 1;
+}
+
+message ExtensionInspectionView {
+  string name = 1;
+  string version = 2;
+  string publisher = 3;
+  string source = 4;
+  string manifest_digest = 5;
+  string signature = 6;            // VERIFIED:<key> | UNSIGNED | UNKNOWN_KEY:<key> | INVALID:<key>
+  string quarantine_reason = 7;    // why it would load inert; "" when it would be active
+  repeated string capabilities = 8; // everything it would do, in words
+  string path = 9;
+}
+
 message LoadExtension {
   Id session_id = 1;
   string path = 2;                 // the extension's directory on this machine
+  string expected_digest = 3;      // the manifest that was inspected; another is refused
 }
 
 message ExtensionLoadedView {
@@ -1361,6 +1380,29 @@ message ExtensionLoadedView {
   string version = 3;
   string manifest_digest = 4;      // sha256 of the manifest as loaded
   repeated string hooks = 5;       // "<name>@<point>"
+  string signature = 6;
+  string quarantined = 7;          // why it is inert; "" when active
+  repeated string tools = 8;       // tool servers (external.<server>.<tool>)
+  repeated string commands = 9;
+  repeated string providers = 10;  // endpoints registered ("ext.<extension>.<provider>")
+  repeated string capabilities = 11;
+}
+
+// The person releases a quarantined extension: this exact manifest, which
+// they have seen. One whose signature does not verify is never released.
+message TrustExtension {
+  Id session_id = 1;
+  string extension_id = 2;
+  string manifest_digest = 3;
+}
+
+// Run an active extension's instruction template on a task: the expanded
+// text is queued as the person's input, the command its provenance.
+message RunExtensionCommand {
+  Id task_id = 1;
+  string command = 2;              // "<extension>/<command>"
+  string arguments = 3;
+  string input_id = 4;
 }
 
 // Unloading removes the extension's handlers at once: none runs again, and

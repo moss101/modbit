@@ -5671,6 +5671,87 @@ export declare type ExternalServerConfigured = Message<"modbit.v1.ExternalServer
 export declare const ExternalServerConfiguredSchema: GenMessage<ExternalServerConfigured>;
 
 /**
+ * What an extension is and would do, and who vouches for it, before it is
+ * loaded (REQ-EV-0225). Reads the directory; changes nothing.
+ *
+ * @generated from message modbit.v1.InspectExtension
+ */
+export declare type InspectExtension = Message<"modbit.v1.InspectExtension"> & {
+  /**
+   * @generated from field: string path = 1;
+   */
+  path: string;
+};
+
+/**
+ * Describes the message modbit.v1.InspectExtension.
+ * Use `create(InspectExtensionSchema)` to create a new message.
+ */
+export declare const InspectExtensionSchema: GenMessage<InspectExtension>;
+
+/**
+ * @generated from message modbit.v1.ExtensionInspectionView
+ */
+export declare type ExtensionInspectionView = Message<"modbit.v1.ExtensionInspectionView"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string version = 2;
+   */
+  version: string;
+
+  /**
+   * @generated from field: string publisher = 3;
+   */
+  publisher: string;
+
+  /**
+   * @generated from field: string source = 4;
+   */
+  source: string;
+
+  /**
+   * @generated from field: string manifest_digest = 5;
+   */
+  manifestDigest: string;
+
+  /**
+   * VERIFIED:<key> | UNSIGNED | UNKNOWN_KEY:<key> | INVALID:<key>
+   *
+   * @generated from field: string signature = 6;
+   */
+  signature: string;
+
+  /**
+   * why it would load inert; "" when it would be active
+   *
+   * @generated from field: string quarantine_reason = 7;
+   */
+  quarantineReason: string;
+
+  /**
+   * everything it would do, in words
+   *
+   * @generated from field: repeated string capabilities = 8;
+   */
+  capabilities: string[];
+
+  /**
+   * @generated from field: string path = 9;
+   */
+  path: string;
+};
+
+/**
+ * Describes the message modbit.v1.ExtensionInspectionView.
+ * Use `create(ExtensionInspectionViewSchema)` to create a new message.
+ */
+export declare const ExtensionInspectionViewSchema: GenMessage<ExtensionInspectionView>;
+
+/**
  * @generated from message modbit.v1.LoadExtension
  */
 export declare type LoadExtension = Message<"modbit.v1.LoadExtension"> & {
@@ -5685,6 +5766,13 @@ export declare type LoadExtension = Message<"modbit.v1.LoadExtension"> & {
    * @generated from field: string path = 2;
    */
   path: string;
+
+  /**
+   * the manifest that was inspected; another is refused
+   *
+   * @generated from field: string expected_digest = 3;
+   */
+  expectedDigest: string;
 };
 
 /**
@@ -5725,6 +5813,42 @@ export declare type ExtensionLoadedView = Message<"modbit.v1.ExtensionLoadedView
    * @generated from field: repeated string hooks = 5;
    */
   hooks: string[];
+
+  /**
+   * @generated from field: string signature = 6;
+   */
+  signature: string;
+
+  /**
+   * why it is inert; "" when active
+   *
+   * @generated from field: string quarantined = 7;
+   */
+  quarantined: string;
+
+  /**
+   * tool servers (external.<server>.<tool>)
+   *
+   * @generated from field: repeated string tools = 8;
+   */
+  tools: string[];
+
+  /**
+   * @generated from field: repeated string commands = 9;
+   */
+  commands: string[];
+
+  /**
+   * endpoints registered ("ext.<extension>.<provider>")
+   *
+   * @generated from field: repeated string providers = 10;
+   */
+  providers: string[];
+
+  /**
+   * @generated from field: repeated string capabilities = 11;
+   */
+  capabilities: string[];
 };
 
 /**
@@ -5732,6 +5856,71 @@ export declare type ExtensionLoadedView = Message<"modbit.v1.ExtensionLoadedView
  * Use `create(ExtensionLoadedViewSchema)` to create a new message.
  */
 export declare const ExtensionLoadedViewSchema: GenMessage<ExtensionLoadedView>;
+
+/**
+ * The person releases a quarantined extension: this exact manifest, which
+ * they have seen. One whose signature does not verify is never released.
+ *
+ * @generated from message modbit.v1.TrustExtension
+ */
+export declare type TrustExtension = Message<"modbit.v1.TrustExtension"> & {
+  /**
+   * @generated from field: modbit.v1.Id session_id = 1;
+   */
+  sessionId?: Id | undefined;
+
+  /**
+   * @generated from field: string extension_id = 2;
+   */
+  extensionId: string;
+
+  /**
+   * @generated from field: string manifest_digest = 3;
+   */
+  manifestDigest: string;
+};
+
+/**
+ * Describes the message modbit.v1.TrustExtension.
+ * Use `create(TrustExtensionSchema)` to create a new message.
+ */
+export declare const TrustExtensionSchema: GenMessage<TrustExtension>;
+
+/**
+ * Run an active extension's instruction template on a task: the expanded
+ * text is queued as the person's input, the command its provenance.
+ *
+ * @generated from message modbit.v1.RunExtensionCommand
+ */
+export declare type RunExtensionCommand = Message<"modbit.v1.RunExtensionCommand"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * "<extension>/<command>"
+   *
+   * @generated from field: string command = 2;
+   */
+  command: string;
+
+  /**
+   * @generated from field: string arguments = 3;
+   */
+  arguments: string;
+
+  /**
+   * @generated from field: string input_id = 4;
+   */
+  inputId: string;
+};
+
+/**
+ * Describes the message modbit.v1.RunExtensionCommand.
+ * Use `create(RunExtensionCommandSchema)` to create a new message.
+ */
+export declare const RunExtensionCommandSchema: GenMessage<RunExtensionCommand>;
 
 /**
  * Unloading removes the extension's handlers at once: none runs again, and

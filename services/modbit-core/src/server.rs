@@ -1093,7 +1093,10 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         "TrustExternalServer" | "ConfigureExternalCredential" => "repository.trust",
         // Loading an extension is trusting its programs to run against the
         // session's workspaces (REQ-EV-0240): the same class of decision.
-        "LoadExtension" | "UnloadExtension" => "repository.trust",
+        "LoadExtension" | "UnloadExtension" | "InspectExtension" | "TrustExtension" => {
+            "repository.trust"
+        }
+        "RunExtensionCommand" => "task.author",
         "ConfigureSandboxGateway" => "sandbox.configure",
         "ExportHandoff" => "task.author",
         "GetEnvironment" | "RebuildEnvironment" => "task.author",
@@ -4620,17 +4623,67 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 .encode_to_vec(),
             )
         }
-        "LoadExtension" | "UnloadExtension" => {
-            let (session, path, extension_id) = if env.command_type == "LoadExtension" {
-                let Ok(p) = wire::LoadExtension::decode(env.payload.as_slice()) else {
-                    return reject(cid, "BAD_PAYLOAD", "LoadExtension");
-                };
-                (p.session_id, p.path, String::new())
-            } else {
-                let Ok(p) = wire::UnloadExtension::decode(env.payload.as_slice()) else {
-                    return reject(cid, "BAD_PAYLOAD", "UnloadExtension");
-                };
-                (p.session_id, String::new(), p.extension_id)
+        "InspectExtension" => {
+            let Ok(p) = wire::InspectExtension::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "InspectExtension");
+            };
+            match crate::extensions::inspect(&p.path) {
+                Ok(v) => accept(cid, false, v.encode_to_vec()),
+                Err((code, detail)) => reject(cid, &code, detail),
+            }
+        }
+        "RunExtensionCommand" => {
+            let Ok(p) = wire::RunExtensionCommand::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "RunExtensionCommand");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            if p.input_id.is_empty() {
+                return reject(cid, "BAD_PAYLOAD", "input_id required");
+            }
+            let task = match core.store.lock().await.task(&task_id) {
+                Ok(Some(t)) => t,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
+                return ack;
+            }
+            match crate::extensions::run_command(
+                core,
+                &task,
+                &p.command,
+                &p.arguments,
+                &p.input_id,
+                Actor::User(core.user_id),
+            )
+            .await
+            {
+                Ok(v) => accept(cid, false, v.encode_to_vec()),
+                Err((code, detail)) => reject(cid, &code, detail),
+            }
+        }
+        "LoadExtension" | "UnloadExtension" | "TrustExtension" => {
+            let (session, path, extension_id, digest) = match env.command_type.as_str() {
+                "LoadExtension" => {
+                    let Ok(p) = wire::LoadExtension::decode(env.payload.as_slice()) else {
+                        return reject(cid, "BAD_PAYLOAD", "LoadExtension");
+                    };
+                    (p.session_id, p.path, String::new(), p.expected_digest)
+                }
+                "TrustExtension" => {
+                    let Ok(p) = wire::TrustExtension::decode(env.payload.as_slice()) else {
+                        return reject(cid, "BAD_PAYLOAD", "TrustExtension");
+                    };
+                    (p.session_id, String::new(), p.extension_id, p.manifest_digest)
+                }
+                _ => {
+                    let Ok(p) = wire::UnloadExtension::decode(env.payload.as_slice()) else {
+                        return reject(cid, "BAD_PAYLOAD", "UnloadExtension");
+                    };
+                    (p.session_id, String::new(), p.extension_id, String::new())
+                }
             };
             let Some(session_id) = session.as_ref().and_then(id16).map(SessionId::from_bytes)
             else {
@@ -4648,16 +4701,22 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 return ack;
             }
             let actor = Actor::User(core.user_id);
-            if env.command_type == "LoadExtension" {
-                match crate::hooks::load(core, session_id, &path, actor).await {
-                    Ok(v) => accept(cid, true, v.encode_to_vec()),
-                    Err((code, detail)) => reject(cid, &code, detail),
+            let result = match env.command_type.as_str() {
+                "LoadExtension" => crate::extensions::load(core, session_id, &path, &digest, actor)
+                    .await
+                    .map(|v| v.encode_to_vec()),
+                "TrustExtension" => {
+                    crate::extensions::trust(core, session_id, &extension_id, &digest, actor)
+                        .await
+                        .map(|v| v.encode_to_vec())
                 }
-            } else {
-                match crate::hooks::unload(core, session_id, &extension_id, actor).await {
-                    Ok(v) => accept(cid, true, v.encode_to_vec()),
-                    Err((code, detail)) => reject(cid, &code, detail),
-                }
+                _ => crate::extensions::unload(core, session_id, &extension_id, actor)
+                    .await
+                    .map(|v| v.encode_to_vec()),
+            };
+            match result {
+                Ok(bytes) => accept(cid, true, bytes),
+                Err((code, detail)) => reject(cid, &code, detail),
             }
         }
         "ListHooks" => {
@@ -4841,6 +4900,10 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             if let Err(ack) = require_lease(core, &cid, &env, &task.session_id).await {
                 return ack;
             }
+            // REQ-EV-0138: the session's active extensions' providers are
+            // registered before the run routes (a restarted Core's gateway
+            // starts without them).
+            crate::extensions::ensure_session(core, task.session_id).await;
             // docs/23 "Emergency stop": a stopped session starts nothing; the
             // stop is on the log and lasts for the session.
             if let Ok(Some(s)) = core.store.lock().await.session(&task.session_id)
