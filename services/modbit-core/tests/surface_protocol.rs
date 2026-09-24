@@ -22946,7 +22946,7 @@ async fn m6_2_capacity_tickets_gate_runs_all_or_nothing_and_lapse_at_expiry() {
     // The second request of every run (one tool result) is held for four
     // seconds: long enough for another task to be refused meanwhile, and
     // longer than the ticket lease in the second half.
-    let (base, _seen) = scripted_model_delayed(script, (1, Duration::from_secs(4))).await;
+    let (base, seen) = scripted_model_delayed(script, (1, Duration::from_secs(4))).await;
     let dir = tempfile::tempdir().unwrap();
     let env = [
         ("MODBIT_OPENAI_BASE_URL", base.as_str()),
@@ -23105,10 +23105,30 @@ async fn m6_2_capacity_tickets_gate_runs_all_or_nothing_and_lapse_at_expiry() {
             g,
         )
     };
+    let requests_before = seen.lock().unwrap().len();
     let _: TaskRunStarted =
         Client::result(&c.command(start2(&task_c, 0x8D)).await.unwrap()).unwrap();
-    // While C is held by the provider (4 s) its ticket lapses (1 s).
-    tokio::time::sleep(Duration::from_millis(2000)).await;
+    // While C is held by the provider (4 s) its ticket lapses (1 s). The
+    // ticket is renewed at the turn boundary before each request, so once
+    // C's second request has reached the provider the renewal is behind it:
+    // one lease and a margin later the ticket has lapsed, however long C's
+    // first turn took, with the rest of the hold left for D to start.
+    let held = || {
+        seen.lock().unwrap()[requests_before..].iter().any(|body| {
+            body["messages"]
+                .as_array()
+                .is_some_and(|m| m.iter().any(|x| x["role"] == "tool"))
+        })
+    };
+    let deadline = std::time::Instant::now() + Duration::from_secs(60);
+    while !held() {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "C's second request never reached the provider"
+        );
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    tokio::time::sleep(Duration::from_millis(1300)).await;
     let _: TaskRunStarted =
         Client::result(&c.command(start2(&task_d, 0x8E)).await.unwrap()).unwrap();
     let st_d = wait_for_state(&mut c, &task_d, "ReadyForReview", 60).await;
