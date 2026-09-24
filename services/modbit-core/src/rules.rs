@@ -25,6 +25,16 @@ pub fn layers(core: &Core, task: &Task) -> Vec<Layer> {
             dir: std::path::PathBuf::from(root).join(".modbit").join("rules"),
         });
     }
+    // REQ-EV-0137/0183: an active extension's rules (an imported agent's
+    // instructions among them) come after the project's, before the user's.
+    for dir in crate::extensions::active_dirs(core, task.session_id, "rules") {
+        let name = dir
+            .parent()
+            .and_then(|p| p.file_name())
+            .map(|n| format!("extension:{}", n.to_string_lossy()))
+            .unwrap_or_else(|| "extension".into());
+        out.push(Layer { name, dir });
+    }
     out.push(Layer {
         name: "user".into(),
         dir: core.data_dir.join("rules"),

@@ -1,0 +1,2 @@
+description = "Explain code"
+prompt = "Explain {{args}} in plain words."

@@ -21,6 +21,9 @@ pub fn roots(core: &Core, task: &Task) -> Vec<PathBuf> {
     if let Some(root) = &task.workspace_root {
         out.push(PathBuf::from(root).join(".modbit").join("agents"));
     }
+    // REQ-EV-0137/0183: an active extension's profiles come after the
+    // project's and before the operator's.
+    out.extend(crate::extensions::active_dirs(core, task.session_id, "agents"));
     out.push(core.data_dir.join("agents"));
     out
 }

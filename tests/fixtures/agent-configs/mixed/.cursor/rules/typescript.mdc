@@ -1,0 +1,6 @@
+---
+description: TypeScript style
+globs: src/**/*.ts, test/**/*.ts
+alwaysApply: false
+---
+Use `strict` mode and avoid `any`.

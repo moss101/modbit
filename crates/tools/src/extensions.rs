@@ -132,6 +132,12 @@ pub struct ExtensionManifest {
     /// Model endpoints.
     #[serde(default)]
     pub providers: Vec<ProviderSpec>,
+    /// Every other file in the extension's directory — its `rules/`,
+    /// `agents/` and `skills/`, a script a hook runs — by relative path and
+    /// sha256, so the manifest a publisher signs or a person trusts covers
+    /// all of it. A file not listed, or changed, refuses the load.
+    #[serde(default)]
+    pub files: BTreeMap<String, String>,
 }
 
 fn simple_name(kind: &str, name: &str) -> Result<(), String> {
@@ -198,6 +204,20 @@ impl ExtensionManifest {
             }
             if !seen.insert(format!("command:{}", c.name)) {
                 return Err(format!("command `{}` is declared twice", c.name));
+            }
+        }
+        for (path, digest) in &m.files {
+            let bad = path.is_empty()
+                || path.starts_with('/')
+                || path.contains('\\')
+                || path.split('/').any(|seg| seg.is_empty() || seg == "." || seg == "..")
+                || path == EXTENSION_MANIFEST
+                || path == EXTENSION_SIGNATURE;
+            if bad {
+                return Err(format!("`{path}` is not a file path inside the extension"));
+            }
+            if digest.len() != 64 || !digest.chars().all(|c| c.is_ascii_hexdigit()) {
+                return Err(format!("`{path}`: `{digest}` is not a sha256"));
             }
         }
         for p in &m.providers {
@@ -272,6 +292,16 @@ impl ExtensionManifest {
                 "command `{}`: adds instructions to a task when the person runs it",
                 c.name
             ));
+        }
+        for (dir, what) in [
+            ("rules/", "rules added to every task's instructions where they apply"),
+            ("agents/", "agent profiles a task may spawn"),
+            ("skills/", "skills (incubator until evaluated and signed)"),
+        ] {
+            let n = self.files.keys().filter(|p| p.starts_with(dir)).count();
+            if n > 0 {
+                out.push(format!("{dir}: {n} file(s) — {what}"));
+            }
         }
         for p in &self.providers {
             out.push(format!(

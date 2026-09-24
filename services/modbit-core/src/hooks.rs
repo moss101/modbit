@@ -160,6 +160,16 @@ impl HookBus {
             .unwrap_or_default()
     }
 
+    /// The session's extensions as this process holds them now, without
+    /// reading the log (a caller that needs the log's view after a restart
+    /// uses `extensions_of`; `StartTask` does, before any run starts).
+    pub(crate) fn loaded_now(&self, session: SessionId) -> Vec<LoadedExtension> {
+        lock(&self.extensions)
+            .get(&session)
+            .cloned()
+            .unwrap_or_default()
+    }
+
     /// Record a load in this process.
     pub(crate) fn add(&self, session: SessionId, ext: LoadedExtension) {
         lock(&self.extensions).entry(session).or_default().push(ext);

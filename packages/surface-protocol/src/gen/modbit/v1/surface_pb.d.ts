@@ -5887,6 +5887,158 @@ export declare type TrustExtension = Message<"modbit.v1.TrustExtension"> & {
 export declare const TrustExtensionSchema: GenMessage<TrustExtension>;
 
 /**
+ * Import another agent's configuration (REQ-EV-0137, REQ-EV-0183):
+ * instructions, commands, agents, skills and MCP servers become one
+ * unsigned extension under the Core's imports/, with a report labelling
+ * every item MAPPED, SKIPPED or CONFLICT. Loading it quarantines it until
+ * the person trusts what it would do.
+ *
+ * @generated from message modbit.v1.ImportAgentConfig
+ */
+export declare type ImportAgentConfig = Message<"modbit.v1.ImportAgentConfig"> & {
+  /**
+   * @generated from field: modbit.v1.Id session_id = 1;
+   */
+  sessionId?: Id | undefined;
+
+  /**
+   * the directory holding the other agent's configuration
+   *
+   * @generated from field: string source_root = 2;
+   */
+  sourceRoot: string;
+
+  /**
+   * the extension's name
+   *
+   * @generated from field: string name = 3;
+   */
+  name: string;
+
+  /**
+   * replace an earlier import of that name
+   *
+   * @generated from field: bool replace = 4;
+   */
+  replace: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.ImportAgentConfig.
+ * Use `create(ImportAgentConfigSchema)` to create a new message.
+ */
+export declare const ImportAgentConfigSchema: GenMessage<ImportAgentConfig>;
+
+/**
+ * @generated from message modbit.v1.ImportItemView
+ */
+export declare type ImportItemView = Message<"modbit.v1.ImportItemView"> & {
+  /**
+   * rule | command | agent | skill | mcp_server | hook | setting | other
+   *
+   * @generated from field: string kind = 1;
+   */
+  kind: string;
+
+  /**
+   * path under the source root, "#key" for an entry in a file
+   *
+   * @generated from field: string source = 2;
+   */
+  source: string;
+
+  /**
+   * what it became in the extension; "" when nothing was written
+   *
+   * @generated from field: string target = 3;
+   */
+  target: string;
+
+  /**
+   * MAPPED | SKIPPED | CONFLICT
+   *
+   * @generated from field: string status = 4;
+   */
+  status: string;
+
+  /**
+   * @generated from field: string reason = 5;
+   */
+  reason: string;
+};
+
+/**
+ * Describes the message modbit.v1.ImportItemView.
+ * Use `create(ImportItemViewSchema)` to create a new message.
+ */
+export declare const ImportItemViewSchema: GenMessage<ImportItemView>;
+
+/**
+ * @generated from message modbit.v1.ImportReportView
+ */
+export declare type ImportReportView = Message<"modbit.v1.ImportReportView"> & {
+  /**
+   * load it with LoadExtension
+   *
+   * @generated from field: string extension_path = 1;
+   */
+  extensionPath: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: repeated string formats = 3;
+   */
+  formats: string[];
+
+  /**
+   * @generated from field: uint32 mapped = 4;
+   */
+  mapped: number;
+
+  /**
+   * @generated from field: uint32 skipped = 5;
+   */
+  skipped: number;
+
+  /**
+   * @generated from field: uint32 conflicts = 6;
+   */
+  conflicts: number;
+
+  /**
+   * @generated from field: repeated modbit.v1.ImportItemView items = 7;
+   */
+  items: ImportItemView[];
+
+  /**
+   * @generated from field: string manifest_digest = 8;
+   */
+  manifestDigest: string;
+
+  /**
+   * UNSIGNED
+   *
+   * @generated from field: string signature = 9;
+   */
+  signature: string;
+
+  /**
+   * @generated from field: repeated string capabilities = 10;
+   */
+  capabilities: string[];
+};
+
+/**
+ * Describes the message modbit.v1.ImportReportView.
+ * Use `create(ImportReportViewSchema)` to create a new message.
+ */
+export declare const ImportReportViewSchema: GenMessage<ImportReportView>;
+
+/**
  * Run an active extension's instruction template on a task: the expanded
  * text is queued as the person's input, the command its provenance.
  *
