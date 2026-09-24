@@ -436,7 +436,10 @@ mod tests {
         assert_eq!(caps.len(), 4, "{caps:#?}");
         assert!(caps[1].contains("docs-server --stdio") && caps[1].contains("network.egress"));
         assert!(caps[3].contains("ext.kit.local") && caps[3].contains("http://127.0.0.1:9"));
-        assert_eq!(m.commands[0].expand("src/lib.rs"), "Review src/lib.rs for defects.");
+        assert_eq!(
+            m.commands[0].expand("src/lib.rs"),
+            "Review src/lib.rs for defects."
+        );
         for bad in [
             r#"{"name":"kit","version":""}"#,
             r#"{"name":"k it","version":"1"}"#,
@@ -475,7 +478,12 @@ mod tests {
         let tampered = br#"{"name":"kit","version":"2"}"#;
         let status = verify(tampered, Some(&sig(manifest, "acme")), &trusted);
         assert!(matches!(status, SignatureStatus::Invalid { .. }));
-        assert!(status.quarantine_reason().unwrap().contains("cannot be trusted"));
+        assert!(
+            status
+                .quarantine_reason()
+                .unwrap()
+                .contains("cannot be trusted")
+        );
         assert_eq!(trusted_keys("acme:zz,bad,ok:00").len(), 0);
     }
 }

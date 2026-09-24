@@ -38815,8 +38815,8 @@ async fn qual_ev_0240_unloading_an_extension_removes_its_handlers_without_a_stal
 #[allow(clippy::too_many_lines)]
 async fn qual_ev_0225_an_unsigned_or_untrusted_extension_is_quarantined() {
     use modbit_protocol::v1::{
-        ExtensionInspectionView, ExtensionLoadedView, InspectExtension, LoadExtension,
-        ModelList, RunExtensionCommand, TrustExtension,
+        ExtensionInspectionView, ExtensionLoadedView, InspectExtension, LoadExtension, ModelList,
+        RunExtensionCommand, TrustExtension,
     };
     use serde_json::json;
     let (repo, root) = plain_repo(&[("notes.txt", "line 1\n")]);
@@ -38950,20 +38950,42 @@ async fn qual_ev_0225_an_unsigned_or_untrusted_extension_is_quarantined() {
     );
     assert!(seen.quarantine_reason.contains("unsigned"), "{seen:?}");
     assert_eq!(seen.capabilities.len(), 3, "{seen:?}");
-    assert!(seen.capabilities[0].contains("redirect.sh") && seen.capabilities[0].contains("before_tool"));
-    assert!(seen.capabilities[2].contains("ext.unsigned.local") && seen.capabilities[2].contains("http://127.0.0.1:9"));
-    assert_eq!(inspect_with(&mut c, &foreign, 0xB4, g).await.signature, "UNKNOWN_KEY:stranger");
-    assert_eq!(inspect_with(&mut c, &tampered, 0xB5, g).await.signature, "INVALID:acme");
-    assert_eq!(inspect_with(&mut c, &signed, 0xB6, g).await.signature, "VERIFIED:acme");
+    assert!(
+        seen.capabilities[0].contains("redirect.sh")
+            && seen.capabilities[0].contains("before_tool")
+    );
+    assert!(
+        seen.capabilities[2].contains("ext.unsigned.local")
+            && seen.capabilities[2].contains("http://127.0.0.1:9")
+    );
+    assert_eq!(
+        inspect_with(&mut c, &foreign, 0xB4, g).await.signature,
+        "UNKNOWN_KEY:stranger"
+    );
+    assert_eq!(
+        inspect_with(&mut c, &tampered, 0xB5, g).await.signature,
+        "INVALID:acme"
+    );
+    assert_eq!(
+        inspect_with(&mut c, &signed, 0xB6, g).await.signature,
+        "VERIFIED:acme"
+    );
 
     // 2. Unsigned: quarantined, inert.
-    let q: ExtensionLoadedView =
-        Client::result(&c.command(load(&unsigned, &seen.manifest_digest, 0xB7)).await.unwrap()).unwrap();
+    let q: ExtensionLoadedView = Client::result(
+        &c.command(load(&unsigned, &seen.manifest_digest, 0xB7))
+            .await
+            .unwrap(),
+    )
+    .unwrap();
     assert!(!q.quarantined.is_empty(), "{q:?}");
     assert!(q.providers.is_empty(), "no provider registered: {q:?}");
     let r = invoke_tool(&mut c, &task, g, 0xB8, 0xB9, "change.apply", &write).await;
     assert_eq!(r.status, "SUCCESS", "{r:?}");
-    assert!(!repo.path().join("hooked.txt").exists(), "its hook never ran");
+    assert!(
+        !repo.path().join("hooked.txt").exists(),
+        "its hook never ran"
+    );
     assert!(hook_events(&task_events(&core, &session, &task).await).is_empty());
     let cmd = |name: &str, id: u8| {
         envelope_fenced(
@@ -38983,11 +39005,18 @@ async fn qual_ev_0225_an_unsigned_or_untrusted_extension_is_quarantined() {
         refused(c.command(cmd("unsigned/tidy", 0xBA)).await),
         "EXTENSION_QUARANTINED"
     );
-    assert!(!endpoints(&mut c, 0xBB).await.contains(&"ext.unsigned.local".to_owned()));
+    assert!(
+        !endpoints(&mut c, 0xBB)
+            .await
+            .contains(&"ext.unsigned.local".to_owned())
+    );
 
     // 3. The person trusts exactly what they saw: then it is active.
     assert_eq!(
-        refused(c.command(trust(&q.extension_id, &"0".repeat(64), 0xBC)).await),
+        refused(
+            c.command(trust(&q.extension_id, &"0".repeat(64), 0xBC))
+                .await
+        ),
         "DIGEST_MISMATCH"
     );
     let active: ExtensionLoadedView = Client::result(
@@ -38998,7 +39027,11 @@ async fn qual_ev_0225_an_unsigned_or_untrusted_extension_is_quarantined() {
     .unwrap();
     assert!(active.quarantined.is_empty(), "{active:?}");
     assert_eq!(active.providers, vec!["ext.unsigned.local"]);
-    assert!(endpoints(&mut c, 0xBE).await.contains(&"ext.unsigned.local".to_owned()));
+    assert!(
+        endpoints(&mut c, 0xBE)
+            .await
+            .contains(&"ext.unsigned.local".to_owned())
+    );
     let r = invoke_tool(&mut c, &task, g, 0xBF, 0xC0, "change.apply", &write).await;
     assert_eq!(r.status, "SUCCESS", "{r:?}");
     assert_eq!(
@@ -39025,9 +39058,15 @@ async fn qual_ev_0225_an_unsigned_or_untrusted_extension_is_quarantined() {
     // 5. Changed after signing: quarantined, and never trusted.
     let t: ExtensionLoadedView =
         Client::result(&c.command(load(&tampered, "", 0xC3)).await.unwrap()).unwrap();
-    assert!(t.quarantined.contains("changed after it was signed"), "{t:?}");
+    assert!(
+        t.quarantined.contains("changed after it was signed"),
+        "{t:?}"
+    );
     assert_eq!(
-        refused(c.command(trust(&t.extension_id, &t.manifest_digest, 0xC4)).await),
+        refused(
+            c.command(trust(&t.extension_id, &t.manifest_digest, 0xC4))
+                .await
+        ),
         "EXTENSION_TAMPERED"
     );
     assert_eq!(
@@ -39046,7 +39085,10 @@ async fn qual_ev_0225_an_unsigned_or_untrusted_extension_is_quarantined() {
     )
     .unwrap();
     assert_eq!(
-        refused(c.command(load(&signed, &inspected.manifest_digest, 0xC7)).await),
+        refused(
+            c.command(load(&signed, &inspected.manifest_digest, 0xC7))
+                .await
+        ),
         "EXTENSION_CHANGED"
     );
     let resigned = write_extension(
@@ -39076,8 +39118,8 @@ async fn qual_ev_0225_an_unsigned_or_untrusted_extension_is_quarantined() {
 #[allow(clippy::too_many_lines)]
 async fn qual_ev_0138_an_extension_crash_or_timeout_cannot_bypass_the_core_or_corrupt_run_state() {
     use modbit_protocol::v1::{
-        ExtensionLoadedView, GetRecoveryReport, LoadExtension, RecoveryReport,
-        RunExtensionCommand, StartTask, TaskRunStarted, UnloadExtension,
+        ExtensionLoadedView, GetRecoveryReport, LoadExtension, RecoveryReport, RunExtensionCommand,
+        StartTask, TaskRunStarted, UnloadExtension,
     };
     use serde_json::json;
     let server_bin = mcp_testserver_bin();
@@ -39230,15 +39272,20 @@ async fn qual_ev_0138_an_extension_crash_or_timeout_cannot_bypass_the_core_or_co
     let evs = task_events(&core, &session, &task).await;
     let hooks = hook_events(&evs);
     assert!(
-        hooks.iter().any(|h| h["hook"] == "extension:kit/slow" && h["outcome"] == "TIMEOUT" && h["applied"] == false),
+        hooks.iter().any(|h| h["hook"] == "extension:kit/slow"
+            && h["outcome"] == "TIMEOUT"
+            && h["applied"] == false),
         "{hooks:#?}"
     );
     assert!(
-        hooks.iter().any(|h| h["hook"] == "extension:kit/crashy" && h["outcome"] == "FAILED" && h["applied"] == false),
+        hooks.iter().any(|h| h["hook"] == "extension:kit/crashy"
+            && h["outcome"] == "FAILED"
+            && h["applied"] == false),
         "{hooks:#?}"
     );
     assert!(
-        evs.iter().any(|(_, t, p)| t == "TaskInputQueued" && p["provenance"] == "extension:kit/annotate"),
+        evs.iter()
+            .any(|(_, t, p)| t == "TaskInputQueued" && p["provenance"] == "extension:kit/annotate"),
         "the command's input is on the log"
     );
 
@@ -39295,7 +39342,10 @@ async fn qual_ev_0138_an_extension_crash_or_timeout_cannot_bypass_the_core_or_co
             g,
         ))
         .await;
-    assert!(err.is_err(), "the provider left with the extension: {err:?}");
+    assert!(
+        err.is_err(),
+        "the provider left with the extension: {err:?}"
+    );
     drop(c);
     core.kill();
     drop(repo);

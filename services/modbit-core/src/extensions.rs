@@ -63,8 +63,7 @@ fn read(path: &str) -> Result<Read, (String, String)> {
     })?;
     let json = String::from_utf8(bytes)
         .map_err(|_| refuse("EXTENSION_INVALID", "the manifest is not UTF-8"))?;
-    let manifest =
-        ExtensionManifest::parse(&json).map_err(|e| refuse("EXTENSION_INVALID", e))?;
+    let manifest = ExtensionManifest::parse(&json).map_err(|e| refuse("EXTENSION_INVALID", e))?;
     let signature_text = std::fs::read_to_string(dir.join(EXTENSION_SIGNATURE)).ok();
     let signature = modbit_tools::extensions::verify(
         json.as_bytes(),
@@ -352,42 +351,41 @@ fn register_providers(core: &Core, ext: &LoadedExtension) -> Vec<String> {
                 }
             },
         };
-        core.gateway
-            .configure_endpoint(modbit_providers::Endpoint {
-                name: name.clone(),
-                kind: if p.kind == "anthropic" {
-                    modbit_providers::ProviderKind::Anthropic
-                } else {
-                    modbit_providers::ProviderKind::OpenAi
-                },
-                base_url: p.base_url.trim().trim_end_matches('/').to_owned(),
-                credential,
-                models: p
-                    .models
-                    .iter()
-                    .map(|m| modbit_providers::ModelCapability {
-                        model: m.model.clone(),
-                        context_tokens: m.context_tokens,
-                        max_output_tokens: m.max_output_tokens,
-                        tools: m.tools,
-                        parallel_tools: false,
-                        vision: m.vision,
-                        input_modalities: if m.vision {
-                            vec!["text".into(), "image".into()]
-                        } else {
-                            vec!["text".into()]
-                        },
-                        reasoning: false,
-                        structured_output: false,
-                        agent_loop: m.tools,
-                        input_price_per_mtok: 0.0,
-                        output_price_per_mtok: 0.0,
-                    })
-                    .collect(),
-                max_retries: 2,
-                auth: Default::default(),
-                extra_body: Default::default(),
-            });
+        core.gateway.configure_endpoint(modbit_providers::Endpoint {
+            name: name.clone(),
+            kind: if p.kind == "anthropic" {
+                modbit_providers::ProviderKind::Anthropic
+            } else {
+                modbit_providers::ProviderKind::OpenAi
+            },
+            base_url: p.base_url.trim().trim_end_matches('/').to_owned(),
+            credential,
+            models: p
+                .models
+                .iter()
+                .map(|m| modbit_providers::ModelCapability {
+                    model: m.model.clone(),
+                    context_tokens: m.context_tokens,
+                    max_output_tokens: m.max_output_tokens,
+                    tools: m.tools,
+                    parallel_tools: false,
+                    vision: m.vision,
+                    input_modalities: if m.vision {
+                        vec!["text".into(), "image".into()]
+                    } else {
+                        vec!["text".into()]
+                    },
+                    reasoning: false,
+                    structured_output: false,
+                    agent_loop: m.tools,
+                    input_price_per_mtok: 0.0,
+                    output_price_per_mtok: 0.0,
+                })
+                .collect(),
+            max_retries: 2,
+            auth: Default::default(),
+            extra_body: Default::default(),
+        });
         out.push(name);
     }
     out
@@ -442,10 +440,7 @@ pub(crate) async fn run_command(
     actor: Actor,
 ) -> Result<wire::InputQueued, (String, String)> {
     let Some((ext_name, cmd_name)) = command.split_once('/') else {
-        return Err(refuse(
-            "BAD_PAYLOAD",
-            "command is `<extension>/<command>`",
-        ));
+        return Err(refuse("BAD_PAYLOAD", "command is `<extension>/<command>`"));
     };
     let mut store = core.store.lock().await;
     let loaded = core.tools.hooks.extensions_of(&store, task.session_id);

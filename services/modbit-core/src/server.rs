@@ -4676,7 +4676,12 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                     let Ok(p) = wire::TrustExtension::decode(env.payload.as_slice()) else {
                         return reject(cid, "BAD_PAYLOAD", "TrustExtension");
                     };
-                    (p.session_id, String::new(), p.extension_id, p.manifest_digest)
+                    (
+                        p.session_id,
+                        String::new(),
+                        p.extension_id,
+                        p.manifest_digest,
+                    )
                 }
                 _ => {
                     let Ok(p) = wire::UnloadExtension::decode(env.payload.as_slice()) else {

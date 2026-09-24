@@ -124,8 +124,7 @@ impl HookBus {
                             if let Ok(manifest) = ExtensionManifest::parse(
                                 p["manifest_json"].as_str().unwrap_or_default(),
                             ) {
-                                let quarantine =
-                                    p["quarantined"].as_str().map(str::to_owned);
+                                let quarantine = p["quarantined"].as_str().map(str::to_owned);
                                 loaded.push(LoadedExtension {
                                     extension_id: id,
                                     path: p["path"].as_str().unwrap_or_default().to_owned(),
