@@ -1084,7 +1084,9 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         | "ActivateModelRegistry"
         | "ProbeModel"
         | "ConfigureForge"
-        | "ReconcileUsage" => "provider.configure",
+        | "ReconcileUsage"
+        // A replay spends provider budget on an alternative (EPR-011).
+        | "ReplayCounterfactual" => "provider.configure",
         // Proposing costs nothing and grants nothing, so any client that can
         // author a task may do it; trusting a program the host did not write
         // to run against this workspace is the same class of decision as
@@ -4271,6 +4273,35 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             };
             let view = crate::statistics::get(core, session_id, &p.stats_version).await;
             accept(cid, false, view.encode_to_vec())
+        }
+        "ReplayCounterfactual" => {
+            let Ok(p) = wire::ReplayCounterfactual::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "ReplayCounterfactual");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let session_id = match core.store.lock().await.task(&task_id) {
+                Ok(Some(t)) => t.session_id,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
+                return ack;
+            }
+            let generation = env.expected_generation.unwrap_or_default();
+            match crate::replay::start(
+                core,
+                task_id,
+                &p.plan_id,
+                generation,
+                Actor::User(core.user_id),
+            )
+            .await
+            {
+                Ok(v) => accept(cid, false, v.encode_to_vec()),
+                Err((code, detail)) => reject(cid, &code, detail),
+            }
         }
         "CompileRoutingPlan" => {
             let Ok(p) = wire::CompileRoutingPlan::decode(env.payload.as_slice()) else {

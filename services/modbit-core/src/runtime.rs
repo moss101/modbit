@@ -2514,6 +2514,10 @@ async fn run_loop(
     // shadow. Nothing routes on it; it is here so the profiler is measured
     // against real requests before anything is allowed to depend on it.
     profile_request(&core, &task, lt, &actor).await;
+    // EPR-011: the repository the request started from, pinned once.
+    if !resumed {
+        crate::replay::capture(&core, &task, lt, &actor).await;
+    }
     let mut tools: Vec<ToolProjection>;
     let mut projected_names: Vec<String>;
     // The programs of this run (docs/16 "Procedural Tool Runtime", M5.4).

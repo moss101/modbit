@@ -8,6 +8,7 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
+globset.workspace = true
 anyhow.workspace = true
 modbit-domain.workspace = true
 modbit-prompt-compiler.workspace = true
