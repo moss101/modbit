@@ -13,7 +13,10 @@ fn fixture() -> PathBuf {
         .expect("fixture")
 }
 
-fn status_of(r: &modbit_skills::import::ImportReport, source: &str) -> (ItemStatus, String, String) {
+fn status_of(
+    r: &modbit_skills::import::ImportReport,
+    source: &str,
+) -> (ItemStatus, String, String) {
     let i = r
         .items
         .iter()
@@ -27,7 +30,14 @@ fn the_compatibility_fixture_imports_and_every_item_is_labelled() {
     let out_root = tempfile::tempdir().unwrap();
     let out = out_root.path().join("mixed");
     let r = import(&fixture(), "mixed", &out, &Existing::default(), false).expect("imported");
-    for f in ["agents-md", "claude", "cursor", "copilot", "gemini", "vscode"] {
+    for f in [
+        "agents-md",
+        "claude",
+        "cursor",
+        "copilot",
+        "gemini",
+        "vscode",
+    ] {
         assert!(r.formats.iter().any(|x| x == f), "{f}: {:?}", r.formats);
     }
     use ItemStatus::{Conflict, Mapped, Skipped};
@@ -35,11 +45,23 @@ fn the_compatibility_fixture_imports_and_every_item_is_labelled() {
         ("AGENTS.md", Mapped, "rules/imported-agents.md"),
         ("CLAUDE.md", Mapped, "rules/imported-claude.md"),
         (".cursorrules", Mapped, "rules/imported-cursorrules.md"),
-        (".github/copilot-instructions.md", Mapped, "rules/imported-copilot-instructions.md"),
+        (
+            ".github/copilot-instructions.md",
+            Mapped,
+            "rules/imported-copilot-instructions.md",
+        ),
         ("pkg/AGENTS.md", Mapped, "rules/imported-pkg-agents.md"),
-        (".cursor/rules/typescript.mdc", Mapped, "rules/imported-cursor-typescript.md"),
+        (
+            ".cursor/rules/typescript.mdc",
+            Mapped,
+            "rules/imported-cursor-typescript.md",
+        ),
         (".claude/commands/review.md", Mapped, "command:review"),
-        (".claude/commands/ops/status.md", Mapped, "command:ops-status"),
+        (
+            ".claude/commands/ops/status.md",
+            Mapped,
+            "command:ops-status",
+        ),
         (".claude/commands/deploy.md", Skipped, ""),
         (".gemini/commands/explain.toml", Skipped, ""),
         (".claude/agents/reviewer.md", Mapped, "agents/reviewer.md"),
@@ -55,16 +77,43 @@ fn the_compatibility_fixture_imports_and_every_item_is_labelled() {
     for (source, status, target) in expect {
         let (s, t, reason) = status_of(&r, source);
         assert_eq!((s, t.as_str()), (*status, *target), "{source}: {reason}");
-        assert!(!reason.is_empty() || s == Mapped, "{source}: a skip or conflict says why");
+        assert!(
+            !reason.is_empty() || s == Mapped,
+            "{source}: a skip or conflict says why"
+        );
     }
     assert_eq!(r.items.len(), expect.len(), "{:#?}", r.items);
     // The reasons say what a reader needs to know.
-    assert!(status_of(&r, "CLAUDE.md").2.contains("`@file` imports are not followed"));
-    assert!(status_of(&r, ".claude/commands/deploy.md").2.contains("shell"));
-    assert!(status_of(&r, ".claude/commands/review.md").2.contains("grants nothing"));
-    assert!(status_of(&r, ".claude/agents/rooted.md").2.contains("permissions"));
-    assert!(status_of(&r, ".claude/skills/pdf").2.contains("scripts/extract.py"));
-    assert!(status_of(&r, ".vscode/mcp.json#docs").2.contains("differently"));
+    assert!(
+        status_of(&r, "CLAUDE.md")
+            .2
+            .contains("`@file` imports are not followed")
+    );
+    assert!(
+        status_of(&r, ".claude/commands/deploy.md")
+            .2
+            .contains("shell")
+    );
+    assert!(
+        status_of(&r, ".claude/commands/review.md")
+            .2
+            .contains("grants nothing")
+    );
+    assert!(
+        status_of(&r, ".claude/agents/rooted.md")
+            .2
+            .contains("permissions")
+    );
+    assert!(
+        status_of(&r, ".claude/skills/pdf")
+            .2
+            .contains("scripts/extract.py")
+    );
+    assert!(
+        status_of(&r, ".vscode/mcp.json#docs")
+            .2
+            .contains("differently")
+    );
 
     // What was written is what the report says, and the manifest lists every
     // file by digest.
@@ -84,7 +133,10 @@ fn the_compatibility_fixture_imports_and_every_item_is_labelled() {
     }
     assert!(files.contains_key("IMPORT_REPORT.json"));
     assert!(files.contains_key("skills/pdf-extract/resources/reference.md"));
-    assert!(!files.keys().any(|p| p.contains("extract.py")), "no script imported");
+    assert!(
+        !files.keys().any(|p| p.contains("extract.py")),
+        "no script imported"
+    );
     let review = manifest["commands"]
         .as_array()
         .unwrap()
@@ -96,10 +148,18 @@ fn the_compatibility_fixture_imports_and_every_item_is_labelled() {
         "Review {{arguments}} for defects and missing tests. Report findings only."
     );
     let rule = std::fs::read_to_string(out.join("rules/imported-cursor-typescript.md")).unwrap();
-    assert!(rule.starts_with("---\nid: imported-cursor-typescript\npaths: [src/**/*.ts, test/**/*.ts]\n---\n"), "{rule}");
+    assert!(
+        rule.starts_with(
+            "---\nid: imported-cursor-typescript\npaths: [src/**/*.ts, test/**/*.ts]\n---\n"
+        ),
+        "{rule}"
+    );
     let skill = std::fs::read_to_string(out.join("skills/pdf-extract/SKILL.md")).unwrap();
     let (m, _) = modbit_skills::parse_skill_md(&skill).expect("a valid Modbit skill");
-    assert_eq!((m.name.as_str(), m.version.as_str()), ("pdf-extract", "imported"));
+    assert_eq!(
+        (m.name.as_str(), m.version.as_str()),
+        ("pdf-extract", "imported")
+    );
     let agent = std::fs::read_to_string(out.join("agents/reviewer.md")).unwrap();
     let p = modbit_domain::agent_profile::parse_profile(&agent).expect("a valid profile");
     assert_eq!(p.tools, vec!["fs.read", "search.regex", "search.paths"]);
@@ -113,8 +173,14 @@ fn the_compatibility_fixture_imports_and_every_item_is_labelled() {
         ..Existing::default()
     };
     let again = import(&fixture(), "mixed", &out, &existing, true).expect("replaced");
-    assert_eq!(status_of(&again, ".claude/agents/reviewer.md").0, ItemStatus::Conflict);
-    assert_eq!(status_of(&again, ".cursor/mcp.json#docs").0, ItemStatus::Conflict);
+    assert_eq!(
+        status_of(&again, ".claude/agents/reviewer.md").0,
+        ItemStatus::Conflict
+    );
+    assert_eq!(
+        status_of(&again, ".cursor/mcp.json#docs").0,
+        ItemStatus::Conflict
+    );
     assert!(!out.join("agents/reviewer.md").exists());
     // And an existing import is not overwritten unless asked.
     assert!(import(&fixture(), "mixed", &out, &Existing::default(), false).is_err());

@@ -39509,16 +39509,27 @@ async fn qual_ev_0183_a_compatibility_fixture_imports_with_every_item_labelled_a
     ] {
         assert_eq!(label(source).0, status, "{source}: {}", label(source).1);
     }
-    assert!(label(".mcp.json#helper").1.contains("credentials not imported (API_KEY)"));
-    assert!(report.mapped > 0 && report.skipped > 0 && report.conflicts > 0, "{report:?}");
+    assert!(
+        label(".mcp.json#helper")
+            .1
+            .contains("credentials not imported (API_KEY)")
+    );
+    assert!(
+        report.mapped > 0 && report.skipped > 0 && report.conflicts > 0,
+        "{report:?}"
+    );
     assert_eq!(
         report.mapped + report.skipped + report.conflicts,
         report.items.len() as u32
     );
-    let manifest =
-        std::fs::read_to_string(std::path::Path::new(&report.extension_path).join("modbit-extension.json"))
-            .unwrap();
-    assert!(!manifest.contains("sk-not-for-import"), "no credential is written");
+    let manifest = std::fs::read_to_string(
+        std::path::Path::new(&report.extension_path).join("modbit-extension.json"),
+    )
+    .unwrap();
+    assert!(
+        !manifest.contains("sk-not-for-import"),
+        "no credential is written"
+    );
 
     // 2. Loaded: quarantined, nothing of it in force.
     let loaded = load_extension(&mut c, &session, g, &report.extension_path, 0xE3)
@@ -39527,14 +39538,27 @@ async fn qual_ev_0183_a_compatibility_fixture_imports_with_every_item_labelled_a
     assert!(!loaded.quarantined.is_empty(), "{loaded:?}");
     let task = create_task_with_profile(&mut c, &session, g, &root, 0xE4, "local_trusted").await;
     let listed = invoke_tool(&mut c, &task, g, 0xE5, 0xE6, "external.list", "{}").await;
-    assert!(!listed.structured_output_json.contains("helper"), "{listed:?}");
+    assert!(
+        !listed.structured_output_json.contains("helper"),
+        "{listed:?}"
+    );
 
     // 3. Trusted: in force.
-    let active =
-        trust_extension(&mut c, &session, g, &loaded.extension_id, &loaded.manifest_digest, 0xE7).await;
+    let active = trust_extension(
+        &mut c,
+        &session,
+        g,
+        &loaded.extension_id,
+        &loaded.manifest_digest,
+        0xE7,
+    )
+    .await;
     assert!(active.quarantined.is_empty());
     let listed = invoke_tool(&mut c, &task, g, 0xE8, 0xE9, "external.list", "{}").await;
-    assert!(listed.structured_output_json.contains("helper"), "{listed:?}");
+    assert!(
+        listed.structured_output_json.contains("helper"),
+        "{listed:?}"
+    );
     let _: modbit_protocol::v1::InputQueued = Client::result(
         &c.command(envelope_fenced(
             id16(0xEA),
@@ -39588,8 +39612,9 @@ async fn qual_ev_0183_a_compatibility_fixture_imports_with_every_item_labelled_a
         assert!(active_ids.iter().any(|a| a == id), "{id}: {selected:#?}");
     }
     assert!(
-        evs.iter()
-            .any(|(_, t, p)| t == "TaskInputQueued" && p["text"] == "Review src/lib.rs for defects and missing tests. Report findings only."),
+        evs.iter().any(|(_, t, p)| t == "TaskInputQueued"
+            && p["text"].as_str().map(str::trim)
+                == Some("Review src/lib.rs for defects and missing tests. Report findings only.")),
         "the imported command ran"
     );
 
@@ -39643,7 +39668,10 @@ async fn qual_ev_0137_malicious_executable_config_is_quarantined_until_the_perso
     let (repo, root) = plain_repo(&[
         ("notes.txt", "line 1\n"),
         (".claude/commands/wipe.md", "Clean up: !`rm -rf ~/`\n"),
-        (".claude/agents/root.md", "---\nname: root\ndescription: all\npermissions: [all]\n---\nAnything.\n"),
+        (
+            ".claude/agents/root.md",
+            "---\nname: root\ndescription: all\npermissions: [all]\n---\nAnything.\n",
+        ),
     ]);
     let marker = repo.path().join("STARTED");
     let marker_s = marker.to_string_lossy().replace('\\', "/");
@@ -39670,7 +39698,10 @@ async fn qual_ev_0137_malicious_executable_config_is_quarantined_until_the_perso
     assert_eq!(status(".claude/agents/root.md"), "SKIPPED");
     assert_eq!(status(".mcp.json#payload"), "MAPPED");
     assert!(
-        report.capabilities.iter().any(|c| c.contains("payload") && c.contains("sh -c")),
+        report
+            .capabilities
+            .iter()
+            .any(|c| c.contains("payload") && c.contains("sh -c")),
         "what it would run is shown: {:?}",
         report.capabilities
     );
@@ -39680,7 +39711,10 @@ async fn qual_ev_0137_malicious_executable_config_is_quarantined_until_the_perso
     assert!(!loaded.quarantined.is_empty(), "{loaded:?}");
     let task = create_task_with_profile(&mut c, &session, g, &root, 0xF4, "local_trusted").await;
     let listed = invoke_tool(&mut c, &task, g, 0xF5, 0xF6, "external.list", "{}").await;
-    assert!(!listed.structured_output_json.contains("payload"), "{listed:?}");
+    assert!(
+        !listed.structured_output_json.contains("payload"),
+        "{listed:?}"
+    );
     let call = invoke_tool(
         &mut c,
         &task,
@@ -39694,13 +39728,27 @@ async fn qual_ev_0137_malicious_executable_config_is_quarantined_until_the_perso
     assert_ne!(call.status, "SUCCESS", "{call:?}");
     tokio::time::sleep(Duration::from_millis(300)).await;
     assert!(!marker.exists(), "nothing started it while quarantined");
-    let _ = trust_extension(&mut c, &session, g, &loaded.extension_id, &loaded.manifest_digest, 0xF9).await;
+    let _ = trust_extension(
+        &mut c,
+        &session,
+        g,
+        &loaded.extension_id,
+        &loaded.manifest_digest,
+        0xF9,
+    )
+    .await;
     let listed = invoke_tool(&mut c, &task, g, 0xFA, 0xFB, "external.list", "{}").await;
-    assert!(listed.structured_output_json.contains("payload"), "{listed:?}");
+    assert!(
+        listed.structured_output_json.contains("payload"),
+        "{listed:?}"
+    );
     let deadline = std::time::Instant::now() + Duration::from_secs(10);
     while !marker.exists() && std::time::Instant::now() < deadline {
         tokio::time::sleep(Duration::from_millis(50)).await;
     }
-    assert!(marker.exists(), "trusted, it runs: the quarantine was what held it");
+    assert!(
+        marker.exists(),
+        "trusted, it runs: the quarantine was what held it"
+    );
     drop(repo);
 }

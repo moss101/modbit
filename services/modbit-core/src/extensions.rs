@@ -130,7 +130,11 @@ fn check_files(dir: &std::path::Path, m: &ExtensionManifest) -> Result<(), (Stri
 
 /// The directories of a session's active extensions, for the owners that
 /// read `rules/`, `agents/` and `skills/` from them.
-pub(crate) fn active_dirs(core: &Core, session_id: SessionId, sub: &str) -> Vec<std::path::PathBuf> {
+pub(crate) fn active_dirs(
+    core: &Core,
+    session_id: SessionId,
+    sub: &str,
+) -> Vec<std::path::PathBuf> {
     core.tools
         .hooks
         .loaded_now(session_id)
@@ -580,10 +584,14 @@ fn existing_for(core: &Core, root: &std::path::Path) -> modbit_skills::import::E
         core.data_dir.join("agents"),
     ]);
     ex.agents = profiles.into_iter().map(|(p, _)| p.name).collect();
-    for dir in [root.join(".modbit").join("skills"), core.data_dir.join("skills")] {
+    for dir in [
+        root.join(".modbit").join("skills"),
+        core.data_dir.join("skills"),
+    ] {
         for e in std::fs::read_dir(dir).into_iter().flatten().flatten() {
             if e.path().is_dir() {
-                ex.skills.insert(e.file_name().to_string_lossy().into_owned());
+                ex.skills
+                    .insert(e.file_name().to_string_lossy().into_owned());
             }
         }
     }

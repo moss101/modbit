@@ -154,7 +154,10 @@ fn sha256_hex(bytes: &[u8]) -> String {
 fn front_matter(text: &str) -> (BTreeMap<String, String>, String) {
     let mut map = BTreeMap::new();
     let t = text.strip_prefix('\u{feff}').unwrap_or(text);
-    let Some(rest) = t.strip_prefix("---\n").or_else(|| t.strip_prefix("---\r\n")) else {
+    let Some(rest) = t
+        .strip_prefix("---\n")
+        .or_else(|| t.strip_prefix("---\r\n"))
+    else {
         return (map, text.to_owned());
     };
     let Some(end) = rest.find("\n---") else {
@@ -171,7 +174,9 @@ fn front_matter(text: &str) -> (BTreeMap<String, String>, String) {
             }
         }
     }
-    let body = rest[end + 4..].trim_start_matches(['-']).trim_start_matches(['\r', '\n']);
+    let body = rest[end + 4..]
+        .trim_start_matches(['-'])
+        .trim_start_matches(['\r', '\n']);
     (map, body.to_owned())
 }
 
@@ -251,7 +256,14 @@ struct Builder<'a> {
 }
 
 impl Builder<'_> {
-    fn item(&mut self, kind: ItemKind, source: &str, target: &str, status: ItemStatus, reason: &str) {
+    fn item(
+        &mut self,
+        kind: ItemKind,
+        source: &str,
+        target: &str,
+        status: ItemStatus,
+        reason: &str,
+    ) {
         self.report.items.push(ImportItem {
             kind,
             source: source.to_owned(),
@@ -313,7 +325,11 @@ impl Builder<'_> {
             ("GEMINI.md", "gemini", "gemini"),
             (".cursorrules", "cursor", "cursorrules"),
             (".windsurfrules", "windsurf", "windsurfrules"),
-            (".github/copilot-instructions.md", "copilot", "copilot-instructions"),
+            (
+                ".github/copilot-instructions.md",
+                "copilot",
+                "copilot-instructions",
+            ),
         ];
         for (path, format, id) in top {
             let p = self.root.join(path);
@@ -344,14 +360,21 @@ impl Builder<'_> {
             if !(name == "AGENTS.md" || name == "CLAUDE.md") || !r.contains('/') {
                 continue;
             }
-            if r.starts_with('.') || r.split('/').any(|seg| seg == "node_modules" || seg == "target") {
+            if r.starts_with('.')
+                || r.split('/')
+                    .any(|seg| seg == "node_modules" || seg == "target")
+            {
                 continue;
             }
             let Ok(text) = std::fs::read_to_string(&p) else {
                 continue;
             };
             let dir = r.rsplit_once('/').map(|(d, _)| d).unwrap_or_default();
-            self.format(if name == "AGENTS.md" { "agents-md" } else { "claude" });
+            self.format(if name == "AGENTS.md" {
+                "agents-md"
+            } else {
+                "claude"
+            });
             self.rule(
                 &r,
                 &format!("imported-{}", slug(&r.replace(".md", ""))),
@@ -378,7 +401,13 @@ impl Builder<'_> {
             } else {
                 (globs.clone(), format!("in force for {}", globs.join(", ")))
             };
-            self.rule(&r, &format!("imported-cursor-{}", slug(stem)), &paths, &body, &reason);
+            self.rule(
+                &r,
+                &format!("imported-cursor-{}", slug(stem)),
+                &paths,
+                &body,
+                &reason,
+            );
         }
     }
 
@@ -501,7 +530,11 @@ impl Builder<'_> {
         let Ok(entries) = std::fs::read_dir(&base) else {
             return;
         };
-        let mut dirs: Vec<PathBuf> = entries.flatten().map(|e| e.path()).filter(|p| p.is_dir()).collect();
+        let mut dirs: Vec<PathBuf> = entries
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.is_dir())
+            .collect();
         dirs.sort();
         for dir in dirs {
             self.format("claude");
@@ -517,7 +550,13 @@ impl Builder<'_> {
             ));
             let description = fm.get("description").cloned().unwrap_or_default();
             if description.trim().is_empty() {
-                self.item(ItemKind::Skill, &r, "", ItemStatus::Skipped, "no description");
+                self.item(
+                    ItemKind::Skill,
+                    &r,
+                    "",
+                    ItemStatus::Skipped,
+                    "no description",
+                );
                 continue;
             }
             if self.existing.skills.contains(&name) || !self.claim("skill", &name) {
@@ -559,7 +598,8 @@ impl Builder<'_> {
                     self.files.insert(format!("{target}/resources/{fr}"), bytes);
                 }
             }
-            let mut reason = "incubator until it is evaluated and signed, like any skill".to_owned();
+            let mut reason =
+                "incubator until it is evaluated and signed, like any skill".to_owned();
             if !skipped_scripts.is_empty() {
                 reason.push_str(&format!(
                     "; its scripts were not imported ({}) — a Modbit skill runs procedures in the isolate, not host scripts",
@@ -583,7 +623,13 @@ impl Builder<'_> {
             };
             let Ok(doc) = serde_json::from_str::<Value>(&text) else {
                 self.format(format);
-                self.item(ItemKind::McpServer, path, "", ItemStatus::Skipped, "not JSON");
+                self.item(
+                    ItemKind::McpServer,
+                    path,
+                    "",
+                    ItemStatus::Skipped,
+                    "not JSON",
+                );
                 continue;
             };
             let Some(servers) = doc.get(key).and_then(Value::as_object) else {
@@ -593,7 +639,11 @@ impl Builder<'_> {
             for (raw_name, def) in servers {
                 let source = format!("{path}#{raw_name}");
                 let name = slug(raw_name).replace('-', "_");
-                let name = if name.is_empty() { "server".to_owned() } else { name };
+                let name = if name.is_empty() {
+                    "server".to_owned()
+                } else {
+                    name
+                };
                 let Some(command) = def.get("command").and_then(Value::as_str) else {
                     self.item(
                         ItemKind::McpServer,
@@ -607,11 +657,20 @@ impl Builder<'_> {
                 let args: Vec<String> = def
                     .get("args")
                     .and_then(Value::as_array)
-                    .map(|a| a.iter().filter_map(|v| v.as_str().map(str::to_owned)).collect())
+                    .map(|a| {
+                        a.iter()
+                            .filter_map(|v| v.as_str().map(str::to_owned))
+                            .collect()
+                    })
                     .unwrap_or_default();
                 let mut env = serde_json::Map::new();
                 let mut dropped = Vec::new();
-                for (k, v) in def.get("env").and_then(Value::as_object).into_iter().flatten() {
+                for (k, v) in def
+                    .get("env")
+                    .and_then(Value::as_object)
+                    .into_iter()
+                    .flatten()
+                {
                     let upper = k.to_ascii_uppercase();
                     let secretish = ["KEY", "TOKEN", "SECRET", "PASSWORD", "AUTH", "CREDENTIAL"]
                         .iter()
@@ -743,7 +802,9 @@ pub fn import(
 ) -> Result<ImportReport, ImportError> {
     let ok_name = !name.is_empty()
         && name.len() <= 64
-        && name.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_'));
+        && name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_'));
     if !ok_name {
         return Err(ImportError::BadName(name.to_owned()));
     }

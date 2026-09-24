@@ -210,7 +210,9 @@ impl ExtensionManifest {
             let bad = path.is_empty()
                 || path.starts_with('/')
                 || path.contains('\\')
-                || path.split('/').any(|seg| seg.is_empty() || seg == "." || seg == "..")
+                || path
+                    .split('/')
+                    .any(|seg| seg.is_empty() || seg == "." || seg == "..")
                 || path == EXTENSION_MANIFEST
                 || path == EXTENSION_SIGNATURE;
             if bad {
@@ -294,7 +296,10 @@ impl ExtensionManifest {
             ));
         }
         for (dir, what) in [
-            ("rules/", "rules added to every task's instructions where they apply"),
+            (
+                "rules/",
+                "rules added to every task's instructions where they apply",
+            ),
             ("agents/", "agent profiles a task may spawn"),
             ("skills/", "skills (incubator until evaluated and signed)"),
         ] {

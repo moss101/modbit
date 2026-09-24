@@ -28,7 +28,11 @@ pub fn roots(core: &Core, task: &Task) -> Vec<PathBuf> {
     }
     // REQ-EV-0137/0183: an active extension's skills (an imported one's
     // among them) come after the project's and before the operator's.
-    out.extend(crate::extensions::active_dirs(core, task.session_id, "skills"));
+    out.extend(crate::extensions::active_dirs(
+        core,
+        task.session_id,
+        "skills",
+    ));
     out.push(core.data_dir.join("skills"));
     out
 }
