@@ -517,3 +517,54 @@ Recorded in doc 07 for the whole extension; this entry adds only: **Test impact*
 | Changed | `MANIFEST.md`, `README.md`, `SKILLS.md`, `manifest.json`, `graph/PROJECT_GRAPH.md`, `graph/project-graph.json` |
 | Changed | `docs/00_MASTER_INDEX.md`, `docs/43_IMPLEMENTATION_ROADMAP_AND_TASK_GRAPH.md`, `docs/75_PHASED_RELEASE_PLAN_AND_READINESS.md`, `docs/93_STATUS_VOCABULARY_AND_LIFECYCLE.md`, `docs/97_DOSSIER_MAINTENANCE_LOG.md`, `docs/98_BUILD_MANIFEST.md` |
 | Changed | `tools/build_graph.py`, `tools/graph.py`, `tools/test_dossier.py` |
+
+## DOC-GOV-006 — Correct stale Release Zero goal and IMP-EV-0245 card wording
+
+### Identity and authority
+
+- Task: DOC-GOV-006 (`dossier_task`); owner: governance; prerequisite: DOC-GOV-005 COMPLETE; outside product roll-ups.
+- Decision Record: DR-GOV-2026-09-24-006, approved for dossier adoption. On 2026-09-24 the user reported two stale descriptions and asked for them to be corrected as dossier-only maintenance. Doc 77 Stage 2 still called PX-020 `BLOCKED`, and the IMP-EV-0245 task card called its feature consumer M9 work.
+- Scope: descriptive text only, in doc 77 §4 Stage 2 and in the "Limitations" line of `../evidence/m4/IMP-EV-0245/TASK_CARD.md`. The task also adds the change record and DOC-GOV-006 node in `../tools/build_graph.py`, one assertion block in `../tools/test_dossier.py`, and this entry. No requirement row, disposition, owner, task, qualification, ADR clause, gate, release rule or product status changes. Docs 40/41/42/49/62, `../AGENTS.md`, every Decision Record and every locked path stay byte-identical. Doc 77 §3 is a dated snapshot of 2026-09-19 and stays as written.
+- Revision before change: `../evidence/dossier-gov-006/baseline.json`, recording `main` b196ed5 and the hashes of the governed files and the corrected card.
+
+### Decision Record (change-control fields)
+
+| Field | Content |
+|---|---|
+| Trigger / evidence | `python3 tools/graph.py show PX-020` reports `COMPLETE`: the task was resumed and sealed on 2026-09-21 under DR-M3-005, with live-competence run 35560128454 and evidence under `../evidence/m3/PX-020/`. `graph.py status` shows M3 `COMPLETE`, and `graph.py goal` reports 0 `BLOCKED`. Doc 77 Stage 2 still said PX-020 "is the only `BLOCKED` step". It also said PX-020's run "discharges" the deferred live halves of EPR-000/002/005, IMP-EV-0251/0253, PX-022, PX-028 and PX-002, but no live run appears in those tasks' graph evidence or `evidence.json`. The IMP-EV-0245 card said the adaptive evaluator that consumes `FailureDiagnostic.features` "is M9 work". The graph schedules that evaluator (owner "Adaptive Profile Evaluator", REQ-EV-0244/0246) as `IMP-EV-0244` and `IMP-EV-0246` in M10. |
+| Current behavior | An agent reading doc 77 would believe two false things: that an owner-input blocker still holds M10, and that the deferred live halves close with PX-020. An agent reading the IMP-EV-0245 card would look for the evaluator in M9. |
+| Replacement | Doc 77 Stage 2 is now titled "resolved 2026-09-21". It states how PX-020 was resolved: DR-M9-002 credentials, the DR-M3-005 seal on the internal baseline, run 35560128454 and the evidence path. It states that M3 is `COMPLETE`, so M10 waits only on M9. It names the two parts that stay open. The first is PX-020's public SWE-bench Verified half. The second is the deferred live halves, which still carry only offline evidence under §1 condition 5; for these it notes M2.6's gateway run 35491774156 and that the doc 15 production-endpoint clause stays open under DR-M9-002. The card names IMP-EV-0244 and IMP-EV-0246 (both EXPERIMENT, M10) as the consumer and records the correction. |
+| Migration | None. No node status or edge changes apart from the added change record and `dossier_task` node. |
+| Compatibility | Graph schema 1.2 unchanged. Tool behavior is unchanged apart from building the two nodes. |
+| Security impact | None. |
+| Test impact | The governance chain test in `../tools/test_dossier.py` now also checks that DOC-GOV-006 follows DOC-GOV-005 and has its change record, both specifying docs and the governance owner. |
+| Rollback | Revert the change commit, or restore the inventory below to the hashes in `baseline.json`, then rerun the reseal. |
+| Explicit user approval | The request itself on 2026-09-24 ("correct this stale wording as dossier-only maintenance"). The same request asked for a DOC-* node, this entry and the full reseal, and for a `wip/` branch with a pull request instead of a direct push to `main`. |
+
+### Stage applicability
+
+| Stage | DOC-GOV-006 execution |
+|---|---|
+| AUDITING | `git log -- docs/77*` showed doc 77 untouched since DOC-GOV-005 (49cbc43), so no rebase was needed. Graph reads: `graph.py show` for PX-020 and IMP-EV-0244/0245/0246, then `graph.py status` and `graph.py goal`. Read DR-M3-005 and DR-M9-002, and checked the evidence of every task named in the old Stage 2 for a live run. Recorded baseline hashes. |
+| IMPLEMENTING | The two text corrections, builder wiring, test assertion, this entry |
+| WIRED | Graph and manifests regenerated through the real CLIs |
+| REAL_TESTING | `check_dossier --manifest` and the copied-package suite |
+| E2E_PROVEN | Pull request from `wip/doc-gov-006-stale-goal-wording` green on hosted CI and landed on `main` |
+| COMPLETE | One-step ladder with evidence citing the landing commit; seal commit |
+| Product qualification | Non-applicable: no product behavior, status or evidence claim changes. The card's proof, tests and runs are untouched. |
+
+### Status and handoff
+
+- **Evidence:** the `../evidence/dossier-gov-006/` bundle (baseline, tests.log, validation.json with before and after hashes of the two corrected files).
+- **Remaining product work:** unchanged by this task. On 2026-09-24 `RELEASE_ZERO` is `NOT_READY` with no blocker: 378/401 work items `COMPLETE`, M9 `IN_PROGRESS`, M10 `NOT_STARTED`.
+- **Known stale text left in place:** doc 77 §5 item 1 still lists PX-020, M3 and M10 under "Unblocks". It is outside this task's scope and is a candidate for a later entry.
+- **Next safe action:** land the pull request, then seal DOC-GOV-006. After that, run `python3 tools/graph.py goal` and take its wave-0 step (EPR-019).
+
+### Exact file inventory for this change
+
+| Action | Path |
+|---|---|
+| Added | `evidence/dossier-gov-006/baseline.json`, `tests.log`, `validation.json` |
+| Changed | `docs/77_RELEASE_ZERO_EXECUTION_GOAL.md`, `docs/97_DOSSIER_MAINTENANCE_LOG.md`, `evidence/m4/IMP-EV-0245/TASK_CARD.md` |
+| Changed | `tools/build_graph.py`, `tools/test_dossier.py` |
+| Changed | `MANIFEST.md`, `manifest.json`, `graph/PROJECT_GRAPH.md`, `graph/project-graph.json` |

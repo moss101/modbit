@@ -20,7 +20,7 @@ An adaptive evaluator receives a typed failure taxonomy with evidence — class,
 
 ## Limitations
 
-- The corpus pins the classifier's output, not an evaluator's use of it; the adaptive evaluator that consumes the features is M9 work.
+- The corpus pins the classifier's output, not an evaluator's use of it. The adaptive evaluator that consumes the features is the Adaptive Profile Evaluator: `IMP-EV-0244` (task-conditioned harness generation) and `IMP-EV-0246` (bounded repair of harness/profile). Both are `EXPERIMENT` and scheduled in M10. Corrected on 2026-09-24 by DOC-GOV-006 (`docs/97_DOSSIER_MAINTENANCE_LOG.md`); the card previously called this M9 work.
 
 ## Verification
 

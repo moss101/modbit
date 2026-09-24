@@ -72,9 +72,14 @@ The stages below are the dependency order the graph encodes on 2026-09-19. `grap
 
 M9 rolls up `COMPLETE` when its 33 work items are `COMPLETE`; update the M9 row of `98_BUILD_MANIFEST.md` in the same seal commit.
 
-### Stage 2 — resolve the blocker (owner input)
+### Stage 2 — resolve the blocker (owner input): resolved 2026-09-21
 
-`PX-020` is the only `BLOCKED` step and it holds every M10 step because M10 depends on M3. It resumes only when the live-provider run exists: the owner adds the repository secrets (§5 item 1), `.github/workflows/live-providers.yml` runs green, the public and internal suites run under the frozen protocol on the real M2 product with the direct configuration, and the immutable baseline bundle is recorded by digest. Then `python3 tools/graph.py set PX-020 NOT_STARTED --note "<run id>"` (a `BLOCKED` item resumes at or below the state it was blocked from) and the ladder proceeds. M3 rolls up `COMPLETE` and M10 becomes unblocked. The same run discharges the deferred live halves of EPR-000/002/005, IMP-EV-0251/0253, PX-022, PX-028 and PX-002 (DR-M3-002, DR-M3-003, DR-M6-001): append the green run to each task's `evidence.json`; those tasks stay `COMPLETE` and gain the run as evidence.
+When this goal was written, `PX-020` was the only `BLOCKED` step. It held every M10 step because M10 depends on M3. It is now `COMPLETE`. The owner supplied live-model credentials for a gateway compatible with the OpenAI and Anthropic protocols (z.ai `glm-5.3-flash`, DR-M9-002). Under DR-M3-005 the task resumed from `BLOCKED` at `NOT_STARTED` and walked the ladder to `COMPLETE` on 2026-09-21. It sealed on the internal competence baseline, measured through the real product on hosted CI in live-competence run 35560128454; the immutable bundle, its digest and the per-task results are under `../evidence/m3/PX-020/`. M3 rolled up `COMPLETE`, so M10 now waits only on M9. On 2026-09-24 `python3 tools/graph.py goal` reports no blocker.
+
+Two parts stay open. This stage no longer holds either of them:
+
+- **PX-020's public half.** The pinned SWE-bench Verified slice waits for its container-image harness, as DR-M3-005 records. It is an open item on the task card, and no public-suite target may be recorded before its bundle exists (`PX-021`).
+- **The other deferred live halves.** The PX-020 run was not appended to them. EPR-000/002/005, IMP-EV-0251/0253, PX-022, PX-028 and PX-002 (DR-M3-002, DR-M3-003, DR-M6-001) still carry only their offline evidence. Each stays open under §1 condition 5 until a green live run is appended to that task's `evidence.json`; the task stays `COMPLETE` and gains the run as evidence. M2.6's DR-M2-001 half ran on the compatible gateway on 2026-09-20 (run 35491774156). The doc 15 clause "production provider endpoint" stays open under DR-M9-002.
 
 ### Stage 3 — M10 foundation (after M3 and M9 are `COMPLETE`)
 

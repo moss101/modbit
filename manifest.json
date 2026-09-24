@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 90,
-    "root_and_tooling": 1573,
-    "docs_bytes": 1346630
+    "root_and_tooling": 1576,
+    "docs_bytes": 1353449
   },
   "sections": [
     {
@@ -689,8 +689,8 @@
       "section": "delivery",
       "section_title": "Delivery and operations",
       "title": "Release Zero Execution Goal",
-      "bytes": 23157,
-      "sha256": "4a990efd404496eb72846eb67d6112c3640ac00d81acdf03d100678fded354a3"
+      "bytes": 23872,
+      "sha256": "b62bc740c93c980825829632b50bd569f193510e9c8065e15337bff668932c55"
     },
     {
       "path": "docs/80_ANTI_SUPERFICIAL_IMPLEMENTATION_STANDARD.md",
@@ -851,8 +851,8 @@
       "section": "governance",
       "section_title": "Agent process and governance",
       "title": "Dossier maintenance log",
-      "bytes": 50687,
-      "sha256": "95224c64e280b2017339d66052970d4353500ea878caf1433387126543cc5abd"
+      "bytes": 56791,
+      "sha256": "164ee0e3dceb25f08d1b65b59d917f479c7282b1a7323e37c3934318a5cb0032"
     },
     {
       "path": "docs/98_BUILD_MANIFEST.md",
@@ -1074,6 +1074,21 @@
       "path": "evidence/dossier-gov-005/validation.json",
       "bytes": 16914,
       "sha256": "6510934ed17c371fe26659f4e3a46e8faa3cc17ba9caf0f316f155e81433c042"
+    },
+    {
+      "path": "evidence/dossier-gov-006/baseline.json",
+      "bytes": 19835,
+      "sha256": "f08e6edd59802fee36cbb80ddc2d4e44638579efea8b6fa8c8bfabba7e19f752"
+    },
+    {
+      "path": "evidence/dossier-gov-006/tests.log",
+      "bytes": 3470,
+      "sha256": "95f533a84c8ee89696716f93dfd0787c3222c62cc4761c4e5f41d87b97a03356"
+    },
+    {
+      "path": "evidence/dossier-gov-006/validation.json",
+      "bytes": 7590,
+      "sha256": "b24bf0625d670a077a51c0909218ef3942e2451ea976ee75ae4bc383285f2fc9"
     },
     {
       "path": "evidence/dossier-gov/baseline.json",
@@ -5952,8 +5967,8 @@
     },
     {
       "path": "evidence/m4/IMP-EV-0245/TASK_CARD.md",
-      "bytes": 2386,
-      "sha256": "635a39e867022bdf28f853651df667923d1cc9092e3397799024a720d951ccc5"
+      "bytes": 2680,
+      "sha256": "626a7714a1f12b2011b280de0327ae4d5a3212768cafa8ed54425f3259e5c689"
     },
     {
       "path": "evidence/m4/IMP-EV-0245/ci-run-34596631098.json",
@@ -8687,18 +8702,18 @@
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 41080,
-      "sha256": "7af8d3aee409cc2611e7fc1d84163f99e308bd49f4f5a3a1223f075e7c76f204"
+      "bytes": 41188,
+      "sha256": "891fbb6a37adedcfdc3b7d4c406161cbe52494ac1125ce303d8b856577aa384b"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1588308,
-      "sha256": "704cf933b437c3b317b2121b7764075a51df26a6d5e3f6d95160de9e9d49c3fd"
+      "bytes": 1589630,
+      "sha256": "8855310bad2a37bc9fe77ffa08df3f8e77fcf99fe73a1168c81fcc31825fe69c"
     },
     {
       "path": "tools/build_graph.py",
-      "bytes": 54559,
-      "sha256": "2386120f7a8ab3c48562b3450427d61637859c87cd9f7f5817c46676ab322547"
+      "bytes": 55743,
+      "sha256": "fa344b571dcaca99416164ea352cbe7ff4ba8484aeb8f580779e433c839976bd"
     },
     {
       "path": "tools/build_manifest.py",
@@ -8727,8 +8742,8 @@
     },
     {
       "path": "tools/test_dossier.py",
-      "bytes": 37541,
-      "sha256": "00feb4077c36fd870843028c43a6c8dda54fa0fb3432038b652032ccb7f996fb"
+      "bytes": 37792,
+      "sha256": "cb46ec4c4398c24cb07a1fe42dbe8acf994b42406a968803aa0ea0fbd8441095"
     }
   ],
   "renames_v3_to_v3_1": {
