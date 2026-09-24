@@ -16408,8 +16408,16 @@
    "milestone": "M9",
    "qual": "QUAL-EV-0138",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-35948285118",
+    "test:qual_ev_0138_an_extension_crash_or_timeout_cannot_bypass_the_core_or_corrupt_run_state",
+    "artifact:evidence/m9/IMP-EV-0138/TASK_CARD.md",
+    "artifact:evidence/m9/IMP-EV-0138/evidence.json",
+    "artifact:evidence/m9/IMP-EV-0138/ci-run-35948285118.json",
+    "commit:e3d7150"
+   ],
+   "status_changed_on": "2026-09-24T07:01:20Z"
   },
   {
    "id": "IMP-EV-0139",
@@ -20931,8 +20939,16 @@
    "milestone": "M9",
    "qual": "QUAL-EV-0225",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-35948285118",
+    "test:qual_ev_0225_an_unsigned_or_untrusted_extension_is_quarantined",
+    "artifact:evidence/m9/IMP-EV-0225/TASK_CARD.md",
+    "artifact:evidence/m9/IMP-EV-0225/evidence.json",
+    "artifact:evidence/m9/IMP-EV-0225/ci-run-35948285118.json",
+    "commit:e3d7150"
+   ],
+   "status_changed_on": "2026-09-24T07:01:20Z"
   },
   {
    "id": "IMP-EV-0229",

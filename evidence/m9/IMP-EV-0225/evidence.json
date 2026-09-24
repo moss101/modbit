@@ -1,0 +1,35 @@
+{
+ "task": "IMP-EV-0225",
+ "requirements": [
+  "REQ-EV-0225",
+  "docs/16 Extension System"
+ ],
+ "scenarios": [
+  "InspectExtension shows publisher, source, UNSIGNED and every capability before anything loads",
+  "the unsigned extension loads quarantined: its hook never runs, its command is EXTENSION_QUARANTINED, its provider is not registered",
+  "trusting with a wrong digest is DIGEST_MISMATCH; with the inspected digest it becomes active",
+  "an unknown key is quarantined naming the key; a manifest changed after signing is INVALID, quarantined and EXTENSION_TAMPERED",
+  "a trusted publisher's extension is VERIFIED and active on load; a manifest changed after inspection is EXTENSION_CHANGED"
+ ],
+ "tests": [
+  "services/modbit-core/tests/surface_protocol.rs::qual_ev_0225_an_unsigned_or_untrusted_extension_is_quarantined",
+  "crates/tools/src/extensions.rs::only_a_trusted_key_over_the_exact_bytes_verifies"
+ ],
+ "audit": "NOT-FOUND before: extensions loaded active with no publisher, source or signature and nothing shown before activation.",
+ "proof": "Real Core: publisher, source, signature and capabilities are shown before activation, and anything not verified by a trusted publisher is quarantined until the person trusts its exact manifest.",
+ "negative_proof": "A tampered manifest can never be trusted; a quarantined extension's hooks, tools, commands and providers stay inert.",
+ "limitations": "The surface is the protocol (any client); no desktop extensions panel; no key revocation list.",
+ "batch_commits": [
+  "e3d7150"
+ ],
+ "runs": [
+  "35948285118"
+ ],
+ "ci": {
+  "run_id": "35948285118",
+  "head_sha": "62738db27ed07b2d7d0df4bdd21a291262a5cef2",
+  "conclusion": "success",
+  "note": "every job green on macOS, Linux and Windows on the first attempt; one change carries IMP-EV-0138 and IMP-EV-0225",
+  "json": "evidence/m9/IMP-EV-0225/ci-run-35948285118.json"
+ }
+}

@@ -1,0 +1,35 @@
+{
+ "task": "IMP-EV-0138",
+ "requirements": [
+  "REQ-EV-0138",
+  "docs/16 Extension System"
+ ],
+ "scenarios": [
+  "a signed extension adds a provider ext.kit.local: a run pinned to it reaches the extension's address (every request kit-model)",
+  "its tool server (the real MCP test server) dies mid-call: UNKNOWN_OUTCOME / EXTERNAL_OUTCOME_UNKNOWN, never a success",
+  "its before_tool hook times out and its after_tool hook exits 9 (both fail open): recorded, not applied, and the run completes its verified change",
+  "its command's text is queued as the person's input with provenance extension:kit/annotate",
+  "after a kill and restart recovery has nothing to repair and the task is where it was; unloaded, its provider leaves the gateway"
+ ],
+ "tests": [
+  "services/modbit-core/tests/surface_protocol.rs::qual_ev_0138_an_extension_crash_or_timeout_cannot_bypass_the_core_or_corrupt_run_state",
+  "crates/tools/src/extensions.rs::a_manifest_is_validated_whole_and_says_what_it_would_do"
+ ],
+ "audit": "IMPLEMENTED-PARTIAL before: an extension manifest carried hooks only; no package could add tools, commands or providers.",
+ "proof": "Real Core: one extension package routes hooks, tool servers, commands and providers to their existing owners; its crashes and timeouts neither bypass the Core nor corrupt run state.",
+ "negative_proof": "A manifest cannot declare a server's trust, reads or sites; a configured server of the same name wins.",
+ "limitations": "A provider is Core-wide while any session has its extension active; commands carry no permissions.",
+ "batch_commits": [
+  "e3d7150"
+ ],
+ "runs": [
+  "35948285118"
+ ],
+ "ci": {
+  "run_id": "35948285118",
+  "head_sha": "62738db27ed07b2d7d0df4bdd21a291262a5cef2",
+  "conclusion": "success",
+  "note": "every job green on macOS, Linux and Windows on the first attempt; one change carries IMP-EV-0138 and IMP-EV-0225",
+  "json": "evidence/m9/IMP-EV-0138/ci-run-35948285118.json"
+ }
+}
