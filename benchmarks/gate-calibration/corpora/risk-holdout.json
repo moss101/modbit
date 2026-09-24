@@ -1,0 +1,580 @@
+{
+ "version": "risk-holdout-1",
+ "cases": [
+  {
+   "id": "auth-session",
+   "lineage": "holdout/risk/auth-session",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "src/auth/session.rs",
+      "change": "MODIFIED",
+      "lines_added": 4,
+      "lines_removed": 1
+     },
+     {
+      "path": "tests/auth_session.rs",
+      "change": "CREATED",
+      "lines_added": 20,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "src/auth/session.rs",
+     "tests/auth_session.rs"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": true,
+    "critical_surface": true
+   }
+  },
+  {
+   "id": "root-auth-login",
+   "lineage": "holdout/risk/root-auth-login",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "auth/login.rs",
+      "change": "MODIFIED",
+      "lines_added": 4,
+      "lines_removed": 1
+     },
+     {
+      "path": "auth/login_test.rs",
+      "change": "CREATED",
+      "lines_added": 12,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "auth/login.rs",
+     "auth/login_test.rs"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": true,
+    "critical_surface": true
+   }
+  },
+  {
+   "id": "release-workflow",
+   "lineage": "holdout/risk/release-workflow",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": ".github/workflows/release.yml",
+      "change": "MODIFIED",
+      "lines_added": 6,
+      "lines_removed": 2
+     }
+    ],
+    "plan_write_set": [
+     ".github/workflows/release.yml"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "env-production",
+   "lineage": "holdout/risk/env-production",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "config/.env.production",
+      "change": "MODIFIED",
+      "lines_added": 1,
+      "lines_removed": 1
+     }
+    ],
+    "plan_write_set": [
+     "config/.env.production"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": true,
+    "critical_surface": true
+   }
+  },
+  {
+   "id": "migration-index",
+   "lineage": "holdout/risk/migration-index",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "db/migrations/0004_add_index.sql",
+      "change": "CREATED",
+      "lines_added": 8,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "db/migrations/0004_add_index.sql"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "readme-typo",
+   "lineage": "holdout/risk/readme-typo",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "README.md",
+      "change": "MODIFIED",
+      "lines_added": 1,
+      "lines_removed": 1
+     }
+    ],
+    "plan_write_set": [
+     "README.md"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": false,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "lib-with-test",
+   "lineage": "holdout/risk/lib-with-test",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "src/lib.rs",
+      "change": "MODIFIED",
+      "lines_added": 6,
+      "lines_removed": 2
+     },
+     {
+      "path": "tests/lib_test.rs",
+      "change": "MODIFIED",
+      "lines_added": 10,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "src/lib.rs",
+     "tests/lib_test.rs"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": false,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "lib-no-test",
+   "lineage": "holdout/risk/lib-no-test",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "src/lib.rs",
+      "change": "MODIFIED",
+      "lines_added": 3,
+      "lines_removed": 1
+     }
+    ],
+    "plan_write_set": [
+     "src/lib.rs"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": false,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "wide-refactor",
+   "lineage": "holdout/risk/wide-refactor",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "src/module_0.rs",
+      "change": "MODIFIED",
+      "lines_added": 40,
+      "lines_removed": 35
+     },
+     {
+      "path": "src/module_1.rs",
+      "change": "MODIFIED",
+      "lines_added": 40,
+      "lines_removed": 35
+     },
+     {
+      "path": "src/module_2.rs",
+      "change": "MODIFIED",
+      "lines_added": 40,
+      "lines_removed": 35
+     },
+     {
+      "path": "src/module_3.rs",
+      "change": "MODIFIED",
+      "lines_added": 40,
+      "lines_removed": 35
+     },
+     {
+      "path": "src/module_4.rs",
+      "change": "MODIFIED",
+      "lines_added": 40,
+      "lines_removed": 35
+     },
+     {
+      "path": "src/module_5.rs",
+      "change": "MODIFIED",
+      "lines_added": 40,
+      "lines_removed": 35
+     },
+     {
+      "path": "src/module_6.rs",
+      "change": "MODIFIED",
+      "lines_added": 40,
+      "lines_removed": 35
+     },
+     {
+      "path": "src/module_7.rs",
+      "change": "MODIFIED",
+      "lines_added": 40,
+      "lines_removed": 35
+     },
+     {
+      "path": "src/module_8.rs",
+      "change": "MODIFIED",
+      "lines_added": 40,
+      "lines_removed": 35
+     },
+     {
+      "path": "src/module_9.rs",
+      "change": "MODIFIED",
+      "lines_added": 40,
+      "lines_removed": 35
+     },
+     {
+      "path": "src/module_10.rs",
+      "change": "MODIFIED",
+      "lines_added": 40,
+      "lines_removed": 35
+     },
+     {
+      "path": "src/module_11.rs",
+      "change": "MODIFIED",
+      "lines_added": 40,
+      "lines_removed": 35
+     }
+    ],
+    "plan_write_set": [
+     "src/module_0.rs",
+     "src/module_1.rs",
+     "src/module_10.rs",
+     "src/module_11.rs",
+     "src/module_2.rs",
+     "src/module_3.rs",
+     "src/module_4.rs",
+     "src/module_5.rs",
+     "src/module_6.rs",
+     "src/module_7.rs",
+     "src/module_8.rs",
+     "src/module_9.rs"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "terraform-main",
+   "lineage": "holdout/risk/terraform-main",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "infra/terraform/main.tf",
+      "change": "MODIFIED",
+      "lines_added": 5,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "infra/terraform/main.tf"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "deploy-prod",
+   "lineage": "holdout/risk/deploy-prod",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "deploy/prod.yaml",
+      "change": "MODIFIED",
+      "lines_added": 2,
+      "lines_removed": 2
+     }
+    ],
+    "plan_write_set": [
+     "deploy/prod.yaml"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": true,
+    "critical_surface": true
+   }
+  },
+  {
+   "id": "rbac-roles",
+   "lineage": "holdout/risk/rbac-roles",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "src/permissions/rbac.rs",
+      "change": "MODIFIED",
+      "lines_added": 15,
+      "lines_removed": 4
+     },
+     {
+      "path": "tests/rbac.rs",
+      "change": "MODIFIED",
+      "lines_added": 9,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "src/permissions/rbac.rs",
+     "tests/rbac.rs"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": true,
+    "critical_surface": true
+   }
+  },
+  {
+   "id": "dependency-bump",
+   "lineage": "holdout/risk/dependency-bump",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "Cargo.toml",
+      "change": "MODIFIED",
+      "lines_added": 1,
+      "lines_removed": 1
+     }
+    ],
+    "plan_write_set": [
+     "Cargo.toml"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "guide-docs",
+   "lineage": "holdout/risk/guide-docs",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "docs/guide.md",
+      "change": "MODIFIED",
+      "lines_added": 30,
+      "lines_removed": 4
+     }
+    ],
+    "plan_write_set": [
+     "docs/guide.md"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": false,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "tests-only",
+   "lineage": "holdout/risk/tests-only",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "tests/quantities.rs",
+      "change": "MODIFIED",
+      "lines_added": 12,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "tests/quantities.rs"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": false,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "payments-charge",
+   "lineage": "holdout/risk/payments-charge",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "src/payments/charge.rs",
+      "change": "MODIFIED",
+      "lines_added": 18,
+      "lines_removed": 6
+     },
+     {
+      "path": "tests/charge.rs",
+      "change": "MODIFIED",
+      "lines_added": 15,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "src/payments/charge.rs",
+     "tests/charge.rs"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "out-of-plan",
+   "lineage": "holdout/risk/out-of-plan",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "src/lib.rs",
+      "change": "MODIFIED",
+      "lines_added": 4,
+      "lines_removed": 1
+     },
+     {
+      "path": "src/unrelated.rs",
+      "change": "MODIFIED",
+      "lines_added": 30,
+      "lines_removed": 0
+     },
+     {
+      "path": "tests/lib_test.rs",
+      "change": "MODIFIED",
+      "lines_added": 5,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "src/lib.rs",
+     "tests/lib_test.rs"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": false,
+    "critical_surface": false
+   }
+  },
+  {
+   "id": "ssh-key",
+   "lineage": "holdout/risk/ssh-key",
+   "facts": {
+    "candidate_revision": 1,
+    "changed": [
+     {
+      "path": "keys/deploy_id.pem",
+      "change": "CREATED",
+      "lines_added": 30,
+      "lines_removed": 0
+     }
+    ],
+    "plan_write_set": [
+     "keys/deploy_id.pem"
+    ],
+    "requested_effects": [],
+    "advisory": {}
+   },
+   "oracle": {
+    "review_required": true,
+    "human_required": true,
+    "critical_surface": true
+   }
+  }
+ ]
+}

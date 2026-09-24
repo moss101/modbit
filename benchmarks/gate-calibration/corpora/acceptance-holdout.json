@@ -1,0 +1,297 @@
+{
+ "version": "acceptance-holdout-1",
+ "cases": [
+  {
+   "id": "zero-correct",
+   "lineage": "holdout/rust-cli/zero-quantity",
+   "fixture": "rust-cli",
+   "leg": "initial",
+   "acceptance": [
+    "acceptance_rejects_negative_quantity"
+   ],
+   "write_set": [
+    "src/lib.rs"
+   ],
+   "candidate": [
+    {
+     "op": "write",
+     "path": "src/lib.rs",
+     "content": "//! Fixture target software (docs/50 `rust-cli`): a tiny order-quantity\n//! library with seeded defects. Not Modbit code.\n\n/// Parse an order quantity.\npub fn parse_quantity(input: &str) -> Result<i64, String> {\n    let n: i64 = input\n        .trim()\n        .parse()\n        .map_err(|e| format!(\"not a number: {e}\"))?;\n    if n <= 0 {\n        return Err(format!(\"quantity must be positive, got {n}\"));\n    }\n    Ok(n)\n}\n\n/// Total price in cents.\npub fn total_cents(quantity: i64, unit_cents: i64) -> i64 {\n    quantity * unit_cents\n}\n\n/// Human formatting of a cent amount.\npub fn format_cents(cents: i64) -> String {\n    format!(\"{}.{:02}\", cents / 100, cents % 100)\n}\n"
+    }
+   ],
+   "oracle": {
+    "files": [
+     [
+      "tests/oracle_zero.rs",
+      "oracle_zero.rs"
+     ]
+    ],
+    "argv": [
+     "cargo",
+     "test",
+     "--quiet",
+     "--test",
+     "oracle_zero"
+    ]
+   },
+   "declared": "correct"
+  },
+  {
+   "id": "zero-overfitted",
+   "lineage": "holdout/rust-cli/zero-quantity",
+   "fixture": "rust-cli",
+   "leg": "initial",
+   "acceptance": [
+    "acceptance_rejects_negative_quantity"
+   ],
+   "write_set": [
+    "src/lib.rs"
+   ],
+   "candidate": [
+    {
+     "op": "write",
+     "path": "src/lib.rs",
+     "content": "//! Fixture target software (docs/50 `rust-cli`): a tiny order-quantity\n//! library with seeded defects. Not Modbit code.\n\n/// Parse an order quantity.\npub fn parse_quantity(input: &str) -> Result<i64, String> {\n    let n: i64 = input\n        .trim()\n        .parse()\n        .map_err(|e| format!(\"not a number: {e}\"))?;\n    if input.trim() == \"0\" || n < 0 {\n        return Err(format!(\"quantity must be positive, got {n}\"));\n    }\n    Ok(n)\n}\n\n/// Total price in cents.\npub fn total_cents(quantity: i64, unit_cents: i64) -> i64 {\n    quantity * unit_cents\n}\n\n/// Human formatting of a cent amount.\npub fn format_cents(cents: i64) -> String {\n    format!(\"{}.{:02}\", cents / 100, cents % 100)\n}\n"
+    }
+   ],
+   "oracle": {
+    "files": [
+     [
+      "tests/oracle_zero.rs",
+      "oracle_zero.rs"
+     ]
+    ],
+    "argv": [
+     "cargo",
+     "test",
+     "--quiet",
+     "--test",
+     "oracle_zero"
+    ]
+   },
+   "declared": "incorrect"
+  },
+  {
+   "id": "zero-breaks-format",
+   "lineage": "holdout/rust-cli/zero-quantity",
+   "fixture": "rust-cli",
+   "leg": "initial",
+   "acceptance": [
+    "acceptance_rejects_negative_quantity"
+   ],
+   "write_set": [
+    "src/lib.rs"
+   ],
+   "candidate": [
+    {
+     "op": "write",
+     "path": "src/lib.rs",
+     "content": "//! Fixture target software (docs/50 `rust-cli`): a tiny order-quantity\n//! library with seeded defects. Not Modbit code.\n\n/// Parse an order quantity.\npub fn parse_quantity(input: &str) -> Result<i64, String> {\n    let n: i64 = input\n        .trim()\n        .parse()\n        .map_err(|e| format!(\"not a number: {e}\"))?;\n    if n <= 0 {\n        return Err(format!(\"quantity must be positive, got {n}\"));\n    }\n    Ok(n)\n}\n\n/// Total price in cents.\npub fn total_cents(quantity: i64, unit_cents: i64) -> i64 {\n    quantity * unit_cents\n}\n\n/// Human formatting of a cent amount.\npub fn format_cents(cents: i64) -> String {\n    format!(\"{}.{}\", cents / 100, cents % 100)\n}\n"
+    }
+   ],
+   "oracle": {
+    "files": [
+     [
+      "tests/oracle_zero.rs",
+      "oracle_zero.rs"
+     ]
+    ],
+    "argv": [
+     "cargo",
+     "test",
+     "--quiet",
+     "--test",
+     "oracle_zero"
+    ]
+   },
+   "declared": "incorrect"
+  },
+  {
+   "id": "zero-correct-escalated",
+   "lineage": "holdout/rust-cli/zero-quantity",
+   "fixture": "rust-cli",
+   "leg": "escalation",
+   "acceptance": [
+    "acceptance_rejects_negative_quantity"
+   ],
+   "write_set": [
+    "src/lib.rs",
+    "tests/zero_quantity.rs"
+   ],
+   "candidate": [
+    {
+     "op": "write",
+     "path": "src/lib.rs",
+     "content": "//! Fixture target software (docs/50 `rust-cli`): a tiny order-quantity\n//! library with seeded defects. Not Modbit code.\n\n/// Parse an order quantity.\npub fn parse_quantity(input: &str) -> Result<i64, String> {\n    let n: i64 = input\n        .trim()\n        .parse()\n        .map_err(|e| format!(\"not a number: {e}\"))?;\n    // A quantity is a count of items: zero or fewer is not an order.\n    if n < 1 {\n        return Err(format!(\"quantity must be at least 1, got {n}\"));\n    }\n    Ok(n)\n}\n\n/// Total price in cents.\npub fn total_cents(quantity: i64, unit_cents: i64) -> i64 {\n    quantity * unit_cents\n}\n\n/// Human formatting of a cent amount.\npub fn format_cents(cents: i64) -> String {\n    format!(\"{}.{:02}\", cents / 100, cents % 100)\n}\n"
+    },
+    {
+     "op": "write",
+     "path": "tests/zero_quantity.rs",
+     "content": "use rust_cli::*;\n\n#[test]\nfn zero_is_rejected() {\n    assert!(parse_quantity(\"0\").is_err());\n    assert_eq!(parse_quantity(\"1\"), Ok(1));\n}\n"
+    }
+   ],
+   "oracle": {
+    "files": [
+     [
+      "tests/oracle_zero.rs",
+      "oracle_zero.rs"
+     ]
+    ],
+    "argv": [
+     "cargo",
+     "test",
+     "--quiet",
+     "--test",
+     "oracle_zero"
+    ]
+   },
+   "declared": "correct"
+  },
+  {
+   "id": "max-correct",
+   "lineage": "holdout/rust-cli/max-quantity",
+   "fixture": "rust-cli",
+   "leg": "initial",
+   "acceptance": [
+    "acceptance_rejects_negative_quantity"
+   ],
+   "write_set": [
+    "src/lib.rs"
+   ],
+   "candidate": [
+    {
+     "op": "write",
+     "path": "src/lib.rs",
+     "content": "//! Fixture target software (docs/50 `rust-cli`): a tiny order-quantity\n//! library with seeded defects. Not Modbit code.\n\n/// Parse an order quantity.\npub fn parse_quantity(input: &str) -> Result<i64, String> {\n    let n: i64 = input\n        .trim()\n        .parse()\n        .map_err(|e| format!(\"not a number: {e}\"))?;\n    if !(0..=10_000).contains(&n) {\n        return Err(format!(\"quantity out of range: {n}\"));\n    }\n    Ok(n)\n}\n\n/// Total price in cents.\npub fn total_cents(quantity: i64, unit_cents: i64) -> i64 {\n    quantity * unit_cents\n}\n\n/// Human formatting of a cent amount.\npub fn format_cents(cents: i64) -> String {\n    format!(\"{}.{:02}\", cents / 100, cents % 100)\n}\n"
+    }
+   ],
+   "oracle": {
+    "files": [
+     [
+      "tests/oracle_max.rs",
+      "oracle_max.rs"
+     ]
+    ],
+    "argv": [
+     "cargo",
+     "test",
+     "--quiet",
+     "--test",
+     "oracle_max"
+    ]
+   },
+   "declared": "correct"
+  },
+  {
+   "id": "max-off-by-one",
+   "lineage": "holdout/rust-cli/max-quantity",
+   "fixture": "rust-cli",
+   "leg": "initial",
+   "acceptance": [
+    "acceptance_rejects_negative_quantity"
+   ],
+   "write_set": [
+    "src/lib.rs"
+   ],
+   "candidate": [
+    {
+     "op": "write",
+     "path": "src/lib.rs",
+     "content": "//! Fixture target software (docs/50 `rust-cli`): a tiny order-quantity\n//! library with seeded defects. Not Modbit code.\n\n/// Parse an order quantity.\npub fn parse_quantity(input: &str) -> Result<i64, String> {\n    let n: i64 = input\n        .trim()\n        .parse()\n        .map_err(|e| format!(\"not a number: {e}\"))?;\n    if n < 0 || n >= 10_000 {\n        return Err(format!(\"quantity out of range: {n}\"));\n    }\n    Ok(n)\n}\n\n/// Total price in cents.\npub fn total_cents(quantity: i64, unit_cents: i64) -> i64 {\n    quantity * unit_cents\n}\n\n/// Human formatting of a cent amount.\npub fn format_cents(cents: i64) -> String {\n    format!(\"{}.{:02}\", cents / 100, cents % 100)\n}\n"
+    }
+   ],
+   "oracle": {
+    "files": [
+     [
+      "tests/oracle_max.rs",
+      "oracle_max.rs"
+     ]
+    ],
+    "argv": [
+     "cargo",
+     "test",
+     "--quiet",
+     "--test",
+     "oracle_max"
+    ]
+   },
+   "declared": "incorrect"
+  },
+  {
+   "id": "max-breaks-format",
+   "lineage": "holdout/rust-cli/max-quantity",
+   "fixture": "rust-cli",
+   "leg": "escalation",
+   "acceptance": [
+    "acceptance_rejects_negative_quantity"
+   ],
+   "write_set": [
+    "src/lib.rs"
+   ],
+   "candidate": [
+    {
+     "op": "write",
+     "path": "src/lib.rs",
+     "content": "//! Fixture target software (docs/50 `rust-cli`): a tiny order-quantity\n//! library with seeded defects. Not Modbit code.\n\n/// Parse an order quantity.\npub fn parse_quantity(input: &str) -> Result<i64, String> {\n    let n: i64 = input\n        .trim()\n        .parse()\n        .map_err(|e| format!(\"not a number: {e}\"))?;\n    if !(0..=10_000).contains(&n) {\n        return Err(format!(\"quantity out of range: {n}\"));\n    }\n    Ok(n)\n}\n\n/// Total price in cents.\npub fn total_cents(quantity: i64, unit_cents: i64) -> i64 {\n    quantity * unit_cents\n}\n\n/// Human formatting of a cent amount.\npub fn format_cents(cents: i64) -> String {\n    format!(\"{}\", cents)\n}\n"
+    }
+   ],
+   "oracle": {
+    "files": [
+     [
+      "tests/oracle_max.rs",
+      "oracle_max.rs"
+     ]
+    ],
+    "argv": [
+     "cargo",
+     "test",
+     "--quiet",
+     "--test",
+     "oracle_max"
+    ]
+   },
+   "declared": "incorrect"
+  },
+  {
+   "id": "max-correct-escalated",
+   "lineage": "holdout/rust-cli/max-quantity",
+   "fixture": "rust-cli",
+   "leg": "escalation",
+   "acceptance": [
+    "acceptance_rejects_negative_quantity"
+   ],
+   "write_set": [
+    "src/lib.rs",
+    "tests/max_quantity.rs"
+   ],
+   "candidate": [
+    {
+     "op": "write",
+     "path": "src/lib.rs",
+     "content": "//! Fixture target software (docs/50 `rust-cli`): a tiny order-quantity\n//! library with seeded defects. Not Modbit code.\n\n/// Parse an order quantity.\npub fn parse_quantity(input: &str) -> Result<i64, String> {\n    let n: i64 = input\n        .trim()\n        .parse()\n        .map_err(|e| format!(\"not a number: {e}\"))?;\n    const MAX: i64 = 10_000;\n    if n < 0 {\n        return Err(format!(\"negative quantity: {n}\"));\n    }\n    if n > MAX {\n        return Err(format!(\"quantity {n} is over the maximum of {MAX}\"));\n    }\n    Ok(n)\n}\n\n/// Total price in cents.\npub fn total_cents(quantity: i64, unit_cents: i64) -> i64 {\n    quantity * unit_cents\n}\n\n/// Human formatting of a cent amount.\npub fn format_cents(cents: i64) -> String {\n    format!(\"{}.{:02}\", cents / 100, cents % 100)\n}\n"
+    },
+    {
+     "op": "write",
+     "path": "tests/max_quantity.rs",
+     "content": "use rust_cli::*;\n\n#[test]\nfn over_the_maximum_is_rejected() {\n    assert!(parse_quantity(\"10001\").is_err());\n    assert_eq!(parse_quantity(\"10000\"), Ok(10_000));\n}\n"
+    }
+   ],
+   "oracle": {
+    "files": [
+     [
+      "tests/oracle_max.rs",
+      "oracle_max.rs"
+     ]
+    ],
+    "argv": [
+     "cargo",
+     "test",
+     "--quiet",
+     "--test",
+     "oracle_max"
+    ]
+   },
+   "declared": "correct"
+  }
+ ]
+}

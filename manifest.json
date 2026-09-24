@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 90,
-    "root_and_tooling": 1573,
-    "docs_bytes": 1346721
+    "root_and_tooling": 1574,
+    "docs_bytes": 1349177
   },
   "sections": [
     {
@@ -590,8 +590,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Execution policy qualification and rollout gates",
-      "bytes": 42076,
-      "sha256": "27acefadb50e86b616bbe64818f9f32ef04df15a3ba7bd4c9ab5344651a4d15b"
+      "bytes": 44532,
+      "sha256": "3579a3e8ff56c5c9b975921637c0fee8148156a778c919dd87905e6b3fb2cba2"
     },
     {
       "path": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
@@ -8304,6 +8304,11 @@
       "path": "evidence/m9/EPR-011/evidence.json",
       "bytes": 3095,
       "sha256": "a320ff2dfd7e0768e98344c609f8f17972784065a83dde2a2ad46f13773cee97"
+    },
+    {
+      "path": "evidence/m9/EPR-019/TASK_CARD.md",
+      "bytes": 3429,
+      "sha256": "a0bf047033093cfd317a75ac4ed04ff7f12d320c00e05981d696c23ab96c31ab"
     },
     {
       "path": "evidence/m9/IMP-EV-0029/TASK_CARD.md",

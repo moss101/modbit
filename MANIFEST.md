@@ -17,11 +17,11 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | Architecture and subsystems | 10–29 | 20 | 379675 |
 | Implementation specifications | 30–39 | 10 | 152915 |
 | Requirements, tasks and traceability | 40–49 | 10 | 351840 |
-| Verification and testing | 50–69 | 15 | 211102 |
+| Verification and testing | 50–69 | 15 | 213558 |
 | Delivery and operations | 70–79 | 8 | 57176 |
 | Agent process and governance | 80–97 | 18 | 116551 |
 | Live state | 98–99 | 1 | 11899 |
-| **Total docs** | | **90** | **1346721** |
+| **Total docs** | | **90** | **1349177** |
 
 ## Specification files (`docs/`)
 
@@ -86,7 +86,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 58 | `docs/58_MULTIMODAL_MEDIA_REAL_TESTS.md` | Multimodal / Media Real-System Tests | verification | 4040 | `317a29984dc65eecf53dcb26cec525deb99499f602cd34ef6fa0ed7e8e402c81` |
 | 59 | `docs/59_RELEASE_ZERO_PROOF_SCENARIO.md` | Release Zero — Single Proof Scenario | verification | 3669 | `15fbb005f7a8196b4987468034f8de113dcd15a1ebd3f34dba822075012064fc` |
 | 60 | `docs/60_RELEASE_ZERO_EXPANDED_PROOF.md` | Release Zero Expanded Proof — Clean-Slate V2 | verification | 4001 | `0a3cc3ce5329c15cafb402833cb6bd70c9c6e4afdbdb838d2a811176c975939e` |
-| 61 | `docs/61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md` | Execution policy qualification and rollout gates | verification | 42076 | `27acefadb50e86b616bbe64818f9f32ef04df15a3ba7bd4c9ab5344651a4d15b` |
+| 61 | `docs/61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md` | Execution policy qualification and rollout gates | verification | 44532 | `3579a3e8ff56c5c9b975921637c0fee8148156a778c919dd87905e6b3fb2cba2` |
 | 62 | `docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md` | Product extension requirements, tasks and qualifications | verification | 88197 | `1212dbd1e9e1bb505b6ae751c39236daece9d1c37eeba7d8e1dde41f5aca6016` |
 | 63 | `docs/63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md` | Agent competence benchmarks and regression suites | verification | 8291 | `431c384790f08d1650efa467d07ef2ac0ad4fc4325c61645433339d347aa933d` |
 | 64 | `docs/64_VERIFICATION_EXECUTION_CONTRACTS.md` | Verification execution contracts: baseline, targeting, result normalization, flake handling and diff invariants | verification | 16239 | `2ebf3003e7f1059fe71db444eec5f1df677088d94bafa32e3c528df865768155` |
@@ -1610,6 +1610,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m9/EPR-011/TASK_CARD.md` | retained evidence | 3608 | `8e92cf48c90213a5308b80a768e43acbbceeef44f317606d002f6a13ff3eb90e` |
 | `evidence/m9/EPR-011/ci-run-35973113878.json` | retained evidence | 42281 | `2b9a718546fbabebd7c478ce074b9c802272c74e16e37fccc2bf981403e75439` |
 | `evidence/m9/EPR-011/evidence.json` | retained evidence | 3095 | `a320ff2dfd7e0768e98344c609f8f17972784065a83dde2a2ad46f13773cee97` |
+| `evidence/m9/EPR-019/TASK_CARD.md` | retained evidence | 3429 | `a0bf047033093cfd317a75ac4ed04ff7f12d320c00e05981d696c23ab96c31ab` |
 | `evidence/m9/IMP-EV-0029/TASK_CARD.md` | retained evidence | 5847 | `c53b7ceef274f93431b76a1aa2899c5d279a4f12f866efba7f298826a660faac` |
 | `evidence/m9/IMP-EV-0029/ci-run-35944145033.json` | retained evidence | 42281 | `91276f04a38724b673d62b00f25f91cd4091fbec331b7c15cc9156235ece1318` |
 | `evidence/m9/IMP-EV-0029/evidence.json` | retained evidence | 3282 | `30375710856afd41c4137209d659dc5a428efc8ff6269a23afa2246ed5a07918` |
