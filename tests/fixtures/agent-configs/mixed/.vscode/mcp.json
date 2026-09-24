@@ -1,0 +1,1 @@
+{"servers": {"docs": {"type": "stdio", "command": "docs-server", "args": ["--other"]}}}

@@ -1396,6 +1396,39 @@ message TrustExtension {
   string manifest_digest = 3;
 }
 
+// Import another agent's configuration (REQ-EV-0137, REQ-EV-0183):
+// instructions, commands, agents, skills and MCP servers become one
+// unsigned extension under the Core's imports/, with a report labelling
+// every item MAPPED, SKIPPED or CONFLICT. Loading it quarantines it until
+// the person trusts what it would do.
+message ImportAgentConfig {
+  Id session_id = 1;
+  string source_root = 2;          // the directory holding the other agent's configuration
+  string name = 3;                 // the extension's name
+  bool replace = 4;                // replace an earlier import of that name
+}
+
+message ImportItemView {
+  string kind = 1;                 // rule | command | agent | skill | mcp_server | hook | setting | other
+  string source = 2;               // path under the source root, "#key" for an entry in a file
+  string target = 3;               // what it became in the extension; "" when nothing was written
+  string status = 4;               // MAPPED | SKIPPED | CONFLICT
+  string reason = 5;
+}
+
+message ImportReportView {
+  string extension_path = 1;       // load it with LoadExtension
+  string name = 2;
+  repeated string formats = 3;
+  uint32 mapped = 4;
+  uint32 skipped = 5;
+  uint32 conflicts = 6;
+  repeated ImportItemView items = 7;
+  string manifest_digest = 8;
+  string signature = 9;            // UNSIGNED
+  repeated string capabilities = 10;
+}
+
 // Run an active extension's instruction template on a task: the expanded
 // text is queued as the person's input, the command its provenance.
 message RunExtensionCommand {

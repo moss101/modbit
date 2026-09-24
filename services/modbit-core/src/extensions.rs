@@ -64,6 +64,7 @@ fn read(path: &str) -> Result<Read, (String, String)> {
     let json = String::from_utf8(bytes)
         .map_err(|_| refuse("EXTENSION_INVALID", "the manifest is not UTF-8"))?;
     let manifest = ExtensionManifest::parse(&json).map_err(|e| refuse("EXTENSION_INVALID", e))?;
+    check_files(&dir, &manifest)?;
     let signature_text = std::fs::read_to_string(dir.join(EXTENSION_SIGNATURE)).ok();
     let signature = modbit_tools::extensions::verify(
         json.as_bytes(),
@@ -77,6 +78,71 @@ fn read(path: &str) -> Result<Read, (String, String)> {
         manifest,
         signature,
     })
+}
+
+/// Every file in the extension's directory is the manifest, its signature,
+/// or listed in the manifest with its exact digest: what was signed or
+/// trusted is everything that is there.
+fn check_files(dir: &std::path::Path, m: &ExtensionManifest) -> Result<(), (String, String)> {
+    fn walk(root: &std::path::Path, dir: &std::path::Path, out: &mut Vec<String>) {
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return;
+        };
+        for e in entries.flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                walk(root, &p, out);
+            } else if let Ok(r) = p.strip_prefix(root) {
+                out.push(r.to_string_lossy().replace('\\', "/"));
+            }
+        }
+    }
+    let mut present = Vec::new();
+    walk(dir, dir, &mut present);
+    for f in &present {
+        if f == EXTENSION_MANIFEST || f == EXTENSION_SIGNATURE {
+            continue;
+        }
+        let Some(want) = m.files.get(f) else {
+            return Err(refuse(
+                "EXTENSION_INVALID",
+                format!("`{f}` is in the extension but not listed in its manifest"),
+            ));
+        };
+        let got = std::fs::read(dir.join(f))
+            .map(|b| hex::encode(sha2::Sha256::digest(&b)))
+            .unwrap_or_default();
+        if &got != want {
+            return Err(refuse(
+                "EXTENSION_INVALID",
+                format!("`{f}` is not the file the manifest lists (sha256 {got}, listed {want})"),
+            ));
+        }
+    }
+    if let Some(missing) = m.files.keys().find(|f| !present.contains(f)) {
+        return Err(refuse(
+            "EXTENSION_INVALID",
+            format!("the manifest lists `{missing}`, which is not in the extension"),
+        ));
+    }
+    Ok(())
+}
+
+/// The directories of a session's active extensions, for the owners that
+/// read `rules/`, `agents/` and `skills/` from them.
+pub(crate) fn active_dirs(
+    core: &Core,
+    session_id: SessionId,
+    sub: &str,
+) -> Vec<std::path::PathBuf> {
+    core.tools
+        .hooks
+        .loaded_now(session_id)
+        .iter()
+        .filter(|e| e.active())
+        .map(|e| std::path::PathBuf::from(&e.path).join(sub))
+        .filter(|p| p.is_dir())
+        .collect()
 }
 
 fn names(m: &ExtensionManifest) -> (Vec<String>, Vec<String>, Vec<String>, Vec<String>) {
@@ -486,5 +552,134 @@ pub(crate) async fn run_command(
         task_id: Some(crate::server::wire_id(task.task_id.as_bytes())),
         sequence: 0,
         offset,
+    })
+}
+
+/// What already exists where an import would land — the workspace's and
+/// the operator's rules, agent profiles and skills, and the servers the
+/// resolved configuration names — so an imported item of the same name is a
+/// conflict and what is there wins.
+fn existing_for(core: &Core, root: &std::path::Path) -> modbit_skills::import::Existing {
+    let mut ex = modbit_skills::import::Existing::default();
+    let stems = |dir: std::path::PathBuf, out: &mut std::collections::BTreeSet<String>| {
+        for e in std::fs::read_dir(dir).into_iter().flatten().flatten() {
+            let p = e.path();
+            if let Ok(text) = std::fs::read_to_string(&p)
+                && let Some(id) = text
+                    .lines()
+                    .skip(1)
+                    .take_while(|l| l.trim() != "---")
+                    .find_map(|l| l.strip_prefix("id:").map(|v| v.trim().to_owned()))
+            {
+                out.insert(id);
+            } else if let Some(stem) = p.file_stem() {
+                out.insert(stem.to_string_lossy().into_owned());
+            }
+        }
+    };
+    stems(root.join(".modbit").join("rules"), &mut ex.rules);
+    stems(core.data_dir.join("rules"), &mut ex.rules);
+    let (profiles, _) = modbit_domain::agent_profile::list(&[
+        root.join(".modbit").join("agents"),
+        core.data_dir.join("agents"),
+    ]);
+    ex.agents = profiles.into_iter().map(|(p, _)| p.name).collect();
+    for dir in [
+        root.join(".modbit").join("skills"),
+        core.data_dir.join("skills"),
+    ] {
+        for e in std::fs::read_dir(dir).into_iter().flatten().flatten() {
+            if e.path().is_dir() {
+                ex.skills
+                    .insert(e.file_name().to_string_lossy().into_owned());
+            }
+        }
+    }
+    let resolved = modbit_policy::config::resolve(&crate::config::layers_for(
+        &core.data_dir,
+        Some(&root.to_string_lossy()),
+    ));
+    ex.servers = resolved.mcp_servers.keys().cloned().collect();
+    ex
+}
+
+/// `ImportAgentConfig` (REQ-EV-0137, REQ-EV-0183): turn another agent's
+/// configuration under `source_root` into an extension under this Core's
+/// `imports/`, with the migration report. The extension is unsigned: loading
+/// it quarantines it until the person trusts what it would do.
+pub(crate) async fn import(
+    core: &Core,
+    session_id: SessionId,
+    source_root: &str,
+    name: &str,
+    replace: bool,
+) -> Result<wire::ImportReportView, (String, String)> {
+    let root = std::path::Path::new(source_root)
+        .canonicalize()
+        .map_err(|e| refuse("IMPORT_SOURCE_MISSING", format!("{source_root}: {e}")))?;
+    let out = core.data_dir.join("imports").join(name);
+    // An import that is loaded is not rewritten under it.
+    {
+        let store = core.store.lock().await;
+        let out_s = out.canonicalize().unwrap_or_else(|_| out.clone());
+        if core
+            .tools
+            .hooks
+            .extensions_of(&store, session_id)
+            .iter()
+            .any(|e| std::path::Path::new(&e.path) == out_s)
+        {
+            return Err(refuse(
+                "EXTENSION_LOADED",
+                format!("`{name}` is loaded in this session; unload it before importing again"),
+            ));
+        }
+    }
+    let existing = existing_for(core, &root);
+    let report = modbit_skills::import::import(&root, name, &out, &existing, replace).map_err(
+        |e| match e {
+            modbit_skills::import::ImportError::Exists(_) => {
+                refuse("IMPORT_EXISTS", format!("{e}; import again with replace"))
+            }
+            modbit_skills::import::ImportError::Nothing(_) => refuse("IMPORT_EMPTY", e.to_string()),
+            modbit_skills::import::ImportError::BadName(_)
+            | modbit_skills::import::ImportError::NoSource(_) => {
+                refuse("BAD_PAYLOAD", e.to_string())
+            }
+            modbit_skills::import::ImportError::Io(_) => refuse("IMPORT_FAILED", e.to_string()),
+        },
+    )?;
+    // What was written is read back exactly as a load would read it.
+    let written = read(&out.to_string_lossy())?;
+    let label = |s: modbit_skills::import::ItemStatus| {
+        serde_json::to_value(s)
+            .ok()
+            .and_then(|v| v.as_str().map(str::to_owned))
+            .unwrap_or_default()
+    };
+    Ok(wire::ImportReportView {
+        extension_path: written.dir,
+        name: report.extension.clone(),
+        formats: report.formats.clone(),
+        mapped: report.count(modbit_skills::import::ItemStatus::Mapped) as u32,
+        skipped: report.count(modbit_skills::import::ItemStatus::Skipped) as u32,
+        conflicts: report.count(modbit_skills::import::ItemStatus::Conflict) as u32,
+        items: report
+            .items
+            .iter()
+            .map(|i| wire::ImportItemView {
+                kind: serde_json::to_value(i.kind)
+                    .ok()
+                    .and_then(|v| v.as_str().map(str::to_owned))
+                    .unwrap_or_default(),
+                source: i.source.clone(),
+                target: i.target.clone(),
+                status: label(i.status),
+                reason: i.reason.clone(),
+            })
+            .collect(),
+        manifest_digest: written.digest,
+        signature: written.signature.label(),
+        capabilities: written.manifest.capabilities(),
     })
 }

@@ -14,14 +14,14 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | Section | Range | Files | Bytes |
 |---|---|---:|---:|
 | Authority and orientation | 00–09 | 8 | 65563 |
-| Architecture and subsystems | 10–29 | 20 | 377417 |
-| Implementation specifications | 30–39 | 10 | 149143 |
+| Architecture and subsystems | 10–29 | 20 | 379675 |
+| Implementation specifications | 30–39 | 10 | 149745 |
 | Requirements, tasks and traceability | 40–49 | 10 | 351840 |
 | Verification and testing | 50–69 | 15 | 211102 |
 | Delivery and operations | 70–79 | 8 | 57176 |
 | Agent process and governance | 80–97 | 18 | 116551 |
 | Live state | 98–99 | 1 | 11899 |
-| **Total docs** | | **90** | **1340691** |
+| **Total docs** | | **90** | **1343551** |
 
 ## Specification files (`docs/`)
 
@@ -41,7 +41,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 13 | `docs/13_DOMAIN_MODEL_AND_STATE_MACHINES.md` | Canonical Domain Model and State Machines | architecture | 6829 | `7c15fd3f525fe0f863ce28e00bb31d0eb8f0313babd53befd83148d18378f5c3` |
 | 14 | `docs/14_AGENT_RUNTIME_AND_ORCHESTRATION.md` | Agent Runtime and Orchestration | architecture | 31303 | `6cdcc9763938a8c14813991f31209b65201560a54895ff7f38c79bf7cf0db7c7` |
 | 15 | `docs/15_MODEL_ROUTER_AND_PROVIDER_GATEWAY.md` | Execution Policy Router and Provider Gateway | architecture | 13578 | `aa41d18ef25b22eb9dfb9452eab9d53a3a043ed0b4572868d3e3fe295d592b01` |
-| 16 | `docs/16_TOOL_CAPABILITY_AND_PROCEDURAL_RUNTIME.md` | Tool System, Capability Kernel, Procedural Runtime, and MCP | architecture | 35025 | `5cfb976b26eedf8d8112906f44816c5a0975aa43e47e2b09483a751e0ed1b821` |
+| 16 | `docs/16_TOOL_CAPABILITY_AND_PROCEDURAL_RUNTIME.md` | Tool System, Capability Kernel, Procedural Runtime, and MCP | architecture | 37283 | `1e4945a17fc1279aabbc5b2509e5523048f83a953bd3fac913731adc1b14d6a9` |
 | 17 | `docs/17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md` | Canonical Tool and Capability Inventory | architecture | 7044 | `3542409ed94a42a9479b38ff322e578a06eefab925fb3cc60b7bc8cded4c4b65` |
 | 18 | `docs/18_CONTEXT_RETRIEVAL_AND_ENGINEERING_KNOWLEDGE.md` | Context, Retrieval, and Engineering Knowledge Engine | architecture | 5728 | `c6a362588d301b22d0f57bd11accecd6af33a9a5f7abc391afb15d7bef6f2303` |
 | 19 | `docs/19_DURABLE_STATE_MEMORY_COMPACTION_CHECKPOINTS.md` | Durable State, Memory, Compaction, and Checkpoints | architecture | 16269 | `82e8d84f633a9c7405d7f86026cff9a65cbd0063b042024717d7af442a2728c7` |
@@ -55,7 +55,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 27 | `docs/27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md` | Execution policy router and verified orchestration | architecture | 67667 | `e4957aff5554b6eea8b04b43dfcecbb1871a11b7e16cdb278f8b110bc86daf5a` |
 | 28 | `docs/28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md` | Agent competence: planning, verification and repair | architecture | 12521 | `2dbf6183340ee6a0ba808eef2dd1eea147e41a75dc18e5a3ee77c5bfec117e57` |
 | 29 | `docs/29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md` | Client surfaces and source-control integration | architecture | 23716 | `28d33fa4dc71bc46831981c4eb3490c5e24aaeac713edad6594b5798a67882e3` |
-| 30 | `docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md` | Protocol, APIs, and Event Schemas | implementation | 47405 | `f32b7e5737169690c94026a6fc68e6320aba590ed30ff8e45f3f9f2f63e14f29` |
+| 30 | `docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md` | Protocol, APIs, and Event Schemas | implementation | 48007 | `844569033c510234175bf3839f2c5a09bd39a4e5ce600e04a6bd8e56514ad0ef` |
 | 31 | `docs/31_DATABASE_AND_STORAGE_SCHEMA.md` | Database and Storage Schema | implementation | 15228 | `471cccdabae45c478d38feb0a2db6ead8152cd0dde24fc04ed4bbb11f4d876aa` |
 | 32 | `docs/32_DESKTOP_FRONTEND_IMPLEMENTATION.md` | Desktop Frontend Implementation | implementation | 13542 | `33dc6dd7225c3139a0ff6735b0e37d9ea0934ed3e1d6ddb0213f7aabfe69c748` |
 | 33 | `docs/33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md` | Core and Cloud Backend Implementation | implementation | 13639 | `907fccbdc9e41e1002f8576ebdccf2b5875e9368760e8b41849d0f53a6057a84` |
@@ -1629,6 +1629,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m9/IMP-EV-0104/evidence.json` | retained evidence | 2615 | `dcd68e387c3382d6547f3e460ef07e592ff89fcf3acf8464dac7c8bf3362fcf2` |
 | `evidence/m9/IMP-EV-0128/TASK_CARD.md` | retained evidence | 5407 | `5009a5251b624c056595055de258f01736a46d58595679ae2731ad11936316a5` |
 | `evidence/m9/IMP-EV-0128/evidence.json` | retained evidence | 2208 | `34fdd1aecb5dbfa4c8dc4e51c8334dfca89f029b4d7511f1aad186ef03aafea9` |
+| `evidence/m9/IMP-EV-0137/TASK_CARD.md` | retained evidence | 1731 | `aa8a08f150766dd7667e27813d5fe6f9869f43f8761018d8314e0a0c9457a769` |
 | `evidence/m9/IMP-EV-0138/TASK_CARD.md` | retained evidence | 2880 | `323afa0a989b8ae2b921546b2eee7d665f1e2be04fcb9f8232ac0549aa793a87` |
 | `evidence/m9/IMP-EV-0138/ci-run-35948285118.json` | retained evidence | 42281 | `66a2667c9a62008e7b65b323fc15d1215411b242adee2be812da1965018cddeb` |
 | `evidence/m9/IMP-EV-0138/evidence.json` | retained evidence | 1946 | `181d4ea426e5911f081dca4216905794ed7b144e062c834400eb3ab26ed2e677` |
@@ -1637,6 +1638,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m9/IMP-EV-0139/evidence.json` | retained evidence | 1551 | `ef4d2b37f2f909a4e610fff6fb8b41c6ffb1b46fccbaa989df8ed60293827027` |
 | `evidence/m9/IMP-EV-0162/TASK_CARD.md` | retained evidence | 4465 | `e93b23f997134175ec47eb17fe3756f722cb1ebfa7a41b3d05fbbb11af3043b8` |
 | `evidence/m9/IMP-EV-0162/evidence.json` | retained evidence | 1296 | `b70da1a4e4afc9058d6fcd7260b16731bae0851c273fb9d4e850c621ccf3cc25` |
+| `evidence/m9/IMP-EV-0183/TASK_CARD.md` | retained evidence | 2852 | `c35f07cb82441abb091095dd2ca214defa4498aa2b6be40aa889ff9c3e9f8c48` |
 | `evidence/m9/IMP-EV-0187/TASK_CARD.md` | retained evidence | 3374 | `7ed481578805d96a9b533a260d98755432fc65a01ff586cd3461be265fd028b6` |
 | `evidence/m9/IMP-EV-0187/evidence.json` | retained evidence | 1582 | `4f2ed4e99e1221ddd6dfbcfef04d2e0ca690c888fed76d8f2be691e332f717fd` |
 | `evidence/m9/IMP-EV-0193/TASK_CARD.md` | retained evidence | 3473 | `8eef44c0c0143d765f2524a8747b7cba69c809ca116439c2db6724aee34289a4` |

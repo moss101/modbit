@@ -1097,6 +1097,7 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
             "repository.trust"
         }
         "RunExtensionCommand" => "task.author",
+        "ImportAgentConfig" => "repository.trust",
         "ConfigureSandboxGateway" => "sandbox.configure",
         "ExportHandoff" => "task.author",
         "GetEnvironment" | "RebuildEnvironment" => "task.author",
@@ -4622,6 +4623,28 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 }
                 .encode_to_vec(),
             )
+        }
+        "ImportAgentConfig" => {
+            let Ok(p) = wire::ImportAgentConfig::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "ImportAgentConfig");
+            };
+            let Some(session_id) = p
+                .session_id
+                .as_ref()
+                .and_then(id16)
+                .map(SessionId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "session_id required");
+            };
+            if let Err(ack) = require_lease(core, &cid, &env, &session_id).await {
+                return ack;
+            }
+            match crate::extensions::import(core, session_id, &p.source_root, &p.name, p.replace)
+                .await
+            {
+                Ok(v) => accept(cid, false, v.encode_to_vec()),
+                Err((code, detail)) => reject(cid, &code, detail),
+            }
         }
         "InspectExtension" => {
             let Ok(p) = wire::InspectExtension::decode(env.payload.as_slice()) else {

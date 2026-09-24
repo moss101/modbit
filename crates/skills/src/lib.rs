@@ -20,6 +20,7 @@
 //! widens.
 
 pub mod evolution;
+pub mod import;
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
