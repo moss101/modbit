@@ -21,7 +21,9 @@ use sha2::{Digest, Sha256};
 /// Schema version of the policy and risk records.
 pub const ASSURANCE_SCHEMA_VERSION: u32 = 1;
 /// Version of the derivation rules below; bumps when a rule changes.
-pub const REALIZED_RISK_RULES_VERSION: &str = "risk-rules-1";
+/// `risk-rules-2`: the secret surface covers every `.env.*` file, and a
+/// suffix or basename prefix is compared without ASCII case.
+pub const REALIZED_RISK_RULES_VERSION: &str = "risk-rules-2";
 
 /// How much assurance a candidate needs before acceptance (docs/27 §5.1).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -143,9 +145,9 @@ pub struct ProtectedSurface {
     /// Kind.
     pub kind: SurfaceKind,
     /// Patterns: a directory prefix (`.github/`), a path segment
-    /// (`/migrations/`), a suffix (`.lock`, `.pem`) or a basename
-    /// (`Dockerfile`). Matched against the repository-relative path with
-    /// `/` separators.
+    /// (`/migrations/`), a suffix (`.pem`, or `*_secret.yaml`), a basename
+    /// prefix (`.env.*`) or a basename (`Dockerfile`). Matched against the
+    /// repository-relative path with `/` separators.
     pub patterns: Vec<String>,
     /// The least risk level a change here carries.
     pub level: RiskLevel,
@@ -168,6 +170,11 @@ impl ProtectedSurface {
     /// Whether `path` matches any of `patterns` in the grammar of
     /// [`ProtectedSurface::patterns`]. The one protected-path matcher: the
     /// risk rules and the change engine's DI-9 (docs/64 §4) both use it.
+    ///
+    /// A suffix or a basename prefix names a kind of file and is compared
+    /// without ASCII case: `Server.KEY` is a key, and on Windows and macOS
+    /// `.ENV.production` is the file a loader opens as `.env.production`.
+    /// Directories, segments and basenames are exact.
     #[must_use]
     pub fn matches_patterns(patterns: &[String], path: &str) -> bool {
         let path = path.replace('\\', "/");
@@ -181,14 +188,27 @@ impl ProtectedSurface {
                     path == dir || path.starts_with(p.as_str())
                 }
             } else if let Some(suffix) = p.strip_prefix('*') {
-                path.ends_with(suffix)
+                ends_with_ignore_case(&path, suffix)
+            } else if let Some(prefix) = p.strip_suffix('*').filter(|x| !x.contains('/')) {
+                // `.env.*`: `.env.production`, `.env.local`, never `.envrc`.
+                starts_with_ignore_case(base, prefix)
             } else if p.starts_with('.') && !p.contains('/') {
-                path.ends_with(p.as_str())
+                // `.pem`: no `/` in the pattern, so only the basename's end.
+                ends_with_ignore_case(&path, p)
             } else {
                 base == p || path == *p
             }
         })
     }
+}
+
+fn ends_with_ignore_case(s: &str, suffix: &str) -> bool {
+    s.len() >= suffix.len()
+        && s.as_bytes()[s.len() - suffix.len()..].eq_ignore_ascii_case(suffix.as_bytes())
+}
+
+fn starts_with_ignore_case(s: &str, prefix: &str) -> bool {
+    s.len() >= prefix.len() && s.as_bytes()[..prefix.len()].eq_ignore_ascii_case(prefix.as_bytes())
 }
 
 /// Blast-radius thresholds.
@@ -266,6 +286,7 @@ impl Default for AssurancePolicy {
                     SurfaceKind::Secret,
                     &[
                         ".env",
+                        ".env.*",
                         ".pem",
                         ".key",
                         ".p12",
@@ -902,6 +923,57 @@ mod tests {
         assert_eq!(kinds("config/prod.pem"), vec![SurfaceKind::Secret]);
         assert_eq!(kinds("src/lib.rs"), vec![]);
         assert_eq!(kinds("src\\auth\\login.py"), vec![SurfaceKind::Auth]);
+    }
+
+    #[test]
+    fn every_dotenv_file_is_a_secret_and_nothing_that_only_looks_like_one() {
+        // EPR-019's holdout found `config/.env.production` LOW under
+        // risk-rules-1: `.env` matched only as a suffix.
+        let p = AssurancePolicy::default();
+        let kinds = |path: &str| -> Vec<SurfaceKind> {
+            p.surfaces_of(path).iter().map(|s| s.kind).collect()
+        };
+        for secret in [
+            ".env",
+            "config/.env",
+            "config/prod.env",
+            "config/.env.production",
+            ".env.local",
+            "apps/web/.env.development.local",
+            "config\\.env.staging",
+            "config/.ENV.Production",
+            "certs/server.key",
+            "certs\\Server.KEY",
+            "keys/deploy_id.PEM",
+            "certs/client.p12",
+        ] {
+            assert_eq!(kinds(secret), vec![SurfaceKind::Secret], "{secret}");
+        }
+        for plain in [
+            "src/environment.rs",
+            "src/env.rs",
+            "src/dotenv.rs",
+            "config/environment.yaml",
+            "src/hotkey.rs",
+            "src/keys.rs",
+            "docs/pem-format.md",
+        ] {
+            assert_eq!(kinds(plain), vec![], "{plain}");
+        }
+        // The same shapes in a layer's own surface: a suffix spans the
+        // path's end, a prefix only the basename.
+        let s = ProtectedSurface {
+            kind: SurfaceKind::Secret,
+            patterns: vec!["*_secret.yaml".into(), "id_rsa*".into()],
+            level: RiskLevel::Critical,
+            review_required: true,
+            human_required: true,
+            question_required: false,
+        };
+        assert!(s.matches("config/db_SECRET.yaml"));
+        assert!(s.matches(".ssh/id_rsa.pub"));
+        assert!(!s.matches("config/secret.yaml"));
+        assert!(!s.matches("docs/id_rsa/readme.md"));
     }
 
     #[test]

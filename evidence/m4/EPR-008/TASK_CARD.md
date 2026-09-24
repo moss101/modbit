@@ -28,13 +28,23 @@ PolicyEnvelope defines legal models/effects, protected surfaces, minimum assuran
 - Changes under `.modbit/` are excluded from the COMPLETION run's changed files by the existing residue filter, so the `POLICY` surface fires only through the DI-9 question gate, not through the derived risk.
 - Line deltas are counted from the text diff of each changed file; binary files count as one changed path with no lines.
 
+## Regression — `risk-rules-2` (2026-09-24)
+
+- Evidence tier: release-critical (permissions/policy and a security boundary).
+- Found by EPR-019's held-out risk corpus (`benchmarks/gate-calibration/corpora/risk-holdout.json`, case `env-production`): a change to `config/.env.production` derived `LOW` with no review and no human — a critical-surface miss. The secret surface listed `.env`, which matched only as a path suffix, so every `.env.<name>` file (the credential stores docs/23's protected paths deny as `**/.env.*`) fell through.
+- Audit: BROKEN-DRIFTED for this surface — the rule set had drifted from docs/23's protected paths. First missing link: no pattern shape for a basename prefix.
+- Fix (`crates/policy/src/assurance.rs`; `REALIZED_RISK_RULES_VERSION` = `risk-rules-2`): a basename-prefix pattern (`.env.*`: `.env.production`, `.env.local`, `.env.development.local`, never `.envrc`), carried by the secret surface; a suffix or basename prefix is compared without ASCII case (`certs\Server.KEY`, `config/.ENV.Production`), while directories, segments and basenames stay exact; a suffix pattern has no `/`, so it matches only a basename's end and `environment.rs`, `dotenv.rs`, `hotkey.rs` are on no surface. The default policy's version moved from `assurance-8531202d7bf6dd6d` to `assurance-c853b6b96171e5ec`; the Core's routing plans and the gate carry the new rules version.
+- Corpus 23 → 27 cases, re-pinned on purpose (`MODBIT_UPDATE_ASSURANCE_CORPUS=1`): the 23 existing diagnoses are unchanged but for the two versions; `dotenv_production` (with a forged low-risk advisory), `dotenv_local_nested` and `secret_extension_upper_case` are `CRITICAL` / `HIGH_ASSURANCE` with review and a human; `secret_lookalikes_stay_plain` is `LOW`. Their names and paths differ from the holdout's, so EPR-019's separation check still holds.
+- Fault injection (disposable edits, restored): without the `.env.*` pattern, `every_dotenv_file_is_a_secret_and_nothing_that_only_looks_like_one` fails on `config/.env.production` and the corpus pin fails; with case-sensitive suffixes, the unit test fails on `certs\Server.KEY` and the pin fails on `secret_extension_upper_case`.
+- Limitation: other credential stores docs/23 protects (`.ssh/`, `id_rsa*`, `id_ed25519*`, `.netrc`, `.npmrc`, `.pypirc`) are not on the secret surface yet.
+
 ## Verification
 
 Named tests (run on macOS, Linux and Windows by `.github/workflows/ci.yml`):
 
 - `qual_epr_008_factual_risk_stays_strict_despite_passing_tests_and_stops_safely_unattended` (services/modbit-core, real Core)
 - `qual_epr_008_fault_corpus_pins_every_rule_and_no_signal_lowers_assurance`, `epr_fi_008_a_stronger_layer_moves_every_case_up_or_keeps_it` (crates/policy)
-- Unit: `surfaces_match_prefixes_segments_suffixes_and_basenames`, `a_plain_change_is_low_and_passing_tests_or_confidence_change_nothing`, `a_critical_surface_needs_a_human_whatever_else_is_true`, `layers_only_strengthen`, `later_facts_strengthen_and_never_weaken` (crates/policy)
+- Unit: `surfaces_match_prefixes_segments_suffixes_and_basenames`, `every_dotenv_file_is_a_secret_and_nothing_that_only_looks_like_one`, `a_plain_change_is_low_and_passing_tests_or_confidence_change_nothing`, `a_critical_surface_needs_a_human_whatever_else_is_true`, `layers_only_strengthen`, `later_facts_strengthen_and_never_weaken` (crates/policy)
 
 ## Evidence
 

@@ -11,8 +11,8 @@
     "independent_review_required": true,
     "level": "CRITICAL",
     "minimum_assurance": "HIGH_ASSURANCE",
-    "policy_version": "assurance-8531202d7bf6dd6d",
-    "realized_risk_version": "risk-rules-1",
+    "policy_version": "assurance-c853b6b96171e5ec",
+    "realized_risk_version": "risk-rules-2",
     "reasons": [
       {
         "code": "PROTECTED_SURFACE",
@@ -37,8 +37,8 @@
     "independent_review_required": false,
     "level": "MEDIUM",
     "minimum_assurance": "STANDARD",
-    "policy_version": "assurance-8531202d7bf6dd6d",
-    "realized_risk_version": "risk-rules-1",
+    "policy_version": "assurance-c853b6b96171e5ec",
+    "realized_risk_version": "risk-rules-2",
     "reasons": [
       {
         "code": "BLAST_RADIUS",
@@ -61,8 +61,8 @@
     "independent_review_required": true,
     "level": "HIGH",
     "minimum_assurance": "GOVERNED",
-    "policy_version": "assurance-8531202d7bf6dd6d",
-    "realized_risk_version": "risk-rules-1",
+    "policy_version": "assurance-c853b6b96171e5ec",
+    "realized_risk_version": "risk-rules-2",
     "reasons": [
       {
         "code": "BLAST_RADIUS",
@@ -85,8 +85,8 @@
     "independent_review_required": true,
     "level": "HIGH",
     "minimum_assurance": "GOVERNED",
-    "policy_version": "assurance-8531202d7bf6dd6d",
-    "realized_risk_version": "risk-rules-1",
+    "policy_version": "assurance-c853b6b96171e5ec",
+    "realized_risk_version": "risk-rules-2",
     "reasons": [
       {
         "code": "PROTECTED_SURFACE",
@@ -111,8 +111,8 @@
     "independent_review_required": false,
     "level": "LOW",
     "minimum_assurance": "STANDARD",
-    "policy_version": "assurance-8531202d7bf6dd6d",
-    "realized_risk_version": "risk-rules-1",
+    "policy_version": "assurance-c853b6b96171e5ec",
+    "realized_risk_version": "risk-rules-2",
     "reasons": [],
     "schema_version": 1
   },
@@ -127,8 +127,8 @@
     "independent_review_required": false,
     "level": "MEDIUM",
     "minimum_assurance": "STANDARD",
-    "policy_version": "assurance-8531202d7bf6dd6d",
-    "realized_risk_version": "risk-rules-1",
+    "policy_version": "assurance-c853b6b96171e5ec",
+    "realized_risk_version": "risk-rules-2",
     "reasons": [
       {
         "code": "PROTECTED_SURFACE",
@@ -153,8 +153,8 @@
     "independent_review_required": true,
     "level": "CRITICAL",
     "minimum_assurance": "HIGH_ASSURANCE",
-    "policy_version": "assurance-8531202d7bf6dd6d",
-    "realized_risk_version": "risk-rules-1",
+    "policy_version": "assurance-c853b6b96171e5ec",
+    "realized_risk_version": "risk-rules-2",
     "reasons": [
       {
         "code": "PROTECTED_SURFACE",
@@ -179,8 +179,8 @@
     "independent_review_required": true,
     "level": "HIGH",
     "minimum_assurance": "GOVERNED",
-    "policy_version": "assurance-8531202d7bf6dd6d",
-    "realized_risk_version": "risk-rules-1",
+    "policy_version": "assurance-c853b6b96171e5ec",
+    "realized_risk_version": "risk-rules-2",
     "reasons": [
       {
         "code": "EXTERNAL_EFFECT",
@@ -205,9 +205,62 @@
     "independent_review_required": false,
     "level": "LOW",
     "minimum_assurance": "STANDARD",
-    "policy_version": "assurance-8531202d7bf6dd6d",
-    "realized_risk_version": "risk-rules-1",
+    "policy_version": "assurance-c853b6b96171e5ec",
+    "realized_risk_version": "risk-rules-2",
     "reasons": [],
+    "schema_version": 1
+  },
+  "dotenv_local_nested": {
+    "candidate_revision": 25,
+    "evidence_refs": [
+      "facts:1b31860096f5c3e62c26d97aef54296c5d9c48a4614eb26f3066048b8b20c4e5"
+    ],
+    "facts_digest": "1b31860096f5c3e62c26d97aef54296c5d9c48a4614eb26f3066048b8b20c4e5",
+    "forbidden_effects_requested": [],
+    "human_required": true,
+    "independent_review_required": true,
+    "level": "CRITICAL",
+    "minimum_assurance": "HIGH_ASSURANCE",
+    "policy_version": "assurance-c853b6b96171e5ec",
+    "realized_risk_version": "risk-rules-2",
+    "reasons": [
+      {
+        "code": "PROTECTED_SURFACE",
+        "detail": "SECRET surface: apps/web/.env.local",
+        "level": "CRITICAL",
+        "paths": [
+          "apps/web/.env.local"
+        ],
+        "surface": "SECRET"
+      }
+    ],
+    "schema_version": 1
+  },
+  "dotenv_production": {
+    "candidate_revision": 24,
+    "evidence_refs": [
+      "facts:36cd5da09fb221864ec0b50f6275abae0ce71b6b81d7477a3ecc8169d8babd4e",
+      "advisory_ignored:{\"learned_risk\":0.0,\"confidence\":1.0,\"checks_passed\":true}"
+    ],
+    "facts_digest": "36cd5da09fb221864ec0b50f6275abae0ce71b6b81d7477a3ecc8169d8babd4e",
+    "forbidden_effects_requested": [],
+    "human_required": true,
+    "independent_review_required": true,
+    "level": "CRITICAL",
+    "minimum_assurance": "HIGH_ASSURANCE",
+    "policy_version": "assurance-c853b6b96171e5ec",
+    "realized_risk_version": "risk-rules-2",
+    "reasons": [
+      {
+        "code": "PROTECTED_SURFACE",
+        "detail": "SECRET surface: .env.production",
+        "level": "CRITICAL",
+        "paths": [
+          ".env.production"
+        ],
+        "surface": "SECRET"
+      }
+    ],
     "schema_version": 1
   },
   "everything_at_once": {
@@ -222,8 +275,8 @@
     "independent_review_required": true,
     "level": "CRITICAL",
     "minimum_assurance": "HIGH_ASSURANCE",
-    "policy_version": "assurance-8531202d7bf6dd6d",
-    "realized_risk_version": "risk-rules-1",
+    "policy_version": "assurance-c853b6b96171e5ec",
+    "realized_risk_version": "risk-rules-2",
     "reasons": [
       {
         "code": "EXTERNAL_EFFECT",
@@ -296,8 +349,8 @@
     "independent_review_required": true,
     "level": "HIGH",
     "minimum_assurance": "GOVERNED",
-    "policy_version": "assurance-8531202d7bf6dd6d",
-    "realized_risk_version": "risk-rules-1",
+    "policy_version": "assurance-c853b6b96171e5ec",
+    "realized_risk_version": "risk-rules-2",
     "reasons": [
       {
         "code": "EXTERNAL_EFFECT",
@@ -322,8 +375,8 @@
     "independent_review_required": true,
     "level": "MEDIUM",
     "minimum_assurance": "GOVERNED",
-    "policy_version": "assurance-8531202d7bf6dd6d",
-    "realized_risk_version": "risk-rules-1",
+    "policy_version": "assurance-c853b6b96171e5ec",
+    "realized_risk_version": "risk-rules-2",
     "reasons": [
       {
         "code": "PROTECTED_SURFACE",
@@ -348,8 +401,8 @@
     "independent_review_required": true,
     "level": "HIGH",
     "minimum_assurance": "GOVERNED",
-    "policy_version": "assurance-8531202d7bf6dd6d",
-    "realized_risk_version": "risk-rules-1",
+    "policy_version": "assurance-c853b6b96171e5ec",
+    "realized_risk_version": "risk-rules-2",
     "reasons": [
       {
         "code": "PROTECTED_SURFACE",
@@ -374,8 +427,8 @@
     "independent_review_required": false,
     "level": "LOW",
     "minimum_assurance": "STANDARD",
-    "policy_version": "assurance-8531202d7bf6dd6d",
-    "realized_risk_version": "risk-rules-1",
+    "policy_version": "assurance-c853b6b96171e5ec",
+    "realized_risk_version": "risk-rules-2",
     "reasons": [],
     "schema_version": 1
   },
@@ -390,8 +443,8 @@
     "independent_review_required": false,
     "level": "LOW",
     "minimum_assurance": "STANDARD",
-    "policy_version": "assurance-8531202d7bf6dd6d",
-    "realized_risk_version": "risk-rules-1",
+    "policy_version": "assurance-c853b6b96171e5ec",
+    "realized_risk_version": "risk-rules-2",
     "reasons": [],
     "schema_version": 1
   },
@@ -406,8 +459,8 @@
     "independent_review_required": false,
     "level": "MEDIUM",
     "minimum_assurance": "STANDARD",
-    "policy_version": "assurance-8531202d7bf6dd6d",
-    "realized_risk_version": "risk-rules-1",
+    "policy_version": "assurance-c853b6b96171e5ec",
+    "realized_risk_version": "risk-rules-2",
     "reasons": [
       {
         "code": "SPARSE_COVERAGE",
@@ -432,8 +485,8 @@
     "independent_review_required": true,
     "level": "HIGH",
     "minimum_assurance": "GOVERNED",
-    "policy_version": "assurance-8531202d7bf6dd6d",
-    "realized_risk_version": "risk-rules-1",
+    "policy_version": "assurance-c853b6b96171e5ec",
+    "realized_risk_version": "risk-rules-2",
     "reasons": [
       {
         "code": "PROTECTED_SURFACE",
@@ -458,9 +511,35 @@
     "independent_review_required": false,
     "level": "LOW",
     "minimum_assurance": "STANDARD",
-    "policy_version": "assurance-8531202d7bf6dd6d",
-    "realized_risk_version": "risk-rules-1",
+    "policy_version": "assurance-c853b6b96171e5ec",
+    "realized_risk_version": "risk-rules-2",
     "reasons": [],
+    "schema_version": 1
+  },
+  "secret_extension_upper_case": {
+    "candidate_revision": 26,
+    "evidence_refs": [
+      "facts:6b43a55d9e3ded6d9ac171d187c8c54d154206da3724d726a6e25e01eafad63e"
+    ],
+    "facts_digest": "6b43a55d9e3ded6d9ac171d187c8c54d154206da3724d726a6e25e01eafad63e",
+    "forbidden_effects_requested": [],
+    "human_required": true,
+    "independent_review_required": true,
+    "level": "CRITICAL",
+    "minimum_assurance": "HIGH_ASSURANCE",
+    "policy_version": "assurance-c853b6b96171e5ec",
+    "realized_risk_version": "risk-rules-2",
+    "reasons": [
+      {
+        "code": "PROTECTED_SURFACE",
+        "detail": "SECRET surface: certs\\Server.KEY",
+        "level": "CRITICAL",
+        "paths": [
+          "certs\\Server.KEY"
+        ],
+        "surface": "SECRET"
+      }
+    ],
     "schema_version": 1
   },
   "secret_file": {
@@ -474,8 +553,8 @@
     "independent_review_required": true,
     "level": "CRITICAL",
     "minimum_assurance": "HIGH_ASSURANCE",
-    "policy_version": "assurance-8531202d7bf6dd6d",
-    "realized_risk_version": "risk-rules-1",
+    "policy_version": "assurance-c853b6b96171e5ec",
+    "realized_risk_version": "risk-rules-2",
     "reasons": [
       {
         "code": "PROTECTED_SURFACE",
@@ -489,6 +568,22 @@
     ],
     "schema_version": 1
   },
+  "secret_lookalikes_stay_plain": {
+    "candidate_revision": 27,
+    "evidence_refs": [
+      "facts:6fcc9d487c9d56a7f7f38b7fe4fa4fa1451db589449cbeee7353e9749b3e9284"
+    ],
+    "facts_digest": "6fcc9d487c9d56a7f7f38b7fe4fa4fa1451db589449cbeee7353e9749b3e9284",
+    "forbidden_effects_requested": [],
+    "human_required": false,
+    "independent_review_required": false,
+    "level": "LOW",
+    "minimum_assurance": "STANDARD",
+    "policy_version": "assurance-c853b6b96171e5ec",
+    "realized_risk_version": "risk-rules-2",
+    "reasons": [],
+    "schema_version": 1
+  },
   "terraform": {
     "candidate_revision": 7,
     "evidence_refs": [
@@ -500,8 +595,8 @@
     "independent_review_required": true,
     "level": "HIGH",
     "minimum_assurance": "GOVERNED",
-    "policy_version": "assurance-8531202d7bf6dd6d",
-    "realized_risk_version": "risk-rules-1",
+    "policy_version": "assurance-c853b6b96171e5ec",
+    "realized_risk_version": "risk-rules-2",
     "reasons": [
       {
         "code": "PROTECTED_SURFACE",
@@ -526,8 +621,8 @@
     "independent_review_required": true,
     "level": "HIGH",
     "minimum_assurance": "GOVERNED",
-    "policy_version": "assurance-8531202d7bf6dd6d",
-    "realized_risk_version": "risk-rules-1",
+    "policy_version": "assurance-c853b6b96171e5ec",
+    "realized_risk_version": "risk-rules-2",
     "reasons": [
       {
         "code": "UNEXPECTED_SCOPE",
@@ -554,8 +649,8 @@
     "independent_review_required": true,
     "level": "MEDIUM",
     "minimum_assurance": "GOVERNED",
-    "policy_version": "assurance-8531202d7bf6dd6d",
-    "realized_risk_version": "risk-rules-1",
+    "policy_version": "assurance-c853b6b96171e5ec",
+    "realized_risk_version": "risk-rules-2",
     "reasons": [
       {
         "code": "UNEXPECTED_SCOPE",
@@ -580,8 +675,8 @@
     "independent_review_required": true,
     "level": "CRITICAL",
     "minimum_assurance": "HIGH_ASSURANCE",
-    "policy_version": "assurance-8531202d7bf6dd6d",
-    "realized_risk_version": "risk-rules-1",
+    "policy_version": "assurance-c853b6b96171e5ec",
+    "realized_risk_version": "risk-rules-2",
     "reasons": [
       {
         "code": "PROTECTED_SURFACE",
