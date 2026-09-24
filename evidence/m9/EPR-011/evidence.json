@@ -1,0 +1,38 @@
+{
+ "task": "EPR-011",
+ "requirements": [
+  "REQ-EPR-011",
+  "REQ-EV-0014",
+  "docs/38 CounterfactualReplay",
+  "docs/27 \u00a712",
+  "docs/61 QUAL-EPR-011 / EPR-E2E-011 / EPR-FI-011"
+ ],
+ "scenarios": [
+  "a request starts from a dirty worktree (edited tracked file, untracked draft, tracked .env) and runs on its chosen plan; RequestSnapshotRecorded pins the exact starting repository",
+  "replaying the decision's hard-eligible openai/gpt-5 alternative is REPLAY_NOT_ADMITTED until policy sets eval.replay ALLOW; the chosen plan is REPLAY_PLAN_CHOSEN, an unknown one REPLAY_PLAN_UNKNOWN",
+  "admitted, the replay runs as its own task through the Gateway (the provider sees gpt-5) in a scratch repository under the Core's replays/: dirty state restored, .env sanitized away, no remote",
+  "its forge.issue.read attempt is refused and the fake forge receives no request; the original repository's files, refs, worktrees and status are byte-for-byte unchanged",
+  "the request record shows the replay OBSERVED with plan, snapshot commit, registry generation and review_isolated ceiling, observed_minor its cost, the estimate still an estimate",
+  "a deleted snapshot ref makes a replay REPLAY_REVISION_MISMATCH; a newer registry generation makes it REPLAY_STALE; on Windows (no host sandbox) it is SANDBOX_UNAVAILABLE and nothing is taken"
+ ],
+ "tests": [
+  "services/modbit-core/tests/surface_protocol.rs::qual_epr_011_an_alternative_replays_isolated_on_the_exact_snapshot_and_is_observed"
+ ],
+ "audit": "DOCUMENTED-ONLY before: the request record labelled an ESTIMATED direct-frontier counterfactual and an observed_label that was always NOT_EXECUTED; nothing pinned a request's starting repository and nothing could execute an alternative.",
+ "proof": "Real Core, terminal broker, host sandbox, signed registry and scripted OpenAI-compatible provider: an alternative plan replays offline as its own task on the request's exact snapshot, isolated (sanitized scratch clone, no remote, review_isolated ceiling, forge refused), and the request record reads its outcome as an observed counterfactual distinct from the estimate.",
+ "negative_proof": "EPR-FI-011 mutations: disabling sanitization fails the test (.env travels); replaying under the trusted profile with egress and secret operations fails it (the fake forge receives the request with the token).",
+ "limitations": "Every replay recomputes verification in isolation (deterministic evidence is not reused); replays start on request \u2014 automatic exploration and propensity belong to EPR-012; pre-existing dirty files count in a request's candidate diff (DI-1) as before.",
+ "batch_commits": [
+  "547764d"
+ ],
+ "runs": [
+  "35973113878"
+ ],
+ "ci": {
+  "run_id": "35973113878",
+  "head_sha": "e49a96aa8b82be573e59d2e9ecfa9085122388d9",
+  "conclusion": "success",
+  "note": "every job green on macOS, Linux and Windows on the first attempt; the change also carries a test-only fix making the m6_2 capacity-ticket test wait for the held request instead of a fixed two seconds",
+  "json": "evidence/m9/EPR-011/ci-run-35973113878.json"
+ }
+}

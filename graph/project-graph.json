@@ -28630,8 +28630,16 @@
    ],
    "task_card": "docs/49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md#epr-011",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller or executor present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-35973113878",
+    "test:qual_epr_011_an_alternative_replays_isolated_on_the_exact_snapshot_and_is_observed",
+    "artifact:evidence/m9/EPR-011/TASK_CARD.md",
+    "artifact:evidence/m9/EPR-011/evidence.json",
+    "artifact:evidence/m9/EPR-011/ci-run-35973113878.json",
+    "commit:547764d"
+   ],
+   "status_changed_on": "2026-09-24T15:08:15Z"
   },
   {
    "id": "EPR-012",
