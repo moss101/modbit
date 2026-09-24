@@ -1,6 +1,6 @@
 //! M8.2 qualification (docs/24 "Cloud Core Worker", docs/33 "Session kernel
 //! lease", "Cloud worker lifecycle"): a real worker over a real Postgres and
-//! MinIO claims the session's fenced lease, spawns the real `modbit-core`
+//! an S3-compatible store claims the session's fenced lease, spawns the real `modbit-core`
 //! in the session's tenant, materializes the cloud log there, runs the
 //! queued task with a real (scripted) provider, executes the commands the
 //! API relayed, mirrors every local event verbatim to the cloud log; a
@@ -530,7 +530,7 @@ async fn qual_m8_2_a_worker_claims_the_lease_runs_the_task_relays_commands_mirro
  {
     let Some(store_cfg) = store_config().await else {
         eprintln!(
-            "SKIPPED: MODBIT_CLOUD_TEST_DATABASE_URL unset (the hosted cloud job runs this against Postgres and MinIO)"
+            "SKIPPED: MODBIT_CLOUD_TEST_DATABASE_URL unset (the hosted cloud job runs this against Postgres and an S3-compatible store)"
         );
         return;
     };
