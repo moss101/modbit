@@ -1,0 +1,36 @@
+{
+ "task": "IMP-EV-0042",
+ "requirements": [
+  "REQ-EV-0042",
+  "docs/16 Hook Bus"
+ ],
+ "scenarios": [
+  "a fail-closed before_tool hook that sleeps past its 300 ms timeout is killed and change.apply is POLICY_DENIED/HOOK_TIMEOUT with the file untouched",
+  "a fail-open hook exiting 3 is recorded FAILED and the change happens",
+  "a hook answering allow under a policy denying fs.write changes nothing: the kernel's deny stands and the answer is MALFORMED",
+  "an observing hook that denies is IGNORED; an after_tool observer receives the typed hooks-1 request with the result",
+  "before_run is observed and a before_model interceptor stops the run (HOOK_DENIED) before the provider is asked",
+  "a repository's hook is refused until the session trusts the repository"
+ ],
+ "tests": [
+  "services/modbit-core/tests/surface_protocol.rs::qual_ev_0042_a_slow_or_failing_hook_follows_its_fail_policy_and_cannot_pass_the_monotonic_guard",
+  "crates/tools/src/hooks.rs::a_declaration_is_typed_and_validated_before_anything_runs"
+ ],
+ "audit": "DOCUMENTED-ONLY before: the configuration layers resolved a hooks list that nothing read.",
+ "proof": "Real Core, real handler processes: typed hooks at lifecycle points with timeouts and fail policies, recorded on the task's log, that can deny but never allow.",
+ "negative_proof": "Mutation: dropping the hook denial in the pipeline lets the slow hook's call succeed and fails the test.",
+ "batch_commits": [
+  "4caa62f"
+ ],
+ "runs": [
+  "35946564444"
+ ],
+ "ci": {
+  "run_id": "35946564444",
+  "head_sha": "ac796218a29987989cc72db3eedc5696f49092a9",
+  "conclusion": "success",
+  "note": "every job green on macOS, Linux and Windows on the rebased head (after IMP-EV-0029 landed); one change carries IMP-EV-0042, 0139 and 0240",
+  "json": "evidence/m9/IMP-EV-0042/ci-run-35946564444.json"
+ },
+ "limitations": "Handlers run as host processes with a scrubbed environment (not sandboxed further, like MCP stdio servers); payloads are summaries; only tool arguments can be rewritten; no signature or marketplace trust on extensions in this change (IMP-EV-0225)."
+}

@@ -1,0 +1,33 @@
+{
+ "task": "IMP-EV-0240",
+ "requirements": [
+  "REQ-EV-0240",
+  "docs/16 Hook Bus"
+ ],
+ "scenarios": [
+  "a loaded extension's before_tool handler rewrites a write; unloading removes it",
+  "an extension unloaded while its slow handler runs has the rewrite discarded (UNLOADED) and the call writes what was asked",
+  "refusals by name for a missing directory, manifest, invalid manifest, duplicate load and unknown unload",
+  "after a restart a loaded extension is in force and an unloaded one is not"
+ ],
+ "tests": [
+  "services/modbit-core/tests/surface_protocol.rs::qual_ev_0240_unloading_an_extension_removes_its_handlers_without_a_stale_mutation"
+ ],
+ "audit": "NOT-FOUND before: no extension could register anything with the Core.",
+ "proof": "Real Core, real handler processes: extension registrations are reversible, journaled on the session, rebuilt after restart, and a late answer from an unloaded handler is discarded.",
+ "negative_proof": "Mutation: removing the liveness re-check lets the stale rewrite land and fails the test.",
+ "batch_commits": [
+  "4caa62f"
+ ],
+ "runs": [
+  "35946564444"
+ ],
+ "ci": {
+  "run_id": "35946564444",
+  "head_sha": "ac796218a29987989cc72db3eedc5696f49092a9",
+  "conclusion": "success",
+  "note": "every job green on macOS, Linux and Windows on the rebased head (after IMP-EV-0029 landed); one change carries IMP-EV-0042, 0139 and 0240",
+  "json": "evidence/m9/IMP-EV-0240/ci-run-35946564444.json"
+ },
+ "limitations": "Handlers run as host processes with a scrubbed environment (not sandboxed further, like MCP stdio servers); payloads are summaries; only tool arguments can be rewritten; no signature or marketplace trust on extensions in this change (IMP-EV-0225)."
+}

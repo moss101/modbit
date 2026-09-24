@@ -11078,8 +11078,16 @@
    "milestone": "M9",
    "qual": "QUAL-EV-0042",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-35946564444",
+    "test:qual_ev_0042_a_slow_or_failing_hook_follows_its_fail_policy_and_cannot_pass_the_monotonic_guard",
+    "artifact:evidence/m9/IMP-EV-0042/TASK_CARD.md",
+    "artifact:evidence/m9/IMP-EV-0042/evidence.json",
+    "artifact:evidence/m9/IMP-EV-0042/ci-run-35946564444.json",
+    "commit:4caa62f"
+   ],
+   "status_changed_on": "2026-09-24T02:39:37Z"
   },
   {
    "id": "IMP-EV-0043",
@@ -16414,8 +16422,16 @@
    "milestone": "M9",
    "qual": "QUAL-EV-0139",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-35946564444",
+    "test:qual_ev_0139_a_rewriting_hook_cannot_override_the_final_deny",
+    "artifact:evidence/m9/IMP-EV-0139/TASK_CARD.md",
+    "artifact:evidence/m9/IMP-EV-0139/evidence.json",
+    "artifact:evidence/m9/IMP-EV-0139/ci-run-35946564444.json",
+    "commit:4caa62f"
+   ],
+   "status_changed_on": "2026-09-24T02:39:37Z"
   },
   {
    "id": "IMP-EV-0141",
@@ -21404,8 +21420,16 @@
    "milestone": "M9",
    "qual": "QUAL-EV-0240",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-35946564444",
+    "test:qual_ev_0240_unloading_an_extension_removes_its_handlers_without_a_stale_mutation",
+    "artifact:evidence/m9/IMP-EV-0240/TASK_CARD.md",
+    "artifact:evidence/m9/IMP-EV-0240/evidence.json",
+    "artifact:evidence/m9/IMP-EV-0240/ci-run-35946564444.json",
+    "commit:4caa62f"
+   ],
+   "status_changed_on": "2026-09-24T02:39:38Z"
   },
   {
    "id": "IMP-EV-0241",

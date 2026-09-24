@@ -1,0 +1,32 @@
+{
+ "task": "IMP-EV-0139",
+ "requirements": [
+  "REQ-EV-0139",
+  "docs/16 Hook Bus"
+ ],
+ "scenarios": [
+  "a hook rewrites change.apply onto rewritten.txt: the rewrite runs, its change record and the result's arguments_hash are the rewrite's",
+  "under a policy denying fs.write the rewritten call is denied by the kernel",
+  "a rewrite onto .env is refused; a schema-breaking rewrite is HOOK_REWRITE_INVALID"
+ ],
+ "tests": [
+  "services/modbit-core/tests/surface_protocol.rs::qual_ev_0139_a_rewriting_hook_cannot_override_the_final_deny"
+ ],
+ "audit": "DOCUMENTED-ONLY before: no interception existed; the pipeline's monotonic verdict (REQ-EV-0239) did.",
+ "proof": "Real Core: an intercepting hook's rewrite goes back through schema, custody check and the Capability Kernel, which decides last.",
+ "negative_proof": "No rewrite clears a kernel deny or reaches a protected path.",
+ "batch_commits": [
+  "4caa62f"
+ ],
+ "runs": [
+  "35946564444"
+ ],
+ "ci": {
+  "run_id": "35946564444",
+  "head_sha": "ac796218a29987989cc72db3eedc5696f49092a9",
+  "conclusion": "success",
+  "note": "every job green on macOS, Linux and Windows on the rebased head (after IMP-EV-0029 landed); one change carries IMP-EV-0042, 0139 and 0240",
+  "json": "evidence/m9/IMP-EV-0139/ci-run-35946564444.json"
+ },
+ "limitations": "Handlers run as host processes with a scrubbed environment (not sandboxed further, like MCP stdio servers); payloads are summaries; only tool arguments can be rewritten; no signature or marketplace trust on extensions in this change (IMP-EV-0225)."
+}
