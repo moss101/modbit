@@ -729,6 +729,17 @@ pub struct RoutingCandidate {
     pub reason: String,
 }
 
+/// A binding the hard filters removed before anything was weighed
+/// (REQ-EV-0029), and why.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RoutingExclusion {
+    /// What was excluded: `endpoint/model`, or the plan or slot it would
+    /// have been.
+    pub subject: String,
+    /// Why, in words a reader can check against the recorded demands.
+    pub reason: String,
+}
+
 /// The plan id of the direct plan of a run: derived from the run, so a reader
 /// of an attempt never has to look the plan up to name it.
 #[must_use]

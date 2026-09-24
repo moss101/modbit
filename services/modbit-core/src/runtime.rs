@@ -241,6 +241,13 @@ impl Runtime {
             let mut store = core.store.lock().await;
             match task.state {
                 TaskState::Queued => {
+                    let run_id = RunId::new();
+                    // The route is decided before anything is recorded: a
+                    // refused one (a pin or a model the policy refuses,
+                    // nothing eligible) leaves the task as it was — no
+                    // ticket, no start — and startable again (REQ-EV-0029).
+                    let route =
+                        route_new_run(core, &store, &task, run_id, lease_generation, &cfg, &actor)?;
                     if cfg.ticket_id.is_empty() {
                         cfg.ticket_id = Self::take_run_ticket(
                             &mut store,
@@ -250,7 +257,6 @@ impl Runtime {
                             lease_generation,
                         )?;
                     }
-                    let run_id = RunId::new();
                     let attempt = store
                         .runs_for_task(&task.task_id)
                         .map(|r| r.len() as u32 + 1)
@@ -264,8 +270,6 @@ impl Runtime {
                         vec![typed("TaskStarted", &TaskEvent::TaskStarted, actor.clone())],
                     )
                     .map_err(|e| ("STORE".into(), e))?;
-                    let route =
-                        route_new_run(core, &store, &task, run_id, lease_generation, &cfg, &actor)?;
                     cfg.plan_id = route.plan_id;
                     cfg.slot_id = route.slot_id;
                     cfg.endpoint = route.endpoint;
@@ -330,6 +334,24 @@ impl Runtime {
                             ),
                         ));
                     }
+                    // A fresh attempt's route is decided before anything is
+                    // recorded, like a first start's (REQ-EV-0029).
+                    let fresh = match &run {
+                        Some(_) => None,
+                        None => {
+                            let run_id = RunId::new();
+                            let route = route_new_run(
+                                core,
+                                &store,
+                                &task,
+                                run_id,
+                                lease_generation,
+                                &cfg,
+                                &actor,
+                            )?;
+                            Some((run_id, route))
+                        }
+                    };
                     if cfg.ticket_id.is_empty() {
                         cfg.ticket_id = Self::take_run_ticket(
                             &mut store,
@@ -339,11 +361,11 @@ impl Runtime {
                             lease_generation,
                         )?;
                     }
-                    let run = match run {
-                        Some(r) => r,
-                        None => {
+                    let run = match (run, fresh) {
+                        (Some(r), _) => r,
+                        (None, fresh) => {
                             // Returned from review (or never suspended): a fresh attempt.
-                            let run_id = RunId::new();
+                            let (run_id, route) = fresh.expect("routed above");
                             let attempt = store
                                 .runs_for_task(&task.task_id)
                                 .map(|r| r.len() as u32 + 1)
@@ -357,15 +379,6 @@ impl Runtime {
                                 vec![typed("TaskResumed", &TaskEvent::TaskResumed, actor.clone())],
                             )
                             .map_err(|e| ("STORE".into(), e))?;
-                            let route = route_new_run(
-                                core,
-                                &store,
-                                &task,
-                                run_id,
-                                lease_generation,
-                                &cfg,
-                                &actor,
-                            )?;
                             cfg.plan_id = route.plan_id;
                             cfg.slot_id = route.slot_id;
                             cfg.endpoint = route.endpoint;
@@ -1052,6 +1065,15 @@ fn route_new_run(
         ));
         (c.compiled.plan, events)
     } else {
+        // REQ-EV-0029: the direct path dispatches one binding with nothing to
+        // weigh it against, so the model policy is the only filter it has,
+        // and it applies before anything is recorded.
+        if let Some(refusal) = crate::routing::refused_by_model_policy(
+            crate::routing::model_policy(core, task).as_deref(),
+            [(cfg.endpoint.clone(), cfg.model.clone())],
+        ) {
+            return Err(refusal);
+        }
         let plan = modbit_domain::routing::ConditionalExecutionPlan::direct(
             core.tenant_id,
             task.session_id,
@@ -1128,6 +1150,10 @@ fn route_new_run(
                     selection: "DIRECT".into(),
                     choice_probability_bp: 10_000,
                     routing_latency_ms: 0,
+                    demands: vec![],
+                    demands_digest: String::new(),
+                    hard_exclusions: vec![],
+                    input_digest: String::new(),
                 },
                 actor.clone(),
             ),
@@ -2580,6 +2606,37 @@ async fn run_loop(
                         actor.clone(),
                     )],
                 );
+            }
+            // REQ-EV-0029: the model policy is a hard filter on every round,
+            // not only at the compile. A model the policy in force refuses
+            // (tightened mid-run, or since the run was suspended) is never
+            // dispatched again: the route is compiled again at this boundary
+            // under the policy that now holds, and when nothing it allows can
+            // take over (no registry, a pin, nothing eligible) the task waits
+            // with its history.
+            let allowed: Option<Vec<String>> = now
+                .config
+                .models_allow
+                .as_ref()
+                .map(|r| r.value.iter().cloned().collect());
+            let refused = |cfg: &StartConfig| {
+                crate::routing::refused_by_model_policy(
+                    allowed.as_deref(),
+                    [(cfg.endpoint.clone(), cfg.model.clone())],
+                )
+            };
+            if refused(&cfg).is_some() {
+                // A review task keeps the reviewer its plan bound; it is not
+                // re-routed as a solver.
+                if !crate::critique::is_review(&task) {
+                    reroute_at_boundary(&core, &task, run_id, &mut cfg, "POLICY", &actor).await;
+                }
+                if let Some((_, reason)) = refused(&cfg) {
+                    break 'outer LoopEnd::NeedsAttention {
+                        code: "MODEL_NOT_ALLOWED",
+                        reason,
+                    };
+                }
             }
         }
         // The projection follows the harness state: deferred tools activated
@@ -5049,20 +5106,27 @@ async fn run_loop(
                     message: &reason,
                 },
             ));
+            // REQ-EV-0029: a run stopped because the policy refuses its model
+            // is over, not suspended — resuming it would dispatch to that
+            // model again. The next StartTask routes a new run under the
+            // policy in force.
+            let run_end = if code == "MODEL_NOT_ALLOWED" {
+                typed(
+                    "RunFailed",
+                    &RunEvent::RunFailed {
+                        failure_code: code.to_owned(),
+                    },
+                    actor.clone(),
+                )
+            } else {
+                typed("RunSuspended", &RunEvent::RunSuspended, actor.clone())
+            };
             let _ = append_batch(
                 &mut store,
                 &core,
                 lt,
                 vec![
-                    (
-                        AggregateType::Run,
-                        *run_id.as_bytes(),
-                        vec![typed(
-                            "RunSuspended",
-                            &RunEvent::RunSuspended,
-                            actor.clone(),
-                        )],
-                    ),
+                    (AggregateType::Run, *run_id.as_bytes(), vec![run_end]),
                     (
                         AggregateType::Task,
                         *task.task_id.as_bytes(),

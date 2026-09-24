@@ -491,6 +491,18 @@ pub fn classify(source: &FailureSource<'_>) -> FailureDiagnostic {
                     f,
                     message,
                 ),
+                // REQ-EV-0029: the policy in force refuses the model the run
+                // was dispatching to; a new route is compiled under it.
+                "MODEL_NOT_ALLOWED" => diag(
+                    FailureClass::Policy,
+                    code,
+                    false,
+                    "resume with StartTask: the route is compiled again under the model policy in force, or ask the organization to allow the model",
+                    "the run waits: a model the policy refuses is never dispatched again",
+                    vec![],
+                    f,
+                    message,
+                ),
                 _ => diag(
                     FailureClass::Harness,
                     code,
