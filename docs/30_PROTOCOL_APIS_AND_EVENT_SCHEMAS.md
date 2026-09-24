@@ -154,6 +154,8 @@ As built (PX-009): `IngestCiResults { task_id }` → `CiResultsIngested { provid
 
 As built (M5 media): task event `MediaBridged` (digest, mime, routed_model, bridge_endpoint, bridge_model, description_ref, input_tokens, output_tokens, error) whenever the vision bridge described media for a text-only routed model, once per distinct digest in a run; the description is an object the record names, never transcript text the log holds twice (doc 25 "As built").
 
+As built (IMP-EV-0042/0139/0240): task events `HooksResolved { active, refused: [{hook, source, reason}] }` (as a run starts) and `HookInvoked { hook, source, point, mode, fail_policy, outcome OK | DENIED | MUTATED | TIMEOUT | FAILED | MALFORMED | IGNORED | UNLOADED, applied, duration_ms, detail, tool, arguments_hash, arguments_ref }` (valid in every state); session events `ExtensionLoaded { extension_id, name, version, path, manifest_digest, manifest_json, hooks }` and `ExtensionUnloaded { extension_id, name, removed }`. Commands `LoadExtension { session_id, path }` → `ExtensionLoadedView` and `UnloadExtension { session_id, extension_id }` → `ExtensionUnloadedView` (`repository.trust`; refused `EXTENSION_NOT_FOUND`, `EXTENSION_MANIFEST_MISSING`, `EXTENSION_INVALID`, `EXTENSION_ALREADY_LOADED`, `UNKNOWN_EXTENSION`), `ListHooks { task_id }` → `HookListView { hooks: [HookView], refused }`. A tool call a hook stopped is `POLICY_DENIED` with `HOOK_DENIED`, `HOOK_TIMEOUT`, `HOOK_FAILED`, `HOOK_MALFORMED` or `HOOK_REWRITE_INVALID`; a run a hook stopped waits with diagnosis `HOOK_DENIED` or `HOOK_FAILED` (doc 16 "Hook Bus").
+
 ### Security/effects
 `CapabilityLeaseGranted, CapabilityLeaseRevoked, ApprovalRequested, ApprovalResolved, EffectReceiptAppended, SecretHandleUsed, EmergencyStopActivated`.
 

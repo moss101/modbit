@@ -46,4 +46,5 @@ capabilities = [
   { id = "tools.output_ref", requirements = ["REQ-EV-0269"] },
   { id = "tools.forge", requirements = ["REQ-PX-006"] },
   { id = "tools.browser", requirements = ["REQ-EV-0276", "REQ-EV-0284"] },
+  { id = "tools.hooks", requirements = ["REQ-EV-0042", "REQ-EV-0139", "REQ-EV-0240"] },
 ]

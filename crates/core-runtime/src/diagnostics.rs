@@ -503,6 +503,18 @@ pub fn classify(source: &FailureSource<'_>) -> FailureDiagnostic {
                     f,
                     message,
                 ),
+                // REQ-EV-0042: a hook stopped the run — an intercepting hook
+                // denied a step, or a fail-closed hook failed.
+                "HOOK_DENIED" | "HOOK_FAILED" => diag(
+                    FailureClass::Policy,
+                    code,
+                    false,
+                    "read the hook's record (HookInvoked) and fix the hook, its fail policy or what it objected to, then resume with StartTask",
+                    "the run waits: a hook's denial, or a fail-closed hook's failure, is never skipped",
+                    vec![],
+                    f,
+                    message,
+                ),
                 _ => diag(
                     FailureClass::Harness,
                     code,

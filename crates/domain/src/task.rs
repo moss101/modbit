@@ -1842,6 +1842,58 @@ pub enum TaskEvent {
         /// Signals the record could not observe, by name.
         missing_signals: Vec<String>,
     },
+    /// `HooksResolved` (REQ-EV-0042, REQ-EV-0240): the hooks in force for a
+    /// run as it starts — from the configuration layers and the session's
+    /// extensions — and the declarations refused, with why. No state change.
+    HooksResolved {
+        /// Active registrations: `<source>/<name>@<point>`.
+        active: Vec<String>,
+        /// Declarations refused.
+        refused: Vec<HookRefusal>,
+    },
+    /// `HookInvoked` (REQ-EV-0042, REQ-EV-0139): one handler invocation at a
+    /// typed lifecycle point, what it answered and whether that changed what
+    /// happened. An audit record, valid in every state (an `after_run` hook
+    /// runs once the run has ended).
+    HookInvoked {
+        /// Registration id (`<source>/<name>`).
+        hook: String,
+        /// `config:<authority>` | `extension:<name>`.
+        source: String,
+        /// The point (`before_tool`, `after_run`, …).
+        point: String,
+        /// `observe` | `intercept`.
+        mode: String,
+        /// `closed` | `open`.
+        fail_policy: String,
+        /// `OK` | `DENIED` | `MUTATED` | `TIMEOUT` | `FAILED` | `MALFORMED` |
+        /// `IGNORED` | `UNLOADED`.
+        outcome: String,
+        /// Whether it changed what happened (a denial, a fail-closed stop, a
+        /// rewrite that was used).
+        applied: bool,
+        /// Wall time, milliseconds.
+        duration_ms: u64,
+        /// The handler's reason, or what went wrong.
+        detail: String,
+        /// The tool, at a tool or change point.
+        tool: Option<String>,
+        /// Hash of the rewritten arguments, when a rewrite was used.
+        arguments_hash: Option<String>,
+        /// Object holding the rewritten arguments, when a rewrite was used.
+        arguments_ref: Option<String>,
+    },
+}
+
+/// A hook declaration that is not in force, and why (REQ-EV-0042).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HookRefusal {
+    /// The declaration's name, or its text when it has none.
+    pub hook: String,
+    /// Where it was declared.
+    pub source: String,
+    /// Why it is not in force.
+    pub reason: String,
 }
 
 /// One pull-request comment as ingestion saw it (PX-008): who, where,
@@ -2004,6 +2056,8 @@ impl TaskEvent {
             Self::ReviewCommentsIngested { .. } => "ReviewCommentsIngested",
             Self::PolicyGenerationChanged { .. } => "PolicyGenerationChanged",
             Self::RequestOutcomeRecorded { .. } => "RequestOutcomeRecorded",
+            Self::HooksResolved { .. } => "HooksResolved",
+            Self::HookInvoked { .. } => "HookInvoked",
         }
     }
 }
@@ -2189,6 +2243,8 @@ impl Task {
             | TaskEvent::ReviewCommentsIngested { .. }
             | TaskEvent::UsageReconciled { .. }
             | TaskEvent::RequestOutcomeRecorded { .. }
+            | TaskEvent::HooksResolved { .. }
+            | TaskEvent::HookInvoked { .. }
             | TaskEvent::SandboxLost { .. }
             | TaskEvent::SandboxRestored { .. }
             | TaskEvent::EnvironmentPinned { .. }

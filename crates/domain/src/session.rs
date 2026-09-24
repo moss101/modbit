@@ -119,6 +119,36 @@ pub enum SessionEvent {
         /// Scope (`repository`).
         scope: String,
     },
+    /// `ExtensionLoaded` (REQ-EV-0240): an extension's typed handlers were
+    /// registered for this session's tasks, from the manifest at `path`
+    /// with this digest. The handlers run outside the Core. No state change.
+    ExtensionLoaded {
+        /// This load's id.
+        extension_id: String,
+        /// The extension's name.
+        name: String,
+        /// Its version.
+        version: String,
+        /// The directory it was loaded from.
+        path: String,
+        /// sha256 of the manifest as loaded (the handlers run from it).
+        manifest_digest: String,
+        /// The manifest as loaded.
+        manifest_json: String,
+        /// Its hooks: `<name>@<point>`.
+        hooks: Vec<String>,
+    },
+    /// `ExtensionUnloaded` (REQ-EV-0240): the extension's handlers were
+    /// removed; from this event on none of them runs, and an answer from one
+    /// already running is discarded. No state change.
+    ExtensionUnloaded {
+        /// The load's id.
+        extension_id: String,
+        /// The extension's name.
+        name: String,
+        /// The handlers removed: `<name>@<point>`.
+        removed: Vec<String>,
+    },
     /// `SessionBranched` (docs/19 "Compaction epochs", M4.2): the session's
     /// history was forked, reverted or otherwise rewritten; the branch
     /// generation moves and every pending compaction computed under the old
@@ -190,6 +220,8 @@ impl SessionEvent {
             Self::OutcomeBaselinePublished { .. } => "OutcomeBaselinePublished",
             Self::OutcomeStatisticsMaterialized { .. } => "OutcomeStatisticsMaterialized",
             Self::RepositoryTrusted { .. } => "RepositoryTrusted",
+            Self::ExtensionLoaded { .. } => "ExtensionLoaded",
+            Self::ExtensionUnloaded { .. } => "ExtensionUnloaded",
             Self::SessionBranched { .. } => "SessionBranched",
         }
     }
@@ -249,7 +281,9 @@ impl Session {
             // (REQ-EPR-000, REQ-EPR-015).
             SessionEvent::OutcomeBaselinePublished { .. }
             | SessionEvent::OutcomeStatisticsMaterialized { .. }
-            | SessionEvent::RepositoryTrusted { .. } => {
+            | SessionEvent::RepositoryTrusted { .. }
+            | SessionEvent::ExtensionLoaded { .. }
+            | SessionEvent::ExtensionUnloaded { .. } => {
                 if self.state.is_terminal() {
                     return Err(crate::InvalidTransition {
                         aggregate: "Session",
