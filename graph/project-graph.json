@@ -10614,8 +10614,16 @@
    "milestone": "M9",
    "qual": "QUAL-EV-0029",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-35944145033",
+    "test:qual_ev_0029_hard_filters_decide_first_and_the_decision_replays",
+    "artifact:evidence/m9/IMP-EV-0029/TASK_CARD.md",
+    "artifact:evidence/m9/IMP-EV-0029/evidence.json",
+    "artifact:evidence/m9/IMP-EV-0029/ci-run-35944145033.json",
+    "commit:2e024a9"
+   ],
+   "status_changed_on": "2026-09-24T02:04:46Z"
   },
   {
    "id": "IMP-EV-0030",

@@ -1,0 +1,39 @@
+{
+ "task": "IMP-EV-0029",
+ "requirements": [
+  "REQ-EV-0029",
+  "docs/15 Execution policy routing (hard eligibility before feasibility and cost)"
+ ],
+ "scenarios": [
+  "a corpus of six routing cases over an eight-binding signed registry, each compiled twice: identical plans, candidates, exclusions and digests; exactly the expected bindings excluded, each for its stated reason; every expected cost recomputed from registry prices and every lower bound from the evidence; the unservable request fails closed",
+  "real Core under an admin policy allowing four models: the cheapest three bindings (no tools; a 32k context; not allowed) are excluded before anything is weighed and only gpt-5 is ever asked; RoutingDecisionRecorded carries demands, their digest, each exclusion and the input digest",
+  "CompileRoutingPlan on the finished task reproduces the input digest, demands, exclusions and every candidate's scores without recording anything",
+  "an operator plan naming a refused model is MODEL_NOT_ALLOWED; a pin on it is PIN_NOT_ELIGIBLE with the policy's reason and the refused start records nothing",
+  "a policy tightened mid-run re-routes at POLICY (SWITCH gpt-5-mini to gpt-5) and the refused model is never asked again; on the direct path the run ends MODEL_NOT_ALLOWED and a start on an allowed model routes a new run"
+ ],
+ "tests": [
+  "crates/providers/tests/compiler.rs::qual_ev_0029_hard_filters_decide_first_and_the_corpus_replays_exactly",
+  "services/modbit-core/tests/surface_protocol.rs::qual_ev_0029_hard_filters_decide_first_and_the_decision_replays"
+ ],
+ "mutation_checks": [
+  "disabling the compiler's model-policy filter fails the corpus test",
+  "disabling the per-round policy check fails the Core test (no POLICY decision)"
+ ],
+ "batch_commits": [
+  "2e024a9"
+ ],
+ "runs": [
+  "35944145033"
+ ],
+ "ci": {
+  "run_id": "35944145033",
+  "head_sha": "e87aedeb316b0e9f9ea408156d2ebfa52f17d164",
+  "conclusion": "success",
+  "note": "every job green on macOS, Linux and Windows on the first attempt of the resealed head; the earlier head failed only dossier integrity (manifest not regenerated), fixed by the reseal commit",
+  "json": "evidence/m9/IMP-EV-0029/ci-run-35944145033.json"
+ },
+ "audit": "IMPLEMENTED-PARTIAL before: the compiler filtered on capability, residency, governance and currency, but the Core compiled every run with tools alone, the organization's models_allow reached no routing path, a mid-run policy change never touched the model in force, and the durable decision carried neither exclusions, demands nor its input digest.",
+ "proof": "Real Core, signed registry, scripted provider: hard policy and capability filters remove bindings before quality and cost are weighed, the decision is on the log with everything needed to audit and replay it, and the policy holds on every path a model is chosen.",
+ "negative_proof": "Operator plans, pins and direct runs naming a refused model are refused; a refused start records nothing; a model refused mid-run is never asked again.",
+ "limitations": "The Request Profiler's intrinsic fingerprint is recorded beside the decision but stays shadow (EPR-003); the expected input is a fixed 40 000 tokens; vision is not a hard demand; a resumed run keeps its route until the per-round check."
+}
