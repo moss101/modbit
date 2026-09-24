@@ -1,8 +1,8 @@
 //! M8.1 qualification (docs/24 "Cloud API", "Postgres", "Object storage",
 //! "Multi-tenancy"; docs/30 "Cloud HTTP control API"; docs/33 "Cloud API
 //! implementation", "Idempotency"; docs/31 "Cloud schema"): the real API over
-//! a real Postgres and a real S3-compatible store (MinIO in CI, the same in
-//! the local loop). Runs only where `MODBIT_CLOUD_TEST_DATABASE_URL` names a
+//! a real Postgres and a real S3-compatible store (SeaweedFS in CI, any S3
+//! endpoint in the local loop). Runs only where `MODBIT_CLOUD_TEST_DATABASE_URL` names a
 //! database — the hosted `cloud` job provides one; anywhere else the test
 //! says why it did not run instead of pretending.
 
@@ -58,7 +58,7 @@ impl Api {
     async fn start_with(rate_capacity: u32, adjust: impl FnOnce(&mut Config)) -> Option<Api> {
         let Some(mut cfg) = env_config(rate_capacity) else {
             eprintln!(
-                "SKIPPED: MODBIT_CLOUD_TEST_DATABASE_URL unset (the hosted cloud job runs this against Postgres and MinIO)"
+                "SKIPPED: MODBIT_CLOUD_TEST_DATABASE_URL unset (the hosted cloud job runs this against Postgres and an S3-compatible store)"
             );
             return None;
         };

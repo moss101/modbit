@@ -8,7 +8,7 @@
   "counts": {
     "docs": 90,
     "root_and_tooling": 1573,
-    "docs_bytes": 1346630
+    "docs_bytes": 1346721
   },
   "sections": [
     {
@@ -320,8 +320,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Database and Storage Schema",
-      "bytes": 15228,
-      "sha256": "471cccdabae45c478d38feb0a2db6ead8152cd0dde24fc04ed4bbb11f4d876aa"
+      "bytes": 15319,
+      "sha256": "d3e06f3b23aec1e27b22d3020a4c2c96a58a758dda2155cfa584d8389f1e4189"
     },
     {
       "path": "docs/32_DESKTOP_FRONTEND_IMPLEMENTATION.md",
