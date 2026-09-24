@@ -360,6 +360,17 @@ impl McpHub {
             .insert(credential_key(handle), value);
     }
 
+    /// The credential held for `handle`, for an owner in the Core that
+    /// hands it to its own transport (an extension's model provider,
+    /// REQ-EV-0138). Never for a view, a log or a client.
+    pub(crate) fn credential(&self, handle: &str) -> Option<String> {
+        self.credentials
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(&credential_key(handle))
+            .cloned()
+    }
+
     /// Whether this Core holds a credential for `handle`.
     pub fn has_credential(&self, handle: &str) -> bool {
         self.credentials

@@ -137,6 +137,26 @@ pub enum SessionEvent {
         manifest_json: String,
         /// Its hooks: `<name>@<point>`.
         hooks: Vec<String>,
+        /// Its signature (REQ-EV-0225): `VERIFIED:<key>` | `UNSIGNED` |
+        /// `UNKNOWN_KEY:<key>` | `INVALID:<key>`.
+        #[serde(default)]
+        signature: String,
+        /// Why it is quarantined — loaded, inert — when it is; `None` when
+        /// it is active.
+        #[serde(default)]
+        quarantined: Option<String>,
+    },
+    /// `ExtensionTrusted` (REQ-EV-0225): the person trusted a quarantined
+    /// extension's exact manifest after seeing its publisher, source,
+    /// signature and capabilities; from this event on it is active. No state
+    /// change.
+    ExtensionTrusted {
+        /// The load's id.
+        extension_id: String,
+        /// The extension's name.
+        name: String,
+        /// The manifest digest the person trusted.
+        manifest_digest: String,
     },
     /// `ExtensionUnloaded` (REQ-EV-0240): the extension's handlers were
     /// removed; from this event on none of them runs, and an answer from one
@@ -222,6 +242,7 @@ impl SessionEvent {
             Self::RepositoryTrusted { .. } => "RepositoryTrusted",
             Self::ExtensionLoaded { .. } => "ExtensionLoaded",
             Self::ExtensionUnloaded { .. } => "ExtensionUnloaded",
+            Self::ExtensionTrusted { .. } => "ExtensionTrusted",
             Self::SessionBranched { .. } => "SessionBranched",
         }
     }
@@ -283,7 +304,8 @@ impl Session {
             | SessionEvent::OutcomeStatisticsMaterialized { .. }
             | SessionEvent::RepositoryTrusted { .. }
             | SessionEvent::ExtensionLoaded { .. }
-            | SessionEvent::ExtensionUnloaded { .. } => {
+            | SessionEvent::ExtensionUnloaded { .. }
+            | SessionEvent::ExtensionTrusted { .. } => {
                 if self.state.is_terminal() {
                     return Err(crate::InvalidTransition {
                         aggregate: "Session",

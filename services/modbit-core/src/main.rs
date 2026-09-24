@@ -28,6 +28,7 @@ mod critique;
 mod economics;
 mod environment;
 mod escalation;
+mod extensions;
 mod external_diagnostics;
 mod forge;
 mod gate;

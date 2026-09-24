@@ -23,17 +23,15 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use modbit_domain::event::{Actor, AggregateType};
-use modbit_domain::session::SessionEvent;
 use modbit_domain::task::{HookRefusal, Task, TaskEvent};
 use modbit_domain::{RunId, SessionId, TaskId, TenantId, TurnId};
 use modbit_event_store::{AppendRequest, EventStore, NewEvent};
 use modbit_policy::config::{Authority, ResolvedConfig};
+use modbit_tools::extensions::ExtensionManifest;
 use modbit_tools::hooks::{
-    EXTENSION_MANIFEST, ExtensionManifest, HookEffect, HookPoint, HookRecord, HookRequest,
-    HookSource, HookSpec, Registration,
+    HookEffect, HookPoint, HookRecord, HookRequest, HookSource, HookSpec, Registration,
 };
 use serde_json::Value;
-use sha2::Digest;
 use tokio::sync::Mutex;
 
 /// One extension a session has loaded.
@@ -41,19 +39,27 @@ use tokio::sync::Mutex;
 pub(crate) struct LoadedExtension {
     /// The load's id.
     pub extension_id: String,
-    /// Name.
-    pub name: String,
-    /// Version.
-    pub version: String,
     /// Directory it was loaded from.
     pub path: String,
     /// sha256 of the manifest as loaded.
     pub digest: String,
-    /// Its hooks.
-    pub hooks: Vec<HookSpec>,
-    /// Cleared the moment it is unloaded: an answer from one of its handlers
-    /// that arrives afterwards is discarded.
+    /// Its signature status label (REQ-EV-0225).
+    pub signature: String,
+    /// Why it is inert, when it is quarantined; `None` when it is active.
+    pub quarantine: Option<String>,
+    /// The manifest as loaded.
+    pub manifest: ExtensionManifest,
+    /// Set while it is loaded and active; cleared the moment it is unloaded,
+    /// so an answer from one of its handlers that arrives afterwards is
+    /// discarded.
     pub live: Arc<AtomicBool>,
+}
+
+impl LoadedExtension {
+    /// Whether its hooks, tools, commands and providers are in force.
+    pub(crate) fn active(&self) -> bool {
+        self.quarantine.is_none() && self.live.load(Ordering::SeqCst)
+    }
 }
 
 /// The Core's hook state: loaded extensions per session and the runs a
@@ -79,9 +85,13 @@ fn authority_label(a: Authority) -> &'static str {
 }
 
 impl HookBus {
-    /// The session's loaded extensions, rebuilt from its log the first time
-    /// this process asks.
-    fn extensions_of(&self, store: &EventStore, session: SessionId) -> Vec<LoadedExtension> {
+    /// The session's loaded extensions (active and quarantined), rebuilt
+    /// from its log the first time this process asks.
+    pub(crate) fn extensions_of(
+        &self,
+        store: &EventStore,
+        session: SessionId,
+    ) -> Vec<LoadedExtension> {
         if lock(&self.rebuilt).insert(session) {
             let mut loaded: Vec<LoadedExtension> = Vec::new();
             let mut after = 0u64;
@@ -92,29 +102,46 @@ impl HookBus {
                 for ev in &batch {
                     after = ev.offset;
                     let t = ev.envelope.event_type.as_str();
-                    if t != "ExtensionLoaded" && t != "ExtensionUnloaded" {
+                    if !matches!(
+                        t,
+                        "ExtensionLoaded" | "ExtensionUnloaded" | "ExtensionTrusted"
+                    ) {
                         continue;
                     }
                     let Ok(p) = store.payload(&ev.envelope) else {
                         continue;
                     };
                     let id = p["extension_id"].as_str().unwrap_or_default().to_owned();
-                    if t == "ExtensionUnloaded" {
-                        loaded.retain(|e| e.extension_id != id);
-                        continue;
-                    }
-                    if let Ok(m) =
-                        ExtensionManifest::parse(p["manifest_json"].as_str().unwrap_or_default())
-                    {
-                        loaded.push(LoadedExtension {
-                            extension_id: id,
-                            name: m.name,
-                            version: m.version,
-                            path: p["path"].as_str().unwrap_or_default().to_owned(),
-                            digest: p["manifest_digest"].as_str().unwrap_or_default().to_owned(),
-                            hooks: m.hooks,
-                            live: Arc::new(AtomicBool::new(true)),
-                        });
+                    match t {
+                        "ExtensionUnloaded" => loaded.retain(|e| e.extension_id != id),
+                        "ExtensionTrusted" => {
+                            for e in loaded.iter_mut().filter(|e| e.extension_id == id) {
+                                e.quarantine = None;
+                                e.live.store(true, Ordering::SeqCst);
+                            }
+                        }
+                        _ => {
+                            if let Ok(manifest) = ExtensionManifest::parse(
+                                p["manifest_json"].as_str().unwrap_or_default(),
+                            ) {
+                                let quarantine = p["quarantined"].as_str().map(str::to_owned);
+                                loaded.push(LoadedExtension {
+                                    extension_id: id,
+                                    path: p["path"].as_str().unwrap_or_default().to_owned(),
+                                    digest: p["manifest_digest"]
+                                        .as_str()
+                                        .unwrap_or_default()
+                                        .to_owned(),
+                                    signature: p["signature"]
+                                        .as_str()
+                                        .unwrap_or_default()
+                                        .to_owned(),
+                                    live: Arc::new(AtomicBool::new(quarantine.is_none())),
+                                    quarantine,
+                                    manifest,
+                                });
+                            }
+                        }
                     }
                 }
             }
@@ -131,6 +158,36 @@ impl HookBus {
             .get(&session)
             .cloned()
             .unwrap_or_default()
+    }
+
+    /// Record a load in this process.
+    pub(crate) fn add(&self, session: SessionId, ext: LoadedExtension) {
+        lock(&self.extensions).entry(session).or_default().push(ext);
+    }
+
+    /// Release a quarantined extension: it is active from now on.
+    pub(crate) fn activate(&self, session: SessionId, extension_id: &str) {
+        if let Some(list) = lock(&self.extensions).get_mut(&session) {
+            for e in list.iter_mut().filter(|e| e.extension_id == extension_id) {
+                e.quarantine = None;
+                e.live.store(true, Ordering::SeqCst);
+            }
+        }
+    }
+
+    /// Whether any session has an extension of this name active.
+    pub(crate) fn active_anywhere(&self, name: &str) -> bool {
+        lock(&self.extensions)
+            .values()
+            .flatten()
+            .any(|e| e.manifest.name == name && e.active())
+    }
+
+    /// Forget an unloaded extension (its `live` flag is already clear).
+    pub(crate) fn remove(&self, session: SessionId, extension_id: &str) {
+        if let Some(list) = lock(&self.extensions).get_mut(&session) {
+            list.retain(|e| e.extension_id != extension_id);
+        }
     }
 
     /// Stop `task`'s run at its next boundary (a fail-closed after-hook
@@ -211,13 +268,18 @@ pub(crate) fn resolve(
         active.push(reg);
     }
     let mut flags = HashMap::new();
-    for ext in bus.extensions_of(store, session_id) {
+    // A quarantined extension registers nothing (REQ-EV-0225).
+    for ext in bus
+        .extensions_of(store, session_id)
+        .into_iter()
+        .filter(LoadedExtension::active)
+    {
         flags.insert(ext.extension_id.clone(), Arc::clone(&ext.live));
-        for spec in &ext.hooks {
+        for spec in &ext.manifest.hooks {
             active.push(Registration::new(
                 HookSource::Extension {
                     extension_id: ext.extension_id.clone(),
-                    name: ext.name.clone(),
+                    name: ext.manifest.name.clone(),
                 },
                 spec.clone(),
             ));
@@ -478,143 +540,6 @@ pub(crate) async fn scope(
     )
 }
 
-/// `LoadExtension`: read the directory's manifest, register its handlers
-/// for the session and record it.
-pub(crate) async fn load(
-    core: &crate::server::Core,
-    session_id: SessionId,
-    path: &str,
-    actor: Actor,
-) -> Result<modbit_protocol::v1::ExtensionLoadedView, (String, String)> {
-    let dir = std::path::Path::new(path);
-    let dir = dir
-        .canonicalize()
-        .map_err(|e| ("EXTENSION_NOT_FOUND".to_owned(), format!("{path}: {e}")))?;
-    let manifest_path = dir.join(EXTENSION_MANIFEST);
-    let bytes = std::fs::read(&manifest_path).map_err(|e| {
-        (
-            "EXTENSION_MANIFEST_MISSING".to_owned(),
-            format!("{}: {e}", manifest_path.display()),
-        )
-    })?;
-    let json = String::from_utf8(bytes).map_err(|_| {
-        (
-            "EXTENSION_INVALID".to_owned(),
-            "the manifest is not UTF-8".to_owned(),
-        )
-    })?;
-    let manifest =
-        ExtensionManifest::parse(&json).map_err(|e| ("EXTENSION_INVALID".to_owned(), e))?;
-    let digest = hex::encode(sha2::Sha256::digest(json.as_bytes()));
-    let mut store = core.store.lock().await;
-    let loaded = core.tools.hooks.extensions_of(&store, session_id);
-    if let Some(e) = loaded.iter().find(|e| e.name == manifest.name) {
-        return Err((
-            "EXTENSION_ALREADY_LOADED".to_owned(),
-            format!(
-                "`{}` is loaded as {} (version {}); unload it first",
-                e.name, e.extension_id, e.version
-            ),
-        ));
-    }
-    let extension_id = modbit_domain::RunStepId::new().to_string();
-    let hooks: Vec<String> = manifest
-        .hooks
-        .iter()
-        .map(|h| format!("{}@{}", h.name, h.point.label()))
-        .collect();
-    let dir_s = dir.to_string_lossy().into_owned();
-    crate::runtime::append(
-        &mut store,
-        core,
-        crate::runtime::Lineage::session(core.tenant_id, session_id),
-        AggregateType::Session,
-        *session_id.as_bytes(),
-        vec![crate::runtime::typed(
-            "ExtensionLoaded",
-            &SessionEvent::ExtensionLoaded {
-                extension_id: extension_id.clone(),
-                name: manifest.name.clone(),
-                version: manifest.version.clone(),
-                path: dir_s.clone(),
-                manifest_digest: digest.clone(),
-                manifest_json: json,
-                hooks: hooks.clone(),
-            },
-            actor,
-        )],
-    )
-    .map_err(|e| ("STORE".to_owned(), e))?;
-    lock(&core.tools.hooks.extensions)
-        .entry(session_id)
-        .or_default()
-        .push(LoadedExtension {
-            extension_id: extension_id.clone(),
-            name: manifest.name.clone(),
-            version: manifest.version.clone(),
-            path: dir_s,
-            digest: digest.clone(),
-            hooks: manifest.hooks,
-            live: Arc::new(AtomicBool::new(true)),
-        });
-    Ok(modbit_protocol::v1::ExtensionLoadedView {
-        extension_id,
-        name: manifest.name,
-        version: manifest.version,
-        manifest_digest: digest,
-        hooks,
-    })
-}
-
-/// `UnloadExtension`: the extension's handlers stop being live at once — an
-/// answer already on its way is discarded — then leave the session.
-pub(crate) async fn unload(
-    core: &crate::server::Core,
-    session_id: SessionId,
-    extension_id: &str,
-    actor: Actor,
-) -> Result<modbit_protocol::v1::ExtensionUnloadedView, (String, String)> {
-    let mut store = core.store.lock().await;
-    let loaded = core.tools.hooks.extensions_of(&store, session_id);
-    let Some(ext) = loaded.iter().find(|e| e.extension_id == extension_id) else {
-        return Err((
-            "UNKNOWN_EXTENSION".to_owned(),
-            format!("no extension {extension_id} is loaded in this session"),
-        ));
-    };
-    ext.live.store(false, Ordering::SeqCst);
-    let removed: Vec<String> = ext
-        .hooks
-        .iter()
-        .map(|h| format!("{}@{}", h.name, h.point.label()))
-        .collect();
-    crate::runtime::append(
-        &mut store,
-        core,
-        crate::runtime::Lineage::session(core.tenant_id, session_id),
-        AggregateType::Session,
-        *session_id.as_bytes(),
-        vec![crate::runtime::typed(
-            "ExtensionUnloaded",
-            &SessionEvent::ExtensionUnloaded {
-                extension_id: extension_id.to_owned(),
-                name: ext.name.clone(),
-                removed: removed.clone(),
-            },
-            actor,
-        )],
-    )
-    .map_err(|e| ("STORE".to_owned(), e))?;
-    if let Some(list) = lock(&core.tools.hooks.extensions).get_mut(&session_id) {
-        list.retain(|e| e.extension_id != extension_id);
-    }
-    Ok(modbit_protocol::v1::ExtensionUnloadedView {
-        extension_id: extension_id.to_owned(),
-        name: ext.name.clone(),
-        removed,
-    })
-}
-
 /// `ListHooks`: what is in force for a task, and what was refused.
 pub(crate) async fn list(
     core: &crate::server::Core,
@@ -630,8 +555,17 @@ pub(crate) async fn list(
             .iter()
             .map(|e| {
                 format!(
-                    "{} {}@{} sha256:{} {}",
-                    e.extension_id, e.name, e.version, e.digest, e.path
+                    "{} {}@{} sha256:{} {} {}{}",
+                    e.extension_id,
+                    e.manifest.name,
+                    e.manifest.version,
+                    e.digest,
+                    e.signature,
+                    e.path,
+                    e.quarantine
+                        .as_ref()
+                        .map(|q| format!(" QUARANTINED: {q}"))
+                        .unwrap_or_default()
                 )
             })
             .collect(),

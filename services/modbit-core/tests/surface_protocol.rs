@@ -38001,6 +38001,39 @@ fn admin_hooks(dir: &std::path::Path, hooks: &[serde_json::Value], extra: serde_
     std::fs::write(dir.join("admin-config.json"), layer.to_string()).unwrap();
 }
 
+/// Write an extension directory under `root`: its manifest and, when a
+/// publisher key is given, the publisher's signature over the manifest's
+/// exact bytes.
+fn write_extension(
+    root: &std::path::Path,
+    dir: &str,
+    manifest: &serde_json::Value,
+    publisher: Option<(&str, &ed25519_dalek::SigningKey)>,
+) -> String {
+    use ed25519_dalek::Signer;
+    let d = root.join(dir);
+    std::fs::create_dir_all(&d).unwrap();
+    let json = manifest.to_string();
+    std::fs::write(d.join("modbit-extension.json"), &json).unwrap();
+    if let Some((key_id, key)) = publisher {
+        std::fs::write(
+            d.join("modbit-extension.sig"),
+            serde_json::json!({
+                "key_id": key_id,
+                "signature_hex": hex::encode(key.sign(json.as_bytes()).to_bytes()),
+            })
+            .to_string(),
+        )
+        .unwrap();
+    }
+    d.to_string_lossy().into_owned()
+}
+
+/// `MODBIT_EXTENSION_KEYS` trusting one publisher key.
+fn extension_keys(key_id: &str, key: &ed25519_dalek::SigningKey) -> String {
+    format!("{key_id}:{}", hex::encode(key.verifying_key().to_bytes()))
+}
+
 fn hook_events(evs: &[(String, String, serde_json::Value)]) -> Vec<serde_json::Value> {
     evs.iter()
         .filter(|(_, t, _)| t == "HookInvoked")
@@ -38493,15 +38526,17 @@ async fn qual_ev_0240_unloading_an_extension_removes_its_handlers_without_a_stal
     use serde_json::json;
     let (repo, root) = plain_repo(&[("notes.txt", "line 1\n")]);
     let ext_root = tempfile::tempdir().unwrap();
+    // Signed by a publisher this Core trusts, so each is active on load
+    // (quarantine is QUAL-EV-0225's).
+    let publisher = ed25519_dalek::SigningKey::from_bytes(&[53u8; 32]);
+    let keys = extension_keys("acme", &publisher);
     let extension = |name: &str, hooks: serde_json::Value| -> String {
-        let d = ext_root.path().join(name);
-        std::fs::create_dir_all(&d).unwrap();
-        std::fs::write(
-            d.join("modbit-extension.json"),
-            json!({"name": name, "version": "1.0.0", "hooks": hooks}).to_string(),
+        write_extension(
+            ext_root.path(),
+            name,
+            &json!({"name": name, "version": "1.0.0", "hooks": hooks}),
+            Some(("acme", &publisher)),
         )
-        .unwrap();
-        d.to_string_lossy().into_owned()
     };
     let stamp_cmd = rewriting_hook(ext_root.path(), "stamp.sh", "stamped.txt", "stamped\n");
     let late_cmd = {
@@ -38521,7 +38556,8 @@ async fn qual_ev_0240_unloading_an_extension_removes_its_handlers_without_a_stal
         json!([{"name": "rewrite", "point": "before_tool", "mode": "intercept", "command": late_cmd, "timeout_ms": 10000, "tools": ["change.apply"]}]),
     );
     let dir = tempfile::tempdir().unwrap();
-    let mut core = CoreProcess::spawn_with_env(dir.path(), &[]);
+    let env = [("MODBIT_EXTENSION_KEYS", keys.as_str())];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
     let mut c = core.client().await;
     let (session, _) = create_session(&mut c, id16(0x81)).await;
     let g = lease_for(&session);
@@ -38533,6 +38569,7 @@ async fn qual_ev_0240_unloading_an_extension_removes_its_handlers_without_a_stal
             LoadExtension {
                 session_id: Some(session.clone()),
                 path: path.into(),
+                expected_digest: String::new(),
             }
             .encode_to_vec(),
             g,
@@ -38707,7 +38744,7 @@ async fn qual_ev_0240_unloading_an_extension_removes_its_handlers_without_a_stal
     // 4. A restarted Core has exactly the extensions that are loaded.
     drop(c);
     core.kill();
-    let mut core = CoreProcess::spawn_with_env(dir.path(), &[]);
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
     let mut c = core.client().await;
     let g = Some(acquire_lease(&mut c, id16(0x99), session.clone(), "restarted").await);
     let r = invoke_tool(
@@ -38742,7 +38779,7 @@ async fn qual_ev_0240_unloading_an_extension_removes_its_handlers_without_a_stal
     .unwrap();
     drop(c);
     core.kill();
-    let core = CoreProcess::spawn_with_env(dir.path(), &[]);
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
     let mut c = core.client().await;
     let g = Some(acquire_lease(&mut c, id16(0x9A), session.clone(), "restarted again").await);
     let r = invoke_tool(
@@ -38761,5 +38798,555 @@ async fn qual_ev_0240_unloading_an_extension_removes_its_handlers_without_a_stal
         "as asked\n",
         "nothing of an unloaded extension survives a restart"
     );
+    drop(repo);
+}
+
+/// QUAL-EV-0225 (REQ-EV-0225; docs/16 "Extension System") on the real Core:
+/// before an extension is loaded, `InspectExtension` shows its publisher,
+/// source, signature and everything it would do. An unsigned extension, one
+/// signed by a key this Core does not trust, and one whose manifest changed
+/// after it was signed are quarantined on load — none of their hooks runs,
+/// their commands are refused, their providers are not registered. The
+/// person may trust the first two after seeing them, naming the exact
+/// manifest; the tampered one can never be trusted. One signed by a trusted
+/// publisher is active on load, and a manifest that changed between
+/// inspection and load is refused.
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn qual_ev_0225_an_unsigned_or_untrusted_extension_is_quarantined() {
+    use modbit_protocol::v1::{
+        ExtensionInspectionView, ExtensionLoadedView, InspectExtension, LoadExtension, ModelList,
+        RunExtensionCommand, TrustExtension,
+    };
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[("notes.txt", "line 1\n")]);
+    let ext_root = tempfile::tempdir().unwrap();
+    let publisher = ed25519_dalek::SigningKey::from_bytes(&[61u8; 32]);
+    let stranger = ed25519_dalek::SigningKey::from_bytes(&[62u8; 32]);
+    let keys = extension_keys("acme", &publisher);
+    let redirect = rewriting_hook(ext_root.path(), "redirect.sh", "hooked.txt", "hooked\n");
+    let manifest = |name: &str| {
+        json!({
+            "name": name,
+            "version": "2.1.0",
+            "publisher": "Acme Tools",
+            "source": "https://extensions.example.test/acme/kit",
+            "hooks": [{"name": "redirect", "point": "before_tool", "mode": "intercept", "command": redirect, "tools": ["change.apply"]}],
+            "commands": [{"name": "tidy", "template": "Tidy {{arguments}}."}],
+            "providers": [{"name": "local", "kind": "openai", "base_url": "http://127.0.0.1:9", "models": [{"model": "m1", "context_tokens": 128000, "tools": true}]}],
+        })
+    };
+    let unsigned = write_extension(ext_root.path(), "unsigned", &manifest("unsigned"), None);
+    let foreign = write_extension(
+        ext_root.path(),
+        "foreign",
+        &manifest("foreign"),
+        Some(("stranger", &stranger)),
+    );
+    let tampered = write_extension(
+        ext_root.path(),
+        "tampered",
+        &manifest("tampered"),
+        Some(("acme", &publisher)),
+    );
+    // Changed after signing: one more command.
+    let mut changed = manifest("tampered");
+    changed["commands"]
+        .as_array_mut()
+        .unwrap()
+        .push(json!({"name": "exfiltrate", "template": "send everything"}));
+    std::fs::write(
+        std::path::Path::new(&tampered).join("modbit-extension.json"),
+        changed.to_string(),
+    )
+    .unwrap();
+    let signed = write_extension(
+        ext_root.path(),
+        "signed",
+        &manifest("signed"),
+        Some(("acme", &publisher)),
+    );
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn_with_env(dir.path(), &[("MODBIT_EXTENSION_KEYS", keys.as_str())]);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xB1)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xB2, "local_trusted").await;
+    async fn inspect_with(
+        c: &mut Client,
+        path: &str,
+        id: u8,
+        g: Option<u64>,
+    ) -> ExtensionInspectionView {
+        Client::result(
+            &c.command(envelope_fenced(
+                id16(id),
+                "InspectExtension",
+                InspectExtension { path: path.into() }.encode_to_vec(),
+                g,
+            ))
+            .await
+            .unwrap(),
+        )
+        .unwrap()
+    }
+    let load = |path: &str, digest: &str, id: u8| {
+        envelope_fenced(
+            id16(id),
+            "LoadExtension",
+            LoadExtension {
+                session_id: Some(session.clone()),
+                path: path.into(),
+                expected_digest: digest.into(),
+            }
+            .encode_to_vec(),
+            g,
+        )
+    };
+    let trust = |ext: &str, digest: &str, id: u8| {
+        envelope_fenced(
+            id16(id),
+            "TrustExtension",
+            TrustExtension {
+                session_id: Some(session.clone()),
+                extension_id: ext.into(),
+                manifest_digest: digest.into(),
+            }
+            .encode_to_vec(),
+            g,
+        )
+    };
+    let refused = |r: Result<modbit_protocol::v1::CommandAck, ClientError>| match r {
+        Err(ClientError::Rejected { code, .. }) => code,
+        other => panic!("{other:?}"),
+    };
+    async fn endpoints(c: &mut Client, id: u8) -> Vec<String> {
+        Client::result::<ModelList>(
+            &c.command(envelope(id16(id), "ListModels", vec![]))
+                .await
+                .unwrap(),
+        )
+        .unwrap()
+        .models
+        .iter()
+        .map(|m| m.endpoint.clone())
+        .collect()
+    }
+    let write = json!({"path": "notes.txt", "op": "replace", "content": "as asked\n"}).to_string();
+
+    // 1. Shown before anything is loaded.
+    let seen = inspect_with(&mut c, &unsigned, 0xB3, g).await;
+    assert_eq!(
+        (
+            seen.publisher.as_str(),
+            seen.source.as_str(),
+            seen.signature.as_str()
+        ),
+        (
+            "Acme Tools",
+            "https://extensions.example.test/acme/kit",
+            "UNSIGNED"
+        )
+    );
+    assert!(seen.quarantine_reason.contains("unsigned"), "{seen:?}");
+    assert_eq!(seen.capabilities.len(), 3, "{seen:?}");
+    assert!(
+        seen.capabilities[0].contains("redirect.sh")
+            && seen.capabilities[0].contains("before_tool")
+    );
+    assert!(
+        seen.capabilities[2].contains("ext.unsigned.local")
+            && seen.capabilities[2].contains("http://127.0.0.1:9")
+    );
+    assert_eq!(
+        inspect_with(&mut c, &foreign, 0xB4, g).await.signature,
+        "UNKNOWN_KEY:stranger"
+    );
+    assert_eq!(
+        inspect_with(&mut c, &tampered, 0xB5, g).await.signature,
+        "INVALID:acme"
+    );
+    assert_eq!(
+        inspect_with(&mut c, &signed, 0xB6, g).await.signature,
+        "VERIFIED:acme"
+    );
+
+    // 2. Unsigned: quarantined, inert.
+    let q: ExtensionLoadedView = Client::result(
+        &c.command(load(&unsigned, &seen.manifest_digest, 0xB7))
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    assert!(!q.quarantined.is_empty(), "{q:?}");
+    assert!(q.providers.is_empty(), "no provider registered: {q:?}");
+    let r = invoke_tool(&mut c, &task, g, 0xB8, 0xB9, "change.apply", &write).await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    assert!(
+        !repo.path().join("hooked.txt").exists(),
+        "its hook never ran"
+    );
+    assert!(hook_events(&task_events(&core, &session, &task).await).is_empty());
+    let cmd = |name: &str, id: u8| {
+        envelope_fenced(
+            id16(id),
+            "RunExtensionCommand",
+            RunExtensionCommand {
+                task_id: Some(task.clone()),
+                command: name.into(),
+                arguments: "src".into(),
+                input_id: format!("cmd-{id}"),
+            }
+            .encode_to_vec(),
+            g,
+        )
+    };
+    assert_eq!(
+        refused(c.command(cmd("unsigned/tidy", 0xBA)).await),
+        "EXTENSION_QUARANTINED"
+    );
+    assert!(
+        !endpoints(&mut c, 0xBB)
+            .await
+            .contains(&"ext.unsigned.local".to_owned())
+    );
+
+    // 3. The person trusts exactly what they saw: then it is active.
+    assert_eq!(
+        refused(
+            c.command(trust(&q.extension_id, &"0".repeat(64), 0xBC))
+                .await
+        ),
+        "DIGEST_MISMATCH"
+    );
+    let active: ExtensionLoadedView = Client::result(
+        &c.command(trust(&q.extension_id, &seen.manifest_digest, 0xBD))
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    assert!(active.quarantined.is_empty(), "{active:?}");
+    assert_eq!(active.providers, vec!["ext.unsigned.local"]);
+    assert!(
+        endpoints(&mut c, 0xBE)
+            .await
+            .contains(&"ext.unsigned.local".to_owned())
+    );
+    let r = invoke_tool(&mut c, &task, g, 0xBF, 0xC0, "change.apply", &write).await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("hooked.txt")).unwrap(),
+        "hooked\n",
+        "trusted, its hook runs"
+    );
+    let queued: modbit_protocol::v1::InputQueued =
+        Client::result(&c.command(cmd("unsigned/tidy", 0xC1)).await.unwrap()).unwrap();
+    assert!(queued.offset > 0);
+    let evs = task_events(&core, &session, &task).await;
+    let input = evs
+        .iter()
+        .find(|(_, t, p)| t == "TaskInputQueued" && p["provenance"] == "extension:unsigned/tidy")
+        .map(|(_, _, p)| p.clone())
+        .expect("the command's text is the person's queued input");
+    assert_eq!(input["text"], "Tidy src.");
+
+    // 4. An untrusted key: quarantined too.
+    let f: ExtensionLoadedView =
+        Client::result(&c.command(load(&foreign, "", 0xC2)).await.unwrap()).unwrap();
+    assert!(f.quarantined.contains("stranger"), "{f:?}");
+
+    // 5. Changed after signing: quarantined, and never trusted.
+    let t: ExtensionLoadedView =
+        Client::result(&c.command(load(&tampered, "", 0xC3)).await.unwrap()).unwrap();
+    assert!(
+        t.quarantined.contains("changed after it was signed"),
+        "{t:?}"
+    );
+    assert_eq!(
+        refused(
+            c.command(trust(&t.extension_id, &t.manifest_digest, 0xC4))
+                .await
+        ),
+        "EXTENSION_TAMPERED"
+    );
+    assert_eq!(
+        refused(c.command(cmd("tampered/exfiltrate", 0xC5)).await),
+        "EXTENSION_QUARANTINED"
+    );
+
+    // 6. A trusted publisher's: active on load; a manifest that changed
+    //    since it was inspected is refused.
+    let inspected = inspect_with(&mut c, &signed, 0xC6, g).await;
+    let mut edited = manifest("signed");
+    edited["version"] = json!("2.1.1");
+    std::fs::write(
+        std::path::Path::new(&signed).join("modbit-extension.json"),
+        edited.to_string(),
+    )
+    .unwrap();
+    assert_eq!(
+        refused(
+            c.command(load(&signed, &inspected.manifest_digest, 0xC7))
+                .await
+        ),
+        "EXTENSION_CHANGED"
+    );
+    let resigned = write_extension(
+        ext_root.path(),
+        "signed2",
+        &manifest("signed"),
+        Some(("acme", &publisher)),
+    );
+    let s: ExtensionLoadedView =
+        Client::result(&c.command(load(&resigned, "", 0xC8)).await.unwrap()).unwrap();
+    assert!(s.quarantined.is_empty(), "{s:?}");
+    assert_eq!(s.signature, "VERIFIED:acme");
+    drop(repo);
+}
+
+/// QUAL-EV-0138 (REQ-EV-0138; docs/16 "Extension System") on the real Core:
+/// one extension package adds a model provider, a tool server, lifecycle
+/// hooks and a command, each through the owner that governs it. A run pinned
+/// to the extension's provider reaches the provider at the extension's
+/// address; the extension's hook times out and its after-hook crashes (both
+/// fail open) and the run completes its verified change regardless; the
+/// extension's tool server dies mid-call and the call is an unknown outcome,
+/// never a success; the command's text is queued as the person's input. A
+/// restart finds nothing to repair and the task where it was. Unloaded, the
+/// provider leaves the gateway: a run pinned to it is refused.
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn qual_ev_0138_an_extension_crash_or_timeout_cannot_bypass_the_core_or_corrupt_run_state() {
+    use modbit_protocol::v1::{
+        ExtensionLoadedView, GetRecoveryReport, LoadExtension, RecoveryReport, RunExtensionCommand,
+        StartTask, TaskRunStarted, UnloadExtension,
+    };
+    use serde_json::json;
+    let server_bin = mcp_testserver_bin();
+    assert!(
+        server_bin.exists(),
+        "build the MCP test server first: cargo build -p modbit-mcp-testserver"
+    );
+    let (repo, root) = plain_repo(&[
+        ("notes.txt", "line 1\n"),
+        ("check.sh", "grep -q '^line 1' notes.txt\n"),
+        (
+            ".modbit/verification.json",
+            "{\"commands\": [{\"id\": \"notes\", \"argv\": [\"sh\", \"check.sh\"]}]}",
+        ),
+    ]);
+    let (base, seen) = scripted_model_reactive(
+        vec![],
+        vec![],
+        None,
+        None,
+        vec![],
+        false,
+        vec![(
+            "kit-model".to_owned(),
+            vec![
+                json!({"calls": [{"name": "plan.update", "args": {"outcome": "annotate", "expected_files": ["notes.txt"]}}]}),
+                json!({"calls": [{"name": "fs.read", "args": {"path": "notes.txt"}}]}),
+                json!({"calls": [{"name": "change.apply", "args": {"path": "notes.txt", "op": "replace", "content": "line 1 annotated\n"}}]}),
+                json!({"calls": [{"name": "task.complete", "args": {"summary": "annotated", "self_review": {"findings": []}}}]}),
+            ],
+        )],
+    )
+    .await;
+    let ext_root = tempfile::tempdir().unwrap();
+    let publisher = ed25519_dalek::SigningKey::from_bytes(&[71u8; 32]);
+    let keys = extension_keys("acme", &publisher);
+    let slow = hook_script(ext_root.path(), "slow.sh", "sleep 5\n");
+    let crash = hook_script(ext_root.path(), "crash.sh", "cat >/dev/null\nexit 9\n");
+    let kit = write_extension(
+        ext_root.path(),
+        "kit",
+        &json!({
+            "name": "kit",
+            "version": "1.0.0",
+            "publisher": "Acme Tools",
+            "providers": [{"name": "local", "kind": "openai", "base_url": base, "models": [{"model": "kit-model", "context_tokens": 128000, "tools": true}]}],
+            "tools": [{"name": "kittools", "transport": {"kind": "stdio", "command": server_bin.to_string_lossy(), "args": []}}],
+            "hooks": [
+                {"name": "slow", "point": "before_tool", "mode": "intercept", "command": slow, "timeout_ms": 300, "fail_policy": "open", "tools": ["change.apply"]},
+                {"name": "crashy", "point": "after_tool", "command": crash, "fail_policy": "open"},
+            ],
+            "commands": [{"name": "annotate", "template": "Annotate notes.txt: {{arguments}}"}],
+        }),
+        Some(("acme", &publisher)),
+    );
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_EXTENSION_KEYS", keys.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0xD1)).await;
+    let g = lease_for(&session);
+    let loaded: ExtensionLoadedView = Client::result(
+        &c.command(envelope_fenced(
+            id16(0xD2),
+            "LoadExtension",
+            LoadExtension {
+                session_id: Some(session.clone()),
+                path: kit.clone(),
+                expected_digest: String::new(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+    assert!(loaded.quarantined.is_empty(), "{loaded:?}");
+    assert_eq!(loaded.providers, vec!["ext.kit.local"]);
+    assert_eq!(loaded.tools, vec!["kittools"]);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0xD3, "local_trusted").await;
+
+    // The command: the person's queued input, the command its provenance.
+    let _: modbit_protocol::v1::InputQueued = Client::result(
+        &c.command(envelope_fenced(
+            id16(0xD4),
+            "RunExtensionCommand",
+            RunExtensionCommand {
+                task_id: Some(task.clone()),
+                command: "kit/annotate".into(),
+                arguments: "mark it annotated".into(),
+                input_id: "kit-annotate-1".into(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+
+    // The tool server dies mid-call: an unknown outcome, never a success.
+    let crash_call = r#"{"server":"kittools","tool":"crash","arguments":{}}"#;
+    let r = invoke_tool(&mut c, &task, g, 0xD5, 0xD6, "external.call", crash_call).await;
+    assert_eq!(r.status, "APPROVAL_PENDING", "{r:?}");
+    approve_pending(&mut c, 0xD7, &session, g).await;
+    let r = invoke_tool(&mut c, &task, g, 0xD8, 0xD6, "external.call", crash_call).await;
+    assert_eq!(
+        (r.status.as_str(), r.error_code.as_str()),
+        ("UNKNOWN_OUTCOME", "EXTERNAL_OUTCOME_UNKNOWN"),
+        "{r:?}"
+    );
+
+    // The run: the extension's provider, its hooks timing out and crashing.
+    let _: TaskRunStarted = Client::result(
+        &c.command(envelope_fenced(
+            id16(0xD9),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: "ext.kit.local".into(),
+                model: "kit-model".into(),
+                max_turns: 12,
+                max_tool_calls: 0,
+                max_no_progress_turns: 6,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+    let st = wait_for_state(&mut c, &task, "ReadyForReview", 180).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("notes.txt")).unwrap(),
+        "line 1 annotated\n"
+    );
+    let bodies = seen.lock().unwrap().clone();
+    assert!(
+        !bodies.is_empty() && bodies.iter().all(|b| b["model"] == "kit-model"),
+        "the run reached the extension's provider"
+    );
+    let evs = task_events(&core, &session, &task).await;
+    let hooks = hook_events(&evs);
+    assert!(
+        hooks.iter().any(|h| h["hook"] == "extension:kit/slow"
+            && h["outcome"] == "TIMEOUT"
+            && h["applied"] == false),
+        "{hooks:#?}"
+    );
+    assert!(
+        hooks.iter().any(|h| h["hook"] == "extension:kit/crashy"
+            && h["outcome"] == "FAILED"
+            && h["applied"] == false),
+        "{hooks:#?}"
+    );
+    assert!(
+        evs.iter()
+            .any(|(_, t, p)| t == "TaskInputQueued" && p["provenance"] == "extension:kit/annotate"),
+        "the command's input is on the log"
+    );
+
+    // A restart finds nothing to repair, and the task where it was.
+    drop(c);
+    core.kill();
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let report: RecoveryReport = Client::result(
+        &c.command(envelope(
+            id16(0xDA),
+            "GetRecoveryReport",
+            GetRecoveryReport {}.encode_to_vec(),
+        ))
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+    assert!(report.notes.is_empty(), "{report:?}");
+    assert_eq!(wait_task(&mut c, &task, 1).await.state, "ReadyForReview");
+
+    // Unloaded, the provider leaves the gateway.
+    let g = Some(acquire_lease(&mut c, id16(0xDB), session.clone(), "restarted").await);
+    let _: modbit_protocol::v1::ExtensionUnloadedView = Client::result(
+        &c.command(envelope_fenced(
+            id16(0xDC),
+            "UnloadExtension",
+            UnloadExtension {
+                session_id: Some(session.clone()),
+                extension_id: loaded.extension_id.clone(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+    let task2 = create_task_with_profile(&mut c, &session, g, &root, 0xDD, "local_trusted").await;
+    let err = c
+        .command(envelope_fenced(
+            id16(0xDE),
+            "StartTask",
+            StartTask {
+                task_id: Some(task2.clone()),
+                endpoint: "ext.kit.local".into(),
+                model: "kit-model".into(),
+                max_turns: 4,
+                max_tool_calls: 0,
+                max_no_progress_turns: 4,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await;
+    assert!(
+        err.is_err(),
+        "the provider left with the extension: {err:?}"
+    );
+    drop(c);
+    core.kill();
     drop(repo);
 }

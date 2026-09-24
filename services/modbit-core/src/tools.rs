@@ -1060,11 +1060,32 @@ impl ToolHost {
                         turn_id: turn_id.map(|t| t.to_string()),
                         call_id: String::new(),
                     },
-                    crate::mcp::TaskScope {
-                        servers: crate::mcp::servers_from(&task_config),
-                        refused_servers: crate::mcp::refused_servers(&task_config),
-                        lease_ops,
-                        secrets: secrets_in_custody_for_hub,
+                    {
+                        // REQ-EV-0138: the session's active extensions' tool
+                        // servers join the configuration's; a configured
+                        // server of the same name wins.
+                        let mut servers = crate::mcp::servers_from(&task_config);
+                        let mut refused_servers = crate::mcp::refused_servers(&task_config);
+                        let loaded = {
+                            let st = store.lock().await;
+                            self.hooks.extensions_of(&st, session_id)
+                        };
+                        for s in crate::extensions::servers_of(&loaded) {
+                            if servers.iter().any(|c| c.config.name == s.config.name) {
+                                refused_servers.push(format!(
+                                    "MCP server `{}` from {} refused: the configuration defines a server of that name",
+                                    s.config.name, s.config.layer
+                                ));
+                            } else {
+                                servers.push(s);
+                            }
+                        }
+                        crate::mcp::TaskScope {
+                        servers,
+                            refused_servers,
+                            lease_ops,
+                            secrets: secrets_in_custody_for_hub,
+                        }
                     },
                 ),
             ) as Arc<dyn modbit_mcp::McpPort>),
