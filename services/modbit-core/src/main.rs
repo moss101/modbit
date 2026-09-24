@@ -32,6 +32,7 @@ mod external_diagnostics;
 mod forge;
 mod gate;
 mod handoff;
+mod hooks;
 mod inspector;
 mod languages;
 mod mcp;

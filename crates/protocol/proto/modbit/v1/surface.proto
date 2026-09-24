@@ -1342,6 +1342,61 @@ message ExternalServerConfigured {
   string reason = 8;               // as proposed (untrusted text)
 }
 
+// ---- Hook Bus and extensions (REQ-EV-0042, REQ-EV-0139, REQ-EV-0240;
+// docs/16 "Hook Bus") ----
+//
+// Typed lifecycle hooks run outside the Core with a timeout and a fail
+// policy; they may deny or rewrite a step, never allow one. An extension is
+// a directory whose `modbit-extension.json` registers hooks for a session's
+// tasks; loading one is trusting a program to run against the workspace.
+
+message LoadExtension {
+  Id session_id = 1;
+  string path = 2;                 // the extension's directory on this machine
+}
+
+message ExtensionLoadedView {
+  string extension_id = 1;
+  string name = 2;
+  string version = 3;
+  string manifest_digest = 4;      // sha256 of the manifest as loaded
+  repeated string hooks = 5;       // "<name>@<point>"
+}
+
+// Unloading removes the extension's handlers at once: none runs again, and
+// an answer from one already running is discarded.
+message UnloadExtension {
+  Id session_id = 1;
+  string extension_id = 2;
+}
+
+message ExtensionUnloadedView {
+  string extension_id = 1;
+  string name = 2;
+  repeated string removed = 3;     // "<name>@<point>"
+}
+
+message ListHooks {
+  Id task_id = 1;
+}
+
+message HookView {
+  string id = 1;                   // "<source>/<name>"
+  string source = 2;               // config:<authority> | extension:<name>
+  string point = 3;                // before_tool, after_run, …
+  string mode = 4;                 // observe | intercept
+  string fail_policy = 5;          // closed | open
+  uint64 timeout_ms = 6;
+  repeated string tools = 7;       // scope at tool/change points; empty = every tool
+  repeated string command = 8;
+}
+
+message HookListView {
+  repeated HookView hooks = 1;
+  repeated string refused = 2;     // "<hook> (<source>): <reason>"
+  repeated string extensions = 3;  // "<extension_id> <name>@<version> sha256:<digest> <path>"
+}
+
 message TrustRepository {
   Id session_id = 1;
   string workspace_root = 2;       // the root the user trusts, scoped exactly to it

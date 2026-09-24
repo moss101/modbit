@@ -223,6 +223,9 @@ pub struct InvokeContext {
     /// — its group is killed — and reported cancelled, instead of running to
     /// its exit or timeout while the Core has already moved on.
     pub cancel: Option<tokio_util::sync::CancellationToken>,
+    /// The Hook Bus (REQ-EV-0042/0139): the task's typed hooks before and
+    /// after the call. `None` = no hooks are in force.
+    pub hooks: Option<Arc<dyn crate::hooks::HookPort>>,
 }
 
 /// What a pinned environment revision gives a process.
@@ -463,7 +466,7 @@ impl ToolRuntime {
         };
 
         // 1. normalize
-        let args: Value = match serde_json::from_str::<Value>(arguments_json) {
+        let mut args: Value = match serde_json::from_str::<Value>(arguments_json) {
             Ok(v) if v.is_object() => v,
             Ok(_) => {
                 stages.push(StageRecord {
@@ -503,7 +506,7 @@ impl ToolRuntime {
             }
         };
         let canon = canonical(&args);
-        let args_hash = hex::encode(Sha256::digest(canon.as_bytes()));
+        let mut args_hash = hex::encode(Sha256::digest(canon.as_bytes()));
         stages.push(StageRecord {
             stage: "normalize".into(),
             outcome: format!("sha256:{args_hash}"),
@@ -561,7 +564,7 @@ impl ToolRuntime {
 
         // The call's effect class: what the tool says of these arguments, never
         // below the registered class (a tool cannot talk its way down).
-        let effect_class = tool.effect_of(&args).max(spec.effect_class);
+        let mut effect_class = tool.effect_of(&args).max(spec.effect_class);
 
         // M7.7: arguments carrying a credential of the host are refused
         // before the kernel is asked — no approval, no effect, and the
@@ -574,6 +577,86 @@ impl ToolRuntime {
                     spec.name
                 ),
             );
+        }
+
+        // 2b. hooks (REQ-EV-0042/0139): the task's intercepting hooks may
+        // stop the call or rewrite its arguments — never allow it. A rewrite
+        // goes back through the schema and the custody check, and the kernel
+        // below decides on what will actually run, so no hook answer can
+        // clear a denial. A call already refused never reaches a hook (its
+        // arguments may carry a credential).
+        if verdict.denied.is_none()
+            && let Some(hooks) = &ctx.hooks
+        {
+            for point in [
+                crate::hooks::HookPoint::BeforeTool,
+                crate::hooks::HookPoint::BeforeChange,
+            ] {
+                // A change hook runs for a workspace write — including a call
+                // a rewrite made one.
+                if point == crate::hooks::HookPoint::BeforeChange
+                    && !crate::hooks::is_change(effect_class)
+                {
+                    continue;
+                }
+                let e = hooks.before(point, &spec.name, effect_class, &args).await;
+                if let Some(rewritten) = e.arguments {
+                    let errors: Vec<String> = validator
+                        .iter_errors(&rewritten)
+                        .map(|e| format!("{} at {}", e, e.instance_path()))
+                        .collect();
+                    if errors.is_empty() {
+                        args = rewritten;
+                        args_hash = hex::encode(Sha256::digest(canonical(&args).as_bytes()));
+                        effect_class = tool.effect_of(&args).max(spec.effect_class);
+                        stages.push(StageRecord {
+                            stage: "hooks".into(),
+                            outcome: format!(
+                                "{} rewrote the arguments: sha256:{args_hash}",
+                                point.label()
+                            ),
+                        });
+                        if let Some(field) = carries_secret(&args, &ctx.secrets_in_custody) {
+                            verdict.deny(
+                                "SECRET_EXFILTRATION_BLOCKED",
+                                &format!(
+                                    "a hook's rewrite of `{}` (at `{field}`) carries a credential in the Core's custody",
+                                    spec.name
+                                ),
+                            );
+                        }
+                    } else {
+                        verdict.deny(
+                            "HOOK_REWRITE_INVALID",
+                            &format!(
+                                "a hook's rewrite of `{}` breaks its schema: {}",
+                                spec.name,
+                                errors.join("; ")
+                            ),
+                        );
+                    }
+                }
+                if let Some((code, reason)) = &e.denied {
+                    verdict.deny(code, reason);
+                }
+                if !e.records.is_empty() {
+                    stages.push(StageRecord {
+                        stage: "hooks".into(),
+                        outcome: format!(
+                            "{}: {}",
+                            point.label(),
+                            e.records
+                                .iter()
+                                .map(|r| format!("{} {}", r.hook, r.outcome.label()))
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        ),
+                    });
+                }
+                if verdict.denied.is_some() {
+                    break;
+                }
+            }
         }
 
         // 3. policy (arguments are never shown to the kernel as text)
@@ -774,6 +857,37 @@ impl ToolRuntime {
                 .or(outcome.unknown_outcome.clone()),
             arguments_hash: args_hash,
         };
+        // 7. after hooks (REQ-EV-0042): the effect has happened, so nothing
+        // here can stop it; the host stops the run at its next boundary when
+        // a fail-closed hook fails.
+        if let Some(hooks) = &ctx.hooks {
+            let view = serde_json::to_value(&result).unwrap_or(Value::Null);
+            for point in [
+                crate::hooks::HookPoint::AfterTool,
+                crate::hooks::HookPoint::AfterChange,
+            ] {
+                if point == crate::hooks::HookPoint::AfterChange
+                    && !crate::hooks::is_change(effect_class)
+                {
+                    continue;
+                }
+                let e = hooks.after(point, &spec.name, effect_class, &view).await;
+                if !e.records.is_empty() {
+                    stages.push(StageRecord {
+                        stage: "hooks".into(),
+                        outcome: format!(
+                            "{}: {}",
+                            point.label(),
+                            e.records
+                                .iter()
+                                .map(|r| format!("{} {}", r.hook, r.outcome.label()))
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        ),
+                    });
+                }
+            }
+        }
         PipelineOutcome {
             result,
             stages,

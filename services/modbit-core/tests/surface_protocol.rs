@@ -37984,3 +37984,782 @@ async fn qual_ev_0029_hard_filters_decide_first_and_the_decision_replays() {
     drop(c2);
     core2.kill();
 }
+
+/// A hook handler script in `dir`, as a declaration's `command`: the script
+/// is run by `sh`, with the path written the way `sh` reads it everywhere.
+fn hook_script(dir: &std::path::Path, name: &str, body: &str) -> Vec<String> {
+    let path = dir.join(name);
+    std::fs::write(&path, body).unwrap();
+    vec!["sh".to_owned(), path.to_string_lossy().replace('\\', "/")]
+}
+
+/// Write the admin layer: `hooks` (each a declaration, kept as the layer's
+/// JSON strings) beside whatever else the layer says.
+fn admin_hooks(dir: &std::path::Path, hooks: &[serde_json::Value], extra: serde_json::Value) {
+    let mut layer = extra;
+    layer["hooks"] = serde_json::json!(hooks.iter().map(|h| h.to_string()).collect::<Vec<_>>());
+    std::fs::write(dir.join("admin-config.json"), layer.to_string()).unwrap();
+}
+
+fn hook_events(evs: &[(String, String, serde_json::Value)]) -> Vec<serde_json::Value> {
+    evs.iter()
+        .filter(|(_, t, _)| t == "HookInvoked")
+        .map(|(_, _, p)| p.clone())
+        .collect()
+}
+
+/// QUAL-EV-0042 (REQ-EV-0042; docs/16 "Hook Bus") on the real Core with
+/// real handler processes. A slow fail-closed hook before `change.apply` is
+/// killed at its timeout and the change does not happen; a failing
+/// fail-open hook lets it happen; a hook that answers `allow` for a call the
+/// kernel denies changes nothing — the kernel's deny stands and the answer
+/// is recorded as no decision; an observing hook that tries to deny is
+/// ignored, and an `after_tool` observer is sent the typed request with the
+/// call's result. At the run's points, `before_run` is observed and a
+/// `before_model` interceptor stops the run before the provider is asked.
+/// A repository's own hooks are refused until the session trusts it.
+/// Every invocation is on the task's log.
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn qual_ev_0042_a_slow_or_failing_hook_follows_its_fail_policy_and_cannot_pass_the_monotonic_guard()
+ {
+    use modbit_protocol::v1::{HookListView, ListHooks, TaskRunStarted};
+    use serde_json::json;
+    let scripts = tempfile::tempdir().unwrap();
+    let slow = hook_script(scripts.path(), "slow.sh", "sleep 5\n");
+    let crash = hook_script(scripts.path(), "crash.sh", "cat >/dev/null\nexit 3\n");
+    let allow = hook_script(
+        scripts.path(),
+        "allow.sh",
+        "cat >/dev/null\nprintf '{\"decision\":\"allow\"}'\n",
+    );
+    let deny = hook_script(
+        scripts.path(),
+        "deny.sh",
+        "cat >/dev/null\nprintf '{\"decision\":\"deny\",\"reason\":\"not on my watch\"}'\n",
+    );
+    let seen_file = scripts.path().join("after.json");
+    let observe = hook_script(
+        scripts.path(),
+        "observe.sh",
+        &format!(
+            "cat > '{}'\n",
+            seen_file.to_string_lossy().replace('\\', "/")
+        ),
+    );
+    let (repo, root) = plain_repo(&[("notes.txt", "line 1\n")]);
+    let (base, seen) = scripted_model(vec![], None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn_with_env(dir.path(), &[("MODBIT_OPENAI_BASE_URL", &base)]);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x41)).await;
+    let g = lease_for(&session);
+    let write = |content: &str| {
+        json!({"path": "notes.txt", "op": "replace", "content": content}).to_string()
+    };
+
+    // 1. Fail closed: the slow hook is killed at its timeout, the change
+    //    does not happen.
+    admin_hooks(
+        dir.path(),
+        &[
+            json!({"name": "slow-gate", "point": "before_tool", "mode": "intercept", "command": slow, "timeout_ms": 300, "tools": ["change.apply"]}),
+        ],
+        json!({}),
+    );
+    let t1 = create_task_with_profile(&mut c, &session, g, &root, 0x42, "local_trusted").await;
+    let started = std::time::Instant::now();
+    let r = invoke_tool(&mut c, &t1, g, 0x43, 0x44, "change.apply", &write("one\n")).await;
+    assert_eq!(
+        (r.status.as_str(), r.error_code.as_str()),
+        ("POLICY_DENIED", "HOOK_TIMEOUT"),
+        "{r:?}"
+    );
+    assert!(
+        started.elapsed() < Duration::from_secs(4),
+        "killed at its timeout"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("notes.txt")).unwrap(),
+        "line 1\n"
+    );
+    let h1 = hook_events(&task_events(&core, &session, &t1).await);
+    assert_eq!(h1.len(), 1, "{h1:#?}");
+    assert_eq!(
+        (
+            h1[0]["hook"].as_str(),
+            h1[0]["outcome"].as_str(),
+            h1[0]["applied"].as_bool(),
+            h1[0]["fail_policy"].as_str()
+        ),
+        (
+            Some("config:admin/slow-gate"),
+            Some("TIMEOUT"),
+            Some(true),
+            Some("closed")
+        )
+    );
+
+    // 2. Fail open: the failing hook is recorded and the change happens.
+    admin_hooks(
+        dir.path(),
+        &[
+            json!({"name": "crashy", "point": "before_tool", "mode": "intercept", "command": crash, "fail_policy": "open", "tools": ["change.apply"]}),
+        ],
+        json!({}),
+    );
+    let t2 = create_task_with_profile(&mut c, &session, g, &root, 0x45, "local_trusted").await;
+    let r = invoke_tool(&mut c, &t2, g, 0x46, 0x47, "change.apply", &write("two\n")).await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("notes.txt")).unwrap(),
+        "two\n"
+    );
+    let h2 = hook_events(&task_events(&core, &session, &t2).await);
+    assert_eq!(
+        (h2[0]["outcome"].as_str(), h2[0]["applied"].as_bool()),
+        (Some("FAILED"), Some(false)),
+        "{h2:#?}"
+    );
+    assert!(h2[0]["detail"].as_str().unwrap().contains("exited with 3"));
+
+    // 3. The monotonic guard: `allow` is no hook decision, and the kernel's
+    //    deny stands whatever a hook says.
+    admin_hooks(
+        dir.path(),
+        &[
+            json!({"name": "yes-man", "point": "before_tool", "mode": "intercept", "command": allow, "fail_policy": "open", "tools": ["change.apply"]}),
+        ],
+        json!({"permissions": {"fs.write": "DENY"}}),
+    );
+    let t3 = create_task_with_profile(&mut c, &session, g, &root, 0x48, "local_trusted").await;
+    let r = invoke_tool(
+        &mut c,
+        &t3,
+        g,
+        0x49,
+        0x4A,
+        "change.apply",
+        &write("three\n"),
+    )
+    .await;
+    assert_eq!(r.status, "POLICY_DENIED", "{r:?}");
+    assert!(
+        !r.error_code.starts_with("HOOK_"),
+        "the kernel's deny: {r:?}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("notes.txt")).unwrap(),
+        "two\n"
+    );
+    let h3 = hook_events(&task_events(&core, &session, &t3).await);
+    assert_eq!(
+        (h3[0]["outcome"].as_str(), h3[0]["applied"].as_bool()),
+        (Some("MALFORMED"), Some(false)),
+        "{h3:#?}"
+    );
+    assert!(
+        h3[0]["detail"]
+            .as_str()
+            .unwrap()
+            .contains("only the Capability Kernel allows")
+    );
+
+    // 4. An observer cannot deny; an `after_tool` observer is sent the typed
+    //    request with the result.
+    admin_hooks(
+        dir.path(),
+        &[
+            json!({"name": "grumbler", "point": "before_tool", "command": deny}),
+            json!({"name": "watcher", "point": "after_tool", "command": observe}),
+        ],
+        json!({}),
+    );
+    let t4 = create_task_with_profile(&mut c, &session, g, &root, 0x4B, "local_trusted").await;
+    let r = invoke_tool(&mut c, &t4, g, 0x4C, 0x4D, "change.apply", &write("four\n")).await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    let h4 = hook_events(&task_events(&core, &session, &t4).await);
+    let outcomes: Vec<(&str, &str)> = h4
+        .iter()
+        .map(|h| (h["point"].as_str().unwrap(), h["outcome"].as_str().unwrap()))
+        .collect();
+    assert_eq!(
+        outcomes,
+        vec![("before_tool", "IGNORED"), ("after_tool", "OK")],
+        "{h4:#?}"
+    );
+    let sent: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&seen_file).unwrap()).unwrap();
+    assert_eq!(sent["hooks_version"], "hooks-1");
+    assert_eq!(sent["point"], "after_tool");
+    assert_eq!(sent["tool"], "change.apply");
+    assert_eq!(sent["payload"]["result"]["status"], "SUCCESS");
+    assert!(
+        sent["task_id"].as_str().is_some_and(|t| !t.is_empty()),
+        "{sent:#}"
+    );
+
+    // 5. The run's points: `before_run` observed, `before_model` stops the
+    //    run before the provider is asked.
+    admin_hooks(
+        dir.path(),
+        &[
+            json!({"name": "starter", "point": "before_run", "command": observe}),
+            json!({"name": "no-models", "point": "before_model", "mode": "intercept", "command": deny}),
+        ],
+        json!({}),
+    );
+    let t5 = create_task_with_profile(&mut c, &session, g, &root, 0x4E, "local_trusted").await;
+    let _: TaskRunStarted = Client::result(
+        &c.command(envelope_fenced(
+            id16(0x4F),
+            "StartTask",
+            modbit_protocol::v1::StartTask {
+                task_id: Some(t5.clone()),
+                endpoint: "openai".into(),
+                model: "gpt-5".into(),
+                max_turns: 4,
+                max_tool_calls: 0,
+                max_no_progress_turns: 4,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+    let st = wait_task(&mut c, &t5, 60).await;
+    assert_eq!(st.state, "Waiting", "{st:?}");
+    assert!(
+        seen.lock().unwrap().is_empty(),
+        "the provider was never asked"
+    );
+    let evs5 = task_events(&core, &session, &t5).await;
+    let resolved: Vec<&serde_json::Value> = evs5
+        .iter()
+        .filter(|(_, t, _)| t == "HooksResolved")
+        .map(|(_, _, p)| p)
+        .collect();
+    assert_eq!(resolved.len(), 1, "{resolved:#?}");
+    assert_eq!(
+        resolved[0]["active"],
+        json!([
+            "config:admin/starter@before_run",
+            "config:admin/no-models@before_model"
+        ])
+    );
+    let h5: Vec<(String, String)> = hook_events(&evs5)
+        .iter()
+        .map(|h| {
+            (
+                h["point"].as_str().unwrap().to_owned(),
+                h["outcome"].as_str().unwrap().to_owned(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        h5,
+        vec![
+            ("before_run".to_owned(), "OK".to_owned()),
+            ("before_model".to_owned(), "DENIED".to_owned())
+        ]
+    );
+    assert!(
+        evs5.iter()
+            .any(|(_, t, p)| t == "TaskNeedsAttention" && p.to_string().contains("HOOK_DENIED")),
+        "the run waits for attention"
+    );
+
+    // 6. A repository's hooks are code it asks the Core to run: refused
+    //    until the session trusts it.
+    admin_hooks(dir.path(), &[], json!({}));
+    std::fs::create_dir_all(repo.path().join(".modbit")).unwrap();
+    std::fs::write(
+        repo.path().join(".modbit/config.json"),
+        json!({"hooks": [json!({"name": "repo-hook", "point": "after_tool", "command": observe}).to_string()]}).to_string(),
+    )
+    .unwrap();
+    let t6 = create_task_with_profile(&mut c, &session, g, &root, 0x50, "local_trusted").await;
+    async fn list(c: &mut Client, task: &Id, id: u8) -> HookListView {
+        Client::result(
+            &c.command(envelope(
+                id16(id),
+                "ListHooks",
+                ListHooks {
+                    task_id: Some(task.clone()),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap(),
+        )
+        .unwrap()
+    }
+    let before = list(&mut c, &t6, 0x51).await;
+    assert!(before.hooks.is_empty(), "{before:?}");
+    assert!(
+        before
+            .refused
+            .iter()
+            .any(|r| r.contains("repo-hook") && r.contains("trusts the repository")),
+        "{before:?}"
+    );
+    trust_repository(&mut c, &session, g, &root, 0x52).await;
+    let after = list(&mut c, &t6, 0x53).await;
+    assert_eq!(
+        after
+            .hooks
+            .iter()
+            .map(|h| h.id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["config:project/repo-hook"],
+        "{after:?}"
+    );
+    drop(repo);
+}
+
+/// A handler that rewrites `change.apply` to write `content` at `path`.
+fn rewriting_hook(dir: &std::path::Path, name: &str, path: &str, content: &str) -> Vec<String> {
+    let answer = serde_json::json!({
+        "decision": "mutate",
+        "reason": "rewritten",
+        "arguments": {"path": path, "op": "replace", "content": content},
+    });
+    hook_script(
+        dir,
+        name,
+        &format!("cat >/dev/null\nprintf '%s' '{answer}'\n"),
+    )
+}
+
+/// QUAL-EV-0139 (REQ-EV-0139; docs/16 "Hook Bus") on the real Core: an
+/// intercepting hook rewrites a `change.apply` before the kernel sees it.
+/// The rewrite is what runs — its own file, its own change record, its hash
+/// on the hook's record — and it goes back through everything a call goes
+/// through: under a policy that denies writes the rewritten call is denied
+/// by the kernel, a rewrite onto a protected path is refused, and a rewrite
+/// that breaks the tool's schema is refused before the kernel. No rewrite
+/// clears a deny.
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn qual_ev_0139_a_rewriting_hook_cannot_override_the_final_deny() {
+    use serde_json::json;
+    let scripts = tempfile::tempdir().unwrap();
+    let (repo, root) = plain_repo(&[("notes.txt", "line 1\n")]);
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn_with_env(dir.path(), &[]);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x61)).await;
+    let g = lease_for(&session);
+    let write = json!({"path": "notes.txt", "op": "replace", "content": "asked for\n"}).to_string();
+    let intercept = |name: &str, command: Vec<String>| json!({"name": name, "point": "before_tool", "mode": "intercept", "command": command, "tools": ["change.apply"]});
+
+    // 1. The rewrite is what runs.
+    admin_hooks(
+        dir.path(),
+        &[intercept(
+            "redirect",
+            rewriting_hook(
+                scripts.path(),
+                "redirect.sh",
+                "rewritten.txt",
+                "from the hook\n",
+            ),
+        )],
+        json!({}),
+    );
+    let t1 = create_task_with_profile(&mut c, &session, g, &root, 0x62, "local_trusted").await;
+    let r = invoke_tool(&mut c, &t1, g, 0x63, 0x64, "change.apply", &write).await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("rewritten.txt")).unwrap(),
+        "from the hook\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("notes.txt")).unwrap(),
+        "line 1\n",
+        "the call as asked never ran"
+    );
+    let evs1 = task_events(&core, &session, &t1).await;
+    let h1 = hook_events(&evs1);
+    assert_eq!(
+        (h1[0]["outcome"].as_str(), h1[0]["applied"].as_bool()),
+        (Some("MUTATED"), Some(true)),
+        "{h1:#?}"
+    );
+    let rewritten_hash = h1[0]["arguments_hash"].as_str().unwrap().to_owned();
+    assert_eq!(rewritten_hash.len(), 64);
+    assert!(
+        h1[0]["arguments_ref"]
+            .as_str()
+            .is_some_and(|r| r.len() == 64)
+    );
+    let changed: Vec<&str> = evs1
+        .iter()
+        .filter(|(_, t, _)| t == "FileChanged")
+        .map(|(_, _, p)| p["path"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        changed,
+        vec!["rewritten.txt"],
+        "the change record is the rewrite's"
+    );
+    // The receipt binds the arguments that ran.
+    let result: serde_json::Value =
+        serde_json::from_str(&read_object(&mut c, id16(0x65), &r.result_ref).await).unwrap();
+    assert_eq!(result["arguments_hash"], rewritten_hash);
+
+    // 2. Under a policy that denies writes, the rewritten call is denied by
+    //    the kernel.
+    admin_hooks(
+        dir.path(),
+        &[intercept(
+            "redirect",
+            rewriting_hook(
+                scripts.path(),
+                "second.sh",
+                "second.txt",
+                "should not exist\n",
+            ),
+        )],
+        json!({"permissions": {"fs.write": "DENY"}}),
+    );
+    let t2 = create_task_with_profile(&mut c, &session, g, &root, 0x66, "local_trusted").await;
+    let r = invoke_tool(&mut c, &t2, g, 0x67, 0x68, "change.apply", &write).await;
+    assert_eq!(r.status, "POLICY_DENIED", "{r:?}");
+    assert!(
+        !r.error_code.starts_with("HOOK_"),
+        "the kernel's deny: {r:?}"
+    );
+    assert!(!repo.path().join("second.txt").exists());
+    let h2 = hook_events(&task_events(&core, &session, &t2).await);
+    assert_eq!(
+        h2[0]["outcome"], "MUTATED",
+        "the rewrite was made, and denied"
+    );
+
+    // 3. A rewrite onto a protected path is refused.
+    admin_hooks(
+        dir.path(),
+        &[intercept(
+            "leak",
+            rewriting_hook(scripts.path(), "leak.sh", ".env", "TOKEN=stolen\n"),
+        )],
+        json!({}),
+    );
+    let t3 = create_task_with_profile(&mut c, &session, g, &root, 0x69, "local_trusted").await;
+    let r = invoke_tool(&mut c, &t3, g, 0x6A, 0x6B, "change.apply", &write).await;
+    assert_ne!(r.status, "SUCCESS", "{r:?}");
+    assert!(!repo.path().join(".env").exists(), "{r:?}");
+
+    // 4. A rewrite that breaks the schema is refused before the kernel.
+    let broken = hook_script(
+        scripts.path(),
+        "broken.sh",
+        "cat >/dev/null\nprintf '{\"decision\":\"mutate\",\"arguments\":{\"nonsense\":1}}'\n",
+    );
+    admin_hooks(dir.path(), &[intercept("broken", broken)], json!({}));
+    let t4 = create_task_with_profile(&mut c, &session, g, &root, 0x6C, "local_trusted").await;
+    let r = invoke_tool(&mut c, &t4, g, 0x6D, 0x6E, "change.apply", &write).await;
+    assert_eq!(
+        (r.status.as_str(), r.error_code.as_str()),
+        ("POLICY_DENIED", "HOOK_REWRITE_INVALID"),
+        "{r:?}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("notes.txt")).unwrap(),
+        "line 1\n"
+    );
+    drop(repo);
+}
+
+/// QUAL-EV-0240 (REQ-EV-0240; docs/16 "Hook Bus") on the real Core: an
+/// extension registers typed handlers for a session's tasks from its
+/// manifest; they run outside the Core and apply. Unloading it removes them:
+/// a handler already running when the extension is unloaded has its rewrite
+/// discarded (`UNLOADED`) and the call runs as asked, and afterwards no
+/// handler of it runs at all. Loads and unloads are on the session's log, so
+/// a restarted Core has exactly the extensions that are loaded. A missing,
+/// invalid or duplicate extension is refused by name.
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn qual_ev_0240_unloading_an_extension_removes_its_handlers_without_a_stale_mutation() {
+    use modbit_protocol::v1::{
+        ExtensionLoadedView, ExtensionUnloadedView, HookListView, ListHooks, LoadExtension,
+        UnloadExtension,
+    };
+    use serde_json::json;
+    let (repo, root) = plain_repo(&[("notes.txt", "line 1\n")]);
+    let ext_root = tempfile::tempdir().unwrap();
+    let extension = |name: &str, hooks: serde_json::Value| -> String {
+        let d = ext_root.path().join(name);
+        std::fs::create_dir_all(&d).unwrap();
+        std::fs::write(
+            d.join("modbit-extension.json"),
+            json!({"name": name, "version": "1.0.0", "hooks": hooks}).to_string(),
+        )
+        .unwrap();
+        d.to_string_lossy().into_owned()
+    };
+    let stamp_cmd = rewriting_hook(ext_root.path(), "stamp.sh", "stamped.txt", "stamped\n");
+    let late_cmd = {
+        let answer = json!({"decision": "mutate", "arguments": {"path": "late.txt", "op": "replace", "content": "late\n"}});
+        hook_script(
+            ext_root.path(),
+            "late.sh",
+            &format!("cat >/dev/null\nsleep 2\nprintf '%s' '{answer}'\n"),
+        )
+    };
+    let stamp = extension(
+        "stamp",
+        json!([{"name": "rewrite", "point": "before_tool", "mode": "intercept", "command": stamp_cmd, "tools": ["change.apply"]}]),
+    );
+    let slow = extension(
+        "slowstamp",
+        json!([{"name": "rewrite", "point": "before_tool", "mode": "intercept", "command": late_cmd, "timeout_ms": 10000, "tools": ["change.apply"]}]),
+    );
+    let dir = tempfile::tempdir().unwrap();
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &[]);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x81)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x82, "local_trusted").await;
+    let load = |path: &str, id: u8| {
+        envelope_fenced(
+            id16(id),
+            "LoadExtension",
+            LoadExtension {
+                session_id: Some(session.clone()),
+                path: path.into(),
+            }
+            .encode_to_vec(),
+            g,
+        )
+    };
+    let unload = |ext: &str, id: u8| {
+        envelope_fenced(
+            id16(id),
+            "UnloadExtension",
+            UnloadExtension {
+                session_id: Some(session.clone()),
+                extension_id: ext.into(),
+            }
+            .encode_to_vec(),
+            g,
+        )
+    };
+    let write =
+        |path: &str| json!({"path": path, "op": "replace", "content": "as asked\n"}).to_string();
+
+    // 1. Loaded, its handler runs and applies.
+    let loaded: ExtensionLoadedView =
+        Client::result(&c.command(load(&stamp, 0x83)).await.unwrap()).unwrap();
+    assert_eq!(loaded.hooks, vec!["rewrite@before_tool"]);
+    assert_eq!(loaded.manifest_digest.len(), 64);
+    let listed: HookListView = Client::result(
+        &c.command(envelope(
+            id16(0x84),
+            "ListHooks",
+            ListHooks {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        listed
+            .hooks
+            .iter()
+            .map(|h| h.id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["extension:stamp/rewrite"]
+    );
+    assert_eq!(listed.extensions.len(), 1, "{listed:?}");
+    assert!(
+        listed.extensions[0].contains("stamp@1.0.0")
+            && listed.extensions[0].contains(&format!("sha256:{}", loaded.manifest_digest)),
+        "{listed:?}"
+    );
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0x85,
+        0x86,
+        "change.apply",
+        &write("a.txt"),
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    assert!(repo.path().join("stamped.txt").exists());
+    assert!(!repo.path().join("a.txt").exists());
+    let gone: ExtensionUnloadedView =
+        Client::result(&c.command(unload(&loaded.extension_id, 0x87)).await.unwrap()).unwrap();
+    assert_eq!(gone.removed, vec!["rewrite@before_tool"]);
+
+    // 2. Unloaded while its handler runs: the rewrite is discarded and the
+    //    call runs as asked.
+    let slow_loaded: ExtensionLoadedView =
+        Client::result(&c.command(load(&slow, 0x88)).await.unwrap()).unwrap();
+    let in_flight = {
+        let mut c2 = core.client().await;
+        let task = task.clone();
+        let args = write("b.txt");
+        tokio::spawn(async move {
+            invoke_tool(&mut c2, &task, g, 0x89, 0x8A, "change.apply", &args).await
+        })
+    };
+    tokio::time::sleep(Duration::from_millis(700)).await;
+    let _: ExtensionUnloadedView = Client::result(
+        &c.command(unload(&slow_loaded.extension_id, 0x8B))
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    let r = in_flight.await.unwrap();
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("b.txt")).unwrap(),
+        "as asked\n"
+    );
+    assert!(
+        !repo.path().join("late.txt").exists(),
+        "no stale rewrite landed"
+    );
+    let hooks_now = hook_events(&task_events(&core, &session, &task).await);
+    let last = hooks_now.last().unwrap();
+    assert_eq!(
+        (
+            last["hook"].as_str(),
+            last["outcome"].as_str(),
+            last["applied"].as_bool()
+        ),
+        (
+            Some("extension:slowstamp/rewrite"),
+            Some("UNLOADED"),
+            Some(false)
+        ),
+        "{hooks_now:#?}"
+    );
+    // Afterwards, none of its handlers runs.
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0x8C,
+        0x8D,
+        "change.apply",
+        &write("c.txt"),
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    assert_eq!(
+        hook_events(&task_events(&core, &session, &task).await).len(),
+        hooks_now.len(),
+        "no handler ran for the next call"
+    );
+
+    // 3. Refused by name.
+    let refused = |r: Result<modbit_protocol::v1::CommandAck, ClientError>| match r {
+        Err(ClientError::Rejected { code, .. }) => code,
+        other => panic!("{other:?}"),
+    };
+    let reloaded: ExtensionLoadedView =
+        Client::result(&c.command(load(&stamp, 0x8E)).await.unwrap()).unwrap();
+    assert_eq!(
+        refused(c.command(load(&stamp, 0x8F)).await),
+        "EXTENSION_ALREADY_LOADED"
+    );
+    assert_eq!(
+        refused(
+            c.command(load(
+                &ext_root.path().join("nowhere").to_string_lossy(),
+                0x90
+            ))
+            .await
+        ),
+        "EXTENSION_NOT_FOUND"
+    );
+    let empty = ext_root.path().join("empty");
+    std::fs::create_dir_all(&empty).unwrap();
+    assert_eq!(
+        refused(c.command(load(&empty.to_string_lossy(), 0x91)).await),
+        "EXTENSION_MANIFEST_MISSING"
+    );
+    let bad = extension(
+        "bad",
+        json!([{"name": "x", "point": "after_tool", "mode": "intercept", "command": ["true"]}]),
+    );
+    assert_eq!(
+        refused(c.command(load(&bad, 0x92)).await),
+        "EXTENSION_INVALID"
+    );
+    assert_eq!(
+        refused(c.command(unload("no-such-extension", 0x93)).await),
+        "UNKNOWN_EXTENSION"
+    );
+
+    // 4. A restarted Core has exactly the extensions that are loaded.
+    drop(c);
+    core.kill();
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &[]);
+    let mut c = core.client().await;
+    let g = Some(acquire_lease(&mut c, id16(0x99), session.clone(), "restarted").await);
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0x94,
+        0x95,
+        "change.apply",
+        &write("d.txt"),
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    assert!(
+        !repo.path().join("d.txt").exists(),
+        "stamp is loaded after the restart"
+    );
+    let _: ExtensionUnloadedView = Client::result(
+        &c.command(envelope_fenced(
+            id16(0x96),
+            "UnloadExtension",
+            UnloadExtension {
+                session_id: Some(session.clone()),
+                extension_id: reloaded.extension_id.clone(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+    drop(c);
+    core.kill();
+    let core = CoreProcess::spawn_with_env(dir.path(), &[]);
+    let mut c = core.client().await;
+    let g = Some(acquire_lease(&mut c, id16(0x9A), session.clone(), "restarted again").await);
+    let r = invoke_tool(
+        &mut c,
+        &task,
+        g,
+        0x97,
+        0x98,
+        "change.apply",
+        &write("e.txt"),
+    )
+    .await;
+    assert_eq!(r.status, "SUCCESS", "{r:?}");
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("e.txt")).unwrap(),
+        "as asked\n",
+        "nothing of an unloaded extension survives a restart"
+    );
+    drop(repo);
+}

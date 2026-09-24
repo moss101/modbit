@@ -5671,6 +5671,230 @@ export declare type ExternalServerConfigured = Message<"modbit.v1.ExternalServer
 export declare const ExternalServerConfiguredSchema: GenMessage<ExternalServerConfigured>;
 
 /**
+ * @generated from message modbit.v1.LoadExtension
+ */
+export declare type LoadExtension = Message<"modbit.v1.LoadExtension"> & {
+  /**
+   * @generated from field: modbit.v1.Id session_id = 1;
+   */
+  sessionId?: Id | undefined;
+
+  /**
+   * the extension's directory on this machine
+   *
+   * @generated from field: string path = 2;
+   */
+  path: string;
+};
+
+/**
+ * Describes the message modbit.v1.LoadExtension.
+ * Use `create(LoadExtensionSchema)` to create a new message.
+ */
+export declare const LoadExtensionSchema: GenMessage<LoadExtension>;
+
+/**
+ * @generated from message modbit.v1.ExtensionLoadedView
+ */
+export declare type ExtensionLoadedView = Message<"modbit.v1.ExtensionLoadedView"> & {
+  /**
+   * @generated from field: string extension_id = 1;
+   */
+  extensionId: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string version = 3;
+   */
+  version: string;
+
+  /**
+   * sha256 of the manifest as loaded
+   *
+   * @generated from field: string manifest_digest = 4;
+   */
+  manifestDigest: string;
+
+  /**
+   * "<name>@<point>"
+   *
+   * @generated from field: repeated string hooks = 5;
+   */
+  hooks: string[];
+};
+
+/**
+ * Describes the message modbit.v1.ExtensionLoadedView.
+ * Use `create(ExtensionLoadedViewSchema)` to create a new message.
+ */
+export declare const ExtensionLoadedViewSchema: GenMessage<ExtensionLoadedView>;
+
+/**
+ * Unloading removes the extension's handlers at once: none runs again, and
+ * an answer from one already running is discarded.
+ *
+ * @generated from message modbit.v1.UnloadExtension
+ */
+export declare type UnloadExtension = Message<"modbit.v1.UnloadExtension"> & {
+  /**
+   * @generated from field: modbit.v1.Id session_id = 1;
+   */
+  sessionId?: Id | undefined;
+
+  /**
+   * @generated from field: string extension_id = 2;
+   */
+  extensionId: string;
+};
+
+/**
+ * Describes the message modbit.v1.UnloadExtension.
+ * Use `create(UnloadExtensionSchema)` to create a new message.
+ */
+export declare const UnloadExtensionSchema: GenMessage<UnloadExtension>;
+
+/**
+ * @generated from message modbit.v1.ExtensionUnloadedView
+ */
+export declare type ExtensionUnloadedView = Message<"modbit.v1.ExtensionUnloadedView"> & {
+  /**
+   * @generated from field: string extension_id = 1;
+   */
+  extensionId: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * "<name>@<point>"
+   *
+   * @generated from field: repeated string removed = 3;
+   */
+  removed: string[];
+};
+
+/**
+ * Describes the message modbit.v1.ExtensionUnloadedView.
+ * Use `create(ExtensionUnloadedViewSchema)` to create a new message.
+ */
+export declare const ExtensionUnloadedViewSchema: GenMessage<ExtensionUnloadedView>;
+
+/**
+ * @generated from message modbit.v1.ListHooks
+ */
+export declare type ListHooks = Message<"modbit.v1.ListHooks"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.ListHooks.
+ * Use `create(ListHooksSchema)` to create a new message.
+ */
+export declare const ListHooksSchema: GenMessage<ListHooks>;
+
+/**
+ * @generated from message modbit.v1.HookView
+ */
+export declare type HookView = Message<"modbit.v1.HookView"> & {
+  /**
+   * "<source>/<name>"
+   *
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * config:<authority> | extension:<name>
+   *
+   * @generated from field: string source = 2;
+   */
+  source: string;
+
+  /**
+   * before_tool, after_run, …
+   *
+   * @generated from field: string point = 3;
+   */
+  point: string;
+
+  /**
+   * observe | intercept
+   *
+   * @generated from field: string mode = 4;
+   */
+  mode: string;
+
+  /**
+   * closed | open
+   *
+   * @generated from field: string fail_policy = 5;
+   */
+  failPolicy: string;
+
+  /**
+   * @generated from field: uint64 timeout_ms = 6;
+   */
+  timeoutMs: bigint;
+
+  /**
+   * scope at tool/change points; empty = every tool
+   *
+   * @generated from field: repeated string tools = 7;
+   */
+  tools: string[];
+
+  /**
+   * @generated from field: repeated string command = 8;
+   */
+  command: string[];
+};
+
+/**
+ * Describes the message modbit.v1.HookView.
+ * Use `create(HookViewSchema)` to create a new message.
+ */
+export declare const HookViewSchema: GenMessage<HookView>;
+
+/**
+ * @generated from message modbit.v1.HookListView
+ */
+export declare type HookListView = Message<"modbit.v1.HookListView"> & {
+  /**
+   * @generated from field: repeated modbit.v1.HookView hooks = 1;
+   */
+  hooks: HookView[];
+
+  /**
+   * "<hook> (<source>): <reason>"
+   *
+   * @generated from field: repeated string refused = 2;
+   */
+  refused: string[];
+
+  /**
+   * "<extension_id> <name>@<version> sha256:<digest> <path>"
+   *
+   * @generated from field: repeated string extensions = 3;
+   */
+  extensions: string[];
+};
+
+/**
+ * Describes the message modbit.v1.HookListView.
+ * Use `create(HookListViewSchema)` to create a new message.
+ */
+export declare const HookListViewSchema: GenMessage<HookListView>;
+
+/**
  * @generated from message modbit.v1.TrustRepository
  */
 export declare type TrustRepository = Message<"modbit.v1.TrustRepository"> & {

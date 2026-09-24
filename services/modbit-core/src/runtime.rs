@@ -2555,9 +2555,54 @@ async fn run_loop(
         crate::environment::attach_to_run(&core, &task, run_id, resumed, lt, &actor)
             .await
             .err();
+    // REQ-EV-0042/0240: the hooks in force as the run starts — recorded with
+    // the declarations refused — and the run's `before_run` hooks, which may
+    // stop it before its first round.
+    let (mut hooks, refused_hooks) = crate::hooks::scope(
+        &core,
+        &task,
+        Some(run_id),
+        None,
+        Some(cfg.lease_generation),
+        &actor,
+    )
+    .await;
+    if !hooks.registrations.is_empty() || !refused_hooks.is_empty() {
+        let mut store = core.store.lock().await;
+        let _ = append(
+            &mut store,
+            &core,
+            lt,
+            AggregateType::Task,
+            *task.task_id.as_bytes(),
+            vec![crate::hooks::resolved_event(&hooks, refused_hooks, &actor)],
+        );
+    }
+    let mut hook_block: Option<String> = hooks
+        .fire(
+            modbit_tools::hooks::HookPoint::BeforeRun,
+            None,
+            serde_json::json!({
+                "goal": task.goal_text,
+                "workspace_root": task.workspace_root,
+                "execution_profile": task.execution_profile,
+                "endpoint": cfg.endpoint,
+                "model": cfg.model,
+                "resumed": resumed,
+            }),
+        )
+        .await
+        .denied
+        .map(|(code, reason)| format!("{code}: {reason}"));
     let end = 'outer: loop {
         if cancel.is_cancelled() {
             break LoopEnd::Cancelled;
+        }
+        if let Some(reason) = hook_block.take() {
+            break LoopEnd::NeedsAttention {
+                code: "HOOK_DENIED",
+                reason,
+            };
         }
         // REQ-EV-0049: a park lands at the turn boundary, the run intact.
         if park.is_cancelled() {
@@ -2638,6 +2683,29 @@ async fn run_loop(
                     };
                 }
             }
+        }
+        // REQ-EV-0042: the hooks follow the configuration and the session's
+        // extensions from round to round; a fail-closed hook that failed
+        // after a step stops the run here.
+        hooks = crate::hooks::scope(
+            &core,
+            &task,
+            Some(run_id),
+            None,
+            Some(cfg.lease_generation),
+            &actor,
+        )
+        .await
+        .0;
+        if let Some((code, reason)) = core.tools.hooks.take_halt(task.task_id) {
+            break 'outer LoopEnd::NeedsAttention {
+                code: if code == "HOOK_DENIED" {
+                    "HOOK_DENIED"
+                } else {
+                    "HOOK_FAILED"
+                },
+                reason: format!("{code}: {reason}"),
+            };
         }
         // The projection follows the harness state: deferred tools activated
         // by `tool.search` appear with their schemas from this turn on.
@@ -2877,7 +2945,9 @@ async fn run_loop(
         // executing boundary (docs/19 resume step 9, M4.1): the model's last
         // message is already on the log and its outstanding calls are
         // re-entered by id; the model is not invoked again for them.
-        let (_text, calls) = if let Some(calls) = resume_calls.take() {
+        // Calls a resumed run re-enters were answered by a model before.
+        let resuming_calls = resume_calls.is_some();
+        let (text, calls) = if let Some(calls) = resume_calls.take() {
             (String::new(), calls)
         } else {
             {
@@ -3063,6 +3133,27 @@ async fn run_loop(
                             ),
                         ],
                     );
+                }
+                // REQ-EV-0042: the round's `before_model` hooks may stop it
+                // before the provider is asked.
+                if let Some((code, reason)) = hooks
+                    .fire(
+                        modbit_tools::hooks::HookPoint::BeforeModel,
+                        None,
+                        serde_json::json!({
+                            "endpoint": cfg.endpoint,
+                            "model": cfg.model,
+                            "messages": request.messages.len(),
+                            "tools": tools.iter().map(|t| t.name.clone()).collect::<Vec<_>>(),
+                        }),
+                    )
+                    .await
+                    .denied
+                {
+                    break 'outer LoopEnd::NeedsAttention {
+                        code: "HOOK_DENIED",
+                        reason: format!("{code}: {reason}"),
+                    };
                 }
                 // ModelInvoke step.
                 let invoke_step = RunStepId::new();
@@ -3563,6 +3654,29 @@ async fn run_loop(
                 (text, calls)
             }
         };
+        // REQ-EV-0042: `after_model` hooks see what the model asked for; a
+        // fail-closed one that fails stops the run before any of it runs.
+        if !resuming_calls
+            && hooks.has(modbit_tools::hooks::HookPoint::AfterModel)
+            && let Some((code, reason)) = hooks
+                .fire(
+                    modbit_tools::hooks::HookPoint::AfterModel,
+                    None,
+                    serde_json::json!({
+                        "endpoint": cfg.endpoint,
+                        "model": cfg.model,
+                        "text_bytes": text.len(),
+                        "tool_calls": calls.iter().map(|(_, n, _)| n.clone()).collect::<Vec<_>>(),
+                    }),
+                )
+                .await
+                .denied
+        {
+            break 'outer LoopEnd::NeedsAttention {
+                code: "HOOK_FAILED",
+                reason: format!("{code}: {reason}"),
+            };
+        }
         // ---- Actions
         let mut progress = false;
         // M7.6: a turn in which the agent's input was refused because the
@@ -5365,6 +5479,21 @@ async fn run_loop(
         &actor,
         &cfg.ticket_id,
     );
+    drop(store);
+    // REQ-EV-0042: `after_run` hooks see how the run ended. It is over, so
+    // nothing they answer changes it; a failure is on the record.
+    if hooks.has(modbit_tools::hooks::HookPoint::AfterRun) {
+        let _ = hooks
+            .fire(
+                modbit_tools::hooks::HookPoint::AfterRun,
+                None,
+                serde_json::json!({
+                    "status": format!("{:?}", agent_end.0),
+                    "detail": agent_end.1,
+                }),
+            )
+            .await;
+    }
 }
 
 /// The existing files a write targets that have no retrieval record at the
@@ -5602,7 +5731,28 @@ async fn install_epoch(
         );
     }
     transcript.drain(..cut.min(transcript.len()));
+    let installed = manifest.epoch;
     *epoch = Some(manifest);
+    // REQ-EV-0042: `after_compaction` hooks see the epoch that was
+    // installed; a fail-closed one that fails stops the run at its next
+    // boundary.
+    let (hooks, _) = crate::hooks::scope(core, task, lt.run_id(), None, lt.lease(), actor).await;
+    if hooks.has(modbit_tools::hooks::HookPoint::AfterCompaction) {
+        let e = hooks
+            .fire(
+                modbit_tools::hooks::HookPoint::AfterCompaction,
+                None,
+                serde_json::json!({
+                    "epoch": installed,
+                    "compaction_id": compaction_id,
+                    "mode": mode,
+                }),
+            )
+            .await;
+        if let Some((code, reason)) = e.denied {
+            core.tools.hooks.halt(task.task_id, code, reason);
+        }
+    }
 }
 
 /// Put a refused compaction on the log (docs/19: the rejection is logged;
@@ -5753,7 +5903,33 @@ async fn compaction_step(
     }
     let cut = transcript.len() - COMPACTION_KEEP_TAIL;
     let next_epoch = epoch.as_ref().map_or(1, |m| m.epoch + 1);
-    if tokens > budget {
+    // REQ-EV-0042: a compaction about to start is a step `before_compaction`
+    // hooks may stop; the transcript then stays as it is this round.
+    let hard = tokens > budget;
+    let soft = worker.is_none()
+        && tokens * COMPACTION_SOFT_DENOMINATOR > budget * COMPACTION_SOFT_NUMERATOR;
+    if hard || soft {
+        let (hooks, _) =
+            crate::hooks::scope(core, task, lt.run_id(), None, lt.lease(), actor).await;
+        if hooks
+            .fire(
+                modbit_tools::hooks::HookPoint::BeforeCompaction,
+                None,
+                serde_json::json!({
+                    "epoch": next_epoch,
+                    "mode": if hard { "SYNC_FALLBACK" } else { "ASYNC" },
+                    "transcript_tokens": tokens,
+                    "budget_tokens": budget,
+                }),
+            )
+            .await
+            .denied
+            .is_some()
+        {
+            return;
+        }
+    }
+    if hard {
         // 2. hard pressure: bounded synchronous compaction, now.
         let id = modbit_domain::RunStepId::new().to_string();
         let source = compaction_source(transcript, cut);
@@ -7136,6 +7312,80 @@ fn is_failing(s: modbit_verification::CheckStatus) -> bool {
 /// a Verification step; update harness failure state. Returns the
 /// observation entry, whether acceptance is not blocked, and the revision.
 pub(crate) async fn run_verification(
+    core: &Core,
+    task: &Task,
+    lturn: Lineage,
+    actor: &Actor,
+    state: &mut HarnessState,
+    stage: Stage,
+    ordinal: u32,
+) -> (TranscriptEntry, bool, String) {
+    // REQ-EV-0042: `before_verification` hooks may stop the stage — the run
+    // then stops for attention rather than claiming anything unverified —
+    // and `after_verification` hooks see what it found.
+    let (hooks, _) = crate::hooks::scope(
+        core,
+        task,
+        lturn.run_id(),
+        lturn.turn_id(),
+        lturn.lease(),
+        actor,
+    )
+    .await;
+    let stage_label = format!("{stage:?}").to_uppercase();
+    if let Some((code, reason)) = hooks
+        .fire(
+            modbit_tools::hooks::HookPoint::BeforeVerification,
+            None,
+            serde_json::json!({
+                "stage": stage_label,
+                "candidate_revision": state.candidate_revision,
+            }),
+        )
+        .await
+        .denied
+    {
+        core.tools
+            .hooks
+            .halt(task.task_id, code.clone(), reason.clone());
+        return (
+            TranscriptEntry::ToolResult {
+                call_id: String::new(),
+                name: VERIFY_TOOL.into(),
+                text: format!("status: BLOCKED\nerror: {code}: {reason}"),
+                failure_signature: None,
+                clears: vec![],
+                wrote: None,
+                progress: false,
+                media: vec![],
+            },
+            false,
+            format!("ws-rev-{}", state.candidate_revision.unwrap_or(0)),
+        );
+    }
+    let out = run_verification_stage(core, task, lturn, actor, state, stage, ordinal).await;
+    if hooks.has(modbit_tools::hooks::HookPoint::AfterVerification) {
+        let e = hooks
+            .fire(
+                modbit_tools::hooks::HookPoint::AfterVerification,
+                None,
+                serde_json::json!({
+                    "stage": stage_label,
+                    "accepted": out.1,
+                    "candidate": out.2,
+                }),
+            )
+            .await;
+        if let Some((code, reason)) = e.denied {
+            core.tools.hooks.halt(task.task_id, code, reason);
+        }
+    }
+    out
+}
+
+/// One verification stage through the engine (`run_verification` is its
+/// hooked entry).
+async fn run_verification_stage(
     core: &Core,
     task: &Task,
     lturn: Lineage,

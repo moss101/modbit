@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 90,
-    "root_and_tooling": 1549,
-    "docs_bytes": 1332010
+    "root_and_tooling": 1552,
+    "docs_bytes": 1337037
   },
   "sections": [
     {
@@ -185,8 +185,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Tool System, Capability Kernel, Procedural Runtime, and MCP",
-      "bytes": 28455,
-      "sha256": "8bb6f5a7f1c9b908cbfcb23dd5f6c25fcce060f2837835ee5fa3566f14f691bc"
+      "bytes": 32339,
+      "sha256": "e0f81e9976ed359f62cb9e518dfb998256453dbda5b66bf6467e66001f4de596"
     },
     {
       "path": "docs/17_CANONICAL_TOOL_AND_CAPABILITY_INVENTORY.md",
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 45294,
-      "sha256": "6c0b7fee2132801aeb3fd2755701bad853de1269355cd860f0aa22875d1aca68"
+      "bytes": 46437,
+      "sha256": "71e0f260fe726ee316cd5d5cf82a8286d84047e81bd00f419b72d39af5cc0ee3"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -8351,6 +8351,11 @@
       "sha256": "2957167039bcf9ceff292e9168f69107398d97a41d30c4c08a61dcc6a702311d"
     },
     {
+      "path": "evidence/m9/IMP-EV-0042/TASK_CARD.md",
+      "bytes": 3308,
+      "sha256": "12847d4a94b19cc3585b39e53972f6cf02c1260cd10cc4ecb7d38e01a2e3337e"
+    },
+    {
       "path": "evidence/m9/IMP-EV-0066/TASK_CARD.md",
       "bytes": 3273,
       "sha256": "cad1ca65a9f994af9d606ec09d87cbf4b07fe429dec59940acf2e942fbf7995a"
@@ -8384,6 +8389,11 @@
       "path": "evidence/m9/IMP-EV-0128/evidence.json",
       "bytes": 2208,
       "sha256": "34fdd1aecb5dbfa4c8dc4e51c8334dfca89f029b4d7511f1aad186ef03aafea9"
+    },
+    {
+      "path": "evidence/m9/IMP-EV-0139/TASK_CARD.md",
+      "bytes": 2143,
+      "sha256": "8d415097ffd00c81f5ef41b8f34d14de058da461c038b27a0aa3cb55b37fb30b"
     },
     {
       "path": "evidence/m9/IMP-EV-0162/TASK_CARD.md",
@@ -8434,6 +8444,11 @@
       "path": "evidence/m9/IMP-EV-0224/evidence.json",
       "bytes": 1820,
       "sha256": "779ebd86368749398a8262077b72f63899cb28d45b345cae60c2b3e471df0798"
+    },
+    {
+      "path": "evidence/m9/IMP-EV-0240/TASK_CARD.md",
+      "bytes": 2141,
+      "sha256": "1257f5d12561583fadbc0e369a9868486f8c7d49c3434a968b3741ce5555ec57"
     },
     {
       "path": "evidence/m9/IMP-EV-0270/TASK_CARD.md",

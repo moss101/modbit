@@ -375,6 +375,9 @@ pub struct ToolHost {
     /// The admin/project/user configuration resolved and pinned per task
     /// (REQ-EV-0039, REQ-EV-0128).
     pub configurations: crate::config::Configurations,
+    /// The Hook Bus (REQ-EV-0042/0139/0240): loaded extensions per session
+    /// and the runs a fail-closed after-hook stopped.
+    pub hooks: Arc<crate::hooks::HookBus>,
     /// Where this Core's own configuration and profile live.
     data_dir: std::path::PathBuf,
     /// The browser sessions `browser.*` reach through their hosts (M7.1).
@@ -463,6 +466,7 @@ impl ToolHost {
             forge: crate::forge::ForgeCustody::from_env(),
             mcp,
             configurations: crate::config::Configurations::default(),
+            hooks: Arc::new(crate::hooks::HookBus::default()),
             data_dir: data_dir.to_path_buf(),
             browser,
             gateway,
@@ -1065,11 +1069,46 @@ impl ToolHost {
                 ),
             ) as Arc<dyn modbit_mcp::McpPort>),
             cancel: cancel.clone(),
+            hooks: None,
         };
+        // REQ-EV-0042/0139: the task's hooks before and after the call — its
+        // pinned configuration's and its session's extensions'.
+        let hook_scope = {
+            let resolution = {
+                let st = store.lock().await;
+                crate::hooks::resolve(
+                    &self.hooks,
+                    &st,
+                    session_id,
+                    root_text.as_deref(),
+                    &task_config,
+                )
+            };
+            crate::hooks::HookScope {
+                store: Arc::clone(store),
+                bus: Arc::clone(&self.hooks),
+                tenant_id,
+                session_id,
+                task_id,
+                run_id,
+                turn_id,
+                lease_generation,
+                actor: actor.clone(),
+                cwd: root.clone(),
+                registrations: Arc::new(resolution.active),
+                flags: Arc::new(resolution.flags),
+                workspace: ctx.workspace.clone(),
+                rewritten: Arc::new(std::sync::Mutex::new(None)),
+            }
+        };
+        let mut ctx = ctx;
+        if !hook_scope.registrations.is_empty() {
+            ctx.hooks = Some(Arc::new(hook_scope.clone()));
+        }
         // REQ-EV-0106: snapshot the write targets so every successful write can
         // land a revision-bound FileChanged event with content and diff refs.
-        let change_targets = change_targets(tool_name, arguments_json);
-        let (pre_bytes, pre_revision) = match (&ctx.workspace, change_targets.is_empty()) {
+        let mut change_targets = change_targets(tool_name, arguments_json);
+        let (mut pre_bytes, mut pre_revision) = match (&ctx.workspace, change_targets.is_empty()) {
             (Some(ws), false) => {
                 let ws = ws.lock().await;
                 let mut m = HashMap::new();
@@ -1084,6 +1123,20 @@ impl ToolHost {
             .runtime
             .invoke(&ctx, tool_call_id, tool_name, arguments_json)
             .await;
+        // A hook rewrote the call: what ran is the rewrite, and its change
+        // record diffs against the workspace as it was when it was rewritten.
+        let mut final_arguments = arguments_json.to_owned();
+        if let Some(rw) = hook_scope
+            .rewritten
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .take()
+        {
+            change_targets = crate::tools::change_targets(tool_name, &rw.arguments_json);
+            pre_bytes = rw.pre_bytes;
+            pre_revision = rw.pre_revision;
+            final_arguments = rw.arguments_json;
+        }
         let mut result = outcome.result.clone();
         // Context Ledger (docs/28 §2, M3.8): a successful tool call that reads
         // or writes a packed path at the revision it was retrieved at is a use,
@@ -1206,7 +1259,7 @@ impl ToolHost {
             let mut paths = change_targets.clone();
             let retrieves = tool_name == "fs.read" || tool_name.starts_with("lsp.");
             if retrieves
-                && let Ok(v) = serde_json::from_str::<serde_json::Value>(arguments_json)
+                && let Ok(v) = serde_json::from_str::<serde_json::Value>(&final_arguments)
                 && let Some(p) = v.get("path").and_then(serde_json::Value::as_str)
                 && !paths.iter().any(|x| x == p)
             {
