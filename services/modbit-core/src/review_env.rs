@@ -48,7 +48,7 @@ pub(crate) struct Disposed {
 }
 
 /// The host's review sandbox, asked of the live terminal broker.
-async fn probe_sandbox(core: &Core) -> Result<String, (String, String)> {
+pub(crate) async fn probe_sandbox(core: &Core) -> Result<String, (String, String)> {
     let Some(execd) = core.tools.execd.as_ref() else {
         return Err((
             "SANDBOX_UNAVAILABLE".into(),

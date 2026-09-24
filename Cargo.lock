@@ -2197,6 +2197,7 @@ dependencies = [
  "anyhow",
  "base64",
  "ed25519-dalek",
+ "globset",
  "hex",
  "libc",
  "modbit-bench-context-economics",

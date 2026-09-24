@@ -10541,6 +10541,104 @@ export declare type MemoryForgotten = Message<"modbit.v1.MemoryForgotten"> & {
 export declare const MemoryForgottenSchema: GenMessage<MemoryForgotten>;
 
 /**
+ * ---- Isolated counterfactual replay (EPR-011; docs/38
+ * "CounterfactualReplay") ----
+ *
+ * Replay an alternative validated plan of a request offline: its snapshot
+ * in a scratch repository, sanitized, under the replay-only ceiling, through
+ * the Gateway. The replay is its own task; the request's outcome record
+ * (GetRequestOutcome) reads its result as an observed counterfactual.
+ *
+ * @generated from message modbit.v1.ReplayCounterfactual
+ */
+export declare type ReplayCounterfactual = Message<"modbit.v1.ReplayCounterfactual"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * a hard-eligible candidate of the request's decision record
+   *
+   * @generated from field: string plan_id = 2;
+   */
+  planId: string;
+};
+
+/**
+ * Describes the message modbit.v1.ReplayCounterfactual.
+ * Use `create(ReplayCounterfactualSchema)` to create a new message.
+ */
+export declare const ReplayCounterfactualSchema: GenMessage<ReplayCounterfactual>;
+
+/**
+ * @generated from message modbit.v1.CounterfactualReplayView
+ */
+export declare type CounterfactualReplayView = Message<"modbit.v1.CounterfactualReplayView"> & {
+  /**
+   * @generated from field: string replay_id = 1;
+   */
+  replayId: string;
+
+  /**
+   * @generated from field: modbit.v1.Id replay_task_id = 2;
+   */
+  replayTaskId?: Id | undefined;
+
+  /**
+   * @generated from field: string plan_id = 3;
+   */
+  planId: string;
+
+  /**
+   * @generated from field: repeated string bindings = 4;
+   */
+  bindings: string[];
+
+  /**
+   * @generated from field: string snapshot_commit = 5;
+   */
+  snapshotCommit: string;
+
+  /**
+   * @generated from field: string scratch = 6;
+   */
+  scratch: string;
+
+  /**
+   * credential-bearing files left out of the scratch copy
+   *
+   * @generated from field: repeated string sanitized = 7;
+   */
+  sanitized: string[];
+
+  /**
+   * the execution profile the replay runs under
+   *
+   * @generated from field: string capability_ceiling = 8;
+   */
+  capabilityCeiling: string;
+
+  /**
+   * the host sandbox confining its processes
+   *
+   * @generated from field: string sandbox = 9;
+   */
+  sandbox: string;
+
+  /**
+   * @generated from field: string registry_generation = 10;
+   */
+  registryGeneration: string;
+};
+
+/**
+ * Describes the message modbit.v1.CounterfactualReplayView.
+ * Use `create(CounterfactualReplayViewSchema)` to create a new message.
+ */
+export declare const CounterfactualReplayViewSchema: GenMessage<CounterfactualReplayView>;
+
+/**
  * The request's accounting and outcome record, derived from the log: every
  * leg and attempt with its cost, the versions it ran under, request, leg and
  * gate observations kept apart, raw signals by reference and the missing

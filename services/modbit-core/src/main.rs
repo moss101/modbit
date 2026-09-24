@@ -46,6 +46,7 @@ mod probe;
 mod procedural;
 mod protocol;
 mod pull_request;
+mod replay;
 mod review;
 mod review_comments;
 mod review_env;

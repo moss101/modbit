@@ -39752,3 +39752,353 @@ async fn qual_ev_0137_malicious_executable_config_is_quarantined_until_the_perso
     );
     drop(repo);
 }
+
+/// Everything observable about a repository: every file's bytes (outside
+/// `.git`), every ref and every worktree — what a replay must not change.
+fn repo_state(root: &std::path::Path) -> String {
+    fn walk(root: &std::path::Path, d: &std::path::Path, out: &mut Vec<String>) {
+        for e in std::fs::read_dir(d).unwrap().flatten() {
+            let p = e.path();
+            if p.file_name().is_some_and(|n| n == ".git") {
+                continue;
+            }
+            if p.is_dir() {
+                walk(root, &p, out);
+            } else {
+                out.push(format!(
+                    "{} {}",
+                    p.strip_prefix(root).unwrap().to_string_lossy(),
+                    hex::encode(<sha2::Sha256 as sha2::Digest>::digest(
+                        std::fs::read(&p).unwrap()
+                    ))
+                ));
+            }
+        }
+    }
+    let mut files = Vec::new();
+    walk(root, root, &mut files);
+    files.sort();
+    let git = |args: &[&str]| {
+        String::from_utf8_lossy(
+            &Command::new("git")
+                .arg("-C")
+                .arg(root)
+                .args(args)
+                .output()
+                .unwrap()
+                .stdout,
+        )
+        .into_owned()
+    };
+    format!(
+        "{}\n--refs--\n{}\n--worktrees--\n{}\n--status--\n{}",
+        files.join("\n"),
+        git(&["for-each-ref"]),
+        git(&["worktree", "list", "--porcelain"]),
+        git(&["status", "--porcelain", "--untracked-files=all"])
+    )
+}
+
+/// QUAL-EPR-011 / EPR-E2E-011 / EPR-FI-011 (REQ-EPR-011; docs/38
+/// "CounterfactualReplay") on the real Core, the real terminal broker and
+/// its sandbox, a signed registry and a scripted provider reached through
+/// the Gateway. A request runs on the plan its decision chose, having
+/// pinned the repository it started from (dirty edit, untracked file and a
+/// `.env` included). Replaying the decision's hard-eligible alternative is
+/// refused until the policy admits replay; admitted, it runs as its own task
+/// in a scratch repository fetched from the snapshot — the dirty state
+/// restored, the `.env` left out, no remote — under the replay-only ceiling:
+/// its attempt to reach the forge is denied and the forge never hears from
+/// it, and the original repository — files, refs, worktrees, status — is
+/// exactly as it was. The request's record reads the replay's outcome as an
+/// OBSERVED counterfactual with its snapshot, versions and ceiling, apart
+/// from the estimate. The chosen plan, an unknown plan, a snapshot that no
+/// longer resolves and a registry that moved on are refused.
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn qual_epr_011_an_alternative_replays_isolated_on_the_exact_snapshot_and_is_observed() {
+    use ed25519_dalek::SigningKey;
+    use modbit_protocol::v1::{CounterfactualReplayView, ReplayCounterfactual, TaskRunStarted};
+    use serde_json::json;
+    let key = SigningKey::from_bytes(&[81u8; 32]);
+    let key_hex = hex::encode(key.verifying_key().to_bytes());
+    let (repo, root) = plain_repo(&[
+        ("notes.txt", "line 1\n"),
+        ("check.sh", "grep -q '^line 1' notes.txt\n"),
+        (
+            ".modbit/verification.json",
+            "{\"commands\": [{\"id\": \"notes\", \"argv\": [\"sh\", \"check.sh\"]}]}",
+        ),
+        // A repository that tracks a credential file: the snapshot carries
+        // it, a replay's scratch copy must not.
+        (".env", "TOKEN=must-not-travel\n"),
+    ]);
+    // The request starts from a dirty worktree.
+    std::fs::write(repo.path().join("notes.txt"), "line 1\nwork in progress\n").unwrap();
+    std::fs::write(repo.path().join("draft.txt"), "untracked draft\n").unwrap();
+    let step = |calls: serde_json::Value| json!({ "calls": calls });
+    let (base, seen) = scripted_model_reactive(
+        vec![],
+        vec![],
+        None,
+        None,
+        vec![],
+        false,
+        vec![
+            (
+                "gpt-5-mini".to_owned(),
+                vec![
+                    step(json!([{"name": "plan.update", "args": {"outcome": "annotate", "expected_files": ["notes.txt", "draft.txt"]}}])),
+                    step(json!([{"name": "fs.read", "args": {"path": "notes.txt"}}])),
+                    step(json!([{"name": "change.apply", "args": {"path": "notes.txt", "op": "replace", "content": "line 1 by the request\n"}}])),
+                    step(json!([{"name": "task.complete", "args": {"summary": "annotated", "self_review": {"findings": []}}}])),
+                ],
+            ),
+            (
+                "gpt-5".to_owned(),
+                vec![
+                    step(json!([{"name": "plan.update", "args": {"outcome": "annotate", "expected_files": ["notes.txt", "draft.txt"]}}])),
+                    step(json!([{"name": "fs.read", "args": {"path": "notes.txt"}}])),
+                    step(json!([{"name": "forge.issue.read", "args": {"url": "https://github.test/o/r/issues/7"}}])),
+                    step(json!([{"name": "change.apply", "args": {"path": "notes.txt", "op": "replace", "content": "line 1 by the replay\n"}}])),
+                    step(json!([{"name": "task.complete", "args": {"summary": "annotated", "self_review": {"findings": []}}}])),
+                ],
+            ),
+        ],
+    )
+    .await;
+    let gh = fake_github("ghp_replay_token_0000");
+    let dir = tempfile::tempdir().unwrap();
+    let keys = format!("ops:{key_hex}");
+    let env: Vec<(&str, &str)> = vec![
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_REGISTRY_KEYS", keys.as_str()),
+        ("MODBIT_GITHUB_API_BASE_URL", gh.base.as_str()),
+        ("MODBIT_GITHUB_TOKEN", "ghp_replay_token_0000"),
+        ("MODBIT_GITHUB_WEB_HOST", "github.test"),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    activate_registry(
+        &mut c,
+        &accounting_registry(
+            "registry-replay",
+            &key,
+            &[("gpt-5-mini", 25, 5, 200), ("gpt-5", 125, 25, 1_000)],
+        ),
+    )
+    .await;
+    let (session, _) = create_session(&mut c, id16(0x11)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x12, "local_trusted").await;
+    let _: TaskRunStarted =
+        Client::result(&c.command(start_task(&task, 0x13, g)).await.unwrap()).unwrap();
+    let st = wait_for_state(&mut c, &task, "ReadyForReview", 180).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let evs = task_events(&core, &session, &task).await;
+    let of = |evs: &[(String, String, serde_json::Value)], t: &str| -> Vec<serde_json::Value> {
+        evs.iter()
+            .filter(|(_, ty, _)| ty == t)
+            .map(|(_, _, p)| p.clone())
+            .collect()
+    };
+    let snap = of(&evs, "RequestSnapshotRecorded");
+    assert_eq!(snap.len(), 1, "{snap:#?}");
+    let snapshot_commit = snap[0]["commit"].as_str().unwrap().to_owned();
+    let dirty: Vec<&str> = snap[0]["dirty_paths"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|v| v.as_str())
+        .collect();
+    for p in ["notes.txt", "draft.txt"] {
+        assert!(dirty.contains(&p), "{dirty:?}");
+    }
+    let decision = &of(&evs, "RoutingDecisionRecorded")[0];
+    let chosen = decision["plan_id"].as_str().unwrap().to_owned();
+    let alternative = decision["candidates"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|k| k["bindings"] == json!(["openai/gpt-5"]) && k["hard_eligible"] == true)
+        .map(|k| k["plan_id"].as_str().unwrap().to_owned())
+        .unwrap_or_else(|| panic!("{decision:#}"));
+    assert_ne!(alternative, chosen);
+    let replay = |plan: &str, id: u8, g: Option<u64>| {
+        envelope_fenced(
+            id16(id),
+            "ReplayCounterfactual",
+            ReplayCounterfactual {
+                task_id: Some(task.clone()),
+                plan_id: plan.into(),
+            }
+            .encode_to_vec(),
+            g,
+        )
+    };
+    let refused = |r: Result<modbit_protocol::v1::CommandAck, ClientError>| match r {
+        Err(ClientError::Rejected { code, .. }) => code,
+        other => panic!("{other:?}"),
+    };
+
+    // 1. Not admitted: the policy in force does not allow replay.
+    assert_eq!(
+        refused(c.command(replay(&alternative, 0x14, g)).await),
+        "REPLAY_NOT_ADMITTED"
+    );
+    // The policy admits it; a restarted Core resolves the task's policy
+    // afresh (and finds the snapshot where it was).
+    std::fs::write(
+        dir.path().join("admin-config.json"),
+        r#"{"permissions": {"eval.replay": "ALLOW"}}"#,
+    )
+    .unwrap();
+    drop(c);
+    core.kill();
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let g = Some(acquire_lease(&mut c, id16(0x15), session.clone(), "replayer").await);
+    activate_registry(
+        &mut c,
+        &accounting_registry(
+            "registry-replay",
+            &key,
+            &[("gpt-5-mini", 25, 5, 200), ("gpt-5", 125, 25, 1_000)],
+        ),
+    )
+    .await;
+    assert_eq!(
+        refused(c.command(replay(&chosen, 0x16, g)).await),
+        "REPLAY_PLAN_CHOSEN"
+    );
+    assert_eq!(
+        refused(c.command(replay("plan-nobody-compiled", 0x17, g)).await),
+        "REPLAY_PLAN_UNKNOWN"
+    );
+
+    // 2. The replay: isolated, on the exact snapshot.
+    let before = repo_state(repo.path());
+    let started = c.command(replay(&alternative, 0x18, g)).await;
+    if cfg!(windows) {
+        // No host sandbox here: nothing is replayed and nothing is taken.
+        assert_eq!(refused(started), "SANDBOX_UNAVAILABLE");
+        assert!(!dir.path().join("replays").exists());
+        assert_eq!(repo_state(repo.path()), before);
+        return;
+    }
+    let v: CounterfactualReplayView = Client::result(&started.unwrap()).unwrap();
+    assert_eq!(v.snapshot_commit, snapshot_commit);
+    assert_eq!(v.bindings, vec!["openai/gpt-5"]);
+    assert_eq!(v.sanitized, vec![".env"]);
+    let replay_task = v.replay_task_id.clone().unwrap();
+    let st = wait_task(&mut c, &replay_task, 180).await;
+    assert!(!st.loop_alive, "{st:?}");
+    let scratch = std::path::Path::new(&v.scratch);
+    assert!(scratch.starts_with(dir.path().join("replays").canonicalize().unwrap()));
+    assert_eq!(
+        std::fs::read_to_string(scratch.join("notes.txt")).unwrap(),
+        "line 1 by the replay\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(scratch.join("draft.txt")).unwrap(),
+        "untracked draft\n",
+        "the dirty state the request started from"
+    );
+    assert!(!scratch.join(".env").exists(), "credentials never travel");
+    let remotes = Command::new("git")
+        .arg("-C")
+        .arg(scratch)
+        .args(["remote"])
+        .output()
+        .unwrap();
+    assert!(remotes.stdout.is_empty(), "no remote to push to");
+    // Nothing of production moved.
+    assert_eq!(
+        repo_state(repo.path()),
+        before,
+        "only the scratch tree changed"
+    );
+    assert!(
+        gh.requests.lock().unwrap().is_empty(),
+        "the forge never heard from the replay: {:?}",
+        gh.requests.lock().unwrap()
+    );
+    // What the replay's model was told about its forge call: a refusal.
+    let forge_answer = seen
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|b| b["model"] == "gpt-5")
+        .filter_map(|b| {
+            let tools: Vec<String> = b["messages"]
+                .as_array()?
+                .iter()
+                .filter(|m| m["role"] == "tool")
+                .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+                .collect();
+            tools.get(2).cloned()
+        })
+        .next()
+        .expect("the replay's model saw an answer to its forge call");
+    assert!(
+        !forge_answer.contains("status: SUCCESS")
+            && (forge_answer.contains("DENIED") || forge_answer.contains("REFUSED")),
+        "{forge_answer}"
+    );
+    assert!(
+        seen.lock().unwrap().iter().any(|b| b["model"] == "gpt-5"),
+        "the replay reached the provider through the Gateway"
+    );
+    assert_eq!(v.capability_ceiling, "review_isolated");
+    // 3. Observed, apart from the estimate.
+    let (outcome, record) = request_outcome(&mut c, &task).await;
+    assert!(outcome.found);
+    let cf = &record["counterfactual"];
+    assert_eq!(cf["observed_label"], "OBSERVED", "{cf:#}");
+    let r0 = &cf["replays"][0];
+    assert_eq!(r0["status"], "OBSERVED", "{cf:#}");
+    assert_eq!(r0["plan_id"], alternative.as_str());
+    assert_eq!(r0["snapshot_commit"], snapshot_commit.as_str());
+    assert_eq!(r0["registry_generation"], "registry-replay");
+    assert_eq!(r0["capability_ceiling"], "review_isolated");
+    assert_eq!(cf["observed_minor"], r0["total_minor"]);
+    assert_ne!(cf["label"], "OBSERVED", "the estimate stays an estimate");
+
+    // 4. A snapshot that no longer resolves, then a registry that moved on.
+    let git = |args: &[&str]| {
+        assert!(
+            Command::new("git")
+                .arg("-C")
+                .arg(repo.path())
+                .args(args)
+                .status()
+                .unwrap()
+                .success()
+        );
+    };
+    let snapshot_ref = snap[0]["snapshot_ref"].as_str().unwrap().to_owned();
+    git(&["update-ref", "-d", &snapshot_ref]);
+    assert_eq!(
+        refused(c.command(replay(&alternative, 0x19, g)).await),
+        "REPLAY_REVISION_MISMATCH"
+    );
+    git(&["update-ref", &snapshot_ref, &snapshot_commit]);
+    activate_registry(
+        &mut c,
+        &accounting_registry(
+            "registry-replay-2",
+            &key,
+            &[("gpt-5-mini", 25, 5, 200), ("gpt-5", 125, 25, 1_000)],
+        ),
+    )
+    .await;
+    assert_eq!(
+        refused(c.command(replay(&alternative, 0x1A, g)).await),
+        "REPLAY_STALE"
+    );
+    drop(c);
+    core.kill();
+    drop(repo);
+}

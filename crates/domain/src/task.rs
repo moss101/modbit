@@ -51,6 +51,10 @@ pub enum TaskOrigin {
     /// A subagent's task, admitted by a parent agent (M6.3, docs/14
     /// "Transactional subagent admission").
     Subagent,
+    /// An isolated counterfactual replay of another request (EPR-011,
+    /// docs/38 "CounterfactualReplay"): the request's snapshot in a scratch
+    /// repository, an alternative validated plan, the replay-only ceiling.
+    Replay,
 }
 
 /// Typed input dispatch mode (MOD-INPUT-001, docs/14): concurrency semantics
@@ -1842,6 +1846,50 @@ pub enum TaskEvent {
         /// Signals the record could not observe, by name.
         missing_signals: Vec<String>,
     },
+    /// `RequestSnapshotRecorded` (EPR-011, docs/38 "CounterfactualReplay"
+    /// step 1): the immutable repository revision the request started from
+    /// — the worktree, dirty state included, as a commit under
+    /// `refs/modbit/snapshots/<id>`; HEAD, the index and the files are
+    /// untouched. No state change.
+    RequestSnapshotRecorded {
+        /// The ref.
+        snapshot_ref: String,
+        /// The snapshot commit.
+        commit: String,
+        /// Its tree.
+        tree: String,
+        /// HEAD it was taken over.
+        parent: String,
+        /// Paths that were dirty (tracked changes and untracked files).
+        dirty_paths: Vec<String>,
+    },
+    /// `CounterfactualReplayStarted` (EPR-011): an alternative validated plan
+    /// of this request is being replayed offline — its snapshot in a scratch
+    /// repository, sanitized, under the replay-only ceiling, as its own task.
+    /// Its outcome is the replay task's, read by the request's record as an
+    /// observed counterfactual. An audit record, valid in every state.
+    CounterfactualReplayStarted {
+        /// Replay id.
+        replay_id: String,
+        /// The replay's own task.
+        replay_task_id: TaskId,
+        /// The alternative plan (from the request's decision record).
+        plan_id: String,
+        /// Its bindings, in order.
+        bindings: Vec<String>,
+        /// The snapshot commit replayed.
+        snapshot_commit: String,
+        /// The scratch repository.
+        scratch: String,
+        /// Credential-bearing files removed from the scratch copy.
+        sanitized: Vec<String>,
+        /// The registry generation the decision and the replay share.
+        registry_generation: String,
+        /// The statistics version the decision was compiled under.
+        stats_version: String,
+        /// The ceiling the replay ran under (execution profile).
+        capability_ceiling: String,
+    },
     /// `HooksResolved` (REQ-EV-0042, REQ-EV-0240): the hooks in force for a
     /// run as it starts — from the configuration layers and the session's
     /// extensions — and the declarations refused, with why. No state change.
@@ -2058,6 +2106,8 @@ impl TaskEvent {
             Self::RequestOutcomeRecorded { .. } => "RequestOutcomeRecorded",
             Self::HooksResolved { .. } => "HooksResolved",
             Self::HookInvoked { .. } => "HookInvoked",
+            Self::RequestSnapshotRecorded { .. } => "RequestSnapshotRecorded",
+            Self::CounterfactualReplayStarted { .. } => "CounterfactualReplayStarted",
         }
     }
 }
@@ -2245,6 +2295,8 @@ impl Task {
             | TaskEvent::RequestOutcomeRecorded { .. }
             | TaskEvent::HooksResolved { .. }
             | TaskEvent::HookInvoked { .. }
+            | TaskEvent::RequestSnapshotRecorded { .. }
+            | TaskEvent::CounterfactualReplayStarted { .. }
             | TaskEvent::SandboxLost { .. }
             | TaskEvent::SandboxRestored { .. }
             | TaskEvent::EnvironmentPinned { .. }

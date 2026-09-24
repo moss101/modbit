@@ -625,10 +625,47 @@ pub(crate) struct Counterfactual {
     pub direct_frontier_binding: Option<String>,
     /// `ESTIMATED` | `CHOSEN_WAS_FRONTIER` | `NO_CANDIDATES`.
     pub label: String,
-    /// An observed alternative's cost; always `None` here.
+    /// An observed alternative's cost: the first replay (EPR-011) that
+    /// finished, never an estimate.
     pub observed_minor: Option<u64>,
-    /// `NOT_EXECUTED`.
+    /// `NOT_EXECUTED` | `RUNNING` (a replay is under way) | `OBSERVED`.
     pub observed_label: String,
+    /// Every replay of an alternative of this request (EPR-011): what it
+    /// ran, on which snapshot, under which ceiling and versions, and what it
+    /// observed when it finished.
+    #[serde(default)]
+    pub replays: Vec<ReplayObservation>,
+}
+
+/// One isolated replay of an alternative plan (EPR-011).
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub(crate) struct ReplayObservation {
+    /// Replay id.
+    pub replay_id: String,
+    /// The replay's own task.
+    pub replay_task_id: String,
+    /// The alternative plan.
+    pub plan_id: String,
+    /// Its bindings.
+    pub bindings: Vec<String>,
+    /// The snapshot replayed (the request's own).
+    pub snapshot_commit: String,
+    /// Registry generation shared by the decision and the replay.
+    pub registry_generation: String,
+    /// Statistics version the decision was compiled under.
+    pub stats_version: String,
+    /// The ceiling it ran under.
+    pub capability_ceiling: String,
+    /// Credential-bearing files left out of its scratch copy.
+    pub sanitized: Vec<String>,
+    /// `RUNNING` | `OBSERVED`.
+    pub status: String,
+    /// Its final outcome, when observed.
+    pub final_outcome: Option<String>,
+    /// Whether it verified, when observed.
+    pub verified_success: Option<bool>,
+    /// What it cost, when observed.
+    pub total_minor: Option<u64>,
 }
 
 /// Reward (docs/27 §11.2): raw signals only while no version is active.
@@ -1776,6 +1813,60 @@ pub(crate) fn derive(
             }
         }
     };
+    // Replays of alternatives (EPR-011): observed only from the replay's own
+    // recorded outcome, never inferred.
+    for e in all.iter().filter(mine).filter(|e| {
+        e.envelope.task_id == Some(task_id)
+            && e.envelope.event_type == "CounterfactualReplayStarted"
+    }) {
+        let Ok(p) = store.payload(&e.envelope) else {
+            continue;
+        };
+        let strings = |v: &Value| -> Vec<String> {
+            v.as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|x| x.as_str().map(str::to_owned))
+                .collect()
+        };
+        let mut obs = ReplayObservation {
+            replay_id: s(&p["replay_id"]),
+            replay_task_id: s(&p["replay_task_id"]),
+            plan_id: s(&p["plan_id"]),
+            bindings: strings(&p["bindings"]),
+            snapshot_commit: s(&p["snapshot_commit"]),
+            registry_generation: s(&p["registry_generation"]),
+            stats_version: s(&p["stats_version"]),
+            capability_ceiling: s(&p["capability_ceiling"]),
+            sanitized: strings(&p["sanitized"]),
+            status: "RUNNING".into(),
+            ..ReplayObservation::default()
+        };
+        if let Ok(replay) = serde_json::from_value::<TaskId>(p["replay_task_id"].clone())
+            && let Some((_, json)) = latest_recorded(store, replay)
+            && let Ok(r) = serde_json::from_str::<Value>(&json)
+        {
+            let outcome = s(&r["request"]["final_outcome"]);
+            if !outcome.is_empty() && outcome != "open" {
+                obs.status = "OBSERVED".into();
+                obs.final_outcome = Some(outcome);
+                obs.verified_success = r["request"]["verified_success"].as_bool();
+                obs.total_minor = r["cost"]["total_minor"].as_u64();
+            }
+        }
+        rec.counterfactual.replays.push(obs);
+    }
+    if let Some(o) = rec
+        .counterfactual
+        .replays
+        .iter()
+        .find(|o| o.status == "OBSERVED")
+    {
+        rec.counterfactual.observed_minor = o.total_minor;
+        rec.counterfactual.observed_label = "OBSERVED".into();
+    } else if !rec.counterfactual.replays.is_empty() {
+        rec.counterfactual.observed_label = "RUNNING".into();
+    }
     rec.reward.reward_version = "none".into();
 
     // -- What could not be observed.

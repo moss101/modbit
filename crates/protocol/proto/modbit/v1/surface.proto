@@ -2460,6 +2460,31 @@ message MemoryForgotten {
   string status = 3;
 }
 
+// ---- Isolated counterfactual replay (EPR-011; docs/38
+// "CounterfactualReplay") ----
+//
+// Replay an alternative validated plan of a request offline: its snapshot
+// in a scratch repository, sanitized, under the replay-only ceiling, through
+// the Gateway. The replay is its own task; the request's outcome record
+// (GetRequestOutcome) reads its result as an observed counterfactual.
+message ReplayCounterfactual {
+  Id task_id = 1;
+  string plan_id = 2;              // a hard-eligible candidate of the request's decision record
+}
+
+message CounterfactualReplayView {
+  string replay_id = 1;
+  Id replay_task_id = 2;
+  string plan_id = 3;
+  repeated string bindings = 4;
+  string snapshot_commit = 5;
+  string scratch = 6;
+  repeated string sanitized = 7;   // credential-bearing files left out of the scratch copy
+  string capability_ceiling = 8;   // the execution profile the replay runs under
+  string sandbox = 9;              // the host sandbox confining its processes
+  string registry_generation = 10;
+}
+
 // ---- Request accounting and outcome (REQ-EPR-010; docs/27 §10-11, docs/38
 // "CompleteAccountingAndAttribution") ----
 
