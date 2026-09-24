@@ -162,9 +162,17 @@ impl ProtectedSurface {
     /// Whether `path` is on this surface.
     #[must_use]
     pub fn matches(&self, path: &str) -> bool {
+        Self::matches_patterns(&self.patterns, path)
+    }
+
+    /// Whether `path` matches any of `patterns` in the grammar of
+    /// [`ProtectedSurface::patterns`]. The one protected-path matcher: the
+    /// risk rules and the change engine's DI-9 (docs/64 §4) both use it.
+    #[must_use]
+    pub fn matches_patterns(patterns: &[String], path: &str) -> bool {
         let path = path.replace('\\', "/");
         let base = path.rsplit('/').next().unwrap_or(&path);
-        self.patterns.iter().any(|p| {
+        patterns.iter().any(|p| {
             if let Some(dir) = p.strip_suffix('/') {
                 if let Some(seg) = dir.strip_prefix('/') {
                     // `/migrations/`: a segment anywhere.

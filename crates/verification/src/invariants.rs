@@ -38,7 +38,9 @@ pub struct InvariantContext {
     pub acceptance_named: Vec<String>,
     /// Test symbols failing at baseline.
     pub baseline_failing: Vec<String>,
-    /// Protected paths from policy (prefixes/globs, simple prefix match).
+    /// Protected-surface patterns from policy (DI-9), in the grammar of
+    /// `modbit_policy::ProtectedSurface::patterns` and matched by its
+    /// matcher: a directory prefix, a segment, a suffix or a basename.
     pub protected_paths: Vec<String>,
     /// Formatting churn threshold (lines).
     pub formatting_churn_lines: usize,
@@ -209,12 +211,8 @@ pub fn evaluate_file(
             evidence: "dependency manifest changed without a plan entry".into(),
         });
     }
-    // DI-9 protected
-    if ctx
-        .protected_paths
-        .iter()
-        .any(|pp| p.starts_with(pp.as_str()))
-    {
+    // DI-9 protected: the policy's own surface matcher, never a second one.
+    if modbit_policy::ProtectedSurface::matches_patterns(&ctx.protected_paths, p) {
         out.push(Violation {
             id: "DI-9".into(),
             class: Class::Deny,
@@ -369,4 +367,181 @@ pub fn evaluate_diff(
 #[must_use]
 pub fn denies(v: &[Violation]) -> bool {
     v.iter().any(|x| x.class == Class::Deny)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use modbit_policy::AssurancePolicy;
+
+    /// The context the Core builds for a task judged under the default
+    /// policy: DI-9's paths are the surfaces that need a typed question.
+    fn policy_ctx() -> InvariantContext {
+        InvariantContext {
+            protected_paths: AssurancePolicy::default().question_required_patterns(),
+            ..InvariantContext::default()
+        }
+    }
+
+    /// The Core's fallback when no policy is resolved.
+    fn fallback_ctx() -> InvariantContext {
+        InvariantContext {
+            protected_paths: vec![".github/".into(), ".modbit/".into()],
+            ..InvariantContext::default()
+        }
+    }
+
+    fn di_9(ctx: &InvariantContext, path: &str) -> bool {
+        let v = evaluate_file(
+            ctx,
+            &ChangedFile {
+                path: path.into(),
+                old: Some("a\n".into()),
+                new: Some("b\n".into()),
+            },
+            None,
+        );
+        v.iter()
+            .any(|x| x.id == "DI-9" && x.class == Class::Deny && x.paths == [path])
+    }
+
+    const PROTECTED_SEGMENTS: &[&str] = &[
+        "deploy/prod.yaml",
+        "services/api/deploy/values.yaml",
+        "ops/deployment/job.yaml",
+        "release/notes.md",
+        "infra/network.yaml",
+        "terraform/vars.tfvars",
+        "clusters/k8s/pod.yaml",
+        "charts/helm/values.yaml",
+        "services\\api\\deploy\\prod.yaml",
+    ];
+    const PROTECTED_SUFFIXES: &[&str] = &[
+        "infra/main.tf",
+        "modules/network/main.tf",
+        "main.tf",
+        "ci/.gitlab-ci.yml",
+    ];
+    const PROTECTED_BASENAMES: &[&str] = &[
+        "Dockerfile",
+        "services/api/Dockerfile",
+        "ops/docker-compose.yml",
+        "ci/Jenkinsfile",
+    ];
+    const PROTECTED_ROOT_PREFIXES: &[&str] = &[
+        ".github/workflows/ci.yml",
+        ".circleci/config.yml",
+        ".buildkite/pipeline.yml",
+        ".modbit/policy.json",
+    ];
+    const PLAIN: &[&str] = &[
+        "src/lib.rs",
+        "src/deployer.rs",
+        "docs/deploy.md",
+        "src/infrastructure/mod.rs",
+        "src/releases/v2.rs",
+        "helmet/index.js",
+        "main.tfvars",
+        "notes.tf.md",
+        "docs/Dockerfile.md",
+        "src/dockerfile_gen.rs",
+        "docker-compose.yml.bak",
+        "vendor/.github/workflows/ci.yml",
+        ".githubx/a.yml",
+        "src/.modbit/x.json",
+        // On a surface, but not one that needs a question (AUTH, MIGRATION).
+        "src/auth/login.py",
+        "db/migrations/001.sql",
+    ];
+
+    #[test]
+    fn di_9_denies_a_protected_segment_anywhere_in_the_path() {
+        let ctx = policy_ctx();
+        for p in PROTECTED_SEGMENTS {
+            assert!(di_9(&ctx, p), "{p}");
+        }
+        for p in [
+            "src/deployer.rs",
+            "docs/deploy.md",
+            "src/infrastructure/mod.rs",
+        ] {
+            assert!(!di_9(&ctx, p), "{p}");
+        }
+    }
+
+    #[test]
+    fn di_9_denies_a_protected_suffix_at_any_depth() {
+        let ctx = policy_ctx();
+        for p in PROTECTED_SUFFIXES {
+            assert!(di_9(&ctx, p), "{p}");
+        }
+        for p in ["main.tfvars", "notes.tf.md"] {
+            assert!(!di_9(&ctx, p), "{p}");
+        }
+    }
+
+    #[test]
+    fn di_9_denies_a_protected_basename_in_any_directory() {
+        let ctx = policy_ctx();
+        for p in PROTECTED_BASENAMES {
+            assert!(di_9(&ctx, p), "{p}");
+        }
+        for p in [
+            "docs/Dockerfile.md",
+            "src/dockerfile_gen.rs",
+            "docker-compose.yml.bak",
+        ] {
+            assert!(!di_9(&ctx, p), "{p}");
+        }
+    }
+
+    #[test]
+    fn di_9_denies_a_root_directory_prefix_and_the_fallback_defaults_behave_as_before() {
+        let ctx = policy_ctx();
+        for p in PROTECTED_ROOT_PREFIXES {
+            assert!(di_9(&ctx, p), "{p}");
+        }
+        // A directory prefix is anchored at the repository root.
+        for p in ["vendor/.github/workflows/ci.yml", ".githubx/a.yml"] {
+            assert!(!di_9(&ctx, p), "{p}");
+        }
+        // Without a resolved policy the Core falls back to `.github/` and
+        // `.modbit/`: on every path here DI-9 decides as the old prefix
+        // match did.
+        let fallback = fallback_ctx();
+        for p in PROTECTED_SEGMENTS
+            .iter()
+            .chain(PROTECTED_SUFFIXES)
+            .chain(PROTECTED_BASENAMES)
+            .chain(PROTECTED_ROOT_PREFIXES)
+            .chain(PLAIN)
+        {
+            let before = fallback
+                .protected_paths
+                .iter()
+                .any(|pp| p.starts_with(pp.as_str()));
+            assert_eq!(di_9(&fallback, p), before, "{p}");
+        }
+    }
+
+    #[test]
+    fn di_9_and_the_risk_rules_agree_on_every_path() {
+        // One matcher: DI-9 fires exactly where the policy puts the path on
+        // a surface that needs a typed question.
+        let policy = AssurancePolicy::default();
+        let ctx = policy_ctx();
+        for p in PROTECTED_SEGMENTS
+            .iter()
+            .chain(PROTECTED_SUFFIXES)
+            .chain(PROTECTED_BASENAMES)
+            .chain(PROTECTED_ROOT_PREFIXES)
+            .chain(PLAIN)
+        {
+            let question = policy.surfaces_of(p).iter().any(|s| s.question_required);
+            assert_eq!(di_9(&ctx, p), question, "{p}");
+        }
+        for p in PLAIN {
+            assert!(!di_9(&ctx, p), "{p}");
+        }
+    }
 }
