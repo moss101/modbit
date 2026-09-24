@@ -16394,8 +16394,16 @@
    "milestone": "M9",
    "qual": "QUAL-EV-0137",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-35967517686",
+    "test:qual_ev_0137_malicious_executable_config_is_quarantined_until_the_person_trusts_it",
+    "artifact:evidence/m9/IMP-EV-0137/TASK_CARD.md",
+    "artifact:evidence/m9/IMP-EV-0137/evidence.json",
+    "artifact:evidence/m9/IMP-EV-0137/ci-run-35967517686.json",
+    "commit:6323fc0"
+   ],
+   "status_changed_on": "2026-09-24T07:45:25Z"
   },
   {
    "id": "IMP-EV-0138",
@@ -18711,8 +18719,16 @@
    "milestone": "M9",
    "qual": "QUAL-EV-0183",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-35967517686",
+    "test:qual_ev_0183_a_compatibility_fixture_imports_with_every_item_labelled_and_takes_effect_once_trusted",
+    "artifact:evidence/m9/IMP-EV-0183/TASK_CARD.md",
+    "artifact:evidence/m9/IMP-EV-0183/evidence.json",
+    "artifact:evidence/m9/IMP-EV-0183/ci-run-35967517686.json",
+    "commit:6323fc0"
+   ],
+   "status_changed_on": "2026-09-24T07:45:25Z"
   },
   {
    "id": "IMP-EV-0184",

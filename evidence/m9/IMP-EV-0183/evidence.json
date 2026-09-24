@@ -1,0 +1,34 @@
+{
+ "task": "IMP-EV-0183",
+ "requirements": [
+  "REQ-EV-0183",
+  "docs/16 Extension System / Importers"
+ ],
+ "scenarios": [
+  "the committed fixture tests/fixtures/agent-configs/mixed (AGENTS.md, CLAUDE.md, nested AGENTS.md, .cursorrules, Cursor .mdc, Copilot instructions, Claude commands, agents and a skill, a Gemini TOML command, Cursor and VS Code MCP files, Claude settings) yields exactly 19 items, each MAPPED/SKIPPED/CONFLICT with a reason, every written file listed by digest",
+  "against a destination that already has a reviewer profile and a docs server both are CONFLICT; an existing import is not overwritten unless asked",
+  "real Core: the fixture plus a real stdio server imports with labels (credential not imported), loads quarantined (server not listed); once trusted its rules are active in a run's RulesSelected, its server is listed and its command queues its text",
+  "a rule file changed after the import refuses the load with EXTENSION_INVALID"
+ ],
+ "tests": [
+  "services/modbit-core/tests/surface_protocol.rs::qual_ev_0183_a_compatibility_fixture_imports_with_every_item_labelled_and_takes_effect_once_trusted",
+  "crates/skills/tests/import.rs::the_compatibility_fixture_imports_and_every_item_is_labelled"
+ ],
+ "audit": "IMPLEMENTED-PARTIAL before: modbit_domain::agent_profile::import_claude_agent converted one Claude agent file; no importer for instruction manifests, commands, skills or MCP servers and no report.",
+ "proof": "Real Core: another agent's configuration is converted into one Modbit extension read by the existing owners (rules, agent profiles, skills, External Tool Hub, extension commands) with a labelled migration report; nothing of it takes effect until trusted.",
+ "negative_proof": "A file changed after the import (digest mismatch) refuses the load; a conflicting destination item is CONFLICT, never overwritten.",
+ "limitations": "TOML commands (Gemini) and non-stdio MCP servers are skipped by name, not converted; instruction files' @file imports are not followed.",
+ "batch_commits": [
+  "6323fc0"
+ ],
+ "runs": [
+  "35967517686"
+ ],
+ "ci": {
+  "run_id": "35967517686",
+  "head_sha": "15bfc54ea9dee8a46016f4a90c40d769213c446d",
+  "conclusion": "success",
+  "note": "every job green on macOS, Linux and Windows on attempt 2; attempt 1 failed only the desktop E2E jobs (states.spec 'approved at offset' on Linux, the browser-takeover spec on Windows), the known flakes this change does not touch; one change carries IMP-EV-0137 and IMP-EV-0183",
+  "json": "evidence/m9/IMP-EV-0183/ci-run-35967517686.json"
+ }
+}

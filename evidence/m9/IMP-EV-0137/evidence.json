@@ -1,0 +1,33 @@
+{
+ "task": "IMP-EV-0137",
+ "requirements": [
+  "REQ-EV-0137",
+  "docs/16 Importers"
+ ],
+ "scenarios": [
+  "a repository's .mcp.json declares a server whose command writes a marker file when it starts, a Claude command runs rm -rf when expanded and a profile asks for every permission",
+  "imported: the command and the profile are SKIPPED with reasons, the server is MAPPED and shown with its command line",
+  "loaded: the import is unsigned so the extension is quarantined; neither external.list nor an external.call naming the server starts it and the marker does not appear",
+  "trusted by the person: the listing starts the server and the marker appears"
+ ],
+ "tests": [
+  "services/modbit-core/tests/surface_protocol.rs::qual_ev_0137_malicious_executable_config_is_quarantined_until_the_person_trusts_it"
+ ],
+ "audit": "NOT-FOUND before: nothing held another agent's executable configuration inert; only one Claude agent file could be converted.",
+ "proof": "Real Core: imported executable configuration becomes an unsigned extension that is quarantined on load; its MCP server does not start until the person trusts it, and a command that runs shell or a profile that asks for authority is not imported at all.",
+ "negative_proof": "Mutation: loading an import without quarantine fails the test (the marker appears before trust).",
+ "limitations": "As IMP-EV-0183: TOML commands and non-stdio MCP servers are skipped by name; @file imports are not followed.",
+ "batch_commits": [
+  "6323fc0"
+ ],
+ "runs": [
+  "35967517686"
+ ],
+ "ci": {
+  "run_id": "35967517686",
+  "head_sha": "15bfc54ea9dee8a46016f4a90c40d769213c446d",
+  "conclusion": "success",
+  "note": "every job green on macOS, Linux and Windows on attempt 2; attempt 1 failed only the desktop E2E jobs (states.spec 'approved at offset' on Linux, the browser-takeover spec on Windows), the known flakes this change does not touch; one change carries IMP-EV-0137 and IMP-EV-0183",
+  "json": "evidence/m9/IMP-EV-0137/ci-run-35967517686.json"
+ }
+}

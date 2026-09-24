@@ -65,7 +65,7 @@ flowchart LR
   M6["M6<br/>Subagents/fleet<br/>58/58 done"]
   M7["M7<br/>Live browser<br/>28/28 done"]
   M8["M8<br/>Cloud isolated execution<br/>28/28 done"]
-  M9["M9<br/>Engineering memory/effects/security hardening<br/>29/33 done"]
+  M9["M9<br/>Engineering memory/effects/security hardening<br/>31/33 done"]
   M10["M10<br/>Release hardening<br/>0/22 done"]
   M0 --> M1
   M1 --> M2
@@ -113,7 +113,7 @@ Critical path (reliability spine): **M0 → M1 → M2 → M4**. Do not start bro
 | M6 Subagents/fleet | COMPLETE | yes | 7 | 51 | 58 | 0 | M2, M4 | E2E-009/010 and user can supervise multiple tasks without raw-log polling. |
 | M7 Live browser | COMPLETE | yes | 8 | 20 | 28 | 0 | M2 | E2E-013..016. |
 | M8 Cloud isolated execution | COMPLETE | yes | 9 | 19 | 28 | 0 | M4, M7 | E2E-017/018/024. |
-| M9 Engineering memory/effects/security hardening | IN_PROGRESS | yes | 6 | 27 | 29 | 0 | M4, M5 | memory cannot be created from transcript without promotion; receipt chain verifies; threat tests pass. |
+| M9 Engineering memory/effects/security hardening | IN_PROGRESS | yes | 6 | 27 | 31 | 0 | M4, M5 | memory cannot be created from transcript without promotion; receipt chain verifies; threat tests pass. |
 | M10 Release hardening | NOT_STARTED | no | 7 | 15 | 0 | 0 | M3, M5, M6, M7, M8, M9 | full Release Zero proof + package evidence + EPR gates A–G SATISFIED. |
 
 ## Subsystems → milestones
@@ -324,7 +324,7 @@ Releases are projections over work items and gates (docs/75). Readiness is compu
 |---|---|---:|---:|---:|---|---|
 | ALPHA: Local coding loop and recovery spine | READY | 114 | 114 | 0 | none | / ALPHA / Local coding loop and recovery spine / M0, M1, M2, M4 / M2.10 / EPR- / — / — / |
 | BETA: Intelligence, fleet and browser | READY | 318 | 318 | 0 | none | / BETA / Intelligence, fleet and browser / M0, M1, M2, M3, M4, M5, M6, M7 / — / — / — / — / |
-| RELEASE_ZERO: Full end-to-end proof | NOT_READY | 401 | 375 | 0 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
+| RELEASE_ZERO: Full end-to-end proof | NOT_READY | 401 | 377 | 0 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
 
 ## Scoped v1.1 supersessions and source provenance
 
