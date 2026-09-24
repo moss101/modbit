@@ -9,8 +9,8 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use modbit_bench_gate_calibration::{
-    AcceptanceCorpus, Refusal, RiskCorpus, ThresholdProfile, calibrate, check_separation,
-    release_check, run_acceptance_case, tuning_lineages,
+    AcceptanceCorpus, Refusal, RiskCorpus, ThresholdProfile, calibrate, check_separation, metrics,
+    release_check, run_acceptance_case, run_risk_case, tuning_lineages,
 };
 
 fn here() -> PathBuf {
@@ -67,7 +67,7 @@ async fn qual_epr_019_gates_are_measured_independently_on_the_holdout_and_an_uns
     // Versions and digests pin what was measured.
     assert_eq!(bundle.suite_version, "gate-calibration/1");
     assert_eq!(bundle.gate_version, "gate-1");
-    assert_eq!(bundle.risk_version, "risk-rules-1");
+    assert_eq!(bundle.risk_version, "risk-rules-2");
     for d in [
         &bundle.corpora.acceptance,
         &bundle.corpora.risk,
@@ -107,7 +107,11 @@ async fn qual_epr_019_gates_are_measured_independently_on_the_holdout_and_an_uns
         .map(|a| a.id.as_str())
         .collect();
     assert_eq!(fa, vec!["zero-overfitted", "max-off-by-one"]);
-    // Every risk case against its oracle.
+    // Every risk case against its oracle. `env-production` was a critical
+    // miss under risk-rules-1 (`.env` matched only as a suffix); the rules
+    // were fixed in risk-rules-2 (EPR-008 regression), so that case informed
+    // a rule and no longer counts as independent evidence for the secret
+    // surface.
     let misses: BTreeMap<&str, (bool, bool, bool)> = bundle
         .risk
         .iter()
@@ -123,7 +127,6 @@ async fn qual_epr_019_gates_are_measured_independently_on_the_holdout_and_an_uns
         misses,
         [
             ("dependency-bump", (true, false, false)),
-            ("env-production", (true, false, true)),
             ("payments-charge", (true, false, false)),
         ]
         .into_iter()
@@ -138,12 +141,31 @@ async fn qual_epr_019_gates_are_measured_independently_on_the_holdout_and_an_uns
     };
     assert_eq!(rate("acceptance_false_accept_rate"), (2, 4));
     assert_eq!(rate("acceptance_false_reject_rate"), (0, 4));
-    assert_eq!(rate("realized_risk_false_negative_rate"), (3, 13));
+    assert_eq!(rate("realized_risk_false_negative_rate"), (2, 13));
     assert_eq!(rate("realized_risk_false_positive_rate"), (0, 5));
-    assert_eq!(rate("critical_surface_miss_rate"), (1, 6));
+    assert_eq!(rate("critical_surface_miss_rate"), (0, 6));
     for r in bundle.metrics.rates.values() {
         assert!(r.lower <= r.rate && r.rate <= r.upper, "{r:?}");
     }
+    // EPR-FI-019: a critical miss is still measured when the rules make one.
+    // The same held-out case under the rules without `.env.*` (risk-rules-1's
+    // secret surface) is a false negative and a critical miss, and the rate
+    // counts it.
+    let mut before_fix = modbit_policy::AssurancePolicy::default();
+    for s in &mut before_fix.protected_surfaces {
+        s.patterns.retain(|p| p != ".env.*");
+    }
+    assert_ne!(before_fix, modbit_policy::AssurancePolicy::default());
+    let env_production = risk()
+        .cases
+        .into_iter()
+        .find(|c| c.id == "env-production")
+        .unwrap();
+    let missed = run_risk_case(&env_production, &before_fix);
+    assert!(missed.false_negative && missed.critical_miss, "{missed:?}");
+    let m = metrics(&[], &[missed]);
+    let r = &m.rates["critical_surface_miss_rate"];
+    assert_eq!((r.count, r.n), (1, 1));
     // Attribution per leg: an escalation's correct candidate never improves
     // the initial leg's record.
     let (initial_fa, _) = &bundle.metrics.per_leg["initial"];
@@ -158,7 +180,9 @@ async fn qual_epr_019_gates_are_measured_independently_on_the_holdout_and_an_uns
         "{:?}",
         bundle.release
     );
-    // A strict profile and a router that saves money: still an unsafe gate.
+    // A strict profile and a router that saves money: still an unsafe gate —
+    // no critical miss was observed, but six cases cannot bound the rate
+    // under the limit (Wilson upper bound 0.39).
     let strict = test_profile(0.20, 30);
     let check = release_check(&bundle.metrics, Some((&strict, "digest")), -5_000);
     assert_eq!(check.verdict, "FAIL");
