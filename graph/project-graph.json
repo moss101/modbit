@@ -32824,7 +32824,12 @@
     "test:px_038_only_the_users_answer_to_the_scope_question_decides_the_expansion",
     "run:gha-36194461747",
     "artifact:evidence/m3/PX-038/ci-run-36194461747.json",
-    "artifact:evidence/m3/PX-038/evidence.json"
+    "artifact:evidence/m3/PX-038/evidence.json",
+    "commit:839cfca",
+    "test:px_038_only_a_scope_decision_the_core_recorded_opens_a_path",
+    "test:px_038_a_recorded_scope_answer_decides_only_its_own_expansion",
+    "run:gha-36198565876",
+    "artifact:evidence/m3/PX-038/ci-run-36198565876.json"
    ],
    "notes": [
     {
@@ -32892,9 +32897,39 @@
      "from": "E2E_PROVEN",
      "to": "COMPLETE",
      "note": "sealed again: card regression section, evidence.json regressions[] scope-answer-actor, CI run json"
+    },
+    {
+     "at": "2026-09-25T23:14:17Z",
+     "from": "COMPLETE",
+     "to": "IMPLEMENTING",
+     "note": "regressions found 2026-09-25 in the audit of the scope-decision limitation: ScopeExpansionRecorded was recorded as the agent and rebuild applied a CONTINUE whatever its actor (a CONTINUE written into the log opened an out-of-scope write after a restart), and rebuild kept the user's answer after replaying the decision made from it (a later expansion was decided from the old answer with no question)"
+    },
+    {
+     "at": "2026-09-25T23:14:17Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "fixed in 839cfca (PR #53): the scope decision is recorded as Core(scope-policy); rebuild opens paths on a Core CONTINUE, and on another actor's CONTINUE only where it stands for the user's own continue on exactly the waiting paths; a replayed decision consumes its answer; waiting paths accumulate as in the loop"
+    },
+    {
+     "at": "2026-09-25T23:14:18Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real Core px_038_only_a_scope_decision_the_core_recorded_opens_a_path (forged agent CONTINUE before a question and after the user's stop, an abort right before the Core commits its CONTINUE, a pre-change record naming two waiting paths; red in three stages) and px_038_a_recorded_scope_answer_decides_only_its_own_expansion (red before its fix)"
+    },
+    {
+     "at": "2026-09-25T23:14:18Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 36198565876 green (14/14) on macOS, Linux and Windows at a2c932a (squashed as 839cfca)"
+    },
+    {
+     "at": "2026-09-25T23:14:18Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed again: card regression sections, evidence.json regressions[] stale-scope-answer and scope-decision-core-actor, CI run json, docs/98 M3 note"
     }
    ],
-   "status_changed_on": "2026-09-25T22:42:54Z"
+   "status_changed_on": "2026-09-25T23:14:18Z"
   },
   {
    "id": "PX-039",

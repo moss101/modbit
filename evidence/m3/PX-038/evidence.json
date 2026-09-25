@@ -41,6 +41,47 @@
     "url": "https://github.com/moss101/modbit/actions/runs/36194461747",
     "json": "evidence/m3/PX-038/ci-run-36194461747.json"
    }
+  },
+  {
+   "id": "stale-scope-answer",
+   "found": "2026-09-25, audit for the scope-decision-actor limitation (reported by the regression-2 session; fixed in the #43 session, which ended before pushing)",
+   "defect": "rebuild kept scope_answer after replaying the ScopeExpansionRecorded decision made from it, so after a resume the first new scope refusal was decided at the next loop top from the old answer, with no question asked and no forged event.",
+   "audit": "IMPLEMENTED-PARTIAL; first missing link the ScopeExpansionRecorded arm of rebuild in services/modbit-core/src/runtime.rs.",
+   "fix": "a replayed decision (CONTINUE, STOP, SPLIT, FAIL_CLOSED) consumes the answer it was made from; the PX-038 test helpers moved to module level.",
+   "tests": [
+    "services/modbit-core/tests/surface_protocol.rs::px_038_a_recorded_scope_answer_decides_only_its_own_expansion"
+   ],
+   "negative_proof": "Run before the fix: the resumed run recorded CONTINUE for yarn.lock from the earlier continue for pnpm-lock.yaml with no question asked (local-red-stale-answer.log).",
+   "commit": "839cfca",
+   "pr": "https://github.com/moss101/modbit/pull/53",
+   "ci": {
+    "run_id": "36198565876",
+    "head_sha": "a2c932ac20ab011e9c345864494bbfaaac7d208b",
+    "conclusion": "success",
+    "url": "https://github.com/moss101/modbit/actions/runs/36198565876",
+    "json": "evidence/m3/PX-038/ci-run-36198565876.json"
+   }
+  },
+  {
+   "id": "scope-decision-core-actor",
+   "found": "2026-09-25, the limitation recorded by the scope-answer-actor regression",
+   "defect": "ScopeExpansionRecorded was appended under the run's agent actor and rebuild applied a CONTINUE whatever its actor, so a CONTINUE written straight into the log (EventStore::append with the Core down) opened an out-of-scope write after a restart, before any scope question or against the user's stop.",
+   "audit": "IMPLEMENTED-PARTIAL; first missing link the CONTINUE branch of the ScopeExpansionRecorded arm of rebuild. Every writer (run_loop only) and reader (rebuild only; accounting, baseline, attention, branch, doc 63 metrics and clients do not depend on this event's actor) traced; payload and schema_version unchanged, docs/30 fixes no actor, no locked file changed: no Decision Record.",
+   "fix": "both writers record as Actor::Core(\"scope-policy\") and the loop opens paths only once its CONTINUE is on the log; rebuild opens paths on a Core CONTINUE as recorded, and on a CONTINUE under any other actor (every pre-change record, or a forgery) only when it stands for the user's own continue to the scope question on exactly the waiting paths, otherwise changing nothing; QUESTION_REQUIRED adds to the waiting paths as the live loop does.",
+   "tests": [
+    "services/modbit-core/tests/surface_protocol.rs::px_038_only_a_scope_decision_the_core_recorded_opens_a_path"
+   ],
+   "negative_proof": "Run before the fix in three stages: unfixed, the forged agent CONTINUE opened the lockfile before any question (local-red-2-unfixed.log); with the actor gate only, a pre-change CONTINUE naming two waiting paths was ignored and the Core re-decided one (local-red-2-actor-gate-only.log); without accumulation the pre-change record could not match (local-red-2-no-accumulation.log). Phase 3 aborts the Core right before it commits its CONTINUE (MODBIT_FAULT_KILL_BEFORE_EVENT) and the next Core records it once.",
+   "limitations": "The boundary is the recorded actor, as for DI-9's ProtectedPathsUnlocked: an append forged under the Core's own actor is a log tamper-evidence matter. A question naming protected paths (DI-9) asked while a scope expansion waits also counts as the scope question; narrowing that to questions naming the waiting paths is an open follow-up.",
+   "commit": "839cfca",
+   "pr": "https://github.com/moss101/modbit/pull/53",
+   "ci": {
+    "run_id": "36198565876",
+    "head_sha": "a2c932ac20ab011e9c345864494bbfaaac7d208b",
+    "conclusion": "success",
+    "url": "https://github.com/moss101/modbit/actions/runs/36198565876",
+    "json": "evidence/m3/PX-038/ci-run-36198565876.json"
+   }
   }
  ]
 }
