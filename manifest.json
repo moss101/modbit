@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 90,
-    "root_and_tooling": 1590,
-    "docs_bytes": 1369217
+    "root_and_tooling": 1593,
+    "docs_bytes": 1371444
   },
   "sections": [
     {
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 49984,
-      "sha256": "0a2a7353fe8973d7a6abd6edf4c3ac4e89f296b9a59b334cbde72d0fbf66e05e"
+      "bytes": 50382,
+      "sha256": "334ac73463813aa04dd2510a3720cb35d4019eeb2cbb31d3967fa7b51c059fd9"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -635,8 +635,8 @@
       "section": "delivery",
       "section_title": "Delivery and operations",
       "title": "Operations and Incident Runbook",
-      "bytes": 4954,
-      "sha256": "f633d3c4c1af5e81799c6497d603b448b239ae00b8169c79828d641d1f1b51be"
+      "bytes": 6783,
+      "sha256": "3a09024b56e46bec8d6253d6f1cd10687a6bcc985cfed9577087a4345c695068"
     },
     {
       "path": "docs/72_RISK_REGISTER_AND_OPEN_DECISIONS.md",
@@ -1619,6 +1619,21 @@
       "path": "evidence/m10/IMP-EV-0126/evidence.json",
       "bytes": 5219,
       "sha256": "c3628d2b6249b3c0878198410071b79977c964b07eba12ee5f22be2762808bbc"
+    },
+    {
+      "path": "evidence/m10/IMP-EV-0142/TASK_CARD.md",
+      "bytes": 4641,
+      "sha256": "d0322325379bfe94907d6ac3b6f81aa46a73fd3fb13501a250f0ce58bc9bd054"
+    },
+    {
+      "path": "evidence/m10/IMP-EV-0142/ci-run-36135019357.json",
+      "bytes": 42314,
+      "sha256": "78f88e6bbec467ec03c069df9b5d9cc8af178929f2ddb66058ce93157211b405"
+    },
+    {
+      "path": "evidence/m10/IMP-EV-0142/evidence.json",
+      "bytes": 2532,
+      "sha256": "577c822a3d8370f4369e3bcc78dc4c30d4d5227bc01b5fd6a0370e72d7543357"
     },
     {
       "path": "evidence/m2/IMP-EV-0011/TASK_CARD.md",
@@ -8773,12 +8788,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 41608,
-      "sha256": "e6df14f57ffbb6587b0080aba6f90aa63574c432eda7882905ca2a72166735a2"
+      "sha256": "fbdd752bef143ddef2800bfb923520bf417354815e5ab00c74b3adcf45a9081c"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1597520,
-      "sha256": "4c3ef6d7c8641d5759210454b8496f7e6aa9a6a1a8854346ddef642c48b63d50"
+      "bytes": 1597889,
+      "sha256": "81529035c256ebf399e9b85d3ea2b2e9411d02456cb98640ce068ecfdb161605"
     },
     {
       "path": "tools/build_graph.py",
