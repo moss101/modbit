@@ -143,8 +143,12 @@ def test_exists(ref):
     if path.endswith(".rs"):
         for i, line in enumerate(lines):
             if re.search(r"\bfn\s+%s\s*[(<]" % re.escape(name), line):
-                if any(TEST_ATTR.search(l) for l in lines[max(0, i - 6):i]):
-                    return None
+                # Only the attributes and comments directly on this function.
+                j = i - 1
+                while j >= 0 and lines[j].strip().startswith(("#[", "//")):
+                    if TEST_ATTR.search(lines[j]):
+                        return None
+                    j -= 1
                 return "%s: `%s` is a function, not a test" % (path, name)
         return "%s: no test `%s`" % (path, name)
     if re.search(r"\.(spec|test)\.tsx?$", path):

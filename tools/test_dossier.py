@@ -786,5 +786,213 @@ class ExampleRunnerTests(unittest.TestCase):
 
 
 
+class IntegrationGateTests(unittest.TestCase):
+    """QUAL-EV-0211: the multi-level integration gate refuses every way an
+    integration can be qualified mock-only. Each case builds a minimal
+    package — one crate that opens a connection, its tests, a live workflow,
+    a Decision Record, a recorded fixture and the retained record of the run
+    that made it — then breaks one thing, so a failure names one cause."""
+
+    TESTS = """\
+#[test]
+fn component_calls_the_adapter() {}
+
+#[tokio::test]
+async fn integration_through_the_core() {}
+
+#[tokio::test]
+async fn live_against_the_real_api() {}
+
+#[test]
+fn replay_the_recording() {}
+
+fn helper() {}
+"""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix="modbit-integration-test-")
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name) / "package"
+        self.write("tools/integration_gate.py", (ROOT / "tools" / "integration_gate.py").read_text(encoding="utf-8"))
+        self.write("Cargo.toml", '[workspace]\nmembers = [\n    "crates/net",\n]\n')
+        self.write("crates/net/Cargo.toml", '[package]\nname = "net-crate"\n')
+        self.write("crates/net/src/lib.rs", "pub fn go() { let _ = reqwest::Client::new(); }\n")
+        self.write("crates/net/tests/t.rs", self.TESTS)
+        self.write(".github/workflows/live.yml",
+                   "jobs:\n  live:\n    steps:\n      - run: cargo test --locked -p net-crate live_ -- --nocapture\n")
+        self.write("docs/decisions/DR-X-001-defer.md", "---\nid: DR-X-001\nstatus: accepted\n---\n# defer\n")
+        self.fixture = {
+            "schema": "modbit.recorded-exchange/1", "integration": "api.example",
+            "provenance": {"run": "123456", "endpoint_host": "api.example.com", "model": "m"},
+            "exchanges": [{"request": {"method": "POST", "path": "/v1/x",
+                                       "headers": {"content-type": "application/json"}, "body": {"q": 1}},
+                           "response": {"status": 200, "headers": {"content-type": "text/event-stream"},
+                                        "chunks": [{"at_ms": 1, "text": "data: {}\n\n"}]}}],
+        }
+        self.entry = {
+            "id": "api.example", "crates": ["net-crate"], "boundary": "external-api",
+            "counterparty": "a real API", "credentials": ["EXAMPLE_KEY"],
+            "levels": {"component": ["crates/net/tests/t.rs::component_calls_the_adapter"],
+                       "integration": ["crates/net/tests/t.rs::integration_through_the_core"],
+                       "external": ["crates/net/tests/t.rs::live_against_the_real_api"]},
+            "recorded": [{"fixture": "crates/net/tests/fixtures/x.json",
+                          "replay": "crates/net/tests/t.rs::replay_the_recording"}],
+        }
+        self.save()
+
+    def write(self, path, text):
+        f = self.root / path
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(text, encoding="utf-8")
+
+    def save(self, retain=True):
+        """Write the inventory and the fixture; retain the run's record of the
+        fixture's digest unless told not to."""
+        self.write("tools/integrations.json", json.dumps({"integrations": [self.entry]}, indent=1))
+        raw = json.dumps(self.fixture, indent=1) + "\n"
+        self.write("crates/net/tests/fixtures/x.json", raw)
+        record = self.record("passed", sha=hashlib.sha256(raw.encode("utf-8")).hexdigest())
+        if retain:
+            self.write("evidence/run-123456/live_against_the_real_api.json", json.dumps(record))
+        return record
+
+    def record(self, outcome, sha=None, proven=("api.example",)):
+        return {"schema": "modbit.live-result/1", "test": "live_against_the_real_api",
+                "outcome": outcome, "run": "123456",
+                "proven": [{"integration": i} for i in proven],
+                "recordings": [{"integration": "api.example", "file": "x.json", "sha256": sha or "0" * 64}]}
+
+    def run_gate(self, *args):
+        out = subprocess.run([sys.executable, "tools/integration_gate.py", *args], cwd=self.root,
+                             capture_output=True, text=True, timeout=120)
+        return out.returncode, out.stdout + out.stderr
+
+    def live_dir(self, record):
+        d = self.root / "live"
+        d.mkdir(exist_ok=True)
+        if record is not None:
+            (d / "live_against_the_real_api.json").write_text(json.dumps(record), encoding="utf-8")
+        return str(d)
+
+    def assertFails(self, contains, *args):
+        code, output = self.run_gate(*args)
+        self.assertEqual(code, 1, output)
+        self.assertIn(contains, output)
+        return output
+
+    def test_a_fully_qualified_integration_passes_structurally_and_live(self):
+        code, output = self.run_gate()
+        self.assertEqual(code, 0, output)
+        code, output = self.run_gate("--live", self.live_dir(self.record("passed")))
+        self.assertEqual(code, 0, output)
+
+    def test_code_that_opens_a_connection_undeclared_fails(self):
+        self.write("tools/integrations.json", json.dumps({"integrations": []}))
+        self.assertFails("undeclared integration: net-crate opens a connection (reqwest at crates/net/src/lib.rs:1)")
+
+    def test_a_typescript_package_that_fetches_undeclared_fails(self):
+        self.write("pnpm-workspace.yaml", 'packages:\n  - "packages/*"\n')
+        self.write("packages/web/package.json", '{"name": "@x/web"}')
+        self.write("packages/web/src/api.ts", "export const get = () => fetch('https://x.example');\n")
+        self.assertFails("undeclared integration: @x/web opens a connection (fetch at packages/web/src/api.ts:1)")
+
+    def test_a_claim_on_a_crate_without_a_connection_is_stale(self):
+        self.write("crates/net/src/lib.rs", "pub fn go() {}\n")
+        self.assertFails("claims net-crate, whose source opens no outbound connection")
+
+    def test_a_missing_test_fails(self):
+        self.entry["levels"]["component"] = ["crates/net/tests/t.rs::nope"]
+        self.save()
+        self.assertFails("component level: crates/net/tests/t.rs: no test `nope`")
+
+    def test_a_helper_function_is_not_a_test(self):
+        self.entry["levels"]["integration"] = ["crates/net/tests/t.rs::helper"]
+        self.save()
+        self.assertFails("`helper` is a function, not a test")
+
+    def test_an_external_api_without_a_live_level_or_a_deferral_is_mock_only(self):
+        self.entry["levels"]["external"] = []
+        self.entry["recorded"] = []
+        self.save()
+        out = self.assertFails("no external-level test against the real API (mock-only cannot pass)")
+        self.assertIn("no recorded safe fixture of the real API", out)
+
+    def test_an_external_api_without_a_component_level_fails(self):
+        self.entry["levels"]["component"] = []
+        self.save()
+        self.assertFails("api.example: no component-level test")
+
+    def test_a_deferral_needs_an_accepted_decision_record(self):
+        self.entry["levels"]["external"] = []
+        self.entry["recorded"] = []
+        self.entry["deferred"] = {"decision": "DR-X-001", "needs": "a token"}
+        self.save()
+        code, output = self.run_gate()
+        self.assertEqual(code, 0, output)
+        self.write("docs/decisions/DR-X-001-defer.md", "---\nid: DR-X-001\nstatus: proposed\n---\n")
+        self.assertFails("deferral: docs/decisions/DR-X-001-defer.md is not accepted")
+        self.entry["deferred"]["decision"] = "DR-X-404"
+        self.save()
+        self.assertFails("no Decision Record DR-X-404")
+
+    def test_a_release_refuses_a_deferred_live_level(self):
+        self.entry["levels"]["external"] = []
+        self.entry["recorded"] = []
+        self.entry["deferred"] = {"decision": "DR-X-001", "needs": "a token"}
+        self.save()
+        self.assertFails("qualified mock-only: DR-X-001 defers its real-API level until a token", "--release")
+
+    def test_a_live_test_no_workflow_runs_fails(self):
+        self.write(".github/workflows/live.yml", "jobs: {}\n")
+        self.assertFails("whose live tests no workflow runs")
+
+    def test_an_external_test_must_be_a_live_test(self):
+        self.entry["levels"]["external"] = ["crates/net/tests/t.rs::component_calls_the_adapter"]
+        self.save()
+        self.assertFails("is not a `live_` test the live workflow selects")
+
+    def test_a_fixture_carrying_a_credential_header_fails(self):
+        self.fixture["exchanges"][0]["request"]["headers"]["Authorization"] = "Bearer x"
+        self.save()
+        self.assertFails("carries the credential header 'Authorization'")
+
+    def test_a_fixture_recorded_outside_ci_fails(self):
+        self.fixture["provenance"]["run"] = "local"
+        self.save()
+        self.assertFails("provenance.run 'local' is not a CI run")
+
+    def test_a_fixture_no_retained_live_run_wrote_fails(self):
+        self.save(retain=False)
+        self.write("evidence/run-123456/live_against_the_real_api.json", json.dumps(self.record("passed")))
+        self.assertFails("is not the recording of a retained live run")
+
+    def test_an_edited_fixture_is_no_longer_the_recording(self):
+        self.fixture["exchanges"][0]["response"]["chunks"][0]["text"] = "data: {\"edited\": true}\n\n"
+        raw = json.dumps(self.fixture, indent=1) + "\n"
+        self.write("crates/net/tests/fixtures/x.json", raw)
+        self.assertFails("is not the recording of a retained live run")
+
+    def test_a_skipped_live_test_is_not_a_pass(self):
+        rec = self.record("skipped")
+        rec["reason"] = "MODBIT_LIVE_PROVIDERS=1 not set"
+        self.assertFails("live_against_the_real_api skipped (MODBIT_LIVE_PROVIDERS=1 not set): a live test "
+                         "that did not pass is not proof", "--live", self.live_dir(rec))
+
+    def test_a_live_test_that_left_no_record_did_not_run(self):
+        self.assertFails("left no result record", "--live", self.live_dir(None))
+
+    def test_a_live_pass_that_proved_another_integration_fails(self):
+        self.assertFails("passed without proving this integration", "--live",
+                         self.live_dir(self.record("passed", proven=("something.else",))))
+
+    def test_a_real_service_needs_its_integration_level_and_no_external_one(self):
+        self.entry = {"id": "store", "crates": ["net-crate"], "boundary": "real-service",
+                      "counterparty": "an object store", "levels": {"integration": []},
+                      "recorded": [{"fixture": "x", "replay": "y"}]}
+        self.save()
+        out = self.assertFails("store: no integration-level test against the real an object store")
+        self.assertIn("a real-service integration has no external API level", out)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

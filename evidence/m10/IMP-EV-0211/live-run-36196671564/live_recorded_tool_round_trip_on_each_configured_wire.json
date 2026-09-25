@@ -1,0 +1,79 @@
+{
+  "finished_unix": 1790375269,
+  "outcome": "passed",
+  "proven": [
+    {
+      "endpoint": "openai",
+      "endpoint_host": "api.z.ai",
+      "integration": "provider.openai-wire",
+      "model": "glm-5.3-flash",
+      "stream_ids": [
+        "202609260627267f4f09b9b2d841cb",
+        "202609260627267f4f09b9b2d841cb",
+        "202609260627267f4f09b9b2d841cb",
+        "202609260627267f4f09b9b2d841cb",
+        "202609260627267f4f09b9b2d841cb",
+        "202609260627267f4f09b9b2d841cb",
+        "202609260627267f4f09b9b2d841cb",
+        "202609260627267f4f09b9b2d841cb",
+        "202609260627267f4f09b9b2d841cb",
+        "202609260627267f4f09b9b2d841cb",
+        "202609260627267f4f09b9b2d841cb",
+        "202609260627267f4f09b9b2d841cb",
+        "202609260627267f4f09b9b2d841cb",
+        "202609260627267f4f09b9b2d841cb",
+        "202609260627267f4f09b9b2d841cb",
+        "202609260627267f4f09b9b2d841cb",
+        "202609260627267f4f09b9b2d841cb",
+        "202609260627267f4f09b9b2d841cb",
+        "202609260627267f4f09b9b2d841cb",
+        "202609260627267f4f09b9b2d841cb",
+        "202609260627267f4f09b9b2d841cb",
+        "202609260627267f4f09b9b2d841cb",
+        "202609260627311daf8b74ae2447d5",
+        "202609260627311daf8b74ae2447d5",
+        "202609260627311daf8b74ae2447d5",
+        "202609260627311daf8b74ae2447d5",
+        "202609260627311daf8b74ae2447d5",
+        "202609260627311daf8b74ae2447d5",
+        "202609260627311daf8b74ae2447d5",
+        "202609260627311daf8b74ae2447d5",
+        "202609260627311daf8b74ae2447d5",
+        "202609260627311daf8b74ae2447d5",
+        "202609260627311daf8b74ae2447d5",
+        "202609260627311daf8b74ae2447d5",
+        "202609260627311daf8b74ae2447d5",
+        "202609260627311daf8b74ae2447d5",
+        "202609260627311daf8b74ae2447d5",
+        "202609260627311daf8b74ae2447d5",
+        "202609260627311daf8b74ae2447d5",
+        "202609260627311daf8b74ae2447d5"
+      ]
+    },
+    {
+      "endpoint": "anthropic",
+      "endpoint_host": "api.z.ai",
+      "integration": "provider.anthropic-wire",
+      "model": "glm-5.3-flash",
+      "stream_ids": [
+        "msg_2026092606273579f8cf7e81284699",
+        "msg_20260926062744281bc8fc33434be2"
+      ]
+    }
+  ],
+  "recordings": [
+    {
+      "file": "openai-wire.json",
+      "integration": "provider.openai-wire",
+      "sha256": "ccabba7578a6ff83ab6b898fecd9547b73a33ba2fc857e8423cd97a846c2d1f2"
+    },
+    {
+      "file": "anthropic-wire.json",
+      "integration": "provider.anthropic-wire",
+      "sha256": "4a359679af9557829c143ca0b88064efc59b494ff25594f4a94b1bcc2591f6b6"
+    }
+  ],
+  "run": "36196671564",
+  "schema": "modbit.live-result/1",
+  "test": "live_recorded_tool_round_trip_on_each_configured_wire"
+}

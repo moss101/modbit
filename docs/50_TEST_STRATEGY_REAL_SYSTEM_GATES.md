@@ -37,6 +37,41 @@ At least OpenAI and Anthropic adapters perform real streaming, tool call, cancel
 ### 7. Security/chaos
 Kill processes, sever streams, expire leases, inject malformed MCP/browser content, attack paths/secrets/tenancy and verify fail-closed behavior.
 
+## Multi-level integration qualification (REQ-EV-0211)
+
+An integration is any place production code opens a connection outside its own process. Each one is declared in `tools/integrations.json` with its boundary and the tests that qualify it at each level:
+
+- **component** — the adapter called directly, over a real socket, against a counterpart that speaks the real protocol;
+- **integration** — through the Core, registry or service the product actually routes through, against the real counterpart;
+- **external** — only for an `external-api` boundary: a `live_` test against the real API with the real test credential, run by a workflow, plus a **recorded safe fixture**. The fixture is the exchange a live run captured, holds no credential, and is replayed offline through the real adapter on every platform.
+
+`tools/integration_gate.py` holds the declaration to the code in the `dossier integrity` job:
+
+- every workspace member or TypeScript package whose production source opens an outbound connection is declared, and no declaration claims one that opens none;
+- every named test exists as a test, not as a helper function;
+- an `external-api` integration has all three levels, and its live tests are ones a workflow's `cargo test -p <crate> live_` actually selects;
+- every recorded fixture names the CI run that made it, carries no credential header, and has its sha256 in that run's retained result record under `evidence/`;
+- a `real-service` or `in-tree` integration has its integration level and no external level.
+
+The live level may be deferred only by an accepted Decision Record naming the missing input.
+
+`--live DIR` is the live workflow's last step. It reads the run's result records and fails when any live test of a non-deferred external integration skipped, failed or left no record. A skipped live test exits 0, so without this step it is indistinguishable from a pass.
+
+`--release` also fails on every deferral: a release cannot stand on mock-only proof of an external integration.
+
+As built (IMP-EV-0211), eight integrations:
+
+| Integration | Boundary | Live level |
+|---|---|---|
+| OpenAI wire | external API | live on the compatible gateway (DR-M9-002), recorded |
+| Anthropic wire | external API | live on the compatible gateway (DR-M9-002), recorded |
+| GitHub forge | external API | deferred by DR-M6-002 until `MODBIT_GITHUB_TOKEN` and a test repository exist, so `--release` fails today |
+| S3-compatible object store | real service (SeaweedFS in the `cloud` job) | none |
+| Cloud worker link | in-tree | none |
+| Sandbox gateway link | in-tree | none |
+| Sandbox egress relay | in-tree | none |
+| Sandbox browser relay | in-tree | none |
+
 ## Fixture repositories
 
 Maintain small but real Git repositories committed under `tests/fixtures/repos`:
