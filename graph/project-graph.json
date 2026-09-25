@@ -9971,8 +9971,16 @@
    "milestone": "M10",
    "qual": "QUAL-EV-0017",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-36130922146",
+    "test:qual_ev_0017_a_secret_bearing_internal_error_is_redacted_for_the_person_and_the_model",
+    "artifact:evidence/m10/IMP-EV-0017/TASK_CARD.md",
+    "artifact:evidence/m10/IMP-EV-0017/evidence.json",
+    "artifact:evidence/m10/IMP-EV-0017/ci-run-36130922146.json",
+    "commit:0fdf050"
+   ],
+   "status_changed_on": "2026-09-25T12:16:19Z"
   },
   {
    "id": "IMP-EV-0018",

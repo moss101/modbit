@@ -240,7 +240,15 @@ pub struct EventStore {
     objects: ObjectStore,
     db_path: PathBuf,
     fault: FaultPlan,
+    filter: Option<PayloadFilter>,
 }
+
+/// What every appended payload passes before it is hashed and persisted
+/// (docs/23 "Secrets": known secret fingerprints are removed before
+/// persistence). The store holds no policy of its own; the host installs
+/// one. Called with the event type and the payload, under the store's lock:
+/// it must not reach back into the store.
+pub type PayloadFilter = std::sync::Arc<dyn Fn(&str, &mut serde_json::Value) + Send + Sync>;
 
 impl std::fmt::Debug for EventStore {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -325,6 +333,21 @@ fn blob16(bytes: Vec<u8>) -> rusqlite::Result<[u8; 16]> {
 }
 
 impl EventStore {
+    /// Install the filter every appended payload passes (see
+    /// [`PayloadFilter`]); imported envelopes, already hashed, do not.
+    pub fn set_payload_filter(&mut self, filter: PayloadFilter) {
+        self.filter = Some(filter);
+    }
+
+    fn filtered(filter: Option<&PayloadFilter>, mut req: AppendRequest) -> AppendRequest {
+        if let Some(f) = filter {
+            for e in &mut req.events {
+                f(&e.event_type, &mut e.payload);
+            }
+        }
+        req
+    }
+
     /// Open (creating) the store rooted at `dir`: `core.db` plus `objects/`.
     /// Applies pending migrations; refuses a newer schema.
     pub fn open(dir: &Path) -> Result<Self> {
@@ -355,6 +378,7 @@ impl EventStore {
             objects,
             db_path,
             fault: FaultPlan::from_env(),
+            filter: None,
         };
         if report.applied.iter().any(|v| *v >= 2) {
             // Projections were introduced after events may already exist: derive them.
@@ -403,6 +427,7 @@ impl EventStore {
     /// Append events to one aggregate in a single transaction, updating the
     /// projections in that same transaction.
     pub fn append(&mut self, req: AppendRequest) -> Result<Vec<StoredEvent>> {
+        let req = Self::filtered(self.filter.as_ref(), req);
         let tx = self
             .conn
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
@@ -575,6 +600,7 @@ impl EventStore {
         }
         let mut out = Vec::new();
         for req in reqs {
+            let req = Self::filtered(self.filter.as_ref(), req);
             out.extend(append_in(&tx, &self.objects, req)?);
         }
         self.fault.before_commit(&out);
@@ -613,6 +639,7 @@ impl EventStore {
                 current,
             });
         }
+        let req = Self::filtered(self.filter.as_ref(), req);
         let out = append_in(&tx, &self.objects, req)?;
         self.fault.before_commit(&out);
         tx.commit()?;

@@ -26,8 +26,10 @@ class DossierTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix="modbit-dossier-test-")
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name) / "package"
+        # `.claude` holds agent sessions' own worktrees (whole checkouts,
+        # changing under the copy): never part of the package.
         shutil.copytree(ROOT, self.root, ignore=shutil.ignore_patterns(
-            ".git", "__pycache__", ".DS_Store", "node_modules", "target"))
+            ".git", "__pycache__", ".DS_Store", "node_modules", "target", ".claude"))
 
     def run_tool(self, tool, *args, ok=True, contains=None):
         result = subprocess.run([sys.executable, "tools/" + tool + ".py", *args],

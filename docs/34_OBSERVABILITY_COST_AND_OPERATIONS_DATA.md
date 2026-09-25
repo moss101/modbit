@@ -62,6 +62,8 @@ Task review shows human-scale data, not telemetry internals: model used when lab
 
 Structured JSON logs have severity, component, event ID and error code. Raw content requires debug opt-in and redaction. Security audit records and Effect Ledger are separate from normal application logs.
 
+As built (IMP-EV-0017, REQ-EV-0017): one failure identity, two renderings. A failure is a `FailureDiagnostic` (class, code, retryability, user action, recovery path, evidence); `user_explanation()` renders it for a person and `model_repair()` for the model, and neither carries the source's own words — those stay in `detail` as evidence. One redactor (`modbit_secrets::Redactor`, owned by effects-security) applies one policy on every surface: a value in the Core's custody (provider keys, the forge token, external servers' credentials) is replaced wherever it appears, and error text — a message, a reason, a diagnosis, a rejection — also loses every credential-shaped token. It runs in the provider gateway (the endpoint's own key and the provider's words), the forge and external-server clients, at the Core's tool-result boundary before a result is stored or read by the model, on every rejection leaving the Core, on `TaskStatus` as it is read, and as the event store's payload filter before anything is hashed and persisted (sealed receipts excepted). Proven end to end by `qual_ev_0017_a_secret_bearing_internal_error_is_redacted_for_the_person_and_the_model` (a server failing with its credential in the error; a provider refusing with the key echoed; a rejection repeating a pasted path; neither Core's data directory holds either secret).
+
 ## SLOs
 
 Initial targets:

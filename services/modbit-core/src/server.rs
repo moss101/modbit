@@ -193,6 +193,22 @@ pub async fn run_as(
             .context("capacity")?,
         browser,
     });
+    // REQ-EV-0017, docs/23 "Secrets": every payload the Core appends passes
+    // the one redactor before it is hashed and persisted — a value in its
+    // custody never reaches the log, and error text loses every credential
+    // shape. The filter reads custody fresh on each append (a credential
+    // configured later is covered from then on).
+    {
+        let weak = Arc::downgrade(&core);
+        core.store
+            .lock()
+            .await
+            .set_payload_filter(Arc::new(move |event_type, payload| {
+                if let Some(core) = weak.upgrade() {
+                    core.tools.redactor().event_payload(event_type, payload);
+                }
+            }));
+    }
     let _ = std::fs::remove_file(data_dir.join("core.ready"));
     let listener = Listener::bind(&endpoint)
         .await
@@ -912,6 +928,12 @@ async fn serve_frames(
                     }
                     _ => handle_command(core, env).await,
                 };
+                // REQ-EV-0017: a rejection is error text on its way to a
+                // person; whatever produced it, it leaves redacted.
+                let mut ack = ack;
+                if !ack.error_message.is_empty() {
+                    ack.error_message = core.tools.redactor().error_text(&ack.error_message);
+                }
                 write_frame(
                     stream,
                     &SurfaceFrame {
@@ -5909,17 +5931,24 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 .map(|r| format!("{:?}", r.state))
                 .unwrap_or_default();
             let attention = store.latest_attention(&task_id).ok().flatten();
-            let attention_reason = attention
-                .as_ref()
-                .and_then(|a| a["reason"].as_str())
-                .unwrap_or_default()
-                .to_owned();
+            // Redacted as it is read too, so a log written before the
+            // redactor existed shows nothing it should not (REQ-EV-0017).
+            let attention_reason = core.tools.redactor().error_text(
+                attention
+                    .as_ref()
+                    .and_then(|a| a["reason"].as_str())
+                    .unwrap_or_default(),
+            );
             let diagnostic = attention.as_ref().and_then(|a| {
                 serde_json::from_value::<modbit_domain::failure::FailureDiagnostic>(
                     a["diagnostic"].clone(),
                 )
                 .ok()
             });
+            let user_explanation = diagnostic
+                .as_ref()
+                .map(|d| core.tools.redactor().error_text(&d.user_explanation()))
+                .unwrap_or_default();
             let (
                 failure_class,
                 failure_code,
@@ -5957,6 +5986,7 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                     recovery_path,
                     evidence_refs,
                     diagnostic_features,
+                    user_explanation,
                 }
                 .encode_to_vec(),
             )
