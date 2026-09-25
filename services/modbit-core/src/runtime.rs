@@ -4853,6 +4853,7 @@ async fn run_loop(
     // ---- Loop end: a worker still in flight cannot install after the run;
     // it is stopped and its request closed on the log.
     if let Some(w) = compaction_worker.take() {
+        w.released.store(true, std::sync::atomic::Ordering::Release);
         w.handle.abort();
         reject_compaction(
             &core,
@@ -5617,6 +5618,11 @@ struct CompactionWorker {
     epoch: u32,
     /// Transcript entries it summarises (`transcript[..cut]`).
     cut: usize,
+    /// Set once this result can no longer install: an epoch opened at a
+    /// boundary while the worker was working, or the run ended. Only the
+    /// docs/54 fault-10 hook reads it, to stop holding a result past the
+    /// point the fault was staging. Nothing holds a result in production.
+    released: Arc<std::sync::atomic::AtomicBool>,
     /// The worker.
     handle: tokio::task::JoinHandle<modbit_compaction::CompactionManifest>,
 }
@@ -5660,9 +5666,20 @@ async fn compaction_coordinates(core: &Core, task: &Task) -> (u64, u64, u64) {
 }
 
 /// Fault injection for docs/54 fault 10 ("asynchronous compaction returns
-/// after fork/revert"): a worker holds its result for this long, so a test
-/// can move the history before it returns. Unset in production.
-fn compaction_worker_delay() -> Option<std::time::Duration> {
+/// after fork/revert"): set, a worker holds its result until the result can
+/// no longer install — an epoch opened without it, or the run ended
+/// (`CompactionWorker::released`) — so a test reaches the late-result path by
+/// waiting for that state rather than by racing it.
+///
+/// A plain sleep of this length cannot stage the fault, because it races the
+/// turn rate rather than the history: too short against a slow host and the
+/// worker is harvested before the transcript reaches hard pressure, so it
+/// installs an epoch instead of returning to a history that moved on; too
+/// long and the run ends first and the request is closed `RUN_ENDED` rather
+/// than refused as stale. The value survives only as the last-resort bound on
+/// the hold, so a release that never arrives cannot wedge the blocking
+/// thread. Unset in production.
+fn compaction_worker_hold() -> Option<std::time::Duration> {
     std::env::var("MODBIT_COMPACTION_WORKER_DELAY_MS")
         .ok()
         .and_then(|v| v.parse::<u64>().ok())
@@ -6006,6 +6023,15 @@ async fn compaction_step(
                     "SYNC_FALLBACK",
                 )
                 .await;
+                // The prefix a worker in flight is summarising has just been
+                // replaced under it. Nothing changes for it here — its result
+                // is judged by `accept_async` at the next boundary either way
+                // — except that the docs/54 fault-10 hook, when a test set
+                // it, stops holding the result now that the history it will
+                // return to has moved on.
+                if let Some(w) = worker.as_ref() {
+                    w.released.store(true, std::sync::atomic::Ordering::Release);
+                }
             }
             Err(rejected) => {
                 reject_compaction(
@@ -6059,10 +6085,19 @@ async fn compaction_step(
             );
         }
         let previous = epoch.clone();
-        let delay = compaction_worker_delay();
+        let hold = compaction_worker_hold();
+        let released = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let held_until = Arc::clone(&released);
         let handle = tokio::task::spawn_blocking(move || {
-            if let Some(d) = delay {
-                std::thread::sleep(d);
+            // docs/54 fault 10, tests only: hold the result until an epoch
+            // installs without it, so it returns to a history that moved on.
+            if let Some(bound) = hold {
+                let deadline = std::time::Instant::now() + bound;
+                while !held_until.load(std::sync::atomic::Ordering::Acquire)
+                    && std::time::Instant::now() < deadline
+                {
+                    std::thread::sleep(std::time::Duration::from_millis(1));
+                }
             }
             modbit_compaction::compact(&modbit_compaction::CompactionRequest {
                 entries: &source,
@@ -6078,6 +6113,7 @@ async fn compaction_step(
             id,
             epoch: next_epoch,
             cut,
+            released,
             handle,
         });
     }

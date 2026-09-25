@@ -8,7 +8,7 @@
   "counts": {
     "docs": 90,
     "root_and_tooling": 1593,
-    "docs_bytes": 1371444
+    "docs_bytes": 1371968
   },
   "sections": [
     {
@@ -212,8 +212,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Durable State, Memory, Compaction, and Checkpoints",
-      "bytes": 16269,
-      "sha256": "82e8d84f633a9c7405d7f86026cff9a65cbd0063b042024717d7af442a2728c7"
+      "bytes": 16793,
+      "sha256": "acff8854dd43baf890236375c579746100e05a57eccdfd450a41cba70aed3ad9"
     },
     {
       "path": "docs/20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md",
