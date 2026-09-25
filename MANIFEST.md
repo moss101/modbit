@@ -1110,7 +1110,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m3/PX-040/ci-run-34507573124-tests.log` | retained evidence | 4206 | `a9e2a291c1bc0b8c6332b023ecd1361533d8286c33ba45c5465fcca3c2eacb50` |
 | `evidence/m3/PX-040/ci-run-34507573124.json` | retained evidence | 37317 | `cc7122950bffe169b616acd26ddc066cc491cfb3ea9bc94299350fbd41b06594` |
 | `evidence/m3/PX-040/evidence.json` | retained evidence | 1272 | `dc1c5415da2d653b16d94162aa23478c0d9694a3c0442c91e93c17db2e9e58ec` |
-| `evidence/m4/EPR-008/TASK_CARD.md` | retained evidence | 6472 | `d98dc125e091ada448b4b3ed8da7beb3e6b8abd430c7563223dd89d17477566d` |
+| `evidence/m4/EPR-008/TASK_CARD.md` | retained evidence | 10168 | `b5b2f5fc43661039447441a4ebb7129e15c3ba39397010eb6878b282f90a1aa1` |
 | `evidence/m4/EPR-008/ci-run-34637382928.json` | retained evidence | 37317 | `6eb917c33fa1e4c3a1a6340de2ebc9e4c2e02a95027c75e5fb519fa0f7c66608` |
 | `evidence/m4/EPR-008/evidence.json` | retained evidence | 2395 | `19d7b8d66f85b5f1c1be6724a45c7198008a701fe81a4ac81c01fb2ecebc33ad` |
 | `evidence/m4/EPR-009/TASK_CARD.md` | retained evidence | 7666 | `f07a2659cf99c4696c0216ce1ed277314d4160e71106e7771d99f53976c55570` |

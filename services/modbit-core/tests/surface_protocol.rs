@@ -18667,6 +18667,141 @@ async fn task_assurance(c: &mut Client, task: &Id) -> modbit_protocol::v1::TaskA
     Client::result(&ack).unwrap()
 }
 
+/// EPR-008 regression (docs/64 DI-9, REQ-EPR-008): the change engine's
+/// protected paths are matched with the policy's own surface grammar, not
+/// as bare prefixes. A task whose plan declares a nested `deploy/`
+/// descriptor, a Terraform file under `infra/` and a plain note writes all
+/// three without asking a typed question: both protected writes are
+/// refused before any effect (DI-9 DENY at TRANSACTION) and never reach
+/// the disk, the plain write lands, and the task still completes. Under the
+/// old prefix match `/deploy/`, `/infra/` and `.tf` matched no relative
+/// path and both protected writes went through.
+#[tokio::test]
+async fn epr_008_di_9_refuses_a_nested_deploy_write_without_a_typed_question() {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let files: [(&str, &str); 4] = [
+        ("src/app.py", "x = 1\n"),
+        ("services/api/deploy/base.yaml", "replicas: 1\n"),
+        ("infra/README.md", "infrastructure\n"),
+        ("check.sh", "grep -q ok src/notes.txt\n"),
+    ];
+    let (repo, root) = plain_repo(&files);
+    let deploy = "services/api/deploy/prod.yaml";
+    let terraform = "infra/main.tf";
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "roll the api out and note it", "expected_files": [deploy, terraform, "src/notes.txt"], "verification": ["sh check.sh"]}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "services/api/deploy/base.yaml"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": deploy, "op": "create", "content": "replicas: 3\n"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": terraform, "op": "create", "content": "resource \"null_resource\" \"api\" {}\n"}}]}),
+        json!({"calls": [{"name": "change.apply", "args": {"path": "src/notes.txt", "op": "create", "content": "ok\n"}}]}),
+        json!({"calls": [{"name": "test.run", "args": {"argv": ["sh", "check.sh"], "inherit_env": true}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "noted; the rollout needs the user's answer", "self_review": {"findings": []}, "verification": ["sh check.sh"]}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x08)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x09, "local_trusted").await;
+    let start = envelope_fenced(
+        id16(0x0A),
+        "StartTask",
+        StartTask {
+            task_id: Some(task.clone()),
+            endpoint: "openai".into(),
+            model: "gpt-5".into(),
+            max_turns: 20,
+            max_tool_calls: 0,
+            max_no_progress_turns: 5,
+            skills: vec![],
+        }
+        .encode_to_vec(),
+        g,
+    );
+    let _: TaskRunStarted = Client::result(&c.command(start).await.unwrap()).unwrap();
+    let st = wait_for_state(&mut c, &task, "ReadyForReview", 120).await;
+    let tool_msgs: Vec<String> = seen
+        .lock()
+        .unwrap()
+        .last()
+        .and_then(|b| b["messages"].as_array().cloned())
+        .unwrap_or_default()
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    let evs = task_events(&core, &session, &task).await;
+    assert_eq!(
+        st.state,
+        "ReadyForReview",
+        "{st:?}\n{tool_msgs:#?}\n{:#?}",
+        evs.iter()
+            .filter(|(_, t, _)| t != "StepScheduled" && t != "StepStarted" && t != "StepSucceeded")
+            .map(|(_, t, p)| format!("{t} {}", p.get("failure_code").cloned().unwrap_or_default()))
+            .collect::<Vec<_>>()
+    );
+    let di: Vec<&serde_json::Value> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "DiffInvariantViolated")
+        .map(|(_, _, p)| p)
+        .collect();
+    // Both protected writes: DI-9 DENY before any effect, and the model is
+    // told why; neither file exists.
+    for path in [deploy, terraform] {
+        assert!(
+            di.iter().any(|v| v["invariant"] == "DI-9"
+                && v["class"] == "DENY"
+                && v["stage"] == "TRANSACTION"
+                && v["paths"] == json!([path])),
+            "{path}: {di:#?}"
+        );
+        assert!(
+            tool_msgs.iter().any(|t| t.contains("DIFF_INVARIANT_DENY")
+                && t.contains(&format!("DI-9 ({path})"))),
+            "{path}: {tool_msgs:#?}"
+        );
+        assert!(!repo.path().join(path).exists(), "{path} was written");
+    }
+    assert!(
+        di.iter()
+            .all(|v| v["invariant"] != "DI-9" || v["paths"] != json!(["src/notes.txt"])),
+        "{di:#?}"
+    );
+    assert_eq!(
+        evs.iter()
+            .filter(|(a, t, p)| a == "run_step"
+                && t == "StepFailed"
+                && p["failure_code"] == "DIFF_INVARIANT_DENY")
+            .count(),
+        2,
+        "{evs:#?}"
+    );
+    // Only the plain write reached the effector, and it landed.
+    assert_eq!(
+        evs.iter()
+            .filter(|(_, t, p)| t == "ToolCallProposed" && p["tool_name"] == "change.apply")
+            .count(),
+        1,
+        "{evs:#?}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("src/notes.txt")).unwrap(),
+        "ok\n"
+    );
+    // No typed question was asked, so nothing unlocked the protected paths.
+    assert!(
+        !evs.iter().any(|(_, t, _)| t == "UserQuestionAsked"),
+        "{evs:#?}"
+    );
+}
+
 /// QUAL-EPR-008 / EPR-E2E-008 (REQ-EPR-008; docs/27 §9.3, docs/38): real
 /// protected fixtures changed through the production path. A task edits
 /// an auth module and adds a migration, its check passes, it completes:
