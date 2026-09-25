@@ -3,7 +3,7 @@
  "product": "Modbit",
  "edition": "V3.3 EPR v1.1",
  "authority_date": "2026-09-05",
- "generated_on": "2026-09-25",
+ "generated_on": "2026-09-26",
  "generator": "tools/build_graph.py",
  "status_vocabulary": [
   "NOT_STARTED",
@@ -32819,7 +32819,12 @@
     "test:qual_px_038_scope_expansion_is_bounded_asks_a_typed_question_and_fails_closed_headless",
     "test:qual_px_016_change_strategy_tests_first_one_concern_per_transaction_and_no_silent_scope_widening",
     "run:gha-34506031420",
-    "artifact:evidence/m3/PX-038/TASK_CARD.md"
+    "artifact:evidence/m3/PX-038/TASK_CARD.md",
+    "commit:d441f1a",
+    "test:px_038_only_the_users_answer_to_the_scope_question_decides_the_expansion",
+    "run:gha-36194461747",
+    "artifact:evidence/m3/PX-038/ci-run-36194461747.json",
+    "artifact:evidence/m3/PX-038/evidence.json"
    ],
    "notes": [
     {
@@ -32857,9 +32862,39 @@
      "from": "E2E_PROVEN",
      "to": "COMPLETE",
      "note": "sealed on run 34506031420"
+    },
+    {
+     "at": "2026-09-25T22:42:54Z",
+     "from": "COMPLETE",
+     "to": "IMPLEMENTING",
+     "note": "regression found 2026-09-25 in review of the EPR-008 DI-9 unlock: rebuild's UserQuestionAnswered arm let any answer decide a waiting scope expansion, whatever its actor and whichever question it answered (an agent-written answer, or the user's later answer to an earlier question)"
+    },
+    {
+     "at": "2026-09-25T22:42:54Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "fixed in d441f1a (PR #43): only an Actor::User answer to a question asked while the expansion waited sets the scope answer"
+    },
+    {
+     "at": "2026-09-25T22:42:54Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real Core px_038_only_the_users_answer_to_the_scope_question_decides_the_expansion (the agent's continue let the lockfile write land before the fix; the actor check alone let an answer to an earlier question override the user's stop)"
+    },
+    {
+     "at": "2026-09-25T22:42:54Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 36194461747 green (14/14) on macOS, Linux and Windows at 561e6f5 (squashed as d441f1a)"
+    },
+    {
+     "at": "2026-09-25T22:42:54Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed again: card regression section, evidence.json regressions[] scope-answer-actor, CI run json"
     }
    ],
-   "status_changed_on": "2026-09-10T17:11:58Z"
+   "status_changed_on": "2026-09-25T22:42:54Z"
   },
   {
    "id": "PX-039",

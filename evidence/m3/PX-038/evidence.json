@@ -19,5 +19,28 @@
   }
  ],
  "proof": "bounded expansion with a typed question, counters against the original plan, headless FAIL_CLOSED to Needs Attention",
- "audit": "IMPLEMENTED in this batch (was PARTIAL)"
+ "audit": "IMPLEMENTED in this batch (was PARTIAL)",
+ "regressions": [
+  {
+   "id": "scope-answer-actor",
+   "found": "2026-09-25, review of the EPR-008 DI-9 unlock (PR #41), which requires Actor::User in the same UserQuestionAnswered arm of rebuild",
+   "defect": "rebuild's UserQuestionAnswered arm set scope_answer from any answer on the task while a scope question was pending, whatever its actor and whichever question it answered: an answer the agent wrote, or the user's later answer to an earlier question, decided the scope expansion.",
+   "audit": "IMPLEMENTED-PARTIAL: the unlock was production-wired, but its input was bound to neither its author nor its question; first missing link the UserQuestionAnswered arm of rebuild in services/modbit-core/src/runtime.rs.",
+   "fix": "rebuild marks the questions asked while scope_question_pending is non-empty as scope questions; only an Actor::User answer to one of them, consumed by its first answer, sets scope_answer. No new event or field.",
+   "tests": [
+    "services/modbit-core/tests/surface_protocol.rs::px_038_only_the_users_answer_to_the_scope_question_decides_the_expansion"
+   ],
+   "negative_proof": "Run before the fix: on the unfixed Core an agent-written continue let the retried lockfile write land (local-red-unfixed.log); with the actor check alone the user's later continue to an earlier question overrode their stop (local-red-actor-check-only.log).",
+   "limitations": "ScopeExpansionRecorded was still recorded under the agent actor and rebuild applied a CONTINUE whatever its actor, and rebuild kept the answer after replaying the decision made from it; both are follow-up regressions (PR #53).",
+   "commit": "d441f1a",
+   "pr": "https://github.com/moss101/modbit/pull/43",
+   "ci": {
+    "run_id": "36194461747",
+    "head_sha": "561e6f5dea59517f7d3374af06746db42713180c",
+    "conclusion": "success",
+    "url": "https://github.com/moss101/modbit/actions/runs/36194461747",
+    "json": "evidence/m3/PX-038/ci-run-36194461747.json"
+   }
+  }
+ ]
 }
