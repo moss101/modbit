@@ -29,4 +29,5 @@ owner = "observability"
 canonical = []
 capabilities = [
   { id = "observability.verified_outcome_baseline", requirements = ["REQ-EPR-000"] },
+  { id = "observability.diagnostics_package", requirements = ["REQ-EV-0142"] },
 ]

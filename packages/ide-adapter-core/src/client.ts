@@ -15,6 +15,12 @@ import { connect, type Socket } from "node:net";
 import { create, fromBinary, toBinary, type MessageInitShape } from "@bufbuild/protobuf";
 import {
   AcquireSessionLeaseSchema,
+  DiagnosticsExportedSchema,
+  DiagnosticsVerifiedSchema,
+  ExportDiagnosticsSchema,
+  ExportHandoffSchema,
+  HandoffExportedSchema,
+  VerifyDiagnosticsSchema,
   AttachmentIngestedSchema,
   IngestAttachmentSchema,
   ClientKind,
@@ -438,6 +444,54 @@ export class CoreClient {
     const ack = await this.command("ProbeModel", payload);
     const r = fromBinary(ModelProbedSchema, ack.result);
     return { status: r.status, text: r.text, errorCode: r.errorCode, errorMessage: r.errorMessage };
+  }
+
+  /**
+   * A diagnostics package for a session, narrowed to a task (IMP-EV-0142,
+   * docs/71): build, health, integrity, event ranges and chain heads, a
+   * metadata-only trace, recent error codes, provider health, lease states.
+   * Redacted and sealed by the Core; payloads only with `includeContent`.
+   */
+  async exportDiagnostics(
+    sessionId: string,
+    taskId?: string,
+    includeContent = false,
+  ): Promise<{ packageJson: string; digest: string; redactions: number; aggregates: number; traceLines: number }> {
+    const payload = toBinary(
+      ExportDiagnosticsSchema,
+      create(ExportDiagnosticsSchema, {
+        sessionId: { value: unhex(sessionId) },
+        taskId: taskId ? { value: unhex(taskId) } : undefined,
+        includeContent,
+      }),
+    );
+    const ack = await this.command("ExportDiagnostics", payload);
+    const r = fromBinary(DiagnosticsExportedSchema, ack.result);
+    return {
+      packageJson: r.packageJson,
+      digest: r.digest,
+      redactions: Number(r.redactions),
+      aggregates: Number(r.aggregates),
+      traceLines: Number(r.traceLines),
+    };
+  }
+
+  /** Replay a diagnostics package's evidence metadata against this Core's log. */
+  async verifyDiagnostics(
+    packageJson: string,
+  ): Promise<{ verified: boolean; digestOk: boolean; aggregatesChecked: number; mismatches: string[] }> {
+    const payload = toBinary(VerifyDiagnosticsSchema, create(VerifyDiagnosticsSchema, { packageJson }));
+    const ack = await this.command("VerifyDiagnostics", payload);
+    const r = fromBinary(DiagnosticsVerifiedSchema, ack.result);
+    return { verified: r.verified, digestOk: r.digestOk, aggregatesChecked: Number(r.aggregatesChecked), mismatches: r.mismatches };
+  }
+
+  /** M8.7's handoff bundle for a task: the task parks; the bundle holds no secret value. */
+  async exportHandoff(sessionId: string, taskId: string, outDir: string): Promise<{ bundleDir: string; manifestHash: string; parts: string[] }> {
+    const payload = toBinary(ExportHandoffSchema, create(ExportHandoffSchema, { taskId: { value: unhex(taskId) }, outDir }));
+    const ack = await this.command("ExportHandoff", payload, undefined, this.leases.get(sessionId));
+    const r = fromBinary(HandoffExportedSchema, ack.result);
+    return { bundleDir: r.bundleDir, manifestHash: r.manifestHash, parts: r.parts };
   }
 
   /** Explicit, scoped repository trust (docs/39 step 3). */

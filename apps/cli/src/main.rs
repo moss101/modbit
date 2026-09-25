@@ -74,7 +74,7 @@ fn exit_for_state(state: &str) -> u8 {
     }
 }
 
-const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] [--command-id <hex>] <goal> | task from-issue --session <id> [--workspace <dir>] [--command-id <hex>] <issue-url> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> [--intent <hash>] (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--skill <name>]... [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id>] [--apply --session <id>] | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | task work --task <id> | task agents --task <id> | capacity show | attention list --session <id> | plan show --task <id> | plan revise --session <id> --task <id> [--plan-json <file>] [note] | task patch --session <id> --task <id> --path <p> --revision <n> [--file-revision <sha>] (--old <text> | --old-file <f>) (--new <text> | --new-file <f>) | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | agent install <file> [--from claude] [--replace] | agent list | skill install <dir> [--expect-hash <hex>] [--replace] | skill remove <name> | skill list | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt> | task steer --session <id> --task <id> [--mode STEER|COLLECT|FOLLOW_UP] [--input-id <hex>] <text> | workspace trust --session <id> [--scope <s>] <root> | provider configure --provider <openai|anthropic> [--base-url <url>] [--clear] | recovery show | pr (open | update) --session <id> --task <id> --revision <n> [--base <ref>] [--title <t>] [--remote <name>] | starter list [--workspace <dir>])";
+const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] [--command-id <hex>] <goal> | task from-issue --session <id> [--workspace <dir>] [--command-id <hex>] <issue-url> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> [--intent <hash>] (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--skill <name>]... [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id>] [--apply --session <id>] | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | task work --task <id> | task agents --task <id> | capacity show | attention list --session <id> | plan show --task <id> | plan revise --session <id> --task <id> [--plan-json <file>] [note] | task patch --session <id> --task <id> --path <p> --revision <n> [--file-revision <sha>] (--old <text> | --old-file <f>) (--new <text> | --new-file <f>) | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | agent install <file> [--from claude] [--replace] | agent list | skill install <dir> [--expect-hash <hex>] [--replace] | skill remove <name> | skill list | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt> | task steer --session <id> --task <id> [--mode STEER|COLLECT|FOLLOW_UP] [--input-id <hex>] <text> | workspace trust --session <id> [--scope <s>] <root> | provider configure --provider <openai|anthropic> [--base-url <url>] [--clear] | recovery show | pr (open | update) --session <id> --task <id> --revision <n> [--base <ref>] [--title <t>] [--remote <name>] | starter list [--workspace <dir>] | doctor --session <id> | trace --session <id> [--task <id>] | export diagnostics --session <id> [--task <id>] [--include-content] --out <file> | diagnostics verify <file> | export handoff --session <id> --task <id> --out <dir>)";
 
 fn parse_id(hex: &str) -> Result<Id, String> {
     let bytes = decode_hex(hex)
@@ -2068,6 +2068,168 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 v.compacted_entries
             );
         }
+        // IMP-EV-0142 (docs/71 "Desktop diagnostics package"): the Core's
+        // health and integrity, a task's trace, and a redacted, sealed
+        // package that replays against the log.
+        ["doctor", "--session", sid] => {
+            let pkg = export_diagnostics(&mut client, &parse_id(sid)?, None, false).await?;
+            let p: serde_json::Value =
+                serde_json::from_str(&pkg.package_json).map_err(|e| e.to_string())?;
+            let b = &p["build"];
+            println!(
+                "doctor core={} protocol={} {}/{} boot_generation={} uptime_ms={} last_offset={}",
+                b["core_version"].as_str().unwrap_or_default(),
+                b["protocol_version"].as_str().unwrap_or_default(),
+                b["os"].as_str().unwrap_or_default(),
+                b["arch"].as_str().unwrap_or_default(),
+                b["boot_generation"],
+                p["health"]["uptime_ms"],
+                p["health"]["last_offset"]
+            );
+            let i = &p["integrity"];
+            let failures = i["chain_failures"].as_array().map_or(0, Vec::len);
+            println!(
+                "integrity database={} chains={}/{} receipts={}",
+                i["database"].as_str().unwrap_or_default(),
+                i["chains_verified"],
+                i["chains_verified"].as_u64().unwrap_or(0) + failures as u64,
+                i["receipts"].as_str().unwrap_or_default()
+            );
+            for f in i["chain_failures"].as_array().into_iter().flatten() {
+                println!("  chain {}", f.as_str().unwrap_or_default());
+            }
+            for pr in p["providers"].as_array().into_iter().flatten() {
+                println!(
+                    "provider {} kind={} host={} credential={} requests={} failures={} rate_limited={}",
+                    pr["name"].as_str().unwrap_or_default(),
+                    pr["kind"].as_str().unwrap_or_default(),
+                    pr["host"].as_str().unwrap_or_default(),
+                    if pr["credential_configured"] == true {
+                        "configured"
+                    } else {
+                        "none"
+                    },
+                    pr["requests"],
+                    pr["failures"],
+                    pr["rate_limited"]
+                );
+            }
+            for e in p["recent_errors"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .rev()
+                .take(10)
+            {
+                println!(
+                    "error {} {} {} {}",
+                    e["offset"],
+                    e["event_type"].as_str().unwrap_or_default(),
+                    e["class"].as_str().unwrap_or_default(),
+                    e["code"].as_str().unwrap_or_default()
+                );
+            }
+            println!(
+                "leases capacity={} sandboxes={}",
+                p["leases"]["capacity"].as_array().map_or(0, Vec::len),
+                p["leases"]["sandboxes"].as_array().map_or(0, Vec::len)
+            );
+            if i["database"] != "ok" || failures > 0 || i["receipts"] != "valid" {
+                return Err("doctor: the store or a chain did not verify".into());
+            }
+        }
+        ["trace", "--session", sid, rest @ ..] => {
+            let task = match rest {
+                ["--task", t] => Some(parse_id(t)?),
+                [] => None,
+                _ => return Err(USAGE.into()),
+            };
+            let pkg = export_diagnostics(&mut client, &parse_id(sid)?, task, false).await?;
+            let p: serde_json::Value =
+                serde_json::from_str(&pkg.package_json).map_err(|e| e.to_string())?;
+            let short = |v: &serde_json::Value| {
+                v.as_str()
+                    .map_or_else(|| "-".to_owned(), |s| s.chars().take(8).collect())
+            };
+            if p["trace_truncated"] == true {
+                println!("trace truncated to its latest {} lines", pkg.trace_lines);
+            }
+            for l in p["trace"].as_array().into_iter().flatten() {
+                println!(
+                    "{} {}#{} {} task={} run={}{}",
+                    l["offset"],
+                    l["aggregate_type"].as_str().unwrap_or_default(),
+                    l["sequence"],
+                    l["event_type"].as_str().unwrap_or_default(),
+                    short(&l["task_id"]),
+                    short(&l["run_id"]),
+                    l["code"]
+                        .as_str()
+                        .map(|c| format!(" code={c}"))
+                        .unwrap_or_default()
+                );
+            }
+        }
+        ["export", "diagnostics", "--session", sid, rest @ ..] => {
+            let task = opt("--task").map(parse_id).transpose()?;
+            let out = opt("--out").ok_or(USAGE)?;
+            let include = rest.contains(&"--include-content");
+            let pkg = export_diagnostics(&mut client, &parse_id(sid)?, task, include).await?;
+            std::fs::write(out, &pkg.package_json).map_err(|e| format!("{out}: {e}"))?;
+            println!(
+                "exported digest={} aggregates={} trace_lines={} redactions={} content={} out={out}",
+                pkg.digest, pkg.aggregates, pkg.trace_lines, pkg.redactions, include
+            );
+        }
+        ["diagnostics", "verify", file] => {
+            let package_json = std::fs::read_to_string(file).map_err(|e| format!("{file}: {e}"))?;
+            let ack = client
+                .command(envelope(
+                    "VerifyDiagnostics",
+                    modbit_protocol::v1::VerifyDiagnostics { package_json }.encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let v: modbit_protocol::v1::DiagnosticsVerified =
+                Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "verified={} digest_ok={} aggregates_checked={}",
+                v.verified, v.digest_ok, v.aggregates_checked
+            );
+            for m in &v.mismatches {
+                println!("  mismatch {m}");
+            }
+            if !v.verified {
+                return Err("diagnostics: the package does not replay against this log".into());
+            }
+        }
+        // M8.7's handoff bundle, from a headless caller (IMP-EV-0142).
+        ["export", "handoff", ..] => {
+            let sid = parse_id(opt("--session").ok_or(USAGE)?)?;
+            let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
+            let out = opt("--out").ok_or(USAGE)?;
+            let lease = join_lease(&mut client, &sid).await?;
+            let ack = client
+                .command(envelope_fenced(
+                    "ExportHandoff",
+                    modbit_protocol::v1::ExportHandoff {
+                        task_id: Some(task_id),
+                        out_dir: out.to_owned(),
+                    }
+                    .encode_to_vec(),
+                    Some(lease),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let h: modbit_protocol::v1::HandoffExported =
+                Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "handoff bundle={} manifest_hash={} parts={}",
+                h.bundle_dir,
+                h.manifest_hash,
+                h.parts.join(",")
+            );
+        }
         ["language", "list"] => {
             let ack = client
                 .command(envelope("ListLanguages", ListLanguages {}.encode_to_vec()))
@@ -2520,6 +2682,29 @@ async fn wait_until_idle(client: &mut Client, task_id: &Id) -> Result<(), String
 /// approving, answering or steering joins the owner that is executing rather
 /// than fencing it out — and a freshly acquired one only when the session has
 /// none yet.
+/// `ExportDiagnostics` for a session (narrowed to a task), sealed and
+/// redacted by the Core (IMP-EV-0142).
+async fn export_diagnostics(
+    client: &mut Client,
+    sid: &Id,
+    task: Option<Id>,
+    include_content: bool,
+) -> Result<modbit_protocol::v1::DiagnosticsExported, String> {
+    let ack = client
+        .command(envelope(
+            "ExportDiagnostics",
+            modbit_protocol::v1::ExportDiagnostics {
+                session_id: Some(sid.clone()),
+                task_id: task,
+                include_content,
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .map_err(|e| e.to_string())?;
+    Client::result(&ack).map_err(|e| e.to_string())
+}
+
 async fn join_lease(client: &mut Client, sid: &Id) -> Result<u64, String> {
     let ack = client
         .command(envelope(
