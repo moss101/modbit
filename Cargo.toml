@@ -26,6 +26,7 @@ members = [
     "crates/context",
     "benchmarks/agent-engineering",
     "benchmarks/context-economics",
+    "benchmarks/gate-calibration",
     "benchmarks/outcome-statistics",
     "benchmarks/retrieval",
     "benchmarks/skill-evolution",
@@ -82,6 +83,7 @@ modbit-procedural-runtime = { path = "crates/procedural-runtime" }
 modbit-context = { path = "crates/context" }
 modbit-bench-agent-engineering = { path = "benchmarks/agent-engineering" }
 modbit-bench-context-economics = { path = "benchmarks/context-economics" }
+modbit-bench-gate-calibration = { path = "benchmarks/gate-calibration" }
 modbit-bench-outcome-statistics = { path = "benchmarks/outcome-statistics" }
 modbit-bench-skill-evolution = { path = "benchmarks/skill-evolution" }
 modbit-bench-retrieval = { path = "benchmarks/retrieval" }
