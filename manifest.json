@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 90,
-    "root_and_tooling": 1598,
-    "docs_bytes": 1377878
+    "root_and_tooling": 1600,
+    "docs_bytes": 1377354
   },
   "sections": [
     {
@@ -212,8 +212,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Durable State, Memory, Compaction, and Checkpoints",
-      "bytes": 16793,
-      "sha256": "acff8854dd43baf890236375c579746100e05a57eccdfd450a41cba70aed3ad9"
+      "bytes": 16269,
+      "sha256": "82e8d84f633a9c7405d7f86026cff9a65cbd0063b042024717d7af442a2728c7"
     },
     {
       "path": "docs/20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md",
@@ -1609,6 +1609,16 @@
       "path": "evidence/m10/IMP-EV-0032/TASK_CARD.md",
       "bytes": 3872,
       "sha256": "df98e842abbea080060e89491e444b6a40737faa94051196be239f163903b0c2"
+    },
+    {
+      "path": "evidence/m10/IMP-EV-0032/ci-run-36170517237.json",
+      "bytes": 42518,
+      "sha256": "6451312454d4bd9f37f9209262d8aa2e0aa282254c993e213ac3561d8dc390a6"
+    },
+    {
+      "path": "evidence/m10/IMP-EV-0032/evidence.json",
+      "bytes": 2446,
+      "sha256": "20d3555970705e42b015446ce8e37d9ba7b62a157676644ea69a9386a9126fa3"
     },
     {
       "path": "evidence/m10/IMP-EV-0126/TASK_CARD.md",
@@ -8808,12 +8818,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 41847,
-      "sha256": "94575e05e2c1dbc795417930f003e102d438a97e0c5656a943be8f01d6c2dd11"
+      "sha256": "bbc6f9c4ef8c562e8ba68776680ee1b12b6b2b18c8736ec00a3d7f816cd8b02d"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1601643,
-      "sha256": "7cbc833dcbb5c942ec4ab11c200423e4866bf2ac13a69c68c00663e6c1de3409"
+      "bytes": 1602014,
+      "sha256": "3de15d69e9a6c03caa5b53fd12f89f017f35ed60d0ee726e0fc784c4156e2b02"
     },
     {
       "path": "tools/build_graph.py",
