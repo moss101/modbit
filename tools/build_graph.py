@@ -52,6 +52,9 @@ GOV4_CHANGE = "DR-GOV-2026-09-05-004"
 # DOC-GOV-005 (docs/97): the executable Release Zero goal — `graph.py goal` and doc 77.
 GOV5_CHANGE = "DR-GOV-2026-09-19-005"
 GOAL_DOC = "77_RELEASE_ZERO_EXECUTION_GOAL.md"
+# DOC-GOV-006 (docs/97): stale descriptive wording corrected in doc 77 (PX-020 no longer BLOCKED) and the
+# IMP-EV-0245 task card (its feature consumer is M10 IMP-EV-0244/0246, not M9).
+GOV6_CHANGE = "DR-GOV-2026-09-24-006"
 PX_STAGES = [("DOC-PX-001", "DOC-GOV-004", "Product extension stage A: authority, PX ledger tooling, phased releases, governance tiering"),
              ("DOC-PX-002", "DOC-PX-001", "Product extension stage B: client surfaces and source-control integration"),
              ("DOC-PX-003", "DOC-PX-002", "Product extension stage C: agent competence contracts and benchmarks"),
@@ -730,6 +733,17 @@ def build(previous=None):
     link("DOC-GOV-005", GOAL_DOC, "specified_by")
     link("DOC-GOV-005", GOV_LOG_DOC, "specified_by")
     link("DOC-GOV-005", GOV5_CHANGE, "authorized_by")
+    add({"id": GOV6_CHANGE, "type": "change_record", "title": "Approved correction of stale Release Zero goal and IMP-EV-0245 card wording",
+         "status": "APPROVED", "source": "docs/" + GOV_LOG_DOC})
+    link(GOV6_CHANGE, GOV_LOG_DOC, "specified_by")
+    add({"id": "DOC-GOV-006", "type": "dossier_task", "title": "Correct stale Release Zero goal and IMP-EV-0245 card wording",
+         "subsystem": "governance", "source": "docs/" + GOV_LOG_DOC,
+         "acceptance": "Doc 77 Stage 2 matches the graph (PX-020 COMPLETE, M3 COMPLETE, no blocker, open live halves named) and the IMP-EV-0245 card names its M10 feature consumer; descriptive text only; full integrity gate passes; no product proof"})
+    link("DOC-GOV-006", "DOC-GOV-005", "after")
+    link("DOC-GOV-006", "governance", "owned_by")
+    link("DOC-GOV-006", GOV_LOG_DOC, "specified_by")
+    link("DOC-GOV-006", GOAL_DOC, "specified_by")
+    link("DOC-GOV-006", GOV6_CHANGE, "authorized_by")
 
     # releases: derived projections over work items (docs/75) ----------------
     ms_of, owner_of = {}, {}

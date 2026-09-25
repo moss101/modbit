@@ -40,3 +40,19 @@ Named tests (run on macOS, Linux and Windows by `.github/workflows/ci.yml`):
 
 - `evidence.json` in this directory (commits, hosted CI run, test names)
 - CI run json copy alongside
+
+## Regression — DI-9 matched the policy's patterns with a second, prefix-only matcher (2026-09-24)
+
+- Evidence tier: release-critical (permissions/policy and a security boundary: the change engine's write gate).
+- Found in review of this task's DI-9 wiring. `run_loop` sets `state.protected_paths` from the policy's `question_required_patterns()` and `invariant_context` hands them to `modbit_verification::evaluate_file` / `evaluate_diff`, but `crates/verification/src/invariants.rs` matched them with `path.starts_with(pattern)`, while the patterns are written in `ProtectedSurface::matches` grammar (directory prefix `.github/`, segment `/deploy/`, suffix `.tf`, basename `Dockerfile`). Of the four question-required surfaces (CI/CD, infrastructure, deploy, policy), no segment pattern (`/terraform/`, `/infra/`, `/k8s/`, `/helm/`, `/deploy/`, `/deployment/`, `/release/`) matched a relative path, `.tf` matched no Terraform file, and `Dockerfile`, `docker-compose.yml` and `Jenkinsfile` matched only at the repository root. So a write to `deploy/prod.yaml` or `infra/main.tf` never raised DI-9 and landed without a typed question.
+- Audit: BROKEN-DRIFTED. The wiring read the right source but matched it with a second matcher. First missing link: the DI-9 predicate in `evaluate_file`.
+- Fix: one matcher. `ProtectedSurface::matches` now delegates to the associated `ProtectedSurface::matches_patterns(patterns, path)`, which keeps the grammar unchanged and is owned by `crates/policy`. DI-9 calls it with the context's patterns. `modbit-verification` already depended on `modbit-policy`, so the fix adds no dependency edge and no cycle (`tools/architecture-lint/rules.toml`). The Core's fallback when no policy is resolved (`.github/`, `.modbit/`) decides every tested path exactly as the old prefix match did. The risk rules are untouched, so `REALIZED_RISK_RULES_VERSION` and the default policy version do not move.
+- Proof (unit tests in `crates/verification`):
+  - `di_9_denies_a_protected_segment_anywhere_in_the_path`
+  - `di_9_denies_a_protected_suffix_at_any_depth`
+  - `di_9_denies_a_protected_basename_in_any_directory`
+  - `di_9_denies_a_root_directory_prefix_and_the_fallback_defaults_behave_as_before`
+  - `di_9_and_the_risk_rules_agree_on_every_path`, which pins DI-9 to `AssurancePolicy::surfaces_of(..)` with `question_required` over the whole path corpus.
+- Proof (real Core): `epr_008_di_9_refuses_a_nested_deploy_write_without_a_typed_question`. A plan declares `services/api/deploy/prod.yaml`, `infra/main.tf` and `src/notes.txt`, and no typed question is asked. Both protected writes are refused before any effect: `DiffInvariantViolated` DI-9 DENY at TRANSACTION, `StepFailed` `DIFF_INVARIANT_DENY`, the model is told the reason, and neither file reaches the disk. The plain write lands, it is the only `change.apply` that reaches the effector, and the task reaches `ReadyForReview`.
+- Fault injection: the new tests were written and run before the fix. On the prefix matcher, four of the five unit tests fail (on `deploy/prod.yaml`, `infra/main.tf` and `services/api/Dockerfile`), and the Core test fails because the log holds no `DiffInvariantViolated` at all for `services/api/deploy/prod.yaml`. The root-prefix and fallback test passes both before and after, as it must.
+- Limitation: DI-9 is a permanent DENY. No answered typed question lifts it, because `UserQuestionAnswered` feeds only the scope-expansion unlock of docs/28 §3, so a task cannot change a protected path even after the user agrees. This fix extends that existing behaviour from root-level paths to every path the policy protects. The unlock is a follow-up and is not part of this regression.

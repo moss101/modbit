@@ -28421,7 +28421,13 @@
     "test:qual_epr_008_factual_risk_stays_strict_despite_passing_tests_and_stops_safely_unattended",
     "test:qual_epr_008_fault_corpus_pins_every_rule_and_no_signal_lowers_assurance",
     "test:epr_fi_008_a_stronger_layer_moves_every_case_up_or_keeps_it",
-    "run:34637382928"
+    "run:34637382928",
+    "run:gha-36111360538",
+    "commit:d036dd1",
+    "test:epr_008_di_9_refuses_a_nested_deploy_write_without_a_typed_question",
+    "test:di_9_and_the_risk_rules_agree_on_every_path",
+    "artifact:evidence/m4/EPR-008/evidence.json",
+    "artifact:evidence/m4/EPR-008/ci-run-36111360538.json"
    ],
    "notes": [
     {
@@ -28459,9 +28465,33 @@
      "from": "E2E_PROVEN",
      "to": "COMPLETE",
      "note": "sealed: card, evidence.json and CI run json alongside"
+    },
+    {
+     "at": "2026-09-25T08:33:24Z",
+     "from": "COMPLETE",
+     "to": "IMPLEMENTING",
+     "note": "regression found 2026-09-24: DI-9 matched the policy's question_required patterns with path.starts_with in crates/verification instead of the ProtectedSurface grammar, so /deploy/, /deployment/, /release/, /infra/, /terraform/, /k8s/, /helm/ segments, the .tf suffix and nested Dockerfile/docker-compose.yml/Jenkinsfile never raised DI-9 (deploy/prod.yaml, infra/main.tf written without a typed question). BROKEN-DRIFTED; first missing link: the DI-9 predicate in evaluate_file"
+    },
+    {
+     "at": "2026-09-25T08:33:24Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "fixed in d036dd1: DI-9 calls ProtectedSurface::matches_patterns, the one matcher the risk rules use; fallback .github/ and .modbit/ unchanged"
+    },
+    {
+     "at": "2026-09-25T08:33:25Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real Core epr_008_di_9_refuses_a_nested_deploy_write_without_a_typed_question and five crates/verification DI-9 unit tests, all red on the prefix matcher before the fix"
+    },
+    {
+     "at": "2026-09-25T08:33:25Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 36111360538 green on macOS, Linux and Windows at 7105158 (squashed as d036dd1)"
     }
    ],
-   "status_changed_on": "2026-09-11T19:24:10Z"
+   "status_changed_on": "2026-09-25T08:33:25Z"
   },
   {
    "id": "EPR-009",
@@ -34367,6 +34397,23 @@
    ],
    "owner_agent": "claude-opus-5",
    "status_changed_on": "2026-09-19T18:34:25Z"
+  },
+  {
+   "id": "DR-GOV-2026-09-24-006",
+   "type": "change_record",
+   "title": "Approved correction of stale Release Zero goal and IMP-EV-0245 card wording",
+   "status": "APPROVED",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md"
+  },
+  {
+   "id": "DOC-GOV-006",
+   "type": "dossier_task",
+   "title": "Correct stale Release Zero goal and IMP-EV-0245 card wording",
+   "subsystem": "governance",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
+   "acceptance": "Doc 77 Stage 2 matches the graph (PX-020 COMPLETE, M3 COMPLETE, no blocker, open live halves named) and the IMP-EV-0245 card names its M10 feature consumer; descriptive text only; full integrity gate passes; no product proof",
+   "status": "NOT_STARTED",
+   "evidence": []
   },
   {
    "id": "ALPHA",
@@ -53407,6 +53454,36 @@
   {
    "from": "DOC-GOV-005",
    "to": "DR-GOV-2026-09-19-005",
+   "type": "authorized_by"
+  },
+  {
+   "from": "DR-GOV-2026-09-24-006",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-GOV-006",
+   "to": "DOC-GOV-005",
+   "type": "after"
+  },
+  {
+   "from": "DOC-GOV-006",
+   "to": "governance",
+   "type": "owned_by"
+  },
+  {
+   "from": "DOC-GOV-006",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-GOV-006",
+   "to": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-GOV-006",
+   "to": "DR-GOV-2026-09-24-006",
    "type": "authorized_by"
   },
   {
