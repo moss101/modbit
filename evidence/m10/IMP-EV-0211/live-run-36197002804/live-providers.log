@@ -1,0 +1,341 @@
+    Updating crates.io index
+ Downloading crates ...
+  Downloaded pkcs8 v0.10.2
+  Downloaded proc-macro2 v1.0.107
+  Downloaded potential_utf v0.1.6
+  Downloaded stable_deref_trait v1.2.1
+  Downloaded der v0.7.10
+  Downloaded rand_pcg v0.10.2
+  Downloaded errno v0.3.14
+  Downloaded fastrand v2.5.0
+  Downloaded find-msvc-tools v0.1.12
+  Downloaded idna_adapter v1.2.2
+  Downloaded cpufeatures v0.3.1
+  Downloaded untrusted v0.9.0
+  Downloaded serde_urlencoded v0.7.1
+  Downloaded futures-core v0.3.34
+  Downloaded futures-task v0.3.34
+  Downloaded form_urlencoded v1.2.2
+  Downloaded sha2 v0.10.9
+  Downloaded http-body v1.1.0
+  Downloaded signal-hook-registry v1.4.8
+  Downloaded signature v2.2.0
+  Downloaded tokio-macros v2.7.2
+  Downloaded futures-io v0.3.34
+  Downloaded percent-encoding v2.3.2
+  Downloaded semver v1.0.28
+  Downloaded try-lock v0.2.5
+  Downloaded futures-sink v0.3.34
+  Downloaded hex v0.4.3
+  Downloaded lru-slab v0.1.2
+  Downloaded tinyvec_macros v0.1.1
+  Downloaded http-body-util v0.1.5
+  Downloaded hyper-rustls v0.27.9
+  Downloaded itoa v1.0.18
+  Downloaded subtle v2.6.1
+  Downloaded sync_wrapper v1.0.2
+  Downloaded block-buffer v0.12.1
+  Downloaded block-buffer v0.10.4
+  Downloaded icu_properties v2.3.0
+  Downloaded shlex v2.0.1
+  Downloaded ed25519 v2.2.3
+  Downloaded futures-macro v0.3.34
+  Downloaded ipnet v2.12.1
+  Downloaded ryu v1.0.23
+  Downloaded digest v0.11.3
+  Downloaded generic-array v0.14.7
+  Downloaded hybrid-array v0.4.15
+  Downloaded litemap v0.8.3
+  Downloaded zerofrom v0.1.8
+  Downloaded atomic-waker v1.1.2
+  Downloaded cfg-if v1.0.4
+  Downloaded pin-project-lite v0.2.17
+  Downloaded tower-service v0.3.3
+  Downloaded slab v0.4.12
+  Downloaded thiserror v2.0.20
+  Downloaded crypto-common v0.1.7
+  Downloaded curve25519-dalek-derive v0.1.1
+  Downloaded futures-channel v0.3.34
+  Downloaded getrandom v0.2.17
+  Downloaded httparse v1.10.1
+  Downloaded once_cell v1.21.4
+  Downloaded version_check v0.9.5
+  Downloaded displaydoc v0.2.7
+  Downloaded log v0.4.34
+  Downloaded icu_locale_core v2.3.0
+  Downloaded icu_provider v2.3.1
+  Downloaded rustc_version v0.4.1
+  Downloaded crypto-common v0.2.2
+  Downloaded want v0.3.1
+  Downloaded yoke-derive v0.8.2
+  Downloaded rustc-hash v2.1.3
+  Downloaded tower-layer v0.3.3
+  Downloaded utf8_iter v1.0.4
+  Downloaded rustls-pki-types v1.15.1
+  Downloaded serde_derive v1.0.229
+  Downloaded sha2 v0.11.0
+  Downloaded base64ct v1.8.3
+  Downloaded icu_normalizer_data v2.3.0
+  Downloaded spki v0.7.3
+  Downloaded cpufeatures v0.2.17
+  Downloaded getrandom v0.4.3
+  Downloaded quinn-udp v0.5.15
+  Downloaded serde_core v1.0.229
+  Downloaded writeable v0.6.4
+  Downloaded zerofrom-derive v0.1.7
+  Downloaded ed25519-dalek v2.2.0
+  Downloaded icu_collections v2.3.0
+  Downloaded memchr v2.8.3
+  Downloaded synstructure v0.13.2
+  Downloaded zeroize v1.9.0
+  Downloaded http v1.5.0
+  Downloaded quote v1.0.47
+  Downloaded smallvec v1.16.0
+  Downloaded hyper-util v0.1.20
+  Downloaded tinystr v0.8.4
+  Downloaded cfg_aliases v0.2.2
+  Downloaded mio v1.2.3
+  Downloaded hyper v1.11.1
+  Downloaded icu_properties_data v2.3.0
+  Downloaded idna v1.1.0
+  Downloaded futures-util v0.3.34
+  Downloaded digest v0.10.7
+  Downloaded thiserror-impl v2.0.20
+  Downloaded zmij v1.0.23
+  Downloaded tokio-rustls v0.26.5
+  Downloaded socket2 v0.6.5
+  Downloaded tempfile v3.27.0
+  Downloaded zerovec-derive v0.11.6
+  Downloaded quinn v0.11.11
+  Downloaded const-oid v0.9.6
+  Downloaded icu_normalizer v2.3.0
+  Downloaded chacha20 v0.10.2
+  Downloaded rand_core v0.6.4
+  Downloaded serde v1.0.229
+  Downloaded yoke v0.8.3
+  Downloaded tinyvec v1.13.2
+  Downloaded tracing-core v0.1.36
+  Downloaded unicode-ident v1.0.24
+  Downloaded bitflags v2.13.1
+  Downloaded rustls-webpki v0.103.15
+  Downloaded uuid v1.26.0
+  Downloaded bytes v1.12.1
+  Downloaded base64 v0.22.1
+  Downloaded const-oid v0.10.2
+  Downloaded rand_core v0.10.1
+  Downloaded url v2.5.8
+  Downloaded zerotrie v0.2.5
+  Downloaded typenum v1.20.1
+  Downloaded libc v0.2.189
+  Downloaded rand v0.10.2
+  Downloaded aho-corasick v1.1.5
+  Downloaded cc v1.4.5
+  Downloaded tower v0.5.3
+  Downloaded linux-raw-sys v0.12.1
+  Downloaded serde_json v1.0.151
+  Downloaded zerovec v0.11.8
+  Downloaded regex v1.13.1
+  Downloaded tokio-util v0.7.19
+  Downloaded reqwest v0.12.28
+  Downloaded tower-http v0.6.11
+  Downloaded webpki-roots v1.0.9
+  Downloaded quinn-proto v0.11.17
+  Downloaded syn v3.0.5
+  Downloaded curve25519-dalek v4.1.3
+  Downloaded syn v2.0.119
+  Downloaded rustls v0.23.43
+  Downloaded regex-syntax v0.8.11
+  Downloaded rustix v1.1.4
+  Downloaded tracing v0.1.44
+  Downloaded regex-automata v0.4.18
+  Downloaded tokio v1.53.1
+  Downloaded ring v0.17.14
+   Compiling proc-macro2 v1.0.107
+   Compiling unicode-ident v1.0.24
+   Compiling quote v1.0.47
+   Compiling libc v0.2.189
+   Compiling cfg-if v1.0.4
+   Compiling stable_deref_trait v1.2.1
+   Compiling typenum v1.20.1
+   Compiling itoa v1.0.18
+   Compiling pin-project-lite v0.2.17
+   Compiling bytes v1.12.1
+   Compiling syn v3.0.5
+   Compiling syn v2.0.119
+   Compiling futures-core v0.3.34
+   Compiling find-msvc-tools v0.1.12
+   Compiling errno v0.3.14
+   Compiling shlex v2.0.1
+   Compiling signal-hook-registry v1.4.8
+   Compiling cc v1.4.5
+   Compiling socket2 v0.6.5
+   Compiling mio v1.2.3
+   Compiling litemap v0.8.3
+   Compiling zeroize v1.9.0
+   Compiling smallvec v1.16.0
+   Compiling writeable v0.6.4
+   Compiling version_check v0.9.5
+   Compiling serde_core v1.0.229
+   Compiling generic-array v0.14.7
+   Compiling ring v0.17.14
+   Compiling icu_properties_data v2.3.0
+   Compiling utf8_iter v1.0.4
+   Compiling once_cell v1.21.4
+   Compiling icu_normalizer_data v2.3.0
+   Compiling synstructure v0.13.2
+   Compiling zerovec-derive v0.11.6
+   Compiling displaydoc v0.2.7
+   Compiling zerofrom-derive v0.1.7
+   Compiling yoke-derive v0.8.2
+   Compiling tokio-macros v2.7.2
+   Compiling http v1.5.0
+   Compiling zerofrom v0.1.8
+   Compiling getrandom v0.4.3
+   Compiling tokio v1.53.1
+   Compiling memchr v2.8.3
+   Compiling yoke v0.8.3
+   Compiling zerovec v0.11.8
+   Compiling zerotrie v0.2.5
+   Compiling percent-encoding v2.3.2
+   Compiling tinystr v0.8.4
+   Compiling potential_utf v0.1.6
+   Compiling rand_core v0.10.1
+   Compiling icu_collections v2.3.0
+   Compiling icu_locale_core v2.3.0
+   Compiling http-body v1.1.0
+   Compiling futures-macro v0.3.34
+   Compiling icu_provider v2.3.1
+   Compiling rustls-pki-types v1.15.1
+   Compiling getrandom v0.2.17
+   Compiling hybrid-array v0.4.15
+   Compiling subtle v2.6.1
+   Compiling zmij v1.0.23
+   Compiling futures-task v0.3.34
+   Compiling untrusted v0.9.0
+   Compiling serde v1.0.229
+   Compiling slab v0.4.12
+   Compiling httparse v1.10.1
+   Compiling futures-util v0.3.34
+   Compiling icu_normalizer v2.3.0
+   Compiling icu_properties v2.3.0
+   Compiling serde_derive v1.0.229
+   Compiling cpufeatures v0.3.1
+   Compiling try-lock v0.2.5
+   Compiling rustls v0.23.43
+   Compiling tower-service v0.3.3
+   Compiling semver v1.0.28
+   Compiling serde_json v1.0.151
+   Compiling want v0.3.1
+   Compiling rustc_version v0.4.1
+   Compiling idna_adapter v1.2.2
+   Compiling rustls-webpki v0.103.15
+   Compiling block-buffer v0.12.1
+   Compiling crypto-common v0.2.2
+   Compiling block-buffer v0.10.4
+   Compiling crypto-common v0.1.7
+   Compiling form_urlencoded v1.2.2
+   Compiling tracing-core v0.1.36
+   Compiling futures-channel v0.3.34
+   Compiling const-oid v0.10.2
+   Compiling thiserror v2.0.20
+   Compiling bitflags v2.13.1
+   Compiling atomic-waker v1.1.2
+   Compiling hyper v1.11.1
+   Compiling tracing v0.1.44
+   Compiling digest v0.11.3
+   Compiling digest v0.10.7
+   Compiling curve25519-dalek v4.1.3
+   Compiling idna v1.1.0
+   Compiling aho-corasick v1.1.5
+   Compiling thiserror-impl v2.0.20
+   Compiling sync_wrapper v1.0.2
+   Compiling regex-syntax v0.8.11
+   Compiling tower-layer v0.3.3
+   Compiling ipnet v2.12.1
+   Compiling base64 v0.22.1
+   Compiling cpufeatures v0.2.17
+   Compiling hyper-util v0.1.20
+   Compiling regex-automata v0.4.18
+   Compiling tokio-rustls v0.26.5
+   Compiling tower v0.5.3
+   Compiling url v2.5.8
+   Compiling sha2 v0.11.0
+   Compiling uuid v1.26.0
+   Compiling webpki-roots v1.0.9
+   Compiling curve25519-dalek-derive v0.1.1
+   Compiling signature v2.2.0
+   Compiling hex v0.4.3
+   Compiling futures-sink v0.3.34
+   Compiling rustix v1.1.4
+   Compiling ryu v1.0.23
+   Compiling serde_urlencoded v0.7.1
+   Compiling tokio-util v0.7.19
+   Compiling modbit-domain v0.0.0 (/home/runner/work/modbit/modbit/crates/domain)
+   Compiling ed25519 v2.2.3
+   Compiling hyper-rustls v0.27.9
+   Compiling regex v1.13.1
+   Compiling tower-http v0.6.11
+   Compiling sha2 v0.10.9
+   Compiling chacha20 v0.10.2
+   Compiling http-body-util v0.1.5
+   Compiling linux-raw-sys v0.12.1
+   Compiling log v0.4.34
+   Compiling rand v0.10.2
+   Compiling reqwest v0.12.28
+   Compiling ed25519-dalek v2.2.0
+   Compiling fastrand v2.5.0
+   Compiling tempfile v3.27.0
+   Compiling modbit-secrets v0.0.0 (/home/runner/work/modbit/modbit/crates/secrets)
+   Compiling modbit-providers v0.0.0 (/home/runner/work/modbit/modbit/crates/providers)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 34.58s
+     Running unittests src/lib.rs (target/debug/deps/modbit_providers-3c1f8f0fb57613b3)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+
+     Running tests/compiler.rs (target/debug/deps/compiler-f43c254aa511d834)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+     Running tests/conformance.rs (target/debug/deps/conformance-881459a19b127d46)
+
+running 1 test
+live: endpoint `anthropic` (Anthropic) at https://api.z.ai/api/anthropic/v1/messages model glm-5.3-flash auth Native extra_body {}
+live: endpoint `anthropic` proven — streaming, tool-call round trip and cancellation with model glm-5.3-flash
+live: endpoint `openai` (OpenAi) at https://api.z.ai/api/coding/paas/v4/chat/completions model glm-5.3-flash auth Native extra_body {}
+live: endpoint `openai` proven — streaming, tool-call round trip and cancellation with model glm-5.3-flash
+live: proven endpoints: anthropic, openai
+test live_streaming_tool_round_trip_and_cancellation_against_production_endpoints ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 28.51s
+
+     Running tests/feasibility.rs (target/debug/deps/feasibility-33bde9604a0f575b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+
+     Running tests/profiler.rs (target/debug/deps/profiler-02b06eeea951b3d2)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+     Running tests/recorded.rs (target/debug/deps/recorded-451f2ec423d9df2f)
+
+running 1 test
+live: `openai` (openai wire) at api.z.ai/api/coding/paas/v4 model glm-5.3-flash: fs.read({"path":"README.md"}) then "demo"; recording sha256 1041e33ac1b75980411b9fcc613975873fcadd28e939d61528b818687977c96e
+live: `anthropic` (anthropic wire) at api.z.ai/api/anthropic model glm-5.3-flash: fs.read({"path":"README.md"}) then "demo"; recording sha256 3a7bea00a7ceb90d1d3948a013021e32cf925d1b199b597c15b889b512544cfd
+test live_recorded_tool_round_trip_on_each_configured_wire ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 20.11s
+
+     Running tests/registry.rs (target/debug/deps/registry-c83e4f32d79e4939)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
