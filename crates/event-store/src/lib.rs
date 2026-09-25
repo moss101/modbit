@@ -38,7 +38,7 @@ pub use migrations::MigrationReport;
 pub use objects::ObjectStore;
 pub use store::{
     AppendRequest, CommandOutcome, CommandRecord, EventStore, EvidenceHit, EvidenceScope,
-    MemoryRow, NewEvent, RecoveryOutcome, StoredEvent,
+    MemoryRow, NewEvent, PayloadFilter, RecoveryOutcome, StoredEvent,
 };
 
 /// Errors from the store.

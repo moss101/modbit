@@ -85,8 +85,36 @@ pub struct FailureDiagnostic {
     pub detail: String,
 }
 
+impl FailureClass {
+    /// The class in a person's words.
+    #[must_use]
+    pub const fn explained(self) -> &'static str {
+        match self {
+            Self::Timeout => "An operation ran out of time",
+            Self::Infrastructure => "Something the agent depends on could not do its part",
+            Self::Application => "A tool or command reported a failure",
+            Self::Policy => "Policy refused an action before it had any effect",
+            Self::Approval => "An action needs, or was refused, your approval",
+            Self::CorruptState => "Stored state failed its integrity check",
+            Self::UnknownOutcome => "An action may or may not have taken effect",
+            Self::Lease => "Another owner has taken over this work",
+            Self::Provider => "The model provider failed or refused the request",
+            Self::Budget => "A budget for this run was used up",
+            Self::Harness => "A rule of the agent harness refused an action",
+            Self::Cancelled => "The work was cancelled",
+            Self::Invalid => "A request was not valid",
+        }
+    }
+}
+
+// REQ-EV-0017: one diagnosis, two renderings. The person reads what kind of
+// failure it is and what they can do; the model reads the same identity as
+// fields it can repair from. Neither carries the source's own words: those
+// stay in `detail` as evidence, redacted before the diagnosis is built, and
+// the model sees them (redacted) on the result's own `error:` line.
 impl FailureDiagnostic {
-    /// The lines a model or a person reads under a result.
+    /// The lines a model reads under a result: the classic fields, then the
+    /// structured repair payload on one line.
     #[must_use]
     pub fn render(&self) -> String {
         let mut out = format!(
@@ -98,6 +126,78 @@ impl FailureDiagnostic {
         if !self.user_action.is_empty() {
             out.push_str(&format!("user_action: {}\n", self.user_action));
         }
+        out.push_str(&format!("repair: {}\n", self.model_repair()));
         out
+    }
+
+    /// The structured repair payload for a model.
+    #[must_use]
+    pub fn model_repair(&self) -> serde_json::Value {
+        serde_json::json!({
+            "failure_class": self.class.label(),
+            "code": self.code,
+            "retryable": self.retryable,
+            "recovery_path": self.recovery_path,
+            "user_action": self.user_action,
+            "evidence_refs": self.evidence_refs,
+        })
+    }
+
+    /// The explanation a person reads.
+    #[must_use]
+    pub fn user_explanation(&self) -> String {
+        let mut out = format!("{} ({}).", self.class.explained(), self.code);
+        out.push_str(if self.retryable {
+            " Trying again may succeed."
+        } else {
+            " Trying again as it is will not help."
+        });
+        if !self.user_action.is_empty() {
+            out.push(' ');
+            out.push_str(&self.user_action);
+            if !self.user_action.ends_with('.') {
+                out.push('.');
+            }
+        }
+        out
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn d() -> FailureDiagnostic {
+        FailureDiagnostic {
+            class: FailureClass::Provider,
+            code: "AUTH_REJECTED".into(),
+            retryable: false,
+            user_action: "Check the endpoint's credential".into(),
+            recovery_path: "fix the credential, then StartTask".into(),
+            evidence_refs: vec!["run:1".into()],
+            features: vec![],
+            detail: "HTTP 401: key [redacted] refused".into(),
+        }
+    }
+
+    #[test]
+    fn one_identity_renders_for_a_person_and_for_a_model() {
+        let d = d();
+        assert_eq!(
+            d.user_explanation(),
+            "The model provider failed or refused the request (AUTH_REJECTED). Trying again as it is will not help. Check the endpoint's credential."
+        );
+        let repair = d.model_repair();
+        assert_eq!(repair["code"], "AUTH_REJECTED");
+        assert_eq!(repair["failure_class"], "PROVIDER");
+        assert_eq!(repair["retryable"], false);
+        let text = d.render();
+        assert!(
+            text.starts_with("failure_class: PROVIDER\nretryable: false\n"),
+            "{text}"
+        );
+        assert!(text.contains(&format!("repair: {repair}\n")), "{text}");
+        // The source's words are evidence, not either rendering.
+        assert!(!text.contains("HTTP 401") && !d.user_explanation().contains("HTTP 401"));
     }
 }

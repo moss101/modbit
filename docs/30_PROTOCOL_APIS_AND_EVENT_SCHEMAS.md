@@ -164,6 +164,8 @@ As built (IMP-EV-0137/0183): `ImportAgentConfig { session_id, source_root, name,
 ### Security/effects
 `CapabilityLeaseGranted, CapabilityLeaseRevoked, ApprovalRequested, ApprovalResolved, EffectReceiptAppended, SecretHandleUsed, EmergencyStopActivated`.
 
+As built (IMP-EV-0017): `TaskStatus.user_explanation` (field 14) is the latest attention's diagnosis in a person's words — the class, the code, whether a retry can help and what the person can do, never the source's own message — and `attention_reason` and every `CommandAck.error_message` are redacted as they leave the Core. A tool result the model reads carries the same diagnosis as a `repair: {failure_class, code, retryable, recovery_path, user_action, evidence_refs}` line under its `failure_class`/`retryable`/`recovery` lines. `SecurityEventRecorded { kind: SECRET_IN_TOOL_RESULT, action: REDACTED }` records a credential in the Core's custody that came back from a tool.
+
 ## Tool call wire schema
 
 ```text

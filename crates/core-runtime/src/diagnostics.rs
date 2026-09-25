@@ -82,7 +82,12 @@ pub enum FailureSource<'a> {
     },
 }
 
+/// The source's message as evidence: credential shapes replaced first
+/// (REQ-EV-0017; a caller holding secrets redacts those before classifying),
+/// then bounded.
 fn bounded(s: &str) -> String {
+    let s = modbit_secrets::error_text(s);
+    let s = s.as_str();
     let mut cut = s.len().min(DETAIL_CEILING);
     while cut > 0 && !s.is_char_boundary(cut) {
         cut -= 1;

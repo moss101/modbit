@@ -685,6 +685,9 @@ impl ProviderGateway {
                     .header("anthropic-version", "2023-06-01"),
             ),
         };
+        // REQ-EV-0017: everything this attempt reports is error text, and
+        // this endpoint's own key is the value most likely to come back in it.
+        let redactor = modbit_secrets::Redactor::new(ep.credential.resolve());
         if let Some(key) = ep.credential.resolve() {
             rb = match (ep.kind, ep.auth) {
                 (ProviderKind::Anthropic, AuthScheme::Native) => rb.header("x-api-key", key),
@@ -707,7 +710,7 @@ impl ProviderGateway {
         let resp = match rb.send().await {
             Ok(r) => r,
             Err(e) => {
-                let msg = redact(&e.to_string());
+                let msg = redactor.error_text(&e.to_string());
                 // Nothing of a response was seen: a connection that could
                 // not be made, or one from the pool the server had already
                 // closed (a keep-alive idle cut lands exactly this way after
@@ -748,11 +751,17 @@ impl ProviderGateway {
         }
         if !status.is_success() {
             let text = resp.text().await.unwrap_or_default();
-            let message = redact(&format!(
+            // Redacted whole, then bounded: a cut through a key must not
+            // leave its tail behind.
+            let message = format!(
                 "HTTP {}: {}",
                 status.as_u16(),
-                text.chars().take(300).collect::<String>()
-            ));
+                redactor
+                    .error_text(&text)
+                    .chars()
+                    .take(300)
+                    .collect::<String>()
+            );
             return match status.as_u16() {
                 429 => Attempt::Retryable {
                     code: "RATE_LIMITED".into(),
@@ -785,7 +794,7 @@ impl ProviderGateway {
             let bytes = match chunk {
                 Some(Ok(b)) => b,
                 Some(Err(e)) => {
-                    let msg = redact(&e.to_string());
+                    let msg = redactor.error_text(&e.to_string());
                     return if e.is_timeout() {
                         Attempt::Timeout
                     } else if first_token {
@@ -845,16 +854,25 @@ impl ProviderGateway {
                             message,
                             retryable,
                         } => {
+                            // What the provider said in its stream is error
+                            // text too.
+                            let message = redactor.error_text(message);
                             if *retryable && !first_token {
                                 return Attempt::Retryable {
                                     code: code.clone(),
-                                    message: message.clone(),
+                                    message,
                                 };
                             }
-                            let _ = tx.send(e.clone()).await;
+                            let _ = tx
+                                .send(ModelEvent::Error {
+                                    code: code.clone(),
+                                    message: message.clone(),
+                                    retryable: *retryable,
+                                })
+                                .await;
                             return Attempt::Failed {
                                 code: code.clone(),
-                                message: message.clone(),
+                                message,
                             };
                         }
                         _ => {}
@@ -870,22 +888,6 @@ impl ProviderGateway {
             }
         }
     }
-}
-
-/// Strip anything that looks like a bearer token or API key from messages.
-fn redact(s: &str) -> String {
-    let mut out = String::with_capacity(s.len());
-    for word in s.split(' ') {
-        if word.len() > 20
-            && (word.starts_with("sk-") || word.starts_with("Bearer") || word.contains("key="))
-        {
-            out.push_str("<redacted>");
-        } else {
-            out.push_str(word);
-        }
-        out.push(' ');
-    }
-    out.trim_end().to_owned()
 }
 
 enum Attempt {

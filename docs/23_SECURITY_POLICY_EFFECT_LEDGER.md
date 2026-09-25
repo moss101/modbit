@@ -74,6 +74,7 @@ As built (IMP-EV-0066, REQ-EV-0066; `modbit_domain::toolcall::Reversibility`, `s
 - Guest receives short-lived scoped credential material only through broker at execution time, preferably via pipe/fd/memory rather than static env. *As built (M8.6, M9.3/REQ-EV-0288):* the guest addresses a virtual host over plain HTTP through its own proxy and the host's broker injects the secret it holds under the handle — the guest never holds it, and the compiled policy it is built from never had it. The handle is short-lived: the gateway stamps and caps an expiry, the broker drops the secret the moment it passes, and a longer task is renewed from the Core's custody rather than given a standing secret.
 - Secret handles are origin/tool/effect scoped and auditable.
 - Terminal output redactor detects known secret fingerprints before persistence/display while preserving original only in protected diagnostic vault if policy allows.
+  *As built (IMP-EV-0017):* the redactor is `modbit_secrets::Redactor`, the one implementation (the gateway's, the forge client's, the external-tool client's and the Cloud API's former copies now call it). Values in the Core's custody are replaced everywhere they appear; credential shapes (provider, forge, worker, bearer, cloud and chat tokens, credential parameters, PEM keys) are replaced in error text; the event store applies it to every payload before hashing and persistence. No original is kept: there is no diagnostic vault yet, so a redacted value is gone.
 
 ### External tool servers as built (M9.4)
 

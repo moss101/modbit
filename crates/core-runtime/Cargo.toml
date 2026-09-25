@@ -8,6 +8,7 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
+modbit-secrets.workspace = true
 modbit-domain.workspace = true
 modbit-protocol.workspace = true
 serde.workspace = true
