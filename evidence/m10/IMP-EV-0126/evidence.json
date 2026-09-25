@@ -1,0 +1,40 @@
+{
+ "task": "IMP-EV-0126",
+ "requirements": [
+  "REQ-EV-0126",
+  "QUAL-EV-0126",
+  "docs/29 One Core, many thin clients",
+  "docs/30 ProtocolCapabilitySet (REQ-EV-0043)",
+  "docs/11 input steering as a Core contract",
+  "docs/77 stage 3 IMP-EV-0126 row"
+ ],
+ "scenarios": [
+  "the Core's 71 supported_command_types compared against the commands each surface issues (apps/cli/src/main.rs; packages/ide-adapter-core/src/client.ts, which is the whole desktop surface since neither Electron main nor the renderer names a command type): nine the desktop could drive and the headless CLI could not",
+  "two are intended and asserted, not closed: GetCodeView needs ui.code_view and is refused CLIENT_CAPABILITY to a headless connection with the task it named still valid; SubmitExternalDiagnostics is the IDE adapter's, tagged provenance=external_ide",
+  "the rest are verbs: task steer (QueueInput, STEER|COLLECT|FOLLOW_UP), workspace trust (TrustRepository), provider configure (ConfigureProvider), recovery show (GetRecoveryReport), pr open / pr update (OpenPullRequest / UpdatePullRequest bound to the accepted revision), starter list (ListStarterTasks)",
+  "one real Core, two byte-identical fixture repositories each declaring the same repository hook in the Project configuration layer, one scripted OpenAI-compatible provider over real HTTP, and the same task driven twice: once by a DESKTOP protocol client, once by the real modbit-cli binary across separate processes",
+  "both runs go through a plan declaring a protected effect, a typed question answered from the shell, a queued FOLLOW_UP line, a workspace change, git.worktree.create, the Destructive git.worktree.close approved from another shell while the run holds, verification and an accepted review",
+  "the two runs' ordered canonical task-event sequences are equal, as are the final state, the effect receipt (SUCCESS under an approval, the approval's id normalized away) and the review outcome; CreateTask.origin records which surface authored the task",
+  "the provider credential never leaves the Core's custody: the key comes from MODBIT_PROVIDER_API_KEY or stdin, --api-key is refused outright, neither stdout nor stderr carries the value, and a byte scan of every file under the data directory finds it nowhere"
+ ],
+ "tests": [
+  "apps/cli/tests/headless.rs::qual_ev_0126_an_identical_task_runs_the_same_through_the_desktop_client_and_the_headless_cli"
+ ],
+ "audit": "IMPLEMENTED-PARTIAL before: apps/cli was already a real thin client proven end to end by QUAL-PX-000, and the withholding half of REQ-EV-0126 was already built and proven by REQ-EV-0043 (client_capabilities withholds ui.selection, ui.code_view and browser.host from a CLI connection). What was missing was the other half. First missing link: QueueInput — steering is a Core contract docs/11 promotes for desktop, web and headless clients alike, the desktop drives it from the keyboard (PX-024), and the CLI had no verb for it.",
+ "proof": "A real defect, not only a missing test: a repository's hooks are in force only once the session trusts the root, and the CLI held repository.trust with no way to use it, so an identical task did not reach identical canonical states headless. With workspace trust in place the two surfaces' canonical event sequences are equal event for event.",
+ "negative_proof": "Two mutations, both run and both failing as required: removing the headless `workspace trust` fails the comparison on the two HookInvoked events the desktop run has and the headless one does not — the exact defect REQ-EV-0126 forbids; removing `task steer` fails it on TaskInputQueued and TaskSteered.",
+ "limitations": "The parity proof is one task shape under local_trusted (plan, question, steering, change, protected effect with approval and receipt, verification, accepted review); it does not compare a cancelled task, a returned review, a crash mid-run (QUAL-PX-000 covers the headless half of that), a cloud_isolated task or a browser task — the desktop hosts the browser and a headless client cannot, which is the withheld browser.host capability and not a parity gap. pr open / pr update are proven only to the point where the Core refuses a stale candidate revision; the forge path itself is PX-006's qualification. provider configure reads the credential from stdin when the environment variable is absent, so it blocks on a terminal with no input — the documented headless contract, not an interactive prompt. The commands neither surface drives are recorded on the task card and left with their owners; ExportHandoff (IMP-EV-0142), IngestCiResults (PX-009) and ReadObjectRange (REQ-EV-0108) are the ones a headless operator is most likely to want next.",
+ "batch_commits": [
+  "55667dc"
+ ],
+ "runs": [
+  "36114892259"
+ ],
+ "ci": {
+  "run_id": "36114892259",
+  "head_sha": "4f19f3517bd0c0a7689b2efe8b31fdb1c26b25f8",
+  "conclusion": "success",
+  "note": "every job green on macOS, Linux and Windows on the first attempt after main was merged in (the EPR-008 regression seal and DOC-GOV-006 had landed meanwhile); the earlier run 36112700689 was green on the same change before that merge",
+  "json": "evidence/m10/IMP-EV-0126/ci-run-36114892259.json"
+ }
+}

@@ -15775,8 +15775,54 @@
    "milestone": "M10",
    "qual": "QUAL-EV-0126",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-36114892259",
+    "test:qual_ev_0126_an_identical_task_runs_the_same_through_the_desktop_client_and_the_headless_cli",
+    "commit:55667dc",
+    "artifact:evidence/m10/IMP-EV-0126/TASK_CARD.md",
+    "artifact:evidence/m10/IMP-EV-0126/evidence.json",
+    "artifact:evidence/m10/IMP-EV-0126/ci-run-36114892259.json"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-25T11:33:31Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "audited apps/cli against the Core's supported_command_types and the TS client surface"
+    },
+    {
+     "at": "2026-09-25T11:33:31Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "six verbs over existing Core commands; no orchestration, policy, git or tool code in the CLI"
+    },
+    {
+     "at": "2026-09-25T11:33:31Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "task steer, workspace trust, provider configure, recovery show, pr open/update, starter list"
+    },
+    {
+     "at": "2026-09-25T11:33:31Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real modbit-core, real modbit-cli binary and a DESKTOP protocol client on real Git fixtures"
+    },
+    {
+     "at": "2026-09-25T11:33:31Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "the two surfaces' canonical event sequences are equal; both mutations fail the comparison"
+    },
+    {
+     "at": "2026-09-25T11:33:37Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "headless parity proven on the real system; docs 29 and 30 as built"
+    }
+   ],
+   "status_changed_on": "2026-09-25T11:33:37Z"
   },
   {
    "id": "IMP-EV-0127",
