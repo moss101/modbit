@@ -80,13 +80,22 @@ jobs:
           rustup show
           cargo --version
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
-      - name: Start Postgres 16 and MinIO (docs/24 — Postgres and S3-compatible object storage)
+      - name: Start Postgres 16 and SeaweedFS S3 (docs/24 — Postgres and S3-compatible object storage)
+        # The public MinIO images (quay.io/minio, minio/* on Docker Hub) were
+        # withdrawn from anonymous pull; SeaweedFS's S3 gateway, pinned by
+        # digest, serves the same SigV4 path-style API with one identity.
         run: |
+          set -euo pipefail
           docker run -d --name modbit-cloud-pg -e POSTGRES_PASSWORD=modbit -e POSTGRES_USER=modbit -e POSTGRES_DB=modbit -p 127.0.0.1:5439:5432 postgres:16-alpine
-          docker run -d --name modbit-cloud-minio -e MINIO_ROOT_USER=modbit -e MINIO_ROOT_PASSWORD=modbitsecret -p 127.0.0.1:9009:9000 quay.io/minio/minio:latest server /data
-          for i in $(seq 1 30); do docker exec modbit-cloud-pg pg_isready -U modbit && break; sleep 1; done
-          for i in $(seq 1 30); do curl -sf http://127.0.0.1:9009/minio/health/live && break; sleep 1; done
-          docker run --rm --network host --entrypoint sh quay.io/minio/mc:latest -c "mc alias set local http://127.0.0.1:9009 modbit modbitsecret && mc mb -p local/modbit-test"
+          printf '%s' '{"identities":[{"name":"modbit","credentials":[{"accessKey":"modbit","secretKey":"modbitsecret"}],"actions":["Admin","Read","Write","List","Tagging"]}]}' > "$RUNNER_TEMP/s3.json"
+          docker run -d --name modbit-cloud-s3 -v "$RUNNER_TEMP/s3.json:/etc/seaweedfs/s3.json:ro" -p 127.0.0.1:9009:8333 chrislusf/seaweedfs:4.46@sha256:08d516132314207d10c8e37cbffc1f32b147d870169688734cc61c6231625b62 server -s3 -s3.config=/etc/seaweedfs/s3.json -dir=/data
+          for i in $(seq 1 60); do docker exec modbit-cloud-pg pg_isready -U modbit && break; sleep 1; done
+          docker exec modbit-cloud-pg pg_isready -U modbit
+          # Anonymous requests are refused (403) once the gateway is up.
+          for i in $(seq 1 60); do [ "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:9009/ || true)" = "403" ] && break; sleep 1; done
+          for i in $(seq 1 30); do curl -sf -X PUT --user modbit:modbitsecret --aws-sigv4 "aws:amz:us-east-1:s3" http://127.0.0.1:9009/modbit-test && break; sleep 1; done
+          curl -sf --user modbit:modbitsecret --aws-sigv4 "aws:amz:us-east-1:s3" "http://127.0.0.1:9009/modbit-test?list-type=2" > /dev/null
+          test "$(curl -s -o /dev/null -w '%{http_code}' --user modbit:wrong --aws-sigv4 "aws:amz:us-east-1:s3" "http://127.0.0.1:9009/modbit-test?list-type=2")" = "403"
       - name: Build the real modbit-core the cloud worker hosts (M8.2) and the guest the reference backend runs (M8.3)
         run: cargo build --locked -p modbit-core -p modbit-execd -p modbit-guest
       - name: Sandbox substrate (M8.3) — Firecracker v1.17.0, the Firecracker CI kernel 6.1.155, BusyBox 1.35.0, pinned and checksummed; KVM for the runner
@@ -130,7 +139,7 @@ jobs:
           target/debug/guest-image-tool sign --key substrate/publisher.key --key-id ci-publisher --kind reference-guest --image target/debug/modbit-guest --guest-version "$version" --built-from "$GITHUB_SHA" --out substrate/guest.manifest.json
           target/debug/guest-image-tool verify --manifest substrate/rootfs.manifest.json --image substrate/rootfs.ext4 --keys "$keys"
           target/debug/guest-image-tool verify --manifest substrate/guest.manifest.json --image target/debug/modbit-guest --keys "$keys"
-      - name: Cloud API, worker, sandbox backend and gateway qualification (M8.1–M8.9, PX-011 — real Postgres, real MinIO, real modbit-core, real Firecracker MicroVM, signed images, a browser in the guest)
+      - name: Cloud API, worker, sandbox backend and gateway qualification (M8.1–M8.9, PX-011 — real Postgres, real S3-compatible store (SeaweedFS), real modbit-core, real Firecracker MicroVM, signed images, a browser in the guest)
         env:
           MODBIT_CLOUD_TEST_DATABASE_URL: postgres://modbit:modbit@127.0.0.1:5439/modbit
           MODBIT_CLOUD_TEST_S3_ENDPOINT: http://127.0.0.1:9009

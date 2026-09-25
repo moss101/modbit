@@ -1,7 +1,7 @@
 # Modbit Dossier Manifest — V3.3 EPR v1.1
 
 > **Authority date:** 2026-09-05  
-> **Generated:** 2026-09-24 by `tools/build_manifest.py`  
+> **Generated:** 2026-09-25 by `tools/build_manifest.py`  
 > **Scope:** every specification file in `docs/` plus the root governing files and tooling. The previous `99_MANIFEST.md` covered only 39 Part 2 files; this manifest covers all 90 docs.
 > **Machine-readable twin:** `manifest.json` (same content, same hashes).
 
@@ -15,13 +15,13 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 |---|---|---:|---:|
 | Authority and orientation | 00–09 | 8 | 65563 |
 | Architecture and subsystems | 10–29 | 20 | 379675 |
-| Implementation specifications | 30–39 | 10 | 152824 |
+| Implementation specifications | 30–39 | 10 | 152915 |
 | Requirements, tasks and traceability | 40–49 | 10 | 351840 |
-| Verification and testing | 50–69 | 15 | 211102 |
+| Verification and testing | 50–69 | 15 | 213558 |
 | Delivery and operations | 70–79 | 8 | 57891 |
 | Agent process and governance | 80–97 | 18 | 122655 |
 | Live state | 98–99 | 1 | 11899 |
-| **Total docs** | | **90** | **1353449** |
+| **Total docs** | | **90** | **1355996** |
 
 ## Specification files (`docs/`)
 
@@ -56,7 +56,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 28 | `docs/28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md` | Agent competence: planning, verification and repair | architecture | 12521 | `2dbf6183340ee6a0ba808eef2dd1eea147e41a75dc18e5a3ee77c5bfec117e57` |
 | 29 | `docs/29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md` | Client surfaces and source-control integration | architecture | 23716 | `28d33fa4dc71bc46831981c4eb3490c5e24aaeac713edad6594b5798a67882e3` |
 | 30 | `docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md` | Protocol, APIs, and Event Schemas | implementation | 48929 | `f2b0c38e9a099e838918bdbad702cbacd78507a941ff170d677c4ae8fc5b0fc0` |
-| 31 | `docs/31_DATABASE_AND_STORAGE_SCHEMA.md` | Database and Storage Schema | implementation | 15228 | `471cccdabae45c478d38feb0a2db6ead8152cd0dde24fc04ed4bbb11f4d876aa` |
+| 31 | `docs/31_DATABASE_AND_STORAGE_SCHEMA.md` | Database and Storage Schema | implementation | 15319 | `d3e06f3b23aec1e27b22d3020a4c2c96a58a758dda2155cfa584d8389f1e4189` |
 | 32 | `docs/32_DESKTOP_FRONTEND_IMPLEMENTATION.md` | Desktop Frontend Implementation | implementation | 13542 | `33dc6dd7225c3139a0ff6735b0e37d9ea0934ed3e1d6ddb0213f7aabfe69c748` |
 | 33 | `docs/33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md` | Core and Cloud Backend Implementation | implementation | 13639 | `907fccbdc9e41e1002f8576ebdccf2b5875e9368760e8b41849d0f53a6057a84` |
 | 34 | `docs/34_OBSERVABILITY_COST_AND_OPERATIONS_DATA.md` | Observability, Cost, and Operations Data | implementation | 9218 | `23e7d734256f8f7720561bd8ec37e05fc6990df847f3af3e3a91cbf7553a9b63` |
@@ -86,7 +86,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 58 | `docs/58_MULTIMODAL_MEDIA_REAL_TESTS.md` | Multimodal / Media Real-System Tests | verification | 4040 | `317a29984dc65eecf53dcb26cec525deb99499f602cd34ef6fa0ed7e8e402c81` |
 | 59 | `docs/59_RELEASE_ZERO_PROOF_SCENARIO.md` | Release Zero — Single Proof Scenario | verification | 3669 | `15fbb005f7a8196b4987468034f8de113dcd15a1ebd3f34dba822075012064fc` |
 | 60 | `docs/60_RELEASE_ZERO_EXPANDED_PROOF.md` | Release Zero Expanded Proof — Clean-Slate V2 | verification | 4001 | `0a3cc3ce5329c15cafb402833cb6bd70c9c6e4afdbdb838d2a811176c975939e` |
-| 61 | `docs/61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md` | Execution policy qualification and rollout gates | verification | 42076 | `27acefadb50e86b616bbe64818f9f32ef04df15a3ba7bd4c9ab5344651a4d15b` |
+| 61 | `docs/61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md` | Execution policy qualification and rollout gates | verification | 44532 | `3579a3e8ff56c5c9b975921637c0fee8148156a778c919dd87905e6b3fb2cba2` |
 | 62 | `docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md` | Product extension requirements, tasks and qualifications | verification | 88197 | `1212dbd1e9e1bb505b6ae751c39236daece9d1c37eeba7d8e1dde41f5aca6016` |
 | 63 | `docs/63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md` | Agent competence benchmarks and regression suites | verification | 8291 | `431c384790f08d1650efa467d07ef2ac0ad4fc4325c61645433339d347aa933d` |
 | 64 | `docs/64_VERIFICATION_EXECUTION_CONTRACTS.md` | Verification execution contracts: baseline, targeting, result normalization, flake handling and diff invariants | verification | 16239 | `2ebf3003e7f1059fe71db444eec5f1df677088d94bafa32e3c528df865768155` |
@@ -1613,6 +1613,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m9/EPR-011/TASK_CARD.md` | retained evidence | 3608 | `8e92cf48c90213a5308b80a768e43acbbceeef44f317606d002f6a13ff3eb90e` |
 | `evidence/m9/EPR-011/ci-run-35973113878.json` | retained evidence | 42281 | `2b9a718546fbabebd7c478ce074b9c802272c74e16e37fccc2bf981403e75439` |
 | `evidence/m9/EPR-011/evidence.json` | retained evidence | 3095 | `a320ff2dfd7e0768e98344c609f8f17972784065a83dde2a2ad46f13773cee97` |
+| `evidence/m9/EPR-019/TASK_CARD.md` | retained evidence | 3429 | `a0bf047033093cfd317a75ac4ed04ff7f12d320c00e05981d696c23ab96c31ab` |
 | `evidence/m9/IMP-EV-0029/TASK_CARD.md` | retained evidence | 5847 | `c53b7ceef274f93431b76a1aa2899c5d279a4f12f866efba7f298826a660faac` |
 | `evidence/m9/IMP-EV-0029/ci-run-35944145033.json` | retained evidence | 42281 | `91276f04a38724b673d62b00f25f91cd4091fbec331b7c15cc9156235ece1318` |
 | `evidence/m9/IMP-EV-0029/evidence.json` | retained evidence | 3282 | `30375710856afd41c4137209d659dc5a428efc8ff6269a23afa2246ed5a07918` |
@@ -1689,8 +1690,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m9/PX-009/TASK_CARD.md` | retained evidence | 3716 | `143ff5f9be712b78a43f415d143fba93a8568e2f9b6980d28e278d4731838fa2` |
 | `evidence/m9/PX-009/ci-run-35830456557.json` | retained evidence | 42199 | `508168affe8ad4b8a13e97c3d4f855efbf4255325e88b58fec882ad41376033a` |
 | `evidence/m9/PX-009/evidence.json` | retained evidence | 2230 | `61d514ff843ff8750fecb6fd7d4936bd84d3255b2e9d2e72cbbc32901de9d99e` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 41188 | `891fbb6a37adedcfdc3b7d4c406161cbe52494ac1125ce303d8b856577aa384b` |
-| `graph/project-graph.json` | project driver graph with live status | 1589630 | `8855310bad2a37bc9fe77ffa08df3f8e77fcf99fe73a1168c81fcc31825fe69c` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 41188 | `ce55db017d89bdeebe186344842aed904698909fa270137f338aeb5625dd86af` |
+| `graph/project-graph.json` | project driver graph with live status | 1589630 | `d70836636bc9749d92eb30e35ec46a105b64f439012baa756eb7490e5e515814` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 55743 | `fa344b571dcaca99416164ea352cbe7ff4ba8484aeb8f580779e433c839976bd` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 17596 | `5c9b7a782d245223726f860ca583d766929a6f5662b644adebee64d257ad426b` |

@@ -103,7 +103,7 @@ pub type Result<T> = std::result::Result<T, CloudError>;
 /// tenant-scoped content-hashed keys, signed short-lived URLs).
 #[derive(Clone, Debug)]
 pub struct S3Config {
-    /// Endpoint URL (`https://s3.amazonaws.com`, or a MinIO endpoint).
+    /// Endpoint URL (`https://s3.amazonaws.com`, or any S3-compatible endpoint).
     pub endpoint: String,
     /// Bucket.
     pub bucket: String,
@@ -113,7 +113,7 @@ pub struct S3Config {
     pub access_key_id: String,
     /// Secret access key (memory only; never logged).
     pub secret_access_key: String,
-    /// Allow a plain-HTTP endpoint (local MinIO only).
+    /// Allow a plain-HTTP endpoint (a local S3-compatible store only).
     pub allow_http: bool,
 }
 

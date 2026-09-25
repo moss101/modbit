@@ -2,13 +2,13 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-09-24",
+  "generated_on": "2026-09-25",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 90,
-    "root_and_tooling": 1576,
-    "docs_bytes": 1353449
+    "root_and_tooling": 1577,
+    "docs_bytes": 1355996
   },
   "sections": [
     {
@@ -320,8 +320,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Database and Storage Schema",
-      "bytes": 15228,
-      "sha256": "471cccdabae45c478d38feb0a2db6ead8152cd0dde24fc04ed4bbb11f4d876aa"
+      "bytes": 15319,
+      "sha256": "d3e06f3b23aec1e27b22d3020a4c2c96a58a758dda2155cfa584d8389f1e4189"
     },
     {
       "path": "docs/32_DESKTOP_FRONTEND_IMPLEMENTATION.md",
@@ -590,8 +590,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Execution policy qualification and rollout gates",
-      "bytes": 42076,
-      "sha256": "27acefadb50e86b616bbe64818f9f32ef04df15a3ba7bd4c9ab5344651a4d15b"
+      "bytes": 44532,
+      "sha256": "3579a3e8ff56c5c9b975921637c0fee8148156a778c919dd87905e6b3fb2cba2"
     },
     {
       "path": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
@@ -8321,6 +8321,11 @@
       "sha256": "a320ff2dfd7e0768e98344c609f8f17972784065a83dde2a2ad46f13773cee97"
     },
     {
+      "path": "evidence/m9/EPR-019/TASK_CARD.md",
+      "bytes": 3429,
+      "sha256": "a0bf047033093cfd317a75ac4ed04ff7f12d320c00e05981d696c23ab96c31ab"
+    },
+    {
       "path": "evidence/m9/IMP-EV-0029/TASK_CARD.md",
       "bytes": 5847,
       "sha256": "c53b7ceef274f93431b76a1aa2899c5d279a4f12f866efba7f298826a660faac"
@@ -8703,12 +8708,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 41188,
-      "sha256": "891fbb6a37adedcfdc3b7d4c406161cbe52494ac1125ce303d8b856577aa384b"
+      "sha256": "ce55db017d89bdeebe186344842aed904698909fa270137f338aeb5625dd86af"
     },
     {
       "path": "graph/project-graph.json",
       "bytes": 1589630,
-      "sha256": "8855310bad2a37bc9fe77ffa08df3f8e77fcf99fe73a1168c81fcc31825fe69c"
+      "sha256": "d70836636bc9749d92eb30e35ec46a105b64f439012baa756eb7490e5e515814"
     },
     {
       "path": "tools/build_graph.py",
