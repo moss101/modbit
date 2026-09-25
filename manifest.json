@@ -8,7 +8,7 @@
   "counts": {
     "docs": 90,
     "root_and_tooling": 1601,
-    "docs_bytes": 1377878
+    "docs_bytes": 1379172
   },
   "sections": [
     {
@@ -248,8 +248,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Security, Policy, Capabilities, Secrets, and Effect Ledger",
-      "bytes": 19385,
-      "sha256": "c5117226dd1cbf94ff0cbeb6fc8743d97a648cbdd05f316075595cc03e6d07ff"
+      "bytes": 20225,
+      "sha256": "35bcea180e8f9bfee42b8cf21e6afcf2bf0ce11fb86cd2b8d93a421dd3de7628"
     },
     {
       "path": "docs/24_CLOUD_CONTROL_PLANE_AND_SYNC.md",
@@ -590,8 +590,8 @@
       "section": "verification",
       "section_title": "Verification and testing",
       "title": "Execution policy qualification and rollout gates",
-      "bytes": 44532,
-      "sha256": "3579a3e8ff56c5c9b975921637c0fee8148156a778c919dd87905e6b3fb2cba2"
+      "bytes": 44986,
+      "sha256": "c9929445ac4d98fde8fea87be19d54d9e01808052af53d09ed3f1b113db3badb"
     },
     {
       "path": "docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md",
@@ -5897,8 +5897,8 @@
     },
     {
       "path": "evidence/m4/EPR-008/TASK_CARD.md",
-      "bytes": 10168,
-      "sha256": "b5b2f5fc43661039447441a4ebb7129e15c3ba39397010eb6878b282f90a1aa1"
+      "bytes": 13544,
+      "sha256": "32bf46599365a61e32b537dcbc24eb89c408eae2f1920218de46ccfd423a584f"
     },
     {
       "path": "evidence/m4/EPR-008/ci-run-34637382928.json",
@@ -8427,8 +8427,8 @@
     },
     {
       "path": "evidence/m9/EPR-019/TASK_CARD.md",
-      "bytes": 3429,
-      "sha256": "a0bf047033093cfd317a75ac4ed04ff7f12d320c00e05981d696c23ab96c31ab"
+      "bytes": 4893,
+      "sha256": "92621bac54156ce5c0b4d3593361e3e0e10bb79e9a51d851ee1e90e70454fe5a"
     },
     {
       "path": "evidence/m9/EPR-019/ci-run-36025675554.json",

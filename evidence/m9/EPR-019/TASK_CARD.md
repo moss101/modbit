@@ -26,7 +26,14 @@
 - No approved threshold profile exists: the release check fails until the owner approves one (docs/61 — the dossier invents no numbers). EPR-GATE-D, E and G stay OPEN on that decision.
 - The corpora are small (8 + 18): the intervals are wide and a real profile's sample minima will need more cases.
 - The acceptance corpus uses one fixture language (Rust) so it runs on every CI platform; the risk corpus is facts, not repositories.
-- A found rule defect (the `.env.*` secret surface) is raised as its own task, not fixed here.
+- A found rule defect (the `.env.*` secret surface) is raised as its own task, not fixed here (fixed since as the EPR-008 regression `risk-rules-2`; see below).
+
+## Re-measured under `risk-rules-2` (2026-09-24)
+
+- The rule defect above was fixed as an EPR-008 regression: the secret surface carries the basename prefix `.env.*`, and a suffix or basename prefix is compared without ASCII case. On the same holdout, `env-production` is now CRITICAL with review and a human — no longer a false negative or a critical miss; risk false negatives 2/13 (the dependency bump and the payments change), false positives 0/5, critical-surface misses 0/6; the acceptance rates are unchanged. The bundle reports `risk-rules-2`.
+- Independence: `env-production` informed that fix, so its outcome is no longer independent evidence for the secret surface. Before an approved threshold profile relies on `critical_surface_miss_rate`, the holdout needs fresh critical-surface cases in new lineages — and more of them: 0/6 still has a Wilson upper bound of 0.39.
+- EPR-FI-019 kept: with no observed critical miss the pinned rates alone would not catch a suppressed miss, so the test also judges `env-production` under the pre-fix rules (the secret surface without `.env.*`) and requires a false negative and a critical miss that the rate counts; suppressing `critical_miss` in `run_risk_case` fails it.
+- `wilson` now clamps each bound to its side of the estimate: 0/6 had computed a lower bound of 2.8e-17 above a rate of 0, which the interval invariant in the test caught.
 
 ## Evidence
 

@@ -207,3 +207,44 @@ pub(crate) fn summary(r: &RealizedRisk) -> String {
         }
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use modbit_policy::SurfaceKind;
+
+    use super::*;
+
+    /// docs/23: the workspace denies a write to these paths without an
+    /// approval, and a process or an approved write can still change one —
+    /// the risk rules must never call that change LOW. Each protected glob
+    /// is turned into a sample path at the root and nested, and every one
+    /// must be on the secret surface; the only exceptions are named. A new
+    /// protected credential store without a secret pattern fails here.
+    #[test]
+    fn every_credential_store_the_workspace_protects_is_on_the_secret_surface() {
+        let policy = AssurancePolicy::default();
+        let not_credentials = |g: &str| {
+            // Git internals never reach a candidate's changed files; CI
+            // workflows are the CI/CD surface.
+            g.contains(".git/") || g.contains(".github/workflows/")
+        };
+        for glob in modbit_workspace::paths::DEFAULT_PROTECTED {
+            if not_credentials(glob) {
+                continue;
+            }
+            let sample = glob
+                .trim_start_matches("**/")
+                .replace("/**", "/x")
+                .replace('*', "x");
+            for path in [sample.clone(), format!("nested/dir/{sample}")] {
+                assert!(
+                    policy
+                        .surfaces_of(&path)
+                        .iter()
+                        .any(|s| s.kind == SurfaceKind::Secret),
+                    "`{path}` (protected by `{glob}`) is not on the secret surface"
+                );
+            }
+        }
+    }
+}

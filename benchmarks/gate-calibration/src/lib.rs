@@ -721,8 +721,10 @@ pub fn wilson(count: u32, n: u32) -> Rate {
         count,
         n,
         rate: p,
-        lower: (centre - half).max(0.0),
-        upper: (centre + half).min(1.0),
+        // The interval contains the estimate; at 0 or n the bound is exact,
+        // not a rounding error on the wrong side of it.
+        lower: (centre - half).clamp(0.0, p),
+        upper: (centre + half).clamp(p, 1.0),
     }
 }
 

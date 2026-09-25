@@ -18958,7 +18958,7 @@ async fn qual_epr_008_factual_risk_stays_strict_despite_passing_tests_and_stops_
         r.reasons.iter().all(|x| x.code != "UNEXPECTED_SCOPE"),
         "the plan declared both paths: {r:?}"
     );
-    assert_eq!(r.rules_version, "risk-rules-1");
+    assert_eq!(r.rules_version, "risk-rules-2");
     assert_eq!(r.policy_version, a.policy_version);
     assert!(r.forbidden_effects_requested.is_empty());
     assert!(r.evidence_refs.iter().any(|e| e.starts_with("facts:")));
@@ -19067,6 +19067,103 @@ async fn qual_epr_008_factual_risk_stays_strict_despite_passing_tests_and_stops_
     );
 }
 
+/// QUAL-EPR-008 regression (`risk-rules-2`; EPR-019 holdout case
+/// `env-production`): a `.env.<name>` file is a credential store. The file
+/// service never writes one (a protected path), but a process can: an
+/// unattended task rewrites a tracked `config/.env.production` through
+/// `shell.exec`, its check passes, and it tries to complete. The COMPLETION
+/// run derives CRITICAL on the SECRET surface with a human required, so the
+/// completion is refused (ASSURANCE_HUMAN_REQUIRED) and the run stops safely.
+/// Under `risk-rules-1` the same candidate was LOW and went to review.
+#[tokio::test]
+async fn qual_epr_008_a_dotenv_file_a_process_rewrites_is_a_secret_and_stops_an_unattended_run() {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    use serde_json::json;
+    let files: [(&str, &str); 2] = [
+        ("config/.env.production", "API_KEY=old\n"),
+        (
+            "check.sh",
+            "grep -q 'API_KEY=rotated' config/.env.production\n",
+        ),
+    ];
+    let (repo, root) = plain_repo(&files);
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "rotate the production key", "expected_files": ["config/.env.production"], "verification": ["sh check.sh"]}}]}),
+        json!({"calls": [{"name": "shell.exec", "args": {"argv": ["sh", "-c", "printf 'API_KEY=rotated\\n' > config/.env.production"], "inherit_env": true}}]}),
+        json!({"calls": [{"name": "test.run", "args": {"argv": ["sh", "check.sh"], "inherit_env": true}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "rotated", "self_review": {"findings": []}, "verification": ["sh check.sh"]}}]}),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x0E)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x0F, "local_autonomous").await;
+    let start = envelope_fenced(
+        id16(0x10),
+        "StartTask",
+        StartTask {
+            task_id: Some(task.clone()),
+            endpoint: "openai".into(),
+            model: "gpt-5".into(),
+            max_turns: 12,
+            max_tool_calls: 0,
+            max_no_progress_turns: 2,
+            skills: vec![],
+        }
+        .encode_to_vec(),
+        g,
+    );
+    let _: TaskRunStarted = Client::result(&c.command(start).await.unwrap()).unwrap();
+    let st = wait_task(&mut c, &task, 90).await;
+    let all = serde_json::to_string(&seen.lock().unwrap().clone()).unwrap();
+    // The real effect: the process rewrote the credential file.
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("config/.env.production")).unwrap(),
+        "API_KEY=rotated\n",
+        "{st:?}\n{all}"
+    );
+    assert_ne!(
+        st.state, "ReadyForReview",
+        "a rewritten .env.production is never proposed for acceptance unattended: {st:?}"
+    );
+    assert_eq!(st.state, "Waiting", "{st:?}");
+    assert!(all.contains("COMPLETION_REFUSED"), "{all}");
+    assert!(all.contains("ASSURANCE_HUMAN_REQUIRED"), "{all}");
+    let a = task_assurance(&mut c, &task).await;
+    assert!(a.derived, "{a:?}");
+    let r = a.realized_risk.clone().unwrap();
+    assert_eq!(r.level, "CRITICAL", "{r:?}");
+    assert!(r.independent_review_required && r.human_required, "{r:?}");
+    assert!(
+        r.reasons.iter().any(|x| x.code == "PROTECTED_SURFACE"
+            && x.surface == "SECRET"
+            && x.paths == ["config/.env.production"]),
+        "{r:?}"
+    );
+    assert_eq!(r.rules_version, "risk-rules-2");
+    let evs = task_events(&core, &session, &task).await;
+    assert!(
+        evs.iter()
+            .any(|(_, t, p)| t == "VerificationRunRecorded" && p["status"] == "PASSED"),
+        "the check passed and the risk stayed CRITICAL: {evs:?}"
+    );
+    assert!(
+        !evs.iter().any(|(_, t, _)| t == "TaskReadyForReview"),
+        "{evs:?}"
+    );
+    assert!(
+        !evs.iter().any(|(_, t, _)| t == "ApprovalRequested"),
+        "no approval was invented in the human's place: {evs:?}"
+    );
+}
+
 async fn decide_review(
     c: &mut Client,
     task: &Id,
@@ -19152,7 +19249,7 @@ async fn qual_epr_017_acceptance_is_evidence_at_the_revision_and_never_erases_a_
     assert_eq!(gate.verdict, "ACCEPT", "{gate:?}");
     assert_eq!(gate.trigger, "COMPLETION_RUN");
     assert_eq!(gate.gate_version, "gate-1");
-    assert_eq!(gate.risk_version, "risk-rules-1");
+    assert_eq!(gate.risk_version, "risk-rules-2");
     assert_eq!(
         gate.realized_risk_ref,
         a.realized_risk.as_ref().unwrap().realized_risk_ref
