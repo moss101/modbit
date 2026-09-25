@@ -303,6 +303,9 @@ class DossierTests(unittest.TestCase):
         out = self.run_tool("graph", "show", "DOC-GOV-006")
         for required in ("DOC-GOV-005", "DR-GOV-2026-09-24-006", "77_RELEASE_ZERO_EXECUTION_GOAL.md", "97_DOSSIER_MAINTENANCE_LOG.md", "governance"):
             self.assertIn(required, out)
+        out = self.run_tool("graph", "show", "DOC-GOV-007")
+        for required in ("DOC-GOV-006", "DR-GOV-2026-09-25-007", "77_RELEASE_ZERO_EXECUTION_GOAL.md", "97_DOSSIER_MAINTENANCE_LOG.md", "governance"):
+            self.assertIn(required, out)
         out = self.run_tool("graph", "show", "DOC-GOV-001")
         for required in ("DOC-EPR-002", "DR-GOV-2026-09-05", "96_DOSSIER_GOVERNANCE_MAINTENANCE_TASK_AND_HANDOFF.md", "governance"):
             self.assertIn(required, out)

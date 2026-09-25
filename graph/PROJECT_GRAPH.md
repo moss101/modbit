@@ -16,10 +16,10 @@ One JSON file that answers *what exists, what depends on what, what proves what,
 | `subsystem` | 23 | canonical single-owner boundary (docs/81); owns REQ rows and IMP tasks; delivered in a primary milestone |
 | `requirement` | 352 | REQ-EV from docs/40, additive REQ-EPR from docs/49 or additive REQ-PX from docs/62 |
 | `imp_task` | 323 | IMP-EV from docs/41, EPR from docs/49 or PX from docs/62; carries status and evidence |
-| `dossier_task` | 14 | governance package work outside product milestone roll-ups |
+| `dossier_task` | 15 | governance package work outside product milestone roll-ups |
 | `release_gate` | 7 | EPR promotion gate from docs/61; derived state OPEN/TASKS_COMPLETE/SATISFIED; carries attestation evidence, never a lifecycle status |
 | `source_patch` | 2 | immutable user-supplied patch provenance |
-| `change_record` | 10 | explicit approved dossier amendment |
+| `change_record` | 11 | explicit approved dossier amendment |
 | `qual_test` | 352 | QUAL-EV from docs/42, QUAL-EPR from docs/61 or QUAL-PX from docs/62 |
 | `release` | 3 | ALPHA / BETA / RELEASE_ZERO projection from docs/75; readiness derived from included work items and required gates, never stored |
 | `scenario` | 155 | E2E-nnn, WSK-E2E-nnn, MEDIA-E2E-nnn, EPR-E2E/FI-nnn or PX-E2E-nnn scenario, or FI-nn fault case |
@@ -31,11 +31,11 @@ One JSON file that answers *what exists, what depends on what, what proves what,
 | `references` | 532 | doc → doc (explicit filename mention) |
 | `depends_on` | 18 | milestone → milestone it requires COMPLETE first |
 | `part_of` | 78 | milestone_task → milestone |
-| `after` | 190 | work item → required COMPLETE work item, including cross-milestone EPR dependencies |
+| `after` | 191 | work item → required COMPLETE work item, including cross-milestone EPR dependencies |
 | `delivered_in` | 22 | subsystem → primary milestone |
-| `specified_by` | 211 | subsystem → doc |
+| `specified_by` | 214 | subsystem → doc |
 | `owned_by_req` | 352 | requirement → subsystem |
-| `owned_by` | 337 | imp_task → subsystem |
+| `owned_by` | 338 | imp_task → subsystem |
 | `scheduled_in` | 323 | imp_task → milestone |
 | `implemented_by` | 323 | requirement → imp_task |
 | `qualified_by` | 352 | requirement → qual_test |
@@ -44,7 +44,7 @@ One JSON file that answers *what exists, what depends on what, what proves what,
 | `constrains` | 63 | decision → subsystem |
 | `requires_task` | 27 | release gate → required implementation task |
 | `extends` | 87 | additive requirement → related preserved EV requirement |
-| `authorized_by` | 195 | adopted task/decision/requirement → approved change record |
+| `authorized_by` | 196 | adopted task/decision/requirement → approved change record |
 | `adopts` | 2 | change record → immutable source patch |
 | `supersedes` | 10 | new authority → prior authority, only within the recorded scope |
 | `refines` | 5 | v1.1 source/change → previous source/change; non-conflicting authority survives |
@@ -123,7 +123,7 @@ Each canonical subsystem is a single-owner boundary (`docs/81_ARCHITECTURE_GUARD
 ```mermaid
 flowchart TB
   subgraph M0["M0 — Repository and authority"]
-    governance["Architecture Governance & Product Scope<br/>17 tasks"]
+    governance["Architecture Governance & Product Scope<br/>18 tasks"]
   end
   subgraph M1["M1 — Durable local shell and Core"]
     domain_events["Domain Model, Event Store & Protocol State<br/>20 tasks"]
@@ -179,7 +179,7 @@ flowchart TB
 | `eval-bench` Eval Harness & Benchmarks | M3 | `benchmarks/retrieval`, `benchmarks/context-economics`, `benchmarks/agent-engineering`, `benchmarks/latency` | `53`, `61`, `63`, `38` | 21 | 18 | MOD-JIT-001, ADR-R-044, ADR-R-051, ADR-R-056 |
 | `extensions-hooks` Hook Bus, Extension System & Importers | M9 | `crates/tools (hooks)`, `crates/skills (import)` | `25` | 8 | 7 | — |
 | `external-tools` MCP Hub, Integrations & Web Gateway | M9 | `crates/tools (external.*)`, `crates/tools (forge.*)` | `16`, `29` | 6 | 5 | — |
-| `governance` Architecture Governance & Product Scope | M0 | `tools/architecture-lint`, `tools/evidence-check`, `docs/decisions` | `02`, `03`, `76`, `81`, `82` | 9 | 17 | MOD-PROD-001, MOD-IDE-001, MOD-IDE-002, MOD-COV-001 |
+| `governance` Architecture Governance & Product Scope | M0 | `tools/architecture-lint`, `tools/evidence-check`, `docs/decisions` | `02`, `03`, `76`, `81`, `82` | 9 | 18 | MOD-PROD-001, MOD-IDE-001, MOD-IDE-002, MOD-COV-001 |
 | `media` Media Pipeline & Artifact Store | M5 | `crates/tools (media)`, `object store` | `25` | 5 | 5 | MOD-MEDIA-001, MOD-MEDIA-002, MOD-MM-001 |
 | `memory` Engineering Memory | M9 | `crates/memory` | `19` | 1 | 1 | — |
 | `model-gateway` Execution Policy Router & Provider Gateway | M2 | `crates/providers` | `15`, `27`, `38` | 11 | 11 | ADR-R-039, ADR-R-040, ADR-R-041, ADR-R-047, ADR-R-049, ADR-R-050 |
@@ -374,6 +374,7 @@ flowchart LR
 - `DOC-PX-006`: COMPLETE; Product extension stage F: verification execution mechanics, scope bounds, repair policy and agent harness contracts; evidence: run:dossier-px-006-2026-09-05-final, artifact:evidence/dossier-px-006/validation.json, artifact:evidence/dossier-px-006/tests.log, revision:sha256:060860f40e2b4c8180d52047013627d38a48692bb51af19efc5a9951bcb82c4f, commit:4a3f6df023f82c03df1a8fd7051a219d885232ed
 - `DOC-GOV-005`: COMPLETE; Release Zero execution goal: derived goal command and execution plan; evidence: run:dossier-gov-005-2026-09-19-final, artifact:evidence/dossier-gov-005/validation.json, artifact:evidence/dossier-gov-005/tests.log, revision:sha256:b89b79a782386ad26beeb570ea1242e53088ec1f8d3f0775198b81de99748e5d, commit:49cbc43c7336a0058fa510b2f02235b5914acecd
 - `DOC-GOV-006`: COMPLETE; Correct stale Release Zero goal and IMP-EV-0245 card wording; evidence: run:gha-36111240164, commit:abc2833d7537ef91c9eb9b3de4c9091d6f2bfbf4, artifact:evidence/dossier-gov-006/validation.json, artifact:evidence/dossier-gov-006/tests.log, artifact:evidence/dossier-gov-006/tests-after-merge.log, revision:sha256:f83e0e2ff17e8272cac36f66e5ab2b6aeda5ea1171961fa82aa03c68b6fe66f4
+- `DOC-GOV-007`: NOT_STARTED; Correct the Release Zero goal's provider-credential Unblocks cell; evidence: none
 
 ## Milestone tasks in execution order
 
