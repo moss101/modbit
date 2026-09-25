@@ -8,7 +8,53 @@
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
+
+use modbit_protocol::client::Client;
+use modbit_protocol::local::{Endpoint, ReadyLine, decode_hex, encode_hex};
+use modbit_protocol::v1::{
+    AcquireSessionLease, ApprovalList, ApprovalResolvedAck, ClientKind, CommandEnvelope,
+    CreateSession, CreateTask, DecideReview, EffectReceiptList, GetCodeView, GetEffectReceipts,
+    GetTaskStatus, Id, InputQueued, ListApprovals, ListQuestions, QuestionList, QuestionResponded,
+    QueueInput, RepositoryTrusted, ResolveApproval, RespondToQuestion, ReviewDecided,
+    SessionCreated, SessionLeaseAcquired, StartTask, TaskCreated, TaskRunStarted, TaskStatus,
+    TrustRepository,
+};
+use prost::Message;
+
+/// Command ids only have to be unique within this test binary.
+static NEXT_COMMAND: AtomicU64 = AtomicU64::new(1);
+
+fn command_id() -> Id {
+    let n = NEXT_COMMAND.fetch_add(1, Ordering::Relaxed);
+    let mut value = vec![0u8; 16];
+    value[..8].copy_from_slice(&n.to_be_bytes());
+    Id { value }
+}
+
+fn envelope(command_type: &str, payload: Vec<u8>) -> CommandEnvelope {
+    envelope_fenced(command_type, payload, None)
+}
+
+fn envelope_fenced(
+    command_type: &str,
+    payload: Vec<u8>,
+    generation: Option<u64>,
+) -> CommandEnvelope {
+    CommandEnvelope {
+        command_id: Some(command_id()),
+        tenant_id: None,
+        user_id: None,
+        session_id: None,
+        aggregate_id: None,
+        expected_generation: generation,
+        command_type: command_type.into(),
+        schema_version: 1,
+        payload,
+        issued_at: None,
+    }
+}
 
 fn core_bin() -> PathBuf {
     let cli = PathBuf::from(env!("CARGO_BIN_EXE_modbit-cli"));
@@ -784,4 +830,728 @@ fn qual_ev_0181_0210_an_extension_skill_installs_lists_runs_its_procedure_and_su
         )),
         "{out}"
     );
+}
+
+// ---------------------------------------------------------------------------
+// QUAL-EV-0126 — headless parity
+// ---------------------------------------------------------------------------
+
+/// A fixture repository, identical for both surfaces, declaring one repository
+/// hook in its Project configuration layer. A repository's hooks are code it
+/// asks the Core to run, so they are in force only once the session has
+/// trusted the root: a surface that cannot trust one runs the same goal under
+/// different rules.
+fn parity_fixture(parent: &Path, name: &str) -> String {
+    let repo = parent.join(name);
+    std::fs::create_dir_all(repo.join(".modbit")).unwrap();
+    std::fs::write(repo.join("a.txt"), "a\n").unwrap();
+    let command = if cfg!(windows) {
+        serde_json::json!(["cmd", "/c", "exit 0"])
+    } else {
+        serde_json::json!(["true"])
+    };
+    // A configuration layer declares each hook as a JSON declaration
+    // (`HookSpec::parse`); this repository's is the Project layer's.
+    let hook = serde_json::json!({"name": "parity", "point": "before_run", "command": command})
+        .to_string();
+    std::fs::write(
+        repo.join(".modbit/config.json"),
+        serde_json::json!({ "hooks": [hook] }).to_string(),
+    )
+    .unwrap();
+    git(&repo, &["init", "-q", "-b", "main"]);
+    git(&repo, &["add", "-A"]);
+    git(
+        &repo,
+        &[
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@e",
+            "commit",
+            "-q",
+            "-m",
+            "base",
+        ],
+    );
+    repo.canonicalize()
+        .unwrap()
+        .to_string_lossy()
+        .trim_start_matches(r"\\?\")
+        .to_owned()
+}
+
+/// The script both surfaces drive: a plan that declares a protected effect, a
+/// typed question, one workspace change, the protected effect itself (which
+/// waits for an approval and leaves a receipt), a completion. `worktree` is the
+/// surface's own scratch worktree path.
+fn parity_script(worktree: &str) -> Vec<serde_json::Value> {
+    vec![
+        serde_json::json!({"calls": [{"name": "plan.update", "args": {"outcome": "greet", "expected_files": ["out.txt"], "protected_effects": ["git.worktree.close"]}}]}),
+        serde_json::json!({"calls": [{"name": "user.ask", "args": {"question": "Which greeting?", "options": [{"id": "hi", "label": "hi"}, {"id": "hello", "label": "hello"}], "reason": "change_set"}}]}),
+        serde_json::json!({"calls": [{"name": "change.apply", "args": {"path": "out.txt", "op": "create", "content": "hi\n"}}]}),
+        serde_json::json!({"calls": [{"name": "git.worktree.create", "args": {"branch": "t/parity", "path": worktree}}]}),
+        serde_json::json!({"calls": [{"name": "git.worktree.close", "args": {"path": worktree}}]}),
+        serde_json::json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}),
+    ]
+}
+
+/// The scratch worktree both surfaces use, in the form the Git tools take. Each
+/// run creates it and its protected effect removes it again, so the two runs can
+/// name the same path — which is what makes the two tasks byte-identical.
+fn parity_worktree(parent: &Path) -> String {
+    parent
+        .join("parity-wt")
+        .to_string_lossy()
+        .trim_start_matches(r"\\?\")
+        .replace('\\', "/")
+}
+
+/// The canonical shape of a finished task, as any surface can read it back:
+/// the ordered canonical event types of the task's own log, its final state,
+/// and its effect receipts. Ids, offsets, timestamps and paths are what differ
+/// between two runs of the same goal; none of them is a canonical state.
+/// A policy decision names the approval it rests on by id; the id is not a
+/// canonical state, the fact that the effect rested on an approval is.
+fn decision_shape(decision: &str) -> &str {
+    decision.split(':').next().unwrap_or(decision)
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct Canonical {
+    events: Vec<String>,
+    state: String,
+    wait_reason: String,
+    receipts: Vec<String>,
+    review_state: String,
+}
+
+fn canonical_from_json(lines: &[serde_json::Value], task_hex: &str) -> Vec<String> {
+    lines
+        .iter()
+        .filter(|l| l["task_id"].as_str() == Some(task_hex))
+        .map(|l| l["event_type"].as_str().unwrap_or_default().to_owned())
+        .collect()
+}
+
+#[test]
+fn qual_ev_0126_an_identical_task_runs_the_same_through_the_desktop_client_and_the_headless_cli() {
+    let core = core_bin();
+    let tmp = tempfile::tempdir().unwrap();
+    let data_dir = tmp.path().join("profile");
+    std::fs::create_dir_all(&data_dir).unwrap();
+    let repo_cli = parity_fixture(tmp.path(), "repo-cli");
+    let repo_desktop = parity_fixture(tmp.path(), "repo-desktop");
+    let base = scripted_model(parity_script(&parity_worktree(tmp.path())));
+    let cli = Cli {
+        data_dir: data_dir.clone(),
+        core: core.clone(),
+        env: vec![
+            ("MODBIT_OPENAI_BASE_URL".into(), base.clone()),
+            ("OPENAI_API_KEY".into(), String::new()),
+            ("ANTHROPIC_API_KEY".into(), String::new()),
+        ],
+    };
+
+    // ---- the headless surface, driven by the real CLI binary ----
+    let (code, out, err) = cli.run(&["session", "create"]);
+    assert_eq!(code, 0, "{err}");
+    let sid_cli = out.trim().strip_prefix("session ").unwrap().to_owned();
+    // The verb this task adds: without it a headless task never gets the
+    // repository's hooks, so the same goal ran under different rules.
+    let (code, out, err) = cli.run(&["workspace", "trust", "--session", &sid_cli, &repo_cli]);
+    assert_eq!(code, 0, "{out}{err}");
+    assert!(out.contains("scope=repository"), "{out}");
+    let (code, out, err) = cli.run(&[
+        "task",
+        "create",
+        "--session",
+        &sid_cli,
+        "--workspace",
+        &repo_cli,
+        "greet",
+    ]);
+    assert_eq!(code, 0, "{err}");
+    let tid_cli = out.trim().strip_prefix("task ").unwrap().to_owned();
+    let (code, out, err) = cli.run(&[
+        "task",
+        "run",
+        "--session",
+        &sid_cli,
+        "--task",
+        &tid_cli,
+        "--endpoint",
+        "openai",
+        "--model",
+        "gpt-5",
+        "--wait",
+    ]);
+    assert_eq!(code, 2, "{out}{err}");
+    assert!(out.contains("state=Waiting wait_reason=UserInput"), "{out}");
+    let (code, out, _) = cli.run(&["question", "list", "--task", &tid_cli]);
+    assert_eq!(code, 0, "{out}");
+    let qid_cli = out
+        .lines()
+        .find_map(|l| l.strip_prefix("question "))
+        .unwrap()
+        .split(' ')
+        .next()
+        .unwrap()
+        .to_owned();
+    // Steering is a Core contract for every client kind (docs/11), so it is
+    // part of what the two surfaces must do identically.
+    let (code, out, err) = cli.run(&[
+        "task",
+        "steer",
+        "--session",
+        &sid_cli,
+        "--task",
+        &tid_cli,
+        "--mode",
+        "FOLLOW_UP",
+        "and now the other greeting",
+    ]);
+    assert_eq!(code, 0, "{out}{err}");
+    assert!(
+        out.contains("mode=FOLLOW_UP") && out.contains("sequence="),
+        "{out}"
+    );
+    // The protected effect the plan declared waits for a decision, and a
+    // headless operator makes it from another shell while the run holds.
+    let approver = {
+        let cli2 = Cli {
+            data_dir: data_dir.clone(),
+            core: core.clone(),
+            env: cli.env.clone(),
+        };
+        let sid2 = sid_cli.clone();
+        std::thread::spawn(move || {
+            for _ in 0..1_800 {
+                let (_, out, _) = cli2.run(&["approval", "list", "--session", &sid2]);
+                if let Some(id) = out
+                    .lines()
+                    .find(|l| l.contains("status=REQUESTED"))
+                    .and_then(|l| l.strip_prefix("approval "))
+                    .and_then(|l| l.split(' ').next())
+                {
+                    let (code, out, err) = cli2.run(&[
+                        "approval",
+                        "resolve",
+                        "--session",
+                        &sid2,
+                        "--approval",
+                        id,
+                        "approve",
+                        "ok",
+                    ]);
+                    assert!(code == 0 && out.contains("status=APPROVED"), "{out}{err}");
+                    return true;
+                }
+                std::thread::sleep(Duration::from_millis(100));
+            }
+            false
+        })
+    };
+    let (code, out, err) = cli.run(&[
+        "question",
+        "answer",
+        "--session",
+        &sid_cli,
+        "--task",
+        &tid_cli,
+        "--question",
+        &qid_cli,
+        "--option",
+        "hi",
+        "--endpoint",
+        "openai",
+        "--model",
+        "gpt-5",
+        "--wait",
+    ]);
+    assert_eq!(code, 0, "{out}{err}");
+    assert!(
+        approver.join().unwrap(),
+        "the protected effect was approved from another shell"
+    );
+    let (code, out, err) = cli.run(&[
+        "review",
+        "decide",
+        "--session",
+        &sid_cli,
+        "--task",
+        &tid_cli,
+        "accept",
+        "ok",
+    ]);
+    assert_eq!(code, 0, "{out}{err}");
+    assert!(out.contains("review decided state=Completed"), "{out}");
+
+    // ---- the desktop surface, driven by a Desktop-kind protocol client on
+    // ---- the same Core the CLI spawned
+    let ready = ReadyLine::parse(
+        std::fs::read_to_string(data_dir.join("core.ready"))
+            .expect("the CLI's Core left a ready line")
+            .trim(),
+    )
+    .expect("ready line");
+    let secret = decode_hex(&ready.boot_secret_hex).expect("boot secret");
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    let desktop = rt.block_on(drive_desktop(&ready.endpoint, &secret, &repo_desktop));
+
+    // ---- the same canonical states ----
+    let (code, out, err) = cli.run(&[
+        "events",
+        "tail",
+        "--session",
+        &sid_cli,
+        "--after",
+        "0",
+        "--count",
+        "2000",
+        "--json",
+    ]);
+    assert_eq!(code, 0, "{err}");
+    let cli_lines: Vec<serde_json::Value> = out
+        .lines()
+        .map(|l| serde_json::from_str(l).unwrap())
+        .collect();
+    let headless = Canonical {
+        events: canonical_from_json(&cli_lines, &tid_cli),
+        state: "Completed".into(),
+        wait_reason: String::new(),
+        receipts: {
+            let (_, out, _) = cli.run(&["receipts", "--task", &tid_cli]);
+            let mut kinds: Vec<String> = out
+                .lines()
+                .filter(|l| l.starts_with("receipt "))
+                .map(|l| {
+                    let field = |k: &str| {
+                        l.split_whitespace()
+                            .find_map(|w| w.strip_prefix(k))
+                            .unwrap_or_default()
+                    };
+                    format!(
+                        "{}/{}",
+                        field("status="),
+                        decision_shape(field("decision="))
+                    )
+                })
+                .collect();
+            kinds.sort();
+            kinds
+        },
+        review_state: "Completed".into(),
+    };
+    assert_eq!(
+        headless, desktop,
+        "the same task must reach the same canonical states through either surface\nheadless: {headless:#?}\ndesktop: {desktop:#?}"
+    );
+    // The hook the repository declared ran on both surfaces: trust is what put
+    // it in force, and the headless surface can now grant it.
+    assert!(
+        headless.events.iter().any(|e| e == "HookInvoked"),
+        "the repository's hook ran headlessly: {:?}",
+        headless.events
+    );
+
+    // ---- the declared differences ----
+    // The task's provenance records which surface authored it, and nothing else.
+    let origins: Vec<&str> = cli_lines
+        .iter()
+        .filter(|l| l["event_type"] == "TaskCreated")
+        .filter_map(|l| l["payload"]["origin"].as_str())
+        .collect();
+    assert!(origins.contains(&"cli"), "{origins:?}");
+    // A UI-only surface is refused to a headless connection at the transport,
+    // and the task it named stays valid (REQ-EV-0043, docs/30).
+    let refusal = rt.block_on(code_view_as_cli(
+        &ready.endpoint,
+        &secret,
+        parse_test_id(&tid_cli),
+    ));
+    assert_eq!(
+        refusal, "CLIENT_CAPABILITY",
+        "a headless client holds no ui.code_view"
+    );
+    let (code, out, _) = cli.run(&["task", "status", "--task", &tid_cli]);
+    assert_eq!(code, 0, "the refused UI request left the task valid: {out}");
+    assert!(out.contains("state=Completed"), "{out}");
+
+    // ---- the rest of the contracts this task made reachable headlessly ----
+    // Recovery evidence: the same report the desktop reads after a restart.
+    let (code, out, err) = cli.run(&["recovery", "show"]);
+    assert_eq!(code, 0, "{err}");
+    assert!(
+        out.contains("recovery boot_generation=") && out.contains("tasks="),
+        "{out}"
+    );
+    // Onboarding: the stacks the repository was detected as.
+    let (code, out, err) = cli.run(&["starter", "list", "--workspace", &repo_cli]);
+    assert_eq!(code, 0, "{err}");
+    assert!(out.starts_with("stacks "), "{out}");
+    // A pull request is bound to the revision the review accepted, and the
+    // binding is checked before anything reaches a forge.
+    let (code, out, _) = cli.run(&[
+        "pr",
+        "open",
+        "--session",
+        &sid_cli,
+        "--task",
+        &tid_cli,
+        "--revision",
+        "99",
+    ]);
+    assert_ne!(code, 0, "a stale revision opens no pull request: {out}");
+
+    // ---- the provider credential never leaves the Core's custody ----
+    let key = "sk-parity-0126-secret";
+    let with_key = Cli {
+        data_dir: data_dir.clone(),
+        core: core.clone(),
+        env: {
+            let mut e = cli.env.clone();
+            e.push(("MODBIT_PROVIDER_API_KEY".into(), key.into()));
+            e
+        },
+    };
+    let (code, out, err) = with_key.run(&[
+        "provider",
+        "configure",
+        "--provider",
+        "openai",
+        "--base-url",
+        &base,
+    ]);
+    assert_eq!(code, 0, "{err}");
+    assert!(out.contains("credential=available"), "{out}");
+    assert!(
+        !out.contains(key) && !err.contains(key),
+        "the CLI never echoes a credential"
+    );
+    // Nor does it accept one on the command line, where a process list would
+    // read it.
+    let (code, _, err) = cli.run(&[
+        "provider",
+        "configure",
+        "--provider",
+        "openai",
+        "--api-key",
+        key,
+    ]);
+    assert_eq!(code, 1, "{err}");
+    assert!(err.contains("never goes on the command line"), "{err}");
+    // And nothing under the data directory carries the value.
+    let mut found = Vec::new();
+    scan_for(&data_dir, key.as_bytes(), &mut found);
+    assert!(found.is_empty(), "a credential reached storage: {found:?}");
+}
+
+fn parse_test_id(hex: &str) -> Id {
+    Id {
+        value: decode_hex(hex).expect("hex id"),
+    }
+}
+
+/// Every file under `dir` whose bytes contain `needle`.
+fn scan_for(dir: &Path, needle: &[u8], found: &mut Vec<PathBuf>) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for e in entries.flatten() {
+        let p = e.path();
+        if p.is_dir() {
+            scan_for(&p, needle, found);
+        } else if let Ok(bytes) = std::fs::read(&p)
+            && bytes.windows(needle.len()).any(|w| w == needle)
+        {
+            found.push(p);
+        }
+    }
+}
+
+/// `GetCodeView` from a headless connection: the code the transport refuses it
+/// with.
+async fn code_view_as_cli(endpoint: &Endpoint, secret: &[u8], task_id: Id) -> String {
+    let mut c = Client::connect(endpoint, secret, ClientKind::Cli, "test")
+        .await
+        .expect("connect");
+    match c
+        .command(envelope(
+            "GetCodeView",
+            GetCodeView {
+                task_id: Some(task_id),
+                path: "a.txt".into(),
+                expected_file_revision: String::new(),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+    {
+        Err(modbit_protocol::client::ClientError::Rejected { code, .. }) => code,
+        Err(e) => panic!("unexpected transport error: {e}"),
+        Ok(_) => panic!("a headless client must not be served a UI-only surface"),
+    }
+}
+
+/// The same task, driven start to finish by a Desktop-kind client.
+async fn drive_desktop(endpoint: &Endpoint, secret: &[u8], repo: &str) -> Canonical {
+    let mut c = Client::connect(endpoint, secret, ClientKind::Desktop, "test")
+        .await
+        .expect("connect");
+    let ack = c
+        .command(envelope(
+            "CreateSession",
+            CreateSession { space_id: None }.encode_to_vec(),
+        ))
+        .await
+        .expect("session");
+    let created: SessionCreated = Client::result(&ack).expect("session");
+    let sid = created.session_id.expect("session id");
+    let ack = c
+        .command(envelope(
+            "AcquireSessionLease",
+            AcquireSessionLease {
+                session_id: Some(sid.clone()),
+                owner: "desktop test".into(),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .expect("lease");
+    let lease: SessionLeaseAcquired = Client::result(&ack).expect("lease");
+    let g = Some(lease.lease_generation);
+    let ack = c
+        .command(envelope_fenced(
+            "TrustRepository",
+            TrustRepository {
+                session_id: Some(sid.clone()),
+                workspace_root: repo.into(),
+                scope: "repository".into(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .expect("trust");
+    let _: RepositoryTrusted = Client::result(&ack).expect("trust");
+    let ack = c
+        .command(envelope_fenced(
+            "CreateTask",
+            CreateTask {
+                session_id: Some(sid.clone()),
+                goal_text: "greet".into(),
+                workspace_id: None,
+                execution_profile: String::new(),
+                origin: "desktop".into(),
+                workspace_root: repo.into(),
+                issue_url: String::new(),
+                issue_json: String::new(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .expect("task");
+    let task: TaskCreated = Client::result(&ack).expect("task");
+    let tid = task.task_id.expect("task id");
+    start_desktop_run(&mut c, &tid, g).await;
+    let status = wait_for_desktop(&mut c, &sid, &tid, g, &["Waiting"]).await;
+    assert_eq!(status.wait_reason, "UserInput", "{status:?}");
+    let ack = c
+        .command(envelope(
+            "ListQuestions",
+            ListQuestions {
+                task_id: Some(tid.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .expect("questions");
+    let questions: QuestionList = Client::result(&ack).expect("questions");
+    let q = questions
+        .questions
+        .into_iter()
+        .find(|q| !q.answered)
+        .expect("an open question");
+    let ack = c
+        .command(envelope_fenced(
+            "QueueInput",
+            QueueInput {
+                task_id: Some(tid.clone()),
+                input_id: "parity-follow-up".into(),
+                mode: "FOLLOW_UP".into(),
+                text: "and now the other greeting".into(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .expect("steer");
+    let _: InputQueued = Client::result(&ack).expect("steer");
+    let ack = c
+        .command(envelope_fenced(
+            "RespondToQuestion",
+            RespondToQuestion {
+                task_id: Some(tid.clone()),
+                question_id: q.question_id,
+                option_id: "hi".into(),
+                text: String::new(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .expect("answer");
+    let _: QuestionResponded = Client::result(&ack).expect("answer");
+    start_desktop_run(&mut c, &tid, g).await;
+    wait_for_desktop(&mut c, &sid, &tid, g, &["ReadyForReview"]).await;
+    let ack = c
+        .command(envelope_fenced(
+            "DecideReview",
+            DecideReview {
+                task_id: Some(tid.clone()),
+                decision: "ACCEPT".into(),
+                rejected: vec![],
+                note: "ok".into(),
+                expected_workspace_revision: 0,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .expect("review");
+    let decided: ReviewDecided = Client::result(&ack).expect("review");
+    let status = wait_for_desktop(&mut c, &sid, &tid, g, &["Completed"]).await;
+    let ack = c
+        .command(envelope(
+            "GetEffectReceipts",
+            GetEffectReceipts {
+                task_id: Some(tid.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .expect("receipts");
+    let receipts: EffectReceiptList = Client::result(&ack).expect("receipts");
+    let mut kinds: Vec<String> = receipts
+        .receipts
+        .into_iter()
+        .map(|r| format!("{}/{}", r.status, decision_shape(&r.policy_decision)))
+        .collect();
+    kinds.sort();
+    let task_hex = encode_hex(&tid.value);
+    c.subscribe(sid, 0).await.expect("subscribe");
+    let mut events = Vec::new();
+    while let Ok(Ok(Some(e))) =
+        tokio::time::timeout(std::time::Duration::from_millis(500), c.next_event()).await
+    {
+        let ev = e.event.unwrap_or_default();
+        if ev.task_id.as_ref().map(|t| encode_hex(&t.value)).as_deref() == Some(task_hex.as_str()) {
+            events.push(ev.event_type);
+        }
+    }
+    Canonical {
+        events,
+        state: status.state,
+        wait_reason: status.wait_reason,
+        receipts: kinds,
+        review_state: decided.task_state,
+    }
+}
+
+async fn start_desktop_run(c: &mut Client, task_id: &Id, generation: Option<u64>) {
+    let ack = c
+        .command(envelope_fenced(
+            "StartTask",
+            StartTask {
+                task_id: Some(task_id.clone()),
+                endpoint: "openai".into(),
+                model: "gpt-5".into(),
+                max_turns: 0,
+                max_tool_calls: 0,
+                max_no_progress_turns: 0,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            generation,
+        ))
+        .await
+        .expect("start");
+    let _: TaskRunStarted = Client::result(&ack).expect("start");
+}
+
+/// Poll the task's status until it reaches one of `states`, approving the
+/// protected effect the run waits on — the decision the CLI's operator makes
+/// from another shell.
+async fn wait_for_desktop(
+    c: &mut Client,
+    session_id: &Id,
+    task_id: &Id,
+    generation: Option<u64>,
+    states: &[&str],
+) -> TaskStatus {
+    for _ in 0..1_800 {
+        resolve_desktop_approvals(c, session_id, generation).await;
+        let ack = c
+            .command(envelope(
+                "GetTaskStatus",
+                GetTaskStatus {
+                    task_id: Some(task_id.clone()),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .expect("status");
+        let status: TaskStatus = Client::result(&ack).expect("status");
+        if states.contains(&status.state.as_str()) && !status.loop_alive {
+            return status;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    }
+    panic!("the task never reached {states:?}");
+}
+
+/// Approve every approval the task's run is waiting on.
+async fn resolve_desktop_approvals(c: &mut Client, session_id: &Id, generation: Option<u64>) {
+    let Ok(ack) = c
+        .command(envelope(
+            "ListApprovals",
+            ListApprovals {
+                session_id: Some(session_id.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+    else {
+        return;
+    };
+    let Ok(list) = Client::result::<ApprovalList>(&ack) else {
+        return;
+    };
+    for a in list
+        .approvals
+        .into_iter()
+        .filter(|a| a.status == "REQUESTED")
+    {
+        let ack = c
+            .command(envelope_fenced(
+                "ResolveApproval",
+                ResolveApproval {
+                    approval_id: a.approval_id,
+                    approve: true,
+                    reason: "ok".into(),
+                    intent_hash: a.intent_hash,
+                }
+                .encode_to_vec(),
+                generation,
+            ))
+            .await
+            .expect("approve");
+        let r: ApprovalResolvedAck = Client::result(&ack).expect("approve");
+        assert_eq!(r.status, "APPROVED", "{r:?}");
+    }
 }
