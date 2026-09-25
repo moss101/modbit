@@ -881,7 +881,10 @@ def cmd_render(args):
         sys.stdout.write(text)
 
 
-def main(argv=None):
+def build_parser():
+    """The command surface. Exposed so tools/example_runner.py can ask this
+    tool itself whether an invocation the dossier prints is still valid
+    (REQ-EV-0212), instead of guessing."""
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sp = p.add_subparsers(dest="cmd")
     a = sp.add_parser("ready"); a.add_argument("--all", action="store_true"); a.add_argument("--release"); a.set_defaults(fn=cmd_ready)
@@ -896,6 +899,11 @@ def main(argv=None):
     a = sp.add_parser("render"); a.add_argument("--write", action="store_true"); a.set_defaults(fn=cmd_render)
     a = sp.add_parser("path"); a.set_defaults(fn=cmd_path)
     a = sp.add_parser("stats"); a.set_defaults(fn=cmd_stats)
+    return p
+
+
+def main(argv=None):
+    p = build_parser()
     args = p.parse_args(argv)
     if not args.cmd:
         p.print_help()
