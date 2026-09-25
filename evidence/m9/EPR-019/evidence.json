@@ -36,5 +36,23 @@
   "conclusion": "success",
   "note": "every job green on macOS, Linux and Windows on the first attempt, including the cloud job on SeaweedFS after the MinIO images were withdrawn",
   "json": "evidence/m9/EPR-019/ci-run-36025675554.json"
- }
+ },
+ "remeasurements": [
+  {
+   "risk_version": "risk-rules-2",
+   "why": "the .env.* secret-surface defect this suite found was fixed as an EPR-008 regression",
+   "result": "env-production CRITICAL with review and a human, no longer a false negative or a critical miss; risk false negatives 2/13 (dependency-bump, payments-charge), false positives 0/5, critical-surface misses 0/6 (Wilson upper 0.39, so the strict test profile still fails UNSAFE_GATE); acceptance rates unchanged",
+   "independence": "env-production informed the fix and no longer counts as independent evidence for the secret surface; an approved profile relying on critical_surface_miss_rate needs fresh critical-surface cases in new lineages",
+   "fault_injection": "the test also judges env-production under the pre-fix rules (secret surface without .env.*) and requires a counted critical miss; disabling critical_miss in run_risk_case fails it",
+   "wilson": "bounds clamp to their side of the estimate; 0/6 had computed a lower bound of 2.8e-17 above a rate of 0",
+   "commit": "5415428",
+   "ci": {
+    "run_id": "36177270964",
+    "head_sha": "a438d37281b01f7cdc808a8be8b1a65fc524ae55",
+    "conclusion": "success",
+    "url": "https://github.com/moss101/modbit/actions/runs/36177270964",
+    "json": "evidence/m9/EPR-019/ci-run-36177270964.json"
+   }
+  }
+ ]
 }

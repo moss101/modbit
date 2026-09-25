@@ -72,6 +72,34 @@
     "url": "https://github.com/moss101/modbit/actions/runs/36111360538",
     "json": "evidence/m4/EPR-008/ci-run-36111360538.json"
    }
+  },
+  {
+   "id": "dotenv-secret-surface",
+   "found": "2026-09-24, EPR-019 held-out risk corpus (benchmarks/gate-calibration/corpora/risk-holdout.json, case env-production)",
+   "defect": "derive_realized_risk classified a change to config/.env.production as LOW with no review and no human: the secret surface's `.env` pattern matched only as a path suffix, so every .env.<name> file (the credential files docs/23's protected paths deny as **/.env.*) fell through; the surface also lacked the other credential stores docs/23 protects (.ssh/, id_rsa*, id_ed25519*, .netrc, .npmrc, .pypirc), and suffixes were case-sensitive, so certs\\Server.KEY was not a secret.",
+   "audit": "BROKEN-DRIFTED: the rule set had drifted from docs/23's protected paths; first missing link: no pattern shape for a basename prefix.",
+   "fix": "REALIZED_RISK_RULES_VERSION risk-rules-2: a basename-prefix pattern shape (.env.*) carried by the secret surface with the other docs/23 credential stores (/.ssh/ segment, id_rsa*, id_ed25519*, .netrc, .npmrc, .pypirc); a suffix or basename prefix is compared without ASCII case; directories, segments and basenames stay exact; a suffix has no '/', so only a basename's end matches (environment.rs, dotenv.rs, hotkey.rs match nothing). Default policy version assurance-8531202d7bf6dd6d -> assurance-2b11ce09853c8650. A Core drift guard requires every DEFAULT_PROTECTED credential glob to be on the secret surface. DI-9 uses the same matcher (d036dd1), so question-required suffixes are case-insensitive too (a strengthening). EPR-008 corpus re-pinned 23 -> 29 cases (existing diagnoses move only their two versions).",
+   "tests": [
+    "services/modbit-core/tests/surface_protocol.rs::qual_epr_008_a_dotenv_file_a_process_rewrites_is_a_secret_and_stops_an_unattended_run",
+    "crates/policy/src/assurance.rs::tests::every_dotenv_file_is_a_secret_and_nothing_that_only_looks_like_one",
+    "crates/policy/src/assurance.rs::tests::every_credential_store_docs_23_protects_is_a_secret_and_its_lookalikes_are_not",
+    "services/modbit-core/src/assurance.rs::tests::every_credential_store_the_workspace_protects_is_on_the_secret_surface",
+    "crates/policy/tests/assurance_corpus.rs::qual_epr_008_fault_corpus_pins_every_rule_and_no_signal_lowers_assurance",
+    "services/modbit-core/tests/surface_protocol.rs::qual_epr_008_factual_risk_stays_strict_despite_passing_tests_and_stops_safely_unattended",
+    "services/modbit-core/tests/surface_protocol.rs::qual_epr_017_acceptance_is_evidence_at_the_revision_and_never_erases_a_human_obligation",
+    "benchmarks/gate-calibration/tests/calibration.rs::qual_epr_019_gates_are_measured_independently_on_the_holdout_and_an_unsafe_gate_fails_release"
+   ],
+   "negative_proof": "Disposable mutations, restored: without the .env.* pattern the unit test fails on config/.env.production, the corpus pin fails, and the real-Core test fails because the unattended local_autonomous run rewriting config/.env.production reaches ReadyForReview (the defect reproduced through production routing); with case-sensitive suffixes the unit test fails on certs\\Server.KEY and the pin on secret_extension_upper_case; without the six store patterns the drift guard fails on .ssh/x (protected by .ssh/**), the store unit test and the pin fail.",
+   "limitations": "Not covered, as docs/23 does not protect them either: Windows curl's _netrc and id_ecdsa*/id_dsa* keys.",
+   "commit": "5415428",
+   "pr": "https://github.com/moss101/modbit/pull/37",
+   "ci": {
+    "run_id": "36177270964",
+    "head_sha": "a438d37281b01f7cdc808a8be8b1a65fc524ae55",
+    "conclusion": "success",
+    "url": "https://github.com/moss101/modbit/actions/runs/36177270964",
+    "json": "evidence/m4/EPR-008/ci-run-36177270964.json"
+   }
   }
  ]
 }

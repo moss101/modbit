@@ -28552,7 +28552,14 @@
     "test:epr_008_di_9_refuses_a_nested_deploy_write_without_a_typed_question",
     "test:di_9_and_the_risk_rules_agree_on_every_path",
     "artifact:evidence/m4/EPR-008/evidence.json",
-    "artifact:evidence/m4/EPR-008/ci-run-36111360538.json"
+    "artifact:evidence/m4/EPR-008/ci-run-36111360538.json",
+    "run:gha-36177270964",
+    "commit:5415428",
+    "test:qual_epr_008_a_dotenv_file_a_process_rewrites_is_a_secret_and_stops_an_unattended_run",
+    "test:every_dotenv_file_is_a_secret_and_nothing_that_only_looks_like_one",
+    "test:every_credential_store_docs_23_protects_is_a_secret_and_its_lookalikes_are_not",
+    "test:every_credential_store_the_workspace_protects_is_on_the_secret_surface",
+    "artifact:evidence/m4/EPR-008/ci-run-36177270964.json"
    ],
    "notes": [
     {
@@ -28614,9 +28621,39 @@
      "from": "REAL_TESTING",
      "to": "E2E_PROVEN",
      "note": "hosted CI run 36111360538 green on macOS, Linux and Windows at 7105158 (squashed as d036dd1)"
+    },
+    {
+     "at": "2026-09-25T19:26:36Z",
+     "from": "COMPLETE",
+     "to": "IMPLEMENTING",
+     "note": "regression found 2026-09-24 by EPR-019's held-out risk corpus (case env-production): the secret surface's .env matched only as a path suffix, so config/.env.production and every .env.<name> file derived LOW with no review and no human; the surface also lacked docs/23's other credential stores (.ssh/, id_rsa*, id_ed25519*, .netrc, .npmrc, .pypirc) and compared suffixes with case. BROKEN-DRIFTED against docs/23's protected paths; first missing link: no basename-prefix pattern shape"
+    },
+    {
+     "at": "2026-09-25T19:26:36Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "fixed in 5415428 (risk-rules-2): basename-prefix shape .env.*, the docs/23 credential stores on the secret surface, case-insensitive suffixes and prefixes; the same matcher serves DI-9"
+    },
+    {
+     "at": "2026-09-25T19:26:36Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "real Core qual_epr_008_a_dotenv_file_a_process_rewrites_is_a_secret_and_stops_an_unattended_run (reached ReadyForReview without the fix), unit tests, 29-case corpus pin and the Core drift guard over DEFAULT_PROTECTED, each red under its mutation"
+    },
+    {
+     "at": "2026-09-25T19:26:36Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "hosted CI run 36177270964 green (14/14) on macOS, Linux and Windows at a438d37 (squashed as 5415428)"
+    },
+    {
+     "at": "2026-09-25T19:26:36Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "sealed again: card regression section, evidence.json regressions[] dotenv-secret-surface, CI run json"
     }
    ],
-   "status_changed_on": "2026-09-25T08:33:25Z"
+   "status_changed_on": "2026-09-25T19:26:36Z"
   },
   {
    "id": "EPR-009",
@@ -29245,9 +29282,20 @@
     "artifact:evidence/m9/EPR-019/TASK_CARD.md",
     "artifact:evidence/m9/EPR-019/evidence.json",
     "artifact:evidence/m9/EPR-019/ci-run-36025675554.json",
-    "commit:7dd98cc"
+    "commit:7dd98cc",
+    "run:gha-36177270964",
+    "commit:5415428",
+    "artifact:evidence/m9/EPR-019/ci-run-36177270964.json"
    ],
-   "status_changed_on": "2026-09-25T07:37:17Z"
+   "notes": [
+    {
+     "at": "2026-09-25T19:26:36Z",
+     "from": "COMPLETE",
+     "to": "COMPLETE",
+     "note": "re-measured under risk-rules-2 (EPR-008 regression fix): env-production no longer a miss, FN 2/13, critical 0/6; the case informed the fix, so the test also judges it under the pre-fix rules to keep the critical-miss mutation proof; wilson clamps bounds to the estimate"
+    }
+   ],
+   "status_changed_on": "2026-09-25T19:26:36Z"
   },
   {
    "id": "QUAL-EPR-000",
