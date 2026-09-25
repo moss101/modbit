@@ -827,6 +827,27 @@ pub enum TaskEvent {
         /// What the runtime did: `MARKED` (the observation carries the finding) or `BLOCKED`.
         action: String,
     },
+    /// `SloStageRecorded` (IMP-EV-0023, docs/34 "Metrics"): one rung of a
+    /// cloud task's SLO ladder — `REQUESTED` (the run was asked for),
+    /// `PREWARM` (what a warm pool offered: `NONE` today), `SANDBOX_REQUESTED`,
+    /// `SANDBOX_READY` (`warm` when the task's sandbox was reused rather than
+    /// provisioned), `FIRST_TOKEN` (the model's first output of the run) and
+    /// `FIRST_TOOL` (the run's first tool dispatch). No state change.
+    SloStageRecorded {
+        /// The rung.
+        stage: String,
+        /// When (ms since the epoch, the Core's clock).
+        at_ms: i64,
+        /// The run it belongs to, once one exists.
+        #[serde(default)]
+        run_id: Option<String>,
+        /// For `SANDBOX_READY` and `PREWARM`: whether the start was warm.
+        #[serde(default)]
+        warm: Option<bool>,
+        /// What the rung saw (a sandbox id, a model, a tool).
+        #[serde(default)]
+        detail: String,
+    },
     /// `BrowserPageObserved` (M7.3, docs/22 "state fingerprint / delta"):
     /// the agent read the page — in full or as the delta since its last
     /// read — and this is the state it saw, by fingerprint. The delta stream
@@ -2057,6 +2078,7 @@ impl TaskEvent {
             Self::BrowserActionPerformed { .. } => "BrowserActionPerformed",
             Self::BrowserRegionCaptured { .. } => "BrowserRegionCaptured",
             Self::SecurityEventRecorded { .. } => "SecurityEventRecorded",
+            Self::SloStageRecorded { .. } => "SloStageRecorded",
             Self::BrowserCredentialFilled { .. } => "BrowserCredentialFilled",
             Self::SandboxLeaseAcquired { .. } => "SandboxLeaseAcquired",
             Self::TaskHandedOff { .. } => "TaskHandedOff",
@@ -2238,6 +2260,7 @@ impl Task {
             | TaskEvent::BrowserActionPerformed { .. }
             | TaskEvent::BrowserRegionCaptured { .. }
             | TaskEvent::SecurityEventRecorded { .. }
+            | TaskEvent::SloStageRecorded { .. }
             | TaskEvent::TaskPauseRequested { .. }
             | TaskEvent::TaskResumeRequested { .. }
             | TaskEvent::TaskCancelRequested { .. }

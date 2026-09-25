@@ -582,6 +582,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "ConfigureSandboxGateway",
                     "ExportHandoff",
                     "ExportDiagnostics",
+                    "GetSloLadder",
                     "VerifyDiagnostics",
                     "RebindTaskWorkspace",
                     "ImportObjects",
@@ -4521,6 +4522,62 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             };
             accept(cid, false, view.encode_to_vec())
         }
+        "GetSloLadder" => {
+            let Ok(p) = wire::GetSloLadder::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "GetSloLadder");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let task = match core.store.lock().await.task(&task_id) {
+                Ok(Some(t)) => t,
+                Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                Err(e) => return reject(cid, error_code(&e), e.to_string()),
+            };
+            use modbit_observability::slo;
+            let starts = slo::ladder(&crate::slo::ladder(core, &task).await);
+            let summary = slo::summary(&starts);
+            let ms = |v: Option<u64>| v.and_then(|x| i64::try_from(x).ok()).unwrap_or(-1);
+            let at = |v: Option<i64>| v.unwrap_or(-1);
+            let fig = |f: &slo::Figures| wire::SloFiguresView {
+                starts: f.starts,
+                ready_p50_ms: ms(f.ready_p50_ms),
+                ready_max_ms: ms(f.ready_max_ms),
+                first_token_p50_ms: ms(f.first_token_p50_ms),
+                first_token_max_ms: ms(f.first_token_max_ms),
+            };
+            accept(
+                cid,
+                false,
+                wire::SloLadderView {
+                    starts: starts
+                        .iter()
+                        .map(|s| wire::SloStartView {
+                            run_id: s.run_id.clone().unwrap_or_default(),
+                            requested_at_ms: at(s.requested_at_ms),
+                            prewarm: s.prewarm.clone().unwrap_or_default(),
+                            sandbox_requested_at_ms: at(s.sandbox_requested_at_ms),
+                            sandbox_ready_at_ms: at(s.sandbox_ready_at_ms),
+                            first_token_at_ms: at(s.first_token_at_ms),
+                            first_tool_at_ms: at(s.first_tool_at_ms),
+                            start: match s.warm {
+                                Some(true) => "WARM",
+                                Some(false) => "COLD",
+                                None => "UNKNOWN",
+                            }
+                            .into(),
+                            provision_ms: ms(s.provision_ms),
+                            ready_ms: ms(s.ready_ms),
+                            first_token_ms: ms(s.first_token_ms),
+                            first_tool_ms: ms(s.first_tool_ms),
+                        })
+                        .collect(),
+                    cold: Some(fig(&summary.cold)),
+                    warm: Some(fig(&summary.warm)),
+                }
+                .encode_to_vec(),
+            )
+        }
         "ExportDiagnostics" => {
             let Ok(p) = wire::ExportDiagnostics::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "ExportDiagnostics");
@@ -5170,6 +5227,20 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
             // M8.5: a `cloud_isolated` task runs inside a sandbox the
             // gateway issues for it; without one the run does not start.
             if task.execution_profile == modbit_policy::kernel::PROFILE_CLOUD_ISOLATED {
+                // IMP-EV-0023: the ladder's first rungs — the run asked for,
+                // and what a warm pool offered (there is none).
+                crate::slo::record(core, &task, &actor, "REQUESTED", None, None, String::new())
+                    .await;
+                crate::slo::record(
+                    core,
+                    &task,
+                    &actor,
+                    "PREWARM",
+                    None,
+                    Some(false),
+                    "NONE".into(),
+                )
+                .await;
                 let sandbox = match crate::sandboxes::ensure_for_task(core, &task, &actor).await {
                     Ok(h) => h,
                     Err((code, why)) => return reject(cid, &code, why),

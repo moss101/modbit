@@ -26,8 +26,28 @@ pub async fn ensure_for_task(
     task: &Task,
     actor: &Actor,
 ) -> Result<Arc<SandboxHandle>, (String, String)> {
-    if let Some(h) = core.tools.sandboxes.lock().await.get(&task.task_id) {
-        return Ok(Arc::clone(h));
+    let held = core
+        .tools
+        .sandboxes
+        .lock()
+        .await
+        .get(&task.task_id)
+        .map(Arc::clone);
+    if let Some(h) = held {
+        // IMP-EV-0023: a warm start — the task's own sandbox, reused.
+        let id = h.identity().sandbox_id.clone();
+        crate::slo::record(
+            core,
+            task,
+            actor,
+            "SANDBOX_REQUESTED",
+            None,
+            None,
+            id.clone(),
+        )
+        .await;
+        crate::slo::record(core, task, actor, "SANDBOX_READY", None, Some(true), id).await;
+        return Ok(h);
     }
     let Some(custody) = core.tools.sandbox_gateway.lock().await.clone() else {
         return Err((
@@ -118,6 +138,17 @@ pub async fn ensure_for_task(
         credentials,
         browser,
     };
+    // IMP-EV-0023: a cold start — the gateway is asked for a sandbox.
+    crate::slo::record(
+        core,
+        task,
+        actor,
+        "SANDBOX_REQUESTED",
+        None,
+        None,
+        String::new(),
+    )
+    .await;
     let handle = match custody.client.provision(&req).await {
         Ok(h) => h,
         Err(e) => {
@@ -210,6 +241,17 @@ pub async fn ensure_for_task(
     {
         core.last_offset.send_replace(last.offset);
     }
+    drop(store);
+    crate::slo::record(
+        core,
+        task,
+        actor,
+        "SANDBOX_READY",
+        None,
+        Some(false),
+        id.sandbox_id.clone(),
+    )
+    .await;
     eprintln!(
         "modbit-core: task {} runs in sandbox {} ({}, isolated: {}) issued to worker {} at cloud lease generation {}",
         task.task_id,

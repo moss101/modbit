@@ -163,6 +163,8 @@ As built (IMP-EV-0137/0183): `ImportAgentConfig { session_id, source_root, name,
 
 As built (IMP-EV-0032): `TaskEconomicsView` gains `cost_minor`, `currency`, `scale`, `priced_calls`, `unpriced_calls`, `unreported_calls`, `priced_under` and `runs: [RunUsageView { run_id, input_tokens, output_tokens, cost_minor, cost_complete, steps: [StepUsageView { turn_id, model_calls, input_tokens, cached_input_tokens, output_tokens, cost_minor, cost_complete, tool_calls, tool_ms, verification_ms, models, provider_request_ids }] }]`; `ReconcileInvoice { task_id, invoice_json, tolerance_bp }` → `InvoiceReconciliationView { within_tolerance, matched, out_of_tolerance, not_in_log, not_on_invoice, unknown_usage, rows: [InvoiceRowView], tolerance_bp, invoice_digest }` (read-only; docs/34).
 
+As built (IMP-EV-0023): task event `SloStageRecorded { stage REQUESTED | PREWARM | SANDBOX_REQUESTED | SANDBOX_READY | FIRST_TOKEN | FIRST_TOOL, at_ms, run_id?, warm?, detail }` (no state change; `cloud_isolated` tasks only) and `GetSloLadder { task_id }` → `SloLadderView { starts: [SloStartView { run_id, requested_at_ms, prewarm, sandbox_requested_at_ms, sandbox_ready_at_ms, first_token_at_ms, first_tool_at_ms, start COLD | WARM | UNKNOWN, provision_ms, ready_ms, first_token_ms, first_tool_ms }], cold, warm: SloFiguresView { starts, ready_p50_ms, ready_max_ms, first_token_p50_ms, first_token_max_ms } }` (-1 = never reached; docs/34).
+
 ### Security/effects
 `CapabilityLeaseGranted, CapabilityLeaseRevoked, ApprovalRequested, ApprovalResolved, EffectReceiptAppended, SecretHandleUsed, EmergencyStopActivated`.
 
