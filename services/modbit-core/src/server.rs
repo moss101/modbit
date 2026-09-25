@@ -594,6 +594,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "GetTaskEconomics",
                     "GetRequestOutcome",
                     "ReconcileUsage",
+                    "ReconcileInvoice",
                     "GetEffectivePolicy",
                     "SetTaskSelection",
                     "AttachContextDocument",
@@ -3927,6 +3928,31 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
         }
         // REQ-EPR-010 / EPR-FI-010: a late invoice for an attempt of
         // unknown usage, settled once.
+        // IMP-EV-0032: an invoice sample against the task's canonical usage,
+        // row by row; read-only (unknown usage is settled by ReconcileUsage).
+        "ReconcileInvoice" => {
+            let Ok(p) = wire::ReconcileInvoice::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "ReconcileInvoice");
+            };
+            let Some(task_id) = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes) else {
+                return reject(cid, "BAD_PAYLOAD", "task_id required");
+            };
+            let calls = {
+                let store = core.store.lock().await;
+                let task = match store.task(&task_id) {
+                    Ok(Some(t)) => t,
+                    Ok(None) => return reject(cid, "UNKNOWN_TASK", task_id.to_string()),
+                    Err(e) => return reject(cid, error_code(&e), e.to_string()),
+                };
+                let registry = core.gateway.registry();
+                crate::usage::calls(&store, &task.session_id, registry.as_ref()).0
+            };
+            match crate::usage::reconcile_invoice(task_id, &calls, &p.invoice_json, p.tolerance_bp)
+            {
+                Ok(v) => accept(cid, false, v.encode_to_vec()),
+                Err((code, detail)) => reject(cid, &code, detail),
+            }
+        }
         "ReconcileUsage" => {
             let Ok(p) = wire::ReconcileUsage::decode(env.payload.as_slice()) else {
                 return reject(cid, "BAD_PAYLOAD", "ReconcileUsage");

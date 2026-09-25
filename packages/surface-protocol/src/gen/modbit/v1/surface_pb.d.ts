@@ -3188,6 +3188,63 @@ export declare type TaskEconomicsView = Message<"modbit.v1.TaskEconomicsView"> &
    * @generated from field: uint32 regressions = 24;
    */
   regressions: number;
+
+  /**
+   * IMP-EV-0032: every model call priced at its own binding in the active
+   * model registry (minor units, never floating point); unknown is never zero.
+   *
+   * sum over the calls the registry priced
+   *
+   * @generated from field: uint64 cost_minor = 25;
+   */
+  costMinor: bigint;
+
+  /**
+   * the registry's currency ("" when nothing was priced)
+   *
+   * @generated from field: string currency = 26;
+   */
+  currency: string;
+
+  /**
+   * minor units per currency unit, as 10^scale
+   *
+   * @generated from field: uint32 scale = 27;
+   */
+  scale: number;
+
+  /**
+   * @generated from field: uint32 priced_calls = 28;
+   */
+  pricedCalls: number;
+
+  /**
+   * no registry, or it does not price the binding
+   *
+   * @generated from field: uint32 unpriced_calls = 29;
+   */
+  unpricedCalls: number;
+
+  /**
+   * the provider never reported usage: cost unknown
+   *
+   * @generated from field: uint32 unreported_calls = 30;
+   */
+  unreportedCalls: number;
+
+  /**
+   * the registry generation
+   *
+   * @generated from field: string priced_under = 31;
+   */
+  pricedUnder: string;
+
+  /**
+   * attribution per run and per step (turn)
+   *
+   * @generated from field: repeated modbit.v1.RunUsageView runs = 32;
+   */
+  runs: RunUsageView[];
 };
 
 /**
@@ -3195,6 +3252,314 @@ export declare type TaskEconomicsView = Message<"modbit.v1.TaskEconomicsView"> &
  * Use `create(TaskEconomicsViewSchema)` to create a new message.
  */
 export declare const TaskEconomicsViewSchema: GenMessage<TaskEconomicsView>;
+
+/**
+ * IMP-EV-0032: what one run cost, step by step.
+ *
+ * @generated from message modbit.v1.RunUsageView
+ */
+export declare type RunUsageView = Message<"modbit.v1.RunUsageView"> & {
+  /**
+   * @generated from field: string run_id = 1;
+   */
+  runId: string;
+
+  /**
+   * @generated from field: repeated modbit.v1.StepUsageView steps = 2;
+   */
+  steps: StepUsageView[];
+
+  /**
+   * @generated from field: uint64 input_tokens = 3;
+   */
+  inputTokens: bigint;
+
+  /**
+   * @generated from field: uint64 output_tokens = 4;
+   */
+  outputTokens: bigint;
+
+  /**
+   * @generated from field: uint64 cost_minor = 5;
+   */
+  costMinor: bigint;
+
+  /**
+   * every call in the run priced and reported
+   *
+   * @generated from field: bool cost_complete = 6;
+   */
+  costComplete: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.RunUsageView.
+ * Use `create(RunUsageViewSchema)` to create a new message.
+ */
+export declare const RunUsageViewSchema: GenMessage<RunUsageView>;
+
+/**
+ * @generated from message modbit.v1.StepUsageView
+ */
+export declare type StepUsageView = Message<"modbit.v1.StepUsageView"> & {
+  /**
+   * "" for the run's own work outside a turn
+   *
+   * @generated from field: string turn_id = 1;
+   */
+  turnId: string;
+
+  /**
+   * @generated from field: uint32 model_calls = 2;
+   */
+  modelCalls: number;
+
+  /**
+   * @generated from field: uint64 input_tokens = 3;
+   */
+  inputTokens: bigint;
+
+  /**
+   * @generated from field: uint64 cached_input_tokens = 4;
+   */
+  cachedInputTokens: bigint;
+
+  /**
+   * @generated from field: uint64 output_tokens = 5;
+   */
+  outputTokens: bigint;
+
+  /**
+   * @generated from field: uint64 cost_minor = 6;
+   */
+  costMinor: bigint;
+
+  /**
+   * @generated from field: bool cost_complete = 7;
+   */
+  costComplete: boolean;
+
+  /**
+   * @generated from field: uint32 tool_calls = 8;
+   */
+  toolCalls: number;
+
+  /**
+   * time inside the step's tool calls
+   *
+   * @generated from field: uint64 tool_ms = 9;
+   */
+  toolMs: bigint;
+
+  /**
+   * time inside the step's verification checks
+   *
+   * @generated from field: uint64 verification_ms = 10;
+   */
+  verificationMs: bigint;
+
+  /**
+   * @generated from field: repeated string models = 11;
+   */
+  models: string[];
+
+  /**
+   * @generated from field: repeated string provider_request_ids = 12;
+   */
+  providerRequestIds: string[];
+};
+
+/**
+ * Describes the message modbit.v1.StepUsageView.
+ * Use `create(StepUsageViewSchema)` to create a new message.
+ */
+export declare const StepUsageViewSchema: GenMessage<StepUsageView>;
+
+/**
+ * IMP-EV-0032 / QUAL-EV-0032: compare a provider's invoice sample
+ * (`modbit.invoice-sample/1`) with the canonical usage of a task, row by
+ * provider request id, within a tolerance. Read-only: an unknown usage is
+ * settled with ReconcileUsage (EPR-010), not here.
+ *
+ * @generated from message modbit.v1.ReconcileInvoice
+ */
+export declare type ReconcileInvoice = Message<"modbit.v1.ReconcileInvoice"> & {
+  /**
+   * @generated from field: modbit.v1.Id task_id = 1;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * @generated from field: string invoice_json = 2;
+   */
+  invoiceJson: string;
+
+  /**
+   * basis points; 0 means exact
+   *
+   * @generated from field: uint32 tolerance_bp = 3;
+   */
+  toleranceBp: number;
+};
+
+/**
+ * Describes the message modbit.v1.ReconcileInvoice.
+ * Use `create(ReconcileInvoiceSchema)` to create a new message.
+ */
+export declare const ReconcileInvoiceSchema: GenMessage<ReconcileInvoice>;
+
+/**
+ * @generated from message modbit.v1.InvoiceRowView
+ */
+export declare type InvoiceRowView = Message<"modbit.v1.InvoiceRowView"> & {
+  /**
+   * @generated from field: string provider_request_id = 1;
+   */
+  providerRequestId: string;
+
+  /**
+   * MATCHED | OUT_OF_TOLERANCE | MODEL_MISMATCH | UNKNOWN_USAGE |
+   * NOT_IN_LOG (on the invoice, never recorded) | NOT_ON_INVOICE (recorded,
+   * not billed) | OTHER_TASK (another task of the session; not counted)
+   *
+   * @generated from field: string status = 2;
+   */
+  status: string;
+
+  /**
+   * @generated from field: string model = 3;
+   */
+  model: string;
+
+  /**
+   * @generated from field: uint64 invoice_input_tokens = 4;
+   */
+  invoiceInputTokens: bigint;
+
+  /**
+   * @generated from field: uint64 invoice_cached_input_tokens = 5;
+   */
+  invoiceCachedInputTokens: bigint;
+
+  /**
+   * @generated from field: uint64 invoice_output_tokens = 6;
+   */
+  invoiceOutputTokens: bigint;
+
+  /**
+   * -1 when the invoice gives none
+   *
+   * @generated from field: int64 invoice_cost_minor = 7;
+   */
+  invoiceCostMinor: bigint;
+
+  /**
+   * @generated from field: uint64 log_input_tokens = 8;
+   */
+  logInputTokens: bigint;
+
+  /**
+   * @generated from field: uint64 log_cached_input_tokens = 9;
+   */
+  logCachedInputTokens: bigint;
+
+  /**
+   * @generated from field: uint64 log_output_tokens = 10;
+   */
+  logOutputTokens: bigint;
+
+  /**
+   * -1 when unpriced or unknown
+   *
+   * @generated from field: int64 log_cost_minor = 11;
+   */
+  logCostMinor: bigint;
+
+  /**
+   * the largest relative difference
+   *
+   * @generated from field: uint32 delta_bp = 12;
+   */
+  deltaBp: number;
+
+  /**
+   * @generated from field: string run_id = 13;
+   */
+  runId: string;
+
+  /**
+   * @generated from field: string turn_id = 14;
+   */
+  turnId: string;
+};
+
+/**
+ * Describes the message modbit.v1.InvoiceRowView.
+ * Use `create(InvoiceRowViewSchema)` to create a new message.
+ */
+export declare const InvoiceRowViewSchema: GenMessage<InvoiceRowView>;
+
+/**
+ * @generated from message modbit.v1.InvoiceReconciliationView
+ */
+export declare type InvoiceReconciliationView = Message<"modbit.v1.InvoiceReconciliationView"> & {
+  /**
+   * every row of the task MATCHED
+   *
+   * @generated from field: bool within_tolerance = 1;
+   */
+  withinTolerance: boolean;
+
+  /**
+   * @generated from field: uint32 matched = 2;
+   */
+  matched: number;
+
+  /**
+   * OUT_OF_TOLERANCE and MODEL_MISMATCH
+   *
+   * @generated from field: uint32 out_of_tolerance = 3;
+   */
+  outOfTolerance: number;
+
+  /**
+   * @generated from field: uint32 not_in_log = 4;
+   */
+  notInLog: number;
+
+  /**
+   * @generated from field: uint32 not_on_invoice = 5;
+   */
+  notOnInvoice: number;
+
+  /**
+   * @generated from field: uint32 unknown_usage = 6;
+   */
+  unknownUsage: number;
+
+  /**
+   * @generated from field: repeated modbit.v1.InvoiceRowView rows = 7;
+   */
+  rows: InvoiceRowView[];
+
+  /**
+   * @generated from field: uint32 tolerance_bp = 8;
+   */
+  toleranceBp: number;
+
+  /**
+   * sha256 of the invoice as given
+   *
+   * @generated from field: string invoice_digest = 9;
+   */
+  invoiceDigest: string;
+};
+
+/**
+ * Describes the message modbit.v1.InvoiceReconciliationView.
+ * Use `create(InvoiceReconciliationViewSchema)` to create a new message.
+ */
+export declare const InvoiceReconciliationViewSchema: GenMessage<InvoiceReconciliationView>;
 
 /**
  * @generated from message modbit.v1.ListLanguages
