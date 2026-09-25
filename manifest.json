@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 90,
-    "root_and_tooling": 1576,
-    "docs_bytes": 1350546
+    "root_and_tooling": 1577,
+    "docs_bytes": 1353739
   },
   "sections": [
     {
@@ -302,8 +302,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Client surfaces and source-control integration",
-      "bytes": 23716,
-      "sha256": "28d33fa4dc71bc46831981c4eb3490c5e24aaeac713edad6594b5798a67882e3"
+      "bytes": 26540,
+      "sha256": "6f3290b2c5750cc130b4ab3880efa77d1e890adf2e591805a8a7267eb99d5aa2"
     },
     {
       "path": "docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md",
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 48929,
-      "sha256": "f2b0c38e9a099e838918bdbad702cbacd78507a941ff170d677c4ae8fc5b0fc0"
+      "bytes": 49298,
+      "sha256": "bfc81bedfd630029a72a7bfe05c0f56cf90a4b5fc3b12425caeedb464fedd377"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -1554,6 +1554,11 @@
       "path": "evidence/m1/ci-run-34347242710.json",
       "bytes": 1231,
       "sha256": "a238323591f3fc267ff1b4ee8095929379787e5ff43f8b18753446a77c8f4b03"
+    },
+    {
+      "path": "evidence/m10/IMP-EV-0126/TASK_CARD.md",
+      "bytes": 10500,
+      "sha256": "68c13320d0c4b39038ed9b7729c92a4d03b6c569e30761c096ce93d335f9eb93"
     },
     {
       "path": "evidence/m2/IMP-EV-0011/TASK_CARD.md",
