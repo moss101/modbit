@@ -3579,6 +3579,30 @@ async fn qual_ev_0023_a_cloud_tasks_starts_emit_every_slo_timestamp_and_cold_and
         cold.first_token_p50_ms >= 0 && warm.first_token_p50_ms >= 0,
         "{ladder:#?}"
     );
+    // The sandbox lives while the task does: end the task so the guest is
+    // released before the next test uses the backend.
     drop(c);
+    let (s, _) = api
+        .post(
+            &a,
+            &format!("/v1/tasks/{tid}:cancel"),
+            json!({"command_id": uuid::Uuid::now_v7().to_string()}),
+        )
+        .await;
+    assert_eq!(s, 202);
+    until("the sandbox to be released", 120, async || {
+        let (_, v) = api
+            .get(
+                &a,
+                &format!("/v1/events?session_id={sid}&after=0&limit=1000"),
+            )
+            .await;
+        v["events"]
+            .as_array()?
+            .iter()
+            .any(|e| e["envelope"]["event_type"] == "SandboxReleased")
+            .then_some(())
+    })
+    .await;
     worker.stop().await;
 }
