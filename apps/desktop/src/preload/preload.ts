@@ -133,6 +133,29 @@ export interface ContextInspectorSummary {
   prefixCacheMisses: number;
 }
 
+/** M10.1: one session's operations picture, from the Core's log. Counts
+ * of tokens and money are decimal strings (they are 64-bit on the wire). */
+export interface DashboardSummary {
+  generatedAtMs: string;
+  tasksByState: Record<string, number>;
+  tools: { succeeded: number; failed: number; unknownOutcome: number; cancelled: number };
+  cost: { minor: string; currency: string; scale: number; priced: number; unpriced: number; unreported: number };
+  tokens: { input: string; cached: string; output: string };
+  models: { model: string; calls: number; inputTokens: string; outputTokens: string; costMinor: string; unpricedCalls: number }[];
+  tasks: { taskId: string; state: string; modelCalls: number; inputTokens: string; outputTokens: string; costMinor: string; costComplete: boolean; toolCalls: number; starts: number }[];
+  slo: { cold: SloFigures; warm: SloFigures };
+  failures: { offset: string; taskId: string; eventType: string; class: string; code: string }[];
+  providers: string[];
+}
+
+export interface SloFigures {
+  starts: string;
+  readyP50Ms: string;
+  readyMaxMs: string;
+  firstTokenP50Ms: string;
+  firstTokenMaxMs: string;
+}
+
 export interface TaskEconomicsSummary {
   state: string;
   verified: boolean;
@@ -171,6 +194,8 @@ export interface ModbitBridge {
   languages(): Promise<{ language: string; tier: string; label: string; fixture: string; proven: string[]; provisional: string[]; notClaimed: string[]; note: string }[]>;
   contextInspector(taskId: string): Promise<ContextInspectorSummary>;
   taskEconomics(taskId: string): Promise<TaskEconomicsSummary>;
+  /** M10.1: the session's telemetry, cost and SLO dashboard. */
+  dashboard(sessionId: string): Promise<DashboardSummary>;
   /** PX-023: the typed task status (REQ-EV-0073) a snapshot does not carry. */
   taskStatus(taskId: string): Promise<TaskStatusView>;
   attention(sessionId: string): Promise<{ lastOffset: string; items: AttentionItem[] }>;
@@ -243,6 +268,7 @@ const bridge: ModbitBridge = {
   languages: () => ipcRenderer.invoke("languages:list"),
   contextInspector: (taskId: string) => ipcRenderer.invoke("context:inspector", taskId),
   taskEconomics: (taskId: string) => ipcRenderer.invoke("task:economics", taskId),
+  dashboard: (sessionId: string) => ipcRenderer.invoke("dashboard:get", sessionId),
   taskStatus: (taskId: string) => ipcRenderer.invoke("task:status", taskId),
   attention: (sessionId: string) => ipcRenderer.invoke("attention:list", sessionId),
   setTaskSelection: (sessionId: string, taskId: string, selection: unknown) => ipcRenderer.invoke("task:select", sessionId, taskId, selection),

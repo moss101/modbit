@@ -77,6 +77,8 @@ import {
   ContextInspectorViewSchema,
   type ContextInspectorView,
   GetTaskEconomicsSchema,
+  GetDashboardSchema,
+  DashboardViewSchema,
   InvoiceReconciliationViewSchema,
   ReconcileInvoiceSchema,
   SetTaskSelectionSchema,
@@ -121,6 +123,7 @@ import {
   type BrowserHostRequest,
   type BrowserSessionView,
   type TaskEconomicsView,
+  type DashboardView,
   type InvoiceReconciliationView,
   type LanguageList,
   type CommandAck,
@@ -414,6 +417,19 @@ export class CoreClient {
     );
     return fromBinary(TaskEconomicsViewSchema, ack.result);
   }
+  /**
+   * One session's telemetry, cost and SLO picture, aggregated by the Core
+   * from its log when asked (M10.1): task states, tool outcomes, the usage
+   * ledger by model and task, cold and warm SLO figures, recent failures.
+   */
+  async dashboard(sessionId: string): Promise<DashboardView> {
+    const ack = await this.command(
+      "GetDashboard",
+      toBinary(GetDashboardSchema, create(GetDashboardSchema, { sessionId: { value: unhex(sessionId) } })),
+    );
+    return fromBinary(DashboardViewSchema, ack.result);
+  }
+
   /**
    * Compare a provider invoice sample (`modbit.invoice-sample/1`) with the
    * task's canonical usage, row by provider request id, within a tolerance

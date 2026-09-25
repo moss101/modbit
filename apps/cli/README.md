@@ -52,3 +52,7 @@ question or approve an effect while `task run --wait` holds the Core.
 ## Usage and invoices (IMP-EV-0032)
 
 `task economics --task <id>` adds a `ledger` line — the cost in the active registry's minor units, its currency and generation, and how many calls were priced, unpriced or never reported — and, per run and per step, the calls, tokens, cost, tool calls, tool time and verification time. `usage reconcile --task <id> --invoice <file> [--tolerance-bp N]` compares a provider invoice sample (`modbit.invoice-sample/1`, docs/34) with the task's ledger row by provider request id, prints every row that did not match, and exits 1 unless every row is within the tolerance.
+
+## Dashboard (M10.1)
+
+`dashboard --session <id>` prints the session's operations picture as the Core aggregates it from its log: tasks by state; the cost in registry minor units with priced/unpriced/unreported calls; tokens; one line per model and per task (calls, tool calls, cost, SLO starts); tool outcomes; the cold and warm SLO figures across cloud starts (-1 when never reached); recent failures; and provider health. The desktop's Operations pane shows the same view.

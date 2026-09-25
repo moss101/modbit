@@ -25,6 +25,7 @@ mod ci_evidence;
 mod compensation;
 mod config;
 mod critique;
+mod dashboard;
 mod doctor;
 mod economics;
 mod environment;

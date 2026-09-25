@@ -165,6 +165,8 @@ As built (IMP-EV-0032): `TaskEconomicsView` gains `cost_minor`, `currency`, `sca
 
 As built (IMP-EV-0023): task event `SloStageRecorded { stage REQUESTED | PREWARM | SANDBOX_REQUESTED | SANDBOX_READY | FIRST_TOKEN | FIRST_TOOL, at_ms, run_id?, warm?, detail }` (no state change; `cloud_isolated` tasks only) and `GetSloLadder { task_id }` → `SloLadderView { starts: [SloStartView { run_id, requested_at_ms, prewarm, sandbox_requested_at_ms, sandbox_ready_at_ms, first_token_at_ms, first_tool_at_ms, start COLD | WARM | UNKNOWN, provision_ms, ready_ms, first_token_ms, first_tool_ms }], cold, warm: SloFiguresView { starts, ready_p50_ms, ready_max_ms, first_token_p50_ms, first_token_max_ms } }` (-1 = never reached; docs/34).
 
+As built (M10.1): `GetDashboard { session_id }` → `DashboardView { session_id, generated_at_ms, tasks_by_state, tool_succeeded, tool_failed, tool_unknown_outcome, tool_cancelled, cost_minor, currency, scale, priced_calls, unpriced_calls, unreported_calls, input_tokens, cached_input_tokens, output_tokens, models: [DashboardModelRow], tasks: [DashboardTaskRow], slo_cold, slo_warm: SloFiguresView, recent_failures: [DashboardFailureRow], providers }` (read-only; docs/34).
+
 ### Security/effects
 `CapabilityLeaseGranted, CapabilityLeaseRevoked, ApprovalRequested, ApprovalResolved, EffectReceiptAppended, SecretHandleUsed, EmergencyStopActivated`.
 

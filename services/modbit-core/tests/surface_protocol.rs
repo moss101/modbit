@@ -42971,3 +42971,218 @@ async fn qual_ev_0032_a_provider_invoice_reconciles_against_the_canonical_usage_
     drop(c);
     core.kill();
 }
+
+/// M10.1 (docs/34, docs/77 "dashboards over the real usage ledger, SLO
+/// events and cost records, never a mock feed"): the session dashboard is
+/// the Core's own aggregation of its log. One task runs to review priced
+/// under a signed registry, another is refused by its provider; the
+/// dashboard's cost is what the provider billed and the sum of the tasks'
+/// economics, its models and tasks add up to its totals, its tool counts
+/// are the log's, the refusal is among its failures, and no cloud task
+/// means no SLO starts.
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn m10_1_the_dashboard_is_the_sessions_ledger_ladder_and_log_aggregated() {
+    use modbit_protocol::v1::{
+        DashboardView, GetDashboard, GetTaskEconomics, TaskEconomicsView, TaskRunStarted,
+    };
+    use serde_json::json;
+
+    let key = ed25519_dalek::SigningKey::from_bytes(&[33u8; 32]);
+    let keys = format!("ops:{}", hex::encode(key.verifying_key().to_bytes()));
+    let prices = (125, 25, 1_000);
+    let signed = accounting_registry(
+        "registry-dashboard",
+        &key,
+        &[("gpt-5", 125, 25, 1_000), ("gpt-5-mini", 25, 5, 200)],
+    );
+    let (_repo, root) = plain_repo(&[("notes.md", "hello\n")]);
+    let refusal =
+        json!({"error": {"message": "not allowed", "type": "invalid_request_error"}}).to_string();
+    let (base, _) = scripted_models(
+        vec![
+            json!({"calls": [{"name": "plan.update", "args": {"outcome": "read notes", "expected_files": []}}]}),
+            json!({"calls": [{"name": "fs.read", "args": {"path": "notes.md"}}]}),
+            json!({"calls": [{"name": "task.complete", "args": {"summary": "read", "self_review": {"findings": []}}}]}),
+        ],
+        vec![("gpt-5-mini", vec![json!({"http_status": 403, "error_body": refusal})])],
+        None,
+    )
+    .await;
+    let port: u16 = base.rsplit(':').next().unwrap().parse().unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let mut core = CoreProcess::spawn_with_env(
+        dir.path(),
+        &[
+            ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+            ("MODBIT_REGISTRY_KEYS", keys.as_str()),
+        ],
+    );
+    let mut c = core.client().await;
+    activate_registry(&mut c, &signed).await;
+    let (session, _) = create_session(&mut c, id16(0x71)).await;
+    let g = lease_for(&session);
+    let done = create_task_with_profile(&mut c, &session, g, &root, 0x72, "local_trusted").await;
+    // Pinned: an empty model would route to the cheapest binding, the one
+    // this provider refuses.
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x73),
+            "StartTask",
+            modbit_protocol::v1::StartTask {
+                task_id: Some(done.clone()),
+                endpoint: String::new(),
+                model: "gpt-5".into(),
+                max_turns: 8,
+                max_tool_calls: 0,
+                max_no_progress_turns: 3,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let st = wait_for_state(&mut c, &done, "ReadyForReview", 120).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let refused = create_task_with_profile(&mut c, &session, g, &root, 0x74, "local_trusted").await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x75),
+            "StartTask",
+            modbit_protocol::v1::StartTask {
+                task_id: Some(refused.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 8,
+                max_tool_calls: 0,
+                max_no_progress_turns: 3,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    let deadline = std::time::Instant::now() + Duration::from_secs(60);
+    loop {
+        let st = wait_task(&mut c, &refused, 1).await;
+        if !st.failure_code.is_empty() {
+            break;
+        }
+        assert!(std::time::Instant::now() < deadline, "{st:?}");
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+
+    let ack = c
+        .command(envelope(
+            id16(0x76),
+            "GetDashboard",
+            GetDashboard {
+                session_id: Some(session.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let d: DashboardView = Client::result(&ack).unwrap();
+    let served: Vec<ReportedUsage> = REPORTED_USAGE
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|r| r.0 == port)
+        .cloned()
+        .collect();
+    assert_eq!(
+        d.cost_minor,
+        served
+            .iter()
+            .map(|r| billed(r.2, r.3, r.4, prices))
+            .sum::<u64>(),
+        "the dashboard's cost is what the provider billed"
+    );
+    assert_eq!(d.currency, "USD");
+    // The tasks' own economics add up to the dashboard.
+    let mut econ_total = 0;
+    for (id, t) in [(0x77, &done), (0x78, &refused)] {
+        let ack = c
+            .command(envelope(
+                id16(id),
+                "GetTaskEconomics",
+                GetTaskEconomics {
+                    task_id: Some(t.clone()),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        let e: TaskEconomicsView = Client::result(&ack).unwrap();
+        econ_total += e.cost_minor;
+        let row = d
+            .tasks
+            .iter()
+            .find(|r| r.task_id == uuid_of(t))
+            .unwrap_or_else(|| panic!("{t:?} on the dashboard: {d:#?}"));
+        assert_eq!(
+            (row.cost_minor, row.model_calls),
+            (e.cost_minor, e.model_calls),
+            "{row:?} vs {e:?}"
+        );
+        assert_eq!(row.tool_calls, e.tool_calls, "{row:?}");
+    }
+    assert_eq!(econ_total, d.cost_minor);
+    assert_eq!(
+        d.models.iter().map(|m| m.cost_minor).sum::<u64>(),
+        d.cost_minor,
+        "the models add up: {d:#?}"
+    );
+    assert_eq!(
+        d.models.iter().map(|m| u64::from(m.calls)).sum::<u64>(),
+        u64::from(d.priced_calls + d.unpriced_calls + d.unreported_calls)
+    );
+    assert_eq!(
+        d.tasks_by_state.get("ReadyForReview"),
+        Some(&1),
+        "{:?}",
+        d.tasks_by_state
+    );
+    assert_eq!(
+        d.tasks_by_state.get("Waiting"),
+        Some(&1),
+        "{:?}",
+        d.tasks_by_state
+    );
+    // The log's tool outcomes.
+    let evs = task_events(&core, &session, &done).await;
+    let succeeded = evs
+        .iter()
+        .filter(|(_, t, _)| t == "ToolCallSucceeded")
+        .count();
+    assert_eq!(d.tool_succeeded as usize, succeeded, "{d:#?}");
+    assert!(
+        d.recent_failures
+            .iter()
+            .any(|f| f.code == "PROVIDER_REJECTED" || f.code == "AUTH_REJECTED"),
+        "the refusal is on the dashboard: {:?}",
+        d.recent_failures
+    );
+    assert_eq!(
+        (
+            d.slo_cold.as_ref().unwrap().starts,
+            d.slo_warm.as_ref().unwrap().starts
+        ),
+        (0, 0),
+        "no cloud task, no SLO starts"
+    );
+    assert!(
+        d.providers.iter().any(|p| p.starts_with("openai: ")),
+        "{:?}",
+        d.providers
+    );
+    drop(c);
+    core.kill();
+}

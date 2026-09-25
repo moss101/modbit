@@ -583,6 +583,7 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "ExportHandoff",
                     "ExportDiagnostics",
                     "GetSloLadder",
+                    "GetDashboard",
                     "VerifyDiagnostics",
                     "RebindTaskWorkspace",
                     "ImportObjects",
@@ -4521,6 +4522,23 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 handle,
             };
             accept(cid, false, view.encode_to_vec())
+        }
+        "GetDashboard" => {
+            let Ok(p) = wire::GetDashboard::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "GetDashboard");
+            };
+            let Some(session_id) = p
+                .session_id
+                .as_ref()
+                .and_then(id16)
+                .map(SessionId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "session_id required");
+            };
+            match crate::dashboard::view(core, session_id).await {
+                Ok(v) => accept(cid, false, v.encode_to_vec()),
+                Err((code, detail)) => reject(cid, &code, detail),
+            }
         }
         "GetSloLadder" => {
             let Ok(p) = wire::GetSloLadder::decode(env.payload.as_slice()) else {

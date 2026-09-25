@@ -1869,6 +1869,75 @@ message HandoffExported {
   repeated string parts = 5;       // file names in bundle_dir the manifest names
 }
 
+// ---- Telemetry, cost and SLO dashboard (M10.1; docs/34, docs/77) ----
+//
+// One session's operations picture, aggregated from the canonical log at
+// the moment it is asked for — the usage ledger (IMP-EV-0032), the SLO
+// ladder (IMP-EV-0023), tool outcomes, task states, failures and the
+// providers' health. Never a sample, never a feed of its own.
+message GetDashboard {
+  Id session_id = 1;
+}
+
+message DashboardModelRow {
+  string model = 1;
+  uint32 calls = 2;
+  uint64 input_tokens = 3;
+  uint64 cached_input_tokens = 4;
+  uint64 output_tokens = 5;
+  uint64 cost_minor = 6;
+  uint32 unpriced_calls = 7;       // unpriced or unreported: cost incomplete
+}
+
+message DashboardTaskRow {
+  string task_id = 1;
+  string state = 2;
+  uint32 model_calls = 3;
+  uint64 input_tokens = 4;
+  uint64 output_tokens = 5;
+  uint64 cost_minor = 6;
+  bool cost_complete = 7;
+  uint32 tool_calls = 8;
+  uint32 starts = 9;               // SLO ladder starts (cloud tasks)
+}
+
+message DashboardFailureRow {
+  uint64 offset = 1;
+  string task_id = 2;
+  string event_type = 3;
+  string class = 4;
+  string code = 5;
+}
+
+message DashboardView {
+  string session_id = 1;
+  int64 generated_at_ms = 2;
+  // Runtime.
+  map<string, uint32> tasks_by_state = 3;
+  uint32 tool_succeeded = 4;
+  uint32 tool_failed = 5;
+  uint32 tool_unknown_outcome = 6;
+  uint32 tool_cancelled = 7;
+  // Cost, from the usage ledger.
+  uint64 cost_minor = 8;
+  string currency = 9;
+  uint32 scale = 10;
+  uint32 priced_calls = 11;
+  uint32 unpriced_calls = 12;
+  uint32 unreported_calls = 13;
+  uint64 input_tokens = 14;
+  uint64 cached_input_tokens = 15;
+  uint64 output_tokens = 16;
+  repeated DashboardModelRow models = 17;
+  repeated DashboardTaskRow tasks = 18;
+  // SLO, from the ladder across the session's cloud tasks.
+  SloFiguresView slo_cold = 19;
+  SloFiguresView slo_warm = 20;
+  // Reliability.
+  repeated DashboardFailureRow recent_failures = 21;
+  repeated string providers = 22; // name: requests/successes/failures/rate-limited/first-token ms
+}
+
 // ---- Cloud SLO event ladder (IMP-EV-0023; docs/34 "Metrics") ----
 //
 // A cloud_isolated task's starts as recorded rungs (`SloStageRecorded`) and

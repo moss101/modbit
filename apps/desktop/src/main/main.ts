@@ -243,6 +243,31 @@ handle("task:status", async (_e: IpcMainInvokeEvent, taskId: unknown) => {
   const v = await requireClient().taskStatus(tid);
   return { state: v.state, waitReason: v.waitReason, runState: v.runState, loopAlive: v.loopAlive, lastOffset: v.lastOffset.toString(), attentionReason: v.attentionReason, failureClass: v.failureClass, failureCode: v.failureCode, retryable: v.retryable, userAction: v.userAction, recoveryPath: v.recoveryPath, evidenceRefs: v.evidenceRefs };
 });
+// M10.1: the session's telemetry, cost and SLO dashboard, as the Core
+// aggregates it from its log; nothing is computed or sampled here.
+handle("dashboard:get", async (_e: IpcMainInvokeEvent, sessionId: unknown) => {
+  const sid = requireSessionId(sessionId);
+  const v = await requireClient().dashboard(sid);
+  const fig = (f: { starts: bigint; readyP50Ms: bigint; readyMaxMs: bigint; firstTokenP50Ms: bigint; firstTokenMaxMs: bigint } | undefined) => ({
+    starts: (f?.starts ?? 0n).toString(),
+    readyP50Ms: (f?.readyP50Ms ?? -1n).toString(),
+    readyMaxMs: (f?.readyMaxMs ?? -1n).toString(),
+    firstTokenP50Ms: (f?.firstTokenP50Ms ?? -1n).toString(),
+    firstTokenMaxMs: (f?.firstTokenMaxMs ?? -1n).toString(),
+  });
+  return {
+    generatedAtMs: v.generatedAtMs.toString(),
+    tasksByState: { ...v.tasksByState },
+    tools: { succeeded: v.toolSucceeded, failed: v.toolFailed, unknownOutcome: v.toolUnknownOutcome, cancelled: v.toolCancelled },
+    cost: { minor: v.costMinor.toString(), currency: v.currency, scale: v.scale, priced: v.pricedCalls, unpriced: v.unpricedCalls, unreported: v.unreportedCalls },
+    tokens: { input: v.inputTokens.toString(), cached: v.cachedInputTokens.toString(), output: v.outputTokens.toString() },
+    models: v.models.map((m) => ({ model: m.model, calls: m.calls, inputTokens: m.inputTokens.toString(), outputTokens: m.outputTokens.toString(), costMinor: m.costMinor.toString(), unpricedCalls: m.unpricedCalls })),
+    tasks: v.tasks.map((t) => ({ taskId: t.taskId, state: t.state, modelCalls: t.modelCalls, inputTokens: t.inputTokens.toString(), outputTokens: t.outputTokens.toString(), costMinor: t.costMinor.toString(), costComplete: t.costComplete, toolCalls: t.toolCalls, starts: t.starts })),
+    slo: { cold: fig(v.sloCold), warm: fig(v.sloWarm) },
+    failures: v.recentFailures.map((f) => ({ offset: f.offset.toString(), taskId: f.taskId, eventType: f.eventType, class: f.class, code: f.code })),
+    providers: v.providers,
+  };
+});
 // Context efficiency metrics (REQ-EV-0173): quality and economics together.
 handle("task:economics", async (_e: IpcMainInvokeEvent, taskId: unknown) => {
   const tid = requireTaskId(taskId);
