@@ -374,7 +374,7 @@ flowchart LR
 - `DOC-PX-006`: COMPLETE; Product extension stage F: verification execution mechanics, scope bounds, repair policy and agent harness contracts; evidence: run:dossier-px-006-2026-09-05-final, artifact:evidence/dossier-px-006/validation.json, artifact:evidence/dossier-px-006/tests.log, revision:sha256:060860f40e2b4c8180d52047013627d38a48692bb51af19efc5a9951bcb82c4f, commit:4a3f6df023f82c03df1a8fd7051a219d885232ed
 - `DOC-GOV-005`: COMPLETE; Release Zero execution goal: derived goal command and execution plan; evidence: run:dossier-gov-005-2026-09-19-final, artifact:evidence/dossier-gov-005/validation.json, artifact:evidence/dossier-gov-005/tests.log, revision:sha256:b89b79a782386ad26beeb570ea1242e53088ec1f8d3f0775198b81de99748e5d, commit:49cbc43c7336a0058fa510b2f02235b5914acecd
 - `DOC-GOV-006`: COMPLETE; Correct stale Release Zero goal and IMP-EV-0245 card wording; evidence: run:gha-36111240164, commit:abc2833d7537ef91c9eb9b3de4c9091d6f2bfbf4, artifact:evidence/dossier-gov-006/validation.json, artifact:evidence/dossier-gov-006/tests.log, artifact:evidence/dossier-gov-006/tests-after-merge.log, revision:sha256:f83e0e2ff17e8272cac36f66e5ab2b6aeda5ea1171961fa82aa03c68b6fe66f4
-- `DOC-GOV-007`: NOT_STARTED; Correct the Release Zero goal's provider-credential Unblocks cell; evidence: none
+- `DOC-GOV-007`: COMPLETE; Correct the Release Zero goal's provider-credential Unblocks cell; evidence: run:gha-36139948547, commit:1b71966161d839dc99c152dc437966a34fe02316, artifact:evidence/dossier-gov-007/validation.json, artifact:evidence/dossier-gov-007/tests.log, revision:sha256:8fd687ada06147b2435a9d063e7706a836aad0a89b483d71cdc5f91f2702c983
 
 ## Milestone tasks in execution order
 
