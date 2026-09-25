@@ -1113,14 +1113,23 @@ async fn live_streaming_tool_round_trip_and_cancellation_against_production_endp
             )
             .unwrap();
         let mut last = None;
+        let mut seen: Vec<String> = Vec::new();
         while let Some(e) = s.events.recv().await {
             if matches!(e, ModelEvent::MessageDelta { .. }) {
                 cancel.cancel();
             }
+            let mut shown = format!("{e:?}");
+            shown.truncate(160);
+            seen.push(shown);
             last = Some(e);
         }
         assert!(
-            matches!(last, Some(ModelEvent::Completed { ref stop_reason }) if stop_reason == stop::CANCELLED)
+            matches!(last, Some(ModelEvent::Completed { ref stop_reason }) if stop_reason == stop::CANCELLED),
+            "{}: a cancelled stream ends Completed(CANCELLED); {} events, first {:?}, last {:?}",
+            ep.name,
+            seen.len(),
+            seen.iter().take(6).collect::<Vec<_>>(),
+            seen.iter().rev().take(4).collect::<Vec<_>>()
         );
         eprintln!(
             "live: endpoint `{}` proven — streaming, tool-call round trip and cancellation with model {model}",
