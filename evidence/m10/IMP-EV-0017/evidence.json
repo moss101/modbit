@@ -1,0 +1,37 @@
+{
+ "task": "IMP-EV-0017",
+ "requirements": [
+  "REQ-EV-0017",
+  "docs/23 Secrets",
+  "docs/34 Logs",
+  "docs/30 Security/effects"
+ ],
+ "scenarios": [
+  "an external server holding a brokered credential fails its call with an error repeating the credential; the agent runs to ReadyForReview; no model request contains it; the tool result keeps the server's words with [redacted] under failure_class/retryable and a structured repair: payload",
+  "a provider answers 401 echoing the presented key quoted and as a bearer; the task needs attention typed PROVIDER/AUTH_REJECTED; attention_reason and user_explanation carry no key; ProbeModel reports the same error without it",
+  "an ImportAgentConfig rejection repeating a pasted path holding the key leaves as /nonexistent/[redacted]/agents",
+  "the task log and every file in each Core's data directory hold neither secret"
+ ],
+ "tests": [
+  "services/modbit-core/tests/surface_protocol.rs::qual_ev_0017_a_secret_bearing_internal_error_is_redacted_for_the_person_and_the_model",
+  "crates/secrets/src/redact.rs::tests::*",
+  "crates/domain/src/failure.rs::tests::one_identity_renders_for_a_person_and_for_a_model"
+ ],
+ "audit": "IMPLEMENTED-PARTIAL before: FailureDiagnostic was one text for a person and a model; redaction was heuristic and scattered across five sites and missed quoted keys, in-stream provider errors, external-server errors, attention reasons, diagnostic detail, INFRA_FAILURE text and every CommandAck; crates/secrets was an empty scaffold.",
+ "proof": "Real Core: one failure identity renders a user explanation and a structured model repair payload; one redactor (modbit_secrets, effects-security) replaces custody values everywhere and credential shapes in error text, in the gateway, forge and external-tool clients, at the tool-result boundary, on every rejection, on TaskStatus as read, and as the event store's payload filter before persistence.",
+ "negative_proof": "Five mutations each fail the test at the layer they remove: model-path layers (M1), gateway (M2), store filter with upstream layers off (M3/M4), rejections at the transport (M5).",
+ "limitations": "Spilled stdout objects are redacted when read, not rewritten; no diagnostic vault keeps originals; credential shapes are a fixed list; legacy log payloads are not rewritten (attention_reason and user_explanation are redacted as read).",
+ "batch_commits": [
+  "0fdf050"
+ ],
+ "runs": [
+  "36130922146"
+ ],
+ "ci": {
+  "run_id": "36130922146",
+  "head_sha": "cfa6e24951ea2bad3e72af2d6fa0e81e7767da5f",
+  "conclusion": "success",
+  "note": "every job green on macOS, Linux and Windows on the first attempt of the final rebase (two earlier all-green runs were superseded by rebases onto main)",
+  "json": "evidence/m10/IMP-EV-0017/ci-run-36130922146.json"
+ }
+}
