@@ -566,6 +566,7 @@ fn diff_invariants_deny_test_weakening_and_flag_the_rest() {
         acceptance_named: vec!["acceptance_rejects_negative_quantity".into()],
         baseline_failing: vec!["preexisting_failing_unrelated".into()],
         protected_paths: vec![".github/".into()],
+        protected_unlocked: vec![],
         formatting_churn_lines: 50,
         expected_revision: Some(3),
     };
@@ -796,6 +797,7 @@ fn qual_ev_0071_secret_in_patch_is_denied_with_evidence() {
         acceptance_named: vec![],
         baseline_failing: vec![],
         protected_paths: vec![],
+        protected_unlocked: vec![],
         formatting_churn_lines: 50,
         expected_revision: None,
     };

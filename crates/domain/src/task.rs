@@ -305,6 +305,12 @@ pub enum TaskEvent {
         reason: String,
         /// Policy flags (`CONFIRMS_REPOSITORY_FACT`: the question asks what the repository already answers).
         flags: Vec<String>,
+        /// The protected paths (docs/64 DI-9) the question asks leave to
+        /// change, as the Core recorded them; the Core set the options, and
+        /// only the user's `continue` answer unlocks exactly these paths.
+        /// Empty for every other question.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        protected_paths: Vec<String>,
     },
     /// `AttachmentIngested` (REQ-EV-0190): a channel attachment (desktop, CLI,
     /// API) normalized through the media pipeline into the same canonical
@@ -1448,6 +1454,19 @@ pub enum TaskEvent {
         /// The user's answer, when there is one.
         answer: String,
     },
+    /// `ProtectedPathsUnlocked` (docs/64 DI-9, REQ-EPR-008): the user
+    /// answered `continue` to a typed question naming these protected
+    /// paths, so the change engine lets this task change them. Recorded
+    /// only from an answer the user gave, never the agent; a restarted Core
+    /// rebuilds the unlock from it. No state change.
+    ProtectedPathsUnlocked {
+        /// The question the user answered.
+        question_id: String,
+        /// The paths the question named, and nothing else.
+        paths: Vec<String>,
+        /// The user's answer (the option id).
+        answer: String,
+    },
     /// `RetrievalRecorded` (docs/28 §2, PX-015): the task retrieved a file
     /// (read, language-service query, or its own write) at a revision and
     /// content hash — the record an edit of that file needs. No state change.
@@ -2083,6 +2102,7 @@ impl TaskEvent {
             Self::CompactionRejectedStale { .. } => "CompactionRejectedStale",
             Self::ReproductionRecorded { .. } => "ReproductionRecorded",
             Self::ScopeExpansionRecorded { .. } => "ScopeExpansionRecorded",
+            Self::ProtectedPathsUnlocked { .. } => "ProtectedPathsUnlocked",
             Self::RetrievalRecorded { .. } => "RetrievalRecorded",
             Self::RepairAttemptRecorded { .. } => "RepairAttemptRecorded",
             Self::RepairAttemptConcluded { .. } => "RepairAttemptConcluded",
@@ -2259,6 +2279,7 @@ impl Task {
             | TaskEvent::ContextDocumentAttached { .. }
             | TaskEvent::UnsupportedLanguageOptInRecorded { .. }
             | TaskEvent::ScopeExpansionRecorded { .. }
+            | TaskEvent::ProtectedPathsUnlocked { .. }
             | TaskEvent::RetrievalRecorded { .. }
             | TaskEvent::RepairAttemptRecorded { .. }
             | TaskEvent::RepairAttemptConcluded { .. }

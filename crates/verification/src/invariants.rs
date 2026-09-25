@@ -42,10 +42,26 @@ pub struct InvariantContext {
     /// `modbit_policy::ProtectedSurface::patterns` and matched by its
     /// matcher: a directory prefix, a segment, a suffix or a basename.
     pub protected_paths: Vec<String>,
+    /// Paths this task may change although DI-9 protects them: each was
+    /// named by a typed question the user answered with `continue`
+    /// (docs/64 §4). Exact repository-relative paths in the form of
+    /// [`protected_path_key`], never patterns.
+    #[serde(default)]
+    pub protected_unlocked: Vec<String>,
     /// Formatting churn threshold (lines).
     pub formatting_churn_lines: usize,
     /// Declared candidate revision the change binds to (DI-8).
     pub expected_revision: Option<u64>,
+}
+
+/// A repository-relative path as DI-9 compares an unlocked path with a
+/// changed one: `/` separators and no leading `./`.
+#[must_use]
+pub fn protected_path_key(path: &str) -> String {
+    path.trim()
+        .replace('\\', "/")
+        .trim_start_matches("./")
+        .to_owned()
 }
 
 /// One changed file for whole-diff evaluation.
@@ -212,7 +228,14 @@ pub fn evaluate_file(
         });
     }
     // DI-9 protected: the policy's own surface matcher, never a second one.
-    if modbit_policy::ProtectedSurface::matches_patterns(&ctx.protected_paths, p) {
+    // A path the user allowed, by answering a typed question naming it, is
+    // open to this task; nothing else is.
+    if modbit_policy::ProtectedSurface::matches_patterns(&ctx.protected_paths, p)
+        && !ctx
+            .protected_unlocked
+            .iter()
+            .any(|u| protected_path_key(u) == protected_path_key(p))
+    {
         out.push(Violation {
             id: "DI-9".into(),
             class: Class::Deny,
@@ -522,6 +545,51 @@ mod tests {
                 .any(|pp| p.starts_with(pp.as_str()));
             assert_eq!(di_9(&fallback, p), before, "{p}");
         }
+    }
+
+    #[test]
+    fn di_9_opens_exactly_the_paths_the_user_unlocked() {
+        // docs/64 §4: a protected path changes only after a typed question;
+        // the paths the user allowed are open to the task, nothing else is.
+        let ctx = InvariantContext {
+            protected_unlocked: vec![
+                "deploy/prod.yaml".into(),
+                "./infra/main.tf".into(),
+                "services\\api\\Dockerfile".into(),
+                // A directory named as if it were a path unlocks no file in it.
+                "charts/helm/".into(),
+            ],
+            ..policy_ctx()
+        };
+        for p in [
+            "deploy/prod.yaml",
+            "infra/main.tf",
+            "./deploy/prod.yaml",
+            "services/api/Dockerfile",
+            "services\\api\\Dockerfile",
+        ] {
+            assert!(!di_9(&ctx, p), "{p}");
+        }
+        for p in [
+            "deploy/staging.yaml",
+            "deploy/prod.yaml.bak",
+            "services/api/deploy/prod.yaml",
+            "infra/network.yaml",
+            "Dockerfile",
+            "charts/helm/values.yaml",
+            ".github/workflows/ci.yml",
+        ] {
+            assert!(di_9(&ctx, p), "{p}");
+        }
+        // The same paths stay closed to a task nobody answered for.
+        for p in [
+            "deploy/prod.yaml",
+            "infra/main.tf",
+            "services/api/Dockerfile",
+        ] {
+            assert!(di_9(&policy_ctx(), p), "{p}");
+        }
+        assert_eq!(protected_path_key(" ./a\\b.yaml "), "a/b.yaml");
     }
 
     #[test]

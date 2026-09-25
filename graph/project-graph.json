@@ -36065,6 +36065,11 @@
    "type": "references"
   },
   {
+   "from": "23_SECURITY_POLICY_EFFECT_LEDGER.md",
+   "to": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
+   "type": "references"
+  },
+  {
    "from": "24_CLOUD_CONTROL_PLANE_AND_SYNC.md",
    "to": "27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md",
    "type": "references"
@@ -36707,6 +36712,11 @@
   {
    "from": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
    "to": "20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md",
+   "type": "references"
+  },
+  {
+   "from": "64_VERIFICATION_EXECUTION_CONTRACTS.md",
+   "to": "23_SECURITY_POLICY_EFFECT_LEDGER.md",
    "type": "references"
   },
   {
