@@ -7,6 +7,7 @@ working dossier or weaken a production security check.
 """
 import hashlib
 import json
+import os
 import re
 from pathlib import Path
 import shutil
@@ -629,6 +630,140 @@ class DossierTests(unittest.TestCase):
         out = self.run_tool("graph", "goal", contains="RELEASE_ZERO is READY")
         self.assertRegex(out, r"state\s+READY \(exit 0\)")
         self.assertRegex(self.run_tool("graph", "goal", "ALPHA"), r"state\s+READY \(exit 0\)")
+
+
+class ExampleRunnerTests(unittest.TestCase):
+    """QUAL-EV-0212: the declared-example runner catches every way an example
+    can become a placeholder. Each case builds a minimal package holding only
+    the runner, `graph.py` (whose parser the shape and synopsis checks ask) and
+    two throwaway tools, so a negative case is fast and names one cause."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix="modbit-example-test-")
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name) / "package"
+        (self.root / "tools").mkdir(parents=True)
+        for tool in ("example_runner.py", "graph.py"):
+            shutil.copy2(ROOT / "tools" / tool, self.root / "tools" / tool)
+        (self.root / "tools" / "ok.py").write_text(
+            "import sys\nif '--gone' in sys.argv:\n    pass\nsys.exit(0)\n", encoding="utf-8")
+        (self.root / "tools" / "bad.py").write_text("import sys\nsys.exit(3)\n", encoding="utf-8")
+
+    def readme(self, *blocks):
+        body = "# fixture\n\n"
+        for b in blocks:
+            body += "```bash\n" + b.strip("\n") + "\n```\n\n"
+        (self.root / "README.md").write_text(body, encoding="utf-8")
+
+    def declare(self, *commands):
+        """Declare README block 0 with `commands` as (text, declaration) pairs,
+        hashing the block exactly as the runner does."""
+        text = (self.root / "README.md").read_text(encoding="utf-8")
+        body = re.search(r"^```bash[ \t]*\n(.*?)^```[ \t]*$", text, re.M | re.S).group(1)
+        (self.root / "tools" / "examples.json").write_text(json.dumps({"examples": [{
+            "file": "README.md", "index": 0,
+            "sha256": hashlib.sha256(body.encode("utf-8")).hexdigest(),
+            "commands": [dict(command=c, **d) for c, d in commands],
+        }]}, indent=1), encoding="utf-8")
+
+    def run_runner(self, *args):
+        # These cases have the runner as their subject, so the nesting guard it
+        # sets for a `run` example does not apply to them.
+        env = {k: v for k, v in os.environ.items() if k != "MODBIT_EXAMPLE_RUNNER"}
+        out = subprocess.run([sys.executable, "tools/example_runner.py", *args],
+                             cwd=self.root, capture_output=True, text=True, timeout=300,
+                             env=env)
+        return out.returncode, out.stdout + out.stderr
+
+    def assertFails(self, contains):
+        code, output = self.run_runner()
+        self.assertEqual(code, 1, output)
+        self.assertIn(contains, output)
+        return output
+
+    def test_a_command_hidden_in_another_block_kind_fails(self):
+        (self.root / "README.md").write_text(
+            "# fixture\n\n```text\npython3 tools/ok.py\n```\n", encoding="utf-8")
+        (self.root / "tools" / "examples.json").write_text('{"examples": []}', encoding="utf-8")
+        self.assertFails("where this gate cannot see it")
+
+    def test_an_undeclared_example_fails(self):
+        self.readme("python3 tools/ok.py")
+        (self.root / "tools" / "examples.json").write_text('{"examples": []}', encoding="utf-8")
+        self.assertFails("undeclared example")
+
+    def test_a_declared_example_that_changed_fails_as_drift(self):
+        self.readme("python3 tools/ok.py")
+        self.declare(("python3 tools/ok.py", {"policy": "run", "reason": ""}))
+        self.readme("python3 tools/ok.py --gone")   # the doc changed, the declaration did not
+        self.assertFails("drifted from its declaration")
+
+    def test_a_declaration_whose_block_is_gone_fails(self):
+        self.readme("python3 tools/ok.py")
+        self.declare(("python3 tools/ok.py", {"policy": "run", "reason": ""}))
+        (self.root / "README.md").write_text("# fixture\n\nno examples here\n", encoding="utf-8")
+        self.assertFails("declared but no longer in the file")
+
+    def test_a_run_example_that_stopped_working_fails(self):
+        self.readme("python3 tools/bad.py")
+        self.declare(("python3 tools/bad.py", {"policy": "run", "reason": ""}))
+        self.assertFails("exited 3, not the declared 0")
+
+    def test_a_declared_non_zero_contract_passes_and_must_be_justified(self):
+        self.readme("python3 tools/bad.py")
+        self.declare(("python3 tools/bad.py", {"policy": "run", "exit": 3, "reason": ""}))
+        self.assertFails("expects a non-zero exit without saying why")
+        self.declare(("python3 tools/bad.py",
+                      {"policy": "run", "exit": 3, "reason": "3 is what it documents"}))
+        code, output = self.run_runner()
+        self.assertEqual(code, 0, output)
+        self.assertIn("1 command(s) executed", output)
+
+    def test_a_shape_example_without_a_reason_fails(self):
+        self.readme("python3 tools/graph.py set IMP-EV-0012 REAL_TESTING")
+        self.declare(("python3 tools/graph.py set IMP-EV-0012 REAL_TESTING",
+                      {"policy": "shape", "reason": "   "}))
+        self.assertFails("without saying why it cannot be executed")
+
+    def test_a_program_with_no_shape_checker_cannot_be_declared_shape(self):
+        self.readme("git push origin main")
+        self.declare(("git push origin main",
+                      {"policy": "shape", "reason": "pushing in a gate would be absurd"}))
+        self.assertFails("has no shape checker")
+
+    def test_a_flag_a_tool_no_longer_parses_fails(self):
+        self.readme("python3 tools/ok.py --gone")
+        self.declare(("python3 tools/ok.py --gone",
+                      {"policy": "shape", "reason": "illustrative"}))
+        code, output = self.run_runner()
+        self.assertEqual(code, 0, output)          # the literal is still in ok.py
+        (self.root / "tools" / "ok.py").write_text("import sys\nsys.exit(0)\n", encoding="utf-8")
+        self.assertFails("does not parse --gone")
+
+    def test_a_shape_example_the_tools_own_parser_rejects_fails(self):
+        self.readme("python3 tools/graph.py set IMP-EV-0012")
+        self.declare(("python3 tools/graph.py set IMP-EV-0012",
+                      {"policy": "shape", "reason": "illustrative ids"}))
+        self.assertFails("own parser rejects")
+
+    def test_a_synopsis_naming_an_unknown_flag_fails(self):
+        self.readme("python3 tools/graph.py set <id> <STATE> [--proof <ref> ...]")
+        self.declare(("python3 tools/graph.py set <id> <STATE> [--proof <ref> ...]",
+                      {"policy": "synopsis", "reason": "a usage template"}))
+        self.assertFails("which `graph.py set` does not accept")
+
+    def test_a_synopsis_naming_an_unknown_subcommand_fails(self):
+        self.readme("python3 tools/graph.py promote <id> [--evidence <ref> ...]")
+        self.declare(("python3 tools/graph.py promote <id> [--evidence <ref> ...]",
+                      {"policy": "synopsis", "reason": "a usage template"}))
+        self.assertFails("names no graph.py subcommand")
+
+    def test_a_synopsis_carrying_a_real_argument_is_refused(self):
+        self.readme("python3 tools/graph.py set IMP-EV-0012 [--evidence <ref> ...]")
+        self.declare(("python3 tools/graph.py set IMP-EV-0012 [--evidence <ref> ...]",
+                      {"policy": "synopsis", "reason": "a usage template"}))
+        self.assertFails("which a synopsis should not carry")
+
 
 
 if __name__ == "__main__":
