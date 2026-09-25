@@ -40,3 +40,11 @@ question or approve an effect while `task run --wait` holds the Core.
 ## Language labels (PX-026)
 
 `modbit --data-dir <dir> language list` prints what the product claims per language today (docs/76): the three Alpha candidates are labelled `ALPHA_BASELINE` (Tier C plus compile and test evidence) with the provisional context-engine capabilities and the not-yet-claimed Tier A listed explicitly; everything else is `UNSUPPORTED`.
+
+## Diagnostics (IMP-EV-0142, docs/71)
+
+- `doctor --session <id>` prints the build, uptime, SQLite's integrity check, how many of the session's hash chains verified, the receipt chain, each provider endpoint's host and health (whether a credential is configured — never its value), the latest failures by class and code, and lease counts. It exits 1 when the store or a chain does not verify.
+- `trace --session <id> [--task <id>]` prints what happened as metadata only: offset, aggregate and sequence, event type, task, run and a failure's code. No payloads.
+- `export diagnostics --session <id> [--task <id>] [--include-content] --out <file>` writes a `modbit.diagnostics/1` package: the above plus every aggregate's range and chain head and the objects the events reference. Payloads appear only with `--include-content`. The Core redacts the whole package (every value in its custody, every credential shape) and seals it with a digest.
+- `diagnostics verify <file>` replays a package against this profile's log: its digest, every aggregate's chain, and the head it pinned. It exits 1 when anything differs.
+- `export handoff --session <id> --task <id> --out <dir>` parks the task and writes M8.7's handoff bundle (no secret value in it).

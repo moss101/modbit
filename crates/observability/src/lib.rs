@@ -13,6 +13,7 @@
 //! unknown, and the bundle says so instead of writing a zero.
 
 pub mod baseline;
+pub mod diagnostics;
 
 pub use baseline::{
     BaselineBundle, Interventions, TaskOutcome, Usage, bundle_digest, digest_of, publish,

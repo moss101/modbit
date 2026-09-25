@@ -1555,3 +1555,150 @@ async fn resolve_desktop_approvals(c: &mut Client, session_id: &Id, generation: 
         assert_eq!(r.status, "APPROVED", "{r:?}");
     }
 }
+
+/// IMP-EV-0142 through the CLI (docs/71): `doctor` reports a clean store and
+/// chains and the provider without its key; `trace` lists a task's events by
+/// type with no payloads; `export diagnostics` writes a sealed package with
+/// no credential in it; `diagnostics verify` replays it (and refuses it once
+/// changed); `export handoff` writes M8.7's bundle from a headless caller.
+#[test]
+fn imp_ev_0142_doctor_trace_export_verify_and_handoff_through_the_cli() {
+    const KEY: &str = "sk-modbit-cli-0142-provider-key-5e3b1f";
+    let core = core_bin();
+    let tmp = tempfile::tempdir().unwrap();
+    let data_dir = tmp.path().join("profile");
+    std::fs::create_dir_all(&data_dir).unwrap();
+    let repo = tmp.path().join("repo");
+    std::fs::create_dir_all(&repo).unwrap();
+    std::fs::write(repo.join("a.txt"), "a\n").unwrap();
+    git(&repo, &["init", "-q", "-b", "main"]);
+    git(&repo, &["config", "core.autocrlf", "false"]);
+    git(&repo, &["add", "-A"]);
+    git(
+        &repo,
+        &[
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@e",
+            "commit",
+            "-q",
+            "-m",
+            "base",
+        ],
+    );
+    let repo_str = repo
+        .canonicalize()
+        .unwrap()
+        .to_string_lossy()
+        .trim_start_matches(r"\\?\")
+        .to_owned();
+    let script = vec![
+        serde_json::json!({"calls": [{"name": "plan.update", "args": {"outcome": "read a", "expected_files": []}}]}),
+        serde_json::json!({"calls": [{"name": "fs.read", "args": {"path": "a.txt"}}]}),
+        serde_json::json!({"calls": [{"name": "task.complete", "args": {"summary": "read", "self_review": {"findings": []}}}]}),
+    ];
+    let base = scripted_model(script);
+    let cli = Cli {
+        data_dir: data_dir.clone(),
+        core: core.clone(),
+        env: vec![
+            ("MODBIT_OPENAI_BASE_URL".into(), base.clone()),
+            ("OPENAI_API_KEY".into(), KEY.into()),
+            ("ANTHROPIC_API_KEY".into(), String::new()),
+        ],
+    };
+    let (code, out, err) = cli.run(&["session", "create"]);
+    assert_eq!(code, 0, "{err}");
+    let sid = out.trim().strip_prefix("session ").unwrap().to_owned();
+    let (code, out, err) = cli.run(&[
+        "task",
+        "create",
+        "--session",
+        &sid,
+        "--workspace",
+        &repo_str,
+        "read a",
+    ]);
+    assert_eq!(code, 0, "{err}");
+    let tid = out.trim().strip_prefix("task ").unwrap().to_owned();
+    let (code, out, err) = cli.run(&[
+        "task",
+        "run",
+        "--session",
+        &sid,
+        "--task",
+        &tid,
+        "--model",
+        "gpt-5",
+        "--wait",
+    ]);
+    assert_eq!(code, 0, "{out}{err}");
+
+    let (code, out, err) = cli.run(&["doctor", "--session", &sid]);
+    assert_eq!(code, 0, "{out}{err}");
+    assert!(out.contains("integrity database=ok"), "{out}");
+    assert!(out.contains("receipts=valid"), "{out}");
+    assert!(
+        out.contains("provider openai kind=OpenAi host=127.0.0.1:")
+            && out.contains("credential=configured"),
+        "{out}"
+    );
+    assert!(!out.contains(KEY), "{out}");
+
+    let (code, out, err) = cli.run(&["trace", "--session", &sid, "--task", &tid]);
+    assert_eq!(code, 0, "{err}");
+    for t in [
+        "TaskCreated",
+        "RunCreated",
+        "ToolCallSucceeded",
+        "TaskReadyForReview",
+    ] {
+        assert!(out.contains(t), "{t}: {out}");
+    }
+    assert!(
+        !out.contains("hello") && !out.contains(KEY),
+        "metadata only: {out}"
+    );
+
+    let file = tmp.path().join("diagnostics.json");
+    let file_str = file.to_string_lossy().to_string();
+    let (code, out, err) = cli.run(&[
+        "export",
+        "diagnostics",
+        "--session",
+        &sid,
+        "--include-content",
+        "--out",
+        &file_str,
+    ]);
+    assert_eq!(code, 0, "{out}{err}");
+    assert!(out.starts_with("exported digest="), "{out}");
+    let written = std::fs::read_to_string(&file).unwrap();
+    assert!(!written.contains(KEY), "no credential in the package");
+    let (code, out, err) = cli.run(&["diagnostics", "verify", &file_str]);
+    assert_eq!(code, 0, "{out}{err}");
+    assert!(out.starts_with("verified=true digest_ok=true"), "{out}");
+    // Changed after export: it no longer replays, and the CLI says so.
+    let mut pkg: serde_json::Value = serde_json::from_str(&written).unwrap();
+    pkg["aggregates"][0]["head_hash"] = serde_json::json!("0".repeat(64));
+    std::fs::write(&file, pkg.to_string()).unwrap();
+    let (code, out, _) = cli.run(&["diagnostics", "verify", &file_str]);
+    assert_ne!(code, 0, "{out}");
+    assert!(out.starts_with("verified=false digest_ok=false"), "{out}");
+
+    let bundle = tmp.path().join("handoff");
+    let (code, out, err) = cli.run(&[
+        "export",
+        "handoff",
+        "--session",
+        &sid,
+        "--task",
+        &tid,
+        "--out",
+        &bundle.to_string_lossy(),
+    ]);
+    assert_eq!(code, 0, "{out}{err}");
+    assert!(out.starts_with("handoff bundle="), "{out}");
+    assert!(bundle.join("manifest.json").exists(), "{out}");
+}

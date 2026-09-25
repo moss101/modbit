@@ -7681,6 +7681,137 @@ export declare type HandoffExported = Message<"modbit.v1.HandoffExported"> & {
 export declare const HandoffExportedSchema: GenMessage<HandoffExported>;
 
 /**
+ * ---- Diagnostics export (IMP-EV-0142; docs/71 "Desktop diagnostics package") ----
+ *
+ * Read-only: a package explaining the Core for one session (optionally one
+ * task) — build, health, integrity, the event ranges and chain heads that
+ * pin the log, a metadata-only trace, recent error codes, provider health
+ * without credentials, lease states and object checksums. Payloads only
+ * with include_content; secrets never (the package is redacted whole
+ * before it is sealed). `modbit.diagnostics/1`.
+ *
+ * @generated from message modbit.v1.ExportDiagnostics
+ */
+export declare type ExportDiagnostics = Message<"modbit.v1.ExportDiagnostics"> & {
+  /**
+   * @generated from field: modbit.v1.Id session_id = 1;
+   */
+  sessionId?: Id | undefined;
+
+  /**
+   * optional: narrow to one task
+   *
+   * @generated from field: modbit.v1.Id task_id = 2;
+   */
+  taskId?: Id | undefined;
+
+  /**
+   * event payloads (redacted); off by default
+   *
+   * @generated from field: bool include_content = 3;
+   */
+  includeContent: boolean;
+};
+
+/**
+ * Describes the message modbit.v1.ExportDiagnostics.
+ * Use `create(ExportDiagnosticsSchema)` to create a new message.
+ */
+export declare const ExportDiagnosticsSchema: GenMessage<ExportDiagnostics>;
+
+/**
+ * @generated from message modbit.v1.DiagnosticsExported
+ */
+export declare type DiagnosticsExported = Message<"modbit.v1.DiagnosticsExported"> & {
+  /**
+   * the package, sealed
+   *
+   * @generated from field: string package_json = 1;
+   */
+  packageJson: string;
+
+  /**
+   * sha256 the package carries
+   *
+   * @generated from field: string digest = 2;
+   */
+  digest: string;
+
+  /**
+   * secrets replaced before sealing
+   *
+   * @generated from field: uint64 redactions = 3;
+   */
+  redactions: bigint;
+
+  /**
+   * @generated from field: uint64 aggregates = 4;
+   */
+  aggregates: bigint;
+
+  /**
+   * @generated from field: uint64 trace_lines = 5;
+   */
+  traceLines: bigint;
+};
+
+/**
+ * Describes the message modbit.v1.DiagnosticsExported.
+ * Use `create(DiagnosticsExportedSchema)` to create a new message.
+ */
+export declare const DiagnosticsExportedSchema: GenMessage<DiagnosticsExported>;
+
+/**
+ * Replay a package's evidence metadata against this Core's log: its digest,
+ * every aggregate's chain, and the head it pinned.
+ *
+ * @generated from message modbit.v1.VerifyDiagnostics
+ */
+export declare type VerifyDiagnostics = Message<"modbit.v1.VerifyDiagnostics"> & {
+  /**
+   * @generated from field: string package_json = 1;
+   */
+  packageJson: string;
+};
+
+/**
+ * Describes the message modbit.v1.VerifyDiagnostics.
+ * Use `create(VerifyDiagnosticsSchema)` to create a new message.
+ */
+export declare const VerifyDiagnosticsSchema: GenMessage<VerifyDiagnostics>;
+
+/**
+ * @generated from message modbit.v1.DiagnosticsVerified
+ */
+export declare type DiagnosticsVerified = Message<"modbit.v1.DiagnosticsVerified"> & {
+  /**
+   * @generated from field: bool verified = 1;
+   */
+  verified: boolean;
+
+  /**
+   * @generated from field: bool digest_ok = 2;
+   */
+  digestOk: boolean;
+
+  /**
+   * @generated from field: uint64 aggregates_checked = 3;
+   */
+  aggregatesChecked: bigint;
+
+  /**
+   * @generated from field: repeated string mismatches = 4;
+   */
+  mismatches: string[];
+};
+
+/**
+ * Describes the message modbit.v1.DiagnosticsVerified.
+ * Use `create(DiagnosticsVerifiedSchema)` to create a new message.
+ */
+export declare const DiagnosticsVerifiedSchema: GenMessage<DiagnosticsVerified>;
+
+/**
  * M8.7: a worker materialized a handoff bundle's workspace here; the task
  * runs from this root from now on (journaled `TaskWorkspaceRebound`).
  *
