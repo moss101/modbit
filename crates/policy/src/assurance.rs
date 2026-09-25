@@ -21,8 +21,10 @@ use sha2::{Digest, Sha256};
 /// Schema version of the policy and risk records.
 pub const ASSURANCE_SCHEMA_VERSION: u32 = 1;
 /// Version of the derivation rules below; bumps when a rule changes.
-/// `risk-rules-2`: the secret surface covers every `.env.*` file, and a
-/// suffix or basename prefix is compared without ASCII case.
+/// `risk-rules-2`: the secret surface covers every `.env.*` file and the
+/// other credential stores docs/23 protects (`.ssh/`, `id_rsa*`,
+/// `id_ed25519*`, `.netrc`, `.npmrc`, `.pypirc`), and a suffix or basename
+/// prefix is compared without ASCII case.
 pub const REALIZED_RISK_RULES_VERSION: &str = "risk-rules-2";
 
 /// How much assurance a candidate needs before acceptance (docs/27 §5.1).
@@ -293,6 +295,12 @@ impl Default for AssurancePolicy {
                         ".pfx",
                         "/secrets/",
                         "credentials",
+                        "/.ssh/",
+                        "id_rsa*",
+                        "id_ed25519*",
+                        ".netrc",
+                        ".npmrc",
+                        ".pypirc",
                     ],
                     RiskLevel::Critical,
                     true,
@@ -964,16 +972,49 @@ mod tests {
         // path's end, a prefix only the basename.
         let s = ProtectedSurface {
             kind: SurfaceKind::Secret,
-            patterns: vec!["*_secret.yaml".into(), "id_rsa*".into()],
+            patterns: vec!["*_secret.yaml".into(), "deploy_token*".into()],
             level: RiskLevel::Critical,
             review_required: true,
             human_required: true,
             question_required: false,
         };
         assert!(s.matches("config/db_SECRET.yaml"));
-        assert!(s.matches(".ssh/id_rsa.pub"));
+        assert!(s.matches("ci/deploy_token.txt"));
         assert!(!s.matches("config/secret.yaml"));
-        assert!(!s.matches("docs/id_rsa/readme.md"));
+        assert!(!s.matches("docs/deploy_token/readme.md"));
+    }
+
+    #[test]
+    fn every_credential_store_docs_23_protects_is_a_secret_and_its_lookalikes_are_not() {
+        let p = AssurancePolicy::default();
+        let kinds = |path: &str| -> Vec<SurfaceKind> {
+            p.surfaces_of(path).iter().map(|s| s.kind).collect()
+        };
+        for secret in [
+            ".ssh/config",
+            "home/ops/.ssh/authorized_keys",
+            "id_rsa",
+            ".ssh/id_rsa.pub",
+            "keys/id_ed25519_github",
+            "keys\\ID_ED25519",
+            ".netrc",
+            "web/.npmrc",
+            "tools/publish/.pypirc",
+            ".aws/credentials",
+        ] {
+            assert_eq!(kinds(secret), vec![SurfaceKind::Secret], "{secret}");
+        }
+        for plain in [
+            "src/ssh.rs",
+            "docs/ssh/setup.md",
+            "src/ssh_config.rs",
+            "src/npmrc.rs",
+            "src/netrc_parser.rs",
+            "docs/pypirc.md",
+            "src/rsa.rs",
+        ] {
+            assert_eq!(kinds(plain), vec![], "{plain}");
+        }
     }
 
     #[test]

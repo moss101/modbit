@@ -14,14 +14,14 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | Section | Range | Files | Bytes |
 |---|---|---:|---:|
 | Authority and orientation | 00–09 | 8 | 65563 |
-| Architecture and subsystems | 10–29 | 20 | 383591 |
+| Architecture and subsystems | 10–29 | 20 | 384431 |
 | Implementation specifications | 30–39 | 10 | 158594 |
 | Requirements, tasks and traceability | 40–49 | 10 | 351840 |
-| Verification and testing | 50–69 | 15 | 213558 |
+| Verification and testing | 50–69 | 15 | 214012 |
 | Delivery and operations | 70–79 | 8 | 62793 |
 | Agent process and governance | 80–97 | 18 | 127876 |
 | Live state | 98–99 | 1 | 14063 |
-| **Total docs** | | **90** | **1377878** |
+| **Total docs** | | **90** | **1379172** |
 
 ## Specification files (`docs/`)
 
@@ -48,7 +48,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 20 | `docs/20_WORKSPACE_GIT_AND_TRUSTED_CODE_SURFACE.md` | Workspace, Git, Worktrees, Diagnostics, and Trusted Code Surface | architecture | 5632 | `12981015ae69e28a83f8c8ea04330a16e3c6d9c0ab70f7cb8af6fd581754b0d7` |
 | 21 | `docs/21_TERMINAL_EXECUTION_AND_SANDBOX.md` | Terminal, Execution Router, and Sandbox Architecture | architecture | 30764 | `7373d4480d7ff4165b57db3204cb2df9eb13d3df2050471f6838af1a67329f4f` |
 | 22 | `docs/22_BROWSER_AND_COMPUTER_USE.md` | Browser and Computer-Use Architecture | architecture | 31715 | `0a846ff68035d09959118091e559439cd5d0f893e9d005e4d52b2ce495baebf7` |
-| 23 | `docs/23_SECURITY_POLICY_EFFECT_LEDGER.md` | Security, Policy, Capabilities, Secrets, and Effect Ledger | architecture | 19385 | `c5117226dd1cbf94ff0cbeb6fc8743d97a648cbdd05f316075595cc03e6d07ff` |
+| 23 | `docs/23_SECURITY_POLICY_EFFECT_LEDGER.md` | Security, Policy, Capabilities, Secrets, and Effect Ledger | architecture | 20225 | `35bcea180e8f9bfee42b8cf21e6afcf2bf0ce11fb86cd2b8d93a421dd3de7628` |
 | 24 | `docs/24_CLOUD_CONTROL_PLANE_AND_SYNC.md` | Cloud Control Plane, Remote Execution, and Sync | architecture | 17593 | `f6e858b9aa75e6f2d452b26d824ad2975436bc19d932dc4dad3906d9fde335a7` |
 | 25 | `docs/25_MULTIMODAL_MEDIA_AND_NOTEBOOK_RUNTIME.md` | Multimodal, Media and Notebook Runtime | architecture | 8001 | `8f711ffd6294c377dbba537086356fc869d171240d6ccdf5bef5a0c2d5b9ba3e` |
 | 26 | `docs/26_SKILL_REGISTRY_AND_EVOLUTION.md` | Skill Registry and Evolution Integration — Skill Evolution Without a Second Runtime | architecture | 11590 | `e5b69188c09e95c66a4bb2b42549e00b5f55790b81c163d29f892c62d6a1eec3` |
@@ -86,7 +86,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 58 | `docs/58_MULTIMODAL_MEDIA_REAL_TESTS.md` | Multimodal / Media Real-System Tests | verification | 4040 | `317a29984dc65eecf53dcb26cec525deb99499f602cd34ef6fa0ed7e8e402c81` |
 | 59 | `docs/59_RELEASE_ZERO_PROOF_SCENARIO.md` | Release Zero — Single Proof Scenario | verification | 3669 | `15fbb005f7a8196b4987468034f8de113dcd15a1ebd3f34dba822075012064fc` |
 | 60 | `docs/60_RELEASE_ZERO_EXPANDED_PROOF.md` | Release Zero Expanded Proof — Clean-Slate V2 | verification | 4001 | `0a3cc3ce5329c15cafb402833cb6bd70c9c6e4afdbdb838d2a811176c975939e` |
-| 61 | `docs/61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md` | Execution policy qualification and rollout gates | verification | 44532 | `3579a3e8ff56c5c9b975921637c0fee8148156a778c919dd87905e6b3fb2cba2` |
+| 61 | `docs/61_EXECUTION_POLICY_QUALIFICATION_AND_ROLLOUT_GATES.md` | Execution policy qualification and rollout gates | verification | 44986 | `c9929445ac4d98fde8fea87be19d54d9e01808052af53d09ed3f1b113db3badb` |
 | 62 | `docs/62_PRODUCT_EXTENSION_REQUIREMENTS_TASKS_AND_QUALIFICATIONS.md` | Product extension requirements, tasks and qualifications | verification | 88197 | `1212dbd1e9e1bb505b6ae751c39236daece9d1c37eeba7d8e1dde41f5aca6016` |
 | 63 | `docs/63_AGENT_COMPETENCE_BENCHMARKS_AND_REGRESSION_SUITES.md` | Agent competence benchmarks and regression suites | verification | 8291 | `431c384790f08d1650efa467d07ef2ac0ad4fc4325c61645433339d347aa933d` |
 | 64 | `docs/64_VERIFICATION_EXECUTION_CONTRACTS.md` | Verification execution contracts: baseline, targeting, result normalization, flake handling and diff invariants | verification | 16239 | `2ebf3003e7f1059fe71db444eec5f1df677088d94bafa32e3c528df865768155` |
@@ -1128,7 +1128,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m3/PX-040/ci-run-34507573124-tests.log` | retained evidence | 4206 | `a9e2a291c1bc0b8c6332b023ecd1361533d8286c33ba45c5465fcca3c2eacb50` |
 | `evidence/m3/PX-040/ci-run-34507573124.json` | retained evidence | 37317 | `cc7122950bffe169b616acd26ddc066cc491cfb3ea9bc94299350fbd41b06594` |
 | `evidence/m3/PX-040/evidence.json` | retained evidence | 1272 | `dc1c5415da2d653b16d94162aa23478c0d9694a3c0442c91e93c17db2e9e58ec` |
-| `evidence/m4/EPR-008/TASK_CARD.md` | retained evidence | 10168 | `b5b2f5fc43661039447441a4ebb7129e15c3ba39397010eb6878b282f90a1aa1` |
+| `evidence/m4/EPR-008/TASK_CARD.md` | retained evidence | 13544 | `32bf46599365a61e32b537dcbc24eb89c408eae2f1920218de46ccfd423a584f` |
 | `evidence/m4/EPR-008/ci-run-34637382928.json` | retained evidence | 37317 | `6eb917c33fa1e4c3a1a6340de2ebc9e4c2e02a95027c75e5fb519fa0f7c66608` |
 | `evidence/m4/EPR-008/ci-run-36111360538.json` | retained evidence | 42314 | `bbc94c5ff50ec9d07017571334adfafce627035c3c6963cd4f62a1dd81d1de8b` |
 | `evidence/m4/EPR-008/evidence.json` | retained evidence | 4851 | `a3611f7741090dcf2d788f2d6a0586ab208f3ba23a411a9674d44405a3a61d27` |
@@ -1634,7 +1634,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m9/EPR-011/TASK_CARD.md` | retained evidence | 3608 | `8e92cf48c90213a5308b80a768e43acbbceeef44f317606d002f6a13ff3eb90e` |
 | `evidence/m9/EPR-011/ci-run-35973113878.json` | retained evidence | 42281 | `2b9a718546fbabebd7c478ce074b9c802272c74e16e37fccc2bf981403e75439` |
 | `evidence/m9/EPR-011/evidence.json` | retained evidence | 3095 | `a320ff2dfd7e0768e98344c609f8f17972784065a83dde2a2ad46f13773cee97` |
-| `evidence/m9/EPR-019/TASK_CARD.md` | retained evidence | 3429 | `a0bf047033093cfd317a75ac4ed04ff7f12d320c00e05981d696c23ab96c31ab` |
+| `evidence/m9/EPR-019/TASK_CARD.md` | retained evidence | 4893 | `92621bac54156ce5c0b4d3593361e3e0e10bb79e9a51d851ee1e90e70454fe5a` |
 | `evidence/m9/EPR-019/ci-run-36025675554.json` | retained evidence | 42314 | `56a8838ce611bf1e8dea9c38d7b6e1fa8bc279c3ec7019661fe03f0b9915419e` |
 | `evidence/m9/EPR-019/evidence.json` | retained evidence | 3552 | `b3485a345d25d6c9a9cc92b3e519365b1c295c44f33870286915d18ef10920ec` |
 | `evidence/m9/IMP-EV-0029/TASK_CARD.md` | retained evidence | 5847 | `c53b7ceef274f93431b76a1aa2899c5d279a4f12f866efba7f298826a660faac` |
