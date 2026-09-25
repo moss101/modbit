@@ -2143,8 +2143,8 @@ dependencies = [
  "modbit-event-store",
  "modbit-protocol",
  "modbit-sandbox",
+ "modbit-secrets",
  "rand 0.10.2",
- "regex",
  "reqwest",
  "serde",
  "serde_json",
@@ -2236,6 +2236,7 @@ dependencies = [
  "modbit-providers",
  "modbit-retrieval",
  "modbit-sandbox",
+ "modbit-secrets",
  "modbit-skills",
  "modbit-terminal",
  "modbit-tools",
@@ -2263,6 +2264,7 @@ dependencies = [
  "hex",
  "modbit-domain",
  "modbit-protocol",
+ "modbit-secrets",
  "serde",
  "serde_json",
  "sha2 0.11.0",
@@ -2488,6 +2490,7 @@ dependencies = [
  "futures-util",
  "hex",
  "modbit-domain",
+ "modbit-secrets",
  "rand 0.10.2",
  "reqwest",
  "serde",
@@ -2577,6 +2580,8 @@ name = "modbit-secrets"
 version = "0.0.0"
 dependencies = [
  "modbit-domain",
+ "regex",
+ "serde_json",
 ]
 
 [[package]]
@@ -2619,6 +2624,7 @@ dependencies = [
  "modbit-mcp",
  "modbit-protocol",
  "modbit-sandbox",
+ "modbit-secrets",
  "modbit-terminal",
  "modbit-workspace",
  "png",

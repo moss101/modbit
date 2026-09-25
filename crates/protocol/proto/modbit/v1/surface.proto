@@ -906,6 +906,10 @@ message TaskStatus {
   string recovery_path = 11;     // how the system recovers
   repeated string evidence_refs = 12; // object hashes / ids that prove the failure
   repeated string diagnostic_features = 13; // stable feature tags (REQ-EV-0245)
+  // REQ-EV-0017: the same diagnosis in a person's words — the class, the
+  // code, whether a retry can help and what they can do; redacted, and
+  // never the source's own message.
+  string user_explanation = 14;
 }
 
 // ---- M2.9 Trusted Code Review Surface (docs/20) ----

@@ -477,6 +477,11 @@ impl ToolHost {
         })
     }
 
+    /// The one redactor over everything this Core holds (REQ-EV-0017).
+    pub(crate) fn redactor(&self) -> modbit_secrets::Redactor {
+        modbit_secrets::Redactor::new(self.secrets_in_custody())
+    }
+
     /// Every credential this Core holds (M7.7, docs/22 "Prompt-injection
     /// isolation"): the provider keys the gateway can present and the forge
     /// token. Memory only; the pipeline compares, never records.
@@ -1159,12 +1164,39 @@ impl ToolHost {
             final_arguments = rw.arguments_json;
         }
         let mut result = outcome.result.clone();
+        // REQ-EV-0017: a result passes the one redactor before it is recorded
+        // or read by the model. A value in this Core's custody never comes
+        // back from any tool; a failure's message is error text, so it also
+        // loses every credential shape.
+        let redactor = self.redactor();
+        let mut held_in_result = redactor.data_json(&mut result.structured_output);
+        if let Some(m) = result.error_message.take() {
+            let r = redactor.error(&m);
+            held_in_result += r.held;
+            result.error_message = Some(r.text);
+        }
         // Context Ledger (docs/28 §2, M3.8): a successful tool call that reads
         // or writes a packed path at the revision it was retrieved at is a use,
         // and a read, a language-service query or the task's own write is the
         // retrieval record an edit of that path needs (PX-015). Records bind to
         // the bytes: the file's content hash after the call.
         let mut retrieval_events = Vec::new();
+        if held_in_result > 0 {
+            retrieval_events.push(typed_task_event(
+                "SecurityEventRecorded",
+                &modbit_domain::task::TaskEvent::SecurityEventRecorded {
+                    kind: "SECRET_IN_TOOL_RESULT".into(),
+                    tool_name: tool_name.to_owned(),
+                    tool_call_id: tool_call_id.to_string(),
+                    patterns: vec!["CREDENTIAL_IN_RESULT".into()],
+                    detail: format!(
+                        "a credential in this Core's custody came back from the tool; {held_in_result} occurrence(s) replaced before the result was recorded or read"
+                    ),
+                    action: "REDACTED".into(),
+                },
+                &actor,
+            ));
+        }
         // M7.7 (docs/22 "Prompt-injection isolation", REQ-EV-0284): what a
         // tool returned is data. A passage in it shaped like instructions to
         // the agent is marked on the observation the model sees

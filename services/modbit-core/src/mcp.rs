@@ -59,8 +59,6 @@ const PING_TIMEOUT_MS: u64 = 5_000;
 const MAX_LIST_PAGES: usize = 16;
 /// The environment variable a server's credential is placed in.
 const DEFAULT_CREDENTIAL_ENV: &str = "MCP_CREDENTIAL";
-/// What replaces a secret the host recognizes in a server's answer.
-const REDACTED: &str = "[redacted: a credential in this Core's custody]";
 
 /// How a credential handle is keyed in custody and in the environment:
 /// `docs-api` is handed to the Core as `MODBIT_MCP_CREDENTIAL_DOCS_API`.
@@ -797,37 +795,40 @@ impl TaskHub {
     /// which is the exfiltration this forbids. Returns the number of
     /// replacements so the host can record that it happened.
     fn redact(&self, result: &mut CallResult) -> usize {
-        if self.secrets.is_empty() {
-            return 0;
-        }
+        let redactor = self.redactor();
         let mut hits = 0;
-        let mut scrub = |text: &mut String| {
-            for secret in &self.secrets {
-                if secret.len() >= 8 && text.contains(secret.as_str()) {
-                    hits += text.matches(secret.as_str()).count();
-                    *text = text.replace(secret.as_str(), REDACTED);
-                }
-            }
-        };
         for part in &mut result.parts {
             match part {
-                modbit_mcp::Part::Text { text, .. } => scrub(text),
-                modbit_mcp::Part::Resource {
+                modbit_mcp::Part::Text { text, .. }
+                | modbit_mcp::Part::Resource {
                     text: Some(text), ..
-                } => scrub(text),
+                } => {
+                    let r = redactor.data(text);
+                    if r.changed() {
+                        hits += r.held;
+                        *text = r.text;
+                    }
+                }
                 _ => {}
             }
         }
         if let Some(structured) = &mut result.structured {
-            let mut text = structured.to_string();
-            let before = text.clone();
-            scrub(&mut text);
-            if text != before {
-                *structured =
-                    serde_json::from_str(&text).unwrap_or(serde_json::Value::String(text.clone()));
-            }
+            hits += redactor.data_json(structured);
         }
         hits
+    }
+
+    /// The secrets in this Core's custody, as the one redactor (REQ-EV-0017).
+    fn redactor(&self) -> modbit_secrets::Redactor {
+        modbit_secrets::Redactor::new(self.secrets.iter().cloned())
+    }
+
+    /// What a server said when it failed is error text: it loses every held
+    /// value and every credential shape before the host reads it
+    /// (REQ-EV-0017).
+    fn redact_error(&self, mut e: PortError) -> PortError {
+        e.message = self.redactor().error_text(&e.message);
+        e
     }
 
     async fn listing_for(&self, server: &ConfiguredServer) -> ServerListing {
@@ -875,6 +876,7 @@ impl TaskHub {
                     listing.dropped_over_limit = d.dropped_over_limit;
                 }
                 Err(e) => {
+                    let e = self.redact_error(e);
                     listing.health = Health::Failed {
                         code: e.code,
                         message: e.message,
@@ -882,6 +884,7 @@ impl TaskHub {
                 }
             },
             Err(e) => {
+                let e = self.redact_error(e);
                 listing.health = Health::Failed {
                     code: e.code,
                     message: e.message,
@@ -935,8 +938,13 @@ impl McpPort for TaskHub {
             let conn = self
                 .hub
                 .connection(&entry, &self.correlation.session_id, cfg)
-                .await?;
-            let discovery = self.hub.discover(&entry, &conn).await?;
+                .await
+                .map_err(|e| self.redact_error(e))?;
+            let discovery = self
+                .hub
+                .discover(&entry, &conn)
+                .await
+                .map_err(|e| self.redact_error(e))?;
             let Some(tool) = discovery.tools.iter().find(|t| t.name == call.tool) else {
                 return Err(PortError::clean(
                     "EXTERNAL_TOOL_UNKNOWN",
@@ -960,7 +968,8 @@ impl McpPort for TaskHub {
                     params,
                     Some((&call.call_id, &cfg.name, &tool.name, call.effectful)),
                 )
-                .await?;
+                .await
+                .map_err(|e| self.redact_error(e))?;
             let mut parsed = parse_call_result(&result, &conn.limits)
                 .map_err(|e| PortError::clean(e.code, e.message))?;
             parsed.redacted = self.redact(&mut parsed);

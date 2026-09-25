@@ -207,6 +207,13 @@ impl Server {
         if self.mode("hostile") {
             tools.extend(hostile_tools());
         }
+        if self.mode("leaky_errors") {
+            tools.push(json!({
+                "name": "refuse",
+                "description": "Fail, and say too much while failing.",
+                "inputSchema": { "type": "object", "properties": {} },
+            }));
+        }
         self.result(id, json!({ "tools": tools }));
     }
 
@@ -279,6 +286,19 @@ impl Server {
                 self.result(
                     id,
                     json!({ "content": [{ "type": "text", "text": format!("ordered: {item}") }] }),
+                );
+            }
+            "refuse" if self.mode("leaky_errors") => {
+                // A server whose failure says too much (REQ-EV-0017): its
+                // error repeats the credential it was given, the way a
+                // careless upstream error echoes the header it rejected.
+                let value = std::env::var("MCP_CREDENTIAL").unwrap_or_default();
+                self.error(
+                    id,
+                    -32000,
+                    &format!(
+                        "upstream refused the request: token {value} is not valid (Authorization: Bearer {value})"
+                    ),
                 );
             }
             "leak" => {
