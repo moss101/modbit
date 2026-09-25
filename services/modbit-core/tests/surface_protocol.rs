@@ -40556,3 +40556,295 @@ async fn qual_ev_0017_a_secret_bearing_internal_error_is_redacted_for_the_person
     let leaked = files_holding(dir.path(), PROVIDER_KEY);
     assert!(leaked.is_empty(), "nothing persisted holds it: {leaked:?}");
 }
+
+/// QUAL-EV-0142 (REQ-EV-0142, docs/71 "Desktop diagnostics package"): the
+/// diagnostics export replays evidence metadata and contains no credential
+/// values. A Core holding a provider key and a forge token runs one task to
+/// review and has another refused by a provider that echoes its key; a
+/// task's goal quotes an access key the Core does not hold. The package for
+/// the session names the build, a clean integrity result over every chain
+/// in scope and the receipt chain, each aggregate's range and head, a
+/// metadata-only trace with the refusal's code, the refusal among the
+/// recent errors, and the provider's health without its key; with content
+/// the goal is there with the access key replaced. Neither package holds a
+/// secret. The package replays against the log — and again after the Core
+/// is killed and a new one opens the same store — while a changed package
+/// fails its digest and a forged one resealed fails against the log. A
+/// task-narrowed package holds only that task.
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn qual_ev_0142_the_diagnostics_export_replays_evidence_metadata_and_holds_no_credential() {
+    use modbit_observability::diagnostics::Package;
+    use modbit_protocol::v1::{
+        CreateTask, DiagnosticsExported, DiagnosticsVerified, ExportDiagnostics, StartTask,
+        TaskCreated, TaskRunStarted, VerifyDiagnostics,
+    };
+    use serde_json::json;
+
+    const PROVIDER_KEY: &str = "sk-modbit-qual-0142-provider-key-19ad7e";
+    const FORGE_TOKEN: &str = "ghp_modbitqual0142forgetokenAbCdEf123456";
+    const NOT_HELD: &str = "AKIAQUAL0142NOTHELD7";
+
+    let refusal = json!({"error": {
+        "message": format!("Incorrect API key provided: {PROVIDER_KEY}"),
+        "type": "invalid_request_error",
+    }})
+    .to_string();
+    let (base, _) = scripted_models(
+        vec![
+            json!({"calls": [{"name": "plan.update", "args": {"outcome": "read notes", "expected_files": []}}]}),
+            json!({"calls": [{"name": "fs.read", "args": {"path": "notes.md"}}]}),
+            json!({"calls": [{"name": "task.complete", "args": {"summary": "read", "self_review": {"findings": []}}}]}),
+        ],
+        vec![(
+            "gpt-5-mini",
+            vec![json!({"http_status": 401, "error_body": refusal})],
+        )],
+        None,
+    )
+    .await;
+    let (_repo, root) = plain_repo(&[("notes.md", "hello\n")]);
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", PROVIDER_KEY),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_GITHUB_TOKEN", FORGE_TOKEN),
+        ("MODBIT_GITHUB_API_BASE_URL", "http://127.0.0.1:9"),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x51)).await;
+    let g = lease_for(&session);
+    async fn task(
+        c: &mut Client,
+        session: &Id,
+        g: Option<u64>,
+        root: &str,
+        id: u8,
+        goal: &str,
+    ) -> Id {
+        let ack = c
+            .command(envelope_fenced(
+                id16(id),
+                "CreateTask",
+                CreateTask {
+                    session_id: Some(session.clone()),
+                    goal_text: goal.into(),
+                    workspace_id: None,
+                    execution_profile: "local_trusted".into(),
+                    origin: "cli".into(),
+                    workspace_root: root.into(),
+                    issue_url: String::new(),
+                    issue_json: String::new(),
+                }
+                .encode_to_vec(),
+                g,
+            ))
+            .await
+            .unwrap();
+        Client::result::<TaskCreated>(&ack)
+            .unwrap()
+            .task_id
+            .unwrap()
+    }
+    async fn start(c: &mut Client, t: &Id, id: u8, g: Option<u64>, model: &str) {
+        let ack = c
+            .command(envelope_fenced(
+                id16(id),
+                "StartTask",
+                StartTask {
+                    task_id: Some(t.clone()),
+                    endpoint: String::new(),
+                    model: model.into(),
+                    max_turns: 8,
+                    max_tool_calls: 0,
+                    max_no_progress_turns: 3,
+                    skills: vec![],
+                }
+                .encode_to_vec(),
+                g,
+            ))
+            .await
+            .unwrap();
+        let _: TaskRunStarted = Client::result(&ack).unwrap();
+    }
+    async fn export(
+        c: &mut Client,
+        id: u8,
+        session: &Id,
+        task: Option<&Id>,
+        content: bool,
+    ) -> DiagnosticsExported {
+        let ack = c
+            .command(envelope(
+                id16(id),
+                "ExportDiagnostics",
+                ExportDiagnostics {
+                    session_id: Some(session.clone()),
+                    task_id: task.cloned(),
+                    include_content: content,
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    }
+    async fn verify(c: &mut Client, package_json: &str) -> DiagnosticsVerified {
+        let ack = c
+            .command(envelope(
+                Id {
+                    value: (0..16).map(|_| rand::random::<u8>()).collect(),
+                },
+                "VerifyDiagnostics",
+                VerifyDiagnostics {
+                    package_json: package_json.into(),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    }
+
+    let done = task(&mut c, &session, g, &root, 0x52, "read the notes").await;
+    start(&mut c, &done, 0x53, g, "gpt-5").await;
+    let st = wait_for_state(&mut c, &done, "ReadyForReview", 120).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let refused = task(
+        &mut c,
+        &session,
+        g,
+        &root,
+        0x54,
+        &format!("deploy with access key {NOT_HELD}"),
+    )
+    .await;
+    start(&mut c, &refused, 0x55, g, "gpt-5-mini").await;
+    let deadline = std::time::Instant::now() + Duration::from_secs(60);
+    loop {
+        let st = wait_task(&mut c, &refused, 1).await;
+        if st.failure_code == "AUTH_REJECTED" {
+            break;
+        }
+        assert!(std::time::Instant::now() < deadline, "{st:?}");
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+
+    // ---- the package ---------------------------------------------------
+    let out = export(&mut c, 0x56, &session, None, false).await;
+    for secret in [PROVIDER_KEY, FORGE_TOKEN, NOT_HELD] {
+        assert!(
+            !out.package_json.contains(secret),
+            "no credential in the package: {secret}"
+        );
+    }
+    let pkg: Package = serde_json::from_str(&out.package_json).unwrap();
+    assert_eq!(pkg.schema, "modbit.diagnostics/1");
+    assert_eq!(pkg.digest, out.digest);
+    assert_eq!(pkg.digest, pkg.computed_digest(), "sealed as served");
+    assert!(!pkg.build.core_version.is_empty() && !pkg.build.os.is_empty());
+    assert_eq!(pkg.integrity.database, "ok", "{:?}", pkg.integrity);
+    assert!(
+        pkg.integrity.chain_failures.is_empty(),
+        "{:?}",
+        pkg.integrity
+    );
+    assert_eq!(pkg.integrity.chains_verified, pkg.aggregates.len() as u64);
+    assert_eq!(pkg.integrity.receipts, "valid");
+    assert!(pkg.content.is_none(), "no payloads unless asked");
+    assert!(
+        pkg.aggregates.iter().all(|a| a.count >= 1
+            && a.head_hash.len() == 64
+            && a.first_sequence <= a.last_sequence),
+        "{:?}",
+        pkg.aggregates
+    );
+    let task_hex = |t: &Id| uuid_of(t);
+    assert!(
+        pkg.scope.task_ids.contains(&task_hex(&done))
+            && pkg.scope.task_ids.contains(&task_hex(&refused)),
+        "{:?}",
+        pkg.scope
+    );
+    assert!(
+        pkg.trace
+            .iter()
+            .any(|l| l.event_type == "TaskNeedsAttention"
+                && l.code.as_deref() == Some("AUTH_REJECTED")),
+        "the trace names the refusal by its code"
+    );
+    assert!(
+        pkg.recent_errors
+            .iter()
+            .any(|e| e.code == "AUTH_REJECTED" && e.class == "PROVIDER"),
+        "{:?}",
+        pkg.recent_errors
+    );
+    let openai = pkg
+        .providers
+        .iter()
+        .find(|p| p.name == "openai")
+        .expect("the provider's health");
+    assert!(
+        openai.credential_configured && openai.host.starts_with("127.0.0.1:"),
+        "{openai:?}"
+    );
+    assert!(openai.failures >= 1 && openai.successes >= 1, "{openai:?}");
+
+    // With content: the payloads, redacted the same way.
+    let full = export(&mut c, 0x57, &session, None, true).await;
+    for secret in [PROVIDER_KEY, FORGE_TOKEN, NOT_HELD] {
+        assert!(!full.package_json.contains(secret), "{secret}");
+    }
+    assert!(full.redactions >= 1, "the goal's access key was replaced");
+    let with: Package = serde_json::from_str(&full.package_json).unwrap();
+    assert!(
+        with.content.as_ref().unwrap().iter().any(|e| e
+            .payload
+            .to_string()
+            .contains("deploy with access key [redacted]")),
+        "the goal is there, its key is not"
+    );
+
+    // ---- it replays ----------------------------------------------------
+    let v = verify(&mut c, &out.package_json).await;
+    assert!(v.verified && v.digest_ok, "{v:?}");
+    assert_eq!(v.aggregates_checked, pkg.aggregates.len() as u64);
+    // Changed after sealing: the digest says so.
+    let mut changed = pkg.clone();
+    changed.aggregates[0].head_hash = "0".repeat(64);
+    let v = verify(&mut c, &serde_json::to_string(&changed).unwrap()).await;
+    assert!(!v.verified && !v.digest_ok, "{v:?}");
+    // Forged and resealed: the log says so.
+    let v = verify(&mut c, &serde_json::to_string(&changed.sealed()).unwrap()).await;
+    assert!(v.digest_ok && !v.verified, "{v:?}");
+    assert!(
+        v.mismatches.len() == 1 && v.mismatches[0].contains("the package says"),
+        "{v:?}"
+    );
+
+    // A task-narrowed package holds only that task.
+    let narrow = export(&mut c, 0x58, &session, Some(&refused), false).await;
+    let n: Package = serde_json::from_str(&narrow.package_json).unwrap();
+    assert_eq!(n.scope.task_ids, vec![task_hex(&refused)]);
+    assert!(
+        n.trace
+            .iter()
+            .all(|l| l.task_id.as_deref() == Some(task_hex(&refused).as_str())),
+        "{:?}",
+        n.trace
+    );
+    assert!(n.aggregates.len() < pkg.aggregates.len());
+
+    // After the Core is killed, a new one over the same store replays it.
+    drop(c);
+    core.kill();
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let v = verify(&mut c, &out.package_json).await;
+    assert!(v.verified, "the package replays after a restart: {v:?}");
+    drop(c);
+    core.kill();
+}

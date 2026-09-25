@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 90,
-    "root_and_tooling": 1589,
-    "docs_bytes": 1366320
+    "root_and_tooling": 1595,
+    "docs_bytes": 1374103
   },
   "sections": [
     {
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 49984,
-      "sha256": "0a2a7353fe8973d7a6abd6edf4c3ac4e89f296b9a59b334cbde72d0fbf66e05e"
+      "bytes": 50382,
+      "sha256": "334ac73463813aa04dd2510a3720cb35d4019eeb2cbb31d3967fa7b51c059fd9"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -635,8 +635,8 @@
       "section": "delivery",
       "section_title": "Delivery and operations",
       "title": "Operations and Incident Runbook",
-      "bytes": 4954,
-      "sha256": "f633d3c4c1af5e81799c6497d603b448b239ae00b8169c79828d641d1f1b51be"
+      "bytes": 6783,
+      "sha256": "3a09024b56e46bec8d6253d6f1cd10687a6bcc985cfed9577087a4345c695068"
     },
     {
       "path": "docs/72_RISK_REGISTER_AND_OPEN_DECISIONS.md",
@@ -689,8 +689,8 @@
       "section": "delivery",
       "section_title": "Delivery and operations",
       "title": "Release Zero Execution Goal",
-      "bytes": 23871,
-      "sha256": "fb2a8ed17a9ebfc15799c1145cfb0a3b9e39220c5ae35ead17dd683b46a5d105"
+      "bytes": 24286,
+      "sha256": "0f63b3942a3186f316dd95c7d562c05e832b85276fe09d507682827f905b1d04"
     },
     {
       "path": "docs/80_ANTI_SUPERFICIAL_IMPLEMENTATION_STANDARD.md",
@@ -851,8 +851,8 @@
       "section": "governance",
       "section_title": "Agent process and governance",
       "title": "Dossier maintenance log",
-      "bytes": 56871,
-      "sha256": "3ac7a8f13fa248127d02ea9e3fc1cc185e4f42f4ea8ca43ec9d811f1386902d4"
+      "bytes": 62012,
+      "sha256": "3dd96b5a7519d3371a194697de0cee4ffe48ad1b54d0ad2ff01c257848b4b471"
     },
     {
       "path": "docs/98_BUILD_MANIFEST.md",
@@ -1094,6 +1094,21 @@
       "path": "evidence/dossier-gov-006/validation.json",
       "bytes": 10151,
       "sha256": "29d81ef7f207adac438aa4ea0e50aa43579848fd8fd43c1bde0a2a68f30646d8"
+    },
+    {
+      "path": "evidence/dossier-gov-007/baseline.json",
+      "bytes": 20288,
+      "sha256": "a7f0a17f10094f92687e1d9c715d16e6ee6f9e92b58e1227ba3139fca306cb8b"
+    },
+    {
+      "path": "evidence/dossier-gov-007/tests.log",
+      "bytes": 3470,
+      "sha256": "757948da61ca719919b608ae3e66bb76563e05fea190ebc9211e6bcfe81ebe5d"
+    },
+    {
+      "path": "evidence/dossier-gov-007/validation.json",
+      "bytes": 7202,
+      "sha256": "e8c16d6237842386ce48e23e99bcb7fbc5003b40aa59ec842b91fd8320c4b28e"
     },
     {
       "path": "evidence/dossier-gov/baseline.json",
@@ -1604,6 +1619,21 @@
       "path": "evidence/m10/IMP-EV-0126/evidence.json",
       "bytes": 5219,
       "sha256": "c3628d2b6249b3c0878198410071b79977c964b07eba12ee5f22be2762808bbc"
+    },
+    {
+      "path": "evidence/m10/IMP-EV-0142/TASK_CARD.md",
+      "bytes": 4641,
+      "sha256": "d0322325379bfe94907d6ac3b6f81aa46a73fd3fb13501a250f0ce58bc9bd054"
+    },
+    {
+      "path": "evidence/m10/IMP-EV-0142/ci-run-36135019357.json",
+      "bytes": 42314,
+      "sha256": "78f88e6bbec467ec03c069df9b5d9cc8af178929f2ddb66058ce93157211b405"
+    },
+    {
+      "path": "evidence/m10/IMP-EV-0142/evidence.json",
+      "bytes": 2532,
+      "sha256": "577c822a3d8370f4369e3bcc78dc4c30d4d5227bc01b5fd6a0370e72d7543357"
     },
     {
       "path": "evidence/m10/IMP-EV-0212/TASK_CARD.md",
@@ -8762,18 +8792,18 @@
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 41200,
-      "sha256": "75db55b1b63db83b7234cbb9868e96d857d70551566eaac0f493b137ef56a428"
+      "bytes": 41847,
+      "sha256": "01938c78e84a983f2600189d0aa22759afefa1722f5e199123f1af28ff912eb3"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1593593,
-      "sha256": "23e59ccf3d6d6ef742a65f4e6599e1b6eeb381595d694729d0f1c803225d368c"
+      "bytes": 1600198,
+      "sha256": "1f1e415b3f9d1def535e782fc8747e593a542b5f4e7d0d8a226f1aa166b340e3"
     },
     {
       "path": "tools/build_graph.py",
-      "bytes": 55743,
-      "sha256": "fa344b571dcaca99416164ea352cbe7ff4ba8484aeb8f580779e433c839976bd"
+      "bytes": 56932,
+      "sha256": "7a13adf9a591a21f9a99705d5a0f2fee5a316b3b43897d0964fbe8b1af30a4ce"
     },
     {
       "path": "tools/build_manifest.py",
@@ -8807,8 +8837,8 @@
     },
     {
       "path": "tools/test_dossier.py",
-      "bytes": 46032,
-      "sha256": "4789ecb9e4618cf29e244b377e5654f96a7600376d12c47bfa711e5912f4814d"
+      "bytes": 46283,
+      "sha256": "ebc25d08cc8701564f4819d3c0d84359c7fbc4fa48057734766d069cbd2a5dbb"
     }
   ],
   "renames_v3_to_v3_1": {

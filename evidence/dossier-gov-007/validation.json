@@ -1,0 +1,240 @@
+{
+ "task": "DOC-GOV-007",
+ "change_record": "DR-GOV-2026-09-25-007",
+ "edition": "V3.3 EPR v1.1",
+ "scope": "Stale descriptive wording corrected: the Unblocks cell of doc 77 §5 item 1 (PX-020/M3 already unblocked by compatible-gateway credentials; what production-endpoint credentials and live runs still unblock); dossier only",
+ "recorded_at_utc": "2026-09-25T12:53:22.541418+00:00",
+ "environment": {
+  "python": "3.9.6 (default, May 22 2026, 11:13:45) \n[Clang 21.0.0 (clang-2100.1.1.101)]",
+  "platform": "macOS-26.5.1-arm64-arm-64bit",
+  "machine": "arm64",
+  "working_directory": "/Users/mohsin/projects/modbit/.claude/worktrees/hungry-kapitsa-a44d1a",
+  "dependencies": "Python standard library only"
+ },
+ "git": {
+  "remote": "https://github.com/moss101/modbit.git",
+  "branch": "wip/doc-gov-007-unblocks-line",
+  "baseline_commit": "26776dd4953a24fde70e2a75c2d9374579acc771",
+  "change_commit": "recorded as commit: evidence on DOC-GOV-007 after the pull request lands on main"
+ },
+ "corrected_files": {
+  "docs/77_RELEASE_ZERO_EXECUTION_GOAL.md": {
+   "before_sha256": "fb2a8ed17a9ebfc15799c1145cfb0a3b9e39220c5ae35ead17dd683b46a5d105",
+   "after_sha256": "0f63b3942a3186f316dd95c7d562c05e832b85276fe09d507682827f905b1d04"
+  }
+ },
+ "source_revision_algorithm": "SHA-256 over UTF-8 json.dumps(source_sha256, sort_keys=True, separators=(comma,colon)); sources are root *.md except MANIFEST.md, docs/*.md and tools/*.py; excludes generated manifests/graph and evidence",
+ "source_revision_sha256": "8fd687ada06147b2435a9d063e7706a836aad0a89b483d71cdc5f91f2702c983",
+ "syntax": "ast.parse passed for all tools/*.py files",
+ "tests": {
+  "command": [
+   "/Applications/Xcode.app/Contents/Developer/usr/bin/python3",
+   "tools/test_dossier.py",
+   "-v"
+  ],
+  "count": 44,
+  "exit_code": 0,
+  "output_ref": "evidence/dossier-gov-007/tests.log",
+  "sha256": "757948da61ca719919b608ae3e66bb76563e05fea190ebc9211e6bcfe81ebe5d",
+  "changed_test": "test_governance_reseal_task_and_evidence_grammar (DOC-GOV-007 chain assertion)",
+  "result_line": "Ran 44 tests in 54.856s"
+ },
+ "regeneration_and_integrity": [
+  {
+   "command": [
+    "/Applications/Xcode.app/Contents/Developer/usr/bin/python3",
+    "tools/build_manifest.py"
+   ],
+   "exit_code": 0,
+   "output": "MANIFEST.md + manifest.json written: 90 docs, 1589 root/tooling files"
+  },
+  {
+   "command": [
+    "/Applications/Xcode.app/Contents/Developer/usr/bin/python3",
+    "tools/build_graph.py"
+   ],
+   "exit_code": 0,
+   "output": "graph written: 1486 nodes, 4653 edges\n  change_record=11, decision=56, doc=90, dossier_task=15, imp_task=323, milestone=11, milestone_task=78, qual_test=352, release=3, release_gate=7, requirement=352, scenario=155, section=8, source_patch=2, subsystem=23\nview written: graph/PROJECT_GRAPH.md"
+  },
+  {
+   "command": [
+    "/Applications/Xcode.app/Contents/Developer/usr/bin/python3",
+    "tools/build_manifest.py"
+   ],
+   "exit_code": 0,
+   "output": "MANIFEST.md + manifest.json written: 90 docs, 1589 root/tooling files"
+  },
+  {
+   "command": [
+    "/Applications/Xcode.app/Contents/Developer/usr/bin/python3",
+    "tools/check_dossier.py",
+    "--manifest"
+   ],
+   "exit_code": 0,
+   "output": "OK: 90 docs; base 291 REQ-EV/265 IMP-EV/291 QUAL-EV + EPR 20 + PX 41 (38 ADOPT tasks) = 352 requirements effective; 18 ADR-R, 7 gates, 3 releases; graph and references consistent; manifest hashes verified"
+  }
+ ],
+ "graph_counts": {
+  "change_record": 11,
+  "decision": 56,
+  "doc": 90,
+  "dossier_task": 15,
+  "imp_task": 323,
+  "milestone": 11,
+  "milestone_task": 78,
+  "qual_test": 352,
+  "release": 3,
+  "release_gate": 7,
+  "requirement": 352,
+  "scenario": 155,
+  "section": 8,
+  "source_patch": 2,
+  "subsystem": 23
+ },
+ "edge_count": 4653,
+ "graph_delta": {
+  "added_nodes": [
+   "DOC-GOV-007",
+   "DR-GOV-2026-09-25-007"
+  ],
+  "removed_nodes": [],
+  "added_edges": [
+   [
+    "DOC-GOV-007",
+    "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+    "specified_by"
+   ],
+   [
+    "DOC-GOV-007",
+    "97_DOSSIER_MAINTENANCE_LOG.md",
+    "specified_by"
+   ],
+   [
+    "DOC-GOV-007",
+    "DOC-GOV-006",
+    "after"
+   ],
+   [
+    "DOC-GOV-007",
+    "DR-GOV-2026-09-25-007",
+    "authorized_by"
+   ],
+   [
+    "DOC-GOV-007",
+    "governance",
+    "owned_by"
+   ],
+   [
+    "DR-GOV-2026-09-25-007",
+    "97_DOSSIER_MAINTENANCE_LOG.md",
+    "specified_by"
+   ]
+  ],
+  "removed_edges": [],
+  "nodes_with_status_evidence_or_note_changes": []
+ },
+ "goal_command": {
+  "command": [
+   "python3",
+   "tools/graph.py",
+   "goal",
+   "--json"
+  ],
+  "exit_code": 1,
+  "state": "NOT_READY",
+  "work_items": {
+   "total": 401,
+   "complete": 381,
+   "blocked": 0,
+   "in_progress": 0,
+   "not_started": 20
+  },
+  "blockers": [],
+  "milestones": {
+   "M0": "COMPLETE",
+   "M1": "COMPLETE",
+   "M2": "COMPLETE",
+   "M3": "COMPLETE",
+   "M4": "COMPLETE",
+   "M5": "COMPLETE",
+   "M6": "COMPLETE",
+   "M7": "COMPLETE",
+   "M8": "COMPLETE",
+   "M9": "COMPLETE",
+   "M10": "IN_PROGRESS"
+  }
+ },
+ "facts_checked": {
+  "PX-020": {
+   "status": "COMPLETE",
+   "milestone": "M3",
+   "status_changed_on": "2026-09-21T04:55:08Z"
+  },
+  "M3_rollup_derived_by_goal": "COMPLETE",
+  "IMP-EV-0211": {
+   "status": "NOT_STARTED",
+   "milestone": "M10"
+  },
+  "M2.6_run_evidence": [
+   "run:gha-34378814770",
+   "run:gha-35491774156"
+  ],
+  "deferred_live_halves_note": "run: evidence on the tasks whose deferred live halves the Unblocks cell names; every id is a hosted CI run of the offline half, older than the first live-providers workflow run (35470226975, 2026-09-19, DR-M9-002); no live run has been appended",
+  "deferred_live_halves_run_evidence": {
+   "EPR-000": [
+    "run:34544470328"
+   ],
+   "EPR-002": [
+    "run:34548714162"
+   ],
+   "EPR-005": [
+    "run:34564504407"
+   ],
+   "IMP-EV-0251": [
+    "run:34564504407"
+   ],
+   "IMP-EV-0253": [
+    "run:34564504407"
+   ],
+   "PX-022": [
+    "run:34568027155"
+   ],
+   "PX-028": [
+    "run:34565153777"
+   ],
+   "PX-002": [
+    "run:34751685250"
+   ]
+  }
+ },
+ "invariants": {
+  "changed_files": [
+   "MANIFEST.md",
+   "docs/77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "docs/97_DOSSIER_MAINTENANCE_LOG.md",
+   "graph/PROJECT_GRAPH.md",
+   "graph/project-graph.json",
+   "manifest.json",
+   "tools/build_graph.py",
+   "tools/test_dossier.py"
+  ],
+  "added_files": [
+   "evidence/dossier-gov-007/baseline.json",
+   "evidence/dossier-gov-007/tests.log"
+  ],
+  "only_expected_files_changed": true,
+  "unexpected_changes": [],
+  "locked_paths_untouched": true,
+  "both_source_patches_unchanged": true,
+  "docs_40_41_42_49_62_unchanged": true,
+  "agents_md_unchanged": true,
+  "decision_records_unchanged": true,
+  "prior_dossier_evidence_bundles_unchanged": true,
+  "product_and_prior_dossier_statuses_unchanged": true,
+  "new_work_item_nodes": [
+   "DOC-GOV-007"
+  ],
+  "graph_not_written_by_goal_command": true
+ },
+ "finalization": "After this evidence is recorded the manifest is rebuilt so the change commit passes the gate. Once the pull request lands on main, graph.py walks only DOC-GOV-007 through the one-step ladder to COMPLETE with run/artifact/revision/commit references; manifests are regenerated and check_dossier --manifest and test_dossier.py rerun in the seal commit."
+}

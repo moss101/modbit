@@ -16574,8 +16574,16 @@
    "milestone": "M10",
    "qual": "QUAL-EV-0142",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-36135019357",
+    "test:qual_ev_0142_the_diagnostics_export_replays_evidence_metadata_and_holds_no_credential",
+    "artifact:evidence/m10/IMP-EV-0142/TASK_CARD.md",
+    "artifact:evidence/m10/IMP-EV-0142/evidence.json",
+    "artifact:evidence/m10/IMP-EV-0142/ci-run-36135019357.json",
+    "commit:3cc1943"
+   ],
+   "status_changed_on": "2026-09-25T13:00:37Z"
   },
   {
    "id": "IMP-EV-0143",
@@ -34466,8 +34474,118 @@
    "subsystem": "governance",
    "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
    "acceptance": "Doc 77 Stage 2 matches the graph (PX-020 COMPLETE, M3 COMPLETE, no blocker, open live halves named) and the IMP-EV-0245 card names its M10 feature consumer; descriptive text only; full integrity gate passes; no product proof",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-36111240164",
+    "commit:abc2833d7537ef91c9eb9b3de4c9091d6f2bfbf4",
+    "artifact:evidence/dossier-gov-006/validation.json",
+    "artifact:evidence/dossier-gov-006/tests.log",
+    "artifact:evidence/dossier-gov-006/tests-after-merge.log",
+    "revision:sha256:f83e0e2ff17e8272cac36f66e5ab2b6aeda5ea1171961fa82aa03c68b6fe66f4"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-25T08:29:09Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Audit at main b196ed5: git log -- docs/77* showed doc 77 untouched since DOC-GOV-005 (49cbc43); graph.py show PX-020 COMPLETE (2026-09-21, DR-M3-005, run 35560128454), IMP-EV-0244/0246 M10 EXPERIMENT, IMP-EV-0245 M4; status M3 COMPLETE; goal 0 BLOCKED; DR-M3-005 and DR-M9-002 read; no live run in the evidence of EPR-000/002/005, IMP-EV-0251/0253, PX-022, PX-028, PX-002; baseline hashed in evidence/dossier-gov-006/baseline.json"
+    },
+    {
+     "at": "2026-09-25T08:29:09Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "Doc 77 Stage 2 rewritten as resolved 2026-09-21 with the open public half and deferred live halves named; IMP-EV-0245 card Limitations names IMP-EV-0244/0246 (M10); GOV6_CHANGE and DOC-GOV-006 in build_graph.py; governance chain assertion in test_dossier.py; docs/97 entry"
+    },
+    {
+     "at": "2026-09-25T08:29:09Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Graph (dossier_task 14, change_record 10; two nodes and six edges added, no existing node's status, evidence or notes changed) and both manifests regenerated through the real CLIs; manifests regenerated again after two merges of main (conflicts only in MANIFEST.md and manifest.json)"
+    },
+    {
+     "at": "2026-09-25T08:29:09Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "check_dossier --manifest exit 0 and the copied-package suite 44 tests OK, before and after merging main (tests.log, tests-after-merge.log)"
+    },
+    {
+     "at": "2026-09-25T08:29:18Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "PR #36 hosted CI run 36111240164 green 14/14 on macOS/Linux/Windows including dossier integrity; squash-landed on main as abc2833"
+    },
+    {
+     "at": "2026-09-25T08:29:18Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Sealed: doc 77 Stage 2 and the IMP-EV-0245 card match the graph; descriptive text only; integrity gate and copied-package suite green"
+    }
+   ],
+   "owner_agent": "claude-opus-5.5",
+   "status_changed_on": "2026-09-25T08:29:18Z"
+  },
+  {
+   "id": "DR-GOV-2026-09-25-007",
+   "type": "change_record",
+   "title": "Approved correction of the Release Zero goal's provider-credential Unblocks cell",
+   "status": "APPROVED",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md"
+  },
+  {
+   "id": "DOC-GOV-007",
+   "type": "dossier_task",
+   "title": "Correct the Release Zero goal's provider-credential Unblocks cell",
+   "subsystem": "governance",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
+   "acceptance": "Doc 77 §5 item 1 Unblocks matches the graph and Decision Records (PX-020/M3 unblocked by compatible-gateway credentials; production-endpoint clause, open live halves, IMP-EV-0211, Release Zero step 1 and gate evidence still named); descriptive text only; full integrity gate passes; no product proof",
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-36139948547",
+    "commit:1b71966161d839dc99c152dc437966a34fe02316",
+    "artifact:evidence/dossier-gov-007/validation.json",
+    "artifact:evidence/dossier-gov-007/tests.log",
+    "revision:sha256:8fd687ada06147b2435a9d063e7706a836aad0a89b483d71cdc5f91f2702c983"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-25T13:41:27Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "Audit at main 26776dd: doc 77 §5 item 1 Unblocks cell read; graph run evidence for PX-020, M2.6 (gha-35491774156), IMP-EV-0211 (NOT_STARTED, M10) and EPR-000/002/005, IMP-EV-0251/0253, PX-022, PX-028, PX-002 (offline runs only); DR-M9-002 and DR-M3-005 reread; baseline hashed in evidence/dossier-gov-007/baseline.json"
+    },
+    {
+     "at": "2026-09-25T13:41:27Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "Unblocks cell rewritten (gateway credentials supplied and what they unblocked; production-endpoint clause, open live halves, IMP-EV-0211, Release Zero step 1 and EPR gate evidence still named); GOV7_CHANGE and DOC-GOV-007 in build_graph.py; governance chain assertion in test_dossier.py; docs/97 entry"
+    },
+    {
+     "at": "2026-09-25T13:41:27Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "Graph (two nodes and six edges added; no existing node's status, evidence or notes changed) and both manifests regenerated through the real CLIs; regenerated again after merging main (conflicts only in MANIFEST.md and manifest.json)"
+    },
+    {
+     "at": "2026-09-25T13:41:27Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "check_dossier --manifest exit 0 and the copied-package suite 44 tests OK (tests.log), and again on the merged tree"
+    },
+    {
+     "at": "2026-09-25T13:41:27Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "PR #48 hosted CI run 36139948547 green 14/14 on macOS/Linux/Windows including dossier integrity; squash-landed on main as 1b71966"
+    },
+    {
+     "at": "2026-09-25T13:41:27Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "Sealed: doc 77 §5 item 1 Unblocks matches the graph and Decision Records; descriptive text only; integrity gate and copied-package suite green"
+    }
+   ],
+   "owner_agent": "claude-opus-5.5",
+   "status_changed_on": "2026-09-25T13:41:27Z"
   },
   {
    "id": "ALPHA",
@@ -53538,6 +53656,36 @@
   {
    "from": "DOC-GOV-006",
    "to": "DR-GOV-2026-09-24-006",
+   "type": "authorized_by"
+  },
+  {
+   "from": "DR-GOV-2026-09-25-007",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-GOV-007",
+   "to": "DOC-GOV-006",
+   "type": "after"
+  },
+  {
+   "from": "DOC-GOV-007",
+   "to": "governance",
+   "type": "owned_by"
+  },
+  {
+   "from": "DOC-GOV-007",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-GOV-007",
+   "to": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-GOV-007",
+   "to": "DR-GOV-2026-09-25-007",
    "type": "authorized_by"
   },
   {

@@ -1792,6 +1792,41 @@ message HandoffExported {
   repeated string parts = 5;       // file names in bundle_dir the manifest names
 }
 
+// ---- Diagnostics export (IMP-EV-0142; docs/71 "Desktop diagnostics package") ----
+//
+// Read-only: a package explaining the Core for one session (optionally one
+// task) — build, health, integrity, the event ranges and chain heads that
+// pin the log, a metadata-only trace, recent error codes, provider health
+// without credentials, lease states and object checksums. Payloads only
+// with include_content; secrets never (the package is redacted whole
+// before it is sealed). `modbit.diagnostics/1`.
+message ExportDiagnostics {
+  Id session_id = 1;
+  Id task_id = 2;                  // optional: narrow to one task
+  bool include_content = 3;        // event payloads (redacted); off by default
+}
+
+message DiagnosticsExported {
+  string package_json = 1;         // the package, sealed
+  string digest = 2;               // sha256 the package carries
+  uint64 redactions = 3;           // secrets replaced before sealing
+  uint64 aggregates = 4;
+  uint64 trace_lines = 5;
+}
+
+// Replay a package's evidence metadata against this Core's log: its digest,
+// every aggregate's chain, and the head it pinned.
+message VerifyDiagnostics {
+  string package_json = 1;
+}
+
+message DiagnosticsVerified {
+  bool verified = 1;
+  bool digest_ok = 2;
+  uint64 aggregates_checked = 3;
+  repeated string mismatches = 4;
+}
+
 // M8.7: a worker materialized a handoff bundle's workspace here; the task
 // runs from this root from now on (journaled `TaskWorkspaceRebound`).
 message RebindTaskWorkspace {

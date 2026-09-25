@@ -68,6 +68,18 @@ pub struct Core {
     pub(crate) browser: Arc<crate::browser::BrowserSessions>,
 }
 
+impl Core {
+    /// What startup recovery did.
+    pub(crate) fn recovery(&self) -> &RecoveryOutcome {
+        &self.recovery
+    }
+
+    /// When this Core started.
+    pub(crate) fn started_at(&self) -> Timestamp {
+        self.started_at
+    }
+}
+
 /// Bounded number of events per subscription batch (REQ-EV-0108).
 const BATCH: usize = 256;
 
@@ -569,6 +581,8 @@ async fn serve_connection(core: Arc<Core>, mut stream: BoxedStream) -> Result<()
                     "ConfigureExternalCredential",
                     "ConfigureSandboxGateway",
                     "ExportHandoff",
+                    "ExportDiagnostics",
+                    "VerifyDiagnostics",
                     "RebindTaskWorkspace",
                     "ImportObjects",
                     "TrustRepository",
@@ -1124,6 +1138,9 @@ fn required_client_capability(env: &CommandEnvelope) -> Option<&'static str> {
         "ImportAgentConfig" => "repository.trust",
         "ConfigureSandboxGateway" => "sandbox.configure",
         "ExportHandoff" => "task.author",
+        // A diagnostics package is the log's metadata, and its payloads when
+        // asked: the same class of read as subscribing to the events.
+        "ExportDiagnostics" => "events.subscribe",
         "GetEnvironment" | "RebuildEnvironment" => "task.author",
         "ListMemory" => "task.author",
         "PromoteMemory" | "ForgetMemory" => "task.author",
@@ -4477,6 +4494,57 @@ async fn handle_command(core: &Arc<Core>, env: CommandEnvelope) -> CommandAck {
                 handle,
             };
             accept(cid, false, view.encode_to_vec())
+        }
+        "ExportDiagnostics" => {
+            let Ok(p) = wire::ExportDiagnostics::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "ExportDiagnostics");
+            };
+            let Some(session_id) = p
+                .session_id
+                .as_ref()
+                .and_then(id16)
+                .map(SessionId::from_bytes)
+            else {
+                return reject(cid, "BAD_PAYLOAD", "session_id required");
+            };
+            let task_id = p.task_id.as_ref().and_then(id16).map(TaskId::from_bytes);
+            match crate::doctor::export(core, session_id, task_id, p.include_content).await {
+                Ok(pkg) => {
+                    let package_json = serde_json::to_string(&pkg).unwrap_or_default();
+                    accept(
+                        cid,
+                        false,
+                        wire::DiagnosticsExported {
+                            digest: pkg.digest.clone(),
+                            redactions: pkg.redactions,
+                            aggregates: pkg.aggregates.len() as u64,
+                            trace_lines: pkg.trace.len() as u64,
+                            package_json,
+                        }
+                        .encode_to_vec(),
+                    )
+                }
+                Err((code, detail)) => reject(cid, &code, detail),
+            }
+        }
+        "VerifyDiagnostics" => {
+            let Ok(p) = wire::VerifyDiagnostics::decode(env.payload.as_slice()) else {
+                return reject(cid, "BAD_PAYLOAD", "VerifyDiagnostics");
+            };
+            match crate::doctor::verify(core, &p.package_json).await {
+                Ok(v) => accept(
+                    cid,
+                    false,
+                    wire::DiagnosticsVerified {
+                        verified: v.verified(),
+                        digest_ok: v.digest_ok,
+                        aggregates_checked: v.aggregates_checked,
+                        mismatches: v.mismatches,
+                    }
+                    .encode_to_vec(),
+                ),
+                Err((code, detail)) => reject(cid, &code, detail),
+            }
         }
         "ExportHandoff" => {
             let Ok(p) = wire::ExportHandoff::decode(env.payload.as_slice()) else {
