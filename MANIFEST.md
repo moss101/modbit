@@ -15,13 +15,13 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 |---|---|---:|---:|
 | Authority and orientation | 00–09 | 8 | 65563 |
 | Architecture and subsystems | 10–29 | 20 | 383067 |
-| Implementation specifications | 30–39 | 10 | 155726 |
+| Implementation specifications | 30–39 | 10 | 158594 |
 | Requirements, tasks and traceability | 40–49 | 10 | 351840 |
 | Verification and testing | 50–69 | 15 | 213558 |
 | Delivery and operations | 70–79 | 8 | 62793 |
 | Agent process and governance | 80–97 | 18 | 127876 |
 | Live state | 98–99 | 1 | 14063 |
-| **Total docs** | | **90** | **1374486** |
+| **Total docs** | | **90** | **1377354** |
 
 ## Specification files (`docs/`)
 
@@ -55,11 +55,11 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 27 | `docs/27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md` | Execution policy router and verified orchestration | architecture | 67667 | `e4957aff5554b6eea8b04b43dfcecbb1871a11b7e16cdb278f8b110bc86daf5a` |
 | 28 | `docs/28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md` | Agent competence: planning, verification and repair | architecture | 12521 | `2dbf6183340ee6a0ba808eef2dd1eea147e41a75dc18e5a3ee77c5bfec117e57` |
 | 29 | `docs/29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md` | Client surfaces and source-control integration | architecture | 26540 | `6f3290b2c5750cc130b4ab3880efa77d1e890adf2e591805a8a7267eb99d5aa2` |
-| 30 | `docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md` | Protocol, APIs, and Event Schemas | implementation | 50382 | `334ac73463813aa04dd2510a3720cb35d4019eeb2cbb31d3967fa7b51c059fd9` |
+| 30 | `docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md` | Protocol, APIs, and Event Schemas | implementation | 51084 | `64be543f520c583332bf1fd2b00c1b3130392b2cdf04b0f7d6c584b0f66b78fa` |
 | 31 | `docs/31_DATABASE_AND_STORAGE_SCHEMA.md` | Database and Storage Schema | implementation | 15319 | `d3e06f3b23aec1e27b22d3020a4c2c96a58a758dda2155cfa584d8389f1e4189` |
 | 32 | `docs/32_DESKTOP_FRONTEND_IMPLEMENTATION.md` | Desktop Frontend Implementation | implementation | 13542 | `33dc6dd7225c3139a0ff6735b0e37d9ea0934ed3e1d6ddb0213f7aabfe69c748` |
 | 33 | `docs/33_CORE_AND_CLOUD_BACKEND_IMPLEMENTATION.md` | Core and Cloud Backend Implementation | implementation | 13639 | `907fccbdc9e41e1002f8576ebdccf2b5875e9368760e8b41849d0f53a6057a84` |
-| 34 | `docs/34_OBSERVABILITY_COST_AND_OPERATIONS_DATA.md` | Observability, Cost, and Operations Data | implementation | 10576 | `a5fc7f98ac4bf1a9d2c31aa54331c21a924d2142b15e6f122d751de59018efc9` |
+| 34 | `docs/34_OBSERVABILITY_COST_AND_OPERATIONS_DATA.md` | Observability, Cost, and Operations Data | implementation | 12742 | `9b2fb19189ce638f19f7b6e198536b419cf669f6f6e729ad422c7cb810abea95` |
 | 35 | `docs/35_DEPENDENCY_AND_BINDING_DECISIONS.md` | Dependency and Binding Decisions | implementation | 2545 | `037a85253201401822bde5ff76b0b6625057099995d06b30c0d1aec4e572b1f9` |
 | 36 | `docs/36_BUILD_BUY_DEPENDENCY_AND_LICENSE_POLICY.md` | Build / Buy / Dependency / License Decisions | implementation | 3363 | `538f768996bec4254231f7671517e68bea6cf529f51b60588a5b2dd91007071a` |
 | 37 | `docs/37_EXISTING_CODE_DONOR_AND_REUSE_POLICY.md` | Existing-Code Donor and Reuse Policy | implementation | 3835 | `4dfad8325e6ed11e390952f46ff14caf6fa30fc72142f1ae58e32a22a620d4ee` |
@@ -270,6 +270,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/IMP-EV-0017/TASK_CARD.md` | retained evidence | 6326 | `86b061d0b4e4bc0b511cbc77d634bd8dc6e6395d09fb9c077560167d4f091b41` |
 | `evidence/m10/IMP-EV-0017/ci-run-36130922146.json` | retained evidence | 42314 | `89dc2d4b40f29a17ea7a201ace35122ef872e25e07b76c5a536e17fcf5755a23` |
 | `evidence/m10/IMP-EV-0017/evidence.json` | retained evidence | 2796 | `a45616131bc4f1fb680973450821c1e3ed9aed2788e6a124140a45397dfd80b3` |
+| `evidence/m10/IMP-EV-0032/TASK_CARD.md` | retained evidence | 3872 | `df98e842abbea080060e89491e444b6a40737faa94051196be239f163903b0c2` |
 | `evidence/m10/IMP-EV-0126/TASK_CARD.md` | retained evidence | 10500 | `68c13320d0c4b39038ed9b7729c92a4d03b6c569e30761c096ce93d335f9eb93` |
 | `evidence/m10/IMP-EV-0126/ci-run-36114892259.json` | retained evidence | 1369 | `9d6b4fd046c808166a84dc4658560503750064dde06073ebaf63dafe0f06d06c` |
 | `evidence/m10/IMP-EV-0126/evidence.json` | retained evidence | 5219 | `c3628d2b6249b3c0878198410071b79977c964b07eba12ee5f22be2762808bbc` |

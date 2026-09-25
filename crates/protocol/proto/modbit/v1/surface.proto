@@ -773,6 +773,83 @@ message TaskEconomicsView {
   // so "verified" is never a claim the run did not make.
   string verification = 23;
   uint32 regressions = 24;         // checks the completion run attributed to this change
+  // IMP-EV-0032: every model call priced at its own binding in the active
+  // model registry (minor units, never floating point); unknown is never zero.
+  uint64 cost_minor = 25;          // sum over the calls the registry priced
+  string currency = 26;            // the registry's currency ("" when nothing was priced)
+  uint32 scale = 27;               // minor units per currency unit, as 10^scale
+  uint32 priced_calls = 28;
+  uint32 unpriced_calls = 29;      // no registry, or it does not price the binding
+  uint32 unreported_calls = 30;    // the provider never reported usage: cost unknown
+  string priced_under = 31;        // the registry generation
+  repeated RunUsageView runs = 32; // attribution per run and per step (turn)
+}
+
+// IMP-EV-0032: what one run cost, step by step.
+message RunUsageView {
+  string run_id = 1;
+  repeated StepUsageView steps = 2;
+  uint64 input_tokens = 3;
+  uint64 output_tokens = 4;
+  uint64 cost_minor = 5;
+  bool cost_complete = 6;          // every call in the run priced and reported
+}
+
+message StepUsageView {
+  string turn_id = 1;              // "" for the run's own work outside a turn
+  uint32 model_calls = 2;
+  uint64 input_tokens = 3;
+  uint64 cached_input_tokens = 4;
+  uint64 output_tokens = 5;
+  uint64 cost_minor = 6;
+  bool cost_complete = 7;
+  uint32 tool_calls = 8;
+  uint64 tool_ms = 9;              // time inside the step's tool calls
+  uint64 verification_ms = 10;     // time inside the step's verification checks
+  repeated string models = 11;
+  repeated string provider_request_ids = 12;
+}
+
+// IMP-EV-0032 / QUAL-EV-0032: compare a provider's invoice sample
+// (`modbit.invoice-sample/1`) with the canonical usage of a task, row by
+// provider request id, within a tolerance. Read-only: an unknown usage is
+// settled with ReconcileUsage (EPR-010), not here.
+message ReconcileInvoice {
+  Id task_id = 1;
+  string invoice_json = 2;
+  uint32 tolerance_bp = 3;         // basis points; 0 means exact
+}
+
+message InvoiceRowView {
+  string provider_request_id = 1;
+  // MATCHED | OUT_OF_TOLERANCE | MODEL_MISMATCH | UNKNOWN_USAGE |
+  // NOT_IN_LOG (on the invoice, never recorded) | NOT_ON_INVOICE (recorded,
+  // not billed) | OTHER_TASK (another task of the session; not counted)
+  string status = 2;
+  string model = 3;
+  uint64 invoice_input_tokens = 4;
+  uint64 invoice_cached_input_tokens = 5;
+  uint64 invoice_output_tokens = 6;
+  int64 invoice_cost_minor = 7;    // -1 when the invoice gives none
+  uint64 log_input_tokens = 8;
+  uint64 log_cached_input_tokens = 9;
+  uint64 log_output_tokens = 10;
+  int64 log_cost_minor = 11;       // -1 when unpriced or unknown
+  uint32 delta_bp = 12;            // the largest relative difference
+  string run_id = 13;
+  string turn_id = 14;
+}
+
+message InvoiceReconciliationView {
+  bool within_tolerance = 1;       // every row of the task MATCHED
+  uint32 matched = 2;
+  uint32 out_of_tolerance = 3;     // OUT_OF_TOLERANCE and MODEL_MISMATCH
+  uint32 not_in_log = 4;
+  uint32 not_on_invoice = 5;
+  uint32 unknown_usage = 6;
+  repeated InvoiceRowView rows = 7;
+  uint32 tolerance_bp = 8;
+  string invoice_digest = 9;       // sha256 of the invoice as given
 }
 
 // ---- PX-026 language support labels (docs/76) ----

@@ -40848,3 +40848,225 @@ async fn qual_ev_0142_the_diagnostics_export_replays_evidence_metadata_and_holds
     drop(c);
     core.kill();
 }
+
+/// QUAL-EV-0032 (REQ-EV-0032, docs/34): a sample provider invoice reconciles
+/// against the canonical usage events within a tolerance, and the task's
+/// usage is attributed to its run and each step with its tool time. The
+/// scripted provider keeps its own record of what it served and charged —
+/// request id, model, input, cached and output tokens — independent of the
+/// Core's log; the invoice is built from that record and priced as the
+/// provider bills it. Reconciled exactly it matches row for row; a row 3%
+/// over is out of a 1% tolerance and within a 5% one; a row the log never
+/// saw and a call the invoice left out are each named, never absorbed.
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn qual_ev_0032_a_provider_invoice_reconciles_against_the_canonical_usage_within_tolerance() {
+    use modbit_protocol::v1::{
+        GetTaskEconomics, InvoiceReconciliationView, ReconcileInvoice, TaskEconomicsView,
+        TaskRunStarted,
+    };
+    use serde_json::json;
+
+    let key = ed25519_dalek::SigningKey::from_bytes(&[32u8; 32]);
+    let keys = format!("ops:{}", hex::encode(key.verifying_key().to_bytes()));
+    let prices = (125, 25, 1_000);
+    let signed = accounting_registry("registry-usage-0032", &key, &[("gpt-5", 125, 25, 1_000)]);
+    let (_repo, root) = plain_repo(&[("notes.md", "hello\n")]);
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "read notes", "expected_files": []}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": "notes.md"}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "read", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, _) = scripted_model_reactive(script, vec![], None, None, vec![], true, vec![]).await;
+    let port: u16 = base.rsplit(':').next().unwrap().parse().unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let mut core = CoreProcess::spawn_with_env(
+        dir.path(),
+        &[
+            ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+            ("MODBIT_REGISTRY_KEYS", keys.as_str()),
+        ],
+    );
+    let mut c = core.client().await;
+    activate_registry(&mut c, &signed).await;
+    let (session, _) = create_session(&mut c, id16(0x61)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x62, "local_trusted").await;
+    let _: TaskRunStarted =
+        Client::result(&c.command(start_task(&task, 0x63, g)).await.unwrap()).unwrap();
+    let st = wait_for_state(&mut c, &task, "ReadyForReview", 120).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+
+    // What the provider says it served and charged, from its own record.
+    let served: Vec<ReportedUsage> = REPORTED_USAGE
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|r| r.0 == port)
+        .cloned()
+        .collect();
+    assert_eq!(served.len(), 3, "{served:?}");
+    let charged = |r: &ReportedUsage| billed(r.2, r.3, r.4, prices);
+
+    // ---- attribution ---------------------------------------------------
+    let ack = c
+        .command(envelope(
+            id16(0x64),
+            "GetTaskEconomics",
+            GetTaskEconomics {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let econ: TaskEconomicsView = Client::result(&ack).unwrap();
+    assert_eq!(econ.model_calls, 3, "{econ:?}");
+    assert_eq!(
+        (
+            econ.priced_calls,
+            econ.unpriced_calls,
+            econ.unreported_calls
+        ),
+        (3, 0, 0),
+        "{econ:?}"
+    );
+    assert_eq!(econ.currency, "USD");
+    assert_eq!(econ.priced_under, "registry-usage-0032");
+    assert_eq!(
+        econ.cost_minor,
+        served.iter().map(charged).sum::<u64>(),
+        "the task costs what the provider charged, in minor units"
+    );
+    assert_eq!(econ.runs.len(), 1, "{:?}", econ.runs);
+    let run = &econ.runs[0];
+    assert!(run.cost_complete);
+    let steps_with_calls: Vec<_> = run.steps.iter().filter(|s| s.model_calls > 0).collect();
+    assert_eq!(
+        steps_with_calls.len(),
+        3,
+        "one call per turn: {:?}",
+        run.steps
+    );
+    assert_eq!(
+        (
+            run.steps.iter().map(|s| s.input_tokens).sum::<u64>(),
+            run.steps.iter().map(|s| s.output_tokens).sum::<u64>(),
+            run.steps.iter().map(|s| s.cost_minor).sum::<u64>(),
+        ),
+        (econ.input_tokens, econ.output_tokens, econ.cost_minor),
+        "the steps add up to the task"
+    );
+    assert_eq!(
+        run.steps.iter().map(|s| s.tool_calls).sum::<u32>(),
+        econ.tool_calls,
+        "every tool call is in a step"
+    );
+    let mut ids: Vec<String> = run
+        .steps
+        .iter()
+        .flat_map(|s| s.provider_request_ids.clone())
+        .collect();
+    ids.sort();
+    let mut served_ids: Vec<String> = served.iter().map(|r| r.5.clone()).collect();
+    served_ids.sort();
+    assert_eq!(
+        ids, served_ids,
+        "each step names the provider's own request ids"
+    );
+
+    // ---- the invoice ---------------------------------------------------
+    let invoice = |rows: Vec<serde_json::Value>| {
+        json!({"schema": "modbit.invoice-sample/1", "provider": "openai", "rows": rows}).to_string()
+    };
+    let row = |r: &ReportedUsage| {
+        json!({"request_id": r.5, "model": r.1, "input_tokens": r.2, "cached_input_tokens": r.3,
+               "output_tokens": r.4, "cost_minor": charged(r)})
+    };
+    async fn reconcile(
+        c: &mut Client,
+        task: &Id,
+        json: &str,
+        bp: u32,
+    ) -> InvoiceReconciliationView {
+        let ack = c
+            .command(envelope(
+                Id {
+                    value: (0..16).map(|_| rand::random::<u8>()).collect(),
+                },
+                "ReconcileInvoice",
+                ReconcileInvoice {
+                    task_id: Some(task.clone()),
+                    invoice_json: json.into(),
+                    tolerance_bp: bp,
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap()
+    }
+    let exact = invoice(served.iter().map(row).collect());
+    let v = reconcile(&mut c, &task, &exact, 0).await;
+    assert!(v.within_tolerance, "{v:?}");
+    assert_eq!((v.matched, v.rows.len()), (3, 3), "{v:?}");
+    assert!(
+        v.rows
+            .iter()
+            .all(|r| r.status == "MATCHED" && r.delta_bp == 0 && !r.run_id.is_empty()),
+        "{v:?}"
+    );
+    // 3% more input on one row.
+    let mut over: Vec<serde_json::Value> = served.iter().map(row).collect();
+    let bumped = served[1].2 + served[1].2.div_ceil(33);
+    over[1]["input_tokens"] = json!(bumped);
+    let v = reconcile(&mut c, &task, &invoice(over.clone()), 100).await;
+    assert!(!v.within_tolerance, "{v:?}");
+    assert_eq!(v.out_of_tolerance, 1, "{v:?}");
+    let r = v
+        .rows
+        .iter()
+        .find(|r| r.provider_request_id == served[1].5)
+        .unwrap();
+    assert_eq!(r.status, "OUT_OF_TOLERANCE");
+    assert!(r.delta_bp > 100 && r.delta_bp <= 500, "{r:?}");
+    let v = reconcile(&mut c, &task, &invoice(over), 500).await;
+    assert!(v.within_tolerance, "within 5%: {v:?}");
+    // A row the log never saw, and a call the invoice left out.
+    let mut rows: Vec<serde_json::Value> = served.iter().skip(1).map(row).collect();
+    rows.push(json!({"request_id": "req_never_recorded", "model": "gpt-5", "input_tokens": 50, "output_tokens": 5}));
+    let v = reconcile(&mut c, &task, &invoice(rows), 500).await;
+    assert!(!v.within_tolerance, "{v:?}");
+    assert_eq!(
+        (v.matched, v.not_in_log, v.not_on_invoice),
+        (2, 1, 1),
+        "{v:?}"
+    );
+    assert!(
+        v.rows
+            .iter()
+            .any(|r| r.status == "NOT_ON_INVOICE" && r.provider_request_id == served[0].5),
+        "{v:?}"
+    );
+    // Not an invoice sample: refused.
+    let refused = c
+        .command(envelope(
+            id16(0x65),
+            "ReconcileInvoice",
+            ReconcileInvoice {
+                task_id: Some(task.clone()),
+                invoice_json: "{\"schema\": \"csv\"}".into(),
+                tolerance_bp: 0,
+            }
+            .encode_to_vec(),
+        ))
+        .await;
+    assert!(
+        matches!(&refused, Err(ClientError::Rejected { code, .. }) if code == "BAD_INVOICE"),
+        "{refused:?}"
+    );
+    drop(c);
+    core.kill();
+}

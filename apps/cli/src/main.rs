@@ -74,7 +74,7 @@ fn exit_for_state(state: &str) -> u8 {
     }
 }
 
-const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] [--command-id <hex>] <goal> | task from-issue --session <id> [--workspace <dir>] [--command-id <hex>] <issue-url> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> [--intent <hash>] (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--skill <name>]... [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id>] [--apply --session <id>] | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | task work --task <id> | task agents --task <id> | capacity show | attention list --session <id> | plan show --task <id> | plan revise --session <id> --task <id> [--plan-json <file>] [note] | task patch --session <id> --task <id> --path <p> --revision <n> [--file-revision <sha>] (--old <text> | --old-file <f>) (--new <text> | --new-file <f>) | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | agent install <file> [--from claude] [--replace] | agent list | skill install <dir> [--expect-hash <hex>] [--replace] | skill remove <name> | skill list | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt> | task steer --session <id> --task <id> [--mode STEER|COLLECT|FOLLOW_UP] [--input-id <hex>] <text> | workspace trust --session <id> [--scope <s>] <root> | provider configure --provider <openai|anthropic> [--base-url <url>] [--clear] | recovery show | pr (open | update) --session <id> --task <id> --revision <n> [--base <ref>] [--title <t>] [--remote <name>] | starter list [--workspace <dir>] | doctor --session <id> | trace --session <id> [--task <id>] | export diagnostics --session <id> [--task <id>] [--include-content] --out <file> | diagnostics verify <file> | export handoff --session <id> --task <id> --out <dir>)";
+const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] [--command-id <hex>] <goal> | task from-issue --session <id> [--workspace <dir>] [--command-id <hex>] <issue-url> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> [--intent <hash>] (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--skill <name>]... [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id>] [--apply --session <id>] | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | task work --task <id> | task agents --task <id> | capacity show | attention list --session <id> | plan show --task <id> | plan revise --session <id> --task <id> [--plan-json <file>] [note] | task patch --session <id> --task <id> --path <p> --revision <n> [--file-revision <sha>] (--old <text> | --old-file <f>) (--new <text> | --new-file <f>) | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | agent install <file> [--from claude] [--replace] | agent list | skill install <dir> [--expect-hash <hex>] [--replace] | skill remove <name> | skill list | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt> | task steer --session <id> --task <id> [--mode STEER|COLLECT|FOLLOW_UP] [--input-id <hex>] <text> | workspace trust --session <id> [--scope <s>] <root> | provider configure --provider <openai|anthropic> [--base-url <url>] [--clear] | recovery show | pr (open | update) --session <id> --task <id> --revision <n> [--base <ref>] [--title <t>] [--remote <name>] | starter list [--workspace <dir>] | doctor --session <id> | trace --session <id> [--task <id>] | export diagnostics --session <id> [--task <id>] [--include-content] --out <file> | diagnostics verify <file> | export handoff --session <id> --task <id> --out <dir> | usage reconcile --task <id> --invoice <file> [--tolerance-bp N])";
 
 fn parse_id(hex: &str) -> Result<Id, String> {
     let bytes = decode_hex(hex)
@@ -2067,6 +2067,108 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
                 v.compaction_epochs,
                 v.compacted_entries
             );
+            // IMP-EV-0032: priced per call at the active registry, and where
+            // it went, run by run and step by step.
+            println!(
+                "ledger cost_minor={} currency={} scale={} priced={} unpriced={} unreported={} registry={}",
+                v.cost_minor,
+                if v.currency.is_empty() {
+                    "-"
+                } else {
+                    v.currency.as_str()
+                },
+                v.scale,
+                v.priced_calls,
+                v.unpriced_calls,
+                v.unreported_calls,
+                if v.priced_under.is_empty() {
+                    "-"
+                } else {
+                    v.priced_under.as_str()
+                }
+            );
+            for r in &v.runs {
+                println!(
+                    "run {} input_tokens={} output_tokens={} cost_minor={} complete={}",
+                    r.run_id, r.input_tokens, r.output_tokens, r.cost_minor, r.cost_complete
+                );
+                for s in &r.steps {
+                    println!(
+                        "  step {} calls={} input={} cached={} output={} cost_minor={} tool_calls={} tool_ms={} verification_ms={}",
+                        if s.turn_id.is_empty() {
+                            "(run)"
+                        } else {
+                            s.turn_id.as_str()
+                        },
+                        s.model_calls,
+                        s.input_tokens,
+                        s.cached_input_tokens,
+                        s.output_tokens,
+                        s.cost_minor,
+                        s.tool_calls,
+                        s.tool_ms,
+                        s.verification_ms
+                    );
+                }
+            }
+        }
+        // IMP-EV-0032: a provider invoice sample against the task's ledger.
+        [
+            "usage",
+            "reconcile",
+            "--task",
+            tid,
+            "--invoice",
+            file,
+            rest @ ..,
+        ] => {
+            let tolerance_bp = match rest {
+                ["--tolerance-bp", n] => n.parse::<u32>().map_err(|_| USAGE.to_owned())?,
+                [] => 0,
+                _ => return Err(USAGE.into()),
+            };
+            let invoice_json = std::fs::read_to_string(file).map_err(|e| format!("{file}: {e}"))?;
+            let ack = client
+                .command(envelope(
+                    "ReconcileInvoice",
+                    modbit_protocol::v1::ReconcileInvoice {
+                        task_id: Some(parse_id(tid)?),
+                        invoice_json,
+                        tolerance_bp,
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let v: modbit_protocol::v1::InvoiceReconciliationView =
+                Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "reconciled within_tolerance={} tolerance_bp={} matched={} out_of_tolerance={} not_in_log={} not_on_invoice={} unknown_usage={}",
+                v.within_tolerance,
+                v.tolerance_bp,
+                v.matched,
+                v.out_of_tolerance,
+                v.not_in_log,
+                v.not_on_invoice,
+                v.unknown_usage
+            );
+            for r in v.rows.iter().filter(|r| r.status != "MATCHED") {
+                println!(
+                    "  {} {} delta_bp={} invoice={}/{}/{} log={}/{}/{}",
+                    r.status,
+                    r.provider_request_id,
+                    r.delta_bp,
+                    r.invoice_input_tokens,
+                    r.invoice_cached_input_tokens,
+                    r.invoice_output_tokens,
+                    r.log_input_tokens,
+                    r.log_cached_input_tokens,
+                    r.log_output_tokens
+                );
+            }
+            if !v.within_tolerance {
+                return Err("usage: the invoice does not reconcile within tolerance".into());
+            }
         }
         // IMP-EV-0142 (docs/71 "Desktop diagnostics package"): the Core's
         // health and integrity, a task's trace, and a redacted, sealed

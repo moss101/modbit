@@ -63,6 +63,7 @@ mod statistics;
 mod subagent;
 mod tools;
 mod undo;
+mod usage;
 mod user_patch;
 mod verify;
 

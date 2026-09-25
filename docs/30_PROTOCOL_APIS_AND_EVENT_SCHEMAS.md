@@ -161,6 +161,8 @@ As built (EPR-011): task events `RequestSnapshotRecorded { snapshot_ref, commit,
 
 As built (IMP-EV-0137/0183): `ImportAgentConfig { session_id, source_root, name, replace }` → `ImportReportView { extension_path, name, formats, mapped, skipped, conflicts, items: [ImportItemView { kind, source, target, status MAPPED | SKIPPED | CONFLICT, reason }], manifest_digest, signature, capabilities }` (`repository.trust`; refused `IMPORT_SOURCE_MISSING`, `IMPORT_EXISTS`, `IMPORT_EMPTY`, `EXTENSION_LOADED`, `BAD_PAYLOAD`); the extension manifest gains `files` (every other file by sha256), and a load refuses an unlisted or changed file `EXTENSION_INVALID` (doc 16 "Importers as built").
 
+As built (IMP-EV-0032): `TaskEconomicsView` gains `cost_minor`, `currency`, `scale`, `priced_calls`, `unpriced_calls`, `unreported_calls`, `priced_under` and `runs: [RunUsageView { run_id, input_tokens, output_tokens, cost_minor, cost_complete, steps: [StepUsageView { turn_id, model_calls, input_tokens, cached_input_tokens, output_tokens, cost_minor, cost_complete, tool_calls, tool_ms, verification_ms, models, provider_request_ids }] }]`; `ReconcileInvoice { task_id, invoice_json, tolerance_bp }` → `InvoiceReconciliationView { within_tolerance, matched, out_of_tolerance, not_in_log, not_on_invoice, unknown_usage, rows: [InvoiceRowView], tolerance_bp, invoice_digest }` (read-only; docs/34).
+
 ### Security/effects
 `CapabilityLeaseGranted, CapabilityLeaseRevoked, ApprovalRequested, ApprovalResolved, EffectReceiptAppended, SecretHandleUsed, EmergencyStopActivated`.
 
