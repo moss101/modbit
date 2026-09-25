@@ -2,13 +2,13 @@
   "product": "Modbit",
   "edition": "V3.3 EPR v1.1",
   "authority_date": "2026-09-05",
-  "generated_on": "2026-09-24",
+  "generated_on": "2026-09-25",
   "hash_algorithm": "sha256",
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 90,
-    "root_and_tooling": 1574,
-    "docs_bytes": 1349177
+    "root_and_tooling": 1576,
+    "docs_bytes": 1350546
   },
   "sections": [
     {
@@ -860,8 +860,8 @@
       "section": "live-state",
       "section_title": "Live state",
       "title": "Build Manifest",
-      "bytes": 11899,
-      "sha256": "f06f69ee5999c8fdb32e5cd0ba354cba22eb5e5c0489fab2b35f29ce45a44b1c"
+      "bytes": 13268,
+      "sha256": "036c9dede991ba812c7fafccf772eecf5f2a004973fc02e4423edc5780b6f73e"
     }
   ],
   "root_and_tooling": [
@@ -8311,6 +8311,16 @@
       "sha256": "a0bf047033093cfd317a75ac4ed04ff7f12d320c00e05981d696c23ab96c31ab"
     },
     {
+      "path": "evidence/m9/EPR-019/ci-run-36025675554.json",
+      "bytes": 42314,
+      "sha256": "56a8838ce611bf1e8dea9c38d7b6e1fa8bc279c3ec7019661fe03f0b9915419e"
+    },
+    {
+      "path": "evidence/m9/EPR-019/evidence.json",
+      "bytes": 3552,
+      "sha256": "b3485a345d25d6c9a9cc92b3e519365b1c295c44f33870286915d18ef10920ec"
+    },
+    {
       "path": "evidence/m9/IMP-EV-0029/TASK_CARD.md",
       "bytes": 5847,
       "sha256": "c53b7ceef274f93431b76a1aa2899c5d279a4f12f866efba7f298826a660faac"
@@ -8692,13 +8702,13 @@
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 41080,
-      "sha256": "7af8d3aee409cc2611e7fc1d84163f99e308bd49f4f5a3a1223f075e7c76f204"
+      "bytes": 41092,
+      "sha256": "5ccba5175f1ba28c3adcd4b16df73dd2cd4844db2b4d6620b1d59c3a74c2241c"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1588308,
-      "sha256": "704cf933b437c3b317b2121b7764075a51df26a6d5e3f6d95160de9e9d49c3fd"
+      "bytes": 1588670,
+      "sha256": "49efa5567a71a3c4d08ecffab780233761b5aa122c07024f7f99b42567c7ba9e"
     },
     {
       "path": "tools/build_graph.py",
@@ -8732,8 +8742,8 @@
     },
     {
       "path": "tools/test_dossier.py",
-      "bytes": 37541,
-      "sha256": "00feb4077c36fd870843028c43a6c8dda54fa0fb3432038b652032ccb7f996fb"
+      "bytes": 37522,
+      "sha256": "9a8b5e802d0181b4ecd32897c6be90ad51910adf9ce8edf17883d761f3ce7aaf"
     }
   ],
   "renames_v3_to_v3_1": {

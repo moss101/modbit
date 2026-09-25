@@ -1,7 +1,7 @@
 # Modbit Project Graph
 
 > Generated from `graph/project-graph.json` by `tools/graph.py render --write`. Do not edit by hand; edit the graph through `tools/graph.py set` or regenerate structure with `tools/build_graph.py`.  
-> Graph generated on 2026-09-24; view rendered on 2026-09-24.
+> Graph generated on 2026-09-25; view rendered on 2026-09-25.
 
 ## What the graph is
 
@@ -65,7 +65,7 @@ flowchart LR
   M6["M6<br/>Subagents/fleet<br/>58/58 done"]
   M7["M7<br/>Live browser<br/>28/28 done"]
   M8["M8<br/>Cloud isolated execution<br/>28/28 done"]
-  M9["M9<br/>Engineering memory/effects/security hardening<br/>32/33 done"]
+  M9["M9<br/>Engineering memory/effects/security hardening<br/>33/33 done"]
   M10["M10<br/>Release hardening<br/>0/22 done"]
   M0 --> M1
   M1 --> M2
@@ -94,7 +94,7 @@ flowchart LR
   style M6 fill:#dcfce7,stroke:#16a34a,color:#111827
   style M7 fill:#dcfce7,stroke:#16a34a,color:#111827
   style M8 fill:#dcfce7,stroke:#16a34a,color:#111827
-  style M9 fill:#fef3c7,stroke:#d97706,color:#111827
+  style M9 fill:#dcfce7,stroke:#16a34a,color:#111827
   style M10 fill:#f3f4f6,stroke:#9ca3af,color:#111827
 ```
 
@@ -113,8 +113,8 @@ Critical path (reliability spine): **M0 → M1 → M2 → M4**. Do not start bro
 | M6 Subagents/fleet | COMPLETE | yes | 7 | 51 | 58 | 0 | M2, M4 | E2E-009/010 and user can supervise multiple tasks without raw-log polling. |
 | M7 Live browser | COMPLETE | yes | 8 | 20 | 28 | 0 | M2 | E2E-013..016. |
 | M8 Cloud isolated execution | COMPLETE | yes | 9 | 19 | 28 | 0 | M4, M7 | E2E-017/018/024. |
-| M9 Engineering memory/effects/security hardening | IN_PROGRESS | yes | 6 | 27 | 32 | 0 | M4, M5 | memory cannot be created from transcript without promotion; receipt chain verifies; threat tests pass. |
-| M10 Release hardening | NOT_STARTED | no | 7 | 15 | 0 | 0 | M3, M5, M6, M7, M8, M9 | full Release Zero proof + package evidence + EPR gates A–G SATISFIED. |
+| M9 Engineering memory/effects/security hardening | COMPLETE | yes | 6 | 27 | 33 | 0 | M4, M5 | memory cannot be created from transcript without promotion; receipt chain verifies; threat tests pass. |
+| M10 Release hardening | NOT_STARTED | yes | 7 | 15 | 0 | 0 | M3, M5, M6, M7, M8, M9 | full Release Zero proof + package evidence + EPR gates A–G SATISFIED. |
 
 ## Subsystems → milestones
 
@@ -238,7 +238,7 @@ flowchart LR
   EPR_016["EPR-016<br/>Confidence-adjusted feasibility and cold start<br/>COMPLETE"]
   EPR_017["EPR-017<br/>Separate assurance classification and acceptance<br/>COMPLETE"]
   EPR_018["EPR-018<br/>Isolated Non-Committing Reviewer environment<br/>COMPLETE"]
-  EPR_019["EPR-019<br/>Independent gate calibration release suite<br/>NOT_STARTED"]
+  EPR_019["EPR-019<br/>Independent gate calibration release suite<br/>COMPLETE"]
   M2_9 --> EPR_000
   EPR_000 --> EPR_001
   EPR_001 --> EPR_002
@@ -302,15 +302,15 @@ flowchart LR
 | EPR-016 | M3 / 1 | COMPLETE | model-gateway | EPR-003, EPR-015 | REQ-EPR-016 / QUAL-EPR-016 |
 | EPR-017 | M4 / 2-3 | COMPLETE | verification | EPR-008, M4.6 | REQ-EPR-017 / QUAL-EPR-017 |
 | EPR-018 | M6 / 4 | COMPLETE | effects-security | EPR-006, M6.4 | REQ-EPR-018 / QUAL-EPR-018 |
-| EPR-019 | M9 / 5 | NOT_STARTED | eval-bench | EPR-007, EPR-017, EPR-010 | REQ-EPR-019 / QUAL-EPR-019 |
+| EPR-019 | M9 / 5 | COMPLETE | eval-bench | EPR-007, EPR-017, EPR-010 | REQ-EPR-019 / QUAL-EPR-019 |
 
 | Activation gate | State | Required tasks | Attestation evidence | Acceptance |
 |---|---|---|---|---|
 | EPR-GATE-A: Conditional correctness and assurance | TASKS_COMPLETE | EPR-001, EPR-002, EPR-004, EPR-005, EPR-008, EPR-014, EPR-017 | none | Schema-2 conditional admission, every slot prevalidated/budgeted, finite retries/termination, no generated branch, separate risk/acceptance and no partial apply |
 | EPR-GATE-B: Initial-leg DIRECT baseline non-regression | TASKS_COMPLETE | EPR-000, EPR-005 | none | Actual initial-to-accept path preserves verified success, cost/latency tolerances, recovery/tool reliability and complete direct-attempt accounting |
 | EPR-GATE-C: Profiler and confidence-adjusted feasibility | TASKS_COMPLETE | EPR-002, EPR-003, EPR-015, EPR-016 | none | Intrinsic profiler calibration/OOD, versioned representative statistics, LCB/posterior tau/delta, cold-start rejection, lowest-cost feasible and explicit QUALITY_FLOOR_INFEASIBLE |
-| EPR-GATE-D: Escalation CASCADE path benefit | OPEN | EPR-006, EPR-017, EPR-019 | none | Whole-plan conservative quality floor, lower complete expected cost on approved slice, bounded rejection/escalation latency; acceptance/risk error thresholds independently pass |
-| EPR-GATE-E: Isolated review CRITIQUE path benefit | OPEN | EPR-007, EPR-018, EPR-019 | none | Relational defect/critical recall and success gain; acceptable false positives/churn/inference/tool/process cost; allowed ephemeral work and denied canonical/persistent/external effects; no solver hidden reasoning |
+| EPR-GATE-D: Escalation CASCADE path benefit | TASKS_COMPLETE | EPR-006, EPR-017, EPR-019 | none | Whole-plan conservative quality floor, lower complete expected cost on approved slice, bounded rejection/escalation latency; acceptance/risk error thresholds independently pass |
+| EPR-GATE-E: Isolated review CRITIQUE path benefit | TASKS_COMPLETE | EPR-007, EPR-018, EPR-019 | none | Relational defect/critical recall and success gain; acceptable false positives/churn/inference/tool/process cost; allowed ephemeral work and denied canonical/persistent/external effects; no solver hidden reasoning |
 | EPR-GATE-F: Multi-turn economics | TASKS_COMPLETE | EPR-000, EPR-009, EPR-016 | none | Confidence-feasible switch remains better after lost cache/refill/write/latency/hysteresis, no unnecessary switching regression, fenced slot/restart behavior |
 | EPR-GATE-G: Independently safe gate calibration and rollout | OPEN | EPR-010, EPR-011, EPR-012, EPR-013, EPR-019 | none | Separate request/leg/gate attribution, holdout acceptance false accept/reject and realized-risk false negative/positive plus critical_surface_miss_rate within approved limits; controlled promotion/propensity, safe replay, compatible previous-good rollback |
 
@@ -324,7 +324,7 @@ Releases are projections over work items and gates (docs/75). Readiness is compu
 |---|---|---:|---:|---:|---|---|
 | ALPHA: Local coding loop and recovery spine | READY | 114 | 114 | 0 | none | / ALPHA / Local coding loop and recovery spine / M0, M1, M2, M4 / M2.10 / EPR- / — / — / |
 | BETA: Intelligence, fleet and browser | READY | 318 | 318 | 0 | none | / BETA / Intelligence, fleet and browser / M0, M1, M2, M3, M4, M5, M6, M7 / — / — / — / — / |
-| RELEASE_ZERO: Full end-to-end proof | NOT_READY | 401 | 378 | 0 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
+| RELEASE_ZERO: Full end-to-end proof | NOT_READY | 401 | 379 | 0 | EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G | / RELEASE_ZERO / Full end-to-end proof / ALL / — / — / — / EPR-GATE-A, EPR-GATE-B, EPR-GATE-C, EPR-GATE-D, EPR-GATE-E, EPR-GATE-F, EPR-GATE-G / |
 
 ## Scoped v1.1 supersessions and source provenance
 

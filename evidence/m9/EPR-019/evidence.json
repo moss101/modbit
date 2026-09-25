@@ -1,0 +1,40 @@
+{
+ "task": "EPR-019",
+ "requirements": [
+  "REQ-EPR-019",
+  "REQ-EV-0029",
+  "REQ-EV-0112",
+  "docs/61 Thresholds, priors and independent gate calibration",
+  "docs/61 QUAL-EPR-019 / EPR-E2E-019 / EPR-FI-019"
+ ],
+ "scenarios": [
+  "the real verification engine runs cargo test on the rust-cli fixture for 8 held-out acceptance candidates in two new defect lineages; the real invariants, rules and Acceptance Gate decide; two hidden oracles label each candidate",
+  "the two candidates the visible tests cannot tell from correct (an overfitted zero check, an off-by-one maximum) are the gate's false accepts; the two that break formatting are rejected; the four correct ones accepted",
+  "18 risk cases through modbit_policy::derive_realized_risk against oracle labels: a dependency bump and a payments change not sent to review are false negatives; a .env.production change not treated as a secret is a critical-surface miss",
+  "rates on separate denominators with Wilson 95% intervals: acceptance false accept 2/4, false reject 0/4, realized-risk false negative 3/13, false positive 0/5, critical-surface miss 1/6; per leg the initial leg's false accepts are 2/3 and the escalation's 0/1",
+  "without an approved threshold profile the release check fails MISSING_THRESHOLD_PROFILE; a strict (test-only) profile with a router saving 5000 minor units still fails UNSAFE_GATE and INSUFFICIENT_SAMPLES; a profile missing a rate is MISSING_THRESHOLD; a permissive (test-only) profile passes",
+  "a holdout lineage shared with the competence suite is refused Contaminated; one shared between the two holdouts SharedLineage; a candidate declared correct that its oracle rejects is refused Mislabeled"
+ ],
+ "tests": [
+  "benchmarks/gate-calibration/tests/calibration.rs::qual_epr_019_gates_are_measured_independently_on_the_holdout_and_an_unsafe_gate_fails_release",
+  "benchmarks/gate-calibration/tests/calibration.rs::a_contaminated_holdout_is_refused",
+  "benchmarks/gate-calibration/tests/calibration.rs::a_mislabeled_case_is_refused_by_its_oracle"
+ ],
+ "audit": "NOT-FOUND before: the EPR-008 corpus pinned the risk rules' outputs as a tuning/regression set; nothing measured the gate or the rules against oracle labels on held-out data, and nothing could fail a release on an unsafe gate.",
+ "proof": "The Acceptance Gate and RealizedRisk, unchanged, measured independently on committed held-out corpora with hidden oracles; every case and rate pinned; the release check fails without an approved profile and on an unsafe gate whatever the router saves.",
+ "negative_proof": "EPR-FI-019 mutation: suppressing critical misses in the risk comparison fails the pinned test; contaminated, shared-lineage and mislabeled holdouts are refused before measurement.",
+ "limitations": "No approved threshold profile exists: the release check fails until the owner approves one (docs/61 invents no numbers), so EPR-GATE-D, E and G stay OPEN on that decision. The corpora are small (8 + 18) and the intervals wide. The acceptance corpus uses one fixture language (Rust); the risk corpus is facts, not repositories. The found .env.* rule defect is its own task.",
+ "batch_commits": [
+  "7dd98cc"
+ ],
+ "runs": [
+  "36025675554"
+ ],
+ "ci": {
+  "run_id": "36025675554",
+  "head_sha": "503663d03409a023f0a9ac81703fb96facbd5a40",
+  "conclusion": "success",
+  "note": "every job green on macOS, Linux and Windows on the first attempt, including the cloud job on SeaweedFS after the MinIO images were withdrawn",
+  "json": "evidence/m9/EPR-019/ci-run-36025675554.json"
+ }
+}
