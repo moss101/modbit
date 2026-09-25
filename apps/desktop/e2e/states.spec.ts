@@ -296,11 +296,24 @@ test("screen states: a Core that dies before committing a tool outcome comes bac
     // A fast runner restarts the Core within one poll: the degraded state
     // is on the line's record (`data-seen`) whether or not it is still shown.
     await expect(fleet).toHaveAttribute("data-seen", /degraded:Core restarting/, { timeout: 60_000 });
-    if ((await fleet.getAttribute("data-kind")) === "degraded") {
-      await expect(fleet.getByTestId("fleet-state-cause")).toContainText("the Core stopped");
+    // If still shown, the degraded render is read in one snapshot, never by
+    // retrying locators: a restart landing between two reads would move the
+    // line to recovery (and the card off its cursor) mid-assertion. The fleet
+    // line and the card derive from the same Core status, so one read is one
+    // render.
+    const shown = await page.evaluate(() => {
+      const fleetLine = document.querySelector('[data-testid="fleet-state"]');
+      const cardLine = document.querySelector('[data-testid="task-card"]')?.querySelector('[data-testid="task-screen-state"]');
+      const text = (line: Element | null | undefined, testid: string) => line?.querySelector(`[data-testid="${testid}"]`)?.textContent ?? null;
+      return { kind: fleetLine?.getAttribute("data-kind") ?? null, label: text(fleetLine, "fleet-state-label"), cause: text(fleetLine, "fleet-state-cause"), taskLabel: text(cardLine, "task-screen-state-label"), taskEvidence: text(cardLine, "task-screen-state-evidence") };
+    });
+    process.stderr.write(`[degraded-render] ${JSON.stringify(shown)}\n`);
+    if (shown.kind === "degraded") {
+      expect(shown.label).toBe("Core restarting");
+      expect(shown.cause).toContain("the Core stopped");
       // The task, meanwhile: reconnecting by cursor (the same render).
-      await expect(card.getByTestId("task-screen-state-label")).toHaveText("reconnecting by cursor");
-      await expect(card.getByTestId("task-screen-state-evidence")).toContainText(/cursor \d+/);
+      expect(shown.taskLabel).toBe("reconnecting by cursor");
+      expect(shown.taskEvidence).toMatch(/cursor \d+/);
     }
     await expect(page.getByTestId("core-status")).toContainText("Core connected", { timeout: 60_000 });
     await expect(fleet).toHaveAttribute("data-kind", "recovery", { timeout: 30_000 });
