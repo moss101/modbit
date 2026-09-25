@@ -48,3 +48,7 @@ question or approve an effect while `task run --wait` holds the Core.
 - `export diagnostics --session <id> [--task <id>] [--include-content] --out <file>` writes a `modbit.diagnostics/1` package: the above plus every aggregate's range and chain head and the objects the events reference. Payloads appear only with `--include-content`. The Core redacts the whole package (every value in its custody, every credential shape) and seals it with a digest.
 - `diagnostics verify <file>` replays a package against this profile's log: its digest, every aggregate's chain, and the head it pinned. It exits 1 when anything differs.
 - `export handoff --session <id> --task <id> --out <dir>` parks the task and writes M8.7's handoff bundle (no secret value in it).
+
+## Usage and invoices (IMP-EV-0032)
+
+`task economics --task <id>` adds a `ledger` line — the cost in the active registry's minor units, its currency and generation, and how many calls were priced, unpriced or never reported — and, per run and per step, the calls, tokens, cost, tool calls, tool time and verification time. `usage reconcile --task <id> --invoice <file> [--tolerance-bp N]` compares a provider invoice sample (`modbit.invoice-sample/1`, docs/34) with the task's ledger row by provider request id, prints every row that did not match, and exits 1 unless every row is within the tolerance.

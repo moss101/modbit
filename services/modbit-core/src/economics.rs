@@ -155,18 +155,51 @@ pub(crate) async fn view(core: &Core, task_id: TaskId) -> wire::TaskEconomicsVie
             v.context_tokens_injected = u64::from(pack.token_used);
         }
     }
-    // Catalog list prices, no cache discount: this is what the run would cost
-    // at the published rate, not a bill.
-    if let Some(cap) = core
-        .gateway
-        .endpoints()
+    // IMP-EV-0032: every call on the canonical ledger, priced at its own
+    // binding in the active registry (minor units); attributed per run and
+    // step with its tool and verification time.
+    let registry = core.gateway.registry();
+    let (calls, pricing) = crate::usage::calls(&store, &task.session_id, registry.as_ref());
+    let mine: Vec<&crate::usage::Call> = calls
         .iter()
-        .find_map(|ep| ep.models.iter().find(|m| m.model == v.model).cloned())
-    {
-        let m = 1_000_000.0_f64;
-        v.cost_usd = (v.input_tokens as f64 / m) * cap.input_price_per_mtok
-            + (v.output_tokens as f64 / m) * cap.output_price_per_mtok;
-        v.pricing_known = 1;
+        .filter(|c| c.task_id == Some(task_id))
+        .collect();
+    v.cost_minor = mine.iter().filter_map(|c| c.cost_minor).sum();
+    v.priced_calls = count(mine.iter().filter(|c| c.cost_minor.is_some()));
+    v.unreported_calls = count(mine.iter().filter(|c| !c.reported));
+    v.unpriced_calls = count(mine.iter().filter(|c| c.reported && c.cost_minor.is_none()));
+    if v.priced_calls > 0 {
+        v.currency = pricing.currency;
+        v.scale = pricing.scale;
+        v.priced_under = pricing.generation;
     }
+    v.runs = crate::usage::attribution(&store, &task, &calls);
+    // Catalog list prices, no cache discount: what the run would cost at the
+    // published rate, not a bill — each call at its own model's price, and
+    // known only when every call was reported and its model is catalogued.
+    let endpoints = core.gateway.endpoints();
+    let list_price = |model: &str| {
+        endpoints
+            .iter()
+            .find_map(|ep| ep.models.iter().find(|m| m.model == model).cloned())
+    };
+    let m = 1_000_000.0_f64;
+    let mut known = !mine.is_empty();
+    for c in &mine {
+        // The catalog lists the binding the call was made under; the answered
+        // model is only a fallback (a provider may name a dated snapshot).
+        match list_price(&c.binding).or_else(|| list_price(&c.model)) {
+            Some(cap) if c.reported => {
+                v.cost_usd += (c.input as f64 / m) * cap.input_price_per_mtok
+                    + (c.output as f64 / m) * cap.output_price_per_mtok;
+            }
+            _ => known = false,
+        }
+    }
+    v.pricing_known = u32::from(known);
     v
+}
+
+fn count<T>(it: impl Iterator<Item = T>) -> u32 {
+    u32::try_from(it.count()).unwrap_or(u32::MAX)
 }

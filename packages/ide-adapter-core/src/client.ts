@@ -77,6 +77,8 @@ import {
   ContextInspectorViewSchema,
   type ContextInspectorView,
   GetTaskEconomicsSchema,
+  InvoiceReconciliationViewSchema,
+  ReconcileInvoiceSchema,
   SetTaskSelectionSchema,
   TaskSelectionRecordedSchema,
   TaskEconomicsViewSchema,
@@ -119,6 +121,7 @@ import {
   type BrowserHostRequest,
   type BrowserSessionView,
   type TaskEconomicsView,
+  type InvoiceReconciliationView,
   type LanguageList,
   type CommandAck,
   type RecoveryReport,
@@ -411,6 +414,19 @@ export class CoreClient {
     );
     return fromBinary(TaskEconomicsViewSchema, ack.result);
   }
+  /**
+   * Compare a provider invoice sample (`modbit.invoice-sample/1`) with the
+   * task's canonical usage, row by provider request id, within a tolerance
+   * in basis points (IMP-EV-0032). Read-only.
+   */
+  async reconcileInvoice(taskId: string, invoiceJson: string, toleranceBp: number): Promise<InvoiceReconciliationView> {
+    const ack = await this.command(
+      "ReconcileInvoice",
+      toBinary(ReconcileInvoiceSchema, create(ReconcileInvoiceSchema, { taskId: { value: unhex(taskId) }, invoiceJson, toleranceBp })),
+    );
+    return fromBinary(InvoiceReconciliationViewSchema, ack.result);
+  }
+
 
   async listLanguages(): Promise<LanguageList> {
     const ack = await this.command("ListLanguages", toBinary(ListLanguagesSchema, create(ListLanguagesSchema, {})));
