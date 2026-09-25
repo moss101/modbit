@@ -1021,28 +1021,11 @@ const CAPSULE_AUTHORITY_KEYS: &[&str] = &[
 ];
 
 /// Shapes a secret value takes (a provider key, a forge token, a worker
-/// token, a bearer, an AWS key id, a PEM private key).
+/// token, a bearer, a cloud or chat token, a credential parameter, a PEM
+/// private key).
 fn secret_shaped(text: &str) -> Option<&'static str> {
-    static SHAPES: std::sync::OnceLock<Vec<(regex::Regex, &'static str)>> =
-        std::sync::OnceLock::new();
-    let shapes = SHAPES.get_or_init(|| {
-        [
-            (r"\bsk-[A-Za-z0-9_-]{16,}", "a provider API key"),
-            (r"\b(ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{20,}", "a forge token"),
-            (r"\bgithub_pat_[A-Za-z0-9_]{20,}", "a forge token"),
-            (r"\bmbw_[0-9a-f]{8,}\.[0-9a-f]{16,}", "a worker token"),
-            (r"\bBearer\s+[A-Za-z0-9._~+/=-]{20,}", "a bearer credential"),
-            (r"\bAKIA[0-9A-Z]{16}\b", "an AWS access key id"),
-            (r"-----BEGIN [A-Z ]*PRIVATE KEY-----", "a private key"),
-        ]
-        .into_iter()
-        .map(|(re, what)| (regex::Regex::new(re).expect("a valid shape"), what))
-        .collect()
-    });
-    shapes
-        .iter()
-        .find(|(re, _)| re.is_match(text))
-        .map(|(_, what)| *what)
+    // The credential shapes are the one redactor's (REQ-EV-0017).
+    modbit_secrets::shape_of(text)
 }
 
 fn manifest_authority_key(v: &Value, path: &str) -> Option<String> {

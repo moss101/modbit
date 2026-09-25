@@ -2391,9 +2391,13 @@ async fn scripted_model_reactive(
                 // once (a Core killed mid-stream, M6.7); the same step answers
                 // from `then` when the resumed run asks again.
                 // A step `{"http_status": 503}` is an outage: the provider
-                // answers with that status and no stream (REQ-EV-0030).
+                // answers with that status and no stream (REQ-EV-0030);
+                // `error_body` is what it says while refusing (REQ-EV-0017).
                 if let Some(status) = reply["http_status"].as_u64() {
-                    let body = serde_json::json!({"error": {"message": "the service is overloaded", "type": "server_error"}}).to_string();
+                    let body = reply["error_body"].as_str().map_or_else(
+                        || serde_json::json!({"error": {"message": "the service is overloaded", "type": "server_error"}}).to_string(),
+                        str::to_owned,
+                    );
                     let _ = sock
                         .write_all(
                             format!(
@@ -40256,4 +40260,299 @@ async fn qual_epr_011_an_alternative_replays_isolated_on_the_exact_snapshot_and_
     drop(c);
     core.kill();
     drop(repo);
+}
+
+/// Every byte under `root` (a Core's data directory, after the Core is
+/// stopped) that holds `needle`: the files it was found in.
+fn files_holding(root: &std::path::Path, needle: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut stack = vec![root.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        for e in entries.flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                stack.push(p);
+            } else if let Ok(bytes) = std::fs::read(&p)
+                && bytes.windows(needle.len()).any(|w| w == needle.as_bytes())
+            {
+                out.push(p.to_string_lossy().into_owned());
+            }
+        }
+    }
+    out
+}
+
+/// QUAL-EV-0017 (REQ-EV-0017, docs/23 "Secrets", docs/34): one failure
+/// identity, two renderings, one redaction policy. A value in the Core's
+/// custody never reaches a person, the model or the log; error text loses
+/// every credential shape too.
+///
+/// The model's side: an external server the task trusts fails its call with
+/// an error that repeats the credential the broker handed it. The agent runs
+/// through the real Core and a scripted provider: the model's next request
+/// carries the failure as its class, retryability and a structured repair
+/// payload with the credential replaced, and the run finishes.
+///
+/// The person's side: a provider refuses a run with a 401 whose body echoes
+/// the API key the Core presented (quoted, and as a bearer). The task needs
+/// attention with the failure typed (PROVIDER / AUTH_REJECTED), the reason
+/// and the explanation carry no key; a probe of the same model reports the
+/// same error without it; a rejection that would echo a pasted path with the
+/// key in it is redacted on its way out. Neither Core's data directory holds
+/// either secret anywhere, byte for byte.
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn qual_ev_0017_a_secret_bearing_internal_error_is_redacted_for_the_person_and_the_model() {
+    use modbit_protocol::v1::{
+        CommandEnvelope, ImportAgentConfig, ModelProbed, ProbeModel, StartTask, TaskRunStarted,
+    };
+    use serde_json::{Value, json};
+
+    const CREDENTIAL: &str = "mcp-broker-secret-0017-5c2e9a";
+    const PROVIDER_KEY: &str = "sk-modbit-qual-0017-provider-key-7c1e44";
+
+    let server_bin = mcp_testserver_bin();
+    assert!(
+        server_bin.exists(),
+        "build the MCP test server first: cargo build -p modbit-mcp-testserver"
+    );
+
+    // ---- the model's side ---------------------------------------------
+    // The host declares the server and that `refuse` is a read; the
+    // credential is a handle the broker resolves.
+    let servers = json!([{
+        "name": "vault",
+        "transport": { "kind": "stdio", "command": server_bin.to_string_lossy(), "args": ["vault"] },
+        "env": {
+            "MODBIT_MCP_TESTSRV_NAME": "vault",
+            "MODBIT_MCP_TESTSRV_REQUIRE_ENV": format!("MCP_CREDENTIAL={CREDENTIAL}"),
+            "MODBIT_MCP_TESTSRV_MODE": "leaky_errors",
+        },
+        "read_only_tools": ["search", "refuse"],
+        "credential": "docs-api",
+        "trust": "TRUSTED",
+    }])
+    .to_string();
+    let (_repo, root) = plain_repo(&[("notes.md", "hello\n")]);
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "ask the vault", "expected_files": []}}]}),
+        json!({"calls": [{"name": "external.call", "args": {"server": "vault", "tool": "refuse", "arguments": {}}}]}),
+        json!({"calls": [{"name": "task.complete", "args": {"summary": "the vault refused", "self_review": {"findings": []}}}]}),
+    ];
+    let (base, seen) = scripted_models(script, vec![], None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let mut core = CoreProcess::spawn_with_env(
+        dir.path(),
+        &[
+            ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+            ("MODBIT_MCP_SERVERS", servers.as_str()),
+            ("MODBIT_MCP_CREDENTIAL_DOCS_API", CREDENTIAL),
+            ("MODBIT_MCP_CALL_TIMEOUT_MS", "10000"),
+        ],
+    );
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x31)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x32, "local_trusted").await;
+    fn start(t: &Id, id: u8, g: Option<u64>) -> CommandEnvelope {
+        envelope_fenced(
+            id16(id),
+            "StartTask",
+            StartTask {
+                task_id: Some(t.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 8,
+                max_tool_calls: 0,
+                max_no_progress_turns: 3,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        )
+    }
+    let _: TaskRunStarted =
+        Client::result(&c.command(start(&task, 0x33, g)).await.unwrap()).unwrap();
+    let st = wait_for_state(&mut c, &task, "ReadyForReview", 120).await;
+    if st.state != "ReadyForReview" {
+        let evs = task_events(&core, &session, &task).await;
+        let asked: Vec<&Value> = evs
+            .iter()
+            .filter(|(_, t, _)| t.contains("Approval"))
+            .map(|(_, _, p)| p)
+            .collect();
+        panic!("{st:?}\n{asked:#?}");
+    }
+    let bodies = seen.lock().unwrap().clone();
+    let all = serde_json::to_string(&bodies).unwrap();
+    assert!(
+        !all.contains(CREDENTIAL),
+        "the credential never reaches the model"
+    );
+    // The request after the failed call: the tool result the model reads.
+    let told = bodies
+        .iter()
+        .filter_map(|b| b["messages"].as_array())
+        .flatten()
+        .filter(|m| m["role"] == "tool")
+        .filter_map(|m| m["content"].as_str())
+        .find(|t| t.contains("upstream refused"))
+        .unwrap_or_else(|| panic!("the failure reached the model: {all}"))
+        .to_owned();
+    assert!(
+        told.contains("token [redacted] is not valid"),
+        "the source's words survive, the credential does not: {told}"
+    );
+    assert!(
+        told.contains("failure_class: ") && told.contains("retryable: "),
+        "{told}"
+    );
+    let repair: Value = serde_json::from_str(
+        told.lines()
+            .find_map(|l| l.strip_prefix("repair: "))
+            .unwrap_or_else(|| panic!("a structured repair payload: {told}")),
+    )
+    .unwrap();
+    assert!(
+        repair["failure_class"].is_string()
+            && repair["code"].as_str().is_some_and(|c| !c.is_empty())
+            && repair["retryable"].is_boolean()
+            && repair["recovery_path"]
+                .as_str()
+                .is_some_and(|r| !r.is_empty()),
+        "{repair}"
+    );
+    let evs = task_events(&core, &session, &task).await;
+    let log = serde_json::to_string(&evs).unwrap();
+    assert!(!log.contains(CREDENTIAL), "nor the log");
+    drop(c);
+    core.kill();
+    let leaked = files_holding(dir.path(), CREDENTIAL);
+    assert!(leaked.is_empty(), "nothing persisted holds it: {leaked:?}");
+
+    // ---- the person's side --------------------------------------------
+    let refusal = json!({"error": {
+        "message": format!("Incorrect API key provided: \"{PROVIDER_KEY}\". You sent Authorization: Bearer {PROVIDER_KEY}"),
+        "type": "invalid_request_error",
+        "code": "invalid_api_key",
+    }})
+    .to_string();
+    let (base, _) = scripted_models(
+        vec![json!({"http_status": 401, "error_body": refusal})],
+        vec![],
+        None,
+    )
+    .await;
+    let dir = tempfile::tempdir().unwrap();
+    let mut core = CoreProcess::spawn_with_env(
+        dir.path(),
+        &[
+            ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+            ("OPENAI_API_KEY", PROVIDER_KEY),
+            ("ANTHROPIC_API_KEY", ""),
+        ],
+    );
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x41)).await;
+    let g = lease_for(&session);
+    let task = create_task_with_profile(&mut c, &session, g, &root, 0x42, "local_trusted").await;
+    let _: TaskRunStarted =
+        Client::result(&c.command(start(&task, 0x43, g)).await.unwrap()).unwrap();
+    let deadline = std::time::Instant::now() + Duration::from_secs(60);
+    let st = loop {
+        let st = wait_task(&mut c, &task, 1).await;
+        if !st.attention_reason.is_empty() || std::time::Instant::now() > deadline {
+            break st;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    };
+    assert_eq!(
+        (st.failure_class.as_str(), st.failure_code.as_str()),
+        ("PROVIDER", "AUTH_REJECTED"),
+        "the failure keeps its identity: {st:?}"
+    );
+    assert!(
+        !st.attention_reason.contains(PROVIDER_KEY)
+            && st.attention_reason.contains("[redacted]")
+            && st.attention_reason.contains("Incorrect API key provided"),
+        "the reason keeps the provider's words, not its key: {st:?}"
+    );
+    assert!(
+        st.user_explanation
+            .starts_with("The model provider failed or refused the request (AUTH_REJECTED).")
+            && !st.user_explanation.contains(PROVIDER_KEY),
+        "{st:?}"
+    );
+    // The same model probed: the same refusal, the same redaction.
+    let ack = c
+        .command(envelope(
+            id16(0x45),
+            "ProbeModel",
+            ProbeModel {
+                endpoint: "openai".into(),
+                model: "gpt-5-mini".into(),
+                prompt: "Say pong.".into(),
+                with_tools: false,
+                timeout_ms: 10_000,
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let probed: ModelProbed = Client::result(&ack).unwrap();
+    assert_eq!(probed.status, "ERROR", "{probed:?}");
+    assert!(
+        !probed.error_message.contains(PROVIDER_KEY) && probed.error_message.contains("[redacted]"),
+        "{probed:?}"
+    );
+    // A rejection that would repeat a pasted path holding the key.
+    let refused = c
+        .command(envelope_fenced(
+            id16(0x46),
+            "ImportAgentConfig",
+            ImportAgentConfig {
+                session_id: Some(session.clone()),
+                source_root: format!("/nonexistent/{PROVIDER_KEY}/agents"),
+                name: "imported".into(),
+                replace: false,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await;
+    match refused {
+        Err(ClientError::Rejected { code, message }) => {
+            assert_eq!(code, "IMPORT_SOURCE_MISSING", "{message}");
+            assert!(
+                !message.contains(PROVIDER_KEY)
+                    && message.contains("/nonexistent/[redacted]/agents"),
+                "{message}"
+            );
+        }
+        other => panic!("refused, redacted: {other:?}"),
+    }
+    let evs = task_events(&core, &session, &task).await;
+    let attention: Vec<&Value> = evs
+        .iter()
+        .filter(|(_, t, _)| t == "TaskNeedsAttention")
+        .map(|(_, _, p)| p)
+        .collect();
+    assert!(!attention.is_empty(), "{evs:#?}");
+    assert!(
+        attention[0]["diagnostic"]["detail"]
+            .as_str()
+            .is_some_and(|d| d.contains("[redacted]")),
+        "the diagnosis keeps the evidence, redacted: {attention:?}"
+    );
+    let log = serde_json::to_string(&evs).unwrap();
+    assert!(!log.contains(PROVIDER_KEY), "nor the log");
+    drop(c);
+    core.kill();
+    let leaked = files_holding(dir.path(), PROVIDER_KEY);
+    assert!(leaked.is_empty(), "nothing persisted holds it: {leaked:?}");
 }

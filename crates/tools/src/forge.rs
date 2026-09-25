@@ -283,7 +283,10 @@ async fn call(
         .text()
         .await
         .map_err(|e| Box::new(ToolOutcome::infra("FORGE_READ", redact(cfg, &chain(&e)))))?;
-    let value: Value = serde_json::from_str(&text).unwrap_or_else(|_| json!({"raw": text}));
+    let mut value: Value = serde_json::from_str(&text).unwrap_or_else(|_| json!({"raw": text}));
+    // A forge that repeats the token (an error echoing the header, an issue
+    // someone pasted it into) never hands it on (REQ-EV-0017).
+    modbit_secrets::Redactor::new(cfg.token.clone()).data_json(&mut value);
     Ok((status, value))
 }
 
@@ -302,18 +305,15 @@ fn chain(e: &dyn std::error::Error) -> String {
 
 /// The token never appears in an error, whatever the transport said.
 fn redact(cfg: &ForgeConfig, text: &str) -> String {
-    match &cfg.token {
-        Some(t) if !t.is_empty() => text.replace(t.as_str(), "[redacted]"),
-        _ => text.to_owned(),
-    }
+    modbit_secrets::Redactor::new(cfg.token.clone()).error_text(text)
 }
 
 fn forge_error(status: u16, body: &Value) -> ToolOutcome {
     let message = body
         .get("message")
         .and_then(Value::as_str)
-        .unwrap_or("the forge refused the request")
-        .to_owned();
+        .unwrap_or("the forge refused the request");
+    let message = modbit_secrets::error_text(message);
     let code = match status {
         401 => "FORGE_UNAUTHORIZED",
         403 => "FORGE_FORBIDDEN",

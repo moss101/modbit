@@ -3811,6 +3811,15 @@ export declare type TaskStatus = Message<"modbit.v1.TaskStatus"> & {
    * @generated from field: repeated string diagnostic_features = 13;
    */
   diagnosticFeatures: string[];
+
+  /**
+   * REQ-EV-0017: the same diagnosis in a person's words — the class, the
+   * code, whether a retry can help and what they can do; redacted, and
+   * never the source's own message.
+   *
+   * @generated from field: string user_explanation = 14;
+   */
+  userExplanation: string;
 };
 
 /**

@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 90,
-    "root_and_tooling": 1584,
-    "docs_bytes": 1361049
+    "root_and_tooling": 1585,
+    "docs_bytes": 1363661
   },
   "sections": [
     {
@@ -248,8 +248,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Security, Policy, Capabilities, Secrets, and Effect Ledger",
-      "bytes": 18817,
-      "sha256": "4290ea0e718b4cc14a153f394584e7434c31427ec5ea4771ac3f1157f8d7df35"
+      "bytes": 19385,
+      "sha256": "c5117226dd1cbf94ff0cbeb6fc8743d97a648cbdd05f316075595cc03e6d07ff"
     },
     {
       "path": "docs/24_CLOUD_CONTROL_PLANE_AND_SYNC.md",
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 49298,
-      "sha256": "bfc81bedfd630029a72a7bfe05c0f56cf90a4b5fc3b12425caeedb464fedd377"
+      "bytes": 49984,
+      "sha256": "0a2a7353fe8973d7a6abd6edf4c3ac4e89f296b9a59b334cbde72d0fbf66e05e"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -347,8 +347,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Observability, Cost, and Operations Data",
-      "bytes": 9218,
-      "sha256": "23e7d734256f8f7720561bd8ec37e05fc6990df847f3af3e3a91cbf7553a9b63"
+      "bytes": 10576,
+      "sha256": "a5fc7f98ac4bf1a9d2c31aa54331c21a924d2142b15e6f122d751de59018efc9"
     },
     {
       "path": "docs/35_DEPENDENCY_AND_BINDING_DECISIONS.md",
@@ -1574,6 +1574,11 @@
       "path": "evidence/m1/ci-run-34347242710.json",
       "bytes": 1231,
       "sha256": "a238323591f3fc267ff1b4ee8095929379787e5ff43f8b18753446a77c8f4b03"
+    },
+    {
+      "path": "evidence/m10/IMP-EV-0017/TASK_CARD.md",
+      "bytes": 6326,
+      "sha256": "86b061d0b4e4bc0b511cbc77d634bd8dc6e6395d09fb9c077560167d4f091b41"
     },
     {
       "path": "evidence/m10/IMP-EV-0126/TASK_CARD.md",
@@ -8782,8 +8787,8 @@
     },
     {
       "path": "tools/test_dossier.py",
-      "bytes": 37773,
-      "sha256": "0b01c75f19729dd5ec77c2cd40e9b61769d29713ace06e90194a3488b875b0bb"
+      "bytes": 37921,
+      "sha256": "7bf54d743df0ae2f1f3426a840d63b3156d458e9ca6e0f51d73cc91074c4e037"
     }
   ],
   "renames_v3_to_v3_1": {

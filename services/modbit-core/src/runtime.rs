@@ -7022,7 +7022,9 @@ async fn execute_tool(
         let done = match core.tools.invoke(&core.store, req).await {
             Ok(d) => d,
             Err(e) => {
-                let message = e.to_string();
+                // REQ-EV-0017: the host's own failure is error text on its
+                // way to the model; it loses every held value and shape.
+                let message = core.tools.redactor().error_text(&e.to_string());
                 let diagnostic =
                     modbit_core_runtime::classify(&modbit_core_runtime::FailureSource::Tool {
                         tool: name,
@@ -7036,7 +7038,10 @@ async fn execute_tool(
                 return TranscriptEntry::ToolResult {
                     call_id: call_id.into(),
                     name: name.into(),
-                    text: format!("status: INFRA_FAILURE\nerror: {e}\n{}", diagnostic.render()),
+                    text: format!(
+                        "status: INFRA_FAILURE\nerror: {message}\n{}",
+                        diagnostic.render()
+                    ),
                     failure_signature: Some(harness::failure_signature(
                         name,
                         "INFRA",
