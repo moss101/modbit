@@ -51,6 +51,7 @@ ScopePolicy {
 - Beyond either bound, or for any `always_ask_paths` match, the next out-of-scope write is refused until a typed `UserQuestion` offering the concrete alternatives (continue with the expansion, split it into a follow-up task, stop) is answered; a `ScopeExpansionRecorded` event carries the counters and the answer. With no user present (CLI, CI), `headless_resolution` decides, and the default is fail-closed.
 - Subagents keep the hard write-set denial of `REQ-EV-0144`; the bounds above govern the primary agent.
 - The scope metric of doc 63 is measured against the original plan, so revising the plan cannot make the metric look clean.
+- As built (PX-038, 2026-09-26): the scope decision is the Core's. Every `ScopeExpansionRecorded` (the refusal that asks or fails closed, and the user's answer once it decides) carries the actor `Core("scope-policy")`, and the loop opens the paths only once that record is on the log. Rebuilding a task, a CONTINUE opens paths when the Core recorded it. A CONTINUE under any other actor is honoured only when it stands for the user's own `continue` to the scope question, already on the log, and names exactly the waiting paths; otherwise it changes nothing and the Core records the user's decision itself. That covers every CONTINUE a Core before this rule recorded under the run's agent actor. A refusal record opens nothing by itself, whoever wrote it, and several refusals before one answer wait together, as in the live loop.
 
 ## 4. Verification plan derivation (PX-017)
 

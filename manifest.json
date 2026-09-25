@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 90,
-    "root_and_tooling": 1607,
-    "docs_bytes": 1379172
+    "root_and_tooling": 1613,
+    "docs_bytes": 1380003
   },
   "sections": [
     {
@@ -293,8 +293,8 @@
       "section": "architecture",
       "section_title": "Architecture and subsystems",
       "title": "Agent competence: planning, verification and repair",
-      "bytes": 12521,
-      "sha256": "2dbf6183340ee6a0ba808eef2dd1eea147e41a75dc18e5a3ee77c5bfec117e57"
+      "bytes": 13352,
+      "sha256": "a5ef2265accb8b1a52f0c9cb60c6418bca67f5f979e598d971f2979e2fa121d7"
     },
     {
       "path": "docs/29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md",
@@ -5837,8 +5837,8 @@
     },
     {
       "path": "evidence/m3/PX-038/TASK_CARD.md",
-      "bytes": 8679,
-      "sha256": "0e3c74ff635289a2b2b1fb6c0c27eb601a33852e35210a464d2b9d50f8bf1328"
+      "bytes": 18457,
+      "sha256": "e61e6f4580a085d0bed2ad9d1fdc4e44d622371c9ff6ac85b995916dd1b10d49"
     },
     {
       "path": "evidence/m3/PX-038/ci-run-34506031420-tests.log",
@@ -5861,14 +5861,44 @@
       "sha256": "14bcaa57bc611af75196523dfc066a8c10df770219d4603bc55f524e1f380dc6"
     },
     {
+      "path": "evidence/m3/PX-038/local-green-2-targeted.log",
+      "bytes": 2168,
+      "sha256": "34054f0e2543a6dda4b948b95dd55d90d5463c3cb78aa7e2a6f76b2676ae19c3"
+    },
+    {
+      "path": "evidence/m3/PX-038/local-green-targeted-2.log",
+      "bytes": 4559,
+      "sha256": "354f4ca21b1bfdda239a8253bb57bbdb2f566c533ba62b5d065b92c5b5ed8ee0"
+    },
+    {
       "path": "evidence/m3/PX-038/local-green-targeted.log",
       "bytes": 4404,
       "sha256": "daf04bbf764adcb1dcba3b0bb137d8bd418db18da2f15195b5785959272c429b"
     },
     {
+      "path": "evidence/m3/PX-038/local-red-2-actor-gate-only.log",
+      "bytes": 2956,
+      "sha256": "525538198b1ca38157ba9ee6bb2f5f9e2d43b7ad0ebc0a604f4a748fa2af72af"
+    },
+    {
+      "path": "evidence/m3/PX-038/local-red-2-no-accumulation.log",
+      "bytes": 2948,
+      "sha256": "5f994ee99f8f29bad8b9194ce49cef0eab6bc743e81db5a63b006c181ad18ab3"
+    },
+    {
+      "path": "evidence/m3/PX-038/local-red-2-unfixed.log",
+      "bytes": 1868,
+      "sha256": "e819213e18664c7f1a97c5d3f3b31f6bbb751e96a09f148d5e7d61892cc5d7da"
+    },
+    {
       "path": "evidence/m3/PX-038/local-red-actor-check-only.log",
       "bytes": 116903,
       "sha256": "409c000a779ddd9f345f12f97a7cd8821ecfd57aa84ebdf44eabce75747a5327"
+    },
+    {
+      "path": "evidence/m3/PX-038/local-red-stale-answer.log",
+      "bytes": 127854,
+      "sha256": "b78afed48cd0d8fbd2536d8a56a994277334ea27b8a02fab5509474871b3a1fa"
     },
     {
       "path": "evidence/m3/PX-038/local-red-unfixed.log",

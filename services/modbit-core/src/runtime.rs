@@ -1511,6 +1511,12 @@ pub(crate) fn append(
     Ok(offset)
 }
 
+/// The Core's scope policy records every scope decision (docs/28 §3,
+/// PX-038): the refusal that asks, and the user's answer once it decides.
+fn scope_policy() -> Actor {
+    Actor::Core("scope-policy".into())
+}
+
 /// Rebuild the transcript and harness state from the task's events.
 pub(crate) async fn rebuild(
     core: &Core,
@@ -1793,16 +1799,52 @@ pub(crate) async fn rebuild(
                     })
                     .unwrap_or_default();
                 match payload["resolution"].as_str() {
-                    Some("QUESTION_REQUIRED") => state.scope_question_pending = paths,
-                    Some("CONTINUE") => {
-                        state.scope_question_pending.clear();
+                    // The write waits with every path refused before the
+                    // question is answered, as in the loop.
+                    Some("QUESTION_REQUIRED") => {
                         for p in paths {
-                            if !state.scope_unlocked.contains(&p) {
-                                state.scope_unlocked.push(p);
+                            if !state.scope_question_pending.contains(&p) {
+                                state.scope_question_pending.push(p);
                             }
                         }
                     }
-                    _ => state.scope_question_pending.clear(),
+                    // The scope decision is the Core's (docs/28 §3): a
+                    // CONTINUE opens paths as the Core recorded it. One under
+                    // another actor (every CONTINUE a Core before this rule
+                    // recorded as the agent, or one written into the log)
+                    // stands only for the user's own `continue` to the scope
+                    // question, already rebuilt, on exactly the waiting
+                    // paths; any other changes nothing, and the Core records
+                    // the user's decision itself. A recorded decision
+                    // consumes the answer it was made from: a later expansion
+                    // waits for its own.
+                    Some("CONTINUE") => {
+                        let by_core = matches!(ev.envelope.actor, Actor::Core(_));
+                        let users_continue = state
+                            .scope_answer
+                            .as_deref()
+                            .is_some_and(|a| scope_resolution(a, "") == "CONTINUE");
+                        let waiting = {
+                            let mut named = paths.clone();
+                            let mut waiting = state.scope_question_pending.clone();
+                            named.sort();
+                            waiting.sort();
+                            named == waiting
+                        };
+                        if by_core || (users_continue && waiting) {
+                            state.scope_question_pending.clear();
+                            state.scope_answer = None;
+                            for p in paths {
+                                if !state.scope_unlocked.contains(&p) {
+                                    state.scope_unlocked.push(p);
+                                }
+                            }
+                        }
+                    }
+                    _ => {
+                        state.scope_question_pending.clear();
+                        state.scope_answer = None;
+                    }
                 }
             }
             "UserQuestionAnswered" => {
@@ -2741,9 +2783,9 @@ async fn run_loop(
             let paths = std::mem::take(&mut state.scope_question_pending);
             let (out_of_plan_files, plan_revisions) = state.scope_counters();
             let resolution = scope_resolution(&answer, "");
-            {
+            let recorded = {
                 let mut store = core.store.lock().await;
-                let _ = append(
+                append(
                     &mut store,
                     &core,
                     lt,
@@ -2759,11 +2801,13 @@ async fn run_loop(
                             resolution: resolution.to_owned(),
                             answer: answer.clone(),
                         },
-                        actor.clone(),
+                        scope_policy(),
                     )],
-                );
-            }
-            if resolution == "CONTINUE" {
+                )
+                .is_ok()
+            };
+            // Nothing on the log, nothing open.
+            if recorded && resolution == "CONTINUE" {
                 for p in paths {
                     if !state.scope_unlocked.contains(&p) {
                         state.scope_unlocked.push(p);
@@ -4375,7 +4419,7 @@ async fn run_loop(
                                             resolution: resolution.to_owned(),
                                             answer: String::new(),
                                         },
-                                        actor.clone(),
+                                        scope_policy(),
                                     )],
                                 );
                                 drop(store);

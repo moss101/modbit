@@ -1,0 +1,23 @@
+# PX-038 regression 2 (2026-09-26): full fix on top of #43 (561e6f5) and the stale-answer fix (code tree of 06207b6, on main 8c08c27);
+# targeted regression set on the local real Core
+# cargo test -p modbit-core --test surface_protocol -- px_038_ qual_px_038_ qual_px_016_ qual_ev_0222_px_014_ qual_ev_0077_0122_ qual_ev_0118_ qual_ev_0151_0275_ qual_ev_0096_ qual_ev_0174_ qual_px_040_ qual_m4_6_kill_point_suite qual_m4_2_ --test-threads=4
+# also: cargo fmt --all -- --check (0), cargo clippy -p modbit-core --all-targets --locked (0, no warnings), cargo test -p modbit-core --bin modbit-core (20 passed, before the rebase)
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 42.08s
+     Running tests/surface_protocol.rs (target/debug/deps/surface_protocol-4319d9c1acd84101)
+test px_038_only_the_users_answer_to_the_scope_question_decides_the_expansion ... ok
+test px_038_a_recorded_scope_answer_decides_only_its_own_expansion ... ok
+test px_038_only_a_scope_decision_the_core_recorded_opens_a_path ... ok
+test qual_ev_0077_0122_a_fork_carries_decisions_and_evidence_but_no_stale_pending_effect ... ok
+test qual_ev_0096_0116_0133_0044_0031_tool_surface_is_compiled_from_support_and_policy ... ok
+test qual_ev_0118_a_reviewed_plan_version_is_the_one_the_resumed_run_executes ... ok
+test qual_ev_0174_a_read_only_specialist_builds_the_pack_and_cannot_mutate ... ok
+test qual_ev_0222_px_014_typed_question_suspends_the_run_and_the_answer_resumes_it ... ok
+test qual_m4_2_e2e_006_async_compaction_installs_at_a_boundary_and_a_late_result_is_refused ... ok
+test qual_ev_0151_0275_attention_items_are_derived_from_canonical_state_and_clear_with_it ... ok
+test qual_px_040_harness_contracts_bound_observations_page_results_and_fail_closed_headless ... ok
+test qual_px_016_change_strategy_tests_first_one_concern_per_transaction_and_no_silent_scope_widening ... ok
+test qual_px_038_scope_expansion_is_bounded_asks_a_typed_question_and_fails_closed_headless ... ok
+test qual_m4_6_kill_point_suite_every_recovery_boundary_survives_a_process_abort ... ok
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 150 filtered out; finished in 66.13s
+exit=0

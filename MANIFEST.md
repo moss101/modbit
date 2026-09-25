@@ -14,14 +14,14 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | Section | Range | Files | Bytes |
 |---|---|---:|---:|
 | Authority and orientation | 00–09 | 8 | 65563 |
-| Architecture and subsystems | 10–29 | 20 | 384431 |
+| Architecture and subsystems | 10–29 | 20 | 385262 |
 | Implementation specifications | 30–39 | 10 | 158594 |
 | Requirements, tasks and traceability | 40–49 | 10 | 351840 |
 | Verification and testing | 50–69 | 15 | 214012 |
 | Delivery and operations | 70–79 | 8 | 62793 |
 | Agent process and governance | 80–97 | 18 | 127876 |
 | Live state | 98–99 | 1 | 14063 |
-| **Total docs** | | **90** | **1379172** |
+| **Total docs** | | **90** | **1380003** |
 
 ## Specification files (`docs/`)
 
@@ -53,7 +53,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 25 | `docs/25_MULTIMODAL_MEDIA_AND_NOTEBOOK_RUNTIME.md` | Multimodal, Media and Notebook Runtime | architecture | 8001 | `8f711ffd6294c377dbba537086356fc869d171240d6ccdf5bef5a0c2d5b9ba3e` |
 | 26 | `docs/26_SKILL_REGISTRY_AND_EVOLUTION.md` | Skill Registry and Evolution Integration — Skill Evolution Without a Second Runtime | architecture | 11590 | `e5b69188c09e95c66a4bb2b42549e00b5f55790b81c163d29f892c62d6a1eec3` |
 | 27 | `docs/27_EXECUTION_POLICY_ROUTER_AND_VERIFIED_ORCHESTRATION.md` | Execution policy router and verified orchestration | architecture | 67667 | `e4957aff5554b6eea8b04b43dfcecbb1871a11b7e16cdb278f8b110bc86daf5a` |
-| 28 | `docs/28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md` | Agent competence: planning, verification and repair | architecture | 12521 | `2dbf6183340ee6a0ba808eef2dd1eea147e41a75dc18e5a3ee77c5bfec117e57` |
+| 28 | `docs/28_AGENT_COMPETENCE_PLANNING_VERIFICATION_AND_REPAIR.md` | Agent competence: planning, verification and repair | architecture | 13352 | `a5ef2265accb8b1a52f0c9cb60c6418bca67f5f979e598d971f2979e2fa121d7` |
 | 29 | `docs/29_CLIENT_SURFACES_AND_SOURCE_CONTROL_INTEGRATION.md` | Client surfaces and source-control integration | architecture | 26540 | `6f3290b2c5750cc130b4ab3880efa77d1e890adf2e591805a8a7267eb99d5aa2` |
 | 30 | `docs/30_PROTOCOL_APIS_AND_EVENT_SCHEMAS.md` | Protocol, APIs, and Event Schemas | implementation | 51084 | `64be543f520c583332bf1fd2b00c1b3130392b2cdf04b0f7d6c584b0f66b78fa` |
 | 31 | `docs/31_DATABASE_AND_STORAGE_SCHEMA.md` | Database and Storage Schema | implementation | 15319 | `d3e06f3b23aec1e27b22d3020a4c2c96a58a758dda2155cfa584d8389f1e4189` |
@@ -1116,13 +1116,19 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m3/PX-035/ci-run-34506031420-tests.log` | retained evidence | 2475 | `c3749bbece693b72275824bbe92c4d3384de5e52a0b6f24e7d7b48ca902c63e5` |
 | `evidence/m3/PX-035/ci-run-34506031420.json` | retained evidence | 37317 | `2dda872217d637cc239830d540966e7ceea26638695b761005ae8130ead05733` |
 | `evidence/m3/PX-035/evidence.json` | retained evidence | 1052 | `b9802499483e480a242f589fa2e57aa2fb05a977d436ff2526765540299466ea` |
-| `evidence/m3/PX-038/TASK_CARD.md` | retained evidence | 8679 | `0e3c74ff635289a2b2b1fb6c0c27eb601a33852e35210a464d2b9d50f8bf1328` |
+| `evidence/m3/PX-038/TASK_CARD.md` | retained evidence | 18457 | `e61e6f4580a085d0bed2ad9d1fdc4e44d622371c9ff6ac85b995916dd1b10d49` |
 | `evidence/m3/PX-038/ci-run-34506031420-tests.log` | retained evidence | 1344 | `dd01e3782bdfd564fcef011097d4018e6b370811e957b83feeffa984b8825ffa` |
 | `evidence/m3/PX-038/ci-run-34506031420.json` | retained evidence | 37317 | `2dda872217d637cc239830d540966e7ceea26638695b761005ae8130ead05733` |
 | `evidence/m3/PX-038/ci-run-36194461747.json` | retained evidence | 42606 | `8ce3a303134d7e49345da1dfe6b445be467cea37c95da0ae761577779af1fb96` |
 | `evidence/m3/PX-038/evidence.json` | retained evidence | 2797 | `14bcaa57bc611af75196523dfc066a8c10df770219d4603bc55f524e1f380dc6` |
+| `evidence/m3/PX-038/local-green-2-targeted.log` | retained evidence | 2168 | `34054f0e2543a6dda4b948b95dd55d90d5463c3cb78aa7e2a6f76b2676ae19c3` |
+| `evidence/m3/PX-038/local-green-targeted-2.log` | retained evidence | 4559 | `354f4ca21b1bfdda239a8253bb57bbdb2f566c533ba62b5d065b92c5b5ed8ee0` |
 | `evidence/m3/PX-038/local-green-targeted.log` | retained evidence | 4404 | `daf04bbf764adcb1dcba3b0bb137d8bd418db18da2f15195b5785959272c429b` |
+| `evidence/m3/PX-038/local-red-2-actor-gate-only.log` | retained evidence | 2956 | `525538198b1ca38157ba9ee6bb2f5f9e2d43b7ad0ebc0a604f4a748fa2af72af` |
+| `evidence/m3/PX-038/local-red-2-no-accumulation.log` | retained evidence | 2948 | `5f994ee99f8f29bad8b9194ce49cef0eab6bc743e81db5a63b006c181ad18ab3` |
+| `evidence/m3/PX-038/local-red-2-unfixed.log` | retained evidence | 1868 | `e819213e18664c7f1a97c5d3f3b31f6bbb751e96a09f148d5e7d61892cc5d7da` |
 | `evidence/m3/PX-038/local-red-actor-check-only.log` | retained evidence | 116903 | `409c000a779ddd9f345f12f97a7cd8821ecfd57aa84ebdf44eabce75747a5327` |
+| `evidence/m3/PX-038/local-red-stale-answer.log` | retained evidence | 127854 | `b78afed48cd0d8fbd2536d8a56a994277334ea27b8a02fab5509474871b3a1fa` |
 | `evidence/m3/PX-038/local-red-unfixed.log` | retained evidence | 3120 | `aa7734f97e8056f069ea97ea0f772c0295d5c172ee83f489dcba9d943ed1eb9b` |
 | `evidence/m3/PX-039/TASK_CARD.md` | retained evidence | 3867 | `3f69c9719f270edcf74374445342589e63c1f2924d8fa1f2e8759e76e84db5d7` |
 | `evidence/m3/PX-039/ci-run-34506031420-tests.log` | retained evidence | 2610 | `8fc902968b8e5690c051b3f0ff8a2cf6700ad68cd7f6dfce5f5be3881ac8d3f0` |
