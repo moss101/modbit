@@ -247,5 +247,64 @@
   ],
   "graph_not_written_by_goal_command": true
  },
- "finalization": "After this evidence is recorded the manifest is rebuilt so the change commit passes the gate. Once the pull request lands on main, graph.py walks only DOC-GOV-006 through the one-step ladder to COMPLETE with run/artifact/revision/commit references; manifests are regenerated and check_dossier --manifest and test_dossier.py rerun in the seal commit."
+ "finalization": "After this evidence is recorded the manifest is rebuilt so the change commit passes the gate. Once the pull request lands on main, graph.py walks only DOC-GOV-006 through the one-step ladder to COMPLETE with run/artifact/revision/commit references; manifests are regenerated and check_dossier --manifest and test_dossier.py rerun in the seal commit.",
+ "amendment_after_merging_main": {
+  "recorded_at_utc": "2026-09-25T08:05:48.876911+00:00",
+  "merged_main": "9565ce861f65359b3fe8cabecb73bb331acf0277",
+  "merge_commits_on_branch": [
+   "bb31e851740d28a5cfd0ec02afe3bd9e8a8e7954"
+  ],
+  "reason": "While the pull request was in review, main gained the EPR-019 seal (cea4f4b), which rolled M9 up COMPLETE. The Stage 2 sentence 'M10 now waits only on M9' became stale, so it now reads 'M3 no longer holds M10', and 'reports no blocker' is dated in the past tense. The docs/97 entry's Replacement, Remaining-work and Next-action lines were adjusted to match. Merge conflicts were only in the generated MANIFEST.md and manifest.json, resolved by regeneration.",
+  "corrected_files_after_sha256": {
+   "docs/77_RELEASE_ZERO_EXECUTION_GOAL.md": "fb2a8ed17a9ebfc15799c1145cfb0a3b9e39220c5ae35ead17dd683b46a5d105",
+   "evidence/m4/IMP-EV-0245/TASK_CARD.md": "626a7714a1f12b2011b280de0327ae4d5a3212768cafa8ed54425f3259e5c689",
+   "docs/97_DOSSIER_MAINTENANCE_LOG.md": "3ac7a8f13fa248127d02ea9e3fc1cc185e4f42f4ea8ca43ec9d811f1386902d4"
+  },
+  "regeneration_and_integrity": [
+   {
+    "command": [
+     "python3",
+     "tools/build_manifest.py"
+    ],
+    "exit_code": 0,
+    "output": "MANIFEST.md + manifest.json written: 90 docs, 1579 root/tooling files"
+   },
+   {
+    "command": [
+     "python3",
+     "tools/build_graph.py"
+    ],
+    "exit_code": 0,
+    "output": "graph written: 1484 nodes, 4647 edges\n  change_record=10, decision=56, doc=90, dossier_task=14, imp_task=323, milestone=11, milestone_task=78, qual_test=352, release=3, release_gate=7, requirement=352, scenario=155, section=8, source_patch=2, subsystem=23\nview written: graph/PROJECT_GRAPH.md"
+   },
+   {
+    "command": [
+     "python3",
+     "tools/build_manifest.py"
+    ],
+    "exit_code": 0,
+    "output": "MANIFEST.md + manifest.json written: 90 docs, 1579 root/tooling files"
+   },
+   {
+    "command": [
+     "python3",
+     "tools/check_dossier.py --manifest"
+    ],
+    "exit_code": 0,
+    "output": "OK: 90 docs; base 291 REQ-EV/265 IMP-EV/291 QUAL-EV + EPR 20 + PX 41 (38 ADOPT tasks) = 352 requirements effective; 18 ADR-R, 7 gates, 3 releases; graph and references consistent; manifest hashes verified"
+   }
+  ],
+  "tests": {
+   "command": [
+    "python3",
+    "tools/test_dossier.py",
+    "-v"
+   ],
+   "count": 44,
+   "exit_code": 0,
+   "output_ref": "evidence/dossier-gov-006/tests-after-merge.log",
+   "sha256": "e2565211e2196d730660f831c33c298c1ba8639b5c181cb7f0c48ccf8f1ad26d",
+   "result_line": "Ran 44 tests in 52.845s"
+  }
+ }
 }

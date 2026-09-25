@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 90,
-    "root_and_tooling": 1579,
-    "docs_bytes": 1357365
+    "root_and_tooling": 1580,
+    "docs_bytes": 1357444
   },
   "sections": [
     {
@@ -689,8 +689,8 @@
       "section": "delivery",
       "section_title": "Delivery and operations",
       "title": "Release Zero Execution Goal",
-      "bytes": 23872,
-      "sha256": "b62bc740c93c980825829632b50bd569f193510e9c8065e15337bff668932c55"
+      "bytes": 23871,
+      "sha256": "fb2a8ed17a9ebfc15799c1145cfb0a3b9e39220c5ae35ead17dd683b46a5d105"
     },
     {
       "path": "docs/80_ANTI_SUPERFICIAL_IMPLEMENTATION_STANDARD.md",
@@ -851,8 +851,8 @@
       "section": "governance",
       "section_title": "Agent process and governance",
       "title": "Dossier maintenance log",
-      "bytes": 56791,
-      "sha256": "164ee0e3dceb25f08d1b65b59d917f479c7282b1a7323e37c3934318a5cb0032"
+      "bytes": 56871,
+      "sha256": "3ac7a8f13fa248127d02ea9e3fc1cc185e4f42f4ea8ca43ec9d811f1386902d4"
     },
     {
       "path": "docs/98_BUILD_MANIFEST.md",
@@ -1081,14 +1081,19 @@
       "sha256": "f08e6edd59802fee36cbb80ddc2d4e44638579efea8b6fa8c8bfabba7e19f752"
     },
     {
+      "path": "evidence/dossier-gov-006/tests-after-merge.log",
+      "bytes": 3470,
+      "sha256": "e2565211e2196d730660f831c33c298c1ba8639b5c181cb7f0c48ccf8f1ad26d"
+    },
+    {
       "path": "evidence/dossier-gov-006/tests.log",
       "bytes": 3470,
       "sha256": "95f533a84c8ee89696716f93dfd0787c3222c62cc4761c4e5f41d87b97a03356"
     },
     {
       "path": "evidence/dossier-gov-006/validation.json",
-      "bytes": 7590,
-      "sha256": "b24bf0625d670a077a51c0909218ef3942e2451ea976ee75ae4bc383285f2fc9"
+      "bytes": 10151,
+      "sha256": "29d81ef7f207adac438aa4ea0e50aa43579848fd8fd43c1bde0a2a68f30646d8"
     },
     {
       "path": "evidence/dossier-gov/baseline.json",

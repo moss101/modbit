@@ -533,7 +533,7 @@ Recorded in doc 07 for the whole extension; this entry adds only: **Test impact*
 |---|---|
 | Trigger / evidence | `python3 tools/graph.py show PX-020` reports `COMPLETE`: the task was resumed and sealed on 2026-09-21 under DR-M3-005, with live-competence run 35560128454 and evidence under `../evidence/m3/PX-020/`. `graph.py status` shows M3 `COMPLETE`, and `graph.py goal` reports 0 `BLOCKED`. Doc 77 Stage 2 still said PX-020 "is the only `BLOCKED` step". It also said PX-020's run "discharges" the deferred live halves of EPR-000/002/005, IMP-EV-0251/0253, PX-022, PX-028 and PX-002, but no live run appears in those tasks' graph evidence or `evidence.json`. The IMP-EV-0245 card said the adaptive evaluator that consumes `FailureDiagnostic.features` "is M9 work". The graph schedules that evaluator (owner "Adaptive Profile Evaluator", REQ-EV-0244/0246) as `IMP-EV-0244` and `IMP-EV-0246` in M10. |
 | Current behavior | An agent reading doc 77 would believe two false things: that an owner-input blocker still holds M10, and that the deferred live halves close with PX-020. An agent reading the IMP-EV-0245 card would look for the evaluator in M9. |
-| Replacement | Doc 77 Stage 2 is now titled "resolved 2026-09-21". It states how PX-020 was resolved: DR-M9-002 credentials, the DR-M3-005 seal on the internal baseline, run 35560128454 and the evidence path. It states that M3 is `COMPLETE`, so M10 waits only on M9. It names the two parts that stay open. The first is PX-020's public SWE-bench Verified half. The second is the deferred live halves, which still carry only offline evidence under §1 condition 5; for these it notes M2.6's gateway run 35491774156 and that the doc 15 production-endpoint clause stays open under DR-M9-002. The card names IMP-EV-0244 and IMP-EV-0246 (both EXPERIMENT, M10) as the consumer and records the correction. |
+| Replacement | Doc 77 Stage 2 is now titled "resolved 2026-09-21". It states how PX-020 was resolved: DR-M9-002 credentials, the DR-M3-005 seal on the internal baseline, run 35560128454 and the evidence path. It states that M3 is `COMPLETE`, so M3 no longer holds M10. It names the two parts that stay open. The first is PX-020's public SWE-bench Verified half. The second is the deferred live halves, which still carry only offline evidence under §1 condition 5; for these it notes M2.6's gateway run 35491774156 and that the doc 15 production-endpoint clause stays open under DR-M9-002. The card names IMP-EV-0244 and IMP-EV-0246 (both EXPERIMENT, M10) as the consumer and records the correction. |
 | Migration | None. No node status or edge changes apart from the added change record and `dossier_task` node. |
 | Compatibility | Graph schema 1.2 unchanged. Tool behavior is unchanged apart from building the two nodes. |
 | Security impact | None. |
@@ -556,15 +556,15 @@ Recorded in doc 07 for the whole extension; this entry adds only: **Test impact*
 ### Status and handoff
 
 - **Evidence:** the `../evidence/dossier-gov-006/` bundle (baseline, tests.log, validation.json with before and after hashes of the two corrected files).
-- **Remaining product work:** unchanged by this task. On 2026-09-24 `RELEASE_ZERO` is `NOT_READY` with no blocker: 378/401 work items `COMPLETE`, M9 `IN_PROGRESS`, M10 `NOT_STARTED`.
+- **Remaining product work:** unchanged by this task. On 2026-09-24 `RELEASE_ZERO` was `NOT_READY` with no blocker (378/401 work items `COMPLETE`); M9 rolled up `COMPLETE` with the EPR-019 seal while this change was in review, so M10 is unblocked.
 - **Known stale text left in place:** doc 77 §5 item 1 still lists PX-020, M3 and M10 under "Unblocks". It is outside this task's scope and is a candidate for a later entry.
-- **Next safe action:** land the pull request, then seal DOC-GOV-006. After that, run `python3 tools/graph.py goal` and take its wave-0 step (EPR-019).
+- **Next safe action:** land the pull request, then seal DOC-GOV-006. After that, run `python3 tools/graph.py goal` and take a wave-0 step.
 
 ### Exact file inventory for this change
 
 | Action | Path |
 |---|---|
-| Added | `evidence/dossier-gov-006/baseline.json`, `tests.log`, `validation.json` |
+| Added | `evidence/dossier-gov-006/baseline.json`, `tests.log`, `tests-after-merge.log`, `validation.json` |
 | Changed | `docs/77_RELEASE_ZERO_EXECUTION_GOAL.md`, `docs/97_DOSSIER_MAINTENANCE_LOG.md`, `evidence/m4/IMP-EV-0245/TASK_CARD.md` |
 | Changed | `tools/build_graph.py`, `tools/test_dossier.py` |
 | Changed | `MANIFEST.md`, `manifest.json`, `graph/PROJECT_GRAPH.md`, `graph/project-graph.json` |

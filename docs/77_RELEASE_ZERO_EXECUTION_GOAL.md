@@ -74,7 +74,7 @@ M9 rolls up `COMPLETE` when its 33 work items are `COMPLETE`; update the M9 row 
 
 ### Stage 2 — resolve the blocker (owner input): resolved 2026-09-21
 
-When this goal was written, `PX-020` was the only `BLOCKED` step. It held every M10 step because M10 depends on M3. It is now `COMPLETE`. The owner supplied live-model credentials for a gateway compatible with the OpenAI and Anthropic protocols (z.ai `glm-5.3-flash`, DR-M9-002). Under DR-M3-005 the task resumed from `BLOCKED` at `NOT_STARTED` and walked the ladder to `COMPLETE` on 2026-09-21. It sealed on the internal competence baseline, measured through the real product on hosted CI in live-competence run 35560128454; the immutable bundle, its digest and the per-task results are under `../evidence/m3/PX-020/`. M3 rolled up `COMPLETE`, so M10 now waits only on M9. On 2026-09-24 `python3 tools/graph.py goal` reports no blocker.
+When this goal was written, `PX-020` was the only `BLOCKED` step. It held every M10 step because M10 depends on M3. It is now `COMPLETE`. The owner supplied live-model credentials for a gateway compatible with the OpenAI and Anthropic protocols (z.ai `glm-5.3-flash`, DR-M9-002). Under DR-M3-005 the task resumed from `BLOCKED` at `NOT_STARTED` and walked the ladder to `COMPLETE` on 2026-09-21. It sealed on the internal competence baseline, measured through the real product on hosted CI in live-competence run 35560128454; the immutable bundle, its digest and the per-task results are under `../evidence/m3/PX-020/`. M3 rolled up `COMPLETE`, so M3 no longer holds M10. On 2026-09-24 `python3 tools/graph.py goal` reported no blocker.
 
 Two parts stay open. This stage no longer holds either of them:
 
