@@ -16574,8 +16574,16 @@
    "milestone": "M10",
    "qual": "QUAL-EV-0142",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-36135019357",
+    "test:qual_ev_0142_the_diagnostics_export_replays_evidence_metadata_and_holds_no_credential",
+    "artifact:evidence/m10/IMP-EV-0142/TASK_CARD.md",
+    "artifact:evidence/m10/IMP-EV-0142/evidence.json",
+    "artifact:evidence/m10/IMP-EV-0142/ci-run-36135019357.json",
+    "commit:3cc1943"
+   ],
+   "status_changed_on": "2026-09-25T13:00:37Z"
   },
   {
    "id": "IMP-EV-0143",

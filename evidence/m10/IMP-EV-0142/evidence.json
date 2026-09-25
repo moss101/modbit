@@ -1,0 +1,36 @@
+{
+ "task": "IMP-EV-0142",
+ "requirements": [
+  "REQ-EV-0142",
+  "docs/71 Desktop diagnostics package",
+  "docs/30"
+ ],
+ "scenarios": [
+  "a Core holding a provider key and a forge token runs one task to review and has another refused by a provider echoing its key; a goal quotes an access key the Core does not hold; the session package names build, integrity (database ok, every chain verified, receipts valid), each aggregate's range and head, a metadata-only trace with the refusal's AUTH_REJECTED, the refusal among recent errors, provider health without the key \u2014 and none of the three secrets",
+  "with content the goal appears with the access key replaced; redactions >= 1",
+  "the package replays against the log; changed after sealing it fails its digest; forged and resealed it fails against the log; narrowed to a task it holds only that task; after the Core is killed and a new one opens the store it still replays",
+  "through the real CLI: doctor, trace, export diagnostics --include-content, diagnostics verify (and refusal once changed), export handoff"
+ ],
+ "tests": [
+  "services/modbit-core/tests/surface_protocol.rs::qual_ev_0142_the_diagnostics_export_replays_evidence_metadata_and_holds_no_credential",
+  "apps/cli/tests/headless.rs::imp_ev_0142_doctor_trace_export_verify_and_handoff_through_the_cli",
+  "crates/observability/src/diagnostics.rs::tests::a_sealed_package_replays_against_its_log_and_a_changed_one_does_not"
+ ],
+ "audit": "IMPLEMENTED-PARTIAL for status; NOT-FOUND for doctor, trace and a diagnostics export: integrity ran only at startup, ExportHandoff had no client and changes state.",
+ "proof": "Real Core and CLI: a read-only modbit.diagnostics/1 package, redacted whole by the IMP-EV-0017 redactor and sealed, whose evidence metadata (digest, chains, pinned heads) replays against the log after later appends and a restart.",
+ "negative_proof": "Removing the whole-package redaction fails the test on an unheld access key; verifying without comparing pinned heads accepts a forged package and fails the test.",
+ "limitations": "Browser and terminal leases not yet in the package; desktop menu entry is M10.5; trace and error lists bounded (5000/200).",
+ "batch_commits": [
+  "3cc1943"
+ ],
+ "runs": [
+  "36135019357"
+ ],
+ "ci": {
+  "run_id": "36135019357",
+  "head_sha": "65844d1c94da2f8feac3efc37ec3e14f7ce44615",
+  "conclusion": "success",
+  "note": "every job green on macOS, Linux and Windows on the first attempt",
+  "json": "evidence/m10/IMP-EV-0142/ci-run-36135019357.json"
+ }
+}
