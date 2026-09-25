@@ -22,6 +22,12 @@
 //!   modbit-cli --data-dir <dir> review decide --session <hex-id> --task <hex-id> (accept|return) [--reject path#index ...] [note]
 //!   modbit-cli --data-dir <dir> model list
 //!   modbit-cli --data-dir <dir> model probe --endpoint <name> --model <id> [--tools] <prompt>
+//!   modbit-cli --data-dir <dir> task steer --session <hex-id> --task <hex-id> [--mode STEER|COLLECT|FOLLOW_UP] <text>
+//!   modbit-cli --data-dir <dir> workspace trust --session <hex-id> [--scope repository] <root>
+//!   modbit-cli --data-dir <dir> provider configure --provider <openai|anthropic> [--base-url <url>] [--clear]   (credential on stdin or MODBIT_PROVIDER_API_KEY)
+//!   modbit-cli --data-dir <dir> recovery show
+//!   modbit-cli --data-dir <dir> pr (open | update) --session <hex-id> --task <hex-id> --revision <n> [--base <ref>] [--title <t>] [--remote <name>]
+//!   modbit-cli --data-dir <dir> starter list [--workspace <dir>]
 //!
 //! M1.3 mode: each invocation spawns a Core for the data directory, runs one
 //! command, and exits; the Core exits with the CLI. Attaching to a long-running
@@ -35,20 +41,22 @@ use modbit_protocol::local::{ReadyLine, decode_hex, encode_hex};
 use modbit_protocol::v1::{
     AcquireSessionLease, AllowUnsupportedLanguage, ApprovalList, ApprovalResolvedAck,
     AttachContextDocument, AttachmentIngested, CancelTask, CapabilityLeaseList,
-    CheckpointRestoreResult, ClientKind, CommandEnvelope, ContextDocumentAttached,
-    ContextInspectorView, CreateSession, CreateTask, DecideReview, EffectReceiptList,
-    EmergencyStop, EmergencyStopped, FileHash, ForkTask, GetAgentGraph, GetCapabilityLeases,
-    GetContextInspector, GetEffectReceipts, GetReviewBundle, GetRoutingSessionState,
-    GetSessionSnapshot, GetSessionTree, GetTaskAssurance, GetTaskEconomics, GetTaskStatus,
-    GetWorkGraph, HunkRef, Id, IngestAttachment, InvokeTool, LanguageList, ListApprovals,
-    ListLanguages, ListModels, ListQuestions, ListTools, ModelList, ModelProbed,
-    OutcomeBaselinePublished, PreviewRewind, ProbeModel, PublishOutcomeBaseline, QuestionList,
-    QuestionResponded, ResolveApproval, RespondToQuestion, RestoreCheckpoint, ReviewBundle,
-    ReviewDecided, RewindPreview, RoutingSessionStateView, SessionCreated, SessionLeaseAcquired,
-    SessionSnapshot, SessionTreeView, SetTaskSelection, StartTask, TaskAssuranceView,
+    CheckpointRestoreResult, ClientKind, CommandEnvelope, ConfigureProvider,
+    ContextDocumentAttached, ContextInspectorView, CreateSession, CreateTask, DecideReview,
+    EffectReceiptList, EmergencyStop, EmergencyStopped, FileHash, ForkTask, GetAgentGraph,
+    GetCapabilityLeases, GetContextInspector, GetEffectReceipts, GetRecoveryReport,
+    GetReviewBundle, GetRoutingSessionState, GetSessionSnapshot, GetSessionTree, GetTaskAssurance,
+    GetTaskEconomics, GetTaskStatus, GetWorkGraph, HunkRef, Id, IngestAttachment, InputQueued,
+    InvokeTool, LanguageList, ListApprovals, ListLanguages, ListModels, ListQuestions,
+    ListStarterTasks, ListTools, ModelList, ModelProbed, OpenPullRequest, OutcomeBaselinePublished,
+    PreviewRewind, ProbeModel, ProviderConfigured, PublishOutcomeBaseline, PullRequestAck,
+    QuestionList, QuestionResponded, QueueInput, RecoveryReport, RepositoryTrusted,
+    ResolveApproval, RespondToQuestion, RestoreCheckpoint, ReviewBundle, ReviewDecided,
+    RewindPreview, RoutingSessionStateView, SessionCreated, SessionLeaseAcquired, SessionSnapshot,
+    SessionTreeView, SetTaskSelection, StartTask, StarterTaskList, TaskAssuranceView,
     TaskCancelRequested, TaskCreated, TaskEconomicsView, TaskForked, TaskRunStarted,
-    TaskSelectionRecorded, TaskStatus, ToolInvoked, ToolList, UndoPlanView, UndoToolCall,
-    UnsupportedLanguageAllowed,
+    TaskSelectionRecorded, TaskStatus, ToolInvoked, ToolList, TrustRepository, UndoPlanView,
+    UndoToolCall, UnsupportedLanguageAllowed, UpdatePullRequest,
 };
 use prost::Message;
 
@@ -66,7 +74,7 @@ fn exit_for_state(state: &str) -> u8 {
     }
 }
 
-const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] [--command-id <hex>] <goal> | task from-issue --session <id> [--workspace <dir>] [--command-id <hex>] <issue-url> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> [--intent <hash>] (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--skill <name>]... [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id>] [--apply --session <id>] | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | task work --task <id> | task agents --task <id> | capacity show | attention list --session <id> | plan show --task <id> | plan revise --session <id> --task <id> [--plan-json <file>] [note] | task patch --session <id> --task <id> --path <p> --revision <n> [--file-revision <sha>] (--old <text> | --old-file <f>) (--new <text> | --new-file <f>) | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | agent install <file> [--from claude] [--replace] | agent list | skill install <dir> [--expect-hash <hex>] [--replace] | skill remove <name> | skill list | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt>)";
+const USAGE: &str = "usage: modbit-cli --data-dir <dir> (session create | session show --session <id> | task create --session <id> [--workspace <dir>] [--command-id <hex>] <goal> | task from-issue --session <id> [--workspace <dir>] [--command-id <hex>] <issue-url> | events tail --session <id> [--after N] [--count N] [--json] | task attach --session <id> --task <id> <file> | question list --task <id> | question answer --session <id> --task <id> --question <id> [--option <id>] [--endpoint <name>] [--model <id>] [--wait] [text] | tool list [--task <id>] | tool invoke --session <id> --task <id> [--call <id>] <tool> <arguments-json> | approval list --session <id> | approval resolve --session <id> --approval <id> [--intent <hash>] (approve|deny) [reason] | stop --session <id> [reason] | receipts [--task <id>] | lease list --task <id> | task run --session <id> --task <id> [--endpoint <name>] [--model <id>] [--max-turns N] [--skill <name>]... [--wait] | task cancel --session <id> --task <id> | task status --task <id> | review show --task <id> | review decide --session <id> --task <id> (accept|return) [--reject path#index ...] [note] | change undo --session <id> --task <id> --call <id> [--apply] | context show <task-id> | task fork --session <id> --task <id> [--checkpoint <id>] [--carry PLAN,DECISIONS,EVIDENCE,CONTEXT] [--worktree <dir>] [goal] | task rewind --task <id> [--checkpoint <id>] [--apply --session <id>] | session route --session <id> | session tree --session <id> | task assurance --task <id> | task economics --task <id> | task work --task <id> | task agents --task <id> | capacity show | attention list --session <id> | plan show --task <id> | plan revise --session <id> --task <id> [--plan-json <file>] [note] | task patch --session <id> --task <id> --path <p> --revision <n> [--file-revision <sha>] (--old <text> | --old-file <f>) (--new <text> | --new-file <f>) | baseline publish --session <id> [--revision <rev>] | task allow-language --session <id> --task <id> --language <l> [--reason r] | task attach-context --session <id> --task <id> --source <s> [--title t] <file> | task select --session <id> --task <id> [--path p]... [--lines a:b] [--symbol s] [--hunk path#index]... [--source review|editor|cli] | agent install <file> [--from claude] [--replace] | agent list | skill install <dir> [--expect-hash <hex>] [--replace] | skill remove <name> | skill list | language list | model list | model probe --endpoint <name> --model <id> [--tools] <prompt> | task steer --session <id> --task <id> [--mode STEER|COLLECT|FOLLOW_UP] [--input-id <hex>] <text> | workspace trust --session <id> [--scope <s>] <root> | provider configure --provider <openai|anthropic> [--base-url <url>] [--clear] | recovery show | pr (open | update) --session <id> --task <id> --revision <n> [--base <ref>] [--title <t>] [--remote <name>] | starter list [--workspace <dir>])";
 
 fn parse_id(hex: &str) -> Result<Id, String> {
     let bytes = decode_hex(hex)
@@ -2159,6 +2167,259 @@ async fn run_command(ready: &ReadyLine, rest: Vec<String>) -> Result<(), String>
             }
             if !r.error_message.is_empty() {
                 println!("error: {}", r.error_message);
+            }
+        }
+        // docs/11: input steering is a Core contract, not a desktop feature —
+        // `STEER`, `COLLECT` and `FOLLOW_UP` run through the same cancellation
+        // domains and event log for every client kind. The desktop steers from
+        // the keyboard (PX-024); this is the headless operator's line in.
+        ["task", "steer", ..] => {
+            let sid = parse_id(opt("--session").ok_or(USAGE)?)?;
+            let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
+            let mode = opt("--mode").unwrap_or("STEER").to_ascii_uppercase();
+            if !matches!(mode.as_str(), "STEER" | "COLLECT" | "FOLLOW_UP") {
+                return Err("--mode must be STEER, COLLECT or FOLLOW_UP".into());
+            }
+            let text = positionals(&words, 2).join(" ");
+            if text.trim().is_empty() {
+                return Err(USAGE.into());
+            }
+            // Client-stable: a retried invocation replays its line instead of
+            // queueing a second one.
+            let input_id = opt("--input-id")
+                .map(str::to_owned)
+                .unwrap_or_else(|| encode_hex(&fresh_id().value));
+            let lease = join_lease(&mut client, &sid).await?;
+            let ack = client
+                .command(envelope_fenced(
+                    "QueueInput",
+                    QueueInput {
+                        task_id: Some(task_id),
+                        input_id: input_id.clone(),
+                        mode: mode.clone(),
+                        text,
+                    }
+                    .encode_to_vec(),
+                    Some(lease),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let r: InputQueued = Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "input {input_id} mode={mode} sequence={} offset={}",
+                r.sequence, r.offset
+            );
+        }
+        // A repository's hooks are code it asks the Core to run: they are in
+        // force only once the session trusts the root (docs/23). Without this
+        // verb a headless task ran the same goal under different rules from the
+        // desktop's — the first thing QUAL-EV-0126 measures.
+        ["workspace", "trust", ..] => {
+            let sid = parse_id(opt("--session").ok_or(USAGE)?)?;
+            let root = positionals(&words, 2)
+                .first()
+                .copied()
+                .ok_or(USAGE)?
+                .to_owned();
+            let scope = opt("--scope").unwrap_or("repository").to_owned();
+            let lease = join_lease(&mut client, &sid).await?;
+            let ack = client
+                .command(envelope_fenced(
+                    "TrustRepository",
+                    TrustRepository {
+                        session_id: Some(sid),
+                        workspace_root: root,
+                        scope: scope.clone(),
+                    }
+                    .encode_to_vec(),
+                    Some(lease),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let r: RepositoryTrusted = Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "trusted {} scope={scope} offset={}",
+                r.workspace_root, r.offset
+            );
+        }
+        // The endpoint a headless run calls. The credential never crosses
+        // argv — a process list is readable by anything on the machine — so it
+        // comes from `MODBIT_PROVIDER_API_KEY` or from stdin, is never echoed,
+        // and the Core holds it in memory only (docs/23): what comes back says
+        // whether a credential is available, never what it is.
+        ["provider", "configure", ..] => {
+            if words.contains(&"--api-key") {
+                return Err("a credential never goes on the command line: pipe it to stdin or set MODBIT_PROVIDER_API_KEY".into());
+            }
+            let provider = opt("--provider").ok_or(USAGE)?.to_owned();
+            let base_url = opt("--base-url").unwrap_or_default().to_owned();
+            let clear = words.contains(&"--clear");
+            let api_key = if clear {
+                String::new()
+            } else {
+                match std::env::var("MODBIT_PROVIDER_API_KEY") {
+                    Ok(v) if !v.is_empty() => v,
+                    _ => {
+                        let mut buf = String::new();
+                        std::io::Read::read_to_string(&mut std::io::stdin(), &mut buf)
+                            .map_err(|e| format!("reading the credential from stdin: {e}"))?;
+                        let key = buf.trim().to_owned();
+                        if key.is_empty() {
+                            return Err("no credential: pipe it to stdin, set MODBIT_PROVIDER_API_KEY, or pass --clear".into());
+                        }
+                        key
+                    }
+                }
+            };
+            let ack = client
+                .command(envelope(
+                    "ConfigureProvider",
+                    ConfigureProvider {
+                        provider,
+                        api_key,
+                        base_url,
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let r: ProviderConfigured = Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "endpoint {} credential={} models={}",
+                r.endpoint,
+                if r.credential_available {
+                    "available"
+                } else {
+                    "absent"
+                },
+                r.models.join(",")
+            );
+        }
+        // What recovery did on this Core's start (docs/19): the desktop shows
+        // it after a restart, and a headless operator who just lost a Core
+        // needs the same answer.
+        ["recovery", "show"] => {
+            let ack = client
+                .command(envelope(
+                    "GetRecoveryReport",
+                    GetRecoveryReport {}.encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let r: RecoveryReport = Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "recovery boot_generation={} last_offset={} events_verified={} aggregates_verified={} projections_rebuilt={} sessions={} tasks={} ms={}",
+                r.boot_generation,
+                r.last_offset,
+                r.events_verified,
+                r.aggregates_verified,
+                r.projections_rebuilt,
+                r.sessions,
+                r.tasks,
+                r.recovery_ms
+            );
+            for n in &r.notes {
+                println!("note {n}");
+            }
+        }
+        // The reviewed candidate's way onto the forge (PX-006). Bound to the
+        // revision the review accepted: the Core refuses any other, and the
+        // push itself is a protected effect that waits for an approval.
+        ["pr", "open", ..] | ["pr", "update", ..] => {
+            let update = words[1] == "update";
+            let sid = parse_id(opt("--session").ok_or(USAGE)?)?;
+            let task_id = parse_id(opt("--task").ok_or(USAGE)?)?;
+            let revision: u64 = opt("--revision")
+                .ok_or("--revision <n> required: the pull request is bound to the revision the review accepted")?
+                .parse()
+                .map_err(|_| "--revision must be a number")?;
+            let remote = opt("--remote").unwrap_or_default().to_owned();
+            let lease = join_lease(&mut client, &sid).await?;
+            let env = if update {
+                envelope_fenced(
+                    "UpdatePullRequest",
+                    UpdatePullRequest {
+                        task_id: Some(task_id),
+                        expected_candidate_revision: revision,
+                        remote,
+                    }
+                    .encode_to_vec(),
+                    Some(lease),
+                )
+            } else {
+                envelope_fenced(
+                    "OpenPullRequest",
+                    OpenPullRequest {
+                        task_id: Some(task_id),
+                        expected_candidate_revision: revision,
+                        base: opt("--base").unwrap_or_default().to_owned(),
+                        title: opt("--title").unwrap_or_default().to_owned(),
+                        remote,
+                    }
+                    .encode_to_vec(),
+                    Some(lease),
+                )
+            };
+            let ack = client.command(env).await.map_err(|e| e.to_string())?;
+            let r: PullRequestAck = Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "pull-request status={} number={} url={} branch={} head={} revision={} approval={} intent={} replayed={} receipts={}",
+                r.status,
+                r.number,
+                if r.url.is_empty() { "-" } else { &r.url },
+                if r.branch.is_empty() { "-" } else { &r.branch },
+                if r.head_sha.is_empty() {
+                    "-"
+                } else {
+                    &r.head_sha
+                },
+                r.candidate_revision,
+                if r.approval_id.is_empty() {
+                    "-"
+                } else {
+                    &r.approval_id
+                },
+                if r.intent_hash.is_empty() {
+                    "-"
+                } else {
+                    &r.intent_hash
+                },
+                r.replayed,
+                r.effect_receipt_ids.join(",")
+            );
+            if !r.detail.is_empty() {
+                println!("detail {}", r.detail);
+            }
+            if r.status == "APPROVAL_PENDING" {
+                EXIT_CODE.store(2, std::sync::atomic::Ordering::Relaxed);
+            }
+        }
+        // What the repository was detected as, and the starter tasks the
+        // desktop offers for it (docs/10 onboarding).
+        ["starter", "list", ..] => {
+            let root = opt("--workspace").unwrap_or_default().to_owned();
+            let ack = client
+                .command(envelope(
+                    "ListStarterTasks",
+                    ListStarterTasks {
+                        workspace_root: root,
+                    }
+                    .encode_to_vec(),
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let r: StarterTaskList = Client::result(&ack).map_err(|e| e.to_string())?;
+            println!(
+                "stacks {} trusted={}",
+                if r.stacks.is_empty() {
+                    "-".to_owned()
+                } else {
+                    r.stacks.join(",")
+                },
+                r.trusted
+            );
+            for t in &r.tasks {
+                println!("starter {} {:?}", t.id, t.title);
             }
         }
         _ => return Err(USAGE.into()),

@@ -33,8 +33,8 @@ workspace = true
 # Module registration parsed by `architecture-lint modules` (M0.4, docs/45, docs/81).
 # owner: subsystem node id in graph/project-graph.json; canonical: doc 81 single-owner
 # systems this crate is THE implementation of (at most one member per system);
-# capabilities: production capabilities with their requirement ids (none yet).
+# capabilities: production capabilities with their requirement ids.
 [package.metadata.modbit]
 owner = "desktop"
 canonical = []
-capabilities = []
+capabilities = [{ id = "headless.surface", requirements = ["REQ-EV-0126"] }]
