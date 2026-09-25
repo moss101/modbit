@@ -1706,8 +1706,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m9/PX-009/TASK_CARD.md` | retained evidence | 3716 | `143ff5f9be712b78a43f415d143fba93a8568e2f9b6980d28e278d4731838fa2` |
 | `evidence/m9/PX-009/ci-run-35830456557.json` | retained evidence | 42199 | `508168affe8ad4b8a13e97c3d4f855efbf4255325e88b58fec882ad41376033a` |
 | `evidence/m9/PX-009/evidence.json` | retained evidence | 2230 | `61d514ff843ff8750fecb6fd7d4936bd84d3255b2e9d2e72cbbc32901de9d99e` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 41608 | `fbdd752bef143ddef2800bfb923520bf417354815e5ab00c74b3adcf45a9081c` |
-| `graph/project-graph.json` | project driver graph with live status | 1597889 | `81529035c256ebf399e9b85d3ea2b2e9411d02456cb98640ce068ecfdb161605` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 41847 | `01938c78e84a983f2600189d0aa22759afefa1722f5e199123f1af28ff912eb3` |
+| `graph/project-graph.json` | project driver graph with live status | 1600198 | `1f1e415b3f9d1def535e782fc8747e593a542b5f4e7d0d8a226f1aa166b340e3` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 56932 | `7a13adf9a591a21f9a99705d5a0f2fee5a316b3b43897d0964fbe8b1af30a4ce` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 17596 | `5c9b7a782d245223726f860ca583d766929a6f5662b644adebee64d257ad426b` |
