@@ -1,0 +1,35 @@
+{
+ "task": "IMP-EV-0032",
+ "requirements": [
+  "REQ-EV-0032",
+  "docs/34 Verified workflow economics",
+  "docs/30"
+ ],
+ "scenarios": [
+  "a three-call task under a signed registry: GetTaskEconomics prices every call (USD, the registry generation) and cost_minor equals what the provider billed; one run whose steps each hold one call and add up to the task's tokens, cost and tool calls; the steps' request ids are exactly the provider's",
+  "an invoice built from the scripted provider's own record reconciles exactly (three MATCHED, delta 0, each attributed to its run)",
+  "a row with 3% more input is OUT_OF_TOLERANCE at 100 bp and within at 500 bp",
+  "a row the log never saw is NOT_IN_LOG and a call left off the invoice NOT_ON_INVOICE; a non-sample payload is refused BAD_INVOICE"
+ ],
+ "tests": [
+  "services/modbit-core/tests/surface_protocol.rs::qual_ev_0032_a_provider_invoice_reconciles_against_the_canonical_usage_within_tolerance",
+  "services/modbit-core/src/usage.rs::tests::{an_invoice_reconciles_row_by_row_within_its_tolerance, the_difference_is_relative_and_rounded_up}"
+ ],
+ "audit": "IMPLEMENTED-PARTIAL with drift: GetTaskEconomics summed usage reported or not and priced the whole task at the last model's catalog list price; nothing attributed usage to steps or compared an invoice with the log.",
+ "proof": "Real Core with a signed registry and a scripted provider: a per-call ledger priced per binding in minor units, attributed per run and step with tool and verification time, reconciled row by row against the provider's own record within a tolerance.",
+ "negative_proof": "Reconciling without the tolerance comparison accepts a 3%-over row and fails the test; the catalog estimate priced at the answered model (not the binding) failed three existing tests and was corrected before merge.",
+ "limitations": "Side questions append nothing (QUAL-EV-0261) so their invoice rows are NOT_IN_LOG; no provider billing-export adapter; cache-write tokens not on ModelUsageRecorded; no registry means unpriced.",
+ "batch_commits": [
+  "b2b109f"
+ ],
+ "runs": [
+  "36170517237"
+ ],
+ "ci": {
+  "run_id": "36170517237",
+  "head_sha": "e5e55cae9b7cba6d02fc4f36e2d9bed77d8da24e",
+  "conclusion": "success",
+  "note": "every job green on macOS, Linux and Windows on the first attempt of the final rebase (earlier all-green runs were superseded by rebases onto main)",
+  "json": "evidence/m10/IMP-EV-0032/ci-run-36170517237.json"
+ }
+}

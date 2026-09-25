@@ -10730,8 +10730,16 @@
    "milestone": "M10",
    "qual": "QUAL-EV-0032",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-36170517237",
+    "test:qual_ev_0032_a_provider_invoice_reconciles_against_the_canonical_usage_within_tolerance",
+    "artifact:evidence/m10/IMP-EV-0032/TASK_CARD.md",
+    "artifact:evidence/m10/IMP-EV-0032/evidence.json",
+    "artifact:evidence/m10/IMP-EV-0032/ci-run-36170517237.json",
+    "commit:b2b109f"
+   ],
+   "status_changed_on": "2026-09-25T18:23:40Z"
   },
   {
    "id": "IMP-EV-0035",
