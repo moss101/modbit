@@ -15876,13 +15876,14 @@ async fn qual_ev_0055_e2e_005_core_crash_after_dispatch_reconciles_the_unknown_o
 }
 
 /// Run one compaction scenario: a task that reads a big file `reads` times
-/// under `budget` tokens, with the docs/54 fault-10 worker delay when given.
-/// Returns the task's events and the request bodies the model saw.
+/// under `budget` tokens, with the docs/54 fault-10 worker hold when given.
+/// Returns the task's events and the request bodies the model saw. Nothing
+/// here is paced: the fault hook stages the late result off the history, so
+/// what a turn costs on the host does not change what the run proves.
 async fn compaction_scenario(
     reads: usize,
     budget: &str,
-    delay_ms: Option<&str>,
-    pace: Option<Duration>,
+    hold_ms: Option<&str>,
     ids: u8,
 ) -> (
     Vec<(String, String, serde_json::Value)>,
@@ -15902,10 +15903,7 @@ async fn compaction_scenario(
         script.push(read.clone());
     }
     script.push(json!({"calls": [{"name": "task.complete", "args": {"summary": "done", "self_review": {"findings": []}}}]}));
-    let (base, seen) = match pace {
-        Some(p) => scripted_model_slow(script, p).await,
-        None => scripted_model(script, None).await,
-    };
+    let (base, seen) = scripted_model(script, None).await;
     let dir = tempfile::tempdir().unwrap();
     let mut env = vec![
         ("MODBIT_OPENAI_BASE_URL", base.as_str()),
@@ -15913,8 +15911,8 @@ async fn compaction_scenario(
         ("ANTHROPIC_API_KEY", ""),
         ("MODBIT_COMPACTION_TOKEN_BUDGET", budget),
     ];
-    if let Some(d) = delay_ms {
-        env.push(("MODBIT_COMPACTION_WORKER_DELAY_MS", d));
+    if let Some(ms) = hold_ms {
+        env.push(("MODBIT_COMPACTION_WORKER_DELAY_MS", ms));
     }
     let core = CoreProcess::spawn_with_env(dir.path(), &env);
     let mut c = core.client().await;
@@ -15972,7 +15970,7 @@ async fn qual_m4_2_e2e_006_async_compaction_installs_at_a_boundary_and_a_late_re
     // later boundary and installs as an ASYNC epoch, bound to its request.
     // A read result is ~16 KiB (~4k tokens): the four-entry tail alone is
     // ~8k, so the budget leaves a soft window wider than one turn's growth.
-    let (evs, bodies, view) = compaction_scenario(10, "24000", None, None, 0xA0).await;
+    let (evs, bodies, view) = compaction_scenario(10, "24000", None, 0xA0).await;
     let requested: Vec<&serde_json::Value> = evs
         .iter()
         .filter(|(_, t, _)| t == "CompactionStarted")
@@ -16049,17 +16047,15 @@ async fn qual_m4_2_e2e_006_async_compaction_installs_at_a_boundary_and_a_late_re
     // installs the epoch; the worker's result then returns for a history
     // that moved on and is refused, on the log, and its projection never
     // enters the context.
-    // Turns take at least 100 ms and the worker holds its result for 1.5 s:
-    // hard pressure (two turns after the worker starts) comes first whatever
-    // the runner's speed, and the run outlives the worker.
-    let (evs, bodies, view) = compaction_scenario(
-        30,
-        "24000",
-        Some("1500"),
-        Some(Duration::from_millis(100)),
-        0xB0,
-    )
-    .await;
+    // The fault hook holds every worker result until the result can no longer
+    // install, so no turn rate decides this: the worker is never harvested
+    // before hard pressure however slow the host is, and what it then returns
+    // is stale rather than closed `RUN_ENDED` at the end of the run. A hard
+    // path that never fires releases the worker only when the run ends, which
+    // is what the assertions below read. The 60 s is the last-resort bound on
+    // the hold, far above the turn or two the transcript needs to cross from
+    // soft to hard pressure on any host; nothing waits for it.
+    let (evs, bodies, view) = compaction_scenario(30, "24000", Some("60000"), 0xB0).await;
     let requested: Vec<&serde_json::Value> = evs
         .iter()
         .filter(|(_, t, _)| t == "CompactionStarted")
