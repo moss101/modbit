@@ -34517,6 +34517,23 @@
    "status_changed_on": "2026-09-25T08:29:18Z"
   },
   {
+   "id": "DR-GOV-2026-09-25-007",
+   "type": "change_record",
+   "title": "Approved correction of the Release Zero goal's provider-credential Unblocks cell",
+   "status": "APPROVED",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md"
+  },
+  {
+   "id": "DOC-GOV-007",
+   "type": "dossier_task",
+   "title": "Correct the Release Zero goal's provider-credential Unblocks cell",
+   "subsystem": "governance",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
+   "acceptance": "Doc 77 §5 item 1 Unblocks matches the graph and Decision Records (PX-020/M3 unblocked by compatible-gateway credentials; production-endpoint clause, open live halves, IMP-EV-0211, Release Zero step 1 and gate evidence still named); descriptive text only; full integrity gate passes; no product proof",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
    "id": "ALPHA",
    "type": "release",
    "title": "Local coding loop and recovery spine",
@@ -53585,6 +53602,36 @@
   {
    "from": "DOC-GOV-006",
    "to": "DR-GOV-2026-09-24-006",
+   "type": "authorized_by"
+  },
+  {
+   "from": "DR-GOV-2026-09-25-007",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-GOV-007",
+   "to": "DOC-GOV-006",
+   "type": "after"
+  },
+  {
+   "from": "DOC-GOV-007",
+   "to": "governance",
+   "type": "owned_by"
+  },
+  {
+   "from": "DOC-GOV-007",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-GOV-007",
+   "to": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-GOV-007",
+   "to": "DR-GOV-2026-09-25-007",
    "type": "authorized_by"
   },
   {

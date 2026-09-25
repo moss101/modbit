@@ -55,6 +55,8 @@ GOAL_DOC = "77_RELEASE_ZERO_EXECUTION_GOAL.md"
 # DOC-GOV-006 (docs/97): stale descriptive wording corrected in doc 77 (PX-020 no longer BLOCKED) and the
 # IMP-EV-0245 task card (its feature consumer is M10 IMP-EV-0244/0246, not M9).
 GOV6_CHANGE = "DR-GOV-2026-09-24-006"
+# DOC-GOV-007 (docs/97): the Unblocks cell of doc 77 §5 item 1 corrected (PX-020/M3 already unblocked).
+GOV7_CHANGE = "DR-GOV-2026-09-25-007"
 PX_STAGES = [("DOC-PX-001", "DOC-GOV-004", "Product extension stage A: authority, PX ledger tooling, phased releases, governance tiering"),
              ("DOC-PX-002", "DOC-PX-001", "Product extension stage B: client surfaces and source-control integration"),
              ("DOC-PX-003", "DOC-PX-002", "Product extension stage C: agent competence contracts and benchmarks"),
@@ -744,6 +746,17 @@ def build(previous=None):
     link("DOC-GOV-006", GOV_LOG_DOC, "specified_by")
     link("DOC-GOV-006", GOAL_DOC, "specified_by")
     link("DOC-GOV-006", GOV6_CHANGE, "authorized_by")
+    add({"id": GOV7_CHANGE, "type": "change_record", "title": "Approved correction of the Release Zero goal's provider-credential Unblocks cell",
+         "status": "APPROVED", "source": "docs/" + GOV_LOG_DOC})
+    link(GOV7_CHANGE, GOV_LOG_DOC, "specified_by")
+    add({"id": "DOC-GOV-007", "type": "dossier_task", "title": "Correct the Release Zero goal's provider-credential Unblocks cell",
+         "subsystem": "governance", "source": "docs/" + GOV_LOG_DOC,
+         "acceptance": "Doc 77 §5 item 1 Unblocks matches the graph and Decision Records (PX-020/M3 unblocked by compatible-gateway credentials; production-endpoint clause, open live halves, IMP-EV-0211, Release Zero step 1 and gate evidence still named); descriptive text only; full integrity gate passes; no product proof"})
+    link("DOC-GOV-007", "DOC-GOV-006", "after")
+    link("DOC-GOV-007", "governance", "owned_by")
+    link("DOC-GOV-007", GOV_LOG_DOC, "specified_by")
+    link("DOC-GOV-007", GOAL_DOC, "specified_by")
+    link("DOC-GOV-007", GOV7_CHANGE, "authorized_by")
 
     # releases: derived projections over work items (docs/75) ----------------
     ms_of, owner_of = {}, {}

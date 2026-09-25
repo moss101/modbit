@@ -568,3 +568,53 @@ Recorded in doc 07 for the whole extension; this entry adds only: **Test impact*
 | Changed | `docs/77_RELEASE_ZERO_EXECUTION_GOAL.md`, `docs/97_DOSSIER_MAINTENANCE_LOG.md`, `evidence/m4/IMP-EV-0245/TASK_CARD.md` |
 | Changed | `tools/build_graph.py`, `tools/test_dossier.py` |
 | Changed | `MANIFEST.md`, `manifest.json`, `graph/PROJECT_GRAPH.md`, `graph/project-graph.json` |
+
+## DOC-GOV-007 — Correct the Release Zero goal's provider-credential Unblocks cell
+
+### Identity and authority
+
+- Task: DOC-GOV-007 (`dossier_task`); owner: governance; prerequisite: DOC-GOV-006 COMPLETE; outside product roll-ups.
+- Decision Record: DR-GOV-2026-09-25-007, approved for dossier adoption. DOC-GOV-006 left one known stale line in place, and on 2026-09-25 the user asked for it to be fixed ("also fix the §5 item 1 Unblocks line").
+- Scope: descriptive text only, in the "Unblocks" cell of doc 77 §5 item 1. The task also adds the change record and DOC-GOV-007 node in `../tools/build_graph.py`, one assertion block in `../tools/test_dossier.py`, and this entry. The rest of the row (the input and how it enters) is unchanged. No requirement row, disposition, owner, task, qualification, ADR clause, gate, release rule or product status changes. Docs 40/41/42/49/62, `../AGENTS.md`, every Decision Record and every locked path stay byte-identical.
+- Revision before change: `../evidence/dossier-gov-007/baseline.json`, recording `main` 26776dd (the DOC-GOV-006 seal) and the hashes of the governed files.
+
+### Decision Record (change-control fields)
+
+| Field | Content |
+|---|---|
+| Trigger / evidence | Doc 77 §5 item 1 said provider credentials unblock "PX-020 and with it M3 and M10" and "the deferred halves of DR-M2-001, DR-M3-002, DR-M3-003, DR-M6-001". Four facts contradict or refine that. First, the owner supplied credentials for a compatible gateway on 2026-09-19 (DR-M9-002). Second, PX-020 sealed `COMPLETE` on 2026-09-21 under DR-M3-005, and M3 rolled up `COMPLETE`. Third, M2.6 carries the DR-M2-001 live run on the gateway (`run:gha-35491774156`), while DR-M9-002 keeps the doc 15 "production provider endpoint" clause open. Fourth, EPR-000/002/005, IMP-EV-0251/0253, PX-022, PX-028 and PX-002 (DR-M3-002, DR-M3-003, DR-M6-001) still carry only offline runs. IMP-EV-0211 is `NOT_STARTED` in M10. |
+| Current behavior | The owner-input register said credentials were still needed to unblock PX-020, M3 and M10, and it did not distinguish the gateway credentials already supplied from the production-endpoint credentials still missing. |
+| Replacement | The cell first says the input was supplied for a compatible gateway (z.ai `glm-5.3-flash`, DR-M9-002). It says that unblocked PX-020 and M3 (DR-M3-005), and that M2.6's DR-M2-001 half ran live on the gateway (run 35491774156). It then lists what the item is still needed for. The first is the doc 15 production-endpoint clause, which needs credentials for `api.openai.com` / `api.anthropic.com`. The second is the deferred live halves of DR-M3-002, DR-M3-003 and DR-M6-001, which may run on the gateway but have not run. The rest are IMP-EV-0211, step 1 of the Release Zero scenario and the measured evidence behind every EPR gate. |
+| Migration | None. No node status or edge changes apart from the added change record and `dossier_task` node. |
+| Compatibility | Graph schema 1.2 unchanged. Tool behavior is unchanged apart from building the two nodes. |
+| Security impact | None. The cell names no credential value, host secret or storage location beyond what the row and DR-M9-002 already state. |
+| Test impact | The governance chain test in `../tools/test_dossier.py` now also checks that DOC-GOV-007 follows DOC-GOV-006 and has its change record, both specifying docs and the governance owner. |
+| Rollback | Revert the change commit, or restore the inventory below to the hashes in `baseline.json`, then rerun the reseal. |
+| Explicit user approval | The request on 2026-09-25: "also fix the §5 item 1 Unblocks line". |
+
+### Stage applicability
+
+| Stage | DOC-GOV-007 execution |
+|---|---|
+| AUDITING | Doc 77 §5 item 1 read at `main` 26776dd. `graph.py show` / graph reads for PX-020, M2.6, IMP-EV-0211 and the eight tasks with deferred live halves (run evidence only). DR-M9-002 and DR-M3-005 reread. Baseline hashes recorded. |
+| IMPLEMENTING | The cell rewrite, builder wiring, test assertion, this entry |
+| WIRED | Graph and manifests regenerated through the real CLIs |
+| REAL_TESTING | `check_dossier --manifest` and the copied-package suite |
+| E2E_PROVEN | Pull request from `wip/doc-gov-007-unblocks-line` green on hosted CI and landed on `main` |
+| COMPLETE | One-step ladder with evidence citing the landing commit; seal pull request |
+| Product qualification | Non-applicable: no product behavior, status or evidence claim changes |
+
+### Status and handoff
+
+- **Evidence:** the `../evidence/dossier-gov-007/` bundle (baseline, tests.log, validation.json with before and after hashes of doc 77).
+- **Remaining product work:** unchanged by this task.
+- **Next safe action:** land the pull request, then seal DOC-GOV-007.
+
+### Exact file inventory for this change
+
+| Action | Path |
+|---|---|
+| Added | `evidence/dossier-gov-007/baseline.json`, `tests.log`, `validation.json` |
+| Changed | `docs/77_RELEASE_ZERO_EXECUTION_GOAL.md`, `docs/97_DOSSIER_MAINTENANCE_LOG.md` |
+| Changed | `tools/build_graph.py`, `tools/test_dossier.py` |
+| Changed | `MANIFEST.md`, `manifest.json`, `graph/PROJECT_GRAPH.md`, `graph/project-graph.json` |
