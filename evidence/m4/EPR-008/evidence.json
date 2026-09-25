@@ -45,5 +45,33 @@
    "url": "https://github.com/moss101/modbit/actions/runs/34636145068",
    "fix": "8436195"
   }
+ ],
+ "regressions": [
+  {
+   "id": "di-9-matcher",
+   "found": "2026-09-24, review of this task's DI-9 wiring",
+   "defect": "DI-9 matched the policy's question_required patterns with path.starts_with(pattern) in crates/verification, not with ProtectedSurface::matches grammar: no segment pattern (/deploy/, /deployment/, /release/, /infra/, /terraform/, /k8s/, /helm/) matched a relative path, .tf matched no Terraform file, Dockerfile/docker-compose.yml/Jenkinsfile matched only at the root; deploy/prod.yaml and infra/main.tf were written without a typed question.",
+   "audit": "BROKEN-DRIFTED: wired to the policy, matched by a second matcher; first missing link the DI-9 predicate in evaluate_file.",
+   "fix": "ProtectedSurface::matches delegates to ProtectedSurface::matches_patterns (crates/policy, grammar unchanged); DI-9 calls it. No new dependency edge; the fallback .github/ and .modbit/ decide as before; risk rules and policy version unchanged.",
+   "tests": [
+    "services/modbit-core/tests/surface_protocol.rs::epr_008_di_9_refuses_a_nested_deploy_write_without_a_typed_question",
+    "crates/verification/src/invariants.rs::tests::di_9_denies_a_protected_segment_anywhere_in_the_path",
+    "crates/verification/src/invariants.rs::tests::di_9_denies_a_protected_suffix_at_any_depth",
+    "crates/verification/src/invariants.rs::tests::di_9_denies_a_protected_basename_in_any_directory",
+    "crates/verification/src/invariants.rs::tests::di_9_denies_a_root_directory_prefix_and_the_fallback_defaults_behave_as_before",
+    "crates/verification/src/invariants.rs::tests::di_9_and_the_risk_rules_agree_on_every_path"
+   ],
+   "negative_proof": "Run before the fix: four of the five unit tests fail (deploy/prod.yaml, infra/main.tf, services/api/Dockerfile) and the Core test finds no DiffInvariantViolated for services/api/deploy/prod.yaml; the root-prefix/fallback test passes before and after.",
+   "limitations": "DI-9 stays a permanent DENY: no answered typed question lifts it (UserQuestionAnswered feeds only the docs/28 \u00a73 scope unlock); follow-up, not part of this regression.",
+   "commit": "d036dd1",
+   "pr": "https://github.com/moss101/modbit/pull/38",
+   "ci": {
+    "run_id": "36111360538",
+    "head_sha": "7105158b325953b78118df952c2d1bfdbd72cc54",
+    "conclusion": "success",
+    "url": "https://github.com/moss101/modbit/actions/runs/36111360538",
+    "json": "evidence/m4/EPR-008/ci-run-36111360538.json"
+   }
+  }
  ]
 }
