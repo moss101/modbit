@@ -8813,6 +8813,325 @@ async fn qual_px_038_scope_expansion_is_bounded_asks_a_typed_question_and_fails_
     let _ = (repo, repo2);
 }
 
+/// PX-038 (docs/28 §3; QUAL-PX-038 "a question auto-answered by the agent
+/// changes nothing"): only the user's answer to the question asked while
+/// the expansion waits decides it. A desktop task first asks an unrelated
+/// question, which the user answers `continue` before anything waits; then
+/// its write to an always-ask lockfile is refused and it asks the scope
+/// question. While the Core is down a `continue` is written into the log
+/// as the agent's: a well-formed event on the task's hash chain that closes
+/// the question for the loop. The restarted Core resumes and the model
+/// reads "continue", but no expansion is recorded CONTINUE and the retried
+/// write is refused again. The user answers the next scope question `stop`;
+/// while the Core is down a second `continue` is written as the user's own,
+/// but to the earlier question. The restarted Core records the scope
+/// question's answer, STOP, and the lockfile is never written.
+#[tokio::test]
+async fn px_038_only_the_users_answer_to_the_scope_question_decides_the_expansion() {
+    use modbit_protocol::v1::{
+        ListQuestions, QuestionList, QuestionResponded, QuestionView, RespondToQuestion, StartTask,
+        TaskRunStarted, TaskStatus,
+    };
+    use serde_json::json;
+    /// Start or resume `task` and wait until its loop stops.
+    async fn run(c: &mut Client, task: &Id, g: Option<u64>, id: u8) -> TaskStatus {
+        let ack = c
+            .command(envelope_fenced(
+                id16(id),
+                "StartTask",
+                StartTask {
+                    task_id: Some(task.clone()),
+                    endpoint: String::new(),
+                    model: "gpt-5-mini".into(),
+                    max_turns: 30,
+                    max_tool_calls: 0,
+                    max_no_progress_turns: 5,
+                    skills: vec![],
+                }
+                .encode_to_vec(),
+                g,
+            ))
+            .await
+            .unwrap();
+        let _: TaskRunStarted = Client::result(&ack).unwrap();
+        wait_task(c, task, 120).await
+    }
+    /// The task's one open question, as the desktop lists it.
+    async fn open_question(c: &mut Client, task: &Id) -> QuestionView {
+        let ack = c
+            .command(envelope(
+                Id {
+                    value: (0..16).map(|_| rand::random::<u8>()).collect(),
+                },
+                "ListQuestions",
+                ListQuestions {
+                    task_id: Some(task.clone()),
+                }
+                .encode_to_vec(),
+            ))
+            .await
+            .unwrap();
+        let l: QuestionList = Client::result(&ack).unwrap();
+        let open: Vec<_> = l.questions.into_iter().filter(|q| !q.answered).collect();
+        assert_eq!(open.len(), 1, "{open:#?}");
+        open.into_iter().next().unwrap()
+    }
+    /// The user answers through the SurfaceProtocol, as the desktop does.
+    async fn answer(c: &mut Client, task: &Id, g: Option<u64>, id: u8, q: &str, option: &str) {
+        let ack = c
+            .command(envelope_fenced(
+                id16(id),
+                "RespondToQuestion",
+                RespondToQuestion {
+                    task_id: Some(task.clone()),
+                    question_id: q.to_owned(),
+                    option_id: option.to_owned(),
+                    text: String::new(),
+                }
+                .encode_to_vec(),
+                g,
+            ))
+            .await
+            .unwrap();
+        let r: QuestionResponded = Client::result(&ack).unwrap();
+        assert!(!r.already_answered, "{r:?}");
+    }
+    /// While the Core is down: `continue` to `question_id`, appended as
+    /// `actor` through the event store on the task's aggregate.
+    fn forge_continue(
+        data: &std::path::Path,
+        session: &Id,
+        question_id: &str,
+        actor: impl FnOnce(&[modbit_event_store::StoredEvent]) -> modbit_domain::Actor,
+    ) {
+        let mut store = modbit_event_store::EventStore::open(&data.join("core")).unwrap();
+        let sid = modbit_domain::SessionId::from_bytes(session.value.clone().try_into().unwrap());
+        let log = store.read_session(&sid, 0, usize::MAX).unwrap();
+        let actor = actor(&log);
+        let env = &log
+            .iter()
+            .find(|e| e.envelope.event_type == "UserQuestionAsked")
+            .unwrap()
+            .envelope;
+        store
+            .append(modbit_event_store::AppendRequest {
+                tenant_id: env.tenant_id,
+                session_id: env.session_id,
+                task_id: env.task_id,
+                run_id: None,
+                turn_id: None,
+                step_id: None,
+                aggregate_type: env.aggregate_type,
+                aggregate_id: env.aggregate_id,
+                expected_sequence: None,
+                events: vec![modbit_event_store::NewEvent::new(
+                    "UserQuestionAnswered",
+                    serde_json::to_value(modbit_domain::task::TaskEvent::UserQuestionAnswered {
+                        question_id: question_id.to_owned(),
+                        option_id: Some("continue".into()),
+                        text: None,
+                    })
+                    .unwrap(),
+                    actor,
+                )],
+            })
+            .unwrap();
+    }
+    let of = |evs: &[(String, String, serde_json::Value)], t: &str| {
+        evs.iter()
+            .filter(|(_, x, _)| x == t)
+            .map(|(_, _, p)| p.clone())
+            .collect::<Vec<_>>()
+    };
+    let resolutions = |evs: &[(String, String, serde_json::Value)]| {
+        of(evs, "ScopeExpansionRecorded")
+            .iter()
+            .map(|e| e["resolution"].as_str().unwrap_or_default().to_owned())
+            .collect::<Vec<_>>()
+    };
+    let lock = "pnpm-lock.yaml";
+    let (repo, root) = plain_repo(&[("a.txt", "a\n"), (lock, "lockfileVersion: 9\n")]);
+    let bump = json!({"calls": [{"name": "change.apply", "args": {"path": lock, "op": "replace", "content": "lockfileVersion: 9\n# bumped\n"}}]});
+    let scope_question = |n: u8| json!({"calls": [{"name": "user.ask", "args": {"question": format!("({n}) The lockfile is outside the original plan. Continue, split it into a follow-up task, or stop?"), "options": [{"id": "continue", "label": "continue with the expansion"}, {"id": "split", "label": "split into a follow-up task"}, {"id": "stop", "label": "stop"}], "reason": "change_set"}}]});
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "edit a", "expected_files": ["a.txt"]}}]}),
+        // Asked and answered before any expansion waits.
+        json!({"calls": [{"name": "user.ask", "args": {"question": "Should a.txt keep its trailing newline?", "options": [{"id": "continue", "label": "yes, continue"}, {"id": "stop", "label": "no"}], "reason": "change_set"}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "edit a", "expected_files": ["a.txt", lock], "reason": "the lockfile needs a bump"}}]}),
+        json!({"calls": [{"name": "fs.read", "args": {"path": lock}}]}),
+        bump.clone(),
+        scope_question(1),
+        // After the agent's `continue`.
+        bump.clone(),
+        scope_question(2),
+        // After the user's `stop` and a later `continue` to the first question.
+        bump,
+        scope_question(3),
+    ];
+    let (base, seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x60)).await;
+    let g = lease_for(&session);
+    trust_repository(&mut c, &session, g, &root, 0x61).await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x62),
+            "CreateTask",
+            CreateTask {
+                session_id: Some(session.clone()),
+                goal_text: "edit a and bump the lockfile".into(),
+                workspace_id: None,
+                execution_profile: String::new(),
+                origin: "desktop".into(),
+                workspace_root: root.clone(),
+                issue_url: String::new(),
+                issue_json: String::new(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let task = Client::result::<TaskCreated>(&ack)
+        .unwrap()
+        .task_id
+        .unwrap();
+
+    // ---- the user answers `continue` to a question asked before anything waits
+    let st = run(&mut c, &task, g, 0x63).await;
+    assert_eq!(
+        (st.state.as_str(), st.wait_reason.as_str()),
+        ("Waiting", "UserInput"),
+        "{st:?}"
+    );
+    let first = open_question(&mut c, &task).await;
+    assert!(first.question.contains("trailing newline"), "{first:?}");
+    answer(&mut c, &task, g, 0x64, &first.question_id, "continue").await;
+
+    // ---- the write waits for the scope question
+    let st = run(&mut c, &task, g, 0x65).await;
+    let evs = task_events(&core, &session, &task).await;
+    assert_eq!(
+        (st.state.as_str(), st.wait_reason.as_str()),
+        ("Waiting", "UserInput"),
+        "{st:?}\n{evs:#?}"
+    );
+    assert_eq!(resolutions(&evs), ["QUESTION_REQUIRED"], "{evs:#?}");
+    let scope1 = open_question(&mut c, &task).await;
+    assert!(scope1.question.starts_with("(1)"), "{scope1:?}");
+
+    // ---- the agent's `continue` to the scope question: on the log, not the user's
+    drop(c);
+    core.kill();
+    forge_continue(dir.path(), &session, &scope1.question_id, |log| {
+        let task_id = log.iter().find_map(|e| e.envelope.task_id).unwrap();
+        modbit_domain::Actor::Agent(format!("solver:{task_id}"))
+    });
+    core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let g = Some(acquire_lease(&mut c, id16(0x66), session.clone(), "resumer").await);
+    let st = run(&mut c, &task, g, 0x67).await;
+    let evs = task_events(&core, &session, &task).await;
+    assert_eq!(
+        (st.state.as_str(), st.wait_reason.as_str()),
+        ("Waiting", "UserInput"),
+        "{st:?}\n{evs:#?}"
+    );
+    // The loop resumed on the forged answer and the model read "continue",
+    // then its retried write was refused again.
+    let told: Vec<String> = seen
+        .lock()
+        .unwrap()
+        .last()
+        .and_then(|b| b["messages"].as_array().cloned())
+        .unwrap_or_default()
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["content"].as_str().unwrap_or_default().to_owned())
+        .collect();
+    let answered = told
+        .iter()
+        .rposition(|t| {
+            t.contains("\"status\":\"ANSWERED\"") && t.contains("\"option_id\":\"continue\"")
+        })
+        .unwrap_or_else(|| panic!("{told:#?}"));
+    assert!(
+        told[answered..]
+            .iter()
+            .any(|t| t.contains("HARNESS_SCOPE_QUESTION_REQUIRED")),
+        "{told:#?}"
+    );
+    // Nothing opened: one QUESTION_REQUIRED per refused write, no CONTINUE.
+    assert_eq!(
+        resolutions(&evs),
+        ["QUESTION_REQUIRED", "QUESTION_REQUIRED"],
+        "{evs:#?}"
+    );
+    assert!(
+        !of(&evs, "FileChanged").iter().any(|f| f["path"] == lock),
+        "{evs:#?}"
+    );
+    let scope2 = open_question(&mut c, &task).await;
+    assert!(scope2.question.starts_with("(2)"), "{scope2:?}");
+
+    // ---- the user answers `stop`; a later user `continue` names the first question
+    answer(&mut c, &task, g, 0x68, &scope2.question_id, "stop").await;
+    drop(c);
+    core.kill();
+    forge_continue(dir.path(), &session, &first.question_id, |log| {
+        log.iter()
+            .find(|e| e.envelope.event_type == "UserQuestionAnswered")
+            .map(|e| e.envelope.actor.clone())
+            .filter(|a| matches!(a, modbit_domain::Actor::User(_)))
+            .unwrap()
+    });
+    core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let g = Some(acquire_lease(&mut c, id16(0x69), session.clone(), "resumer-2").await);
+    let st = run(&mut c, &task, g, 0x6A).await;
+    let evs = task_events(&core, &session, &task).await;
+    assert_eq!(
+        (st.state.as_str(), st.wait_reason.as_str()),
+        ("Waiting", "UserInput"),
+        "{st:?}\n{evs:#?}"
+    );
+    // The scope question's own answer decided: STOP, and the next write
+    // waits again.
+    assert_eq!(
+        resolutions(&evs),
+        [
+            "QUESTION_REQUIRED",
+            "QUESTION_REQUIRED",
+            "STOP",
+            "QUESTION_REQUIRED"
+        ],
+        "{evs:#?}"
+    );
+    let stopped = &of(&evs, "ScopeExpansionRecorded")[2];
+    assert_eq!(stopped["paths"], json!([lock]), "{stopped}");
+    assert!(
+        stopped["answer"].as_str().unwrap().starts_with("stop"),
+        "{stopped}"
+    );
+    assert!(
+        !of(&evs, "FileChanged").iter().any(|f| f["path"] == lock),
+        "{evs:#?}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join(lock)).unwrap(),
+        "lockfileVersion: 9\n"
+    );
+    let scope3 = open_question(&mut c, &task).await;
+    assert!(scope3.question.starts_with("(3)"), "{scope3:?}");
+}
+
 /// M9.5 (docs/23 "Emergency stop"): a stop is not only a refusal of new
 /// effects. A check the agent is running when the stop lands is cancelled
 /// at once — the process is killed with its group and the call is recorded

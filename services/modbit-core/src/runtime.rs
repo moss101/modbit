@@ -1529,6 +1529,9 @@ pub(crate) async fn rebuild(
     let mut last_offset = 0;
     let mut pending_steps: HashMap<[u8; 16], StepType> = HashMap::new();
     let mut queued: Vec<QueuedInput> = Vec::new();
+    // docs/28 §3: the questions asked while a scope expansion waited, until
+    // the user answers one.
+    let mut scope_questions: std::collections::HashSet<String> = std::collections::HashSet::new();
     let mut questions: std::collections::HashMap<String, String> = std::collections::HashMap::new();
     let mut applied = 0usize;
     for ev in events
@@ -1745,6 +1748,11 @@ pub(crate) async fn rebuild(
                 }
             }
             "UserQuestionAsked" => {
+                if !state.scope_question_pending.is_empty()
+                    && let Some(q) = payload["question_id"].as_str()
+                {
+                    scope_questions.insert(q.to_owned());
+                }
                 if let (Some(q), Some(c)) =
                     (payload["question_id"].as_str(), payload["call_id"].as_str())
                 {
@@ -1799,8 +1807,15 @@ pub(crate) async fn rebuild(
             }
             "UserQuestionAnswered" => {
                 // A scope question is answered by the user, never by the agent
-                // (docs/28 §3): only a recorded answer unlocks the expansion.
-                if !state.scope_question_pending.is_empty() {
+                // (docs/28 §3): only the user's answer to a question asked
+                // while the expansion waited decides it, not an answer the
+                // agent wrote or an answer to an earlier question.
+                if matches!(ev.envelope.actor, Actor::User(_))
+                    && payload["question_id"]
+                        .as_str()
+                        .is_some_and(|q| scope_questions.remove(q))
+                    && !state.scope_question_pending.is_empty()
+                {
                     state.scope_answer = Some(format!(
                         "{} {}",
                         payload["option_id"].as_str().unwrap_or_default(),
