@@ -727,6 +727,21 @@ class ExampleRunnerTests(unittest.TestCase):
                       {"policy": "shape", "reason": "   "}))
         self.assertFails("without saying why it cannot be executed")
 
+    def test_a_cargo_example_naming_an_unknown_package_fails(self):
+        # The cargo checker asks only what this repository owns: a real member.
+        (self.root / "Cargo.toml").write_text(
+            'members = [\n    "crates/real",\n]\n', encoding="utf-8")
+        (self.root / "crates" / "real").mkdir(parents=True)
+        (self.root / "crates" / "real" / "Cargo.toml").write_text(
+            'name = "modbit-real"\n', encoding="utf-8")
+        self.readme("cargo run -p modbit-real")
+        self.declare(("cargo run -p modbit-real", {"policy": "shape", "reason": "CI owns the build"}))
+        code, output = self.run_runner()
+        self.assertEqual(code, 0, output)
+        self.readme("cargo run -p modbit-ghost")
+        self.declare(("cargo run -p modbit-ghost", {"policy": "shape", "reason": "CI owns the build"}))
+        self.assertFails("is not a workspace member")
+
     def test_a_program_with_no_shape_checker_cannot_be_declared_shape(self):
         self.readme("git push origin main")
         self.declare(("git push origin main",

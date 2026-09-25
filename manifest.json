@@ -8,7 +8,7 @@
   "counts": {
     "docs": 90,
     "root_and_tooling": 1589,
-    "docs_bytes": 1366185
+    "docs_bytes": 1366320
   },
   "sections": [
     {
@@ -662,8 +662,8 @@
       "section": "delivery",
       "section_title": "Delivery and operations",
       "title": "Package Integrity and Build Coverage",
-      "bytes": 6992,
-      "sha256": "1dd54612fe04c852e236c983b8e5da49c24071bb2313ef680b0ff84d6c9a283a"
+      "bytes": 7127,
+      "sha256": "85851341df7ac162d48c6eb7f32c64cdc178e3dffd593568d7a52625efe9c1a9"
     },
     {
       "path": "docs/75_PHASED_RELEASE_PLAN_AND_READINESS.md",
@@ -1607,8 +1607,8 @@
     },
     {
       "path": "evidence/m10/IMP-EV-0212/TASK_CARD.md",
-      "bytes": 8593,
-      "sha256": "df08868efeafe6ed5569f87afe69ba4a7ad74493310b46e1ebd4bee543866191"
+      "bytes": 9135,
+      "sha256": "8b10424ae8371ba8480d07954c3464f4e5d670339c892c17b751d950317e912e"
     },
     {
       "path": "evidence/m2/IMP-EV-0011/TASK_CARD.md",
@@ -8797,8 +8797,8 @@
     },
     {
       "path": "tools/example_runner.py",
-      "bytes": 18352,
-      "sha256": "f1992c2e48eafef9d1835a7ae33009ef0654196b75031a2b3a5cd7d476b99a25"
+      "bytes": 18128,
+      "sha256": "d73c7ccc988f4295fc55ff29828e775be53f5361d898b6a96497ea22f1e8322a"
     },
     {
       "path": "tools/graph.py",
@@ -8807,8 +8807,8 @@
     },
     {
       "path": "tools/test_dossier.py",
-      "bytes": 45142,
-      "sha256": "08e4422512c8d84e9a06a0ac4ef0024351941ee8ce3061b023ab81cf22d9fb6c"
+      "bytes": 46032,
+      "sha256": "4789ecb9e4618cf29e244b377e5654f96a7600376d12c47bfa711e5912f4814d"
     }
   ],
   "renames_v3_to_v3_1": {

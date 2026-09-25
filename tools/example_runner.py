@@ -197,16 +197,6 @@ def pnpm_scripts():
     return set(json.loads(pkg.read_text(encoding="utf-8")).get("scripts", {}))
 
 
-def cargo_subcommands():
-    try:
-        out = subprocess.run(["cargo", "--list"], capture_output=True, text=True, timeout=60)
-    except (OSError, subprocess.SubprocessError):
-        return None
-    if out.returncode != 0:
-        return None
-    return {l.split()[0] for l in out.stdout.splitlines()[1:] if l.strip()}
-
-
 def shape_python(argv, state):
     """`python3 tools/<tool>.py …`."""
     tool = Path(argv[1])
@@ -231,11 +221,12 @@ def shape_python(argv, state):
 
 
 def shape_cargo(argv, state):
+    # Only what this repository owns: that every package the example names is a
+    # real workspace member. Cargo's own subcommand list is cargo's business,
+    # and asking for it would make this gate need a Rust toolchain in a job
+    # that deliberately has none.
     if len(argv) < 2:
         return "names no cargo subcommand"
-    subs = state.setdefault("cargo_subs", cargo_subcommands())
-    if subs is not None and argv[1] not in subs:
-        return "cargo has no `%s` subcommand" % argv[1]
     members = state.setdefault("members", workspace_members())
     for i, a in enumerate(argv):
         if a == "-p" or a == "--package":
