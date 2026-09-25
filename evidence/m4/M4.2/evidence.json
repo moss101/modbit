@@ -1,34 +1,60 @@
 {
- "task": "M4.2",
- "requirements": [
-  "REQ-EV-0056",
-  "REQ-EV-0057",
-  "REQ-EV-0058",
-  "REQ-EV-0092",
-  "REQ-EV-0130"
- ],
- "scenarios": [
-  "E2E-006 (shape)",
-  "docs/54 fault 10"
- ],
- "tests": [
-  "qual_m4_2_e2e_006_async_compaction_installs_at_a_boundary_and_a_late_result_is_refused",
-  "an_asynchronous_result_installs_only_onto_the_prefix_and_branch_it_saw",
-  "a_stale_or_out_of_order_compaction_result_is_refused",
-  "session_branch_generation_moves_forward_only_and_is_projected",
-  "migrates_the_committed_m1_1_fixture_and_derives_projections",
-  "qual_ev_0056_0092_0130_compaction_epoch_preserves_facts_survives_restart_and_moves_the_cache_prefix"
- ],
- "batch_commits": [
-  "4eb837d",
-  "08ac542"
- ],
- "runs": [
-  "run:34586546102"
- ],
- "proof": "A worker started at soft pressure installs its manifest at a later boundary as an ASYNC epoch bound to the logged request; with the fault-10 hook holding the result, hard pressure runs the bounded synchronous compaction first and the late worker result is refused on the log (NOT_SUCCESSOR / SOURCE_REWRITTEN), its manifest never becomes an epoch and never appears in any prompt; every request ends committed or rejected and the compaction_epochs projection agrees with the log; the session branch generation moves forward only and survives a rebuild.",
- "audit": "PARTIAL before: synchronous compaction only, guard keyed on values that move every turn, no worker, no branch generation, no logged rejection, no compaction_epochs projection.",
- "limitations": "Fork/revert do not exist yet: BRANCH_CHANGED is proven at the crate and store level; the full E2E-006 with a real fork/revert is owed by IMP-EV-0077/0122/0123. The worker delay is a docs/54 fault-injection hook, unset in production.",
- "ci_history": "run 34580712896 (4eb837d) failed on two tests unrelated to this task's change: qual_epr_005's post-resume attempt count (fixed forward in 08ac542 together with the V13 routing-identity defect it exposed) and the Tier A latency p95 over twelve samples on a loaded macOS runner (forty samples since 08ac542).",
- "ci": "https://github.com/moss101/modbit/actions/runs/34586546102 (green on macOS, Linux and Windows at 08ac542)"
+  "task": "M4.2",
+  "requirements": [
+    "REQ-EV-0056",
+    "REQ-EV-0057",
+    "REQ-EV-0058",
+    "REQ-EV-0092",
+    "REQ-EV-0130"
+  ],
+  "scenarios": [
+    "E2E-006 (shape)",
+    "docs/54 fault 10"
+  ],
+  "tests": [
+    "qual_m4_2_e2e_006_async_compaction_installs_at_a_boundary_and_a_late_result_is_refused",
+    "an_asynchronous_result_installs_only_onto_the_prefix_and_branch_it_saw",
+    "a_stale_or_out_of_order_compaction_result_is_refused",
+    "session_branch_generation_moves_forward_only_and_is_projected",
+    "migrates_the_committed_m1_1_fixture_and_derives_projections",
+    "qual_ev_0056_0092_0130_compaction_epoch_preserves_facts_survives_restart_and_moves_the_cache_prefix"
+  ],
+  "batch_commits": [
+    "4eb837d",
+    "08ac542",
+    "3ac55f3"
+  ],
+  "runs": [
+    "run:34586546102",
+    "run:36173951873"
+  ],
+  "proof": "A worker started at soft pressure installs its manifest at a later boundary as an ASYNC epoch bound to the logged request; with the fault-10 hook holding the result, hard pressure runs the bounded synchronous compaction first and the late worker result is refused on the log (NOT_SUCCESSOR / SOURCE_REWRITTEN), its manifest never becomes an epoch and never appears in any prompt; every request ends committed or rejected and the compaction_epochs projection agrees with the log; the session branch generation moves forward only and survives a rebuild.",
+  "audit": "PARTIAL before: synchronous compaction only, guard keyed on values that move every turn, no worker, no branch generation, no logged rejection, no compaction_epochs projection.",
+  "limitations": "Fork/revert do not exist yet: BRANCH_CHANGED is proven at the crate and store level; the full E2E-006 with a real fork/revert is owed by IMP-EV-0077/0122/0123. The worker hold is a docs/54 fault-injection hook, unset in production; it releases on observed state (an epoch opened without the result, or the run ended) rather than on a duration, so the staging does not depend on the runner's speed.",
+  "ci_history": "run 34580712896 (4eb837d) failed on two tests unrelated to this task's change: qual_epr_005's post-resume attempt count (fixed forward in 08ac542 together with the V13 routing-identity defect it exposed) and the Tier A latency p95 over twelve samples on a loaded macOS runner (forty samples since 08ac542).",
+  "ci": "https://github.com/moss101/modbit/actions/runs/34586546102 (green on macOS, Linux and Windows at 08ac542)",
+  "proof_repairs": [
+    {
+      "id": "fault-10-staged-on-a-clock",
+      "found": "2026-09-25, run 36163867870 (job 108166734429) on windows-latest",
+      "defect": "qual_m4_2_e2e_006 phase B staged docs/54 fault 10 with a fixed MODBIT_COMPACTION_WORKER_DELAY_MS sleep and a 100 ms model pace, and asserted that a SYNC_FALLBACK epoch opened. The sleep races the turn rate, not the history, and loses both ways: on a slow host the 1.5 s elapses inside a turn or two, so compaction_step harvests the worker at stage 1 and installs its result as an ASYNC epoch, the transcript drops below the budget and the hard-pressure branch never runs (the observed failure: every ContextEpochOpened carried mode ASYNC); with a longer sleep the run ends first and every request is closed RUN_ENDED, failing the stale-rejection assertion instead. No value of the knob is safe on every runner. The product behaved correctly in the failing run; only the staging was wrong.",
+      "audit": "PRODUCTION-WORKING. The defect was in the proof, not the product: the fault hook and the test's preconditions, not compaction_step's hard/soft/harvest logic, which is unchanged.",
+      "fix": "The hook waits on state. A worker holds its result until the result can no longer install — an epoch opened without it (CompactionWorker::released, set by the hard branch right after install_epoch) or the run ended (set beside the existing abort, so a hold cannot outlive the run). The worker is therefore never harvested before hard pressure however slow the host, and what it returns is stale rather than RUN_ENDED. The env value survives only as the last-resort bound on a release that never comes; the test passes 60 s and nothing waits for it. compaction_scenario loses its pace parameter. Production is untouched: compaction_worker_hold() is None unless the fault variable is set, so the hold never runs and the flag is never read.",
+      "assertions_changed": "None. No assertion was weakened, removed or ignored; the phase B assertion set is byte-identical. An ordering assertion drafted during the fix was dropped as decorative — it is implied by the existing fallback and late assertions and cannot fail independently.",
+      "failure_injected": [
+        "let hard = false (the bounded synchronous compaction never runs) -> fails \"hard pressure ran the bounded synchronous compaction\" with opened=[], in 8 s",
+        "the harvest installs a stale result instead of refusing it -> fails \"at least one result returned after the history moved on\", in 8 s"
+      ],
+      "determinism": "qual_m4_2 green at the old 100 ms pace, at no pace, and at 900 ms and 2500 ms paces — a 25x spread in turn rate across the window that used to decide the outcome. The 900 ms pace reproduces the original failure at the same line on the unfixed test.",
+      "tests": [
+        "services/modbit-core/tests/surface_protocol.rs::qual_m4_2_e2e_006_async_compaction_installs_at_a_boundary_and_a_late_result_is_refused"
+      ],
+      "commits": [
+        "3ac55f3"
+      ],
+      "runs": [
+        "run:36173951873"
+      ]
+    }
+  ]
 }

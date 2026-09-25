@@ -2446,7 +2446,10 @@
     "run:34586546102",
     "commit:4eb837d",
     "commit:08ac542",
-    "artifact:evidence/m4/M4.2/ci-run-34586546102.json"
+    "artifact:evidence/m4/M4.2/ci-run-34586546102.json",
+    "run:36173951873",
+    "commit:3ac55f3",
+    "artifact:evidence/m4/M4.2/ci-run-36173951873.json"
    ],
    "notes": [
     {
@@ -2484,9 +2487,15 @@
      "from": "E2E_PROVEN",
      "to": "COMPLETE",
      "note": "sealed on hosted CI run 34586546102; card records the audit (PARTIAL), the entry points, the proof and the limitations (BRANCH_CHANGED proven at crate and store level until fork/revert exist; the worker delay is a docs/54 fault hook)"
+    },
+    {
+     "at": "2026-09-25T18:53:40Z",
+     "from": "COMPLETE",
+     "to": "COMPLETE",
+     "note": "proof repaired 2026-09-25, no product regression: qual_m4_2_e2e_006 phase B staged docs/54 fault 10 on a clock (a fixed MODBIT_COMPACTION_WORKER_DELAY_MS sleep plus a 100 ms pace) and required a SYNC_FALLBACK epoch, so it passed only when the async path lost a race; on windows-latest in run 36163867870 the worker was harvested before hard pressure, installed as ASYNC, and the assertion failed although compaction behaved correctly. The hook now releases on observed state — an epoch opened without the result, or the run ended — so the worker is never harvested before hard pressure at any host speed and its result returns stale, not RUN_ENDED. No assertion weakened, removed or ignored; production unchanged (the hold is None unless the fault variable is set). Failure injected twice and caught. Sealed on run 36173951873 (14/14 green, macOS, Linux and Windows) at 3ac55f3"
     }
    ],
-   "status_changed_on": "2026-09-11T10:13:38Z"
+   "status_changed_on": "2026-09-25T18:53:40Z"
   },
   {
    "id": "M4.3",
