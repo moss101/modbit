@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 90,
-    "root_and_tooling": 1577,
-    "docs_bytes": 1355996
+    "root_and_tooling": 1579,
+    "docs_bytes": 1357365
   },
   "sections": [
     {
@@ -860,8 +860,8 @@
       "section": "live-state",
       "section_title": "Live state",
       "title": "Build Manifest",
-      "bytes": 11899,
-      "sha256": "f06f69ee5999c8fdb32e5cd0ba354cba22eb5e5c0489fab2b35f29ce45a44b1c"
+      "bytes": 13268,
+      "sha256": "036c9dede991ba812c7fafccf772eecf5f2a004973fc02e4423edc5780b6f73e"
     }
   ],
   "root_and_tooling": [
@@ -8326,6 +8326,16 @@
       "sha256": "a0bf047033093cfd317a75ac4ed04ff7f12d320c00e05981d696c23ab96c31ab"
     },
     {
+      "path": "evidence/m9/EPR-019/ci-run-36025675554.json",
+      "bytes": 42314,
+      "sha256": "56a8838ce611bf1e8dea9c38d7b6e1fa8bc279c3ec7019661fe03f0b9915419e"
+    },
+    {
+      "path": "evidence/m9/EPR-019/evidence.json",
+      "bytes": 3552,
+      "sha256": "b3485a345d25d6c9a9cc92b3e519365b1c295c44f33870286915d18ef10920ec"
+    },
+    {
       "path": "evidence/m9/IMP-EV-0029/TASK_CARD.md",
       "bytes": 5847,
       "sha256": "c53b7ceef274f93431b76a1aa2899c5d279a4f12f866efba7f298826a660faac"
@@ -8707,13 +8717,13 @@
     },
     {
       "path": "graph/PROJECT_GRAPH.md",
-      "bytes": 41188,
-      "sha256": "ce55db017d89bdeebe186344842aed904698909fa270137f338aeb5625dd86af"
+      "bytes": 41200,
+      "sha256": "d8fd2ac667b21812b761a8c1ec6ef72669620927ca2f559dd5b7392a4f384705"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1589630,
-      "sha256": "d70836636bc9749d92eb30e35ec46a105b64f439012baa756eb7490e5e515814"
+      "bytes": 1589992,
+      "sha256": "8344a125511b6e492e11a9da094b9f4ebfced8ae45aa291fd6b00d345ee72d52"
     },
     {
       "path": "tools/build_graph.py",
@@ -8747,8 +8757,8 @@
     },
     {
       "path": "tools/test_dossier.py",
-      "bytes": 37792,
-      "sha256": "cb46ec4c4398c24cb07a1fe42dbe8acf994b42406a968803aa0ea0fbd8441095"
+      "bytes": 37773,
+      "sha256": "0b01c75f19729dd5ec77c2cd40e9b61769d29713ace06e90194a3488b875b0bb"
     }
   ],
   "renames_v3_to_v3_1": {

@@ -29083,8 +29083,16 @@
    ],
    "task_card": "docs/49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md#epr-019",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller or executor present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-36025675554",
+    "test:qual_epr_019_gates_are_measured_independently_on_the_holdout_and_an_unsafe_gate_fails_release",
+    "artifact:evidence/m9/EPR-019/TASK_CARD.md",
+    "artifact:evidence/m9/EPR-019/evidence.json",
+    "artifact:evidence/m9/EPR-019/ci-run-36025675554.json",
+    "commit:7dd98cc"
+   ],
+   "status_changed_on": "2026-09-25T07:37:17Z"
   },
   {
    "id": "QUAL-EPR-000",
