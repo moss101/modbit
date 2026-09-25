@@ -18,10 +18,10 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | Implementation specifications | 30–39 | 10 | 155726 |
 | Requirements, tasks and traceability | 40–49 | 10 | 351840 |
 | Verification and testing | 50–69 | 15 | 213558 |
-| Delivery and operations | 70–79 | 8 | 60134 |
+| Delivery and operations | 70–79 | 8 | 62793 |
 | Agent process and governance | 80–97 | 18 | 127876 |
 | Live state | 98–99 | 1 | 13680 |
-| **Total docs** | | **90** | **1371444** |
+| **Total docs** | | **90** | **1374103** |
 
 ## Specification files (`docs/`)
 
@@ -94,7 +94,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | 71 | `docs/71_OPERATIONS_RUNBOOK.md` | Operations and Incident Runbook | delivery | 6783 | `3a09024b56e46bec8d6253d6f1cd10687a6bcc985cfed9577087a4345c695068` |
 | 72 | `docs/72_RISK_REGISTER_AND_OPEN_DECISIONS.md` | Risk Register and Open Technical Decisions | delivery | 9116 | `9e4f22e5d977b82b8d059a1a829e783a2dabbc1662569a3d581d0e2a6b4ba47e` |
 | 73 | `docs/73_RELEASE_BLOCKERS_AND_STOP_THE_LINE_RULES.md` | Release Blockers and Stop-the-Line Rules | delivery | 1825 | `00103375774eed06e6afa60843bec3a02482d202ef1c37ad0d5f46abe79dddc6` |
-| 74 | `docs/74_PACKAGE_INTEGRITY_AND_BUILD_COVERAGE.md` | Package Integrity and Build Coverage | delivery | 4468 | `b4e7687347e9ea62ef38e1e7e1b4c82669b487c15e6e0ef8a8ab8d8331cd3698` |
+| 74 | `docs/74_PACKAGE_INTEGRITY_AND_BUILD_COVERAGE.md` | Package Integrity and Build Coverage | delivery | 7127 | `85851341df7ac162d48c6eb7f32c64cdc178e3dffd593568d7a52625efe9c1a9` |
 | 75 | `docs/75_PHASED_RELEASE_PLAN_AND_READINESS.md` | Phased release plan and readiness | delivery | 4467 | `e6d02b3572c94923216846326d9a11d18d1ee1e7fad83ab0866ab820183854af` |
 | 76 | `docs/76_LANGUAGE_AND_PLATFORM_SUPPORT_MATRIX.md` | Language and platform support matrix | delivery | 5687 | `753831f02bc261061c80249f4a7eca23e6e8891f886df25b52bb41331fc80b3f` |
 | 77 | `docs/77_RELEASE_ZERO_EXECUTION_GOAL.md` | Release Zero Execution Goal | delivery | 24286 | `0f63b3942a3186f316dd95c7d562c05e832b85276fe09d507682827f905b1d04` |
@@ -276,6 +276,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/IMP-EV-0142/TASK_CARD.md` | retained evidence | 4641 | `d0322325379bfe94907d6ac3b6f81aa46a73fd3fb13501a250f0ce58bc9bd054` |
 | `evidence/m10/IMP-EV-0142/ci-run-36135019357.json` | retained evidence | 42314 | `78f88e6bbec467ec03c069df9b5d9cc8af178929f2ddb66058ce93157211b405` |
 | `evidence/m10/IMP-EV-0142/evidence.json` | retained evidence | 2532 | `577c822a3d8370f4369e3bcc78dc4c30d4d5227bc01b5fd6a0370e72d7543357` |
+| `evidence/m10/IMP-EV-0212/TASK_CARD.md` | retained evidence | 9135 | `8b10424ae8371ba8480d07954c3464f4e5d670339c892c17b751d950317e912e` |
 | `evidence/m2/IMP-EV-0011/TASK_CARD.md` | retained evidence | 1620 | `22a7ddc2c80526c5aba876366bfeb862fac72742059962c5ad19deb8239fb5d2` |
 | `evidence/m2/IMP-EV-0011/ci-run-34409173853-tests.log` | retained evidence | 80671 | `523c4dc423fa906a9c846d64d864d36c759cb9f98bd8f4e582600a39d7c14b05` |
 | `evidence/m2/IMP-EV-0011/ci-run-34409173853.json` | retained evidence | 36682 | `49f5cd98348f61290daeee2920913a705bc385ed441cf7a15a9d9a357ad2ebdf` |
@@ -1713,8 +1714,9 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `tools/check_dossier.py` | integrity gate | 17596 | `5c9b7a782d245223726f860ca583d766929a6f5662b644adebee64d257ad426b` |
 | `tools/dossier_epr.py` | parses additive EPR authority and traceability | 9310 | `4b5e399ee1b4886662294e3780d7f0630195e29c8198256ff7719d5236591a18` |
 | `tools/dossier_px.py` | parses the additive product-extension ledger and phased release rules | 6931 | `0a7dd5bd5872fb1d959c56fd017bd3916062d0f60d1bc51b9abceddc134202e2` |
-| `tools/graph.py` | query/update graph | 46180 | `2e55d715b9b43e76b4b0c8e3a71dd68a5e185d152d047dfc2a05863659d2d983` |
-| `tools/test_dossier.py` | copied-package integration and negative tests | 38172 | `f0ea72c22557ab5d2bfb435a4d4d9b65ce8fa79cea86c4f7ed45d0f2523ba040` |
+| `tools/example_runner.py` | source patch provenance | 18128 | `d73c7ccc988f4295fc55ff29828e775be53f5361d898b6a96497ea22f1e8322a` |
+| `tools/graph.py` | query/update graph | 46429 | `7062c754275a5d323705f021e35b75adf9f75dd82378c34b19470c8c4b272296` |
+| `tools/test_dossier.py` | copied-package integration and negative tests | 46283 | `ebc25d08cc8701564f4819d3c0d84359c7fbc4fa48057734766d069cbd2a5dbb` |
 
 ## Rename map (V3 flat numbering → V3.1 `docs/`)
 

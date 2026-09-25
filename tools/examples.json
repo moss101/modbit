@@ -1,0 +1,360 @@
+{
+ "examples": [
+  {
+   "file": "AGENTS.md",
+   "index": 0,
+   "sha256": "5b154bfc0290c5932aeb01406044178ebf6f3ec1f21c12c337d6f9eee4c3d28f",
+   "commands": [
+    {
+     "command": "python3 tools/graph.py set IMP-EV-0012 REAL_TESTING",
+     "policy": "shape",
+     "reason": "the ids and evidence values are illustrative, and the transition it shows is not the one the real node is at; graph.py's own parser checks the invocation"
+    },
+    {
+     "command": "python3 tools/graph.py set IMP-EV-0012 COMPLETE --evidence run:2026-09-14T10:22Z/qual-ev-0012 --evidence commit:abc123",
+     "policy": "shape",
+     "reason": "the ids and evidence values are illustrative, and the transition it shows is not the one the real node is at; graph.py's own parser checks the invocation"
+    },
+    {
+     "command": "python3 tools/check_dossier.py",
+     "policy": "run",
+     "reason": ""
+    }
+   ]
+  },
+  {
+   "file": "README.md",
+   "index": 0,
+   "sha256": "af6d07448e5a9426f155b39f47a1b52108ab96267d4ba672cdee001d4dcfe2c9",
+   "commands": [
+    {
+     "command": "python3 tools/graph.py ready",
+     "policy": "run",
+     "reason": ""
+    },
+    {
+     "command": "python3 tools/graph.py show M1.5",
+     "policy": "run",
+     "reason": ""
+    },
+    {
+     "command": "python3 tools/graph.py set IMP-EV-0013 WIRED",
+     "policy": "shape",
+     "reason": "the ids and evidence values are illustrative, and the transition it shows is not the one the real node is at; graph.py's own parser checks the invocation"
+    },
+    {
+     "command": "python3 tools/graph.py set IMP-EV-0013 COMPLETE --evidence run:2026-09-20/qual-ev-0013 --evidence commit:abc123",
+     "policy": "shape",
+     "reason": "the ids and evidence values are illustrative, and the transition it shows is not the one the real node is at; graph.py's own parser checks the invocation"
+    },
+    {
+     "command": "python3 tools/graph.py status",
+     "policy": "run",
+     "reason": ""
+    },
+    {
+     "command": "python3 tools/graph.py gates",
+     "policy": "run",
+     "reason": ""
+    },
+    {
+     "command": "python3 tools/graph.py releases",
+     "policy": "run",
+     "reason": ""
+    },
+    {
+     "command": "python3 tools/graph.py ready --release ALPHA",
+     "policy": "run",
+     "reason": ""
+    },
+    {
+     "command": "python3 tools/graph.py goal",
+     "policy": "run",
+     "reason": "docs/77 documents the exit codes: 1 means work remains toward RELEASE_ZERO. Pinning it here means the day the goal is met, this declaration is updated deliberately",
+     "exit": 1
+    },
+    {
+     "command": "python3 tools/graph.py attest EPR-GATE-A --evidence artifact:evidence/release/gate-a.json",
+     "policy": "shape",
+     "reason": "the ids and evidence values are illustrative, and the transition it shows is not the one the real node is at; graph.py's own parser checks the invocation"
+    },
+    {
+     "command": "python3 tools/graph.py render > graph/PROJECT_GRAPH.md",
+     "policy": "run",
+     "reason": ""
+    },
+    {
+     "command": "python3 tools/check_dossier.py",
+     "policy": "run",
+     "reason": ""
+    }
+   ]
+  },
+  {
+   "file": "README.md",
+   "index": 1,
+   "sha256": "265827cf227ecfc8a47b660d6f43f127366a3d7b0e2e3358edfa6e8ef48ca7d0",
+   "commands": [
+    {
+     "command": "cargo build --workspace --locked",
+     "policy": "shape",
+     "reason": "the workspace build and test suite is CI's own gate (the rust and node jobs); running it inside the example gate would duplicate it"
+    },
+    {
+     "command": "cargo test --workspace --locked",
+     "policy": "shape",
+     "reason": "the workspace build and test suite is CI's own gate (the rust and node jobs); running it inside the example gate would duplicate it"
+    },
+    {
+     "command": "cargo run --locked -p architecture-lint",
+     "policy": "shape",
+     "reason": "the workspace build and test suite is CI's own gate (the rust and node jobs); running it inside the example gate would duplicate it"
+    },
+    {
+     "command": "pnpm install --frozen-lockfile",
+     "policy": "shape",
+     "reason": "the workspace build and test suite is CI's own gate (the rust and node jobs); running it inside the example gate would duplicate it"
+    },
+    {
+     "command": "pnpm typecheck",
+     "policy": "shape",
+     "reason": "the workspace build and test suite is CI's own gate (the rust and node jobs); running it inside the example gate would duplicate it"
+    },
+    {
+     "command": "pnpm test",
+     "policy": "shape",
+     "reason": "the workspace build and test suite is CI's own gate (the rust and node jobs); running it inside the example gate would duplicate it"
+    }
+   ]
+  },
+  {
+   "file": "SKILLS.md",
+   "index": 0,
+   "sha256": "cc02d348312413317d62557c797d60aee5dd3b296060b59f430209f76aba3529",
+   "commands": [
+    {
+     "command": "python3 tools/graph.py set <id> <STATE> [--evidence <ref> ...]",
+     "policy": "synopsis",
+     "reason": "a usage synopsis, not a command: the id, state and evidence are metavariables. Its subcommand and flags are checked against graph.py's own parser"
+    },
+    {
+     "command": "python3 tools/graph.py status",
+     "policy": "run",
+     "reason": ""
+    },
+    {
+     "command": "python3 tools/check_dossier.py",
+     "policy": "run",
+     "reason": ""
+    }
+   ]
+  },
+  {
+   "file": "SKILLS.md",
+   "index": 1,
+   "sha256": "2ab08d014e49b73587f05e0e402d20e7e6822ebe036503124dcd2c22e7fb2125",
+   "commands": [
+    {
+     "command": "python3 tools/build_manifest.py",
+     "policy": "run",
+     "reason": ""
+    },
+    {
+     "command": "python3 tools/build_graph.py",
+     "policy": "run",
+     "reason": ""
+    },
+    {
+     "command": "python3 tools/build_manifest.py",
+     "policy": "run",
+     "reason": ""
+    },
+    {
+     "command": "python3 tools/check_dossier.py --manifest",
+     "policy": "run",
+     "reason": ""
+    },
+    {
+     "command": "python3 tools/test_dossier.py",
+     "policy": "shape",
+     "reason": "the same five-step reseal is executed for real from docs/74's declaration; running the copied-package suite twice doubles the gate for no new information"
+    }
+   ]
+  },
+  {
+   "file": "docs/74_PACKAGE_INTEGRITY_AND_BUILD_COVERAGE.md",
+   "index": 0,
+   "sha256": "aa74635049bb4fec84ab06d00dfecec8e5e02345dc66d13a7f3b0b45d5cb0bfd",
+   "commands": [
+    {
+     "command": "python3 tools/build_manifest.py",
+     "policy": "run",
+     "reason": ""
+    },
+    {
+     "command": "python3 tools/build_graph.py",
+     "policy": "run",
+     "reason": ""
+    },
+    {
+     "command": "python3 tools/build_manifest.py",
+     "policy": "run",
+     "reason": ""
+    },
+    {
+     "command": "python3 tools/check_dossier.py --manifest",
+     "policy": "run",
+     "reason": ""
+    },
+    {
+     "command": "python3 tools/test_dossier.py",
+     "policy": "run",
+     "reason": ""
+    }
+   ]
+  },
+  {
+   "file": "docs/75_PHASED_RELEASE_PLAN_AND_READINESS.md",
+   "index": 0,
+   "sha256": "a8a0813615d4a7a12dd3b5f7d6a98322cfbfb34f51b15423b8f81bbf853f2fab",
+   "commands": [
+    {
+     "command": "python3 tools/graph.py releases",
+     "policy": "run",
+     "reason": ""
+    },
+    {
+     "command": "python3 tools/graph.py ready --release ALPHA",
+     "policy": "run",
+     "reason": ""
+    },
+    {
+     "command": "python3 tools/graph.py goal",
+     "policy": "run",
+     "reason": "docs/77 documents the exit codes: 1 means work remains toward RELEASE_ZERO. Pinning it here means the day the goal is met, this declaration is updated deliberately",
+     "exit": 1
+    }
+   ]
+  },
+  {
+   "file": "docs/77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "index": 0,
+   "sha256": "a06cb76e3016b1cacd7a4e7e9c18cb3c4e5097d6d4bdfcc5e214a6307c1399cd",
+   "commands": [
+    {
+     "command": "python3 tools/graph.py goal",
+     "policy": "run",
+     "reason": "docs/77 documents the exit codes: 1 means work remains toward RELEASE_ZERO. Pinning it here means the day the goal is met, this declaration is updated deliberately",
+     "exit": 1
+    },
+    {
+     "command": "python3 tools/graph.py goal --json",
+     "policy": "run",
+     "reason": "docs/77 documents the exit codes: 1 means work remains toward RELEASE_ZERO. Pinning it here means the day the goal is met, this declaration is updated deliberately",
+     "exit": 1
+    },
+    {
+     "command": "python3 tools/graph.py goal ALPHA",
+     "policy": "run",
+     "reason": ""
+    }
+   ]
+  },
+  {
+   "file": "docs/98_BUILD_MANIFEST.md",
+   "index": 0,
+   "sha256": "300fb630822833f3510000e05c566298edfaa34b4d70370470961c574ba701fd",
+   "commands": [
+    {
+     "command": "python3 tools/graph.py status",
+     "policy": "run",
+     "reason": ""
+    },
+    {
+     "command": "python3 tools/check_dossier.py",
+     "policy": "run",
+     "reason": ""
+    }
+   ]
+  },
+  {
+   "file": "graph/PROJECT_GRAPH.md",
+   "index": 0,
+   "sha256": "66cf66aa0d75e6ecef3b76cdd970d51ebb96d9363c1039c2217ec0dade30074b",
+   "commands": [
+    {
+     "command": "python3 tools/graph.py ready",
+     "policy": "run",
+     "reason": ""
+    },
+    {
+     "command": "python3 tools/graph.py ready --all",
+     "policy": "run",
+     "reason": ""
+    },
+    {
+     "command": "python3 tools/graph.py show IMP-EV-0013",
+     "policy": "run",
+     "reason": ""
+    },
+    {
+     "command": "python3 tools/graph.py show EPR-006",
+     "policy": "run",
+     "reason": ""
+    },
+    {
+     "command": "python3 tools/graph.py show core-runtime",
+     "policy": "run",
+     "reason": ""
+    },
+    {
+     "command": "python3 tools/graph.py set M1.1 AUDITING --agent agent-7",
+     "policy": "shape",
+     "reason": "the ids and evidence values are illustrative, and the transition it shows is not the one the real node is at; graph.py's own parser checks the invocation"
+    },
+    {
+     "command": "python3 tools/graph.py set M1.1 COMPLETE --evidence run:2026-09-20/e2e-003 --evidence commit:deadbeef",
+     "policy": "shape",
+     "reason": "the ids and evidence values are illustrative, and the transition it shows is not the one the real node is at; graph.py's own parser checks the invocation"
+    },
+    {
+     "command": "python3 tools/graph.py status",
+     "policy": "run",
+     "reason": ""
+    },
+    {
+     "command": "python3 tools/graph.py path",
+     "policy": "run",
+     "reason": ""
+    },
+    {
+     "command": "python3 tools/graph.py render --write",
+     "policy": "run",
+     "reason": ""
+    },
+    {
+     "command": "python3 tools/check_dossier.py",
+     "policy": "run",
+     "reason": ""
+    }
+   ]
+  },
+  {
+   "file": "graph/PROJECT_GRAPH.md",
+   "index": 1,
+   "sha256": "81e8c39822f02f11fb5735e604f38b85d5a55421c690fd6ee061079e44460b01",
+   "commands": [
+    {
+     "command": "jq '.nodes[] | select(.type==\"imp_task\" and .status!=\"NOT_STARTED\") | {id,status,owner_agent}' graph/project-graph.json",
+     "policy": "run",
+     "reason": ""
+    },
+    {
+     "command": "jq -r '.edges[] | select(.type==\"owned_by\" and .to==\"browser\") | .from' graph/project-graph.json",
+     "policy": "run",
+     "reason": ""
+    }
+   ]
+  }
+ ]
+}

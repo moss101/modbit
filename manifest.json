@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 90,
-    "root_and_tooling": 1593,
-    "docs_bytes": 1371444
+    "root_and_tooling": 1595,
+    "docs_bytes": 1374103
   },
   "sections": [
     {
@@ -662,8 +662,8 @@
       "section": "delivery",
       "section_title": "Delivery and operations",
       "title": "Package Integrity and Build Coverage",
-      "bytes": 4468,
-      "sha256": "b4e7687347e9ea62ef38e1e7e1b4c82669b487c15e6e0ef8a8ab8d8331cd3698"
+      "bytes": 7127,
+      "sha256": "85851341df7ac162d48c6eb7f32c64cdc178e3dffd593568d7a52625efe9c1a9"
     },
     {
       "path": "docs/75_PHASED_RELEASE_PLAN_AND_READINESS.md",
@@ -1634,6 +1634,11 @@
       "path": "evidence/m10/IMP-EV-0142/evidence.json",
       "bytes": 2532,
       "sha256": "577c822a3d8370f4369e3bcc78dc4c30d4d5227bc01b5fd6a0370e72d7543357"
+    },
+    {
+      "path": "evidence/m10/IMP-EV-0212/TASK_CARD.md",
+      "bytes": 9135,
+      "sha256": "8b10424ae8371ba8480d07954c3464f4e5d670339c892c17b751d950317e912e"
     },
     {
       "path": "evidence/m2/IMP-EV-0011/TASK_CARD.md",
@@ -8821,14 +8826,19 @@
       "sha256": "0a7dd5bd5872fb1d959c56fd017bd3916062d0f60d1bc51b9abceddc134202e2"
     },
     {
+      "path": "tools/example_runner.py",
+      "bytes": 18128,
+      "sha256": "d73c7ccc988f4295fc55ff29828e775be53f5361d898b6a96497ea22f1e8322a"
+    },
+    {
       "path": "tools/graph.py",
-      "bytes": 46180,
-      "sha256": "2e55d715b9b43e76b4b0c8e3a71dd68a5e185d152d047dfc2a05863659d2d983"
+      "bytes": 46429,
+      "sha256": "7062c754275a5d323705f021e35b75adf9f75dd82378c34b19470c8c4b272296"
     },
     {
       "path": "tools/test_dossier.py",
-      "bytes": 38172,
-      "sha256": "f0ea72c22557ab5d2bfb435a4d4d9b65ce8fa79cea86c4f7ed45d0f2523ba040"
+      "bytes": 46283,
+      "sha256": "ebc25d08cc8701564f4819d3c0d84359c7fbc4fa48057734766d069cbd2a5dbb"
     }
   ],
   "renames_v3_to_v3_1": {
