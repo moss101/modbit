@@ -9292,6 +9292,368 @@ async fn px_038_a_recorded_scope_answer_decides_only_its_own_expansion() {
     assert!(q3.question.starts_with(yarn), "{q3:?}");
 }
 
+/// PX-038 (docs/28 §3): the scope decision is the Core's. A
+/// `ScopeExpansionRecorded CONTINUE` opens a path only when the Core
+/// recorded it; one under any other actor stands only for the user's own
+/// `continue` to the scope question, already on the log, and names exactly
+/// the waiting paths. A desktop task asks an unrelated question, which the
+/// user answers. While the Core is down a CONTINUE for the lockfile is
+/// written into the log as the agent's, before any scope question exists:
+/// the restarted Core refuses the lockfile write and asks. The user answers
+/// `stop`, and while the Core is down a second agent CONTINUE is written
+/// after that answer: the restarted Core records the user's STOP and the
+/// retried write is refused again. The user answers the next scope
+/// question `continue`; the restarted Core aborts right before it commits
+/// its CONTINUE, and the next Core records that CONTINUE once, as the Core,
+/// and the write lands. Last, two lockfiles wait on one question the user
+/// answers `continue`, and a CONTINUE is written as a Core before this rule
+/// wrote it (under the agent actor, naming both waiting paths): it still
+/// opens them, and the Core records no second decision.
+#[tokio::test]
+async fn px_038_only_a_scope_decision_the_core_recorded_opens_a_path() {
+    use modbit_domain::Actor;
+    use modbit_domain::task::TaskEvent;
+    use modbit_protocol::v1::{StartTask, TaskStatus};
+    use serde_json::json;
+    fn start(task: &Id) -> Vec<u8> {
+        StartTask {
+            task_id: Some(task.clone()),
+            endpoint: String::new(),
+            model: "gpt-5-mini".into(),
+            max_turns: 30,
+            max_tool_calls: 0,
+            max_no_progress_turns: 5,
+            skills: vec![],
+        }
+        .encode_to_vec()
+    }
+    /// While the Core is down: the task's events, oldest first, with their
+    /// payloads.
+    fn log(
+        data: &std::path::Path,
+        session: &Id,
+    ) -> Vec<(modbit_event_store::StoredEvent, serde_json::Value)> {
+        let store = modbit_event_store::EventStore::open(&data.join("core")).unwrap();
+        let sid = modbit_domain::SessionId::from_bytes(session.value.clone().try_into().unwrap());
+        store
+            .read_session(&sid, 0, usize::MAX)
+            .unwrap()
+            .into_iter()
+            .filter(|e| e.envelope.task_id.is_some())
+            .map(|e| {
+                let p = store.payload(&e.envelope).unwrap();
+                (e, p)
+            })
+            .collect()
+    }
+    /// Every `ScopeExpansionRecorded` on the log: resolution, who recorded
+    /// it, paths.
+    fn decisions(
+        log: &[(modbit_event_store::StoredEvent, serde_json::Value)],
+    ) -> Vec<(String, &'static str, Vec<String>)> {
+        log.iter()
+            .filter(|(e, _)| e.envelope.event_type == "ScopeExpansionRecorded")
+            .map(|(e, p)| {
+                let by = match e.envelope.actor {
+                    Actor::Core(_) => "core",
+                    Actor::Agent(_) => "agent",
+                    Actor::User(_) => "user",
+                    Actor::External(_) => "external",
+                };
+                let paths = p["paths"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|x| x.as_str().unwrap().to_owned())
+                    .collect();
+                (p["resolution"].as_str().unwrap().to_owned(), by, paths)
+            })
+            .collect()
+    }
+    /// How many writes of `path` the log holds.
+    fn writes(log: &[(modbit_event_store::StoredEvent, serde_json::Value)], path: &str) -> usize {
+        log.iter()
+            .filter(|(e, p)| e.envelope.event_type == "FileChanged" && p["path"] == path)
+            .count()
+    }
+    /// While the Core is down: `event` appended on the task's aggregate as
+    /// the run's agent actor (`solver:<task>`, the actor every
+    /// `ScopeExpansionRecorded` carried before the Core recorded it).
+    fn append_as_agent(data: &std::path::Path, session: &Id, event: &TaskEvent) {
+        let mut store = modbit_event_store::EventStore::open(&data.join("core")).unwrap();
+        let sid = modbit_domain::SessionId::from_bytes(session.value.clone().try_into().unwrap());
+        let log = store.read_session(&sid, 0, usize::MAX).unwrap();
+        let env = &log
+            .iter()
+            .find(|e| e.envelope.event_type == "UserQuestionAsked")
+            .unwrap()
+            .envelope;
+        let task_id = env.task_id.unwrap();
+        store
+            .append(modbit_event_store::AppendRequest {
+                tenant_id: env.tenant_id,
+                session_id: env.session_id,
+                task_id: env.task_id,
+                run_id: None,
+                turn_id: None,
+                step_id: None,
+                aggregate_type: env.aggregate_type,
+                aggregate_id: env.aggregate_id,
+                expected_sequence: None,
+                events: vec![modbit_event_store::NewEvent::new(
+                    event.event_type(),
+                    serde_json::to_value(event).unwrap(),
+                    Actor::Agent(format!("solver:{task_id}")),
+                )],
+            })
+            .unwrap();
+    }
+    let continue_for = |paths: &[&str], reason: &str| TaskEvent::ScopeExpansionRecorded {
+        paths: paths.iter().map(|p| (*p).to_owned()).collect(),
+        out_of_plan_files: 0,
+        plan_revisions: 1,
+        reason: reason.to_owned(),
+        resolution: "CONTINUE".into(),
+        answer: "continue ".into(),
+    };
+    let lock = "pnpm-lock.yaml";
+    let (yarn, poetry) = ("yarn.lock", "poetry.lock");
+    let (repo, root) = plain_repo(&[
+        ("a.txt", "a\n"),
+        (lock, "lockfileVersion: 9\n"),
+        (yarn, "# yarn lockfile v1\n"),
+        (poetry, "[metadata]\n"),
+    ]);
+    let bump = |path: &str| json!({"calls": [{"name": "change.apply", "args": {"path": path, "op": "replace", "content": "# bumped\n"}}]});
+    let read = |path: &str| json!({"calls": [{"name": "fs.read", "args": {"path": path}}]});
+    let scope_question = |n: u8| json!({"calls": [{"name": "user.ask", "args": {"question": format!("({n}) The lockfile change is outside the original plan. Continue, split it into a follow-up task, or stop?"), "options": [{"id": "continue", "label": "continue with the expansion"}, {"id": "split", "label": "split into a follow-up task"}, {"id": "stop", "label": "stop"}], "reason": "change_set"}}]});
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "edit a", "expected_files": ["a.txt"]}}]}),
+        json!({"calls": [{"name": "user.ask", "args": {"question": "Should a.txt keep its trailing newline?", "options": [{"id": "continue", "label": "yes, continue"}, {"id": "stop", "label": "no"}], "reason": "change_set"}}]}),
+        // After the agent's CONTINUE written before any scope question.
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "edit a", "expected_files": ["a.txt", lock, yarn, poetry], "reason": "the lockfiles need a bump"}}]}),
+        read(lock),
+        bump(lock),
+        scope_question(1),
+        // After the user's `stop` and the agent's CONTINUE.
+        bump(lock),
+        scope_question(2),
+        // After the user's `continue`, recorded by the Core across an abort.
+        bump(lock),
+        read(yarn),
+        read(poetry),
+        bump(yarn),
+        bump(poetry),
+        scope_question(3),
+        // After the user's `continue` and a CONTINUE as a pre-fix Core wrote it.
+        bump(yarn),
+        bump(poetry),
+        json!({"calls": [{"name": "user.ask", "args": {"question": "(4) Anything else?", "options": [{"id": "stop", "label": "no"}], "reason": "other"}}]}),
+    ];
+    let (base, _seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let env = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x70)).await;
+    let g = lease_for(&session);
+    trust_repository(&mut c, &session, g, &root, 0x71).await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x72),
+            "CreateTask",
+            CreateTask {
+                session_id: Some(session.clone()),
+                goal_text: "edit a and bump the lockfiles".into(),
+                workspace_id: None,
+                execution_profile: String::new(),
+                origin: "desktop".into(),
+                workspace_root: root.clone(),
+                issue_url: String::new(),
+                issue_json: String::new(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let task = Client::result::<TaskCreated>(&ack)
+        .unwrap()
+        .task_id
+        .unwrap();
+    let waits = |st: &TaskStatus| {
+        assert_eq!(
+            (st.state.as_str(), st.wait_reason.as_str()),
+            ("Waiting", "UserInput"),
+            "{st:?}"
+        );
+    };
+
+    // ---- a CONTINUE written as the agent's before any scope question
+    let st = px_038_run(&mut c, &task, g, 0x73).await;
+    waits(&st);
+    let first = px_038_open_question(&mut c, &task).await;
+    assert!(first.question.contains("trailing newline"), "{first:?}");
+    px_038_answer(&mut c, &task, g, 0x74, &first.question_id, "continue").await;
+    drop(c);
+    core.kill();
+    append_as_agent(dir.path(), &session, &continue_for(&[lock], "answered"));
+    core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let g = Some(acquire_lease(&mut c, id16(0x75), session.clone(), "resumer").await);
+    let st = px_038_run(&mut c, &task, g, 0x76).await;
+    waits(&st);
+    let scope1 = px_038_open_question(&mut c, &task).await;
+    assert!(scope1.question.starts_with("(1)"), "{scope1:?}");
+
+    // ---- the user answers `stop`; an agent CONTINUE follows the answer
+    px_038_answer(&mut c, &task, g, 0x77, &scope1.question_id, "stop").await;
+    drop(c);
+    core.kill();
+    let l = log(dir.path(), &session);
+    // The agent's CONTINUE opened nothing: the write was refused and asked.
+    assert_eq!(
+        decisions(&l),
+        [
+            ("CONTINUE".to_owned(), "agent", vec![lock.to_owned()]),
+            (
+                "QUESTION_REQUIRED".to_owned(),
+                "core",
+                vec![lock.to_owned()]
+            ),
+        ],
+        "{l:#?}"
+    );
+    assert_eq!(writes(&l, lock), 0, "{l:#?}");
+    append_as_agent(dir.path(), &session, &continue_for(&[lock], "answered"));
+    core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let g = Some(acquire_lease(&mut c, id16(0x78), session.clone(), "resumer-2").await);
+    let st = px_038_run(&mut c, &task, g, 0x79).await;
+    waits(&st);
+    let scope2 = px_038_open_question(&mut c, &task).await;
+    assert!(scope2.question.starts_with("(2)"), "{scope2:?}");
+
+    // ---- the user answers `continue`; the Core dies before it records it
+    px_038_answer(&mut c, &task, g, 0x7A, &scope2.question_id, "continue").await;
+    drop(c);
+    core.kill();
+    let l = log(dir.path(), &session);
+    // The user's `stop` decided, as the Core's record, and the retried
+    // write was refused again.
+    assert_eq!(
+        decisions(&l)[2..],
+        [
+            ("CONTINUE".to_owned(), "agent", vec![lock.to_owned()]),
+            ("STOP".to_owned(), "core", vec![lock.to_owned()]),
+            (
+                "QUESTION_REQUIRED".to_owned(),
+                "core",
+                vec![lock.to_owned()]
+            ),
+        ],
+        "{l:#?}"
+    );
+    assert_eq!(writes(&l, lock), 0, "{l:#?}");
+    let armed = [
+        ("MODBIT_OPENAI_BASE_URL", base.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_FAULT_KILL_BEFORE_EVENT", "ScopeExpansionRecorded:1"),
+    ];
+    core = CoreProcess::spawn_with_env(dir.path(), &armed);
+    let mut c = core.client().await;
+    let g = Some(acquire_lease(&mut c, id16(0x7B), session.clone(), "resumer-3").await);
+    let _ = c
+        .command(envelope_fenced(id16(0x7C), "StartTask", start(&task), g))
+        .await;
+    drop(c);
+    let exit = core
+        .wait_exit(Duration::from_secs(120))
+        .expect("the Core aborts before it commits the scope decision");
+    assert!(!exit.success(), "{exit:?}");
+    let l = log(dir.path(), &session);
+    assert_eq!(decisions(&l).len(), 5, "{l:#?}");
+    assert_eq!(writes(&l, lock), 0, "{l:#?}");
+    core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let st = wait_task(&mut c, &task, 60).await;
+    assert!(matches!(st.state.as_str(), "Waiting" | "Queued"), "{st:?}");
+    let g = Some(acquire_lease(&mut c, id16(0x7D), session.clone(), "resumer-4").await);
+    let st = px_038_run(&mut c, &task, g, 0x7E).await;
+    waits(&st);
+    let scope3 = px_038_open_question(&mut c, &task).await;
+    assert!(scope3.question.starts_with("(3)"), "{scope3:?}");
+
+    // ---- two lockfiles wait; a CONTINUE as a pre-fix Core wrote it
+    px_038_answer(&mut c, &task, g, 0x7F, &scope3.question_id, "continue").await;
+    drop(c);
+    core.kill();
+    let l = log(dir.path(), &session);
+    // The Core recorded the user's `continue` once, as the Core, and the
+    // write landed once.
+    assert_eq!(
+        decisions(&l)[5..],
+        [
+            ("CONTINUE".to_owned(), "core", vec![lock.to_owned()]),
+            (
+                "QUESTION_REQUIRED".to_owned(),
+                "core",
+                vec![yarn.to_owned()]
+            ),
+            (
+                "QUESTION_REQUIRED".to_owned(),
+                "core",
+                vec![poetry.to_owned()]
+            ),
+        ],
+        "{l:#?}"
+    );
+    assert_eq!(writes(&l, lock), 1, "{l:#?}");
+    assert_eq!((writes(&l, yarn), writes(&l, poetry)), (0, 0), "{l:#?}");
+    append_as_agent(
+        dir.path(),
+        &session,
+        &continue_for(&[yarn, poetry], "answered"),
+    );
+    core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let g = Some(acquire_lease(&mut c, id16(0x80), session.clone(), "resumer-5").await);
+    let st = px_038_run(&mut c, &task, g, 0x81).await;
+    waits(&st);
+    let last = px_038_open_question(&mut c, &task).await;
+    assert!(last.question.starts_with("(4)"), "{last:?}");
+    drop(c);
+    core.kill();
+    let l = log(dir.path(), &session);
+    // The pre-fix record stands for the user's answer: both paths opened,
+    // each written once, and the Core recorded no second decision.
+    assert_eq!(
+        decisions(&l)[8..],
+        [(
+            "CONTINUE".to_owned(),
+            "agent",
+            vec![yarn.to_owned(), poetry.to_owned()]
+        )],
+        "{l:#?}"
+    );
+    assert_eq!(
+        (writes(&l, lock), writes(&l, yarn), writes(&l, poetry)),
+        (1, 1, 1),
+        "{l:#?}"
+    );
+    for p in [lock, yarn, poetry] {
+        assert_eq!(
+            std::fs::read_to_string(repo.path().join(p)).unwrap(),
+            "# bumped\n"
+        );
+    }
+}
+
 /// M9.5 (docs/23 "Emergency stop"): a stop is not only a refusal of new
 /// effects. A check the agent is running when the stop lands is cancelled
 /// at once — the process is killed with its group and the call is recorded

@@ -1,0 +1,32 @@
+# PX-038 regression 2 (2026-09-26), stage 0: #43 head b517c21 unfixed (the forged agent CONTINUE opens the lockfile before any question)
+# cargo test -p modbit-core --test surface_protocol px_038_only_a_scope_decision_the_core_recorded_opens_a_path
+# Excerpt: the assertion message carries a Debug dump of the whole task log; it is elided below.
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.47s
+     Running tests/surface_protocol.rs (target/debug/deps/surface_protocol-4319d9c1acd84101)
+
+running 1 test
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 0ms
+modbit-core: recovery complete: boot_generation=2 events_verified=62 aggregates=12 projections_rebuilt=false sessions=1 tasks=1 in 2ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+
+thread 'px_038_only_a_scope_decision_the_core_recorded_opens_a_path' (26094508) panicked at services/modbit-core/tests/surface_protocol.rs:9411:5:
+assertion `left == right` failed: [
+    ... (11590 lines of the task log elided) ...
+    ... from the elided dump, the lockfile write the forged CONTINUE let through:
+                event_type: "FileChanged",
+                        "path": String("pnpm-lock.yaml"),
+  left: [("CONTINUE", "agent", ["pnpm-lock.yaml"])]
+ right: [("CONTINUE", "agent", ["pnpm-lock.yaml"]), ("QUESTION_REQUIRED", "core", ["pnpm-lock.yaml"])]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test px_038_only_a_scope_decision_the_core_recorded_opens_a_path ... FAILED
+
+failures:
+
+failures:
+    px_038_only_a_scope_decision_the_core_recorded_opens_a_path
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 160 filtered out; finished in 4.65s
+
+error: test failed, to rerun pass `-p modbit-core --test surface_protocol`
+exit=101

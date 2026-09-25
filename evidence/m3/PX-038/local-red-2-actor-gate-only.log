@@ -1,0 +1,43 @@
+# PX-038 regression 2 (2026-09-26), stage 1: writers record as the Core, rebuild honours only a Core CONTINUE (no rule for old records, QUESTION_REQUIRED replaces pending)
+# cargo test -p modbit-core --test surface_protocol px_038_only_a_scope_decision_the_core_recorded_opens_a_path
+# Excerpt: the assertion message carries a Debug dump of the whole task log; it is elided below.
+
+   Compiling modbit-core v0.0.0 (/Users/mohsin/projects/modbit/.claude/worktrees/eager-williamson-cae214/services/modbit-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 23.89s
+     Running tests/surface_protocol.rs (target/debug/deps/surface_protocol-4319d9c1acd84101)
+
+running 1 test
+modbit-core: recovery complete: boot_generation=1 events_verified=0 aggregates=0 projections_rebuilt=false sessions=0 tasks=0 in 1ms
+modbit-core: recovery complete: boot_generation=2 events_verified=62 aggregates=12 projections_rebuilt=false sessions=1 tasks=1 in 4ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+modbit-core: recovery complete: boot_generation=3 events_verified=155 aggregates=29 projections_rebuilt=false sessions=1 tasks=1 in 5ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+modbit-core: recovery complete: boot_generation=4 events_verified=205 aggregates=37 projections_rebuilt=false sessions=1 tasks=1 in 6ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+modbit-event-store: MODBIT_FAULT_KILL_BEFORE_EVENT hit; aborting before commit
+modbit-core: recovery complete: boot_generation=5 events_verified=211 aggregates=37 projections_rebuilt=false sessions=1 tasks=1 in 6ms
+modbit-core: suspended 1 running task(s) after restart
+modbit-core: reattached to the terminal broker a previous Core left alive
+modbit-core: recovery complete: boot_generation=6 events_verified=363 aggregates=66 projections_rebuilt=false sessions=1 tasks=1 in 11ms
+modbit-core: reattached to the terminal broker a previous Core left alive
+test px_038_only_a_scope_decision_the_core_recorded_opens_a_path ... FAILED
+
+failures:
+
+---- px_038_only_a_scope_decision_the_core_recorded_opens_a_path stdout ----
+
+thread 'px_038_only_a_scope_decision_the_core_recorded_opens_a_path' (26104301) panicked at services/modbit-core/tests/surface_protocol.rs:9527:5:
+assertion `left == right` failed: [
+    ... (30643 lines of the task log elided) ...
+  left: [("CONTINUE", "agent", ["yarn.lock", "poetry.lock"]), ("CONTINUE", "core", ["poetry.lock"]), ("QUESTION_REQUIRED", "core", ["yarn.lock"])]
+ right: [("CONTINUE", "agent", ["yarn.lock", "poetry.lock"])]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    px_038_only_a_scope_decision_the_core_recorded_opens_a_path
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 160 filtered out; finished in 6.92s
+
+error: test failed, to rerun pass `-p modbit-core --test surface_protocol`
+exit=101
