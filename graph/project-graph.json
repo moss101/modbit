@@ -34369,6 +34369,23 @@
    "status_changed_on": "2026-09-19T18:34:25Z"
   },
   {
+   "id": "DR-GOV-2026-09-24-006",
+   "type": "change_record",
+   "title": "Approved correction of stale Release Zero goal and IMP-EV-0245 card wording",
+   "status": "APPROVED",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md"
+  },
+  {
+   "id": "DOC-GOV-006",
+   "type": "dossier_task",
+   "title": "Correct stale Release Zero goal and IMP-EV-0245 card wording",
+   "subsystem": "governance",
+   "source": "docs/97_DOSSIER_MAINTENANCE_LOG.md",
+   "acceptance": "Doc 77 Stage 2 matches the graph (PX-020 COMPLETE, M3 COMPLETE, no blocker, open live halves named) and the IMP-EV-0245 card names its M10 feature consumer; descriptive text only; full integrity gate passes; no product proof",
+   "status": "NOT_STARTED",
+   "evidence": []
+  },
+  {
    "id": "ALPHA",
    "type": "release",
    "title": "Local coding loop and recovery spine",
@@ -53407,6 +53424,36 @@
   {
    "from": "DOC-GOV-005",
    "to": "DR-GOV-2026-09-19-005",
+   "type": "authorized_by"
+  },
+  {
+   "from": "DR-GOV-2026-09-24-006",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-GOV-006",
+   "to": "DOC-GOV-005",
+   "type": "after"
+  },
+  {
+   "from": "DOC-GOV-006",
+   "to": "governance",
+   "type": "owned_by"
+  },
+  {
+   "from": "DOC-GOV-006",
+   "to": "97_DOSSIER_MAINTENANCE_LOG.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-GOV-006",
+   "to": "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "type": "specified_by"
+  },
+  {
+   "from": "DOC-GOV-006",
+   "to": "DR-GOV-2026-09-24-006",
    "type": "authorized_by"
   },
   {

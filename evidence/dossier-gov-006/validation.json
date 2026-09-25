@@ -1,0 +1,310 @@
+{
+ "task": "DOC-GOV-006",
+ "change_record": "DR-GOV-2026-09-24-006",
+ "edition": "V3.3 EPR v1.1",
+ "scope": "Stale descriptive wording corrected: doc 77 Stage 2 (PX-020 COMPLETE since 2026-09-21, no blocker, the open live halves named) and the IMP-EV-0245 task card (feature consumer is M10 IMP-EV-0244/0246); dossier only",
+ "recorded_at_utc": "2026-09-24T15:28:14.810123+00:00",
+ "environment": {
+  "python": "3.9.6 (default, May 22 2026, 11:13:45) \n[Clang 21.0.0 (clang-2100.1.1.101)]",
+  "platform": "macOS-26.5.1-arm64-arm-64bit",
+  "machine": "arm64",
+  "working_directory": "/Users/mohsin/projects/modbit/.claude/worktrees/hungry-kapitsa-a44d1a",
+  "dependencies": "Python standard library only"
+ },
+ "git": {
+  "remote": "https://github.com/moss101/modbit.git",
+  "branch": "wip/doc-gov-006-stale-goal-wording",
+  "baseline_commit": "b196ed5c882e9adc245b82405b2a253a6057597d",
+  "change_commit": "recorded as commit: evidence on DOC-GOV-006 after the pull request lands on main"
+ },
+ "corrected_files": {
+  "docs/77_RELEASE_ZERO_EXECUTION_GOAL.md": {
+   "before_sha256": "4a990efd404496eb72846eb67d6112c3640ac00d81acdf03d100678fded354a3",
+   "after_sha256": "b62bc740c93c980825829632b50bd569f193510e9c8065e15337bff668932c55"
+  },
+  "evidence/m4/IMP-EV-0245/TASK_CARD.md": {
+   "before_sha256": "635a39e867022bdf28f853651df667923d1cc9092e3397799024a720d951ccc5",
+   "after_sha256": "626a7714a1f12b2011b280de0327ae4d5a3212768cafa8ed54425f3259e5c689"
+  }
+ },
+ "source_revision_algorithm": "SHA-256 over UTF-8 json.dumps(source_sha256, sort_keys=True, separators=(comma,colon)); sources are root *.md except MANIFEST.md, docs/*.md and tools/*.py; excludes generated manifests/graph and evidence",
+ "source_revision_sha256": "f83e0e2ff17e8272cac36f66e5ab2b6aeda5ea1171961fa82aa03c68b6fe66f4",
+ "syntax": "ast.parse passed for all tools/*.py files",
+ "tests": {
+  "command": [
+   "/Applications/Xcode.app/Contents/Developer/usr/bin/python3",
+   "tools/test_dossier.py",
+   "-v"
+  ],
+  "count": 44,
+  "exit_code": 0,
+  "output_ref": "evidence/dossier-gov-006/tests.log",
+  "sha256": "95f533a84c8ee89696716f93dfd0787c3222c62cc4761c4e5f41d87b97a03356",
+  "changed_test": "test_governance_reseal_task_and_evidence_grammar (DOC-GOV-006 chain assertion)",
+  "result_line": "Ran 44 tests in 78.798s"
+ },
+ "regeneration_and_integrity": [
+  {
+   "command": [
+    "/Applications/Xcode.app/Contents/Developer/usr/bin/python3",
+    "tools/build_manifest.py"
+   ],
+   "exit_code": 0,
+   "output": "MANIFEST.md + manifest.json written: 90 docs, 1575 root/tooling files"
+  },
+  {
+   "command": [
+    "/Applications/Xcode.app/Contents/Developer/usr/bin/python3",
+    "tools/build_graph.py"
+   ],
+   "exit_code": 0,
+   "output": "graph written: 1484 nodes, 4647 edges\n  change_record=10, decision=56, doc=90, dossier_task=14, imp_task=323, milestone=11, milestone_task=78, qual_test=352, release=3, release_gate=7, requirement=352, scenario=155, section=8, source_patch=2, subsystem=23\nview written: graph/PROJECT_GRAPH.md"
+  },
+  {
+   "command": [
+    "/Applications/Xcode.app/Contents/Developer/usr/bin/python3",
+    "tools/build_manifest.py"
+   ],
+   "exit_code": 0,
+   "output": "MANIFEST.md + manifest.json written: 90 docs, 1575 root/tooling files"
+  },
+  {
+   "command": [
+    "/Applications/Xcode.app/Contents/Developer/usr/bin/python3",
+    "tools/check_dossier.py",
+    "--manifest"
+   ],
+   "exit_code": 0,
+   "output": "OK: 90 docs; base 291 REQ-EV/265 IMP-EV/291 QUAL-EV + EPR 20 + PX 41 (38 ADOPT tasks) = 352 requirements effective; 18 ADR-R, 7 gates, 3 releases; graph and references consistent; manifest hashes verified"
+  }
+ ],
+ "graph_counts": {
+  "change_record": 10,
+  "decision": 56,
+  "doc": 90,
+  "dossier_task": 14,
+  "imp_task": 323,
+  "milestone": 11,
+  "milestone_task": 78,
+  "qual_test": 352,
+  "release": 3,
+  "release_gate": 7,
+  "requirement": 352,
+  "scenario": 155,
+  "section": 8,
+  "source_patch": 2,
+  "subsystem": 23
+ },
+ "edge_count": 4647,
+ "graph_delta": {
+  "added_nodes": [
+   "DOC-GOV-006",
+   "DR-GOV-2026-09-24-006"
+  ],
+  "removed_nodes": [],
+  "added_edges": [
+   [
+    "DOC-GOV-006",
+    "77_RELEASE_ZERO_EXECUTION_GOAL.md",
+    "specified_by"
+   ],
+   [
+    "DOC-GOV-006",
+    "97_DOSSIER_MAINTENANCE_LOG.md",
+    "specified_by"
+   ],
+   [
+    "DOC-GOV-006",
+    "DOC-GOV-005",
+    "after"
+   ],
+   [
+    "DOC-GOV-006",
+    "DR-GOV-2026-09-24-006",
+    "authorized_by"
+   ],
+   [
+    "DOC-GOV-006",
+    "governance",
+    "owned_by"
+   ],
+   [
+    "DR-GOV-2026-09-24-006",
+    "97_DOSSIER_MAINTENANCE_LOG.md",
+    "specified_by"
+   ]
+  ],
+  "removed_edges": [],
+  "nodes_with_status_evidence_or_note_changes": []
+ },
+ "goal_command": {
+  "command": [
+   "python3",
+   "tools/graph.py",
+   "goal",
+   "--json"
+  ],
+  "exit_code": 1,
+  "state": "NOT_READY",
+  "work_items": {
+   "total": 401,
+   "complete": 378,
+   "blocked": 0,
+   "in_progress": 0,
+   "not_started": 23
+  },
+  "blockers": [],
+  "milestones": {
+   "M0": "COMPLETE",
+   "M1": "COMPLETE",
+   "M2": "COMPLETE",
+   "M3": "COMPLETE",
+   "M4": "COMPLETE",
+   "M5": "COMPLETE",
+   "M6": "COMPLETE",
+   "M7": "COMPLETE",
+   "M8": "COMPLETE",
+   "M9": "IN_PROGRESS",
+   "M10": "NOT_STARTED"
+  }
+ },
+ "facts_checked": {
+  "PX-020": {
+   "status": "COMPLETE",
+   "milestone": "M3",
+   "status_changed_on": "2026-09-21T04:55:08Z"
+  },
+  "M3_rollup_derived_by_goal": "COMPLETE",
+  "IMP-EV-0244": {
+   "status": "NOT_STARTED",
+   "milestone": "M10",
+   "disposition": "EXPERIMENT"
+  },
+  "IMP-EV-0246": {
+   "status": "NOT_STARTED",
+   "milestone": "M10",
+   "disposition": "EXPERIMENT"
+  },
+  "IMP-EV-0245": {
+   "status": "COMPLETE",
+   "milestone": "M4"
+  },
+  "deferred_live_halves_note": "run: evidence on the tasks the old Stage 2 said PX-020 would discharge; every id is a hosted CI run of the offline half, older than the first live-providers workflow run (35470226975, 2026-09-19, DR-M9-002); no live run has been appended",
+  "deferred_live_halves_run_evidence": {
+   "EPR-000": [
+    "run:34544470328"
+   ],
+   "EPR-002": [
+    "run:34548714162"
+   ],
+   "EPR-005": [
+    "run:34564504407"
+   ],
+   "IMP-EV-0251": [
+    "run:34564504407"
+   ],
+   "IMP-EV-0253": [
+    "run:34564504407"
+   ],
+   "PX-022": [
+    "run:34568027155"
+   ],
+   "PX-028": [
+    "run:34565153777"
+   ],
+   "PX-002": [
+    "run:34751685250"
+   ]
+  }
+ },
+ "invariants": {
+  "changed_files": [
+   "MANIFEST.md",
+   "docs/77_RELEASE_ZERO_EXECUTION_GOAL.md",
+   "docs/97_DOSSIER_MAINTENANCE_LOG.md",
+   "evidence/m4/IMP-EV-0245/TASK_CARD.md",
+   "graph/PROJECT_GRAPH.md",
+   "graph/project-graph.json",
+   "manifest.json",
+   "tools/build_graph.py",
+   "tools/test_dossier.py"
+  ],
+  "added_files": [
+   "evidence/dossier-gov-006/baseline.json",
+   "evidence/dossier-gov-006/tests.log"
+  ],
+  "only_expected_files_changed": true,
+  "unexpected_changes": [],
+  "locked_paths_untouched": true,
+  "both_source_patches_unchanged": true,
+  "docs_40_41_42_49_62_unchanged": true,
+  "agents_md_unchanged": true,
+  "decision_records_unchanged": true,
+  "prior_dossier_evidence_bundles_unchanged": true,
+  "product_and_prior_dossier_statuses_unchanged": true,
+  "new_work_item_nodes": [
+   "DOC-GOV-006"
+  ],
+  "graph_not_written_by_goal_command": true
+ },
+ "finalization": "After this evidence is recorded the manifest is rebuilt so the change commit passes the gate. Once the pull request lands on main, graph.py walks only DOC-GOV-006 through the one-step ladder to COMPLETE with run/artifact/revision/commit references; manifests are regenerated and check_dossier --manifest and test_dossier.py rerun in the seal commit.",
+ "amendment_after_merging_main": {
+  "recorded_at_utc": "2026-09-25T08:05:48.876911+00:00",
+  "merged_main": "9565ce861f65359b3fe8cabecb73bb331acf0277",
+  "merge_commits_on_branch": [
+   "bb31e851740d28a5cfd0ec02afe3bd9e8a8e7954"
+  ],
+  "reason": "While the pull request was in review, main gained the EPR-019 seal (cea4f4b), which rolled M9 up COMPLETE. The Stage 2 sentence 'M10 now waits only on M9' became stale, so it now reads 'M3 no longer holds M10', and 'reports no blocker' is dated in the past tense. The docs/97 entry's Replacement, Remaining-work and Next-action lines were adjusted to match. Merge conflicts were only in the generated MANIFEST.md and manifest.json, resolved by regeneration.",
+  "corrected_files_after_sha256": {
+   "docs/77_RELEASE_ZERO_EXECUTION_GOAL.md": "fb2a8ed17a9ebfc15799c1145cfb0a3b9e39220c5ae35ead17dd683b46a5d105",
+   "evidence/m4/IMP-EV-0245/TASK_CARD.md": "626a7714a1f12b2011b280de0327ae4d5a3212768cafa8ed54425f3259e5c689",
+   "docs/97_DOSSIER_MAINTENANCE_LOG.md": "3ac7a8f13fa248127d02ea9e3fc1cc185e4f42f4ea8ca43ec9d811f1386902d4"
+  },
+  "regeneration_and_integrity": [
+   {
+    "command": [
+     "python3",
+     "tools/build_manifest.py"
+    ],
+    "exit_code": 0,
+    "output": "MANIFEST.md + manifest.json written: 90 docs, 1579 root/tooling files"
+   },
+   {
+    "command": [
+     "python3",
+     "tools/build_graph.py"
+    ],
+    "exit_code": 0,
+    "output": "graph written: 1484 nodes, 4647 edges\n  change_record=10, decision=56, doc=90, dossier_task=14, imp_task=323, milestone=11, milestone_task=78, qual_test=352, release=3, release_gate=7, requirement=352, scenario=155, section=8, source_patch=2, subsystem=23\nview written: graph/PROJECT_GRAPH.md"
+   },
+   {
+    "command": [
+     "python3",
+     "tools/build_manifest.py"
+    ],
+    "exit_code": 0,
+    "output": "MANIFEST.md + manifest.json written: 90 docs, 1579 root/tooling files"
+   },
+   {
+    "command": [
+     "python3",
+     "tools/check_dossier.py --manifest"
+    ],
+    "exit_code": 0,
+    "output": "OK: 90 docs; base 291 REQ-EV/265 IMP-EV/291 QUAL-EV + EPR 20 + PX 41 (38 ADOPT tasks) = 352 requirements effective; 18 ADR-R, 7 gates, 3 releases; graph and references consistent; manifest hashes verified"
+   }
+  ],
+  "tests": {
+   "command": [
+    "python3",
+    "tools/test_dossier.py",
+    "-v"
+   ],
+   "count": 44,
+   "exit_code": 0,
+   "output_ref": "evidence/dossier-gov-006/tests-after-merge.log",
+   "sha256": "e2565211e2196d730660f831c33c298c1ba8639b5c181cb7f0c48ccf8f1ad26d",
+   "result_line": "Ran 44 tests in 52.845s"
+  }
+ }
+}
