@@ -1116,13 +1116,15 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m3/PX-035/ci-run-34506031420-tests.log` | retained evidence | 2475 | `c3749bbece693b72275824bbe92c4d3384de5e52a0b6f24e7d7b48ca902c63e5` |
 | `evidence/m3/PX-035/ci-run-34506031420.json` | retained evidence | 37317 | `2dda872217d637cc239830d540966e7ceea26638695b761005ae8130ead05733` |
 | `evidence/m3/PX-035/evidence.json` | retained evidence | 1052 | `b9802499483e480a242f589fa2e57aa2fb05a977d436ff2526765540299466ea` |
-| `evidence/m3/PX-038/TASK_CARD.md` | retained evidence | 8679 | `0e3c74ff635289a2b2b1fb6c0c27eb601a33852e35210a464d2b9d50f8bf1328` |
+| `evidence/m3/PX-038/TASK_CARD.md` | retained evidence | 10903 | `2f5510c9d744ddc28b87b40b064cf29d9d1845ac586bd6d5ab29416846843c72` |
 | `evidence/m3/PX-038/ci-run-34506031420-tests.log` | retained evidence | 1344 | `dd01e3782bdfd564fcef011097d4018e6b370811e957b83feeffa984b8825ffa` |
 | `evidence/m3/PX-038/ci-run-34506031420.json` | retained evidence | 37317 | `2dda872217d637cc239830d540966e7ceea26638695b761005ae8130ead05733` |
 | `evidence/m3/PX-038/ci-run-36194461747.json` | retained evidence | 42606 | `8ce3a303134d7e49345da1dfe6b445be467cea37c95da0ae761577779af1fb96` |
 | `evidence/m3/PX-038/evidence.json` | retained evidence | 2797 | `14bcaa57bc611af75196523dfc066a8c10df770219d4603bc55f524e1f380dc6` |
+| `evidence/m3/PX-038/local-green-targeted-2.log` | retained evidence | 4559 | `354f4ca21b1bfdda239a8253bb57bbdb2f566c533ba62b5d065b92c5b5ed8ee0` |
 | `evidence/m3/PX-038/local-green-targeted.log` | retained evidence | 4404 | `daf04bbf764adcb1dcba3b0bb137d8bd418db18da2f15195b5785959272c429b` |
 | `evidence/m3/PX-038/local-red-actor-check-only.log` | retained evidence | 116903 | `409c000a779ddd9f345f12f97a7cd8821ecfd57aa84ebdf44eabce75747a5327` |
+| `evidence/m3/PX-038/local-red-stale-answer.log` | retained evidence | 127854 | `b78afed48cd0d8fbd2536d8a56a994277334ea27b8a02fab5509474871b3a1fa` |
 | `evidence/m3/PX-038/local-red-unfixed.log` | retained evidence | 3120 | `aa7734f97e8056f069ea97ea0f772c0295d5c172ee83f489dcba9d943ed1eb9b` |
 | `evidence/m3/PX-039/TASK_CARD.md` | retained evidence | 3867 | `3f69c9719f270edcf74374445342589e63c1f2924d8fa1f2e8759e76e84db5d7` |
 | `evidence/m3/PX-039/ci-run-34506031420-tests.log` | retained evidence | 2610 | `8fc902968b8e5690c051b3f0ff8a2cf6700ad68cd7f6dfce5f5be3881ac8d3f0` |

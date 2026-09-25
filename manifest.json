@@ -7,7 +7,7 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 90,
-    "root_and_tooling": 1607,
+    "root_and_tooling": 1609,
     "docs_bytes": 1379172
   },
   "sections": [
@@ -5837,8 +5837,8 @@
     },
     {
       "path": "evidence/m3/PX-038/TASK_CARD.md",
-      "bytes": 8679,
-      "sha256": "0e3c74ff635289a2b2b1fb6c0c27eb601a33852e35210a464d2b9d50f8bf1328"
+      "bytes": 10903,
+      "sha256": "2f5510c9d744ddc28b87b40b064cf29d9d1845ac586bd6d5ab29416846843c72"
     },
     {
       "path": "evidence/m3/PX-038/ci-run-34506031420-tests.log",
@@ -5861,6 +5861,11 @@
       "sha256": "14bcaa57bc611af75196523dfc066a8c10df770219d4603bc55f524e1f380dc6"
     },
     {
+      "path": "evidence/m3/PX-038/local-green-targeted-2.log",
+      "bytes": 4559,
+      "sha256": "354f4ca21b1bfdda239a8253bb57bbdb2f566c533ba62b5d065b92c5b5ed8ee0"
+    },
+    {
       "path": "evidence/m3/PX-038/local-green-targeted.log",
       "bytes": 4404,
       "sha256": "daf04bbf764adcb1dcba3b0bb137d8bd418db18da2f15195b5785959272c429b"
@@ -5869,6 +5874,11 @@
       "path": "evidence/m3/PX-038/local-red-actor-check-only.log",
       "bytes": 116903,
       "sha256": "409c000a779ddd9f345f12f97a7cd8821ecfd57aa84ebdf44eabce75747a5327"
+    },
+    {
+      "path": "evidence/m3/PX-038/local-red-stale-answer.log",
+      "bytes": 127854,
+      "sha256": "b78afed48cd0d8fbd2536d8a56a994277334ea27b8a02fab5509474871b3a1fa"
     },
     {
       "path": "evidence/m3/PX-038/local-red-unfixed.log",

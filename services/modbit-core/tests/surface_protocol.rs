@@ -8813,6 +8813,80 @@ async fn qual_px_038_scope_expansion_is_bounded_asks_a_typed_question_and_fails_
     let _ = (repo, repo2);
 }
 
+/// PX-038: start or resume `task` and wait until its loop stops.
+async fn px_038_run(
+    c: &mut Client,
+    task: &Id,
+    g: Option<u64>,
+    id: u8,
+) -> modbit_protocol::v1::TaskStatus {
+    use modbit_protocol::v1::{StartTask, TaskRunStarted};
+    let ack = c
+        .command(envelope_fenced(
+            id16(id),
+            "StartTask",
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 30,
+                max_tool_calls: 0,
+                max_no_progress_turns: 5,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let _: TaskRunStarted = Client::result(&ack).unwrap();
+    wait_task(c, task, 120).await
+}
+
+/// PX-038: the task's one open question, as the desktop lists it.
+async fn px_038_open_question(c: &mut Client, task: &Id) -> modbit_protocol::v1::QuestionView {
+    use modbit_protocol::v1::{ListQuestions, QuestionList};
+    let ack = c
+        .command(envelope(
+            Id {
+                value: (0..16).map(|_| rand::random::<u8>()).collect(),
+            },
+            "ListQuestions",
+            ListQuestions {
+                task_id: Some(task.clone()),
+            }
+            .encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let l: QuestionList = Client::result(&ack).unwrap();
+    let open: Vec<_> = l.questions.into_iter().filter(|q| !q.answered).collect();
+    assert_eq!(open.len(), 1, "{open:#?}");
+    open.into_iter().next().unwrap()
+}
+
+/// PX-038: the user answers through the SurfaceProtocol, as the desktop does.
+async fn px_038_answer(c: &mut Client, task: &Id, g: Option<u64>, id: u8, q: &str, option: &str) {
+    use modbit_protocol::v1::{QuestionResponded, RespondToQuestion};
+    let ack = c
+        .command(envelope_fenced(
+            id16(id),
+            "RespondToQuestion",
+            RespondToQuestion {
+                task_id: Some(task.clone()),
+                question_id: q.to_owned(),
+                option_id: option.to_owned(),
+                text: String::new(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let r: QuestionResponded = Client::result(&ack).unwrap();
+    assert!(!r.already_answered, "{r:?}");
+}
+
 /// PX-038 (docs/28 §3; QUAL-PX-038 "a question auto-answered by the agent
 /// changes nothing"): only the user's answer to the question asked while
 /// the expansion waits decides it. A desktop task first asks an unrelated
@@ -8828,74 +8902,7 @@ async fn qual_px_038_scope_expansion_is_bounded_asks_a_typed_question_and_fails_
 /// question's answer, STOP, and the lockfile is never written.
 #[tokio::test]
 async fn px_038_only_the_users_answer_to_the_scope_question_decides_the_expansion() {
-    use modbit_protocol::v1::{
-        ListQuestions, QuestionList, QuestionResponded, QuestionView, RespondToQuestion, StartTask,
-        TaskRunStarted, TaskStatus,
-    };
     use serde_json::json;
-    /// Start or resume `task` and wait until its loop stops.
-    async fn run(c: &mut Client, task: &Id, g: Option<u64>, id: u8) -> TaskStatus {
-        let ack = c
-            .command(envelope_fenced(
-                id16(id),
-                "StartTask",
-                StartTask {
-                    task_id: Some(task.clone()),
-                    endpoint: String::new(),
-                    model: "gpt-5-mini".into(),
-                    max_turns: 30,
-                    max_tool_calls: 0,
-                    max_no_progress_turns: 5,
-                    skills: vec![],
-                }
-                .encode_to_vec(),
-                g,
-            ))
-            .await
-            .unwrap();
-        let _: TaskRunStarted = Client::result(&ack).unwrap();
-        wait_task(c, task, 120).await
-    }
-    /// The task's one open question, as the desktop lists it.
-    async fn open_question(c: &mut Client, task: &Id) -> QuestionView {
-        let ack = c
-            .command(envelope(
-                Id {
-                    value: (0..16).map(|_| rand::random::<u8>()).collect(),
-                },
-                "ListQuestions",
-                ListQuestions {
-                    task_id: Some(task.clone()),
-                }
-                .encode_to_vec(),
-            ))
-            .await
-            .unwrap();
-        let l: QuestionList = Client::result(&ack).unwrap();
-        let open: Vec<_> = l.questions.into_iter().filter(|q| !q.answered).collect();
-        assert_eq!(open.len(), 1, "{open:#?}");
-        open.into_iter().next().unwrap()
-    }
-    /// The user answers through the SurfaceProtocol, as the desktop does.
-    async fn answer(c: &mut Client, task: &Id, g: Option<u64>, id: u8, q: &str, option: &str) {
-        let ack = c
-            .command(envelope_fenced(
-                id16(id),
-                "RespondToQuestion",
-                RespondToQuestion {
-                    task_id: Some(task.clone()),
-                    question_id: q.to_owned(),
-                    option_id: option.to_owned(),
-                    text: String::new(),
-                }
-                .encode_to_vec(),
-                g,
-            ))
-            .await
-            .unwrap();
-        let r: QuestionResponded = Client::result(&ack).unwrap();
-        assert!(!r.already_answered, "{r:?}");
-    }
     /// While the Core is down: `continue` to `question_id`, appended as
     /// `actor` through the event store on the task's aggregate.
     fn forge_continue(
@@ -9005,18 +9012,18 @@ async fn px_038_only_the_users_answer_to_the_scope_question_decides_the_expansio
         .unwrap();
 
     // ---- the user answers `continue` to a question asked before anything waits
-    let st = run(&mut c, &task, g, 0x63).await;
+    let st = px_038_run(&mut c, &task, g, 0x63).await;
     assert_eq!(
         (st.state.as_str(), st.wait_reason.as_str()),
         ("Waiting", "UserInput"),
         "{st:?}"
     );
-    let first = open_question(&mut c, &task).await;
+    let first = px_038_open_question(&mut c, &task).await;
     assert!(first.question.contains("trailing newline"), "{first:?}");
-    answer(&mut c, &task, g, 0x64, &first.question_id, "continue").await;
+    px_038_answer(&mut c, &task, g, 0x64, &first.question_id, "continue").await;
 
     // ---- the write waits for the scope question
-    let st = run(&mut c, &task, g, 0x65).await;
+    let st = px_038_run(&mut c, &task, g, 0x65).await;
     let evs = task_events(&core, &session, &task).await;
     assert_eq!(
         (st.state.as_str(), st.wait_reason.as_str()),
@@ -9024,7 +9031,7 @@ async fn px_038_only_the_users_answer_to_the_scope_question_decides_the_expansio
         "{st:?}\n{evs:#?}"
     );
     assert_eq!(resolutions(&evs), ["QUESTION_REQUIRED"], "{evs:#?}");
-    let scope1 = open_question(&mut c, &task).await;
+    let scope1 = px_038_open_question(&mut c, &task).await;
     assert!(scope1.question.starts_with("(1)"), "{scope1:?}");
 
     // ---- the agent's `continue` to the scope question: on the log, not the user's
@@ -9037,7 +9044,7 @@ async fn px_038_only_the_users_answer_to_the_scope_question_decides_the_expansio
     core = CoreProcess::spawn_with_env(dir.path(), &env);
     let mut c = core.client().await;
     let g = Some(acquire_lease(&mut c, id16(0x66), session.clone(), "resumer").await);
-    let st = run(&mut c, &task, g, 0x67).await;
+    let st = px_038_run(&mut c, &task, g, 0x67).await;
     let evs = task_events(&core, &session, &task).await;
     assert_eq!(
         (st.state.as_str(), st.wait_reason.as_str()),
@@ -9078,11 +9085,11 @@ async fn px_038_only_the_users_answer_to_the_scope_question_decides_the_expansio
         !of(&evs, "FileChanged").iter().any(|f| f["path"] == lock),
         "{evs:#?}"
     );
-    let scope2 = open_question(&mut c, &task).await;
+    let scope2 = px_038_open_question(&mut c, &task).await;
     assert!(scope2.question.starts_with("(2)"), "{scope2:?}");
 
     // ---- the user answers `stop`; a later user `continue` names the first question
-    answer(&mut c, &task, g, 0x68, &scope2.question_id, "stop").await;
+    px_038_answer(&mut c, &task, g, 0x68, &scope2.question_id, "stop").await;
     drop(c);
     core.kill();
     forge_continue(dir.path(), &session, &first.question_id, |log| {
@@ -9095,7 +9102,7 @@ async fn px_038_only_the_users_answer_to_the_scope_question_decides_the_expansio
     core = CoreProcess::spawn_with_env(dir.path(), &env);
     let mut c = core.client().await;
     let g = Some(acquire_lease(&mut c, id16(0x69), session.clone(), "resumer-2").await);
-    let st = run(&mut c, &task, g, 0x6A).await;
+    let st = px_038_run(&mut c, &task, g, 0x6A).await;
     let evs = task_events(&core, &session, &task).await;
     assert_eq!(
         (st.state.as_str(), st.wait_reason.as_str()),
@@ -9128,8 +9135,161 @@ async fn px_038_only_the_users_answer_to_the_scope_question_decides_the_expansio
         std::fs::read_to_string(repo.path().join(lock)).unwrap(),
         "lockfileVersion: 9\n"
     );
-    let scope3 = open_question(&mut c, &task).await;
+    let scope3 = px_038_open_question(&mut c, &task).await;
     assert!(scope3.question.starts_with("(3)"), "{scope3:?}");
+}
+
+/// PX-038 (docs/28 §3): a recorded answer decides only the expansion it was
+/// given for. A desktop task's write to one always-ask lockfile waits, the
+/// user answers the scope question `continue`, and the write lands. The task
+/// then asks an unrelated question, which the user answers `no`, and in the
+/// resumed run its write to a second always-ask lockfile is refused. With
+/// no forged event, that write must wait for its own question. It is
+/// refused on every retry, the model is left to ask, and the second
+/// lockfile is never written. Before this was fixed, `rebuild` kept the
+/// first `continue` after replaying the CONTINUE it had decided, and the
+/// turn after the second refusal recorded CONTINUE from it without asking.
+#[tokio::test]
+async fn px_038_a_recorded_scope_answer_decides_only_its_own_expansion() {
+    use serde_json::json;
+    let (pnpm, yarn) = ("pnpm-lock.yaml", "yarn.lock");
+    let (repo, root) = plain_repo(&[
+        ("a.txt", "a\n"),
+        (pnpm, "lockfileVersion: 9\n"),
+        (yarn, "# yarn lockfile v1\n"),
+    ]);
+    let read = |p: &str| json!({"calls": [{"name": "fs.read", "args": {"path": p}}]});
+    let bump = |p: &str, before: &str| json!({"calls": [{"name": "change.apply", "args": {"path": p, "op": "replace", "content": format!("{before}# bumped\n")}}]});
+    let scope_question = |p: &str| json!({"calls": [{"name": "user.ask", "args": {"question": format!("{p} is outside the original plan. Continue, split it into a follow-up task, or stop?"), "options": [{"id": "continue", "label": "continue with the expansion"}, {"id": "split", "label": "split into a follow-up task"}, {"id": "stop", "label": "stop"}], "reason": "change_set"}}]});
+    let script = vec![
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "edit a", "expected_files": ["a.txt"]}}]}),
+        json!({"calls": [{"name": "plan.update", "args": {"outcome": "edit a", "expected_files": ["a.txt", pnpm, yarn], "reason": "both lockfiles need a bump"}}]}),
+        read(pnpm),
+        bump(pnpm, "lockfileVersion: 9\n"),
+        scope_question(pnpm),
+        // After the user's `continue`: the write lands.
+        bump(pnpm, "lockfileVersion: 9\n"),
+        json!({"calls": [{"name": "user.ask", "args": {"question": "Should the changelog mention the bump?", "options": [{"id": "yes", "label": "Yes"}, {"id": "no", "label": "No"}], "reason": "other"}}]}),
+        // After the user's `no`: the second expansion waits for its own answer.
+        read(yarn),
+        bump(yarn, "# yarn lockfile v1\n"),
+        bump(yarn, "# yarn lockfile v1\n"),
+        scope_question(yarn),
+    ];
+    let (base, _seen) = scripted_model(script, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn_with_env(
+        dir.path(),
+        &[
+            ("MODBIT_OPENAI_BASE_URL", &base),
+            ("OPENAI_API_KEY", ""),
+            ("ANTHROPIC_API_KEY", ""),
+        ],
+    );
+    let mut c = core.client().await;
+    let (session, _) = create_session(&mut c, id16(0x70)).await;
+    let g = lease_for(&session);
+    trust_repository(&mut c, &session, g, &root, 0x71).await;
+    let ack = c
+        .command(envelope_fenced(
+            id16(0x72),
+            "CreateTask",
+            CreateTask {
+                session_id: Some(session.clone()),
+                goal_text: "edit a and bump both lockfiles".into(),
+                workspace_id: None,
+                execution_profile: String::new(),
+                origin: "desktop".into(),
+                workspace_root: root.clone(),
+                issue_url: String::new(),
+                issue_json: String::new(),
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await
+        .unwrap();
+    let task = Client::result::<TaskCreated>(&ack)
+        .unwrap()
+        .task_id
+        .unwrap();
+    let expansions = |evs: &[(String, String, serde_json::Value)]| {
+        evs.iter()
+            .filter(|(_, t, _)| t == "ScopeExpansionRecorded")
+            .map(|(_, _, p)| {
+                (
+                    p["paths"][0].as_str().unwrap_or_default().to_owned(),
+                    p["resolution"].as_str().unwrap_or_default().to_owned(),
+                )
+            })
+            .collect::<Vec<_>>()
+    };
+    let written = |evs: &[(String, String, serde_json::Value)], path: &str| {
+        evs.iter()
+            .filter(|(_, t, p)| t == "FileChanged" && p["path"] == path)
+            .count()
+    };
+    let pair = |p: &str, r: &str| (p.to_owned(), r.to_owned());
+
+    // ---- the first expansion waits for its question; the user continues
+    let st = px_038_run(&mut c, &task, g, 0x73).await;
+    let evs = task_events(&core, &session, &task).await;
+    assert_eq!(
+        (st.state.as_str(), st.wait_reason.as_str()),
+        ("Waiting", "UserInput"),
+        "{st:?}\n{evs:#?}"
+    );
+    assert_eq!(expansions(&evs), [pair(pnpm, "QUESTION_REQUIRED")]);
+    let q1 = px_038_open_question(&mut c, &task).await;
+    assert!(q1.question.starts_with(pnpm), "{q1:?}");
+    px_038_answer(&mut c, &task, g, 0x74, &q1.question_id, "continue").await;
+
+    // ---- the answer decides that expansion; the write lands once
+    let st = px_038_run(&mut c, &task, g, 0x75).await;
+    let evs = task_events(&core, &session, &task).await;
+    assert_eq!(
+        (st.state.as_str(), st.wait_reason.as_str()),
+        ("Waiting", "UserInput"),
+        "{st:?}\n{evs:#?}"
+    );
+    assert_eq!(
+        expansions(&evs),
+        [pair(pnpm, "QUESTION_REQUIRED"), pair(pnpm, "CONTINUE")]
+    );
+    assert_eq!(written(&evs, pnpm), 1, "{evs:#?}");
+    let q2 = px_038_open_question(&mut c, &task).await;
+    assert!(q2.question.contains("changelog"), "{q2:?}");
+    px_038_answer(&mut c, &task, g, 0x76, &q2.question_id, "no").await;
+
+    // ---- the second expansion waits for its own question
+    let st = px_038_run(&mut c, &task, g, 0x77).await;
+    let evs = task_events(&core, &session, &task).await;
+    assert_eq!(
+        (st.state.as_str(), st.wait_reason.as_str()),
+        ("Waiting", "UserInput"),
+        "{st:?}\n{evs:#?}"
+    );
+    assert_eq!(
+        expansions(&evs),
+        [
+            pair(pnpm, "QUESTION_REQUIRED"),
+            pair(pnpm, "CONTINUE"),
+            pair(yarn, "QUESTION_REQUIRED"),
+            pair(yarn, "QUESTION_REQUIRED"),
+        ],
+        "{evs:#?}"
+    );
+    assert_eq!(written(&evs, yarn), 0, "{evs:#?}");
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join(yarn)).unwrap(),
+        "# yarn lockfile v1\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join(pnpm)).unwrap(),
+        "lockfileVersion: 9\n# bumped\n"
+    );
+    let q3 = px_038_open_question(&mut c, &task).await;
+    assert!(q3.question.starts_with(yarn), "{q3:?}");
 }
 
 /// M9.5 (docs/23 "Emergency stop"): a stop is not only a refusal of new

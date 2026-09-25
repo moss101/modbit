@@ -1794,15 +1794,21 @@ pub(crate) async fn rebuild(
                     .unwrap_or_default();
                 match payload["resolution"].as_str() {
                     Some("QUESTION_REQUIRED") => state.scope_question_pending = paths,
+                    // A recorded decision consumes the answer it was made
+                    // from: a later expansion waits for its own (docs/28 §3).
                     Some("CONTINUE") => {
                         state.scope_question_pending.clear();
+                        state.scope_answer = None;
                         for p in paths {
                             if !state.scope_unlocked.contains(&p) {
                                 state.scope_unlocked.push(p);
                             }
                         }
                     }
-                    _ => state.scope_question_pending.clear(),
+                    _ => {
+                        state.scope_question_pending.clear();
+                        state.scope_answer = None;
+                    }
                 }
             }
             "UserQuestionAnswered" => {
