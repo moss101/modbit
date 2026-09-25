@@ -1,0 +1,45 @@
+{
+ "task": "IMP-EV-0212",
+ "requirements": [
+  "REQ-EV-0212",
+  "QUAL-EV-0212",
+  "docs/74 Documentation package checks",
+  "docs/83 definition of done"
+ ],
+ "scenarios": [
+  "the dossier declares 55 shell command lines in 11 bash blocks across AGENTS.md, README.md, SKILLS.md, graph/PROJECT_GRAPH.md and docs 74, 75, 77 and 98; nothing executed one and CI had no example step",
+  "every block must be declared in tools/examples.json and is pinned by the sha256 of its body, so a block added, edited or deleted fails the gate until the declaration is updated",
+  "policy is per command, not per block: 40 run, 14 shape, 1 synopsis, so one illustrative line does not excuse the runnable ones beside it",
+  "a run command executes for real in a throwaway copy of the package against a declared exit status: docs/74's whole five-step reseal, every read-only graph.py subcommand the docs show, both check_dossier forms and both jq queries of the graph",
+  "a documented non-zero contract is pinned rather than hidden: graph.py goal and goal --json are declared to exit 1 because docs/77 says 1 means work remains toward RELEASE_ZERO, while goal ALPHA exits 0; a non-zero expectation with no stated reason is refused",
+  "a shape command is checked against the thing it invokes: graph.py parses the invocation with its own build_parser(), the sys.argv tools are checked for the flag literals they parse, cargo -p must name a real workspace member, pnpm a real package.json script; a program with no checker cannot be declared shape",
+  "a synopsis is a usage template (set <id> <STATE> [--evidence <ref> ...]): its subcommand and flags are checked against that parser, and a template carrying a real argument is refused as a command in disguise",
+  "a command moved out of a bash block into another block kind to escape the gate is refused; a declared example that invokes the gate is refused rather than left to recurse"
+ ],
+ "tests": [
+  "tools/test_dossier.py::ExampleRunnerTests (14 cases)",
+  "tools/example_runner.py (the gate itself, the dossier integrity job's third step)"
+ ],
+ "audit": "NOT-FOUND before: tools/ had no example runner, .github/workflows/ci.yml had no example step, and check_dossier.py checks references and hashes but never executes a command the docs print. Nothing even distinguished an example meant to run from one that cannot — AGENTS.md's own `graph.py set IMP-EV-0012 REAL_TESTING` names a task long since COMPLETE, so running it verbatim would be a backward move the tool refuses.",
+ "proof": "Every shell example the dossier gives an agent is now either executed for real in a copied package against a declared exit status, or checked against the real parser, workspace or package manifest it names. 11 blocks, 40 commands executed, 15 checked, wired as the dossier integrity job's third step so drift fails the merge.",
+ "negative_proof": "14 cases in ExampleRunnerTests, on minimal fixture packages so each names one cause: an undeclared block; a command hidden in a text block; a block that changed after its declaration; a declaration whose block is gone; a run command that stopped working; an unjustified non-zero expectation, then the same declaration with a reason passing; a shape without a reason; a program with no shape checker; a flag its tool no longer parses; an invocation graph.py's own parser rejects; a synopsis naming an unknown subcommand; one naming a flag the subcommand does not accept; one carrying a real argument; and a cargo example naming a package that is not a workspace member.",
+ "found_on_the_way": [
+  "docs/74's declared example runs tools/test_dossier.py, and a first draft put the real-package gate run inside that suite: the gate then ran itself, each level copying the package, until the 600-second timeout. The runner now marks its run subprocesses and refuses to start inside one; the fixture tests clear the marker because the runner is their subject.",
+  "the first cargo shape check shelled out to `cargo --list`, which passed on macOS and failed in CI because the dossier integrity job is deliberately Python-only and has no Rust toolchain. A gate that checks a document must not need a toolchain: the checker now verifies only that every -p names a real workspace member, which is this package's drift rather than cargo's.",
+  "SKILLS.md's `set <id> <STATE> [--evidence <ref> ...]` is a usage synopsis, not a command; the gate's first run refused it, which is what produced the third policy rather than an exemption."
+ ],
+ "limitations": "Scope is bash blocks in the governing root files, graph/PROJECT_GRAPH.md and docs/*.md; a command in another block kind is refused rather than exempt, and no other block kind holds one today (73 text blocks scanned). A shell construct the splitter does not model — a heredoc, a pipeline whose parts are separate commands, a loop — is handed to sh whole as one run command or needs shape. Shape checkers exist for python3 tools/*.py, cargo and pnpm; any other program must be declared run. The sys.argv tools are checked by the flag literal in their source, which catches a removed or renamed flag but not one whose meaning changed; graph.py is checked by its real parser. The gate costs about two minutes, most of it the nested test_dossier.py run docs/74's example declares. The requirement is read as covering the documentation, which had no gate; the committed evaluation corpora (benchmarks/gate-calibration/corpora) are already executed case by case against hidden oracles by EPR-019, so nothing was needed or changed there.",
+ "batch_commits": [
+  "a9457cd"
+ ],
+ "runs": [
+  "36163867870"
+ ],
+ "ci": {
+  "run_id": "36163867870",
+  "head_sha": "d9cbc2df9ac4e99a175606791c08fcd455254276",
+  "conclusion": "success",
+  "note": "every job green on macOS, Linux and Windows; the Windows rust job needed one re-run for a pre-existing flake unrelated to this change (qual_m4_2_e2e_006 asserts a SYNC_FALLBACK compaction, which only happens when the async one loses the race, so it fails on a fast runner — raised as its own task). The dossier integrity job, the only one this change can affect, was green on the first attempt.",
+  "json": "evidence/m10/IMP-EV-0212/ci-run-36163867870.json"
+ }
+}

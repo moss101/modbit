@@ -20345,8 +20345,54 @@
    "milestone": "M10",
    "qual": "QUAL-EV-0212",
    "source": "docs/41",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-36163867870",
+    "test:ExampleRunnerTests",
+    "commit:a9457cd",
+    "artifact:evidence/m10/IMP-EV-0212/TASK_CARD.md",
+    "artifact:evidence/m10/IMP-EV-0212/evidence.json",
+    "artifact:evidence/m10/IMP-EV-0212/ci-run-36163867870.json"
+   ],
+   "notes": [
+    {
+     "at": "2026-09-25T17:45:25Z",
+     "from": "NOT_STARTED",
+     "to": "AUDITING",
+     "note": "no example runner, no CI example step; nothing executed a command the docs print"
+    },
+    {
+     "at": "2026-09-25T17:45:25Z",
+     "from": "AUDITING",
+     "to": "IMPLEMENTING",
+     "note": "tools/example_runner.py with per-command run/shape/synopsis policies"
+    },
+    {
+     "at": "2026-09-25T17:45:25Z",
+     "from": "IMPLEMENTING",
+     "to": "WIRED",
+     "note": "the dossier integrity job's third step; graph.py exposes build_parser()"
+    },
+    {
+     "at": "2026-09-25T17:45:25Z",
+     "from": "WIRED",
+     "to": "REAL_TESTING",
+     "note": "40 commands executed in a copied package, 15 checked against the tool they invoke"
+    },
+    {
+     "at": "2026-09-25T17:45:25Z",
+     "from": "REAL_TESTING",
+     "to": "E2E_PROVEN",
+     "note": "14 negative proofs; drift, placeholders and unverifiable examples all fail"
+    },
+    {
+     "at": "2026-09-25T17:45:32Z",
+     "from": "E2E_PROVEN",
+     "to": "COMPLETE",
+     "note": "the declared-example gate is in force in CI; docs/74 as built"
+    }
+   ],
+   "status_changed_on": "2026-09-25T17:45:32Z"
   },
   {
    "id": "IMP-EV-0213",

@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 90,
-    "root_and_tooling": 1595,
-    "docs_bytes": 1374103
+    "root_and_tooling": 1597,
+    "docs_bytes": 1374486
   },
   "sections": [
     {
@@ -860,8 +860,8 @@
       "section": "live-state",
       "section_title": "Live state",
       "title": "Build Manifest",
-      "bytes": 13680,
-      "sha256": "852519eaa5ec491f770ea924b7721c7b197dcde58170b102cff483a3a21d11f3"
+      "bytes": 14063,
+      "sha256": "0cf048c482ecac66760cb24b4a889cd917c437f10c8d475e1cd843139e8a3202"
     }
   ],
   "root_and_tooling": [
@@ -1639,6 +1639,16 @@
       "path": "evidence/m10/IMP-EV-0212/TASK_CARD.md",
       "bytes": 9135,
       "sha256": "8b10424ae8371ba8480d07954c3464f4e5d670339c892c17b751d950317e912e"
+    },
+    {
+      "path": "evidence/m10/IMP-EV-0212/ci-run-36163867870.json",
+      "bytes": 1369,
+      "sha256": "4c9c41625fb3555d378eee0d785e130487463a846bbc8dfe0337c9726d795796"
+    },
+    {
+      "path": "evidence/m10/IMP-EV-0212/evidence.json",
+      "bytes": 6218,
+      "sha256": "ab24733d32e8dd6677e73efa1da1766d0988bc7e139091ecd9cd98588ec39df2"
     },
     {
       "path": "evidence/m2/IMP-EV-0011/TASK_CARD.md",
@@ -8793,12 +8803,12 @@
     {
       "path": "graph/PROJECT_GRAPH.md",
       "bytes": 41847,
-      "sha256": "01938c78e84a983f2600189d0aa22759afefa1722f5e199123f1af28ff912eb3"
+      "sha256": "94575e05e2c1dbc795417930f003e102d438a97e0c5656a943be8f01d6c2dd11"
     },
     {
       "path": "graph/project-graph.json",
-      "bytes": 1600198,
-      "sha256": "1f1e415b3f9d1def535e782fc8747e593a542b5f4e7d0d8a226f1aa166b340e3"
+      "bytes": 1601643,
+      "sha256": "7cbc833dcbb5c942ec4ab11c200423e4866bf2ac13a69c68c00663e6c1de3409"
     },
     {
       "path": "tools/build_graph.py",
