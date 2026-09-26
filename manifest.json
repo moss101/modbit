@@ -7,8 +7,8 @@
   "scope_rule": "docs/*.md, root *.md except MANIFEST.md, docs/decisions/*.md, graph JSON/Markdown, tools/*.py, evidence payloads; manifests exclude themselves and transient caches",
   "counts": {
     "docs": 90,
-    "root_and_tooling": 1634,
-    "docs_bytes": 1390398
+    "root_and_tooling": 1635,
+    "docs_bytes": 1396240
   },
   "sections": [
     {
@@ -311,8 +311,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Protocol, APIs, and Event Schemas",
-      "bytes": 52230,
-      "sha256": "3c422b66017c0311aac42170de1b02867b7fa5a8f9aa90779357cd5fc1d72b5b"
+      "bytes": 53615,
+      "sha256": "a55b9bfad1f03bdd53d266ea28f584258e94df95abec92993d8471c306c4618a"
     },
     {
       "path": "docs/31_DATABASE_AND_STORAGE_SCHEMA.md",
@@ -383,8 +383,8 @@
       "section": "implementation",
       "section_title": "Implementation specifications",
       "title": "Execution policy contracts and algorithms",
-      "bytes": 26711,
-      "sha256": "acf48cf6983b29b2f49620f50cf1d27927ad80439742a47ec234daebfafee639"
+      "bytes": 31168,
+      "sha256": "1d64711f6354bd794c2ddd0c8704be8ab49806a3e4eece603321994ed38f68bf"
     },
     {
       "path": "docs/39_UX_FLOWS_ONBOARDING_AND_INTERACTION_BUDGETS.md",
@@ -1589,6 +1589,11 @@
       "path": "evidence/m1/ci-run-34347242710.json",
       "bytes": 1231,
       "sha256": "a238323591f3fc267ff1b4ee8095929379787e5ff43f8b18753446a77c8f4b03"
+    },
+    {
+      "path": "evidence/m10/EPR-012/TASK_CARD.md",
+      "bytes": 6289,
+      "sha256": "16590a6f7cba62012dfca3d0e432c9da17e4996589f79695fb4042a5a17cc7db"
     },
     {
       "path": "evidence/m10/IMP-EV-0017/TASK_CARD.md",

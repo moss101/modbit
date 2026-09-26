@@ -46,6 +46,7 @@ mod onboarding;
 mod plans;
 mod probe;
 mod procedural;
+mod promotion;
 mod protocol;
 mod pull_request;
 mod replay;

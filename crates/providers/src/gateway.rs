@@ -224,6 +224,10 @@ pub struct ProviderGateway {
     /// The active Model Registry, when a signed configuration has been
     /// activated. Absent means the build's own defaults are in force.
     registry: Arc<Mutex<Option<crate::registry::ModelRegistry>>>,
+    /// REQ-EPR-012: a promoted generation in its canary stage, beside the
+    /// production one. Routing uses it only for requests whose policy in
+    /// force allows canary routing; replacing production ends it.
+    canary: Arc<Mutex<Option<crate::registry::ModelRegistry>>>,
     policy: Arc<OrgModelPolicy>,
 }
 
@@ -330,6 +334,7 @@ impl ProviderGateway {
                 .build()
                 .expect("reqwest client"),
             registry: Arc::new(Mutex::new(None)),
+            canary: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -406,10 +411,125 @@ impl ProviderGateway {
         Ok(registry)
     }
 
+    /// Install an already verified registry, as a compare-and-swap on the
+    /// active generation when `expected` is given (REQ-EPR-012: two
+    /// activations cannot both win).
+    ///
+    /// # Errors
+    /// The active generation (empty for none) when it is not `expected`.
+    pub fn install_registry(
+        &self,
+        registry: crate::registry::ModelRegistry,
+        expected: Option<&str>,
+    ) -> Result<(), String> {
+        let mut active = self.registry.lock().expect("registry");
+        let current = active
+            .as_ref()
+            .map(|r| r.generation().to_owned())
+            .unwrap_or_default();
+        if let Some(expected) = expected
+            && expected != current
+        {
+            return Err(current);
+        }
+        *active = Some(registry);
+        // A canary is measured against the generation it would replace; a
+        // new production generation ends it.
+        *self.canary.lock().expect("canary") = None;
+        Ok(())
+    }
+
     /// The active Model Registry, when one has been activated.
     #[must_use]
     pub fn registry(&self) -> Option<crate::registry::ModelRegistry> {
         self.registry.lock().expect("registry").clone()
+    }
+
+    /// The generation in its canary stage, when there is one.
+    #[must_use]
+    pub fn canary(&self) -> Option<crate::registry::ModelRegistry> {
+        self.canary.lock().expect("canary").clone()
+    }
+
+    /// Install a verified generation as the canary beside production: a
+    /// compare-and-swap on the production generation, refused while another
+    /// canary is running.
+    ///
+    /// # Errors
+    /// What is in the way: the production generation that is not
+    /// `expected_production`, or the canary already running.
+    pub fn install_canary(
+        &self,
+        registry: crate::registry::ModelRegistry,
+        expected_production: &str,
+    ) -> Result<(), String> {
+        let active = self.registry.lock().expect("registry");
+        let current = active
+            .as_ref()
+            .map(|r| r.generation().to_owned())
+            .unwrap_or_default();
+        if current.is_empty() || current != expected_production {
+            return Err(format!(
+                "production generation `{current}` is active, not `{expected_production}`"
+            ));
+        }
+        let mut canary = self.canary.lock().expect("canary");
+        if let Some(c) = canary.as_ref() {
+            return Err(format!(
+                "generation `{}` is already in its canary",
+                c.generation()
+            ));
+        }
+        *canary = Some(registry);
+        Ok(())
+    }
+
+    /// End the canary `expected` without promoting it.
+    ///
+    /// # Errors
+    /// The canary running (empty for none) when it is not `expected`.
+    pub fn clear_canary(&self, expected: &str) -> Result<crate::registry::ModelRegistry, String> {
+        let mut canary = self.canary.lock().expect("canary");
+        match canary.as_ref() {
+            Some(c) if c.generation() == expected => Ok(canary.take().expect("checked")),
+            other => Err(other.map(|c| c.generation().to_owned()).unwrap_or_default()),
+        }
+    }
+
+    /// Promote the canary `canary_generation` to production, in one step, as
+    /// a compare-and-swap on both.
+    ///
+    /// # Errors
+    /// The canary is not the one named, or production is not
+    /// `expected_production`.
+    pub fn promote_canary(
+        &self,
+        canary_generation: &str,
+        expected_production: &str,
+    ) -> Result<crate::registry::ModelRegistry, String> {
+        let mut active = self.registry.lock().expect("registry");
+        let mut canary = self.canary.lock().expect("canary");
+        let current = active
+            .as_ref()
+            .map(|r| r.generation().to_owned())
+            .unwrap_or_default();
+        if current != expected_production {
+            return Err(format!(
+                "production generation `{current}` is active, not `{expected_production}`"
+            ));
+        }
+        match canary.as_ref() {
+            Some(c) if c.generation() == canary_generation => {}
+            other => {
+                return Err(format!(
+                    "the canary running is `{}`, not `{canary_generation}`",
+                    other.map(|c| c.generation().to_owned()).unwrap_or_default()
+                ));
+            }
+        }
+        let promoted = canary.take().expect("checked");
+        *active = Some(promoted.clone());
+        Ok(promoted)
     }
 
     /// What one endpoint's catalog says about a model, when it lists it.
@@ -466,6 +586,7 @@ impl ProviderGateway {
         // A configuration generation can withdraw a binding between one
         // dispatch and the next, so the registry is consulted per request
         // rather than at startup (REQ-EPR-002).
+        let canary = self.canary.lock().expect("canary").clone();
         if let Some(registry) = self.registry.lock().expect("registry").as_ref() {
             let wanted = crate::registry::Needs {
                 tools: needs.tools || !req.tool_projection.is_empty(),
@@ -474,9 +595,18 @@ impl ProviderGateway {
                 min_context_tokens: 0,
                 execution_profile: None,
             };
-            if let Err((code, detail)) =
-                registry.check_dispatch(&ep.name, &req.model_policy.model, "solver", &wanted)
-            {
+            // A binding the canary holds passes too: routing gives it only
+            // to requests whose policy allows canary routing, and the canary
+            // keeps every revocation production has (REQ-EPR-012).
+            let checked =
+                registry.check_dispatch(&ep.name, &req.model_policy.model, "solver", &wanted);
+            let checked = match (checked, canary.as_ref()) {
+                (Err(e), Some(c)) => c
+                    .check_dispatch(&ep.name, &req.model_policy.model, "solver", &wanted)
+                    .map_err(|_| e),
+                (r, _) => r,
+            };
+            if let Err((code, detail)) = checked {
                 return Err(RouteError::RegistryRefused {
                     endpoint: ep.name.clone(),
                     model: req.model_policy.model.clone(),

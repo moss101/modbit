@@ -5248,9 +5248,21 @@ async fn create_task_with_profile(
     id: u8,
     profile: &str,
 ) -> Id {
+    create_task_with_profile_id(c, session, g, root, id16(id), profile).await
+}
+
+/// `create_task_with_profile` with any command id.
+async fn create_task_with_profile_id(
+    c: &mut Client,
+    session: &Id,
+    g: Option<u64>,
+    root: &str,
+    command_id: Id,
+    profile: &str,
+) -> Id {
     let ack = c
         .command(envelope_fenced(
-            id16(id),
+            command_id,
             "CreateTask",
             CreateTask {
                 session_id: Some(session.clone()),
@@ -14308,6 +14320,7 @@ async fn qual_epr_002_a_signed_registry_activates_at_runtime_and_a_revocation_st
         fallbacks: vec![],
     };
     let document = |generation: &str, revoke_mini: bool| RegistryDocument {
+        promotion: None,
         schema_version: REGISTRY_SCHEMA_VERSION,
         registry_generation: generation.into(),
         stats_version: "stats-2026-09-05".into(),
@@ -14368,6 +14381,7 @@ async fn qual_epr_002_a_signed_registry_activates_at_runtime_and_a_revocation_st
                 "ActivateModelRegistry",
                 ActivateModelRegistry {
                     signed_json: signed.to_owned(),
+                    expected_generation: String::new(),
                 }
                 .encode_to_vec(),
             ))
@@ -14925,6 +14939,7 @@ async fn qual_epr_016_feasibility_is_measured_at_admission_under_pinned_versions
         fallbacks: vec![],
     };
     let document = RegistryDocument {
+        promotion: None,
         schema_version: REGISTRY_SCHEMA_VERSION,
         registry_generation: "registry-feas-1".into(),
         stats_version: "stats-1".into(),
@@ -15038,6 +15053,7 @@ async fn qual_epr_016_feasibility_is_measured_at_admission_under_pinned_versions
             "ActivateModelRegistry",
             ActivateModelRegistry {
                 signed_json: signed.clone(),
+                expected_generation: String::new(),
             }
             .encode_to_vec(),
         ))
@@ -15255,6 +15271,7 @@ async fn qual_epr_004_the_compiler_runs_through_core_and_identical_inputs_give_i
             }
         };
     let document = RegistryDocument {
+        promotion: None,
         schema_version: REGISTRY_SCHEMA_VERSION,
         registry_generation: "registry-compile-e2e".into(),
         stats_version: "stats-1".into(),
@@ -15314,6 +15331,7 @@ async fn qual_epr_004_the_compiler_runs_through_core_and_identical_inputs_give_i
             "ActivateModelRegistry",
             ActivateModelRegistry {
                 signed_json: signed.clone(),
+                expected_generation: String::new(),
             }
             .encode_to_vec(),
         ))
@@ -15564,6 +15582,7 @@ async fn qual_epr_005_new_runs_go_through_the_compiled_initial_leg_and_keep_the_
         fallbacks: vec![],
     };
     let document = |generation: &str, floor: f64| RegistryDocument {
+        promotion: None,
         schema_version: REGISTRY_SCHEMA_VERSION,
         registry_generation: generation.into(),
         stats_version: "stats-1".into(),
@@ -15755,6 +15774,7 @@ async fn qual_epr_005_new_runs_go_through_the_compiled_initial_leg_and_keep_the_
             "ActivateModelRegistry",
             ActivateModelRegistry {
                 signed_json: sign(&document("registry-live", 0.72)),
+                expected_generation: String::new(),
             }
             .encode_to_vec(),
         ))
@@ -15867,6 +15887,7 @@ async fn qual_epr_005_new_runs_go_through_the_compiled_initial_leg_and_keep_the_
             "ActivateModelRegistry",
             ActivateModelRegistry {
                 signed_json: sign(&document("registry-canary", 0.90)),
+                expected_generation: String::new(),
             }
             .encode_to_vec(),
         ))
@@ -15885,6 +15906,7 @@ async fn qual_epr_005_new_runs_go_through_the_compiled_initial_leg_and_keep_the_
             "ActivateModelRegistry",
             ActivateModelRegistry {
                 signed_json: sign(&document("registry-rollback", 0.72)),
+                expected_generation: String::new(),
             }
             .encode_to_vec(),
         ))
@@ -15918,6 +15940,7 @@ async fn qual_epr_005_new_runs_go_through_the_compiled_initial_leg_and_keep_the_
             "ActivateModelRegistry",
             ActivateModelRegistry {
                 signed_json: sign(&document("registry-rollback", 0.72)),
+                expected_generation: String::new(),
             }
             .encode_to_vec(),
         ))
@@ -21413,6 +21436,7 @@ async fn qual_epr_009_routes_reevaluate_at_boundaries_on_cache_economics_and_sur
             fallbacks: vec![],
         };
     let document = RegistryDocument {
+        promotion: None,
         schema_version: REGISTRY_SCHEMA_VERSION,
         registry_generation: "registry-epochs".into(),
         stats_version: "stats-1".into(),
@@ -21484,6 +21508,7 @@ async fn qual_epr_009_routes_reevaluate_at_boundaries_on_cache_economics_and_sur
                 "ActivateModelRegistry",
                 ActivateModelRegistry {
                     signed_json: signed.to_owned(),
+                    expected_generation: String::new(),
                 }
                 .encode_to_vec(),
             ))
@@ -24197,6 +24222,7 @@ async fn qual_epr_006_a_quality_rejection_continues_the_run_on_the_prevalidated_
         fallbacks: vec![],
     };
     let document = RegistryDocument {
+        promotion: None,
         schema_version: REGISTRY_SCHEMA_VERSION,
         registry_generation: "registry-cascade".into(),
         stats_version: "stats-1".into(),
@@ -24280,6 +24306,7 @@ async fn qual_epr_006_a_quality_rejection_continues_the_run_on_the_prevalidated_
                 "ActivateModelRegistry",
                 ActivateModelRegistry {
                     signed_json: signed.to_owned(),
+                    expected_generation: String::new(),
                 }
                 .encode_to_vec(),
             ))
@@ -28055,6 +28082,7 @@ async fn qual_epr_007_the_reviewer_slot_activates_on_the_gate_validates_findings
         fallbacks: vec![],
     };
     let document = RegistryDocument {
+        promotion: None,
         schema_version: REGISTRY_SCHEMA_VERSION,
         registry_generation: "registry-critique".into(),
         stats_version: "stats-1".into(),
@@ -28153,6 +28181,7 @@ async fn qual_epr_007_the_reviewer_slot_activates_on_the_gate_validates_findings
             "ActivateModelRegistry",
             ActivateModelRegistry {
                 signed_json: signed.clone(),
+                expected_generation: String::new(),
             }
             .encode_to_vec(),
         ))
@@ -37078,6 +37107,7 @@ fn accounting_registry(
     };
     let now = modbit_domain::Timestamp::now().0;
     let document = RegistryDocument {
+        promotion: None,
         schema_version: REGISTRY_SCHEMA_VERSION,
         registry_generation: generation.into(),
         stats_version: "stats-1".into(),
@@ -37182,6 +37212,7 @@ async fn activate_registry(c: &mut Client, signed: &str) {
             "ActivateModelRegistry",
             ActivateModelRegistry {
                 signed_json: signed.to_owned(),
+                expected_generation: String::new(),
             }
             .encode_to_vec(),
         ))
@@ -43183,6 +43214,946 @@ async fn m10_1_the_dashboard_is_the_sessions_ledger_ladder_and_log_aggregated() 
         "{:?}",
         d.providers
     );
+    drop(c);
+    core.kill();
+}
+
+/// A signed registry like `accounting_registry`'s, changed and re-signed:
+/// its generation, auto floor, statistics version, revoked models and
+/// promotion section.
+fn resigned_registry(
+    base: &str,
+    key: &ed25519_dalek::SigningKey,
+    generation: &str,
+    floor: f64,
+    stats: &str,
+    revoked: &[&str],
+    promotion: Option<serde_json::Value>,
+) -> String {
+    use ed25519_dalek::Signer;
+    let signed: serde_json::Value = serde_json::from_str(base).unwrap();
+    let mut doc: serde_json::Value =
+        serde_json::from_str(signed["document_json"].as_str().unwrap()).unwrap();
+    doc["registry_generation"] = serde_json::json!(generation);
+    doc["stats_version"] = serde_json::json!(stats);
+    for f in doc["quality_floors"].as_array_mut().unwrap() {
+        if f["mode"] == "auto" {
+            f["min_quality"] = serde_json::json!(floor);
+        }
+    }
+    for e in doc["entries"].as_array_mut().unwrap() {
+        if revoked.contains(&e["model"].as_str().unwrap()) {
+            e["revoked"] = serde_json::json!(true);
+        }
+    }
+    if let Some(p) = promotion {
+        doc["promotion"] = p;
+    }
+    let json = doc.to_string();
+    serde_json::json!({
+        "key_id": "ops",
+        "signature_hex": hex::encode(key.sign(json.as_bytes()).to_bytes()),
+        "document_json": json,
+    })
+    .to_string()
+}
+
+/// QUAL-EPR-012 / EPR-E2E-012 / EPR-FI-012 (REQ-EPR-012; docs/27 §12-14,
+/// docs/38 "PromoteRoutingPolicy", docs/61): a candidate routing policy is
+/// promoted only through the whole pipeline, against a live Core.
+///
+/// Evidence is real: 30 verified tasks in a train session and 30 in a
+/// separate holdout session are published as baselines and materialized as
+/// two statistics versions; the offline Policy Lab (`SearchPolicy`) searches
+/// the candidate's auto floor through the router's own compiler on the train
+/// snapshot and confirms its choice on the untouched holdout; a routed
+/// request is replayed isolated (EPR-011); the EPR-019 suite measures the
+/// gate calibration. The candidate is signed with the floor the search chose.
+///
+/// Every missing or unsafe piece blocks activation: a stale compare-and-swap,
+/// a promotion naming another previous-good, a lowered floor (even one a
+/// search chose), exploration reaching critical requests or beyond its bound,
+/// no or unknown replays, a candidate joining statistics other than the ones
+/// searched, a candidate that is not the document searched, a choice that
+/// did not hold on a thin holdout, and an unapproved or unmet threshold
+/// profile. The candidate then runs as a canary beside production — ended
+/// once, restored across a Core restart, and seen only by a task whose
+/// repository's policy allows canary routing — and becomes production only
+/// on that task's observed request, as a compare-and-swap. The earlier
+/// request keeps the plan of the generation it ran under. A later generation
+/// revokes a model; rolling back keeps it revoked, and a restarted Core
+/// restores that without being told. (Without a host sandbox — Windows — no
+/// replay can be observed, so the promotion is refused for missing evidence
+/// and the test ends there.)
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn qual_epr_012_a_policy_is_searched_canaried_and_promoted_only_on_its_evidence_and_rolls_back_without_resurrecting_revocations()
+ {
+    use modbit_protocol::v1::{
+        ActivateModelRegistry, CounterfactualReplayView, GetModelRegistry,
+        MaterializeOutcomeStatistics, ModelRegistryView, OutcomeBaselinePublished,
+        OutcomeStatisticsView, PolicySearchView, PromoteCanary, PromotionEvidenceRecorded,
+        PublishOutcomeBaseline, RecordPromotionEvidence, ReplayCounterfactual,
+        RollbackModelRegistry, SearchPolicy, StartTask, TaskRunStarted,
+    };
+    use serde_json::json;
+    fn rid() -> Id {
+        Id {
+            value: (0..16).map(|_| rand::random::<u8>()).collect(),
+        }
+    }
+    let key = ed25519_dalek::SigningKey::from_bytes(&[82u8; 32]);
+    let keys = format!("ops:{}", hex::encode(key.verifying_key().to_bytes()));
+    let base = accounting_registry(
+        "policy-a",
+        &key,
+        &[("gpt-5-mini", 25, 5, 200), ("gpt-5", 125, 25, 1_000)],
+    );
+    let files = [
+        ("notes.txt", "line 1\n"),
+        ("check.sh", "grep -q '^line 1' notes.txt\n"),
+        (
+            ".modbit/verification.json",
+            "{\"commands\": [{\"id\": \"notes\", \"argv\": [\"sh\", \"check.sh\"]}]}",
+        ),
+    ];
+    let (_repo, root) = plain_repo(&files);
+    // The canary repository's own policy allows canary routing.
+    let (_canary_repo, canary_root) = plain_repo(&[
+        files[0],
+        files[1],
+        files[2],
+        (
+            ".modbit/config.json",
+            "{\"permissions\": {\"routing.canary\": \"ALLOW\"}}",
+        ),
+    ]);
+    let step = |calls: serde_json::Value| json!({ "calls": calls });
+    let script = |who: &str| {
+        vec![
+            step(
+                json!([{"name": "plan.update", "args": {"outcome": "annotate", "expected_files": ["notes.txt"]}}]),
+            ),
+            step(json!([{"name": "fs.read", "args": {"path": "notes.txt"}}])),
+            step(
+                json!([{"name": "change.apply", "args": {"path": "notes.txt", "op": "replace", "content": format!("line 1 by {who}\n")}}]),
+            ),
+            step(
+                json!([{"name": "task.complete", "args": {"summary": "annotated", "self_review": {"findings": []}}}]),
+            ),
+        ]
+    };
+    let (model, _) = scripted_model_reactive(
+        vec![],
+        vec![],
+        None,
+        None,
+        vec![],
+        false,
+        vec![
+            ("gpt-5-mini".to_owned(), script("the request")),
+            ("gpt-5".to_owned(), script("the replay")),
+        ],
+    )
+    .await;
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(
+        dir.path().join("admin-config.json"),
+        r#"{"permissions": {"eval.replay": "ALLOW"}}"#,
+    )
+    .unwrap();
+    let env: Vec<(&str, &str)> = vec![
+        ("MODBIT_OPENAI_BASE_URL", model.as_str()),
+        ("OPENAI_API_KEY", ""),
+        ("ANTHROPIC_API_KEY", ""),
+        ("MODBIT_REGISTRY_KEYS", keys.as_str()),
+    ];
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    async fn call<T: prost::Message + Default>(
+        c: &mut Client,
+        kind: &str,
+        g: Option<u64>,
+        body: Vec<u8>,
+    ) -> T {
+        let ack = c
+            .command(envelope_fenced(rid(), kind, body, g))
+            .await
+            .unwrap();
+        Client::result(&ack).unwrap_or_else(|e| panic!("{kind}: {e:?}"))
+    }
+    async fn activate(c: &mut Client, signed: &str, expected: &str) -> ModelRegistryView {
+        call(
+            c,
+            "ActivateModelRegistry",
+            None,
+            ActivateModelRegistry {
+                signed_json: signed.into(),
+                expected_generation: expected.into(),
+            }
+            .encode_to_vec(),
+        )
+        .await
+    }
+    async fn registry(c: &mut Client) -> ModelRegistryView {
+        call(
+            c,
+            "GetModelRegistry",
+            None,
+            GetModelRegistry {}.encode_to_vec(),
+        )
+        .await
+    }
+    async fn evidence(c: &mut Client, kind: &str, json: &str) -> String {
+        call::<PromotionEvidenceRecorded>(
+            c,
+            "RecordPromotionEvidence",
+            None,
+            RecordPromotionEvidence {
+                kind: kind.into(),
+                json: json.into(),
+            }
+            .encode_to_vec(),
+        )
+        .await
+        .evidence_ref
+    }
+    /// A task pinned to gpt-5-mini, run to its end.
+    async fn run_task(c: &mut Client, session: &Id, g: Option<u64>, root: &str) -> Id {
+        let task = create_task_with_profile_id(c, session, g, root, rid(), "local_trusted").await;
+        let _: TaskRunStarted = call(
+            c,
+            "StartTask",
+            g,
+            StartTask {
+                task_id: Some(task.clone()),
+                endpoint: String::new(),
+                model: "gpt-5-mini".into(),
+                max_turns: 6,
+                max_tool_calls: 0,
+                max_no_progress_turns: 6,
+                skills: vec![],
+            }
+            .encode_to_vec(),
+        )
+        .await;
+        let st = wait_task(c, &task, 180).await;
+        assert!(!st.loop_alive, "{st:?}");
+        task
+    }
+    /// `n` verified tasks in a fresh session, published and materialized as
+    /// `version`.
+    async fn observed(c: &mut Client, root: &str, n: usize, version: &str) -> Id {
+        let (session, _) = create_session(c, rid()).await;
+        let g = lease_for(&session);
+        for _ in 0..n {
+            run_task(c, &session, g, root).await;
+        }
+        let _: OutcomeBaselinePublished = call(
+            c,
+            "PublishOutcomeBaseline",
+            g,
+            PublishOutcomeBaseline {
+                session_id: Some(session.clone()),
+                repository_revision: String::new(),
+            }
+            .encode_to_vec(),
+        )
+        .await;
+        let s: OutcomeStatisticsView = call(
+            c,
+            "MaterializeOutcomeStatistics",
+            g,
+            MaterializeOutcomeStatistics {
+                session_id: Some(session.clone()),
+                stats_version: version.into(),
+            }
+            .encode_to_vec(),
+        )
+        .await;
+        assert!(s.materialized && s.samples as usize == n, "{s:?}");
+        session
+    }
+
+    let a = activate(&mut c, &base, "").await;
+    assert_eq!(
+        (a.active, a.activation.as_str()),
+        (true, "ACTIVATED"),
+        "{a:?}"
+    );
+
+    // A routed request, and an isolated replay of its alternative.
+    let (session, _) = create_session(&mut c, rid()).await;
+    let g = lease_for(&session);
+    let task =
+        create_task_with_profile_id(&mut c, &session, g, &root, rid(), "local_trusted").await;
+    let _: TaskRunStarted =
+        Client::result(&c.command(start_task(&task, 0x23, g)).await.unwrap()).unwrap();
+    let st = wait_for_state(&mut c, &task, "ReadyForReview", 180).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+    let evs = task_events(&core, &session, &task).await;
+    let decision = evs
+        .iter()
+        .find(|(_, t, _)| t == "RoutingDecisionRecorded")
+        .map(|(_, _, p)| p.clone())
+        .expect("a routing decision");
+    assert!(
+        decision["choice_probability_bp"].as_u64().unwrap_or(0) > 0,
+        "propensity recorded: {decision}"
+    );
+    let alternative = decision["candidates"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|k| k["bindings"] == json!(["openai/gpt-5"]) && k["hard_eligible"] == true)
+        .map(|k| k["plan_id"].as_str().unwrap().to_owned())
+        .unwrap_or_else(|| panic!("{decision:#}"));
+    let started = c
+        .command(envelope_fenced(
+            rid(),
+            "ReplayCounterfactual",
+            ReplayCounterfactual {
+                task_id: Some(task.clone()),
+                plan_id: alternative,
+            }
+            .encode_to_vec(),
+            g,
+        ))
+        .await;
+    let replay_ref = if cfg!(windows) {
+        String::new()
+    } else {
+        let v: CounterfactualReplayView = Client::result(&started.unwrap()).unwrap();
+        let st = wait_task(&mut c, v.replay_task_id.as_ref().unwrap(), 180).await;
+        assert!(!st.loop_alive, "{st:?}");
+        format!("{}:{}", uuid_of(&session), v.replay_id)
+    };
+
+    // The statistics: train, an untouched holdout, and a thin holdout.
+    let train = observed(&mut c, &root, 30, "train-1").await;
+    let holdout = observed(&mut c, &root, 30, "holdout-1").await;
+    let thin = observed(&mut c, &root, 2, "holdout-thin").await;
+
+    // The calibration, measured by the EPR-019 suite, and threshold profiles.
+    let root_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .canonicalize()
+        .unwrap();
+    let work = tempfile::tempdir().unwrap();
+    let bundle = modbit_bench_gate_calibration::calibrate(
+        &root_dir,
+        &root_dir.join("benchmarks/gate-calibration/corpora"),
+        work.path(),
+        None,
+        0,
+    )
+    .await
+    .expect("the holdout calibrates");
+    let calibration = evidence(
+        &mut c,
+        "CALIBRATION",
+        &serde_json::to_string(&bundle).unwrap(),
+    )
+    .await;
+    let profile = |approved_by: &str, limit: f64, min: u32| {
+        json!({
+            "profile_id": "test-only", "approved_by": approved_by, "approved_at": "2026-09-26",
+            "method": "wilson-95-upper",
+            "limits": modbit_bench_gate_calibration::METRICS.iter().map(|m| ((*m).to_owned(), limit)).collect::<std::collections::BTreeMap<_, _>>(),
+            "min_samples": modbit_bench_gate_calibration::METRICS.iter().map(|m| ((*m).to_owned(), min)).collect::<std::collections::BTreeMap<_, _>>(),
+        })
+        .to_string()
+    };
+    let lenient = evidence(
+        &mut c,
+        "THRESHOLD_PROFILE",
+        &profile("test fixture (not an approval)", 1.0, 1),
+    )
+    .await;
+    let strict = evidence(
+        &mut c,
+        "THRESHOLD_PROFILE",
+        &profile("test fixture (not an approval)", 0.2, 30),
+    )
+    .await;
+    let unapproved = evidence(&mut c, "THRESHOLD_PROFILE", &profile("", 1.0, 1)).await;
+    // A search report is not accepted as submitted evidence: only
+    // SearchPolicy writes one.
+    let ack = c
+        .command(envelope(
+            rid(),
+            "RecordPromotionEvidence",
+            RecordPromotionEvidence {
+                kind: "SEARCH_REPORT".into(),
+                json: "{}".into(),
+            }
+            .encode_to_vec(),
+        ))
+        .await;
+    assert!(ack.is_err(), "{ack:?}");
+
+    // The offline search, through the router's compiler.
+    let document = |generation: &str, floor: f64, stats: &str| -> String {
+        let signed: serde_json::Value = serde_json::from_str(&resigned_registry(
+            &base,
+            &key,
+            generation,
+            floor,
+            stats,
+            &[],
+            None,
+        ))
+        .unwrap();
+        signed["document_json"].as_str().unwrap().to_owned()
+    };
+    let search =
+        |generation: &str, floors: Vec<f64>, holdout_session: &Id, holdout_version: &str| {
+            let spec = json!({
+                "candidate_generation": generation, "target": 0.8, "floors": floors,
+                "train_stats_version": "train-1", "holdout_stats_version": holdout_version,
+            })
+            .to_string();
+            SearchPolicy {
+                spec_json: spec,
+                candidate_document_json: document(generation, 0.72, "train-1"),
+                train_session_id: Some(train.clone()),
+                holdout_session_id: Some(holdout_session.clone()),
+            }
+            .encode_to_vec()
+        };
+    let chosen: PolicySearchView = call(
+        &mut c,
+        "SearchPolicy",
+        None,
+        search("policy-b", vec![0.72, 0.8, 0.95], &holdout, "holdout-1"),
+    )
+    .await;
+    assert_eq!(
+        (chosen.verdict.as_str(), chosen.chosen_floor),
+        ("FEASIBLE", 0.8),
+        "{chosen:?}"
+    );
+    let report: serde_json::Value = serde_json::from_str(&chosen.report_json).unwrap();
+    assert_eq!(
+        report["evaluated"][2]["code"], "QUALITY_FLOOR_INFEASIBLE",
+        "{report:#}"
+    );
+    assert_eq!(
+        report["chosen"]["selected"],
+        json!(["openai/gpt-5-mini"]),
+        "{report:#}"
+    );
+    let low: PolicySearchView = call(
+        &mut c,
+        "SearchPolicy",
+        None,
+        search("policy-low", vec![0.6], &holdout, "holdout-1"),
+    )
+    .await;
+    assert_eq!(
+        (low.verdict.as_str(), low.chosen_floor),
+        ("FEASIBLE", 0.6),
+        "{low:?}"
+    );
+    let regressed: PolicySearchView = call(
+        &mut c,
+        "SearchPolicy",
+        None,
+        search("policy-thin", vec![0.8], &thin, "holdout-thin"),
+    )
+    .await;
+    assert_eq!(regressed.verdict, "HOLDOUT_REGRESSION", "{regressed:?}");
+    let same: PolicySearchView = call(
+        &mut c,
+        "SearchPolicy",
+        None,
+        search("policy-b", vec![0.8], &train, "train-1"),
+    )
+    .await;
+    assert_eq!(
+        same.refusal_code, "SEARCH_SPEC_INVALID",
+        "the holdout is not the train partition: {same:?}"
+    );
+
+    let promotion = |previous: &str,
+                     report_ref: &str,
+                     profile_ref: &str,
+                     replays: Vec<String>,
+                     exploration: (u32, bool),
+                     canary: u32| {
+        json!({
+            "previous_good_generation": previous,
+            "calibration_ref": calibration,
+            "threshold_profile_ref": profile_ref,
+            "search_report_ref": report_ref,
+            "replays": replays,
+            "exploration_bp": exploration.0,
+            "exploration_critical": exploration.1,
+            "min_canary_requests": canary,
+        })
+    };
+    let replays = || {
+        if replay_ref.is_empty() {
+            vec![]
+        } else {
+            vec![replay_ref.clone()]
+        }
+    };
+    let good_promotion = || {
+        promotion(
+            "policy-a",
+            &chosen.report_ref,
+            &lenient,
+            replays(),
+            (0, false),
+            1,
+        )
+    };
+    let signed = |generation: &str, floor: f64, stats: &str, p: serde_json::Value| {
+        resigned_registry(&base, &key, generation, floor, stats, &[], Some(p))
+    };
+    let refused = |v: &ModelRegistryView| (v.active, v.refusal_code.clone());
+
+    // EPR-FI-012: every missing or unsafe piece blocks activation.
+    if cfg!(windows) {
+        let v = activate(
+            &mut c,
+            &signed("policy-b", 0.8, "train-1", good_promotion()),
+            "policy-a",
+        )
+        .await;
+        assert_eq!(
+            refused(&v),
+            (false, "POLICY_EVIDENCE_MISSING".into()),
+            "{v:?}"
+        );
+        assert_eq!(registry(&mut c).await.registry_generation, "policy-a");
+        return;
+    }
+    let with = |f: &dyn Fn(&mut serde_json::Value)| {
+        let mut p = good_promotion();
+        f(&mut p);
+        p
+    };
+    // A candidate that is not the document searched: gpt-5-mini repriced.
+    let repriced = {
+        use ed25519_dalek::Signer;
+        let outer: serde_json::Value =
+            serde_json::from_str(&signed("policy-b", 0.8, "train-1", good_promotion())).unwrap();
+        let mut doc: serde_json::Value =
+            serde_json::from_str(outer["document_json"].as_str().unwrap()).unwrap();
+        doc["entries"][0]["economics"]["input_per_mtok_minor"] = json!(26);
+        let json = doc.to_string();
+        json!({"key_id": "ops", "signature_hex": hex::encode(key.sign(json.as_bytes()).to_bytes()), "document_json": json}).to_string()
+    };
+    for (what, candidate, expected, code) in [
+        (
+            "a stale compare-and-swap",
+            signed("policy-b", 0.8, "train-1", good_promotion()),
+            "policy-x",
+            "REGISTRY_ACTIVATION_CONFLICT",
+        ),
+        (
+            "a promotion naming another previous-good",
+            signed(
+                "policy-b",
+                0.8,
+                "train-1",
+                with(&|p| p["previous_good_generation"] = json!("policy-z")),
+            ),
+            "policy-a",
+            "REGISTRY_ACTIVATION_CONFLICT",
+        ),
+        (
+            "a lowered quality floor the search chose",
+            signed(
+                "policy-low",
+                0.6,
+                "train-1",
+                with(&|p| p["search_report_ref"] = json!(low.report_ref)),
+            ),
+            "policy-a",
+            "POLICY_QUALITY_REGRESSION",
+        ),
+        (
+            "a floor the search did not choose",
+            signed("policy-b", 0.72, "train-1", good_promotion()),
+            "policy-a",
+            "POLICY_EVIDENCE_MISSING",
+        ),
+        (
+            "exploration of critical requests",
+            signed(
+                "policy-b",
+                0.8,
+                "train-1",
+                with(&|p| {
+                    p["exploration_bp"] = json!(100);
+                    p["exploration_critical"] = json!(true);
+                }),
+            ),
+            "policy-a",
+            "UNSAFE_EXPLORATION",
+        ),
+        (
+            "unbounded exploration",
+            signed(
+                "policy-b",
+                0.8,
+                "train-1",
+                with(&|p| p["exploration_bp"] = json!(5_000)),
+            ),
+            "policy-a",
+            "UNSAFE_EXPLORATION",
+        ),
+        (
+            "no canary",
+            signed(
+                "policy-b",
+                0.8,
+                "train-1",
+                with(&|p| p["min_canary_requests"] = json!(0)),
+            ),
+            "policy-a",
+            "POLICY_EVIDENCE_MISSING",
+        ),
+        (
+            "no replay",
+            signed(
+                "policy-b",
+                0.8,
+                "train-1",
+                with(&|p| p["replays"] = json!([])),
+            ),
+            "policy-a",
+            "POLICY_EVIDENCE_MISSING",
+        ),
+        (
+            "an unknown replay",
+            signed(
+                "policy-b",
+                0.8,
+                "train-1",
+                with(&|p| {
+                    p["replays"] = json!([format!("{}:replay-nobody-ran", uuid_of(&session))])
+                }),
+            ),
+            "policy-a",
+            "POLICY_EVIDENCE_MISSING",
+        ),
+        (
+            "statistics other than the ones searched",
+            signed("policy-b", 0.8, "stats-1", good_promotion()),
+            "policy-a",
+            "REGISTRY_INCOMPATIBLE",
+        ),
+        (
+            "a candidate that is not the document searched",
+            repriced,
+            "policy-a",
+            "POLICY_EVIDENCE_MISSING",
+        ),
+        (
+            "a choice that regressed on the holdout",
+            signed(
+                "policy-thin",
+                0.8,
+                "train-1",
+                with(&|p| p["search_report_ref"] = json!(regressed.report_ref)),
+            ),
+            "policy-a",
+            "POLICY_QUALITY_REGRESSION",
+        ),
+        (
+            "an unapproved profile",
+            signed(
+                "policy-b",
+                0.8,
+                "train-1",
+                with(&|p| p["threshold_profile_ref"] = json!(unapproved)),
+            ),
+            "policy-a",
+            "POLICY_EVIDENCE_MISSING",
+        ),
+        (
+            "a profile the measured gate does not meet",
+            signed(
+                "policy-b",
+                0.8,
+                "train-1",
+                with(&|p| p["threshold_profile_ref"] = json!(strict)),
+            ),
+            "policy-a",
+            "POLICY_EVIDENCE_MISSING",
+        ),
+    ] {
+        let v = activate(&mut c, &candidate, expected).await;
+        assert_eq!(refused(&v), (false, code.to_owned()), "{what}: {v:?}");
+        let now = registry(&mut c).await;
+        assert_eq!(
+            (
+                now.registry_generation.as_str(),
+                now.canary_generation.as_str()
+            ),
+            ("policy-a", ""),
+            "{what} changed nothing"
+        );
+    }
+
+    // EPR-E2E-012: the candidate passes the gate and starts as a canary;
+    // ending it leaves production as it was.
+    let good = signed("policy-b", 0.8, "train-1", good_promotion());
+    let v = activate(&mut c, &good, "policy-a").await;
+    assert_eq!(
+        (
+            v.active,
+            v.activation.as_str(),
+            v.canary_generation.as_str(),
+            v.previous_good_generation.as_str()
+        ),
+        (true, "CANARY", "policy-b", "policy-a"),
+        "{v:?}"
+    );
+    let ended: ModelRegistryView = call(
+        &mut c,
+        "RollbackModelRegistry",
+        None,
+        RollbackModelRegistry {
+            expected_generation: "policy-b".into(),
+        }
+        .encode_to_vec(),
+    )
+    .await;
+    assert_eq!(
+        (
+            ended.activation.as_str(),
+            ended.registry_generation.as_str(),
+            ended.canary_generation.as_str()
+        ),
+        ("CANARY_ENDED", "policy-a", ""),
+        "{ended:?}"
+    );
+    let v = activate(&mut c, &good, "policy-a").await;
+    assert_eq!(v.activation, "CANARY", "{v:?}");
+    // A second canary, searched and gated like the first, is a conflict
+    // while one runs.
+    let other_search: PolicySearchView = call(
+        &mut c,
+        "SearchPolicy",
+        None,
+        search("policy-b2", vec![0.8], &holdout, "holdout-1"),
+    )
+    .await;
+    assert_eq!(other_search.verdict, "FEASIBLE", "{other_search:?}");
+    let other = signed(
+        "policy-b2",
+        0.8,
+        "train-1",
+        with(&|p| p["search_report_ref"] = json!(other_search.report_ref)),
+    );
+    let v = activate(&mut c, &other, "policy-a").await;
+    assert_eq!(
+        refused(&v),
+        (false, "REGISTRY_ACTIVATION_CONFLICT".into()),
+        "{v:?}"
+    );
+    assert!(v.refusal_detail.contains("already in its canary"), "{v:?}");
+    // The canary survives a Core restart.
+    drop(c);
+    core.kill();
+    core = CoreProcess::spawn_with_env(dir.path(), &env);
+    c = core.client().await;
+    let back = registry(&mut c).await;
+    assert_eq!(
+        (
+            back.registry_generation.as_str(),
+            back.canary_generation.as_str()
+        ),
+        ("policy-a", "policy-b"),
+        "{back:?}"
+    );
+
+    // Only a task whose policy allows canary routing sees the canary.
+    let (canary_session, _) = create_session(&mut c, rid()).await;
+    let cg = lease_for(&canary_session);
+    let control = run_task(&mut c, &canary_session, cg, &root).await;
+    let canaried = run_task(&mut c, &canary_session, cg, &canary_root).await;
+    let generation_of = |evs: &[(String, String, serde_json::Value)]| {
+        evs.iter()
+            .find(|(_, t, _)| t == "RoutingPlanCompiled")
+            .map(|(_, _, p)| {
+                p["plan"]["provenance"]["registry_generation"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_owned()
+            })
+            .unwrap_or_default()
+    };
+    assert_eq!(
+        generation_of(&task_events(&core, &canary_session, &control).await),
+        "policy-a"
+    );
+    assert_eq!(
+        generation_of(&task_events(&core, &canary_session, &canaried).await),
+        "policy-b"
+    );
+    let st = wait_task(&mut c, &canaried, 5).await;
+    assert_eq!(st.state, "ReadyForReview", "{st:?}");
+
+    // Production only on the canary's own observed requests, as a CAS.
+    let promote = |requests: Vec<String>, expected: &str| {
+        PromoteCanary {
+            canary_generation: "policy-b".into(),
+            expected_generation: expected.into(),
+            canary_requests: requests,
+        }
+        .encode_to_vec()
+    };
+    let at = |t: &Id| format!("{}:{}", uuid_of(&canary_session), uuid_of(t));
+    for (what, requests, expected, code) in [
+        (
+            "no canary request",
+            vec![],
+            "policy-a",
+            "POLICY_EVIDENCE_MISSING",
+        ),
+        (
+            "a request production routed",
+            vec![at(&control)],
+            "policy-a",
+            "POLICY_EVIDENCE_MISSING",
+        ),
+        (
+            "a stale production generation",
+            vec![at(&canaried)],
+            "policy-x",
+            "REGISTRY_ACTIVATION_CONFLICT",
+        ),
+    ] {
+        let v: ModelRegistryView =
+            call(&mut c, "PromoteCanary", None, promote(requests, expected)).await;
+        assert_eq!(refused(&v), (false, code.to_owned()), "{what}: {v:?}");
+    }
+    let v: ModelRegistryView = call(
+        &mut c,
+        "PromoteCanary",
+        None,
+        promote(vec![at(&canaried)], "policy-a"),
+    )
+    .await;
+    assert_eq!(
+        (
+            v.active,
+            v.activation.as_str(),
+            v.registry_generation.as_str(),
+            v.previous_good_generation.as_str()
+        ),
+        (true, "PROMOTED", "policy-b", "policy-a"),
+        "{v:?}"
+    );
+    assert_eq!(
+        registry(&mut c).await.canary_generation,
+        "",
+        "the canary is production now"
+    );
+    // Concurrent activation: another promotion against policy-a loses.
+    let v = activate(&mut c, &good, "policy-a").await;
+    assert_eq!(
+        refused(&v),
+        (false, "REGISTRY_ACTIVATION_CONFLICT".into()),
+        "{v:?}"
+    );
+    let v: ModelRegistryView = call(
+        &mut c,
+        "PromoteCanary",
+        None,
+        promote(vec![at(&canaried)], "policy-a"),
+    )
+    .await;
+    assert_eq!(
+        refused(&v),
+        (false, "REGISTRY_ACTIVATION_CONFLICT".into()),
+        "{v:?}"
+    );
+    // The first request's recorded plan still pins the generation it ran on.
+    assert_eq!(
+        generation_of(&task_events(&core, &session, &task).await),
+        "policy-a"
+    );
+
+    // A later generation revokes gpt-5; the rollback to policy-b keeps it revoked.
+    let revoking = resigned_registry(&base, &key, "policy-c", 0.8, "train-1", &["gpt-5"], None);
+    let v = activate(&mut c, &revoking, "policy-a").await;
+    assert_eq!(
+        refused(&v),
+        (false, "REGISTRY_ACTIVATION_CONFLICT".into()),
+        "a plain activation naming a generation is a CAS: {v:?}"
+    );
+    let v = activate(&mut c, &revoking, "policy-b").await;
+    assert_eq!(
+        (v.active, v.previous_good_generation.as_str()),
+        (true, "policy-b"),
+        "{v:?}"
+    );
+    let stale: ModelRegistryView = call(
+        &mut c,
+        "RollbackModelRegistry",
+        None,
+        RollbackModelRegistry {
+            expected_generation: "policy-b".into(),
+        }
+        .encode_to_vec(),
+    )
+    .await;
+    assert_eq!(
+        refused(&stale),
+        (false, "REGISTRY_ACTIVATION_CONFLICT".into()),
+        "a rollback is a compare-and-swap too"
+    );
+    let back: ModelRegistryView = call(
+        &mut c,
+        "RollbackModelRegistry",
+        None,
+        RollbackModelRegistry {
+            expected_generation: "policy-c".into(),
+        }
+        .encode_to_vec(),
+    )
+    .await;
+    assert_eq!(
+        (
+            back.active,
+            back.activation.as_str(),
+            back.registry_generation.as_str()
+        ),
+        (true, "ROLLED_BACK", "policy-b"),
+        "{back:?}"
+    );
+    let revoked_now = |v: &ModelRegistryView| {
+        v.bindings
+            .iter()
+            .filter(|b| b.revoked)
+            .map(|b| b.model.clone())
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(
+        revoked_now(&back),
+        vec!["gpt-5".to_owned()],
+        "a rollback does not resurrect a revoked binding"
+    );
+
+    // A restarted Core restores the generation and the revocation itself.
+    drop(c);
+    core.kill();
+    let mut core = CoreProcess::spawn_with_env(dir.path(), &env);
+    let mut c = core.client().await;
+    let restored = registry(&mut c).await;
+    assert_eq!(
+        (restored.active, restored.registry_generation.as_str()),
+        (true, "policy-b"),
+        "{restored:?}"
+    );
+    assert_eq!(revoked_now(&restored), vec!["gpt-5".to_owned()]);
     drop(c);
     core.kill();
 }

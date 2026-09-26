@@ -5046,6 +5046,14 @@ export declare type ActivateModelRegistry = Message<"modbit.v1.ActivateModelRegi
    * @generated from field: string signed_json = 1;
    */
   signedJson: string;
+
+  /**
+   * EPR-012: the generation this activation replaces — a compare-and-swap,
+   * required for a promotion; empty means "whatever is active".
+   *
+   * @generated from field: string expected_generation = 2;
+   */
+  expectedGeneration: string;
 };
 
 /**
@@ -5053,6 +5061,196 @@ export declare type ActivateModelRegistry = Message<"modbit.v1.ActivateModelRegi
  * Use `create(ActivateModelRegistrySchema)` to create a new message.
  */
 export declare const ActivateModelRegistrySchema: GenMessage<ActivateModelRegistry>;
+
+/**
+ * EPR-012: back to the generation the active one replaced, as a
+ * compare-and-swap on the active generation; revocations made since stay.
+ * Naming the running canary ends the canary; production is untouched.
+ *
+ * @generated from message modbit.v1.RollbackModelRegistry
+ */
+export declare type RollbackModelRegistry = Message<"modbit.v1.RollbackModelRegistry"> & {
+  /**
+   * @generated from field: string expected_generation = 1;
+   */
+  expectedGeneration: string;
+};
+
+/**
+ * Describes the message modbit.v1.RollbackModelRegistry.
+ * Use `create(RollbackModelRegistrySchema)` to create a new message.
+ */
+export declare const RollbackModelRegistrySchema: GenMessage<RollbackModelRegistry>;
+
+/**
+ * EPR-012: a promotion that passed the gate runs as a canary beside
+ * production (only for tasks whose policy sets `routing.canary` ALLOW);
+ * this makes it production on the canary's own observed requests, as a
+ * compare-and-swap on both generations.
+ *
+ * @generated from message modbit.v1.PromoteCanary
+ */
+export declare type PromoteCanary = Message<"modbit.v1.PromoteCanary"> & {
+  /**
+   * @generated from field: string canary_generation = 1;
+   */
+  canaryGeneration: string;
+
+  /**
+   * the production generation it replaces
+   *
+   * @generated from field: string expected_generation = 2;
+   */
+  expectedGeneration: string;
+
+  /**
+   * `<session id>:<task id>`
+   *
+   * @generated from field: repeated string canary_requests = 3;
+   */
+  canaryRequests: string[];
+};
+
+/**
+ * Describes the message modbit.v1.PromoteCanary.
+ * Use `create(PromoteCanarySchema)` to create a new message.
+ */
+export declare const PromoteCanarySchema: GenMessage<PromoteCanary>;
+
+/**
+ * EPR-012: evidence a promotion cites by reference — a gate-calibration
+ * bundle (EPR-019) or an approved threshold profile — checked for its kind
+ * and stored as an object. The search report comes only from SearchPolicy.
+ *
+ * @generated from message modbit.v1.RecordPromotionEvidence
+ */
+export declare type RecordPromotionEvidence = Message<"modbit.v1.RecordPromotionEvidence"> & {
+  /**
+   * CALIBRATION | THRESHOLD_PROFILE
+   *
+   * @generated from field: string kind = 1;
+   */
+  kind: string;
+
+  /**
+   * @generated from field: string json = 2;
+   */
+  json: string;
+};
+
+/**
+ * Describes the message modbit.v1.RecordPromotionEvidence.
+ * Use `create(RecordPromotionEvidenceSchema)` to create a new message.
+ */
+export declare const RecordPromotionEvidenceSchema: GenMessage<RecordPromotionEvidence>;
+
+/**
+ * EPR-012: the offline Policy Lab. Searches the candidate document's auto
+ * floors (spec_json: a policy-lab Spec) through the router's own compiler on
+ * the statistics materialized in the train session, confirms the choice on
+ * the untouched holdout session's, and stores the report as evidence.
+ *
+ * @generated from message modbit.v1.SearchPolicy
+ */
+export declare type SearchPolicy = Message<"modbit.v1.SearchPolicy"> & {
+  /**
+   * @generated from field: string spec_json = 1;
+   */
+  specJson: string;
+
+  /**
+   * the unsigned RegistryDocument
+   *
+   * @generated from field: string candidate_document_json = 2;
+   */
+  candidateDocumentJson: string;
+
+  /**
+   * @generated from field: modbit.v1.Id train_session_id = 3;
+   */
+  trainSessionId?: Id | undefined;
+
+  /**
+   * @generated from field: modbit.v1.Id holdout_session_id = 4;
+   */
+  holdoutSessionId?: Id | undefined;
+};
+
+/**
+ * Describes the message modbit.v1.SearchPolicy.
+ * Use `create(SearchPolicySchema)` to create a new message.
+ */
+export declare const SearchPolicySchema: GenMessage<SearchPolicy>;
+
+/**
+ * @generated from message modbit.v1.PolicySearchView
+ */
+export declare type PolicySearchView = Message<"modbit.v1.PolicySearchView"> & {
+  /**
+   * sha256 of the stored search evidence
+   *
+   * @generated from field: string report_ref = 1;
+   */
+  reportRef: string;
+
+  /**
+   * FEASIBLE | NO_FEASIBLE_CONFIGURATION | HOLDOUT_REGRESSION
+   *
+   * @generated from field: string verdict = 2;
+   */
+  verdict: string;
+
+  /**
+   * meaningful when FEASIBLE
+   *
+   * @generated from field: double chosen_floor = 3;
+   */
+  chosenFloor: number;
+
+  /**
+   * @generated from field: string report_json = 4;
+   */
+  reportJson: string;
+
+  /**
+   * @generated from field: string refusal_code = 5;
+   */
+  refusalCode: string;
+
+  /**
+   * @generated from field: string refusal_detail = 6;
+   */
+  refusalDetail: string;
+};
+
+/**
+ * Describes the message modbit.v1.PolicySearchView.
+ * Use `create(PolicySearchViewSchema)` to create a new message.
+ */
+export declare const PolicySearchViewSchema: GenMessage<PolicySearchView>;
+
+/**
+ * @generated from message modbit.v1.PromotionEvidenceRecorded
+ */
+export declare type PromotionEvidenceRecorded = Message<"modbit.v1.PromotionEvidenceRecorded"> & {
+  /**
+   * @generated from field: string kind = 1;
+   */
+  kind: string;
+
+  /**
+   * sha256 of the stored evidence
+   *
+   * @generated from field: string evidence_ref = 2;
+   */
+  evidenceRef: string;
+};
+
+/**
+ * Describes the message modbit.v1.PromotionEvidenceRecorded.
+ * Use `create(PromotionEvidenceRecordedSchema)` to create a new message.
+ */
+export declare const PromotionEvidenceRecordedSchema: GenMessage<PromotionEvidenceRecorded>;
 
 /**
  * @generated from message modbit.v1.ModelRegistryView
@@ -5108,6 +5306,27 @@ export declare type ModelRegistryView = Message<"modbit.v1.ModelRegistryView"> &
    * @generated from field: string refusal_detail = 9;
    */
   refusalDetail: string;
+
+  /**
+   * what this activation replaced (EPR-012)
+   *
+   * @generated from field: string previous_good_generation = 10;
+   */
+  previousGoodGeneration: string;
+
+  /**
+   * ACTIVATED | CANARY | PROMOTED | ROLLED_BACK | CANARY_ENDED
+   *
+   * @generated from field: string activation = 11;
+   */
+  activation: string;
+
+  /**
+   * the canary running beside production, if any
+   *
+   * @generated from field: string canary_generation = 12;
+   */
+  canaryGeneration: string;
 };
 
 /**

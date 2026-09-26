@@ -1012,7 +1012,7 @@ fn route_new_run(
     let pin = cfg
         .pinned
         .then(|| (cfg.endpoint.clone(), cfg.model.clone()));
-    let (plan, mut events) = if core.gateway.registry().is_some() {
+    let (plan, mut events) = if crate::model_registry::for_task(core, task).is_some() {
         // REQ-EPR-009, the task boundary: the session's route in force and
         // its warm prefix are the incumbent; a cheaper feasible alternative
         // replaces it only when the saving clears the switch cost.
@@ -1097,7 +1097,7 @@ fn route_new_run(
         // question of what was observed.
         let feasibility = crate::routing::feasibility_of(
             store,
-            core.gateway.registry().as_ref(),
+            crate::model_registry::for_task(core, task).as_ref(),
             task.session_id,
             &plan,
         );
@@ -1211,7 +1211,7 @@ async fn reroute_at_boundary(
     boundary: &str,
     actor: &Actor,
 ) {
-    if core.gateway.registry().is_none() {
+    if crate::model_registry::for_task(core, task).is_none() {
         return;
     }
     let lt = Lineage::run(core.tenant_id, task.session_id, task.task_id, run_id)
@@ -1446,7 +1446,7 @@ fn routing_attempt_event(
     let priced = usage_reported
         .then(|| {
             crate::accounting::price(
-                core.gateway.registry().as_ref(),
+                crate::model_registry::priced_by(core, &cfg.endpoint, &cfg.model).as_ref(),
                 &cfg.endpoint,
                 &cfg.model,
                 usage,

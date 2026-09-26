@@ -59,6 +59,7 @@ fn entry(model: &str, roles: &[&str], input_price: u64, output_price: u64) -> Re
 fn registry_with(entries: Vec<RegistryEntry>) -> ModelRegistry {
     let key = SigningKey::from_bytes(&[3u8; 32]);
     let doc = RegistryDocument {
+        promotion: None,
         schema_version: REGISTRY_SCHEMA_VERSION,
         registry_generation: "registry-compile-1".into(),
         stats_version: "stats-7".into(),

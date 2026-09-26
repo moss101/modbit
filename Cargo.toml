@@ -28,6 +28,7 @@ members = [
     "benchmarks/context-economics",
     "benchmarks/gate-calibration",
     "benchmarks/outcome-statistics",
+    "benchmarks/policy-lab",
     "benchmarks/retrieval",
     "benchmarks/skill-evolution",
     "crates/retrieval",
@@ -85,6 +86,7 @@ modbit-bench-agent-engineering = { path = "benchmarks/agent-engineering" }
 modbit-bench-context-economics = { path = "benchmarks/context-economics" }
 modbit-bench-gate-calibration = { path = "benchmarks/gate-calibration" }
 modbit-bench-outcome-statistics = { path = "benchmarks/outcome-statistics" }
+modbit-bench-policy-lab = { path = "benchmarks/policy-lab" }
 modbit-bench-skill-evolution = { path = "benchmarks/skill-evolution" }
 modbit-bench-retrieval = { path = "benchmarks/retrieval" }
 modbit-retrieval = { path = "crates/retrieval" }
