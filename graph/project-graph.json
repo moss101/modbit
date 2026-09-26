@@ -4702,8 +4702,16 @@
    "milestone": "M10",
    "order": 0,
    "source": "docs/43",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-36224353296",
+    "test:m10_1_the_dashboard_is_the_sessions_ledger_ladder_and_log_aggregated",
+    "artifact:evidence/m10/M10.1/TASK_CARD.md",
+    "artifact:evidence/m10/M10.1/evidence.json",
+    "artifact:evidence/m10/M10.1/ci-run-36224353296.json",
+    "commit:30cb600"
+   ],
+   "status_changed_on": "2026-09-26T07:14:09Z"
   },
   {
    "id": "M10.2",

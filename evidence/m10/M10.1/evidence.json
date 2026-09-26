@@ -1,0 +1,36 @@
+{
+ "task": "M10.1",
+ "requirements": [
+  "docs/34 Metrics",
+  "docs/77 dashboards over the real usage ledger, SLO events and cost records",
+  "docs/30"
+ ],
+ "scenarios": [
+  "a real Core with a signed registry and a scripted provider: GetDashboard for a session aggregates task states, tool outcomes, the IMP-EV-0032 usage ledger by model and by task (priced, unpriced and unreported calls kept apart), the IMP-EV-0023 cold/warm SLO figures, recent failures and provider health, and equals what the ledger and ladder report directly",
+  "the real Electron app's dashboard pane shows the Core's own numbers \u2014 tokens, cost, task rows, tool outcomes, model rows \u2014 the same the CLI `dashboard --session` reads from the same Core, and a refresh after a second task follows the log",
+  "on the cloud path the dashboard carries the task's cold start from the SLO ladder"
+ ],
+ "tests": [
+  "services/modbit-core/tests/surface_protocol.rs::m10_1_the_dashboard_is_the_sessions_ledger_ladder_and_log_aggregated",
+  "apps/desktop/e2e/dashboard.spec.ts::the operations dashboard shows the Core's own aggregation of its log, the same numbers the CLI reads",
+  "apps/cloud-worker/tests/cloud_worker.rs::qual_ev_0023_a_cloud_tasks_starts_emit_every_slo_timestamp_and_cold_and_warm_latencies (dashboard check)",
+  "apps/desktop/e2e/workers.spec.ts (the typed bridge now lists dashboard)"
+ ],
+ "audit": "DOCUMENTED-ONLY: one task's economics in a banner; no session view of cost by model or task, tool outcomes, SLO figures, failures or provider health.",
+ "proof": "Read-only aggregation in the Core from the canonical log on request (no second store, no sampling), rendered by the desktop and the CLI from the same view.",
+ "negative_proof": "The desktop dashboard is asserted against the CLI's reading of the same Core, so a renderer computing its own numbers would disagree; unpriced calls are counted as unpriced, never as zero cost.",
+ "limitations": "Per session only (no fleet-wide or cross-tenant dashboard, no OpenTelemetry export); not every docs/34 metric is on the view; cost shown only when a registry priced the calls; the last 20 failures.",
+ "batch_commits": [
+  "30cb600"
+ ],
+ "runs": [
+  "36224353296"
+ ],
+ "ci": {
+  "run_id": "36224353296",
+  "head_sha": "d9b336965d7a094c0e0ce41ee708ab2447cbd897",
+  "conclusion": "success",
+  "note": "all jobs green on macOS, Linux and Windows; the Windows desktop E2E job was re-run once after the VS Code download aborted with ECONNRESET",
+  "json": "evidence/m10/M10.1/ci-run-36224353296.json"
+ }
+}
