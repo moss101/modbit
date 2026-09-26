@@ -1,0 +1,21 @@
+{
+  "finished_unix": 1790375246,
+  "outcome": "passed",
+  "proven": [
+    {
+      "endpoint": "anthropic",
+      "endpoint_host": "api.z.ai",
+      "integration": "provider.anthropic-wire",
+      "model": "glm-5.3-flash"
+    },
+    {
+      "endpoint": "openai",
+      "endpoint_host": "api.z.ai",
+      "integration": "provider.openai-wire",
+      "model": "glm-5.3-flash"
+    }
+  ],
+  "run": "36196671564",
+  "schema": "modbit.live-result/1",
+  "test": "live_streaming_tool_round_trip_and_cancellation_against_production_endpoints"
+}

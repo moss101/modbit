@@ -1,0 +1,5 @@
+thread 'replay_recorded_anthropic_wire_tool_round_trip' (26663349) panicked at crates/providers/tests/recorded.rs:372:5:
+assertion `left == right` failed: provider ids read from the stream
+  left: ["message", "message"]
+ right: ["msg_2026092606273579f8cf7e81284699", "msg_20260926062744281bc8fc33434be2"]
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.01s

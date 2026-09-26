@@ -1,0 +1,143 @@
+{
+ "schema": "modbit.integrations/1",
+ "requirement": "REQ-EV-0211",
+ "note": "Every place production code opens a connection outside its own process, with the tests that qualify it at each level. Checked by tools/integration_gate.py (docs/50 \"Multi-level integration qualification\"). Levels: component = the adapter called directly over a real socket; integration = through the Core, registry or service the product actually routes through, against the real counterpart; external = a live test against the real API with the real test credential, run by a workflow, plus a recorded safe fixture replayed offline.",
+ "integrations": [
+  {
+   "id": "provider.openai-wire",
+   "crates": ["modbit-providers"],
+   "boundary": "external-api",
+   "counterparty": "an OpenAI Chat Completions endpoint: api.openai.com, or a compatible gateway named by MODBIT_OPENAI_BASE_URL (DR-M9-002)",
+   "credentials": ["OPENAI_API_KEY"],
+   "levels": {
+    "component": [
+     "crates/providers/tests/conformance.rs::openai_streaming_tool_round_trip_over_real_http",
+     "crates/providers/tests/conformance.rs::rate_limit_is_retried_within_bounds_and_then_reported",
+     "crates/providers/tests/conformance.rs::timeout_and_cancellation_end_the_stream_and_release_the_connection",
+     "crates/providers/tests/conformance.rs::interruption_after_first_token_is_reported_not_retried",
+     "crates/providers/tests/conformance.rs::compatible_gateway_versioned_base_url_bearer_auth_and_extra_body"
+    ],
+    "integration": [
+     "services/modbit-core/tests/surface_protocol.rs::m2_6_provider_gateway_streams_through_the_core_over_real_http",
+     "services/modbit-core/tests/surface_protocol.rs::m2_7_one_agent_runtime_drives_a_coding_task_to_ready_for_review"
+    ],
+    "external": [
+     "crates/providers/tests/conformance.rs::live_streaming_tool_round_trip_and_cancellation_against_production_endpoints",
+     "crates/providers/tests/recorded.rs::live_recorded_tool_round_trip_on_each_configured_wire"
+    ]
+   },
+   "recorded": [
+    {
+     "fixture": "crates/providers/tests/fixtures/recorded/openai-wire.json",
+     "replay": "crates/providers/tests/recorded.rs::replay_recorded_openai_wire_tool_round_trip"
+    }
+   ]
+  },
+  {
+   "id": "provider.anthropic-wire",
+   "crates": ["modbit-providers"],
+   "boundary": "external-api",
+   "counterparty": "an Anthropic Messages endpoint: api.anthropic.com, or a compatible gateway named by MODBIT_ANTHROPIC_BASE_URL (DR-M9-002)",
+   "credentials": ["ANTHROPIC_API_KEY"],
+   "levels": {
+    "component": [
+     "crates/providers/tests/conformance.rs::anthropic_streaming_tool_round_trip_over_real_http",
+     "crates/providers/tests/conformance.rs::compatible_gateway_versioned_base_url_bearer_auth_and_extra_body"
+    ],
+    "integration": [
+     "services/modbit-core/tests/surface_protocol.rs::qual_ev_0211_the_core_routes_and_streams_over_the_anthropic_wire"
+    ],
+    "external": [
+     "crates/providers/tests/conformance.rs::live_streaming_tool_round_trip_and_cancellation_against_production_endpoints",
+     "crates/providers/tests/recorded.rs::live_recorded_tool_round_trip_on_each_configured_wire"
+    ]
+   },
+   "recorded": [
+    {
+     "fixture": "crates/providers/tests/fixtures/recorded/anthropic-wire.json",
+     "replay": "crates/providers/tests/recorded.rs::replay_recorded_anthropic_wire_tool_round_trip"
+    }
+   ]
+  },
+  {
+   "id": "forge.github",
+   "crates": ["modbit-tools"],
+   "boundary": "external-api",
+   "counterparty": "GitHub's REST API (api.github.com) for the forge.* tools and issue intake",
+   "credentials": ["MODBIT_GITHUB_TOKEN", "MODBIT_GITHUB_TEST_REPO"],
+   "levels": {
+    "component": [
+     "crates/tools/tests/forge.rs::forge_adapter_reads_github_issues_directly_with_the_token_in_its_header_only"
+    ],
+    "integration": [
+     "services/modbit-core/tests/surface_protocol.rs::qual_px_006_the_forge_adapter_reads_and_writes_github_behind_leases_effects_receipts_and_idempotency_keys",
+     "services/modbit-core/tests/surface_protocol.rs::qual_px_010_a_task_from_a_forge_issue_carries_the_issue_as_untrusted_context_and_runs_the_ordinary_loop"
+    ],
+    "external": []
+   },
+   "deferred": {
+    "decision": "DR-M6-002",
+    "needs": "MODBIT_GITHUB_TOKEN and a dedicated test repository named by MODBIT_GITHUB_TEST_REPO as repository secrets (docs/77 §5 item 2)"
+   }
+  },
+  {
+   "id": "cloud.object-store",
+   "crates": ["modbit-event-store"],
+   "boundary": "real-service",
+   "counterparty": "an S3-compatible object store over SigV4: SeaweedFS in ci.yml's `cloud` job (MODBIT_CLOUD_TEST_S3_ENDPOINT), the operator's store in production",
+   "levels": {
+    "integration": [
+     "apps/cloud-api/tests/cloud_api.rs::qual_m8_1_approvals_bind_to_intent_and_outputs_read_by_range_within_the_tenant",
+     "apps/cloud-worker/tests/cloud_worker.rs::qual_m8_7_a_local_task_hands_off_to_the_cloud_and_continues_from_its_checkpoint_in_a_sandbox"
+    ]
+   }
+  },
+  {
+   "id": "cloud.worker-link",
+   "crates": ["modbit-cloud-worker"],
+   "boundary": "in-tree",
+   "counterparty": "the Cloud API's worker link (apps/cloud-api), a websocket the worker dials out",
+   "levels": {
+    "integration": [
+     "apps/cloud-worker/tests/cloud_worker.rs::qual_ev_0024_the_workers_outbound_link_proves_identity_reconnect_revocation_and_tenant_isolation",
+     "apps/cloud-worker/tests/cloud_worker.rs::qual_m8_2_a_worker_claims_the_lease_runs_the_task_relays_commands_mirrors_the_log_and_a_successor_resumes_fenced"
+    ]
+   }
+  },
+  {
+   "id": "sandbox.gateway-link",
+   "crates": ["modbit-sandbox"],
+   "boundary": "in-tree",
+   "counterparty": "the Sandbox Gateway (apps/sandbox-gateway) and, behind its backends, the guest agent in the sandbox",
+   "levels": {
+    "integration": [
+     "apps/sandbox-gateway/tests/gateway.rs::qual_m8_3_the_reference_backend_passes_the_backend_contract",
+     "apps/cloud-worker/tests/cloud_worker.rs::qual_m8_5_a_cloud_isolated_tasks_tools_act_inside_its_sandbox_and_the_sandbox_is_released_when_the_task_ends"
+    ]
+   }
+  },
+  {
+   "id": "sandbox.egress",
+   "crates": ["modbit-sandbox", "modbit-guest"],
+   "boundary": "in-tree",
+   "counterparty": "the egress relay from a sandboxed program to the hosts its policy allows: the guest's proxy dials the gateway's broker, the broker dials the allowed host (host-side HTTP servers in the gateway suite)",
+   "levels": {
+    "integration": [
+     "apps/sandbox-gateway/tests/gateway.rs::qual_m8_3_the_reference_backend_passes_the_backend_contract",
+     "apps/sandbox-gateway/tests/gateway.rs::qual_m8_3_a_firecracker_microvm_boots_the_guest_and_passes_the_backend_contract"
+    ]
+   }
+  },
+  {
+   "id": "sandbox.browser-relay",
+   "crates": ["modbit-sandbox-gateway"],
+   "boundary": "in-tree",
+   "counterparty": "the Chromium DevTools endpoint inside a task's sandbox, reached through the guest's forward",
+   "levels": {
+    "integration": [
+     "apps/cloud-worker/tests/cloud_worker.rs::qual_m8_8_a_cloud_tasks_browser_runs_inside_its_sandbox_over_cdp_and_streams_its_view_to_the_person"
+    ]
+   }
+  }
+ ]
+}

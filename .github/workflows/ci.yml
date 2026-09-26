@@ -312,6 +312,8 @@ jobs:
         run: python3 tools/test_dossier.py
       - name: Declared examples are executable, not illustrative (REQ-EV-0212)
         run: python3 tools/example_runner.py
+      - name: Every integration is qualified at every level it needs; mock-only cannot pass (REQ-EV-0211)
+        run: python3 tools/integration_gate.py
 
   ci-compatible:
     name: CI_COMPATIBLE summary (not release-grade)

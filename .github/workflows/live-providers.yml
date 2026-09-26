@@ -1,6 +1,11 @@
 # Live provider proof (docs/15 "Live provider proof", DR-M2-001): real streaming,
 # typed tool-call round trip and cancellation against real endpoints with
-# dedicated test credentials. Skips explicitly until the secrets exist.
+# dedicated test credentials; and the live level of the multi-level integration
+# qualification (REQ-EV-0211, docs/50): every live test leaves a result record,
+# the recording test captures each wire's exchange as a safe fixture, and
+# tools/integration_gate.py --live refuses the run unless every live test of
+# every non-deferred external integration passed. Without the secrets the job
+# fails: a skipped live proof is not a pass.
 #
 # Secrets (never printed): OPENAI_API_KEY, ANTHROPIC_API_KEY.
 # Repository variables (not secret; DR-M9-002) point a family at a compatible
@@ -32,7 +37,7 @@ jobs:
       - name: Install pinned Rust toolchain (rust-toolchain.toml)
         run: rustup show
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
-      - name: Run the live conformance test (skips without credentials)
+      - name: Run the live tests (the credentials are required)
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -49,8 +54,8 @@ jobs:
           MODBIT_LIVE_MODEL: ${{ vars.MODBIT_LIVE_MODEL }}
         run: |
           if [ -z "$OPENAI_API_KEY" ] && [ -z "$ANTHROPIC_API_KEY" ]; then
-            echo "::notice::no provider secrets configured; live proof skipped (DR-M2-001)"
-            exit 0
+            echo "::error::no provider secrets configured: the live qualification cannot pass without the real test credential (REQ-EV-0211)"
+            exit 1
           fi
           {
             echo "## Live provider proof"
@@ -58,11 +63,17 @@ jobs:
             echo "- anthropic: base=${MODBIT_ANTHROPIC_BASE_URL:-https://api.anthropic.com} models=${MODBIT_ANTHROPIC_MODELS:-default catalog} live_model=${MODBIT_ANTHROPIC_LIVE_MODEL:-${MODBIT_LIVE_MODEL:-catalog small model}} key=$([ -n "$ANTHROPIC_API_KEY" ] && echo present || echo absent)"
           } >> "$GITHUB_STEP_SUMMARY"
           set -o pipefail
+          export MODBIT_LIVE_RESULTS_DIR="$PWD/live-qualification/results"
+          export MODBIT_LIVE_RECORD_DIR="$PWD/live-qualification/recorded"
           MODBIT_LIVE_PROVIDERS=1 cargo test --locked -p modbit-providers live_ -- --nocapture 2>&1 | tee live-providers.log
-      - name: Retain the run log (evidence for the deferred live halves)
+      - name: Every live test passed and proved its integration (REQ-EV-0211)
+        run: python3 tools/integration_gate.py --live live-qualification/results
+      - name: Retain the log, the result records and the recordings
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: live-providers-log
-          path: live-providers.log
+          name: live-qualification
+          path: |
+            live-providers.log
+            live-qualification/
           if-no-files-found: ignore

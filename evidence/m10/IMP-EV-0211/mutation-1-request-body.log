@@ -1,0 +1,3 @@
+thread 'replay_recorded_openai_wire_tool_round_trip' (26661604) panicked at crates/providers/tests/recorded.rs:353:13:
+the adapter no longer reproduces the recorded round trip: first turn: no tool call: [Error { code: "PROVIDER_REJECTED", message: "HTTP 409: {\"error\":{\"message\":\"request 0 differs from the recording at /body/prompt_cache_key: recorded \\\"stable-prefix-hash\\\", sent \\\"stable-prefix-hash-v2\\\"\"}}", retryable: false }]; refused: ["request 0 differs from the recording at /body/prompt_cache_key: recorded \"stable-prefix-hash\", sent \"stable-prefix-hash-v2\""]
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.01s

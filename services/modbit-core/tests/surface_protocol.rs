@@ -2121,6 +2121,317 @@ async fn m2_6_provider_gateway_streams_through_the_core_over_real_http() {
     assert_eq!(bodies[1]["tools"][0]["function"]["name"], "probe.echo");
 }
 
+/// Minimal Anthropic-protocol SSE server for the Core-level proof of the
+/// Anthropic wire (QUAL-EV-0211): every request is kept with its path and
+/// headers; a request that projected tools gets a `tool_use` block, any
+/// other a text answer.
+async fn fake_anthropic() -> (
+    String,
+    std::sync::Arc<std::sync::Mutex<Vec<(String, Vec<(String, String)>, serde_json::Value)>>>,
+) {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let seen = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let seen2 = std::sync::Arc::clone(&seen);
+    tokio::spawn(async move {
+        loop {
+            let Ok((mut sock, _)) = listener.accept().await else {
+                return;
+            };
+            let seen = std::sync::Arc::clone(&seen2);
+            tokio::spawn(async move {
+                let mut buf = Vec::new();
+                let mut tmp = [0u8; 4096];
+                let (head_end, len) = loop {
+                    let n = sock.read(&mut tmp).await.unwrap_or(0);
+                    if n == 0 {
+                        return;
+                    }
+                    buf.extend_from_slice(&tmp[..n]);
+                    if let Some(i) = buf.windows(4).position(|w| w == b"\r\n\r\n") {
+                        let head = String::from_utf8_lossy(&buf[..i]).to_string();
+                        let len = head
+                            .lines()
+                            .find_map(|l| {
+                                let (k, v) = l.split_once(':')?;
+                                k.eq_ignore_ascii_case("content-length")
+                                    .then(|| v.trim().parse::<usize>().ok())
+                                    .flatten()
+                            })
+                            .unwrap_or(0);
+                        break (i + 4, len);
+                    }
+                };
+                while buf.len() < head_end + len {
+                    let n = sock.read(&mut tmp).await.unwrap_or(0);
+                    if n == 0 {
+                        break;
+                    }
+                    buf.extend_from_slice(&tmp[..n]);
+                }
+                let head = String::from_utf8_lossy(&buf[..head_end]).to_string();
+                let mut lines = head.lines();
+                let path = lines
+                    .next()
+                    .unwrap_or_default()
+                    .split(' ')
+                    .nth(1)
+                    .unwrap_or_default()
+                    .to_owned();
+                let headers: Vec<(String, String)> = lines
+                    .filter_map(|l| l.split_once(':'))
+                    .map(|(k, v)| (k.trim().to_ascii_lowercase(), v.trim().to_owned()))
+                    .collect();
+                let body: serde_json::Value =
+                    serde_json::from_slice(&buf[head_end..head_end + len]).unwrap_or_default();
+                let with_tools = body["tools"].is_array();
+                seen.lock().unwrap().push((path, headers, body));
+                let (id, frames) = if with_tools {
+                    (
+                        "msg_t",
+                        vec![
+                            (
+                                "message_start",
+                                serde_json::json!({"type":"message_start","message":{"id":"msg_t","model":"claude-haiku-4-5-20251001","usage":{"input_tokens":31,"output_tokens":1}}}),
+                            ),
+                            (
+                                "content_block_start",
+                                serde_json::json!({"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_p","name":"probe.echo","input":{}}}),
+                            ),
+                            (
+                                "content_block_delta",
+                                serde_json::json!({"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\"text\": "}}),
+                            ),
+                            (
+                                "content_block_delta",
+                                serde_json::json!({"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"\"pong\"}"}}),
+                            ),
+                            (
+                                "content_block_stop",
+                                serde_json::json!({"type":"content_block_stop","index":0}),
+                            ),
+                            (
+                                "message_delta",
+                                serde_json::json!({"type":"message_delta","delta":{"stop_reason":"tool_use"},"usage":{"output_tokens":9}}),
+                            ),
+                            ("message_stop", serde_json::json!({"type":"message_stop"})),
+                        ],
+                    )
+                } else {
+                    (
+                        "msg_x",
+                        vec![
+                            (
+                                "message_start",
+                                serde_json::json!({"type":"message_start","message":{"id":"msg_x","model":"claude-haiku-4-5-20251001","usage":{"input_tokens":24,"cache_read_input_tokens":16,"output_tokens":1}}}),
+                            ),
+                            ("ping", serde_json::json!({"type":"ping"})),
+                            (
+                                "content_block_start",
+                                serde_json::json!({"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}),
+                            ),
+                            (
+                                "content_block_delta",
+                                serde_json::json!({"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"pong"}}),
+                            ),
+                            (
+                                "content_block_stop",
+                                serde_json::json!({"type":"content_block_stop","index":0}),
+                            ),
+                            (
+                                "message_delta",
+                                serde_json::json!({"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":1}}),
+                            ),
+                            ("message_stop", serde_json::json!({"type":"message_stop"})),
+                        ],
+                    )
+                };
+                let _ = sock
+                    .write_all(
+                        RESPONSE_HEAD
+                            .replace("{id}", &format!("req_{id}"))
+                            .as_bytes(),
+                    )
+                    .await;
+                for (event, data) in frames {
+                    let frame = format!("event: {event}\ndata: {data}\n\n");
+                    let _ = sock
+                        .write_all(format!("{:x}\r\n{}\r\n", frame.len(), frame).as_bytes())
+                        .await;
+                }
+                let _ = sock.write_all(b"0\r\n\r\n").await;
+                let _ = sock.flush().await;
+                let _ = sock.shutdown().await;
+            });
+        }
+    });
+    (format!("http://127.0.0.1:{port}"), seen)
+}
+
+/// QUAL-EV-0211, integration level of the Anthropic wire: the Core — a real
+/// process, its own endpoint registration from the environment, its own
+/// routing — lists the Anthropic catalog, streams a text probe and a typed
+/// tool call over the Anthropic protocol, presents the key only in the
+/// family's own header, and keeps the key out of everything it persists.
+/// (The OpenAI wire's counterpart is `m2_6_…`; the component level of both
+/// is `crates/providers/tests/conformance.rs`, the live level
+/// `crates/providers/tests/recorded.rs`.)
+#[tokio::test]
+async fn qual_ev_0211_the_core_routes_and_streams_over_the_anthropic_wire() {
+    use modbit_protocol::v1::{ListModels, ModelList, ModelProbed, ProbeModel};
+    const KEY: &str = "anthropic-key-qual-ev-0211-3f9a2c7e";
+    let (base, seen) = fake_anthropic().await;
+    let dir = tempfile::tempdir().unwrap();
+    let core = CoreProcess::spawn_with_env(
+        dir.path(),
+        &[
+            ("MODBIT_ANTHROPIC_BASE_URL", &base),
+            ("ANTHROPIC_API_KEY", KEY),
+            ("OPENAI_API_KEY", ""),
+        ],
+    );
+    let mut c = core.client().await;
+    let ack = c
+        .command(envelope(
+            id16(0x70),
+            "ListModels",
+            ListModels {}.encode_to_vec(),
+        ))
+        .await
+        .unwrap();
+    let list: ModelList = Client::result(&ack).unwrap();
+    assert!(
+        list.models.iter().any(|m| m.endpoint == "anthropic"
+            && m.model == "claude-haiku-4-5-20251001"
+            && m.tools
+            && m.credential_available),
+        "{list:?}"
+    );
+    assert!(
+        !list.models.iter().any(|m| m.endpoint == "openai"),
+        "no OpenAI key, no OpenAI base url: not registered"
+    );
+    let probe = |id: u8, prompt: &str, with_tools: bool| {
+        envelope(
+            id16(id),
+            "ProbeModel",
+            ProbeModel {
+                endpoint: "anthropic".into(),
+                model: "claude-haiku-4-5-20251001".into(),
+                prompt: prompt.into(),
+                with_tools,
+                timeout_ms: 10_000,
+            }
+            .encode_to_vec(),
+        )
+    };
+    let r: ModelProbed =
+        Client::result(&c.command(probe(0x71, "Say pong.", false)).await.unwrap()).unwrap();
+    assert_eq!(
+        (r.status.as_str(), r.text.as_str(), r.stop_reason.as_str()),
+        ("COMPLETED", "pong", "end_turn"),
+        "{r:?}"
+    );
+    // Usage means the same on both wires: Anthropic reports cache reads
+    // beside `input_tokens`, the Core counts them inside it (24 + 16).
+    assert_eq!(
+        (r.input_tokens, r.output_tokens, r.cached_input_tokens),
+        (40, 1, 16)
+    );
+    let route: serde_json::Value = serde_json::from_str(&r.route_json).unwrap();
+    assert_eq!(
+        (
+            route["endpoint"].as_str(),
+            route["resolved_model"].as_str(),
+            route["provider_request_id"].as_str()
+        ),
+        (
+            Some("anthropic"),
+            Some("claude-haiku-4-5-20251001"),
+            Some("req_msg_x")
+        )
+    );
+    let r: ModelProbed =
+        Client::result(&c.command(probe(0x72, "Echo pong.", true)).await.unwrap()).unwrap();
+    assert_eq!(
+        (
+            r.status.as_str(),
+            r.stop_reason.as_str(),
+            r.tool_call_name.as_str()
+        ),
+        ("COMPLETED", "tool_use", "probe.echo"),
+        "{r:?}"
+    );
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(&r.tool_call_arguments_json).unwrap()["text"],
+        "pong"
+    );
+    // The wire: the family's path and version header, the key in x-api-key
+    // and nowhere else, the Core's prompt and tool projection in the body.
+    let requests = seen.lock().unwrap().clone();
+    assert_eq!(requests.len(), 2);
+    for (path, headers, _) in &requests {
+        let header = |name: &str| {
+            headers
+                .iter()
+                .find(|(k, _)| k == name)
+                .map(|(_, v)| v.as_str())
+        };
+        assert_eq!(path, "/v1/messages");
+        assert_eq!(header("anthropic-version"), Some("2023-06-01"));
+        assert_eq!(header("x-api-key"), Some(KEY));
+        assert_eq!(
+            header("authorization"),
+            None,
+            "native auth is x-api-key only"
+        );
+    }
+    assert_eq!(
+        requests[0].2["messages"][0]["content"][0]["text"],
+        "Say pong."
+    );
+    assert_eq!(requests[1].2["tools"][0]["name"], "probe.echo");
+    // Health counts the real calls.
+    let list: ModelList = Client::result(
+        &c.command(envelope(
+            id16(0x73),
+            "ListModels",
+            ListModels {}.encode_to_vec(),
+        ))
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+    let h = list
+        .health
+        .iter()
+        .find(|h| h.endpoint == "anthropic")
+        .unwrap();
+    assert_eq!((h.requests, h.successes, h.failures), (2, 2, 0));
+    // The key was used, and nothing the Core wrote down holds it.
+    drop(c);
+    drop(core);
+    let mut stack = vec![dir.path().to_path_buf()];
+    let mut scanned = 0;
+    while let Some(d) = stack.pop() {
+        for entry in std::fs::read_dir(&d).unwrap().flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                stack.push(path);
+            } else if let Ok(bytes) = std::fs::read(&path) {
+                scanned += 1;
+                assert!(
+                    !bytes.windows(KEY.len()).any(|w| w == KEY.as_bytes()),
+                    "{} holds the provider key",
+                    path.display()
+                );
+            }
+        }
+    }
+    assert!(scanned > 0, "the Core's data directory was scanned");
+}
+
 /// Scripted OpenAI-compatible model for the runtime proof: the reply is
 /// chosen from the number of tool results already in the conversation, so the
 /// same script drives fresh runs and resumed runs identically.

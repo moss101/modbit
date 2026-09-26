@@ -4,6 +4,8 @@
 //! stall, disconnect, malformed frames), plus the same scenarios against the
 //! production endpoints when `MODBIT_LIVE_PROVIDERS=1` and credentials exist.
 
+mod support;
+
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -976,8 +978,17 @@ async fn qual_ev_0028_0189_capability_catalog_refuses_mismatched_models_before_d
 /// small model. The run prints what it talked to, never a credential.
 #[tokio::test]
 async fn live_streaming_tool_round_trip_and_cancellation_against_production_endpoints() {
+    const TEST: &str =
+        "live_streaming_tool_round_trip_and_cancellation_against_production_endpoints";
     if std::env::var("MODBIT_LIVE_PROVIDERS").as_deref() != Ok("1") {
         eprintln!("skipped: MODBIT_LIVE_PROVIDERS=1 not set");
+        // A skip exits 0 like a pass; the record says which it was, so the
+        // integration gate can refuse it (REQ-EV-0211).
+        support::write_result(
+            TEST,
+            "skipped",
+            json!({"reason": "MODBIT_LIVE_PROVIDERS=1 not set"}),
+        );
         return;
     }
     let gw = ProviderGateway::new(modbit_providers::endpoints_from_env());
@@ -985,8 +996,8 @@ async fn live_streaming_tool_round_trip_and_cancellation_against_production_endp
         !gw.endpoints().is_empty(),
         "MODBIT_LIVE_PROVIDERS=1 but no endpoint is configured (OPENAI_API_KEY / ANTHROPIC_API_KEY)"
     );
-    let var = |name: String| std::env::var(name).ok().filter(|v| !v.trim().is_empty());
     let mut proven = Vec::new();
+    let mut proven_detail = Vec::new();
     for ep in gw.endpoints() {
         // An endpoint registered from a base URL alone has no credential to
         // prove anything with; it is named as skipped, never counted.
@@ -994,39 +1005,7 @@ async fn live_streaming_tool_round_trip_and_cancellation_against_production_endp
             eprintln!("live: endpoint `{}` has no credential; skipped", ep.name);
             continue;
         }
-        // CI passes every variable, so an unset per-family one arrives empty:
-        // empty means absent and falls back to the shared one.
-        let configured = var(format!(
-            "MODBIT_{}_LIVE_MODEL",
-            ep.name.to_ascii_uppercase()
-        ))
-        .or_else(|| var("MODBIT_LIVE_MODEL".into()));
-        let model = match configured {
-            Some(m) => {
-                assert!(
-                    ep.models.iter().any(|c| c.model == m.trim()),
-                    "{}: live model {m:?} is not in its catalog {:?} (set MODBIT_{}_MODELS)",
-                    ep.name,
-                    ep.models
-                        .iter()
-                        .map(|c| c.model.as_str())
-                        .collect::<Vec<_>>(),
-                    ep.name.to_ascii_uppercase()
-                );
-                m.trim().to_owned()
-            }
-            None => ep
-                .models
-                .iter()
-                .find(|m| m.model.contains("mini") || m.model.contains("haiku"))
-                .map(|m| m.model.clone())
-                .unwrap_or_else(|| {
-                    panic!(
-                        "{}: no small model in the catalog and no MODBIT_LIVE_MODEL",
-                        ep.name
-                    )
-                }),
-        };
+        let model = support::live_model(&ep);
         eprintln!(
             "live: endpoint `{}` ({:?}) at {} model {model} auth {:?} extra_body {}",
             ep.name,
@@ -1096,26 +1075,32 @@ async fn live_streaming_tool_round_trip_and_cancellation_against_production_endp
         assert!(!text_of(&events).is_empty(), "{}: {events:?}", ep.name);
         assert!(matches!(events.last(), Some(ModelEvent::Completed { .. })));
         let cancel = CancellationToken::new();
+        let mut counting = request(
+            &ep.name,
+            &model,
+            vec![Message::text(
+                Role::User,
+                "Count slowly from 1 to 200, one number per line.",
+            )],
+            false,
+            60_000,
+        );
+        // Room enough that the stream cannot finish on its own before the
+        // cancellation lands: a model that reasons first spent all of 256
+        // tokens counting in its reasoning (runs 35705593051..36115236181).
+        counting.max_output_tokens = 4096;
         let mut s = gw
-            .stream(
-                request(
-                    &ep.name,
-                    &model,
-                    vec![Message::text(
-                        Role::User,
-                        "Count slowly from 1 to 200, one number per line.",
-                    )],
-                    false,
-                    60_000,
-                ),
-                &Requirements::default(),
-                cancel.clone(),
-            )
+            .stream(counting, &Requirements::default(), cancel.clone())
             .unwrap();
         let mut last = None;
         let mut seen: Vec<String> = Vec::new();
         while let Some(e) = s.events.recv().await {
-            if matches!(e, ModelEvent::MessageDelta { .. }) {
+            // The first streamed token cancels, answer or reasoning: a
+            // model that reasons first sends no MessageDelta for a while.
+            if matches!(
+                e,
+                ModelEvent::MessageDelta { .. } | ModelEvent::ReasoningDelta { .. }
+            ) {
                 cancel.cancel();
             }
             let mut shown = format!("{e:?}");
@@ -1136,12 +1121,19 @@ async fn live_streaming_tool_round_trip_and_cancellation_against_production_endp
             ep.name
         );
         proven.push(ep.name.clone());
+        proven_detail.push(json!({
+            "integration": support::integration_of(ep.kind),
+            "endpoint": ep.name,
+            "endpoint_host": support::host_and_path(&ep.base_url).0,
+            "model": model,
+        }));
     }
     assert!(
         !proven.is_empty(),
         "MODBIT_LIVE_PROVIDERS=1 but no configured endpoint carries a credential"
     );
     eprintln!("live: proven endpoints: {}", proven.join(", "));
+    support::write_result(TEST, "passed", json!({"proven": proven_detail}));
 }
 
 /// DR-M9-002: a compatible gateway whose base URL already names its API
