@@ -271,6 +271,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m10/EPR-012/ci-run-36227217131.json` | retained evidence | 42701 | `614182543e0d332705ae7ed97780caf4de410bc49c5828239914d28669a0ce48` |
 | `evidence/m10/EPR-012/evidence.json` | retained evidence | 3483 | `75a733bb2d3be57068215cc60ac4f68ca51c4d01a23476894465d9de90f2f536` |
 | `evidence/m10/EPR-013/TASK_CARD.md` | retained evidence | 4364 | `806bc0e0a80a9178dc8fefbf95d2d3206523741855d51daf7b9ff32ab1a37675` |
+| `evidence/m10/EPR-013/ci-run-36231451260.json` | retained evidence | 42701 | `5fe73c129eb36d31d4292e8bfbd21b8391b321548b994e19910dc4339b3e0335` |
+| `evidence/m10/EPR-013/evidence.json` | retained evidence | 2761 | `2e8f8ed1e96e1baff32dc21bad8c41f6a5dc2df83f98940e9ca9b72553386210` |
 | `evidence/m10/IMP-EV-0017/TASK_CARD.md` | retained evidence | 6326 | `86b061d0b4e4bc0b511cbc77d634bd8dc6e6395d09fb9c077560167d4f091b41` |
 | `evidence/m10/IMP-EV-0017/ci-run-36130922146.json` | retained evidence | 42314 | `89dc2d4b40f29a17ea7a201ace35122ef872e25e07b76c5a536e17fcf5755a23` |
 | `evidence/m10/IMP-EV-0017/evidence.json` | retained evidence | 2796 | `a45616131bc4f1fb680973450821c1e3ed9aed2788e6a124140a45397dfd80b3` |
@@ -1755,8 +1757,8 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `evidence/m9/PX-009/TASK_CARD.md` | retained evidence | 3716 | `143ff5f9be712b78a43f415d143fba93a8568e2f9b6980d28e278d4731838fa2` |
 | `evidence/m9/PX-009/ci-run-35830456557.json` | retained evidence | 42199 | `508168affe8ad4b8a13e97c3d4f855efbf4255325e88b58fec882ad41376033a` |
 | `evidence/m9/PX-009/evidence.json` | retained evidence | 2230 | `61d514ff843ff8750fecb6fd7d4936bd84d3255b2e9d2e72cbbc32901de9d99e` |
-| `graph/PROJECT_GRAPH.md` | human view of the graph | 41840 | `54c9c3a4497122f3b82d61f7e9d8b70ca88d61b8bba960b9ff70f2918ae91056` |
-| `graph/project-graph.json` | project driver graph with live status | 1614809 | `ea4dfe171412ec4c6a69bbe86595a107ee25b47f0b5b3be135c099a5c08baae1` |
+| `graph/PROJECT_GRAPH.md` | human view of the graph | 41844 | `ee227e3ff434a79029fb1aa7f5c3f598c3a42ce13f9b9391f3c7ccaf7eeefc3f` |
+| `graph/project-graph.json` | project driver graph with live status | 1615174 | `4dc9b26c338f5cefb57f4e6534ffcf108493fa4c9fc4ec3e61009090d9f80826` |
 | `tools/build_graph.py` | regenerates graph structure from docs | 56932 | `7a13adf9a591a21f9a99705d5a0f2fee5a316b3b43897d0964fbe8b1af30a4ce` |
 | `tools/build_manifest.py` | regenerates this manifest | 14871 | `b35f87f995ebea778ef5002f42c4dcb2f195f303ae121d7b4d73070d95d665b7` |
 | `tools/check_dossier.py` | integrity gate | 17596 | `5c9b7a782d245223726f860ca583d766929a6f5662b644adebee64d257ad426b` |
@@ -1765,7 +1767,7 @@ A dossier package is valid only if every path below exists with the listed SHA-2
 | `tools/example_runner.py` | source patch provenance | 18128 | `d73c7ccc988f4295fc55ff29828e775be53f5361d898b6a96497ea22f1e8322a` |
 | `tools/graph.py` | query/update graph | 46429 | `7062c754275a5d323705f021e35b75adf9f75dd82378c34b19470c8c4b272296` |
 | `tools/integration_gate.py` | source patch provenance | 18020 | `413fa4b02d659f391a6abd5740096f45fa9e09417bdaa6f478182a655c520b56` |
-| `tools/test_dossier.py` | copied-package integration and negative tests | 57305 | `8ba62b63015b4a456ceac155de4a9bf7e978d0f4730f09eced8a5489e7236152` |
+| `tools/test_dossier.py` | copied-package integration and negative tests | 57463 | `cfdad6fb1f8d7f6f72da28bf2875e4113a4808b7cae99bc79f8c7a4f8ff712d9` |
 
 ## Rename map (V3 flat numbering → V3.1 `docs/`)
 

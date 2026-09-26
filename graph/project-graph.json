@@ -28978,8 +28978,16 @@
    ],
    "task_card": "docs/49_EXECUTION_POLICY_REQUIREMENTS_AND_TASKS.md#epr-013",
    "audit_at_adoption": "DOCUMENTED-ONLY; no product caller or executor present",
-   "status": "NOT_STARTED",
-   "evidence": []
+   "status": "COMPLETE",
+   "evidence": [
+    "run:gha-36231451260",
+    "test:qual_epr_013_statistics_are_keyed_on_qualified_skill_combinations_and_plans_pin_the_skill_set",
+    "artifact:evidence/m10/EPR-013/TASK_CARD.md",
+    "artifact:evidence/m10/EPR-013/evidence.json",
+    "artifact:evidence/m10/EPR-013/ci-run-36231451260.json",
+    "commit:76e4183"
+   ],
+   "status_changed_on": "2026-09-26T09:35:18Z"
   },
   {
    "id": "EPR-014",

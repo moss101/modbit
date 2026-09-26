@@ -1,0 +1,36 @@
+{
+ "task": "EPR-013",
+ "requirements": [
+  "REQ-EPR-013",
+  "QUAL-EPR-013",
+  "EPR-E2E-013",
+  "EPR-FI-013",
+  "docs/27 \u00a77.3 \u00a713.2",
+  "docs/38 MaterializeOutcomeStatistics"
+ ],
+ "scenarios": [
+  "an operator-installed, signed skill with a PROMOTE evaluation of its exact content: 30 train runs with it verify (a provider that succeeds only when the skill's instructions reach it) and 3 without it fail; a signed but unevaluated skill runs qualified=false and is left out: 33 samples, fixer@<hash> 30/30, none 0/3 low-confidence; 30 holdout runs with the skill",
+  "a routed request with the skill compiles FEASIBLE and pins fixer@<hash> in plan provenance; without it QUALITY_FLOOR_INFEASIBLE with none; the Policy Lab finds the combination FEASIBLE and confirmed on the untouched holdout, the bare model NO_FEASIBLE_CONFIGURATION",
+  "EPR-FI-013: a repository's own signed skill with a PROMOTE evaluation beside it is qualified=false (no self-promotion); a changed skill pins a new set and is infeasible (stale statistics rejected); a revoked pack is SKILL_REVOKED with the lease operations of a control task; in an isolated replay a skill asking for git.commit/git.push is SKILL_EXCEEDS_REVIEWER_CEILING while one within fs.read/fs.write is selected"
+ ],
+ "tests": [
+  "services/modbit-core/tests/surface_protocol.rs::qual_epr_013_statistics_are_keyed_on_qualified_skill_combinations_and_plans_pin_the_skill_set"
+ ],
+ "audit": "SCAFFOLDED: StatKey::Solver had a skill field but samples and the compiler hard-coded none; provenance pinned no skill; harness ignored context configuration; no qualification distinction, no revocation; repository skills could be self-evaluated; reviewer skills beyond the ceiling were trimmed, not refused.",
+ "proof": "Real Core, signed registry and skills, 69 real runs as train and holdout statistics, the Policy Lab, an isolated sandboxed replay.",
+ "negative_proof": "Seven mutations each fail the qualification: the compiler ignoring the skill set, unqualified outcomes pooled, workspace skills qualifying, revocation ignored, the reviewer ceiling off, the plan not pinning the set, the set without content hashes.",
+ "limitations": "No run chooses an effort yet (model configuration is the bare model); the context tier enters through the harness version only; the escalation key does not carry the skill set; qualification reads the operator's evaluation record; no threshold profile is owner-approved.",
+ "batch_commits": [
+  "76e4183"
+ ],
+ "runs": [
+  "36231451260"
+ ],
+ "ci": {
+  "run_id": "36231451260",
+  "head_sha": "78c20f06fb1d46df51af933e44c8874e79e38e5d",
+  "conclusion": "success",
+  "note": "all jobs green on macOS, Linux and Windows",
+  "json": "evidence/m10/EPR-013/ci-run-36231451260.json"
+ }
+}

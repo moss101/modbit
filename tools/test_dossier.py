@@ -367,10 +367,15 @@ class DossierTests(unittest.TestCase):
         self.run_tool("check_dossier", contains="OK:")
 
     def test_gate_attestation_and_gated_rollup(self):
+        # A gate whose required tasks are still open: every gate's tasks are
+        # now sealed, so the fixture reopens one of G's (EPR-013) in this copy.
+        g = self.graph()
+        for node in g["nodes"]:
+            if node["id"] == "EPR-013":
+                node["status"] = "NOT_STARTED"
+                node["evidence"] = []
+        self.write_graph(g)
         before = (self.root / "graph/project-graph.json").read_bytes()
-        # A gate whose required tasks are still open (G waits on EPR-012 and
-        # EPR-013 in M10); A's tasks sealed with M4 and E's with M9, so neither
-        # can stand in for "not COMPLETE" any more.
         self.run_tool("graph", "attest", "EPR-GATE-G", "--evidence", "run:fixture-gate", ok=False, contains="required tasks not COMPLETE")
         self.run_tool("graph", "attest", "EPR-GATE-G", ok=False, contains="at least one --evidence")
         self.run_tool("graph", "attest", "EPR-006", "--evidence", "run:fixture-gate", ok=False, contains="release gates only")
