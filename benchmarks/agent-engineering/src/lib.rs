@@ -15,6 +15,7 @@
 
 pub mod bundle;
 pub mod events;
+pub mod profile;
 pub mod suite;
 pub mod workspace;
 
@@ -23,6 +24,9 @@ pub use bundle::{
     TrialOutcome, digest_of, metrics,
 };
 pub use events::{Counts, Event, count, parse_events};
+pub use profile::{
+    HarnessProfile, KNOWN_GOOD, MAX_PROFILE_REPAIRS, ProfileRefused, generate, repair,
+};
 pub use suite::{Acceptance, FileOp, HiddenFile, Suite, SuiteProtocol, TaskSpec, protected_intact};
 pub use workspace::copy_fixture;
 

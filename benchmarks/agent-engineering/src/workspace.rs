@@ -18,10 +18,17 @@ pub fn copy_fixture(src: &Path, dst: &Path) -> Result<(), String> {
             let e = e.map_err(|e| e.to_string())?;
             let n = e.file_name();
             let name = n.to_string_lossy();
+            // Build and interpreter byproducts are not the fixture: a
+            // `__pycache__` a previous run left beside the sources would be
+            // committed into the trial's base and rewritten by the next
+            // pytest, a diff outside every plan.
             if name == "target"
                 || name == "node_modules"
                 || name == ".vitest"
                 || name.starts_with(".vite")
+                || name == "__pycache__"
+                || name == ".pytest_cache"
+                || name.ends_with(".pyc")
             {
                 continue;
             }
@@ -52,4 +59,38 @@ pub fn copy_fixture(src: &Path, dst: &Path) -> Result<(), String> {
             .map_err(|e| e.to_string())?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::copy_fixture;
+
+    /// A fixture's interpreter byproducts are not its content: a
+    /// `__pycache__` a previous run left beside the sources is not copied
+    /// into a trial (it was committed into the trial's base on Windows CI and
+    /// every pytest rewrote it, a diff outside the plan).
+    #[test]
+    fn python_byproducts_are_not_part_of_a_trial_workspace() {
+        let src = tempfile::tempdir().unwrap();
+        let dst = tempfile::tempdir().unwrap();
+        std::fs::write(src.path().join("service.py"), "x = 1\r\n").unwrap();
+        std::fs::create_dir_all(src.path().join("__pycache__")).unwrap();
+        std::fs::write(
+            src.path().join("__pycache__/service.cpython-312.pyc"),
+            [0u8, 159, 146],
+        )
+        .unwrap();
+        std::fs::create_dir_all(src.path().join(".pytest_cache/v")).unwrap();
+        std::fs::write(src.path().join(".pytest_cache/v/lastfailed"), "{}").unwrap();
+        std::fs::write(src.path().join("stray.pyc"), [0u8]).unwrap();
+        let out = dst.path().join("w");
+        copy_fixture(src.path(), &out).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(out.join("service.py")).unwrap(),
+            "x = 1\n"
+        );
+        assert!(!out.join("__pycache__").exists());
+        assert!(!out.join(".pytest_cache").exists());
+        assert!(!out.join("stray.pyc").exists());
+    }
 }

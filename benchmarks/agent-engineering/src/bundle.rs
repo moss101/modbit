@@ -362,6 +362,9 @@ pub struct Bundle {
 /// Why a bundle is refused (QUAL-PX-020 negative proof).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BundleRefused {
+    /// Measured under something other than the frozen `direct` protocol (a
+    /// shadow profile experiment, IMP-EV-0244): never a baseline.
+    NotABaseline(String),
     /// A trial could see gold patches or hidden acceptance.
     GoldPatchAccess,
     /// An image without a `@sha256:` digest.
@@ -388,6 +391,10 @@ pub enum BundleRefused {
 impl std::fmt::Display for BundleRefused {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::NotABaseline(c) => write!(
+                f,
+                "configuration {c:?} is a shadow experiment, not the frozen direct protocol"
+            ),
             Self::GoldPatchAccess => {
                 write!(f, "a trial had gold-patch or hidden-acceptance access")
             }
@@ -421,6 +428,11 @@ impl Bundle {
         }
         if self.tasks.is_empty() {
             return Err(BundleRefused::NoTasks);
+        }
+        if self.protocol.configuration != "direct" {
+            return Err(BundleRefused::NotABaseline(
+                self.protocol.configuration.clone(),
+            ));
         }
         if self.protocol.gold_patch_access {
             return Err(BundleRefused::GoldPatchAccess);

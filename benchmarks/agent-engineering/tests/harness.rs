@@ -354,12 +354,23 @@ const RESPONSE_HEAD: &str = "HTTP/1.1 200 OK\r\ncontent-type: text/event-stream\
 /// request is the script step indexed by the number of tool-result messages
 /// in the request (one tool call per turn), as the Core's own tests do.
 fn scripted_server(script: Vec<serde_json::Value>) -> String {
+    staged_server(script, 0)
+}
+
+/// The same server, useless for the first `useless` attempts: an attempt
+/// starts with a request that carries no assistant turn yet (a fresh run on
+/// a fresh Core), and until `useless` of them have started every request is
+/// answered with text that does nothing — the model fails the attempt,
+/// whatever the profile. Later attempts get `script`.
+fn staged_server(script: Vec<serde_json::Value>, useless: usize) -> String {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let port = listener.local_addr().unwrap().port();
+    let attempts = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
     std::thread::spawn(move || {
         for sock in listener.incoming() {
             let Ok(mut sock) = sock else { return };
             let script = script.clone();
+            let attempts = std::sync::Arc::clone(&attempts);
             std::thread::spawn(move || {
                 let mut buf = Vec::new();
                 let mut tmp = [0u8; 8192];
@@ -396,10 +407,22 @@ fn scripted_server(script: Vec<serde_json::Value>) -> String {
                     .as_array()
                     .map(|m| m.iter().filter(|x| x["role"] == "tool").count())
                     .unwrap_or(0);
-                let reply = script
-                    .get(results)
-                    .cloned()
-                    .unwrap_or_else(|| json!({"text": "I have nothing further to do."}));
+                let fresh = !body["messages"]
+                    .as_array()
+                    .is_some_and(|m| m.iter().any(|x| x["role"] == "assistant"));
+                let attempt = if fresh {
+                    attempts.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1
+                } else {
+                    attempts.load(std::sync::atomic::Ordering::SeqCst)
+                };
+                let reply = if attempt <= useless {
+                    json!({"text": "I am not able to do this."})
+                } else {
+                    script
+                        .get(results)
+                        .cloned()
+                        .unwrap_or_else(|| json!({"text": "I have nothing further to do."}))
+                };
                 let mut frames: Vec<String> = Vec::new();
                 if let Some(t) = reply["text"].as_str() {
                     frames.push(json!({"id":"c","model":"scripted-1","choices":[{"index":0,"delta":{"content":t},"finish_reason":null}]}).to_string());
@@ -849,4 +872,268 @@ fn a_fixture_copy_links_installed_modules_by_absolute_path_even_from_a_relative_
         dst.join("node_modules/.bin/tool").is_file(),
         "the link resolves from the copy"
     );
+}
+
+/// QUAL-EV-0244 (EXPERIMENT; REQ-EV-0244): a task-conditioned profile is
+/// generated from the task and the known-good profile and runs only as a
+/// shadow experiment — its own report, labelled by its digest, with no
+/// baseline written — and a bundle labelled with it is refused as a
+/// baseline. The frozen run of the same task, without a profile, keeps the
+/// frozen protocol's flags and writes the baseline. No workspace package
+/// reaches the generator through a product dependency (`cargo metadata`).
+#[test]
+fn qual_ev_0244_a_generated_profile_runs_only_in_shadow_and_never_as_the_baseline() {
+    use modbit_bench_agent_engineering::{HarnessProfile, generate};
+    if Command::new("python3")
+        .args(["-m", "pytest", "--version"])
+        .output()
+        .map(|o| !o.status.success())
+        .unwrap_or(true)
+    {
+        eprintln!("skipped: pytest is not installed");
+        return;
+    }
+    let (suite, _) = Suite::load(&suite_path()).unwrap();
+    let task = suite
+        .tasks
+        .iter()
+        .find(|t| t.id == "python-service/reject-zero")
+        .unwrap();
+    let known_good = HarnessProfile::known_good(&suite.protocol);
+    assert_eq!(
+        known_good.run_args(),
+        ["--max-turns", "24"],
+        "the frozen protocol's flags"
+    );
+    let variant = generate(task, &known_good);
+    assert_ne!(variant, known_good);
+    assert_eq!(
+        variant.derived_from.as_deref(),
+        Some(known_good.digest().as_str())
+    );
+    let out = tempfile::tempdir().unwrap();
+    let file = out.path().join("variant.json");
+    std::fs::write(&file, serde_json::to_vec(&variant).unwrap()).unwrap();
+    let base = scripted_server(reject_zero_script());
+    let (ok, text) = run_harness(
+        &base,
+        &out.path().join("shadow"),
+        &["--profile", file.to_str().unwrap()],
+    );
+    assert!(ok, "{text}");
+    assert!(
+        !out.path().join("shadow/baseline.json").exists(),
+        "a shadow run writes no baseline"
+    );
+    let report: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(out.path().join("shadow/experiment.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(report["kind"], "profile-experiment");
+    assert_eq!(
+        report["configuration"],
+        json!(format!("shadow:{}", variant.digest()))
+    );
+    assert_eq!(report["protocol"]["configuration"], report["configuration"]);
+    assert_eq!(report["profile"]["max_turns"], json!(variant.max_turns));
+    assert_eq!(report["trials"].as_array().unwrap().len(), 1);
+    // The frozen run of the same task: the baseline, under `direct`.
+    let (ok, text) = run_harness(&base, &out.path().join("direct"), &[]);
+    assert!(ok, "{text}");
+    let mut bundle: Bundle = serde_json::from_str(
+        &std::fs::read_to_string(out.path().join("direct/baseline.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(bundle.protocol.configuration, "direct");
+    assert_eq!(bundle.protocol.max_turns, 24);
+    bundle.validate().unwrap();
+    // A bundle labelled with the shadow profile is not a baseline.
+    bundle.protocol.configuration = variant.configuration();
+    assert!(matches!(
+        bundle.validate(),
+        Err(modbit_bench_agent_engineering::BundleRefused::NotABaseline(
+            _
+        ))
+    ));
+    // Nothing in the product reaches the generator — and the check does see
+    // a product dependency where there is one.
+    assert!(reaching("modbit-domain").contains(&"modbit-core".to_owned()));
+    assert_eq!(
+        reaching("modbit-bench-agent-engineering"),
+        Vec::<String>::new(),
+        "no workspace package depends on the harness"
+    );
+}
+
+/// Every other workspace package that reaches `target` through normal or
+/// build dependencies (dev-dependencies are tests, not the product), from
+/// the resolved graph `cargo metadata` reports.
+fn reaching(target: &str) -> Vec<String> {
+    let out = Command::new(std::env::var("CARGO").unwrap_or_else(|_| "cargo".into()))
+        .args(["metadata", "--format-version", "1", "--locked"])
+        .current_dir(root())
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let meta: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    let name_of = |id: &str| {
+        meta["packages"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|p| p["id"] == id)
+            .and_then(|p| p["name"].as_str())
+            .unwrap_or_default()
+            .to_owned()
+    };
+    let members: Vec<String> = meta["workspace_members"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|m| m.as_str().unwrap().to_owned())
+        .collect();
+    let nodes = meta["resolve"]["nodes"].as_array().unwrap();
+    let product_deps = |id: &str| -> Vec<String> {
+        nodes
+            .iter()
+            .find(|n| n["id"] == id)
+            .and_then(|n| n["deps"].as_array())
+            .map(|deps| {
+                deps.iter()
+                    .filter(|d| {
+                        d["dep_kinds"].as_array().is_some_and(|k| {
+                            k.iter()
+                                .any(|k| k["kind"].is_null() || k["kind"] == "build")
+                        })
+                    })
+                    .map(|d| d["pkg"].as_str().unwrap().to_owned())
+                    .collect()
+            })
+            .unwrap_or_default()
+    };
+    let mut hits = Vec::new();
+    for m in &members {
+        if name_of(m) == target {
+            continue;
+        }
+        let mut seen = std::collections::BTreeSet::new();
+        let mut stack = vec![m.clone()];
+        while let Some(id) = stack.pop() {
+            if !seen.insert(id.clone()) {
+                continue;
+            }
+            if id != *m && name_of(&id) == target {
+                hits.push(name_of(m));
+                break;
+            }
+            stack.extend(product_deps(&id));
+        }
+    }
+    hits
+}
+
+/// QUAL-EV-0246 (EXPERIMENT; REQ-EV-0246): a failing variant is repaired at
+/// most twice; the third repair is refused and the known-good fallback runs
+/// and verifies. The provider fails the first three attempts whatever their
+/// profile, then behaves: the variant and both repairs fail, the refusal is
+/// recorded, and the fallback — the frozen protocol — reaches a verified
+/// success.
+#[test]
+fn qual_ev_0246_the_third_repair_is_refused_and_the_known_good_fallback_still_verifies() {
+    if Command::new("python3")
+        .args(["-m", "pytest", "--version"])
+        .output()
+        .map(|o| !o.status.success())
+        .unwrap_or(true)
+    {
+        eprintln!("skipped: pytest is not installed");
+        return;
+    }
+    let out = tempfile::tempdir().unwrap();
+    let base = staged_server(reject_zero_script(), 3);
+    let (ok, text) = run_harness(&base, &out.path().join("adaptive"), &["--adaptive"]);
+    assert!(ok, "{text}");
+    assert!(!out.path().join("adaptive/baseline.json").exists());
+    let report: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(out.path().join("adaptive/experiment.json")).unwrap(),
+    )
+    .unwrap();
+    let attempts = report["attempts"].as_array().unwrap();
+    let summary: Vec<(String, bool)> = attempts
+        .iter()
+        .map(|a| {
+            (
+                a["profile"]
+                    .as_str()
+                    .map_or_else(|| format!("refused: {}", a["refused"]), str::to_owned),
+                a["verified"].as_bool().unwrap_or(false),
+            )
+        })
+        .collect();
+    assert_eq!(summary.len(), 5, "{summary:#?}");
+    assert_eq!(
+        summary[..3]
+            .iter()
+            .map(|(p, v)| (p.as_str(), *v))
+            .collect::<Vec<_>>(),
+        [
+            ("generated/python-service/reject-zero", false),
+            ("repaired/python-service/reject-zero/1", false),
+            ("repaired/python-service/reject-zero/2", false),
+        ],
+        "{summary:#?}"
+    );
+    assert!(
+        summary[3].0.contains("repair 3 refused"),
+        "the third repair is refused: {summary:#?}"
+    );
+    // On a failure, the gate's own reasons: every file the experiment wrote
+    // and every line of them naming a diff invariant, a violation or the
+    // suite's protected test.
+    let gate_events = || {
+        fn walk(dir: &Path, out: &mut Vec<std::path::PathBuf>) {
+            for e in std::fs::read_dir(dir).into_iter().flatten().flatten() {
+                let p = e.path();
+                if p.is_dir() {
+                    walk(&p, out);
+                } else {
+                    out.push(p);
+                }
+            }
+        }
+        let mut files = Vec::new();
+        walk(&out.path().join("adaptive"), &mut files);
+        let mut lines = Vec::new();
+        for f in &files {
+            lines.push(format!("file {}", f.display()));
+            if let Ok(text) = std::fs::read_to_string(f) {
+                for l in text.lines().filter(|l| {
+                    l.contains("DI-")
+                        || l.contains("iolation")
+                        || l.contains("test_service")
+                        || l.contains("REJECT")
+                }) {
+                    lines.push(l.chars().take(800).collect());
+                }
+            }
+        }
+        lines.join("\n")
+    };
+    assert_eq!(
+        summary[4],
+        ("direct/known-good".to_owned(), true),
+        "{summary:#?}\n{}\n{text}",
+        gate_events()
+    );
+    assert_eq!(
+        attempts[4]["max_turns"],
+        json!(24),
+        "the fallback is the frozen protocol"
+    );
+    let trial = &report["trials"][0];
+    assert_eq!(trial["verified_success"], json!(true), "{trial}");
 }
